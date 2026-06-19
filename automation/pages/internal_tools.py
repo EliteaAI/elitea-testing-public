@@ -11,8 +11,8 @@ from typing import List
 class ChatInternalTool(str, Enum):
     """Internal tools available in the Chat interface.
 
-    These tools appear in the internal tools panel when clicking the
-    "enable internal tools" button in the chat input area.
+    These tools appear in the internal tools panel accessed via the plus menu
+    → "Internal Tools" in the chat input area.
 
     Each value represents the exact display text in the UI.
     """
@@ -22,6 +22,9 @@ class ChatInternalTool(str, Enum):
 
     # Data analysis and visualization
     DATA_ANALYSIS = "Data Analysis"
+
+    # Elitea MCP Tools integration
+    ELITEA_MCP_TOOLS = "Elitea MCP Tools"
 
     # Task planning and breakdown
     PLANNER = "Planner"

@@ -575,30 +575,32 @@ class TestConversationParticipants:
 
     @pytest.mark.p1
     def test_add_teammate_dialog_opens(self, page, conversation_id):
-        """TC-CONV-015: Add teammate dialog opens.
+        """TC-CONV-015: Invite Users dialog opens via plus menu.
+
+        In v2.0.3+, adding teammates/users is done via the plus menu → "Invite Users"
+        option per story #5188 AC3: "Adding Participants is Only Allowed via the `+` Icon"
+
+        Important: The "Invite Users" option is ONLY available in Team Projects,
+        not in Private Projects. If testing in a Private Project, this test will
+        skip with an appropriate message.
 
         Verifies:
-        - "Add user" / "Add teammate" button exists in Participants panel
-        - Clicking button opens user picker dialog
+        - Plus menu contains "Invite Users" option (Team Projects only)
+        - Clicking "Invite Users" opens user picker dialog
 
         Note: This test verifies dialog opens, not full teammate addition flow.
-        Full flow requires test user accounts in the environment, which may not
-        be available in all test environments.
-
-        Skipped if the feature is not available in the current environment.
+        Full flow requires test user accounts in the environment.
         """
         chat = ChatPage(page)
         chat.navigate_to_chat(conversation_id=conversation_id)
         chat.wait_for_page_load()
+        chat.dismiss_banner_if_present()
 
-        # Try to open the add teammate dialog
-        dialog_opened = chat.open_add_teammate_dialog(timeout=UI_ELEMENT_TIMEOUT)
+        # Try to open the Invite Users dialog via plus menu
+        dialog_opened, reason = chat.open_add_teammate_dialog(timeout=UI_ELEMENT_TIMEOUT)
 
         if not dialog_opened:
-            pytest.skip(
-                "No 'Add user' / 'Add teammate' button found in the "
-                "Participants panel — feature may not be available in stage"
-            )
+            pytest.skip(reason)
 
 
 class TestConversationIsolation:

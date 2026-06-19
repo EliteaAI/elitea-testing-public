@@ -26,6 +26,7 @@ import logging
 
 import pytest
 
+from api import AgentAPI
 from pages.agent_page import AgentPage
 from pages.chat_page import ChatPage
 
@@ -42,6 +43,46 @@ FORM_SAVE_TIMEOUT = 15000
 TOOLKIT_EXECUTION_TIMEOUT = 60000
 
 
+# ---------------------------------------------------------------------------
+# Fixtures specific to this test module
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def agent_with_toolkit_instructions(agent_api: AgentAPI, request):
+    """Create an agent with instructions to use attached toolkits.
+
+    Unlike the generic agent_id fixture, this agent has explicit instructions
+    that tell it to always use available tools to fulfill requests, which is
+    required for toolkit execution tests.
+    """
+    name = f"autotest_{request.node.name}"[:32]
+    description = f"Agent with toolkit instructions for test {request.node.name}"
+    instructions = """You are a helpful assistant with access to external tools.
+
+IMPORTANT: When a user asks you to perform any task that involves external services
+(like GitHub, Jira, etc.), you MUST use the available tools to fulfill the request.
+
+Do NOT provide instructions on how to do things manually. Instead, use the tools
+directly to perform the action and return the actual results.
+
+For example:
+- If asked to list branches, use the GitHub tool to get the actual branch list
+- If asked about issues, use the appropriate tool to fetch real issue data
+- Always execute tools rather than explaining how to use command line"""
+
+    agent = agent_api.create_agent(name, description, instructions=instructions)
+    aid = agent["id"]
+    logger.info("Created toolkit-enabled agent %s (%s)", aid, name)
+
+    yield aid
+
+    try:
+        agent_api.delete_agent(aid)
+        logger.info("Deleted agent %s", aid)
+    except Exception as exc:
+        logger.warning("Failed to delete agent %s: %s", aid, exc)
+
+
 # ===========================================================================
 # Tests
 # ===========================================================================
@@ -54,7 +95,7 @@ class TestAgentWithToolkitInChat:
     def test_agent_with_toolkit_executes_in_chat(
         self,
         page,
-        agent_id: int,
+        agent_with_toolkit_instructions: int,
         github_toolkit: dict,
         conversation_id: str,
     ):
@@ -75,6 +116,8 @@ class TestAgentWithToolkitInChat:
         """
         toolkit_name = github_toolkit["name"]
         expected_branch = github_toolkit["branch"]
+
+        agent_id = agent_with_toolkit_instructions
 
         # --- Step 1-3: Add toolkit to agent and save ---
         agent_page = AgentPage(page)
@@ -122,12 +165,18 @@ class TestAgentWithToolkitInChat:
         logger.info("Agent added as chat participant")
         # Allow the agent's tool configuration (including the attached toolkit) to
         # hydrate in the conversation session before sending the first message.
+        # The backend needs time to register the agent's tools with the LLM session.
         chat.wait_for_network(timeout=UI_ELEMENT_TIMEOUT)
+        page.wait_for_timeout(2000)  # Extra buffer for tool registration
 
         # --- Step 6: Send message ---
         initial_count = chat.get_message_count()
         logger.info("Sending message to trigger toolkit (initial messages: %d)...", initial_count)
-        chat.send_message("List all branches in the repository", use_enter=False)
+        chat.send_message(
+            "Use the GitHub toolkit to list all branches in the EliteaAI/elitea-testing repository. "
+            "Execute the tool and show me the actual branch names.",
+            use_enter=False
+        )
 
         # --- Step 7: Wait for response ---
         logger.info("Waiting for AI + toolkit response...")

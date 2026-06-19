@@ -102,7 +102,7 @@ class UserProfileSettingsPage(BasePage):
         self.wait_for_page_load()
         logger.info("Navigated to user profile settings page")
 
-    def wait_for_page_load(self, timeout: int = 15000) -> None:
+    def wait_for_page_load(self, timeout: int = 30000) -> None:
         """Wait until the profile settings page is fully loaded.
 
         The page initially renders with default values (e.g., 64000 for max tokens),
@@ -113,6 +113,15 @@ class UserProfileSettingsPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         self.wait_for_network(timeout=timeout)
+
+        # Wait for the "Default Context Management" section heading first
+        # The toggle is inside an accordion that might need time to expand
+        context_heading = self.page.get_by_role("heading", name="Default Context Management")
+        context_heading.wait_for(state="visible", timeout=timeout)
+
+        # The accordion should be expanded by default, but give it time to render
+        self.page.wait_for_timeout(500)
+
         # Wait for the context management toggle to be present — it is
         # the key element used by the context management tests.
         self.context_management_toggle.wait_for(state="visible", timeout=timeout)
