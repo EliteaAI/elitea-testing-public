@@ -233,7 +233,6 @@ Some elements have reliable `aria-label` attributes:
 | Element | aria-label | Notes |
 |---------|-----------|-------|
 | Copy message | `Copy to clipboard` | Stable |
-| Clear chat | `Clear the chat history` | Stable |
 | Create Conversation | `Create Conversation` | Stable |
 | Search conversations | `Search conversations` | Stable |
 | Send message | `send your question` | Stable |

@@ -16,6 +16,11 @@ from utils.actions import action
 logger = logging.getLogger("elitea.pages.chat")
 
 
+class FeatureNotAvailableError(Exception):
+    """Raised when a UI feature is not available in the current UI version."""
+    pass
+
+
 class ChatPage(BasePage):
     """Page object for Elitea chat interface (/app/chat).
 
@@ -109,22 +114,29 @@ class ChatPage(BasePage):
         ),
     )
 
-    clear_history_button = LocatorDescriptor(
-        testid="chat-clear-history",
-        fallback=lambda page: page.locator('button[aria-label="Clear the chat history"]'),
-        description="Clear chat history button"
-    )
-
     edit_context_button = LocatorDescriptor(
         testid="context-settings-button",
         fallback=lambda page: page.get_by_role("button", name="Edit context settings"),
-        description="Edit context settings button"
+        description="Edit context settings button in the right panel Context Budget section"
     )
 
+    plus_menu_button = LocatorDescriptor(
+        testid="plus-menu-button",
+        fallback=lambda page: page.get_by_role("button", name="plus menu"),
+        description="Plus menu button - entry point for adding participants, internal tools, and attachments"
+    )
+
+    internal_tools_menuitem = LocatorDescriptor(
+        testid="internal-tools-menuitem",
+        fallback=lambda page: page.get_by_role("menuitem", name="Internal Tools"),
+        description="Internal Tools menuitem inside plus menu dropdown"
+    )
+
+    # Legacy locator - kept for backward compatibility but no longer works
     internal_tools_toggle = LocatorDescriptor(
         testid="internal-tools-toggle",
         fallback=lambda page: page.locator('button[aria-label="enable internal tools"]'),
-        description="Internal tools toggle button"
+        description="DEPRECATED: Internal tools toggle button (moved to plus menu in v2.0.3)"
     )
 
     # ------------------------------------------------------------------
@@ -203,21 +215,26 @@ class ChatPage(BasePage):
         """Wait for chat page to fully load.
 
         Args:
-            timeout: Maximum wait time in ms for spinner to disappear (default 30s)
+            timeout: Maximum wait time in ms (default 30s)
         """
         # Wait for network idle first
         self.wait_for_network(timeout=timeout)
 
-        # Wait for loading spinner to disappear (if present)
-        # Elitea uses CircularProgress/spinner during initial load
-        spinner = self.page.locator('svg[class*="CircularProgress"], [role="progressbar"], [class*="spinner"]')
-        if spinner.count() > 0:
-            spinner.first.wait_for(state="hidden", timeout=timeout)
-            logger.info("Loading spinner disappeared")
-        
-        # Finally verify message input is ready
-        self.message_input.wait_for(state="visible", timeout=15000)
-        logger.info("Chat page loaded")
+        # Primary check: message input is ready (page is usable)
+        # This is more reliable than waiting for spinners to disappear,
+        # as some spinners (AI processing indicators) may persist.
+        try:
+            self.message_input.wait_for(state="visible", timeout=timeout)
+            logger.info("Chat page loaded - message input visible")
+        except Exception:
+            # Fallback: check for full-page loading spinner and wait for it
+            spinner = self.page.locator('svg[class*="CircularProgress"], [role="progressbar"], [class*="spinner"]')
+            if spinner.count() > 0:
+                spinner.first.wait_for(state="hidden", timeout=timeout)
+                logger.info("Loading spinner disappeared")
+            # Try message input again
+            self.message_input.wait_for(state="visible", timeout=15000)
+            logger.info("Chat page loaded after spinner wait")
         
     @action("Send message")
     def send_message(self, text: str, use_enter: bool = False):
@@ -530,16 +547,42 @@ class ChatPage(BasePage):
         return model_text
         
     def open_sidebar(self):
-        """Open the sidebar drawer."""
+        """Open the sidebar drawer to show full text labels.
+
+        The sidebar has two states:
+        - Collapsed: shows only icons (mini-sidebar)
+        - Expanded: shows icons + text labels
+
+        The "open drawer" button toggles between these states.
+        """
         logger.info("Opening sidebar")
+        # Check if already expanded (Agents text visible)
+        agents_btn = self.page.get_by_role("button", name="Agents", exact=True)
+        if agents_btn.is_visible():
+            logger.info("Sidebar already expanded")
+            return
+
+        # Click the toggle to expand
         if self.sidebar_toggle.is_visible():
             self.sidebar_toggle.click()
-            
+            self.page.wait_for_timeout(300)  # Allow animation
+
     def close_sidebar(self):
-        """Close the sidebar drawer if open."""
+        """Close the sidebar drawer to show only icons (mini-sidebar).
+
+        Clicks the drawer toggle to collapse to icon-only mode.
+        """
         logger.info("Closing sidebar")
-        # Click outside or use close button if available
-        self.page.keyboard.press("Escape")
+        # Check if already collapsed (Agents text not visible)
+        agents_btn = self.page.get_by_role("button", name="Agents", exact=True)
+        if not agents_btn.is_visible():
+            logger.info("Sidebar already collapsed")
+            return
+
+        # Click the toggle to collapse
+        if self.sidebar_toggle.is_visible():
+            self.sidebar_toggle.click()
+            self.page.wait_for_timeout(300)  # Allow animation
         
     def open_file_chooser(self, timeout: int = 10000):
         """Click the attach button and return the FileChooser dialog.
@@ -722,51 +765,90 @@ class ChatPage(BasePage):
         return menu
 
     def wait_for_hash_search_dropdown(self, timeout: int = 5000):
-        """Wait for # mention dropdown to appear.
+        """Wait for # mention search results panel to appear.
 
-        Returns the dropdown locator or raises TimeoutError.
+        In v2.0.3+, typing #query shows a search results panel above the input
+        with matching agents, pipelines, etc.
+
+        Returns the search results panel locator or raises TimeoutError.
         """
-        dropdown = self.page.locator(
-            '[role="listbox"], [role="option"], [class*="dropdown"], '
-            '[class*="popper"], [class*="autocomplete"], [class*="mention"]'
-        )
-        dropdown.first.wait_for(state="visible", timeout=timeout)
-        return dropdown
+        # Look for the search results panel that contains "Search results" heading
+        # or the results container with agent/pipeline items
+        search_results = self.page.locator(
+            ':has-text("Search results"), '
+            '[class*="dropdown"], [class*="popper"], '
+            '[class*="autocomplete"], [class*="mention"]'
+        ).filter(has=self.page.locator(':text("agent"), :text("pipeline")'))
+
+        search_results.first.wait_for(state="visible", timeout=timeout)
+        return search_results
 
     def get_hash_search_first_option(self):
-        """Get the first option from hash search dropdown.
+        """Get the first clickable option from hash search results.
 
-        Returns the first option locator or None if no options.
+        The hash search panel structure:
+        - "Search results" title
+        - List of participant cards with EntityIcon + name text
+
+        Each card contains an SVG icon and the participant name in a Typography.
+        Returns the first clickable card locator or None if no options.
         """
-        options = self.page.locator('[role="option"]')
-        if options.count() > 0:
-            return options.first
+        # Find the search results panel
+        results_title = self.page.locator('text=/search results/i').first
+        if results_title.count() == 0:
+            return None
+
+        # Go up to the container and find clickable cards with icons
+        container = results_title.locator('xpath=ancestor::div[3]')
+
+        # Participant cards have an SVG icon and text
+        cards = container.locator('div').filter(
+            has=self.page.locator('svg')
+        ).filter(
+            has=self.page.locator('p:not(:has-text("Search results")):not(:has-text("No matching"))')
+        )
+
+        if cards.count() > 0:
+            return cards.first
+
+        # Fallback: look for any element with agent/pipeline type labels
+        cards = container.locator('div:has(p:text("agent")), div:has(p:text("pipeline"))')
+        if cards.count() > 0:
+            return cards.first
+
         return None
 
+
     def is_hash_search_dropdown_visible(self) -> bool:
-        """Check if the # mention search dropdown is currently visible.
+        """Check if the # mention search results panel is currently visible.
 
         Returns:
-            True if the dropdown is visible, False if it has closed.
+            True if the search results panel is visible, False if it has closed.
         """
-        dropdown = self.page.locator('[role="listbox"]')
-        return dropdown.count() > 0 and dropdown.first.is_visible()
+        search_results = self.page.get_by_text("Search results")
+        return search_results.count() > 0 and search_results.first.is_visible()
 
     def wait_for_search_dialog(self, timeout: int = 5000):
-        """Wait for search conversations dialog to appear.
+        """Wait for search conversations input to appear.
 
-        Returns the dialog locator.
+        In v2.0.3+, clicking "Search conversations" button opens an inline
+        search textbox (not a modal dialog).
+
+        Returns the search input locator.
         """
-        dialog = self.page.locator(
-            '[role="dialog"], [class*="search"], input[placeholder*="Search"]'
+        search_input = self.page.locator(
+            'input[placeholder*="Search conversations"], '
+            '[role="dialog"] input[placeholder*="Search"]'
         )
-        dialog.first.wait_for(state="visible", timeout=timeout)
-        return dialog
+        search_input.first.wait_for(state="visible", timeout=timeout)
+        return search_input
 
     def wait_for_sidebar_expanded(self, timeout: int = 5000):
         """Wait for sidebar to expand and show full labels."""
-        agents_label = self.page.locator('span:has-text("Agents")').first
-        agents_label.wait_for(state="visible", timeout=timeout)
+        # Sidebar items are buttons with text labels when expanded
+        # Use exact=True to avoid matching conversation items with "Agents" in their name
+        agents_btn = self.page.get_by_role("button", name="Agents", exact=True)
+        agents_btn.wait_for(state="visible", timeout=timeout)
 
     def has_error_notification(self) -> bool:
         """Check if an error notification is present on the page.
@@ -778,17 +860,25 @@ class ChatPage(BasePage):
         return error.count() > 0 and error.first.is_visible()
 
     def open_search_conversations(self):
-        """Open search conversations dialog (Ctrl+K)."""
-        logger.info("Opening search conversations")
-        self.page.keyboard.press("Control+K")
+        """Open search conversations via the Search conversations button.
+
+        In v2.0.3+, Ctrl+K keyboard shortcut is no longer supported.
+        Uses the "Search conversations" button in the conversations panel header.
+        """
+        logger.info("Opening search conversations via button")
+        search_btn = self.page.get_by_role("button", name="Search conversations")
+        search_btn.wait_for(state="visible", timeout=5000)
+        search_btn.click()
         
     def navigate_to_agents(self):
-        """Navigate to Agents page via the expanded sidebar drawer."""
+        """Navigate to Agents page via the sidebar drawer."""
         logger.info("Navigating to Agents")
         self.open_sidebar()
-        agents_item = self.page.locator('span:has-text("Agents")').first
-        agents_item.wait_for(state="visible", timeout=5000)
-        agents_item.click()
+        # Sidebar items are buttons with accessible names
+        # Use exact=True to avoid matching conversation items with "Agents" in their name
+        agents_btn = self.page.get_by_role("button", name="Agents", exact=True)
+        agents_btn.wait_for(state="visible", timeout=5000)
+        agents_btn.click()
 
     # ------------------------------------------------------------------
     # Conversation management helpers
@@ -796,18 +886,18 @@ class ChatPage(BasePage):
 
     @action("Create new conversation")
     def click_create_conversation(self, timeout: int = 10000):
-        """Click the "Create Conversation" button in the sidebar.
+        """Click the "+ Conversation" button in the sidebar.
 
-        Waits for the button to be enabled (it is disabled while a
-        creation is in progress) and clicks it.  The UI may or may not
-        navigate to ``/app/chat/{id}`` — it creates the conversation and
-        shows it in the sidebar list.
+        Uses data-tour attribute locator for reliability across UI versions.
+        The button shows "+ Conversation" with a dropdown chevron.
+
+        LOCATOR: [data-tour="sidebar-create-button"] button:has-text("Conversation")
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        logger.info("Clicking Create Conversation button")
-        btn = self.page.get_by_label("Create Conversation").get_by_role("button")
+        logger.info("Clicking +Conversation button")
+        btn = self.page.locator('[data-tour="sidebar-create-button"] button:has-text("Conversation")').first
         btn.wait_for(state="visible", timeout=timeout)
         btn.click(force=True)
         # Wait for the "Creating conversation..." state to finish
@@ -1268,19 +1358,37 @@ class ChatPage(BasePage):
     # ------------------------------------------------------------------
 
     def open_internal_tools_menu(self, timeout: int = 5000):
-        """Open the internal tools dropdown menu.
+        """Open the internal tools panel via plus menu → Internal Tools.
 
-        Clicks the 'enable internal tools' button to reveal the tools menu
-        with toggles for Image creation, Data Analysis, Planner, etc.
+        In v2.0.3+, internal tools are accessed through the plus menu dropdown.
+        Clicks plus menu, then "Internal Tools" menuitem to reveal the tools
+        panel with toggles for Image creation, Data Analysis, Planner, etc.
 
         Args:
             timeout: Maximum wait time in milliseconds
+
+        Raises:
+            FeatureNotAvailableError: If the plus menu or Internal Tools menuitem
+                is not visible
         """
-        logger.info("Opening internal tools menu")
-        self.internal_tools_toggle.wait_for(state="visible", timeout=timeout)
-        self.internal_tools_toggle.click()
-        # Wait for the tooltip/dropdown to appear
-        self.page.locator('[role="tooltip"], [role="switch"]').first.wait_for(
+        logger.info("Opening internal tools menu via plus menu")
+
+        # Step 1: Open plus menu
+        if not self.plus_menu_button.is_visible():
+            raise FeatureNotAvailableError(
+                "Plus menu button not visible — feature may not be available "
+                "in current UI version"
+            )
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.page.wait_for_timeout(300)  # Menu animation
+
+        # Step 2: Click "Internal Tools" menuitem
+        self.internal_tools_menuitem.wait_for(state="visible", timeout=timeout)
+        self.internal_tools_menuitem.click()
+
+        # Wait for the tools panel with switches to appear
+        self.page.locator('[role="switch"]').first.wait_for(
             state="visible", timeout=timeout
         )
         logger.info("Internal tools menu opened")
@@ -1496,6 +1604,114 @@ class ChatPage(BasePage):
         return None
 
     # ------------------------------------------------------------------
+    # Participants Panel helpers
+    # ------------------------------------------------------------------
+
+    def is_participants_panel_expanded(self) -> bool:
+        """Return True if the Participants panel is expanded (showing full content).
+
+        In v2.0.3+, the Participants panel is collapsed by default. When collapsed,
+        only a narrow strip with icons is visible. When expanded, the full
+        "Participants" title and "Context Budget" section are visible.
+
+        Returns:
+            True if the panel is expanded (Participants title is visible).
+        """
+        participants_title = self.page.locator('main').get_by_text("Participants", exact=True)
+        return participants_title.count() > 0 and participants_title.first.is_visible()
+
+    def expand_participants_panel(self, timeout: int = 5000) -> bool:
+        """Expand the Participants panel if it's currently collapsed.
+
+        In v2.0.3+, the Participants panel is collapsed by default per AC2.
+        This method finds and clicks the expand button (DoubleLeftIcon) to
+        show the full panel with Context Budget.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if panel is now expanded, False if expand button not found.
+        """
+        if self.is_participants_panel_expanded():
+            logger.info("Participants panel already expanded")
+            return True
+
+        logger.info("Attempting to expand Participants panel...")
+
+        # The expand button is in the collapsed panel area on the right side.
+        # It's a button containing the DoubleLeftIcon (chevron pointing left).
+        # Look for buttons in the rightmost area of main that aren't in the chat area.
+        expand_btn = self.page.evaluate("""() => {
+            // Find the collapsed participants panel expand button
+            // It's the button in the rightmost section that shows a percentage (0%)
+            const mainEl = document.querySelector('main');
+            if (!mainEl) return false;
+
+            // Look for buttons near a percentage display (collapsed Context Budget shows "0%")
+            const allButtons = mainEl.querySelectorAll('button');
+            for (const btn of allButtons) {
+                const parent = btn.parentElement;
+                if (parent && parent.textContent && /\\d+%/.test(parent.textContent)) {
+                    btn.click();
+                    return true;
+                }
+            }
+
+            // Alternative: find the rightmost button in main that's not the message actions
+            const rect = mainEl.getBoundingClientRect();
+            const rightThreshold = rect.right - 100;  // Within 100px of right edge
+            for (const btn of allButtons) {
+                const btnRect = btn.getBoundingClientRect();
+                if (btnRect.left > rightThreshold && !btn.getAttribute('aria-label')) {
+                    btn.click();
+                    return true;
+                }
+            }
+            return false;
+        }""")
+
+        if expand_btn:
+            self.page.wait_for_timeout(500)  # Wait for animation
+            if self.is_participants_panel_expanded():
+                logger.info("Successfully expanded Participants panel")
+                return True
+
+        logger.warning("Could not find Participants panel expand button")
+        return False
+
+    def collapse_participants_panel(self, timeout: int = 5000) -> bool:
+        """Collapse the Participants panel if it's currently expanded.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if panel is now collapsed, False if collapse button not found.
+        """
+        if not self.is_participants_panel_expanded():
+            logger.info("Participants panel already collapsed")
+            return True
+
+        logger.info("Attempting to collapse Participants panel...")
+
+        # The collapse button is next to the "Participants" title
+        participants_title = self.page.locator('main').get_by_text("Participants", exact=True)
+        if participants_title.count() > 0:
+            # Find the button in the same container as the title
+            parent = participants_title.first.locator("xpath=ancestor::div[1]")
+            collapse_btn = parent.locator('button')
+            if collapse_btn.count() > 0:
+                collapse_btn.first.click()
+                self.page.wait_for_timeout(500)  # Wait for animation
+                if not self.is_participants_panel_expanded():
+                    logger.info("Successfully collapsed Participants panel")
+                    return True
+
+        logger.warning("Could not find Participants panel collapse button")
+        return False
+
+    # ------------------------------------------------------------------
     # Context Budget helpers
     # ------------------------------------------------------------------
 
@@ -1516,6 +1732,10 @@ class ChatPage(BasePage):
     def wait_for_context_budget_panel(self, timeout: int = 10000) -> None:
         """Wait until the Context Budget panel becomes visible.
 
+        In v2.0.3+, the Participants panel (containing Context Budget) is
+        collapsed by default. This method will automatically expand the panel
+        if needed before waiting for the Context Budget heading.
+
         Should be called after sending the first message in a conversation.
 
         Args:
@@ -1525,6 +1745,12 @@ class ChatPage(BasePage):
             TimeoutError: If the panel does not appear within *timeout*.
         """
         logger.info("Waiting for Context Budget panel to appear...")
+
+        # First, expand the Participants panel if it's collapsed (v2.0.3+ behavior)
+        if not self.is_participants_panel_expanded():
+            logger.info("Participants panel is collapsed, expanding it first...")
+            self.expand_participants_panel(timeout=timeout // 2)
+
         budget_heading = self.page.locator('main').get_by_text("Context Budget", exact=True)
         budget_heading.wait_for(state="visible", timeout=timeout)
         logger.info("Context Budget panel is visible")
@@ -1577,62 +1803,65 @@ class ChatPage(BasePage):
                 f"Cannot parse max tokens from Context Budget text: {text!r}"
             ) from exc
 
-    def open_add_teammate_dialog(self, timeout: int = 5000) -> bool:
-        """Open the 'Add teammate' dialog in conversation participants panel.
+    def open_add_teammate_dialog(self, timeout: int = 5000) -> tuple[bool, str]:
+        """Open the 'Invite Users' dialog via the plus menu.
 
-        Searches for various button patterns that might indicate the
-        add teammate feature. Returns False if the feature is not
-        available in the current environment.
+        In v2.0.3+, adding teammates/users is done via the plus menu → "Invite Users"
+        option. This option is ONLY available in Team Projects (not Private Projects).
+
+        Per story #5188 AC3: "Adding Participants is Only Allowed via the `+` Icon"
+        The "Invite Users" menuitem only appears when:
+        - The project is a Team Project (not Private)
+        - The user has permission to invite others
 
         Args:
             timeout: Maximum wait time in milliseconds
 
         Returns:
-            True if dialog opened, False if feature not available
+            Tuple of (success: bool, reason: str)
+            - (True, "") if dialog opened successfully
+            - (False, reason) if feature not available with explanation
         """
-        logger.info("Attempting to open add teammate dialog")
+        logger.info("Attempting to open Invite Users dialog via plus menu")
 
-        # Look for "Add user" or similar button
-        add_user_btn = self.page.locator(
-            '[aria-label*="Add user" i], '
-            '[aria-label*="add teammate" i], '
-            '[aria-label*="invite" i], '
-            'button:has-text("Add user"), '
-            'button:has-text("Add teammate"), '
-            'button:has-text("Invite")'
-        )
+        # Open the plus menu
+        plus_menu = self.page.get_by_role("button", name="plus menu")
+        if not plus_menu.is_visible():
+            return (False, "Plus menu button not visible")
 
-        if add_user_btn.count() == 0:
-            # Also check for a "+" or add icon near the Users section
-            users_label = self.page.locator('span:has-text("Users")')
-            if users_label.count() > 0:
-                # Look for an add button in the same parent container
-                parent = users_label.first.locator("xpath=ancestor::div[3]")
-                add_icon = parent.locator(
-                    'button:has(svg), [role="button"]:has(svg)'
-                ).filter(has_text="")
-                if add_icon.count() > 0:
-                    logger.info("Found add icon near Users section")
-                    add_user_btn = add_icon
+        plus_menu.click()
+        self.page.wait_for_timeout(500)
 
-        if add_user_btn.count() == 0:
-            logger.info("No 'Add user' / 'Add teammate' button found")
-            return False
+        # Look for "Invite Users" menuitem in the plus menu
+        invite_users = self.page.get_by_role("menuitem", name="Invite Users")
 
-        add_user_btn.first.click()
+        if invite_users.count() == 0:
+            # Close the menu
+            self.page.keyboard.press("Escape")
+            logger.info("'Invite Users' not found in plus menu — likely a Private Project")
+            return (False, "Invite Users option not available — this feature is only available in Team Projects, not Private Projects (per story #5188)")
 
-        # Wait for a search / user picker dialog
+        if not invite_users.is_enabled():
+            self.page.keyboard.press("Escape")
+            logger.info("'Invite Users' is disabled — user may not have permission")
+            return (False, "Invite Users option is disabled — user may not have invite permissions")
+
+        invite_users.click()
+        self.page.wait_for_timeout(500)
+
+        # Wait for a user picker dialog
         picker = self.page.locator(
             '[role="dialog"], [role="listbox"], '
-            'input[placeholder*="user" i], input[placeholder*="email" i]'
+            'input[placeholder*="user" i], input[placeholder*="email" i], '
+            'input[placeholder*="search" i]'
         )
         try:
             picker.first.wait_for(state="visible", timeout=timeout)
-            logger.info("Add teammate dialog opened")
-            return True
+            logger.info("Invite Users dialog opened")
+            return (True, "")
         except Exception as e:
-            logger.warning(f"Dialog did not appear: {e}")
-            return False
+            logger.warning(f"Invite Users dialog did not appear: {e}")
+            return (False, f"Dialog did not appear after clicking Invite Users: {e}")
 
     # ------------------------------------------------------------------
     # Participant management helpers
@@ -1750,15 +1979,17 @@ class ChatPage(BasePage):
     def wait_for_sidebar_collapsed(self, timeout: int = 5000):
         """Wait for the sidebar to collapse — expanded text labels become hidden.
 
-        The sidebar is considered collapsed when the 'Agents' text label is no
-        longer visible (only icon remains in mini-sidebar mode).
+        The sidebar is considered collapsed when the 'Agents' button's text
+        is no longer visible (only icon remains in mini-sidebar mode).
 
         Args:
             timeout: Maximum wait time in milliseconds
         """
-        agents_label = self.page.locator('nav span:has-text("Agents"), aside span:has-text("Agents")').first
+        # When collapsed, sidebar buttons show only icons, not text
+        # Check for the text "Agents" being hidden (not the button itself)
+        agents_text = self.page.locator('nav :text("Agents"), aside :text("Agents")').first
         try:
-            agents_label.wait_for(state="hidden", timeout=timeout)
+            agents_text.wait_for(state="hidden", timeout=timeout)
         except Exception:
             # Some deployments keep mini-sidebar visible; fall back to network settle
             self.page.wait_for_load_state("networkidle", timeout=timeout)

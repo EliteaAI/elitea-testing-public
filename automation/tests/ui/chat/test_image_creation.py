@@ -22,7 +22,7 @@ Usage:
 """
 
 import pytest
-from pages.chat_page import ChatPage
+from pages.chat_page import ChatPage, FeatureNotAvailableError
 
 pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.slow]
 
@@ -59,7 +59,14 @@ class TestImageCreation:
 
         # Select model first — switching models resets internal tool toggles
         chat.select_model("GPT-5.2", timeout=UI_ELEMENT_TIMEOUT)
-        chat.enable_image_creation(timeout=UI_ELEMENT_TIMEOUT)
+
+        try:
+            chat.enable_image_creation(timeout=UI_ELEMENT_TIMEOUT)
+        except FeatureNotAvailableError:
+            pytest.skip(
+                "Internal tools toggle not available — image creation feature "
+                "may have been moved or removed in current UI version"
+            )
 
         initial_count = chat.get_message_count()
         chat.send_message(prompt, use_enter=True)

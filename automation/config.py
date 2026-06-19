@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     # Browser
     # ------------------------------------------------------------------
     headless: bool = False
+    # Window position for headed mode: "x,y" (e.g., "1920,0" for second monitor)
+    # Leave empty to use default (opens on active monitor)
+    browser_window_position: str = ""
 
     # ------------------------------------------------------------------
     # GitHub toolkit

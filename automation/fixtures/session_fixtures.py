@@ -61,7 +61,13 @@ def browser():
 
         # Maximize window in headed mode for debugging
         if not is_headless:
-            launch_args["args"] = ["--start-maximized"]
+            args = ["--start-maximized"]
+            # Position window on specific monitor if configured
+            # Example: BROWSER_WINDOW_POSITION=1920,0 opens on second monitor (right)
+            #          BROWSER_WINDOW_POSITION=-1920,0 opens on monitor to the left
+            if settings.browser_window_position:
+                args.append(f"--window-position={settings.browser_window_position}")
+            launch_args["args"] = args
 
         browser = p.chromium.launch(**launch_args)
         logger.info("Browser launched (headless=%s)", is_headless)
