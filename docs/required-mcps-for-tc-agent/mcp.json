@@ -1,0 +1,34 @@
+{
+	"servers": {
+      "onetest-tms": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@onetest/tms"]
+    },
+	"github": {
+            "type": "http",
+            "url": "https://api.githubcopilot.com/mcp/",
+            "headers": {
+                "Authorization": "Bearer ${}"
+            }
+        },
+	"microsoft/playwright-mcp": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+                "@playwright/mcp@latest"
+            ],
+            "gallery": "https://api.mcp.github.com",
+            "version": "0.0.1-seed"
+        },
+
+        "EliteA_by_mcp": {
+                "type": "http",
+                "url": "https://next.elitea.ai/app/<YOUR_PROJECT_ID>/mcp",
+                "headers": {
+                    "Authorization": "Bearer ${}"
+                }
+            }
+  
+}
+}

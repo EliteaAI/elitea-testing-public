@@ -1,0 +1,60 @@
+# Test artifacts
+*.log
+*.tmp
+test-results/
+screenshots/
+reports/
+reports/archive/
+
+# Test data
+test-data/*.csv
+test-data/*.json
+test-data/*.xml
+!test-data/sample-*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.bak
+*.backup
+temp/
+
+# MkDocs build output
+site/
+
+# Build artifacts
+build/
+
+venv/
+
+# Local preview directory
+_local_preview/
+
+# Python virtual environment
+.venv/
+__pycache__/
+*.pyc
+_deploy/
+
+# Automation framework
+automation/screenshots/*.png
+automation/.env.test.local
+automation/.env
+.playwright/
+*.egg-info/.playwright-mcp/
+.claude/settings.local.json
+elitea_testing.egg-info/
+.playwright-mcp
+
+# Accidental pip install artifacts (from shell redirect errors)
+automation/=*
+**/.env*
+!**/.env*.example

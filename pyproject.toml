@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "elitea-testing"
+version = "0.1.0"
+description = "Playwright/Python test automation framework for the Elitea AI platform"
+requires-python = ">=3.11"
+dependencies = [
+    "playwright>=1.40",
+    "pytest>=7.4",
+    "pytest-playwright>=0.4",
+    "pytest-xdist>=3.5",
+    "python-dotenv>=1.0",
+    "pydantic-settings>=2.1",
+    "requests>=2.31",
+    "httpx>=0.25",
+    "beautifulsoup4>=4.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1",
+    "mypy>=1.7",
+    "types-requests>=2.31",
+]
+reporting = [
+    "pytest-html>=4.1.1",
+    "pytest-metadata>=3.0.0",
+    "pytest-json-report>=1.5.0",
+]
+
+[tool.pytest.ini_options]
+# Fallback if running pytest from project root instead of automation/
+testpaths = ["automation"]
+python_files = ["test_*.py"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true

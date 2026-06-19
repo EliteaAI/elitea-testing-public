@@ -1,0 +1,153 @@
+site_name: Elitea QA Documentation
+site_url: https://github.com/EliteaAI/elitea-testing/
+docs_dir: docs
+dev_addr: 127.0.0.1:8010
+
+# Override default draft pattern to include all template files
+draft_docs: ""
+
+# Prevent MkDocs from excluding files
+not_in_nav: |
+  /CONTRIBUTING.md
+  /DOCUMENTATION_SUMMARY.md
+  /assets/README.md
+
+validation:
+  nav:
+    omitted_files: info
+    not_found: warn
+    absolute_links: info
+  links:
+    not_found: ignore
+    absolute_links: ignore
+    unrecognized_links: ignore
+
+nav:
+  - Home: index.md
+  - QA Handbook:
+      - Team Roles: handbook/team-roles.md
+  - Bug Management:
+      - Overview: bug-management/index.md
+      - Bug Reporting Guide: bug-management/bug-reporting-guide.md
+      - Bug Template Examples: bug-management/bug-template-examples.md
+      - Bug Priority and Severity: bug-management/bug-priority-severity.md
+      - Bug Lifecycle: bug-management/bug-lifecycle.md
+      - Labels and Taxonomy: bug-management/labels-taxonomy.md
+      - Project Fields Guide: bug-management/project-fields-guide.md
+      - Parent Issue and Sub-Issue Rules: bug-management/parent-sub-issue-rules.md
+  - QA Processes:
+      - Overview: qa-processes/index.md
+      - Test Planning: qa-processes/test-planning.md
+      - Test Design: qa-processes/test-design.md
+      - Regression Testing: qa-processes/regression-testing.md
+      - Exploratory Testing: qa-processes/exploratory-testing.md
+      - Acceptance Criteria: qa-processes/acceptance-criteria.md
+      - Testing Standards: qa-processes/testing-standards.md
+      - AI-Native Testing: qa-processes/ai-native-testing.md
+      - QA-Dev Collaboration: qa-processes/qa-dev-collaboration.md
+      - Release Verification: qa-processes/release-verification.md
+      - Triage Process: qa-processes/triage-process.md
+  - Test Execution:
+      - Overview: test-execution/index.md
+      - Manual Testing: test-execution/manual-testing.md
+      - Automated Testing: test-execution/automated-testing.md
+      - Test Data Management: test-execution/test-data-management.md
+      - Test Results Documentation: test-execution/test-results-documentation.md
+      - UI Testing: test-execution/ui-testing.md
+      - API Testing: test-execution/api-testing.md
+      - Toolkit Testing: test-execution/toolkit-testing.md
+      - Agent Testing: test-execution/agent-testing.md
+  - Environments:
+      - Overview: environments/index.md
+      - Environment Access: environments/environment-access.md
+      - Test Accounts: environments/test-accounts.md
+  - Reporting:
+      - Overview: reporting/index.md
+      - Test Coverage Metrics: reporting/test-coverage.md
+      - Defect Metrics: reporting/defect-metrics.md
+      - Test Execution Reports: reporting/test-execution-reports.md
+      - QA Dashboards: reporting/qa-dashboards.md
+  - Onboarding:
+      - Overview: onboarding/index.md
+      - Onboarding Checklist: onboarding/onboarding-checklist.md
+      - Learning Resources: onboarding/learning-resources.md
+  - Useful Links: useful-links/index.md
+  - Templates:
+      - Bug Report Template: reference-templates/bug-report-template.md
+      - Test Case Template: reference-templates/test-case-template.md
+      - Test Plan Template: reference-templates/test-plan-template.md
+      - Test Report Template: reference-templates/test-report-template.md
+      - Release Checklist Template: reference-templates/release-checklist-template.md
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  logo: assets/img/favicon.ico # Uses existing favicon file as header logo
+  favicon: assets/img/favicon.ico
+  homepage: https://github.com/EliteaAI/elitea-testing/
+  features:
+    - navigation.footer # Built-in previous/next navigation in footer
+    # - header.autohide # Automatically hide header when scrolling down
+    - navigation.path # Enable breadcrumb navigation path
+    - navigation.tabs # Enable tabbed navigation for sections
+    - navigation.tabs.sticky # Enable sticky tab navigation
+    # - navigation.sections # Enable section navigation (DISABLED to allow collapsible subsections)
+    # - navigation.expand # Expand navigation sections by default (COMMENTED OUT = sections collapsed by default)
+    # - navigation.top # Enable top navigation
+    - content.code.copy # Enable copy button on code blocks
+    - content.code.annotate # Enable code annotations
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+extra_css:
+  - extra_css/material.css
+
+extra_javascript: # Custom scripts appended to every page
+  - extra_js/fullscreen.js
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - def_list
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+
+plugins:
+  - search:
+      lang: en
+      separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: zoom
+      slide_effect: slide
+      width: 100%
+      height: auto
+      zoomable: true
+      draggable: true
+      auto_caption: false
+      caption_position: bottom
