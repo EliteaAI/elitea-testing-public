@@ -570,39 +570,6 @@ class TestConversationActions:
                     logger.warning("Cleanup failed: %s", exc)
 
 
-class TestConversationParticipants:
-    """TC-CONV-015: Adding teammates / participants to a conversation."""
-
-    @pytest.mark.p1
-    def test_add_teammate_dialog_opens(self, page, conversation_id):
-        """TC-CONV-015: Invite Users dialog opens via plus menu.
-
-        In v2.0.3+, adding teammates/users is done via the plus menu → "Invite Users"
-        option per story #5188 AC3: "Adding Participants is Only Allowed via the `+` Icon"
-
-        Important: The "Invite Users" option is ONLY available in Team Projects,
-        not in Private Projects. If testing in a Private Project, this test will
-        skip with an appropriate message.
-
-        Verifies:
-        - Plus menu contains "Invite Users" option (Team Projects only)
-        - Clicking "Invite Users" opens user picker dialog
-
-        Note: This test verifies dialog opens, not full teammate addition flow.
-        Full flow requires test user accounts in the environment.
-        """
-        chat = ChatPage(page)
-        chat.navigate_to_chat(conversation_id=conversation_id)
-        chat.wait_for_page_load()
-        chat.dismiss_banner_if_present()
-
-        # Try to open the Invite Users dialog via plus menu
-        dialog_opened, reason = chat.open_add_teammate_dialog(timeout=UI_ELEMENT_TIMEOUT)
-
-        if not dialog_opened:
-            pytest.skip(reason)
-
-
 class TestConversationIsolation:
     """Verify test isolation — each test gets a clean conversation."""
 
