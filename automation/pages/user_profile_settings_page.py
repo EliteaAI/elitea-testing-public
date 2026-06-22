@@ -17,6 +17,7 @@ from playwright.sync_api import Page
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
 from utils.actions import action
+from config import settings
 
 logger = logging.getLogger("elitea.pages.user_profile_settings")
 
@@ -241,9 +242,19 @@ class UserProfileSettingsPage(BasePage):
     def navigate_to_personalization(self) -> None:
         """Navigate to the Personalization settings page and wait until ready.
 
-        URL: /app/user-settings/personalization
+        URL: /app/user-settings/personalization (dev/stage)
+        URL: /user-settings/personalization (localhost - no /app prefix)
         """
-        self.navigate("/app/user-settings/personalization")
+        base_url = settings.elitea_url or ""
+        is_localhost = "localhost" in base_url or "127.0.0.1" in base_url
+
+        if is_localhost:
+            # Localhost URL structure has no /app prefix
+            self.page.goto(f"{base_url}/user-settings/personalization", wait_until="domcontentloaded")
+            self.page.wait_for_load_state("networkidle", timeout=15000)
+        else:
+            self.navigate("/app/user-settings/personalization")
+
         self.wait_for_personalization_load()
         logger.info("Navigated to Personalization settings page")
 

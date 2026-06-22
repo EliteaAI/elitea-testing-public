@@ -42,6 +42,21 @@ class Settings(BaseSettings):
     elitea_api_token: str = ""
     elitea_project_id: int = 0
 
+    @property
+    def elitea_auth_url(self) -> str:
+        """URL for authentication.
+
+        If elitea_url is localhost, extracts auth URL from elitea_api_base.
+        This allows testing UI on localhost while authenticating against dev/stage.
+        """
+        if "localhost" in self.elitea_url or "127.0.0.1" in self.elitea_url:
+            # Extract base URL from API base (e.g., https://dev.elitea.ai/api/v2 -> https://dev.elitea.ai)
+            if self.elitea_api_base:
+                from urllib.parse import urlparse
+                parsed = urlparse(self.elitea_api_base)
+                return f"{parsed.scheme}://{parsed.netloc}"
+        return self.elitea_url
+
     # ------------------------------------------------------------------
     # Auth
     # ------------------------------------------------------------------

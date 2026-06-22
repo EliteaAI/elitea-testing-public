@@ -133,8 +133,6 @@ class TestVoiceConfiguration:
 
             # Step 8: Re-open Voice Settings - verify voice persisted
             page.wait_for_timeout(1000)
-            chat.click_read_out(message_index=-1, timeout=TTS_TIMEOUT)
-            chat.wait_for_tts_controls(timeout=TTS_TIMEOUT)
             dialog = chat.open_voice_settings_from_tts(timeout=UI_ELEMENT_TIMEOUT)
 
             persisted_voice = VoiceSettingsDialog.get_current_voice(dialog)
@@ -149,8 +147,6 @@ class TestVoiceConfiguration:
             VoiceSettingsDialog.wait_for_closed(page, timeout=UI_ELEMENT_TIMEOUT)
 
             page.wait_for_timeout(1000)
-            chat.click_read_out(message_index=-1, timeout=TTS_TIMEOUT)
-            chat.wait_for_tts_controls(timeout=TTS_TIMEOUT)
             dialog = chat.open_voice_settings_from_tts(timeout=UI_ELEMENT_TIMEOUT)
 
             reverted_voice = VoiceSettingsDialog.get_current_voice(dialog)
@@ -439,3 +435,51 @@ class TestVoiceConfiguration:
                         settings.set_volume(original_volume)
                 except Exception as e:
                     logger.warning("Failed to restore settings: %s", e)
+
+    @pytest.mark.p1
+    def test_voice_settings_not_visible_by_default(self, page, conversation_api):
+        """TC5: Voice settings are NOT displayed in Chat by default.
+
+        Regression test for bug #5235: Read-out control was inappropriately
+        visible in default Chat window state.
+
+        Steps:
+            1. Navigate to Chat, create new conversation
+            2. Send "hi" message and wait for AI response
+            3. Verify Voice Mini Player is NOT visible after response by default
+
+        Expected:
+            Voice settings controls should only appear when Read-out and
+            Voice mode features are explicitly activated.
+
+        Related:
+            - Bug: https://github.com/EliteaAI/elitea_issues/issues/5235
+        """
+        conv_id = None
+        try:
+            chat = ChatPage(page)
+            chat.navigate_to_chat()
+            chat.wait_for_page_load()
+            chat.click_create_new_conversation(timeout=NAVIGATION_TIMEOUT)
+
+            page.wait_for_timeout(1000)
+
+            # Send message and wait for AI response
+            chat.send_message("hi", use_enter=True)
+            chat.wait_for_ai_response(initial_count=0, timeout=AI_RESPONSE_TIMEOUT)
+            chat.wait_for_generation_complete(timeout=AI_RESPONSE_TIMEOUT)
+
+            conv_id = capture_conversation_id(page)
+
+            # Verify Voice Mini Player is NOT visible after AI response
+            assert not chat.is_voice_mini_player_visible(), (
+                "Voice Mini Player should NOT be visible in Chat by default. "
+                "Voice features must be explicitly activated by user."
+            )
+
+        finally:
+            if conv_id:
+                try:
+                    conversation_api.delete_conversation(int(conv_id))
+                except Exception as e:
+                    logger.warning("Failed to delete conversation %s: %s", conv_id, e)

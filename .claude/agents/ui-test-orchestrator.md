@@ -20,11 +20,12 @@ color: blue
 
 # UI Test Orchestrator Agent
 
-Creates complete UI test suites in up to 5 ordered stages. **Stages 2–5 are conditional — they only run when Stage 1 determines a test is missing.**
+Creates complete UI test suites in up to 6 ordered stages. **Stages 2–6 are conditional — they only run when Stage 1 determines a test is missing.**
 
 ```
 Stage 1: Scout          — always runs
 Stage 2: Explore UI     — only if verdict is CREATE NEW or UPDATE EXISTING
+Stage 2.5: Add testids  — only if elements lack data-testid attributes
 Stage 3: Page objects   — only if verdict is CREATE NEW or UPDATE EXISTING
 Stage 4: Write tests    — only if verdict is CREATE NEW or UPDATE EXISTING
 Stage 5: Validate       — only if verdict is CREATE NEW or UPDATE EXISTING
@@ -92,7 +93,39 @@ mcp__playwright__browser_snapshot()
 **After Stage 2 — report to user:**
 > Stage 2 complete: UI explored
 > Found elements: [list key locators/interactions identified]
+> Elements missing data-testid: [list or "none"]
 > Missing page object methods: [list or "none"]
+
+---
+
+### Stage 2.5: Add data-testid Attributes (Conditional)
+**Prerequisite: Stage 2 identified elements WITHOUT data-testid attributes. If all elements have testids — skip this stage.**
+
+**Step 1: Ensure UI localhost is running** (for local verification):
+```
+Skill(skill="start-ui-localhost")
+```
+
+**Step 2: Add testids to EliteaUI:**
+```
+Skill(skill="add-data-testid", args="[list of elements without testid from Stage 2]")
+```
+
+The skill will:
+1. Search EliteaUI source for each element
+2. Add `data-testid="{section}-{element}-{type}"` attributes
+3. Provide ready-to-use LocatorDescriptor definitions for Stage 3
+
+**Naming convention:** `{section}-{element}-{type}`
+- Examples: `agent-form-save-button`, `chat-message-input`, `sidebar-agents-link`
+
+**After Stage 2.5 — report to user:**
+> Stage 2.5 complete: data-testid attributes added
+> UI localhost: running at http://localhost:5173
+> Modified files: [list EliteaUI files changed]
+> Ready locators: [list testids added]
+> 
+> **Note:** EliteaUI changes are on branch `feat/EL-XXXX/...` — will need separate PR.
 
 ---
 
@@ -113,8 +146,25 @@ Skill(skill="page-object-generator", args="PageName - add method_name for [eleme
 
 **Follow `.claude/rules/page-objects.md`:**
 - Use LocatorDescriptor for element definitions
+- **CRITICAL: for elements where Stage 2.5 added `data-testid` — use `testid` only, NO fallback.** Fallback is redundant and misleading when the testid is guaranteed to exist.
 - Add proper waits
 - One method per action
+
+**LocatorDescriptor pattern (testid added by Stage 2.5):**
+```python
+element = LocatorDescriptor(
+    testid="section-element-type",
+    description="..."
+)
+```
+
+**LocatorDescriptor pattern (element has NO data-testid — legacy or third-party):**
+```python
+element = LocatorDescriptor(
+    fallback=lambda page: page.get_by_role("button", name="Save"),
+    description="..."
+)
+```
 
 **After Stage 3 — report to user:**
 > Stage 3 complete: Page object methods
@@ -151,6 +201,7 @@ Skill(skill="ui-test-creator", args="{feature description} in {file/class from s
 
 ### Stage 5: Validate Quality and Deduplication
 **Prerequisite: Scout verdict is CREATE NEW or UPDATE EXISTING. If ALREADY COVERED — skip this stage entirely.**
+**Note:** This was previously Stage 5, now renumbered to account for Stage 2.5.
 
 Run both checks **in parallel** — call both Skill tools in the same response turn:
 
@@ -185,16 +236,19 @@ Skill(skill="superpowers:verification-before-completion")
 - [ ] Existing test location reported to user — workflow complete
 
 **Only if verdict is UPDATE EXISTING or CREATE NEW:**
+- [ ] All elements have data-testid (added via Stage 2.5 if missing)
 - [ ] Page object methods exist for all interactions
+- [ ] Locators use testid-first strategy (LocatorDescriptor with testid + fallback)
 - [ ] Primary test (P1) covers complete user flow
 - [ ] At least one variation test (P2)
 - [ ] test-quality-checker passed (no Critical/High issues)
 - [ ] test-deduplication passed (no near-duplicates)
+- [ ] EliteaUI changes committed (if Stage 2.5 ran)
 ---
 
 ## Example Sessions
 
-**Case A: CREATE NEW — all stages run**
+**Case A: CREATE NEW — all stages run (with testid addition)**
 ```
 User: Create tests for toggling dark mode in settings
 
@@ -207,10 +261,16 @@ Stage 1 - Scout:
 Stage 2 - Explore UI:
 → Navigate to /settings, snapshot
 → Find: Settings → Appearance → Dark mode switch
+→ Elements missing testid: [dark mode toggle switch]
+
+Stage 2.5 - Add testids:
+→ add-data-testid skill adds: data-testid="settings-dark-mode-toggle"
+→ Modified: EliteaUI/src/[fsd]/pages/settings/Appearance.jsx
+→ Provides LocatorDescriptor definition for Stage 3
 
 Stage 3 - Page Objects:
 → No toggle_dark_mode() method in settings_page.py
-→ page-object-generator adds it
+→ page-object-generator adds it with testid="settings-dark-mode-toggle"
 
 Stage 4 - Write:
 → ui-test-creator writes:
@@ -220,6 +280,10 @@ Stage 4 - Write:
 Stage 5 - Validate:
 → test-quality-checker: passes
 → test-deduplication: no duplicates found
+
+PRs needed:
+1. EliteaUI: feat/EL-XXXX/add-data-test-ids (dark mode toggle testid)
+2. elitea-testing: issue-XXXX-dark-mode-tests (tests + page objects)
 ```
 
 **Case B: ALREADY COVERED — workflow stops at Stage 1**

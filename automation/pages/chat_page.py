@@ -9,9 +9,10 @@ import re
 import time
 from playwright.sync_api import Page
 from .base_page import BasePage
-from .locator_descriptor import LocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor
 from components.mui import Dialog, Popper
 from utils.actions import action
+from config import settings
 
 logger = logging.getLogger("elitea.pages.chat")
 
@@ -156,6 +157,32 @@ class ChatPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # Voice / TTS Controls
+    # ------------------------------------------------------------------
+    # VoiceMiniPlayer appears in chat only when Read-out and Voice mode
+    # features are activated. By default it should NOT be visible.
+
+    voice_mini_player = OptionalLocatorDescriptor(
+        testid="chat-voice-mini-player",
+        description="Voice mini player container. Only visible when voice features activated."
+    )
+
+    voice_play_stop_button = LocatorDescriptor(
+        testid="chat-voice-play-stop-button",
+        description="Play/Stop button in voice mini player"
+    )
+
+    voice_settings_button = LocatorDescriptor(
+        testid="chat-voice-settings-button",
+        description="Voice settings button in voice mini player"
+    )
+
+    read_out_button = LocatorDescriptor(
+        testid="chat-read-out-button",
+        description="Read out (speaker) button on AI messages to start TTS"
+    )
+
+    # ------------------------------------------------------------------
     # Messages
     # ------------------------------------------------------------------
     # The chat UI renders all messages (user + AI) as
@@ -186,6 +213,8 @@ class ChatPage(BasePage):
         the last-viewed conversation stored in the browser session.  If that
         happens we retry once with a hard reload.
 
+        For localhost (no /app prefix), clicks Chat in sidebar instead of direct navigation.
+
         Automatically waits for the page to load (spinner disappears, input
         visible). For explicit waiting (e.g., after sending a message), use
         wait_for_page_load().
@@ -193,23 +222,46 @@ class ChatPage(BasePage):
         Args:
             conversation_id: Optional conversation ID to navigate to specific chat
         """
-        path = f"/app/chat/{conversation_id}" if conversation_id else "/app/chat"
-        self.navigate(path)
+        # Check if running on localhost (from settings, not current page URL)
+        base_url = settings.elitea_url or ""
+        is_localhost = "localhost" in base_url or "127.0.0.1" in base_url
 
-        # If we targeted a specific conversation, verify the SPA didn't redirect
-        if conversation_id and f"/app/chat/{conversation_id}" not in self.page.url:
-            logger.warning(
-                "SPA redirected to %s instead of /app/chat/%s — retrying",
-                self.page.url, conversation_id,
-            )
-            self.page.goto(
-                f"{self.page.url.split('/app/')[0]}/app/chat/{conversation_id}",
-                wait_until="domcontentloaded",
-            )
-            self.page.wait_for_load_state("networkidle", timeout=30000)
+        # Wait a moment for page URL to settle (may be in navigation)
+        try:
+            self.page.wait_for_load_state("domcontentloaded", timeout=5000)
+        except Exception:
+            pass  # Page might not be loaded yet
+
+        # Check if already on chat page (skip navigation if so)
+        current_url = self.page.url
+        already_on_chat = "/chat" in current_url and "about:blank" not in current_url
+
+        if already_on_chat:
+            logger.info("Already on chat page (%s), skipping navigation", current_url)
+        elif is_localhost:
+            # On localhost, just go to base URL - EliteaUI auto-redirects to /chat
+            logger.info("Localhost detected, navigating to %s", base_url)
+            self.page.goto(base_url, wait_until="domcontentloaded")
+            self.page.wait_for_load_state("networkidle", timeout=15000)
+        else:
+            # On dev/stage, use direct navigation
+            path = f"/app/chat/{conversation_id}" if conversation_id else "/app/chat"
+            self.navigate(path)
+
+            # If we targeted a specific conversation, verify the SPA didn't redirect
+            if conversation_id and f"/app/chat/{conversation_id}" not in self.page.url:
+                logger.warning(
+                    "SPA redirected to %s instead of /app/chat/%s — retrying",
+                    self.page.url, conversation_id,
+                )
+                self.page.goto(
+                    f"{self.page.url.split('/app/')[0]}/app/chat/{conversation_id}",
+                    wait_until="domcontentloaded",
+                )
+                self.page.wait_for_load_state("networkidle", timeout=30000)
 
         self.wait_for_page_load()
-        logger.info(f"Navigated to chat and page loaded: {path} (actual URL: {self.page.url})")
+        logger.info(f"Navigated to chat, page loaded (actual URL: {self.page.url})")
         
     def wait_for_page_load(self, timeout: int = 30000):
         """Wait for chat page to fully load.
@@ -2014,15 +2066,24 @@ class ChatPage(BasePage):
     # TTS (Text-to-Speech) Controls
     # ------------------------------------------------------------------
 
+    def is_voice_mini_player_visible(self) -> bool:
+        """Check if Voice Mini Player is visible in chat.
+
+        The Voice Mini Player should NOT be visible by default.
+        It only appears when Read-out and Voice mode features are activated.
+
+        Returns:
+            True if Voice Mini Player is visible, False otherwise.
+        """
+        return self.voice_mini_player is not None and self.voice_mini_player.count() > 0 and self.voice_mini_player.first.is_visible()
+
     @action("Click read out button")
-    def click_read_out(self, message_index: int = -1, timeout: int = 5000):
+    def click_read_out(self, message_index: int = -1, timeout: int = 10000):
         """Click the 'Read out' (speaker) button on a message to start TTS.
 
         The read out button appears on AI messages and triggers text-to-speech
         playback. When clicked, a playback control bar appears with play/stop
         and settings controls.
-
-        LOCATOR: span[aria-label="Read out"]
 
         Args:
             message_index: Index of message (-1 for last AI message).
@@ -2034,10 +2095,20 @@ class ChatPage(BasePage):
         message.hover()
         self.page.wait_for_timeout(500)
 
-        read_out_btn = message.locator('span[aria-label="Read out"]')
-        if read_out_btn.count() == 0:
-            read_out_btn = self.page.locator('span[aria-label="Read out"]').last
+        # Find read out button by testid
+        read_out_btn = message.locator('[data-testid="chat-read-out-button"]')
+
+        # Wait for button to be visible and ENABLED (disabled while AI is generating)
         read_out_btn.first.wait_for(state="visible", timeout=timeout)
+        # Wait until not disabled
+        self.page.wait_for_function(
+            """(selector) => {
+                const btn = document.querySelector(selector);
+                return btn && !btn.disabled;
+            }""",
+            arg='[data-testid="chat-read-out-button"]',
+            timeout=timeout
+        )
         read_out_btn.first.click()
         self.page.wait_for_timeout(500)
         logger.info("Read out button clicked, TTS playback started")
@@ -2050,8 +2121,13 @@ class ChatPage(BasePage):
         Returns:
             True if TTS control bar is visible, False otherwise.
         """
-        tts_controls = self.page.locator('span[aria-label="Stop speaking"]')
-        return tts_controls.count() > 0 and tts_controls.first.is_visible()
+        # Check for play/stop button in voice mini player using direct locator
+        # (LocatorDescriptor raises error if testid not found, so use page.locator directly)
+        try:
+            locator = self.page.locator('[data-testid="chat-voice-play-stop-button"]')
+            return locator.count() > 0 and locator.first.is_visible()
+        except Exception:
+            return False
 
     def wait_for_tts_controls(self, timeout: int = 5000):
         """Wait for TTS playback controls to become visible.
@@ -2063,8 +2139,8 @@ class ChatPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Waiting for TTS playback controls...")
-        tts_bar = self.page.locator('span[aria-label="Stop speaking"], span[aria-label="Voice settings"]')
-        tts_bar.first.wait_for(state="visible", timeout=timeout)
+        # Wait for voice mini player to appear
+        self.voice_mini_player.first.wait_for(state="visible", timeout=timeout)
         logger.info("TTS playback controls visible")
 
     @action("Open voice settings from TTS")
@@ -2083,9 +2159,8 @@ class ChatPage(BasePage):
         from components.voice_settings import VoiceSettingsDialog
 
         logger.info("Opening Voice Settings from TTS control bar")
-        settings_btn = self.page.locator('span[aria-label="Voice settings"]')
-        settings_btn.first.wait_for(state="visible", timeout=timeout)
-        settings_btn.first.click()
+        self.voice_settings_button.first.wait_for(state="visible", timeout=timeout)
+        self.voice_settings_button.first.click()
 
         dialog = VoiceSettingsDialog.wait_for(self.page, timeout=timeout)
         return dialog
@@ -2096,6 +2171,10 @@ class ChatPage(BasePage):
         Combines click_read_out and open_voice_settings_from_tts into a single
         action for tests that need to access voice settings from chat.
 
+        Idempotent: if TTS is already playing (mini player visible), skips
+        click_read_out and goes directly to opening settings. This allows
+        tests to call this method multiple times without worrying about state.
+
         Args:
             message_index: Index of message (-1 for last).
             timeout: Maximum wait time in milliseconds.
@@ -2103,6 +2182,7 @@ class ChatPage(BasePage):
         Returns:
             Locator to the Voice Settings dialog.
         """
-        self.click_read_out(message_index=message_index, timeout=timeout)
-        self.wait_for_tts_controls(timeout=timeout)
+        if not self.is_tts_playing():
+            self.click_read_out(message_index=message_index, timeout=timeout)
+            self.wait_for_tts_controls(timeout=timeout)
         return self.open_voice_settings_from_tts(timeout=timeout)
