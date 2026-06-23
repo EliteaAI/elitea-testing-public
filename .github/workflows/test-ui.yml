@@ -32,10 +32,12 @@ on:
         required: true
         type: choice
         options:
-          - stage
           - dev
+          - stage2
+          - stage3
+          - next
           - custom
-        default: stage
+        default: dev
       custom_environment:
         description: 'Custom environment name (used only when environment=custom). Requires secrets: ELITEA_URL_<NAME>, ELITEA_API_TOKEN_<NAME>, ELITEA_PROJECT_ID_<NAME>, TEST_USER_EMAIL_<NAME>, TEST_USER_PASSWORD_<NAME>'
         required: false
