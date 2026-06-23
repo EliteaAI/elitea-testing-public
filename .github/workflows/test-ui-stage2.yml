@@ -1,0 +1,47 @@
+name: UI Tests STAGE2
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Test suite'
+        type: choice
+        options: [all, agents, chat, pipelines, smoke, support_assistant, toolkits]
+        default: all
+      custom_suites:
+        description: 'Custom suites (comma-separated)'
+        type: string
+        default: ''
+      markers:
+        description: 'Pytest markers'
+        default: ''
+
+jobs:
+  test:
+    uses: ./.github/workflows/test-ui-custom.yml
+    with:
+      environment: stage2
+      suite: ${{ inputs.suite || 'all' }}
+      custom_suites: ${{ inputs.custom_suites || '' }}
+      markers: ${{ inputs.markers || '' }}
+      ref: aqa/main-stage2
+    secrets:
+      ELITEA_URL: ${{ secrets.ELITEA_URL_STAGE2 }}
+      ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE_STAGE2 }}
+      ELITEA_API_TOKEN: ${{ secrets.ELITEA_API_TOKEN_STAGE2 }}
+      ELITEA_PROJECT_ID: ${{ secrets.ELITEA_PROJECT_ID_STAGE2 }}
+      TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL_STAGE2 }}
+      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD_STAGE2 }}
+      GIT_HUB_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
+      BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
+      ADO_TOKEN: ${{ secrets.ADO_TOKEN }}
+      CONFLUENCE_USERNAME: ${{ secrets.CONFLUENCE_USERNAME }}
+      CONFLUENCE_API_KEY: ${{ secrets.CONFLUENCE_API_KEY }}
+      XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+      XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+      ZEPHYR_API_KEY: ${{ secrets.ZEPHYR_API_KEY }}
+      ZEPHYR_ESENTIALS_KEY: ${{ secrets.ZEPHYR_ESENTIALS_KEY }}
+      GITLAB_PRIVATE_TOKEN: ${{ secrets.GITLAB_PRIVATE_TOKEN }}
+      POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+      JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
+      JIRA_API_KEY: ${{ secrets.JIRA_API_KEY }}
