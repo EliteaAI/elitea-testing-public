@@ -1,4 +1,5 @@
 name: UI Tests DEV
+run-name: UI Tests DEV [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
 
 on:
   workflow_dispatch:

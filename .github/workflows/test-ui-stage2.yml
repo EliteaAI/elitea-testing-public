@@ -1,4 +1,5 @@
 name: UI Tests STAGE2
+run-name: UI Tests STAGE2 [${{ inputs.ref || 'aqa/main-stage2' }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
 
 on:
   workflow_dispatch:

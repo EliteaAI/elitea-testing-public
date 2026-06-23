@@ -1,4 +1,5 @@
 name: UI Tests NEXT
+run-name: UI Tests NEXT [${{ inputs.ref || 'aqa/main-next' }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
 
 on:
   workflow_dispatch:

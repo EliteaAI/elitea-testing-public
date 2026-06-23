@@ -1,4 +1,5 @@
 name: UI Tests CUSTOM
+run-name: UI Tests ${{ inputs.environment || 'CUSTOM' }} [${{ inputs.ref || github.ref_name }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
 
 # Base workflow for UI tests - can be called directly or by environment workflows
 #
