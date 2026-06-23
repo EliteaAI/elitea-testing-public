@@ -15,6 +15,10 @@ on:
       markers:
         description: 'Pytest markers'
         default: ''
+      ref:
+        description: 'Git branch/tag/SHA'
+        type: string
+        default: 'aqa/main-next'
 
 jobs:
   test:
@@ -24,7 +28,7 @@ jobs:
       suite: ${{ inputs.suite || 'all' }}
       custom_suites: ${{ inputs.custom_suites || '' }}
       markers: ${{ inputs.markers || '' }}
-      ref: aqa/main-next
+      ref: ${{ inputs.ref || 'aqa/main-next' }}
     secrets:
       ELITEA_URL: ${{ secrets.ELITEA_URL_NEXT }}
       ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE_NEXT }}
