@@ -1,6 +1,6 @@
 ---
 name: start-ui-localhost
-description: Starts EliteaUI dev server on localhost:5173 if not already running. Use before Stage 2.5 (add-data-testid) to ensure UI changes are visible for testing.
+description: Starts EliteaUI dev server on localhost:5173 if not already running. Use before running UI tests that require a live local frontend.
 argument-hint: [optional: port to check, default 5173]
 allowed-tools:
   - Bash
@@ -13,7 +13,7 @@ Ensures EliteaUI dev server is running on localhost:5173 for local testing of UI
 
 ## When to Use
 
-Call this skill **before Stage 2.5** (add-data-testid) when:
+Call this skill when:
 - You need to test UI changes locally
 - Adding data-testid attributes and want to verify them in browser
 - Running tests against localhost instead of dev.elitea.ai
@@ -32,8 +32,8 @@ If returns 200 or 30x → server is running, skip to Step 4.
 ### Step 2: Verify EliteaUI Setup
 
 ```bash
-# Check .env exists
-if [ -f "../EliteaUI/.env" ]; then
+# Check .env exists (use LOCAL_ELITEA_FOLDER env var for portability)
+if [ -f "$LOCAL_ELITEA_FOLDER/EliteaUI/.env" ]; then
     echo ".env exists"
 else
     echo "ERROR: .env not found. Copy from .env.example and configure."
@@ -42,14 +42,14 @@ fi
 
 # Always run npm install to ensure dependencies are up-to-date
 # (npm install is fast if nothing changed, handles new deps if package.json updated)
-cd ../EliteaUI && npm install
+cd "$LOCAL_ELITEA_FOLDER/EliteaUI" && npm install
 ```
 
 ### Step 3: Start Dev Server
 
 ```bash
 # Start in background
-cd ../EliteaUI && npm run dev &
+cd "$LOCAL_ELITEA_FOLDER/EliteaUI" && npm run dev &
 
 # Wait for server to be ready (max 30 seconds)
 for i in {1..30}; do
@@ -65,7 +65,7 @@ done
 
 **If running:**
 > UI localhost is running at http://localhost:5173
-> Ready for Stage 2.5 (add-data-testid)
+> Ready for data-testid injection
 
 **If failed to start:**
 > ERROR: Could not start UI localhost
@@ -75,28 +75,19 @@ done
 
 ## Prerequisites
 
-1. **EliteaUI repo** at `../EliteaUI/` (relative to elitea-testing)
-2. **.env file** configured with:
+1. **EliteaUI repo** at `$LOCAL_ELITEA_FOLDER/EliteaUI/`
+2. **Environment variable** `LOCAL_ELITEA_FOLDER` set to your local Elitea root directory
+3. **.env file** configured with:
    ```
    VITE_SERVER_URL=/api/v2/
    VITE_DEV_SERVER=https://dev.elitea.ai
    VITE_DEV_TOKEN=<your-token>
    VITE_SOCKET_SERVER=https://dev.elitea.ai
    ```
-3. **Node.js** installed
+4. **Node.js** installed
 
 ## Notes
 
 - Server runs with Hot Module Replacement (HMR) — UI changes apply automatically
 - After adding data-testid in EliteaUI, just refresh browser or call `page.reload()` in tests
 - To stop: `pkill -f "vite"` or close the terminal
-
-## Integration with ui-test-orchestrator
-
-This skill should be called at the **beginning of Stage 2.5** if testing locally:
-
-```
-# In Stage 2.5, before add-data-testid
-Skill(skill="start-ui-localhost")
-Skill(skill="add-data-testid", args="[elements list]")
-```

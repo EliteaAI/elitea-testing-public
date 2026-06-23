@@ -84,8 +84,6 @@ class TestVoiceConfiguration:
             chat.navigate_to_chat()
             chat.wait_for_page_load()
             chat.click_create_new_conversation(timeout=NAVIGATION_TIMEOUT)
-
-            page.wait_for_timeout(1000)
             conv_id = capture_conversation_id(page)
 
             chat.send_message("Tell me about weather in spring. 2-3 sentences.", use_enter=True)
@@ -182,8 +180,6 @@ class TestVoiceConfiguration:
             chat.navigate_to_chat()
             chat.wait_for_page_load()
             chat.click_create_new_conversation(timeout=NAVIGATION_TIMEOUT)
-
-            page.wait_for_timeout(1000)
             conv_id = capture_conversation_id(page)
 
             chat.send_message("Hello, how are you today?", use_enter=True)
@@ -314,8 +310,6 @@ class TestVoiceConfiguration:
             chat.navigate_to_chat()
             chat.wait_for_page_load()
             chat.click_create_new_conversation(timeout=NAVIGATION_TIMEOUT)
-
-            page.wait_for_timeout(1000)
             conv_id = capture_conversation_id(page)
 
             chat.send_message("Describe a sunset briefly.", use_enter=True)
@@ -461,8 +455,6 @@ class TestVoiceConfiguration:
             chat.navigate_to_chat()
             chat.wait_for_page_load()
             chat.click_create_new_conversation(timeout=NAVIGATION_TIMEOUT)
-
-            page.wait_for_timeout(1000)
 
             # Send message and wait for AI response
             chat.send_message("hi", use_enter=True)
