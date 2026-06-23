@@ -1,0 +1,275 @@
+name: UI Tests CUSTOM
+
+# Base workflow for UI tests - can be called directly or by environment workflows
+#
+# Usage:
+#   1. Manual: Run with full parameter control via workflow_dispatch
+#   2. Called: Environment workflows (dev/stage2/next) call this via workflow_call
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage2
+          - next
+          - custom
+        default: dev
+      custom_environment:
+        description: 'Custom environment name (only when environment=custom)'
+        required: false
+        type: string
+        default: ''
+      suite:
+        description: 'Test suite to run'
+        required: true
+        type: choice
+        options:
+          - all
+          - agents
+          - chat
+          - pipelines
+          - smoke
+          - support_assistant
+          - toolkits
+        default: all
+      custom_suites:
+        description: 'Custom suites (comma-separated, e.g., "chat,agents")'
+        required: false
+        type: string
+        default: ''
+      markers:
+        description: 'Pytest markers (e.g., p0, smoke, "p0 or p1")'
+        required: false
+        default: ''
+      ref:
+        description: 'Git ref (branch, tag, SHA). Leave empty for default.'
+        required: false
+        type: string
+        default: ''
+
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: string
+      suite:
+        description: 'Test suite to run'
+        required: false
+        type: string
+        default: 'all'
+      custom_suites:
+        description: 'Custom suites (comma-separated)'
+        required: false
+        type: string
+        default: ''
+      markers:
+        description: 'Pytest markers'
+        required: false
+        type: string
+        default: ''
+      ref:
+        description: 'Git ref (branch, tag, SHA)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      ELITEA_URL:
+        required: true
+      ELITEA_API_BASE:
+        required: true
+      ELITEA_API_TOKEN:
+        required: true
+      ELITEA_PROJECT_ID:
+        required: true
+      TEST_USER_EMAIL:
+        required: true
+      TEST_USER_PASSWORD:
+        required: true
+      GIT_HUB_TOKEN:
+        required: false
+      BITBUCKET_TOKEN:
+        required: false
+      ADO_TOKEN:
+        required: false
+      CONFLUENCE_USERNAME:
+        required: false
+      CONFLUENCE_API_KEY:
+        required: false
+      XRAY_CLIENT_ID:
+        required: false
+      XRAY_CLIENT_SECRET:
+        required: false
+      ZEPHYR_API_KEY:
+        required: false
+      ZEPHYR_ESENTIALS_KEY:
+        required: false
+      GITLAB_PRIVATE_TOKEN:
+        required: false
+      POSTMAN_API_KEY:
+        required: false
+      JIRA_USERNAME:
+        required: false
+      JIRA_API_KEY:
+        required: false
+
+jobs:
+  test:
+    name: ${{ inputs.environment }} - ${{ inputs.custom_suites != '' && inputs.custom_suites || inputs.suite }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Resolve environment (dispatch only)
+        id: env
+        run: |
+          # For workflow_call, environment is passed directly
+          # For workflow_dispatch, resolve from inputs
+          if [ -n "${{ secrets.ELITEA_URL }}" ]; then
+            # Called via workflow_call - secrets already resolved
+            echo "mode=call" >> $GITHUB_OUTPUT
+            echo "name=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          else
+            # Called via workflow_dispatch - resolve secrets by env name
+            echo "mode=dispatch" >> $GITHUB_OUTPUT
+            if [ "${{ inputs.environment }}" = "custom" ]; then
+              ENV_NAME="${{ inputs.custom_environment }}"
+              if [ -z "$ENV_NAME" ]; then
+                echo "::error::custom_environment is required when environment=custom"
+                exit 1
+              fi
+            else
+              ENV_NAME="${{ inputs.environment }}"
+            fi
+            echo "name=$ENV_NAME" >> $GITHUB_OUTPUT
+            echo "upper=$(echo "$ENV_NAME" | tr '[:lower:]' '[:upper:]')" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'pyproject.toml'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest-rerunfailures
+          pip install -e ".[reporting]"
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Run UI tests
+        working-directory: automation
+        env:
+          HEADLESS: 'true'
+          # Use secrets from workflow_call if available, otherwise resolve by env name
+          ELITEA_URL: ${{ secrets.ELITEA_URL || secrets[format('ELITEA_URL_{0}', steps.env.outputs.upper)] }}
+          ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE || secrets[format('ELITEA_API_BASE_{0}', steps.env.outputs.upper)] }}
+          ELITEA_API_TOKEN: ${{ secrets.ELITEA_API_TOKEN || secrets[format('ELITEA_API_TOKEN_{0}', steps.env.outputs.upper)] }}
+          ELITEA_PROJECT_ID: ${{ secrets.ELITEA_PROJECT_ID || secrets[format('ELITEA_PROJECT_ID_{0}', steps.env.outputs.upper)] }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL || secrets[format('TEST_USER_EMAIL_{0}', steps.env.outputs.upper)] }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD || secrets[format('TEST_USER_PASSWORD_{0}', steps.env.outputs.upper)] }}
+          GIT_HUB_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
+          BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
+          ADO_TOKEN: ${{ secrets.ADO_TOKEN }}
+          CONFLUENCE_USERNAME: ${{ secrets.CONFLUENCE_USERNAME }}
+          CONFLUENCE_API_KEY: ${{ secrets.CONFLUENCE_API_KEY }}
+          XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+          XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+          ZEPHYR_API_KEY: ${{ secrets.ZEPHYR_API_KEY }}
+          ZEPHYR_ESENTIALS_KEY: ${{ secrets.ZEPHYR_ESENTIALS_KEY }}
+          GITLAB_PRIVATE_TOKEN: ${{ secrets.GITLAB_PRIVATE_TOKEN }}
+          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+          JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
+          JIRA_API_KEY: ${{ secrets.JIRA_API_KEY }}
+        run: |
+          PYTEST_CMD="pytest"
+
+          CUSTOM_SUITES="${{ inputs.custom_suites }}"
+          SUITE="${{ inputs.suite }}"
+
+          if [ -n "$CUSTOM_SUITES" ]; then
+            TEST_PATHS=""
+            IFS=',' read -ra SUITES <<< "$CUSTOM_SUITES"
+            for s in "${SUITES[@]}"; do
+              s=$(echo "$s" | xargs)
+              TEST_PATHS="$TEST_PATHS tests/ui/$s/"
+            done
+          elif [ "$SUITE" = "all" ]; then
+            TEST_PATHS="tests/ui/"
+          else
+            TEST_PATHS="tests/ui/$SUITE/"
+          fi
+
+          PYTEST_CMD="$PYTEST_CMD $TEST_PATHS"
+
+          MARKERS="${{ inputs.markers }}"
+          if [ -n "$MARKERS" ]; then
+            PYTEST_CMD="$PYTEST_CMD -m \"$MARKERS\""
+          fi
+
+          PYTEST_CMD="$PYTEST_CMD -v --tb=short"
+
+          echo "Running: $PYTEST_CMD"
+          eval $PYTEST_CMD
+
+      - name: Generate summary
+        if: always()
+        working-directory: automation
+        run: |
+          echo "## Test Results - ${{ steps.env.outputs.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Suite:** ${{ inputs.custom_suites != '' && inputs.custom_suites || inputs.suite }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "reports/junit.xml" ]; then
+            TOTAL=$(grep -o 'tests="[0-9]*"' reports/junit.xml | head -1 | grep -o '[0-9]*' || echo 0)
+            FAILURES=$(grep -o 'failures="[0-9]*"' reports/junit.xml | head -1 | grep -o '[0-9]*' || echo 0)
+            ERRORS=$(grep -o 'errors="[0-9]*"' reports/junit.xml | head -1 | grep -o '[0-9]*' || echo 0)
+            SKIPPED=$(grep -o 'skipped="[0-9]*"' reports/junit.xml | head -1 | grep -o '[0-9]*' || echo 0)
+            PASSED=$((TOTAL - FAILURES - ERRORS - SKIPPED))
+
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ Failed | $FAILURES |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🔥 Errors | $ERRORS |" >> $GITHUB_STEP_SUMMARY
+            echo "| ⏭️ Skipped | $SKIPPED |" >> $GITHUB_STEP_SUMMARY
+            echo "| 📊 Total | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$FAILURES" -gt 0 ] || [ "$ERRORS" -gt 0 ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### ❌ Failed Tests" >> $GITHUB_STEP_SUMMARY
+              grep -A 3 'outcome="failed"\|outcome="error"' reports/junit.xml | grep 'classname\|name' | sed 's/.*name="\([^"]*\)".*/- `\1`/' >> $GITHUB_STEP_SUMMARY || true
+            fi
+          else
+            echo "⚠️ No test results found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ steps.env.outputs.name }}-${{ github.run_number }}
+          path: |
+            automation/reports/report.html
+            automation/reports/junit.xml
+          retention-days: 14
+
+      - name: Upload screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ steps.env.outputs.name }}-${{ github.run_number }}
+          path: automation/screenshots/*.png
+          retention-days: 7
+          if-no-files-found: ignore
