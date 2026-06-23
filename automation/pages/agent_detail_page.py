@@ -327,21 +327,21 @@ class AgentDetailPage(AgentFormPage):
     def ensure_toolkits_section_visible(self, timeout: int = 5000):
         """Scroll to toolkits section and wait for it to be visible.
 
-        Automatically scrolls to the Toolkits heading and waits for
+        Automatically scrolls to the Toolkit button and waits for
         the section to be visible with animation settle time.
 
         Args:
             timeout: Maximum wait time in milliseconds
 
         Returns:
-            Locator for the Toolkits heading
+            Locator for the Toolkit button
         """
-        toolkits_heading = self.page.get_by_role("button", name="Toolkits")
-        toolkits_heading.scroll_into_view_if_needed()
-        toolkits_heading.wait_for(state="visible", timeout=timeout)
+        toolkit_btn = self.page.get_by_role("button", name="Toolkit", exact=True)
+        toolkit_btn.scroll_into_view_if_needed()
+        toolkit_btn.wait_for(state="visible", timeout=timeout)
         self.page.wait_for_timeout(500)  # Animation settle
         logger.debug("Toolkits section scrolled into view")
-        return toolkits_heading
+        return toolkit_btn
 
     def get_available_tools(self) -> list[InternalTool]:
         """Get list of internal tools that are visible on the page.
@@ -412,13 +412,10 @@ class AgentDetailPage(AgentFormPage):
         """
         logger.info("Adding toolkit '%s' to agent", toolkit_name)
 
-        # Ensure the Toolkits section is expanded and visible
-        toolkits_header = self.page.get_by_role("button", name="Toolkits")
-        toolkits_header.scroll_into_view_if_needed()
-        self.page.wait_for_timeout(500)
-
-        # Click the "+ Toolkit" button to open the popper dropdown
+        # Scroll to and click the "+ Toolkit" button to open the popper dropdown
         add_btn = self.page.get_by_role("button", name="Toolkit", exact=True)
+        add_btn.scroll_into_view_if_needed()
+        self.page.wait_for_timeout(500)
         add_btn.wait_for(state="visible", timeout=timeout)
         add_btn.click(force=True)
         self.page.wait_for_timeout(1000)
@@ -508,6 +505,232 @@ class AgentDetailPage(AgentFormPage):
 
         self.wait_for_network(timeout=timeout)
         logger.info("Toolkit '%s' removed from agent", toolkit_name)
+
+    # ------------------------------------------------------------------
+    # Toolkit credential indicators (Enhancement #5114, Bug #5183)
+    # ------------------------------------------------------------------
+
+    def _get_toolkit_card(self, toolkit_name: str, timeout: int = 10000):
+        """Get the toolkit card element by name.
+
+        Uses XPath to find toolkit inside 4th MuiAccordionDetails-root (similar to Pipeline).
+        Returns the 2nd matching div (the toolkit container with proper nesting).
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator for the toolkit item container.
+        """
+        name_prefix = toolkit_name[:20]
+        toolkit_item = self.page.locator(
+            f'xpath=(//div[contains(@class, "MuiAccordionDetails-root")])[4]'
+            f'//div[.//div[contains(normalize-space(), "{name_prefix}")]]'
+        ).nth(1)
+        toolkit_item.wait_for(state="visible", timeout=timeout)
+        return toolkit_item
+
+    def hover_toolkit_card(self, toolkit_name: str, timeout: int = 10000):
+        """Hover over a toolkit card to reveal action icons.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.ensure_toolkits_section_visible()
+        toolkit_card = self._get_toolkit_card(toolkit_name, timeout)
+        toolkit_card.hover()
+        self.page.wait_for_timeout(500)
+
+    def _get_warning_locator(self):
+        """Get locator for credential warning messages on page."""
+        return self.page.locator(
+            '[aria-label^="Authentication failed:"], '
+            '[aria-label^="Access forbidden:"], '
+            '[aria-label^="Connection error:"]'
+        )
+
+    def has_toolkit_status_indicator(self, toolkit_name: str, timeout: int = 5000) -> bool:
+        """Check if toolkit shows credential status indicator (warning icon).
+
+        Uses page-level search for warning message (same approach as Pipeline).
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if status indicator is visible.
+        """
+        self.ensure_toolkits_section_visible()
+        try:
+            self._get_warning_locator().first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_toolkit_status_indicator_tooltip(
+        self, toolkit_name: str, timeout: int = 10000
+    ) -> str | None:
+        """Get the status indicator tooltip text for a toolkit.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The aria-label value (tooltip text), or None if not found.
+        """
+        self.ensure_toolkits_section_visible()
+        try:
+            warning = self._get_warning_locator().first
+            warning.wait_for(state="visible", timeout=timeout)
+            return warning.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def has_toolkit_warning_message(self, toolkit_name: str, timeout: int = 5000) -> bool:
+        """Check if warning message is displayed for a toolkit.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if warning message is visible.
+        """
+        return self.has_toolkit_status_indicator(toolkit_name, timeout)
+
+    def get_toolkit_warning_message(
+        self, toolkit_name: str, timeout: int = 10000
+    ) -> str | None:
+        """Get the warning message text (alias for get_toolkit_status_indicator_tooltip).
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Warning message text, or None if not found.
+        """
+        return self.get_toolkit_status_indicator_tooltip(toolkit_name, timeout)
+
+    def has_toolkit_reload_button(self, toolkit_name: str, timeout: int = 5000) -> bool:
+        """Check if toolkit card has reload button (visible on hover).
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if reload button is visible.
+        """
+        self.hover_toolkit_card(toolkit_name, timeout)
+        reload_btn = self.page.locator('#RefreshButton')
+        try:
+            reload_btn.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_toolkit_reload_button_tooltip(
+        self, toolkit_name: str, timeout: int = 10000
+    ) -> str | None:
+        """Get the reload button tooltip text for a toolkit.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The aria-label value (tooltip text), or None if not found.
+        """
+        self.hover_toolkit_card(toolkit_name, timeout)
+        reload_btn = self.page.locator('#RefreshButton')
+        try:
+            reload_btn.wait_for(state="visible", timeout=timeout)
+            return reload_btn.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def click_toolkit_reload_button(self, toolkit_name: str, timeout: int = 10000):
+        """Click the reload button on a toolkit card.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.hover_toolkit_card(toolkit_name, timeout)
+        reload_btn = self.page.locator('#RefreshButton')
+        reload_btn.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Clicked reload button for toolkit '%s'", toolkit_name)
+
+    def has_toolkit_open_in_new_tab_button(
+        self, toolkit_name: str, timeout: int = 5000
+    ) -> bool:
+        """Check if toolkit card has open-in-new-tab button (visible on hover).
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if open-in-new-tab button is visible.
+        """
+        self.hover_toolkit_card(toolkit_name, timeout)
+        open_btn = self.page.locator('#OpenInNewTabButton')
+        try:
+            open_btn.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_toolkit_open_in_new_tab_button_tooltip(
+        self, toolkit_name: str, timeout: int = 10000
+    ) -> str | None:
+        """Get the open-in-new-tab button tooltip text for a toolkit.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The aria-label value (tooltip text), or None if not found.
+        """
+        self.hover_toolkit_card(toolkit_name, timeout)
+        open_btn = self.page.locator('#OpenInNewTabButton')
+        try:
+            open_btn.wait_for(state="visible", timeout=timeout)
+            return open_btn.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def click_toolkit_open_in_new_tab(
+        self, toolkit_name: str, timeout: int = 10000
+    ) -> str:
+        """Click the open-in-new-tab button for a toolkit.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            URL of the new tab (toolkit detail page).
+        """
+        self.hover_toolkit_card(toolkit_name, timeout)
+        open_btn = self.page.locator('#OpenInNewTabButton')
+        open_btn.wait_for(state="visible", timeout=timeout)
+
+        with self.page.context.expect_page() as new_page_info:
+            open_btn.click()
+
+        new_page = new_page_info.value
+        new_page.wait_for_load_state("domcontentloaded")
+        url = new_page.url
+        logger.info("Opened toolkit in new tab: %s", url)
+        return url
 
     # ------------------------------------------------------------------
     # Embedded chat (right panel)

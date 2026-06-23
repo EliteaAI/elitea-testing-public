@@ -945,6 +945,24 @@ class CredentialAPI:
         resp = self._session.delete(url)
         _raise_for_status(resp)
 
+    def update_credential(self, credential_id: int, payload: dict) -> dict:
+        """Update an existing credential.
+
+        Args:
+            credential_id: ID of the credential to update.
+            payload: Full credential payload (type, elitea_title, label, data, shared).
+
+        Returns:
+            Updated credential dict.
+        """
+        url = self._credentials_url(credential_id)
+        logger.debug("PUT credential %s", url)
+        resp = self._session.put(
+            url, json=payload, headers={"Content-Type": "application/json"}
+        )
+        _raise_for_status(resp)
+        return resp.json()
+
     def close(self):
         """Close the underlying HTTP session."""
         self._session.close()
