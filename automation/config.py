@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     # Window position for headed mode: "x,y" (e.g., "1920,0" for second monitor)
     # Leave empty to use default (opens on active monitor)
     browser_window_position: str = ""
+    # Playwright traces: set PLAYWRIGHT_TRACES=true to enable.
+    # Off by default; safe to enable locally for debugging failures.
+    playwright_traces: bool = False
 
     # ------------------------------------------------------------------
     # GitHub toolkit
@@ -165,3 +168,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
