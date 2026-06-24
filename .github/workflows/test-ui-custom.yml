@@ -282,16 +282,27 @@ jobs:
           echo "### 📊 Allure Report" >> $GITHUB_STEP_SUMMARY
           echo "[Open Allure Report]($URL)" >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload reports
+      - name: Upload test results
         if: always()
+        id: upload-results
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports-${{ steps.env.outputs.name }}-${{ github.run_number }}
+          name: test-results-${{ steps.env.outputs.name }}-${{ github.run_number }}
           path: |
             automation/reports/report.html
             automation/reports/junit.xml
-            automation/reports/allure-report/
           retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload Allure report
+        if: always()
+        id: upload-allure-report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-${{ steps.env.outputs.name }}-${{ github.run_number }}
+          path: automation/reports/allure-report/
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Upload Allure results
         if: always()
@@ -301,6 +312,14 @@ jobs:
           path: automation/reports/allure-results/
           retention-days: 14
           if-no-files-found: ignore
+
+      - name: Add artifact links to summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📎 Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- [Test Results (JUnit XML + HTML Report)](${{ steps.upload-results.outputs.artifact-url }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Allure Report (download)](${{ steps.upload-allure-report.outputs.artifact-url }})" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload traces
         if: failure()
@@ -320,7 +339,7 @@ jobs:
       - name: Download Allure report artifact
         uses: actions/download-artifact@v4
         with:
-          name: test-reports-${{ needs.test.outputs.env-name }}-${{ github.run_number }}
+          name: allure-report-${{ needs.test.outputs.env-name }}-${{ github.run_number }}
           path: downloaded-report
 
       - name: Checkout gh-pages branch
@@ -338,7 +357,7 @@ jobs:
           # Copy this run's allure-report into gh-pages/{env}/{run}/
           DEST="gh-pages/$ENV_NAME/$RUN_NUMBER"
           mkdir -p "$DEST"
-          cp -r downloaded-report/allure-report/. "$DEST/"
+          cp -r downloaded-report/. "$DEST/"
 
           # Prune: keep only the KEEP_RUNS most recent run directories
           RUN_DIRS=$(ls -1 "gh-pages/$ENV_NAME" | grep -E '^[0-9]+$' | sort -n)
