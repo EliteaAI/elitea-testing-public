@@ -267,8 +267,9 @@ def context(browser: Browser, auth_state, request) -> BrowserContext:
             **base_ctx_args,
         )
 
-    # Start tracing: screenshots=True captures a screenshot at every action
-    ctx.tracing.start(screenshots=True, snapshots=True, sources=True)
+    # Start tracing only when PLAYWRIGHT_TRACES=true (off by default in CI)
+    if settings.playwright_traces:
+        ctx.tracing.start(screenshots=True, snapshots=True, sources=True)
 
     # Set shorter timeouts for faster failure feedback
     ctx.set_default_timeout(10000)              # 10s for most actions
@@ -280,11 +281,12 @@ def context(browser: Browser, auth_state, request) -> BrowserContext:
     failed = request.node.rep_call.failed if hasattr(request.node, "rep_call") else True
 
     trace_path = TRACES_DIR / f"{safe_name}.zip"
-    if failed:
-        ctx.tracing.stop(path=str(trace_path))
-        logger.info("Trace saved: %s", trace_path)
-    else:
-        ctx.tracing.stop()  # Discard — no file written
+    if settings.playwright_traces:
+        if failed:
+            ctx.tracing.stop(path=str(trace_path))
+            logger.info("Trace saved: %s", trace_path)
+        else:
+            ctx.tracing.stop()  # Discard — no file written
 
     ctx.close()
 
@@ -310,7 +312,7 @@ def context(browser: Browser, auth_state, request) -> BrowserContext:
                     name="Video recording",
                     attachment_type=allure.attachment_type.WEBM,
                 )
-            if trace_path.exists():
+            if settings.playwright_traces and trace_path.exists():
                 allure.attach(
                     f"playwright show-trace {trace_path}",
                     name="Playwright Trace — run this command to open viewer",
@@ -477,3 +479,4 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         archived_html = archive_dir / f"report_{timestamp}.html"
         shutil.copy2(html_report, archived_html)
         terminalreporter.write_line(f"  [ARCHIVE] HTML report: {archived_html}")
+
