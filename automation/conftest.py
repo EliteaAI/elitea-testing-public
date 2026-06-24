@@ -4,10 +4,12 @@ Configures Playwright browser, environment loading, API clients, and shared fixt
 """
 
 import sys
+import base64
 import logging
 from pathlib import Path
 from datetime import datetime
 
+import allure
 import pytest
 from playwright.sync_api import Browser, BrowserContext, Page
 
@@ -25,6 +27,7 @@ from fixtures.session_fixtures import (
 from fixtures.api_fixtures import (
     api,
     _browser_cookies,
+    artifact_api,
     conversation_api,
     agent_api,
     credential_api,
@@ -38,6 +41,8 @@ from fixtures.data_fixtures import (
     pipeline_with_llm_id,
     github_credential,
     github_toolkit,
+    artifact_bucket,
+    artifact_toolkit,
     invalid_jira_credential,
     jira_toolkit_with_invalid_credential,
     invalid_github_credential,
@@ -62,9 +67,15 @@ ELITEA_PROJECT_ID = str(settings.elitea_project_id)
 TEST_USER_EMAIL = settings.test_user_email
 TEST_USER_PASSWORD = settings.test_user_password
 
-# Screenshots directory
+# Artifacts directories
 SCREENSHOTS_DIR = Path(__file__).parent / "screenshots"
 SCREENSHOTS_DIR.mkdir(exist_ok=True)
+
+TRACES_DIR = Path(__file__).parent / "reports" / "traces"
+TRACES_DIR.mkdir(parents=True, exist_ok=True)
+
+VIDEOS_DIR = Path(__file__).parent / "reports" / "videos"
+VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Logger
 logger = logging.getLogger("elitea.automation")
@@ -220,7 +231,7 @@ def attach_screenshot(page: Page, name: str, description: str = "") -> Path:
 # ===========================================================================
 
 @pytest.fixture
-def context(browser: Browser, auth_state) -> BrowserContext:
+def context(browser: Browser, auth_state, request) -> BrowserContext:
     """Create a fresh browser context per test, pre-loaded with auth state.
 
     Configured with optimized timeouts:
@@ -230,32 +241,83 @@ def context(browser: Browser, auth_state) -> BrowserContext:
     Viewport behavior:
     - Headed mode (HEADLESS=false): no_viewport=True → fits browser window
     - Headless mode (HEADLESS=true): fixed 1366x768 for consistency
+
+    Artifacts (always recorded, saved only on failure):
+    - Video: reports/videos/<test_name>.webm
+    - Trace: reports/traces/<test_name>.zip  (open with: playwright show-trace)
     """
     is_headless = settings.headless
 
+    # Sanitize test name for use as a filename
+    safe_name = request.node.nodeid.replace("/", "_").replace("::", "__").replace(" ", "_")
+
+    base_ctx_args = dict(
+        base_url=ELITEA_URL,
+        storage_state=auth_state,
+        permissions=["clipboard-read", "clipboard-write"],
+        record_video_dir=str(VIDEOS_DIR),
+        record_video_size={"width": 1366, "height": 768},
+    )
+
     if is_headless:
-        # Headless: use fixed viewport for consistent screenshots
         ctx = browser.new_context(
             viewport={"width": 1366, "height": 768},
-            base_url=ELITEA_URL,
-            storage_state=auth_state,
-            permissions=["clipboard-read", "clipboard-write"],  # Allow clipboard access
+            **base_ctx_args,
         )
     else:
-        # Headed: let viewport match browser window size
         ctx = browser.new_context(
-            no_viewport=True,  # Auto-fit to window
-            base_url=ELITEA_URL,
-            storage_state=auth_state,
-            permissions=["clipboard-read", "clipboard-write"],  # Allow clipboard access
+            no_viewport=True,
+            **base_ctx_args,
         )
+
+    # Start tracing: screenshots=True captures a screenshot at every action
+    ctx.tracing.start(screenshots=True, snapshots=True, sources=True)
 
     # Set shorter timeouts for faster failure feedback
     ctx.set_default_timeout(10000)              # 10s for most actions
     ctx.set_default_navigation_timeout(15000)   # 15s for page navigation
 
     yield ctx
+
+    # Determine outcome: save trace/video only on failure
+    failed = request.node.rep_call.failed if hasattr(request.node, "rep_call") else True
+
+    trace_path = TRACES_DIR / f"{safe_name}.zip"
+    if failed:
+        ctx.tracing.stop(path=str(trace_path))
+        logger.info("Trace saved: %s", trace_path)
+    else:
+        ctx.tracing.stop()  # Discard — no file written
+
     ctx.close()
+
+    # Rename video to test name (Playwright generates a random UUID filename)
+    video_path = VIDEOS_DIR / f"{safe_name}.webm"
+    if failed:
+        webm_files = sorted(VIDEOS_DIR.glob("*.webm"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if webm_files:
+            webm_files[0].rename(video_path)
+            logger.info("Video saved: %s", video_path)
+    else:
+        # Delete the video for passing tests to save disk space
+        webm_files = sorted(VIDEOS_DIR.glob("*.webm"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if webm_files:
+            webm_files[0].unlink(missing_ok=True)
+
+    # --- Allure: attach video and trace on failure ---
+    if failed:
+        if video_path.exists():
+            allure.attach(
+                video_path.read_bytes(),
+                name="Video recording",
+                attachment_type=allure.attachment_type.WEBM,
+            )
+        if trace_path.exists():
+            allure.attach(
+                f"playwright show-trace {trace_path}",
+                name="Playwright Trace — run this command to open viewer",
+                attachment_type=allure.attachment_type.TEXT,
+            )
 
 
 @pytest.fixture
@@ -272,13 +334,21 @@ def page(context: BrowserContext) -> Page:
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
-    """Capture screenshot on test failure/error and save locally.
+    """Capture screenshot on test failure/error; attach artifacts to HTML report.
 
-    Mirrors JUnit's TestWatcher pattern - only captures debugging artifacts
-    when tests fail, not on success. Reduces noise and storage usage.
+    On failure captures:
+    - Full-page screenshot (inline PNG in HTML report)
+    - Video path link (reports/videos/)
+    - Trace path link (reports/traces/ — open with: playwright show-trace <path>)
     """
     outcome = yield
     report = outcome.get_result()
+
+    # Store result on node so the context fixture can read it
+    if report.when == "call":
+        item.rep_call = report
+    elif report.when == "setup":
+        item.rep_setup = report
 
     if report.when != "call":
         return
@@ -293,24 +363,77 @@ def pytest_runtest_makereport(item, call):
     if pg is None:
         return
 
-    # Only capture screenshots on failures (failed, error, skipped)
+    # Only capture artifacts on failures
     if report.passed:
         return
 
-    try:
-        status = "FAIL" if report.failed else "ERROR" if hasattr(report, "error") else "SKIP"
-        screenshot_bytes = pg.screenshot(full_page=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    status = "FAIL" if report.failed else "ERROR"
+    safe_name = item.nodeid.replace("/", "_").replace("::", "__").replace(" ", "_")
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # --- Screenshot ---
+    try:
+        screenshot_bytes = pg.screenshot(full_page=True)
         filename = f"{item.name}_{status}_{timestamp}.png"
         filepath = SCREENSHOTS_DIR / filename
-
         with open(filepath, "wb") as f:
             f.write(screenshot_bytes)
 
         print(f"\n  [{status}] Screenshot: {filepath}")
+
+        # Attach to Allure report
+        allure.attach(
+            screenshot_bytes,
+            name="Screenshot",
+            attachment_type=allure.attachment_type.PNG,
+        )
+
+        # Attach inline to pytest-html report
+        if hasattr(report, "extras"):
+            try:
+                import pytest_html
+                encoded = base64.b64encode(screenshot_bytes).decode("utf-8")
+                report.extras.append(pytest_html.extras.image(f"data:image/png;base64,{encoded}"))
+            except ImportError:
+                pass
+        else:
+            report.extras = []
+            try:
+                import pytest_html
+                encoded = base64.b64encode(screenshot_bytes).decode("utf-8")
+                report.extras.append(pytest_html.extras.image(f"data:image/png;base64,{encoded}"))
+            except ImportError:
+                pass
     except Exception as e:
         print(f"\n  Failed to capture screenshot: {e}")
+
+    # --- Attach trace and video links to HTML report ---
+    try:
+        import pytest_html
+        trace_path = TRACES_DIR / f"{safe_name}.zip"
+        video_path = VIDEOS_DIR / f"{safe_name}.webm"
+
+        extras = getattr(report, "extras", [])
+
+        if trace_path.exists():
+            extras.append(pytest_html.extras.text(
+                f"playwright show-trace {trace_path}",
+                name="Trace (run to open viewer)",
+            ))
+            extras.append(pytest_html.extras.url(
+                f"file://{trace_path}",
+                name="Trace file",
+            ))
+
+        if video_path.exists():
+            extras.append(pytest_html.extras.url(
+                f"file://{video_path}",
+                name="Video recording",
+            ))
+
+        report.extras = extras
+    except (ImportError, Exception):
+        pass
 
 
 def pytest_sessionfinish(session, exitstatus):

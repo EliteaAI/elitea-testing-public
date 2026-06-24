@@ -950,6 +950,148 @@ class CredentialAPI:
         self._session.close()
 
 
+class ArtifactAPI:
+    """Manage artifact buckets via the Elitea API.
+
+    Uses Keycloak session cookies (from browser auth state) like
+    :class:`ConversationAPI`.
+
+    Args:
+        browser_cookies: List of cookie dicts from ``BrowserContext.cookies()``.
+        base_url: API root (defaults to ``ELITEA_API_BASE`` env var).
+        project_id: Project identifier (defaults to ``ELITEA_PROJECT_ID``).
+    """
+
+    def __init__(
+        self,
+        browser_cookies: list[dict],
+        base_url: Optional[str] = None,
+        project_id: Optional[str] = None,
+    ):
+        self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
+        self.project_id = project_id or str(settings.elitea_project_id)
+
+        self._session = requests.Session()
+        for c in browser_cookies:
+            self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+
+        logger.debug("ArtifactAPI initialised — base_url=%s", self.base_url)
+
+    def _buckets_url(self, bucket_name: Optional[str] = None) -> str:
+        base = f"{self.base_url}/artifacts/buckets/default/{self.project_id}"
+        if bucket_name:
+            return f"{base}/{bucket_name}"
+        return base
+
+    def create_bucket(
+        self,
+        name: str,
+        expiration_measure: str = "years",
+        expiration_value: int = 1,
+    ) -> dict:
+        """Create a new artifact bucket.
+
+        Args:
+            name: Bucket name (must be unique within the project).
+            expiration_measure: Retention period unit (default ``"years"``).
+            expiration_value: Retention period quantity (default ``1``).
+
+        Returns:
+            Dict with ``message``, ``id``, and ``name`` keys.
+        """
+        url = self._buckets_url()
+        payload = {
+            "name": name,
+            "expiration_measure": expiration_measure,
+            "expiration_value": expiration_value,
+        }
+        logger.debug("CREATE bucket %s name=%s", url, name)
+        resp = self._session.post(url, json=payload, headers={"Content-Type": "application/json"})
+        _raise_for_status(resp)
+        return resp.json()
+
+    def delete_bucket(self, bucket_name: str) -> None:
+        """Delete an artifact bucket and all its contents.
+
+        Tries the bucket-name URL first, then falls back to the bucket-ID
+        format (``p--{project_id}.{bucket_name}``) which some deployments
+        require.
+
+        Args:
+            bucket_name: Name of the bucket to delete.
+        """
+        url = self._buckets_url(bucket_name)
+        logger.debug("DELETE bucket %s", url)
+        resp = self._session.delete(url)
+        if resp.status_code == 404:
+            # Try with the compound bucket-ID format
+            bucket_id = f"p--{self.project_id}.{bucket_name}"
+            url_id = self._buckets_url(bucket_id)
+            logger.debug("DELETE bucket 404 — retrying with id format %s", url_id)
+            resp = self._session.delete(url_id)
+        _raise_for_status(resp)
+
+    def list_bucket_files(self, bucket_name: str) -> list[str]:
+        """List all file keys in a bucket via the S3 listing API.
+
+        Uses the ``/artifacts/s3/{bucket_name}?project_id=...&format=json``
+        endpoint (note: no ``/api/v2/`` prefix — this is a direct S3 proxy).
+        Returns the ``contents[].key`` values, which are full relative paths
+        (e.g. ``"output/a.txt"``).
+
+        Args:
+            bucket_name: Name of the bucket to list.
+
+        Returns:
+            List of file key strings relative to the bucket root.
+        """
+        # The S3 listing endpoint sits at the root, not under /api/v2/
+        elitea_root = self.base_url.split("/api/")[0]
+        url = (
+            f"{elitea_root}/artifacts/s3/{bucket_name}"
+            f"?project_id={self.project_id}&format=json"
+        )
+        logger.debug("LIST bucket files %s", url)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        data = resp.json()
+        # Response: {"name": "...", "contents": [{"key": "file1.txt", ...}, ...]}
+        if isinstance(data, list):
+            return data
+        contents = data.get("contents", [])
+        return [item["key"] for item in contents if "key" in item]
+
+    def get_file(self, bucket_name: str, file_key: str) -> bytes:
+        """Fetch the raw content of a file from a bucket.
+
+        Uses the ``/api/v2/artifacts/artifact/default/{project_id}/{bucket}/{key}``
+        endpoint — the same URL the browser downloads from when clicking
+        "Download" in the Artifacts UI.
+
+        Args:
+            bucket_name: Name of the bucket.
+            file_key: Full key of the file (e.g. ``"output/a.txt"``).
+
+        Returns:
+            Raw bytes of the file content.
+
+        Raises:
+            requests.HTTPError: If the file does not exist or cannot be fetched.
+        """
+        url = (
+            f"{self.base_url}/artifacts/artifact/default"
+            f"/{self.project_id}/{bucket_name}/{file_key}"
+        )
+        logger.debug("GET file %s", url)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        return resp.content
+
+    def close(self):
+        """Close the underlying HTTP session."""
+        self._session.close()
+
+
 class ToolkitAPI:
     """Manage toolkits via the Elitea API.
 
@@ -1113,6 +1255,45 @@ class ToolkitAPI:
         )
         if not resp.ok:
             logger.error(f"Failed to create toolkit. Status: {resp.status_code}, Response: {resp.text}")
+        _raise_for_status(resp)
+        return resp.json()
+
+    def create_artifact_toolkit(self, name: str, description: str, bucket_name: str) -> dict:
+        """Create an Artifact (storage) toolkit pointing to a specific bucket.
+
+        Args:
+            name: Toolkit display name.
+            description: Short description.
+            bucket_name: Name of the artifact bucket to connect to.
+
+        Returns:
+            Dict with ``id`` and other toolkit fields.
+        """
+        url = self._toolkits_url()
+        payload = {
+            "type": "artifact",
+            "name": name,
+            "description": description,
+            "settings": {
+                "pgvector_configuration": None,
+                "embedding_model": "text-embedding-3-small",
+                "bucket": bucket_name,
+                "selected_tools": [
+                    "index_data", "list_collections", "search_index",
+                    "stepback_search_index", "stepback_summary_index", "remove_index",
+                    "list_files", "create_file", "read_file", "get_file_metadata",
+                    "delete_file", "append_data", "create_new_bucket",
+                    "read_multiple_files", "grep_file", "edit_file",
+                ],
+            },
+        }
+        logger.debug("CREATE artifact toolkit %s name=%s bucket=%s", url, name, bucket_name)
+        resp = self._session.post(url, json=payload, headers={"Content-Type": "application/json"})
+        if not resp.ok:
+            logger.error(
+                "Failed to create artifact toolkit: status=%s body=%s",
+                resp.status_code, resp.text[:500],
+            )
         _raise_for_status(resp)
         return resp.json()
 
