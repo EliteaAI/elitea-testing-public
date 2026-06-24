@@ -27,7 +27,6 @@ from fixtures.session_fixtures import (
 from fixtures.api_fixtures import (
     api,
     _browser_cookies,
-    artifact_api,
     conversation_api,
     agent_api,
     credential_api,
@@ -41,8 +40,6 @@ from fixtures.data_fixtures import (
     pipeline_with_llm_id,
     github_credential,
     github_toolkit,
-    artifact_bucket,
-    artifact_toolkit,
     invalid_jira_credential,
     jira_toolkit_with_invalid_credential,
     invalid_github_credential,
