@@ -84,6 +84,9 @@ def auth_state(browser: Browser):
     making tests faster and more reliable. All UI tests share this auth state
     so we only log in once per session.
 
+    For localhost: EliteaUI dev server uses VITE_DEV_TOKEN for auth, so no
+    browser authentication is needed. Returns empty storage state.
+
     The returned storage state includes:
     - Cookies (Keycloak session, CSRF tokens, etc.)
     - localStorage data
@@ -98,12 +101,20 @@ def auth_state(browser: Browser):
     Raises:
         pytest.skip: If authentication fails (missing credentials, API error)
     """
+    # Check if running on localhost - EliteaUI dev server handles auth via VITE_DEV_TOKEN
+    is_localhost = "localhost" in ELITEA_URL or "127.0.0.1" in ELITEA_URL
+    if is_localhost:
+        logger.info("Localhost detected (%s) - skipping API auth, EliteaUI uses VITE_DEV_TOKEN", ELITEA_URL)
+        return {"cookies": [], "origins": []}
+
     from api_auth import get_playwright_storage_state
 
     try:
         # Get storage state via API authentication (no browser needed!)
+        auth_url = settings.elitea_auth_url
+        logger.info("Authenticating via API against %s (UI URL: %s)", auth_url, ELITEA_URL)
         storage_state = get_playwright_storage_state(
-            base_url=ELITEA_URL,
+            base_url=auth_url,
             username=TEST_USER_EMAIL,
             password=TEST_USER_PASSWORD,
         )

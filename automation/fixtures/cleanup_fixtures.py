@@ -18,6 +18,9 @@ Fixtures:
 
 Note: Some cleanups are aggressive (delete ALL) because the test environment
 is ephemeral and should start fresh each session.
+
+Note: Cleanup is skipped when running against localhost because browser cookies
+are not available for API authentication. Tests should clean up their own data.
 """
 import logging
 
@@ -25,8 +28,15 @@ import pytest
 
 # Import API client types for type hints
 from api import AgentAPI, ConversationAPI, CredentialAPI, PipelineAPI, ToolkitAPI
+from config import settings
 
 logger = logging.getLogger("elitea.automation.fixtures.cleanup")
+
+
+def _is_localhost() -> bool:
+    """Check if running against localhost (no API auth available)."""
+    url = settings.elitea_url or ""
+    return "localhost" in url or "127.0.0.1" in url
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -43,8 +53,13 @@ def cleanup_autotest_pipelines_at_end(pipeline_api: PipelineAPI):
     Note:
         Runs automatically after all tests (autouse=True).
         Failures are logged but don't fail the test session.
+        Skipped when running against localhost (no API auth).
     """
     yield  # Let all tests run first
+
+    if _is_localhost():
+        logger.info("Pipeline cleanup: skipped (localhost mode)")
+        return
 
     try:
         data = pipeline_api.list_pipelines()
@@ -99,6 +114,10 @@ def cleanup_leaked_credentials(_browser_cookies):
     """
     yield  # Let all tests run first
 
+    if _is_localhost():
+        logger.info("Credential cleanup: skipped (localhost mode)")
+        return
+
     # Final cleanup: delete everything (fetch ALL pages)
     api = CredentialAPI(browser_cookies=_browser_cookies)
     try:
@@ -137,6 +156,10 @@ def cleanup_leaked_toolkits_at_end(_browser_cookies):
     """
     yield  # Let all tests run first
 
+    if _is_localhost():
+        logger.info("Toolkit cleanup: skipped (localhost mode)")
+        return
+
     api = ToolkitAPI(browser_cookies=_browser_cookies)
     try:
         items = api.list_all_toolkits()
@@ -171,8 +194,13 @@ def cleanup_autotest_agents_at_end(agent_api: AgentAPI):
     Note:
         Runs automatically after all tests (autouse=True).
         Failures are logged but don't fail the test session.
+        Skipped when running against localhost (no API auth).
     """
     yield  # Let all tests run first
+
+    if _is_localhost():
+        logger.info("Agent cleanup: skipped (localhost mode)")
+        return
 
     try:
         data = agent_api.list_agents()
@@ -218,8 +246,13 @@ def cleanup_all_conversations_at_end(conversation_api: ConversationAPI):
     Note:
         Runs automatically after all tests (autouse=True).
         Failures are logged but don't fail the test session.
+        Skipped when running against localhost (no API auth).
     """
     yield  # Let all tests run first
+
+    if _is_localhost():
+        logger.info("Conversation cleanup: skipped (localhost mode)")
+        return
 
     # Teardown: delete everything
     try:
