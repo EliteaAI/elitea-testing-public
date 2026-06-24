@@ -1,0 +1,1 @@
+playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_toolkits_test_github_toolkit.py__TestGitHubToolkitTestSettings__test_github_toolkit_test_settings.zip

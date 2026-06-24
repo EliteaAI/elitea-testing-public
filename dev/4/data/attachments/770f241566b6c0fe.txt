@@ -1,0 +1,1 @@
+playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_chat_test_conversation_management.py__TestConversationActions__test_delete_conversation_cancel.zip

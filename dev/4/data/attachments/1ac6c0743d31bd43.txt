@@ -1,0 +1,1 @@
+playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_agents_test_agent_character_limits.py__TestWelcomeMessageCharacterCounter__test_welcome_message_counter_visible_and_updates_realtime.zip

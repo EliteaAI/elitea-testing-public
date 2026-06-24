@@ -1,0 +1,6 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to chat — Locator.wait_for: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator("textarea#standard-multiline-static") to be visible
+ERROR    elitea.automation.fixtures.cleanup:cleanup_fixtures.py:86 Pipeline cleanup failed: Expecting value: line 1 column 1 (char 0)
+ERROR    elitea.automation.fixtures.cleanup:cleanup_fixtures.py:227 Agent cleanup failed: Expecting value: line 1 column 1 (char 0)
+ERROR    elitea.automation.fixtures.cleanup:cleanup_fixtures.py:282 Session cleanup failed: Expecting value: line 1 column 1 (char 0)

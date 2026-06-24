@@ -1,0 +1,1 @@
+playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_voice_test_voice_configuration.py__TestVoiceConfiguration__test_voice_selection_from_chat.zip

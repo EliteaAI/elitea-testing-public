@@ -1,0 +1,1 @@
+playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_pipelines_test_pipeline_management.py__TestCreatePipeline__test_create_pipeline_required_fields_validation.zip

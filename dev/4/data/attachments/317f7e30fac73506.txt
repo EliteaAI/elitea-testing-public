@@ -1,0 +1,1 @@
+playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_chat_test_chat_interface.py__TestPageLoadAndRendering__test_chat_page_loads_with_functional_input.zip

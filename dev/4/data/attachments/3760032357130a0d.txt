@@ -1,0 +1,1 @@
+playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_agents_test_agent_with_github_toolkit.py__TestRemoveToolkitFromAgent__test_remove_toolkit_from_agent.zip
