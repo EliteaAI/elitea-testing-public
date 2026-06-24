@@ -183,6 +183,7 @@ jobs:
         working-directory: automation
         env:
           HEADLESS: 'true'
+          PLAYWRIGHT_TRACES: 'false'
           # Use secrets from workflow_call if available, otherwise resolve by env name
           ELITEA_URL: ${{ secrets.ELITEA_URL || secrets[format('ELITEA_URL_{0}', steps.env.outputs.upper)] }}
           ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE || secrets[format('ELITEA_API_BASE_{0}', steps.env.outputs.upper)] }}
@@ -369,3 +370,4 @@ jobs:
           git add .
           git diff --cached --quiet || git commit -m "report: ${{ needs.test.outputs.env-name }} run ${{ github.run_number }}"
           git push origin gh-pages
+
