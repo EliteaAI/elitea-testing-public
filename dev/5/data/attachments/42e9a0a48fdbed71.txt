@@ -1,0 +1,1 @@
+playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_pipelines_test_pipeline_execution.py__TestExecutePipeline__test_pipeline_response_is_meaningful.zip
