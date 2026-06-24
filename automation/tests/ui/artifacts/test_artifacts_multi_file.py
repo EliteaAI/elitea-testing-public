@@ -96,7 +96,7 @@ class TestArtifactMultiFileDownload:
     @pytest.mark.p0
     @allure.title("Agent creates files at root and in subfolder — all visible and accessible")
     @allure.severity(allure.severity_level.CRITICAL)
-    @allure.issue("ELITEA-1327", "ELITEA-1327")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/artifacts/artifacts-toolkit-multi-file/ELITEA-1327_verify-all-files-downloadable-when-agent-creates-multiple-files.md", "ELITEA-1327")
     def test_agent_creates_files_at_root_and_in_subfolder(
         self,
         page,
