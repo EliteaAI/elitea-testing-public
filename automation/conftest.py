@@ -306,18 +306,19 @@ def context(browser: Browser, auth_state, request) -> BrowserContext:
 
     # --- Allure: attach video and trace on failure ---
     if failed:
-        if video_path.exists():
-            allure.attach(
-                video_path.read_bytes(),
-                name="Video recording",
-                attachment_type=allure.attachment_type.WEBM,
-            )
-        if trace_path.exists():
-            allure.attach(
-                f"playwright show-trace {trace_path}",
-                name="Playwright Trace — run this command to open viewer",
-                attachment_type=allure.attachment_type.TEXT,
-            )
+        with allure.step("Failure Evidence"):
+            if video_path.exists():
+                allure.attach(
+                    video_path.read_bytes(),
+                    name="Video recording",
+                    attachment_type=allure.attachment_type.WEBM,
+                )
+            if trace_path.exists():
+                allure.attach(
+                    f"playwright show-trace {trace_path}",
+                    name="Playwright Trace — run this command to open viewer",
+                    attachment_type=allure.attachment_type.TEXT,
+                )
 
 
 @pytest.fixture
@@ -382,11 +383,12 @@ def pytest_runtest_makereport(item, call):
         print(f"\n  [{status}] Screenshot: {filepath}")
 
         # Attach to Allure report
-        allure.attach(
-            screenshot_bytes,
-            name="Screenshot",
-            attachment_type=allure.attachment_type.PNG,
-        )
+        with allure.step("Failure Evidence"):
+            allure.attach(
+                screenshot_bytes,
+                name="Screenshot",
+                attachment_type=allure.attachment_type.PNG,
+            )
 
         # Attach inline to pytest-html report
         if hasattr(report, "extras"):
