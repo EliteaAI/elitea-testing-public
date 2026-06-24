@@ -29,6 +29,7 @@ reporting = [
     "pytest-html>=4.1.1",
     "pytest-metadata>=3.0.0",
     "pytest-json-report>=1.5.0",
+    "allure-pytest>=2.13.0",
 ]
 
 [tool.pytest.ini_options]

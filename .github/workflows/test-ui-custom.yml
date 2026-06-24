@@ -169,6 +169,13 @@ jobs:
           playwright install chromium
           playwright install-deps chromium
 
+      - name: Install Allure CLI
+        if: always()
+        run: |
+          curl -sLo allure.tgz https://github.com/allure-framework/allure2/releases/download/2.27.0/allure-2.27.0.tgz
+          tar -xzf allure.tgz -C /opt
+          echo "/opt/allure-2.27.0/bin" >> $GITHUB_PATH
+
       - name: Run UI tests
         working-directory: automation
         env:
@@ -256,6 +263,12 @@ jobs:
             echo "⚠️ No test results found" >> $GITHUB_STEP_SUMMARY
           fi
 
+      - name: Generate Allure report
+        if: always()
+        working-directory: automation
+        run: |
+          allure generate reports/allure-results -o reports/allure-report --clean || true
+
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -264,7 +277,17 @@ jobs:
           path: |
             automation/reports/report.html
             automation/reports/junit.xml
+            automation/reports/allure-report/
           retention-days: 14
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-${{ steps.env.outputs.name }}-${{ github.run_number }}
+          path: automation/reports/allure-results/
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Upload screenshots
         if: failure()
@@ -272,5 +295,23 @@ jobs:
         with:
           name: screenshots-${{ steps.env.outputs.name }}-${{ github.run_number }}
           path: automation/screenshots/*.png
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces-${{ steps.env.outputs.name }}-${{ github.run_number }}
+          path: automation/reports/traces/*.zip
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-videos-${{ steps.env.outputs.name }}-${{ github.run_number }}
+          path: automation/reports/videos/*.webm
           retention-days: 7
           if-no-files-found: ignore
