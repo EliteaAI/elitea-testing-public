@@ -124,6 +124,9 @@ jobs:
     name: ${{ inputs.environment }} - ${{ inputs.custom_suites != '' && inputs.custom_suites || inputs.suite }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      pages-url: ${{ steps.pages.outputs.url }}
+      env-name:  ${{ steps.env.outputs.name }}
     steps:
       - name: Resolve environment (dispatch only)
         id: env
@@ -269,6 +272,16 @@ jobs:
         run: |
           allure generate reports/allure-results -o reports/allure-report --clean || true
 
+      - name: Set pages URL
+        id: pages
+        if: always()
+        run: |
+          URL="https://eliteaai.github.io/elitea-testing-public/${{ steps.env.outputs.name }}/${{ github.run_number }}/"
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Allure Report" >> $GITHUB_STEP_SUMMARY
+          echo "[Open Allure Report]($URL)" >> $GITHUB_STEP_SUMMARY
+
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -315,3 +328,52 @@ jobs:
           path: automation/reports/videos/*.webm
           retention-days: 7
           if-no-files-found: ignore
+
+  publish:
+    name: Publish Allure report to GitHub Pages
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Allure report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: test-reports-${{ needs.test.outputs.env-name }}-${{ github.run_number }}
+          path: downloaded-report
+
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Deploy report and prune old runs
+        env:
+          ENV_NAME: ${{ needs.test.outputs.env-name }}
+          RUN_NUMBER: ${{ github.run_number }}
+          KEEP_RUNS: 5
+        run: |
+          # Copy this run's allure-report into gh-pages/{env}/{run}/
+          DEST="gh-pages/$ENV_NAME/$RUN_NUMBER"
+          mkdir -p "$DEST"
+          cp -r downloaded-report/allure-report/. "$DEST/"
+
+          # Prune: keep only the KEEP_RUNS most recent run directories
+          RUN_DIRS=$(ls -1 "gh-pages/$ENV_NAME" | grep -E '^[0-9]+$' | sort -n)
+          COUNT=$(echo "$RUN_DIRS" | wc -l)
+          if [ "$COUNT" -gt "$KEEP_RUNS" ]; then
+            TO_DELETE=$(echo "$RUN_DIRS" | head -n $(( COUNT - KEEP_RUNS )))
+            for d in $TO_DELETE; do
+              rm -rf "gh-pages/$ENV_NAME/$d"
+              echo "Deleted old run: $ENV_NAME/$d"
+            done
+          fi
+
+      - name: Push to gh-pages
+        run: |
+          cd gh-pages
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff --cached --quiet || git commit -m "report: ${{ needs.test.outputs.env-name }} run ${{ github.run_number }}"
+          git push origin gh-pages
