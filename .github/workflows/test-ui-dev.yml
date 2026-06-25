@@ -2,6 +2,8 @@ name: UI Tests DEV
 run-name: UI Tests DEV [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
 
 on:
+  schedule:
+    - cron: '0 23 * * *'
   workflow_dispatch:
     inputs:
       suite:
