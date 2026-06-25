@@ -3,12 +3,20 @@
 URL: /app/toolkits/all/{id}
 
 Provides methods for interacting with toolkit configuration and
-verifying authentication status warnings.
+verifying authentication status warnings, including status indicators
+for invalid credentials (status indicator, warning message, reload, open in new tab).
+
+Enhancement #5114: Added support for credential status indicators:
+- Status indicator for invalid/expired credentials
+- Warning message explaining the authentication failure
+- Reload button to refresh credential status
+- Open in new tab button to view credential details
 """
 
 import logging
+import re
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from .base_page import BasePage
 
@@ -52,15 +60,33 @@ class ToolkitDetailPage(BasePage):
         name_field.wait_for(state="visible", timeout=timeout)
         self.page.wait_for_timeout(1000)
 
+    def _get_warning_message_locator(self):
+        """Get locator for credential warning message.
+
+        Matches various error messages:
+        - "Authentication failed: ..."
+        - "Access forbidden: ..."
+        - "Connection error: ..."
+
+        Returns:
+            Locator matching any credential warning message.
+        """
+        return self.page.locator(
+            'div[aria-label^="Authentication failed:"], '
+            'div[aria-label^="Access forbidden:"], '
+            'div[aria-label^="Connection error:"]'
+        )
+
     def get_authentication_warning(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str | None:
         """Get authentication warning message if present.
 
-        Looks for warning messages starting with "Authentication failed:"
-        that appear when toolkit credentials are invalid or expired.
+        Looks for warning messages that appear when toolkit credentials
+        are invalid or expired.
 
-        Different toolkit types and failed reasons show different messages:
-        - Jira: "Authentication failed: Invalid bearer token"
-        - GitHub: "Authentication failed: Invalid credentials"
+        Different error types:
+        - "Authentication failed: Invalid bearer token"
+        - "Access forbidden: Your account has insufficient..."
+        - "Connection error: ..."
 
         Args:
             timeout: Maximum wait time in milliseconds.
@@ -68,7 +94,7 @@ class ToolkitDetailPage(BasePage):
         Returns:
             The aria-label value (warning message), or None if not found.
         """
-        warning_locator = self.page.locator('div[aria-label^="Authentication failed:"]')
+        warning_locator = self._get_warning_message_locator()
         try:
             warning_locator.nth(1).wait_for(state="visible", timeout=timeout)
             return warning_locator.nth(1).get_attribute("aria-label")
@@ -76,15 +102,25 @@ class ToolkitDetailPage(BasePage):
             return None
 
     def has_authentication_warning(self, timeout: int = 5000) -> bool:
-        """Check if authentication warning is displayed.
+        """Check if authentication warning message is displayed.
+
+        Note: The warning icon is the first element (.first),
+        the warning message text is the second element (.nth(1)).
 
         Args:
             timeout: Maximum wait time in milliseconds.
 
         Returns:
-            True if warning is visible, False otherwise.
+            True if warning message is visible, False otherwise.
         """
-        return self.get_authentication_warning(timeout=timeout) is not None
+        warning_locator = self._get_warning_message_locator()
+        try:
+            if warning_locator.count() < 2:
+                return False
+            warning_locator.nth(1).wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
 
     def is_save_button_enabled(self) -> bool:
         """Check if Save button is enabled.
@@ -181,3 +217,209 @@ class ToolkitDetailPage(BasePage):
         if config_dropdown.count() > 0:
             return config_dropdown.first.text_content()
         return None
+
+    # ------------------------------------------------------------------
+    # Credential status indicators (Enhancement #5114)
+    # ------------------------------------------------------------------
+
+    def _get_credential_row(self, timeout: int = UI_ELEMENT_TIMEOUT):
+        """Get the credential row element containing dropdown and action buttons.
+
+        Locator: [data-tour="shared-tool-configuration-form"] [aria-labelledby*="Configuration"]
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator for the credential row element.
+        """
+        row = self.page.locator(
+            '[data-tour="shared-tool-configuration-form"] [aria-labelledby*="Configuration"]'
+        )
+        row.first.wait_for(state="visible", timeout=timeout)
+        return row.first
+
+    def hover_credential_row(self, timeout: int = UI_ELEMENT_TIMEOUT):
+        """Hover over the credential row to reveal status indicator icons.
+
+        The reload and open-in-new-tab icons are only visible on hover.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        row = self._get_credential_row(timeout)
+        row.hover()
+        self.page.wait_for_timeout(500)
+
+    def _get_credential_error_locator(self):
+        """Get locator for credential error indicator.
+
+        Matches various error messages:
+        - "Authentication failed: ..."
+        - "Access forbidden: ..."
+        - "Connection error: ..."
+
+        Returns:
+            Locator matching any credential error indicator.
+        """
+        return self.page.locator(
+            'div[aria-label^="Authentication failed:"], '
+            'div[aria-label^="Access forbidden:"], '
+            'div[aria-label^="Connection error:"]'
+        )
+
+    def has_credential_status_indicator(self, timeout: int = 5000) -> bool:
+        """Check if credential status indicator (warning icon) is displayed.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if status indicator is visible, False otherwise.
+        """
+        warning_locator = self._get_credential_error_locator()
+        try:
+            warning_locator.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_credential_status_indicator_tooltip(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str | None:
+        """Get the status indicator tooltip text (aria-label).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The aria-label value (tooltip text), or None if not found.
+        """
+        warning_locator = self._get_credential_error_locator()
+        try:
+            warning_locator.first.wait_for(state="visible", timeout=timeout)
+            return warning_locator.first.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def click_credential_reload(self, timeout: int = UI_ELEMENT_TIMEOUT):
+        """Click the reload button to refresh credential status.
+
+        Hovers over the credential row first to reveal the button,
+        then clicks it and waits for the status to update.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.hover_credential_row(timeout)
+        reload_btn = self.page.locator('button[aria-label="Reload and apply changes"]')
+        reload_btn.wait_for(state="visible", timeout=timeout)
+        reload_btn.click()
+        self.wait_for_network(timeout=timeout)
+        self.page.wait_for_timeout(3000)
+        logger.info("Clicked credential reload button")
+
+    def click_credential_open_in_new_tab(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Click the open-in-new-tab button for the credential.
+
+        Hovers over the credential row first to reveal the button,
+        then clicks it. The credential detail page opens in a new tab.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            URL of the new tab (credential detail page).
+        """
+        self.hover_credential_row(timeout)
+        open_btn = self.page.locator('button[aria-label="Open in new tab"]')
+        open_btn.wait_for(state="visible", timeout=timeout)
+
+        with self.page.context.expect_page() as new_page_info:
+            open_btn.click()
+
+        new_page = new_page_info.value
+        new_page.wait_for_load_state("domcontentloaded")
+        url = new_page.url
+        new_page.close()
+        logger.info("Opened credential in new tab: %s", url)
+        return url
+
+    def has_reload_button(self, timeout: int = 5000) -> bool:
+        """Check if reload button is visible (after hovering).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if reload button exists and is visible.
+        """
+        self.hover_credential_row(timeout)
+        reload_btn = self.page.locator('button[aria-label="Reload and apply changes"]')
+        try:
+            reload_btn.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_reload_button_tooltip(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str | None:
+        """Get the reload button tooltip text (aria-label).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The aria-label value (tooltip text), or None if not found.
+        """
+        self.hover_credential_row(timeout)
+        reload_btn = self.page.locator('button[aria-label="Reload and apply changes"]')
+        try:
+            reload_btn.wait_for(state="visible", timeout=timeout)
+            return reload_btn.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def has_open_in_new_tab_button(self, timeout: int = 5000) -> bool:
+        """Check if open-in-new-tab button is visible (after hovering).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if open-in-new-tab button exists and is visible.
+        """
+        self.hover_credential_row(timeout)
+        open_btn = self.page.locator('button[aria-label="Open in new tab"]')
+        try:
+            open_btn.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_open_in_new_tab_button_tooltip(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str | None:
+        """Get the open-in-new-tab button tooltip text (aria-label).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The aria-label value (tooltip text), or None if not found.
+        """
+        self.hover_credential_row(timeout)
+        open_btn = self.page.locator('button[aria-label="Open in new tab"]')
+        try:
+            open_btn.wait_for(state="visible", timeout=timeout)
+            return open_btn.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def wait_for_no_status_indicator(self, timeout: int = 15000):
+        """Wait for the credential status indicator to disappear.
+
+        Used after fixing invalid credentials to verify the warning
+        is no longer displayed.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        warning_locator = self._get_credential_error_locator()
+        expect(warning_locator.first).not_to_be_visible(timeout=timeout)
+        logger.info("Status indicator is no longer visible")

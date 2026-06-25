@@ -1001,3 +1001,218 @@ class PipelineDetailPage(PipelineFormPage):
                 pass  # No confirmation dialog
             self.page.wait_for_timeout(1000)
             logger.info("Embedded chat cleared")
+
+    # ------------------------------------------------------------------
+    # Toolkit credential indicators (Enhancement #5114, Bug #5183)
+    # ------------------------------------------------------------------
+
+    def _get_toolkit_item(self, toolkit_name: str, timeout: int = 10000):
+        """Get the toolkit item element in the left panel by name.
+
+        Uses XPath to find the toolkit container inside the second MuiAccordionDetails-root.
+
+        Args:
+            toolkit_name: Name of the toolkit (may be truncated in UI).
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator for the toolkit item container.
+        """
+        name_prefix = toolkit_name[:20]
+        toolkit_item = self.page.locator(
+            f'xpath=(//div[contains(@class, "MuiAccordionDetails-root")])[2]'
+            f'//div[.//div[contains(normalize-space(), "{name_prefix}")]]'
+        ).first
+        toolkit_item.wait_for(state="visible", timeout=timeout)
+        return toolkit_item
+
+    def hover_toolkit_item(self, toolkit_name: str, timeout: int = 10000):
+        """Hover over a toolkit item in the left panel to reveal action icons.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+        """
+        toolkit_item = self._get_toolkit_item(toolkit_name, timeout)
+        toolkit_item.hover()
+        self.page.wait_for_timeout(500)
+
+    def has_toolkit_status_indicator(self, toolkit_name: str, timeout: int = 5000) -> bool:
+        """Check if toolkit item shows credential status indicator (warning icon).
+
+        In Pipeline, the status indicator is an SVG icon near the toolkit name.
+        We detect it by checking for warning message which appears below toolkit.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if status indicator/warning is visible.
+        """
+        return self.has_toolkit_warning_message(timeout)
+
+    def get_toolkit_status_indicator_tooltip(
+        self, toolkit_name: str, timeout: int = 10000
+    ) -> str | None:
+        """Get the status indicator tooltip text for a toolkit.
+
+        In Pipeline, returns the warning message aria-label.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The aria-label value (tooltip text), or None if not found.
+        """
+        return self.get_toolkit_warning_message(timeout)
+
+    def has_toolkit_warning_message(self, timeout: int = 5000) -> bool:
+        """Check if authentication warning message is displayed below toolkit.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if warning message is visible.
+        """
+        warning_msg = self.page.locator('[aria-label^="Authentication failed"]')
+        try:
+            warning_msg.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_toolkit_warning_message(self, timeout: int = 10000) -> str | None:
+        """Get the authentication warning message text.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Warning message text, or None if not found.
+        """
+        warning_msg = self.page.locator('[aria-label^="Authentication failed"]')
+        try:
+            warning_msg.first.wait_for(state="visible", timeout=timeout)
+            return warning_msg.first.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def has_toolkit_reload_button(self, toolkit_name: str, timeout: int = 5000) -> bool:
+        """Check if toolkit has reload button (id=RefreshButton).
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if reload button is visible.
+        """
+        self.hover_toolkit_item(toolkit_name, timeout)
+        reload_btn = self.page.locator('#RefreshButton')
+        try:
+            reload_btn.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_toolkit_reload_button_tooltip(
+        self, toolkit_name: str, timeout: int = 10000
+    ) -> str | None:
+        """Get the reload button tooltip text for a toolkit.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The aria-label value (tooltip text), or None if not found.
+        """
+        self.hover_toolkit_item(toolkit_name, timeout)
+        reload_btn = self.page.locator('#RefreshButton')
+        try:
+            reload_btn.wait_for(state="visible", timeout=timeout)
+            return reload_btn.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def has_toolkit_open_in_new_tab_button(
+        self, toolkit_name: str, timeout: int = 5000
+    ) -> bool:
+        """Check if toolkit has open-in-new-tab button (id=OpenInNewTabButton).
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if open-in-new-tab button is visible.
+        """
+        self.hover_toolkit_item(toolkit_name, timeout)
+        open_btn = self.page.locator('#OpenInNewTabButton')
+        try:
+            open_btn.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_toolkit_open_in_new_tab_button_tooltip(
+        self, toolkit_name: str, timeout: int = 10000
+    ) -> str | None:
+        """Get the open-in-new-tab button tooltip text for a toolkit.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The aria-label value (tooltip text), or None if not found.
+        """
+        self.hover_toolkit_item(toolkit_name, timeout)
+        open_btn = self.page.locator('#OpenInNewTabButton')
+        try:
+            open_btn.wait_for(state="visible", timeout=timeout)
+            return open_btn.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def click_toolkit_open_in_new_tab(
+        self, toolkit_name: str, timeout: int = 10000
+    ) -> "Page":
+        """Click the open-in-new-tab button for a toolkit.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The new Page object for the opened tab.
+        """
+        self.hover_toolkit_item(toolkit_name, timeout)
+        open_btn = self.page.locator('#OpenInNewTabButton')
+        open_btn.wait_for(state="visible", timeout=timeout)
+
+        with self.page.context.expect_page() as new_page_info:
+            open_btn.click()
+
+        new_page = new_page_info.value
+        new_page.wait_for_load_state("domcontentloaded")
+        logger.info("Opened toolkit in new tab: %s", new_page.url)
+        return new_page
+
+    def wait_for_no_toolkit_status_indicator(
+        self, toolkit_name: str, timeout: int = 15000
+    ):
+        """Wait for the toolkit warning message to disappear.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+        """
+        from playwright.sync_api import expect
+
+        warning_locator = self.page.locator('[aria-label^="Authentication failed"]')
+        expect(warning_locator.first).not_to_be_visible(timeout=timeout)
+        logger.info("Toolkit warning message is no longer visible")
