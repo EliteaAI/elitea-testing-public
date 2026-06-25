@@ -30,6 +30,7 @@ from api import CredentialAPI, ToolkitAPI
 from config import settings
 from pages.chat_page import ChatPage
 from components.mui import Popper
+import allure
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,7 @@ def _ts_suffix() -> str:
 class TestCreateGitHubCredential:
     """Create a GitHub credential via the UI and verify it appears."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1141_github-toolkit-and-credentials.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     @pytest.mark.credentials
     @_flaky
@@ -195,6 +197,7 @@ class TestCreateGitHubToolkit:
         except Exception:
             pass
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1141_github-toolkit-and-credentials.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     @_flaky
     def test_create_github_toolkit(
@@ -413,6 +416,7 @@ def toolkit_id(credential_id: dict, toolkit_api: ToolkitAPI):
 class TestGitHubToolkitTestSettings:
     """Run a tool via the Test Settings panel on the toolkit detail page."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1141_github-toolkit-and-credentials.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     @_flaky
     def test_github_toolkit_test_settings(
@@ -560,6 +564,7 @@ class TestGitHubToolkitTestSettings:
 class TestChatWithGitHubToolkit:
     """Use a GitHub toolkit as a chat participant and verify tool execution."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1141_github-toolkit-and-credentials.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     @_flaky
     def test_chat_with_github_toolkit(

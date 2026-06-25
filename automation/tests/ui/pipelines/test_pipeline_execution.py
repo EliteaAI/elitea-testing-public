@@ -29,6 +29,7 @@ Usage:
 import pytest
 from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipelines_list_page import PipelinesListPage
+import allure
 
 pytestmark = [pytest.mark.ui, pytest.mark.pipelines]
 
@@ -90,6 +91,7 @@ def _execute_pipeline(pipelines, message, *, timeout=PIPELINE_EXECUTION_TIMEOUT)
 class TestExecutePipeline:
     """PIPE-011 to PIPE-014: Core pipeline execution tests."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0862_pipeline-execution.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     @pytest.mark.smoke
     def test_pipeline_response_is_meaningful(self, page, pipeline_with_llm_id):
@@ -112,6 +114,7 @@ class TestExecutePipeline:
 
         _assert_response_quality(response)
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0856_pipeline-execution-message-flow-and-history.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_message_count_starts_at_zero_and_grows(self, page, pipeline_with_llm_id):
         """PIPE-013: Fresh pipeline starts at zero messages and count grows with each send.
@@ -147,6 +150,7 @@ class TestExecutePipeline:
 class TestPipelineExecutionEdgeCases:
     """PIPE-015 to PIPE-016: Edge cases for pipeline execution."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0852_pipeline-execution-edge-cases.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     def test_empty_pipeline_execution(self, page, pipeline_id):
         """PIPE-015: Executing a pipeline with no nodes (only END).
@@ -173,6 +177,7 @@ class TestPipelineExecutionEdgeCases:
         final_count = pipelines.get_embedded_chat_message_count()
         assert final_count >= initial_count + 2, "Empty pipeline should produce user message AND at least one response"
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0856_pipeline-execution-message-flow-and-history.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     def test_navigate_away_and_reexecute(self, page, pipeline_with_llm_id):
         """PIPE-016: Navigate away from the pipeline and return to re-execute.
@@ -203,6 +208,8 @@ class TestPipelineExecutionEdgeCases:
 class TestPipelineChatMessages:
     """PIPE-017 to PIPE-018: Message display and accumulation tests."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0856_pipeline-execution-message-flow-and-history.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0862_pipeline-execution.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_user_message_visible(self, page, pipeline_with_llm_id):
         """PIPE-017: User message appears in chat alongside AI response.
@@ -223,6 +230,7 @@ class TestPipelineChatMessages:
             f"User message '{user_msg}' should appear in the chat"
         )
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0856_pipeline-execution-message-flow-and-history.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_multiple_executions_accumulate(self, page, pipeline_with_llm_id):
         """PIPE-014, PIPE-018: Multiple sequential executions accumulate messages.

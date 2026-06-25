@@ -24,6 +24,7 @@ import logging
 import pytest
 from pages.chat_page import ChatPage
 from pages.user_profile_settings_page import UserProfileSettingsPage
+import allure
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ class TestContextManagementSettings:
         pytest.param(10_000, marks=pytest.mark.p1, id="10k_tokens"),
         pytest.param(32_000, marks=pytest.mark.p2, id="32k_tokens"),
     ])
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-1340_context-budget-panel-reflects-profile-max-tokens.md", "onetest-ai Test Case link")
     def test_context_budget_reflects_profile_max_tokens(self, page, conversation_api, expected_max_tokens):
         """Context Budget panel in chat shows the max tokens set in profile.
 
