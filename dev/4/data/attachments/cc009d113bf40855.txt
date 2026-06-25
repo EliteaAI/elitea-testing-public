@@ -1,1 +1,0 @@
-playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_pipelines_test_pipeline_nodes.py__TestAddNode__test_add_human_in_the_loop_node_and_connect_to_end.zip

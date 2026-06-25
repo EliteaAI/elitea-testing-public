@@ -1,1 +1,0 @@
-playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_chat_test_context_management.py__TestContextManagementSettings__test_context_budget_reflects_profile_max_tokens[10k_tokens].zip

@@ -1,1 +1,0 @@
-playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_chat_test_chat_interface.py__TestConversationUIElements__test_attach_files_button_sends_file_with_message.zip

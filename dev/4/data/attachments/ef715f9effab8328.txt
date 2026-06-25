@@ -1,1 +1,0 @@
-playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_pipelines_test_pipeline_advanced.py__TestMakeEntrypoint__test_make_node_entrypoint.zip

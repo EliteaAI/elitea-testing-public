@@ -1,1 +1,0 @@
-playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_chat_test_chat_interface.py__TestMessageActions__test_copy_message_to_clipboard.zip

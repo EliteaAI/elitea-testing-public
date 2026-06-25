@@ -1,1 +1,0 @@
-playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_agents_test_agent_management.py__TestCreateAgent__test_create_agent_required_fields_validation.zip

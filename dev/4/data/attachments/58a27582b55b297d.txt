@@ -1,1 +1,0 @@
-playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_agents_test_agent_character_limits.py__TestConversationStarterCharacterCounter__test_conversation_starter_counter_turns_red_at_limit.zip

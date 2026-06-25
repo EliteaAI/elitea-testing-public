@@ -1,1 +1,0 @@
-playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_pipelines_test_pipeline_management.py__TestPipelineDashboard__test_pipeline_created_via_api_visible_in_dashboard.zip

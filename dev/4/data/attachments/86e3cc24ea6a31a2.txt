@@ -1,1 +1,0 @@
-playwright show-trace /home/runner/work/elitea-testing-public/elitea-testing-public/automation/reports/traces/tests_ui_pipelines_test_pipeline_advanced.py__TestMultiNodeTopology__test_save_multi_node_pipeline.zip
