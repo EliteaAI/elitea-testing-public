@@ -25,6 +25,7 @@ from pages.agents_list_page import AgentsListPage
 from pages.agent_form_page import AgentFormPage
 from pages.agent_detail_page import AgentDetailPage
 from pages.internal_tools import InternalTool
+import allure
 
 pytestmark = [pytest.mark.ui, pytest.mark.agents]
 
@@ -39,6 +40,7 @@ FORM_SAVE_TIMEOUT = 15000
 class TestCreateAgent:
     """Create Agent (P0): create via UI, verify in list and via API."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0145_agent-creation-ui-and-api.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     @pytest.mark.smoke
     def test_create_agent_via_ui(self, page, agent_api):
@@ -107,6 +109,7 @@ class TestCreateAgent:
                 except Exception as cleanup_exc:
                     print(f"Warning: Failed to cleanup agent {created_agent_id}: {cleanup_exc}")
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0145_agent-creation-ui-and-api.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     @pytest.mark.smoke
     def test_create_agent_via_api_visible_in_ui(self, page, agent_id, agent_api):
@@ -125,6 +128,8 @@ class TestCreateAgent:
             f"Agent '{agent_name}' should appear in the agents list"
         )
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0136_agent-creation-field-validation.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0145_agent-creation-ui-and-api.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_create_agent_required_fields_validation(self, page):
         """Save button should be disabled when required fields are empty."""
@@ -153,6 +158,7 @@ class TestCreateAgent:
 class TestAgentConfiguration:
     """Agent Configuration (P1): system prompt, detail page, form fields."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0141_agent-detail-page-configuration-and-tabs.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_agent_detail_page_loads(self, page, agent_id, agent_api):
         """Navigate to an agent's detail page and verify form fields are populated."""
@@ -164,6 +170,7 @@ class TestAgentConfiguration:
         assert detail_page.name_input.input_value() == agent.get("name", ""), "Name should match"
         assert detail_page.description_input.input_value() == agent.get("description", ""), "Description should match"
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0141_agent-detail-page-configuration-and-tabs.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_agent_instructions_field(self, page, agent_id):
         """Instructions field should be visible and editable."""
@@ -178,6 +185,7 @@ class TestAgentConfiguration:
             f"Instructions should contain 'test agent', got: {value}"
         )
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0141_agent-detail-page-configuration-and-tabs.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_agent_information_section(self, page, agent_id):
         """Information section should display Agent ID and Version ID."""
@@ -196,6 +204,7 @@ class TestAgentConfiguration:
             f"Displayed Agent ID '{agent_id_text}' should match fixture ID '{agent_id}'"
         )
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0141_agent-detail-page-configuration-and-tabs.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     @pytest.mark.smoke
     def test_agent_toolkits_section_visible(self, page, agent_id):
@@ -221,6 +230,7 @@ class TestAgentConfiguration:
         # Log what tools were found for debugging
         print(f"Available tools: {[t.value for t in available_tools]}")
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0141_agent-detail-page-configuration-and-tabs.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_internal_tools_enum_usage(self, page, agent_id):
         """Verify internal tools can be toggled using the enum-based API.
@@ -266,6 +276,7 @@ class TestAgentConfiguration:
 class TestAgentList:
     """Agent List (P1): list agents, search, view toggles."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0140_agent-dashboard-and-search.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     @pytest.mark.smoke
     def test_agents_dashboard_loads(self, page):
@@ -293,6 +304,7 @@ class TestAgentList:
         # This tests that the input accepts text (React onChange fires)
         list_page.verify_search_functional()
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0140_agent-dashboard-and-search.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_agent_search(self, page, agent_id, agent_api):
         """Search for an agent by name on the dashboard."""
@@ -309,6 +321,7 @@ class TestAgentList:
             f"Agent '{agent_name}' should appear in search results"
         )
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0140_agent-dashboard-and-search.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_agent_search_no_results(self, page):
         """Searching for a non-existent agent should show no results."""
@@ -321,6 +334,7 @@ class TestAgentList:
             "zzzz_nonexistent_agent_12345", timeout=3000
         ), "Non-existent agent should not appear in results"
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0140_agent-dashboard-and-search.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_view_toggle_table_and_card(self, page):
         """Dashboard should support switching between table and card views.
@@ -357,6 +371,8 @@ class TestAgentList:
 class TestAgentActions:
     """Agent Actions (P1): edit agent, delete agent, verify cleanup."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0144_agent-edit-and-delete.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0138_agent-edit-operations-name-and-description.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_edit_agent_name(self, page, agent_id):
         """Edit an agent's name and verify the change persists."""
@@ -378,6 +394,8 @@ class TestAgentActions:
             f"Agent name should be '{new_name}' after save"
         )
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0144_agent-edit-and-delete.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0138_agent-edit-operations-name-and-description.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_edit_agent_description(self, page, agent_id):
         """Edit an agent's description and verify the change persists."""
@@ -398,6 +416,7 @@ class TestAgentActions:
             f"Agent description should be '{new_desc}' after save"
         )
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0144_agent-edit-and-delete.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_delete_agent_via_api(self, page, agent_api):
         """Create an agent, delete via API, and verify it's gone from the UI."""
@@ -432,6 +451,7 @@ class TestAgentActions:
                 except Exception as cleanup_exc:
                     print(f"Warning: Failed to cleanup agent {aid}: {cleanup_exc}")
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0144_agent-edit-and-delete.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_delete_agent_via_ui_menu(self, page, agent_api):
         """Create an agent, delete via the UI three-dot menu, and verify removal."""

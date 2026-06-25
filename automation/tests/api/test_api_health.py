@@ -14,6 +14,7 @@ Usage::
 """
 
 import pytest
+import allure
 
 pytestmark = [pytest.mark.smoke, pytest.mark.api]
 
@@ -21,6 +22,7 @@ pytestmark = [pytest.mark.smoke, pytest.mark.api]
 class TestAPIHealth:
     """Basic health and connectivity checks for the Elitea API."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1143_platform-availability-basic-navigation.md", "onetest-ai Test Case link")
     def test_api_root_reachable(self, api):
         """Verify the API base URL is reachable (any 2xx/3xx/401 is fine)."""
         resp = api.get("/")
@@ -29,6 +31,7 @@ class TestAPIHealth:
             f"API returned server error {resp.status_code}: {resp.text[:200]}"
         )
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1143_platform-availability-basic-navigation.md", "onetest-ai Test Case link")
     def test_api_returns_json(self, api):
         """Verify the API responds with JSON content type."""
         resp = api.get("/")
@@ -52,6 +55,7 @@ class TestAuthenticatedAPI:
         if not api.api_token:
             pytest.skip("ELITEA_API_TOKEN not configured in .env.test")
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1143_platform-availability-basic-navigation.md", "onetest-ai Test Case link")
     def test_list_agents(self, api):
         """Verify we can list agents for the configured project."""
         params = {
