@@ -20,6 +20,14 @@ on:
         description: 'Git branch/tag/SHA'
         type: string
         default: 'aqa/main-stage2'
+      publish_to_tms:
+        description: 'Publish results to OneTest TMS'
+        type: boolean
+        default: false
+      tms_report_postfix:
+        description: 'Postfix for TMS report name'
+        type: string
+        default: ''
 
 jobs:
   test:
@@ -30,6 +38,8 @@ jobs:
       custom_suites: ${{ inputs.custom_suites || '' }}
       markers: ${{ inputs.markers || '' }}
       ref: ${{ inputs.ref || 'aqa/main-stage2' }}
+      publish_to_tms: ${{ inputs.publish_to_tms }}
+      tms_report_postfix: ${{ inputs.tms_report_postfix || '' }}
     secrets:
       ELITEA_URL: ${{ secrets.ELITEA_URL_STAGE2 }}
       ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE_STAGE2 }}

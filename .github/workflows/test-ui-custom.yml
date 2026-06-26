@@ -52,6 +52,16 @@ on:
         required: false
         type: string
         default: ''
+      publish_to_tms:
+        description: 'Publish results to OneTest TMS'
+        required: false
+        type: boolean
+        default: false
+      tms_report_postfix:
+        description: 'Postfix for TMS report name (e.g., "scheduled", "nightly")'
+        required: false
+        type: string
+        default: ''
 
   workflow_call:
     inputs:
@@ -76,6 +86,16 @@ on:
         default: ''
       ref:
         description: 'Git ref (branch, tag, SHA)'
+        required: false
+        type: string
+        default: ''
+      publish_to_tms:
+        description: 'Publish results to OneTest TMS'
+        required: false
+        type: boolean
+        default: false
+      tms_report_postfix:
+        description: 'Postfix for TMS report name'
         required: false
         type: string
         default: ''
@@ -371,3 +391,86 @@ jobs:
           git diff --cached --quiet || git commit -m "report: ${{ needs.test.outputs.env-name }} run ${{ github.run_number }}"
           git push origin gh-pages
 
+  publish-tms:
+    name: Publish JUnit to OneTest TMS
+    needs: test
+    if: inputs.publish_to_tms
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results-${{ needs.test.outputs.env-name }}-${{ github.run_number }}
+          path: results
+
+      - name: Convert and push to TMS
+        if: hashFiles('results/junit.xml') != ''
+        env:
+          GH_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
+        run: |
+          # Generate run ID: RUN-ELITEA-YYYY-MM-DD-NNN-ENV-SUITE[-POSTFIX]
+          DATE=$(date +%Y-%m-%d)
+          ENV_NAME="${{ needs.test.outputs.env-name }}"
+          SUITE="${{ inputs.custom_suites != '' && inputs.custom_suites || inputs.suite }}"
+          SUITE_UPPER=$(echo "$SUITE" | tr '[:lower:]' '[:upper:]' | tr ',' '-')
+          POSTFIX="${{ inputs.tms_report_postfix }}"
+
+          RUN_ID="RUN-ELITEA-${DATE}-${{ github.run_number }}-${ENV_NAME^^}-${SUITE_UPPER}"
+          if [ -n "$POSTFIX" ]; then
+            POSTFIX_UPPER=$(echo "$POSTFIX" | tr '[:lower:]' '[:upper:]')
+            RUN_ID="${RUN_ID}-${POSTFIX_UPPER}"
+          fi
+          FILENAME="junit-${RUN_ID}.json"
+
+          # Convert JUnit XML to TMS JSON format
+          python3 << 'EOF' > report.json
+          import json, xml.etree.ElementTree as ET
+
+          root = ET.parse("results/junit.xml").getroot()
+          items = []
+          total = passed = failed = skipped = 0
+
+          for tc in root.iter("testcase"):
+              cls, name = tc.get("classname", ""), tc.get("name", "")
+              code_ref = f"{cls}.{name}" if cls else name
+              dur = int(float(tc.get("time", "0") or 0) * 1000)
+              f, e, sk = tc.find("failure"), tc.find("error"), tc.find("skipped")
+              if f is not None or e is not None:
+                  el = f if f is not None else e
+                  status = "failed"
+                  msg = ((el.get("message") or "") + " " + (el.text or "")).strip()
+              elif sk is not None:
+                  status, msg = "skipped", ""
+              else:
+                  status, msg = "passed", ""
+              total += 1
+              passed += status == "passed"
+              failed += status == "failed"
+              skipped += status == "skipped"
+              items.append({
+                  "code_ref": code_ref,
+                  "name": name,
+                  "status": status,
+                  "duration_ms": dur,
+                  "failure_message": msg
+              })
+
+          out = {
+              "launch": {"total": total, "passed": passed, "failed": failed, "skipped": skipped},
+              "items": items
+          }
+          print(json.dumps(out, indent=2, ensure_ascii=False))
+          EOF
+
+          echo "✓ Generated report.json"
+          cat report.json
+
+          # Push via GitHub API (no checkout required)
+          CONTENT=$(base64 -w0 report.json)
+          gh api repos/EliteaAI/onetest-ai-tm-Elitea/contents/reports/automated/${FILENAME} \
+            -X PUT \
+            -f message="results: ingest ${RUN_ID}" \
+            -f content="${CONTENT}" \
+            -f branch="main"
+
+          echo "✓ Pushed to EliteaAI/onetest-ai-tm-Elitea/reports/automated/${FILENAME}"
