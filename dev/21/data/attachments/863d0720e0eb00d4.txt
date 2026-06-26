@@ -1,0 +1,1 @@
+WARNING  elitea.pages.chat:chat_page.py:253 SPA redirected to https://dev.elitea.ai/app/chat/2418?name=autotest_test_create_image%5Bminim instead of /app/chat/2419 — retrying

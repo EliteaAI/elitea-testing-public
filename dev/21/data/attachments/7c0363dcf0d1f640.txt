@@ -1,0 +1,28 @@
+WARNING  elitea.pages.chat:chat_page.py:253 SPA redirected to https://dev.elitea.ai/app/chat/2452?name=autotest_test_agent_chat_with_gi instead of /app/chat/2453 — retrying
+ERROR    elitea.steps:actions.py:49 Step failed: Select model — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("[class*=\"model\"], button:has-text(\"GPT\"), button:has-text(\"Claude\")").first
+    - locator resolved to <button tabindex="0" type="button" class="MuiButtonBase-root MuiButtonGroup-grouped MuiButtonGroup-groupedHorizontal MuiButtonGroup-groupedElitea MuiButtonGroup-groupedEliteaHorizontal MuiButtonGroup-groupedEliteaSecondary MuiButton-root MuiButton-elitea MuiButton-eliteaSecondary MuiButton-sizeMedium MuiButton-eliteaSizeMedium MuiButton-colorSecondary MuiButton-disableElevation MuiButtonGroup-grouped MuiButtonGroup-groupedHorizontal MuiButtonGroup-groupedElitea MuiButtonGroup-groupedEliteaHorizontal M…>…</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div tabindex="-1" role="presentation" class="MuiDialog-container MuiDialog-scrollPaper css-fh1hs4">…</div> from <div role="presentation" class="MuiDialog-root MuiModal-root css-1s8jk08">…</div> subtree intercepts pointer events
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div tabindex="-1" role="presentation" class="MuiDialog-container MuiDialog-scrollPaper css-fh1hs4">…</div> from <div role="presentation" class="MuiDialog-root MuiModal-root css-1s8jk08">…</div> subtree intercepts pointer events
+    - retrying click action
+      - waiting 100ms
+    19 × waiting for element to be visible, enabled and stable
+       - element is visible, enabled and stable
+       - scrolling into view if needed
+       - done scrolling
+       - <div tabindex="-1" role="presentation" class="MuiDialog-container MuiDialog-scrollPaper css-fh1hs4">…</div> from <div role="presentation" class="MuiDialog-root MuiModal-root css-1s8jk08">…</div> subtree intercepts pointer events
+     - retrying click action
+       - waiting 500ms
+WARNING  elitea.automation.fixtures.data:data_fixtures.py:73 Failed to delete conversation 2453: 404 Client Error: Not Found for url: https://dev.elitea.ai/api/v2/elitea_core/conversation/prompt_lib/399/2453 — body: {'error': 'Conversation not found'}
