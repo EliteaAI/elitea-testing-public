@@ -394,7 +394,7 @@ jobs:
   publish-tms:
     name: Publish JUnit to OneTest TMS
     needs: test
-    if: inputs.publish_to_tms
+    if: always() && inputs.publish_to_tms == true
     runs-on: ubuntu-latest
     steps:
       - name: Download test results
@@ -404,7 +404,6 @@ jobs:
           path: results
 
       - name: Convert and push to TMS
-        if: hashFiles('results/junit.xml') != ''
         env:
           GH_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
         run: |
