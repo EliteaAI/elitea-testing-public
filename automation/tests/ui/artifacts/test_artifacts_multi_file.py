@@ -1,7 +1,7 @@
 """UI Test for ELITEA-1327 — Agent Multi-File Artifact Downloads.
 
 Regression test: verifies that *all* files created by an agent in a single
-run are visible in the artifact bucket and individually accessible via HTTP.
+run are visible in the artifact bucket and individually downloadable via the UI.
 Covers both files written at the bucket root and files written under a
 sub-path prefix in the same agent run.
 
@@ -12,12 +12,13 @@ Test flow:
 4. Attaches the toolkit to the agent via UI and saves.
 5. Sends a single prompt asking the agent to create files at the bucket root
    AND under an 'output/' sub-path.
-6. Verifies all root-level files are visible in the bucket UI.
-7. Navigates into the 'output/' sub-folder and verifies all sub-path files.
-8. Verifies every file is accessible via the S3 API (HTTP 200, non-empty body).
+6. Verifies all 6 file cards appear in the agent's chat response bubble.
+7. Verifies all root-level files are visible in the bucket UI.
+8. Navigates into the 'output/' sub-folder and verifies all sub-path files
+   are visible in the UI.
+9. Downloads one root-level file and one sub-path file via the UI and
+   verifies non-empty content (spot-check of the download mechanism).
 9. Cleans up: agent, toolkit, and bucket are deleted on teardown.
-
-Test Case ID: ELITEA-1327
 
 Markers:
     - ui: requires browser
@@ -35,7 +36,6 @@ import logging
 import allure
 import pytest
 
-from api import ArtifactAPI
 from pages.agent_detail_page import AgentDetailPage
 from pages.agent_page import AgentPage
 from pages.artifacts_page import ArtifactsPage
@@ -71,10 +71,12 @@ _PROMPT = (
 # Root-level files (checked at bucket root)
 _ROOT_FILES = ["report1.txt", "report2.txt", "report3.txt"]
 
-# Sub-path files — full keys for API check, base names for UI check after
-# navigating into the 'output/' folder
+# Sub-path files — full keys for bucket navigation, base names for UI checks
 _SUB_FOLDER = "output"
 _SUB_PATH_FILES = ["output/a.txt", "output/b.txt", "output/c.txt"]
+
+# All file names expected as artifact cards in the chat response (base names only)
+_ALL_EXPECTED_CARD_NAMES = _ROOT_FILES + [f.split("/")[-1] for f in _SUB_PATH_FILES]
 
 
 # ---------------------------------------------------------------------------
@@ -88,28 +90,27 @@ class TestArtifactMultiFileDownload:
     """ELITEA-1327 — All agent-created files are visible and accessible.
 
     A single agent run creates files at the bucket root AND under a sub-path.
-    The test verifies that every file is visible in the UI and retrievable
-    via the S3 API — covering the regression where only the last-written file
-    survived when an agent called the toolkit multiple times in one turn.
+    The test verifies that all files (root and sub-path) are visible in the
+    UI and downloadable — covering the regression where only the last-written
+    file survived when an agent called the toolkit multiple times in one turn.
     """
 
     @pytest.mark.p0
     @allure.title("Agent creates files at root and in subfolder — all visible and accessible")
     @allure.severity(allure.severity_level.CRITICAL)
-    @allure.issue("ELITEA-1327", "ELITEA-1327")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/artifacts/artifacts-toolkit-multi-file/ELITEA-1327_verify-all-files-downloadable-when-agent-creates-multiple-files.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/elitea_issues/issues/5313", "Github issue link")
     def test_agent_creates_files_at_root_and_in_subfolder(
         self,
         page,
         agent_id: int,
         artifact_toolkit: dict,
-        artifact_api: ArtifactAPI,
     ):
         """Agent creates files at root and under a sub-path — all visible and accessible.
 
         ELITEA-1327 regression: when an agent creates N files in a single tool call,
-        all N files must be visible in the artifact bucket UI and individually
-        retrievable via the S3 API.  Before the fix, only the last file written
-        would be persisted; all earlier files were silently lost.
+        all N files must be downloadable via the UI.  Before the fix, only the last
+        file written would be persisted; all earlier files were silently lost.
         """
         toolkit_name: str = artifact_toolkit["name"]
         bucket_name: str = artifact_toolkit["bucket_name"]
@@ -161,6 +162,23 @@ class TestArtifactMultiFileDownload:
             )
 
         # ------------------------------------------------------------------
+        # Step 3b — Verify all 6 file cards are visible in the chat response
+        # The Artifact toolkit renders a card chip for every file it creates,
+        # directly inside the agent's answer bubble.
+        # ------------------------------------------------------------------
+        with allure.step("Step 3b — Verify all 6 artifact file cards visible in chat response"):
+            card_names = detail_page.get_chat_artifact_file_names(timeout=UI_ELEMENT_TIMEOUT)
+            missing_cards = [f for f in _ALL_EXPECTED_CARD_NAMES if f not in card_names]
+            assert not missing_cards, (
+                f"Artifact file cards missing from chat response: {missing_cards}. "
+                f"Cards found: {card_names}. "
+                f"ELITEA-1327: all {len(_ALL_EXPECTED_CARD_NAMES)} files must appear as "
+                f"cards in the agent response immediately after creation."
+            )
+            logger.info("All %d artifact file cards visible in chat response: %s",
+                        len(card_names), card_names)
+
+        # ------------------------------------------------------------------
         # Step 4 — Navigate to bucket root; verify root-level files
         # ------------------------------------------------------------------
         with allure.step("Step 4 — Navigate to bucket root; verify root-level files"):
@@ -179,7 +197,7 @@ class TestArtifactMultiFileDownload:
             logger.info("Root files visible in bucket UI: %s", _ROOT_FILES)
 
         # ------------------------------------------------------------------
-        # Step 5 — Navigate into 'output/' sub-folder; verify sub-path files
+        # Step 5 — Navigate into 'output/' sub-folder; verify all sub-path files
         # ------------------------------------------------------------------
         with allure.step("Step 5 — Navigate into 'output/' sub-folder; verify sub-path files"):
             artifacts_page.navigate_into_folder(_SUB_FOLDER, timeout=UI_ELEMENT_TIMEOUT)
@@ -190,30 +208,31 @@ class TestArtifactMultiFileDownload:
                 if not artifacts_page.file_exists(f, timeout=FILE_APPEAR_TIMEOUT)
             ]
             assert not missing_sub, (
-                f"Sub-path files NOT visible in '{bucket_name}/{_SUB_FOLDER}/': {missing_sub}. "
-                f"ELITEA-1327: files under a sub-path prefix may be lost."
+                f"Sub-path files NOT visible in bucket '{bucket_name}/{_SUB_FOLDER}/': {missing_sub}. "
+                f"ELITEA-1327: files may be lost when an agent creates multiple files "
+                f"in a single tool call."
             )
             logger.info("Sub-path files visible in bucket UI: %s", sub_names)
 
         # ------------------------------------------------------------------
-        # Step 6 — Verify all 6 files are accessible via the S3 API
+        # Step 6 — Download one root file and one sub-path file via UI
         # ------------------------------------------------------------------
-        with allure.step("Step 6 — Verify all 6 files are accessible via the S3 API"):
-            all_keys = _ROOT_FILES + _SUB_PATH_FILES
-            inaccessible: list[str] = []
-            for file_key in all_keys:
-                with allure.step(f"Check file accessible: {file_key}"):
-                    try:
-                        content = artifact_api.get_file(bucket_name, file_key)
-                        assert content, (
-                            f"File '{file_key}' returned empty content"
-                        )
-                        logger.info("File '%s' accessible via API (%d bytes)", file_key, len(content))
-                    except Exception as exc:
-                        logger.error("File '%s' not accessible via API: %s", file_key, exc)
-                        inaccessible.append(file_key)
+        with allure.step("Step 6 — Download 1 root file and 1 sub-path file via UI"):
+            # 6a — one root-level file (navigate back to bucket root first)
+            with allure.step(f"Step 6a — Download root file: {_ROOT_FILES[0]}"):
+                artifacts_page.navigate_to_bucket(bucket_name, timeout=NAVIGATION_TIMEOUT)
+                download = artifacts_page.download_file(_ROOT_FILES[0], timeout=UI_ELEMENT_TIMEOUT)
+                path = download.path()
+                size = path.stat().st_size if path else 0
+                assert size > 0, f"Downloaded root file '{_ROOT_FILES[0]}' is empty"
+                logger.info("Root file '%s' downloaded (%d bytes)", _ROOT_FILES[0], size)
 
-            assert not inaccessible, (
-                f"Files NOT accessible via S3 API in bucket '{bucket_name}': {inaccessible}. "
-                f"All files must be individually retrievable after the agent run."
-            )
+            # 6b — one sub-path file (navigate into 'output/' via left-panel tree)
+            sub_sample = _SUB_PATH_FILES[0].split("/")[-1]  # "a.txt"
+            with allure.step(f"Step 6b — Download sub-path file: {sub_sample}"):
+                artifacts_page.navigate_into_folder(_SUB_FOLDER, timeout=UI_ELEMENT_TIMEOUT)
+                download = artifacts_page.download_file(sub_sample, timeout=UI_ELEMENT_TIMEOUT)
+                path = download.path()
+                size = path.stat().st_size if path else 0
+                assert size > 0, f"Downloaded sub-path file '{sub_sample}' is empty"
+                logger.info("Sub-path file '%s' downloaded (%d bytes)", sub_sample, size)

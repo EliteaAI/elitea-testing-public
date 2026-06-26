@@ -145,7 +145,7 @@ class AgentFormPage(BasePage):
     save_button = LocatorDescriptor(
         testid="agent-save-button",
         fallback=lambda page: page.get_by_role("button", name="Save", exact=True),
-        description="Save button"
+        description="Save button — data-testid added to SaveApplicationButton.jsx"
     )
 
     cancel_button = LocatorDescriptor(

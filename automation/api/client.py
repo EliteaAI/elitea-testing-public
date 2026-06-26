@@ -172,6 +172,8 @@ class ConversationAPI:
         self._session = requests.Session()
         for c in browser_cookies:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
 
         logger.debug("ConversationAPI initialised — base_url=%s", self.base_url)
 
@@ -289,6 +291,8 @@ class AgentAPI:
         self._session = requests.Session()
         for c in browser_cookies:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
 
         logger.debug("AgentAPI initialised — base_url=%s", self.base_url)
 
@@ -486,6 +490,8 @@ class PipelineAPI:
         self._session = requests.Session()
         for c in browser_cookies:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
 
         logger.debug("PipelineAPI initialised — base_url=%s", self.base_url)
 
@@ -817,6 +823,8 @@ class CredentialAPI:
         self._session = requests.Session()
         for c in browser_cookies:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
 
         logger.debug("CredentialAPI initialised — base_url=%s", self.base_url)
 
@@ -974,6 +982,8 @@ class ArtifactAPI:
         self._session = requests.Session()
         for c in browser_cookies:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
 
         logger.debug("ArtifactAPI initialised — base_url=%s", self.base_url)
 
@@ -1116,6 +1126,8 @@ class ToolkitAPI:
         self._session = requests.Session()
         for c in browser_cookies:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
 
         logger.debug("ToolkitAPI initialised — base_url=%s", self.base_url)
 

@@ -79,7 +79,8 @@ class AgentDetailPage(AgentFormPage):
         first and populates fields after the API call returns.
         """
         # Wait for the INFORMATION section heading to be visible
-        self.page.get_by_role("heading", name="Information").wait_for(
+        # data-testid="agent-information-section" added to ApplicationInformation.jsx
+        self.page.get_by_test_id("agent-information-section").wait_for(
             state="visible", timeout=timeout,
         )
         self.wait_for_network(timeout=10000)
@@ -417,8 +418,8 @@ class AgentDetailPage(AgentFormPage):
         toolkits_header.scroll_into_view_if_needed()
         self.page.wait_for_timeout(500)
 
-        # Click the "+ Toolkit" button to open the popper dropdown
-        add_btn = self.page.get_by_role("button", name="Toolkit", exact=True)
+        # Click the "+ Toolkit" button — data-testid="agent-add-toolkit-button"
+        add_btn = self.page.get_by_test_id("agent-add-toolkit-button")
         add_btn.wait_for(state="visible", timeout=timeout)
         add_btn.click(force=True)
         self.page.wait_for_timeout(1000)
@@ -426,9 +427,9 @@ class AgentDetailPage(AgentFormPage):
         # Wait for the popper to appear and search for the toolkit
         popper = Popper.wait_for(self.page, timeout=timeout)
 
-        # Use the search input to filter toolkits
-        search_input = popper.locator('input[placeholder*="Search"]')
-        if search_input.count() > 0 and search_input.first.is_visible():
+        # Use the search input — data-testid="toolkit-search-input"
+        search_input = popper.get_by_test_id("toolkit-search-input")
+        if search_input.count() > 0 and search_input.is_visible():
             Popper.search(popper, toolkit_name[:20], self.page)
 
         # The dropdown strips spaces from names, so match against the
@@ -452,10 +453,10 @@ class AgentDetailPage(AgentFormPage):
         Returns:
             True if toolkit is attached, False otherwise.
         """
-        name_no_spaces = toolkit_name.replace(" ", "")
+        # data-testid="agent-toolkit-card" on each attached toolkit card
         try:
-            self.page.locator(
-                f':text("{toolkit_name}"), :text("{name_no_spaces}")'
+            self.page.get_by_test_id("agent-toolkit-card").filter(
+                has_text=toolkit_name
             ).first.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
@@ -514,12 +515,12 @@ class AgentDetailPage(AgentFormPage):
     # ------------------------------------------------------------------
 
     def _embedded_chat_messages(self):
-        """Return a locator for all message LI elements in the embedded chat.
+        """Return a locator for all message items in the embedded chat.
 
-        The embedded chat is in the right panel of the agent detail page.
-        Messages are li.MuiListItem-root inside ul.MuiList-root.
+        Uses data-testid="chat-message-item" (set on UserMessage and ApplicationAnswer roots).
+        Scoped inside the chat message list container.
         """
-        return self.page.locator('ul.MuiList-root li.MuiListItem-root')
+        return self.page.get_by_test_id('chat-message-list').get_by_test_id('chat-message-item')
 
     def get_chat_message_count(self) -> int:
         """Return the current number of messages visible in the embedded chat.
@@ -541,12 +542,12 @@ class AgentDetailPage(AgentFormPage):
             timeout: Maximum wait time for elements.
         """
         logger.info("Sending message in embedded chat: %s", message[:60])
-        chat_input = self.page.get_by_role("textbox", name="Type your message.")
+        chat_input = self.page.get_by_test_id("chat-input").locator("textarea").first
         chat_input.wait_for(state="visible", timeout=timeout)
         chat_input.fill(message)
         self.page.wait_for_timeout(300)
 
-        send_btn = self.page.get_by_role("button", name="send your question")
+        send_btn = self.page.get_by_test_id("chat-send-button")
         send_btn.wait_for(state="visible", timeout=timeout)
         send_btn.click()
         logger.info("Message sent in embedded chat")
@@ -613,6 +614,49 @@ class AgentDetailPage(AgentFormPage):
 
         logger.warning("Embedded chat response did not stabilize within timeout")
 
+    def get_chat_artifact_file_names(self, timeout: int = 10000) -> list[str]:
+        """Return the names of all artifact file cards shown in the last chat message.
+
+        After an agent creates files via the Artifact toolkit, the chat
+        response renders a ``data-testid="chat-artifact-file-list"`` container
+        holding individual ``data-testid="chat-artifact-file-card"`` cards,
+        each carrying a ``data-name`` attribute with the file name.
+
+        LOCATOR: Scoped to the last ``chat-message-item`` to avoid picking up
+        cards from previous turns.
+
+        Args:
+            timeout: Maximum wait time for the file-list container to appear.
+
+        Returns:
+            List of file name strings (e.g. ["report1.txt", "a.txt", ...]).
+            Returns an empty list if no artifact cards are present.
+        """
+        last_msg = self._embedded_chat_messages().last
+        try:
+            file_list = last_msg.get_by_test_id("chat-artifact-file-list")
+            file_list.wait_for(state="visible", timeout=timeout)
+        except TimeoutError:
+            logger.warning(
+                "Timed out waiting for chat-artifact-file-list after %dms — "
+                "artifact cards may not have rendered",
+                timeout,
+            )
+            raise
+        except Exception:
+            logger.info("No chat-artifact-file-list found in last message")
+            return []
+
+        cards = file_list.get_by_test_id("chat-artifact-file-card")
+        count = cards.count()
+        names: list[str] = []
+        for i in range(count):
+            name = cards.nth(i).get_attribute("data-name") or ""
+            if name:
+                names.append(name)
+        logger.info("Artifact file cards in last message (%d): %s", len(names), names)
+        return names
+
     def get_last_chat_message(self) -> str:
         """Return the text content of the last AI message in embedded chat.
 
@@ -627,8 +671,8 @@ class AgentDetailPage(AgentFormPage):
             return ""
 
         ai_msg = messages.last
-        # Try to get text from the response content div
-        response_div = ai_msg.locator('div.css-xn5i2e')
+        # Extract text from the answer content div (data-testid="chat-answer-content")
+        response_div = ai_msg.get_by_test_id('chat-answer-content')
         if response_div.count() > 0:
             text = response_div.text_content() or ""
             return text.strip()

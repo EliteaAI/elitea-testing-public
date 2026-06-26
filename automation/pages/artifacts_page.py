@@ -135,7 +135,7 @@ class ArtifactsPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         self.wait_for_network(timeout=timeout)
-        self.page.get_by_text("Buckets").first.wait_for(
+        self.page.get_by_test_id("artifacts-buckets-heading").wait_for(
             state="visible", timeout=timeout
         )
         logger.info("Artifacts page loaded")
@@ -211,27 +211,14 @@ class ArtifactsPage(BasePage):
     def _file_rows(self):
         """Return a locator for all file rows in the right-panel table.
 
-        LOCATOR: Each file row is a ``generic`` child of the file list
-        container inside the right panel.  Rows contain a checkbox cell,
-        a name cell (with icon + filename text), a type cell, a size cell,
-        and an (initially empty) actions cell.
-
-        The selector targets the scrollable list container's direct children,
-        excluding the header row and pagination footer.
+        Uses data-testid="artifacts-file-row" and data-testid="artifacts-folder-row"
+        inside the data-testid="artifacts-file-list" container.
 
         Returns:
-            Playwright Locator for the collection of file row elements.
+            Playwright Locator for the collection of file and folder row elements.
         """
-        # The right-panel file list has a header row and then data rows.
-        # Both are rendered as ``generic`` divs.  We scope to the data
-        # container which sits below the column-header row.
-        # Strategy: find the container that holds "Name", "Type", "Size", "Actions"
-        # headers, then grab its next sibling which is the data rows container.
-        right_panel = self.page.locator("main").last
-        # The file rows container is the second generic inside the file table
-        # (first generic = header row, second = data rows wrapper)
-        return right_panel.locator(
-            'div:has(> div:has(input[type="checkbox"])) > div'
+        return self.page.get_by_test_id("artifacts-file-list").locator(
+            '[data-testid="artifacts-file-row"], [data-testid="artifacts-folder-row"]'
         )
 
     def get_file_names(self, timeout: int = 10000) -> list[str]:
@@ -312,8 +299,7 @@ class ArtifactsPage(BasePage):
     def file_exists(self, filename: str, timeout: int = 5000) -> bool:
         """Check whether a file with *filename* is visible in the current file list.
 
-        Uses partial text matching so ``"file1.txt"`` matches a cell showing
-        ``"file1.txt"`` exactly or as part of a path like ``"output/file1.txt"``.
+        Scoped to the artifacts-file-list container via data-testid for stability.
 
         Args:
             filename: File name (or path suffix) to look for.
@@ -323,7 +309,7 @@ class ArtifactsPage(BasePage):
             True if the file appears in the visible list, False otherwise.
         """
         try:
-            self.page.locator("main").get_by_text(filename).first.wait_for(
+            self.page.get_by_test_id("artifacts-file-list").get_by_text(filename).first.wait_for(
                 state="visible", timeout=timeout
             )
             logger.info("File '%s' found in bucket", filename)
@@ -338,15 +324,17 @@ class ArtifactsPage(BasePage):
 
     @action("Download file")
     def download_file(self, filename: str, timeout: int = 10000) -> Download:
-        """Click the download action for a named file and return the Download object.
+        """Click the Download menu item for a named file and return the Download object.
 
-        Locates the file row by *filename* text, hovers to reveal the action
-        buttons, then clicks the download icon.  Uses ``page.expect_download``
-        to capture the browser download event.
+        Locates the file row by *filename* text, hovers to reveal the three-dot
+        DotMenu trigger, opens the menu, then clicks the 'Download' menu item.
+        Uses ``page.expect_download`` to capture the browser download event.
 
-        LOCATOR: The download button in each row has ``aria-label="download"``
-        or is the first icon-button in the row's Actions cell (last cell).
-        It is hidden by default and only visible on row hover.
+        LOCATOR: There is no standalone download button per row. Download lives
+        inside a DotMenu (three-dot menu). The trigger button has
+        ``aria-haspopup="true"`` and is hidden until the row is hovered. The
+        'Download' menu item is identified by its visible text once the menu
+        is open.
 
         Args:
             filename: Exact file name to download.
@@ -357,33 +345,33 @@ class ArtifactsPage(BasePage):
             or ``download.save_as()`` to access the downloaded file).
 
         Raises:
-            TimeoutError: If the file row or download button is not found.
+            TimeoutError: If the file row, dot-menu trigger, or Download item
+            is not found within *timeout*.
         """
         logger.info("Downloading file '%s'", filename)
 
-        # Find the file row containing this filename
-        file_row = self.page.locator("main").locator(
-            f'div:has(> *:has-text("{filename}"))'
+        # Find the file row by data-testid, filtered by filename text
+        file_row = self.page.get_by_test_id("artifacts-file-row").filter(
+            has_text=filename
         ).first
         file_row.wait_for(state="visible", timeout=timeout)
 
-        # Scroll into view and hover to reveal the action buttons
+        # Hover to reveal the DotMenu trigger button
         file_row.scroll_into_view_if_needed()
         file_row.hover()
-        self.page.wait_for_timeout(500)  # Wait for CSS transition
+        self.page.wait_for_timeout(500)  # Wait for CSS hover transition
 
-        # The download button is in the Actions cell of the row.
-        # Try aria-label first, then fall back to the first button in the row
-        # that appears after hover (the action buttons are hidden by default).
-        download_btn = file_row.locator('button[aria-label="download"], button[aria-label="Download"]')
-        if download_btn.count() == 0:
-            # Fallback: any button that became visible in this row after hover
-            download_btn = file_row.locator("button").last
+        # Open the three-dot DotMenu
+        dot_menu_btn = file_row.locator('button[aria-haspopup="true"]').first
+        dot_menu_btn.wait_for(state="visible", timeout=timeout)
+        dot_menu_btn.click(force=True)
 
-        download_btn.wait_for(state="visible", timeout=timeout)
+        # Click the 'Download' menu item and capture the download event
+        download_item = self.page.get_by_role("menuitem", name="Download")
+        download_item.wait_for(state="visible", timeout=timeout)
 
         with self.page.expect_download(timeout=timeout) as download_info:
-            download_btn.click(force=True)
+            download_item.click()
 
         download = download_info.value
         logger.info(
@@ -394,24 +382,28 @@ class ArtifactsPage(BasePage):
 
     @action("Navigate into folder")
     def navigate_into_folder(self, folder_name: str, timeout: int = 10000) -> None:
-        """Click a folder row in the file list to navigate into it.
+        """Click a folder item in the left-panel bucket tree to navigate into it.
 
-        When an agent creates files under a sub-path (e.g. ``output/``), the
-        bucket file list shows the prefix as a folder row.  Clicking it updates
-        the right panel to show the files inside that folder.
+        The left panel renders the bucket hierarchy as an expandable tree.
+        Clicking a folder node there updates the URL prefix and re-renders
+        the right-panel file list with the folder's contents.
 
-        LOCATOR: Folder rows look like file rows but their Name cell ends with
-        a ``/`` character or the row has a folder icon.  We match by the exact
-        folder name text in the right panel and click it.
+        LOCATOR: Left-panel tree items have no ``data-testid``.  The panel
+        container carries ``data-tour="artifacts-buckets-panel"`` and each
+        folder node is a plain ``Box`` (div) with the folder name as text.
+        We scope the search to that container to avoid hitting the right-panel
+        folder row (``data-testid="artifacts-folder-row"``), which does NOT
+        trigger proper navigation.
 
         Args:
             folder_name: Name of the folder (without trailing slash).
             timeout: Maximum wait time in milliseconds.
         """
-        logger.info("Navigating into folder '%s'", folder_name)
-        folder_row = self.page.locator("main").get_by_text(folder_name, exact=False).first
-        folder_row.wait_for(state="visible", timeout=timeout)
-        folder_row.click()
+        logger.info("Navigating into folder '%s' via left-panel tree", folder_name)
+        left_panel = self.page.locator('[data-tour="artifacts-buckets-panel"]')
+        folder_item = left_panel.get_by_text(folder_name, exact=True).first
+        folder_item.wait_for(state="visible", timeout=timeout)
+        folder_item.click()
         self.wait_for_network(timeout=timeout)
         logger.info("Navigated into folder '%s'", folder_name)
 
