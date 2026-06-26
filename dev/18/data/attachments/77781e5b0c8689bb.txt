@@ -1,0 +1,3 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Close conversation starter fullscreen — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".MuiDialogTitle-root .MuiBox-root div button").nth(1)

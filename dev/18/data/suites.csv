@@ -1,0 +1,169 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Fri Jun 26 12:44:05 UTC 2026","Fri Jun 26 12:44:10 UTC 2026","5670","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2.
+        Expected at limit:
+        - ""0 characters left. You have reached the MAXIMUM character limit""
+        - Counter text turns red
+        "
+"passed","Fri Jun 26 12:43:10 UTC 2026","Fri Jun 26 12:43:18 UTC 2026","7906","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_visible_and_updates_realtime","Character counter appears when typing and updates in real-time.
+        TC-1688, TC-1685
+        Acceptance Criteria #1: Real-time character counter visible.
+
+        Steps:
+        1. Type initial text - counter appears
+        2. Add more text - counter updates (remaining chars decreases)
+        "
+"passed","Fri Jun 26 12:46:52 UTC 2026","Fri Jun 26 12:47:21 UTC 2026","29058","tests.ui.agents","test_agent_with_github_toolkit","TestAddToolkitToAgent","","","test_add_toolkit_to_agent","Add a GitHub toolkit to an existing agent via the UI, then chat.
+
+        Steps:
+        1. Navigate to agent detail page
+        2. Click ""Toolkit"" button in the Toolkits section
+        3. Search for and select the toolkit
+        4. Verify toolkit card appears in the agent config
+        5. Save the agent
+        6. Find chat input in the embedded chat (right side of agent detail page)
+        7. Type message: 'List all branches in the repository'
+        8. Click Send button
+        9. Wait for AI response to stabilise (3000ms stable duration)
+        10. Verify response contains 'branch' keyword (toolkit executed)
+        "
+"passed","Fri Jun 26 12:45:14 UTC 2026","Fri Jun 26 12:45:17 UTC 2026","2749","tests.ui.agents","test_agent_management","TestCreateAgent","","","test_create_agent_via_api_visible_in_ui","Create an agent via API fixture and verify it shows in the UI list.
+
+        The ``agent_id`` fixture creates the agent; this test navigates to
+        the agents dashboard and checks for its presence.
+        "
+"passed","Fri Jun 26 12:46:23 UTC 2026","Fri Jun 26 12:46:32 UTC 2026","8605","tests.ui.agents","test_agent_management","TestAgentActions","","","test_edit_agent_description","Edit an agent's description and verify the change persists."
+"passed","Fri Jun 26 12:46:41 UTC 2026","Fri Jun 26 12:46:50 UTC 2026","9655","tests.ui.agents","test_agent_management","TestAgentActions","","","test_delete_agent_via_ui_menu","Create an agent, delete via the UI three-dot menu, and verify removal."
+"passed","Fri Jun 26 12:44:56 UTC 2026","Fri Jun 26 12:45:14 UTC 2026","18148","tests.ui.agents","test_agent_management","TestCreateAgent","","","test_create_agent_via_ui","Create an agent through the UI form and verify it appears in the list.
+
+        Steps:
+        1. Navigate to create agent page
+        2. Fill in name + description + instructions
+        3. Click Save
+        4. Verify user lands on the agent detail page
+        5. Navigate back to agents list
+        6. Verify agent appears in the list
+        "
+"passed","Fri Jun 26 12:46:10 UTC 2026","Fri Jun 26 12:46:14 UTC 2026","3770","tests.ui.agents","test_agent_management","TestAgentList","","","test_view_toggle_table_and_card","Dashboard should support switching between table and card views.
+
+        Verifies:
+        - View toggle buttons are visible
+        - Clicking table view activates table view
+        - Clicking card view activates card view
+        - Dashboard header remains visible after view changes
+        "
+"passed","Fri Jun 26 12:44:50 UTC 2026","Fri Jun 26 12:44:56 UTC 2026","5990","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_multiple_conversation_starters_have_counters","Each conversation starter field has its own counter.
+        TC-1684
+
+        Verifies counters work independently when multiple starters exist.
+        "
+"broken","Fri Jun 26 12:44:11 UTC 2026","Fri Jun 26 12:44:29 UTC 2026","18450","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+
+        Steps:
+        1. Add starter, open fullscreen - counter shows ""768 characters left""
+        2. Type text - counter decreases
+        3. Fill to limit - red warning message
+        "
+"passed","Fri Jun 26 12:47:37 UTC 2026","Fri Jun 26 12:48:02 UTC 2026","24522","tests.ui.agents","test_agent_with_github_toolkit","TestChatWithAgentToolkit","","","test_agent_chat_with_github_toolkit","Add toolkit to agent, chat via /app/chat, verify toolkit execution.
+
+        Steps:
+        1. Navigate to agent detail page
+        2. Add the GitHub toolkit
+        3. Save the agent
+        4. Navigate to conversation in /app/chat
+        5. Add agent as participant
+        6. Send a message asking to list branches
+        7. Wait for AI + toolkit response (stable content)
+        8. Verify the response mentions branches
+        "
+"passed","Fri Jun 26 12:45:56 UTC 2026","Fri Jun 26 12:45:59 UTC 2026","2808","tests.ui.agents","test_agent_management","TestAgentList","","","test_agents_dashboard_loads","Agents dashboard loads with functional header and search.
+
+        Verifies:
+        - Dashboard navigates successfully
+        - Header is visible
+        - Search input is visible and editable (not just rendered)
+        - Search input accepts text input (functional check)
+        "
+"passed","Fri Jun 26 12:46:03 UTC 2026","Fri Jun 26 12:46:10 UTC 2026","6606","tests.ui.agents","test_agent_management","TestAgentList","","","test_agent_search_no_results","Searching for a non-existent agent should show no results."
+"passed","Fri Jun 26 12:45:18 UTC 2026","Fri Jun 26 12:45:29 UTC 2026","11558","tests.ui.agents","test_agent_management","TestCreateAgent","","","test_create_agent_required_fields_validation","Save button should be disabled when required fields are empty."
+"passed","Fri Jun 26 12:43:19 UTC 2026","Fri Jun 26 12:43:23 UTC 2026","4245","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2: Counter turns red when 0 characters remain.
+
+        Expected behavior at limit:
+        - Counter shows: ""0 characters left. You have reached the MAXIMUM character limit""
+        - Counter text turns red (error state)
+        "
+"broken","Fri Jun 26 12:43:41 UTC 2026","Fri Jun 26 12:43:58 UTC 2026","16617","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning message.
+        TC-1686
+
+        Tests both collapsed mode and fullscreen mode.
+
+        Steps:
+        1. Collapsed mode: paste 818 chars (768 + 50) - verify truncated to 768
+        2. Collapsed mode: verify warning ""0 characters left. You have reached the MAXIMUM character limit""
+        3. Fullscreen mode: paste 818 chars - verify same truncation and warning
+        "
+"broken","Fri Jun 26 12:44:30 UTC 2026","Fri Jun 26 12:44:49 UTC 2026","18895","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning.
+        TC-1686
+        
+        Tests both collapsed mode and fullscreen mode.
+        "
+"passed","Fri Jun 26 12:45:38 UTC 2026","Fri Jun 26 12:45:42 UTC 2026","3740","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_agent_information_section","Information section should display Agent ID and Version ID."
+"passed","Fri Jun 26 12:45:59 UTC 2026","Fri Jun 26 12:46:03 UTC 2026","3629","tests.ui.agents","test_agent_management","TestAgentList","","","test_agent_search","Search for an agent by name on the dashboard."
+"passed","Fri Jun 26 12:45:47 UTC 2026","Fri Jun 26 12:45:55 UTC 2026","8689","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_internal_tools_enum_usage","Verify internal tools can be toggled using the enum-based API.
+
+        Note: This is a smoke test for the toggle_tool() API accepting enum values.
+        Full state verification (checking if checkbox actually changed) is not
+        performed due to MUI DOM complexity making is_tool_enabled() unreliable.
+        See test_internal_tools_enable_disable (skipped) for details.
+
+        This test verifies:
+        - toggle_tool() accepts InternalTool enum values
+        - Method completes without errors
+        - Can be called multiple times without breaking
+        "
+"passed","Fri Jun 26 12:46:15 UTC 2026","Fri Jun 26 12:46:23 UTC 2026","8373","tests.ui.agents","test_agent_management","TestAgentActions","","","test_edit_agent_name","Edit an agent's name and verify the change persists."
+"passed","Fri Jun 26 12:47:22 UTC 2026","Fri Jun 26 12:47:35 UTC 2026","13359","tests.ui.agents","test_agent_with_github_toolkit","TestRemoveToolkitFromAgent","","","test_remove_toolkit_from_agent","Add a toolkit, then remove it, and verify it's gone.
+
+        Steps:
+        1. Navigate to agent detail page
+        2. Add the toolkit
+        3. Verify it's attached
+        4. Remove the toolkit via delete button + confirmation
+        5. Verify toolkit is no longer attached
+        "
+"passed","Fri Jun 26 12:45:34 UTC 2026","Fri Jun 26 12:45:37 UTC 2026","3792","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_agent_instructions_field","Instructions field should be visible and editable."
+"passed","Fri Jun 26 12:43:58 UTC 2026","Fri Jun 26 12:44:04 UTC 2026","6107","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_visible_and_updates","Character counter appears when typing and updates in real-time.
+        TC-1685
+        Acceptance Criteria #1 (extended to Conversation Starters).
+
+        Note: Counter only appears after typing, not initially.
+
+        Steps:
+        1. Add conversation starter - type initial text - counter appears
+        2. Add more text - counter updates (remaining chars decreases)
+        "
+"passed","Fri Jun 26 12:45:42 UTC 2026","Fri Jun 26 12:45:46 UTC 2026","4129","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_agent_toolkits_section_visible","Toolkits section should be visible with tool switches.
+
+        Note: get_available_tools() already verifies visibility internally by
+        checking each tool switch is visible before adding to the list. This test
+        verifies the toolkits section loaded with at least one tool available.
+        "
+"passed","Fri Jun 26 12:45:29 UTC 2026","Fri Jun 26 12:45:33 UTC 2026","3817","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_agent_detail_page_loads","Navigate to an agent's detail page and verify form fields are populated."
+"broken","Fri Jun 26 12:43:23 UTC 2026","Fri Jun 26 12:43:40 UTC 2026","16874","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+
+        Acceptance Criteria #1 & #3: Counter visible in Full Screen mode,
+        warning displays at limit.
+
+        Steps:
+        1. Open fullscreen - counter shows ""768 characters left"" immediately
+        2. Type text - counter decreases
+        3. Fill to limit - red warning ""0 characters left. You have reached the MAXIMUM character limit""
+        "
+"passed","Fri Jun 26 12:46:32 UTC 2026","Fri Jun 26 12:46:40 UTC 2026","7599","tests.ui.agents","test_agent_management","TestAgentActions","","","test_delete_agent_via_api","Create an agent, delete via API, and verify it's gone from the UI."
