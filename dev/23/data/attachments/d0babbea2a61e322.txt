@@ -1,0 +1,1 @@
+WARNING  elitea.automation.fixtures.data:data_fixtures.py:73 Failed to delete conversation 2541: 404 Client Error: Not Found for url: https://dev.elitea.ai/api/v2/elitea_core/conversation/prompt_lib/399/2541 — body: {'error': 'Conversation not found'}
