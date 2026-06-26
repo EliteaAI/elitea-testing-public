@@ -1,6 +1,0 @@
-📸 After save: URL=https://dev.elitea.ai/app/credentials/all
-
-🍪 Using fresh cookies from browser context: 6 cookies
-🔗 CredentialAPI: base_url=https://dev.elitea.ai/api/v2 project_id=399
-📊 Raw API response: {'total': 1, 'items': [{'id': 503, 'uuid': '5b6609eb-8041-47d6-a685-ec49f102c8ec', 'project_id': 399, 'elitea_title': 'autotest_github_1782482168', 'label': 'AutoTest GitHub 1782482168', 'type': 'github', 'section': 'credentials', 'data': {'app_id': None, 'base_url': 'https://api.github.com', 'password': None, 'username': None, 'access_token': '{{secret.48c21421350745eaa01648c9ba444ed6}}', 'app_private_key': None}, 'meta': {}, 'shared': False, 'status_ok': False, 'status_logs': None, 'source': 'user', 'author_id': 659, 'created_at': '2026-06-26T13:56:17.274810', 'updated_at': None, 'is_pinned': False, 'options': {}}], 'offset': 0, 'limit': 20}
-✅ API returned 1 credentials total

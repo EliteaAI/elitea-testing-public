@@ -1,1 +1,0 @@
-WARNING  elitea.pages.chat:chat_page.py:253 SPA redirected to https://dev.elitea.ai/app/chat/2537?name=autotest_test_attach_files_butto instead of /app/chat/2538 — retrying
