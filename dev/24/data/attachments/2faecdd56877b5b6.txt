@@ -1,0 +1,1 @@
+WARNING  elitea.pages.chat:chat_page.py:253 SPA redirected to https://dev.elitea.ai/app/chat/2522?name=autotest_test_send_message_persi instead of /app/chat/2523 — retrying
