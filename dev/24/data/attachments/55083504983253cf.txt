@@ -1,2 +1,0 @@
-WARNING  elitea.pages.chat:chat_page.py:253 SPA redirected to https://dev.elitea.ai/app/chat/2544?name=autotest_test_agent_chat_with_gi instead of /app/chat/2546 — retrying
-WARNING  elitea.automation.fixtures.data:data_fixtures.py:73 Failed to delete conversation 2546: 404 Client Error: Not Found for url: https://dev.elitea.ai/api/v2/elitea_core/conversation/prompt_lib/399/2546 — body: {'error': 'Conversation not found'}
