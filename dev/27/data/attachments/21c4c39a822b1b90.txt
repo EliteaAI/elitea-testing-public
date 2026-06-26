@@ -1,1 +1,0 @@
-WARNING  elitea.automation.fixtures.data:data_fixtures.py:114 Failed to delete agent 1442: 400 Client Error: Bad Request for url: https://dev.elitea.ai/api/v2/elitea_core/application/prompt_lib/399/1442 — body: {'ok': False, 'error': 'Application is not found'}
