@@ -1,0 +1,5 @@
+WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
+WARNING  elitea.automation.fixtures.data:data_fixtures.py:73 Failed to delete conversation 2455: 404 Client Error: Not Found for url: https://dev.elitea.ai/api/v2/elitea_core/conversation/prompt_lib/399/2455 — body: {'error': 'Conversation not found'}
+WARNING  elitea.automation.fixtures.data:data_fixtures.py:276 Failed to delete toolkit 370 during teardown: 400 Client Error: Bad Request for url: https://dev.elitea.ai/api/v2/elitea_core/tool/prompt_lib/399/370 — body: {'ok': False, 'error': 'Tool is not found'}
+WARNING  elitea.automation.fixtures.data:data_fixtures.py:237 Failed to delete credential 480 during teardown: 404 Client Error: Not Found for url: https://dev.elitea.ai/api/v2/configurations/configuration/399/480 — body: {'error': 'Configuration not found'}
+WARNING  tests.ui.chat.test_agent_with_toolkit_chat:test_agent_with_toolkit_chat.py:84 Failed to delete agent 1346: 400 Client Error: Bad Request for url: https://dev.elitea.ai/api/v2/elitea_core/application/prompt_lib/399/1346 — body: {'ok': False, 'error': 'Application is not found'}
