@@ -1,0 +1,27 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Select voice in Personalization — Locator.click: Error: strict mode violation: locator("[role=\"option\"]:has-text(\"​\")") resolved to 9 elements:
+    1) <li tabindex="0" role="option" data-value="alloy" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Alloy")
+    2) <li tabindex="-1" role="option" data-value="ash" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Ash")
+    3) <li tabindex="-1" role="option" data-value="coral" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Coral")
+    4) <li tabindex="-1" role="option" data-value="echo" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Echo")
+    5) <li tabindex="-1" role="option" data-value="fable" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Fable")
+    6) <li tabindex="-1" role="option" data-value="nova" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Nova")
+    7) <li tabindex="-1" role="option" data-value="onyx" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Onyx")
+    8) <li tabindex="-1" role="option" data-value="sage" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Sage")
+    9) <li tabindex="-1" role="option" data-value="shimmer" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Shimmer")
+
+Call log:
+  - waiting for locator("[role=\"option\"]:has-text(\"​\")")
+
+WARNING  tests.ui.voice.test_voice_configuration:test_voice_configuration.py:437 Failed to restore settings: Locator.click: Error: strict mode violation: locator("[role=\"option\"]:has-text(\"​\")") resolved to 9 elements:
+    1) <li tabindex="0" role="option" data-value="alloy" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Alloy")
+    2) <li tabindex="-1" role="option" data-value="ash" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Ash")
+    3) <li tabindex="-1" role="option" data-value="coral" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Coral")
+    4) <li tabindex="-1" role="option" data-value="echo" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Echo")
+    5) <li tabindex="-1" role="option" data-value="fable" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Fable")
+    6) <li tabindex="-1" role="option" data-value="nova" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Nova")
+    7) <li tabindex="-1" role="option" data-value="onyx" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Onyx")
+    8) <li tabindex="-1" role="option" data-value="sage" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Sage")
+    9) <li tabindex="-1" role="option" data-value="shimmer" aria-selected="false" class="MuiButtonBase-root MuiMenuItem-root MuiMenuItem-gutters css-1biv5zn">…</li> aka get_by_role("option", name="Shimmer")
+
+Call log:
+  - waiting for locator("[role=\"option\"]:has-text(\"​\")")
