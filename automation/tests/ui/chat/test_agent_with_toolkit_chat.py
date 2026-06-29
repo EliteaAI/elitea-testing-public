@@ -29,6 +29,7 @@ import pytest
 from api import AgentAPI
 from pages.agent_page import AgentPage
 from pages.chat_page import ChatPage
+import allure
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,7 @@ For example:
 class TestAgentWithToolkitInChat:
     """Test agent + toolkit execution in real chat (not agent detail preview)."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0143_agent-with-toolkits.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     def test_agent_with_toolkit_executes_in_chat(
         self,

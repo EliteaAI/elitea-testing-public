@@ -19,6 +19,7 @@ Usage:
 
 import pytest
 from tests.ui.pipelines.helpers import _navigate_to_canvas
+import allure
 
 pytestmark = [pytest.mark.ui, pytest.mark.pipelines]
 
@@ -38,6 +39,7 @@ FORM_SAVE_TIMEOUT = 15_000
 class TestAddNode:
     """PIPE-031: Human-in-the-loop node addition and connection test."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0853_pipeline-node-operations-add-edit-delete-connect.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_add_human_in_the_loop_node_and_connect_to_end(self, page, pipeline_id):
         """PIPE-031: Add a HITL node and connect it to END.

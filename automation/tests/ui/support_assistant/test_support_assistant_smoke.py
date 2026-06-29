@@ -25,6 +25,7 @@ Usage::
 import pytest
 from pages.support_assistant_page import SupportAssistantPage
 from pages.chat_page import ChatPage
+import allure
 
 pytestmark = [pytest.mark.smoke, pytest.mark.ui, pytest.mark.support_assistant]
 
@@ -44,6 +45,8 @@ class TestSupportAssistantLauncher:
     - 2.2.3: Opening/closing does not lose conversation state
     """
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0626_support-assistant-floating-launcher-is-visible-on-every-main-applicati.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0625_support-assistant-panel-opens-on-launcher-click-and-closes-on-x-button.md", "onetest-ai Test Case link")
     def test_launcher_visible_and_opens_widget(self, page):
         """Launcher is visible and opens Support Assistant widget.
 
@@ -84,6 +87,7 @@ class TestSupportAssistantLauncher:
             "Launcher should remain visible after closing widget"
         )
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0643_conversation-is-retained-when-the-support-assistant-panel-is-closed-an.md", "onetest-ai Test Case link")
     def test_widget_state_persists_after_close_reopen(self, page):
         """Conversation state persists when closing and reopening widget.
 
@@ -144,6 +148,7 @@ class TestSupportAssistantMessaging:
     - 3.2.9: Input re-enabled after response
     """
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0647_user-sends-a-message-via-the-send-button-and-receives-a-complete-assis.md", "onetest-ai Test Case link")
     def test_send_message_and_receive_response(self, page):
         """User can send a message and receive AI response.
 
@@ -193,6 +198,7 @@ class TestSupportAssistantNewSession:
     - 3.5.2: Starting new session creates fresh conversation
     """
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0641_clicking-new-chat-opens-a-clean-session-without-affecting-the-previous.md", "onetest-ai Test Case link")
     def test_new_chat_creates_fresh_session(self, page):
         """New Chat button starts a fresh support session.
 
@@ -244,6 +250,8 @@ class TestSupportAssistantHistory:
     - 6.2.3: Can continue messaging in restored session
     """
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0641_clicking-new-chat-opens-a-clean-session-without-affecting-the-previous.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0643_conversation-is-retained-when-the-support-assistant-panel-is-closed-an.md", "onetest-ai Test Case link")
     def test_history_restore_and_continue(self, page):
         """User can restore a previous session and continue messaging.
 
@@ -315,6 +323,7 @@ class TestSupportAssistantViewModes:
     - 2.3.3: Collapse back to widget mode
     """
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0624_support-assistant-expands-to-full-view-mode-and-collapses-back-to-widg.md", "onetest-ai Test Case link")
     def test_expand_collapse_fullview(self, page):
         """Widget can expand to full view and collapse back.
 
@@ -358,6 +367,7 @@ class TestSupportAssistantAttachments:
     - 7.1.3: Selected file appears as preview
     """
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0577_support-assistant-files-can-be-attached-via-click-to-browse-drag-and-d.md", "onetest-ai Test Case link")
     def test_attach_button_present_and_opens_picker(self, page, tmp_path):
         """Attach button opens file picker dialog.
 

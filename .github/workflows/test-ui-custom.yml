@@ -52,6 +52,16 @@ on:
         required: false
         type: string
         default: ''
+      publish_to_tms:
+        description: 'Publish results to OneTest TMS'
+        required: false
+        type: boolean
+        default: false
+      tms_report_postfix:
+        description: 'Postfix for TMS report name (e.g., "scheduled", "nightly")'
+        required: false
+        type: string
+        default: ''
 
   workflow_call:
     inputs:
@@ -76,6 +86,16 @@ on:
         default: ''
       ref:
         description: 'Git ref (branch, tag, SHA)'
+        required: false
+        type: string
+        default: ''
+      publish_to_tms:
+        description: 'Publish results to OneTest TMS'
+        required: false
+        type: boolean
+        default: false
+      tms_report_postfix:
+        description: 'Postfix for TMS report name'
         required: false
         type: string
         default: ''
@@ -124,6 +144,9 @@ jobs:
     name: ${{ inputs.environment }} - ${{ inputs.custom_suites != '' && inputs.custom_suites || inputs.suite }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      pages-url: ${{ steps.pages.outputs.url }}
+      env-name:  ${{ steps.env.outputs.name }}
     steps:
       - name: Resolve environment (dispatch only)
         id: env
@@ -180,6 +203,7 @@ jobs:
         working-directory: automation
         env:
           HEADLESS: 'true'
+          PLAYWRIGHT_TRACES: 'false'
           # Use secrets from workflow_call if available, otherwise resolve by env name
           ELITEA_URL: ${{ secrets.ELITEA_URL || secrets[format('ELITEA_URL_{0}', steps.env.outputs.upper)] }}
           ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE || secrets[format('ELITEA_API_BASE_{0}', steps.env.outputs.upper)] }}
@@ -269,34 +293,45 @@ jobs:
         run: |
           allure generate reports/allure-results -o reports/allure-report --clean || true
 
-      - name: Upload reports
+      - name: Set pages URL
+        id: pages
         if: always()
+        run: |
+          URL="https://eliteaai.github.io/elitea-testing-public/${{ steps.env.outputs.name }}/${{ github.run_number }}/"
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Allure Report" >> $GITHUB_STEP_SUMMARY
+          echo "[Open Allure Report]($URL)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload test results
+        if: always()
+        id: upload-results
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports-${{ steps.env.outputs.name }}-${{ github.run_number }}
+          name: test-results-${{ steps.env.outputs.name }}-${{ github.run_number }}
           path: |
             automation/reports/report.html
             automation/reports/junit.xml
-            automation/reports/allure-report/
           retention-days: 14
+          if-no-files-found: ignore
 
-      - name: Upload Allure results
+      - name: Upload Allure report
         if: always()
+        id: upload-allure-report
         uses: actions/upload-artifact@v4
         with:
-          name: allure-results-${{ steps.env.outputs.name }}-${{ github.run_number }}
-          path: automation/reports/allure-results/
+          name: allure-report-${{ steps.env.outputs.name }}-${{ github.run_number }}
+          path: automation/reports/allure-report/
           retention-days: 14
           if-no-files-found: ignore
 
-      - name: Upload screenshots
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots-${{ steps.env.outputs.name }}-${{ github.run_number }}
-          path: automation/screenshots/*.png
-          retention-days: 7
-          if-no-files-found: ignore
+      - name: Add artifact links to summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📎 Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- [Test Results (JUnit XML + HTML Report)](${{ steps.upload-results.outputs.artifact-url }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Allure Report (download)](${{ steps.upload-allure-report.outputs.artifact-url }})" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload traces
         if: failure()
@@ -307,11 +342,134 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-      - name: Upload videos
-        if: failure()
-        uses: actions/upload-artifact@v4
+  publish:
+    name: Publish Allure report to GitHub Pages
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Allure report artifact
+        uses: actions/download-artifact@v4
         with:
-          name: playwright-videos-${{ steps.env.outputs.name }}-${{ github.run_number }}
-          path: automation/reports/videos/*.webm
-          retention-days: 7
-          if-no-files-found: ignore
+          name: allure-report-${{ needs.test.outputs.env-name }}-${{ github.run_number }}
+          path: downloaded-report
+
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Deploy report and prune old runs
+        env:
+          ENV_NAME: ${{ needs.test.outputs.env-name }}
+          RUN_NUMBER: ${{ github.run_number }}
+          KEEP_RUNS: 5
+        run: |
+          # Copy this run's allure-report into gh-pages/{env}/{run}/
+          DEST="gh-pages/$ENV_NAME/$RUN_NUMBER"
+          mkdir -p "$DEST"
+          cp -r downloaded-report/. "$DEST/"
+
+          # Prune: keep only the KEEP_RUNS most recent run directories
+          RUN_DIRS=$(ls -1 "gh-pages/$ENV_NAME" | grep -E '^[0-9]+$' | sort -n)
+          COUNT=$(echo "$RUN_DIRS" | wc -l)
+          if [ "$COUNT" -gt "$KEEP_RUNS" ]; then
+            TO_DELETE=$(echo "$RUN_DIRS" | head -n $(( COUNT - KEEP_RUNS )))
+            for d in $TO_DELETE; do
+              rm -rf "gh-pages/$ENV_NAME/$d"
+              echo "Deleted old run: $ENV_NAME/$d"
+            done
+          fi
+
+      - name: Push to gh-pages
+        run: |
+          cd gh-pages
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff --cached --quiet || git commit -m "report: ${{ needs.test.outputs.env-name }} run ${{ github.run_number }}"
+          git push origin gh-pages
+
+  publish-tms:
+    name: Publish JUnit to OneTest TMS
+    needs: test
+    if: always() && inputs.publish_to_tms == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results-${{ needs.test.outputs.env-name }}-${{ github.run_number }}
+          path: results
+
+      - name: Convert and push to TMS
+        env:
+          GH_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
+        run: |
+          # Generate run ID: RUN-ELITEA-YYYY-MM-DD-NNN-ENV-SUITE[-POSTFIX]
+          DATE=$(date +%Y-%m-%d)
+          ENV_NAME="${{ needs.test.outputs.env-name }}"
+          SUITE="${{ inputs.custom_suites != '' && inputs.custom_suites || inputs.suite }}"
+          SUITE_UPPER=$(echo "$SUITE" | tr '[:lower:]' '[:upper:]' | tr ',' '-')
+          POSTFIX="${{ inputs.tms_report_postfix }}"
+
+          RUN_ID="RUN-ELITEA-${DATE}-${{ github.run_number }}-${ENV_NAME^^}-${SUITE_UPPER}"
+          if [ -n "$POSTFIX" ]; then
+            POSTFIX_UPPER=$(echo "$POSTFIX" | tr '[:lower:]' '[:upper:]')
+            RUN_ID="${RUN_ID}-${POSTFIX_UPPER}"
+          fi
+          FILENAME="junit-${RUN_ID}.json"
+
+          # Convert JUnit XML to TMS JSON format
+          python3 << 'EOF' > report.json
+          import json, xml.etree.ElementTree as ET
+
+          root = ET.parse("results/junit.xml").getroot()
+          items = []
+          total = passed = failed = skipped = 0
+
+          for tc in root.iter("testcase"):
+              cls, name = tc.get("classname", ""), tc.get("name", "")
+              code_ref = f"{cls}.{name}" if cls else name
+              dur = int(float(tc.get("time", "0") or 0) * 1000)
+              f, e, sk = tc.find("failure"), tc.find("error"), tc.find("skipped")
+              if f is not None or e is not None:
+                  el = f if f is not None else e
+                  status = "failed"
+                  msg = ((el.get("message") or "") + " " + (el.text or "")).strip()
+              elif sk is not None:
+                  status, msg = "skipped", ""
+              else:
+                  status, msg = "passed", ""
+              total += 1
+              passed += status == "passed"
+              failed += status == "failed"
+              skipped += status == "skipped"
+              items.append({
+                  "code_ref": code_ref,
+                  "name": name,
+                  "status": status,
+                  "duration_ms": dur,
+                  "failure_message": msg
+              })
+
+          out = {
+              "launch": {"total": total, "passed": passed, "failed": failed, "skipped": skipped},
+              "items": items
+          }
+          print(json.dumps(out, indent=2, ensure_ascii=False))
+          EOF
+
+          echo "✓ Generated report.json"
+          cat report.json
+
+          # Push via GitHub API (no checkout required)
+          CONTENT=$(base64 -w0 report.json)
+          gh api repos/EliteaAI/onetest-ai-tm-Elitea/contents/reports/automated/${FILENAME} \
+            -X PUT \
+            -f message="results: ingest ${RUN_ID}" \
+            -f content="${CONTENT}" \
+            -f branch="main"
+
+          echo "✓ Pushed to EliteaAI/onetest-ai-tm-Elitea/reports/automated/${FILENAME}"

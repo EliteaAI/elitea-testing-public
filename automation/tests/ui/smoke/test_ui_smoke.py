@@ -16,6 +16,7 @@ Usage::
 
 import pytest
 from pages import BasePage
+import allure
 
 pytestmark = [pytest.mark.smoke, pytest.mark.ui]
 
@@ -23,6 +24,8 @@ pytestmark = [pytest.mark.smoke, pytest.mark.ui]
 class TestHomePage:
     """Verify the Elitea home / landing page loads correctly."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1143_platform-availability-basic-navigation.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/smoke-suite/ELITEA-1049_ui-smoke-test-platform-loads.md", "onetest-ai Test Case link")
     def test_page_loads(self, page):
         """The home page should load without errors."""
         bp = BasePage(page)
@@ -30,6 +33,8 @@ class TestHomePage:
         # The page title or a key element should be visible
         assert page.title(), "Page title should not be empty"
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1143_platform-availability-basic-navigation.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/smoke-suite/ELITEA-1049_ui-smoke-test-platform-loads.md", "onetest-ai Test Case link")
     def test_main_content_visible(self, page):
         """The main content area should render after navigation."""
         bp = BasePage(page)

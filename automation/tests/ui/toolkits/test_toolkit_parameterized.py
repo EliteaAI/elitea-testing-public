@@ -27,6 +27,7 @@ from toolkit_factories import CREDENTIAL_FACTORIES, TOOLKIT_SETTINGS_FACTORIES
 
 # Import from conftest
 from conftest import ELITEA_URL
+import allure
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +175,7 @@ def managed_toolkit(
 # ---------------------------------------------------------------------------
 
 class TestCreateCredential:
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1140_google-and-bitbucket-toolkit-crud.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     @pytest.mark.credentials
     @pytest.mark.parametrize("toolkit_config", _all_toolkit_ids(), indirect=True)
@@ -282,6 +284,7 @@ class TestCreateCredential:
 # ---------------------------------------------------------------------------
 
 class TestCreateToolkit:
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1140_google-and-bitbucket-toolkit-crud.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     @pytest.mark.parametrize("toolkit_config", _all_toolkit_ids(), indirect=True)
     def test_create_toolkit(
@@ -358,6 +361,7 @@ class TestCreateToolkit:
 # ---------------------------------------------------------------------------
 
 class TestToolkitTestSettings:
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1140_google-and-bitbucket-toolkit-crud.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     @pytest.mark.parametrize("toolkit_config", _all_toolkit_ids(), indirect=True)
     def test_toolkit_test_settings(
@@ -525,6 +529,7 @@ class TestToolkitTestSettings:
 # ---------------------------------------------------------------------------
 
 class TestChatWithToolkit:
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1140_google-and-bitbucket-toolkit-crud.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     @pytest.mark.parametrize("toolkit_config", _all_toolkit_ids(), indirect=True)
     def test_chat_with_toolkit(
@@ -541,20 +546,8 @@ class TestChatWithToolkit:
         page.wait_for_load_state("networkidle", timeout=30000)
         page.wait_for_timeout(2000)
 
-        # Add toolkit
-        add_btn = page.locator('button[aria-label="Add toolkit"]')
-        add_btn.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        add_btn.click(force=True)
-        page.wait_for_timeout(1000)
-
-        search_input = Popper.find_visible_search_input(page, timeout=UI_ELEMENT_TIMEOUT)
-        search_input.fill(tk_name[:20])
-        page.wait_for_timeout(1000)
-
-        option = page.locator(f'li[role="menuitem"]:has-text("{tk_name[:15]}")').first
-        option.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        option.click()
-        page.wait_for_load_state("networkidle", timeout=UI_ELEMENT_TIMEOUT)
+        # Add toolkit using ChatPage method
+        chat.add_toolkit_participant(tk_name, timeout=UI_ELEMENT_TIMEOUT)
         page.wait_for_timeout(1000)
 
         # Send message

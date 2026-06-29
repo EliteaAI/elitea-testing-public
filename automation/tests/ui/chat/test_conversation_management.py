@@ -29,6 +29,7 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from pages.chat_page import ChatPage
 from components.mui import Dialog
 from conftest import attach_screenshot
+import allure
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +118,7 @@ def _extract_conversation_id(page, conversation_api, test_msg: str) -> str | Non
 class TestCreateConversation:
     """TC-CONV-001 / TC-CONV-002: Creating new conversations."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0571_conversation-creation-and-list.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     def test_create_conversation_via_ui_button(self, page, conversation_api):
         """TC-CONV-001 UI: Create a conversation by clicking the UI button.
@@ -165,6 +167,7 @@ class TestCreateConversation:
                 except Exception as exc:
                     logger.warning("Cleanup failed: %s", exc)
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0571_conversation-creation-and-list.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     @pytest.mark.smoke
     def test_create_conversation_via_api(self, page, conversation_id, conversation_api):
@@ -189,6 +192,7 @@ class TestCreateConversation:
             f"Conversation '{conv_name}' should appear in the sidebar list"
         )
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0569_conversation-management-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_new_conversation_default_settings(self, page, conversation_id):
         """TC-CONV-002: New conversation has default settings.
@@ -211,6 +215,8 @@ class TestCreateConversation:
 class TestConversationList:
     """TC-CONV-003 / TC-CONV-004 / TC-CONV-005: Viewing, navigating, and searching."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0569_conversation-management-advanced-features.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0571_conversation-creation-and-list.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     @pytest.mark.smoke
     def test_click_conversation_to_open(self, page, conversation_id, conversation_api):
@@ -236,6 +242,7 @@ class TestConversationList:
         # URL should contain the conversation ID
         chat.wait_for_conversation_url(conversation_id, timeout=NAVIGATION_TIMEOUT)
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0569_conversation-management-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_search_conversations_button(self, page, conversation_id):
         """TC-CONV-005: Search conversations button opens search panel.
@@ -256,6 +263,7 @@ class TestConversationList:
 class TestConversationNavigation:
     """Navigation between conversations and back to chat list."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0569_conversation-management-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_navigate_between_conversations(self, page, conversation_api):
         """Navigate from one conversation to another via the sidebar list.
@@ -316,6 +324,7 @@ class TestConversationNavigation:
                 except Exception as exc:
                     logger.warning("Cleanup failed: %s", exc)
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0569_conversation-management-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_send_message_persists_conversation(self, page, conversation_id):
         """After sending a message, the conversation stays in the sidebar list.
@@ -364,6 +373,7 @@ class TestConversationNavigation:
 class TestConversationActions:
     """TC-CONV-006 / TC-CONV-007: Rename and delete conversations."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0570_conversation-rename-and-delete.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     @pytest.mark.smoke
     def test_rename_conversation_via_ui(self, page, conversation_api):
@@ -424,6 +434,8 @@ class TestConversationActions:
             except Exception as exc:
                 logger.warning("Cleanup failed: %s", exc)
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0570_conversation-rename-and-delete.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0568_conversation-delete-with-confirmation.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     @pytest.mark.smoke
     def test_delete_conversation_with_confirmation(self, page, conversation_api):
@@ -499,6 +511,7 @@ class TestConversationActions:
             f"Deleted conversation {conv_id} should not appear in API list, got IDs: {ids}"
         )
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0568_conversation-delete-with-confirmation.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_delete_conversation_cancel(self, page, conversation_api):
         """TC-CONV-007b: Cancel the delete confirmation dialog.
@@ -540,6 +553,7 @@ class TestConversationActions:
             except Exception as exc:
                 logger.warning("Cleanup failed: %s", exc)
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0569_conversation-management-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_multiple_conversations_listed(self, page, conversation_api):
         """Multiple conversations appear in the sidebar list.

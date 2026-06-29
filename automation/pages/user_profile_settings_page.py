@@ -391,13 +391,24 @@ class UserProfileSettingsPage(BasePage):
         self.wait_for_autosave()
         logger.info("Speed set to: %sx", speed)
 
+    def _get_voice_section(self):
+        """Get the Voice Personalization section container.
+
+        Returns:
+            Locator scoped to the Voice Personalization accordion section.
+        """
+        return self.page.locator('#simple-select-Voice').locator(
+            'xpath=ancestor::div[contains(@class, "MuiAccordion-root")]'
+        )
+
     def get_volume_value(self) -> int:
         """Get the current volume slider value.
 
         Returns:
             Volume as percentage (0-100).
         """
-        volume_input = self.page.locator('input[aria-valuemin="0"][aria-valuemax="1"]')
+        voice_section = self._get_voice_section()
+        volume_input = voice_section.locator('input[aria-valuemin="0"][aria-valuemax="1"]').first
         volume_input.scroll_into_view_if_needed()
         value = volume_input.get_attribute("aria-valuenow")
         raw_volume = float(value) if value else 1.0
@@ -413,7 +424,8 @@ class UserProfileSettingsPage(BasePage):
             volume_percent: Target volume percentage (0 to 100).
         """
         logger.info("Setting volume to: %d%%", volume_percent)
-        volume_input = self.page.locator('input[aria-valuemin="0"][aria-valuemax="1"]')
+        voice_section = self._get_voice_section()
+        volume_input = voice_section.locator('input[aria-valuemin="0"][aria-valuemax="1"]').first
         volume_input.scroll_into_view_if_needed()
         current_raw = float(volume_input.get_attribute("aria-valuenow") or 1.0)
         target_raw = volume_percent / 100.0

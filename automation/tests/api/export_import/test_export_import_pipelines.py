@@ -26,6 +26,7 @@ import yaml
 
 from api import PipelineAPI
 from config import settings
+import allure
 
 logger = logging.getLogger("elitea.test.export_import_pipelines")
 
@@ -369,6 +370,7 @@ def assert_pipeline_fields_match(
 class TestPipelineExportImportRoundtrip:
     """Export → delete → import → verify cycle for pipelines."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0861_pipeline-export-and-import.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     def test_pipeline_export_import_roundtrip_basic(self, pipeline_api):
         """PEXP-001: Basic roundtrip preserves pipeline with LLM node."""
@@ -450,6 +452,7 @@ class TestPipelineExportImportRoundtrip:
                     import logging as _log
                     _log.getLogger(__name__).warning("Cleanup failed: %s", _exc)
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0861_pipeline-export-and-import.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_pipeline_export_import_preserves_all_fields(self, pipeline_api):
         """PEXP-002: Roundtrip preserves all fields including multiple nodes."""
@@ -512,6 +515,7 @@ class TestPipelineExportImportRoundtrip:
                     import logging as _log
                     _log.getLogger(__name__).warning("Cleanup failed: %s", _exc)
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0861_pipeline-export-and-import.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_pipeline_export_format_is_valid_yaml(self, pipeline_api):
         """PEXP-003: Export produces valid YAML frontmatter with pipeline keys."""
@@ -560,6 +564,7 @@ class TestPipelineExportImportRoundtrip:
 class TestPipelineExportImportConflicts:
     """Test import behaviour when a same-named pipeline already exists."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0861_pipeline-export-and-import.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_pipeline_import_with_conflicting_name(self, pipeline_api):
         """PEXP-004: Importing when pipeline with same name exists creates second one."""
@@ -616,6 +621,7 @@ class TestPipelineExportImportConflicts:
                     import logging as _log
                     _log.getLogger(__name__).warning("Cleanup failed: %s", _exc)
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0861_pipeline-export-and-import.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     def test_pipeline_import_preserves_original_when_conflict(self, pipeline_api):
         """PEXP-005: Original pipeline is unchanged after importing with same name."""
@@ -679,6 +685,7 @@ class TestPipelineExportImportConflicts:
 class TestPipelineExportImportEdgeCases:
     """Edge case tests for pipeline export/import."""
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0861_pipeline-export-and-import.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     def test_pipeline_export_import_empty_description(self, pipeline_api):
         """PEXP-006: Roundtrip works with empty description."""
@@ -735,6 +742,7 @@ class TestPipelineExportImportEdgeCases:
                     import logging as _log
                     _log.getLogger(__name__).warning("Cleanup failed: %s", _exc)
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0861_pipeline-export-and-import.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     def test_pipeline_export_import_special_characters_in_name(self, pipeline_api):
         """PEXP-007: Names with special characters survive roundtrip."""
@@ -790,6 +798,7 @@ class TestPipelineExportImportEdgeCases:
                     import logging as _log
                     _log.getLogger(__name__).warning("Cleanup failed: %s", _exc)
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0861_pipeline-export-and-import.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_pipeline_export_import_complex_topology(self, pipeline_api):
         """PEXP-008: Complex pipeline with branching topology survives roundtrip."""
@@ -876,6 +885,7 @@ class TestPipelineExportImportEdgeCases:
                     import logging as _log
                     _log.getLogger(__name__).warning("Cleanup failed: %s", _exc)
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0861_pipeline-export-and-import.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_pipeline_export_import_all_node_types(self, pipeline_api):
         """PEXP-009: Pipeline with all available node types survives roundtrip."""
@@ -959,6 +969,7 @@ class TestPipelineExportImportEdgeCases:
                     import logging as _log
                     _log.getLogger(__name__).warning("Cleanup failed: %s", _exc)
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0861_pipeline-export-and-import.md", "onetest-ai Test Case link")
     @pytest.mark.p2
     def test_pipeline_import_via_constructed_payload(self, pipeline_api):
         """PEXP-010: Import works with a manually constructed payload (no export)."""

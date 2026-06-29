@@ -23,6 +23,7 @@ Usage:
 
 import pytest
 from pages.chat_page import ChatPage, FeatureNotAvailableError
+import allure
 
 pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.slow]
 
@@ -49,6 +50,7 @@ class TestImageCreation:
             id="minimal_prompt",
         ),
     ])
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/image-generation/ELITEA-0679_image-creation-internal-tool-happy-path-image-generated-successfully-i.md", "onetest-ai Test Case link")
     def test_create_image(self, page, conversation_id, prompt):
         """Create image from text prompt and verify image appears in response.
 
