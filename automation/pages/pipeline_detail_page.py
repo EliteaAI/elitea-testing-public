@@ -43,19 +43,19 @@ class PipelineDetailPage(PipelineFormPage):
     )
 
     copy_id_button = LocatorDescriptor(
-        testid="pipeline-copy-id",
+        testid="entity-copy-id-button",
         fallback=lambda page: page.get_by_role("button", name="Copy ID"),
         description="Copy pipeline ID button"
     )
 
     flow_view_button = LocatorDescriptor(
-        testid="pipeline-flow-view",
+        testid="pipeline-flow-view-button",
         fallback=lambda page: page.locator('button[value="flow"]'),
         description="Switch to Flow view button"
     )
 
     yaml_view_button = LocatorDescriptor(
-        testid="pipeline-yaml-view",
+        testid="pipeline-yaml-view-button",
         fallback=lambda page: page.locator('button[value="yaml"]'),
         description="Switch to YAML view button"
     )
@@ -215,31 +215,36 @@ class PipelineDetailPage(PipelineFormPage):
         """Open the three-dot actions menu on the pipeline detail page.
 
         Dismisses any banner overlay first, then clicks the three-dot menu
-        button in the header bar. The three-dot button is the rightmost
-        aria-haspopup button in the top header bar (y < 45px).
+        button in the header bar via data-testid.
 
-        LOCATOR: Pipeline page has a green + button in the flow editor
-        that also has aria-haspopup="true", so we must find the correct
-        button by position (rightmost in top 45px).
+        LOCATOR: Uses entity-actions-menu-button testid (DotMenu component).
+        Fallback: positional JS evaluation for the rightmost aria-haspopup
+        button in the top 45px, since the pipeline canvas also has a green +
+        button with aria-haspopup="true".
         """
         logger.info("Opening actions menu")
         self.dismiss_banner_if_present()
         self.page.wait_for_timeout(300)
-        # The three-dot button is the rightmost button with
-        # aria-haspopup in the top 45px of the page.
-        self.page.evaluate("""() => {
-            const buttons = document.querySelectorAll('button[aria-haspopup="true"]');
-            let target = null;
-            let maxX = -1;
-            for (const btn of buttons) {
-                const rect = btn.getBoundingClientRect();
-                if (rect.y < 45 && rect.x > maxX) {
-                    maxX = rect.x;
-                    target = btn;
+
+        # Try testid first
+        menu_btn = self.page.get_by_test_id("entity-actions-menu-button")
+        if menu_btn.count() > 0:
+            menu_btn.first.click(force=True)
+        else:
+            # Fallback: rightmost aria-haspopup button in top 45px
+            self.page.evaluate("""() => {
+                const buttons = document.querySelectorAll('button[aria-haspopup="true"]');
+                let target = null;
+                let maxX = -1;
+                for (const btn of buttons) {
+                    const rect = btn.getBoundingClientRect();
+                    if (rect.y < 45 && rect.x > maxX) {
+                        maxX = rect.x;
+                        target = btn;
+                    }
                 }
-            }
-            if (target) target.click();
-        }""")
+                if (target) target.click();
+            }""")
         self.page.locator('[role="menu"]').wait_for(state="visible", timeout=5000)
 
     def delete_pipeline_via_menu(self, timeout: int = 10000):

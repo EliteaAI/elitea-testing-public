@@ -82,25 +82,31 @@ AGENT_INTERNAL_TOOLS: List[str] = [tool.value for tool in AgentInternalTool]
 InternalTool = AgentInternalTool
 
 
-# Map of tool enum to test ID (for future testid implementation)
+# Map of tool enum to test ID — matches data-testid added in ELITEA-5634.
+# Testids are derived from the INTERNAL_TOOLS_LIST `name` field in the frontend
+# (src/[fsd]/shared/lib/constants/internalTools.constants.js) with underscores
+# replaced by hyphens: `internal-tool-{name.replace("_", "-")}`.
 INTERNAL_TOOL_TESTIDS = {
     AgentInternalTool.ATTACHMENTS: "internal-tool-attachments",
-    AgentInternalTool.IMAGE_CREATION: "internal-tool-image-creation",
+    AgentInternalTool.IMAGE_CREATION: "internal-tool-image-generation",
     AgentInternalTool.DATA_ANALYSIS: "internal-tool-data-analysis",
     AgentInternalTool.PLANNER: "internal-tool-planner",
-    AgentInternalTool.PYTHON_SANDBOX: "internal-tool-python-sandbox",
-    AgentInternalTool.SWARM_MODE: "internal-tool-swarm-mode",
-    AgentInternalTool.SMART_TOOLS: "internal-tool-smart-selection",
+    AgentInternalTool.PYTHON_SANDBOX: "internal-tool-pyodide",
+    AgentInternalTool.SWARM_MODE: "internal-tool-swarm",
+    AgentInternalTool.SMART_TOOLS: "internal-tool-lazy-tools-mode",
 }
 
 
 def get_tool_testid(tool: AgentInternalTool) -> str:
-    """Get the test ID for an internal tool.
+    """Get the data-testid for the internal tool container box.
+
+    The container box testid is `internal-tool-{name}`.
+    The switch element inside has testid `internal-tool-{name}-switch`.
 
     Args:
         tool: The internal tool enum value.
 
     Returns:
-        The data-testid attribute value for the tool switch.
+        The data-testid attribute value for the tool container.
     """
     return INTERNAL_TOOL_TESTIDS.get(tool, f"internal-tool-{tool.value.lower().replace(' ', '-')}")

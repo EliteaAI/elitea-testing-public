@@ -145,7 +145,7 @@ class ChatPage(BasePage):
     # ------------------------------------------------------------------
 
     copy_message_button = LocatorDescriptor(
-        testid="message-copy-button",
+        testid="chat-message-copy",
         fallback=lambda page: page.locator('button[aria-label="Copy to clipboard"]'),
         description="Copy message to clipboard button"
     )
@@ -691,7 +691,10 @@ class ChatPage(BasePage):
         self.page.wait_for_timeout(500)  # Wait for hover effect
 
         # Find and click the copy button within this message
-        copy_button = message_block.locator('button[aria-label="Copy to clipboard"]')
+        copy_button = message_block.get_by_test_id("chat-message-copy")
+        if copy_button.count() == 0:
+            # Fallback: aria-label for user messages copy button
+            copy_button = message_block.locator('button[aria-label="Copy to clipboard"]')
         if copy_button.count() == 0:
             from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
             raise PlaywrightTimeoutError(
@@ -915,20 +918,25 @@ class ChatPage(BasePage):
         """Open search conversations via the Search conversations button.
 
         In v2.0.3+, Ctrl+K keyboard shortcut is no longer supported.
-        Uses the "Search conversations" button in the conversations panel header.
+        Uses the conversation-search-button testid (ConversationSearchButton component).
         """
         logger.info("Opening search conversations via button")
-        search_btn = self.page.get_by_role("button", name="Search conversations")
+        search_btn = self.page.get_by_test_id("conversation-search-button")
+        if search_btn.count() == 0:
+            search_btn = self.page.get_by_role("button", name="Search conversations")
         search_btn.wait_for(state="visible", timeout=5000)
         search_btn.click()
         
     def navigate_to_agents(self):
-        """Navigate to Agents page via the sidebar drawer."""
+        """Navigate to Agents page via the sidebar drawer.
+
+        Uses data-testid="sidebar-item-agents" (SidebarMenuItem component).
+        """
         logger.info("Navigating to Agents")
         self.open_sidebar()
-        # Sidebar items are buttons with accessible names
-        # Use exact=True to avoid matching conversation items with "Agents" in their name
-        agents_btn = self.page.get_by_role("button", name="Agents", exact=True)
+        agents_btn = self.page.get_by_test_id("sidebar-item-agents")
+        if agents_btn.count() == 0:
+            agents_btn = self.page.get_by_role("button", name="Agents", exact=True)
         agents_btn.wait_for(state="visible", timeout=5000)
         agents_btn.click()
 
@@ -1142,8 +1150,8 @@ class ChatPage(BasePage):
     def open_search_conversations_button(self, timeout: int = 5000):
         """Click the search conversations icon/button in the conversations sidebar.
 
-        The search button appears as an icon in the conversations panel header
-        inside ``<main>`` (not ``<aside>``).  It has a stable ``aria-label``.
+        The search button appears as an icon in the conversations panel header.
+        Uses data-testid="conversation-search-button" (ConversationSearchButton component).
 
         A banner overlay (z-index 1200) may cover the button on first load,
         so we dismiss it before clicking.
@@ -1153,7 +1161,9 @@ class ChatPage(BasePage):
         """
         logger.info("Opening search conversations via button")
         self.dismiss_banner_if_present()
-        search_btn = self.page.locator('button[aria-label="Search conversations"]')
+        search_btn = self.page.get_by_test_id("conversation-search-button")
+        if search_btn.count() == 0:
+            search_btn = self.page.locator('button[aria-label="Search conversations"]')
         search_btn.wait_for(state="visible", timeout=timeout)
         search_btn.click()
 

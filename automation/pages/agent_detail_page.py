@@ -134,7 +134,9 @@ class AgentDetailPage(AgentFormPage):
         Returns:
             Agent ID as string.
         """
-        btn = self.page.get_by_role("button", name="Copy ID")
+        btn = self.page.get_by_test_id("entity-copy-id-button")
+        if btn.count() == 0:
+            btn = self.page.get_by_role("button", name="Copy ID")
         return btn.text_content().strip()
 
     def get_version_id(self) -> str:
@@ -143,7 +145,9 @@ class AgentDetailPage(AgentFormPage):
         Returns:
             Version ID as string.
         """
-        btn = self.page.get_by_role("button", name="Copy version ID")
+        btn = self.page.get_by_test_id("entity-copy-version-id-button")
+        if btn.count() == 0:
+            btn = self.page.get_by_role("button", name="Copy version ID")
         return btn.text_content().strip()
 
     # ------------------------------------------------------------------
@@ -164,29 +168,30 @@ class AgentDetailPage(AgentFormPage):
             Locator for the tool's switch/checkbox element.
         """
         testid = get_tool_testid(tool)
+        switch_testid = testid + "-switch"
 
-        # Try testid first (future-proof when frontend adds data-testid)
-        testid_locator = self.page.get_by_test_id(testid)
-        if testid_locator.count() > 0:
-            return testid_locator.first
+        # Try the switch-specific testid first (added in ELITEA-5634)
+        switch_locator = self.page.get_by_test_id(switch_testid)
+        if switch_locator.count() > 0:
+            return switch_locator.first
+
+        # Try the container testid and find the switch inside it
+        container_locator = self.page.get_by_test_id(testid)
+        if container_locator.count() > 0:
+            switch = container_locator.first.locator('input[type="checkbox"], input[role="switch"]').first
+            if switch.count() > 0:
+                return switch
 
         # Fallback: text-based locator
-        # Strategy: Find text label, go to parent container, find switch within
         tool_label = self.page.locator(f'text="{tool.value}"').first
 
-        # Try to find parent MUI FormControlLabel
         try:
-            # Navigate up to find the FormControlLabel container
             container = tool_label.locator('xpath=ancestor::label[contains(@class, "MuiFormControlLabel")]').first
             if container.count() == 0:
-                # Try broader search
                 container = tool_label.locator('xpath=ancestor::div[contains(@class, "MuiFormControlLabel")]').first
-
-            # Find the switch input within the container
             switch = container.locator('input[type="checkbox"], input[role="switch"]').first
             return switch
         except Exception:
-            # Last resort: find any nearby switch
             return self.page.locator(f'text="{tool.value}"').locator('..').locator('input[type="checkbox"]').first
 
     def _get_tool_label_locator(self, tool: InternalTool) -> Locator:
@@ -490,12 +495,17 @@ class AgentDetailPage(AgentFormPage):
         toolkit_card = toolkit_text.locator("xpath=ancestor::div[contains(@class, 'MuiCard') or contains(@class, 'card')]").first
         if toolkit_card.count() == 0:
             # Fallback: use a broader ancestor search
-            toolkit_card = toolkit_text.locator("xpath=ancestor::div[.//button[@aria-label='delete tool']]").first
-        
+            toolkit_card = toolkit_text.locator(
+                "xpath=ancestor::div[.//button[@data-testid='agent-toolkit-delete-button'] or "
+                ".//button[@aria-label='delete tool']]"
+            ).first
+
         # Click the delete button scoped to this toolkit card
-        delete_btn = toolkit_card.locator('button[aria-label="delete tool"]').first
-        delete_btn.wait_for(state="visible", timeout=5000)
-        delete_btn.click(force=True)
+        delete_btn = toolkit_card.get_by_test_id("agent-toolkit-delete-button")
+        if delete_btn.count() == 0:
+            delete_btn = toolkit_card.locator('button[aria-label="delete tool"]')
+        delete_btn.first.wait_for(state="visible", timeout=5000)
+        delete_btn.first.click(force=True)
         self.page.wait_for_timeout(500)
 
         # Handle the "Remove toolkit?" confirmation dialog
@@ -856,13 +866,16 @@ class AgentDetailPage(AgentFormPage):
     def open_actions_menu(self):
         """Open the three-dot actions menu on the agent detail page.
 
-        Uses JavaScript click to bypass MUI overlay interception.
-        The menu button has aria-haspopup="true" and is near the
-        Save/Discard buttons in the header.
+        Uses data-testid="entity-actions-menu-button" for stable selection.
+        Falls back to JS click on aria-haspopup button when testid not present.
         """
         logger.info("Opening actions menu")
-        menu_btn = self.page.locator('button[aria-haspopup="true"]').last
-        menu_btn.evaluate("el => el.click()")
+        menu_btn = self.page.get_by_test_id("entity-actions-menu-button")
+        if menu_btn.count() > 0:
+            menu_btn.last.click(force=True)
+        else:
+            fallback_btn = self.page.locator('button[aria-haspopup="true"]').last
+            fallback_btn.evaluate("el => el.click()")
         self.page.locator('[role="menu"]').wait_for(state="visible", timeout=5000)
 
     @action("Delete agent")

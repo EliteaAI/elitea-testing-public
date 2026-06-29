@@ -258,17 +258,23 @@ class UserProfileSettingsPage(BasePage):
         self.wait_for_personalization_load()
         logger.info("Navigated to Personalization settings page")
 
+    def _voice_dropdown(self):
+        """Return the voice selector dropdown locator (testid-first, then ID fallback)."""
+        el = self.page.get_by_test_id("voice-selector-dropdown")
+        if el.count() > 0:
+            return el
+        return self.page.locator('#simple-select-Voice')
+
     def wait_for_personalization_load(self, timeout: int = 15000) -> None:
         """Wait until the Personalization page is fully loaded.
 
-        Waits for the Voice Personalization section heading to be visible.
+        Waits for the Voice dropdown to be visible.
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
         self.wait_for_network(timeout=timeout)
-        # Use Voice dropdown as anchor - it has unique ID
-        voice_dropdown = self.page.locator('#simple-select-Voice')
+        voice_dropdown = self._voice_dropdown()
         voice_dropdown.scroll_into_view_if_needed()
         voice_dropdown.wait_for(state="visible", timeout=timeout)
         self.page.wait_for_timeout(500)
@@ -280,7 +286,7 @@ class UserProfileSettingsPage(BasePage):
         Returns:
             True if the Voice dropdown is visible.
         """
-        voice_dropdown = self.page.locator('#simple-select-Voice')
+        voice_dropdown = self._voice_dropdown()
         return voice_dropdown.count() > 0 and voice_dropdown.first.is_visible()
 
     def get_voice_personalization_section(self):
@@ -289,7 +295,7 @@ class UserProfileSettingsPage(BasePage):
         Returns:
             Locator for the Voice Personalization section container.
         """
-        return self.page.locator('#simple-select-Voice').locator('xpath=ancestor::div[contains(@class, "MuiAccordion-root")]')
+        return self._voice_dropdown().locator('xpath=ancestor::div[contains(@class, "MuiAccordion-root")]')
 
     def get_current_voice(self) -> str:
         """Get the currently selected voice in Voice Personalization.
@@ -297,11 +303,11 @@ class UserProfileSettingsPage(BasePage):
         Returns:
             Voice name (e.g., 'Shimmer').
         """
-        voice_text_el = self.page.locator('#simple-select-Voice .MuiTypography-labelMedium')
+        voice_dropdown = self._voice_dropdown()
+        voice_text_el = voice_dropdown.locator('.MuiTypography-labelMedium')
         if voice_text_el.count() > 0:
             voice_text = voice_text_el.text_content() or ""
         else:
-            voice_dropdown = self.page.locator('#simple-select-Voice')
             voice_text = voice_dropdown.text_content() or ""
         logger.info("Current voice: %s", voice_text.strip())
         return voice_text.strip()
@@ -315,7 +321,7 @@ class UserProfileSettingsPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Selecting voice: %s", voice_name)
-        voice_dropdown = self.page.locator('#simple-select-Voice')
+        voice_dropdown = self._voice_dropdown()
         voice_dropdown.scroll_into_view_if_needed()
         voice_dropdown.click()
 
@@ -335,7 +341,7 @@ class UserProfileSettingsPage(BasePage):
         Returns:
             List of voice names.
         """
-        voice_dropdown = self.page.locator('#simple-select-Voice')
+        voice_dropdown = self._voice_dropdown()
         voice_dropdown.scroll_into_view_if_needed()
         voice_dropdown.click()
 
@@ -438,12 +444,15 @@ class UserProfileSettingsPage(BasePage):
 
         This button is only available in the Personalization page, not in the
         Voice Settings dialog accessed from Chat.
+        Uses data-testid="voice-preview-button" (VoiceConfigControls component).
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Clicking Preview Voice button")
-        preview_btn = self.page.locator('button:has-text("Preview Voice")')
+        preview_btn = self.page.get_by_test_id("voice-preview-button")
+        if preview_btn.count() == 0:
+            preview_btn = self.page.locator('button:has-text("Preview Voice")')
         preview_btn.wait_for(state="visible", timeout=timeout)
         preview_btn.click()
         self.page.wait_for_timeout(500)
@@ -455,7 +464,9 @@ class UserProfileSettingsPage(BasePage):
         Returns:
             True if button is visible, False otherwise.
         """
-        preview_btn = self.page.locator('button:has-text("Preview Voice")')
+        preview_btn = self.page.get_by_test_id("voice-preview-button")
+        if preview_btn.count() == 0:
+            preview_btn = self.page.locator('button:has-text("Preview Voice")')
         return preview_btn.count() > 0 and preview_btn.first.is_visible()
 
     def get_voice_personalization_controls(self) -> dict:

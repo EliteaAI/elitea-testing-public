@@ -29,7 +29,7 @@ class AgentsListPage(BasePage):
     )
 
     create_agent_button = LocatorDescriptor(
-        testid="create-agent-button",
+        testid="create-entity-button",
         fallback=lambda page: page.get_by_label("Create Agent").get_by_role("button"),
         description="Create Agent button in sidebar"
     )
