@@ -146,8 +146,8 @@ TOOLKIT_CONFIGS = {
         settings_fn="bitbucket_toolkit_settings",
         ui_card_text="Bitbucket",
         ui_form_fields={
-            "Project": "elitea-automation",
-            "Repository": "automation",
+            "Project": settings.bitbucket_project,
+            "Repository": settings.bitbucket_repository,
         },
         test_tool_name="List branches",
         test_tool_result_indicator="list_branches_in_repo",
@@ -176,7 +176,7 @@ TOOLKIT_CONFIGS = {
         settings_fn="confluence_toolkit_settings",
         ui_card_text="Confluence",
         ui_form_fields={
-            "Space": "ELITEATEST",
+            "Space": settings.confluence_space,
         },
         test_tool_name="List pages",
         test_tool_result_indicator="list_pages_with_label",

@@ -60,3 +60,6 @@ jobs:
       POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
       JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
       JIRA_API_KEY: ${{ secrets.JIRA_API_KEY }}
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+      CONFLUENCE_BASE_URL: ${{ secrets.CONFLUENCE_BASE_URL }}
+      CONFLUENCE_SPACE: ${{ secrets.CONFLUENCE_SPACE }}

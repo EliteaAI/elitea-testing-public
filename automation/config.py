@@ -121,7 +121,7 @@ class Settings(BaseSettings):
     confluence_base_url: str = ""
     confluence_username: str = ""
     confluence_api_key: str = ""
-    confluence_space: str = "ELITEATEST"
+    confluence_space: str = ""
 
     # ------------------------------------------------------------------
     # Xray toolkit
