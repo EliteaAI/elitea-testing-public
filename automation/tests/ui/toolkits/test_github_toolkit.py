@@ -588,29 +588,13 @@ class TestChatWithGitHubToolkit:
         chat.navigate_to_chat(conversation_id=conversation_id)
         chat.wait_for_page_load()
 
-        # --- Step 1: Add toolkit as participant via right panel ---
+        # --- Step 1: Add toolkit as participant via ChatPage method ---
         # Wait for chat page to fully load before interacting with toolbar
         page.wait_for_load_state("networkidle", timeout=30000)
         page.wait_for_timeout(2000)  # Additional wait for any animations
-        
+
         logger.info("Adding toolkit '%s' as chat participant", toolkit_name)
-        add_toolkit_btn = page.locator('button[aria-label="Add toolkit"]')
-        add_toolkit_btn.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        add_toolkit_btn.click(force=True)
-        page.wait_for_timeout(1000)
-
-        # Search for the toolkit in the popper and select it
-        search_input = Popper.find_visible_search_input(page, timeout=UI_ELEMENT_TIMEOUT)
-        search_input.fill(toolkit_name[:20])
-        page.wait_for_timeout(1000)
-
-        toolkit_option = page.locator(
-            f'li[role="menuitem"]:has-text("{toolkit_name[:15]}")'
-        ).first
-        toolkit_option.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        logger.info("Found toolkit menuitem: %s", toolkit_option.text_content().strip()[:60])
-        toolkit_option.click()
-        page.wait_for_load_state("networkidle", timeout=UI_ELEMENT_TIMEOUT)
+        chat.add_toolkit_participant(toolkit_name, timeout=UI_ELEMENT_TIMEOUT)
         page.wait_for_timeout(1000)
 
         # --- Step 2: Send message requesting toolkit action ---

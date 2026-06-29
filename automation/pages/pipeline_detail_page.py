@@ -80,7 +80,7 @@ class PipelineDetailPage(PipelineFormPage):
 
     chat_input = LocatorDescriptor(
         testid="pipeline-chat-input",
-        fallback=lambda page: page.get_by_role("textbox", name="Type your message."),
+        fallback=lambda page: page.locator('textarea#standard-multiline-static'),
         description="Embedded chat input field"
     )
 

@@ -546,20 +546,8 @@ class TestChatWithToolkit:
         page.wait_for_load_state("networkidle", timeout=30000)
         page.wait_for_timeout(2000)
 
-        # Add toolkit
-        add_btn = page.locator('button[aria-label="Add toolkit"]')
-        add_btn.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        add_btn.click(force=True)
-        page.wait_for_timeout(1000)
-
-        search_input = Popper.find_visible_search_input(page, timeout=UI_ELEMENT_TIMEOUT)
-        search_input.fill(tk_name[:20])
-        page.wait_for_timeout(1000)
-
-        option = page.locator(f'li[role="menuitem"]:has-text("{tk_name[:15]}")').first
-        option.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        option.click()
-        page.wait_for_load_state("networkidle", timeout=UI_ELEMENT_TIMEOUT)
+        # Add toolkit using ChatPage method
+        chat.add_toolkit_participant(tk_name, timeout=UI_ELEMENT_TIMEOUT)
         page.wait_for_timeout(1000)
 
         # Send message
