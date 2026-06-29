@@ -1969,39 +1969,45 @@ class ChatPage(BasePage):
 
     @action("Add toolkit participant")
     def add_toolkit_participant(self, toolkit_name: str, timeout: int = 10000):
-        """Add a toolkit as a chat participant via the 'Add toolkit' button and popper search.
+        """Add a toolkit as a chat participant via the plus menu → Toolkits flow.
 
-        Clicks the 'Add toolkit' button, searches using the first 20 characters of
-        *toolkit_name*, selects the first result, and waits for the placeholder
-        "Still no toolkits added" to disappear.
+        Opens the plus menu, clicks 'Toolkits', searches for toolkits whose name
+        contains *toolkit_name*, selects the first result, and waits for the
+        toolkit to be added.
 
         Args:
-            toolkit_name: Full toolkit name (first 20 chars used for search)
+            toolkit_name: Toolkit name or prefix to search for
             timeout: Maximum wait time in milliseconds
         """
         logger.info("Adding toolkit participant '%s'", toolkit_name)
-        add_btn = self.page.get_by_label("Add toolkit")
-        add_btn.wait_for(state="visible", timeout=timeout)
-        add_btn.click(force=True)
 
-        search_input = Popper.find_visible_search_input(self.page, timeout=timeout)
-        # Same fix as add_agent_participant — press_sequentially triggers
-        # React onChange; fill() does not.
+        # Step 1: Open plus menu
+        plus_btn = self.page.get_by_role("button", name="plus menu")
+        plus_btn.wait_for(state="visible", timeout=timeout)
+        plus_btn.click(force=True)
+        self.page.wait_for_timeout(300)  # Menu animation
+
+        # Step 2: Click "Toolkits" menuitem
+        toolkits_menu = self.page.get_by_role("menuitem", name="Toolkits")
+        toolkits_menu.wait_for(state="visible", timeout=timeout)
+        toolkits_menu.click()
+        self.page.wait_for_timeout(300)  # Submenu animation
+
+        # Step 3: Search for toolkit in the search input
+        search_input = self.page.get_by_placeholder("Search toolkits...")
+        search_input.wait_for(state="visible", timeout=timeout)
         search_input.click()
         search_input.press_sequentially(toolkit_name[:20], delay=50)
+        self.page.wait_for_timeout(500)  # Search debounce
 
-        toolkit_option = self.page.locator(
+        # Step 4: Select the toolkit from results
+        toolkit_item = self.page.locator(
             f'li[role="menuitem"]:has-text("{toolkit_name[:15]}")'
         ).first
-        toolkit_option.wait_for(state="visible", timeout=timeout)
-        toolkit_option.click()
+        toolkit_item.wait_for(state="visible", timeout=timeout)
+        toolkit_item.click()
 
-        self.page.locator('text="Still no toolkits added"').wait_for(
-            state="hidden", timeout=timeout,
-        )
-
-        # Same optimistic-UI race as add_agent_participant — wait for the
-        # toolkit registration write to land on the server before returning.
+        # Wait for the API write to complete
         self.wait_for_network(timeout=timeout)
 
         logger.info("Toolkit '%s' added as chat participant", toolkit_name)
