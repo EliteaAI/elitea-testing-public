@@ -40,7 +40,6 @@ class SupportAssistantPage(BasePage):
 
     launcher_button = LocatorDescriptor(
         testid="support-assistant-launcher",
-        fallback=lambda page: page.locator('button.elitea-assistant-button, button[aria-label="Support Assistant"]'),
         description="Support Assistant floating launcher button"
     )
 
@@ -50,37 +49,31 @@ class SupportAssistantPage(BasePage):
 
     close_button = LocatorDescriptor(
         testid="support-assistant-close",
-        fallback=lambda page: page.locator('button[aria-label="Close chat"], button:has-text("Close chat")').first,
         description="Close the Support Assistant widget"
     )
 
     new_chat_button = LocatorDescriptor(
         testid="support-assistant-new-chat",
-        fallback=lambda page: page.locator('button[aria-label="New chat"], button:has-text("New chat")').first,
         description="Start a new support session"
     )
 
     history_button = LocatorDescriptor(
         testid="support-assistant-history",
-        fallback=lambda page: page.locator('button[aria-label="Chat history"], button:has-text("Chat history")').first,
         description="Open chat history panel"
     )
 
     expand_button = LocatorDescriptor(
         testid="support-assistant-expand",
-        fallback=lambda page: page.locator('button[aria-label="Expand chat"], button:has-text("Expand chat")').first,
         description="Expand widget to full view mode"
     )
 
     collapse_button = LocatorDescriptor(
         testid="support-assistant-collapse",
-        fallback=lambda page: page.locator('button[aria-label="Collapse chat"], button[aria-label="Minimize chat"], button[aria-label="Shrink chat"]').first,
         description="Collapse from full view to widget mode"
     )
 
     widget_title = LocatorDescriptor(
         testid="support-assistant-title",
-        fallback=lambda page: page.locator('h2:has-text("ELITEA Support"), h2:has-text("Support")').first,
         description="Widget header title"
     )
 
@@ -90,19 +83,16 @@ class SupportAssistantPage(BasePage):
 
     message_input = LocatorDescriptor(
         testid="support-assistant-input",
-        fallback=lambda page: page.locator('textbox[placeholder*="Type a message"], input[placeholder*="Type a message"]').first,
         description="Message input textbox"
     )
 
     send_button = LocatorDescriptor(
         testid="support-assistant-send",
-        fallback=lambda page: page.locator('button[aria-label="Send message"], button:has-text("Send message")').first,
         description="Send message button"
     )
 
     attach_button = LocatorDescriptor(
         testid="support-assistant-attach",
-        fallback=lambda page: page.locator('button[aria-label="Attach file"], button:has-text("Attach file")').first,
         description="Attach file button"
     )
 
@@ -112,7 +102,6 @@ class SupportAssistantPage(BasePage):
 
     widget_container = LocatorDescriptor(
         testid="support-assistant-widget",
-        fallback=lambda page: page.locator('.elitea-assistant-widget, [class*="support-assistant"], [class*="chatbot-widget"]').first,
         description="Support Assistant widget container"
     )
 
@@ -122,7 +111,6 @@ class SupportAssistantPage(BasePage):
 
     messages_container = LocatorDescriptor(
         testid="support-assistant-messages",
-        fallback=lambda page: page.locator('.elitea-assistant-widget [class*="messages"], .elitea-assistant-widget > div > div').nth(1),
         description="Messages container area"
     )
 
@@ -160,11 +148,8 @@ class SupportAssistantPage(BasePage):
         """
         logger.info("Opening Support Assistant widget")
 
-        # Use JavaScript click since the button may be a custom element
-        self.page.evaluate("""() => {
-            const btn = document.querySelector('button.elitea-assistant-button, button[aria-label="Support Assistant"]');
-            if (btn) btn.click();
-        }""")
+        # Use the launcher button testid
+        self.launcher_button.click()
 
         # Wait for widget to appear
         self.widget_title.wait_for(state="visible", timeout=timeout)
@@ -195,23 +180,11 @@ class SupportAssistantPage(BasePage):
         logger.info(f"Sending message: {text[:50]}...")
 
         # Find and fill the message input
-        input_locator = self.page.locator('textbox[placeholder*="Type a message"]').first
-        if input_locator.count() == 0:
-            input_locator = self.page.get_by_placeholder("Type a message...")
+        self.message_input.fill(text)
 
-        input_locator.fill(text)
-
-        # Wait for send button to be enabled
-        send_btn = self.page.locator('button[aria-label="Send message"]').first
-        self.page.wait_for_function(
-            """() => {
-                const btn = document.querySelector('button[aria-label="Send message"]');
-                return btn && !btn.disabled;
-            }""",
-            timeout=timeout
-        )
-
-        send_btn.click()
+        # Wait for send button to be enabled, then click
+        self.send_button.wait_for(state="visible", timeout=timeout)
+        self.send_button.click()
         logger.info("Message sent")
 
     def wait_for_response(self, initial_count: int = 0, timeout: int = 30000):
@@ -226,14 +199,10 @@ class SupportAssistantPage(BasePage):
         """
         logger.info("Waiting for assistant response (initial_count=%d)...", initial_count)
 
-        # Wait for a new assistant message (identified by Copy to clipboard button)
-        # Assistant messages have this button, user messages don't
-        # Widget container class is 'elitea-assistant-container'
+        # Wait for a new assistant message (identified by copy button testid)
         self.page.wait_for_function(
             f"""(expectedCount) => {{
-                const widget = document.querySelector('.elitea-assistant-container, [class*="elitea-assistant"]');
-                if (!widget) return false;
-                const copyButtons = widget.querySelectorAll('button[aria-label="Copy to clipboard"]');
+                const copyButtons = document.querySelectorAll('[data-testid="support-assistant-message-copy"]');
                 return copyButtons.length > expectedCount;
             }}""",
             arg=initial_count,
@@ -249,30 +218,17 @@ class SupportAssistantPage(BasePage):
         Returns:
             Number of message blocks (user + assistant)
         """
-        # Count messages by looking for assistant messages (with Copy to clipboard button)
-        # Widget container class is 'elitea-assistant-container'
-        widget = self.page.locator('.elitea-assistant-container, [class*="elitea-assistant"]').first
-        if widget.count() == 0:
-            return 0
-
-        # Count Copy to clipboard buttons (assistant messages)
-        count = widget.locator('button[aria-label="Copy to clipboard"]').count()
-        logger.info(f"Assistant message count: {count}")
+        count = self.page.get_by_test_id("support-assistant-message-block").count()
+        logger.info(f"Message block count: {count}")
         return count
 
     def get_assistant_message_count(self) -> int:
         """Get the count of assistant response messages.
 
-        Assistant messages have a "Copy to clipboard" button.
-
         Returns:
             Number of assistant messages
         """
-        widget = self.page.locator('.elitea-assistant-container, [class*="elitea-assistant"]').first
-        if widget.count() == 0:
-            return 0
-
-        count = widget.locator('button[aria-label="Copy to clipboard"]').count()
+        count = self.page.get_by_test_id("support-assistant-message-copy").count()
         logger.info(f"Assistant message count: {count}")
         return count
 
@@ -282,10 +238,9 @@ class SupportAssistantPage(BasePage):
         Returns:
             Text of the last message body
         """
-        # Find paragraphs in the last message block
-        paragraphs = self.page.locator('.elitea-assistant-widget p')
-        if paragraphs.count() > 0:
-            text = paragraphs.last.text_content() or ""
+        messages = self.page.get_by_test_id("support-assistant-message-block")
+        if messages.count() > 0:
+            text = messages.last.locator('p').last.text_content() or ""
             logger.info(f"Last message: {text[:50]}...")
             return text
         return ""
@@ -323,8 +278,7 @@ class SupportAssistantPage(BasePage):
         Returns:
             Number of history sessions
         """
-        # History sessions are typically list items or buttons
-        sessions = self.page.locator('[class*="history"] button, [class*="session-list"] > div')
+        sessions = self.page.get_by_test_id("support-assistant-history-session")
         count = sessions.count()
         logger.info(f"History session count: {count}")
         return count
@@ -338,8 +292,7 @@ class SupportAssistantPage(BasePage):
             timeout: Maximum wait time in milliseconds
         """
         logger.info(f"Selecting history session at index {index}")
-        sessions = self.page.locator('[class*="history"] button, [class*="session-list"] > div')
-        sessions.nth(index).click()
+        self.page.get_by_test_id("support-assistant-history-session").nth(index).click()
         self.wait_for_network(timeout=timeout)
         logger.info("History session loaded")
 
@@ -377,8 +330,7 @@ class SupportAssistantPage(BasePage):
         Returns:
             True if send button is enabled (not disabled)
         """
-        send_btn = self.page.locator('button[aria-label="Send message"]').first
-        return send_btn.is_enabled()
+        return self.send_button.is_enabled()
 
     def is_input_empty(self) -> bool:
         """Check if the message input is empty.
@@ -386,10 +338,7 @@ class SupportAssistantPage(BasePage):
         Returns:
             True if input is empty
         """
-        input_locator = self.page.locator('textbox[placeholder*="Type a message"]').first
-        if input_locator.count() == 0:
-            input_locator = self.page.get_by_placeholder("Type a message...")
-        value = input_locator.input_value()
+        value = self.message_input.input_value()
         return len(value.strip()) == 0
 
     @action("Attach file")
@@ -417,8 +366,5 @@ class SupportAssistantPage(BasePage):
         logger.info("Waiting for widget to be ready...")
         self.widget_title.wait_for(state="visible", timeout=timeout)
         # Wait for input to be ready
-        input_locator = self.page.locator('textbox[placeholder*="Type a message"]').first
-        if input_locator.count() == 0:
-            input_locator = self.page.get_by_placeholder("Type a message...")
-        input_locator.wait_for(state="visible", timeout=timeout)
+        self.message_input.wait_for(state="visible", timeout=timeout)
         logger.info("Widget ready")

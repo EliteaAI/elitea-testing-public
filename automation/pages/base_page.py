@@ -41,7 +41,7 @@ class BasePage:
         self.page.wait_for_load_state("networkidle", timeout=30000)
         
         # Wait for any loading spinner to disappear
-        spinner = self.page.locator('svg[class*="CircularProgress"], [role="progressbar"], [class*="spinner"]')
+        spinner = self.page.get_by_test_id("loading-spinner")
         if spinner.count() > 0:
             try:
                 spinner.first.wait_for(state="hidden", timeout=10000)

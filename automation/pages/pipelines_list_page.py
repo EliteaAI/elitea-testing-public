@@ -25,28 +25,24 @@ class PipelinesListPage(BasePage):
     URL: /app/pipelines/all
     """
 
-    # LocatorDescriptors - testid + fallback pattern
+    # LocatorDescriptors - testid-only
     search_input = LocatorDescriptor(
         testid="pipeline-search-input",
-        fallback=lambda page: page.locator('input[placeholder="Let\'s find something amazing!"]'),
         description="Pipeline search input field on dashboard"
     )
 
     page_header = LocatorDescriptor(
         testid="pipelines-page-header",
-        fallback=lambda page: page.locator('text="Pipelines"').first,
         description="Pipelines page header text"
     )
 
     table_view_button = LocatorDescriptor(
         testid="pipeline-table-view",
-        fallback=lambda page: page.locator('[aria-label="Table view"] button'),
         description="Switch to table view button"
     )
 
     card_view_button = LocatorDescriptor(
         testid="pipeline-card-view",
-        fallback=lambda page: page.locator('[aria-label="Card list view"] button'),
         description="Switch to card view button"
     )
 
@@ -112,7 +108,7 @@ class PipelinesListPage(BasePage):
             True if pipeline is visible, False otherwise.
         """
         try:
-            self.page.locator(f'text="{name}"').first.wait_for(
+            self.page.get_by_test_id("pipeline-card-name").filter(has_text=name).first.wait_for(
                 state="visible", timeout=timeout,
             )
             return True

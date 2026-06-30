@@ -56,37 +56,20 @@ class ToolkitDetailPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         self.wait_for_network(timeout=timeout)
-        name_field = self.page.get_by_role("textbox", name="Toolkit Name")
+        name_field = self.page.get_by_test_id("toolkit-name-input")
         name_field.wait_for(state="visible", timeout=timeout)
         self.page.wait_for_timeout(1000)
 
     def _get_warning_message_locator(self):
         """Get locator for credential warning message.
 
-        Matches various error messages:
-        - "Authentication failed: ..."
-        - "Access forbidden: ..."
-        - "Connection error: ..."
-
         Returns:
             Locator matching any credential warning message.
         """
-        return self.page.locator(
-            'div[aria-label^="Authentication failed:"], '
-            'div[aria-label^="Access forbidden:"], '
-            'div[aria-label^="Connection error:"]'
-        )
+        return self.page.get_by_test_id("toolkit-auth-warning")
 
     def get_authentication_warning(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str | None:
         """Get authentication warning message if present.
-
-        Looks for warning messages that appear when toolkit credentials
-        are invalid or expired.
-
-        Different error types:
-        - "Authentication failed: Invalid bearer token"
-        - "Access forbidden: Your account has insufficient..."
-        - "Connection error: ..."
 
         Args:
             timeout: Maximum wait time in milliseconds.
@@ -96,16 +79,13 @@ class ToolkitDetailPage(BasePage):
         """
         warning_locator = self._get_warning_message_locator()
         try:
-            warning_locator.nth(1).wait_for(state="visible", timeout=timeout)
-            return warning_locator.nth(1).get_attribute("aria-label")
+            warning_locator.first.wait_for(state="visible", timeout=timeout)
+            return warning_locator.first.get_attribute("aria-label")
         except Exception:
             return None
 
     def has_authentication_warning(self, timeout: int = 5000) -> bool:
         """Check if authentication warning message is displayed.
-
-        Note: The warning icon is the first element (.first),
-        the warning message text is the second element (.nth(1)).
 
         Args:
             timeout: Maximum wait time in milliseconds.
@@ -115,9 +95,7 @@ class ToolkitDetailPage(BasePage):
         """
         warning_locator = self._get_warning_message_locator()
         try:
-            if warning_locator.count() < 2:
-                return False
-            warning_locator.nth(1).wait_for(state="visible", timeout=timeout)
+            warning_locator.first.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
             return False
@@ -128,7 +106,7 @@ class ToolkitDetailPage(BasePage):
         Returns:
             True if Save button exists and is enabled, False otherwise.
         """
-        save_btn = self.page.get_by_role("button", name="Save")
+        save_btn = self.page.get_by_test_id("toolkit-save-button")
         if save_btn.count() == 0:
             return False
         return save_btn.first.is_enabled()
@@ -139,7 +117,7 @@ class ToolkitDetailPage(BasePage):
         Returns:
             True if Save button exists and is disabled, False otherwise.
         """
-        save_btn = self.page.get_by_role("button", name="Save")
+        save_btn = self.page.get_by_test_id("toolkit-save-button")
         if save_btn.count() == 0:
             return True
         return not save_btn.first.is_enabled()
@@ -150,8 +128,7 @@ class ToolkitDetailPage(BasePage):
         Returns:
             Toolkit name value.
         """
-        name_field = self.page.get_by_role("textbox", name="Toolkit Name")
-        return name_field.input_value()
+        return self.page.get_by_test_id("toolkit-name-input").input_value()
 
     def get_description(self) -> str:
         """Get the current description from the form.
@@ -159,8 +136,7 @@ class ToolkitDetailPage(BasePage):
         Returns:
             Description value.
         """
-        desc_field = self.page.get_by_role("textbox", name="Description")
-        return desc_field.input_value()
+        return self.page.get_by_test_id("toolkit-description-input").input_value()
 
     def fill_description(self, description: str) -> None:
         """Fill the description field.
@@ -168,7 +144,7 @@ class ToolkitDetailPage(BasePage):
         Args:
             description: New description text.
         """
-        desc_field = self.page.get_by_role("textbox", name="Description")
+        desc_field = self.page.get_by_test_id("toolkit-description-input")
         desc_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         desc_field.click()
         desc_field.select_text()
@@ -181,7 +157,7 @@ class ToolkitDetailPage(BasePage):
         Args:
             name: New toolkit name.
         """
-        name_field = self.page.get_by_role("textbox", name="Toolkit Name")
+        name_field = self.page.get_by_test_id("toolkit-name-input")
         name_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         name_field.click()
         name_field.select_text()
@@ -194,7 +170,7 @@ class ToolkitDetailPage(BasePage):
         Raises:
             AssertionError: If Save button is not enabled.
         """
-        save_btn = self.page.get_by_role("button", name="Save")
+        save_btn = self.page.get_by_test_id("toolkit-save-button")
         save_btn.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         assert save_btn.first.is_enabled(), "Save button should be enabled before clicking"
         save_btn.first.click()
@@ -202,7 +178,7 @@ class ToolkitDetailPage(BasePage):
 
     def click_discard(self) -> None:
         """Click Discard button to reset form changes."""
-        discard_btn = self.page.get_by_role("button", name="Discard")
+        discard_btn = self.page.get_by_test_id("toolkit-discard-button")
         discard_btn.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         discard_btn.first.click()
         self.page.wait_for_timeout(500)
@@ -213,7 +189,7 @@ class ToolkitDetailPage(BasePage):
         Returns:
             Selected credential name or None if not found.
         """
-        config_dropdown = self.page.locator('[class*="configuration"] [role="combobox"]')
+        config_dropdown = self.page.get_by_test_id("toolkit-configuration-dropdown")
         if config_dropdown.count() > 0:
             return config_dropdown.first.text_content()
         return None
@@ -225,17 +201,13 @@ class ToolkitDetailPage(BasePage):
     def _get_credential_row(self, timeout: int = UI_ELEMENT_TIMEOUT):
         """Get the credential row element containing dropdown and action buttons.
 
-        Locator: [data-tour="shared-tool-configuration-form"] [aria-labelledby*="Configuration"]
-
         Args:
             timeout: Maximum wait time in milliseconds.
 
         Returns:
             Locator for the credential row element.
         """
-        row = self.page.locator(
-            '[data-tour="shared-tool-configuration-form"] [aria-labelledby*="Configuration"]'
-        )
+        row = self.page.get_by_test_id("toolkit-credential-row")
         row.first.wait_for(state="visible", timeout=timeout)
         return row.first
 
@@ -254,19 +226,10 @@ class ToolkitDetailPage(BasePage):
     def _get_credential_error_locator(self):
         """Get locator for credential error indicator.
 
-        Matches various error messages:
-        - "Authentication failed: ..."
-        - "Access forbidden: ..."
-        - "Connection error: ..."
-
         Returns:
             Locator matching any credential error indicator.
         """
-        return self.page.locator(
-            'div[aria-label^="Authentication failed:"], '
-            'div[aria-label^="Access forbidden:"], '
-            'div[aria-label^="Connection error:"]'
-        )
+        return self.page.get_by_test_id("toolkit-auth-warning")
 
     def has_credential_status_indicator(self, timeout: int = 5000) -> bool:
         """Check if credential status indicator (warning icon) is displayed.
@@ -310,7 +273,7 @@ class ToolkitDetailPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         self.hover_credential_row(timeout)
-        reload_btn = self.page.locator('button[aria-label="Reload and apply changes"]')
+        reload_btn = self.page.get_by_test_id("toolkit-reload-button")
         reload_btn.wait_for(state="visible", timeout=timeout)
         reload_btn.click()
         self.wait_for_network(timeout=timeout)
@@ -330,7 +293,7 @@ class ToolkitDetailPage(BasePage):
             URL of the new tab (credential detail page).
         """
         self.hover_credential_row(timeout)
-        open_btn = self.page.locator('button[aria-label="Open in new tab"]')
+        open_btn = self.page.get_by_test_id("toolkit-open-in-new-tab-button")
         open_btn.wait_for(state="visible", timeout=timeout)
 
         with self.page.context.expect_page() as new_page_info:
@@ -353,7 +316,7 @@ class ToolkitDetailPage(BasePage):
             True if reload button exists and is visible.
         """
         self.hover_credential_row(timeout)
-        reload_btn = self.page.locator('button[aria-label="Reload and apply changes"]')
+        reload_btn = self.page.get_by_test_id("toolkit-reload-button")
         try:
             reload_btn.wait_for(state="visible", timeout=timeout)
             return True
@@ -370,7 +333,7 @@ class ToolkitDetailPage(BasePage):
             The aria-label value (tooltip text), or None if not found.
         """
         self.hover_credential_row(timeout)
-        reload_btn = self.page.locator('button[aria-label="Reload and apply changes"]')
+        reload_btn = self.page.get_by_test_id("toolkit-reload-button")
         try:
             reload_btn.wait_for(state="visible", timeout=timeout)
             return reload_btn.get_attribute("aria-label")
@@ -387,7 +350,7 @@ class ToolkitDetailPage(BasePage):
             True if open-in-new-tab button exists and is visible.
         """
         self.hover_credential_row(timeout)
-        open_btn = self.page.locator('button[aria-label="Open in new tab"]')
+        open_btn = self.page.get_by_test_id("toolkit-open-in-new-tab-button")
         try:
             open_btn.wait_for(state="visible", timeout=timeout)
             return True
@@ -404,7 +367,7 @@ class ToolkitDetailPage(BasePage):
             The aria-label value (tooltip text), or None if not found.
         """
         self.hover_credential_row(timeout)
-        open_btn = self.page.locator('button[aria-label="Open in new tab"]')
+        open_btn = self.page.get_by_test_id("toolkit-open-in-new-tab-button")
         try:
             open_btn.wait_for(state="visible", timeout=timeout)
             return open_btn.get_attribute("aria-label")

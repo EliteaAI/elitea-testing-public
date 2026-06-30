@@ -35,13 +35,11 @@ class AgentDetailPage(AgentFormPage):
     # Tab locators
     configuration_tab = LocatorDescriptor(
         testid="agent-config-tab",
-        fallback=lambda page: page.get_by_role("tab", name="Configuration"),
         description="Configuration tab"
     )
 
     history_tab = LocatorDescriptor(
         testid="agent-history-tab",
-        fallback=lambda page: page.get_by_role("tab", name="History"),
         description="History tab"
     )
 
@@ -79,7 +77,7 @@ class AgentDetailPage(AgentFormPage):
         first and populates fields after the API call returns.
         """
         # Wait for the INFORMATION section heading to be visible
-        self.page.get_by_role("heading", name="Information").wait_for(
+        self.page.get_by_test_id("agent-information-section").wait_for(
             state="visible", timeout=timeout,
         )
         self.wait_for_network(timeout=10000)
@@ -134,10 +132,7 @@ class AgentDetailPage(AgentFormPage):
         Returns:
             Agent ID as string.
         """
-        btn = self.page.get_by_test_id("entity-copy-id-button")
-        if btn.count() == 0:
-            btn = self.page.get_by_role("button", name="Copy ID")
-        return btn.text_content().strip()
+        return self.page.get_by_test_id("entity-copy-id-button").text_content().strip()
 
     def get_version_id(self) -> str:
         """Read the Version ID from the Information section.
@@ -145,21 +140,14 @@ class AgentDetailPage(AgentFormPage):
         Returns:
             Version ID as string.
         """
-        btn = self.page.get_by_test_id("entity-copy-version-id-button")
-        if btn.count() == 0:
-            btn = self.page.get_by_role("button", name="Copy version ID")
-        return btn.text_content().strip()
+        return self.page.get_by_test_id("entity-copy-version-id-button").text_content().strip()
 
     # ------------------------------------------------------------------
     # Internal tools (switches)
     # ------------------------------------------------------------------
 
     def _get_tool_switch_locator(self, tool: InternalTool) -> Locator:
-        """Get locator for an internal tool switch.
-
-        Uses a robust strategy:
-        1. Try data-testid if available (future-proof)
-        2. Fall back to text-based locator with parent traversal
+        """Get locator for an internal tool switch via data-testid.
 
         Args:
             tool: The internal tool enum value.
@@ -170,32 +158,11 @@ class AgentDetailPage(AgentFormPage):
         testid = get_tool_testid(tool)
         switch_testid = testid + "-switch"
 
-        # Try the switch-specific testid first (added in ELITEA-5634)
-        switch_locator = self.page.get_by_test_id(switch_testid)
-        if switch_locator.count() > 0:
-            return switch_locator.first
-
-        # Try the container testid and find the switch inside it
-        container_locator = self.page.get_by_test_id(testid)
-        if container_locator.count() > 0:
-            switch = container_locator.first.locator('input[type="checkbox"], input[role="switch"]').first
-            if switch.count() > 0:
-                return switch
-
-        # Fallback: text-based locator
-        tool_label = self.page.locator(f'text="{tool.value}"').first
-
-        try:
-            container = tool_label.locator('xpath=ancestor::label[contains(@class, "MuiFormControlLabel")]').first
-            if container.count() == 0:
-                container = tool_label.locator('xpath=ancestor::div[contains(@class, "MuiFormControlLabel")]').first
-            switch = container.locator('input[type="checkbox"], input[role="switch"]').first
-            return switch
-        except Exception:
-            return self.page.locator(f'text="{tool.value}"').locator('..').locator('input[type="checkbox"]').first
+        # Use the switch-specific testid
+        return self.page.get_by_test_id(switch_testid)
 
     def _get_tool_label_locator(self, tool: InternalTool) -> Locator:
-        """Get locator for an internal tool's clickable label area.
+        """Get locator for an internal tool's clickable label area via data-testid.
 
         Args:
             tool: The internal tool enum value.
@@ -203,27 +170,8 @@ class AgentDetailPage(AgentFormPage):
         Returns:
             Locator for the tool's label (for clicking to toggle).
         """
-        # Strategy 1: Try to find within Toolkits section for better specificity
-        # This prevents matching unrelated text elsewhere on the page
-        toolkits_section = self.page.locator('div:has(> button:has-text("Toolkits"))')
-
-        # Try MUI FormControlLabel within toolkits section
-        mui_label = toolkits_section.locator(f'div.MuiFormControlLabel-root:has-text("{tool.value}")')
-        if mui_label.count() > 0:
-            return mui_label.first
-
-        # Try generic label within toolkits section
-        label = toolkits_section.locator(f'label:has-text("{tool.value}")')
-        if label.count() > 0:
-            return label.first
-
-        # Fallback: text locator within toolkits section
-        text_loc = toolkits_section.locator(f'text="{tool.value}"')
-        if text_loc.count() > 0:
-            return text_loc.first
-
-        # Last resort: page-wide search
-        return self.page.locator(f'text="{tool.value}"').first
+        testid = get_tool_testid(tool)
+        return self.page.get_by_test_id(testid)
 
     def is_tool_enabled(self, tool: InternalTool) -> bool:
         """Check if an internal tool switch is checked.
@@ -240,39 +188,8 @@ class AgentDetailPage(AgentFormPage):
             True
         """
         try:
-            # Try to find the checkbox near the tool text
-            # Use multiple strategies since MUI structure can vary
-
-            # Strategy 1: Direct sibling or parent search
-            text_loc = self.page.locator(f'text="{tool.value}"').first
-
-            # Try finding checkbox in parent container
-            try:
-                switch = text_loc.locator('xpath=ancestor::*[1]').locator('input[type="checkbox"]').first
-                if switch.count() > 0:
-                    return switch.is_checked(timeout=1000)
-            except Exception:
-                pass
-
-            # Strategy 2: Look for checkbox near the text (within 2 parent levels)
-            try:
-                switch = text_loc.locator('xpath=ancestor::*[2]').locator('input[type="checkbox"]').first
-                if switch.count() > 0:
-                    return switch.is_checked(timeout=1000)
-            except Exception:
-                pass
-
-            # Strategy 3: Use CSS selector to find nearby switch
-            try:
-                # Find any checkbox that's a sibling or in nearby container
-                container = self.page.locator(f':has-text("{tool.value}")').locator('input[type="checkbox"]').first
-                return container.is_checked(timeout=1000)
-            except Exception:
-                pass
-
-            logger.warning("Could not find checkbox for tool: %s", tool.value)
-            return False
-
+            switch_locator = self._get_tool_switch_locator(tool)
+            return switch_locator.first.is_checked(timeout=2000)
         except Exception as e:
             logger.warning("Failed to check if tool %s is enabled: %s", tool.value, e)
             return False
@@ -341,7 +258,7 @@ class AgentDetailPage(AgentFormPage):
         Returns:
             Locator for the Toolkit button
         """
-        toolkit_btn = self.page.get_by_role("button", name="Toolkit", exact=True)
+        toolkit_btn = self.page.get_by_test_id("agent-add-toolkit-button")
         toolkit_btn.scroll_into_view_if_needed()
         toolkit_btn.wait_for(state="visible", timeout=timeout)
         self.page.wait_for_timeout(500)  # Animation settle
@@ -369,25 +286,11 @@ class AgentDetailPage(AgentFormPage):
 
         for tool in InternalTool:
             try:
-                # Look for the tool text on the page
-                text_locator = self.page.locator(f'text="{tool.value}"')
+                testid = get_tool_testid(tool)
+                tool_locator = self.page.get_by_test_id(testid)
 
-                if text_locator.count() > 0:
-                    first_match = text_locator.first
-
-                    # Check if it's visible
-                    if not first_match.is_visible(timeout=1000):
-                        continue
-
-                    # Check if it's in a reasonable Y position (below 500px)
-                    # to filter out text in headers/banners
-                    try:
-                        box = first_match.bounding_box()
-                        if box and box['y'] > 500:  # Likely in content area, not header
-                            available.append(tool)
-                    except Exception:
-                        # If we can't get bounding box, include it anyway
-                        available.append(tool)
+                if tool_locator.count() > 0 and tool_locator.first.is_visible(timeout=1000):
+                    available.append(tool)
 
             except Exception as e:
                 logger.debug("Tool %s not found: %s", tool.value, e)
@@ -418,7 +321,7 @@ class AgentDetailPage(AgentFormPage):
         logger.info("Adding toolkit '%s' to agent", toolkit_name)
 
         # Scroll to and click the "+ Toolkit" button to open the popper dropdown
-        add_btn = self.page.get_by_role("button", name="Toolkit", exact=True)
+        add_btn = self.page.get_by_test_id("agent-add-toolkit-button")
         add_btn.scroll_into_view_if_needed()
         self.page.wait_for_timeout(500)
         add_btn.wait_for(state="visible", timeout=timeout)
@@ -444,9 +347,6 @@ class AgentDetailPage(AgentFormPage):
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit is attached to the agent.
 
-        Toolkit cards may display the name with or without spaces, so
-        both variants are checked.
-
         Args:
             toolkit_name: Toolkit name to look for.
             timeout: How long to wait for it to appear.
@@ -454,11 +354,10 @@ class AgentDetailPage(AgentFormPage):
         Returns:
             True if toolkit is attached, False otherwise.
         """
-        name_no_spaces = toolkit_name.replace(" ", "")
         try:
-            self.page.locator(
-                f':text("{toolkit_name}"), :text("{name_no_spaces}")'
-            ).first.wait_for(state="visible", timeout=timeout)
+            self.page.get_by_test_id("agent-toolkit-card").filter(has_text=toolkit_name).first.wait_for(
+                state="visible", timeout=timeout
+            )
             return True
         except Exception:
             return False
@@ -476,34 +375,17 @@ class AgentDetailPage(AgentFormPage):
         """
         logger.info("Removing toolkit '%s' from agent", toolkit_name)
 
-        # Find the toolkit card by its name text (may be space-stripped)
-        name_no_spaces = toolkit_name.replace(" ", "")
-        toolkit_text = self.page.locator(
-            f':text("{toolkit_name}"), :text("{name_no_spaces}")'
-        ).first
-        toolkit_text.wait_for(state="visible", timeout=timeout)
-        toolkit_text.scroll_into_view_if_needed()
+        # Find the toolkit card by data-testid and hover to reveal the delete button
+        toolkit_card = self.page.get_by_test_id("agent-toolkit-card").filter(has_text=toolkit_name).first
+        toolkit_card.wait_for(state="visible", timeout=timeout)
+        toolkit_card.scroll_into_view_if_needed()
         self.page.wait_for_timeout(300)
 
-        # Hover over the text element itself — hover effect propagates to the
-        # card container and reveals the hidden delete button.
-        toolkit_text.hover()
+        toolkit_card.hover()
         self.page.wait_for_timeout(500)
-
-        # Find the toolkit card container (ancestor with data-testid or class)
-        # and scope the delete button search to it
-        toolkit_card = toolkit_text.locator("xpath=ancestor::div[contains(@class, 'MuiCard') or contains(@class, 'card')]").first
-        if toolkit_card.count() == 0:
-            # Fallback: use a broader ancestor search
-            toolkit_card = toolkit_text.locator(
-                "xpath=ancestor::div[.//button[@data-testid='agent-toolkit-delete-button'] or "
-                ".//button[@aria-label='delete tool']]"
-            ).first
 
         # Click the delete button scoped to this toolkit card
         delete_btn = toolkit_card.get_by_test_id("agent-toolkit-delete-button")
-        if delete_btn.count() == 0:
-            delete_btn = toolkit_card.locator('button[aria-label="delete tool"]')
         delete_btn.first.wait_for(state="visible", timeout=5000)
         delete_btn.first.click(force=True)
         self.page.wait_for_timeout(500)
@@ -521,10 +403,7 @@ class AgentDetailPage(AgentFormPage):
     # ------------------------------------------------------------------
 
     def _get_toolkit_card(self, toolkit_name: str, timeout: int = 10000):
-        """Get the toolkit card element by name.
-
-        Uses XPath to find toolkit inside 4th MuiAccordionDetails-root (similar to Pipeline).
-        Returns the 2nd matching div (the toolkit container with proper nesting).
+        """Get the toolkit card element by name using data-testid.
 
         Args:
             toolkit_name: Name of the toolkit.
@@ -533,11 +412,7 @@ class AgentDetailPage(AgentFormPage):
         Returns:
             Locator for the toolkit item container.
         """
-        name_prefix = toolkit_name[:20]
-        toolkit_item = self.page.locator(
-            f'xpath=(//div[contains(@class, "MuiAccordionDetails-root")])[4]'
-            f'//div[.//div[contains(normalize-space(), "{name_prefix}")]]'
-        ).nth(1)
+        toolkit_item = self.page.get_by_test_id("agent-toolkit-card").filter(has_text=toolkit_name).first
         toolkit_item.wait_for(state="visible", timeout=timeout)
         return toolkit_item
 
@@ -555,11 +430,7 @@ class AgentDetailPage(AgentFormPage):
 
     def _get_warning_locator(self):
         """Get locator for credential warning messages on page."""
-        return self.page.locator(
-            '[aria-label^="Authentication failed:"], '
-            '[aria-label^="Access forbidden:"], '
-            '[aria-label^="Connection error:"]'
-        )
+        return self.page.get_by_test_id("toolkit-auth-warning")
 
     def has_toolkit_status_indicator(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check if toolkit shows credential status indicator (warning icon).
@@ -637,7 +508,7 @@ class AgentDetailPage(AgentFormPage):
             True if reload button is visible.
         """
         self.hover_toolkit_card(toolkit_name, timeout)
-        reload_btn = self.page.locator('#RefreshButton')
+        reload_btn = self.page.get_by_test_id("toolkit-reload-button")
         try:
             reload_btn.wait_for(state="visible", timeout=timeout)
             return True
@@ -657,7 +528,7 @@ class AgentDetailPage(AgentFormPage):
             The aria-label value (tooltip text), or None if not found.
         """
         self.hover_toolkit_card(toolkit_name, timeout)
-        reload_btn = self.page.locator('#RefreshButton')
+        reload_btn = self.page.get_by_test_id("toolkit-reload-button")
         try:
             reload_btn.wait_for(state="visible", timeout=timeout)
             return reload_btn.get_attribute("aria-label")
@@ -672,7 +543,7 @@ class AgentDetailPage(AgentFormPage):
             timeout: Maximum wait time in milliseconds.
         """
         self.hover_toolkit_card(toolkit_name, timeout)
-        reload_btn = self.page.locator('#RefreshButton')
+        reload_btn = self.page.get_by_test_id("toolkit-reload-button")
         reload_btn.click()
         self.wait_for_network(timeout=timeout)
         logger.info("Clicked reload button for toolkit '%s'", toolkit_name)
@@ -690,7 +561,7 @@ class AgentDetailPage(AgentFormPage):
             True if open-in-new-tab button is visible.
         """
         self.hover_toolkit_card(toolkit_name, timeout)
-        open_btn = self.page.locator('#OpenInNewTabButton')
+        open_btn = self.page.get_by_test_id("toolkit-open-in-new-tab-button")
         try:
             open_btn.wait_for(state="visible", timeout=timeout)
             return True
@@ -710,7 +581,7 @@ class AgentDetailPage(AgentFormPage):
             The aria-label value (tooltip text), or None if not found.
         """
         self.hover_toolkit_card(toolkit_name, timeout)
-        open_btn = self.page.locator('#OpenInNewTabButton')
+        open_btn = self.page.get_by_test_id("toolkit-open-in-new-tab-button")
         try:
             open_btn.wait_for(state="visible", timeout=timeout)
             return open_btn.get_attribute("aria-label")
@@ -730,7 +601,7 @@ class AgentDetailPage(AgentFormPage):
             URL of the new tab (toolkit detail page).
         """
         self.hover_toolkit_card(toolkit_name, timeout)
-        open_btn = self.page.locator('#OpenInNewTabButton')
+        open_btn = self.page.get_by_test_id("toolkit-open-in-new-tab-button")
         open_btn.wait_for(state="visible", timeout=timeout)
 
         with self.page.context.expect_page() as new_page_info:
@@ -747,12 +618,11 @@ class AgentDetailPage(AgentFormPage):
     # ------------------------------------------------------------------
 
     def _embedded_chat_messages(self):
-        """Return a locator for all message LI elements in the embedded chat.
+        """Return a locator for all message blocks in the embedded chat.
 
         The embedded chat is in the right panel of the agent detail page.
-        Messages are li.MuiListItem-root inside ul.MuiList-root.
         """
-        return self.page.locator('ul.MuiList-root li.MuiListItem-root')
+        return self.page.get_by_test_id("chat-message-block")
 
     @action("Send embedded chat message")
     def send_chat_message(self, message: str, timeout: int = 10000):
@@ -763,12 +633,12 @@ class AgentDetailPage(AgentFormPage):
             timeout: Maximum wait time for elements.
         """
         logger.info("Sending message in embedded chat: %s", message[:60])
-        chat_input = self.page.get_by_role("textbox", name="Type your message.")
+        chat_input = self.page.get_by_test_id("chat-message-input")
         chat_input.wait_for(state="visible", timeout=timeout)
         chat_input.fill(message)
         self.page.wait_for_timeout(300)
 
-        send_btn = self.page.get_by_role("button", name="send your question")
+        send_btn = self.page.get_by_test_id("chat-send-button")
         send_btn.wait_for(state="visible", timeout=timeout)
         send_btn.click()
         logger.info("Message sent in embedded chat")
@@ -806,7 +676,7 @@ class AgentDetailPage(AgentFormPage):
         # Wait for the last AI message to have a Delete button (= response complete)
         ai_msg = messages.last
         try:
-            ai_msg.locator('[aria-label="Delete"]').wait_for(
+            ai_msg.get_by_test_id("chat-message-delete").wait_for(
                 state="visible",
                 timeout=max(1000, int((deadline - time.time()) * 1000)),
             )
@@ -849,8 +719,8 @@ class AgentDetailPage(AgentFormPage):
             return ""
 
         ai_msg = messages.last
-        # Try to get text from the response content div
-        response_div = ai_msg.locator('div.css-xn5i2e')
+        # Try to get text from the answer content element
+        response_div = ai_msg.get_by_test_id("chat-answer-content")
         if response_div.count() > 0:
             text = response_div.text_content() or ""
             return text.strip()
@@ -867,16 +737,11 @@ class AgentDetailPage(AgentFormPage):
         """Open the three-dot actions menu on the agent detail page.
 
         Uses data-testid="entity-actions-menu-button" for stable selection.
-        Falls back to JS click on aria-haspopup button when testid not present.
         """
         logger.info("Opening actions menu")
         menu_btn = self.page.get_by_test_id("entity-actions-menu-button")
-        if menu_btn.count() > 0:
-            menu_btn.last.click(force=True)
-        else:
-            fallback_btn = self.page.locator('button[aria-haspopup="true"]').last
-            fallback_btn.evaluate("el => el.click()")
-        self.page.locator('[role="menu"]').wait_for(state="visible", timeout=5000)
+        menu_btn.last.click(force=True)
+        self.page.get_by_test_id("actions-menu").wait_for(state="visible", timeout=5000)
 
     @action("Delete agent")
     def delete_agent_via_menu(self, timeout: int = 10000):
@@ -893,7 +758,7 @@ class AgentDetailPage(AgentFormPage):
         agent_name = self.get_name()
 
         self.open_actions_menu()
-        self.page.get_by_role("menuitem", name="Delete agent").click()
+        self.page.get_by_test_id("agent-actions-delete-menuitem").click()
 
         # Handle type-to-confirm dialog
         dialog = Dialog.wait_for(self.page, timeout=timeout)
@@ -919,9 +784,6 @@ class AgentDetailPage(AgentFormPage):
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Clicking back button")
-        # The back button is the first button in the header bar
-        back_btn = self.page.locator(
-            'tablist:near(:text("Configuration"))'
-        ).locator("..").locator("button").first
+        back_btn = self.page.get_by_test_id("entity-back-button")
         back_btn.click()
         self.wait_for_network(timeout=timeout)

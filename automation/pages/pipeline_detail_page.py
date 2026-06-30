@@ -29,64 +29,54 @@ class PipelineDetailPage(PipelineFormPage):
     URL: /app/pipelines/all/{id}
     """
 
-    # LocatorDescriptors - testid + fallback pattern
+    # LocatorDescriptors - testid-only
     configuration_tab = LocatorDescriptor(
         testid="pipeline-config-tab",
-        fallback=lambda page: page.get_by_role("button", name="General"),
         description="Configuration panel General section header (always visible, replaces old tab)"
     )
 
     history_tab = LocatorDescriptor(
         testid="pipeline-history-tab",
-        fallback=lambda page: page.locator('[aria-label="view run history"]'),
         description="View run history icon button (replaces old History tab)"
     )
 
     copy_id_button = LocatorDescriptor(
         testid="entity-copy-id-button",
-        fallback=lambda page: page.get_by_role("button", name="Copy ID"),
         description="Copy pipeline ID button"
     )
 
     flow_view_button = LocatorDescriptor(
         testid="pipeline-flow-view-button",
-        fallback=lambda page: page.locator('button[value="flow"]'),
         description="Switch to Flow view button"
     )
 
     yaml_view_button = LocatorDescriptor(
         testid="pipeline-yaml-view-button",
-        fallback=lambda page: page.locator('button[value="yaml"]'),
         description="Switch to YAML view button"
     )
 
     canvas_wrapper = LocatorDescriptor(
         testid="rf__wrapper",
-        fallback=lambda page: page.locator('[data-testid="rf__wrapper"]'),
         description="ReactFlow canvas wrapper"
     )
 
     yaml_editor = LocatorDescriptor(
         testid="pipeline-yaml-editor",
-        fallback=lambda page: page.locator("div.cm-editor div.cm-content"),
         description="YAML CodeMirror editor content"
     )
 
     yaml_lines = LocatorDescriptor(
         testid="pipeline-yaml-lines",
-        fallback=lambda page: page.locator("div.cm-editor div.cm-content .cm-line"),
         description="YAML CodeMirror editor lines (for preserving line breaks)"
     )
 
     chat_input = LocatorDescriptor(
-        testid="pipeline-chat-input",
-        fallback=lambda page: page.get_by_role("textbox", name="Type your message."),
+        testid="chat-message-input",
         description="Embedded chat input field"
     )
 
     chat_send_button = LocatorDescriptor(
-        testid="pipeline-chat-send",
-        fallback=lambda page: page.get_by_role("button", name="send your question"),
+        testid="chat-send-button",
         description="Embedded chat send button"
     )
 
@@ -191,18 +181,18 @@ class PipelineDetailPage(PipelineFormPage):
         """
         entries = []
 
-        # Try table rows first
-        rows = self.page.locator("table tbody tr")
+        # Try history entry rows by testid
+        rows = self.page.get_by_test_id("pipeline-history-entry")
         if rows.count() > 0:
             for i in range(rows.count()):
                 entries.append(rows.nth(i).text_content() or "")
             return entries
 
-        # Try list items
-        items = self.page.locator('[class*="version"], [class*="history"]')
-        if items.count() > 0:
-            for i in range(items.count()):
-                entries.append(items.nth(i).text_content() or "")
+        # Fallback: table rows
+        rows = self.page.get_by_test_id("pipeline-history-table").locator("tbody tr")
+        if rows.count() > 0:
+            for i in range(rows.count()):
+                entries.append(rows.nth(i).text_content() or "")
             return entries
 
         return entries
@@ -245,7 +235,7 @@ class PipelineDetailPage(PipelineFormPage):
                 }
                 if (target) target.click();
             }""")
-        self.page.locator('[role="menu"]').wait_for(state="visible", timeout=5000)
+        self.page.get_by_test_id("actions-menu").wait_for(state="visible", timeout=5000)
 
     def delete_pipeline_via_menu(self, timeout: int = 10000):
         """Delete the current pipeline via the three-dot menu.
@@ -261,7 +251,7 @@ class PipelineDetailPage(PipelineFormPage):
 
         self.open_actions_menu()
         # Wait for menu to fully render then click Delete pipeline
-        self.page.get_by_role("menuitem", name="Delete pipeline").click()
+        self.page.get_by_test_id("pipeline-delete-menu-item").click()
 
         # Handle type-to-confirm dialog
         dialog = Dialog.wait_for(self.page, timeout=timeout)
@@ -288,7 +278,7 @@ class PipelineDetailPage(PipelineFormPage):
         logger.info("Exporting pipeline via menu")
         self.open_actions_menu()
 
-        export_item = self.page.get_by_role("menuitem", name="Export")
+        export_item = self.page.get_by_test_id("pipeline-export-menu-item")
         if export_item.count() == 0:
             logger.warning("Export menu item not found")
             return False
@@ -312,13 +302,13 @@ class PipelineDetailPage(PipelineFormPage):
         self.open_actions_menu()
 
         # May be "Fork", "Duplicate", or "Clone"
-        for label in ("Fork", "Duplicate", "Clone"):
-            item = self.page.get_by_role("menuitem", name=label)
+        for testid in ("pipeline-fork-menu-item", "pipeline-duplicate-menu-item", "pipeline-clone-menu-item"):
+            item = self.page.get_by_test_id(testid)
             if item.count() > 0:
                 item.click()
                 self.page.wait_for_timeout(1000)
                 self.wait_for_network(timeout=timeout)
-                logger.info("Pipeline forked via menu (%s)", label)
+                logger.info("Pipeline forked via menu (%s)", testid)
                 return True
 
         logger.warning("Fork/Duplicate menu item not found")
@@ -331,7 +321,7 @@ class PipelineDetailPage(PipelineFormPage):
             List of visible menu item text labels.
         """
         self.open_actions_menu()
-        items = self.page.locator('[role="menuitem"]')
+        items = self.page.get_by_test_id("actions-menu").locator('[role="menuitem"]')
         labels = []
         for i in range(items.count()):
             text = items.nth(i).text_content() or ""
@@ -366,7 +356,7 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             True if YAML view is active, False otherwise.
         """
-        return self.page.locator("div.cm-editor").count() > 0
+        return self.page.get_by_test_id("pipeline-yaml-editor").count() > 0
 
     def is_flow_view_active(self) -> bool:
         """Check if the Flow (ReactFlow canvas) view is currently active.
@@ -421,13 +411,15 @@ class PipelineDetailPage(PipelineFormPage):
             timeout: Maximum wait time for menu to appear.
         """
         logger.info("Adding node: %s", node_type)
-        # The green + button is the MuiIconButton-colorPrimary in the
-        # canvas area (not the header three-dot button).
-        add_btn = self.page.locator("button.MuiIconButton-colorPrimary").first
+        # Click the add node button to open the node type menu
+        add_btn = self.page.get_by_test_id("pipeline-add-node-button")
         add_btn.click()
         self.page.wait_for_timeout(300)
 
-        menu_item = self.page.get_by_role("menuitem", name=node_type, exact=True)
+        menu_item = self.page.get_by_test_id(f"pipeline-add-node-{node_type.lower().replace(' ', '-')}-menu-item")
+        if menu_item.count() == 0:
+            # Fallback to role-based if testid not present
+            menu_item = self.page.get_by_test_id("pipeline-add-node-menu").locator(f'[role="menuitem"]:has-text("{node_type}")')
         menu_item.wait_for(state="visible", timeout=timeout)
         menu_item.click()
         self.page.wait_for_timeout(1000)
@@ -505,8 +497,8 @@ class PipelineDetailPage(PipelineFormPage):
         )
         self.page.wait_for_timeout(300)
 
-        # Click "Delete" in the menu
-        delete_item = self.page.get_by_role("menuitem", name="Delete")
+        # Click "Delete" in the node context menu
+        delete_item = self.page.get_by_test_id("pipeline-node-delete-menu-item")
         delete_item.wait_for(state="visible", timeout=timeout)
         delete_item.click()
         self.page.wait_for_timeout(300)
@@ -539,7 +531,7 @@ class PipelineDetailPage(PipelineFormPage):
         )
         self.page.wait_for_timeout(300)
 
-        entrypoint_item = self.page.get_by_role("menuitem", name="Make entrypoint")
+        entrypoint_item = self.page.get_by_test_id("pipeline-node-entrypoint-menu-item")
         entrypoint_item.wait_for(state="visible", timeout=timeout)
         entrypoint_item.click()
         self.page.wait_for_timeout(500)
@@ -736,7 +728,7 @@ class PipelineDetailPage(PipelineFormPage):
 
         # Dismiss any ReactFlow "create new node" context menu that appears
         # when the drag misses a target handle and lands on empty canvas.
-        if self.page.locator('[role="menu"]').count() > 0:
+        if self.page.get_by_test_id("actions-menu").count() > 0:
             self.page.keyboard.press("Escape")
             self.page.wait_for_timeout(200)
 
@@ -795,21 +787,21 @@ class PipelineDetailPage(PipelineFormPage):
 
     def fit_view(self):
         """Click the ReactFlow 'Fit View' zoom control."""
-        btn = self.page.locator('button[title="Fit View"]')
+        btn = self.page.get_by_test_id("pipeline-canvas-fit-view")
         if btn.count() > 0:
             btn.click()
             self.page.wait_for_timeout(500)
 
     def zoom_in(self):
         """Click the ReactFlow 'Zoom In' control."""
-        btn = self.page.locator('button[title="Zoom In"]')
+        btn = self.page.get_by_test_id("pipeline-canvas-zoom-in")
         if btn.count() > 0:
             btn.click()
             self.page.wait_for_timeout(300)
 
     def zoom_out(self):
         """Click the ReactFlow 'Zoom Out' control."""
-        btn = self.page.locator('button[title="Zoom Out"]')
+        btn = self.page.get_by_test_id("pipeline-canvas-zoom-out")
         if btn.count() > 0:
             btn.click()
             self.page.wait_for_timeout(300)
@@ -828,7 +820,8 @@ class PipelineDetailPage(PipelineFormPage):
 
     def _deselect_all(self):
         """Click on empty canvas space to deselect all nodes."""
-        pane = self.page.locator(".react-flow__pane")
+        # Use the ReactFlow wrapper testid to find the canvas pane
+        pane = self.canvas_wrapper
         bb = pane.bounding_box()
         if bb:
             self.page.mouse.click(bb["x"] + 30, bb["y"] + 30)
@@ -847,7 +840,7 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             Locator for message list items.
         """
-        return self.page.locator('ul.MuiList-root li.MuiListItem-root')
+        return self.page.get_by_test_id("chat-message-block")
 
     def get_embedded_chat_message_count(self) -> int:
         """Return the number of messages in the embedded chat.
@@ -906,7 +899,7 @@ class PipelineDetailPage(PipelineFormPage):
         # Wait for the last AI message to have a Delete button (= response complete)
         ai_msg = messages.last
         try:
-            ai_msg.locator('[aria-label="Delete"]').wait_for(
+            ai_msg.get_by_test_id("chat-message-delete").wait_for(
                 state="visible",
                 timeout=max(1000, int((deadline - time.time()) * 1000)),
             )
@@ -949,8 +942,8 @@ class PipelineDetailPage(PipelineFormPage):
             return ""
 
         ai_msg = messages.last
-        # Try to get text from the response content div (css-xn5i2e)
-        response_div = ai_msg.locator('div.css-xn5i2e')
+        # Try to get text from the answer content element
+        response_div = ai_msg.get_by_test_id("chat-answer-content")
         if response_div.count() > 0:
             text = response_div.text_content() or ""
             return text.strip()
@@ -995,7 +988,7 @@ class PipelineDetailPage(PipelineFormPage):
             timeout: Maximum wait time for the clear action.
         """
         logger.info("Clearing embedded chat history")
-        clear_btn = self.page.locator('[aria-label="Clear the chat history"]')
+        clear_btn = self.page.get_by_test_id("chat-clear-history-button")
         if clear_btn.count() > 0 and clear_btn.is_visible():
             clear_btn.click()
             # Handle confirmation dialog if present
@@ -1024,10 +1017,7 @@ class PipelineDetailPage(PipelineFormPage):
             Locator for the toolkit item container.
         """
         name_prefix = toolkit_name[:20]
-        toolkit_item = self.page.locator(
-            f'xpath=(//div[contains(@class, "MuiAccordionDetails-root")])[2]'
-            f'//div[.//div[contains(normalize-space(), "{name_prefix}")]]'
-        ).first
+        toolkit_item = self.page.get_by_test_id("pipeline-toolkit-item").filter(has_text=name_prefix).first
         toolkit_item.wait_for(state="visible", timeout=timeout)
         return toolkit_item
 
@@ -1082,7 +1072,7 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             True if warning message is visible.
         """
-        warning_msg = self.page.locator('[aria-label^="Authentication failed"]')
+        warning_msg = self.page.get_by_test_id("toolkit-auth-warning")
         try:
             warning_msg.first.wait_for(state="visible", timeout=timeout)
             return True
@@ -1098,7 +1088,7 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             Warning message text, or None if not found.
         """
-        warning_msg = self.page.locator('[aria-label^="Authentication failed"]')
+        warning_msg = self.page.get_by_test_id("toolkit-auth-warning")
         try:
             warning_msg.first.wait_for(state="visible", timeout=timeout)
             return warning_msg.first.get_attribute("aria-label")
@@ -1116,7 +1106,7 @@ class PipelineDetailPage(PipelineFormPage):
             True if reload button is visible.
         """
         self.hover_toolkit_item(toolkit_name, timeout)
-        reload_btn = self.page.locator('#RefreshButton')
+        reload_btn = self.page.get_by_test_id("toolkit-reload-button")
         try:
             reload_btn.wait_for(state="visible", timeout=timeout)
             return True
@@ -1136,7 +1126,7 @@ class PipelineDetailPage(PipelineFormPage):
             The aria-label value (tooltip text), or None if not found.
         """
         self.hover_toolkit_item(toolkit_name, timeout)
-        reload_btn = self.page.locator('#RefreshButton')
+        reload_btn = self.page.get_by_test_id("toolkit-reload-button")
         try:
             reload_btn.wait_for(state="visible", timeout=timeout)
             return reload_btn.get_attribute("aria-label")
@@ -1146,7 +1136,7 @@ class PipelineDetailPage(PipelineFormPage):
     def has_toolkit_open_in_new_tab_button(
         self, toolkit_name: str, timeout: int = 5000
     ) -> bool:
-        """Check if toolkit has open-in-new-tab button (id=OpenInNewTabButton).
+        """Check if toolkit has open-in-new-tab button.
 
         Args:
             toolkit_name: Name of the toolkit.
@@ -1156,7 +1146,7 @@ class PipelineDetailPage(PipelineFormPage):
             True if open-in-new-tab button is visible.
         """
         self.hover_toolkit_item(toolkit_name, timeout)
-        open_btn = self.page.locator('#OpenInNewTabButton')
+        open_btn = self.page.get_by_test_id("toolkit-open-in-new-tab-button")
         try:
             open_btn.wait_for(state="visible", timeout=timeout)
             return True
@@ -1176,7 +1166,7 @@ class PipelineDetailPage(PipelineFormPage):
             The aria-label value (tooltip text), or None if not found.
         """
         self.hover_toolkit_item(toolkit_name, timeout)
-        open_btn = self.page.locator('#OpenInNewTabButton')
+        open_btn = self.page.get_by_test_id("toolkit-open-in-new-tab-button")
         try:
             open_btn.wait_for(state="visible", timeout=timeout)
             return open_btn.get_attribute("aria-label")
@@ -1196,7 +1186,7 @@ class PipelineDetailPage(PipelineFormPage):
             The new Page object for the opened tab.
         """
         self.hover_toolkit_item(toolkit_name, timeout)
-        open_btn = self.page.locator('#OpenInNewTabButton')
+        open_btn = self.page.get_by_test_id("toolkit-open-in-new-tab-button")
         open_btn.wait_for(state="visible", timeout=timeout)
 
         with self.page.context.expect_page() as new_page_info:
@@ -1218,6 +1208,6 @@ class PipelineDetailPage(PipelineFormPage):
         """
         from playwright.sync_api import expect
 
-        warning_locator = self.page.locator('[aria-label^="Authentication failed"]')
+        warning_locator = self.page.get_by_test_id("toolkit-auth-warning")
         expect(warning_locator.first).not_to_be_visible(timeout=timeout)
         logger.info("Toolkit warning message is no longer visible")

@@ -7,7 +7,7 @@ Handles: /app/agents/create and /app/agents/all/{id} (edit mode)
 """
 
 import logging
-import re
+import re  # Used in _is_element_red, _is_counter_warning, get_welcome_message_remaining_chars
 from playwright.sync_api import Page
 
 from .base_page import BasePage
@@ -24,145 +24,117 @@ class AgentFormPage(BasePage):
     # Form field locators
     name_input = LocatorDescriptor(
         testid="agent-name-input",
-        fallback=lambda page: page.get_by_role("textbox", name="Name"),
         description="Agent name input field"
     )
 
     description_input = LocatorDescriptor(
         testid="agent-description-input",
-        fallback=lambda page: page.get_by_role("textbox", name="Description"),
         description="Agent description input field"
     )
 
     instructions_input = LocatorDescriptor(
         testid="agent-instructions-input",
-        fallback=lambda page: page.get_by_role("textbox", name="Guidelines for the AI agent"),
         description="Agent instructions/guidelines field"
     )
 
     welcome_message_input = LocatorDescriptor(
         testid="agent-welcome-message-input",
-        fallback=lambda page: page.get_by_role("textbox", name="Input your welcome message"),
         description="Welcome message field"
     )
 
     welcome_message_expand_button = LocatorDescriptor(
         testid="agent-welcome-message-expand",
-        fallback=lambda page: page.locator('button[aria-label="Full screen view"]'),
         description="Welcome message expand/fullscreen button"
     )
 
     welcome_message_counter = LocatorDescriptor(
         testid="agent-welcome-message-counter",
-        fallback=lambda page: page.get_by_text(re.compile(r'\d+\s*characters?\s*left', re.IGNORECASE)),
         description="Welcome message character counter in collapsed mode"
     )
 
     welcome_message_fullscreen = LocatorDescriptor(
         testid="agent-welcome-message-dialog",
-        fallback=lambda page: page.locator('[role="dialog"]:has-text("Welcome message")'),
         description="Welcome message fullscreen dialog"
     )
 
     welcome_message_fullscreen_textarea = LocatorDescriptor(
         testid="agent-welcome-message-dialog-textarea",
-        fallback=lambda page: page.locator('[role="dialog"]:has-text("Welcome message") textarea, '
-                                           '[role="dialog"]:has-text("Welcome message") [contenteditable="true"]'),
         description="Welcome message textarea in fullscreen dialog"
     )
 
     welcome_message_fullscreen_counter = LocatorDescriptor(
         testid="agent-welcome-message-dialog-counter",
-        fallback=lambda page: page.locator('[role="dialog"]').get_by_text(
-            re.compile(r'\d+\s*characters?\s*left', re.IGNORECASE)
-        ),
         description="Character counter in welcome message fullscreen dialog"
     )
 
     welcome_message_fullscreen_close = LocatorDescriptor(
         testid="agent-welcome-message-dialog-close",
-        fallback=lambda page: page.locator('.MuiDialogTitle-root .MuiBox-root div button').nth(1),
         description="Close button for welcome message fullscreen dialog"
     )
 
     conversation_starters_section = LocatorDescriptor(
         testid="agent-conversation-starters-section",
-        fallback=lambda page: page.get_by_text("Conversation starters"),
         description="Conversation Starters accordion section header"
     )
 
     conversation_starter_add_button = LocatorDescriptor(
         testid="agent-conversation-starter-add",
-        fallback=lambda page: page.locator('div[data-tour="agent-conversation-starters"] button.MuiButton-iconLabel'),
         description="Add conversation starter button"
     )
 
     conversation_starter_inputs = LocatorDescriptor(
         testid="agent-conversation-starter-input",
-        fallback=lambda page: page.locator('textarea[placeholder="Conversation message"]'),
         description="Conversation starter textarea field(s)"
     )
 
     conversation_starter_counter = LocatorDescriptor(
         testid="agent-conversation-starter-counter",
-        fallback=lambda page: page.locator('text=/\\d+\\s*characters?\\s*left/i'),
         description="Conversation starter character counter"
     )
 
     conversation_starter_expand_button = LocatorDescriptor(
         testid="agent-conversation-starter-expand",
-        fallback=lambda page: page.locator('button[aria-label="Full screen view"]'),
         description="Conversation starter expand/fullscreen button"
     )
 
     conversation_starter_fullscreen = LocatorDescriptor(
         testid="agent-conversation-starter-dialog",
-        fallback=lambda page: page.locator('[role="dialog"]:has-text("Conversation starter")'),
         description="Conversation starter fullscreen dialog"
     )
 
     conversation_starter_fullscreen_textarea = LocatorDescriptor(
         testid="agent-conversation-starter-dialog-textarea",
-        fallback=lambda page: page.locator('[role="dialog"] [contenteditable="true"], [role="dialog"] textarea'),
         description="Conversation starter textarea in fullscreen dialog"
     )
 
     conversation_starter_fullscreen_counter = LocatorDescriptor(
         testid="agent-conversation-starter-dialog-counter",
-        fallback=lambda page: page.locator('[role="dialog"]').get_by_text(
-            re.compile(r'\d+\s*characters?\s*left', re.IGNORECASE)
-        ),
         description="Character counter in conversation starter fullscreen dialog"
     )
 
     conversation_starter_fullscreen_close = LocatorDescriptor(
         testid="agent-conversation-starter-dialog-close",
-        fallback=lambda page: page.locator('.MuiDialogTitle-root .MuiBox-root div button').nth(1),
         description="Close button for conversation starter fullscreen dialog"
     )
 
     # Button locators
     save_button = LocatorDescriptor(
         testid="agent-save-button",
-        fallback=lambda page: page.get_by_role("button", name="Save", exact=True),
         description="Save button"
     )
 
     cancel_button = LocatorDescriptor(
         testid="agent-cancel-button",
-        fallback=lambda page: page.get_by_role("button", name="Cancel"),
         description="Cancel button"
     )
 
     discard_button = LocatorDescriptor(
         testid="agent-discard-button",
-        fallback=lambda page: page.get_by_role("button", name="Discard"),
         description="Discard changes button"
     )
 
     save_as_version_button = LocatorDescriptor(
         testid="agent-save-as-version-button",
-        fallback=lambda page: page.get_by_role("button", name="Save As Version"),
         description="Save as new version button"
     )
 

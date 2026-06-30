@@ -26,34 +26,29 @@ class PipelineFormPage(BasePage):
     URL: /app/pipelines/create or /app/pipelines/all/{id}
     """
 
-    # LocatorDescriptors - testid + fallback pattern
+    # LocatorDescriptors - testid-only
     name_input = LocatorDescriptor(
         testid="pipeline-name-input",
-        fallback=lambda page: page.get_by_role("textbox", name="Name"),
         description="Pipeline name input field"
     )
 
     description_input = LocatorDescriptor(
         testid="pipeline-description-input",
-        fallback=lambda page: page.get_by_role("textbox", name="Description"),
         description="Pipeline description input field"
     )
 
     save_button = LocatorDescriptor(
         testid="pipeline-save-button",
-        fallback=lambda page: page.get_by_role("button", name="Save", exact=True),
         description="Save pipeline button"
     )
 
     cancel_button = LocatorDescriptor(
         testid="pipeline-cancel-button",
-        fallback=lambda page: page.get_by_role("button", name="Cancel"),
         description="Cancel button"
     )
 
     discard_button = LocatorDescriptor(
         testid="pipeline-discard-button",
-        fallback=lambda page: page.get_by_role("button", name="Discard"),
         description="Discard changes button"
     )
 

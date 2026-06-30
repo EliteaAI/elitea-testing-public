@@ -43,47 +43,20 @@ class UserProfileSettingsPage(BasePage):
 
     context_management_toggle = LocatorDescriptor(
         testid="context-management-toggle",
-        fallback=lambda page: page.get_by_role(
-            "switch", name="Enable context management for new conversations"
-        ),
         description=(
             "Toggle switch for 'Enable context management for new conversations' "
             "inside the Default Context Management section"
         ),
     )
 
-    # ------------------------------------------------------------------
-    # Default Context Management — Max Context Tokens input
-    # LOCATOR NOTE: The textbox has no accessible name. It is the first
-    # unnamed textbox inside the region that also contains the label text
-    # 'Max Context Tokens'. We scope the locator to the section heading
-    # region to avoid matching the Preserve Recent Messages input.
-    # ------------------------------------------------------------------
-
     max_context_tokens_input = LocatorDescriptor(
         testid="max-context-tokens-input",
-        fallback=lambda page: page.get_by_role(
-            "heading", name="Default Context Management"
-        ).locator("..").get_by_role("region").get_by_role("textbox").nth(0),
-        description=(
-            "Numeric input for Max Context Tokens. "
-            "Located as the first textbox inside the Default Context Management region."
-        ),
+        description="Numeric input for Max Context Tokens.",
     )
-
-    # ------------------------------------------------------------------
-    # Default Context Management — Preserve Recent Messages input
-    # ------------------------------------------------------------------
 
     preserve_recent_messages_input = LocatorDescriptor(
         testid="preserve-recent-messages-input",
-        fallback=lambda page: page.get_by_role(
-            "heading", name="Default Context Management"
-        ).locator("..").get_by_role("region").get_by_role("textbox").nth(1),
-        description=(
-            "Numeric input for Preserve Recent Messages. "
-            "Located as the second textbox inside the Default Context Management region."
-        ),
+        description="Numeric input for Preserve Recent Messages.",
     )
 
     # ------------------------------------------------------------------
@@ -117,7 +90,7 @@ class UserProfileSettingsPage(BasePage):
 
         # Wait for the "Default Context Management" section heading first
         # The toggle is inside an accordion that might need time to expand
-        context_heading = self.page.get_by_role("heading", name="Default Context Management")
+        context_heading = self.page.get_by_test_id("default-context-management-section")
         context_heading.wait_for(state="visible", timeout=timeout)
 
         # The accordion should be expanded by default, but give it time to render
@@ -259,11 +232,8 @@ class UserProfileSettingsPage(BasePage):
         logger.info("Navigated to Personalization settings page")
 
     def _voice_dropdown(self):
-        """Return the voice selector dropdown locator (testid-first, then ID fallback)."""
-        el = self.page.get_by_test_id("voice-selector-dropdown")
-        if el.count() > 0:
-            return el
-        return self.page.locator('#simple-select-Voice')
+        """Return the voice selector dropdown locator."""
+        return self.page.get_by_test_id("voice-selector-dropdown")
 
     def wait_for_personalization_load(self, timeout: int = 15000) -> None:
         """Wait until the Personalization page is fully loaded.
@@ -295,7 +265,7 @@ class UserProfileSettingsPage(BasePage):
         Returns:
             Locator for the Voice Personalization section container.
         """
-        return self._voice_dropdown().locator('xpath=ancestor::div[contains(@class, "MuiAccordion-root")]')
+        return self.page.get_by_test_id("voice-personalization-section")
 
     def get_current_voice(self) -> str:
         """Get the currently selected voice in Voice Personalization.
@@ -303,12 +273,7 @@ class UserProfileSettingsPage(BasePage):
         Returns:
             Voice name (e.g., 'Shimmer').
         """
-        voice_dropdown = self._voice_dropdown()
-        voice_text_el = voice_dropdown.locator('.MuiTypography-labelMedium')
-        if voice_text_el.count() > 0:
-            voice_text = voice_text_el.text_content() or ""
-        else:
-            voice_text = voice_dropdown.text_content() or ""
+        voice_text = self._voice_dropdown().text_content() or ""
         logger.info("Current voice: %s", voice_text.strip())
         return voice_text.strip()
 
@@ -325,8 +290,8 @@ class UserProfileSettingsPage(BasePage):
         voice_dropdown.scroll_into_view_if_needed()
         voice_dropdown.click()
 
-        self.page.locator('[role="listbox"]').wait_for(state="visible", timeout=timeout)
-        option = self.page.locator(f'[role="option"]:has-text("{voice_name}")')
+        self.page.get_by_test_id("voice-selector-listbox").wait_for(state="visible", timeout=timeout)
+        option = self.page.get_by_test_id("voice-selector-listbox").get_by_test_id(f"voice-option-{voice_name.lower()}")
         option.click()
 
         self.page.wait_for_timeout(500)
@@ -345,8 +310,8 @@ class UserProfileSettingsPage(BasePage):
         voice_dropdown.scroll_into_view_if_needed()
         voice_dropdown.click()
 
-        self.page.locator('[role="listbox"]').wait_for(state="visible", timeout=3000)
-        options = self.page.locator('[role="option"]')
+        self.page.get_by_test_id("voice-selector-listbox").wait_for(state="visible", timeout=3000)
+        options = self.page.get_by_test_id("voice-selector-listbox").locator('[role="option"]')
         voices = []
         for i in range(options.count()):
             text = options.nth(i).text_content()
@@ -364,7 +329,7 @@ class UserProfileSettingsPage(BasePage):
         Returns:
             Speed value as float (e.g., 0.5, 1.0, 2.0).
         """
-        speed_input = self.page.locator('input[aria-valuemin="0.5"][aria-valuemax="2"]')
+        speed_input = self.page.get_by_test_id("voice-speed-slider")
         speed_input.scroll_into_view_if_needed()
         value = speed_input.get_attribute("aria-valuenow")
         speed = float(value) if value else 1.0
@@ -379,13 +344,10 @@ class UserProfileSettingsPage(BasePage):
             speed: Target speed value (0.5 to 2.0).
         """
         logger.info("Setting speed to: %sx", speed)
-        speed_input = self.page.locator('input[aria-valuemin="0.5"][aria-valuemax="2"]')
+        speed_input = self.page.get_by_test_id("voice-speed-slider")
         speed_input.scroll_into_view_if_needed()
         current = float(speed_input.get_attribute("aria-valuenow") or 1.0)
-
-        # Click on the thumb to focus
-        speed_thumb = speed_input.locator("xpath=ancestor::span[contains(@class, 'MuiSlider-thumb')]")
-        speed_thumb.click()
+        speed_input.click()
 
         steps_needed = int(round((speed - current) / 0.1))
         key = "ArrowRight" if steps_needed > 0 else "ArrowLeft"
@@ -403,7 +365,7 @@ class UserProfileSettingsPage(BasePage):
         Returns:
             Volume as percentage (0-100).
         """
-        volume_input = self.page.locator('input[aria-valuemin="0"][aria-valuemax="1"]')
+        volume_input = self.page.get_by_test_id("voice-volume-slider")
         volume_input.scroll_into_view_if_needed()
         value = volume_input.get_attribute("aria-valuenow")
         raw_volume = float(value) if value else 1.0
@@ -419,14 +381,11 @@ class UserProfileSettingsPage(BasePage):
             volume_percent: Target volume percentage (0 to 100).
         """
         logger.info("Setting volume to: %d%%", volume_percent)
-        volume_input = self.page.locator('input[aria-valuemin="0"][aria-valuemax="1"]')
+        volume_input = self.page.get_by_test_id("voice-volume-slider")
         volume_input.scroll_into_view_if_needed()
         current_raw = float(volume_input.get_attribute("aria-valuenow") or 1.0)
         target_raw = volume_percent / 100.0
-
-        # Click on the thumb to focus
-        volume_thumb = volume_input.locator("xpath=ancestor::span[contains(@class, 'MuiSlider-thumb')]")
-        volume_thumb.click()
+        volume_input.click()
 
         steps_needed = int(round((target_raw - current_raw) / 0.05))
         key = "ArrowRight" if steps_needed > 0 else "ArrowLeft"
@@ -451,8 +410,6 @@ class UserProfileSettingsPage(BasePage):
         """
         logger.info("Clicking Preview Voice button")
         preview_btn = self.page.get_by_test_id("voice-preview-button")
-        if preview_btn.count() == 0:
-            preview_btn = self.page.locator('button:has-text("Preview Voice")')
         preview_btn.wait_for(state="visible", timeout=timeout)
         preview_btn.click()
         self.page.wait_for_timeout(500)
@@ -465,8 +422,6 @@ class UserProfileSettingsPage(BasePage):
             True if button is visible, False otherwise.
         """
         preview_btn = self.page.get_by_test_id("voice-preview-button")
-        if preview_btn.count() == 0:
-            preview_btn = self.page.locator('button:has-text("Preview Voice")')
         return preview_btn.count() > 0 and preview_btn.first.is_visible()
 
     def get_voice_personalization_controls(self) -> dict:

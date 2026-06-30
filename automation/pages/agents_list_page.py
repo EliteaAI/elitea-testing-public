@@ -24,31 +24,26 @@ class AgentsListPage(BasePage):
     # Locators - using annotation-driven descriptors
     search_input = LocatorDescriptor(
         testid="agent-search-input",
-        fallback=lambda page: page.locator('input[placeholder="Let\'s find something amazing!"]'),
         description="Search agents input field"
     )
 
     create_agent_button = LocatorDescriptor(
         testid="create-entity-button",
-        fallback=lambda page: page.get_by_label("Create Agent").get_by_role("button"),
         description="Create Agent button in sidebar"
     )
 
     table_view_button = LocatorDescriptor(
         testid="agent-table-view-button",
-        fallback=lambda page: page.locator('[aria-label="Table view"] button'),
         description="Switch to table view"
     )
 
     card_view_button = LocatorDescriptor(
         testid="agent-card-view-button",
-        fallback=lambda page: page.locator('[aria-label="Card list view"] button'),
         description="Switch to card view"
     )
 
     page_header = LocatorDescriptor(
         testid="agents-page-header",
-        fallback=lambda page: page.locator('text="Agents"').first,
         description="Agents page header"
     )
 
@@ -112,7 +107,7 @@ class AgentsListPage(BasePage):
             List of agent name strings.
         """
         self.wait_for_network(timeout=timeout)
-        cards = self.page.locator('[class*="CardContent"] >> text, [class*="cardContent"] >> text')
+        cards = self.page.get_by_test_id("agent-card-name")
 
         try:
             cards.first.wait_for(state="visible", timeout=timeout)
@@ -135,7 +130,7 @@ class AgentsListPage(BasePage):
             True if agent is visible, False otherwise.
         """
         try:
-            self.page.locator(f'text="{name}"').first.wait_for(
+            self.page.get_by_test_id("agent-card-name").filter(has_text=name).first.wait_for(
                 state="visible", timeout=timeout,
             )
             return True
@@ -151,7 +146,7 @@ class AgentsListPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Selecting agent: %s", name)
-        card = self.page.locator(f'text="{name}"').first
+        card = self.page.get_by_test_id("agent-card-name").filter(has_text=name).first
         card.wait_for(state="visible", timeout=timeout)
         card.click(force=True)
         self.wait_for_network(timeout=timeout)

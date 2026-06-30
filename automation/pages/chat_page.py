@@ -42,19 +42,16 @@ class ChatPage(BasePage):
 
     message_input = LocatorDescriptor(
         testid="chat-message-input",
-        fallback=lambda page: page.locator('textarea#standard-multiline-static'),
-        description="Main message input textarea. Uses stable ID #standard-multiline-static"
+        description="Main message input textarea"
     )
 
     send_button = LocatorDescriptor(
         testid="chat-send-button",
-        fallback=lambda page: page.get_by_role("button", name="send your question"),
         description="Send message button"
     )
 
     attach_files_button = LocatorDescriptor(
         testid="chat-attach-button",
-        fallback=lambda page: page.get_by_role("button", name="attach files"),
         description="Attach files button"
     )
 
@@ -64,13 +61,11 @@ class ChatPage(BasePage):
 
     sidebar_toggle = LocatorDescriptor(
         testid="sidebar-toggle",
-        fallback=lambda page: page.get_by_role("button", name="open drawer"),
         description="Sidebar toggle button"
     )
 
     search_conversations_input = LocatorDescriptor(
         testid="search-conversations-input",
-        fallback=lambda page: page.locator('input[placeholder="Search conversations..."]'),
         description="Search conversations input field in sidebar"
     )
 
@@ -80,7 +75,6 @@ class ChatPage(BasePage):
 
     model_selector = LocatorDescriptor(
         testid="model-selector-button",
-        fallback=lambda page: page.locator('[class*="model"], button:has-text("GPT"), button:has-text("Claude")'),
         description="Model selector dropdown button"
     )
 
@@ -88,18 +82,8 @@ class ChatPage(BasePage):
     # Chat actions
     # ------------------------------------------------------------------
 
-    # ------------------------------------------------------------------
-    # Context Budget panel (right sidebar, visible after first message)
-    # LOCATOR NOTE: The panel has no data-testid. Located by its heading
-    # text "Context Budget" which is stable in the DOM structure:
-    #   generic > generic > "Context Budget" + info icon
-    #             generic > "22 / 64 000 tokens" + percentage
-    #             generic > Strategy / Messages / Summaries rows
-    # ------------------------------------------------------------------
-
     context_budget_panel = LocatorDescriptor(
         testid="context-budget-panel",
-        fallback=lambda page: page.locator('main').get_by_text("Context Budget").locator("xpath=ancestor::div[2]"),
         description=(
             "Context Budget panel in the right sidebar. "
             "Appears only after at least one message has been sent."
@@ -108,35 +92,27 @@ class ChatPage(BasePage):
 
     context_budget_tokens_display = LocatorDescriptor(
         testid="context-budget-tokens",
-        fallback=lambda page: page.locator('main').get_by_text("Context Budget").locator("xpath=ancestor::div[3]").locator("div").nth(1),
-        description=(
-            "Token usage display inside Context Budget panel. "
-            "Shows text like '22 / 64 000 tokens'."
-        ),
+        description="Token usage display inside Context Budget panel.",
     )
 
     edit_context_button = LocatorDescriptor(
         testid="context-settings-button",
-        fallback=lambda page: page.get_by_role("button", name="Edit context settings"),
         description="Edit context settings button in the right panel Context Budget section"
     )
 
     plus_menu_button = LocatorDescriptor(
         testid="plus-menu-button",
-        fallback=lambda page: page.get_by_role("button", name="plus menu"),
         description="Plus menu button - entry point for adding participants, internal tools, and attachments"
     )
 
     internal_tools_menuitem = LocatorDescriptor(
         testid="internal-tools-menuitem",
-        fallback=lambda page: page.get_by_role("menuitem", name="Internal Tools"),
         description="Internal Tools menuitem inside plus menu dropdown"
     )
 
-    # Legacy locator - kept for backward compatibility but no longer works
+    # Legacy locator - kept for backward compatibility
     internal_tools_toggle = LocatorDescriptor(
         testid="internal-tools-toggle",
-        fallback=lambda page: page.locator('button[aria-label="enable internal tools"]'),
         description="DEPRECATED: Internal tools toggle button (moved to plus menu in v2.0.3)"
     )
 
@@ -146,13 +122,11 @@ class ChatPage(BasePage):
 
     copy_message_button = LocatorDescriptor(
         testid="chat-message-copy",
-        fallback=lambda page: page.locator('button[aria-label="Copy to clipboard"]'),
         description="Copy message to clipboard button"
     )
 
     regenerate_button = LocatorDescriptor(
         testid="message-regenerate-button",
-        fallback=lambda page: page.get_by_role("button", name="Regenerate"),
         description="Regenerate AI response button"
     )
 
@@ -185,21 +159,15 @@ class ChatPage(BasePage):
     # ------------------------------------------------------------------
     # Messages
     # ------------------------------------------------------------------
-    # The chat UI renders all messages (user + AI) as
-    # <li class="MuiListItem-root"> inside a <ul class="MuiList-root">.
-    # This is consistent across regular chat, agent-participant chat,
-    # and embedded chat.
 
     messages_list = LocatorDescriptor(
         testid="chat-messages-list",
-        fallback=lambda page: page.locator('main'),
         description="Main messages list container"
     )
 
     messages_container = LocatorDescriptor(
-        testid="chat-message-item",
-        fallback=lambda page: page.locator('main ul.MuiList-root > li.MuiListItem-root'),
-        description="Individual message items (user + AI)"
+        testid="chat-message-block",
+        description="Individual message blocks (user + AI)"
     )
 
     def __init__(self, page: Page):
@@ -280,7 +248,7 @@ class ChatPage(BasePage):
             logger.info("Chat page loaded - message input visible")
         except Exception:
             # Fallback: check for full-page loading spinner and wait for it
-            spinner = self.page.locator('svg[class*="CircularProgress"], [role="progressbar"], [class*="spinner"]')
+            spinner = self.page.get_by_test_id("loading-spinner")
             if spinner.count() > 0:
                 spinner.first.wait_for(state="hidden", timeout=timeout)
                 logger.info("Loading spinner disappeared")
@@ -511,10 +479,7 @@ class ChatPage(BasePage):
         logger.info("Waiting for generation to complete (Speaking mode button)...")
         # The Speaking mode button appears when generation is complete
         # During generation, a stop button is shown instead
-        speaking_mode_btn = self.page.locator(
-            'span[aria-label="Speaking mode"], '
-            'button[aria-label="enter speaking mode"]'
-        )
+        speaking_mode_btn = self.page.get_by_test_id("chat-speaking-mode-button")
         deadline = time.monotonic() + timeout / 1000.0
         while time.monotonic() < deadline:
             try:
@@ -608,9 +573,9 @@ class ChatPage(BasePage):
         The "open drawer" button toggles between these states.
         """
         logger.info("Opening sidebar")
-        # Check if already expanded (Agents text visible)
-        agents_btn = self.page.get_by_role("button", name="Agents", exact=True)
-        if agents_btn.is_visible():
+        # Check if already expanded (Agents sidebar item visible with text)
+        agents_item = self.page.get_by_test_id("sidebar-item-agents")
+        if agents_item.count() > 0 and agents_item.is_visible():
             logger.info("Sidebar already expanded")
             return
 
@@ -625,9 +590,9 @@ class ChatPage(BasePage):
         Clicks the drawer toggle to collapse to icon-only mode.
         """
         logger.info("Closing sidebar")
-        # Check if already collapsed (Agents text not visible)
-        agents_btn = self.page.get_by_role("button", name="Agents", exact=True)
-        if not agents_btn.is_visible():
+        # Check if already collapsed
+        agents_item = self.page.get_by_test_id("sidebar-item-agents")
+        if agents_item.count() == 0 or not agents_item.is_visible():
             logger.info("Sidebar already collapsed")
             return
 
@@ -693,9 +658,6 @@ class ChatPage(BasePage):
         # Find and click the copy button within this message
         copy_button = message_block.get_by_test_id("chat-message-copy")
         if copy_button.count() == 0:
-            # Fallback: aria-label for user messages copy button
-            copy_button = message_block.locator('button[aria-label="Copy to clipboard"]')
-        if copy_button.count() == 0:
             from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
             raise PlaywrightTimeoutError(
                 f"No copy button found on message at index {message_index}"
@@ -733,15 +695,11 @@ class ChatPage(BasePage):
         # - Inside a generic with accessible name "Delete"
         # - Has NO aria-label attribute
 
-        # Strategy: Get all buttons in the message, filter by position
-        # Buttons appear in order: Copy (index 0), Regenerate (index 1), Delete (index 2)
-        buttons = message_block.locator('button')
-        button_count = buttons.count()
-        logger.info(f"Found {button_count} buttons in message")
-
-        # The delete button is typically the last button (or 3rd if all 3 are present)
-        # Use -1 to get the last button which should be Delete
-        delete_button = buttons.last
+        # Find the delete button using its testid within this message block
+        delete_button = message_block.get_by_test_id("chat-message-delete")
+        if delete_button.count() == 0:
+            # Relative scoping: last button in the message (Delete is always last)
+            delete_button = message_block.locator('button').last
 
         # Click the delete button
         delete_button.click(force=True)
@@ -775,22 +733,22 @@ class ChatPage(BasePage):
         """
         logger.info(f"Searching participants with #{query}")
         self.message_input.fill(f"#{query}")
-        # Wait for search results dropdown (multiple possible selectors)
-        self.page.wait_for_selector(
-            '[role="listbox"], [role="option"], [class*="dropdown"], '
-            '[class*="popper"], [class*="autocomplete"], [class*="mention"]',
-            timeout=5000,
+        # Wait for search results panel
+        self.page.get_by_test_id("chat-participant-search-panel").wait_for(
+            state="visible", timeout=5000
         )
         
     @action("Select participant")
     def select_participant_from_search(self, participant_name: str):
         """Select a participant from # search results.
-        
+
         Args:
             participant_name: Name of participant to select
         """
         logger.info(f"Selecting participant: {participant_name}")
-        option = self.page.get_by_role("option", name=participant_name).first
+        option = self.page.get_by_test_id("chat-participant-search-panel").get_by_test_id(
+            "chat-participant-option"
+        ).filter(has_text=participant_name).first
         option.click()
         
     def edit_context_settings(self):
@@ -805,7 +763,7 @@ class ChatPage(BasePage):
 
     def close_open_dialogs(self):
         """Close any open dialogs or modals by pressing Escape."""
-        dialog = self.page.locator('[role="dialog"], [class*="MuiDialog-root"], [class*="modal"]')
+        dialog = self.page.get_by_test_id("dialog-container")
         if dialog.count() > 0:
             self.page.keyboard.press("Escape")
             self.page.wait_for_timeout(500)
@@ -815,64 +773,31 @@ class ChatPage(BasePage):
 
         Returns the menu locator.
         """
-        menu = self.page.locator('[role="menu"], [role="listbox"], [class*="menu"], [class*="popover"]')
-        menu.first.wait_for(state="visible", timeout=timeout)
+        menu = self.page.get_by_test_id("model-selector-menu")
+        menu.wait_for(state="visible", timeout=timeout)
         return menu
 
     def wait_for_hash_search_dropdown(self, timeout: int = 5000):
         """Wait for # mention search results panel to appear.
 
-        In v2.0.3+, typing #query shows a search results panel above the input
-        with matching agents, pipelines, etc.
-
         Returns the search results panel locator or raises TimeoutError.
         """
-        # Look for the search results panel that contains "Search results" heading
-        # or the results container with agent/pipeline items
-        search_results = self.page.locator(
-            ':has-text("Search results"), '
-            '[class*="dropdown"], [class*="popper"], '
-            '[class*="autocomplete"], [class*="mention"]'
-        ).filter(has=self.page.locator(':text("agent"), :text("pipeline")'))
-
-        search_results.first.wait_for(state="visible", timeout=timeout)
+        search_results = self.page.get_by_test_id("chat-participant-search-panel")
+        search_results.wait_for(state="visible", timeout=timeout)
         return search_results
 
     def get_hash_search_first_option(self):
         """Get the first clickable option from hash search results.
 
-        The hash search panel structure:
-        - "Search results" title
-        - List of participant cards with EntityIcon + name text
-
-        Each card contains an SVG icon and the participant name in a Typography.
-        Returns the first clickable card locator or None if no options.
+        Returns the first clickable participant option locator or None if no options.
         """
-        # Find the search results panel
-        results_title = self.page.locator('text=/search results/i').first
-        if results_title.count() == 0:
+        panel = self.page.get_by_test_id("chat-participant-search-panel")
+        if panel.count() == 0:
             return None
-
-        # Go up to the container and find clickable cards with icons
-        container = results_title.locator('xpath=ancestor::div[3]')
-
-        # Participant cards have an SVG icon and text
-        cards = container.locator('div').filter(
-            has=self.page.locator('svg')
-        ).filter(
-            has=self.page.locator('p:not(:has-text("Search results")):not(:has-text("No matching"))')
-        )
-
-        if cards.count() > 0:
-            return cards.first
-
-        # Fallback: look for any element with agent/pipeline type labels
-        cards = container.locator('div:has(p:text("agent")), div:has(p:text("pipeline"))')
-        if cards.count() > 0:
-            return cards.first
-
+        options = panel.get_by_test_id("chat-participant-option")
+        if options.count() > 0:
+            return options.first
         return None
-
 
     def is_hash_search_dropdown_visible(self) -> bool:
         """Check if the # mention search results panel is currently visible.
@@ -880,30 +805,21 @@ class ChatPage(BasePage):
         Returns:
             True if the search results panel is visible, False if it has closed.
         """
-        search_results = self.page.get_by_text("Search results")
-        return search_results.count() > 0 and search_results.first.is_visible()
+        panel = self.page.get_by_test_id("chat-participant-search-panel")
+        return panel.count() > 0 and panel.first.is_visible()
 
     def wait_for_search_dialog(self, timeout: int = 5000):
         """Wait for search conversations input to appear.
 
-        In v2.0.3+, clicking "Search conversations" button opens an inline
-        search textbox (not a modal dialog).
-
         Returns the search input locator.
         """
-        search_input = self.page.locator(
-            'input[placeholder*="Search conversations"], '
-            '[role="dialog"] input[placeholder*="Search"]'
-        )
-        search_input.first.wait_for(state="visible", timeout=timeout)
+        search_input = self.page.get_by_test_id("search-conversations-input")
+        search_input.wait_for(state="visible", timeout=timeout)
         return search_input
 
     def wait_for_sidebar_expanded(self, timeout: int = 5000):
         """Wait for sidebar to expand and show full labels."""
-        # Sidebar items are buttons with text labels when expanded
-        # Use exact=True to avoid matching conversation items with "Agents" in their name
-        agents_btn = self.page.get_by_role("button", name="Agents", exact=True)
-        agents_btn.wait_for(state="visible", timeout=timeout)
+        self.page.get_by_test_id("sidebar-item-agents").wait_for(state="visible", timeout=timeout)
 
     def has_error_notification(self) -> bool:
         """Check if an error notification is present on the page.
@@ -911,32 +827,21 @@ class ChatPage(BasePage):
         Returns:
             True if error notification visible, False otherwise.
         """
-        error = self.page.locator('[role="alert"], [class*="error"], [class*="notification"]')
+        error = self.page.get_by_test_id("error-notification")
         return error.count() > 0 and error.first.is_visible()
 
     def open_search_conversations(self):
-        """Open search conversations via the Search conversations button.
-
-        In v2.0.3+, Ctrl+K keyboard shortcut is no longer supported.
-        Uses the conversation-search-button testid (ConversationSearchButton component).
-        """
+        """Open search conversations via the Search conversations button."""
         logger.info("Opening search conversations via button")
         search_btn = self.page.get_by_test_id("conversation-search-button")
-        if search_btn.count() == 0:
-            search_btn = self.page.get_by_role("button", name="Search conversations")
         search_btn.wait_for(state="visible", timeout=5000)
         search_btn.click()
-        
-    def navigate_to_agents(self):
-        """Navigate to Agents page via the sidebar drawer.
 
-        Uses data-testid="sidebar-item-agents" (SidebarMenuItem component).
-        """
+    def navigate_to_agents(self):
+        """Navigate to Agents page via the sidebar drawer."""
         logger.info("Navigating to Agents")
         self.open_sidebar()
         agents_btn = self.page.get_by_test_id("sidebar-item-agents")
-        if agents_btn.count() == 0:
-            agents_btn = self.page.get_by_role("button", name="Agents", exact=True)
         agents_btn.wait_for(state="visible", timeout=5000)
         agents_btn.click()
 
@@ -957,7 +862,7 @@ class ChatPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Clicking +Conversation button")
-        btn = self.page.locator('[data-tour="sidebar-create-button"] button:has-text("Conversation")').first
+        btn = self.page.get_by_test_id("create-conversation-button")
         btn.wait_for(state="visible", timeout=timeout)
         btn.click(force=True)
         # Wait for the "Creating conversation..." state to finish
@@ -971,15 +876,11 @@ class ChatPage(BasePage):
     def click_create_new_conversation(self, timeout: int = 10000):
         """Click the "+Conversation" button in the sidebar.
 
-        Uses data-tour attribute locator instead of aria-label.
-
-        LOCATOR: [data-tour="sidebar-create-button"] button:has-text("Conversation")
-
         Args:
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Clicking +Conversation button")
-        btn = self.page.locator('[data-tour="sidebar-create-button"] button:has-text("Conversation")').first
+        btn = self.page.get_by_test_id("create-conversation-button")
         btn.wait_for(state="visible", timeout=timeout)
         btn.click(force=True)
         self.page.wait_for_timeout(1000)
@@ -1002,7 +903,7 @@ class ChatPage(BasePage):
         between builds) and correctly excludes toolbar buttons (which are nested
         deeper or have aria-label attributes).
         """
-        return self.page.locator(':has(h6) > button')
+        return self.page.get_by_test_id("conversation-item")
 
     def get_conversation_names(self, timeout: int = 5000) -> list[str]:
         """Return the names of all conversations visible in the sidebar list.
@@ -1047,7 +948,7 @@ class ChatPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Selecting conversation: %s", name)
-        item = self.page.locator(f'text="{name}"').first
+        item = self.page.get_by_test_id("conversation-item").filter(has_text=name).first
         item.wait_for(state="visible", timeout=timeout)
         item.click(force=True)
         self.wait_for_network(timeout=timeout)
@@ -1074,48 +975,29 @@ class ChatPage(BasePage):
         conv_id = str(conversation_id)
         logger.info("Selecting conversation by ID: %s", conv_id)
         
-        # Strategy 1: Try data attributes
-        item = self.page.locator(
-            f'[data-conversation-id="{conv_id}"], '
-            f'[data-id="{conv_id}"], '
-            f'[id*="conversation-{conv_id}"]'
+        # Strategy 1: Look for conversation-item with data-conversation-id
+        item = self.page.get_by_test_id("conversation-item").filter(
+            has=self.page.locator(f'[data-conversation-id="{conv_id}"]')
         ).first
-        
+
         if item.count() > 0:
-            logger.info("Found conversation via data attribute")
+            logger.info("Found conversation via data-conversation-id attribute")
             item.wait_for(state="visible", timeout=timeout)
             item.click(force=True)
             self.wait_for_network(timeout=timeout)
             return
-        
-        # Strategy 2: Look for href with /app/chat/{id}
-        item = self.page.locator(f'a[href*="/app/chat/{conv_id}"]').first
+
+        # Strategy 2: Find conversation item by href containing the id
+        item = self.page.get_by_test_id("conversation-item").filter(
+            has=self.page.locator(f'[href*="/app/chat/{conv_id}"]')
+        ).first
+        if item.count() == 0:
+            # Direct anchor element with href
+            item = self.page.get_by_test_id("conversation-item").filter(
+                has=self.page.locator(f'[href*="{conv_id}"]')
+            ).first
         if item.count() > 0:
             logger.info("Found conversation via href attribute")
-            item.wait_for(state="visible", timeout=timeout)
-            item.click(force=True)
-            self.wait_for_network(timeout=timeout)
-            return
-        
-        # Strategy 3: JavaScript evaluation to find by href in onclick/data
-        result = self.page.evaluate(f"""
-            () => {{
-                const elements = Array.from(document.querySelectorAll('[class*="conversation"]'));
-                for (const el of elements) {{
-                    const onclick = el.getAttribute('onclick') || '';
-                    const href = el.getAttribute('href') || '';
-                    const data = el.getAttribute('data-href') || '';
-                    if (onclick.includes('{conv_id}') || href.includes('{conv_id}') || data.includes('{conv_id}')) {{
-                        return el.textContent || null;
-                    }}
-                }}
-                return null;
-            }}
-        """)
-        
-        if result:
-            logger.info("Found conversation via JS evaluation, clicking by text: %s", result)
-            item = self.page.locator(f'text="{result}"').first
             item.wait_for(state="visible", timeout=timeout)
             item.click(force=True)
             self.wait_for_network(timeout=timeout)
@@ -1140,7 +1022,7 @@ class ChatPage(BasePage):
             True if the conversation is visible, False otherwise.
         """
         try:
-            self.page.locator(f':has-text("{name}")').first.wait_for(
+            self.page.get_by_test_id("conversation-item").filter(has_text=name).first.wait_for(
                 state="visible", timeout=timeout,
             )
             return True
@@ -1162,8 +1044,6 @@ class ChatPage(BasePage):
         logger.info("Opening search conversations via button")
         self.dismiss_banner_if_present()
         search_btn = self.page.get_by_test_id("conversation-search-button")
-        if search_btn.count() == 0:
-            search_btn = self.page.locator('button[aria-label="Search conversations"]')
         search_btn.wait_for(state="visible", timeout=timeout)
         search_btn.click()
 
@@ -1175,12 +1055,9 @@ class ChatPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         self.open_search_conversations_button(timeout=timeout)
-        search_input = self.page.locator(
-            '[role="dialog"] input, [role="search"] input, '
-            'input[placeholder*="Search"], input[placeholder*="search"]'
-        )
-        search_input.first.wait_for(state="visible", timeout=timeout)
-        search_input.first.fill(query)
+        search_input = self.page.get_by_test_id("search-conversations-input")
+        search_input.wait_for(state="visible", timeout=timeout)
+        search_input.fill(query)
         logger.info("Searched conversations for: %s", query)
 
     def delete_conversation_ui(self, timeout: int = 5000):
@@ -1193,12 +1070,7 @@ class ChatPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Deleting conversation via UI")
-        # The conversation panel may have a delete icon or context menu
-        delete_btn = self.page.locator(
-            'button[aria-label="Delete conversation"], '
-            'button[aria-label="delete conversation"], '
-            'button[aria-label="Delete"]'
-        )
+        delete_btn = self.page.get_by_test_id("conversation-delete-button")
         delete_btn.first.wait_for(state="visible", timeout=timeout)
         delete_btn.first.click()
 
@@ -1221,19 +1093,15 @@ class ChatPage(BasePage):
         """
         logger.info("Opening conversation menu for: %s", conv_name or "(first)")
         if conv_name:
-            item = self.page.locator(
-                f'[role="button"][aria-roledescription="draggable"]:has-text("{conv_name}")'
-            ).first
+            item = self.page.get_by_test_id("conversation-item").filter(has_text=conv_name).first
         else:
-            item = self.page.locator(
-                '[role="button"][aria-roledescription="draggable"]'
-            ).first
+            item = self.page.get_by_test_id("conversation-item").first
         item.wait_for(state="visible", timeout=timeout)
         item.hover()
         self.page.wait_for_timeout(500)
 
-        # Click the three-dot button via JS — it may be hidden by CSS
-        menu_btn = item.locator("#conversation-menu-action")
+        # Click the three-dot button — scoped to the conversation item
+        menu_btn = item.get_by_test_id("conversation-menu-button")
         menu_btn.wait_for(state="attached", timeout=timeout)
         menu_btn.evaluate("el => el.click()")
         self.page.wait_for_timeout(300)
@@ -1257,13 +1125,11 @@ class ChatPage(BasePage):
         self.open_conversation_menu(conv_name, timeout=timeout)
 
         # Click "Edit" menu item
-        self.page.locator('[role="menuitem"]:has-text("Edit")').click()
+        self.page.get_by_test_id("conversation-menu-edit-item").click()
         self.page.wait_for_timeout(500)
 
-        # Find the inline rename input (MUI Input)
-        rename_input = self.page.locator(
-            "input.MuiInputBase-input.MuiInput-input"
-        ).first
+        # Find the inline rename input
+        rename_input = self.page.get_by_test_id("conversation-rename-input")
         rename_input.wait_for(state="visible", timeout=timeout)
         rename_input.clear()
         rename_input.fill(new_name)
@@ -1286,7 +1152,7 @@ class ChatPage(BasePage):
         self.open_conversation_menu(conv_name, timeout=timeout)
 
         # Click "Delete" menu item
-        self.page.locator('[role="menuitem"]:has-text("Delete")').click()
+        self.page.get_by_test_id("conversation-menu-delete-item").click()
 
         # Handle confirmation dialog
         dialog = Dialog.wait_for(self.page, timeout=timeout)
@@ -1301,21 +1167,17 @@ class ChatPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Clicking Create folder")
-        btn = self.page.get_by_label("Create folder").get_by_role("button")
+        btn = self.page.get_by_test_id("create-folder-button")
         btn.wait_for(state="visible", timeout=timeout)
         btn.click()
 
     def get_delete_button_count(self) -> int:
         """Get count of delete message buttons visible on the page.
 
-        Delete buttons have aria-label="Delete" and appear on hover
-        over messages. This count indicates the number of messages
-        that have been interacted with or are actively shown.
-
         Returns:
             Number of delete buttons found
         """
-        delete_btns = self.page.locator('button[aria-label="Delete"]')
+        delete_btns = self.page.get_by_test_id("chat-message-delete")
         count = delete_btns.count()
         logger.info(f"Delete button count: {count}")
         return count
@@ -1344,7 +1206,7 @@ class ChatPage(BasePage):
             timeout: Maximum wait time in milliseconds
         """
         logger.info("Waiting for 'Naming' label to resolve to actual title")
-        naming_label = self.page.locator('text="Naming"')
+        naming_label = self.page.get_by_test_id("conversation-naming-placeholder")
         if naming_label.count() > 0:
             try:
                 naming_label.first.wait_for(state="hidden", timeout=timeout)
@@ -1413,7 +1275,7 @@ class ChatPage(BasePage):
         to reveal the context menu.
         """
         logger.info("Clicking Delete menu item")
-        self.page.locator('[role="menuitem"]:has-text("Delete")').click()
+        self.page.get_by_test_id("conversation-menu-delete-item").click()
 
     # ------------------------------------------------------------------
     # Internal Tools / Image Creation
@@ -1450,7 +1312,7 @@ class ChatPage(BasePage):
         self.internal_tools_menuitem.click()
 
         # Wait for the tools panel with switches to appear
-        self.page.locator('[role="switch"]').first.wait_for(
+        self.page.get_by_test_id("internal-tools-panel").wait_for(
             state="visible", timeout=timeout
         )
         logger.info("Internal tools menu opened")
@@ -1463,7 +1325,7 @@ class ChatPage(BasePage):
         Returns:
             Number of visible switch elements
         """
-        return self.page.locator('[role="switch"]').count()
+        return self.page.get_by_test_id("internal-tools-panel").locator('[role="switch"]').count()
 
     @action("Enable image creation")
     def enable_image_creation(self, timeout: int = 5000):
@@ -1477,11 +1339,11 @@ class ChatPage(BasePage):
         """
         logger.info("Enabling Image creation")
 
-        # Check if menu is already open by looking for the switch
-        image_switch = self.page.get_by_role("switch", name="Image creation")
+        # Check if menu is already open by looking for the panel
+        image_switch = self.page.get_by_test_id("internal-tool-image-creation-switch")
         if image_switch.count() == 0:
             self.open_internal_tools_menu(timeout=timeout)
-            image_switch = self.page.get_by_role("switch", name="Image creation")
+            image_switch = self.page.get_by_test_id("internal-tool-image-creation-switch")
 
         image_switch.wait_for(state="visible", timeout=timeout)
 
@@ -1506,10 +1368,10 @@ class ChatPage(BasePage):
         """
         logger.info("Disabling Image creation")
 
-        image_switch = self.page.get_by_role("switch", name="Image creation")
+        image_switch = self.page.get_by_test_id("internal-tool-image-creation-switch")
         if image_switch.count() == 0:
             self.open_internal_tools_menu(timeout=timeout)
-            image_switch = self.page.get_by_role("switch", name="Image creation")
+            image_switch = self.page.get_by_test_id("internal-tool-image-creation-switch")
 
         image_switch.wait_for(state="visible", timeout=timeout)
 
@@ -1532,10 +1394,10 @@ class ChatPage(BasePage):
         Returns:
             True if Image creation is enabled, False otherwise
         """
-        image_switch = self.page.get_by_role("switch", name="Image creation")
+        image_switch = self.page.get_by_test_id("internal-tool-image-creation-switch")
         if image_switch.count() == 0:
             self.open_internal_tools_menu(timeout=timeout)
-            image_switch = self.page.get_by_role("switch", name="Image creation")
+            image_switch = self.page.get_by_test_id("internal-tool-image-creation-switch")
 
         image_switch.wait_for(state="visible", timeout=timeout)
         is_checked = image_switch.is_checked()
@@ -1559,11 +1421,13 @@ class ChatPage(BasePage):
         self.model_selector.first.click()
 
         # Wait for menu to appear
-        menu = self.page.locator('[role="menu"], [role="listbox"]')
-        menu.first.wait_for(state="visible", timeout=timeout)
+        menu = self.page.get_by_test_id("model-selector-menu")
+        menu.wait_for(state="visible", timeout=timeout)
 
         # Find and click the model option
-        model_option = self.page.locator(f'[role="menuitem"]:has-text("{model_name}")')
+        model_option = menu.get_by_test_id(f"model-option-{model_name.lower().replace(' ', '-').replace('.', '-')}")
+        if model_option.count() == 0:
+            model_option = menu.locator(f'[role="menuitem"]:has-text("{model_name}")')
         model_option.wait_for(state="visible", timeout=timeout)
         model_option.click()
 
@@ -1679,7 +1543,7 @@ class ChatPage(BasePage):
         Returns:
             True if the panel is expanded (Participants title is visible).
         """
-        participants_title = self.page.locator('main').get_by_text("Participants", exact=True)
+        participants_title = self.page.get_by_test_id("participants-panel-title")
         return participants_title.count() > 0 and participants_title.first.is_visible()
 
     def expand_participants_panel(self, timeout: int = 5000) -> bool:
@@ -1702,42 +1566,16 @@ class ChatPage(BasePage):
         logger.info("Attempting to expand Participants panel...")
 
         # The expand button is in the collapsed panel area on the right side.
-        # It's a button containing the DoubleLeftIcon (chevron pointing left).
-        # Look for buttons in the rightmost area of main that aren't in the chat area.
-        expand_btn = self.page.evaluate("""() => {
-            // Find the collapsed participants panel expand button
-            // It's the button in the rightmost section that shows a percentage (0%)
-            const mainEl = document.querySelector('main');
-            if (!mainEl) return false;
-
-            // Look for buttons near a percentage display (collapsed Context Budget shows "0%")
-            const allButtons = mainEl.querySelectorAll('button');
-            for (const btn of allButtons) {
-                const parent = btn.parentElement;
-                if (parent && parent.textContent && /\\d+%/.test(parent.textContent)) {
-                    btn.click();
-                    return true;
-                }
-            }
-
-            // Alternative: find the rightmost button in main that's not the message actions
-            const rect = mainEl.getBoundingClientRect();
-            const rightThreshold = rect.right - 100;  // Within 100px of right edge
-            for (const btn of allButtons) {
-                const btnRect = btn.getBoundingClientRect();
-                if (btnRect.left > rightThreshold && !btn.getAttribute('aria-label')) {
-                    btn.click();
-                    return true;
-                }
-            }
-            return false;
-        }""")
-
-        if expand_btn:
+        expand_btn = self.page.get_by_test_id("participants-panel-expand-button")
+        try:
+            expand_btn.first.wait_for(state="visible", timeout=timeout)
+            expand_btn.first.click()
             self.page.wait_for_timeout(500)  # Wait for animation
             if self.is_participants_panel_expanded():
                 logger.info("Successfully expanded Participants panel")
                 return True
+        except Exception:
+            pass
 
         logger.warning("Could not find Participants panel expand button")
         return False
@@ -1758,17 +1596,13 @@ class ChatPage(BasePage):
         logger.info("Attempting to collapse Participants panel...")
 
         # The collapse button is next to the "Participants" title
-        participants_title = self.page.locator('main').get_by_text("Participants", exact=True)
-        if participants_title.count() > 0:
-            # Find the button in the same container as the title
-            parent = participants_title.first.locator("xpath=ancestor::div[1]")
-            collapse_btn = parent.locator('button')
-            if collapse_btn.count() > 0:
-                collapse_btn.first.click()
-                self.page.wait_for_timeout(500)  # Wait for animation
-                if not self.is_participants_panel_expanded():
-                    logger.info("Successfully collapsed Participants panel")
-                    return True
+        collapse_btn = self.page.get_by_test_id("participants-panel-collapse-button")
+        if collapse_btn.count() > 0:
+            collapse_btn.first.click()
+            self.page.wait_for_timeout(500)  # Wait for animation
+            if not self.is_participants_panel_expanded():
+                logger.info("Successfully collapsed Participants panel")
+                return True
 
         logger.warning("Could not find Participants panel collapse button")
         return False
@@ -1786,8 +1620,8 @@ class ChatPage(BasePage):
         Returns:
             True if the Context Budget heading is visible.
         """
-        budget_heading = self.page.locator('main').get_by_text("Context Budget", exact=True)
-        visible = budget_heading.count() > 0 and budget_heading.first.is_visible()
+        budget_panel = self.page.get_by_test_id("context-budget-panel")
+        visible = budget_panel.count() > 0 and budget_panel.first.is_visible()
         logger.info("Context Budget panel visible: %s", visible)
         return visible
 
@@ -1813,8 +1647,8 @@ class ChatPage(BasePage):
             logger.info("Participants panel is collapsed, expanding it first...")
             self.expand_participants_panel(timeout=timeout // 2)
 
-        budget_heading = self.page.locator('main').get_by_text("Context Budget", exact=True)
-        budget_heading.wait_for(state="visible", timeout=timeout)
+        budget_panel = self.page.get_by_test_id("context-budget-panel")
+        budget_panel.wait_for(state="visible", timeout=timeout)
         logger.info("Context Budget panel is visible")
 
     def get_context_budget_tokens_text(self) -> str:
@@ -1829,9 +1663,8 @@ class ChatPage(BasePage):
         Raises:
             TimeoutError: If the panel is not visible.
         """
-        # Find the token display by matching text pattern "N / M tokens"
-        # The element is inside the Context Budget panel in the right sidebar
-        token_locator = self.page.locator('main').get_by_text(re.compile(r"\d+\s*/\s*[\d\s]+tokens"))
+        # Find the token display inside the Context Budget panel
+        token_locator = self.page.get_by_test_id("context-budget-tokens")
         text = token_locator.first.text_content() or ""
         logger.info("Context Budget tokens display: %r", text)
         return text.strip()
@@ -1887,7 +1720,7 @@ class ChatPage(BasePage):
         logger.info("Attempting to open Invite Users dialog via plus menu")
 
         # Open the plus menu
-        plus_menu = self.page.get_by_role("button", name="plus menu")
+        plus_menu = self.page.get_by_test_id("plus-menu-button")
         if not plus_menu.is_visible():
             return (False, "Plus menu button not visible")
 
@@ -1895,7 +1728,7 @@ class ChatPage(BasePage):
         self.page.wait_for_timeout(500)
 
         # Look for "Invite Users" menuitem in the plus menu
-        invite_users = self.page.get_by_role("menuitem", name="Invite Users")
+        invite_users = self.page.get_by_test_id("invite-users-menuitem")
 
         if invite_users.count() == 0:
             # Close the menu
@@ -1911,12 +1744,8 @@ class ChatPage(BasePage):
         invite_users.click()
         self.page.wait_for_timeout(500)
 
-        # Wait for a user picker dialog
-        picker = self.page.locator(
-            '[role="dialog"], [role="listbox"], '
-            'input[placeholder*="user" i], input[placeholder*="email" i], '
-            'input[placeholder*="search" i]'
-        )
+        # Wait for the invite users dialog
+        picker = self.page.get_by_test_id("invite-users-dialog")
         try:
             picker.first.wait_for(state="visible", timeout=timeout)
             logger.info("Invite Users dialog opened")
@@ -1931,7 +1760,7 @@ class ChatPage(BasePage):
 
     def wait_for_add_agent_button(self, timeout: int = 15000) -> None:
         """Wait for the 'plus menu' button to be visible (entry point for adding agents)."""
-        self.page.get_by_role("button", name="plus menu").wait_for(state="visible", timeout=timeout)
+        self.page.get_by_test_id("plus-menu-button").wait_for(state="visible", timeout=timeout)
 
     @action("Add agent participant")
     def add_agent_participant(self, agent_name_prefix: str, timeout: int = 10000):
@@ -1947,28 +1776,26 @@ class ChatPage(BasePage):
         logger.info("Adding agent participant with prefix '%s'", agent_name_prefix)
 
         # Step 1: Open plus menu
-        plus_btn = self.page.get_by_role("button", name="plus menu")
+        plus_btn = self.page.get_by_test_id("plus-menu-button")
         plus_btn.wait_for(state="visible", timeout=timeout)
         plus_btn.click(force=True)
         self.page.wait_for_timeout(300)  # Menu animation
 
         # Step 2: Click "Agents" menuitem
-        agents_menu = self.page.get_by_role("menuitem", name="Agents")
+        agents_menu = self.page.get_by_test_id("plus-menu-agents-menuitem")
         agents_menu.wait_for(state="visible", timeout=timeout)
         agents_menu.click()
         self.page.wait_for_timeout(300)  # Submenu animation
 
         # Step 3: Search for agent in the search input
-        search_input = self.page.get_by_placeholder("Search agents...")
+        search_input = self.page.get_by_test_id("agent-search-input")
         search_input.wait_for(state="visible", timeout=timeout)
         search_input.click()
         search_input.press_sequentially(agent_name_prefix, delay=50)
         self.page.wait_for_timeout(500)  # Search debounce
 
         # Step 4: Select the agent from results
-        agent_item = self.page.locator(
-            f'li[role="menuitem"]:has-text("{agent_name_prefix}")'
-        ).first
+        agent_item = self.page.get_by_test_id("agent-search-result-item").filter(has_text=agent_name_prefix).first
         agent_item.wait_for(state="visible", timeout=timeout)
         agent_item.click()
 
@@ -1990,7 +1817,7 @@ class ChatPage(BasePage):
             timeout: Maximum wait time in milliseconds
         """
         logger.info("Adding toolkit participant '%s'", toolkit_name)
-        add_btn = self.page.get_by_label("Add toolkit")
+        add_btn = self.page.get_by_test_id("add-toolkit-button")
         add_btn.wait_for(state="visible", timeout=timeout)
         add_btn.click(force=True)
 
@@ -2000,13 +1827,11 @@ class ChatPage(BasePage):
         search_input.click()
         search_input.press_sequentially(toolkit_name[:20], delay=50)
 
-        toolkit_option = self.page.locator(
-            f'li[role="menuitem"]:has-text("{toolkit_name[:15]}")'
-        ).first
+        toolkit_option = self.page.get_by_test_id("toolkit-search-result-item").filter(has_text=toolkit_name[:15]).first
         toolkit_option.wait_for(state="visible", timeout=timeout)
         toolkit_option.click()
 
-        self.page.locator('text="Still no toolkits added"').wait_for(
+        self.page.get_by_test_id("no-toolkits-placeholder").wait_for(
             state="hidden", timeout=timeout,
         )
 
@@ -2031,7 +1856,7 @@ class ChatPage(BasePage):
         """
         self.page.wait_for_function(
             """() => {
-                const ta = document.querySelector('textarea#standard-multiline-static');
+                const ta = document.querySelector('[data-testid="chat-message-input"]');
                 return ta && ta.value.trim() === '';
             }""",
             timeout=timeout,
@@ -2047,11 +1872,10 @@ class ChatPage(BasePage):
         Args:
             timeout: Maximum wait time in milliseconds
         """
-        # When collapsed, sidebar buttons show only icons, not text
-        # Check for the text "Agents" being hidden (not the button itself)
-        agents_text = self.page.locator('nav :text("Agents"), aside :text("Agents")').first
+        # When collapsed, the sidebar item for Agents should not be visible
+        agents_item = self.page.get_by_test_id("sidebar-item-agents")
         try:
-            agents_text.wait_for(state="hidden", timeout=timeout)
+            agents_item.wait_for(state="hidden", timeout=timeout)
         except Exception:
             # Some deployments keep mini-sidebar visible; fall back to network settle
             self.page.wait_for_load_state("networkidle", timeout=timeout)
@@ -2070,7 +1894,8 @@ class ChatPage(BasePage):
         Returns:
             Playwright Locator for the switch element
         """
-        return self.page.get_by_role("switch", name=tool_name)
+        testid = f"internal-tool-{tool_name.lower().replace(' ', '-')}-switch"
+        return self.page.get_by_test_id(testid)
 
     # ------------------------------------------------------------------
     # TTS (Text-to-Speech) Controls
@@ -2106,7 +1931,7 @@ class ChatPage(BasePage):
         self.page.wait_for_timeout(500)
 
         # Find read out button by testid
-        read_out_btn = message.locator('[data-testid="chat-read-out-button"]')
+        read_out_btn = message.get_by_test_id("chat-read-out-button")
 
         # Wait for button to be visible and ENABLED (disabled while AI is generating)
         read_out_btn.first.wait_for(state="visible", timeout=timeout)
@@ -2131,10 +1956,9 @@ class ChatPage(BasePage):
         Returns:
             True if TTS control bar is visible, False otherwise.
         """
-        # Check for play/stop button in voice mini player using direct locator
-        # (LocatorDescriptor raises error if testid not found, so use page.locator directly)
+        # Check for play/stop button in voice mini player
         try:
-            locator = self.page.locator('[data-testid="chat-voice-play-stop-button"]')
+            locator = self.page.get_by_test_id("chat-voice-play-stop-button")
             return locator.count() > 0 and locator.first.is_visible()
         except Exception:
             return False
