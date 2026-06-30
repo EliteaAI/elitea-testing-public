@@ -1,0 +1,5 @@
+WARNING  elitea.pages.chat:chat_page.py:253 SPA redirected to https://stage2.elitea.ai/app/onboarding instead of /app/chat/192 — retrying
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to chat — Locator.wait_for: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator("textarea#standard-multiline-static") to be visible
+WARNING  elitea.automation.fixtures.data:data_fixtures.py:73 Failed to delete conversation 192: 404 Client Error: Not Found for url: https://stage2.elitea.ai/api/v2/elitea_core/conversation/prompt_lib/76/192 — body: {'error': 'Conversation not found'}
