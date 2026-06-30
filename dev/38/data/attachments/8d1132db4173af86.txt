@@ -1,6 +1,0 @@
-📸 After save: URL=https://dev.elitea.ai/app/credentials/create-credential/confluence
-
-🍪 Using fresh cookies from browser context: 6 cookies
-🔗 CredentialAPI: base_url=https://dev.elitea.ai/api/v2 project_id=399
-📊 Raw API response: {'total': 1, 'items': [{'id': 631, 'uuid': '4b176d53-1cca-4075-a2fd-ab13e0b16795', 'project_id': 399, 'elitea_title': 'autotest_github_1782742189', 'label': 'AutoTest GitHub 1782742189', 'type': 'github', 'section': 'credentials', 'data': {'app_id': None, 'base_url': 'https://api.github.com', 'password': None, 'username': None, 'access_token': '{{secret.26d2ff968a9544f0861aa6e526f8696b}}', 'app_private_key': None}, 'meta': {}, 'shared': False, 'status_ok': False, 'status_logs': None, 'source': 'user', 'author_id': 659, 'created_at': '2026-06-29T14:09:55.570246', 'updated_at': None, 'is_pinned': False, 'options': {}}], 'offset': 0, 'limit': 20}
-✅ API returned 1 credentials total
