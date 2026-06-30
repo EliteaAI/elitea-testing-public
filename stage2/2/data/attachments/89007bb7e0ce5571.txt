@@ -1,1 +1,0 @@
-WARNING  elitea.pages.chat:chat_page.py:253 SPA redirected to https://stage2.elitea.ai/app/chat/22?name=Context+settings+test instead of /app/chat/26 — retrying
