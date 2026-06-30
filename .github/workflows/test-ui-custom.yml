@@ -57,8 +57,8 @@ on:
         required: false
         type: boolean
         default: false
-      tms_report_postfix:
-        description: 'Postfix for TMS report name (e.g., "scheduled", "nightly")'
+      tms_report_suffix:
+        description: 'Suffix for TMS report name (e.g., "scheduled", "nightly") (e.g., "scheduled", "nightly")'
         required: false
         type: string
         default: ''
@@ -94,8 +94,8 @@ on:
         required: false
         type: boolean
         default: false
-      tms_report_postfix:
-        description: 'Postfix for TMS report name'
+      tms_report_suffix:
+        description: 'Suffix for TMS report name (e.g., "scheduled", "nightly")'
         required: false
         type: string
         default: ''
@@ -416,21 +416,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
         run: |
-          # Generate run ID: RUN-ELITEA-YYYY-MM-DD-NNN-ENV-SUITE[-POSTFIX]
+          # Generate run ID: RUN-ELITEA-YYYY-MM-DD-NNN-ENV-SUITE[-SUFFIX]-STATUS
           DATE=$(date +%Y-%m-%d)
           ENV_NAME="${{ needs.test.outputs.env-name }}"
           SUITE="${{ inputs.custom_suites != '' && inputs.custom_suites || inputs.suite }}"
           SUITE_UPPER=$(echo "$SUITE" | tr '[:lower:]' '[:upper:]' | tr ',' '-')
-          POSTFIX="${{ inputs.tms_report_postfix }}"
+          SUFFIX="${{ inputs.tms_report_suffix }}"
 
-          RUN_ID="RUN-ELITEA-${DATE}-${{ github.run_number }}-${ENV_NAME^^}-${SUITE_UPPER}"
-          if [ -n "$POSTFIX" ]; then
-            POSTFIX_UPPER=$(echo "$POSTFIX" | tr '[:lower:]' '[:upper:]')
-            RUN_ID="${RUN_ID}-${POSTFIX_UPPER}"
-          fi
-          FILENAME="junit-${RUN_ID}.json"
-
-          # Convert JUnit XML to TMS JSON format
+          # Convert JUnit XML to TMS JSON format and determine status
           python3 << 'EOF' > report.json
           import json, xml.etree.ElementTree as ET
 
@@ -463,15 +456,40 @@ jobs:
                   "failure_message": msg
               })
 
+          # Determine overall status: PASSED (all green), FAILED (any failed), AMBER (passed + skipped only)
+          if failed > 0:
+              overall_status = "FAILED"
+          elif skipped > 0:
+              overall_status = "AMBER"
+          else:
+              overall_status = "PASSED"
+
           out = {
               "launch": {"total": total, "passed": passed, "failed": failed, "skipped": skipped},
               "items": items
           }
           print(json.dumps(out, indent=2, ensure_ascii=False))
+
+          # Write status to a separate file for shell to read
+          with open("status.txt", "w") as f:
+              f.write(overall_status)
           EOF
 
           echo "✓ Generated report.json"
           cat report.json
+
+          # Read the status determined by Python
+          STATUS=$(cat status.txt)
+          echo "Overall status: $STATUS"
+
+          # Build RUN_ID with status suffix
+          RUN_ID="RUN-ELITEA-${DATE}-${{ github.run_number }}-${ENV_NAME^^}-${SUITE_UPPER}"
+          if [ -n "$SUFFIX" ]; then
+            SUFFIX_UPPER=$(echo "$SUFFIX" | tr '[:lower:]' '[:upper:]')
+            RUN_ID="${RUN_ID}-${SUFFIX_UPPER}"
+          fi
+          RUN_ID="${RUN_ID}-${STATUS}"
+          FILENAME="junit-${RUN_ID}.json"
 
           # Push via GitHub API (no checkout required)
           CONTENT=$(base64 -w0 report.json)
