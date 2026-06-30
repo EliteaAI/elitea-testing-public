@@ -1,0 +1,10 @@
+ERROR    elitea.api:client.py:929 Failed to create credential: status=524 body=<!doctype html>
+<html lang="">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cloudflare error: class 5xx</title>
+  <style>@font-face {
+  font-family: "Source Sans Pro";
+  src: url("data:font/woff2;base64,d09GMgABAAAAAS6kAA4AAAAD5UQAAS5FAAIKPQAAAAAAAAAAAAAAAAAAAAAAAAAAGUYahwwbhbh6HIGkKAZgAO1CCoXyQITsawuebgABNgIkA71YBCAFkBQHgZUjWwmSs85SZLvztH73lE+twLYOkoQhOFXVTUSAqSZVa+12uD0T/m2MvT/POYIQwqOVXiJNROF0r92jG4qTpfvRgeq8GUl+qkxA2f///////
