@@ -193,7 +193,7 @@ class SkillDetailPage(SkillFormPage):
         # Wait for the last message to show a Delete button (response complete)
         ai_msg = messages.nth(messages.count() - 1)
         try:
-            ai_msg.get_by_role("button", name="Delete").wait_for(
+            ai_msg.get_by_test_id("chat-delete-button").wait_for(
                 state="visible",
                 timeout=max(1000, int((deadline - time.time()) * 1000)),
             )

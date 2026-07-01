@@ -176,7 +176,7 @@ class SkillFormPage(BasePage):
         # Wait for the nav-blocker dialog and dismiss it.
         # It reliably appears ~0–2 s after the save mutation completes.
         try:
-            confirm_btn = self.page.get_by_role("button", name="Confirm")
+            confirm_btn = self.page.get_by_test_id("alert-dialog-confirm-button")
             confirm_btn.wait_for(state="visible", timeout=5000)
             confirm_btn.click()
             logger.info("Dismissed nav-blocker dialog after save")

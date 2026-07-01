@@ -88,7 +88,7 @@ class SkillsListPage(BasePage):
         Returns:
             True if the skill is visible right now, False otherwise.
         """
-        return self.page.get_by_text(name, exact=False).count() > 0
+        return self.page.get_by_test_id("entity-card-name").get_by_text(name, exact=False).count() > 0
 
     def wait_for_skill_absent(self, name: str, timeout: int = 10000):
         """Wait until a skill is no longer visible in the list.
@@ -101,7 +101,7 @@ class SkillsListPage(BasePage):
             timeout: How long to wait in ms.
         """
         try:
-            self.page.get_by_text(name, exact=False).wait_for(
+            self.page.get_by_test_id("entity-card-name").get_by_text(name, exact=False).wait_for(
                 state="hidden", timeout=timeout
             )
         except Exception:
