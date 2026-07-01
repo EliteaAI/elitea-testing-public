@@ -206,14 +206,13 @@ def toolkit_api(_browser_cookies):
 
 
 @pytest.fixture(scope="session")
-def skill_api():
-    """Session-scoped SkillAPI client using Bearer token authentication.
+def skill_api(_browser_cookies):
+    """Session-scoped SkillAPI client for skills management.
 
-    Intentionally does NOT depend on ``_browser_cookies`` to avoid the
-    WebSocket-driven ``networkidle`` timeout that the Chat page produces on
-    the localhost dev server.  ``SkillAPI`` falls back to Bearer token auth
-    automatically when ``browser_cookies`` is empty, so this works on both
-    localhost and remote environments as long as ``ELITEA_API_TOKEN`` is set.
+    Uses cookie-based auth on remote environments.  On localhost,
+    ``_browser_cookies`` returns an empty list (the Chat page's WebSocket
+    prevents networkidle), and ``SkillAPI`` automatically falls back to
+    Bearer token auth via ``ELITEA_API_TOKEN``.
 
     Yields:
         SkillAPI: Authenticated skill API client
@@ -222,8 +221,8 @@ def skill_api():
         def test_delete_skill(skill_api):
             skill_api.delete_skill(skill_id)
     """
-    api = SkillAPI(browser_cookies=[])
-    logger.info("Created session-scoped SkillAPI client (Bearer token)")
+    api = SkillAPI(browser_cookies=_browser_cookies)
+    logger.info("Created session-scoped SkillAPI client")
     yield api
     api.close()
     logger.debug("Closed SkillAPI client")

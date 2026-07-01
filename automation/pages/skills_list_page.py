@@ -6,6 +6,7 @@ Handles: /app/skills/all
 """
 
 import re
+import time
 import logging
 from playwright.sync_api import Page
 
@@ -100,9 +101,11 @@ class SkillsListPage(BasePage):
             name: Skill name (case-insensitive).
             timeout: How long to wait in ms.
         """
-        deadline = __import__("time").time() + timeout / 1000
-        while __import__("time").time() < deadline:
+        deadline = time.time() + timeout / 1000
+        while time.time() < deadline:
             if not self.skill_exists_in_list(name):
                 return
             self.page.wait_for_timeout(500)
-        # Final check — if still present after timeout, silently pass
+        raise TimeoutError(
+            f"Skill '{name}' still visible in list after {timeout}ms"
+        )

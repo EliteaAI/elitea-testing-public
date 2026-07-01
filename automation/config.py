@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     elitea_api_base: str = ""
     elitea_api_token: str = ""
     elitea_project_id: int = 0
+    # Prefix to strip from page-object navigation paths before constructing
+    # the final URL.  On the localhost Vite dev server the React Router has
+    # no basename, so /app must be removed — set to "/app".  On deployed
+    # environments /app is a real route prefix and must be kept — set to "".
+    # Default is "" (no stripping) so deployed environments work out of the
+    # box without any extra configuration.
+    app_path_prefix: str = ""
 
     @property
     def elitea_auth_url(self) -> str:

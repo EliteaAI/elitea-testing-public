@@ -184,10 +184,12 @@ class SkillFormPage(BasePage):
                 break
             self.page.wait_for_timeout(300)
 
-        # Wait for the detail page URL to settle
+        # Wait for the detail page URL to settle, then for the page to render.
         self.page.wait_for_url("**/skills/all/**", timeout=timeout)
+        self.page.get_by_test_id("skill-information-section").wait_for(
+            state="visible", timeout=timeout
+        )
         self.wait_for_network(timeout=5000)
-        self.page.wait_for_timeout(500)
         logger.info("Saved skill — URL: %s", self.page.url)
 
     # ------------------------------------------------------------------

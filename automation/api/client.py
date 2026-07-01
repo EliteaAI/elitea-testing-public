@@ -1159,14 +1159,19 @@ class SkillAPI:
     def _skill_url(self, skill_id: int) -> str:
         return f"{self.base_url}/elitea_core/skill/prompt_lib/{self.project_id}/{skill_id}"
 
-    def list_skills(self) -> dict:
-        """Return skill list from ``/skills/``."""
+    def list_skills(self, limit: int = 500) -> dict:
+        """Return skill list from ``/skills/``.
+
+        Args:
+            limit: Maximum number of skills to return. Defaults to 500 to
+                avoid silent misses in shared environments with many skills.
+        """
         url = self._skills_url()
         params = {
             "sort_by": "created_at",
             "sort_order": "desc",
             "query": "",
-            "limit": 50,
+            "limit": limit,
             "offset": 0,
         }
         logger.debug("LIST skills %s", url)
