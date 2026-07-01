@@ -1,1 +1,0 @@
-WARNING  elitea.pages.chat:chat_page.py:253 SPA redirected to https://stage2.elitea.ai/app/chat/36?name=autotest_test_cannot_send_empty_ instead of /app/chat/38 — retrying
