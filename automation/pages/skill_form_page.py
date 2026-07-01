@@ -173,17 +173,24 @@ class SkillFormPage(BasePage):
         logger.info("Clicking Save and waiting for navigation")
         self.save_button.evaluate("el => el.click()")
 
-        # Wait for the nav-blocker dialog and dismiss it.
-        # It reliably appears ~0–2 s after the save mutation completes.
-        try:
+        # Poll for either the nav-blocker confirm button or the detail page URL.
+        # The nav-blocker dialog appears ~0-3s after save; dismiss it if it shows.
+        import time as _time
+        deadline = _time.time() + timeout / 1000
+        while _time.time() < deadline:
+            # Check if navigation already happened
+            if "/skills/all/" in self.page.url and "/create" not in self.page.url:
+                logger.info("Navigated to detail page directly (no dialog)")
+                break
+            # Check if the nav-blocker dialog is visible
             confirm_btn = self.page.get_by_test_id("alert-dialog-confirm-button")
-            confirm_btn.wait_for(state="visible", timeout=5000)
-            confirm_btn.click()
-            logger.info("Dismissed nav-blocker dialog after save")
-        except Exception:
-            logger.debug("Nav-blocker dialog did not appear — direct navigation")
+            if confirm_btn.count() > 0 and confirm_btn.is_visible():
+                confirm_btn.click()
+                logger.info("Dismissed nav-blocker dialog after save")
+                break
+            self.page.wait_for_timeout(300)
 
-        # Wait for URL to include /skills/all/ (glob pattern, no lambda)
+        # Wait for the detail page URL to settle
         self.page.wait_for_url("**/skills/all/**", timeout=timeout)
         self.wait_for_network(timeout=5000)
         self.page.wait_for_timeout(500)
