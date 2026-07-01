@@ -61,15 +61,9 @@ class LocatorDescriptor:
 
         page: Page = instance.page
 
-        # Try testid first (most robust)
+        # Return testid locator directly — Playwright's auto-wait handles timing.
         if self.testid:
-            try:
-                locator = page.get_by_test_id(self.testid)
-                # Quick check if element exists (timeout 100ms)
-                if locator.count() > 0:
-                    return locator
-            except Exception:
-                pass
+            return page.get_by_test_id(self.testid)
 
         # Fall back to provided fallback locator
         if self.fallback_fn:
@@ -78,7 +72,7 @@ class LocatorDescriptor:
         # No locator strategy available
         raise ValueError(
             f"Cannot locate {self.attr_name}: "
-            f"testid='{self.testid}' not found and no fallback provided"
+            f"no testid or fallback provided"
         )
 
     def __set__(self, instance, value):

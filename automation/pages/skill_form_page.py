@@ -26,31 +26,26 @@ class SkillFormPage(BasePage):
     # Form field locators
     name_input = LocatorDescriptor(
         testid="skill-name-input",
-        fallback=lambda page: page.get_by_role("textbox", name="Name"),
         description="Skill name input field"
     )
 
     description_input = LocatorDescriptor(
         testid="skill-description-input",
-        fallback=lambda page: page.get_by_role("textbox", name="Description"),
         description="Skill description input field"
     )
 
     instructions_editor = LocatorDescriptor(
         testid="skill-instructions-editor",
-        fallback=lambda page: page.get_by_role("textbox", name="Instructions"),
-        description="Skill instructions CodeMirror editor"
+        description="Skill instructions CodeMirror editor wrapper"
     )
 
     save_button = LocatorDescriptor(
         testid="skill-save-button",
-        fallback=lambda page: page.get_by_role("button", name="Save", exact=True),
         description="Save skill button"
     )
 
     cancel_button = LocatorDescriptor(
         testid="skill-cancel-button",
-        fallback=lambda page: page.get_by_role("button", name="Cancel"),
         description="Cancel button"
     )
 
@@ -124,11 +119,10 @@ class SkillFormPage(BasePage):
         Args:
             text: Instructions text to enter.
         """
-        # The editor wrapper (data-testid="skill-instructions-editor") contains
-        # the CodeMirror 6 content element (role="textbox").
-        editor_wrapper = self.instructions_editor
-        cm_content = editor_wrapper.get_by_role("textbox")
-        cm_content.click()
+        # Click the editor wrapper to focus CodeMirror, then type via keyboard.
+        # CodeMirror renders its own internal textbox — clicking the wrapper
+        # transfers focus into it without needing to locate the inner element.
+        self.instructions_editor.click()
         self.page.wait_for_timeout(200)
         self.page.keyboard.press("Control+a")
         self.page.keyboard.type(text)

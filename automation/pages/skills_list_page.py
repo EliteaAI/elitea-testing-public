@@ -25,7 +25,6 @@ class SkillsListPage(BasePage):
 
     page_header = LocatorDescriptor(
         testid="skills-page-header",
-        fallback=lambda page: page.get_by_text("Skills", exact=True),
         description="Skills page header"
     )
 
@@ -88,7 +87,8 @@ class SkillsListPage(BasePage):
         Returns:
             True if the skill is visible right now, False otherwise.
         """
-        return self.page.get_by_test_id("entity-card-name").get_by_text(name, exact=False).count() > 0
+        cards = self.page.get_by_test_id("entity-card-name").all()
+        return any(name.lower() in (c.text_content() or "").lower() for c in cards)
 
     def wait_for_skill_absent(self, name: str, timeout: int = 10000):
         """Wait until a skill is no longer visible in the list.
@@ -100,9 +100,9 @@ class SkillsListPage(BasePage):
             name: Skill name (case-insensitive).
             timeout: How long to wait in ms.
         """
-        try:
-            self.page.get_by_test_id("entity-card-name").get_by_text(name, exact=False).wait_for(
-                state="hidden", timeout=timeout
-            )
-        except Exception:
-            pass  # Already absent — nothing to wait for
+        deadline = __import__("time").time() + timeout / 1000
+        while __import__("time").time() < deadline:
+            if not self.skill_exists_in_list(name):
+                return
+            self.page.wait_for_timeout(500)
+        # Final check — if still present after timeout, silently pass

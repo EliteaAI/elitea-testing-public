@@ -32,21 +32,18 @@ class SkillDetailPage(SkillFormPage):
     # Information section (used for wait_for_page_load)
     information_section = LocatorDescriptor(
         testid="skill-information-section",
-        fallback=lambda page: page.get_by_text("Information", exact=True),
         description="Skill information accordion section"
     )
 
     # SkillTestPanel outer container
     test_panel = LocatorDescriptor(
         testid="skill-test-panel",
-        fallback=lambda page: page.get_by_test_id("skill-test-panel"),
         description="SkillTestPanel container"
     )
 
     # Overflow menu trigger button
     controls_menu_button = LocatorDescriptor(
         testid="skill-controls-menu-button",
-        fallback=lambda page: page.get_by_role("button", name="more"),
         description="Skill controls overflow menu button"
     )
 
@@ -114,11 +111,6 @@ class SkillDetailPage(SkillFormPage):
             if part.isdigit():
                 return part
 
-        # Fallback: read from "Copy ID" button text
-        btn = self.page.get_by_role("button", name="Copy ID")
-        if btn.count() > 0:
-            return btn.text_content().strip()
-
         raise RuntimeError(f"Cannot determine skill ID from URL: {url}")
 
     # ------------------------------------------------------------------
@@ -127,8 +119,7 @@ class SkillDetailPage(SkillFormPage):
 
     def _test_panel_messages(self):
         """Return locator for all chat-message-item elements in the test panel."""
-        panel = self.page.get_by_test_id("skill-test-panel")
-        return panel.get_by_test_id("chat-message-item")
+        return self.page.get_by_test_id("chat-message-item")
 
     def get_test_message_count(self) -> int:
         """Return the current number of messages in the test panel.
@@ -150,13 +141,12 @@ class SkillDetailPage(SkillFormPage):
             timeout: Maximum wait time for elements.
         """
         logger.info("Sending test message: %r", message[:60])
-        panel = self.page.get_by_test_id("skill-test-panel")
-        chat_input = panel.get_by_role("textbox")
+        chat_input = self.page.get_by_test_id("chat-input-textarea")
         chat_input.wait_for(state="visible", timeout=timeout)
         chat_input.fill(message)
         self.page.wait_for_timeout(300)
 
-        send_btn = panel.get_by_test_id("chat-send-button")
+        send_btn = self.page.get_by_test_id("chat-send-button")
         send_btn.wait_for(state="visible", timeout=timeout)
         send_btn.click()
         logger.info("Test message sent")
@@ -190,23 +180,25 @@ class SkillDetailPage(SkillFormPage):
                 break
             self.page.wait_for_timeout(500)
 
-        # Wait for the last message to show a Delete button (response complete)
-        ai_msg = messages.nth(messages.count() - 1)
+        # Wait for the delete button to appear on the last response (stream complete).
+        # We use the last delete button by resolving all instances in Python.
+        delete_btns = self.page.get_by_test_id("chat-delete-button")
         try:
-            ai_msg.get_by_test_id("chat-delete-button").wait_for(
+            delete_btns.last.wait_for(
                 state="visible",
                 timeout=max(1000, int((deadline - time.time()) * 1000)),
             )
         except Exception:
             pass  # Fall through to content-stable check
 
-        # Wait for content to stabilize
+        # Wait for content to stabilize — read via the last answer-content element.
+        answer_divs = self.page.get_by_test_id("chat-answer-content")
         last_content = ""
         stable_start = time.time()
 
         while time.time() < deadline:
             try:
-                current = ai_msg.text_content() or ""
+                current = (answer_divs.last.text_content() or "") if answer_divs.count() > 0 else ""
             except Exception:
                 current = ""
 
@@ -230,16 +222,13 @@ class SkillDetailPage(SkillFormPage):
         Returns:
             Response text as string (stripped).
         """
+        response_divs = self.page.get_by_test_id("chat-answer-content")
+        if response_divs.count() > 0:
+            return (response_divs.last.text_content() or "").strip()
         messages = self._test_panel_messages()
         if messages.count() == 0:
             return ""
-
-        ai_msg = messages.nth(messages.count() - 1)
-        response_div = ai_msg.get_by_test_id("chat-answer-content")
-        if response_div.count() > 0:
-            return (response_div.text_content() or "").strip()
-
-        return (ai_msg.text_content() or "").strip()
+        return (messages.last.text_content() or "").strip()
 
     # ------------------------------------------------------------------
     # Actions menu (overflow/three-dot menu)
@@ -249,10 +238,11 @@ class SkillDetailPage(SkillFormPage):
         """Open the skill controls overflow menu.
 
         Uses JavaScript click to bypass any MUI overlay interception.
+        Waits for the Delete skill menu item to confirm the menu is open.
         """
         logger.info("Opening skill actions menu")
         self.controls_menu_button.evaluate("el => el.click()")
-        self.page.get_by_role("menu").wait_for(state="visible", timeout=5000)
+        self.page.get_by_test_id("skill-delete-menu-item").wait_for(state="visible", timeout=5000)
 
     @action("Delete skill via menu")
     def delete_skill_via_menu(self, skill_name: str, timeout: int = 10000):
@@ -268,7 +258,7 @@ class SkillDetailPage(SkillFormPage):
         logger.info("Deleting skill via menu: %r", skill_name)
 
         self.open_actions_menu()
-        self.page.get_by_role("menuitem", name="Delete skill").click()
+        self.page.get_by_test_id("skill-delete-menu-item").click()
 
         # Handle the type-to-confirm dialog (Modal.DeleteEntityModal)
         dialog = Dialog.wait_for(self.page, timeout=timeout)
