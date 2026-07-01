@@ -1120,6 +1120,76 @@ class ArtifactAPI:
         self._session.close()
 
 
+class SkillAPI:
+    """Manage skills via the Elitea API.
+
+    Uses Keycloak session cookies (from browser auth state) like
+    :class:`ConversationAPI`.
+
+    The API entity is ``skill``.  The list endpoint uses the **plural**
+    path ``/skills/`` while single-resource endpoints use **singular**
+    ``/skill/``.
+
+    Args:
+        browser_cookies: List of cookie dicts from ``BrowserContext.cookies()``.
+        base_url: API root (defaults to ``ELITEA_API_BASE`` env var).
+        project_id: Project identifier (defaults to ``ELITEA_PROJECT_ID``).
+    """
+
+    def __init__(
+        self,
+        browser_cookies: list[dict],
+        base_url: Optional[str] = None,
+        project_id: Optional[str] = None,
+    ):
+        self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
+        self.project_id = project_id or str(settings.elitea_project_id)
+
+        self._session = requests.Session()
+        for c in browser_cookies:
+            self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
+
+        logger.debug("SkillAPI initialised — base_url=%s", self.base_url)
+
+    def _skills_url(self) -> str:
+        return f"{self.base_url}/elitea_core/skills/prompt_lib/{self.project_id}"
+
+    def _skill_url(self, skill_id: int) -> str:
+        return f"{self.base_url}/elitea_core/skill/prompt_lib/{self.project_id}/{skill_id}"
+
+    def list_skills(self) -> dict:
+        """Return skill list from ``/skills/``."""
+        url = self._skills_url()
+        params = {
+            "sort_by": "created_at",
+            "sort_order": "desc",
+            "query": "",
+            "limit": 50,
+            "offset": 0,
+        }
+        logger.debug("LIST skills %s", url)
+        resp = self._session.get(url, params=params)
+        _raise_for_status(resp)
+        return resp.json()
+
+    def delete_skill(self, skill_id: int) -> None:
+        """Delete a skill by ID.
+
+        Args:
+            skill_id: The numeric skill ID.
+        """
+        url = self._skill_url(skill_id)
+        logger.debug("DELETE skill %s", url)
+        resp = self._session.delete(url)
+        _raise_for_status(resp)
+
+    def close(self):
+        """Close the underlying HTTP session."""
+        self._session.close()
+
+
 class ToolkitAPI:
     """Manage toolkits via the Elitea API.
 

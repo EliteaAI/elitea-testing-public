@@ -19,7 +19,7 @@ import logging
 import pytest
 from playwright.sync_api import Browser
 
-from api import APIClient, AgentAPI, ConversationAPI, CredentialAPI, PipelineAPI, ToolkitAPI
+from api import APIClient, AgentAPI, ConversationAPI, CredentialAPI, PipelineAPI, SkillAPI, ToolkitAPI
 from config import settings
 
 logger = logging.getLogger("elitea.automation.fixtures.api")
@@ -60,6 +60,12 @@ def _browser_cookies(browser: Browser, auth_state):
     to (or instead of) bearer tokens. This fixture provides those cookies
     for API clients.
 
+    On localhost the EliteaUI dev server uses ``VITE_DEV_TOKEN`` for auth —
+    there are no meaningful Keycloak cookies in the browser, and the Chat
+    page's persistent WebSocket connections prevent ``networkidle`` from ever
+    firing.  We therefore return an empty list so that all cookie-based API
+    clients automatically fall back to Bearer token auth.
+
     Args:
         browser: Playwright browser instance
         auth_state: Authenticated browser storage state
@@ -72,6 +78,17 @@ def _browser_cookies(browser: Browser, auth_state):
         other API fixtures. Tests should use the specific API client
         fixtures (conversation_api, agent_api, etc.) instead.
     """
+    # On localhost, VITE_DEV_TOKEN handles auth — skip cookie extraction.
+    # All cookie-based API clients fall back to Bearer token when cookies=[].
+    is_localhost = "localhost" in ELITEA_URL or "127.0.0.1" in ELITEA_URL
+    if is_localhost:
+        logger.info(
+            "Localhost detected (%s) — skipping browser-cookie extraction; "
+            "API fixtures will use Bearer token auth",
+            ELITEA_URL,
+        )
+        return []
+
     ctx = browser.new_context(
         viewport={"width": 1366, "height": 768},  # Fixed size for cookie extraction
         base_url=ELITEA_URL,
@@ -186,6 +203,30 @@ def toolkit_api(_browser_cookies):
     yield api
     api.close()
     logger.debug("Closed ToolkitAPI client")
+
+
+@pytest.fixture(scope="session")
+def skill_api():
+    """Session-scoped SkillAPI client using Bearer token authentication.
+
+    Intentionally does NOT depend on ``_browser_cookies`` to avoid the
+    WebSocket-driven ``networkidle`` timeout that the Chat page produces on
+    the localhost dev server.  ``SkillAPI`` falls back to Bearer token auth
+    automatically when ``browser_cookies`` is empty, so this works on both
+    localhost and remote environments as long as ``ELITEA_API_TOKEN`` is set.
+
+    Yields:
+        SkillAPI: Authenticated skill API client
+
+    Example:
+        def test_delete_skill(skill_api):
+            skill_api.delete_skill(skill_id)
+    """
+    api = SkillAPI(browser_cookies=[])
+    logger.info("Created session-scoped SkillAPI client (Bearer token)")
+    yield api
+    api.close()
+    logger.debug("Closed SkillAPI client")
 
 
 @pytest.fixture(scope="session")

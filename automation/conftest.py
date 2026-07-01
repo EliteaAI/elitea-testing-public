@@ -30,6 +30,7 @@ from fixtures.api_fixtures import (
     conversation_api,
     agent_api,
     credential_api,
+    skill_api,
     toolkit_api,
     pipeline_api,
 )

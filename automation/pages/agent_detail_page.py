@@ -106,7 +106,7 @@ class AgentDetailPage(AgentFormPage):
             expected_agent_id: Optional agent ID to verify in URL
         """
         url_path = self.page.url
-        assert "/app/agents/all/" in url_path, f"Not on detail page: {url_path}"
+        assert "/agents/all/" in url_path, f"Not on detail page: {url_path}"
         assert "/create" not in url_path, f"Still on create page: {url_path}"
 
         if expected_agent_id:

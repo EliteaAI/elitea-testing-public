@@ -33,8 +33,16 @@ class BasePage:
 
         Args:
             path: URL path (e.g. ``/prompts``). Absolute URLs are used as-is.
+
+        Note:
+            On localhost the React Router has no basename and no ``/app``
+            prefix, so ``/app/...`` paths are rewritten to ``/...``
+            automatically.
         """
         base = settings.elitea_url
+        is_localhost = "localhost" in base or "127.0.0.1" in base
+        if is_localhost and path.startswith("/app/"):
+            path = path[4:]  # strip leading /app
         url = f"{base}{path}" if not path.startswith("http") else path
         logger.info("Navigating to %s", url)
         self.page.goto(url, wait_until="domcontentloaded")
