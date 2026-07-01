@@ -1,6 +1,6 @@
 """Agent Detail Page - View and manage individual agent.
 
-Handles: /app/agents/all/{id}
+Handles: /agents/all/{id}
 - View agent information (ID, version)
 - Manage toolkits (add/remove)
 - Internal tools (toggle switches)
@@ -63,7 +63,7 @@ class AgentDetailPage(AgentFormPage):
         Args:
             agent_id: The numeric agent ID.
         """
-        super(AgentDetailPage, self).navigate(f"/app/agents/all/{agent_id}?viewMode=owner")
+        super(AgentDetailPage, self).navigate(f"/agents/all/{agent_id}?viewMode=owner")
         self.wait_for_page_load()
         logger.info("Navigated to agent %d and page loaded", agent_id)
 

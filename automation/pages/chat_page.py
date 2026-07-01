@@ -23,7 +23,7 @@ class FeatureNotAvailableError(Exception):
 
 
 class ChatPage(BasePage):
-    """Page object for Elitea chat interface (/app/chat).
+    """Page object for Elitea chat interface (/chat).
 
     Handles:
     - Message sending and history
@@ -33,7 +33,7 @@ class ChatPage(BasePage):
     - File attachments
     - Message actions (copy, delete, regenerate)
 
-    URL: /app/chat, /app/chat/{conversation_id}
+    URL: /chat, /chat/{conversation_id}
     """
 
     # ------------------------------------------------------------------
@@ -213,8 +213,6 @@ class ChatPage(BasePage):
         the last-viewed conversation stored in the browser session.  If that
         happens we retry once with a hard reload.
 
-        For localhost (no /app prefix), clicks Chat in sidebar instead of direct navigation.
-
         Automatically waits for the page to load (spinner disappears, input
         visible). For explicit waiting (e.g., after sending a message), use
         wait_for_page_load().
@@ -222,10 +220,6 @@ class ChatPage(BasePage):
         Args:
             conversation_id: Optional conversation ID to navigate to specific chat
         """
-        # Check if running on localhost (from settings, not current page URL)
-        base_url = settings.elitea_url or ""
-        is_localhost = "localhost" in base_url or "127.0.0.1" in base_url
-
         # Wait a moment for page URL to settle (may be in navigation)
         try:
             self.page.wait_for_load_state("domcontentloaded", timeout=5000)
@@ -238,24 +232,18 @@ class ChatPage(BasePage):
 
         if already_on_chat:
             logger.info("Already on chat page (%s), skipping navigation", current_url)
-        elif is_localhost:
-            # On localhost, just go to base URL - EliteaUI auto-redirects to /chat
-            logger.info("Localhost detected, navigating to %s", base_url)
-            self.page.goto(base_url, wait_until="domcontentloaded")
-            self.page.wait_for_load_state("networkidle", timeout=15000)
         else:
-            # On dev/stage, use direct navigation
-            path = f"/app/chat/{conversation_id}" if conversation_id else "/app/chat"
+            path = f"/chat/{conversation_id}" if conversation_id else "/chat"
             self.navigate(path)
 
             # If we targeted a specific conversation, verify the SPA didn't redirect
-            if conversation_id and f"/app/chat/{conversation_id}" not in self.page.url:
+            if conversation_id and f"/chat/{conversation_id}" not in self.page.url:
                 logger.warning(
-                    "SPA redirected to %s instead of /app/chat/%s — retrying",
+                    "SPA redirected to %s instead of /chat/%s — retrying",
                     self.page.url, conversation_id,
                 )
                 self.page.goto(
-                    f"{self.page.url.split('/app/')[0]}/app/chat/{conversation_id}",
+                    f"{settings.elitea_url}{settings.app_prefix}/chat/{conversation_id}",
                     wait_until="domcontentloaded",
                 )
                 self.page.wait_for_load_state("networkidle", timeout=30000)

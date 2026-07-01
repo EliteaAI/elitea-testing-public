@@ -29,19 +29,15 @@ class BasePage:
         self.page = page
 
     def navigate(self, path: str) -> None:
-        """Navigate to *path* relative to ``ELITEA_URL``.
+        """Navigate to *path* relative to ``app_base_url``.
 
         Args:
-            path: URL path (e.g. ``/app/prompts``). Absolute URLs are used
-                as-is. The ``app_path_prefix`` setting (default ``/app``) is
-                stripped before constructing the final URL, allowing the same
-                path strings to work against both deployed and localhost
-                targets without any special-casing here.
+            path: URL path (e.g. ``/skills/all``). Absolute URLs are used
+                as-is. ``app_base_url`` already includes the app prefix
+                (``/app`` on deployed envs, empty on localhost), so page
+                objects use bare paths like ``/skills/all`` on all targets.
         """
-        base = settings.elitea_url
-        prefix = settings.app_path_prefix
-        if prefix and path.startswith(prefix):
-            path = path[len(prefix):]
+        base = settings.app_base_url
         url = f"{base}{path}" if not path.startswith("http") else path
         logger.info("Navigating to %s", url)
         self.page.goto(url, wait_until="domcontentloaded")

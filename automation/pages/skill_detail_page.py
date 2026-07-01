@@ -1,6 +1,6 @@
 """Skill Detail Page - View and manage an individual skill.
 
-Handles: /app/skills/all/{skill_id}
+Handles: /skills/all/{skill_id}
 - View/edit skill form (inherited from SkillFormPage)
 - SkillTestPanel — stateless LLM prediction panel
 - Overflow menu with delete skill action
@@ -26,7 +26,7 @@ class SkillDetailPage(SkillFormPage):
     Inherits form operations from SkillFormPage.
     Adds SkillTestPanel interaction and overflow menu (delete).
 
-    URL: /app/skills/all/{skill_id}
+    URL: /skills/all/{skill_id}
     """
 
     # Information section (used for wait_for_page_load)
@@ -61,7 +61,7 @@ class SkillDetailPage(SkillFormPage):
         Args:
             skill_id: Numeric skill ID.
         """
-        super(SkillDetailPage, self).navigate(f"/app/skills/all/{skill_id}")
+        super(SkillDetailPage, self).navigate(f"/skills/all/{skill_id}")
         self.wait_for_page_load()
         logger.info("Navigated to skill %d detail page", skill_id)
 

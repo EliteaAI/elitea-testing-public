@@ -1,14 +1,14 @@
 """User Profile Settings page object for Elitea platform.
 
-Handles the /app/user-settings/profile page, specifically:
+Handles the /user-settings/profile page, specifically:
 - Default Context Management section (toggle, max tokens input)
 
-And the /app/user-settings/personalization page:
+And the /user-settings/personalization page:
 - Voice Personalization section (voice, speed, volume, preview)
 
 Changes on these pages autosave — there is no explicit Save button.
 
-URL: /app/user-settings/profile, /app/user-settings/personalization
+URL: /user-settings/profile, /user-settings/personalization
 """
 
 import logging
@@ -22,7 +22,7 @@ logger = logging.getLogger("elitea.pages.user_profile_settings")
 
 
 class UserProfileSettingsPage(BasePage):
-    """Page object for /app/user-settings/profile.
+    """Page object for /user-settings/profile.
 
     Covers the Default Context Management section which contains:
     - A toggle to enable/disable context management for new conversations
@@ -31,7 +31,7 @@ class UserProfileSettingsPage(BasePage):
 
     All changes autosave on blur/change — no Save button interaction needed.
 
-    URL: /app/user-settings/profile
+    URL: /user-settings/profile
     """
 
     # ------------------------------------------------------------------
@@ -98,7 +98,7 @@ class UserProfileSettingsPage(BasePage):
         Automatically waits for the page heading and context management
         section to be visible before returning.
         """
-        self.navigate("/app/user-settings/profile")
+        self.navigate("/user-settings/profile")
         self.wait_for_page_load()
         logger.info("Navigated to user profile settings page")
 
@@ -240,7 +240,7 @@ class UserProfileSettingsPage(BasePage):
 
     def navigate_to_personalization(self) -> None:
         """Navigate to the Personalization settings page and wait until ready."""
-        self.navigate("/app/user-settings/personalization")
+        self.navigate("/user-settings/personalization")
         self.wait_for_personalization_load()
         logger.info("Navigated to Personalization settings page")
 

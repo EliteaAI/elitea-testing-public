@@ -7,7 +7,7 @@ Extends PipelineFormPage with additional functionality:
 - ReactFlow canvas node management
 - Embedded chat
 
-URL: /app/pipelines/all/{id}
+URL: /pipelines/all/{id}
 """
 
 import logging
@@ -26,7 +26,7 @@ class PipelineDetailPage(PipelineFormPage):
     Inherits form operations from PipelineFormPage.
     Adds: tabs, actions menu, YAML/Flow toggle, ReactFlow canvas, embedded chat.
 
-    URL: /app/pipelines/all/{id}
+    URL: /pipelines/all/{id}
     """
 
     # LocatorDescriptors - testid + fallback pattern
@@ -103,7 +103,7 @@ class PipelineDetailPage(PipelineFormPage):
         Args:
             pipeline_id: The numeric pipeline ID.
         """
-        super().navigate(f"/app/pipelines/all/{pipeline_id}?viewMode=owner")
+        super().navigate(f"/pipelines/all/{pipeline_id}?viewMode=owner")
         self.wait_for_detail_page_load()
         logger.info("Navigated to pipeline %d detail page", pipeline_id)
 
@@ -125,7 +125,7 @@ class PipelineDetailPage(PipelineFormPage):
         # The create form's input#name already has a value after fill_form(),
         # so checking the input alone would false-positive on the create page.
         self.page.wait_for_function(
-            """() => window.location.pathname.includes('/app/pipelines/all/')""",
+            """() => window.location.pathname.includes('/pipelines/all/')""",
             timeout=timeout,
         )
         # Wait for the Name input to have a non-empty value

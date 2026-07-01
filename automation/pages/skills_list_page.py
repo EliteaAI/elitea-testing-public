@@ -1,6 +1,6 @@
 """Skills List Page - Dashboard view for browsing skills.
 
-Handles: /app/skills/all
+Handles: /skills/all
 - Skills list display
 - Navigate to create skill
 """
@@ -21,7 +21,7 @@ logger = logging.getLogger("elitea.pages.skills_list")
 class SkillsListPage(BasePage):
     """Page object for the skills list/dashboard page.
 
-    URL: /app/skills/all
+    URL: /skills/all
     """
 
     page_header = LocatorDescriptor(
@@ -39,7 +39,7 @@ class SkillsListPage(BasePage):
     @action("Navigate to skills list")
     def navigate(self):
         """Navigate to the skills dashboard and wait until ready."""
-        super().navigate("/app/skills/all")
+        super().navigate("/skills/all")
         self.wait_for_page_load()
         logger.info("Navigated to skills dashboard and page loaded")
 
@@ -49,7 +49,7 @@ class SkillsListPage(BasePage):
 
         Uses direct URL navigation for reliability.
         """
-        super().navigate("/app/skills/create")
+        super().navigate("/skills/create")
         self.wait_for_network(timeout=10000)
         logger.info("Navigated to create skill page")
 
