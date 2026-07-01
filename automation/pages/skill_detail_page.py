@@ -181,24 +181,24 @@ class SkillDetailPage(SkillFormPage):
             self.page.wait_for_timeout(500)
 
         # Wait for the delete button to appear on the last response (stream complete).
-        # We use the last delete button by resolving all instances in Python.
-        delete_btns = self.page.get_by_test_id("chat-delete-button")
+        # skill-test-last-delete-button is set by ApplicationAnswer when isLastMessage=true.
+        delete_btn = self.page.get_by_test_id("skill-test-last-delete-button")
         try:
-            delete_btns.last.wait_for(
+            delete_btn.wait_for(
                 state="visible",
                 timeout=max(1000, int((deadline - time.time()) * 1000)),
             )
         except Exception:
             pass  # Fall through to content-stable check
 
-        # Wait for content to stabilize — read via the last answer-content element.
-        answer_divs = self.page.get_by_test_id("chat-answer-content")
+        # Wait for content to stabilize — read via skill-test-last-response (last AI message).
+        last_response = self.page.get_by_test_id("skill-test-last-response")
         last_content = ""
         stable_start = time.time()
 
         while time.time() < deadline:
             try:
-                current = (answer_divs.last.text_content() or "") if answer_divs.count() > 0 else ""
+                current = (last_response.text_content() or "") if last_response.count() > 0 else ""
             except Exception:
                 current = ""
 
@@ -217,18 +217,13 @@ class SkillDetailPage(SkillFormPage):
     def get_last_test_response(self) -> str:
         """Return the text content of the last AI response in the test panel.
 
-        Reads from data-testid="chat-answer-content" scoped inside the panel.
+        Reads from data-testid="skill-test-last-response" (set by ApplicationAnswer
+        when isLastMessage=true).
 
         Returns:
             Response text as string (stripped).
         """
-        response_divs = self.page.get_by_test_id("chat-answer-content")
-        if response_divs.count() > 0:
-            return (response_divs.last.text_content() or "").strip()
-        messages = self._test_panel_messages()
-        if messages.count() == 0:
-            return ""
-        return (messages.last.text_content() or "").strip()
+        return (self.page.get_by_test_id("skill-test-last-response").text_content() or "").strip()
 
     # ------------------------------------------------------------------
     # Actions menu (overflow/three-dot menu)

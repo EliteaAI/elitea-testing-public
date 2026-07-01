@@ -45,7 +45,13 @@ class BasePage:
         url = f"{base}{path}" if not path.startswith("http") else path
         logger.info("Navigating to %s", url)
         self.page.goto(url, wait_until="domcontentloaded")
-        self.page.wait_for_load_state("networkidle", timeout=30000)
+        try:
+            self.page.wait_for_load_state("networkidle", timeout=30000)
+        except Exception:
+            # Pages with persistent WebSocket connections (e.g. Skills, Chat)
+            # never reach networkidle.  domcontentloaded is sufficient here;
+            # each page object's wait_for_page_load handles the rest.
+            logger.debug("networkidle not reached after navigation to %s — continuing", url)
         
         # Wait for any loading spinner to disappear
         spinner = self.page.locator('svg[class*="CircularProgress"], [role="progressbar"], [class*="spinner"]')

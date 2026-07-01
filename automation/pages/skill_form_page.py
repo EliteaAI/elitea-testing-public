@@ -98,15 +98,17 @@ class SkillFormPage(BasePage):
     def _fill_text_input(self, locator, text: str):
         """Fill a standard MUI text input with React-safe keyboard events.
 
+        Clicks the wrapper to transfer focus to the inner input, then uses
+        page.keyboard so events go to the focused element (not the wrapper div).
+
         Args:
             locator: LocatorDescriptor or Playwright locator for the input.
             text: Text to type.
         """
         locator.click()
         self.page.wait_for_timeout(200)
-        # Select all existing content and replace
-        locator.press("Control+a")
-        locator.press_sequentially(text, delay=80)
+        self.page.keyboard.press("Control+a")
+        self.page.keyboard.type(text)
         self.page.wait_for_timeout(300)
 
     @action("Fill instructions editor")
