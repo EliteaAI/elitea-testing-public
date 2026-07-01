@@ -109,7 +109,7 @@ class TestContextManagementSettings:
             chat.click_create_conversation(timeout=NAVIGATION_TIMEOUT)
 
             # Extract conversation ID from URL for cleanup
-            match = re.search(r"/app/chat/(\d+)", page.url)
+            match = re.search(r"/chat/(\d+)", page.url)
             if match:
                 conv_id = match.group(1)
                 logger.info("Conversation created with ID: %s", conv_id)
@@ -122,10 +122,10 @@ class TestContextManagementSettings:
             if not conv_id:
                 try:
                     page.wait_for_url(
-                        lambda url: re.search(r"/app/chat/\d+", url) is not None,
+                        lambda url: re.search(r"/chat/\d+", url) is not None,
                         timeout=5000,
                     )
-                    match = re.search(r"/app/chat/(\d+)", page.url)
+                    match = re.search(r"/chat/(\d+)", page.url)
                     if match:
                         conv_id = match.group(1)
                         logger.info("Conversation ID found after first message: %s", conv_id)

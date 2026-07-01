@@ -1068,8 +1068,8 @@ class ChatPage(BasePage):
             self.wait_for_network(timeout=timeout)
             return
         
-        # Strategy 2: Look for href with /app/chat/{id}
-        item = self.page.locator(f'a[href*="/app/chat/{conv_id}"]').first
+        # Strategy 2: Look for href with /chat/{id}
+        item = self.page.locator(f'a[href*="/chat/{conv_id}"]').first
         if item.count() > 0:
             logger.info("Found conversation via href attribute")
             item.wait_for(state="visible", timeout=timeout)
@@ -1305,9 +1305,9 @@ class ChatPage(BasePage):
             conv_id: Conversation ID to wait for in URL
             timeout: Maximum wait time in milliseconds
         """
-        logger.info(f"Waiting for URL to contain /app/chat/{conv_id}")
+        logger.info(f"Waiting for URL to contain /chat/{conv_id}")
         self.page.wait_for_url(
-            lambda url: f"/app/chat/{conv_id}" in url,
+            lambda url: f"/chat/{conv_id}" in url,
             timeout=timeout
         )
 
