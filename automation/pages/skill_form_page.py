@@ -26,19 +26,19 @@ class SkillFormPage(BasePage):
     # Form field locators
     name_input = LocatorDescriptor(
         testid="skill-name-input",
-        fallback=lambda page: page.locator('[data-testid="skill-name-input"]'),
+        fallback=lambda page: page.get_by_role("textbox", name="Name"),
         description="Skill name input field"
     )
 
     description_input = LocatorDescriptor(
         testid="skill-description-input",
-        fallback=lambda page: page.locator('[data-testid="skill-description-input"]'),
+        fallback=lambda page: page.get_by_role("textbox", name="Description"),
         description="Skill description input field"
     )
 
     instructions_editor = LocatorDescriptor(
         testid="skill-instructions-editor",
-        fallback=lambda page: page.locator('.cm-content[contenteditable]').first,
+        fallback=lambda page: page.get_by_role("textbox", name="Instructions"),
         description="Skill instructions CodeMirror editor"
     )
 
@@ -49,7 +49,7 @@ class SkillFormPage(BasePage):
     )
 
     cancel_button = LocatorDescriptor(
-        testid=None,
+        testid="skill-cancel-button",
         fallback=lambda page: page.get_by_role("button", name="Cancel"),
         description="Cancel button"
     )
@@ -66,15 +66,9 @@ class SkillFormPage(BasePage):
 
         Waits for the Name input to be visible and network to settle.
         """
-        # Try testid first, fall back to input#name
-        try:
-            self.page.get_by_test_id("skill-name-input").wait_for(
-                state="visible", timeout=timeout
-            )
-        except Exception:
-            self.page.locator('input#name').wait_for(
-                state="visible", timeout=timeout
-            )
+        self.page.get_by_test_id("skill-name-input").wait_for(
+            state="visible", timeout=timeout
+        )
         self.wait_for_network(timeout=10000)
         self.page.wait_for_timeout(1000)
         logger.info("Skill form loaded")
@@ -131,14 +125,9 @@ class SkillFormPage(BasePage):
             text: Instructions text to enter.
         """
         # The editor wrapper (data-testid="skill-instructions-editor") contains
-        # the .cm-content[contenteditable] element.
+        # the CodeMirror 6 content element (role="textbox").
         editor_wrapper = self.instructions_editor
-        # Click on the cm-content within the wrapper
-        cm_content = editor_wrapper.locator('.cm-content[contenteditable]').first
-        if cm_content.count() == 0:
-            # Fallback: instructions_editor IS the cm-content
-            cm_content = editor_wrapper
-
+        cm_content = editor_wrapper.get_by_role("textbox")
         cm_content.click()
         self.page.wait_for_timeout(200)
         self.page.keyboard.press("Control+a")
@@ -206,7 +195,4 @@ class SkillFormPage(BasePage):
 
     def get_name(self) -> str:
         """Return the current value of the Name input field."""
-        try:
-            return self.name_input.input_value()
-        except Exception:
-            return self.page.locator('input#name').input_value()
+        return self.name_input.input_value()

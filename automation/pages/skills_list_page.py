@@ -25,7 +25,7 @@ class SkillsListPage(BasePage):
 
     page_header = LocatorDescriptor(
         testid="skills-page-header",
-        fallback=lambda page: page.locator('text="Skills"').first,
+        fallback=lambda page: page.get_by_text("Skills", exact=True),
         description="Skills page header"
     )
 
@@ -88,7 +88,7 @@ class SkillsListPage(BasePage):
         Returns:
             True if the skill is visible right now, False otherwise.
         """
-        return self.page.get_by_text(name, exact=False).first.is_visible()
+        return self.page.get_by_text(name, exact=False).count() > 0
 
     def wait_for_skill_absent(self, name: str, timeout: int = 10000):
         """Wait until a skill is no longer visible in the list.

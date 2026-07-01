@@ -32,21 +32,21 @@ class SkillDetailPage(SkillFormPage):
     # Information section (used for wait_for_page_load)
     information_section = LocatorDescriptor(
         testid="skill-information-section",
-        fallback=lambda page: page.locator('text="Information"').first,
+        fallback=lambda page: page.get_by_text("Information", exact=True),
         description="Skill information accordion section"
     )
 
     # SkillTestPanel outer container
     test_panel = LocatorDescriptor(
         testid="skill-test-panel",
-        fallback=lambda page: page.locator('[data-testid="skill-test-panel"]'),
+        fallback=lambda page: page.get_by_test_id("skill-test-panel"),
         description="SkillTestPanel container"
     )
 
     # Overflow menu trigger button
     controls_menu_button = LocatorDescriptor(
         testid="skill-controls-menu-button",
-        fallback=lambda page: page.locator('button[aria-haspopup="true"]').last,
+        fallback=lambda page: page.get_by_role("button", name="more"),
         description="Skill controls overflow menu button"
     )
 
@@ -151,7 +151,7 @@ class SkillDetailPage(SkillFormPage):
         """
         logger.info("Sending test message: %r", message[:60])
         panel = self.page.get_by_test_id("skill-test-panel")
-        chat_input = panel.get_by_test_id("chat-input").locator("textarea").first
+        chat_input = panel.get_by_role("textbox")
         chat_input.wait_for(state="visible", timeout=timeout)
         chat_input.fill(message)
         self.page.wait_for_timeout(300)
@@ -191,9 +191,9 @@ class SkillDetailPage(SkillFormPage):
             self.page.wait_for_timeout(500)
 
         # Wait for the last message to show a Delete button (response complete)
-        ai_msg = messages.last
+        ai_msg = messages.nth(messages.count() - 1)
         try:
-            ai_msg.locator('[aria-label="Delete"]').wait_for(
+            ai_msg.get_by_role("button", name="Delete").wait_for(
                 state="visible",
                 timeout=max(1000, int((deadline - time.time()) * 1000)),
             )
@@ -234,7 +234,7 @@ class SkillDetailPage(SkillFormPage):
         if messages.count() == 0:
             return ""
 
-        ai_msg = messages.last
+        ai_msg = messages.nth(messages.count() - 1)
         response_div = ai_msg.get_by_test_id("chat-answer-content")
         if response_div.count() > 0:
             return (response_div.text_content() or "").strip()
@@ -251,12 +251,8 @@ class SkillDetailPage(SkillFormPage):
         Uses JavaScript click to bypass any MUI overlay interception.
         """
         logger.info("Opening skill actions menu")
-        menu_btn = self.page.get_by_test_id("skill-controls-menu-button")
-        if menu_btn.count() == 0:
-            # Fallback: the last button with aria-haspopup
-            menu_btn = self.page.locator('button[aria-haspopup="true"]').last
-        menu_btn.evaluate("el => el.click()")
-        self.page.locator('[role="menu"]').wait_for(state="visible", timeout=5000)
+        self.controls_menu_button.evaluate("el => el.click()")
+        self.page.get_by_role("menu").wait_for(state="visible", timeout=5000)
 
     @action("Delete skill via menu")
     def delete_skill_via_menu(self, skill_name: str, timeout: int = 10000):
