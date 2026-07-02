@@ -41,12 +41,13 @@ class Settings(BaseSettings):
     elitea_api_base: str = ""
     elitea_api_token: str = ""
     elitea_project_id: int = 0
-    # URL prefix for the React app routes.  On deployed environments (DEV/STAGE)
+    # URL prefix for the React app routes.  On deployed environments (DEV/STAGE/NEXT)
     # the React Router has basename="/app", so all routes are under /app.
     # On localhost the Vite dev server has no basename, so the prefix is empty.
-    # Default "/app" means deployed environments work without any .env.test change.
-    # Localhost profiles must set APP_PREFIX= (empty string) in .env.test.
-    app_prefix: str = "/app"
+    # Default is "" (empty) — all environments must set APP_PREFIX explicitly:
+    #   APP_PREFIX=       for localhost
+    #   APP_PREFIX=/app   for deployed envs (DEV/STAGE/NEXT)
+    app_prefix: str = ""
 
     @property
     def app_base_url(self) -> str:

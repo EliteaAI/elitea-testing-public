@@ -34,8 +34,9 @@ class BasePage:
         Args:
             path: URL path (e.g. ``/skills/all``). Absolute URLs are used
                 as-is. ``app_base_url`` already includes the app prefix
-                (``/app`` on deployed envs, empty on localhost), so page
-                objects use bare paths like ``/skills/all`` on all targets.
+                (set via ``APP_PREFIX`` in ``.env.test``: ``/app`` on deployed
+                envs, ``""`` on localhost), so page objects use bare paths like
+                ``/skills/all`` on all targets.
         """
         base = settings.app_base_url
         url = f"{base}{path}" if not path.startswith("http") else path
