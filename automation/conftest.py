@@ -13,7 +13,7 @@ import allure
 import pytest
 from playwright.sync_api import Browser, BrowserContext, Page
 
-from api import AgentAPI, ConversationAPI, CredentialAPI, PipelineAPI, ToolkitAPI
+from api import AgentAPI, ArtifactAPI, ConversationAPI, CredentialAPI, PipelineAPI, ToolkitAPI
 from config import settings
 
 # ---------------------------------------------------------------------------
@@ -29,6 +29,7 @@ from fixtures.api_fixtures import (
     _browser_cookies,
     conversation_api,
     agent_api,
+    artifact_api,
     credential_api,
     skill_api,
     toolkit_api,
@@ -41,6 +42,8 @@ from fixtures.data_fixtures import (
     pipeline_with_llm_id,
     github_credential,
     github_toolkit,
+    artifact_bucket,
+    artifact_toolkit,
     invalid_jira_credential,
     jira_toolkit_with_invalid_credential,
     invalid_github_credential,

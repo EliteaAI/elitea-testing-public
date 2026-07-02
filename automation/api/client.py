@@ -1363,6 +1363,45 @@ class ToolkitAPI:
         _raise_for_status(resp)
         return resp.json()
 
+    def create_artifact_toolkit(self, name: str, description: str, bucket_name: str) -> dict:
+        """Create an Artifact (storage) toolkit pointing to a specific bucket.
+
+        Args:
+            name: Toolkit display name.
+            description: Short description.
+            bucket_name: Name of the artifact bucket to connect to.
+
+        Returns:
+            Dict with ``id`` and other toolkit fields.
+        """
+        url = self._toolkits_url()
+        payload = {
+            "type": "artifact",
+            "name": name,
+            "description": description,
+            "settings": {
+                "pgvector_configuration": None,
+                "embedding_model": "text-embedding-3-small",
+                "bucket": bucket_name,
+                "selected_tools": [
+                    "index_data", "list_collections", "search_index",
+                    "stepback_search_index", "stepback_summary_index", "remove_index",
+                    "list_files", "create_file", "read_file", "get_file_metadata",
+                    "delete_file", "append_data", "create_new_bucket",
+                    "read_multiple_files", "grep_file", "edit_file",
+                ],
+            },
+        }
+        logger.debug("CREATE artifact toolkit %s name=%s bucket=%s", url, name, bucket_name)
+        resp = self._session.post(url, json=payload, headers={"Content-Type": "application/json"})
+        if not resp.ok:
+            logger.error(
+                "Failed to create artifact toolkit: status=%s body=%s",
+                resp.status_code, resp.text[:500],
+            )
+        _raise_for_status(resp)
+        return resp.json()
+
     def delete_toolkit(self, toolkit_id: int) -> None:
         """Delete a toolkit."""
         url = self._toolkits_url(toolkit_id)

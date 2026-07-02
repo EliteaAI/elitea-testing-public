@@ -748,6 +748,17 @@ class AgentDetailPage(AgentFormPage):
         """
         return self.page.get_by_test_id('chat-message-list').get_by_test_id('chat-message-item')
 
+    def get_chat_message_count(self) -> int:
+        """Return the current number of messages visible in the embedded chat.
+
+        Use this before sending a message to capture the baseline count,
+        then pass the count to ``wait_for_chat_response(initial_count=...)``.
+
+        Returns:
+            Integer count of message items currently in the chat.
+        """
+        return self._embedded_chat_messages().count()
+
     @action("Send embedded chat message")
     def send_chat_message(self, message: str, timeout: int = 10000):
         """Type and send a message in the embedded chat panel.

@@ -19,7 +19,7 @@ import logging
 import pytest
 from playwright.sync_api import Browser
 
-from api import APIClient, AgentAPI, ConversationAPI, CredentialAPI, PipelineAPI, SkillAPI, ToolkitAPI
+from api import APIClient, AgentAPI, ArtifactAPI, ConversationAPI, CredentialAPI, PipelineAPI, SkillAPI, ToolkitAPI
 from config import settings
 
 logger = logging.getLogger("elitea.automation.fixtures.api")
@@ -226,6 +226,23 @@ def skill_api(_browser_cookies):
     yield api
     api.close()
     logger.debug("Closed SkillAPI client")
+
+
+@pytest.fixture
+def artifact_api(_browser_cookies):
+    """Function-scoped ArtifactAPI client for artifact bucket management.
+
+    Uses cookie-based authentication. Function-scoped to avoid connection
+    pool exhaustion across rapid bucket create/delete cycles.
+
+    Yields:
+        ArtifactAPI: Authenticated artifact API client
+    """
+    api = ArtifactAPI(browser_cookies=_browser_cookies)
+    logger.debug("Created function-scoped ArtifactAPI client")
+    yield api
+    api.close()
+    logger.debug("Closed ArtifactAPI client")
 
 
 @pytest.fixture(scope="session")
