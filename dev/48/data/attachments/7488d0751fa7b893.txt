@@ -1,0 +1,6 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to chat — Locator.wait_for: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("svg[class*=\"CircularProgress\"], [role=\"progressbar\"], [class*=\"spinner\"]").first to be hidden
+    64 × locator resolved to visible <span role="progressbar" class="MuiCircularProgress-root MuiCircularProgress-indeterminate MuiCircularProgress-colorPrimary css-lm9cdp">…</span>
+
+WARNING  tests.ui.chat.test_conversation_management:test_conversation_management.py:435 Cleanup failed: 404 Client Error: Not Found for url: https://dev.elitea.ai/api/v2/elitea_core/conversation/prompt_lib/399/3505 — body: {'error': 'Conversation not found'}
