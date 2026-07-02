@@ -1,6 +1,6 @@
 """Toolkit detail page object.
 
-URL: /app/toolkits/all/{id}
+URL: /toolkits/all/{id}
 
 Provides methods for interacting with toolkit configuration and
 verifying authentication status warnings, including status indicators
@@ -32,7 +32,7 @@ class ToolkitDetailPage(BasePage):
     including checking for authentication warnings when credentials
     are invalid or expired.
 
-    URL: /app/toolkits/all/{id}
+    URL: /toolkits/all/{id}
     """
 
     def __init__(self, page: Page):
@@ -44,7 +44,7 @@ class ToolkitDetailPage(BasePage):
         Args:
             toolkit_id: Numeric toolkit ID.
         """
-        self.navigate(f"/app/toolkits/all/{toolkit_id}")
+        self.navigate(f"/toolkits/all/{toolkit_id}")
         self.wait_for_page_load()
 
     def wait_for_page_load(self, timeout: int = 15000) -> None:

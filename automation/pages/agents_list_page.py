@@ -1,6 +1,6 @@
 """Agents List Page - Dashboard view for browsing and searching agents.
 
-Handles: /app/agents/all
+Handles: /agents/all
 - Agent list/dashboard display
 - Search and filter agents
 - Navigate to create agent
@@ -67,7 +67,7 @@ class AgentsListPage(BasePage):
         to settle. For explicit waiting (e.g., after reload), use
         wait_for_page_load().
         """
-        super().navigate("/app/agents/all")
+        super().navigate("/agents/all")
         self.wait_for_page_load()
         logger.info("Navigated to agents dashboard and page loaded")
 
@@ -78,7 +78,7 @@ class AgentsListPage(BasePage):
         Automatically waits for the form to load. For explicit waiting,
         use AgentFormPage.wait_for_form_load().
         """
-        super().navigate("/app/agents/create?viewMode=owner")
+        super().navigate("/agents/create?viewMode=owner")
         self.wait_for_network(timeout=10000)
         logger.info("Navigated to create agent page and page loaded")
 

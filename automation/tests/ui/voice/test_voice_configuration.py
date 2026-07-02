@@ -57,7 +57,7 @@ def capture_conversation_id(page) -> str | None:
     Returns:
         Conversation ID as string, or None if not found.
     """
-    match = re.search(r"/app/chat/(\d+)", page.url)
+    match = re.search(r"/chat/(\d+)", page.url)
     return match.group(1) if match else None
 
 

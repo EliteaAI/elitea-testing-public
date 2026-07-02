@@ -233,6 +233,7 @@ jobs:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           CONFLUENCE_BASE_URL: ${{ secrets.CONFLUENCE_BASE_URL }}
           CONFLUENCE_SPACE: ${{ secrets.CONFLUENCE_SPACE }}
+          APP_PREFIX: '/app'
         run: |
           PYTEST_CMD="pytest"
 

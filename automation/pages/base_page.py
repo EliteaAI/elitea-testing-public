@@ -29,16 +29,26 @@ class BasePage:
         self.page = page
 
     def navigate(self, path: str) -> None:
-        """Navigate to *path* relative to ``ELITEA_URL``.
+        """Navigate to *path* relative to ``app_base_url``.
 
         Args:
-            path: URL path (e.g. ``/prompts``). Absolute URLs are used as-is.
+            path: URL path (e.g. ``/skills/all``). Absolute URLs are used
+                as-is. ``app_base_url`` already includes the app prefix
+                (set via ``APP_PREFIX`` in ``.env.test``: ``/app`` on deployed
+                envs, ``""`` on localhost), so page objects use bare paths like
+                ``/skills/all`` on all targets.
         """
-        base = settings.elitea_url
+        base = settings.app_base_url
         url = f"{base}{path}" if not path.startswith("http") else path
         logger.info("Navigating to %s", url)
         self.page.goto(url, wait_until="domcontentloaded")
-        self.page.wait_for_load_state("networkidle", timeout=30000)
+        try:
+            self.page.wait_for_load_state("networkidle", timeout=30000)
+        except Exception:
+            # Pages with persistent WebSocket connections (e.g. Skills, Chat)
+            # never reach networkidle.  domcontentloaded is sufficient here;
+            # each page object's wait_for_page_load handles the rest.
+            logger.debug("networkidle not reached after navigation to %s — continuing", url)
         
         # Wait for any loading spinner to disappear
         spinner = self.page.locator('svg[class*="CircularProgress"], [role="progressbar"], [class*="spinner"]')

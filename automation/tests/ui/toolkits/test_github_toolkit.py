@@ -94,7 +94,7 @@ class TestCreateGitHubCredential:
         try:
             # Navigate to create GitHub credential page
             page.goto(
-                f"{settings.elitea_url}/app/credentials/create-credential/github",
+                f"{settings.app_base_url}/credentials/create-credential/github",
                 wait_until="domcontentloaded",
             )
             page.wait_for_load_state("networkidle", timeout=30000)
@@ -135,7 +135,7 @@ class TestCreateGitHubCredential:
             # Wait for navigation to credentials list
             page.wait_for_timeout(3000)
             url_path = urlparse(page.url).path
-            assert "/app/credentials" in url_path, (
+            assert "/credentials" in url_path, (
                 f"Should navigate to credentials page, got: {page.url}"
             )
 
@@ -224,7 +224,7 @@ class TestCreateGitHubToolkit:
         try:
             # Navigate to toolkit creation page
             page.goto(
-                f"{settings.elitea_url}/app/toolkits/create",
+                f"{settings.app_base_url}/toolkits/create",
                 wait_until="domcontentloaded",
             )
             page.wait_for_load_state("networkidle", timeout=30000)
@@ -315,7 +315,7 @@ class TestCreateGitHubToolkit:
             # Wait for redirect to toolkit detail page
             page.wait_for_timeout(3000)
             url_path = urlparse(page.url).path
-            assert "/app/toolkits/all/" in url_path or "/app/toolkits/create" not in url_path, (
+            assert "/toolkits/all/" in url_path or "/toolkits/create" not in url_path, (
                 f"Should navigate away from create page, got: {page.url}"
             )
 
@@ -435,18 +435,18 @@ class TestGitHubToolkitTestSettings:
         6. Verify result contains branch names (e.g. 'main')
         """
         tk_id = toolkit_id["id"]
-        base_url = settings.elitea_url
+        base_url = settings.app_base_url
 
         # Navigate to toolkits list first (warm up SPA), then to detail page
         page.goto(
-            f"{base_url}/app/toolkits/all",
+            f"{base_url}/toolkits/all",
             wait_until="domcontentloaded",
         )
         page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
         page.wait_for_timeout(1000)
 
         page.goto(
-            f"{base_url}/app/toolkits/all/{tk_id}",
+            f"{base_url}/toolkits/all/{tk_id}",
             wait_until="domcontentloaded",
         )
         page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
@@ -456,7 +456,7 @@ class TestGitHubToolkitTestSettings:
         error_banner = page.locator('text="Unexpected Application Error"')
         if error_banner.count() > 0 and error_banner.first.is_visible():
             page.goto(
-                f"{base_url}/app/toolkits/all/{tk_id}",
+                f"{base_url}/toolkits/all/{tk_id}",
                 wait_until="domcontentloaded",
             )
             page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)

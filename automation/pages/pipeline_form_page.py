@@ -2,7 +2,7 @@
 
 Handles pipeline form filling, save/cancel/discard operations.
 
-URL: /app/pipelines/create, /app/pipelines/all/{id}
+URL: /pipelines/create, /pipelines/all/{id}
 """
 
 import logging
@@ -23,7 +23,7 @@ class PipelineFormPage(BasePage):
     - Form validation waits
     - MUI form patterns (click + type instead of fill)
 
-    URL: /app/pipelines/create or /app/pipelines/all/{id}
+    URL: /pipelines/create or /pipelines/all/{id}
     """
 
     # LocatorDescriptors - testid + fallback pattern
@@ -66,7 +66,7 @@ class PipelineFormPage(BasePage):
 
     def navigate_to_create(self):
         """Navigate to create pipeline page and wait for form load."""
-        super().navigate("/app/pipelines/create?viewMode=owner")
+        super().navigate("/pipelines/create?viewMode=owner")
         self.wait_for_page_load()
         logger.info("Navigated to create pipeline page")
 
@@ -76,7 +76,7 @@ class PipelineFormPage(BasePage):
         Args:
             pipeline_id: The numeric pipeline ID.
         """
-        super().navigate(f"/app/pipelines/all/{pipeline_id}?viewMode=owner")
+        super().navigate(f"/pipelines/all/{pipeline_id}?viewMode=owner")
         self.wait_for_page_load()
         logger.info("Navigated to pipeline %d edit page", pipeline_id)
 
@@ -226,7 +226,7 @@ class PipelineFormPage(BasePage):
         self.click_save(timeout=timeout)
         # After save on create, URL changes to /app/pipelines/all/{id}
         # Wait for URL to change
-        self.page.wait_for_url("**/app/pipelines/all/*", timeout=timeout)
+        self.page.wait_for_url("**/pipelines/all/*", timeout=timeout)
         self.wait_for_network(timeout=10000)
 
     def is_save_enabled(self) -> bool:

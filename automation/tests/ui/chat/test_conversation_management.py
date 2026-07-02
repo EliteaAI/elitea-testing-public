@@ -68,7 +68,7 @@ def _verify_conversation_page_loaded(chat_page, conversation_id, page):
     """
     conv_id_str = str(conversation_id)
 
-    assert f"/app/chat/{conv_id_str}" in page.url, (
+    assert f"/chat/{conv_id_str}" in page.url, (
         f"URL should contain conversation ID {conv_id_str}, got: {page.url}"
     )
 
@@ -96,7 +96,7 @@ def _extract_conversation_id(page, conversation_api, test_msg: str) -> str | Non
         Conversation ID as string, or None if not found
     """
     # Try URL first
-    match = re.search(r"/app/chat/(\d+)", page.url)
+    match = re.search(r"/chat/(\d+)", page.url)
     if match:
         conv_id = match.group(1)
         logger.info(f"Conversation ID from URL: {conv_id}")
@@ -298,7 +298,7 @@ class TestConversationNavigation:
             chat.wait_for_conversation_url(conv_a_id, timeout=NAVIGATION_TIMEOUT)
 
             # Verify conversation A loaded correctly
-            assert f"/app/chat/{conv_a_id}" in page.url, (
+            assert f"/chat/{conv_a_id}" in page.url, (
                 f"Should navigate to conversation A ({conv_a_id}), got URL: {page.url}"
             )
 
@@ -310,7 +310,7 @@ class TestConversationNavigation:
             chat.wait_for_conversation_url(conv_b_id, timeout=NAVIGATION_TIMEOUT)
 
             # Verify conversation B loaded correctly
-            assert f"/app/chat/{conv_b_id}" in page.url, (
+            assert f"/chat/{conv_b_id}" in page.url, (
                 f"Should navigate to conversation B ({conv_b_id}), got URL: {page.url}"
             )
 

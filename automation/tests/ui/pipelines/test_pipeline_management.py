@@ -128,7 +128,7 @@ class TestCreatePipeline:
         detail_page = PipelineDetailPage(page)
         detail_page.wait_for_detail_page_load()
         url_path = urlparse(page.url).path
-        assert "/app/pipelines/all/" in url_path and "create" not in url_path, (
+        assert "/pipelines/all/" in url_path and "create" not in url_path, (
             f"Should navigate to pipeline detail page, got: {page.url}"
         )
 

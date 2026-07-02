@@ -41,6 +41,23 @@ class Settings(BaseSettings):
     elitea_api_base: str = ""
     elitea_api_token: str = ""
     elitea_project_id: int = 0
+    # URL prefix for the React app routes.  On deployed environments (DEV/STAGE/NEXT)
+    # the React Router has basename="/app", so all routes are under /app.
+    # On localhost the Vite dev server has no basename, so the prefix is empty.
+    # Default is "" (empty) — all environments must set APP_PREFIX explicitly:
+    #   APP_PREFIX=       for localhost
+    #   APP_PREFIX=/app   for deployed envs (DEV/STAGE/NEXT)
+    app_prefix: str = ""
+
+    @property
+    def app_base_url(self) -> str:
+        """Base URL for page-object navigation (includes app prefix).
+
+        Page objects call ``navigate("/skills/all")`` and this property
+        provides the correct base so the final URL is correct on both
+        localhost (no prefix) and deployed environments (/app prefix).
+        """
+        return f"{self.elitea_url.rstrip('/')}{self.app_prefix}"
 
     @property
     def elitea_auth_url(self) -> str:

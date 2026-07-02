@@ -25,7 +25,7 @@ import time
 
 import pytest
 
-from api import ConversationAPI, AgentAPI, PipelineAPI, CredentialAPI, ToolkitAPI
+from api import ArtifactAPI, ConversationAPI, AgentAPI, PipelineAPI, CredentialAPI, ToolkitAPI
 from config import settings
 
 logger = logging.getLogger("elitea.automation.fixtures.data")
@@ -274,6 +274,98 @@ def github_toolkit(github_credential: dict, toolkit_api: ToolkitAPI, request):
         logger.info("Deleted GitHub toolkit %s", toolkit["id"])
     except Exception as exc:
         logger.warning("Failed to delete toolkit %s during teardown: %s", toolkit["id"], exc)
+
+
+# ---------------------------------------------------------------------------
+# Artifact bucket + toolkit fixtures for ELITEA-1327
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def artifact_bucket(artifact_api: ArtifactAPI, request):
+    """Create a fresh artifact bucket before the test and delete it afterwards.
+
+    The bucket is created with a unique name based on the test function name
+    and a millisecond timestamp to guarantee uniqueness across parallel or
+    repeated runs.
+
+    Yields a dict with ``name`` and ``id`` keys.
+
+    Args:
+        artifact_api: ArtifactAPI client (from api_fixtures)
+        request: Pytest request object (provides test metadata)
+
+    Yields:
+        dict: ``{"name": str, "id": str}``
+
+    Example:
+        def test_bucket_files(page, artifact_bucket):
+            bucket_name = artifact_bucket["name"]
+            # bucket is automatically deleted after test
+    """
+    ts = str(int(time.time() * 1000))[-6:]  # last 6 digits for brevity
+    # Bucket names: lowercase, hyphens only, max ~63 chars
+    raw = f"autotest-{request.node.name}"
+    safe = raw.lower().replace("_", "-").replace("[", "").replace("]", "")[:40]
+    name = f"{safe}-{ts}"
+
+    bucket = artifact_api.create_bucket(name)
+    logger.info("Created artifact bucket '%s' (id=%s) for %s", name, bucket.get("id"), request.node.name)
+
+    yield {"name": name, "id": bucket.get("id", name)}
+
+    try:
+        artifact_api.delete_bucket(name)
+        logger.info("Deleted artifact bucket '%s'", name)
+    except Exception as exc:
+        logger.warning("Failed to delete artifact bucket '%s': %s", name, exc)
+
+
+@pytest.fixture
+def artifact_toolkit(artifact_bucket: dict, toolkit_api: ToolkitAPI, request):
+    """Create an Artifact toolkit connected to a fresh bucket.
+
+    Depends on ``artifact_bucket`` — both are cleaned up after the test.
+
+    Yields a dict with ``id``, ``name``, and ``bucket_name`` keys so tests
+    can attach the toolkit to an agent by name and verify bucket contents.
+
+    Args:
+        artifact_bucket: Artifact bucket fixture (provides bucket name)
+        toolkit_api: ToolkitAPI client (from api_fixtures)
+        request: Pytest request object (provides test metadata)
+
+    Yields:
+        dict: ``{"id": int, "name": str, "bucket_name": str}``
+
+    Example:
+        def test_agent_creates_files(page, agent_id, artifact_toolkit):
+            toolkit_name = artifact_toolkit["name"]
+            bucket_name = artifact_toolkit["bucket_name"]
+            # attach toolkit to agent via UI, then run assertions
+    """
+    ts = str(int(time.time()))
+    raw = f"autotest-art-{request.node.name}"
+    name = raw[:28] + f"-{ts[-4:]}"   # keep total ≤ 32 chars (API limit)
+
+    bucket_name = artifact_bucket["name"]
+    toolkit = toolkit_api.create_artifact_toolkit(
+        name=name,
+        description=f"Auto-created artifact toolkit for {request.node.name}",
+        bucket_name=bucket_name,
+    )
+    logger.info(
+        "Created artifact toolkit %s ('%s') → bucket '%s' for %s",
+        toolkit["id"], name, bucket_name, request.node.name,
+    )
+
+    yield {"id": toolkit["id"], "name": name, "bucket_name": bucket_name}
+
+    try:
+        toolkit_api.delete_toolkit(toolkit["id"])
+        logger.info("Deleted artifact toolkit %s", toolkit["id"])
+    except Exception as exc:
+        logger.warning("Failed to delete artifact toolkit %s: %s", toolkit["id"], exc)
 
 
 # ---------------------------------------------------------------------------

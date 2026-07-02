@@ -2,7 +2,7 @@
 
 Handles pipeline dashboard operations: search, view switching, navigation.
 
-URL: /app/pipelines/all
+URL: /pipelines/all
 """
 
 import logging
@@ -14,7 +14,7 @@ logger = logging.getLogger("elitea.pages.pipelines_list")
 
 
 class PipelinesListPage(BasePage):
-    """Pipeline dashboard page (/app/pipelines/all).
+    """Pipeline dashboard page (/pipelines/all).
 
     Handles:
     - Pipeline search
@@ -22,7 +22,7 @@ class PipelinesListPage(BasePage):
     - Dashboard navigation
     - Pipeline existence checks
 
-    URL: /app/pipelines/all
+    URL: /pipelines/all
     """
 
     # LocatorDescriptors - testid + fallback pattern
@@ -59,13 +59,13 @@ class PipelinesListPage(BasePage):
 
     def navigate(self):
         """Navigate to the pipelines dashboard and wait for load."""
-        super().navigate("/app/pipelines/all")
+        super().navigate("/pipelines/all")
         self.wait_for_page_load()
         logger.info("Navigated to pipelines dashboard")
 
     def navigate_to_create(self):
         """Navigate to the create pipeline page."""
-        super().navigate("/app/pipelines/create?viewMode=owner")
+        super().navigate("/pipelines/create?viewMode=owner")
         logger.info("Navigated to create pipeline page")
 
     # ------------------------------------------------------------------

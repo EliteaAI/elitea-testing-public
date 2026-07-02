@@ -1,7 +1,8 @@
 """Annotation-driven locator descriptors for Page Objects.
 
 Provides a clean way to define locators using Python descriptors and type hints.
-Supports both data-testid (robust) and fallback locators (role/css selectors).
+New page objects should use testid-only declarations; legacy fallbacks are
+accepted but never executed when a testid is present.
 """
 
 from typing import Optional, Callable
@@ -9,21 +10,15 @@ from playwright.sync_api import Locator, Page
 
 
 class LocatorDescriptor:
-    """Descriptor for declaring page locators with testid + fallback strategy.
+    """Descriptor for declaring page locators with testid-first strategy.
 
-    Usage:
+    Usage (preferred — testid only):
         class MyPage(BasePage):
-            login_button = LocatorDescriptor(
-                testid="login-button",
-                fallback=lambda page: page.get_by_role("button", name="Login")
-            )
+            login_button = LocatorDescriptor(testid="login-button")
+            email_input = LocatorDescriptor(testid="email-input")
 
-            email_input = LocatorDescriptor(
-                testid="email-input",
-                fallback=lambda page: page.locator('input[type="email"]')
-            )
-
-    When accessed, tries testid first, falls back if element not found.
+    When a testid is provided it is returned directly; the fallback is never
+    called.  Playwright's built-in auto-wait handles element timing.
     """
 
     def __init__(
@@ -35,8 +30,8 @@ class LocatorDescriptor:
         """Initialize locator descriptor.
 
         Args:
-            testid: data-testid attribute value (preferred)
-            fallback: Function that returns fallback locator
+            testid: data-testid attribute value (preferred, takes priority)
+            fallback: Fallback locator function (only used when testid is absent)
             description: Human-readable description for docs
         """
         self.testid = testid
@@ -51,34 +46,21 @@ class LocatorDescriptor:
     def __get__(self, instance, owner) -> Locator:
         """Return the locator for this element.
 
-        Strategy:
-        1. Try data-testid (if provided)
-        2. Fall back to fallback locator
-        3. Raise error if neither works
+        Testid takes priority; fallback is only used when no testid is set.
         """
         if instance is None:
             return self
 
         page: Page = instance.page
 
-        # Try testid first (most robust)
         if self.testid:
-            try:
-                locator = page.get_by_test_id(self.testid)
-                # Quick check if element exists (timeout 100ms)
-                if locator.count() > 0:
-                    return locator
-            except Exception:
-                pass
+            return page.get_by_test_id(self.testid)
 
-        # Fall back to provided fallback locator
         if self.fallback_fn:
             return self.fallback_fn(page)
 
-        # No locator strategy available
         raise ValueError(
-            f"Cannot locate {self.attr_name}: "
-            f"testid='{self.testid}' not found and no fallback provided"
+            f"Cannot locate {self.attr_name}: no testid or fallback provided"
         )
 
     def __set__(self, instance, value):

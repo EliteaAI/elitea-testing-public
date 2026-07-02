@@ -189,11 +189,11 @@ class TestCreateCredential:
         created_id = None
 
         try:
-            base_url = settings.elitea_url
+            base_url = settings.app_base_url
 
             # Step 1: Navigate to credential creation page
             page.goto(
-                f"{base_url}/app/credentials/create-credential",
+                f"{base_url}/credentials/create-credential",
                 wait_until="domcontentloaded",
             )
             page.wait_for_load_state("networkidle", timeout=30000)
@@ -236,8 +236,8 @@ class TestCreateCredential:
 
             # Verify we're back on credentials list (NOT still on create form)
             # UI navigates to /app/credentials/all after successful save
-            assert page.url.startswith(f"{ELITEA_URL}/app/credentials"), \
-                f"Expected to navigate to /app/credentials but got: {page.url}"
+            assert "/credentials" in page.url, \
+                f"Expected to navigate to /credentials but got: {page.url}"
 
             # Add delay for backend to sync
             logger.info("Waiting 3s for backend to sync credential...")
@@ -299,7 +299,7 @@ class TestCreateToolkit:
 
         try:
             page.goto(
-                f"{settings.elitea_url}/app/toolkits/create",
+                f"{settings.app_base_url}/toolkits/create",
                 wait_until="domcontentloaded",
             )
             page.wait_for_load_state("networkidle", timeout=30000)
@@ -338,7 +338,7 @@ class TestCreateToolkit:
             page.wait_for_load_state("networkidle", timeout=FORM_SAVE_TIMEOUT)
             page.wait_for_timeout(3000)
 
-            assert "/app/toolkits/create" not in page.url
+            assert "/toolkits/create" not in page.url
 
             # Get ID for cleanup
             toolkits = toolkit_api.list_toolkits()
@@ -370,14 +370,14 @@ class TestToolkitTestSettings:
         """Run a tool via the Test Settings panel on the toolkit detail page."""
         cfg = toolkit_config
         tk_id = managed_toolkit["id"]
-        base_url = settings.elitea_url
+        base_url = settings.app_base_url
 
         # Navigate to toolkit detail
-        page.goto(f"{base_url}/app/toolkits/all", wait_until="domcontentloaded")
+        page.goto(f"{base_url}/toolkits/all", wait_until="domcontentloaded")
         page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
         page.wait_for_timeout(1000)
 
-        page.goto(f"{base_url}/app/toolkits/all/{tk_id}", wait_until="domcontentloaded")
+        page.goto(f"{base_url}/toolkits/all/{tk_id}", wait_until="domcontentloaded")
         page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
         page.wait_for_timeout(2000)
 

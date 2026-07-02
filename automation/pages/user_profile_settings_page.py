@@ -1,14 +1,14 @@
 """User Profile Settings page object for Elitea platform.
 
-Handles the /app/user-settings/profile page, specifically:
+Handles the /user-settings/profile page, specifically:
 - Default Context Management section (toggle, max tokens input)
 
-And the /app/user-settings/personalization page:
+And the /user-settings/personalization page:
 - Voice Personalization section (voice, speed, volume, preview)
 
 Changes on these pages autosave — there is no explicit Save button.
 
-URL: /app/user-settings/profile, /app/user-settings/personalization
+URL: /user-settings/profile, /user-settings/personalization
 """
 
 import logging
@@ -17,13 +17,12 @@ from playwright.sync_api import Page
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
 from utils.actions import action
-from config import settings
 
 logger = logging.getLogger("elitea.pages.user_profile_settings")
 
 
 class UserProfileSettingsPage(BasePage):
-    """Page object for /app/user-settings/profile.
+    """Page object for /user-settings/profile.
 
     Covers the Default Context Management section which contains:
     - A toggle to enable/disable context management for new conversations
@@ -32,7 +31,7 @@ class UserProfileSettingsPage(BasePage):
 
     All changes autosave on blur/change — no Save button interaction needed.
 
-    URL: /app/user-settings/profile
+    URL: /user-settings/profile
     """
 
     # ------------------------------------------------------------------
@@ -99,7 +98,7 @@ class UserProfileSettingsPage(BasePage):
         Automatically waits for the page heading and context management
         section to be visible before returning.
         """
-        self.navigate("/app/user-settings/profile")
+        self.navigate("/user-settings/profile")
         self.wait_for_page_load()
         logger.info("Navigated to user profile settings page")
 
@@ -240,21 +239,8 @@ class UserProfileSettingsPage(BasePage):
     # ------------------------------------------------------------------
 
     def navigate_to_personalization(self) -> None:
-        """Navigate to the Personalization settings page and wait until ready.
-
-        URL: /app/user-settings/personalization (dev/stage)
-        URL: /user-settings/personalization (localhost - no /app prefix)
-        """
-        base_url = settings.elitea_url or ""
-        is_localhost = "localhost" in base_url or "127.0.0.1" in base_url
-
-        if is_localhost:
-            # Localhost URL structure has no /app prefix
-            self.page.goto(f"{base_url}/user-settings/personalization", wait_until="domcontentloaded")
-            self.page.wait_for_load_state("networkidle", timeout=15000)
-        else:
-            self.navigate("/app/user-settings/personalization")
-
+        """Navigate to the Personalization settings page and wait until ready."""
+        self.navigate("/user-settings/personalization")
         self.wait_for_personalization_load()
         logger.info("Navigated to Personalization settings page")
 

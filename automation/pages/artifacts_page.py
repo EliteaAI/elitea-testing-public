@@ -1,6 +1,6 @@
 """Artifacts Page Object for Elitea artifact storage.
 
-Handles: /app/artifacts and /app/artifacts?bucket={bucket_name}
+Handles: /artifacts and /artifacts?bucket={bucket_name}
 
 The Artifacts page has two panels:
 - Left panel: bucket list (stored at Elitea S3 storage or external)
@@ -30,10 +30,10 @@ class ArtifactsPage(BasePage):
 
     Manages bucket navigation and file operations (list, download).
     The page splits into a left bucket-list panel and a right file-list panel.
-    Selecting a bucket updates the URL to ``/app/artifacts?bucket={name}``
+    Selecting a bucket updates the URL to ``/artifacts?bucket={name}``
     and renders the file table on the right.
 
-    URL: /app/artifacts, /app/artifacts?bucket={bucket_name}
+    URL: /artifacts, /artifacts?bucket={bucket_name}
     """
 
     # ------------------------------------------------------------------
@@ -100,9 +100,9 @@ class ArtifactsPage(BasePage):
     def navigate_to_artifacts(self) -> None:
         """Navigate to the Artifacts landing page and wait for it to load.
 
-        Navigates to ``/app/artifacts`` and waits for the bucket list to render.
+        Navigates to ``/artifacts`` and waits for the bucket list to render.
         """
-        super().navigate("/app/artifacts")
+        super().navigate("/artifacts")
         self.wait_for_page_load()
         logger.info("Navigated to Artifacts page")
 
@@ -110,7 +110,7 @@ class ArtifactsPage(BasePage):
     def navigate_to_bucket(self, bucket_name: str, timeout: int = 15000) -> None:
         """Navigate directly to a specific bucket via URL and wait for it to load.
 
-        Sets ``?bucket={bucket_name}`` in the query string.  This is more
+        Sets ``?bucket={bucket_name}`` in the query string. This is more
         reliable than clicking the bucket in the list because it avoids the
         left-panel scroll and click-interception issues.
 
@@ -118,7 +118,7 @@ class ArtifactsPage(BasePage):
             bucket_name: Exact name of the bucket (case-sensitive).
             timeout: Maximum wait time in milliseconds.
         """
-        super().navigate(f"/app/artifacts?bucket={bucket_name}")
+        super().navigate(f"/artifacts?bucket={bucket_name}")
         self._wait_for_bucket_panel(bucket_name, timeout=timeout)
         logger.info("Navigated to bucket '%s'", bucket_name)
 
