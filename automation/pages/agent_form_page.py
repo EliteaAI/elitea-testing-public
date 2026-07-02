@@ -81,11 +81,7 @@ class AgentFormPage(BasePage):
 
     welcome_message_fullscreen_close = LocatorDescriptor(
         testid="agent-welcome-message-dialog-close",
-        fallback=lambda page: (
-            page.locator('[role="dialog"]:has-text("Welcome message") button[aria-label="close"]')
-            if page.locator('[role="dialog"]:has-text("Welcome message") button[aria-label="close"]').count() > 0
-            else page.locator('[role="dialog"]:has-text("Welcome message") .MuiDialogTitle-root button').last
-        ),
+        fallback=lambda page: page.locator('#variables-dialog-title button[aria-label="Close"]'),
         description="Close button for welcome message fullscreen dialog"
     )
 
@@ -141,11 +137,7 @@ class AgentFormPage(BasePage):
 
     conversation_starter_fullscreen_close = LocatorDescriptor(
         testid="agent-conversation-starter-dialog-close",
-        fallback=lambda page: (
-            page.locator('[role="dialog"]:has-text("Conversation starter") button[aria-label="close"]')
-            if page.locator('[role="dialog"]:has-text("Conversation starter") button[aria-label="close"]').count() > 0
-            else page.locator('[role="dialog"]:has-text("Conversation starter") .MuiDialogTitle-root button').last
-        ),
+        fallback=lambda page: page.locator('#variables-dialog-title button[aria-label="Close"]'),
         description="Close button for conversation starter fullscreen dialog"
     )
 
