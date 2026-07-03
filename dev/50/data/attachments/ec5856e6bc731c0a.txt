@@ -1,0 +1,4 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to chat — Locator.wait_for: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("svg[class*=\"CircularProgress\"], [role=\"progressbar\"], [class*=\"spinner\"]").first to be hidden
+    63 × locator resolved to visible <span role="progressbar" class="MuiCircularProgress-root MuiCircularProgress-indeterminate MuiCircularProgress-colorPrimary css-lm9cdp">…</span>
