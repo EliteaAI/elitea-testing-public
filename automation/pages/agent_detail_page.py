@@ -83,7 +83,6 @@ class AgentDetailPage(AgentFormPage):
         self.page.get_by_test_id("agent-information-section").wait_for(
             state="visible", timeout=timeout,
         )
-        self.wait_for_network(timeout=10000)
 
         # Wait for the Name input to have a non-empty value
         self.page.wait_for_function(

@@ -581,12 +581,23 @@ class AgentFormPage(BasePage):
     def fill_welcome_message_in_fullscreen(self, text: str):
         """Fill welcome message in fullscreen mode.
 
+        The testid is on a Box wrapper div, not the editable CodeMirror element.
+        We locate the inner cm-content element to focus and type correctly.
+
         Args:
             text: Text to enter in the fullscreen textarea.
         """
         logger.info(f"Filling welcome message in fullscreen: {len(text)} characters")
-        self.welcome_message_fullscreen_textarea.click()
-        self.welcome_message_fullscreen_textarea.fill(text)
+        cm_content = self.welcome_message_fullscreen_textarea.locator(
+            '.cm-content[contenteditable="true"]'
+        )
+        if cm_content.count() == 0:
+            cm_content = self.page.locator(
+                '[role="dialog"] .cm-content[contenteditable="true"]'
+            )
+        cm_content.click()
+        self.page.keyboard.press("Control+a")
+        self.page.keyboard.type(text)
         self.page.wait_for_timeout(500)
 
     # ------------------------------------------------------------------

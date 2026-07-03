@@ -28,19 +28,19 @@ class PipelineFormPage(BasePage):
 
     # LocatorDescriptors - testid + fallback pattern
     name_input = LocatorDescriptor(
-        testid="pipeline-name-input",
+        testid="name-input",
         fallback=lambda page: page.get_by_role("textbox", name="Name"),
         description="Pipeline name input field"
     )
 
     description_input = LocatorDescriptor(
-        testid="pipeline-description-input",
+        testid="description-input",
         fallback=lambda page: page.get_by_role("textbox", name="Description"),
         description="Pipeline description input field"
     )
 
     save_button = LocatorDescriptor(
-        testid="pipeline-save-button",
+        testid="agent-save-button",
         fallback=lambda page: page.get_by_role("button", name="Save", exact=True),
         description="Save pipeline button"
     )

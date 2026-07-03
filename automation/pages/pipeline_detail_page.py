@@ -120,7 +120,6 @@ class PipelineDetailPage(PipelineFormPage):
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.wait_for_network(timeout=10000)
         # Wait for URL to move away from the create page to the detail page.
         # The create form's input#name already has a value after fill_form(),
         # so checking the input alone would false-positive on the create page.

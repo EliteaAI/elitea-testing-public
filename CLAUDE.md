@@ -83,5 +83,6 @@ pytest test_api_health.py -v
 
 ## Python Environment
 
-- **Shared venv**: `~/Development/venv` (Python 3.12)
-- **Key packages**: pytest==9.0.2, playwright==1.58.0
+- **pytest**: `/Users/Aliaksandr_Valadzko/projects/Elitea/projects/elitea-testing/.venv/bin/pytest`
+- **python**: `/usr/local/bin/python3`
+- **Key packages**: pytest==9.1.1, playwright==0.8.0
