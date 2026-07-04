@@ -141,7 +141,7 @@ class SkillDetailPage(SkillFormPage):
             timeout: Maximum wait time for elements.
         """
         logger.info("Sending test message: %r", message[:60])
-        chat_input = self.page.get_by_test_id("chat-input-textarea")
+        chat_input = self.page.get_by_test_id("chat-message-input")
         chat_input.wait_for(state="visible", timeout=timeout)
         chat_input.fill(message)
         self.page.wait_for_timeout(300)

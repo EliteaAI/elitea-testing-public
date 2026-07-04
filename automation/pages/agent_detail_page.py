@@ -465,8 +465,10 @@ class AgentDetailPage(AgentFormPage):
     def remove_toolkit(self, toolkit_name: str, timeout: int = 10000):
         """Remove a toolkit from the agent configuration.
 
-        Hovers over the toolkit card to reveal action buttons, then clicks
-        the delete button.
+        Hovers over the toolkit card to reveal the hidden delete button (CSS
+        hover on cardHeader), clicks the delete button, confirms the dialog,
+        and then waits until the toolkit card has actually disappeared from the
+        DOM before returning.
 
         Args:
             toolkit_name: Name of the toolkit to remove.
@@ -474,39 +476,50 @@ class AgentDetailPage(AgentFormPage):
         """
         logger.info("Removing toolkit '%s' from agent", toolkit_name)
 
-        # Find the toolkit card by its name text (may be space-stripped)
-        name_no_spaces = toolkit_name.replace(" ", "")
-        toolkit_text = self.page.locator(
-            f':text("{toolkit_name}"), :text("{name_no_spaces}")'
+        # Find the toolkit card by data-testid, scoped to the toolkit name.
+        # The card's text may have spaces stripped, so filter by a prefix.
+        toolkit_card = self.page.get_by_test_id("agent-toolkit-card").filter(
+            has_text=toolkit_name
         ).first
-        toolkit_text.wait_for(state="visible", timeout=timeout)
-        toolkit_text.scroll_into_view_if_needed()
+        toolkit_card.wait_for(state="visible", timeout=timeout)
+        toolkit_card.scroll_into_view_if_needed()
         self.page.wait_for_timeout(300)
 
-        # Hover over the text element itself — hover effect propagates to the
-        # card container and reveals the hidden delete button.
-        toolkit_text.hover()
+        # Hover the toolkit card so the CSS '&:hover #DeleteButton' rule on
+        # cardHeader fires and sets display:flex on the hidden delete button.
+        # Hovering the card itself moves the cursor to its center, which falls
+        # within the cardHeader region for most card configurations.
+        toolkit_card.hover()
         self.page.wait_for_timeout(500)
 
-        # Find the toolkit card container (ancestor with data-testid or class)
-        # and scope the delete button search to it
-        toolkit_card = toolkit_text.locator("xpath=ancestor::div[contains(@class, 'MuiCard') or contains(@class, 'card')]").first
-        if toolkit_card.count() == 0:
-            # Fallback: use a broader ancestor search
-            toolkit_card = toolkit_text.locator("xpath=ancestor::div[.//button[@aria-label='delete tool']]").first
-        
-        # Click the delete button scoped to this toolkit card
-        delete_btn = toolkit_card.locator('button[aria-label="delete tool"]').first
+        # Locate the delete button inside this specific card using data-testid.
+        # Falls back to aria-label if the testid is not yet present in the DOM.
+        delete_btn = toolkit_card.get_by_test_id("agent-toolkit-delete-button").first
+        if delete_btn.count() == 0:
+            delete_btn = toolkit_card.locator('button[aria-label="delete tool"]').first
         delete_btn.wait_for(state="visible", timeout=5000)
         delete_btn.click(force=True)
         self.page.wait_for_timeout(500)
 
-        # Handle the "Remove toolkit?" confirmation dialog
+        # Handle the "Remove toolkit?" confirmation dialog.
         dialog = Dialog.wait_for(self.page)
         Dialog.click_first_button(dialog, "Remove", "Confirm", "Delete")
-        self.page.wait_for_timeout(500)
 
+        # Wait for network idle so the PATCH disassociate request completes
+        # and any follow-up refetches settle.
         self.wait_for_network(timeout=timeout)
+
+        # Explicitly wait for the toolkit card to disappear from the DOM.
+        # This is necessary because React may defer state updates and re-renders
+        # asynchronously after the network request completes, which can cause
+        # is_toolkit_attached() to still find the card.  A 10-second timeout
+        # gives React ample time to propagate the Formik state change.
+        try:
+            toolkit_card.wait_for(state="hidden", timeout=10000)
+        except Exception:
+            # If the card is already gone, that's fine.
+            pass
+
         logger.info("Toolkit '%s' removed from agent", toolkit_name)
 
     # ------------------------------------------------------------------
@@ -516,8 +529,8 @@ class AgentDetailPage(AgentFormPage):
     def _get_toolkit_card(self, toolkit_name: str, timeout: int = 10000):
         """Get the toolkit card element by name.
 
-        Uses XPath to find toolkit inside 4th MuiAccordionDetails-root (similar to Pipeline).
-        Returns the 2nd matching div (the toolkit container with proper nesting).
+        Uses data-testid="agent-toolkit-card" scoped to the toolkit name for reliable
+        identification. Falls back to XPath-based search if testid is not found.
 
         Args:
             toolkit_name: Name of the toolkit.
@@ -526,7 +539,18 @@ class AgentDetailPage(AgentFormPage):
         Returns:
             Locator for the toolkit item container.
         """
+        # Primary: Use data-testid="agent-toolkit-card" scoped by name
         name_prefix = toolkit_name[:20]
+        toolkit_card = self.page.get_by_test_id("agent-toolkit-card").filter(
+            has_text=name_prefix
+        ).first
+        try:
+            toolkit_card.wait_for(state="visible", timeout=timeout)
+            return toolkit_card
+        except Exception:
+            pass
+
+        # Fallback: XPath-based search in TOOLS section (4th accordion)
         toolkit_item = self.page.locator(
             f'xpath=(//div[contains(@class, "MuiAccordionDetails-root")])[4]'
             f'//div[.//div[contains(normalize-space(), "{name_prefix}")]]'
@@ -546,29 +570,31 @@ class AgentDetailPage(AgentFormPage):
         toolkit_card.hover()
         self.page.wait_for_timeout(500)
 
-    def _get_warning_locator(self):
-        """Get locator for credential warning messages on page."""
-        return self.page.locator(
-            '[aria-label^="Authentication failed:"], '
-            '[aria-label^="Access forbidden:"], '
-            '[aria-label^="Connection error:"]'
-        )
+    def _get_warning_banner_locator(self):
+        """Get locator for credential warning banner on page.
+
+        Uses data-testid="credential-warning-banner" which is set on BannerMessage.jsx.
+        This matches any validation error message regardless of the error type
+        (e.g. "Authentication failed:", "Base URL is required", etc.).
+        """
+        return self.page.locator('[data-testid="credential-warning-banner"]')
 
     def has_toolkit_status_indicator(self, toolkit_name: str, timeout: int = 5000) -> bool:
-        """Check if toolkit shows credential status indicator (warning icon).
+        """Check if toolkit shows credential status indicator (warning banner).
 
-        Uses page-level search for warning message (same approach as Pipeline).
+        Uses data-testid="credential-warning-banner" set on BannerMessage.jsx.
+        The banner appears below the toolkit card for any validation error.
 
         Args:
             toolkit_name: Name of the toolkit.
             timeout: Maximum wait time in milliseconds.
 
         Returns:
-            True if status indicator is visible.
+            True if warning banner is visible.
         """
         self.ensure_toolkits_section_visible()
         try:
-            self._get_warning_locator().first.wait_for(state="visible", timeout=timeout)
+            self._get_warning_banner_locator().first.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
             return False
@@ -578,16 +604,19 @@ class AgentDetailPage(AgentFormPage):
     ) -> str | None:
         """Get the status indicator tooltip text for a toolkit.
 
+        Returns the aria-label attribute of the credential-warning-banner element,
+        which contains the validation error message text.
+
         Args:
             toolkit_name: Name of the toolkit.
             timeout: Maximum wait time in milliseconds.
 
         Returns:
-            The aria-label value (tooltip text), or None if not found.
+            The aria-label value (error message text), or None if not found.
         """
         self.ensure_toolkits_section_visible()
         try:
-            warning = self._get_warning_locator().first
+            warning = self._get_warning_banner_locator().first
             warning.wait_for(state="visible", timeout=timeout)
             return warning.get_attribute("aria-label")
         except Exception:

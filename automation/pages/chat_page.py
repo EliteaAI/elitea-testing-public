@@ -257,23 +257,44 @@ class ChatPage(BasePage):
         Args:
             timeout: Maximum wait time in ms (default 30s)
         """
+        import time as _time
+
         # Wait for network idle first
         self.wait_for_network(timeout=timeout)
 
-        # Primary check: message input is ready (page is usable)
-        # This is more reliable than waiting for spinners to disappear,
-        # as some spinners (AI processing indicators) may persist.
+        # Primary check: message input is visible AND editable (page is truly usable).
+        # Waiting for "visible" alone is not sufficient — the textarea becomes visible
+        # before the page finishes loading, but "fill()" requires the element to be
+        # editable as well. The context default timeout (10s) would expire during fill()
+        # if we only waited for visibility here.
         try:
             self.message_input.wait_for(state="visible", timeout=timeout)
-            logger.info("Chat page loaded - message input visible")
+            # Poll for editable state — Playwright's wait_for() only supports
+            # attached/detached/visible/hidden states, not editable.
+            deadline = _time.monotonic() + timeout / 1000.0
+            while _time.monotonic() < deadline:
+                if self.message_input.is_editable():
+                    break
+                _time.sleep(0.2)
+            else:
+                logger.warning("Message input did not become editable within timeout")
+            logger.info("Chat page loaded - message input visible and editable")
         except Exception:
             # Fallback: check for full-page loading spinner and wait for it
             spinner = self.page.locator('svg[class*="CircularProgress"], [role="progressbar"], [class*="spinner"]')
             if spinner.count() > 0:
-                spinner.first.wait_for(state="hidden", timeout=timeout)
-                logger.info("Loading spinner disappeared")
+                try:
+                    spinner.first.wait_for(state="hidden", timeout=timeout)
+                    logger.info("Loading spinner disappeared")
+                except Exception:
+                    logger.warning("Spinner did not disappear within timeout — continuing")
             # Try message input again
             self.message_input.wait_for(state="visible", timeout=15000)
+            deadline = _time.monotonic() + 15.0
+            while _time.monotonic() < deadline:
+                if self.message_input.is_editable():
+                    break
+                _time.sleep(0.2)
             logger.info("Chat page loaded after spinner wait")
         
     @action("Send message")
@@ -285,10 +306,30 @@ class ChatPage(BasePage):
             use_enter: If True, use Enter key instead of clicking send button
         """
         logger.info(f"Sending message: {text[:50]}...")
-        self.message_input.fill(text)
+        # For very large inputs (>1000 chars) use JavaScript to set the value directly.
+        # Playwright's fill() triggers React's onChange handler on every character which
+        # makes filling 100k-character strings extremely slow (minutes vs milliseconds).
+        # Using JS to set the value + dispatch a synthetic input event updates React
+        # state instantly regardless of content length.
+        if len(text) > 1000:
+            element = self.message_input.element_handle()
+            self.page.evaluate(
+                """(args) => {
+                    const [el, value] = args;
+                    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                        window.HTMLTextAreaElement.prototype, 'value'
+                    ).set;
+                    nativeInputValueSetter.call(el, value);
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                }""",
+                [element, text],
+            )
+        else:
+            self.message_input.fill(text)
 
         if use_enter:
-            self.message_input.press("Enter")
+            self.message_input.press("Enter", timeout=60000)
         else:
             # Wait for send button to be visible and enabled, then click.
             # force=True is needed because MUI overlay elements can
@@ -1423,9 +1464,10 @@ class ChatPage(BasePage):
         self.plus_menu_button.click()
         self.page.wait_for_timeout(300)  # Menu animation
 
-        # Step 2: Click "Internal Tools" menuitem
+        # Step 2: Hover "Internal Tools" menuitem to reveal submenu
+        # The submenu is triggered by onMouseEnter, not onClick
         self.internal_tools_menuitem.wait_for(state="visible", timeout=timeout)
-        self.internal_tools_menuitem.click()
+        self.internal_tools_menuitem.hover()
 
         # Wait for the tools panel with switches to appear
         self.page.locator('[role="switch"]').first.wait_for(

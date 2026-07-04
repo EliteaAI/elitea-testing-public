@@ -36,11 +36,20 @@ logger = logging.getLogger(__name__)
 
 
 def _strip_markdown(text: str) -> str:
-    """Normalize markdown syntax for clipboard vs rendered text comparison."""
+    """Normalize markdown syntax for clipboard vs rendered text comparison.
+
+    The clipboard receives the raw markdown source, while ``get_last_message_text``
+    extracts plain text from rendered ``<p>`` / ``<li>`` elements joined with ``\\n``.
+    Markdown uses blank lines (``\\n\\n``) as paragraph separators, but the rendered
+    extraction produces single ``\\n`` between blocks.  This function normalises both
+    representations so the assertion can compare them as equal.
+    """
     text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)   # **bold** → bold
     text = re.sub(r'\*(.*?)\*', r'\1', text)          # *italic* → italic
     text = re.sub(r'^- ', '', text, flags=re.MULTILINE)  # - bullet → bullet
-    return text.replace('\r\n', '\n').strip()
+    text = text.replace('\r\n', '\n')
+    text = re.sub(r'\n{2,}', '\n', text)              # collapse blank lines → single newline
+    return text.strip()
 
 pytestmark = [pytest.mark.ui]
 

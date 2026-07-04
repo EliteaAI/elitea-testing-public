@@ -27,6 +27,8 @@ Examples: `chat-send-button`, `agent-name-input`, `conversation-search-input`
 |------|------------|---------|
 | `src/components/Chat/ChatMessageList.jsx` | `chat-bottom-spacer` | Bottom spacer div |
 | `src/pages/NewChat/ConversationItem.jsx` | `conversation-naming-spinner` | Naming-in-progress spinner |
+| `src/pages/Applications/Components/Tools/ToolCard.jsx` | `agent-toolkit-card` | Outer Box wrapper for each attached toolkit card |
+| `src/pages/Applications/Components/Tools/ToolCard.jsx` | `agent-toolkit-delete-button` | Delete (remove) IconButton inside toolkit card |
 
 ---
 

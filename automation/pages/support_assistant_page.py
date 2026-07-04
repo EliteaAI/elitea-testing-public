@@ -39,7 +39,6 @@ class SupportAssistantPage(BasePage):
     # ------------------------------------------------------------------
 
     launcher_button = LocatorDescriptor(
-        testid="support-assistant-launcher",
         fallback=lambda page: page.locator('button.elitea-assistant-button, button[aria-label="Support Assistant"]'),
         description="Support Assistant floating launcher button"
     )
@@ -49,38 +48,32 @@ class SupportAssistantPage(BasePage):
     # ------------------------------------------------------------------
 
     close_button = LocatorDescriptor(
-        testid="support-assistant-close",
         fallback=lambda page: page.locator('button[aria-label="Close chat"], button:has-text("Close chat")').first,
         description="Close the Support Assistant widget"
     )
 
     new_chat_button = LocatorDescriptor(
-        testid="support-assistant-new-chat",
         fallback=lambda page: page.locator('button[aria-label="New chat"], button:has-text("New chat")').first,
         description="Start a new support session"
     )
 
     history_button = LocatorDescriptor(
-        testid="support-assistant-history",
         fallback=lambda page: page.locator('button[aria-label="Chat history"], button:has-text("Chat history")').first,
         description="Open chat history panel"
     )
 
     expand_button = LocatorDescriptor(
-        testid="support-assistant-expand",
         fallback=lambda page: page.locator('button[aria-label="Expand chat"], button:has-text("Expand chat")').first,
         description="Expand widget to full view mode"
     )
 
     collapse_button = LocatorDescriptor(
-        testid="support-assistant-collapse",
         fallback=lambda page: page.locator('button[aria-label="Collapse chat"], button[aria-label="Minimize chat"], button[aria-label="Shrink chat"]').first,
         description="Collapse from full view to widget mode"
     )
 
     widget_title = LocatorDescriptor(
-        testid="support-assistant-title",
-        fallback=lambda page: page.locator('h2:has-text("ELITEA Support"), h2:has-text("Support")').first,
+        fallback=lambda page: page.locator('.elitea-assistant-header-title').first,
         description="Widget header title"
     )
 
@@ -89,20 +82,17 @@ class SupportAssistantPage(BasePage):
     # ------------------------------------------------------------------
 
     message_input = LocatorDescriptor(
-        testid="support-assistant-input",
-        fallback=lambda page: page.locator('textbox[placeholder*="Type a message"], input[placeholder*="Type a message"]').first,
+        fallback=lambda page: page.locator('.elitea-assistant-input').first,
         description="Message input textbox"
     )
 
     send_button = LocatorDescriptor(
-        testid="support-assistant-send",
         fallback=lambda page: page.locator('button[aria-label="Send message"], button:has-text("Send message")').first,
         description="Send message button"
     )
 
     attach_button = LocatorDescriptor(
-        testid="support-assistant-attach",
-        fallback=lambda page: page.locator('button[aria-label="Attach file"], button:has-text("Attach file")').first,
+        fallback=lambda page: page.locator('button[aria-label="Attach file"]').first,
         description="Attach file button"
     )
 
@@ -111,8 +101,7 @@ class SupportAssistantPage(BasePage):
     # ------------------------------------------------------------------
 
     widget_container = LocatorDescriptor(
-        testid="support-assistant-widget",
-        fallback=lambda page: page.locator('.elitea-assistant-widget, [class*="support-assistant"], [class*="chatbot-widget"]').first,
+        fallback=lambda page: page.locator('.elitea-assistant-window').first,
         description="Support Assistant widget container"
     )
 
@@ -121,8 +110,7 @@ class SupportAssistantPage(BasePage):
     # ------------------------------------------------------------------
 
     messages_container = LocatorDescriptor(
-        testid="support-assistant-messages",
-        fallback=lambda page: page.locator('.elitea-assistant-widget [class*="messages"], .elitea-assistant-widget > div > div').nth(1),
+        fallback=lambda page: page.locator('.elitea-assistant-messages').first,
         description="Messages container area"
     )
 
@@ -218,7 +206,10 @@ class SupportAssistantPage(BasePage):
         """Wait for the assistant to respond to a message.
 
         Waits for a new assistant message to appear in the conversation.
-        The assistant message contains a "Copy to clipboard" button.
+        Detects completion by watching for a new "Copy to clipboard" button
+        (appears when the message is fully rendered) OR for the active spinner
+        (.elitea-assistant-status-chip--active) to disappear after a new
+        assistant message wrapper is present.
 
         Args:
             initial_count: Number of "Copy to clipboard" buttons before sending
@@ -226,15 +217,29 @@ class SupportAssistantPage(BasePage):
         """
         logger.info("Waiting for assistant response (initial_count=%d)...", initial_count)
 
-        # Wait for a new assistant message (identified by Copy to clipboard button)
-        # Assistant messages have this button, user messages don't
-        # Widget container class is 'elitea-assistant-container'
+        # Wait for a new assistant message (identified by Copy to clipboard button
+        # or by assistant message wrapper with no active spinner).
+        # The Copy to clipboard button appears only when the full response is rendered.
+        # The active spinner (.elitea-assistant-status-chip--active) is present while
+        # the assistant is still processing.
         self.page.wait_for_function(
             f"""(expectedCount) => {{
-                const widget = document.querySelector('.elitea-assistant-container, [class*="elitea-assistant"]');
-                if (!widget) return false;
-                const copyButtons = widget.querySelectorAll('button[aria-label="Copy to clipboard"]');
-                return copyButtons.length > expectedCount;
+                // Look for copy buttons — primary signal (message fully done)
+                const copyButtons = document.querySelectorAll('button[aria-label="Copy to clipboard"]');
+                if (copyButtons.length > expectedCount) return true;
+
+                // Fallback: a new assistant message wrapper exists AND no active spinner
+                const assistantWrappers = document.querySelectorAll(
+                    '.elitea-assistant-message-wrapper--assistant'
+                );
+                if (assistantWrappers.length > expectedCount) {{
+                    // Make sure none have an active spinner (still processing)
+                    const activeSpinner = document.querySelector(
+                        '.elitea-assistant-status-chip--active'
+                    );
+                    if (!activeSpinner) return true;
+                }}
+                return false;
             }}""",
             arg=initial_count,
             timeout=timeout
@@ -249,31 +254,34 @@ class SupportAssistantPage(BasePage):
         Returns:
             Number of message blocks (user + assistant)
         """
-        # Count messages by looking for assistant messages (with Copy to clipboard button)
-        # Widget container class is 'elitea-assistant-container'
-        widget = self.page.locator('.elitea-assistant-container, [class*="elitea-assistant"]').first
-        if widget.count() == 0:
-            return 0
-
-        # Count Copy to clipboard buttons (assistant messages)
-        count = widget.locator('button[aria-label="Copy to clipboard"]').count()
-        logger.info(f"Assistant message count: {count}")
+        # Count all message wrappers (both user and assistant)
+        all_wrappers = self.page.locator('.elitea-assistant-message-wrapper')
+        count = all_wrappers.count()
+        logger.info(f"Total message count: {count}")
         return count
 
     def get_assistant_message_count(self) -> int:
         """Get the count of assistant response messages.
 
-        Assistant messages have a "Copy to clipboard" button.
+        Uses the assistant message wrapper elements which are always present
+        (even during streaming), falling back to Copy to clipboard button count
+        for completed messages.
 
         Returns:
             Number of assistant messages
         """
-        widget = self.page.locator('.elitea-assistant-container, [class*="elitea-assistant"]').first
-        if widget.count() == 0:
-            return 0
+        # Use assistant message wrapper count — present for all assistant messages
+        # including those still streaming
+        wrappers = self.page.locator('.elitea-assistant-message-wrapper--assistant')
+        count = wrappers.count()
+        if count > 0:
+            logger.info(f"Assistant message count (wrappers): {count}")
+            return count
 
-        count = widget.locator('button[aria-label="Copy to clipboard"]').count()
-        logger.info(f"Assistant message count: {count}")
+        # Fallback: count copy buttons (only on completed messages)
+        copy_buttons = self.page.locator('button[aria-label="Copy to clipboard"]')
+        count = copy_buttons.count()
+        logger.info(f"Assistant message count (copy buttons): {count}")
         return count
 
     def get_last_message_text(self) -> str:
@@ -320,11 +328,14 @@ class SupportAssistantPage(BasePage):
 
         Must be called after open_history().
 
+        The history dropdown renders items as BUTTON.elitea-assistant-history-item
+        inside DIV.elitea-assistant-history-dropdown-scroll.
+
         Returns:
             Number of history sessions
         """
-        # History sessions are typically list items or buttons
-        sessions = self.page.locator('[class*="history"] button, [class*="session-list"] > div')
+        # History items are BUTTON.elitea-assistant-history-item inside the dropdown
+        sessions = self.page.locator('button.elitea-assistant-history-item')
         count = sessions.count()
         logger.info(f"History session count: {count}")
         return count
@@ -333,13 +344,39 @@ class SupportAssistantPage(BasePage):
     def select_history_session(self, index: int = 0, timeout: int = 5000):
         """Select a session from the history panel.
 
+        The history dropdown renders session items as BUTTON.elitea-assistant-history-item.
+        The selector [class*="history"] button was too broad and matched the 'Chat history'
+        header button (index 0) before the actual session items, causing the wrong element
+        to be clicked and toggling the dropdown closed.
+
+        After clicking a session, the widget shows skeleton placeholder rows
+        (DIV.elitea-assistant-skeleton-row) while loading. We must wait for
+        skeleton rows to disappear and actual message wrappers to appear.
+
         Args:
             index: Index of session to select (0 = most recent)
             timeout: Maximum wait time in milliseconds
         """
         logger.info(f"Selecting history session at index {index}")
-        sessions = self.page.locator('[class*="history"] button, [class*="session-list"] > div')
+        sessions = self.page.locator('button.elitea-assistant-history-item')
         sessions.nth(index).click()
+
+        # Wait for skeleton loading indicators to disappear
+        skeleton = self.page.locator('.elitea-assistant-skeleton-row')
+        try:
+            # Skeleton may appear briefly — wait for it to disappear
+            skeleton.first.wait_for(state="hidden", timeout=timeout)
+        except Exception:
+            pass  # Skeleton may not appear at all if load is instant
+
+        # Wait for actual messages to appear
+        try:
+            self.page.locator('.elitea-assistant-message-wrapper').first.wait_for(
+                state="visible", timeout=timeout
+            )
+        except Exception:
+            pass  # Messages may not exist in empty session
+
         self.wait_for_network(timeout=timeout)
         logger.info("History session loaded")
 

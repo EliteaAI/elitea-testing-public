@@ -378,7 +378,8 @@ class TestToolkitTestSettings:
         page.wait_for_timeout(1000)
 
         page.goto(f"{base_url}/toolkits/all/{tk_id}", wait_until="domcontentloaded")
-        page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
+        # Skip networkidle wait here — socket.io polling on toolkit detail page
+        # keeps network active indefinitely, so rely on element-level wait below.
         page.wait_for_timeout(2000)
 
         # Wait for Test Settings
@@ -605,10 +606,12 @@ def _fill_credential_auth_fields(page, cfg: ToolkitConfig, token: str):
     elif cred_type == "jira":
         # Jira uses Basic auth with Api Key (password) + Username + Base Url
         # NOTE: Api Key is input[type="password"] — use direct locator
+        # NOTE: Jira API tokens can be 120+ characters; use a generous timeout to
+        #       avoid the default 10s expiring before all keystrokes are sent.
         api_key_field = page.locator('input[type="password"][name="api_key"]')
         api_key_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         api_key_field.click()
-        api_key_field.type(token)
+        api_key_field.type(token, timeout=60_000)
         
         username = settings.jira_username
         if username:

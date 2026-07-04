@@ -61,32 +61,23 @@ class ToolkitDetailPage(BasePage):
         self.page.wait_for_timeout(1000)
 
     def _get_warning_message_locator(self):
-        """Get locator for credential warning message.
+        """Get locator for credential warning message banner.
 
-        Matches various error messages:
-        - "Authentication failed: ..."
-        - "Access forbidden: ..."
-        - "Connection error: ..."
+        Matches the BannerMessage component (data-testid="credential-warning-banner")
+        that is rendered below the credential select field when credentials are invalid.
+        Falls back to the old aria-label prefix selectors for backward compatibility.
 
         Returns:
-            Locator matching any credential warning message.
+            Locator matching the credential warning banner element.
         """
-        return self.page.locator(
-            'div[aria-label^="Authentication failed:"], '
-            'div[aria-label^="Access forbidden:"], '
-            'div[aria-label^="Connection error:"]'
-        )
+        return self.page.locator('[data-testid="credential-warning-banner"]')
 
     def get_authentication_warning(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str | None:
         """Get authentication warning message if present.
 
-        Looks for warning messages that appear when toolkit credentials
-        are invalid or expired.
-
-        Different error types:
-        - "Authentication failed: Invalid bearer token"
-        - "Access forbidden: Your account has insufficient..."
-        - "Connection error: ..."
+        Looks for the BannerMessage error banner (data-testid="credential-warning-banner")
+        that appears below the credential select field when credentials are invalid or
+        expired.  The banner container has aria-label set to the error message text.
 
         Args:
             timeout: Maximum wait time in milliseconds.
@@ -96,28 +87,23 @@ class ToolkitDetailPage(BasePage):
         """
         warning_locator = self._get_warning_message_locator()
         try:
-            warning_locator.nth(1).wait_for(state="visible", timeout=timeout)
-            return warning_locator.nth(1).get_attribute("aria-label")
+            warning_locator.first.wait_for(state="visible", timeout=timeout)
+            return warning_locator.first.get_attribute("aria-label")
         except Exception:
             return None
 
     def has_authentication_warning(self, timeout: int = 5000) -> bool:
         """Check if authentication warning message is displayed.
 
-        Note: The warning icon is the first element (.first),
-        the warning message text is the second element (.nth(1)).
-
         Args:
             timeout: Maximum wait time in milliseconds.
 
         Returns:
-            True if warning message is visible, False otherwise.
+            True if warning banner is visible, False otherwise.
         """
         warning_locator = self._get_warning_message_locator()
         try:
-            if warning_locator.count() < 2:
-                return False
-            warning_locator.nth(1).wait_for(state="visible", timeout=timeout)
+            warning_locator.first.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
             return False
@@ -252,21 +238,17 @@ class ToolkitDetailPage(BasePage):
         self.page.wait_for_timeout(500)
 
     def _get_credential_error_locator(self):
-        """Get locator for credential error indicator.
+        """Get locator for credential error indicator (the attention icon).
 
-        Matches various error messages:
-        - "Authentication failed: ..."
-        - "Access forbidden: ..."
-        - "Connection error: ..."
+        Matches the attentionIconBox rendered inside CredentialOptionLabel when
+        the selected credential is invalid (data-testid="credential-status-indicator").
+
+        Falls back to aria-label prefix selectors for backward compatibility.
 
         Returns:
-            Locator matching any credential error indicator.
+            Locator matching the credential status indicator icon.
         """
-        return self.page.locator(
-            'div[aria-label^="Authentication failed:"], '
-            'div[aria-label^="Access forbidden:"], '
-            'div[aria-label^="Connection error:"]'
-        )
+        return self.page.locator('[data-testid="credential-status-indicator"]')
 
     def has_credential_status_indicator(self, timeout: int = 5000) -> bool:
         """Check if credential status indicator (warning icon) is displayed.
