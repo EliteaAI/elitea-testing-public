@@ -1345,7 +1345,7 @@ class ToolkitAPI:
             name: Toolkit display name.
             description: Short description.
             toolkit_type: API type value (e.g. "github", "jira").
-            settings: Type-specific settings dict.
+            settings: Type-specific settings dict (include "selected_tools" list for tools).
         """
         url = self._toolkits_url()
         payload = {
