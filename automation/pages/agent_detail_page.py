@@ -616,6 +616,48 @@ class AgentDetailPage(AgentFormPage):
         """
         return self.get_toolkit_status_indicator_tooltip(toolkit_name, timeout)
 
+    def is_toolkit_blocked(self, toolkit_name: str, timeout: int = 5000) -> bool:
+        """Check if toolkit shows 'blocked by your organization' indicator.
+
+        Used to verify guardrails blocking is applied without pylon reload.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if blocked indicator is visible.
+        """
+        self.ensure_toolkits_section_visible()
+        toolkit_card = self.page.get_by_test_id("agent-toolkit-card").filter(has_text=toolkit_name)
+        blocked_indicator = toolkit_card.locator('[aria-label*="blocked by your organization"]')
+        try:
+            blocked_indicator.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def is_tool_blocked_in_toolkit(self, toolkit_name: str, timeout: int = 5000) -> bool:
+        """Check if toolkit shows 'Some tools are not available anymore' indicator.
+
+        Used to verify guardrails tool blocking is applied without pylon reload.
+
+        Args:
+            toolkit_name: Name of the toolkit.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if tool blocked indicator is visible.
+        """
+        self.ensure_toolkits_section_visible()
+        toolkit_card = self.page.get_by_test_id("agent-toolkit-card").filter(has_text=toolkit_name)
+        blocked_indicator = toolkit_card.locator('[aria-label*="not available anymore"]')
+        try:
+            blocked_indicator.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
     def has_toolkit_reload_button(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check if toolkit card has reload button (visible on hover).
 
@@ -753,7 +795,7 @@ class AgentDetailPage(AgentFormPage):
             timeout: Maximum wait time for elements.
         """
         logger.info("Sending message in embedded chat: %s", message[:60])
-        chat_input = self.page.get_by_role("textbox", name="Type your message.")
+        chat_input = self.page.get_by_test_id("chat-input").locator("textarea, input").first
         chat_input.wait_for(state="visible", timeout=timeout)
         chat_input.fill(message)
         self.page.wait_for_timeout(300)
@@ -848,6 +890,38 @@ class AgentDetailPage(AgentFormPage):
         # Fallback: get all text from the message
         text = ai_msg.text_content() or ""
         return text.strip()
+
+    def wait_for_sensitive_action_authorization(
+        self, timeout: int = 30000, click_authorize: bool = True
+    ) -> bool:
+        """Wait for the Sensitive Action Authorization panel to appear.
+
+        This panel appears when an agent tries to call a tool that is marked
+        as sensitive in Admin UI Guardrails configuration.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+            click_authorize: If True, clicks the Authorize button when panel appears.
+
+        Returns:
+            True if the authorization panel appeared, False otherwise.
+        """
+        logger.info("Waiting for Sensitive Action Authorization panel")
+        auth_panel = self.page.locator('text=/Sensitive Action Authorization Required/')
+        try:
+            auth_panel.wait_for(state="visible", timeout=timeout)
+            logger.info("Sensitive Action Authorization panel appeared")
+
+            if click_authorize:
+                authorize_btn = self.page.locator('button:has-text("Authorize")').first
+                authorize_btn.click()
+                self.page.wait_for_timeout(2000)
+                logger.info("Clicked Authorize button")
+
+            return True
+        except Exception:
+            logger.warning("Sensitive Action Authorization panel did NOT appear within %dms", timeout)
+            return False
 
     # ------------------------------------------------------------------
     # Actions menu (three-dot menu)
