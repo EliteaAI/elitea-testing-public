@@ -277,7 +277,7 @@ def context(browser: Browser, auth_state, request) -> BrowserContext:
 
     # Set shorter timeouts for faster failure feedback
     ctx.set_default_timeout(10000)              # 10s for most actions
-    ctx.set_default_navigation_timeout(15000)   # 15s for page navigation
+    ctx.set_default_navigation_timeout(30000)   # 30s for page navigation (Vite dev server cold start ~16s)
 
     yield ctx
 

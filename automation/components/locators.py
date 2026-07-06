@@ -82,7 +82,7 @@ class Testid:
     AGENT_WELCOME_MESSAGE_DIALOG_COUNTER = "agent-welcome-message-dialog-counter"
     AGENT_WELCOME_MESSAGE_DIALOG_CLOSE = "agent-welcome-message-dialog-close"
     AGENT_SAVE_BUTTON = "agent-save-button"
-    AGENT_DISCARD_BUTTON = "agent-discard-button"
+    DISCARD_BUTTON = "discard-button"
     AGENT_ACTIONS_MENU = "agent-actions-menu"          # 3-dot menu
 
     # ── Agent conversation starters ───────────────────────────────────
@@ -130,6 +130,9 @@ class Testid:
     CREDENTIAL_SEARCH_INPUT = "credential-search-input"
     CREDENTIAL_CARD = "credential-card"
     CREDENTIAL_CREATE_BUTTON = "credential-create-button"
+    CREDENTIAL_STATUS_INDICATOR = "credential-status-indicator"
+    CREDENTIAL_OPEN_IN_NEW_TAB_BUTTON = "credential-open-in-new-tab-button"
+    CREDENTIAL_RELOAD_BUTTON = "credential-reload-button"
 
     # ── Common / shared ───────────────────────────────────────────────
     LOADING_SPINNER = "loading-spinner"

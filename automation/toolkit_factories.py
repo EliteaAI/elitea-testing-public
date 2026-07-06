@@ -136,6 +136,9 @@ def jira_toolkit_settings(credential_elitea_title: str) -> dict:
             "limit": 50,
             "api_version": "3",
             "verify_ssl": True,
+            # Explicitly select tools so the Test Settings dropdown is populated
+            # from settings.selected_tools rather than requiring a dynamic API call.
+            "selected_tools": ["list_projects"],
         },
     }
 

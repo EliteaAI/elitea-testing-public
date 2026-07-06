@@ -28,31 +28,30 @@ class PipelineFormPage(BasePage):
 
     # LocatorDescriptors - testid + fallback pattern
     name_input = LocatorDescriptor(
-        testid="pipeline-name-input",
+        testid="agent-name-input",
         fallback=lambda page: page.get_by_role("textbox", name="Name"),
         description="Pipeline name input field"
     )
 
     description_input = LocatorDescriptor(
-        testid="pipeline-description-input",
+        testid="agent-description-input",
         fallback=lambda page: page.get_by_role("textbox", name="Description"),
         description="Pipeline description input field"
     )
 
     save_button = LocatorDescriptor(
-        testid="pipeline-save-button",
+        testid="agent-save-button",
         fallback=lambda page: page.get_by_role("button", name="Save", exact=True),
         description="Save pipeline button"
     )
 
     cancel_button = LocatorDescriptor(
-        testid="pipeline-cancel-button",
         fallback=lambda page: page.get_by_role("button", name="Cancel"),
         description="Cancel button"
     )
 
     discard_button = LocatorDescriptor(
-        testid="pipeline-discard-button",
+        testid="discard-button",
         fallback=lambda page: page.get_by_role("button", name="Discard"),
         description="Discard changes button"
     )
@@ -101,11 +100,16 @@ class PipelineFormPage(BasePage):
         """Wait for MUI form validation to complete.
 
         MUI forms have debounce delay for validation (300-500ms).
+        Pages with persistent WebSocket connections never reach networkidle,
+        so any TimeoutError is silently ignored here.
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.wait_for_network(timeout=1000)
+        try:
+            self.wait_for_network(timeout=timeout)
+        except Exception:
+            pass  # Pages with WebSocket may never reach networkidle
         self.page.wait_for_timeout(500)  # MUI debounce
 
     # ------------------------------------------------------------------
@@ -261,7 +265,7 @@ class PipelineFormPage(BasePage):
         # Handle confirmation dialog if present
         try:
             dialog = Dialog.wait_for(self.page, timeout=3000)
-            Dialog.click_button(dialog, "Confirm")
+            Dialog.click_first_button(dialog, "Discard", "Confirm")
         except Exception:
             pass  # No confirmation dialog
 

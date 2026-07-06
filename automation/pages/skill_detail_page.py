@@ -141,7 +141,7 @@ class SkillDetailPage(SkillFormPage):
             timeout: Maximum wait time for elements.
         """
         logger.info("Sending test message: %r", message[:60])
-        chat_input = self.page.get_by_test_id("chat-input-textarea")
+        chat_input = self.page.get_by_test_id("chat-message-input")
         chat_input.wait_for(state="visible", timeout=timeout)
         chat_input.fill(message)
         self.page.wait_for_timeout(300)
@@ -181,8 +181,7 @@ class SkillDetailPage(SkillFormPage):
             self.page.wait_for_timeout(500)
 
         # Wait for the delete button to appear on the last response (stream complete).
-        # skill-test-last-delete-button is set by ApplicationAnswer when isLastMessage=true.
-        delete_btn = self.page.get_by_test_id("skill-test-last-delete-button")
+        delete_btn = self.page.get_by_test_id("chat-delete-button").last()
         try:
             delete_btn.wait_for(
                 state="visible",
@@ -191,14 +190,14 @@ class SkillDetailPage(SkillFormPage):
         except Exception:
             pass  # Fall through to content-stable check
 
-        # Wait for content to stabilize — read via skill-test-last-response (last AI message).
-        last_response = self.page.get_by_test_id("skill-test-last-response")
+        # Wait for content to stabilize — read via chat-answer-content (last AI message).
+        last_response = self.page.get_by_test_id("chat-answer-content").last()
         last_content = ""
         stable_start = time.time()
 
         while time.time() < deadline:
             try:
-                current = (last_response.text_content() or "") if last_response.count() > 0 else ""
+                current = (last_response.text_content() or "")
             except Exception:
                 current = ""
 
@@ -217,13 +216,12 @@ class SkillDetailPage(SkillFormPage):
     def get_last_test_response(self) -> str:
         """Return the text content of the last AI response in the test panel.
 
-        Reads from data-testid="skill-test-last-response" (set by ApplicationAnswer
-        when isLastMessage=true).
+        Reads from data-testid="chat-answer-content" (last element).
 
         Returns:
             Response text as string (stripped).
         """
-        return (self.page.get_by_test_id("skill-test-last-response").text_content() or "").strip()
+        return (self.page.get_by_test_id("chat-answer-content").last().text_content() or "").strip()
 
     # ------------------------------------------------------------------
     # Actions menu (overflow/three-dot menu)

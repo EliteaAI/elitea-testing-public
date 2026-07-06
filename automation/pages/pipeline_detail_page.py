@@ -11,6 +11,7 @@ URL: /pipelines/all/{id}
 """
 
 import logging
+import re
 import time
 from playwright.sync_api import Page
 from .pipeline_form_page import PipelineFormPage
@@ -43,7 +44,7 @@ class PipelineDetailPage(PipelineFormPage):
     )
 
     copy_id_button = LocatorDescriptor(
-        testid="pipeline-copy-id",
+        testid="copy-id",
         fallback=lambda page: page.get_by_role("button", name="Copy ID"),
         description="Copy pipeline ID button"
     )
@@ -79,19 +80,44 @@ class PipelineDetailPage(PipelineFormPage):
     )
 
     chat_input = LocatorDescriptor(
-        testid="pipeline-chat-input",
+        testid="chat-message-input",
         fallback=lambda page: page.locator('textarea#standard-multiline-static'),
         description="Embedded chat input field"
     )
 
     chat_send_button = LocatorDescriptor(
-        testid="pipeline-chat-send",
+        testid="chat-send-button",
         fallback=lambda page: page.get_by_role("button", name="send your question"),
         description="Embedded chat send button"
     )
 
     def __init__(self, page: Page):
         super().__init__(page)
+
+    # ------------------------------------------------------------------
+    # Wait helpers
+    # ------------------------------------------------------------------
+
+    def wait_for_network(self, timeout: int = 15000) -> None:
+        """Wait for network activity to settle.
+
+        Overrides BasePage.wait_for_network to handle the pipeline detail page,
+        which has persistent WebSocket connections (Vite HMR and app socket.io)
+        that prevent networkidle from ever being reached.  The timeout is
+        treated as a best-effort ceiling: if networkidle is not reached we log
+        a debug message and continue, matching the strategy used by
+        BasePage.navigate().
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            self.page.wait_for_load_state("networkidle", timeout=timeout)
+        except Exception:
+            logger.debug(
+                "networkidle not reached on pipeline detail page "
+                "(persistent WebSocket connections) — continuing"
+            )
 
     # ------------------------------------------------------------------
     # Navigation
@@ -120,7 +146,6 @@ class PipelineDetailPage(PipelineFormPage):
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.wait_for_network(timeout=10000)
         # Wait for URL to move away from the create page to the detail page.
         # The create form's input#name already has a value after fill_form(),
         # so checking the input alone would false-positive on the create page.
@@ -363,13 +388,24 @@ class PipelineDetailPage(PipelineFormPage):
         """
         return self.page.locator("div.cm-editor").count() > 0
 
-    def is_flow_view_active(self) -> bool:
+    def is_flow_view_active(self, timeout: int = 10000) -> bool:
         """Check if the Flow (ReactFlow canvas) view is currently active.
+
+        Waits up to *timeout* ms for the ReactFlow canvas wrapper to appear
+        before returning.  The FlowWrapper component is lazy-loaded, so it
+        may not be mounted immediately after navigation.
+
+        Args:
+            timeout: Maximum time in milliseconds to wait for the canvas.
 
         Returns:
             True if Flow view is active, False otherwise.
         """
-        return self.canvas_wrapper.count() > 0 and self.canvas_wrapper.is_visible()
+        try:
+            self.canvas_wrapper.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return self.canvas_wrapper.count() > 0 and self.canvas_wrapper.is_visible()
 
     def get_yaml_content(self) -> str:
         """Read the YAML content from the CodeMirror editor.
@@ -392,12 +428,27 @@ class PipelineDetailPage(PipelineFormPage):
     # ReactFlow canvas — node management
     # ------------------------------------------------------------------
 
-    def wait_for_canvas(self, timeout: int = 10000):
+    def wait_for_canvas(self, timeout: int = 30000):
         """Wait for the ReactFlow canvas to be visible.
 
+        The FlowWrapper component is lazy-loaded via React.lazy/Suspense, so
+        it shows "Preparing the flow editor..." while the JS chunk is loading.
+        This method first waits for that Suspense fallback to disappear, then
+        waits for the ReactFlow wrapper element to become visible.
+
         Args:
-            timeout: Maximum wait time in milliseconds.
+            timeout: Maximum wait time in milliseconds. Default raised to
+                30000ms to accommodate lazy-chunk loading time.
         """
+        # Wait for the Suspense fallback text to disappear before checking
+        # for the canvas, so we don't consume the full timeout on the spinner.
+        try:
+            self.page.locator('text="Preparing the flow editor..."').wait_for(
+                state="hidden", timeout=timeout
+            )
+        except Exception:
+            pass  # Fallback text was never shown or already gone
+
         self.canvas_wrapper.wait_for(state="visible", timeout=timeout)
         logger.info("ReactFlow canvas visible")
 
@@ -555,9 +606,23 @@ class PipelineDetailPage(PipelineFormPage):
         if current_is_flow:
             self.switch_to_flow_view()
 
-        for line in yaml_text.split("\n"):
-            if "entry_point:" in line:
-                return line.split("entry_point:")[-1].strip()
+        # Use regex to extract the entry_point value robustly.
+        # When CodeMirror yaml_lines selector returns 0 matches, the fallback
+        # yaml_editor.text_content() returns a concatenated single-line string
+        # such as:
+        #   "...entry_point: LLM 2nodes:  - id: LLM 1..."
+        # A naive split("\n") would produce one element and
+        # split("entry_point:")[-1].strip() would return "LLM 2nodes:..."
+        # instead of the bare node ID "LLM 2".
+        #
+        # YAML keys are always lowercase (e.g. "nodes", "id", "type").
+        # Node IDs are Title-Case or ALL-CAPS (e.g. "LLM 2", "Code 1").
+        # The lookahead (?=\s*[a-z_]+:) terminates the capture at the first
+        # lowercase YAML key that immediately follows the value, whether or
+        # not a newline separates them.
+        match = re.search(r"entry_point:\s*(.+?)(?=\s*[a-z_]+:|\n|$)", yaml_text, re.DOTALL)
+        if match:
+            return match.group(1).strip()
         return None
 
     def edit_node_name(self, node_id: str, new_name: str) -> str:
@@ -1069,23 +1134,30 @@ class PipelineDetailPage(PipelineFormPage):
         return self.get_toolkit_warning_message(timeout)
 
     def has_toolkit_warning_message(self, timeout: int = 5000) -> bool:
-        """Check if authentication warning message is displayed below toolkit.
+        """Check if credential warning banner is displayed below toolkit.
+
+        Uses data-testid="credential-warning-banner" which is set on BannerMessage.jsx.
+        The banner message text varies (e.g. "Authentication failed:", "Base URL is required",
+        etc.) depending on the validation error type.
 
         Args:
             timeout: Maximum wait time in milliseconds.
 
         Returns:
-            True if warning message is visible.
+            True if warning banner is visible.
         """
-        warning_msg = self.page.locator('[aria-label^="Authentication failed"]')
+        warning_banner = self.page.locator('[data-testid="credential-warning-banner"]')
         try:
-            warning_msg.first.wait_for(state="visible", timeout=timeout)
+            warning_banner.first.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
             return False
 
     def get_toolkit_warning_message(self, timeout: int = 10000) -> str | None:
-        """Get the authentication warning message text.
+        """Get the credential warning banner message text.
+
+        Uses data-testid="credential-warning-banner" which is set on BannerMessage.jsx.
+        Returns the aria-label attribute value, which contains the error message text.
 
         Args:
             timeout: Maximum wait time in milliseconds.
@@ -1093,10 +1165,10 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             Warning message text, or None if not found.
         """
-        warning_msg = self.page.locator('[aria-label^="Authentication failed"]')
+        warning_banner = self.page.locator('[data-testid="credential-warning-banner"]')
         try:
-            warning_msg.first.wait_for(state="visible", timeout=timeout)
-            return warning_msg.first.get_attribute("aria-label")
+            warning_banner.first.wait_for(state="visible", timeout=timeout)
+            return warning_banner.first.get_attribute("aria-label")
         except Exception:
             return None
 
@@ -1213,6 +1285,6 @@ class PipelineDetailPage(PipelineFormPage):
         """
         from playwright.sync_api import expect
 
-        warning_locator = self.page.locator('[aria-label^="Authentication failed"]')
+        warning_locator = self.page.locator('[data-testid="credential-warning-banner"]')
         expect(warning_locator.first).not_to_be_visible(timeout=timeout)
         logger.info("Toolkit warning message is no longer visible")
