@@ -1,0 +1,124 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"skipped","Mon Jul 06 09:47:55 UTC 2026","Mon Jul 06 09:47:55 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[bitbucket]","Run a tool via the Test Settings panel on the toolkit detail page."
+"skipped","Mon Jul 06 09:49:54 UTC 2026","Mon Jul 06 09:49:54 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[gitlab]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Mon Jul 06 09:47:36 UTC 2026","Mon Jul 06 09:47:54 UTC 2026","17639","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[jira]","Run a tool via the Test Settings panel on the toolkit detail page."
+"skipped","Mon Jul 06 09:46:59 UTC 2026","Mon Jul 06 09:46:59 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[bitbucket]","Create a toolkit through the UI form for any toolkit type."
+"passed","Mon Jul 06 09:49:35 UTC 2026","Mon Jul 06 09:49:53 UTC 2026","17644","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[jira]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Mon Jul 06 09:44:23 UTC 2026","Mon Jul 06 09:44:47 UTC 2026","23277","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestPipelineCredentialIndicators","","","test_pipeline_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Pipeline.
+
+        Flow:
+        1. Create Jira credential with invalid token
+        2. Create toolkit with that credential
+        3. Create pipeline and add toolkit node
+        4. Verify all indicators:
+           - Status indicator with ""Authentication failed:"" tooltip
+           - Warning message with ""Authentication failed:"" text
+           - Reload button with ""Reload and apply changes"" tooltip
+           - Open in new tab button with ""Open in new tab"" tooltip
+        5. Click ""Open in new tab"" and verify new tab opens
+        6. Fix credential via API
+        7. Close the new tab and return to original
+        8. Click Reload
+        9. Verify after fix:
+           - Status indicator gone
+           - Warning message gone
+           - Reload button gone
+           - Open in new tab remains
+        "
+"passed","Mon Jul 06 09:46:08 UTC 2026","Mon Jul 06 09:46:29 UTC 2026","20541","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[confluence]","Create a credential through the UI form for any toolkit type."
+"skipped","Mon Jul 06 09:49:55 UTC 2026","Mon Jul 06 09:49:55 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[bitbucket]","Add toolkit to chat, send a message, verify tool execution."
+"skipped","Mon Jul 06 09:47:54 UTC 2026","Mon Jul 06 09:47:54 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[gitlab]","Run a tool via the Test Settings panel on the toolkit detail page."
+"skipped","Mon Jul 06 09:46:59 UTC 2026","Mon Jul 06 09:46:59 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[gitlab]","Create a toolkit through the UI form for any toolkit type."
+"passed","Mon Jul 06 09:43:32 UTC 2026","Mon Jul 06 09:44:00 UTC 2026","27902","tests.ui.toolkits","test_github_toolkit","TestChatWithGitHubToolkit","","","test_chat_with_github_toolkit","Add GitHub toolkit to chat, send a message, verify execution.
+
+        Steps:
+        1. Navigate to a fresh conversation
+        2. Click ""Add toolkit"" in the right panel
+        3. Search for and select the toolkit
+        4. Send a message asking to list branches
+        5. Wait for AI response with toolkit execution
+        6. Verify tool execution indicators appear in the chat
+        "
+"passed","Mon Jul 06 09:46:45 UTC 2026","Mon Jul 06 09:46:58 UTC 2026","12871","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[jira]","Create a toolkit through the UI form for any toolkit type."
+"passed","Mon Jul 06 09:44:01 UTC 2026","Mon Jul 06 09:44:23 UTC 2026","21109","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestToolkitCredentialIndicators","","","test_toolkit_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Toolkit.
+
+        Flow:
+        1. Create Jira credential with invalid token
+        2. Create toolkit with that credential
+        3. Verify all indicators:
+           - Status indicator with ""Authentication failed:"" tooltip
+           - Warning message with ""Authentication failed:"" text
+           - Reload button with ""Reload and apply changes"" tooltip
+           - Open in new tab button with ""Open in new tab"" tooltip
+           - Save button is disabled
+        4. Click ""Open in new tab"" and verify new tab opens
+        5. Fix credential via API
+        6. Close the new tab and return to original
+        7. Click Reload
+        8. Verify after fix:
+           - Status indicator gone
+           - Warning message gone
+           - Reload button gone
+           - Open in new tab remains
+           - Save button enabled
+        "
+"passed","Mon Jul 06 09:47:56 UTC 2026","Mon Jul 06 09:48:14 UTC 2026","17642","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[confluence]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Mon Jul 06 09:47:16 UTC 2026","Mon Jul 06 09:47:35 UTC 2026","18877","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[github]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Mon Jul 06 09:44:48 UTC 2026","Mon Jul 06 09:45:28 UTC 2026","40812","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestAgentCredentialIndicators","","","test_agent_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Agent.
+
+        Flow:
+        1. Create Jira credential with invalid token
+        2. Create toolkit with that credential
+        3. Create agent and add toolkit
+        4. Verify all indicators:
+           - Status indicator with ""Authentication failed:"" tooltip
+           - Warning message with ""Authentication failed:"" text
+           - Reload button with ""Reload and apply changes"" tooltip
+           - Open in new tab button with ""Open in new tab"" tooltip
+        5. Click ""Open in new tab"" and verify new tab opens
+        6. Fix credential via API
+        7. Close the new tab and return to original
+        8. Click Reload
+        9. Verify after fix:
+           - Status indicator gone
+           - Warning message gone
+           - Reload button gone
+           - Open in new tab remains
+        "
+"passed","Mon Jul 06 09:47:00 UTC 2026","Mon Jul 06 09:47:14 UTC 2026","14595","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[confluence]","Create a toolkit through the UI form for any toolkit type."
+"passed","Mon Jul 06 09:46:30 UTC 2026","Mon Jul 06 09:46:44 UTC 2026","14513","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[github]","Create a toolkit through the UI form for any toolkit type."
+"passed","Mon Jul 06 09:45:47 UTC 2026","Mon Jul 06 09:46:07 UTC 2026","19774","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[jira]","Create a credential through the UI form for any toolkit type."
+"passed","Mon Jul 06 09:49:57 UTC 2026","Mon Jul 06 09:50:15 UTC 2026","17515","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[confluence]","Add toolkit to chat, send a message, verify tool execution."
+"skipped","Mon Jul 06 09:46:08 UTC 2026","Mon Jul 06 09:46:08 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[bitbucket]","Create a credential through the UI form for any toolkit type."
+"skipped","Mon Jul 06 09:46:08 UTC 2026","Mon Jul 06 09:46:08 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[gitlab]","Create a credential through the UI form for any toolkit type."
+"passed","Mon Jul 06 09:41:47 UTC 2026","Mon Jul 06 09:42:07 UTC 2026","19994","tests.ui.toolkits","test_github_toolkit","TestGitHubToolkitTestSettings","","","test_github_toolkit_test_settings","Select 'List branches in repo' from Test Settings and run it.
+
+        Steps:
+        1. Navigate to toolkit detail page /app/toolkits/all/{id}
+        2. Open the Tool dropdown in the Test Settings panel (right side)
+        3. Search for 'List branches' and select the tool
+        4. Click RUN TOOL
+        5. Wait for the result to appear
+        6. Verify result contains branch names (e.g. 'main')
+        "
+"broken","Mon Jul 06 09:48:15 UTC 2026","Mon Jul 06 09:49:25 UTC 2026","69612","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[github]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Mon Jul 06 09:41:06 UTC 2026","Mon Jul 06 09:41:17 UTC 2026","11089","tests.ui.toolkits","test_github_toolkit","TestCreateGitHubCredential","","","test_create_github_credential","Create a GitHub credential through the UI form.
+
+        Steps:
+        1. Navigate to /app/credentials/create-credential/github
+        2. Fill Display Name, select Token auth, enter access token
+        3. Click Save
+        4. Verify URL redirects to /app/credentials/all
+        5. Verify credential card appears with correct name
+        "
+"passed","Mon Jul 06 09:41:18 UTC 2026","Mon Jul 06 09:41:44 UTC 2026","26114","tests.ui.toolkits","test_github_toolkit","TestCreateGitHubToolkit","","","test_create_github_toolkit","Create a GitHub toolkit through the UI form.
+
+        Steps:
+        1. Navigate to /app/toolkits/create
+        2. Click the GitHub card
+        3. Fill: Toolkit Name, Description, Github configuration, Repository, Branches
+        4. Click Save
+        5. Verify URL redirects to toolkit detail page
+        6. Verify toolkit loads with Test Settings panel
+        "
+"passed","Mon Jul 06 09:45:32 UTC 2026","Mon Jul 06 09:45:46 UTC 2026","14950","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[github]","Create a credential through the UI form for any toolkit type."
