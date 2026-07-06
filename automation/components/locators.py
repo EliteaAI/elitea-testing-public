@@ -82,7 +82,7 @@ class Testid:
     AGENT_WELCOME_MESSAGE_DIALOG_COUNTER = "agent-welcome-message-dialog-counter"
     AGENT_WELCOME_MESSAGE_DIALOG_CLOSE = "agent-welcome-message-dialog-close"
     AGENT_SAVE_BUTTON = "agent-save-button"
-    AGENT_DISCARD_BUTTON = "agent-discard-button"
+    DISCARD_BUTTON = "discard-button"
     AGENT_ACTIONS_MENU = "agent-actions-menu"          # 3-dot menu
 
     # ── Agent conversation starters ───────────────────────────────────

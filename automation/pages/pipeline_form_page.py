@@ -46,13 +46,12 @@ class PipelineFormPage(BasePage):
     )
 
     cancel_button = LocatorDescriptor(
-        testid="pipeline-cancel-button",
         fallback=lambda page: page.get_by_role("button", name="Cancel"),
         description="Cancel button"
     )
 
     discard_button = LocatorDescriptor(
-        testid="pipeline-discard-button",
+        testid="discard-button",
         fallback=lambda page: page.get_by_role("button", name="Discard"),
         description="Discard changes button"
     )

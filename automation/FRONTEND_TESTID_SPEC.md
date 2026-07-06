@@ -106,8 +106,8 @@ Examples: `chat-send-button`, `agent-name-input`, `conversation-search-input`
 | Element | Current Identifier | Proposed data-testid | Test Scenario |
 |---------|-------------------|---------------------|---------------|
 | Message `<li>` wrapper | `MuiListItem-root` (CSS class) | `chat-message-ai` | Identify AI messages |
-| Response body | `<Answer>` styled div | `chat-message-ai-body` | Extract response text |
-| Delete button | Tooltip "Delete" | `chat-message-ai-delete` | Delete AI message |
+| Response body | `<Answer>` styled div | `chat-answer-content` | Extract response text (use `.last()` for last message) |
+| Delete button | Tooltip "Delete" | `chat-delete-button` | Delete AI message (use `.last()` for last message) |
 | Copy button | Tooltip "Copy to clipboard" | `chat-message-ai-copy` | Copy AI response |
 | Regenerate button | Tooltip "Regenerate" | `chat-message-regenerate` | Regenerate response |
 | Error info toggle | Text "Error debugging info" | `chat-message-error-toggle` | Expand error details |
@@ -281,7 +281,7 @@ Expected values: `sidebar-item-chat`, `sidebar-item-agents`, `sidebar-item-pipel
 | Instructions field | `placeholder="Guidelines for the AI agent"` | `agent-instructions-input` | Fill instructions |
 | Welcome message field | `placeholder="Input your welcome message"` | `agent-welcome-message-input` | Fill welcome msg |
 | Save button | `name="Save"` | `agent-save-button` | Save agent |
-| Discard button | `name="Discard"` | `agent-discard-button` | Discard changes |
+| Discard button | `name="Discard"` | `discard-button` | Discard changes (unified for agent and pipeline) |
 | Actions menu (3-dot) | `aria-haspopup="true"` (last) | `agent-actions-menu` | Open actions |
 | Configuration tab | `name="Configuration"` | `agent-tab-configuration` | Switch tab |
 | History tab | `name="History"` | `agent-tab-history` | Switch tab |

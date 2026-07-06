@@ -44,7 +44,7 @@ class PipelineDetailPage(PipelineFormPage):
     )
 
     copy_id_button = LocatorDescriptor(
-        testid="pipeline-copy-id",
+        testid="copy-id",
         fallback=lambda page: page.get_by_role("button", name="Copy ID"),
         description="Copy pipeline ID button"
     )

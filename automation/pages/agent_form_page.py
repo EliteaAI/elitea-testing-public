@@ -157,13 +157,12 @@ class AgentFormPage(BasePage):
     )
 
     cancel_button = LocatorDescriptor(
-        testid="agent-cancel-button",
         fallback=lambda page: page.get_by_role("button", name="Cancel"),
         description="Cancel button"
     )
 
     discard_button = LocatorDescriptor(
-        testid="agent-discard-button",
+        testid="discard-button",
         fallback=lambda page: page.get_by_role("button", name="Discard"),
         description="Discard changes button"
     )
