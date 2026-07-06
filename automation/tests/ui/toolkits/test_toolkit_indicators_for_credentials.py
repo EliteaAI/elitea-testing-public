@@ -73,10 +73,8 @@ class TestToolkitCredentialIndicators:
            - Open in new tab remains
            - Save button enabled
         """
-        if not settings.jira_api_key or not settings.jira_username or not settings.jira_base_url:
-            pytest.skip(
-                "JIRA_USERNAME, JIRA_API_KEY, and JIRA_BASE_URL must be set in .env.test - required for e2e test"
-            )
+        if not settings.jira_api_key or not settings.jira_username:
+            pytest.skip("JIRA_USERNAME and JIRA_API_KEY not set in .env.test - required for e2e test")
 
         ts = str(int(time.time()))
         cred_name = f"autotest_tk_cred_{ts}"[:32]
@@ -126,15 +124,15 @@ class TestToolkitCredentialIndicators:
                 "Expected status indicator for invalid credential"
             )
             status_tooltip = toolkit_page.get_credential_status_indicator_tooltip()
-            assert status_tooltip, (
-                f"Status tooltip should contain an error message, got: '{status_tooltip}'"
-            )
+            assert status_tooltip and any(
+                err in status_tooltip for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
+            ), f"Status tooltip should contain error message, got: '{status_tooltip}'"
             logger.info("Status indicator verified: %s", status_tooltip)
 
             warning = toolkit_page.get_authentication_warning(timeout=5000)
-            assert warning, (
-                f"Warning message should be present with an error message, got: '{warning}'"
-            )
+            assert warning and any(
+                err in warning for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
+            ), f"Warning message should contain error message, got: '{warning}'"
             logger.info("Warning message verified: %s", warning)
 
             assert toolkit_page.has_reload_button(timeout=5000), "Expected reload button"
@@ -271,8 +269,8 @@ class TestPipelineCredentialIndicators:
         """
         from pages.pipeline_detail_page import PipelineDetailPage
 
-        if not settings.git_hub_token:
-            pytest.skip("GIT_HUB_TOKEN not set in .env.test - required for e2e test")
+        if not settings.jira_api_key or not settings.jira_username:
+            pytest.skip("JIRA_USERNAME and JIRA_API_KEY not set in .env.test - required for e2e test")
 
         ts = str(int(time.time()))
         cred_name = f"autotest_pipe_cred_{ts}"[:32]
@@ -284,37 +282,38 @@ class TestPipelineCredentialIndicators:
         new_tab = None
 
         try:
-            # Use GitHub credential with invalid token to trigger validation error
             invalid_payload = {
-                "type": "github",
-                "elitea_title": f"pipe_github_{ts}",
+                "type": "jira",
+                "elitea_title": f"pipe_jira_{ts}",
                 "label": cred_name,
                 "data": {
-                    "base_url": "https://api.github.com",
-                    "access_token": "ghp_invalidtoken123456789012345678901234",
+                    "base_url": settings.jira_base_url,
+                    "username": settings.jira_username,
+                    "api_key": "invalid_expired_token_12345",
                 },
                 "shared": False,
             }
             cred = credential_api.create_credential(invalid_payload)
             credential_id = cred["id"]
-            logger.info("Created invalid GitHub credential: %s", credential_id)
+            logger.info("Created invalid Jira credential: %s", credential_id)
 
             toolkit = toolkit_api.create_toolkit(
                 name=toolkit_name,
                 description="Toolkit for pipeline indicator test",
-                toolkit_type="github",
+                toolkit_type="jira",
                 settings={
-                    "github_configuration": {
+                    "jira_configuration": {
                         "elitea_title": cred["elitea_title"],
                         "private": True,
                     },
-                    "repository": settings.github_repo or "EliteaAI/elitea-testing",
-                    "active_branch": "main",
-                    "base_branch": "main",
+                    "cloud": True,
+                    "limit": 5,
+                    "api_version": "Auto",
+                    "verify_ssl": True,
                 },
             )
             toolkit_id = toolkit["id"]
-            logger.info("Created GitHub toolkit: %s", toolkit_id)
+            logger.info("Created Jira toolkit: %s", toolkit_id)
 
             pipeline = pipeline_api.create_pipeline(
                 name=pipeline_name,
@@ -346,8 +345,8 @@ class TestPipelineCredentialIndicators:
                 "Expected warning message for invalid credential in pipeline"
             )
             warning_msg = pipeline_page.get_toolkit_warning_message()
-            assert warning_msg, (
-                f"Warning message should be a non-empty error string, got: '{warning_msg}'"
+            assert warning_msg and "Authentication failed" in warning_msg, (
+                f"Warning message should contain 'Authentication failed', got: '{warning_msg}'"
             )
             logger.info("Warning message verified: %s", warning_msg)
 
@@ -375,19 +374,19 @@ class TestPipelineCredentialIndicators:
             )
             logger.info("Open in new tab works - opened: %s", new_tab.url)
 
-            # Fix credential: update to a valid GitHub token
             valid_payload = {
-                "type": "github",
+                "type": "jira",
                 "elitea_title": cred["elitea_title"],
                 "label": cred_name,
                 "data": {
-                    "base_url": "https://api.github.com",
-                    "access_token": settings.git_hub_token,
+                    "base_url": settings.jira_base_url,
+                    "username": settings.jira_username,
+                    "api_key": settings.jira_api_key,
                 },
                 "shared": False,
             }
             credential_api.update_credential(credential_id, valid_payload)
-            logger.info("Updated credential to valid GitHub token")
+            logger.info("Updated credential to valid Jira credentials")
 
             page.wait_for_timeout(2000)
 
@@ -484,8 +483,8 @@ class TestAgentCredentialIndicators:
         """
         from pages.agent_detail_page import AgentDetailPage
 
-        if not settings.git_hub_token:
-            pytest.skip("GIT_HUB_TOKEN not set in .env.test - required for e2e test")
+        if not settings.jira_api_key or not settings.jira_username:
+            pytest.skip("JIRA_USERNAME and JIRA_API_KEY not set in .env.test - required for e2e test")
 
         ts = str(int(time.time()))
         cred_name = f"autotest_agent_cred_{ts}"[:32]
@@ -497,37 +496,38 @@ class TestAgentCredentialIndicators:
         new_tab = None
 
         try:
-            # Use GitHub credential with invalid token to trigger validation error
             invalid_payload = {
-                "type": "github",
-                "elitea_title": f"agent_github_{ts}",
+                "type": "jira",
+                "elitea_title": f"agent_jira_{ts}",
                 "label": cred_name,
                 "data": {
-                    "base_url": "https://api.github.com",
-                    "access_token": "ghp_invalidtoken123456789012345678901234",
+                    "base_url": settings.jira_base_url,
+                    "username": settings.jira_username,
+                    "api_key": "invalid_expired_token_12345",
                 },
                 "shared": False,
             }
             cred = credential_api.create_credential(invalid_payload)
             credential_id = cred["id"]
-            logger.info("Created invalid GitHub credential: %s", credential_id)
+            logger.info("Created invalid Jira credential: %s", credential_id)
 
             toolkit = toolkit_api.create_toolkit(
                 name=toolkit_name,
                 description="Toolkit for agent indicator test",
-                toolkit_type="github",
+                toolkit_type="jira",
                 settings={
-                    "github_configuration": {
+                    "jira_configuration": {
                         "elitea_title": cred["elitea_title"],
                         "private": True,
                     },
-                    "repository": settings.github_repo or "EliteaAI/elitea-testing",
-                    "active_branch": "main",
-                    "base_branch": "main",
+                    "cloud": True,
+                    "limit": 5,
+                    "api_version": "Auto",
+                    "verify_ssl": True,
                 },
             )
             toolkit_id = toolkit["id"]
-            logger.info("Created GitHub toolkit: %s", toolkit_id)
+            logger.info("Created Jira toolkit: %s", toolkit_id)
 
             agent = agent_api.create_agent(
                 name=agent_name,
@@ -547,15 +547,15 @@ class TestAgentCredentialIndicators:
                 "Expected status indicator on toolkit in agent"
             )
             status_tooltip = agent_page.get_toolkit_status_indicator_tooltip(toolkit_name)
-            assert status_tooltip, (
-                f"Status tooltip should contain an error message, got: '{status_tooltip}'"
-            )
+            assert status_tooltip and any(
+                err in status_tooltip for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
+            ), f"Status tooltip should contain error message, got: '{status_tooltip}'"
             logger.info("Status indicator verified: %s", status_tooltip)
 
             warning_msg = agent_page.get_toolkit_warning_message(toolkit_name)
-            assert warning_msg, (
-                f"Warning message should be present with an error message, got: '{warning_msg}'"
-            )
+            assert warning_msg and any(
+                err in warning_msg for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
+            ), f"Warning message should contain error message, got: '{warning_msg}'"
             logger.info("Warning message verified: %s", warning_msg)
 
             assert agent_page.has_toolkit_reload_button(toolkit_name, timeout=5000), (
@@ -589,17 +589,18 @@ class TestAgentCredentialIndicators:
                     break
 
             valid_payload = {
-                "type": "github",
+                "type": "jira",
                 "elitea_title": cred["elitea_title"],
                 "label": cred_name,
                 "data": {
-                    "base_url": "https://api.github.com",
-                    "access_token": settings.git_hub_token,
+                    "base_url": settings.jira_base_url,
+                    "username": settings.jira_username,
+                    "api_key": settings.jira_api_key,
                 },
                 "shared": False,
             }
             credential_api.update_credential(credential_id, valid_payload)
-            logger.info("Updated credential to valid GitHub token")
+            logger.info("Updated credential to valid Jira credentials")
 
             page.wait_for_timeout(2000)
 
