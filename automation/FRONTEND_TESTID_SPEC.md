@@ -363,7 +363,36 @@ Expected values: `sidebar-item-chat`, `sidebar-item-agents`, `sidebar-item-pipel
 
 ---
 
-### 17. Toolkit Test Settings Panel
+### 17. Credential Option Label Action Buttons
+
+**File**: `src/[fsd]/features/credentials/ui/credential-option-label/CredentialOptionLabel.jsx`
+
+| Element | Current Identifier | data-testid | Test Scenario |
+|---------|-------------------|-------------|---------------|
+| Status indicator (attention icon) | `data-testid="credential-status-indicator"` | `credential-status-indicator` | Already present |
+| Open in new tab button | `aria-label="Open in new tab"` | `credential-open-in-new-tab-button` | Click to open credential in new browser tab |
+| Reload and apply changes button | `aria-label="Reload and apply changes"` | `credential-reload-button` | Click to revalidate credential status |
+
+**Where to add**:
+```jsx
+// On "Open in new tab" BaseBtn
+<BaseBtn
+  aria-label="Open in new tab"
+  data-testid="credential-open-in-new-tab-button"
+  ...
+/>
+
+// On "Reload and apply changes" BaseBtn
+<BaseBtn
+  aria-label="Reload and apply changes"
+  data-testid="credential-reload-button"
+  ...
+/>
+```
+
+---
+
+### 18. Toolkit Test Settings Panel
 
 **File**: `src/pages/Toolkits/TestSettings.jsx`
 

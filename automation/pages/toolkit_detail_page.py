@@ -292,7 +292,7 @@ class ToolkitDetailPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         self.hover_credential_row(timeout)
-        reload_btn = self.page.locator('button[aria-label="Reload and apply changes"]')
+        reload_btn = self.page.get_by_test_id("credential-reload-button")
         reload_btn.wait_for(state="visible", timeout=timeout)
         reload_btn.click()
         self.wait_for_network(timeout=timeout)
@@ -312,7 +312,7 @@ class ToolkitDetailPage(BasePage):
             URL of the new tab (credential detail page).
         """
         self.hover_credential_row(timeout)
-        open_btn = self.page.locator('button[aria-label="Open in new tab"]')
+        open_btn = self.page.get_by_test_id("credential-open-in-new-tab-button")
         open_btn.wait_for(state="visible", timeout=timeout)
 
         with self.page.context.expect_page() as new_page_info:
@@ -335,7 +335,7 @@ class ToolkitDetailPage(BasePage):
             True if reload button exists and is visible.
         """
         self.hover_credential_row(timeout)
-        reload_btn = self.page.locator('button[aria-label="Reload and apply changes"]')
+        reload_btn = self.page.get_by_test_id("credential-reload-button")
         try:
             reload_btn.wait_for(state="visible", timeout=timeout)
             return True
@@ -352,7 +352,7 @@ class ToolkitDetailPage(BasePage):
             The aria-label value (tooltip text), or None if not found.
         """
         self.hover_credential_row(timeout)
-        reload_btn = self.page.locator('button[aria-label="Reload and apply changes"]')
+        reload_btn = self.page.get_by_test_id("credential-reload-button")
         try:
             reload_btn.wait_for(state="visible", timeout=timeout)
             return reload_btn.get_attribute("aria-label")
@@ -369,7 +369,7 @@ class ToolkitDetailPage(BasePage):
             True if open-in-new-tab button exists and is visible.
         """
         self.hover_credential_row(timeout)
-        open_btn = self.page.locator('button[aria-label="Open in new tab"]')
+        open_btn = self.page.get_by_test_id("credential-open-in-new-tab-button")
         try:
             open_btn.wait_for(state="visible", timeout=timeout)
             return True
@@ -386,7 +386,7 @@ class ToolkitDetailPage(BasePage):
             The aria-label value (tooltip text), or None if not found.
         """
         self.hover_credential_row(timeout)
-        open_btn = self.page.locator('button[aria-label="Open in new tab"]')
+        open_btn = self.page.get_by_test_id("credential-open-in-new-tab-button")
         try:
             open_btn.wait_for(state="visible", timeout=timeout)
             return open_btn.get_attribute("aria-label")

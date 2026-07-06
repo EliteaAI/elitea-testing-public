@@ -130,6 +130,9 @@ class Testid:
     CREDENTIAL_SEARCH_INPUT = "credential-search-input"
     CREDENTIAL_CARD = "credential-card"
     CREDENTIAL_CREATE_BUTTON = "credential-create-button"
+    CREDENTIAL_STATUS_INDICATOR = "credential-status-indicator"
+    CREDENTIAL_OPEN_IN_NEW_TAB_BUTTON = "credential-open-in-new-tab-button"
+    CREDENTIAL_RELOAD_BUTTON = "credential-reload-button"
 
     # ── Common / shared ───────────────────────────────────────────────
     LOADING_SPINNER = "loading-spinner"
