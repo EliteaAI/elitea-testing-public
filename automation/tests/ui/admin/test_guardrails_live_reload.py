@@ -317,10 +317,9 @@ class TestBlockedToolkitLiveReload:
         3. Open agent chat, verify tool executes successfully
         4. Add github toolkit to blocked list in Admin UI
         5. Save - verify no yellow banner mentioning pylon reload
-        6. WITHOUT reloading, return to agent chat
-        7. Verify tool is now blocked
-        8. Remove github from blocked list, save
-        9. Verify tool executes again
+        6. Return to agent chat, verify tool is now blocked
+        7. Remove github from blocked list, save
+        8. Verify tool executes again
         """
         agent_id = guardrails_test_agent["id"]
         toolkit_name = guardrails_test_agent["toolkit_name"]
@@ -374,13 +373,12 @@ class TestBlockedToolkitLiveReload:
                 f"Banner should not mention pylon. Text: {banner_text}"
             )
 
-        # --- Step 6-7: WITHOUT pylon reload, verify toolkit is blocked ---
+        # --- Step 6-7: Verify toolkit is blocked ---
         agent_page.navigate(agent_id)
         # UI caches toolkit state on mount, reload required to see blocked indicator
         page.reload()
         agent_page.wait_for_page_load()
 
-        # Verify blocked toolkit indicator appears on the toolkit card
         assert agent_page.is_toolkit_blocked(toolkit_name, timeout=UI_ELEMENT_TIMEOUT), (
             f"Toolkit '{toolkit_name}' should show 'blocked by your organization' indicator"
         )
@@ -439,7 +437,7 @@ class TestBlockedToolLiveReload:
         3. Open agent chat, verify get_issue executes
         4. Block get_issue tool in Admin UI
         5. Save - verify no yellow banner
-        6. WITHOUT reloading, verify get_issue is blocked
+        6. Verify get_issue is blocked
         7. Verify other tools in toolkit still work (list_repos)
         8. Unblock get_issue, verify it works again
         """
@@ -488,13 +486,12 @@ class TestBlockedToolLiveReload:
             "Should NOT show pylon reload banner after save"
         )
 
-        # --- Step 6: WITHOUT pylon reload, verify tool is blocked ---
+        # --- Step 6: Verify tool is blocked ---
         agent_page.navigate(agent_id)
         # UI caches toolkit state on mount, reload required to see blocked indicator
         page.reload()
         agent_page.wait_for_page_load()
         
-        # Verify blocked tool indicator appears on the toolkit card
         toolkit_name = guardrails_test_agent["toolkit_name"]
         assert agent_page.is_tool_blocked_in_toolkit(toolkit_name, timeout=UI_ELEMENT_TIMEOUT), (
             f"Toolkit '{toolkit_name}' should show 'Some tools are not available anymore' indicator"
@@ -573,7 +570,7 @@ class TestSensitiveToolLiveReload:
         3. Open agent chat, verify get_issue executes WITHOUT authorization dialog
         4. Add get_issue to Sensitive Action Tools in Admin UI
         5. Save - verify no yellow banner
-        6. WITHOUT reloading, trigger get_issue again
+        6. Trigger get_issue again
         7. Verify authorization dialog NOW appears
         8. Remove from sensitive list, verify dialog no longer appears
         """
@@ -624,7 +621,7 @@ class TestSensitiveToolLiveReload:
             "Should NOT show pylon reload banner after save"
         )
 
-        # --- Step 6-7: WITHOUT reload, verify authorization appears ---
+        # --- Step 6-7: Verify authorization appears ---
         # Switch back to agent chat
         agent_page.navigate(agent_id)
         # UI caches toolkit state on mount, reload required to see sensitive action dialog
