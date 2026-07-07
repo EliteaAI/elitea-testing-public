@@ -342,9 +342,9 @@ class UserProfileSettingsPage(BasePage):
         stale ElementHandle errors when React re-renders the voice list after
         the TTS voices API response arrives.
 
-        Uses get_by_role("option", name=…) for exact accessible-name matching,
-        which avoids the strict-mode violation that occurs with has-text() when
-        MUI injects zero-width-space (\u200b) nodes inside every option.
+        Uses get_by_test_id("select-option-{value}") for stable testid-based matching.
+        The testid is set in SingleSelectMenuItem.jsx as "select-option-{option.value}".
+        For TTS voices the value equals the lowercase voice name (e.g. "alloy" for "Alloy").
 
         Args:
             voice_name: Name of the voice to select (e.g., 'Alloy').
@@ -365,9 +365,10 @@ class UserProfileSettingsPage(BasePage):
         voice_dropdown.click(timeout=timeout)
 
         self.page.locator('[role="listbox"]').wait_for(state="visible", timeout=timeout)
-        # Use get_by_role with exact accessible name to avoid strict-mode
-        # violations from has-text() matching zero-width-space in all options.
-        option = self.page.get_by_role("option", name=effective_name, exact=True)
+        # Use data-testid locator for stability; voice option testids are set
+        # as "select-option-{value}" in SingleSelectMenuItem.jsx.
+        # For TTS voices value == name.lower() (e.g. "Alloy" → "select-option-alloy").
+        option = self.page.get_by_test_id(f"select-option-{effective_name.lower()}")
         option.click()
 
         self.page.wait_for_timeout(500)
