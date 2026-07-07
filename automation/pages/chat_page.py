@@ -246,7 +246,10 @@ class ChatPage(BasePage):
                     f"{settings.elitea_url}{settings.app_prefix}/chat/{conversation_id}",
                     wait_until="domcontentloaded",
                 )
-                self.page.wait_for_load_state("networkidle", timeout=30000)
+                try:
+                    self.page.wait_for_load_state("networkidle", timeout=30000)
+                except Exception:
+                    logger.debug("navigate_to_chat: networkidle not reached after SPA redirect — continuing")
 
         self.wait_for_page_load()
         logger.info(f"Navigated to chat, page loaded (actual URL: {self.page.url})")
@@ -259,8 +262,13 @@ class ChatPage(BasePage):
         """
         import time as _time
 
-        # Wait for network idle first
-        self.wait_for_network(timeout=timeout)
+        # Wait for network idle — best-effort: TTS WebSocket connections from prior
+        # tests can keep the network active indefinitely, preventing networkidle.
+        # The element-level waits below are the real readiness signals.
+        try:
+            self.wait_for_network(timeout=timeout)
+        except Exception:
+            logger.debug("wait_for_page_load: networkidle not reached — continuing")
 
         # Primary check: message input is visible AND editable (page is truly usable).
         # Waiting for "visible" alone is not sufficient — the textarea becomes visible

@@ -313,15 +313,24 @@ class UserProfileSettingsPage(BasePage):
                 if voice_text:
                     logger.info("Current voice (labelMedium): %s", voice_text)
                     return voice_text
-            # Fallback: read text content of the select combobox
             voice_dropdown = self.page.locator('#simple-select-Voice')
-            raw = (voice_dropdown.text_content() or "").replace('\u200b', '').strip()
-            if raw and raw.lower() != 'default':
-                logger.info("Current voice (textContent): %s", raw)
-                return raw
-            # Voices not loaded yet — wait briefly and retry
+            if voice_dropdown.count() > 0:
+                raw = (voice_dropdown.text_content() or "").replace('\u200b', '').strip()
+                if raw:
+                    logger.info("Current voice (textContent): %s", raw)
+                    return raw
+                # Element exists but shows only \u200b: the MUI Select renders its
+                # empty-value state as a zero-width space (not "Default" text).
+                # #simple-select-Voice only appears in the DOM when voiceOptions.length>0
+                # (see VoiceConfigControls.jsx conditional render), so the element
+                # being present means voices ARE loaded — the user simply has no voice
+                # configured.  Return "Default" as a truthy sentinel so callers can
+                # proceed (assert passes, select_voice skips gracefully via its guard).
+                logger.info("get_current_voice: element present with \\u200b only → no voice selected, returning 'Default'")
+                return "Default"
+            # Element not in DOM yet: voices still loading — wait and retry
             if _time.monotonic() >= deadline:
-                logger.warning("get_current_voice: voices did not populate within %dms, returning ''", timeout)
+                logger.warning("get_current_voice: voice dropdown did not appear within %dms", timeout)
                 return ''
             self.page.wait_for_timeout(300)
 
@@ -341,10 +350,11 @@ class UserProfileSettingsPage(BasePage):
             voice_name: Name of the voice to select (e.g., 'Alloy').
             timeout: Maximum wait time in milliseconds.
         """
-        # Guard: skip restore if voice_name is empty or only zero-width space
+        # Guard: skip restore if voice_name is empty, only zero-width space, or the
+        # MUI emptyPlaceholder text "Default" (which is not a real selectable option).
         effective_name = voice_name.replace('\u200b', '').strip() if voice_name else ''
-        if not effective_name:
-            logger.warning("select_voice: empty/zero-width voice_name '%r', skipping", voice_name)
+        if not effective_name or effective_name.lower() == 'default':
+            logger.info("select_voice: '%s' is not a real selectable voice, skipping", effective_name or '(empty)')
             return
 
         logger.info("Selecting voice: %s", effective_name)
