@@ -61,12 +61,10 @@ class UserProfileSettingsPage(BasePage):
 
     max_context_tokens_input = LocatorDescriptor(
         testid="max-context-tokens-input",
-        fallback=lambda page: page.get_by_role(
-            "heading", name="Default Context Management"
-        ).locator("..").get_by_role("region").get_by_role("textbox").nth(0),
+        fallback=lambda page: page.get_by_test_id("context-management-section").get_by_role("textbox").nth(0),
         description=(
             "Numeric input for Max Context Tokens. "
-            "Located as the first textbox inside the Default Context Management region."
+            "Located as the first textbox inside the Default Context Management section."
         ),
     )
 
@@ -76,12 +74,10 @@ class UserProfileSettingsPage(BasePage):
 
     preserve_recent_messages_input = LocatorDescriptor(
         testid="preserve-recent-messages-input",
-        fallback=lambda page: page.get_by_role(
-            "heading", name="Default Context Management"
-        ).locator("..").get_by_role("region").get_by_role("textbox").nth(1),
+        fallback=lambda page: page.get_by_test_id("context-management-section").get_by_role("textbox").nth(1),
         description=(
             "Numeric input for Preserve Recent Messages. "
-            "Located as the second textbox inside the Default Context Management region."
+            "Located as the second textbox inside the Default Context Management section."
         ),
     )
 
@@ -95,29 +91,49 @@ class UserProfileSettingsPage(BasePage):
     def navigate_to_profile(self) -> None:
         """Navigate to the user profile settings page and wait until ready.
 
-        Automatically waits for the page heading and context management
-        section to be visible before returning.
+        The profile settings (context management, personalization, voice) are
+        served at /settings/personalization in the current routing structure.
+        /user-settings/profile is not a valid route.
+
+        Automatically waits for the context management section to be visible
+        before returning.
         """
-        self.navigate("/user-settings/profile")
+        self.navigate("/settings/personalization")
         self.wait_for_page_load()
         logger.info("Navigated to user profile settings page")
 
-    def wait_for_page_load(self, timeout: int = 30000) -> None:
-        """Wait until the profile settings page is fully loaded.
+    def wait_for_page_load(self, timeout: int = 60000) -> None:
+        """Wait until the profile settings page is fully loaded with API data.
 
         The page initially renders with default values (e.g., 64000 for max tokens),
         then fetches user settings and re-renders. We must wait for this second
         render to complete before reading field values.
 
-        Args:
-            timeout: Maximum wait time in milliseconds.
-        """
-        self.wait_for_network(timeout=timeout)
+        The /settings/personalization page has a persistent WebSocket connection
+        (socket.io) that prevents networkidle from being reached, so the
+        networkidle wait is best-effort (failure is tolerated).
 
-        # Wait for the "Default Context Management" section heading first
-        # The toggle is inside an accordion that might need time to expand
-        context_heading = self.page.get_by_role("heading", name="Default Context Management")
-        context_heading.wait_for(state="visible", timeout=timeout)
+        After DOM elements are visible, we poll the max-context-tokens-input until
+        its value is stable for two consecutive reads 500ms apart. This guards
+        against reading the form before the author API response has updated the
+        Formik state (which can lag especially when the backend returns transient
+        503s on reload and retries).
+
+        Args:
+            timeout: Maximum wait time in milliseconds (default raised to 60s to
+                     allow for backend 503 retry cycles).
+        """
+        import time as _time
+
+        try:
+            self.wait_for_network(timeout=timeout)
+        except Exception:
+            logger.debug("wait_for_page_load: networkidle not reached — continuing")
+
+        # Wait for the "Default Context Management" section accordion container
+        # The accordion title is not a semantic heading — use its data-testid instead
+        context_section = self.page.get_by_test_id("context-management-section")
+        context_section.wait_for(state="visible", timeout=timeout)
 
         # The accordion should be expanded by default, but give it time to render
         self.page.wait_for_timeout(500)
@@ -126,10 +142,28 @@ class UserProfileSettingsPage(BasePage):
         # the key element used by the context management tests.
         self.context_management_toggle.wait_for(state="visible", timeout=timeout)
 
-        # Wait for user settings to load - the page first shows defaults,
-        # then re-renders with actual saved values after API response.
-        # Use a longer wait to allow for the settings fetch + re-render cycle.
-        self.page.wait_for_timeout(1000)
+        # Poll max-context-tokens-input until the value is stable.
+        # The form first shows the Formik default (64000), then updates when the
+        # author API call completes.  Two consecutive identical reads separated by
+        # 500ms indicate the API data has been applied and the form has settled.
+        deadline = _time.monotonic() + timeout / 1000.0
+        previous = None
+        while _time.monotonic() < deadline:
+            try:
+                raw = self.max_context_tokens_input.input_value()
+                current = int(raw) if raw.strip() else None
+            except Exception:
+                current = None
+
+            if current is not None and current == previous:
+                logger.debug("wait_for_page_load: value stable at %d", current)
+                break
+
+            previous = current
+            self.page.wait_for_timeout(500)
+        else:
+            logger.warning("wait_for_page_load: value did not stabilise within timeout — proceeding anyway")
+
         logger.info("Profile settings page loaded")
 
     # ------------------------------------------------------------------
@@ -211,7 +245,9 @@ class UserProfileSettingsPage(BasePage):
         field.press("Tab")
         self.page.wait_for_timeout(3000)  # Wait for debounced autosave
 
-        self.wait_for_network(timeout=5000)
+        # Use wait_for_autosave which tolerates the persistent WebSocket on
+        # /settings/personalization preventing networkidle from being reached.
+        self.wait_for_autosave(timeout=5000)
         actual = self.get_max_context_tokens()
         if actual != value:
             logger.warning("Max context tokens shows %d after set, expected %d — autosave may be delayed", actual, value)

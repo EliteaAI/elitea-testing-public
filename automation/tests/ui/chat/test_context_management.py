@@ -130,7 +130,7 @@ class TestContextManagementSettings:
                         conv_id = match.group(1)
                         logger.info("Conversation ID found after first message: %s", conv_id)
                 except Exception:
-                    logger.info("URL did not update to /app/chat/{id}")
+                    logger.info("URL did not update to /chat/{id}")
 
             chat.wait_for_ai_response(initial_count=0, timeout=AI_RESPONSE_TIMEOUT)
 

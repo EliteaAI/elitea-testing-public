@@ -224,7 +224,7 @@ class TestConversationList:
 
         Verifies:
         - Clicking a conversation item navigates to it
-        - URL updates to /app/chat/{id}
+        - URL updates to /chat/{id}
         - Message input is available
 
         Fetches the current name from the API to handle auto-rename correctly.
