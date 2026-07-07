@@ -9,7 +9,7 @@ Tests the end-to-end flow:
 6. Verify toolkit executes and returns data
 
 This is the correct pattern — agent detail page chat is a preview mode.
-Real toolkit execution happens in /app/chat with agent as participant.
+Real toolkit execution happens in /chat with agent as participant.
 
 Markers:
     - ui: requires browser
@@ -104,7 +104,7 @@ class TestAgentWithToolkitInChat:
         """Create agent with toolkit, add agent as participant in chat, verify toolkit executes.
 
         The toolkit is attached to the agent (not the conversation directly).
-        This tests the agent-owns-toolkit execution path in real chat (/app/chat).
+        This tests the agent-owns-toolkit execution path in real chat (/chat).
 
         Steps:
         1. Navigate to agent detail page

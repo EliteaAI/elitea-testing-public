@@ -79,10 +79,10 @@ class TestCreateGitHubCredential:
         """Create a GitHub credential through the UI form.
 
         Steps:
-        1. Navigate to /app/credentials/create-credential/github
+        1. Navigate to /credentials/create-credential/github
         2. Fill Display Name, select Token auth, enter access token
         3. Click Save
-        4. Verify URL redirects to /app/credentials/all
+        4. Verify URL redirects to /credentials/all
         5. Verify credential card appears with correct name
         """
         if not GITHUB_TOKEN:
@@ -209,7 +209,7 @@ class TestCreateGitHubToolkit:
         """Create a GitHub toolkit through the UI form.
 
         Steps:
-        1. Navigate to /app/toolkits/create
+        1. Navigate to /toolkits/create
         2. Click the GitHub card
         3. Fill: Toolkit Name, Description, Github configuration, Repository, Branches
         4. Click Save
@@ -427,7 +427,7 @@ class TestGitHubToolkitTestSettings:
         """Select 'List branches in repo' from Test Settings and run it.
 
         Steps:
-        1. Navigate to toolkit detail page /app/toolkits/all/{id}
+        1. Navigate to toolkit detail page /toolkits/all/{id}
         2. Open the Tool dropdown in the Test Settings panel (right side)
         3. Search for 'List branches' and select the tool
         4. Click RUN TOOL

@@ -1,6 +1,6 @@
 """Agent Form Page - Create and edit agent forms.
 
-Handles: /app/agents/create and /app/agents/all/{id} (edit mode)
+Handles: /agents/create and /agents/all/{id} (edit mode)
 - Fill in agent details (name, description, instructions)
 - Save/cancel operations
 - Form validation

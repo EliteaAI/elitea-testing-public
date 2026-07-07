@@ -177,13 +177,13 @@ class TestChatWithAgentToolkit:
         github_toolkit: dict,
         conversation_id: str,
     ):
-        """Add toolkit to agent, chat via /app/chat, verify toolkit execution.
+        """Add toolkit to agent, chat via /chat, verify toolkit execution.
 
         Steps:
         1. Navigate to agent detail page
         2. Add the GitHub toolkit
         3. Save the agent
-        4. Navigate to conversation in /app/chat
+        4. Navigate to conversation in /chat
         5. Add agent as participant
         6. Send a message asking to list branches
         7. Wait for AI + toolkit response (stable content)

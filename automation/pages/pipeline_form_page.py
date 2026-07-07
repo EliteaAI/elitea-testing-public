@@ -228,7 +228,7 @@ class PipelineFormPage(BasePage):
             timeout: Maximum wait time for save and navigation.
         """
         self.click_save(timeout=timeout)
-        # After save on create, URL changes to /app/pipelines/all/{id}
+        # After save on create, URL changes to /pipelines/all/{id}
         # Wait for URL to change
         self.page.wait_for_url("**/pipelines/all/*", timeout=timeout)
         self.wait_for_network(timeout=10000)

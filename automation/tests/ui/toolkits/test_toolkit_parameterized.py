@@ -235,7 +235,7 @@ class TestCreateCredential:
             print(f"📸 After save: URL={page.url}")
 
             # Verify we're back on credentials list (NOT still on create form)
-            # UI navigates to /app/credentials/all after successful save
+            # UI navigates to /credentials/all after successful save
             assert "/credentials" in page.url, \
                 f"Expected to navigate to /credentials but got: {page.url}"
 

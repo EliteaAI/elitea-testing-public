@@ -1,6 +1,6 @@
 """Skill Form Page - Create and edit skill forms.
 
-Handles: /app/skills/create and /app/skills/all/{id} (edit mode)
+Handles: /skills/create and /skills/all/{id} (edit mode)
 - Fill in skill details (name, description, instructions)
 - Save/cancel operations
 - Form validation
@@ -20,7 +20,7 @@ logger = logging.getLogger("elitea.pages.skill_form")
 class SkillFormPage(BasePage):
     """Page object for skill create/edit form.
 
-    URL: /app/skills/create (create) or /app/skills/all/{id} (edit)
+    URL: /skills/create (create) or /skills/all/{id} (edit)
     """
 
     # Form field locators
