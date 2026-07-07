@@ -376,7 +376,7 @@ class TestBlockedToolkitLiveReload:
 
         # --- Step 6-7: WITHOUT pylon reload, verify toolkit is blocked ---
         agent_page.navigate(agent_id)
-        page.wait_for_timeout(2000)  # Wait for guardrails to propagate
+        # UI caches toolkit state on mount, reload required to see blocked indicator
         page.reload()
         agent_page.wait_for_page_load()
 
@@ -403,11 +403,10 @@ class TestBlockedToolkitLiveReload:
         finally:
             # Cleanup: ensure toolkit is unblocked
             try:
-                if guardrails.is_toolkit_blocked(TEST_TOOLKIT):
-                    guardrails.remove_blocked_toolkit(TEST_TOOLKIT)
-                    guardrails.save_configuration()
+                guardrails.remove_blocked_toolkit(TEST_TOOLKIT)
+                guardrails.save_configuration()
             except Exception:
-                pass
+                pass  # Already removed or doesn't exist
 
 
 # ===========================================================================
@@ -491,7 +490,7 @@ class TestBlockedToolLiveReload:
 
         # --- Step 6: WITHOUT pylon reload, verify tool is blocked ---
         agent_page.navigate(agent_id)
-        page.wait_for_timeout(2000)  # Wait for guardrails to propagate
+        # UI caches toolkit state on mount, reload required to see blocked indicator
         page.reload()
         agent_page.wait_for_page_load()
         
@@ -536,12 +535,12 @@ class TestBlockedToolLiveReload:
             )
             logger.info("Blocked tool indicator removed for '%s' after unblocking", toolkit_name)
         finally:
-            # Cleanup
+            # Cleanup: ensure tool is unblocked
             try:
                 guardrails.remove_blocked_tool(TEST_TOOL)
                 guardrails.save_configuration()
             except Exception:
-                pass
+                pass  # Already removed or doesn't exist
 
 
 # ===========================================================================
@@ -626,9 +625,9 @@ class TestSensitiveToolLiveReload:
         )
 
         # --- Step 6-7: WITHOUT reload, verify authorization appears ---
-        # Switch back to agent chat (no reload!)
+        # Switch back to agent chat
         agent_page.navigate(agent_id)
-        page.wait_for_timeout(2000)  # Wait for guardrails to propagate
+        # UI caches toolkit state on mount, reload required to see sensitive action dialog
         page.reload()
         agent_page.wait_for_page_load()
 
@@ -678,9 +677,9 @@ class TestSensitiveToolLiveReload:
             logger.info("Response after removing from sensitive: %s", response3[:300])
             # Should execute without authorization dialog
         finally:
-            # Cleanup
+            # Cleanup: ensure tool is removed from sensitive list
             try:
                 guardrails.remove_sensitive_tool(TEST_TOOL)
                 guardrails.save_configuration()
             except Exception:
-                pass
+                pass  # Already removed or doesn't exist
