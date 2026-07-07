@@ -992,15 +992,15 @@ class ChatPage(BasePage):
     def click_create_new_conversation(self, timeout: int = 10000):
         """Click the "+Conversation" button in the sidebar.
 
-        Uses data-tour attribute locator instead of aria-label.
+        Uses data-testid attribute locator for stability across label changes.
 
-        LOCATOR: [data-tour="sidebar-create-button"] button:has-text("Conversation")
+        LOCATOR: [data-testid="sidebar-create-button"]
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Clicking +Conversation button")
-        btn = self.page.locator('[data-tour="sidebar-create-button"] button:has-text("Conversation")').first
+        btn = self.page.get_by_test_id("sidebar-create-button").first
         btn.wait_for(state="visible", timeout=timeout)
         btn.click(force=True)
         self.page.wait_for_timeout(1000)

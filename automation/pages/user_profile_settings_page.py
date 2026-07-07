@@ -3,12 +3,12 @@
 Handles the /user-settings/profile page, specifically:
 - Default Context Management section (toggle, max tokens input)
 
-And the /user-settings/personalization page:
+And the /settings/personalization page:
 - Voice Personalization section (voice, speed, volume, preview)
 
 Changes on these pages autosave — there is no explicit Save button.
 
-URL: /user-settings/profile, /user-settings/personalization
+URL: /user-settings/profile, /settings/personalization
 """
 
 import logging
@@ -240,24 +240,40 @@ class UserProfileSettingsPage(BasePage):
 
     def navigate_to_personalization(self) -> None:
         """Navigate to the Personalization settings page and wait until ready."""
-        self.navigate("/user-settings/personalization")
+        self.navigate("/settings/personalization")
         self.wait_for_personalization_load()
         logger.info("Navigated to Personalization settings page")
 
     def wait_for_personalization_load(self, timeout: int = 15000) -> None:
         """Wait until the Personalization page is fully loaded.
 
-        Waits for the Voice Personalization section heading to be visible.
+        Waits for the Voice Personalization section to be visible and DOM-stable.
+        The section may re-render as TTS voices are fetched from the API, so we
+        wait for the section container (data-testid) and then for the voice
+        dropdown to be stable before returning.
+
+        The /settings/personalization page has a persistent WebSocket connection
+        that prevents networkidle from being reached, so the networkidle wait is
+        best-effort (failure is tolerated).
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        self.wait_for_network(timeout=timeout)
-        # Use Voice dropdown as anchor - it has unique ID
+        # networkidle is best-effort: /settings/personalization has a persistent
+        # WebSocket that keeps the network active.  Failure here is fine because
+        # the element-level waits below are the real readiness signals.
+        try:
+            self.wait_for_network(timeout=timeout)
+        except Exception:
+            logger.debug("wait_for_personalization_load: networkidle not reached — continuing")
+        # Wait for the Voice Personalization section container first
+        section = self.page.get_by_test_id("voice-personalization-section")
+        section.wait_for(state="visible", timeout=timeout)
+        # Wait for the Voice dropdown to appear (may be absent until voices load)
         voice_dropdown = self.page.locator('#simple-select-Voice')
-        voice_dropdown.scroll_into_view_if_needed()
         voice_dropdown.wait_for(state="visible", timeout=timeout)
-        self.page.wait_for_timeout(500)
+        # Allow extra time for React to finish re-rendering after voices are fetched
+        self.page.wait_for_timeout(1000)
         logger.info("Personalization page loaded")
 
     def is_voice_personalization_visible(self) -> bool:
@@ -277,61 +293,102 @@ class UserProfileSettingsPage(BasePage):
         """
         return self.page.locator('#simple-select-Voice').locator('xpath=ancestor::div[contains(@class, "MuiAccordion-root")]')
 
-    def get_current_voice(self) -> str:
+    def get_current_voice(self, timeout: int = 5000) -> str:
         """Get the currently selected voice in Voice Personalization.
 
+        Waits up to *timeout* ms for voices to load (MUI Select renders a
+        zero-width-space placeholder until the async voice list arrives, which
+        makes text_content() return '\u200b').  Falls back to an empty string
+        when voices never populate within the timeout.
+
         Returns:
-            Voice name (e.g., 'Shimmer').
+            Voice name (e.g., 'Shimmer'), or '' if voices are not yet loaded.
         """
-        voice_text_el = self.page.locator('#simple-select-Voice .MuiTypography-labelMedium')
-        if voice_text_el.count() > 0:
-            voice_text = voice_text_el.text_content() or ""
-        else:
+        import time as _time
+        deadline = _time.monotonic() + timeout / 1000.0
+        while True:
+            voice_text_el = self.page.locator('#simple-select-Voice .MuiTypography-labelMedium')
+            if voice_text_el.count() > 0:
+                voice_text = (voice_text_el.text_content() or "").replace('\u200b', '').strip()
+                if voice_text:
+                    logger.info("Current voice (labelMedium): %s", voice_text)
+                    return voice_text
+            # Fallback: read text content of the select combobox
             voice_dropdown = self.page.locator('#simple-select-Voice')
-            voice_text = voice_dropdown.text_content() or ""
-        logger.info("Current voice: %s", voice_text.strip())
-        return voice_text.strip()
+            raw = (voice_dropdown.text_content() or "").replace('\u200b', '').strip()
+            if raw and raw.lower() != 'default':
+                logger.info("Current voice (textContent): %s", raw)
+                return raw
+            # Voices not loaded yet — wait briefly and retry
+            if _time.monotonic() >= deadline:
+                logger.warning("get_current_voice: voices did not populate within %dms, returning ''", timeout)
+                return ''
+            self.page.wait_for_timeout(300)
 
     @action("Select voice in Personalization")
-    def select_voice(self, voice_name: str, timeout: int = 3000):
+    def select_voice(self, voice_name: str, timeout: int = 5000):
         """Select a voice from the Voice dropdown in Personalization section.
+
+        Uses Locator.click() directly (no scroll_into_view_if_needed) to avoid
+        stale ElementHandle errors when React re-renders the voice list after
+        the TTS voices API response arrives.
+
+        Uses get_by_role("option", name=…) for exact accessible-name matching,
+        which avoids the strict-mode violation that occurs with has-text() when
+        MUI injects zero-width-space (\u200b) nodes inside every option.
 
         Args:
             voice_name: Name of the voice to select (e.g., 'Alloy').
             timeout: Maximum wait time in milliseconds.
         """
-        logger.info("Selecting voice: %s", voice_name)
+        # Guard: skip restore if voice_name is empty or only zero-width space
+        effective_name = voice_name.replace('\u200b', '').strip() if voice_name else ''
+        if not effective_name:
+            logger.warning("select_voice: empty/zero-width voice_name '%r', skipping", voice_name)
+            return
+
+        logger.info("Selecting voice: %s", effective_name)
         voice_dropdown = self.page.locator('#simple-select-Voice')
-        voice_dropdown.scroll_into_view_if_needed()
-        voice_dropdown.click()
+        # click() auto-scrolls and retries on stale elements; do NOT call
+        # scroll_into_view_if_needed() first because that resolves to an
+        # ElementHandle that can become detached when React re-renders.
+        voice_dropdown.click(timeout=timeout)
 
         self.page.locator('[role="listbox"]').wait_for(state="visible", timeout=timeout)
-        option = self.page.locator(f'[role="option"]:has-text("{voice_name}")')
+        # Use get_by_role with exact accessible name to avoid strict-mode
+        # violations from has-text() matching zero-width-space in all options.
+        option = self.page.get_by_role("option", name=effective_name, exact=True)
         option.click()
 
         self.page.wait_for_timeout(500)
         self.wait_for_autosave()
-        logger.info("Voice selected: %s", voice_name)
+        logger.info("Voice selected: %s", effective_name)
 
     def get_available_voices(self) -> list[str]:
         """Get list of available voice options.
 
         Opens the dropdown, collects voice names, then closes it.
+        Uses Locator.click() directly to avoid stale ElementHandle errors
+        caused by React re-renders.
+
+        Filters out empty strings and MUI zero-width-space (\u200b) placeholders
+        that appear in the text_content() of every option element.
 
         Returns:
-            List of voice names.
+            List of voice names (non-empty display labels).
         """
         voice_dropdown = self.page.locator('#simple-select-Voice')
-        voice_dropdown.scroll_into_view_if_needed()
-        voice_dropdown.click()
+        # click() auto-scrolls and retries on stale elements
+        voice_dropdown.click(timeout=5000)
 
-        self.page.locator('[role="listbox"]').wait_for(state="visible", timeout=3000)
+        self.page.locator('[role="listbox"]').wait_for(state="visible", timeout=5000)
         options = self.page.locator('[role="option"]')
         voices = []
         for i in range(options.count()):
-            text = options.nth(i).text_content()
+            raw = options.nth(i).text_content() or ""
+            text = raw.replace('\u200b', '').strip()
             if text:
-                voices.append(text.strip())
+                voices.append(text)
 
         self.page.keyboard.press("Escape")
         self.page.wait_for_timeout(300)
@@ -441,7 +498,7 @@ class UserProfileSettingsPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Clicking Preview Voice button")
-        preview_btn = self.page.locator('button:has-text("Preview Voice")')
+        preview_btn = self.page.get_by_test_id("voice-preview-button")
         preview_btn.wait_for(state="visible", timeout=timeout)
         preview_btn.click()
         self.page.wait_for_timeout(500)
@@ -453,7 +510,7 @@ class UserProfileSettingsPage(BasePage):
         Returns:
             True if button is visible, False otherwise.
         """
-        preview_btn = self.page.locator('button:has-text("Preview Voice")')
+        preview_btn = self.page.get_by_test_id("voice-preview-button")
         return preview_btn.count() > 0 and preview_btn.first.is_visible()
 
     def get_voice_personalization_controls(self) -> dict:
