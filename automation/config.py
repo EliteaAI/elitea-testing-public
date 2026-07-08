@@ -163,8 +163,9 @@ class Settings(BaseSettings):
 
     # ------------------------------------------------------------------
     # Default LLM settings for API-created agents / pipelines
+    # Using gpt-5.2 as cheap default model for cost efficiency in tests
     # ------------------------------------------------------------------
-    default_model_name: str = ""
+    default_model_name: str = "gpt-5.2"
     default_model_project_id: int = 0
 
     # ------------------------------------------------------------------
