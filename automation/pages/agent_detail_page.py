@@ -32,18 +32,38 @@ class AgentDetailPage(AgentFormPage):
     Adds detail-specific operations like toolkits, chat, and actions menu.
     """
 
-    # Tab locators
-    configuration_tab = LocatorDescriptor(
-        testid="agent-config-tab",
-        fallback=lambda page: page.get_by_role("tab", name="Configuration"),
-        description="Configuration tab"
-    )
+    # ===================================================================
+    # LOCATORS - All element locators defined here for easy maintenance
+    # ===================================================================
 
-    history_tab = LocatorDescriptor(
-        testid="agent-history-tab",
-        fallback=lambda page: page.get_by_role("tab", name="History"),
-        description="History tab"
-    )
+    # --- Information section ---
+    information_section = LocatorDescriptor(testid="agent-information-section")
+    copy_id_button = LocatorDescriptor(testid="copy-id")
+    copy_version_id_button = LocatorDescriptor(testid="copy-version-id")
+
+    # --- Toolkits section ---
+    add_toolkit_button = LocatorDescriptor(testid="agent-add-toolkit-button")
+    toolkit_card = LocatorDescriptor(testid="agent-toolkit-card")
+    toolkit_delete_button = LocatorDescriptor(testid="agent-toolkit-delete-button")
+    toolkit_reload_button = LocatorDescriptor(testid="credential-reload-button")
+    toolkit_open_button = LocatorDescriptor(testid="credential-open-in-new-tab-button")
+    toolkit_auth_warning = LocatorDescriptor(testid="credential-warning-banner")
+
+    # --- Embedded chat ---
+    chat_message_list = LocatorDescriptor(testid="chat-message-list")
+    chat_message_item = LocatorDescriptor(testid="chat-message-item")
+    chat_input = LocatorDescriptor(testid="chat-input")
+    chat_send_button = LocatorDescriptor(testid="chat-send-button")
+    chat_delete_button = LocatorDescriptor(testid="chat-delete-button")
+    chat_answer_content = LocatorDescriptor(testid="chat-answer-content")
+
+    # --- Actions menu ---
+    actions_menu_button = LocatorDescriptor(testid="agent-actions-menu-button")
+    actions_menu = LocatorDescriptor(testid="agent-actions-menu")
+    delete_agent_menuitem = LocatorDescriptor(testid="delete-agent-menuitem")
+
+    # --- Navigation ---
+    back_button = LocatorDescriptor(testid="back-button")
 
     def __init__(self, page: Page):
         super().__init__(page)
