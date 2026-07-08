@@ -189,8 +189,7 @@ def guardrails_test_agent(
     The toolkit is attached via UI (AgentDetailPage.add_toolkit) because
     the API doesn't support attaching toolkits directly during creation.
 
-    Uses cheap model from settings (gpt-5.2) instead of default Claude Sonnet 4.5
-    for cost efficiency.
+    Uses default model from config (gpt-5.2) for cost efficiency.
     """
     name = "guardrails_test_agent"
     description = "Agent for guardrails live-reload tests"
@@ -204,38 +203,9 @@ For example:
 - If asked about issues, use get_issue to fetch real issue data
 - Always execute tools rather than explaining how to use them manually"""
 
-    # Use cheap model for cost efficiency (hardcoded until config is refactored)
-    cheap_model_name = "gpt-5.2"
-    cheap_model_integration_uid = "open_ai_default"
-
-    payload = {
-        "name": name,
-        "description": description,
-        "type": "interface",
-        "versions": [
-            {
-                "name": "base",
-                "tags": [],
-                "instructions": instructions,
-                "variables": [],
-                "tools": [],
-                "llm_settings": {
-                    "max_tokens": -1,
-                    "temperature": 0.6,
-                    "reasoning_effort": "medium",
-                    "model_name": cheap_model_name,
-                    "integration_uid": cheap_model_integration_uid,
-                },
-                "conversation_starters": [],
-                "agent_type": "openai",
-                "welcome_message": "",
-                "meta": {"step_limit": 25},
-            }
-        ],
-    }
-    agent = module_agent_api.create_agent_full(payload)
+    agent = module_agent_api.create_agent(name, description, instructions)
     agent_id = agent["id"]
-    logger.info("Created agent %s for guardrails tests with %s model", agent_id, cheap_model_name)
+    logger.info("Created agent %s for guardrails tests", agent_id)
 
     # Attach toolkit via UI
     ctx = browser.new_context(storage_state=auth_state)
