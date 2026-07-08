@@ -105,7 +105,7 @@ class SkillDetailPage(SkillFormPage):
         """
         url = self.page.url
         # Extract the numeric ID from the URL path segment
-        # e.g. /app/skills/all/42 → "42"
+        # e.g. /skills/all/42 → "42"
         parts = url.rstrip("/").split("/")
         for part in reversed(parts):
             if part.isdigit():
@@ -181,7 +181,7 @@ class SkillDetailPage(SkillFormPage):
             self.page.wait_for_timeout(500)
 
         # Wait for the delete button to appear on the last response (stream complete).
-        delete_btn = self.page.get_by_test_id("chat-delete-button").last()
+        delete_btn = self.page.get_by_test_id("chat-delete-button").last
         try:
             delete_btn.wait_for(
                 state="visible",
@@ -190,8 +190,10 @@ class SkillDetailPage(SkillFormPage):
         except Exception:
             pass  # Fall through to content-stable check
 
-        # Wait for content to stabilize — read via chat-answer-content (last AI message).
-        last_response = self.page.get_by_test_id("chat-answer-content").last()
+        # Wait for content to stabilize — read via skill-test-last-response (last AI message).
+        # The last message in the skill test panel uses testid "skill-test-last-response";
+        # non-last messages use "chat-answer-content".
+        last_response = self.page.get_by_test_id("skill-test-last-response")
         last_content = ""
         stable_start = time.time()
 
@@ -221,7 +223,8 @@ class SkillDetailPage(SkillFormPage):
         Returns:
             Response text as string (stripped).
         """
-        return (self.page.get_by_test_id("chat-answer-content").last().text_content() or "").strip()
+        # The last message in the skill test panel uses testid "skill-test-last-response".
+        return (self.page.get_by_test_id("skill-test-last-response").text_content() or "").strip()
 
     # ------------------------------------------------------------------
     # Actions menu (overflow/three-dot menu)

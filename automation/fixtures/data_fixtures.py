@@ -42,7 +42,7 @@ def conversation_id(conversation_api: ConversationAPI, request):
     the test function name. This ensures complete isolation between tests.
 
     Yields the conversation ID as a string so tests can navigate to
-    ``/app/chat/{conversation_id}`` or use it with the API.
+    ``/chat/{conversation_id}`` or use it with the API.
 
     Args:
         conversation_api: ConversationAPI client (from api_fixtures)
@@ -83,7 +83,7 @@ def agent_id(agent_api: AgentAPI, request):
     - Default instructions
 
     Yields the agent ID as an integer so tests can navigate to
-    ``/app/agents/all/{agent_id}`` or use it with the API.
+    ``/agents/all/{agent_id}`` or use it with the API.
 
     Args:
         agent_api: AgentAPI client (from api_fixtures)
@@ -122,7 +122,7 @@ def pipeline_id(pipeline_api: PipelineAPI, request):
     test function name. The pipeline starts empty (no nodes or connections).
 
     Yields the numeric pipeline ID so tests can navigate to
-    ``/app/pipelines/all/{pipeline_id}`` or use it with the API.
+    ``/pipelines/all/{pipeline_id}`` or use it with the API.
 
     Args:
         pipeline_api: PipelineAPI client (from api_fixtures)

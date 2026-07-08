@@ -140,7 +140,7 @@ class PipelineDetailPage(PipelineFormPage):
     def wait_for_detail_page_load(self, timeout: int = 15000):
         """Wait for the pipeline detail/edit page to fully load.
 
-        Waits for URL to contain /app/pipelines/all/ (not /create), then
+        Waits for URL to contain /pipelines/all/ (not /create), then
         waits for the Name input to have a non-empty value.
 
         Args:

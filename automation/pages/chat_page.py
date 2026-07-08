@@ -69,7 +69,7 @@ class ChatPage(BasePage):
     )
 
     search_conversations_input = LocatorDescriptor(
-        testid="search-conversations-input",
+        testid="conversation-search-input",
         fallback=lambda page: page.locator('input[placeholder="Search conversations..."]'),
         description="Search conversations input field in sidebar"
     )
@@ -246,7 +246,10 @@ class ChatPage(BasePage):
                     f"{settings.elitea_url}{settings.app_prefix}/chat/{conversation_id}",
                     wait_until="domcontentloaded",
                 )
-                self.page.wait_for_load_state("networkidle", timeout=30000)
+                try:
+                    self.page.wait_for_load_state("networkidle", timeout=30000)
+                except Exception:
+                    logger.debug("navigate_to_chat: networkidle not reached after SPA redirect — continuing")
 
         self.wait_for_page_load()
         logger.info(f"Navigated to chat, page loaded (actual URL: {self.page.url})")
@@ -259,8 +262,13 @@ class ChatPage(BasePage):
         """
         import time as _time
 
-        # Wait for network idle first
-        self.wait_for_network(timeout=timeout)
+        # Wait for network idle — best-effort: TTS WebSocket connections from prior
+        # tests can keep the network active indefinitely, preventing networkidle.
+        # The element-level waits below are the real readiness signals.
+        try:
+            self.wait_for_network(timeout=timeout)
+        except Exception:
+            logger.debug("wait_for_page_load: networkidle not reached — continuing")
 
         # Primary check: message input is visible AND editable (page is truly usable).
         # Waiting for "visible" alone is not sufficient — the textarea becomes visible
@@ -562,7 +570,7 @@ class ChatPage(BasePage):
         """Wait until the message input is visible and interactable.
 
         Useful after sending a message when the SPA may navigate to a new
-        URL (``/app/chat/{id}?name=...``) and re-render the page.
+        URL (``/chat/{id}?name=...``) and re-render the page.
         """
         self.page.wait_for_load_state("domcontentloaded", timeout=timeout)
         self.message_input.wait_for(state="visible", timeout=timeout)
@@ -969,21 +977,28 @@ class ChatPage(BasePage):
     def click_create_conversation(self, timeout: int = 10000):
         """Click the "+ Conversation" button in the sidebar.
 
-        Uses data-tour attribute locator for reliability across UI versions.
-        The button shows "+ Conversation" with a dropdown chevron.
+        Uses data-testid attribute locator for stability across label changes.
+        The button label varies by current route (e.g. "Chat" on /chat, "Create"
+        on settings pages) so text-based locators are unreliable.
 
-        LOCATOR: [data-tour="sidebar-create-button"] button:has-text("Conversation")
+        LOCATOR: [data-testid="sidebar-create-button"]
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Clicking +Conversation button")
-        btn = self.page.locator('[data-tour="sidebar-create-button"] button:has-text("Conversation")').first
+        btn = self.page.get_by_test_id("sidebar-create-button").first
         btn.wait_for(state="visible", timeout=timeout)
         btn.click(force=True)
         # Wait for the "Creating conversation..." state to finish
         self.page.wait_for_timeout(1000)
-        self.wait_for_network(timeout=timeout)
+        # networkidle is best-effort: /chat has a persistent WebSocket that
+        # keeps the network active indefinitely, preventing networkidle from
+        # being reached.  The message_input wait below is the real signal.
+        try:
+            self.wait_for_network(timeout=timeout)
+        except Exception:
+            logger.debug("click_create_conversation: networkidle not reached — continuing")
         # The message input should become available in the new conversation
         self.message_input.wait_for(state="visible", timeout=timeout)
         logger.info("New conversation created, URL: %s", self.page.url)
@@ -992,19 +1007,25 @@ class ChatPage(BasePage):
     def click_create_new_conversation(self, timeout: int = 10000):
         """Click the "+Conversation" button in the sidebar.
 
-        Uses data-tour attribute locator instead of aria-label.
+        Uses data-testid attribute locator for stability across label changes.
 
-        LOCATOR: [data-tour="sidebar-create-button"] button:has-text("Conversation")
+        LOCATOR: [data-testid="sidebar-create-button"]
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Clicking +Conversation button")
-        btn = self.page.locator('[data-tour="sidebar-create-button"] button:has-text("Conversation")').first
+        btn = self.page.get_by_test_id("sidebar-create-button").first
         btn.wait_for(state="visible", timeout=timeout)
         btn.click(force=True)
         self.page.wait_for_timeout(1000)
-        self.wait_for_network(timeout=timeout)
+        # networkidle is best-effort: /chat has a persistent WebSocket that
+        # keeps the network active indefinitely, preventing networkidle from
+        # being reached.  The message_input wait below is the real signal.
+        try:
+            self.wait_for_network(timeout=timeout)
+        except Exception:
+            logger.debug("click_create_new_conversation: networkidle not reached — continuing")
         self.message_input.wait_for(state="visible", timeout=timeout)
         logger.info("New conversation created, URL: %s", self.page.url)
 
@@ -1082,7 +1103,7 @@ class ChatPage(BasePage):
         
         Attempts multiple strategies:
         1. Look for data-conversation-id or similar attributes
-        2. Look for href containing /app/chat/{id}
+        2. Look for href containing /chat/{id}
         3. Fallback: extract ID from all visible conversations and match
         
         Args:
@@ -1182,7 +1203,7 @@ class ChatPage(BasePage):
         """
         logger.info("Opening search conversations via button")
         self.dismiss_banner_if_present()
-        search_btn = self.page.locator('button[aria-label="Search conversations"]')
+        search_btn = self.page.get_by_test_id("conversation-search-button")
         search_btn.wait_for(state="visible", timeout=timeout)
         search_btn.click()
 
