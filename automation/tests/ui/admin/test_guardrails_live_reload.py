@@ -204,7 +204,10 @@ For example:
 - If asked about issues, use get_issue to fetch real issue data
 - Always execute tools rather than explaining how to use them manually"""
 
-    # Use cheap model from settings for cost efficiency
+    # Use cheap model for cost efficiency (hardcoded until config is refactored)
+    cheap_model_name = "gpt-5.2"
+    cheap_model_integration_uid = "open_ai_default"
+
     payload = {
         "name": name,
         "description": description,
@@ -220,8 +223,8 @@ For example:
                     "max_tokens": -1,
                     "temperature": 0.6,
                     "reasoning_effort": "medium",
-                    "model_name": settings.cheap_model_name,
-                    "integration_uid": settings.cheap_model_integration_uid,
+                    "model_name": cheap_model_name,
+                    "integration_uid": cheap_model_integration_uid,
                 },
                 "conversation_starters": [],
                 "agent_type": "openai",
@@ -232,7 +235,7 @@ For example:
     }
     agent = module_agent_api.create_agent_full(payload)
     agent_id = agent["id"]
-    logger.info("Created agent %s for guardrails tests with %s model", agent_id, settings.cheap_model_name)
+    logger.info("Created agent %s for guardrails tests with %s model", agent_id, cheap_model_name)
 
     # Attach toolkit via UI
     ctx = browser.new_context(storage_state=auth_state)

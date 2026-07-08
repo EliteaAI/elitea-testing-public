@@ -168,13 +168,6 @@ class Settings(BaseSettings):
     default_model_project_id: int = 0
 
     # ------------------------------------------------------------------
-    # Cheap model for tests (to reduce API costs)
-    # Values come from .env.test
-    # ------------------------------------------------------------------
-    cheap_model_name: str = ""
-    cheap_model_integration_uid: str = ""
-
-    # ------------------------------------------------------------------
     # Source priority: .env.test beats system env vars
     # ------------------------------------------------------------------
     @classmethod
