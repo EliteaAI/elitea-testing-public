@@ -1,4 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to create agent — Timeout 30000ms exceeded.
-=========================== logs ===========================
-"load" event fired
-============================================================
