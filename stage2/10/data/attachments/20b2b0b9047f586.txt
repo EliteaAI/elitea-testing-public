@@ -1,3 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to agents list — Locator.wait_for: Timeout 15000ms exceeded.
-Call log:
-  - waiting for locator("text=\"Agents\"").first to be visible
