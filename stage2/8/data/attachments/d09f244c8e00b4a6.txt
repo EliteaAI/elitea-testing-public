@@ -1,4 +1,0 @@
-WARNING  tests.ui.chat.test_context_management:test_context_management.py:173 Failed to restore profile max_context_tokens: Timeout 30000ms exceeded.
-=========================== logs ===========================
-"load" event fired
-============================================================

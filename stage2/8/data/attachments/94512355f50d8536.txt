@@ -1,5 +1,0 @@
-WARNING  elitea.pages.chat:chat_page.py:253 SPA redirected to https://stage2.elitea.ai/app/onboarding instead of /app/chat/190 — retrying
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to chat — Timeout 30000ms exceeded.
-=========================== logs ===========================
-"load" event fired
-============================================================
