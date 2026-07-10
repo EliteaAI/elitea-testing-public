@@ -58,3 +58,5 @@ elitea_testing.egg-info/
 automation/=*
 **/.env*
 !**/.env*.example
+
+factory/*
