@@ -65,8 +65,12 @@ and torn down in the same test's teardown.
      Playwright `page.on('filechooser')`).
 7. Upload the exported `.md` file.
    - **Verify**: an "Import parameters" dialog opens showing PROJECT,
-     the entity name, `Type: Skill | Version: base`, Description, and
-     Instructions preview matching the source skill.
+     the entity name, and `Type: Skill | Version: base`. The dialog's
+     entity card also has a collapsed "Show details" section
+     (`IWModalEntityCardWrapper`/`SkillImportModal.jsx`, `defaultExpanded=
+     false`) that, once expanded, renders Description and Instructions
+     preview fields matching the source skill — expand it and verify
+     both.
 8. Click the dialog's **"Import"** button.
    - **Verify**: navigation to `/skills/all/{new-id}`; a success toast
      "Skill imported successfully." appears; `new-id` ≠ source skill ID.
@@ -108,6 +112,7 @@ and torn down in the same test's teardown.
 | 2 Export the base version | file downloads, `.md` extension | step 4 | step 4: download event + filename extension | asserted |
 | 3 Open exported file, verify contents | name, description, version, tags, instructions present | step 5 | step 5: frontmatter + body parsed | asserted *(version sub-clause: clarification, see above)* |
 | 4 Skills → Import → import the file | import completes, new Skill entry appears | steps 6–8 | step 8: success toast + navigation to new id | asserted |
+| 7 Import-parameters dialog previews Description and Instructions matching the source skill | dialog's expandable details show Description/Instructions text equal to source skill | step 7 | step 7: `SkillsListPage.expand_import_preview_details()` + `dialog.get_by_text(skill_description/skill_instructions)` after expanding "Show details" | asserted *(implementer Phase 2 fix — confirmed live against `SkillImportModal.jsx`/`IWModalEntityTextField.jsx`; previously the AFS listed this in step 7's Verify text but the shipped test only asserted `Type: Skill \| Version: base` and the name — corrected in the same PR that added the assertions)* |
 | 5 Verify imported Skill has new unique ID | new ID ≠ source ID | step 9 | step 9: Skill ID compared to source | asserted |
 | 6 Verify base version + instructions present and match | `base` version present, instructions match | step 9 | step 9: VERSION selector + instructions textbox content | asserted |
 | 7 Save the imported Skill | saves without errors | step 10 | step 10: no validation text, Save/Discard revert to disabled, no console errors | asserted |

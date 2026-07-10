@@ -118,13 +118,20 @@ class Dialog:
         """Type text into a dialog's confirmation input.
 
         Used for type-to-confirm dialogs (e.g. "Delete agent" requires
-        typing the agent name).
+        typing the agent name). Prefers the ``delete-confirm-name-input``
+        testid (present on ``DeleteEntityModal``'s TextField) and falls
+        back to a bare ``input`` locator for any dialog that doesn't carry
+        that testid yet.
 
         Args:
             dialog: Locator of the dialog element.
             confirmation_text: Text to type into the input.
         """
-        confirm_input = dialog.locator("input")
+        testid_wrapper = dialog.get_by_test_id("delete-confirm-name-input")
+        if testid_wrapper.count() > 0:
+            confirm_input = testid_wrapper.locator("input")
+        else:
+            confirm_input = dialog.locator("input")
         confirm_input.click()
         confirm_input.type(confirmation_text)
 

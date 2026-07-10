@@ -145,6 +145,27 @@ class SkillsListPage(BasePage):
         dialog.get_by_text("Import parameters").wait_for(state="visible", timeout=timeout)
         logger.info("Import parameters dialog visible")
 
+    @action("Expand import preview details")
+    def expand_import_preview_details(self, timeout: int = 10000):
+        """Expand the "Show details" section of the Import parameters dialog.
+
+        The dialog's entity card (``IWModalEntityCardWrapper``) renders its
+        Description/Instructions preview fields collapsed by default
+        (``defaultExpanded=false``) — the container is present in the DOM
+        but has zero height until "Show details" is clicked, so preview
+        text is not reliably readable before this call.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the button.
+        """
+        dialog = self.page.get_by_role("dialog")
+        show_details_button = dialog.get_by_role("button", name="Show details")
+        show_details_button.wait_for(state="visible", timeout=timeout)
+        show_details_button.click()
+        # Grid-template-rows CSS transition (0.4s) — wait for the
+        # Instructions label to actually be visible rather than a fixed sleep.
+        dialog.get_by_text("Instructions:").wait_for(state="visible", timeout=timeout)
+
     @action("Confirm import in dialog")
     def confirm_import(self, timeout: int = 15000):
         """Click the "Import parameters" dialog's Import (confirm) button.

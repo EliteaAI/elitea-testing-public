@@ -192,6 +192,16 @@ class TestSkillExportImport:
                 "Import dialog should preview the source skill's name"
             )
 
+            # Description/Instructions preview fields render collapsed by
+            # default ("Show details" toggle) — expand before reading them.
+            list_page.expand_import_preview_details(timeout=IMPORT_TIMEOUT)
+            assert dialog.get_by_text(skill_description, exact=False).is_visible(), (
+                "Import dialog should preview the source skill's description"
+            )
+            assert dialog.get_by_text(skill_instructions, exact=False).is_visible(), (
+                "Import dialog should preview the source skill's instructions"
+            )
+
         # ------------------------------------------------------------------
         # Step 8 — Confirm import; verify navigation + success toast + new ID
         # ------------------------------------------------------------------
