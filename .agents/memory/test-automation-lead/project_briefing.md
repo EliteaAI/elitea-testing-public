@@ -32,6 +32,28 @@ type: project
   the system's own API / the adapter verbs directly — a missing optional skill is
   never a blocker, and no single TMS (Xray included) is assumed to be present.**
 
+## Elitea Project Specifics (seeded by scout 2026-07-10)
+
+- **Base branch is `automation/base`** — never `main`. There is NO CI on it: the
+  implementer's green local run against `http://localhost:5173` + reviewer approval
+  IS your merge gate. You merge (squash) small PRs autonomously.
+- **Intake**: cases from `../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/`
+  (tag `automated:UI:regression`, status `draft`). Rules in
+  `.agents/test-automation.yaml` § intake: dedup by `[Automate][ELITEA-<id>]` title
+  search (all states), ≤10 new cards per run, already-automated exclusion (all three:
+  `execution_type: automated` + `status: ready` + non-empty `automation_test_id`),
+  contradictory metadata → report, never guess.
+- **Back-write post-merge**: edit the case file in `onetest-ai-tm-Elitea` —
+  `execution_type: automated`, `status: ready`, `automation_test_id: <dotted pytest path>`.
+- **Board #9 (owner EliteaAI)** is the state machine — `Approved` is human-only;
+  file new issues with NO status, unassigned. **Known gap:** `gh` token lacks
+  `project` scope — card moves fail until a human runs `gh auth refresh -s project`.
+- **Batch operations only on explicit user request** (with clarifications): EliteaUI
+  upstream PR, DEV restart, GHA runs, `automation/base → main` gate. Testids merge
+  upstream + deploy BEFORE tests cross to `main` — paired and ordered.
+- **onetest MCP write verbs** (`create_run`, `record_result`, `create_defect`, …)
+  create REAL GitHub issues — never fire casually.
+
 ## My Role Focus
 
 Run the pipeline and keep the user informed. Every routing turn must contain a

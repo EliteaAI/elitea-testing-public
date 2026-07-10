@@ -1,0 +1,133 @@
+---
+project: elitea-testing
+team: elitea-test-automation
+issue-tracker: https://github.com/EliteaAI/elitea-testing-public/issues
+default-branch: automation/base
+languages: [python]
+---
+
+# Elitea Test Automation — project card
+
+Playwright/pytest suite automating onetest TMS cases against the Elitea platform,
+run locally against the EliteaUI fork. Currently UI-focused; API tests exist and
+other surfaces (mobile, perf) may be added later — nothing in this seed assumes
+UI-only.
+
+## Tech Stack
+- Playwright 1.61.0 + pytest 9.1.1 (Python 3.13, repo-local `.venv`)
+- Page objects with testid-only `LocatorDescriptor`
+- allure-pytest reporting (mandatory install extra)
+
+## Build & Test
+- Install: `.venv/bin/pip install -e ".[reporting]"`
+- Test (from `automation/`): `../.venv/bin/pytest tests/ui/smoke/test_ui_smoke.py -v`
+- Lint: `../.venv/bin/ruff check .`
+
+## Environment & access
+
+- **Primary base URL:** `http://localhost:5173` — EliteaUI fork on `automation/testids`,
+  pointing at the DEV backend. `ELITEA_URL` in `.env.test` controls it; `APP_PREFIX`
+  empty on localhost, `/app` on deployed envs.
+- **API base:** `ELITEA_API_BASE` (DEV backend).
+- Deployed envs `dev.elitea.ai` / `next.elitea.ai` exist but are **CI's job** — the
+  local pipeline never targets them for verification.
+
+### Repo access map
+
+| Repo | Access | Role |
+|---|---|---|
+| `EliteaAI/elitea-testing-public` | admin | this repo — tests, tracker, board |
+| `EliteaAI/onetest-ai-tm-Elitea` | admin | TMS — cases, runs, defects |
+| `EliteaAI/EliteaUI` | **read-only** | upstream UI — the reason the fork exists |
+| `bermudas/EliteaUI` (fork) | write | testid work on `automation/testids` |
+
+### Roles & sample users
+
+Env-var names only — **never secrets**. All resolve from `automation/.env.test`
+(symlink to the master file in the parent folder).
+
+| Role key | Purpose | Credential env vars |
+|----------|---------|--------------------|
+| `${TEST_USER}` | Standard authenticated user (Keycloak) | `TEST_USER_EMAIL`, `TEST_USER_PASSWORD` |
+| API token | Direct API calls | `ELITEA_API_TOKEN` |
+| localhost dev auth | `auth_state` skips login on localhost | `VITE_DEV_TOKEN` (in `EliteaUI/.env`) |
+
+## Project systems
+
+### Issue tracker
+- **System**: github-issues
+- **Project / board key**: `EliteaAI/elitea-testing-public` + GitHub Projects board **#9** (owner `EliteaAI`)
+- **URL**: https://github.com/EliteaAI/elitea-testing-public/issues · https://github.com/orgs/EliteaAI/projects/9
+- **Board status machine**: `Todo` → `Approved` (HUMAN-ONLY drag) → `In Progress` → `Blocked` → `Done`
+  (Done = PR merged, nothing else). Agents never set `Approved`. New issues auto-add
+  to the entry column — file them unassigned, set no status.
+- **Load-bearing labels**: `question` (parked decision) and `bug` (product defect) mark
+  issues the factory must NEVER work as tasks; body must name origin ("Found while working #N").
+- **Known gap**: `gh` token lacks `project` scope — board card moves fail until
+  `gh auth refresh -s project` (human action).
+
+### Test Management System (TMS)
+- **System**: onetest (custom — markdown cases + GitHub-issue executions, MCP server `onetest-tms`)
+- **Cases repo**: `EliteaAI/onetest-ai-tm-Elitea` (clone must sit as sibling `../onetest-ai-tm-Elitea`,
+  aka `$OT_REPO_ROOT` — several scripts read `.onetest/` relative to cwd)
+- **Configured in**: `.agents/test-automation.yaml` (adapter + transport + intake/back-write policy)
+
+### Task source (where work to automate comes from)
+- **Intake**: tms-folder — cases as `.md` files in
+  `onetest-ai-tm-Elitea/tests/automated-full-regression-ui/` (other folders may come later)
+- **Selector**: tag `automated:UI:regression`, status `draft`
+- **Intake rules**: see `.agents/test-automation.yaml` § intake (dedup key
+  `[Automate][ELITEA-<id>]` in title, ≤10 new cards per run, already-automated
+  exclusion, contradictory-metadata → report not guess)
+
+### Knowledge base
+- **System**: readme-only + `docs/` (mkdocs) + `onetest-ai-tm-Elitea/docs/` for TMS docs
+- **Elitea domain knowledge — installed skills** (from `bermudas/EliteaSkills`):
+  `elitea-platform` (REST API reference, auth, endpoints — **load first** for any
+  Elitea API question), `elitea-pipeline` (pipeline YAML/node types),
+  `elitea-toolkit` (toolkit creation/linking), `elitea-testing` (predict endpoint,
+  agent/pipeline run & debug). Use them to find exact endpoint paths, payload
+  shapes, and platform semantics instead of reverse-engineering.
+
+### Bug filing (defects discovered during analysis/runs)
+- **Style**: github-issue, labelled **`bug`**, in `EliteaAI/elitea-testing-public`
+- **Bundling policy**: strict-per-bug
+- **Link originating case**: yes — body names the TMS case ID and "Found while working #<task>"
+- **Never mask**: no `test.fail()`/skip/weakened asserts; isolated defect →
+  `expect.soft()` with ticket linked; blocking defect → natural fail + `blocked`
+
+### Test case storage
+- **Source of truth**: tms (onetest markdown files in `onetest-ai-tm-Elitea`)
+- **AFS location**: `test-specs/<feature>/` in this repo (analyst output, git-tracked)
+
+### Status reporting
+- **TMS execution back-write**: yes — post-merge, orchestrator edits the case file in
+  `onetest-ai-tm-Elitea`: `execution_type: automated`, `status: ready`,
+  `automation_test_id: <dotted test path>` (see `.agents/test-automation.yaml`)
+- **Comment PR link on the originating issue**: yes — work-log comments
+  (🔧 started / 📝 update / 🚫 blocked / ✅ done) + PR link on the tracking card
+- **Board tracking**: assign self, move to `In Progress` when starting; `Blocked` +
+  "Waiting on #N" when parked; `Done` only after merge
+- **Gating**: no automated result reporters wired into pytest; back-writes are
+  explicit orchestrator actions, never per-local-run
+
+### Automation PR policy
+- **Base branch for automation PRs**: `automation/base` (long-lived, cut from `main`).
+  **Never** open a PR against `main`. Feature branches cut from `automation/base`,
+  one PR per test / feature area, small.
+- **Merge policy**: auto-merge into `automation/base` — the orchestrator merges once the
+  test ran green locally + review passed. There is NO CI on `automation/base`; the
+  green local run IS the gate.
+- **Batch operations are human-triggered only** (never autonomous): EliteaUI testids
+  PR to upstream, DEV restart, GHA runs, `automation/base → main` gate PR. See
+  `.agents/workflow.md` § Batch operations.
+- **Squash / rebase / merge**: squash (default) for small PRs into `automation/base`.
+
+### Additional notes
+- Parent folder of this clone = `$LOCAL_ELITEA_FOLDER` (plain directory, NOT a git
+  repo — never `git init` it; the three-sibling layout is load-bearing).
+- No `env.sh` — paths are repo-relative (`../EliteaUI`, `../onetest-ai-tm-Elitea`);
+  `GITHUB_TOKEN` comes from the master `.env` when needed by `.mcp.json`.
+- Repos sit on OneDrive — git/npm operations are slow, background them, don't assume hangs.
+- Never shallow-clone any of the three repos (`test -f .git/shallow` to check;
+  `git fetch --unshallow origin` to fix) — shallow clones break `git rebase upstream/main`.

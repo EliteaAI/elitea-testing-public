@@ -1,4 +1,77 @@
-# AGENTS
+# AGENTS — elitea-testing
+
+Playwright/pytest test-automation suite for the Elitea AI platform. This team turns
+onetest TMS cases into merged, honest automated tests on the **`automation/base`**
+branch, run against a **local EliteaUI fork** (`automation/testids` → DEV backend).
+
+## Tech Stack
+
+- **Language:** Python 3.13 (repo-local `.venv`; requires ≥3.11 — system python3 may be older)
+- **Test framework:** Playwright 1.61.0 + pytest 9.1.1 + pytest-playwright, pytest-xdist
+- **Config:** pydantic-settings via `automation/config.py` + `automation/.env.test`
+- **Reporting:** allure-pytest (mandatory — `--alluredir` in `pytest.ini` addopts), pytest-html/json
+- **Lint/type:** ruff (line 120, py311 target), mypy
+- **System under test:** Elitea (React UI + REST API, Keycloak auth) — locally via
+  EliteaUI fork on `http://localhost:5173`
+
+## Repository Structure
+
+```
+automation/
+├── config.py            ← settings loader (.env.test beats shell env)
+├── conftest.py          ← fixtures, auth_state, screenshots, report paths
+├── pytest.ini           ← markers (p0–p3, smoke, regression, per-feature), allure addopts
+├── api/                 ← REST API clients (Bearer + cookie-based)
+├── pages/               ← page objects — testid-only LocatorDescriptor
+├── components/          ← UI component helpers
+├── fixtures/  utils/    ← shared fixtures & helpers
+└── tests/
+    ├── ui/<feature>/    ← agents, skills, pipelines, chat, toolkits, admin, voice, …
+    ├── api/             ← API tests
+    └── unit/            ← framework unit tests
+.claude/rules/           ← auto-applied coding rules (page-objects, ui-tests, api-*, mui)
+.claude/skills/          ← 33 skills incl. start-ui-localhost, add-data-testid,
+                           page-object-generator, test-automation pipeline skills,
+                           and Elitea domain knowledge: elitea-platform (REST API
+                           reference — load first), elitea-pipeline, elitea-toolkit,
+                           elitea-testing (agent/pipeline run & debug)
+.agents/                 ← seeded team config (profile, workflow, testing, TMS yaml, memory)
+docs/                    ← mkdocs site (requirements.txt is mkdocs-ONLY, not test deps)
+```
+
+## Build & Run
+
+```bash
+.venv/bin/pip install -e ".[reporting]"                 # install (reporting extra required)
+cd automation
+../.venv/bin/pytest tests/ui/smoke/test_ui_smoke.py -v  # one file
+HEADLESS=true ../.venv/bin/pytest -m smoke -v           # smoke suite (<5 min)
+../.venv/bin/ruff check .                               # lint
+```
+
+Local UI: `cd ../EliteaUI && npm run dev` → `http://localhost:5173`
+(or the `start-ui-localhost` skill).
+
+## Environment
+
+`automation/.env.test` is a symlink to the master secrets file in the parent folder.
+Key names (values never documented): `ELITEA_URL`, `APP_PREFIX`, `ELITEA_API_BASE`,
+`ELITEA_PROJECT_ID`, `TEST_USER_EMAIL`/`TEST_USER_PASSWORD`, `ELITEA_API_TOKEN`.
+See `.agents/profile.md` § Roles & sample users.
+
+## Testing & Conventions
+
+Full detail in `.agents/testing.md` (framework, run commands, locator ladder, AFS
+conventions) and `.agents/conventions.md` (pointers to `.claude/rules/*`).
+Way of work — the two-branch dance, sync procedures, batch operations — in
+`.agents/workflow.md`. Three-repo topology in `.agents/architecture.md`.
+
+## CI/CD
+
+GitHub Actions workflows run the suite against deployed envs (`test-ui-dev.yml`,
+`test-ui-next.yml`, `test-ui-stage2.yml`, `test-api.yml`) — **that is not the local
+loop's job**. There is NO CI on `automation/base`: the engineer running tests green
+locally before PR is the only verification gate.
 
 <!-- BUNDLE:test-automation START -->
 # Test Automation Team — shared conventions
