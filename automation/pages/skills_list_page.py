@@ -12,6 +12,7 @@ from playwright.sync_api import Page
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
+from components.mui import Dialog
 from utils.actions import action
 
 
@@ -27,6 +28,11 @@ class SkillsListPage(BasePage):
     page_header = LocatorDescriptor(
         testid="skills-page-header",
         description="Skills page header"
+    )
+
+    import_button = LocatorDescriptor(
+        testid="skills-import-button",
+        description="Import skill button in the page toolbar"
     )
 
     def __init__(self, page: Page):
@@ -109,3 +115,67 @@ class SkillsListPage(BasePage):
         raise TimeoutError(
             f"Skill '{name}' still visible in list after {timeout}ms"
         )
+
+    # ------------------------------------------------------------------
+    # Import
+    # ------------------------------------------------------------------
+
+    @action("Import skill from file")
+    def import_skill(self, file_path: str, timeout: int = 10000):
+        """Import a skill from an exported ``.md`` file.
+
+        Clicks the toolbar Import button, handles the native file chooser,
+        and waits for the "Import parameters" dialog to render the parsed
+        skill preview.  Does NOT click the dialog's Import (confirm) button
+        — call :meth:`confirm_import` separately once the preview has been
+        verified.
+
+        Args:
+            file_path: Absolute path to the ``.md`` file to upload.
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Importing skill from file: %s", file_path)
+        with self.page.expect_file_chooser() as fc_info:
+            self.import_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(file_path)
+
+        # Wait for the "Import parameters" dialog to render the parsed preview.
+        dialog = Dialog.wait_for(self.page, timeout=timeout)
+        dialog.get_by_text("Import parameters").wait_for(state="visible", timeout=timeout)
+        logger.info("Import parameters dialog visible")
+
+    @action("Expand import preview details")
+    def expand_import_preview_details(self, timeout: int = 10000):
+        """Expand the "Show details" section of the Import parameters dialog.
+
+        The dialog's entity card (``IWModalEntityCardWrapper``) renders its
+        Description/Instructions preview fields collapsed by default
+        (``defaultExpanded=false``) — the container is present in the DOM
+        but has zero height until "Show details" is clicked, so preview
+        text is not reliably readable before this call.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the button.
+        """
+        dialog = self.page.get_by_role("dialog")
+        show_details_button = dialog.get_by_role("button", name="Show details")
+        show_details_button.wait_for(state="visible", timeout=timeout)
+        show_details_button.click()
+        # Grid-template-rows CSS transition (0.4s) — wait for the
+        # Instructions label to actually be visible rather than a fixed sleep.
+        dialog.get_by_text("Instructions:").wait_for(state="visible", timeout=timeout)
+
+    @action("Confirm import in dialog")
+    def confirm_import(self, timeout: int = 15000):
+        """Click the "Import parameters" dialog's Import (confirm) button.
+
+        Scoped to the dialog because the toolbar Import button and the
+        dialog's confirm button share the same accessible name ("Import").
+        """
+        logger.info("Confirming import")
+        dialog = self.page.get_by_role("dialog")
+        dialog.get_by_role("button", name="Import").click()
+        self.page.wait_for_url("**/skills/all/**", timeout=timeout)
+        self.wait_for_network(timeout=5000)
+        logger.info("Import confirmed — URL: %s", self.page.url)
