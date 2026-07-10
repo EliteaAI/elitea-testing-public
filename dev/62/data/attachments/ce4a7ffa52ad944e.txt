@@ -1,0 +1,4 @@
+WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
+ERROR    elitea.steps:actions.py:49 Step failed: Remove blocked toolkit — Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator(".MuiChip-deletable:has(.MuiChip-label:text-is(\"github\"))").first to be visible
