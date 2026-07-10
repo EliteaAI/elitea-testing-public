@@ -1,4 +1,0 @@
-WARNING  elitea.pages.chat:chat_page.py:298 Spinner did not disappear within timeout — continuing
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to chat — Locator.wait_for: Timeout 15000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("chat-message-input") to be visible
