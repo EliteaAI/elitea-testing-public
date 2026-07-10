@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# SessionStart hook for sdlc-skills.
+#
+# Injects shared, project-scoped context (the .agents/*.md files scout
+# produces, plus role overrides) that used to be @-imported per agent. On
+# runtimes without a per-agent start hook it also injects a roster reminder so
+# each role knows to pull its own memory via the `memory` skill.
+#
+# Fires on startup|clear|compact|resume, so the context is re-injected after a
+# /clear or a compaction — which a static @import cannot survive.
+#
+# Uses printf (not heredocs) to dodge the bash 5.3+ heredoc hang.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib.sh
+. "${SCRIPT_DIR}/lib.sh"
+
+# Project root: Claude Code sets CLAUDE_PROJECT_DIR; Copilot (CLI + VS Code) sets
+# COPILOT_PROJECT_DIR; fall back to PWD. Without COPILOT_PROJECT_DIR a real Copilot
+# CLI run (no Claude Code parent) would resolve .agents/ against the wrong dir and
+# inject nothing.
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-${COPILOT_PROJECT_DIR:-$PWD}}"
+AGENTS_DIR="${PROJECT_DIR}/.agents"
+
+# Did the shared-doc instruction files already exist? Capture this BEFORE we (re)write
+# them — it tells us whether THIS session loaded them into the system prompt at
+# startup. If not, the agent needs a read-list for the shared docs (build_capped_context).
+if instructions_present "$PROJECT_DIR"; then instr_present=1; else instr_present=""; fi
+
+# (Re)write the warm-cache instruction files: ALL shared docs → system prompt for the
+# NEXT session. Reaches the top-level agent in both runtimes + VS Code subagents (NOT
+# CLI subagents — they get the read-list instead). Side-effect only.
+refresh_shared_instructions "$PROJECT_DIR"
+
+# Read the hook payload (SessionStart delivers it on stdin); used to resolve the
+# Copilot CLI orchestrator. Bounded read — a plain `cat` can hang on runtimes that
+# leave the pipe open (see read_stdin_payload in lib.sh).
+payload="$(read_stdin_payload)"
+
+# The Copilot CLI launches the main agent via `--agent <name>` and records it as the
+# first `subagent.selected` event in its session-state log; resolve it so the CLI
+# orchestrator loads its own role memory. (VS Code has no session-state dir → empty
+# here; its orchestrator memory comes via the frontmatter SessionStart hook →
+# agent-start.)
+sid="$(json_string_field "$payload" sessionId)"
+[ -n "$sid" ] || sid="$(json_string_field "$payload" session_id)"
+role="$(resolve_cli_session_agent "$sid")"
+
+# Claude Code exports the `--agent <name>` launch role to hooks as
+# CLAUDE_CODE_AGENT (verified on 2.1.205). Resolve it so a top-level
+# `claude --agent <role>` orchestrator gets its role memory here — SubagentStart
+# → agent-start only ever fires for the workers it dispatches, never for the
+# session's own agent. Also re-fires on clear/compact/resume, so the
+# orchestrator's memory survives compaction. Guarded to plain Claude Code so
+# the var leaked into another host's shell (Kiro raw / Cursor / Codex launched
+# from a Claude Code terminal) can't misroute another session's role here.
+if [ -z "$role" ] && is_claude_code && ! is_codex; then
+  role="${CLAUDE_CODE_AGENT:-}"
+fi
+
+# Orchestrator additionalContext: its role memory, plus a shared-docs read-list only
+# if the instruction files weren't loaded this session (instr_present empty). The
+# orchestrator is a top-level agent, never a CLI sub-agent → cli_sub="". role may
+# be empty (no --agent launch / unresolved) → then just the read-list when needed.
+context="$(build_capped_context "$PROJECT_DIR" "$role" "$instr_present" "")"
+
+# Per-role memory: runtimes whose per-agent start hook can inject context
+# (Claude Code, Codex, Copilot CLI) load it per dispatch via agent-start, so
+# they do NOT need the reminder. Cursor (subagentStart is permission-only) and
+# Kiro (agentSpawn carries no agent name) get a roster pointing at the memory
+# skill instead.
+if ! has_subagent_hook; then
+  roster=""
+  if [ -d "${AGENTS_DIR}/memory" ]; then
+    for d in "${AGENTS_DIR}/memory"/*/; do
+      [ -d "$d" ] || continue
+      roster="${roster}$(basename "$d"), "
+    done
+  fi
+  roster="${roster%, }"
+  [ -n "$roster" ] || roster="ba, tech-lead, project-manager, python-dev, js-dev, ios-dev, qa-engineer, test-automation-engineer, test-automation-lead, personal-assistant, scout"
+  context="${context}"$'\n\n'"<role-memory-reminder>
+Each role in this project has persistent memory at .agents/memory/<role>/snapshot.md.
+When you act as one of these roles, invoke the \`memory\` skill to load your snapshot before starting work.
+Roles: ${roster}.
+</role-memory-reminder>"
+fi
+
+# Nothing to inject (unseeded project on Claude Code) — exit quietly.
+# is_blank, not ${context//…}: O(n²) substitution would hang the hook (see lib.sh).
+if is_blank "$context"; then
+  exit 0
+fi
+
+emit_session_context "$context"
+exit 0
