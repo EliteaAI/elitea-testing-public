@@ -1,0 +1,54 @@
+# TMS + pipeline configuration — seeded by scout 2026-07-10.
+# Read by test-automation-lead (intake, back-write) and the pipeline skills.
+
+tms:
+  # Custom adapter: onetest — markdown case files + GitHub-issue executions/defects.
+  # Not one of the built-in adapters (zephyr/testrail/xray/azure/markdown); the
+  # MCP server exposes the verbs directly.
+  adapter: onetest
+  transport: mcp
+  mcp_server: onetest-tms          # wired in .mcp.json: npx -y @onetest/tms
+  # The MCP package reads .onetest/ relative to cwd — the sibling clone provides it:
+  ot_repo_root: ../onetest-ai-tm-Elitea
+  cases_repo: EliteaAI/onetest-ai-tm-Elitea
+  cases_dir: tests/automated-full-regression-ui   # more folders may be added later
+  # Verbs (read): search_test_cases, get_test_case, automation_coverage, build_index
+  # Verbs (write — create REAL GitHub issues, never fire casually):
+  #   create_run, record_result, complete_run, create_defect, ingest_results
+  # Case files are also directly readable:
+  #   locally under ot_repo_root, or via
+  #   gh api repos/EliteaAI/onetest-ai-tm-Elitea/contents/<path>  (private repo)
+
+intake:
+  # How new automation work enters the tracking board. Orchestrator-executed.
+  source: tms-folder
+  selector:
+    tags: ["automated:UI:regression"]
+    status: draft
+  tracking_repo: EliteaAI/elitea-testing-public
+  board: { owner: EliteaAI, number: 9 }
+  title_format: "[Automate][ELITEA-<id>] <case title>"
+  # Dedup BEFORE filing — any hit (open or closed) means skip:
+  dedup: gh issue list --search "[ELITEA-<id>] in:title" --state all
+  issue_body: name the source file path + the case metadata
+  board_placement: auto-add only — set NO status, assign NOBODY; a human approves
+    by dragging to Approved
+  max_new_cards_per_run: 10        # more arrive next tick
+  already_automated_when:          # ALL three must hold — exclude such cases
+    execution_type: automated
+    status: ready
+    automation_test_id: non-empty
+  contradictory_metadata: report in the run summary — never guess, never file,
+    never skip silently
+
+backwrite_on_done:
+  # Post-merge, orchestrator's job — edit the case file in cases_repo:
+  execution_type: automated
+  status: ready
+  automation_test_id: dotted pytest path, e.g.
+    tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_toolkits_section_visible
+
+reporting:
+  # No pytest-wired TMS reporter exists and none should be added silently.
+  # Back-writes are explicit orchestrator actions (above), never per-local-run.
+  pytest_tms_reporter: none

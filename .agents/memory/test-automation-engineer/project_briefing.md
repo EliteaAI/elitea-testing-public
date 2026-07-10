@@ -25,6 +25,36 @@ type: project
 - **Stay on the branch Tal created.** Don't switch, rebase, or touch git history
   unless `.agents/workflow.md` grants you commit authority for this project.
 
+## Elitea Project Specifics (seeded by scout 2026-07-10)
+
+- **Framework:** Playwright 1.61 + pytest 9.1, Python 3.13 repo-local `.venv`.
+  Run from `automation/`: `../.venv/bin/pytest tests/ui/<feature>/test_x.py -v`.
+  Headed is default; `HEADLESS=true` for quiet runs. `pip install -e ".[reporting]"`
+  or pytest won't start (allure in addopts).
+- **Target `http://localhost:5173`** (start via `start-ui-localhost`). Green there is
+  the merge gate — no CI on `automation/base`.
+- **The per-test loop:** explore UI → missing testid? use `add-data-testid` (edits
+  `../EliteaUI/src` ONLY, commits to `automation/testids`, HMR live-reloads) →
+  `page-object-generator` → write test → green → PR to `automation/base` (never `main`).
+- **Locators: testid-only** `LocatorDescriptor(testid="…")` — `fallback` is dead code,
+  strictly never populate it. Locators are **class-level page-object fields only** —
+  never constructed inside method bodies, never in spec files.
+  Naming `{section}-{element}-{type}`; verify uniqueness first.
+- **Wrap every test step in `with allure.step("Step N — …"):`** — one per AFS step,
+  assertions inside their step's block (pattern: `test_artifacts_multi_file.py`).
+  Auto-applied rules: `.claude/rules/{page-objects,ui-tests,mui-patterns,api-*}.md`.
+- **Config:** `from config import settings`; `.env.test` BEATS shell exports — edit
+  the file. Page objects navigate with bare paths (`/skills/all`); `APP_PREFIX` empty
+  on localhost. localhost skips login (`auth_state`/`VITE_DEV_TOKEN`).
+- **WebSocket ~2s delay** on AI responses — condition waits, never sleeps.
+- **Traps:** OneDrive is slow (background npm/git); `npm install` looks hung — isn't;
+  EliteaUI `.env` is a symlink, don't recreate; never shallow-clone.
+- **Coverage id:** the dotted pytest path is what gets back-written to the TMS —
+  keep test names stable and meaningful.
+- **Elitea domain knowledge:** for API-level work (clients in `automation/api/`,
+  payload shapes, endpoints) load the `elitea-platform` skill; `elitea-pipeline` /
+  `elitea-toolkit` / `elitea-testing` cover pipelines, toolkits, and predict flows.
+
 ## My Role Focus
 
 Write the test code through the project's abstraction layer (page objects /

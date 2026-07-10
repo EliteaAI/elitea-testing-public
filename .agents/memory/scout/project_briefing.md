@@ -32,6 +32,24 @@ type: project
 - **Roles & sample users:** capture the credential matrix / user sets the suite
   runs against (env-var keys, not secrets) in `.agents/profile.md`.
 
+## Elitea Project Specifics (seeded 2026-07-10)
+
+- **Seed complete** — CLAUDE.md rewritten, AGENTS.md project sections added (bundle
+  block preserved), full `.agents/*` set written, 4 memory briefings adjusted.
+- **Topology:** three siblings under the parent folder (NOT a git repo, don't init):
+  this repo (`automation/base`), `../EliteaUI` (fork, `automation/testids`,
+  upstream read-only), `../onetest-ai-tm-Elitea` (TMS, `.onetest/` cwd-relative).
+- **TMS = onetest** (custom adapter, MCP server `onetest-tms` in `.mcp.json`);
+  intake/back-write policy in `.agents/test-automation.yaml`.
+- **Exploration shortcuts:** framework truth = `pyproject.toml` + `automation/pytest.ini`
+  + `.venv/bin/pip list`; rules in `.claude/rules/`; upstream-main skills already all
+  present on `automation/base` (verified — don't re-copy); case sample =
+  any `.md` under `../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/`.
+- **Operator decisions on record:** no `env.sh` (killed — repo-relative paths instead);
+  no onboarding GitHub issue (local `.agents/onboarding.md` only); memory briefings
+  adjusted not replaced; leave room for non-UI surfaces (api present, mobile/perf later).
+- **Open gaps:** `gh` lacks `project` scope (board card moves); no flaky-test list yet.
+
 ## My Role Focus
 
 Onboard a test-automation engagement: produce `.agents/profile.md`,

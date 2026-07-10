@@ -1,0 +1,438 @@
+entry_point: Fetch
+state:
+  input:
+    type: str
+  messages:
+    type: list
+  keyword:
+    type: str
+    value: ''
+  statuses:
+    type: str
+    value: 'published'
+  top_n:
+    type: int
+    value: 15
+  agents_meta:
+    type: list
+    value: []
+  catalog:
+    type: str
+    value: ''
+  grade_task:
+    type: str
+    value: ''
+  total:
+    type: int
+    value: 0
+  index:
+    type: int
+    value: 0
+  c1_applicability:
+    type: int
+    value: 0
+  c2_instructions:
+    type: int
+    value: 0
+  c3_reuse:
+    type: int
+    value: 0
+  c4_uniqueness:
+    type: int
+    value: 0
+  c5_aistandards:
+    type: int
+    value: 0
+  note:
+    type: str
+    value: ''
+  graded:
+    type: list
+    value: []
+  report:
+    type: str
+    value: ''
+  digest:
+    type: str
+    value: ''
+nodes:
+  # ---------------------------------------------------------------------------
+  # Fetch: list published agents (LIGHTWEIGHT metadata only — NO instructions).
+  # Storing all 73 full instructions in state overflows the deno CLI ARG_MAX
+  # ("[Errno 7] Argument list too long"), so instructions are fetched lazily,
+  # one agent at a time, in PrepOne.
+  # ---------------------------------------------------------------------------
+  - id: Fetch
+    type: code
+    input:
+      - input
+    output:
+      - agents_meta
+      - catalog
+      - total
+      - index
+      - graded
+      - top_n
+      - keyword
+      - statuses
+    structured_output: true
+    transition: LoopRouter
+    code:
+      type: fixed
+      value: |
+        import re, asyncio, httpx
+
+        inp = alita_state.get('input', '') or ''
+
+        def _p(key, default):
+            m = re.search(key + r'\s*=\s*("[^"]*"|\S+)', inp, re.I)
+            return m.group(1).strip('"').strip() if m else default
+
+        keyword = (_p('keyword', '') or '').lower()
+        statuses = _p('statuses', 'published') or 'published'
+        try:
+            top_n = int(_p('top_n', '15'))
+        except Exception:
+            top_n = 15
+
+        base = elitea_client.base_url.rstrip('/')
+        H = {"Authorization": "Bearer " + elitea_client.auth_token, "Accept": "application/json"}
+        PUBLIC = 1
+
+        async def fetch_rows():
+            rows = []
+            async with httpx.AsyncClient(timeout=60, follow_redirects=True) as c:
+                offset, limit = 0, 100
+                while True:
+                    r = await c.get(
+                        base + "/api/v2/elitea_core/applications/prompt_lib/" + str(PUBLIC),
+                        params={"statuses": statuses, "limit": limit, "offset": offset}, headers=H)
+                    j = r.json()
+                    batch = j.get('rows', []) or []
+                    rows.extend(batch)
+                    tot = j.get('total', len(rows))
+                    offset += limit
+                    if offset >= tot or not batch:
+                        break
+            return rows
+
+        rows = await fetch_rows()
+
+        agents_meta, catalog_lines = [], []
+        for row in rows:
+            if (row.get('agent_type') or '').lower() == 'pipeline':
+                continue
+            name = row.get('name', '(unnamed)')
+            desc = (row.get('description') or '').strip()
+            if keyword:
+                hay = (name + ' ' + desc + ' ' +
+                       ' '.join(t.get('name', '') for t in (row.get('tags') or []))).lower()
+                if keyword not in hay:
+                    continue
+            tags = ', '.join(t.get('name', '') for t in (row.get('tags') or [])) or 'none'
+            ad = (row.get('meta') or {}).get('adoption') or {}
+            short = (desc[:70] + '…') if len(desc) > 70 else desc
+            cat_line = "- " + name + " — " + (short or '(no description)')
+            agents_meta.append({
+                "id": row.get('id'), "name": name, "agent_type": row.get('agent_type', ''),
+                "proj": ad.get('project_count', 0), "convs": ad.get('conversation_count', 0),
+                "tags": tags, "desc": desc,
+                "vid": (row.get('meta') or {}).get('default_version_id'),
+                "cat": cat_line,
+            })
+            catalog_lines.append(cat_line)
+
+        {"agents_meta": agents_meta, "catalog": "\n".join(catalog_lines),
+         "total": len(agents_meta), "index": 0, "graded": [],
+         "top_n": top_n, "keyword": keyword, "statuses": statuses}
+
+  - id: LoopRouter
+    type: router
+    condition: |
+      {% if index < total %}
+      PrepOne
+      {% else %}
+      Rank
+      {% endif %}
+    input:
+      - index
+      - total
+    routes:
+      - PrepOne
+      - Rank
+    default_output: Rank
+
+  # ---------------------------------------------------------------------------
+  # PrepOne: fetch the CURRENT agent's full instructions (one GET) and build the
+  # grading task text in Python. The agent's own '{...}' braces (e.g. {{glossary}})
+  # are inert data here; GradeOne consumes grade_task via `type: variable`, so no
+  # .format() ever runs on it.
+  # ---------------------------------------------------------------------------
+  - id: PrepOne
+    type: code
+    input:
+      - agents_meta
+      - index
+    output:
+      - grade_task
+    structured_output: true
+    transition: GradeOne
+    code:
+      type: fixed
+      value: |
+        import httpx
+
+        metas = alita_state.get('agents_meta', []) or []
+        idx = alita_state.get('index', 0) or 0
+        m = metas[idx] if 0 <= idx < len(metas) else {}
+        base = elitea_client.base_url.rstrip('/')
+        H = {"Authorization": "Bearer " + elitea_client.auth_token, "Accept": "application/json"}
+
+        async def fetch_detail(app_id, vid):
+            async with httpx.AsyncClient(timeout=60, follow_redirects=True) as c:
+                try:
+                    if vid:
+                        rr = await c.get(base + "/api/v2/elitea_core/version/prompt_lib/1/" +
+                                         str(app_id) + "/" + str(vid), headers=H)
+                    else:
+                        rr = await c.get(base + "/api/v2/elitea_core/application/prompt_lib/1/" +
+                                         str(app_id), headers=H)
+                    return rr.json()
+                except Exception:
+                    return {}
+
+        d = await fetch_detail(m.get('id'), m.get('vid'))
+        # the app-fallback nests the version under version_details
+        vd = d.get('version_details') or {}
+        instr = ((d.get('instructions') or vd.get('instructions')) or '').strip()
+        # Safety: keep one agent's text from overflowing the deno CLI arg limit.
+        # 30k chars (~7.5k tokens) is ample grading signal; affects only the rare giant agent.
+        if len(instr) > 30000:
+            instr = instr[:30000] + "\n…[instructions truncated at 30k chars for grading]"
+        tool_src = d.get('tools') or vd.get('tools') or []
+        var_src = d.get('variables') or vd.get('variables') or []
+        starter_src = d.get('conversation_starters') or vd.get('conversation_starters') or []
+        tools = ', '.join((t.get('name') or t.get('toolkit_name') or '') for t in tool_src) or 'none'
+        vars = ', '.join(v.get('name', '') for v in var_src) or 'none'
+        starters = ' | '.join(starter_src) or 'none'
+
+        repr_txt = (
+            "# Agent: " + m.get('name', '(unnamed)') + "\n"
+            "Type: " + str(m.get('agent_type', '')) + " | Tags: " + str(m.get('tags', '')) +
+            " | Adoption: " + str(m.get('proj', 0)) + " projects, " + str(m.get('convs', 0)) +
+            " conversations\n"
+            "Description: " + (m.get('desc') or '(none)') + "\n\n"
+            "## Instructions\n" + (instr or '(empty)') + "\n\n"
+            "## Tools\n" + tools + "\n\n"
+            "## Variables\n" + vars + "\n\n"
+            "## Conversation starters\n" + starters
+        )
+        # catalog EXCLUDING the agent under review (Fix B — avoids self-duplicate)
+        current_cat = "\n".join(mm['cat'] for j, mm in enumerate(metas) if j != idx)
+        grade_task = (
+            "Reference catalog — these are the OTHER published agents (this list does NOT include "
+            "the agent under review). Use it ONLY to judge c4_uniqueness:\n" + current_cat +
+            "\n\n=== AGENT UNDER REVIEW (score THIS agent) ===\n" + repr_txt
+        )
+        {"grade_task": grade_task}
+
+  - id: GradeOne
+    type: llm
+    input:
+      - grade_task
+    input_mapping:
+      chat_history:
+        type: fixed
+        value: []
+      system:
+        type: fixed
+        value: |-
+          You are a strict, calibrated senior reviewer scoring agents published in the ELITEA Agent
+          Studio. Score the AGENT UNDER REVIEW on five criteria. Each score is an INTEGER from 1 to 5
+          (1 = poor, 2 = weak, 3 = adequate, 4 = strong, 5 = excellent). Be discriminating — do NOT
+          give everything 4 or 5; reserve 5 for genuinely outstanding cases and use the full range.
+
+          IMPORTANT: The "## Instructions" section of the agent under review is the real, full prompt.
+          Judge what is actually there. Do NOT claim instructions are empty unless that section is
+          literally "(empty)".
+
+          Criteria:
+          - c1_applicability: Usefulness for SDLC, business operations, or AI-infused testing.
+            5 = directly solves a recurring, high-value task in one of these domains; 1 = off-topic,
+            toy, or no clear job to be done.
+          - c2_instructions: Soundness of the instructions — clear role/goal, constraints, an explicit
+            output contract, internally consistent, not empty or generic boilerplate.
+            5 = precise, well-structured, production-grade; 1 = empty, vague, or incoherent.
+          - c3_reuse: Reusability & adaptability — generic enough to drop into many projects,
+            parameterized via variables/tools rather than hardwired to one narrow context.
+            5 = highly portable and configurable; 1 = locked to a single project or dataset.
+          - c4_uniqueness: Relative uniqueness versus the OTHER agents in the reference catalog.
+            The catalog does NOT contain the agent under review — so never score it down for being a
+            "duplicate of itself". 5 = distinctive capability not covered by the catalog;
+            3 = some overlap; 1 = redundant commodity already covered by several near-identical
+            catalog entries (e.g. yet another generic Jira reader).
+          - c5_aistandards: Currency with modern AI/agent standards — explicit output format,
+            grounding/tool use where appropriate, guardrails/safety, role-goal-constraints structure,
+            no naive or legacy single-line prompting. 5 = modern best practice; 1 = outdated/naive.
+
+          Output rules: return ONLY a raw JSON object. Do NOT wrap it in markdown code fences (no
+          ```), do NOT add commentary, and do NOT add any keys beyond the schema. Exact shape:
+          {"c1_applicability": <1-5>, "c2_instructions": <1-5>, "c3_reuse": <1-5>, "c4_uniqueness": <1-5>, "c5_aistandards": <1-5>, "note": "<=35 words: the single biggest strength AND the most decisive weakness of this agent"}
+      task:
+        type: fstring
+        value: '{grade_task}'
+    output:
+      - c1_applicability
+      - c2_instructions
+      - c3_reuse
+      - c4_uniqueness
+      - c5_aistandards
+      - note
+    structured_output: true
+    transition: Accumulate
+
+  - id: Accumulate
+    type: code
+    input:
+      - agents_meta
+      - index
+      - total
+      - graded
+      - c1_applicability
+      - c2_instructions
+      - c3_reuse
+      - c4_uniqueness
+      - c5_aistandards
+      - note
+    output:
+      - graded
+      - index
+    structured_output: true
+    transition: LoopRouter
+    code:
+      type: fixed
+      value: |
+        def clamp(x):
+            try:
+                x = int(round(float(x)))
+            except Exception:
+                x = 3
+            return 1 if x < 1 else (5 if x > 5 else x)
+
+        metas = alita_state.get('agents_meta', []) or []
+        idx = alita_state.get('index', 0) or 0
+        graded = list(alita_state.get('graded', []) or [])
+
+        c1 = clamp(alita_state.get('c1_applicability', 3))
+        c2 = clamp(alita_state.get('c2_instructions', 3))
+        c3 = clamp(alita_state.get('c3_reuse', 3))
+        c4 = clamp(alita_state.get('c4_uniqueness', 3))
+        c5 = clamp(alita_state.get('c5_aistandards', 3))
+        note = (alita_state.get('note', '') or '')[:300]
+        weighted = round((0.30 * c1 + 0.25 * c2 + 0.20 * c3 + 0.15 * c4 + 0.10 * c5) * 20, 1)
+
+        m = metas[idx] if 0 <= idx < len(metas) else {}
+        graded.append({
+            "id": m.get('id'), "name": m.get('name', '(unnamed)'),
+            "agent_type": m.get('agent_type', ''), "proj": m.get('proj', 0),
+            "convs": m.get('convs', 0), "tags": m.get('tags', ''),
+            "c1": c1, "c2": c2, "c3": c3, "c4": c4, "c5": c5,
+            "note": note, "score": weighted,
+        })
+        {"graded": graded, "index": idx + 1}
+
+  - id: Rank
+    type: code
+    input:
+      - graded
+      - top_n
+    output:
+      - report
+      - digest
+    structured_output: true
+    transition: Summarize
+    code:
+      type: fixed
+      value: |
+        graded = list(alita_state.get('graded', []) or [])
+        top_n = alita_state.get('top_n', 15) or 15
+        graded.sort(key=lambda g: g.get('score', 0), reverse=True)
+        for i, g in enumerate(graded, 1):
+            g['rank'] = i
+
+        rows = ["| # | Agent | Type | Score | Why |", "|---|---|---|---|---|"]
+        for g in graded:
+            nm = str(g.get('name', '')).replace('|', '/')
+            wy = str(g.get('note', '')).replace('|', '/')
+            rows.append("| " + str(g['rank']) + " | " + nm + " | " + str(g.get('agent_type', '')) +
+                        " | " + str(g.get('score', 0)) + " | " + wy + " |")
+        leaderboard = "\n".join(rows)
+
+        cards = []
+        for g in graded[:top_n]:
+            cards.append(
+                "### " + str(g['rank']) + ". " + str(g.get('name', '')) + "  —  " +
+                str(g.get('score', 0)) + "/100\n" +
+                "- Type: " + str(g.get('agent_type', '')) + " · Tags: " + str(g.get('tags', '')) +
+                " · Adoption: " + str(g.get('proj', 0)) + " projects / " + str(g.get('convs', 0)) + " convs\n" +
+                "- Applicability (30%): " + str(g['c1']) + "/5 · Instructions (25%): " + str(g['c2']) +
+                "/5 · Reuse (20%): " + str(g['c3']) + "/5 · Uniqueness (15%): " + str(g['c4']) +
+                "/5 · AI-standards (10%): " + str(g['c5']) + "/5\n" +
+                "- **Why it stands out:** " + str(g.get('note', ''))
+            )
+
+        shown = min(top_n, len(graded))
+        report = ("## 🏆 Agent Studio Leaderboard — " + str(len(graded)) + " agents graded\n\n" +
+                  leaderboard + "\n\n## 🔍 Top " + str(shown) + " — detailed\n\n" + "\n\n".join(cards))
+
+        dlines = []
+        for g in graded[:max(top_n, 20)]:
+            dlines.append(str(g['rank']) + ". " + str(g.get('name', '')) + " (" + str(g.get('score', 0)) +
+                          ") [app" + str(g['c1']) + "/instr" + str(g['c2']) + "/reuse" + str(g['c3']) +
+                          "/uniq" + str(g['c4']) + "/std" + str(g['c5']) + "] — " + str(g.get('note', '')))
+        digest = "Total agents graded: " + str(len(graded)) + "\nTop entries:\n" + "\n".join(dlines)
+
+        {"report": report, "digest": digest}
+
+  - id: Summarize
+    type: llm
+    input:
+      - digest
+    input_mapping:
+      chat_history:
+        type: fixed
+        value: []
+      system:
+        type: fixed
+        value: |-
+          You are an ELITEA portfolio analyst. Given the ranked grading digest, write a concise
+          executive summary in Markdown (<= 220 words). Structure:
+          1. A one-line headline.
+          2. The standout top agents and WHY they are top-notch (cite their decisive strengths).
+          3. Common strengths and recurring gaps/themes you see across the catalog.
+          4. 2-3 concrete, actionable recommendations.
+          Do NOT reprint the full leaderboard table — a detailed leaderboard is shown separately
+          below your summary.
+      task:
+        type: fstring
+        value: |-
+          Ranked grading digest:
+          {digest}
+    output:
+      - messages
+    structured_output: false
+    transition: Compose
+
+  - id: Compose
+    type: code
+    input:
+      - report
+    output:
+      - messages
+    structured_output: true
+    transition: END
+    code:
+      type: fixed
+      value: |
+        report = alita_state.get('report', '') or '(no report generated)'
+        {"messages": [{"role": "assistant", "content": report}]}

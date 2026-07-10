@@ -26,29 +26,37 @@ class DetailPage(FormPage):  # Inherits get_name()
     pass
 ```
 
-## Locator Strategy: testid + fallback
+## Locator Strategy: testid-only (NO fallback)
 
-**All locators must use `LocatorDescriptor`** with testid-first strategy:
+**All locators must use `LocatorDescriptor` with a testid and strictly NO
+`fallback`.** `fallback` is dead code — `__get__` never calls it when a testid is
+set. If the element has no `data-testid`, add one to EliteaUI via the
+`add-data-testid` skill instead of writing a fallback.
+
+Locators live **only as class-level fields on page objects** — never constructed
+inside method bodies, never in test/spec files.
 
 ```python
 from .locator_descriptor import LocatorDescriptor
 
 class MyPage(BasePage):
     element = LocatorDescriptor(
-        testid="unique-testid",        # Most robust (data-testid)
-        fallback=lambda page: page.get_by_role("button", name="Save"),  # Fallback
+        testid="unique-testid",        # data-testid — the only locator source
         description="What this element does"
     )
 ```
 
-**Never use direct locators:**
+**Never use direct or fallback locators:**
 ```python
-# ❌ WRONG
+# ❌ WRONG — direct locator in a method
 def __init__(self, page):
     self.button = page.locator('button')
 
-# ✅ CORRECT
-button = LocatorDescriptor(testid="save-btn", fallback=...)
+# ❌ WRONG — fallback is dead code, forbidden
+button = LocatorDescriptor(testid="save-btn", fallback=lambda page: ...)
+
+# ✅ CORRECT — class field, testid only
+button = LocatorDescriptor(testid="save-btn", description="Save the form")
 ```
 
 ## Architecture Pattern
