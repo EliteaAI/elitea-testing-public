@@ -49,6 +49,11 @@ class SkillFormPage(BasePage):
         description="Cancel button"
     )
 
+    tags_input = LocatorDescriptor(
+        testid="skill-tags-input",
+        description="Tags combobox wrapper (MUI Autocomplete root)"
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -94,6 +99,49 @@ class SkillFormPage(BasePage):
         self._fill_text_input(self.description_input, description)
         self.fill_instructions(instructions)
         logger.info("Filled skill form: name=%r", name)
+
+    @action("Set description")
+    def set_description(self, description: str):
+        """Replace the Description field's content (works on pre-filled fields).
+
+        The Description field renders as two ``<textarea>`` elements (MUI's
+        autosize shadow copy plus the real, editable one) — the wrapper-level
+        click + Ctrl+A pattern in :meth:`fill_form` only reliably clears an
+        *empty* field; ``Control+a`` alone does not reliably select existing
+        content here (typed text ends up inserted rather than replacing it).
+        Uses Locator.select_text() + Backspace to clear the real (first,
+        non-``aria-hidden``) textarea before typing the replacement.
+
+        Args:
+            description: New description text.
+        """
+        field = self.description_input.locator("textarea").first
+        field.click()
+        field.select_text()
+        self.page.wait_for_timeout(100)
+        self.page.keyboard.press("Backspace")
+        self.page.wait_for_timeout(100)
+        self.page.keyboard.type(description)
+        self.page.wait_for_timeout(300)
+        logger.info("Set description: %r", description[:60])
+
+    @action("Add tag")
+    def add_tag(self, tag: str):
+        """Type a tag into the Tags combobox and commit it with Enter.
+
+        The Tags field is a MUI Autocomplete (``skill-tags-input`` testid on
+        the root wrapper); the actual text input is the wrapper's single
+        ``input`` element.
+
+        Args:
+            tag: Tag text to type and commit.
+        """
+        tag_field = self.tags_input.locator("input")
+        tag_field.click()
+        tag_field.type(tag)
+        tag_field.press("Enter")
+        self.page.wait_for_timeout(200)
+        logger.info("Added tag: %r", tag)
 
     def _fill_text_input(self, locator, text: str):
         """Fill a standard MUI text input with React-safe keyboard events.
@@ -199,5 +247,39 @@ class SkillFormPage(BasePage):
     # ------------------------------------------------------------------
 
     def get_name(self) -> str:
-        """Return the current value of the Name input field."""
-        return self.name_input.input_value()
+        """Return the current value of the Name input field.
+
+        The ``skill-name-input`` testid is on the MUI FormControl wrapper,
+        not the inner ``<input>``, so the value is read from the descendant
+        input element.
+        """
+        return self.name_input.locator("input").input_value()
+
+    def get_description(self) -> str:
+        """Return the current value of the Description field.
+
+        The ``skill-description-input`` testid is on the MUI FormControl
+        wrapper; the actual field renders as a ``<textarea>`` (multiline).
+        """
+        return self.description_input.locator("textarea").first.input_value()
+
+    def get_instructions(self) -> str:
+        """Return the current text content of the Instructions CodeMirror editor.
+
+        CodeMirror has no ``input_value()`` — read the rendered text content
+        of the ``.cm-content`` element instead.
+        """
+        content = self.instructions_editor.locator(".cm-content")
+        return (content.text_content() or "").strip()
+
+    def get_tags(self) -> list[str]:
+        """Return the currently committed tags as a list of strings.
+
+        Reads the MUI Chip labels rendered inside the Tags combobox
+        (each committed tag renders as a removable chip).
+
+        Returns:
+            List of tag name strings, in display order.
+        """
+        chips = self.tags_input.locator(".MuiChip-label")
+        return [chips.nth(i).text_content() or "" for i in range(chips.count())]

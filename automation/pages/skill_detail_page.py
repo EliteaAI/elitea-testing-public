@@ -11,6 +11,8 @@ import logging
 import time
 from playwright.sync_api import Page
 
+from playwright.sync_api import Download
+
 from .skill_form_page import SkillFormPage
 from .locator_descriptor import LocatorDescriptor
 from components.mui import Dialog
@@ -45,6 +47,13 @@ class SkillDetailPage(SkillFormPage):
     controls_menu_button = LocatorDescriptor(
         testid="skill-controls-menu-button",
         description="Skill controls overflow menu button"
+    )
+
+    # Overflow menu — VERSION-scoped Export item (distinct from the
+    # SKILL-scoped items further down the same menu)
+    export_version_menu_item = LocatorDescriptor(
+        testid="export-version-menuitem",
+        description="Export the current (base) version via the overflow menu"
     )
 
     def __init__(self, page: Page):
@@ -270,3 +279,27 @@ class SkillDetailPage(SkillFormPage):
         )
         self.wait_for_network(timeout=5000)
         logger.info("Skill %r deleted via menu", skill_name)
+
+    @action("Export skill base version via menu")
+    def export_base_version_via_menu(self, timeout: int = 10000) -> Download:
+        """Export the skill's current (base) version via the overflow menu.
+
+        Opens the overflow menu and clicks the VERSION-scoped "Export" item
+        (``export-version-menuitem`` — distinct from the SKILL-scoped items
+        further down the same menu), waiting for the resulting file download.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the download event.
+
+        Returns:
+            Playwright ``Download`` object for the exported ``.md`` file.
+        """
+        logger.info("Exporting skill base version via menu")
+        self.open_actions_menu()
+
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.export_version_menu_item.click()
+
+        download = download_info.value
+        logger.info("Skill base version exported — filename: %s", download.suggested_filename)
+        return download
