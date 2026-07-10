@@ -125,28 +125,16 @@ Provide structured output for Stage 3 (Page Object Generator):
 
 ## Ready Locators for Page Objects
 
-**CRITICAL: data-testid MUST be used in BOTH testid AND fallback.**
-Never use aria-label, role, or CSS selectors in fallback — always use the same data-testid.
-
 ```python
-# LocatorDescriptor definitions - data-testid in BOTH fields
-save_button = LocatorDescriptor(
-    testid="agent-form-save-button",
-    fallback=lambda page: page.locator('[data-testid="agent-form-save-button"]'),
-    description="Save agent configuration"
-)
-
-name_input = LocatorDescriptor(
-    testid="agent-form-name-input",
-    fallback=lambda page: page.locator('[data-testid="agent-form-name-input"]'),
-    description="Agent name input field"
-)
+# LocatorDescriptor definitions — testid only, no fallback needed
+save_button = LocatorDescriptor(testid="agent-form-save-button")
+name_input = LocatorDescriptor(testid="agent-form-name-input")
 ```
 
 ## EliteaUI Changes Summary
 
 Files modified: [count]
-Branch: feat/EL-5226/add-data-test-ids-automation
+Branch: feat/EL-XXXX/add-data-test-ids-automation
 ```
 
 ---

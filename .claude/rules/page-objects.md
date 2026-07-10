@@ -26,7 +26,7 @@ class DetailPage(FormPage):  # Inherits get_name()
     pass
 ```
 
-## Locator Strategy: testid + fallback
+## Locator Strategy: testid-first
 
 **All locators must use `LocatorDescriptor`** with testid-first strategy:
 
@@ -34,12 +34,18 @@ class DetailPage(FormPage):  # Inherits get_name()
 from .locator_descriptor import LocatorDescriptor
 
 class MyPage(BasePage):
-    element = LocatorDescriptor(
-        testid="unique-testid",        # Most robust (data-testid)
-        fallback=lambda page: page.get_by_role("button", name="Save"),  # Fallback
-        description="What this element does"
-    )
+    # Preferred: data-testid (most stable)
+    save_button = LocatorDescriptor(testid="save-button")
+    
+    # Alternative: ID or CSS selector (when testid not available)
+    refresh_btn = LocatorDescriptor(locator="#RefreshButton")
+    delete_btn = LocatorDescriptor(locator='[aria-label="Delete"]')
 ```
+
+**Priority:**
+1. `testid` — use if element has `data-testid`
+2. `locator` — use if element has `id` or stable attribute
+3. **Neither exists** → run `add-data-testid` skill to add testid in EliteaUI
 
 **Never use direct locators:**
 ```python
@@ -48,7 +54,7 @@ def __init__(self, page):
     self.button = page.locator('button')
 
 # ✅ CORRECT
-button = LocatorDescriptor(testid="save-btn", fallback=...)
+button = LocatorDescriptor(testid="save-btn")
 ```
 
 ## Architecture Pattern
@@ -104,25 +110,20 @@ def test_edit_name(page):
 
 ## Locator Priority Order
 
-1. **data-testid** - Most robust, future-proof
-2. **Accessible roles** - `get_by_role("button", name="Text")`
-3. **aria-label** - `locator('[aria-label="Delete"]')`
-4. **Stable attributes** - `#element-id`
-5. **CSS classes** - Last resort, fragile
+1. **data-testid** — most stable, add via `add-data-testid` skill if missing
+2. **#element-id** — use if already exists in UI
+3. **aria-label** — `locator='[aria-label="Delete"]'`
+4. **CSS classes** — last resort, fragile
 
-**For elements without aria-label:** Document the locator strategy in docstring:
+**If element lacks testid and id:** Run `add-data-testid` skill to add `data-testid` in EliteaUI.
 
+**For scoped selectors (inside parent locator):** Use string constants:
 ```python
-def delete_message(self, index: int):
-    """Delete message by hovering and clicking delete button.
-    
-    LOCATOR: Delete button has NO aria-label. Located as last button
-    after hover. Button order: Copy (0), Regenerate (1), Delete (2).
-    """
-    message = self.messages_container.nth(index)
-    message.hover()
-    buttons = message.locator('button')
-    buttons.last.click(force=True)  # Last button = Delete
+# Define at class level
+CHAT_DELETE_SELECTOR = '[aria-label="Delete"]'
+
+# Use inside method
+card.locator(self.CHAT_DELETE_SELECTOR)
 ```
 
 ## Inheritance Rules
@@ -271,7 +272,7 @@ def click_save(self):
 
 ✅ **Use LocatorDescriptor:**
 ```python
-save_button = LocatorDescriptor(testid="save", fallback=...)
+save_button = LocatorDescriptor(testid="save-button")
 def click_save(self):
     self.save_button.click()  # GOOD
 ```
@@ -280,8 +281,8 @@ def click_save(self):
 
 Verify:
 - [ ] No duplicate methods across page objects
-- [ ] All locators use LocatorDescriptor with testid + fallback
-- [ ] Complex locators documented in docstring
+- [ ] All locators use LocatorDescriptor (testid preferred, locator if no testid)
+- [ ] Scoped selectors use UPPER_CASE string constants
 - [ ] Method names follow conventions
 - [ ] Class docstring includes URL pattern
 - [ ] Tests don't contain direct page.locator() calls

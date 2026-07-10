@@ -146,24 +146,17 @@ Skill(skill="page-object-generator", args="PageName - add method_name for [eleme
 
 **Follow `.claude/rules/page-objects.md`:**
 - Use LocatorDescriptor for element definitions
-- **CRITICAL: for elements where Stage 2.5 added `data-testid` — use `testid` only, NO fallback.** Fallback is redundant and misleading when the testid is guaranteed to exist.
 - Add proper waits
 - One method per action
 
-**LocatorDescriptor pattern (testid added by Stage 2.5):**
+**LocatorDescriptor patterns:**
 ```python
-element = LocatorDescriptor(
-    testid="section-element-type",
-    description="..."
-)
-```
+# Preferred: data-testid (added by Stage 2.5 or already exists)
+element = LocatorDescriptor(testid="section-element-type")
 
-**LocatorDescriptor pattern (element has NO data-testid — legacy or third-party):**
-```python
-element = LocatorDescriptor(
-    fallback=lambda page: page.get_by_role("button", name="Save"),
-    description="..."
-)
+# Alternative: ID or CSS selector (legacy/third-party elements)
+element = LocatorDescriptor(locator="#ElementId")
+element = LocatorDescriptor(locator='[aria-label="Delete"]')
 ```
 
 **After Stage 3 — report to user:**
@@ -238,7 +231,7 @@ Skill(skill="superpowers:verification-before-completion")
 **Only if verdict is UPDATE EXISTING or CREATE NEW:**
 - [ ] All elements have data-testid (added via Stage 2.5 if missing)
 - [ ] Page object methods exist for all interactions
-- [ ] Locators use testid-first strategy (LocatorDescriptor with testid + fallback)
+- [ ] Locators use LocatorDescriptor (testid preferred, locator for legacy)
 - [ ] Primary test (P1) covers complete user flow
 - [ ] At least one variation test (P2)
 - [ ] test-quality-checker passed (no Critical/High issues)

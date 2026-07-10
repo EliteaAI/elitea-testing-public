@@ -47,12 +47,8 @@ class AgentDetailPage(AgentFormPage):
     toolkit_delete_button = LocatorDescriptor(testid="agent-toolkit-delete-button")
     toolkit_search_input = LocatorDescriptor(testid="toolkit-search-input")
     toolkit_warning_banner = LocatorDescriptor(testid="credential-warning-banner")
-    toolkit_reload_button = LocatorDescriptor(
-        fallback=lambda page: page.locator('#RefreshButton')
-    )
-    toolkit_open_button = LocatorDescriptor(
-        fallback=lambda page: page.locator('#OpenInNewTabButton')
-    )
+    toolkit_reload_button = LocatorDescriptor(locator='#RefreshButton')
+    toolkit_open_button = LocatorDescriptor(locator='#OpenInNewTabButton')
 
     # --- Selectors for scoped use (inside parent locators) ---
     TOOLKIT_BLOCKED_SELECTOR = '[aria-label*="blocked by your organization"]'
@@ -66,10 +62,10 @@ class AgentDetailPage(AgentFormPage):
 
     # --- Sensitive action authorization ---
     sensitive_action_panel = LocatorDescriptor(
-        fallback=lambda page: page.locator('text=/Sensitive Action Authorization Required/')
+        locator='text=/Sensitive Action Authorization Required/'
     )
     sensitive_action_authorize_button = LocatorDescriptor(
-        fallback=lambda page: page.locator('button:has-text("Authorize")')
+        locator='button:has-text("Authorize")'
     )
 
     # --- Embedded chat ---
