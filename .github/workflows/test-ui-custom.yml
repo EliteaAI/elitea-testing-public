@@ -513,7 +513,7 @@ jobs:
           echo "✓ Pushed to EliteaAI/onetest-ai-tm-Elitea/reports/automated/${FILENAME}"
 
       - name: Checkout TMS repo
-        if: inputs.update_correlation == true
+        if: always() && inputs.update_correlation == true
         uses: actions/checkout@v4
         with:
           repository: EliteaAI/onetest-ai-tm-Elitea
@@ -521,7 +521,7 @@ jobs:
           path: tms
 
       - name: Run correlation and coverage
-        if: inputs.update_correlation == true
+        if: always() && inputs.update_correlation == true
         run: |
           DATE=$(date +%Y-%m-%d)
           ENV_NAME="${{ needs.test.outputs.env-name }}"
