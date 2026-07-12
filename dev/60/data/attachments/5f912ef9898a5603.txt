@@ -1,2 +1,0 @@
-WARNING  elitea.pages.chat:chat_page.py:536 Timed out waiting for stable message content (last: Learning your playbook…)
-ERROR    elitea.steps:actions.py:49 Step failed: Copy message — No copy button found on message at index -1
