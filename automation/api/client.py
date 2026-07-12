@@ -14,18 +14,62 @@ import logging
 from typing import Optional
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from config import settings
 
 logger = logging.getLogger("elitea.api")
 
 
+def _create_retry_session() -> requests.Session:
+    """Create a requests Session with retry on 429 (rate limit).
+
+    Retries up to 3 times with exponential backoff starting at 5 seconds:
+    - 1st retry after ~5s
+    - 2nd retry after ~10s
+    - 3rd retry after ~20s
+
+    If settings.cf_ext_rate is set, adds cf-ext-rate header to bypass Cloudflare rate limits.
+    """
+    session = requests.Session()
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=5,
+        status_forcelist=[429],
+        allowed_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        raise_on_status=False,  # Let _raise_for_status handle errors
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+
+    if settings.cf_ext_rate:
+        session.headers["cf-ext-rate"] = settings.cf_ext_rate
+        logger.debug("cf-ext-rate header configured")
+
+    return session
+
+
+def _get_source_ip(resp: requests.Response) -> Optional[str]:
+    """Extract source IP from the socket used for the request."""
+    try:
+        sock = resp.raw._connection.sock
+        if sock:
+            return sock.getsockname()[0]
+    except Exception:
+        pass
+    return None
+
+
 def _raise_for_status(resp: requests.Response) -> None:
-    """Raise HTTPError with the response body included in the message.
+    """Raise HTTPError with the response body, headers, and source IP included.
 
     Replaces bare ``resp.raise_for_status()`` calls so that test failures
     show the API's error payload (validation message, field errors, etc.)
     instead of just the HTTP status code.
+
+    For 429 errors, includes Cloudflare Ray ID, source IP, and other debug headers.
     """
     try:
         resp.raise_for_status()
@@ -34,10 +78,11 @@ def _raise_for_status(resp: requests.Response) -> None:
             body = resp.json()
         except Exception:
             body = resp.text
-        raise requests.HTTPError(
-            f"{exc} — body: {body}",
-            response=resp,
-        ) from exc
+
+        # Put headers BEFORE body so they're visible (body can be huge HTML and gets truncated)
+        error_msg = f"{exc} — headers: {dict(resp.headers)} — body: {body}"
+
+        raise requests.HTTPError(error_msg, response=resp) from exc
 
 
 class APIClient:
@@ -169,7 +214,7 @@ class ConversationAPI:
         self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
         self.project_id = project_id or str(settings.elitea_project_id)
 
-        self._session = requests.Session()
+        self._session = _create_retry_session()
         for c in browser_cookies:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
         if not browser_cookies and settings.elitea_api_token:
@@ -288,7 +333,7 @@ class AgentAPI:
         self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
         self.project_id = project_id or str(settings.elitea_project_id)
 
-        self._session = requests.Session()
+        self._session = _create_retry_session()
         for c in browser_cookies:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
         if not browser_cookies and settings.elitea_api_token:
@@ -487,7 +532,7 @@ class PipelineAPI:
         self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
         self.project_id = project_id or str(settings.elitea_project_id)
 
-        self._session = requests.Session()
+        self._session = _create_retry_session()
         for c in browser_cookies:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
         if not browser_cookies and settings.elitea_api_token:
@@ -820,7 +865,7 @@ class CredentialAPI:
         self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
         self.project_id = project_id or str(settings.elitea_project_id)
 
-        self._session = requests.Session()
+        self._session = _create_retry_session()
         for c in browser_cookies:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
         if not browser_cookies and settings.elitea_api_token:
@@ -997,7 +1042,7 @@ class ArtifactAPI:
         self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
         self.project_id = project_id or str(settings.elitea_project_id)
 
-        self._session = requests.Session()
+        self._session = _create_retry_session()
         for c in browser_cookies:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
         if not browser_cookies and settings.elitea_api_token:
@@ -1216,7 +1261,7 @@ class ToolkitAPI:
         self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
         self.project_id = project_id or str(settings.elitea_project_id)
 
-        self._session = requests.Session()
+        self._session = _create_retry_session()
         for c in browser_cookies:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
         if not browser_cookies and settings.elitea_api_token:
