@@ -234,6 +234,7 @@ jobs:
           CONFLUENCE_BASE_URL: ${{ secrets.CONFLUENCE_BASE_URL }}
           CONFLUENCE_SPACE: ${{ secrets.CONFLUENCE_SPACE }}
           APP_PREFIX: '/app'
+          CF_EXT_RATE: ${{ secrets.CF_EXT_RATE }}  # Rate limit bypass - repo secret, not passed from callers
         run: |
           PYTEST_CMD="pytest"
 

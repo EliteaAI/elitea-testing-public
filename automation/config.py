@@ -169,6 +169,11 @@ class Settings(BaseSettings):
     default_model_project_id: int = 0
 
     # ------------------------------------------------------------------
+    # Rate limiting (Cloudflare bypass)
+    # ------------------------------------------------------------------
+    cf_ext_rate: str = ""
+
+    # ------------------------------------------------------------------
     # Source priority: .env.test beats system env vars
     # ------------------------------------------------------------------
     @classmethod
