@@ -17,21 +17,75 @@ nodes:
 ```
 
 ### Loop with Router
+
+**This is the official replacement for the deprecated `loop` / `loop_from_tool` nodes** — not a workaround. The docs name "Router + state-based iteration control" as the migration target for both.
+
+The full four-node shape: initialize the counter, do the work, increment + decide, route.
+
 ```yaml
-- id: ProcessItem
-  type: code
-  transition: CheckComplete
-- id: CheckComplete
-  type: router
-  condition: |
-    {% if current_index < total_count %}
-    ProcessItem
-    {% else %}
-    END
-    {% endif %}
-  routes: [ProcessItem, END]
-  default_output: END
+state:
+  loop_counter:
+    type: int
+    value: 0
+  max_iterations:
+    type: int
+    value: 10
+  continue_loop:
+    type: bool
+    value: true
+
+nodes:
+  - id: InitializeLoop
+    type: state_modifier
+    template: "{{ 0 }}"
+    output:
+      - loop_counter
+    transition: ProcessItem
+
+  - id: ProcessItem
+    type: llm
+    # ... the actual per-iteration work
+    transition: UpdateCounter
+
+  - id: UpdateCounter
+    type: code
+    code:
+      type: fixed
+      value: |
+        counter = alita_state.get('loop_counter', 0)
+        max_iterations = alita_state.get('max_iterations', 10)
+        {
+          "loop_counter": counter + 1,
+          "continue_loop": counter + 1 < max_iterations
+        }
+    input:
+      - loop_counter
+      - max_iterations
+    output:
+      - loop_counter
+      - continue_loop
+    structured_output: true
+    transition: LoopRouter
+
+  - id: LoopRouter
+    type: router
+    condition: |
+      {% if continue_loop %}
+      ProcessItem
+      {% else %}
+      END
+      {% endif %}
+    routes:
+      - ProcessItem
+      - END
+    input:
+      - continue_loop
+    default_output: END
 ```
+
+> ⚠️ **The published version of this example has a bug — don't copy it verbatim from the docs.** ELITEA's own loop example (and the ones on `states.md` and `nodes/overview.md`) writes the code node's result with a top-level `return {...}`. Code nodes run at **module scope**, so `return` is a `SyntaxError`. The dict literal must be the **last expression**, as written above. Always cap the loop with `max_iterations` — a router loop has no built-in bound.
+
+For a real, working router-loop with lazy per-item fetching, see `examples/AgentStudioGrader.yaml`.
 
 ### Converging Paths
 ```yaml
@@ -49,6 +103,41 @@ nodes:
   type: llm
   transition: END
 ```
+
+### Model routing (auto model selection) — one model per branch
+
+Because pipeline `llm` nodes have **no per-node model** (they all inherit the version's `llm_settings`; inline per-node `llm_settings` is silently ignored), the way to run different steps on different models — an "auto model router" / "auto LLM distribution" — is **model-per-agent**: create one classic agent per model tier (model pinned at each agent's version level), add them as `application` tools, and make each branch an `agent` node.
+
+```yaml
+# Classifier is a plain llm node on the VERSION model (pick a cheap one, e.g. Haiku).
+- id: Classify            # entry_point — an llm node here because we need the classification
+                          # BEFORE routing. (A router *can* be entry_point, but it would have
+                          # nothing to route on except raw `input`.)
+  type: llm
+  input: [input]
+  output: [tier, reason]  # structured_output: true; system prompt = complexity rubric
+  transition: Route
+- id: Route               # deterministic dispatch on state.tier — no LLM
+  type: router
+  input: [tier]
+  condition: |
+    {% set t = tier|lower|trim %}
+    {% if t == 'simple' %}Simple{% elif t == 'complex' %}Complex{% else %}Standard{% endif %}
+  routes: [Simple, Standard, Complex]
+  default_output: Standard
+- id: Simple              # each branch delegates to an agent pinned to its tier's model
+  type: agent
+  tool: AutoRouter-Simple     # agent on a fast/cheap model
+  input_mapping: { task: {type: fstring, value: '{input}'}, chat_history: {type: fixed, value: []} }
+  output: [answer]
+  transition: Compose
+# Standard → AutoRouter-Standard (mid model); Complex → AutoRouter-Complex (strong/reasoning model)
+- id: Compose             # code node: map tier→model label, build a "routed to X because Y" banner
+  type: code
+  transition: Show
+```
+
+This is the truest reading of "auto LLM distribution across the pipeline": the pipeline distributes work across agents that each run on a different model. Get valid `model_name` strings (and their `low_tier`/`high_tier`/`supports_reasoning` flags) from `GET /api/v2/configurations/models/{pid}?include_shared=true`. Full worked artifact: `examples/AutoModelRouter.yaml`. See also `elitea-platform/references/conventions.md` §11 (model resolution) and the LLM-node gotchas in `yaml-schema.md` (remember `chat_history` on the classifier for editor round-trip).
 
 ## Pipeline-as-a-tool — output & large responses (gotcha)
 

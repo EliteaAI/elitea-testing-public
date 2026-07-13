@@ -17,21 +17,32 @@ curl -X POST -H "Authorization: Bearer $ELITEA_TOKEN" -H "Content-Type: applicat
 ```
 
 ### Async (fire-and-poll)
+
+The **documented** way to go async is the body field `async_mode: true` — not a query param. The request schema (`ApplicationPredictRequest`) declares exactly four optional fields: `project_id`, `callback_url`, `callback_headers`, `async_mode` (bool, default `false`).
+
 ```bash
 # Fire — returns immediately with task_id
-curl -X POST "...?async=yes" -d '{"user_input": "Long task"}'
+curl -X POST -H "Authorization: Bearer $ELITEA_TOKEN" -H "Content-Type: application/json" \
+  -d '{"user_input": "Long task", "chat_history": [], "async_mode": true}' \
+  "https://next.elitea.ai/api/v2/elitea_core/predict/prompt_lib/630/153"
 # → {"task_id": "abc123", "result": null}
 
 # Poll
-curl "https://next.elitea.ai/api/v2/elitea_core/application_task/prompt_lib/630/abc123?result=yes"
+curl -H "Authorization: Bearer $ELITEA_TOKEN" \
+  "https://next.elitea.ai/api/v2/elitea_core/application_task/prompt_lib/630/abc123?result=yes"
 # → {"status": "SUCCESS", "result": "..."}  | "PENDING" | "FAILURE"
 ```
+
+> **Two undocumented-but-working things, don't let anyone "correct" them away:**
+> - **`?async=yes` as a query param works** (verified live 2026-06-25) even though it isn't declared on the path. Prefer `async_mode` in the body — that's what the schema says and what will survive.
+> - **`GET /application_task/...` is absent from the live v2 spec** — even from the full 133-path `?all=true` surface — yet it works (verified live 2026-06-25 and 2026-07-13). For anything meant to last, prefer `callback_url` over polling it.
 
 ### Async with callback (no polling needed)
 ```json
 {
   "user_input": "Generate report",
-  "async": "yes",
+  "chat_history": [],
+  "async_mode": true,
   "callback_url": "https://my-service.com/webhook",
   "callback_headers": {"Authorization": "Bearer my-token"}
 }
@@ -39,9 +50,10 @@ curl "https://next.elitea.ai/api/v2/elitea_core/application_task/prompt_lib/630/
 Platform POSTs result to your `callback_url` when done.
 
 **Gotchas:**
-- `chat_history` is REQUIRED to be at least `[]` (empty array). Some clients send `null` and get 400.
+- `chat_history` is REQUIRED to be at least `[]` (empty array). Some clients send `null` and get 400. (It isn't in the request schema either, but the 400 is real.)
 - `llm_settings` in the body **overrides** the version's baseline for this run only.
 - `variables` in the body **replaces** the version's variables for this run.
+- **A predict has no approval surface.** If the agent calls a sensitive tool, the run parks forever — see § 3b.
 
 ## 2. Conversation flow — full multi-turn lifecycle
 
@@ -160,9 +172,54 @@ Two non-obvious things, both verified live (2026-06-25):
 - **An async pipeline predict ends in status `stopped`, NOT `SUCCESS`** — with a fully populated `result`. If your poll loop only breaks on `SUCCESS`, it never finishes (it spins until your own deadline). **Treat `stopped` + a populated `result` as done.**
 - **Do NOT run a long pipeline via a conversation participant.** Adding the pipeline as an `entity_name:"application"` participant and sending a message routes it through a **wrapper agent that calls the pipeline as a sub-agent tool with a tool step-limit of 0** — it bails partway (e.g. ~24 of 73 items) emitting a *"Step Limit Hit — tool step limit of 0"* message and never produces the pipeline's final output. The direct `/predict/{version_id}` path has no wrapper and honours the version's `meta.step_limit`.NOTE: maybe need to try adding to conversation using entity_name:"pipeline", worth checking next time.
 
+## 3b. Interrupted / awaiting-approval runs — the poll loop's blind spot
+
+**A run can pause indefinitely waiting for a human, and it looks exactly like a hang.** Every polling loop above breaks only on `not is_streaming and message_items`. A paused run satisfies neither, so the loop spins until its own deadline and then reports a false "hung".
+
+Three things pause a run:
+
+1. **Sensitive Action Authorization Guardrail** (2.0.1) — when an agent calls a tool listed in the server-side `ALITA_SENSITIVE_TOOLS` env var, the tool does **not** execute. The run raises a HITL interrupt and the UI shows an authorization dialog. Sensitive parameter values (tokens, passwords, API keys) are masked in it.
+2. **Any `hitl` node** in a pipeline.
+3. **Parallel sub-agent fan-out** (2.0.4) — a *single* run can now raise **multiple simultaneous** interrupts, because several child agents can each need approval.
+
+The human picks one of three outcomes:
+
+| Choice | Effect |
+|---|---|
+| **Authorize** | Tool runs as planned. |
+| **Block** | Tool skipped; the agent receives a blocked-action message. |
+| **Block with Comments** (2.0.4) | Tool skipped; the user's free-text note is passed back to the agent as the blocked action's `denial_reason`. |
+
+On block, the agent receives:
+
+```json
+{
+  "type": "sensitive_tool_blocked",
+  "status": "blocked",
+  "action_label": "github.delete_repo",
+  "message": "User blocked the sensitive action 'github.delete_repo'..."
+}
+```
+
+**What this means for anything calling ELITEA from outside:**
+
+- **Never treat "streaming, no items, N minutes old" as automatically hung.** It may be waiting on a human.
+- **A cron- or webhook-triggered pipeline has no approval surface.** Nobody is looking at a dialog. This is precisely why the platform forbids HITL/Printer/interrupt nodes on non-chat triggers — but the guardrail can still fire from a *tool call inside an agent* your pipeline invokes. **If an agent uses a sensitive tool, keep it on the Chat Message trigger.** Otherwise the scheduled run parks forever.
+- **A stateless `POST /predict/...` has no approval surface either.** Don't route a sensitive-tool agent through predict from CI or a webhook.
+
+> ⚠️ **UNRESOLVED — there is no documented REST way to detect or resume an awaiting-approval run.** The guardrail docs describe only UI buttons, and the v2 OpenAPI spec contains no `interrupt` / `resume` / `approve` path (grepped: zero hits). Until that's confirmed, an external caller's only options are:
+> - a hard deadline on the poll loop, and
+> - `DELETE /api/v2/elitea_core/task/prompt_lib/{project_id}/{message_group_uuid}` to **stop** the parked task.
+>
+> Ask the ELITEA team for the resume endpoint before building anything that depends on it.
+
 ## 4. Outcome classification
 
 Reading conversation state to decide if a turn worked, hung, or errored.
+
+> ⚠️ **This classifier has a known false-positive: it labels awaiting-approval runs as `errored`.** A run paused on a HITL interrupt or the sensitive-action guardrail (§ 3b) hits *Pattern A* — assistant, streaming, no items, has a `task_id` — and once it's older than `hung_minutes` it's classed `errored`. `ConversationHealthAnalyzer` then **nudges** it, which accomplishes nothing: the run is waiting on a button, not on the model.
+>
+> The fix is an `awaiting_approval` branch checked *before* Pattern A. It is not implemented here because **the `item_type` (or `meta` key) the authorization dialog is rendered from is not documented**, and guessing it would be worse than the current known bug. **To close this: find a live conversation parked on an approval, dump its last message group, and record the actual marker.** Then add the branch and a matching row to the classification table in `SKILL.md`.
 
 ```python
 def classify_last_group(detail, user_pids, hung_minutes=10, user_timeout_minutes=15):
@@ -265,14 +322,58 @@ Polls `GET /configuration/{id}` until `status_ok: true`. AI/embedding configs so
 | Subsequent version named `"base"` | Create fails with 400. |
 | Sending `Content-Type` on GET via Pyodide httpx in a pipeline | Got us a 400. Don't. |
 | `entity_settings.llm_settings` override on non-published agent | Gets stripped; if it doesn't match version baseline → 400. |
+| Any `/api/v1/...` path | **404 since 2.0.4.** v1 is removed, not deprecated. |
+| A run that "hangs" with no items | May be **awaiting human approval**, not hung — see § 3b before you nudge it. |
 
-## 8. End-to-end debugging checklist
+**Runtime errors any looping test harness must handle** (these come from the platform, not your payload):
+
+| Error | What it actually means |
+|---|---|
+| `429` — *"Hit token rate limit. Minute limit: 0 / 120000 tokens"* | Per-second/minute/day token limits on shared environments. **Back off and retry, or switch model.** A harness that fires predicts in a loop WILL hit this. |
+| `400` — *"This model's maximum context length is 128000 tokens. However, your messages resulted in 217815 tokens"* | Not a payload-shape bug. Compress/summarize, or index instead of pasting documents. Context limits: Claude Sonnet 200k · GPT-4o 128k · GPT-5 400k. |
+| `400` — *"The message you submitted was filtered due to containing prohibited or sensitive content"* | **A test input can trip this.** Don't misread it as an agent failure. |
+
+## 8. Analytics endpoints — check these BEFORE scraping conversations
+
+The Analytics doc says there's no REST surface. There is — seven endpoints, in the live v2 spec:
+
+```
+GET /api/v2/elitea_core/analytics/prompt_lib/{project_id}
+GET /api/v2/elitea_core/analytics_agents/{mode}/{project_id}
+GET /api/v2/elitea_core/analytics_agent_detail/{mode}/{project_id}
+GET /api/v2/elitea_core/analytics_tools/{mode}/{project_id}
+GET /api/v2/elitea_core/analytics_tool_detail/{mode}/{project_id}
+GET /api/v2/elitea_core/analytics_users/{mode}/{project_id}
+GET /api/v2/elitea_core/analytics_user_detail/{mode}/{project_id}
+GET /api/v2/elitea_core/context_analytics/prompt_lib/{project_id}/{conversation_id}
+```
+
+`analytics_agents` ("paginated agent/application usage statistics") takes `date_from`, `date_to` (ISO 8601; defaults to the last 7 days), `limit` (≤100), `offset`, `search`, `sort_by` ∈ `events|users|avg_duration_ms|errors|entity_name`, `sort_order`. It returns `{total, rows: [{entity_name, events, users, avg_duration_ms, errors, ...}]}`.
+
+**Use it as the cheap first pass.** Sorting by `errors` descending over the last 24h tells you *which* agent is failing before you fetch a single conversation:
+
+```bash
+curl -H "Authorization: Bearer $ELITEA_TOKEN" \
+  "https://next.elitea.ai/api/v2/elitea_core/analytics_agents/prompt_lib/630?sort_by=errors&sort_order=desc&limit=10"
+```
+
+Caveats: responses are cached for 5 minutes; scope is per-project; correlating a tool failure back to its calling agent needs trace-ID propagation.
+
+## 9. End-to-end debugging checklist
 
 When a pipeline / agent isn't behaving:
 
-1. **Check the calling user has access to the project** — `getAuthUser` then `getProjectsProject` should include the target.
-2. **Confirm the version_id is current** — `getEliteaCoreApplication` and verify `version_details.id`.
-3. **Look at the last few message groups** — `GET /messages/?limit=5&sort_order=desc`. Check `is_streaming`, `task_id`, `meta.tool_calls[*].finish_reason`.
-4. **For pipelines, look at the structured `result` block in predict** — `chat_history[-1].content` often contains a wrapped JSON with diagnostics.
-5. **Test the failing operation in isolation** via `test_toolkit_tool` if it's a tool issue.
-6. **Compare model output to baseline** via `/predict_llm/` (no agent, just LLM).
+1. **Start with analytics** (§ 8) — `analytics_agents?sort_by=errors&sort_order=desc` narrows it to one entity in one call.
+2. **Check the calling user has access to the project** — `get_auth_user` then `get_projects_project` should include the target.
+3. **Confirm the version_id is current** — `get_elitea_core_application` and verify `version_details.id`.
+4. **Look at the last few message groups** — `GET /messages/?limit=5&sort_order=desc`. Check `is_streaming`, `task_id`, `meta.tool_calls[*].finish_reason`. **If it's streaming with no items, rule out an approval pause (§ 3b) before calling it hung.**
+5. **For a code node, turn on `debug: true`** and read the assembled Python + injected state from the `code-debug` artifact bucket. This beats guessing — see `elitea-pipeline/references/yaml-schema.md`.
+6. **For pipelines, look at the structured `result` block in predict** — `chat_history[-1].content` often contains a wrapped JSON with diagnostics.
+7. **Test the failing operation in isolation** via `test_toolkit_tool` if it's a tool issue.
+8. **Compare model output to baseline** via `/predict_llm/` (no agent, just LLM).
+9. **Stop a genuinely stuck run:** `DELETE /api/v2/elitea_core/task/prompt_lib/{project_id}/{message_group_uuid}`.
+
+**The UI surfaces, and their limits:**
+- **Run History** (Agents/Pipelines menu → clock icon 🕐): per-run date, version, duration, full message replay; share-link / delete / restore. **No REST equivalent exists** — confirmed absent from both the docs and the v2 spec. Conversation-scraping remains the only programmatic path. That's a finding, not an oversight.
+- **Pipeline Runs** (Flow Editor): node-by-node timeline, per-node state snapshots before/after, stack traces. Statuses: **In Progress / Completed / Error / Stopped / Interrupt**. (`Stopped` being first-class is consistent with async pipeline predicts ending in `stopped`, not `SUCCESS` — see § 3.)
+- **Toolkit Run History tab:** ⚠️ tracks **only** Test-Settings runs and Indexes-tab operations. It does **not** track toolkit calls made from chats, agents, or pipelines. Don't send anyone there to debug an agent's tool call.

@@ -39,6 +39,5 @@ An `openapi` toolkit authenticates with the **stored credential** named in `open
 It is **wrong for a shared / multi-user agent that should act as the calling user** (correct identity,
 attribution, and per-user permissions). For that case, wrap the API in a **pipeline `code` node** and
 call it with `elitea_client.auth_token` (the runtime token of whoever invoked the agent), exposed to
-the agent as an `application`-type toolkit. A ready-made generic example —
-`EliteaApiCall` — lives in `bundle/EliteaArchitectAgent/pipelines/EliteaApiCall.yaml`. See
+the agent as an `application`-type toolkit. See
 `agents/elitea-builder/AGENT.md` and `references/toolkit-types.md` for the decision rule.

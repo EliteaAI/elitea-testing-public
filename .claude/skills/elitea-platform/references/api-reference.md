@@ -2,9 +2,30 @@
 
 > **End-to-end reference for the ELITEA REST API** — covers entity CRUD AND the runtime/conversational surface (conversations, messages, participants, attachments, predict, publish, MCP discovery).
 >
-> Last Updated: 2026-06-04 — added the Analytics/Observability API (§13c) and the authoritative machine-readable spec.
+> Last Updated: 2026-07-13 — v1 removal, Skills entity, analytics, triggers; spec snapshot refreshed to 133 paths (`?all=true`).
 >
-> **Authoritative machine-readable spec:** `openapi-spec.json` in this folder (OpenAPI 3.1, 70 paths, title "Elitea AI Platform"), pulled from `https://dev.elitea.ai/shared/openapi/?full=true`. When you need an exact payload/param schema, read it. (It's the dev surface; v1 routes for `configurations`/`secrets`/`auth` still work on prod and are documented below — e.g. `getAuthUser` is best via `GET /api/v2/auth/user/prompt_lib`, which returns real identity where the v1 path can return nulls.)
+> ## Don't trust this file over the live spec
+>
+> This document is prose written by humans and it drifts. **The platform publishes its own machine-readable spec — go there for any exact path, param, or payload schema:**
+>
+> | URL | What it is |
+> |---|---|
+> | `https://next.elitea.ai/shared/openapi/?all=true` | raw **OpenAPI 3.1 JSON**, **133 paths** — parse this |
+> | `https://next.elitea.ai/shared/swagger/?all=true` | the **Swagger UI** for the same spec — browse this |
+>
+> **`?all=true` is the flag that matters.** Without it both URLs serve a reduced **81-path** subset (no `/api/v2/admin/*`, no `support_assistant`, no `vectorstore`, no Build-with-AI draft generators). `?full=true` is a **no-op**. Both need a bearer token (no token → 302), and both work on `dev.elitea.ai` — with a *dev* PAT.
+>
+> ```bash
+> python3 scripts/fetch_openapi_spec.py --grep skill     # what exists for a feature
+> python3 scripts/fetch_openapi_spec.py --show <path>    # full schema for one path
+> python3 scripts/fetch_openapi_spec.py --update         # refresh the bundled snapshot
+> ```
+>
+> `openapi-spec.json` in this folder is a snapshot of the **full** surface: **133 paths, refreshed 2026-07-13**, zero v1.
+>
+> **But the spec is not complete** — it omits several working routes (`application_task`, `DELETE /task/...`, `/application/.../{version_name}`, and the `PATCH /skill/.../{skill_id}` attach call) and it *advertises* one that the server rejects (`PATCH /skill/.../{skill_id}/{version_id}`). "Absent from the spec" is evidence, not proof, that a route is dead — see `conventions.md` § 1a for how to tell the difference.
+>
+> **v1 is GONE** — every `/api/v1/...` route 404s (see § 0.1). Any v1 path still shown below is a historical note, not an instruction.
 
 ---
 
@@ -52,18 +73,39 @@
 
 ### 0.1 API versioning & URL shape
 
-ELITEA exposes two coexisting API surfaces. **v2 is the canonical layer** and what every new integration should target; v1 remains for legacy consumers and a handful of subsystems that have not migrated yet.
+**There is only one API surface: v2.** ELITEA 2.0.4 (02-Jul-2026) completed the v1 deprecation. On `next.elitea.ai` every `/api/v1/...` route returns **404** — this is removal, not a soft deprecation, and the live OpenAPI spec (133 paths at `?all=true`) contains zero v1 entries. Verified live 2026-07-13.
 
-| Subsystem | v2 prefix (preferred) | v1 prefix (legacy / only-form) |
-|---|---|---|
-| Agents, versions, predict, publish | `/api/v2/elitea_core/...` | `/api/v1/applications/...` |
-| Conversations, messages, participants, attachments, folders, canvas | `/api/v2/elitea_core/...` | `/api/v1/chat/...` |
-| Toolkits, MCP discovery, tool tests | `/api/v2/elitea_core/...` | `/api/v1/applications/...` |
-| Collections, tags | `/api/v2/elitea_core/...` | `/api/v1/promptlib_shared/...` |
-| **Configurations / Credentials** | — *(v1 only)* | `/api/v1/configurations/...` |
-| **Artifacts / Buckets** | — *(v1 only)* | `/api/v1/artifacts/...` |
-| **Secrets** | — *(v1 only)* | `/api/v1/secrets/...` |
-| Notifications | `/api/v2/notifications/...` | — |
+Anything below that still shows a v1 path is a historical note, not an instruction.
+
+| Subsystem | v2 prefix (the only form) |
+|---|---|
+| Agents, versions, predict, publish | `/api/v2/elitea_core/...` |
+| Conversations, messages, participants, attachments, folders, canvas | `/api/v2/elitea_core/...` |
+| Toolkits, MCP discovery, tool tests | `/api/v2/elitea_core/...` |
+| Collections, tags | `/api/v2/elitea_core/...` |
+| Skills (2.0.4) | `/api/v2/elitea_core/skill[s]/...` |
+| Analytics | `/api/v2/elitea_core/analytics*/...` |
+| **Configurations / Credentials** | `/api/v2/configurations/...` |
+| **Artifacts / Buckets** | `/api/v2/artifacts/...` |
+| **Secrets** | `/api/v2/secrets/...` |
+| Auth | `/api/v2/auth/user/{mode}` |
+| Projects | `/api/v2/projects/project/{mode}/{project_id}` |
+| Notifications | `/api/v2/notifications/...` |
+
+**Migrating a dead v1 call:** the last three rows are the trap. Configurations, artifacts and secrets didn't just change version prefix — they gained a `{mode}` segment (`default`) that the v1 forms didn't carry in the same position. A blind `s/v1/v2/` still 404s.
+
+| v1 (dead — 404) | v2 (verified live) |
+|---|---|
+| `GET /api/v1/auth/me` or `/auth/user` | `GET /api/v2/auth/user/{mode}` |
+| `GET /api/v1/projects/projects` | `GET /api/v2/projects/project/{mode}/{project_id}` |
+| `POST /api/v1/configurations/configurations/{pid}` | `POST /api/v2/configurations/configurations/{pid}` |
+| `*/api/v1/configurations/configuration/{pid}/{cid}` | `/api/v2/configurations/configuration/{pid}/{cid}` |
+| `GET /api/v1/configurations/models/{pid}` | `GET /api/v2/configurations/models/{pid}` |
+| `GET /api/v1/secrets/secret/default/{pid}/{name}` | `GET /api/v2/secrets/secret/{mode}/{pid}/{secret}` |
+| `POST /api/v1/secrets/secrets/default/{pid}` | `POST /api/v2/secrets/secrets/{mode}/{pid}` |
+| `/api/v1/artifacts/buckets/default/{pid}` | `/api/v2/artifacts/buckets/{mode}/{pid}` |
+| `/api/v1/artifacts/artifacts/default/{pid}/{bucket}` | `/api/v2/artifacts/artifacts/{mode}/{pid}/{bucket}` |
+| `/api/v1/applications/upload_icon/...` | No v2 equivalent in the live spec — assume dead |
 
 Most endpoints embed a `mode` segment between the resource and `{project_id}`:
 
@@ -118,7 +160,7 @@ When you `GET` a configuration, credential, or toolkit settings, secret-typed fi
 ```
 
 To resolve:
-- `GET /api/v1/secrets/secret/default/{project_id}/{secret_name}` → `{"value": "ghp_..."}`
+- `GET /api/v2/secrets/secret/default/{project_id}/{secret_name}` → `{"value": "ghp_..."}`
 - OR call `PATCH /api/v2/elitea_core/version/prompt_lib/{project_id}/{application_id}/{version_id}` with the `X-SECRET` header — returns the version with all configuration references *resolved* inline.
 
 The list of fields that get secret-vaulted (from `SENSITIVE_TOOLKIT_SETTINGS`):
@@ -128,7 +170,7 @@ The list of fields that get secret-vaulted (from `SENSITIVE_TOOLKIT_SETTINGS`):
 
 | Code | Meaning in this API |
 |---|---|
-| 200 | OK; also returned by **configuration create** (`POST /api/v1/configurations/...`) — unlike most other creates |
+| 200 | OK; also returned by **configuration create** (`POST /api/v2/configurations/configurations/{project_id}`) — unlike most other creates |
 | 201 | Created (most POSTs) |
 | 202 | Accepted — message still streaming, poll for completion |
 | 204 | No Content — typical for DELETE, also for `is_private` rejection of public-project conversations |
@@ -144,7 +186,7 @@ The list of fields that get secret-vaulted (from `SENSITIVE_TOOLKIT_SETTINGS`):
 ### 0.6 Base URL
 
 - ELITEA (sole environment): `https://next.elitea.ai/`
-- API root: prepend the base + `/api/v1/` or `/api/v2/` per the table in §0.1.
+- API root: prepend the base + `/api/v2/`. There is no v1 — see §0.1.
 
 > The older `https://nexus.elitea.ai/` host has been retired. Treat any reference to it as outdated and update to `next.elitea.ai`.
 
@@ -154,7 +196,7 @@ Two small but load-bearing lookups (used to scope multi-project / multi-user wor
 
 | Need | Endpoint | Returns |
 |---|---|---|
-| Who is the caller? + their private space | `GET /api/v1/auth/user` | `{ id, name, email, personal_project_id }` — `personal_project_id` is the user's **private-space project**. Authenticated as the bearer-token holder, so this resolves "me" / "my private space". |
+| Who is the caller? + their private space | `GET /api/v2/auth/user/{mode}` | `{ id, name, email, personal_project_id }` — `personal_project_id` is the user's **private-space project**. Authenticated as the bearer-token holder, so this resolves "me" / "my private space". |
 | Resolve a numeric `project_id` from a **project name** | `GET /api/v2/admin/projects/administration?search=<name>&limit=10` | `{ total, rows:[{ id, name, ... }] }`. Global admin search across ALL projects, so a match does NOT imply you have write access (a later write may 403). Empty `search` returns every project — always pass a term. |
 
 ---
@@ -264,7 +306,7 @@ Two small but load-bearing lookups (used to scope multi-project / multi-user wor
 
 | API | Endpoint | Purpose |
 |-----|----------|---------|
-| Get Models | `GET /configurations/models/{projectId}?include_shared=true` | Fetch available LLM models |
+| Get Models | `GET /api/v2/configurations/models/{projectId}?include_shared=true` | Fetch available LLM models (v1 variant retired) |
 | Get Tags | `GET /elitea_core/tags/prompt_lib/{projectId}` | Fetch available tags |
 | Get Icons | `GET /elitea_core/upload_icon/prompt_lib/{projectId}` | Fetch custom icons |
 | Get Default Icons | `GET /elitea_core/default_icons/prompt_lib/{projectId}` | Fetch default icons |
@@ -399,6 +441,16 @@ Two small but load-bearing lookups (used to scope multi-project / multi-user wor
 - Flat payload structure (NO nested `version` object)
 - Does NOT include entity-level fields (name, description, owner_id)
 - Used when editing historical versions
+- **Returns 201**, not 200 (verified live 2026-07-13)
+
+> 🚨 **This PUT replaces the version body wholesale. Any field you omit is WIPED.** The must-preserve list:
+>
+> | Field | Why |
+> |---|---|
+> | `tools[].author_id` | required on PUT (not on POST); absent → 400 |
+> | **`notes`** (2.0.4) | top-level version string, `maxLength` 1000, nullable. **Omitting it sets it to `null`** — verified live. Holds internal implementation comments; never sent to the LLM. |
+>
+> Always GET → mutate → PUT. `scripts/update_version_field.py` does this for you and carries both fields through.
 
 **Request Payload Structure:**
 
@@ -1871,7 +1923,7 @@ A **participant** is the binding of an entity (a user, an agent version, a toolk
 [ { "entity_name": "llm", "entity_meta": { "model_name": "gpt-4o" } } ]
 ```
 
-**Response:** `200` with `[<participant_details>]`. Extract `response[0].id` as the participant ID for subsequent `postEliteaCoreMessages` calls.
+**Response:** `200` with `[<participant_details>]`. Extract `response[0].id` as the participant ID for subsequent `post_elitea_core_messages` calls.
 
 Server auto-fills missing `entity_meta.project_id` from the URL `project_id` (legacy compat).
 
@@ -2177,7 +2229,7 @@ Re-runs the predict that produced this assistant message; replaces its `message_
 ]
 ```
 
-After upload, reference the file in `postEliteaCoreMessages` via:
+After upload, reference the file in `post_elitea_core_messages` via:
 
 ```json
 "attachments_info": [{ "filepath": "/bucket-name/uploaded-file.pdf" }]
@@ -2612,10 +2664,34 @@ When you got a `task_id` from a predict (async) or a `return_task_id`-style mess
 
 **Body:**
 ```json
-{ "version_name": "pytest-v1", "validation_token": "PASS:123:..." }
+{ "version_name": "pytest-v1", "validation_token": "PASS:123:...", "category": "Development" }
 ```
 
 `validation_token` is optional; if omitted, server runs inline validation. Same `version_name` regex applies.
+
+**`category` (2.0.4) — send it.** Agent HUB replaced free-form tags with a curated category list, and the publishing wizard requires you to pick exactly one. The schema types `category` as nullable (so it *may* be optional server-side), but the UI treats it as mandatory — **always send it** rather than discover the difference in production.
+
+Enumerate the valid values (don't hardcode them — this is a live endpoint):
+
+```
+GET /api/v2/elitea_core/agent_categories/prompt_lib/{project_id}
+→ {"categories": [{"name": "Business Analyst", "is_default": true},
+                  {"name": "Quality Assurance"}, {"name": "Development"},
+                  {"name": "DevOps"}, {"name": "Project Management"},
+                  {"name": "Knowledge & Documentation"},
+                  {"name": "Elitea"}, {"name": "Epam"}, {"name": "Other"}]}
+```
+
+`category` is accepted on **both** `publish_validate` (§11.1) and `publish`.
+
+**Publishing limits (2.0.2 self-service publishing):**
+- Up to **3 published versions** per agent concurrently — beyond that you get a `limit_reached` error.
+- Developers publish directly; no admin involvement.
+- Unpublishing is safe: existing conversations are preserved. Owner unpublishes immediately; an admin unpublish takes a `reason`.
+
+> **Version-name regex discrepancy — flagged, not resolved.** The publish endpoint validates `^[a-zA-Z0-9._-]{1,50}$` (dots allowed, 50 chars). The entity-versioning docs state version names are alphanumeric plus `-`/`_`, **max 20 chars, no spaces, no dots**. The 50-char regex is what the server enforces on publish; the 20-char rule appears to be a UI constraint. Stay within the stricter rule and you're safe under both.
+>
+> Also: **only Draft versions can be set as the default version** — a published version cannot.
 
 **Two flows:**
 - **Admin in-place** (when `project_id == public_project_id`) — toggles version status to `published` in-place.
@@ -2863,7 +2939,7 @@ Pipelines can be invoked three ways:
 **Endpoint:** `GET /api/v2/elitea_core/pipeline_trigger/prompt_lib/{project_id}/pipeline/{version_id}/trigger`
 **Auth permission:** `models.applications.version.details`
 
-**Response:**
+**Response** (schedule trigger):
 ```json
 {
   "type": "schedule",
@@ -2872,12 +2948,25 @@ Pipelines can be invoked three ways:
   "last_run": "2026-05-24T13:00:00Z",
   "created_by": 42,
   "webhook_type": null,
-  "webhook_url": null,
-  "webhook_secret_masked": "**********"
+  "webhook_url": null
 }
 ```
 
-> Secrets are **masked** for users without edit permission; users with edit permission see `webhook_secret_value` instead.
+**Response** (webhook trigger, `webhook_type: "custom"` — verified live 2026-07-13):
+```json
+{
+  "type": "webhook",
+  "webhook_type": "custom",
+  "webhook_url": "/api/v2/elitea_core/webhook/prompt_lib/9/161/custom",
+  "secret_header": "X-Webhook-Token",
+  "secret_value": "<43-char base64url secret, IN PLAINTEXT>",
+  "secret_instructions": "..."
+}
+```
+
+> 🔐 **`secret_value` is returned in PLAINTEXT on GET — it is NOT masked.** An earlier version of this file claimed a `webhook_secret_masked` field for users without edit permission. **That field does not exist.** Verified live: the secret comes back in full. Treat any log or transcript of this GET as containing a live credential.
+>
+> For `webhook_type: "github"`, `secret_header` is **`null`** — GitHub computes the `X-Hub-Signature-256` HMAC itself rather than sending the raw secret in a header.
 
 ### 12.2 Set / Update Trigger Config
 
@@ -2912,11 +3001,13 @@ Pipelines can be invoked three ways:
 **Endpoint:** `POST /api/v2/elitea_core/webhook/prompt_lib/{project_id}/{version_id}/{webhook_type}`
 **Auth:** **No bearer token** — secured by webhook signature.
 
-| `webhook_type` | Signature header |
+| `webhook_type` | Auth header (the `secret_header` the GET returns) |
 |---|---|
-| `github` | `X-Hub-Signature-256: sha256=...` (HMAC-SHA256 of raw body with `webhook_secret_value`) |
-| `gitlab` | `X-Gitlab-Token: <secret_value>` |
-| `custom` | `X-Hub-Signature-256` (same as github) |
+| `github` | `X-Hub-Signature-256: sha256=...` — HMAC-SHA256 of the raw body with the secret. GET returns `secret_header: null` because GitHub computes it. |
+| `gitlab` | `X-Gitlab-Token: <secret_value>` — the secret, sent directly |
+| `custom` | **`X-Webhook-Token: <secret_value>`** — the secret, sent directly ✅ verified live 2026-07-13 |
+
+> **Correction:** this table previously said `custom` used `X-Hub-Signature-256` "same as github". **It does not.** A `custom` webhook's GET returns `secret_header: "X-Webhook-Token"`, and that's the header the endpoint expects.
 
 **Body:** raw provider payload — parsed and wrapped as `{"chat_history": [], "user_input": <raw>}` for legacy agents; native pipeline runs receive the payload as the `webhook` trigger context.
 
@@ -2934,13 +3025,15 @@ Pipelines can be invoked three ways:
 | **Pipeline** | same as Agent (`agent_type: "pipeline"`) | same | same |
 | **Toolkit** | `POST /api/v2/elitea_core/tools/prompt_lib/{projectId}` | `PUT /api/v2/elitea_core/tool/prompt_lib/{projectId}/{toolId}` | N/A |
 | **Datasource** | `POST /datasources/datasources/prompt_lib/{projectId}` | `PUT /datasources/datasource/prompt_lib/{projectId}/{datasourceId}` | N/A |
-| **Credential** | `POST /api/v1/configurations/configurations/{projectId}` *(returns 200)* | `PUT /api/v1/configurations/configuration/{projectId}/{configId}` | N/A |
-| **Secret** | `POST /api/v1/secrets/secrets/default/{projectId}` | `PUT /api/v1/secrets/secret/default/{projectId}/{name}` | N/A |
+| **Credential** | `POST /api/v2/configurations/configurations/{projectId}` *(returns 200)* | `PUT /api/v2/configurations/configuration/{projectId}/{configId}` | N/A |
+| **Secret** | `POST /api/v2/secrets/secrets/default/{projectId}` | `PUT /api/v2/secrets/secret/default/{projectId}/{name}` | N/A |
 | **Conversation** | `POST /api/v2/elitea_core/conversations/prompt_lib/{projectId}` | `PUT /api/v2/elitea_core/conversation/prompt_lib/{projectId}/{convId}` | N/A |
 | **Folder** | `POST /api/v2/elitea_core/folder/prompt_lib/{projectId}` | `PUT/PATCH /api/v2/elitea_core/folder/prompt_lib/{projectId}/{folderId}` | N/A |
 | **Collection** | `POST /api/v2/elitea_core/collections/prompt_lib/{projectId}` | `PUT /api/v2/elitea_core/collection/prompt_lib/{projectId}/{collectionId}` | N/A |
-| **Bucket** | `POST /api/v1/artifacts/buckets/default/{projectId}` | N/A | N/A |
-| **Artifact (file)** | `POST /api/v1/artifacts/artifacts/default/{projectId}/{bucket}` *(multipart)* | N/A | N/A |
+| **Bucket** | `POST /api/v2/artifacts/buckets/default/{projectId}` | N/A | N/A |
+| **Artifact (file)** | `POST /api/v2/artifacts/artifacts/default/{projectId}/{bucket}` *(multipart)* | N/A | N/A |
+
+> **Deleting agents/pipelines — there is NO whole-application delete over REST.** The only delete is per-**version**: `DELETE /api/v2/elitea_core/application/{mode}/{project_id}/{application_id}/{version_name}`. It **refuses the `base` version and the current default version** (`400 "You cannot delete base application version"`) — and re-pointing the default first does not help; `base` stays permanent. Net effect: you can delete extra named versions, but an app whose only version is `base` can only be removed via the **UI** (single-version apps are effectively UI-delete-only). Plan throwaway/test apps accordingly. (Verified 2026-07.)
 
 **Runtime / chat:**
 
@@ -3046,15 +3139,19 @@ Pipelines can be invoked three ways:
 
 ```
 # Get available models for LLM configuration
-GET /api/v1/configurations/models/{projectId}?include_shared=true
+# NOTE: the v1 variant (GET /api/v1/configurations/models/...) is RETIRED (404 on next.elitea.ai). Use v2.
+GET /api/v2/configurations/models/{projectId}?include_shared=true
 
 # Get models for specific sections (embedding, vectorstore, etc.)
-GET /api/v1/configurations/models/{projectId}?section={section_type}
+GET /api/v2/configurations/models/{projectId}?section={section_type}
 
 # Get tags for categorization
 GET /api/v2/elitea_core/tags/prompt_lib/{projectId}
 
 # Icon management
+# ⚠️ UNVERIFIED / LIKELY DEAD. These were v1-only and v1 is now 404 (see §0.1).
+# No v2 equivalent appears in the live OpenAPI spec. If you need icon upload,
+# probe the live spec at https://next.elitea.ai/shared/openapi/?all=true before relying on it.
 GET /api/v1/applications/upload_icon/prompt_lib/{projectId}
 GET /api/v1/applications/default_icons/prompt_lib/{projectId}
 POST /api/v1/applications/upload_icon/prompt_lib/{projectId}/{versionId}
@@ -3070,7 +3167,7 @@ POST /api/v2/elitea_core/toolkit_discover_tools/prompt_lib/{projectId}/{toolkitT
 POST /api/v2/elitea_core/mcp_sync_tools/prompt_lib/{projectId}
 
 # Secrets resolution
-GET /api/v1/secrets/secret/default/{projectId}/{secret_name}
+GET /api/v2/secrets/secret/default/{projectId}/{secret_name}
 
 # Notifications
 GET /api/v2/notifications/notifications/prompt_lib/{projectId}?only_new=true
@@ -3122,7 +3219,7 @@ Used by `GET /conversation/...`, returned by `POST /conversations/...`.
 
 **Workflow A — Build & run a customer-support agent:**
 
-1. `POST /api/v1/configurations/configurations/{project_id}` — create credential (e.g., OpenAI API key)
+1. `POST /api/v2/configurations/configurations/{project_id}` — create credential (e.g., OpenAI API key)
 2. `POST /api/v2/elitea_core/tools/prompt_lib/{project_id}` — create toolkit (e.g., GitHub) referencing the credential
 3. `POST /api/v2/elitea_core/applications/prompt_lib/{project_id}` — create agent with `versions: [{name: "base", llm_settings, ...}]`
 4. `PATCH /api/v2/elitea_core/tool/prompt_lib/{project_id}/{tool_id}` — link toolkit to agent version with `selected_tools`
@@ -3179,8 +3276,48 @@ eyeballing. All under `/api/v2/elitea_core/...`; `{mode}` = `prompt_lib`.
 | Regenerate a reply | POST | `/api/v2/elitea_core/regenerate/prompt_lib/{project_id}/{message_group_uuid}` | |
 
 > Also in the spec (less common): `folder` CRUD, `tags`, `search_options`, `export_import`,
-> `vectorstore` (`POST/DELETE /api/v2/elitea_core/vectorstore/{mode}`), `webhook`, `canvas`/`canvases`,
-> `predict_llm`, `social/{authors,avatar,like,pin,feedback}`. See `openapi-spec.json` for exact schemas.
+> `webhook`, `canvas`/`canvases`, `predict_llm`, `social/{authors,avatar,like,pin,feedback}`,
+> and the Skills surface (`skill`/`skills`/`application_skills`/`agent_categories` — see `skills-entity.md`).
+> See `openapi-spec.json` for exact schemas.
+
+### Only visible at `?all=true` (the full 133-path surface)
+
+The default spec view hides 52 paths. The ones worth knowing:
+
+| Endpoint | What it is |
+|---|---|
+| `POST /elitea_core/generate_application_draft/{mode}/{pid}` | **"Build with AI" for agents** (2.0.4) — natural-language description → drafted name, description, instructions, welcome message. |
+| `POST /elitea_core/generate_skill_draft/{mode}/{pid}` | **"Build with AI" for Skills** (2.0.4). See `skills-entity.md`. |
+| `POST /elitea_core/generate_project_context_draft/{mode}/{pid}` | **"Build with AI" for Project Context** (2.0.4). |
+| `POST /configurations/check_connections/{pid}` | Validate a credential's connectivity before you rely on it. |
+| `POST`/`DELETE` `/elitea_core/vectorstore/{mode}` | Admin-scoped — **use `mode=administration`**; it 404s on `prompt_lib`/`default`. |
+| `/api/v2/admin/*` (36 paths) | Users, roles, permissions, invites, moderation, runtime/plugin management, system info. |
+| `/api/v2/support_assistant/*` (5 paths) | The in-product Support Assistant (2.0.3). |
+| `/api/v2/projects/group[s]`, `/projects/monitoring` | Project groups and monitoring. |
+
+Fetch them with `python3 scripts/fetch_openapi_spec.py --grep generate_` (or `--show <path>` for the full schema).
+
+### Endpoint liveness — probed 2026-07-13 (a bogus-route control was used to tell "route missing" from "route errored")
+
+| Endpoint | Status |
+|---|---|
+| `GET /api/v2/elitea_core/application_task/{mode}/{pid}/{task_id}` | ✅ **ALIVE but UNDECLARED** — absent from the spec even at `?all=true`, yet a real handler answers (`400 {"ok":false,"error":"Unknown task"}` on a bogus id). Works; prefer `callback_url` for anything durable. |
+| `GET /api/v2/elitea_core/application/{mode}/{pid}/{app_id}/{version_name}` | ✅ **ALIVE but UNDECLARED** — get a version by name. |
+| `PATCH /api/v2/elitea_core/skill/{mode}/{pid}/{skill_id}` | ✅ **ALIVE but UNDECLARED** — the skill-attach call (see `skills-entity.md`). |
+| `DELETE /api/v2/elitea_core/task/{mode}/{pid}/{message_group_uuid}` | ✅ **ALIVE and declared** — in the `?all=true` surface. Stops a hung run. |
+| `POST/DELETE /api/v2/elitea_core/vectorstore/{mode}` | ✅ **ALIVE — admin-scoped.** Declared in the `?all=true` surface. It 404s on `mode=prompt_lib` and `mode=default`, which is why an earlier probe wrongly called it retired — **use `mode=administration`.** A 404 can mean "wrong mode", not "dead route". |
+| `PATCH /api/v2/elitea_core/skill/{mode}/{pid}/{skill_id}/{version_id}` | 🚫 **DECLARED BUT BROKEN** — the spec advertises it; the server returns `400 "version_id path segment is not supported for PATCH"`. |
+
+> **Two traps in that table.** (1) A route missing from the default spec may just be admin-tier — refetch with `?all=true`. (2) A 404 may mean you used the wrong `{mode}`, not that the route is gone. Rule out both before declaring anything dead.
+
+### Two URL forms that are wrong in the wild (and were wrong here)
+
+| Operation | ❌ Doesn't work | ✅ Works |
+|---|---|---|
+| Delete an artifact | `DELETE /artifacts/artifact/{mode}/{pid}/{bucket}/{filename}` → **500** | `DELETE /artifacts/artifacts/{mode}/{pid}/{bucket}?filename=...` (plural, filename as a **query param**) |
+| Delete a conversation | `DELETE /elitea_core/conversations/{mode}/{pid}/{cid}` → **404** | `DELETE /elitea_core/conversation/{mode}/{pid}/{cid}` (**singular**) → 204 |
+
+*(Reading an artifact is the singular form — `GET /api/v2/artifacts/artifact/{mode}/{pid}/{bucket}/{filename}`. Only the DELETE differs. Yes, that's as confusing as it sounds.)*
 
 ---
 
@@ -3229,7 +3366,7 @@ Distilled from the ELITEA `api/v2` source and the `elitea-api-testing` pytest su
 22. **`POST /configurations/...` returns 200**, not 201 — one of the few endpoints that breaks the convention.
 23. **Toolkit settings reference credentials by `elitea_title`**, NEVER by raw id. Form is `{"elitea_title": "...", "private": true|false}`. `private = not credential.shared`.
 24. **`toolkit_name` is the sanitized form of `name`.** Server strips `[^a-zA-Z0-9_.-]` and replaces `.` with `_` (see `utils/utils.py:15`).
-25. **Sensitive credential fields** (`access_token`, `password`, `api_key`, etc.) come back as `"{{secret.<name>}}"` placeholders. Resolve via `GET /api/v1/secrets/secret/default/{project_id}/{secret_name}` or use the `X-SECRET` PATCH on `/version/...`.
+25. **Sensitive credential fields** (`access_token`, `password`, `api_key`, etc.) come back as `"{{secret.<name>}}"` placeholders. Resolve via `GET /api/v2/secrets/secret/default/{project_id}/{secret_name}` or use the `X-SECRET` PATCH on `/version/...`.
 26. **Configuration status polling** — AI/Embedding configurations need 1–5 s to validate. Poll `GET /configuration/{id}` until `status_ok: true` (test helper polls 5 times, 3 s apart).
 27. **Buckets** — set `expiration_value: 30, expiration_measure: "days"` on bucket create to avoid a backend crash for projects with non-null `data_retention_limit`.
 
