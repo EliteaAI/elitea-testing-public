@@ -807,6 +807,117 @@ class AgentDetailPage(AgentFormPage):
         return url
 
     # ------------------------------------------------------------------
+    # Skills section (attach/detach skills on the agent version)
+    # ------------------------------------------------------------------
+
+    @action("Expand Skills section")
+    def ensure_skills_section_visible(self, timeout: int = 5000):
+        """Scroll to the Skills accordion section and wait for it to render.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        counter = self.page.get_by_text("skills added.")
+        counter.scroll_into_view_if_needed()
+        counter.wait_for(state="visible", timeout=timeout)
+        self.page.wait_for_timeout(300)  # Animation settle
+
+    @action("Attach skill")
+    def attach_skill(self, skill_name: str, timeout: int = 10000):
+        """Attach a skill to the agent version via the Skills section "+ Skill" button.
+
+        Clicks the "+ Skill" button (accessible name "Skill" — a BaseBtn with
+        a plus icon and visible "Skill" text label; ELITEA-1735 exploration
+        found this has a stable accessible name, unlike the AFS's original
+        "position-only, no testid" note), waits for the UnifiedDropdown
+        popper (shared with the Toolkits "+ Toolkit" flow — real MUI
+        MenuItem, role="menuitem", accessible name = skill name), and
+        selects the matching item. Attachment is an immediate API-level
+        auto-save (PATCH .../skill/prompt_lib/{project}/{id} -> 201); no
+        agent-level Save is required afterward.
+
+        Args:
+            skill_name: Exact name of the skill to attach.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Attaching skill '%s' to agent", skill_name)
+        self.ensure_skills_section_visible(timeout=timeout)
+        counter_before = self.get_skills_counter_text(timeout=timeout)
+
+        add_btn = self.page.get_by_role("button", name="Skill", exact=True)
+        add_btn.wait_for(state="visible", timeout=timeout)
+        add_btn.click(force=True)
+
+        popper = Popper.wait_for(self.page, timeout=timeout)
+        Popper.select_menuitem(popper, skill_name, self.page, timeout=timeout)
+        self.wait_for_network(timeout=timeout)
+
+        # The attach PATCH resolving is not sufficient — the Skills section
+        # reads from an RTK Query cache that must invalidate + refetch before
+        # the counter/card reflect the new attachment. Poll for the counter
+        # text to actually change rather than trusting networkidle alone.
+        deadline = time.time() + timeout / 1000
+        counter_after = counter_before
+        while time.time() < deadline:
+            counter_after = self.get_skills_counter_text(timeout=1000)
+            if counter_after != counter_before:
+                break
+            self.page.wait_for_timeout(300)
+
+        if counter_after == counter_before:
+            logger.warning(
+                "Skills counter did not change after attaching '%s' (still %r)",
+                skill_name, counter_after,
+            )
+        logger.info("Skill '%s' attached to agent (counter: %r -> %r)", skill_name, counter_before, counter_after)
+
+    def get_skills_counter_text(self, timeout: int = 5000) -> str:
+        """Return the Skills section counter text, e.g. "2/5 skills added.".
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        counter = self.page.get_by_text("skills added.")
+        counter.wait_for(state="visible", timeout=timeout)
+        return (counter.text_content() or "").strip()
+
+    def _skills_section_content(self):
+        """Return a locator scoped to the Skills accordion's content container.
+
+        LOCATOR: `ApplicationSkills.jsx` renders the "+ Skill" button + the
+        "N/5 skills added." counter inside a `headerRow` Box, and the
+        `SkillCard` list as siblings of that `headerRow` Box, both inside one
+        shared `containerStyles` Box (no data-testid on this Box). Scoped via
+        the counter text, walking up 2 ancestor `div`s: ancestor::div[1] is
+        `headerRow` itself, ancestor::div[2] is the shared `containerStyles`
+        Box that also holds the skill cards (ELITEA-1735 exploration).
+        """
+        return self.page.get_by_text("skills added.").locator("xpath=ancestor::div[2]")
+
+    def is_skill_attached(self, skill_name: str, timeout: int = 5000) -> bool:
+        """Check whether a skill card for *skill_name* is rendered in the Skills section.
+
+        LOCATOR: SkillCard has no data-testid; located by its rendered
+        skill-name text, scoped within the Skills section's content
+        container (`_skills_section_content()`) — NOT page-wide — so this
+        can't false-positive on the skill name appearing elsewhere (e.g. a
+        chat response echoing the name, or a stray identical string on
+        another part of the page).
+
+        Args:
+            skill_name: Name of the skill to look for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.ensure_skills_section_visible(timeout=timeout)
+        try:
+            self._skills_section_content().get_by_text(
+                skill_name, exact=True,
+            ).first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    # ------------------------------------------------------------------
     # Embedded chat (right panel)
     # ------------------------------------------------------------------
 
@@ -847,6 +958,72 @@ class AgentDetailPage(AgentFormPage):
         send_btn.wait_for(state="visible", timeout=timeout)
         send_btn.click()
         logger.info("Message sent in embedded chat")
+
+    @action("Send embedded chat message with skill mention")
+    def send_chat_message_with_mention(
+        self, skill_name: str, prompt: str, timeout: int = 10000,
+    ):
+        """Type "~<skill_name> <prompt>" in the embedded chat and send it.
+
+        Uses ``press_sequentially`` (never ``fill()``) throughout: typing "~"
+        opens the "Mention skill" popper (MentionSkillList — a plain div-based
+        list with NO ARIA role and NO data-testid on its items, unlike the
+        UnifiedDropdown popper used by ``attach_skill()``); selecting an item
+        inserts a mention chip into the input. Appending the prompt text via
+        ``fill()`` would replace the whole textbox value and destroy that
+        chip, so the prompt is also typed via ``press_sequentially``
+        (ELITEA-1735 exploration; ``MentionToolItem.jsx`` confirmed no
+        role/testid on mention items).
+
+        Args:
+            skill_name: Exact name of the attached skill to mention.
+            prompt: Text to append after the mention chip.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Sending mention message: ~%s %s", skill_name, prompt[:60])
+        chat_input = self.page.get_by_test_id("chat-message-input")
+        chat_input.wait_for(state="visible", timeout=timeout)
+        chat_input.click()
+        chat_input.press_sequentially("~", delay=50)
+
+        # Wait for the "Mention skill" popper and select the matching item by
+        # its rendered label text (no role="menuitem", no data-testid).
+        mention_header = self.page.get_by_text("Mention skill", exact=True)
+        mention_header.wait_for(state="visible", timeout=timeout)
+        mention_container = mention_header.locator("xpath=ancestor::div[2]")
+        mention_item = mention_container.get_by_text(skill_name, exact=True).first
+        mention_item.wait_for(state="visible", timeout=timeout)
+        mention_item.click()
+        self.page.wait_for_timeout(300)
+
+        chat_input.press_sequentially(f" {prompt}", delay=30)
+        self.page.wait_for_timeout(300)
+
+        send_btn = self.page.get_by_test_id("chat-send-button")
+        send_btn.wait_for(state="visible", timeout=timeout)
+        send_btn.click()
+        logger.info("Mention message sent (~%s)", skill_name)
+
+    @action("Clear embedded chat")
+    def clear_embedded_chat(self, timeout: int = 10000):
+        """Click the "Clear the chat" button in the embedded chat panel.
+
+        LOCATOR: No data-testid; located via the stable
+        ``aria-label="clear the chat"`` attribute set on ``ClearChatButton.jsx``.
+        The same aria-label is also used by ``RunHistoryContainer.jsx``
+        elsewhere on the agent detail page, so this resolves to >1 element —
+        ``.first`` picks the embedded-chat panel's own button (first in DOM
+        order; ELITEA-1735 exploration).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clearing embedded chat")
+        clear_btn = self.page.get_by_label("clear the chat").first
+        clear_btn.wait_for(state="visible", timeout=timeout)
+        clear_btn.click()
+        self.page.wait_for_timeout(500)
+        logger.info("Embedded chat cleared")
 
     def wait_for_chat_response(
         self,
@@ -976,6 +1153,36 @@ class AgentDetailPage(AgentFormPage):
         # Fallback: get all text from the message
         text = ai_msg.text_content() or ""
         return text.strip()
+
+    def get_last_chat_response_text(self) -> str:
+        """Return the body text of the last AI response in embedded chat.
+
+        ``get_last_chat_message()`` looks for ``data-testid="chat-answer-content"``,
+        but ``ApplicationAnswer.jsx`` only sets that testid on non-last
+        messages — the *last* message uses ``data-testid="skill-test-last-response"``
+        instead (``isLastMessage ? 'skill-test-last-response' : 'chat-answer-content'``).
+        So for the last message ``get_last_chat_message()`` falls through to
+        raw ``text_content()``, which includes header metadata (agent name,
+        "Thought for N secs" trace, timestamps) mixed into the body — unusable
+        for exact-formatting assertions (ELITEA-1735 exploration). This method
+        reads the correct testid for the last message directly, mirroring
+        ``SkillDetailPage.get_last_test_response()``.
+
+        Returns:
+            Last AI response body text as string (stripped), or "" if no
+            messages are present yet.
+        """
+        messages = self._embedded_chat_messages()
+        if messages.count() == 0:
+            return ""
+
+        last_response = self.page.get_by_test_id("skill-test-last-response")
+        if last_response.count() > 0:
+            return (last_response.last.text_content() or "").strip()
+
+        # Fall back to the general-purpose extraction for older UI builds
+        # that don't render the skill-test-last-response testid.
+        return self.get_last_chat_message()
 
     def wait_for_sensitive_action_authorization(
         self, timeout: int = 30000, click_authorize: bool = True
