@@ -77,6 +77,25 @@ Inspect that log. If it contains anything that is not a `data-testid` addition �
 debug edit, a stray console.log — **stop and report it**. It must not reach an upstream PR.
 
 ```bash
+# Must be additive-only. Expect 0.
+git diff upstream/main...HEAD | grep -E '^[+-]' | grep -v '^[+-][+-]' | grep -vc 'data-testid'
+# The testids this batch ships:
+git diff upstream/main...HEAD | grep -o 'data-testid="[^"]*"' | sort -u
+```
+
+**Check naming against what upstream already uses.** The EliteaUI team adds testids too (PR #513,
+EL-5634), so there is an established vocabulary — match it rather than inventing a parallel one:
+
+```bash
+git grep -ho 'data-testid="[^"]*"' upstream/main -- 'src/*' | sed 's/data-testid=//;s/"//g' | sort -u
+```
+
+Their convention is `{section}-{element}-{type}` (`agent-save-button`, `skill-name-input`), with plural
+section prefixes for list/collection pages (`artifacts-file-list`). If one of ours collides with an
+existing name, or names the same element differently, fix it **before** the PR — not after a reviewer
+asks.
+
+```bash
 gh pr create --repo EliteaAI/EliteaUI \
   --base main --head "<your-gh-user>:$BATCH" \
   --title "test: add data-testid attributes for UI automation" \

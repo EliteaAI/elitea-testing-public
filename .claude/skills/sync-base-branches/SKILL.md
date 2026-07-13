@@ -138,6 +138,16 @@ cd "$WORKSPACE/EliteaUI"
 git fetch upstream
 git fetch origin
 
+# 0. Look at what you are about to replay, and what is coming in.
+git log --oneline upstream/main..automation/testids     # ours — should be testid commits only
+git log --oneline automation/testids..upstream/main     # theirs — what lands on top
+
+# Our commits must be strictly additive. Any non-testid line is a red flag: report it, do not rebase
+# it into a batch that will be PR'd to another team's repo.
+git diff upstream/main...automation/testids --stat
+git diff upstream/main...automation/testids | grep -E '^[+-]' | grep -v '^[+-][+-]' | grep -vc 'data-testid'
+#   ^ expect 0. Non-zero = someone slipped a behaviour change onto the testid branch.
+
 # 1. Fast-forward the fork's own main to upstream. Never commit to this branch.
 git checkout main
 git merge --ff-only upstream/main
@@ -197,11 +207,19 @@ landed completely. Then delete the merged snapshot branch:
 
 ## Part 3 — Post-sync
 
+**Confirm the replay did not lose anything.** A rebase can silently drop an edit through a careless
+conflict resolution, and the branch will look perfectly healthy afterwards.
+
 ```bash
 # WORKSPACE = parent folder holding the three sibling clones (no env var needed)
 WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
 cd "$WORKSPACE/EliteaUI"
-# Did dependencies actually change? A bare "version" bump in package.json does NOT need a reinstall.
+
+# Our testids must still be there, and the diff must still be additive-only.
+git diff upstream/main...automation/testids --stat
+git diff upstream/main...automation/testids | grep -o 'data-testid="[^"]*"' | sort -u
+
+# Dependencies: a bare "version" bump in package.json does NOT need a reinstall.
 git diff ORIG_HEAD..HEAD --name-only -- package-lock.json
 ```
 
@@ -214,17 +232,51 @@ pkill -f vite
 # then use the start-ui-localhost skill
 ```
 
-## Verify before you report
+### Check what upstream just gave you for free
+
+**The EliteaUI team adds `data-testid` attributes too** (e.g. PR #513, EL-5634). A sync can therefore
+*remove* work you were about to do — an element you planned to instrument may already be covered.
 
 ```bash
 # WORKSPACE = parent folder holding the three sibling clones (no env var needed)
 WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
-git -C "$WORKSPACE/elitea-testing-public" rev-list --left-right --count origin/main...automation/base
-git -C "$WORKSPACE/EliteaUI"              rev-list --left-right --count upstream/main...automation/testids
+cd "$WORKSPACE/EliteaUI"
+# Total testids the local UI now serves (upstream's + ours):
+git grep -ho 'data-testid="[^"]*"' HEAD -- 'src/*' | sed 's/data-testid=//;s/"//g' | sort -u | wc -l
+
+# Did UPSTREAM merge any testid work in this fetch? Use the remote-tracking reflog —
+# NOT `ORIG_HEAD..HEAD`, which after a rebase also lists our own replayed commits and misleads you.
+git log --oneline 'upstream/main@{1}..upstream/main' --grep='test-id\|testid\|test id' -i
 ```
 
-Left number = commits you are behind and should now be `0` in both. Right = our own commits ahead, which
-is expected and fine. Report the actual numbers; do not claim success without running this.
+You do not need a "does this testid already exist" guard before calling `add-data-testid`: agents
+discover elements by snapshotting the **live DOM**, which after a sync already contains upstream's
+testids, so a covered element never reaches the skill. But if you sync mid-task, re-snapshot — an
+element that lacked a testid ten minutes ago may have one now.
+
+## Verify before you report
+
+Branch counts alone are not verification — they prove git moved, not that anything still works. You
+pulled in real framework changes and real UI changes; run the smoke suite against the restarted local UI.
+
+```bash
+# WORKSPACE = parent folder holding the three sibling clones (no env var needed)
+WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
+
+# 1. Both branches level with their bases (left = behind, must be 0; right = our commits, fine)
+git -C "$WORKSPACE/elitea-testing-public" rev-list --left-right --count origin/main...automation/base
+git -C "$WORKSPACE/EliteaUI"              rev-list --left-right --count upstream/main...automation/testids
+
+# 2. The UI still serves (dev server restarted after the rebase)
+curl -s -o /dev/null -w "localhost:5173 -> %{http_code}\n" http://localhost:5173
+
+# 3. The suite still passes against it. This is the real check.
+cd "$WORKSPACE/elitea-testing-public/automation"
+HEADLESS=true ../.venv/bin/pytest tests/ui/smoke/ -v -p no:cacheprovider
+```
+
+Report the actual numbers and the actual pass/fail line. Do not claim success without running these —
+a green sync with a broken UI is the failure mode this catches.
 
 ## Do not
 
