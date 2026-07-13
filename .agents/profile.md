@@ -9,7 +9,8 @@ languages: [python]
 # Elitea Test Automation — project card
 
 Playwright/pytest suite automating onetest TMS cases against the Elitea platform,
-run locally against the EliteaUI fork. Currently UI-focused; API tests exist and
+run locally against `EliteaAI/EliteaUI` on its `automation/testids` integration
+branch. Currently UI-focused; API tests exist and
 other surfaces (mobile, perf) may be added later — nothing in this seed assumes
 UI-only.
 
@@ -25,7 +26,7 @@ UI-only.
 
 ## Environment & access
 
-- **Primary base URL:** `http://localhost:5173` — EliteaUI fork on `automation/testids`,
+- **Primary base URL:** `http://localhost:5173` — `EliteaAI/EliteaUI` on `automation/testids`,
   pointing at the DEV backend. `ELITEA_URL` in `.env.test` controls it; `APP_PREFIX`
   empty on localhost, `/app` on deployed envs.
 - **API base:** `ELITEA_API_BASE` (DEV backend).
@@ -38,8 +39,8 @@ UI-only.
 |---|---|---|
 | `EliteaAI/elitea-testing-public` | admin | this repo — tests, tracker, board |
 | `EliteaAI/onetest-ai-tm-Elitea` | admin | TMS — cases, runs, defects |
-| `EliteaAI/EliteaUI` | **read-only** | upstream UI — the reason the fork exists |
-| `bermudas/EliteaUI` (fork) | write | testid work on `automation/testids` |
+| `EliteaAI/EliteaUI` | **push, no admin** | UI — testid work directly on `automation/testids`; `main` owned by the UI team |
+| ~~`bermudas/EliteaUI`~~ (fork) | RETIRED 2026-07-13 | no longer part of the workflow — never push to it |
 
 ### Roles & sample users
 
@@ -137,9 +138,11 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **Merge policy**: auto-merge into `automation/base` — the orchestrator merges once the
   test ran green locally + review passed. There is NO CI on `automation/base`; the
   green local run IS the gate.
-- **Batch operations are human-triggered only** (never autonomous): EliteaUI testids
-  PR to upstream, DEV restart, GHA runs, `automation/base → main` gate PR. See
-  `.agents/workflow.md` § Batch operations.
+- **Testid PRs to `EliteaAI/EliteaUI` `main`**: agents open them, **as drafts**, one per
+  case, from a `testids/<case>` branch cut off fresh `main`. A human flips them to ready.
+- **Batch promotion is human-triggered only** (never autonomous): DEV restart, GHA runs,
+  `automation/base → main` gate PR. Testids are NOT batched any more — they promote
+  per-case. See `.agents/workflow.md` § Promotion.
 - **Squash / rebase / merge**: squash (default) for small PRs into `automation/base`.
 
 ### Additional notes
@@ -149,4 +152,6 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
   `GITHUB_TOKEN` comes from the master `.env` when needed by `.mcp.json`.
 - Repos sit on OneDrive — git/npm operations are slow, background them, don't assume hangs.
 - Never shallow-clone any of the three repos (`test -f .git/shallow` to check;
-  `git fetch --unshallow origin` to fix) — shallow clones break `git rebase upstream/main`.
+  `git fetch --unshallow origin` to fix) — shallow clones break history-walking merges.
+- **`automation/testids` is a shared org branch: never rebase it, never force-push it.**
+  Sync with `git merge origin/main`.

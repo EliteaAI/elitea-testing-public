@@ -13,9 +13,9 @@ internal service architecture.
 ├── .env  .env.test                      master secrets (symlink targets)
 ├── elitea-testing-public/               THIS repo — tests · branch automation/base · admin
 │   └── automation/.env.test → ../../.env.test
-├── EliteaUI/                            fork bermudas/EliteaUI · branch automation/testids
+├── EliteaUI/                            EliteaAI/EliteaUI (NO fork) · branch automation/testids
 │   ├── .env → ../.env                   (VITE_DEV_TOKEN etc.)
-│   └── upstream = EliteaAI/EliteaUI     (READ-ONLY — the reason the fork exists)
+│   └── origin = EliteaAI/EliteaUI       push, no admin · main owned by the UI team
 └── onetest-ai-tm-Elitea/                TMS repo ($OT_REPO_ROOT) · admin
     ├── .onetest/                        config the @onetest/tms MCP package reads via cwd
     └── tests/automated-full-regression-ui/   case source (markdown + YAML frontmatter)
@@ -56,10 +56,22 @@ onetest-tms MCP (npx @onetest/tms) ──reads/writes──▶ onetest-ai-tm-Eli
 | Settings / Admin | Configuration, guardrails, voice | `tests/ui/admin/`, `tests/ui/voice/` |
 | Support Assistant | Chatbot widget | `tests/ui/support_assistant/` |
 
-## Why the fork + long-lived-branch design exists
+## Why the integration-branch design exists
 
-Locators are testids in EliteaUI JSX → upstream is read-only and PR review takes
-days → deployed envs lag behind on testids → `LocatorDescriptor` has no fallback.
-So testids accumulate on the fork's `automation/testids` (served locally with every
-testid present) and tests accumulate on `automation/base`; paired batch PRs move
-both to their mains, testids first. Full procedure: `.agents/workflow.md`.
+Locators are testids in EliteaUI JSX → `EliteaAI/EliteaUI` `main` is owned by the
+**product UI team** and their review takes days → deployed envs lag behind on testids
+→ `LocatorDescriptor` has no fallback, so a test bound to an unreviewed testid fails
+hard. So **`automation/testids` is a permanent integration branch on the org repo**
+that accumulates every testid the team ever wrote — merged *and* still-in-review — and
+the local dev server runs it. No agent ever waits on the UI team.
+
+Each testid is **dual-targeted**: its `testids/<case>` branch is cut from fresh `main`
+(so its review PR shows one clean case), merged straight into `automation/testids`
+(so agents are unblocked instantly), and opened as a **draft PR to `main`** for the UI
+team. Tests, meanwhile, accumulate on `automation/base` and reach `main` in periodic
+**batches**, gated on their testids having merged and deployed first.
+
+**Why tests are batched but testids aren't:** testids are leaf additions that don't
+compose; test code is a layered shared substrate (page objects, fixtures, `conftest`),
+so a test branch must be cut from `automation/base` to see prior unpromoted work — and
+review already happens on the `automation/base` PR. Full procedure: `.agents/workflow.md`.

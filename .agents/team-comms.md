@@ -18,7 +18,7 @@
 |------|-----------------|-----------|
 | Test Automation Lead — Tal (orchestrator) | `test-automation-lead` | Pipeline routing, AFS gate, merge gate to `automation/base`, TMS intake/back-write, board #9 discipline, batch ops (on request) |
 | QA Engineer — Sage (analyst + reviewer) | `qa-engineer` | Analyst: execute case vs `localhost:5173`, emit AFS. Reviewer: FRESH session, adversarial review of automation PRs |
-| Test Automation Engineer — Axel (implementer) | `test-automation-engineer` | AFS → green pytest/Playwright test through page objects; testid work via `add-data-testid` on the EliteaUI fork |
+| Test Automation Engineer — Axel (implementer) | `test-automation-engineer` | AFS → green pytest/Playwright test through page objects; testid work via `add-data-testid` on `EliteaAI/EliteaUI` (`automation/testids` + draft PR to main) |
 | Scout — Kit | `scout` | Onboarding/seed refresh, retrospectives, optimization passes |
 
 Use the `subagent_type` value exactly — it must match a directory name in

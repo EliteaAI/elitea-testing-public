@@ -40,7 +40,8 @@ This file only records what those don't.
 - Work branches from `automation/base`: `automation/<case-id>-<slug>` / `tests/<id>-<slug>`
 - Commits: conventional-ish — `test: (5199) …`, `fix: …`, `refactor: …`, `docs(afs): …`
 - PRs: small, one per test/feature area, target `automation/base`, squash merge
-- Testid commits in the UI fork: direct to `automation/testids`, message describing
+- Testid commits: on a `testids/<case>-<slug>` branch cut from fresh `origin/main`,
+  then merged into `automation/testids` (never committed straight onto it). Message describing
   the testids added
 
 ## Hard don'ts

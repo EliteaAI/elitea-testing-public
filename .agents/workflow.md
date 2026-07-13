@@ -1,103 +1,146 @@
 # How This Team Works
 
 _Seeded 2026-07-10 from operator way-of-work brief + PR sampling (merged PRs #10–15
-on `main`; `automation/base` has no PR history yet — it's new). Refresh when the
-process shifts._
+on `main`). **Revised 2026-07-13: the EliteaUI fork was retired** — `automation/testids`
+now lives on `EliteaAI/EliteaUI` directly, and testids reach `main` via per-case draft
+PRs instead of a batch. Refresh when the process shifts._
 
 ## Git host
 
 - **Host**: GitHub · **CLI**: `gh` · **Unit of change**: Pull Request
 - **Remotes**: this repo `EliteaAI/elitea-testing-public` (admin);
-  UI fork `bermudas/EliteaUI` (write) with `upstream = EliteaAI/EliteaUI` (read-only)
+  UI repo `EliteaAI/EliteaUI` (push, **no admin**) — worked on **directly, no fork**.
+  A stale `fork` remote (`bermudas/EliteaUI`) may still exist locally as a safety
+  net; it is **not** part of the workflow. Never push to it.
 
 ## The core problem this workflow solves
 
 A test needs a stable locator → the locator is a `data-testid` in EliteaUI JSX →
-we cannot push to `EliteaAI/EliteaUI` (read-only; PR review takes days) → deployed
-envs lack new testids until upstream merges AND deploys.
+`main` is owned by the **product UI team**, whose review takes days → deployed envs
+lack new testids until that PR merges AND deploys.
 `LocatorDescriptor` has **no fallback** — a test bound to a new testid fails hard
-anywhere the testid isn't deployed. Therefore: **both repos keep a long-lived
-branch where work accumulates**, and tests run against the local fork where every
-testid the team ever added is present.
+anywhere the testid isn't present. Therefore: **`automation/testids` is a permanent
+integration branch that accumulates every testid the team ever created** — both the
+ones already merged to `main` and the ones still sitting in review. The dev server
+runs that branch, so no test and no agent is ever blocked on review latency.
 
 ## Branching
 
 | Repo | Long-lived branch | Rule |
 |---|---|---|
-| elitea-testing-public | `automation/base` (cut from `main`) | small PRs into it, one per test/feature area; **never PR `main`** |
-| EliteaUI fork | `automation/testids` | commit testid edits directly onto it; **never PR `EliteaAI/EliteaUI` yourself** |
+| elitea-testing-public | `automation/base` (cut from `main`) | small PRs into it, one per test/feature area; **never PR `main` directly** |
+| EliteaAI/EliteaUI | `automation/testids` (integration) | **never PR it into `main`.** Per-case `testids/<CASE>-<slug>` branches merge *into* it |
 
 - There is **no CI on `automation/base`** — the green local run before PR is the
   only verification. You are the CI.
 - There is **no `pending_testid` marker**. Do not invent one.
-- Branch naming for work branches: `automation/<case-id>-<slug>` or `tests/<id>-<slug>`,
-  cut from `automation/base`.
+- Test work branches: `tests/<case-id>-<slug>`, cut from **`automation/base`**.
+- Testid branches: `testids/<case-id>-<slug>`, cut from **fresh `origin/main`** (see below).
 - Commit style (sampled from history): conventional-ish — `test: (5199) Add guardrails
   live-reload UI tests`, `refactor: use default gpt-5.2 model`, `docs(afs): amend selectors…`.
 
-### Catch-up / sync procedures
+### Testid flow — the dual-target rule
 
-**EliteaUI fork ← upstream** (before starting new test work; conflicts rare — testid
-edits are additive JSX attributes):
+A testid branch is **cut from `main`** but **lands in two places**:
+
+```
+main ──●────────────────────────●─────────●   EliteaAI/EliteaUI
+        \                      /         /    ▲ DRAFT PR — UI team reviews.
+         ● testids/EL-1737 ───╯         /       Diff = ONLY this case. Clean.
+          \       ● testids/EL-1796 ───╯
+           ▼       ▼   (merged immediately, NO review)
+    ══════════════════════════════════════▶  automation/testids
+             ▲                                ← dev server :5173 runs THIS
+             ╰── main merged in, often           agents see EVERY testid,
+                                                 merged AND still-in-review
+```
+
+**Cut from `main`, not from `automation/testids`.** A PR's diff is computed against
+its merge-base — a branch cut from the integration branch would drag every other
+case's unmerged testid into your review PR. Cutting from `main` is what keeps the
+UI team's PR to a clean single-case diff.
 
 ```bash
 cd ../EliteaUI
-git fetch upstream
-git checkout automation/testids && git rebase upstream/main
-git push --force-with-lease origin automation/testids   # only after a rebase that moved commits
+git fetch origin
+
+# 1. cut the per-case branch from FRESH main
+git checkout -b testids/EL-1737-skills-import origin/main
+#    …edit JSX under src/ ONLY… then commit
+
+# 2. land it on the integration branch IMMEDIATELY (no review, no waiting)
+git checkout automation/testids
+git merge origin/main                       # keep integration branch current
+git merge --no-ff testids/EL-1737-skills-import
+git push origin automation/testids          # plain FF push — NEVER --force
+
+# 3. push the case branch and open a DRAFT PR to main for the UI team
+git push -u origin testids/EL-1737-skills-import
+gh pr create --repo EliteaAI/EliteaUI --base main --draft \
+  --head testids/EL-1737-skills-import --title "test(EL-1737): add data-testids for …"
 ```
 
-If `package.json` dependencies or `package-lock.json` changed → re-run `npm install`
-(a bare version bump doesn't require it). Also pull teammates' testids at the same
-moment: `git pull origin automation/testids` (before the rebase).
+**Agents open that PR as a draft.** A human flips it to *ready* when the UI team
+should look at it. (This repeals the old rule that agents never PR `EliteaAI/EliteaUI`.)
 
-### Testid commit & push discipline (the fork)
+### Sync: `automation/testids` ← `main`
 
-- **During work:** commit testid edits directly onto local `automation/testids`
-  (no work branches, no PRs inside the fork). The dev server serves your working
-  tree — Vite HMR shows edits immediately; no pull/push needed to "update the UI".
-- **On green — together with opening the test PR:** `git push origin automation/testids`
-  (plain fast-forward push). Invariant: **origin `automation/testids` must contain
-  every testid that origin `automation/base` tests reference** — never merge a test
-  PR whose testids aren't pushed.
-- **`--force-with-lease` is ONLY for after an upstream rebase** — never for routine
-  pushes.
+**Merge. Never rebase, never force-push.** This branch is shared and lives on the org
+repo — rewriting its history can clobber a colleague. `--force`/`--force-with-lease`
+have **no legitimate use** on it.
 
-**Test repo ← main** (periodically): merge/rebase `main` into `automation/base`.
+```bash
+cd ../EliteaUI
+git checkout automation/testids
+git fetch origin && git merge origin/main
+git push origin automation/testids
+```
 
-**Never shallow clones.** `git rebase upstream/main` silently misbehaves on shallow
-clones. Check `test -f .git/shallow`; fix with `git fetch --unshallow origin`.
+Do this before starting new test work. Conflicts are rare — testid edits are additive
+JSX attributes. If `package.json` / `package-lock.json` changed → re-run `npm install`
+(a bare version bump doesn't require it).
+
+> **Divergence rule.** If the UI team *changes* a testid during review (renames it,
+> moves it), `main`'s version now differs from what's already on `automation/testids`.
+> The next `merge origin/main` may conflict. **Resolve in favour of `main`** — it is
+> the source of truth — then fix the affected `LocatorDescriptor` in this repo. This
+> is inherent to the dual-target design, not a bug.
+
+**Test repo ← main** (periodically): merge `main` into `automation/base`.
+
+**Never shallow clones.** Check `test -f .git/shallow`; fix with `git fetch --unshallow origin`.
 
 ## The loop for one new test
 
 1. **Start the local UI** — `start-ui-localhost` skill, or
    `cd ../EliteaUI && npm run dev` → `http://localhost:5173`. It's on
-   `automation/testids`, so every team-added testid is present.
+   `automation/testids`, so every team-added testid is present — including ones
+   still in review.
 2. **Explore** the live UI (Playwright MCP) — find elements lacking testids.
-3. **`add-data-testid` skill** — edits JSX in `../EliteaUI/src` (ONLY files under
-   `src/` — nothing else in the UI repo), commits to `automation/testids`. Vite HMR
-   reloads — no restart. Naming `{section}-{element}-{type}`; verify uniqueness first.
+3. **`add-data-testid` skill** — cuts `testids/<case>` from `origin/main`, edits JSX
+   under `../EliteaUI/src` (ONLY files under `src/`), merges to `automation/testids`,
+   opens the draft PR. Vite HMR reloads — no restart. Naming `{section}-{element}-{type}`;
+   verify uniqueness first.
 4. **`page-object-generator` skill** — emit **testid-only** descriptors:
    `LocatorDescriptor(testid="agent-form-save-button")`. Never populate `fallback`.
 5. **Write the test**, run it green against localhost, PR into `automation/base`.
 
 Nothing in this loop waits on external review. That is the point.
 
-## Batch operations — HUMAN-TRIGGERED ONLY
+## Promotion — HUMAN-TRIGGERED ONLY
 
-The lead performs these **only on explicit request, with all required clarifications**
-— never autonomously:
+Testid promotion is no longer batched — it happens per case, continuously, via the
+draft PRs above. What remains batched is **the tests**, and the lead performs it
+**only on explicit request** — never autonomously (`promote-automation-batch` skill):
 
-1. Open PR to `EliteaAI/EliteaUI` with accumulated testids from `automation/testids`
-   (periodically a human cuts a clean branch off fresh `upstream/main`, replays
-   testids, opens one batched PR).
-2. Merge upstream → restart DEV.
-3. Run the suite from GHA against the deployed env.
-4. Open `automation/base → main` gate PR (gate = green deployed run) and merge.
+1. Confirm the testids the batch depends on have **merged to `EliteaAI/EliteaUI` `main`
+   and deployed** to the target env. Tests cannot cross into `main` ahead of their testids.
+2. Run the suite from GHA against the deployed env.
+3. Open the `automation/base → main` gate PR (gate = green deployed run) and merge.
 
-**The two batches are paired and ordered**: testids must merge upstream and deploy
-*before* the matching tests cross into `main`. Checked once per batch against a real
-environment — not per test.
+**Ordering invariant, unchanged:** a testid must be merged upstream and deployed
+*before* the test that depends on it reaches `main`. Checked once per batch against a
+real environment — not per test.
 
 ## Review gates (pipeline-internal)
 

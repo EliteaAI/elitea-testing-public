@@ -94,3 +94,31 @@ Run an intake tick: launch Tal (`claude --agent test-automation-lead`) and ask h
 intake from `tests/automated-full-regression-ui/` per `.agents/test-automation.yaml`
 § intake (≤10 cards, dedup, no status). A human then drags approved cards to
 `Approved`, and the pipeline can start on the first case.
+
+---
+
+## Revision — 2026-07-13: EliteaUI fork retired
+
+The topology recorded above is **superseded**. The `bermudas/EliteaUI` fork was
+dropped; `automation/testids` now lives on **`EliteaAI/EliteaUI` directly** (we have
+push, not admin) as a permanent **integration branch** accumulating every testid —
+merged and still-in-review alike.
+
+Testids are now **dual-targeted per case**, not batched: a `testids/<case>-<slug>`
+branch is cut from fresh `origin/main`, merged immediately into `automation/testids`
+(no review — unblocks agents), and opened as a **draft PR to `main`** for the UI team.
+Cutting from `main` rather than the integration branch is what keeps that PR to a clean
+single-case diff. Agents may now open those PRs (as drafts) — the old blanket ban on
+PRing `EliteaAI/EliteaUI` is repealed.
+
+`automation/testids` is a shared org branch: **merge `origin/main` into it; never
+rebase, never force-push.**
+
+The **test** side is deliberately unchanged (branch off `automation/base`, reviewed PR,
+periodic batch promote) — testids are leaf additions that don't compose, whereas test
+code is a layered shared substrate, and per-case review already happens on the
+`automation/base` PR.
+
+Migration performed: fork demoted to a `fork` remote; `automation/testids` rebuilt on
+fresh `main` + the 3 pending testids; catch-up draft PR EliteaAI/EliteaUI#525 opened.
+Docs/skills rewritten accordingly. See `.agents/workflow.md`.
