@@ -29,7 +29,9 @@ force-push**. See the guard below.
 ## Preconditions
 
 ```bash
-cd "$LOCAL_ELITEA_FOLDER"
+# WORKSPACE = parent folder holding the three sibling clones (no env var needed)
+WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
+cd "$WORKSPACE"
 # Both repos must be FULL clones. A shallow clone has no merge base: rebase misbehaves
 # and rev-list reports nonsense ahead/behind counts.
 for d in elitea-testing-public EliteaUI; do
@@ -43,7 +45,9 @@ git -C EliteaUI status --porcelain
 ## Part 1 — Test repo: merge `origin/main` into `automation/base`
 
 ```bash
-cd "$LOCAL_ELITEA_FOLDER/elitea-testing-public"
+# WORKSPACE = parent folder holding the three sibling clones (no env var needed)
+WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
+cd "$WORKSPACE/elitea-testing-public"
 git fetch origin
 git checkout automation/base
 git merge origin/main
@@ -64,7 +68,9 @@ refuse — that refusal is correct, do not override it with `--force`. Announce 
 is mid-commit, and never run this while another agent is adding testids.
 
 ```bash
-cd "$LOCAL_ELITEA_FOLDER/EliteaUI"
+# WORKSPACE = parent folder holding the three sibling clones (no env var needed)
+WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
+cd "$WORKSPACE/EliteaUI"
 git fetch upstream
 git fetch origin
 
@@ -128,7 +134,9 @@ landed completely. Then delete the merged snapshot branch:
 ## Part 3 — Post-sync
 
 ```bash
-cd "$LOCAL_ELITEA_FOLDER/EliteaUI"
+# WORKSPACE = parent folder holding the three sibling clones (no env var needed)
+WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
+cd "$WORKSPACE/EliteaUI"
 # Did dependencies actually change? A bare "version" bump in package.json does NOT need a reinstall.
 git diff ORIG_HEAD..HEAD --name-only -- package-lock.json
 ```
@@ -145,8 +153,10 @@ pkill -f vite
 ## Verify before you report
 
 ```bash
-git -C "$LOCAL_ELITEA_FOLDER/elitea-testing-public" rev-list --left-right --count origin/main...automation/base
-git -C "$LOCAL_ELITEA_FOLDER/EliteaUI"              rev-list --left-right --count upstream/main...automation/testids
+# WORKSPACE = parent folder holding the three sibling clones (no env var needed)
+WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
+git -C "$WORKSPACE/elitea-testing-public" rev-list --left-right --count origin/main...automation/base
+git -C "$WORKSPACE/EliteaUI"              rev-list --left-right --count upstream/main...automation/testids
 ```
 
 Left number = commits you are behind and should now be `0` in both. Right = our own commits ahead, which

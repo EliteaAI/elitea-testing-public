@@ -6,7 +6,7 @@ platform. Working branch: **`automation/base`** (never PR `main` directly).
 ## Layout (three sibling clones — parent dir is NOT a git repo)
 
 ```
-<parent>/                        ← "$LOCAL_ELITEA_FOLDER" — this repo's parent folder
+<parent>/                        ← this repo's parent folder (sibling clones; no env var needed)
 ├── .env  .env.test              master secrets — NEVER commit, NEVER print
 ├── elitea-testing-public/       THIS repo · branch automation/base · .venv (Python 3.13)
 ├── EliteaUI/                    UI fork · branch automation/testids · npm run dev → :5173

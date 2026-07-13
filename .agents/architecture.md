@@ -9,7 +9,7 @@ internal service architecture.
 ## Three-repo factory topology
 
 ```
-$LOCAL_ELITEA_FOLDER/                    (= parent folder of this clone; plain dir, NOT a repo)
+<workspace>/                             (= parent folder of this clone; plain dir, NOT a repo)
 ├── .env  .env.test                      master secrets (symlink targets)
 ├── elitea-testing-public/               THIS repo — tests · branch automation/base · admin
 │   └── automation/.env.test → ../../.env.test
