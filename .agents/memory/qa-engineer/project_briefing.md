@@ -50,6 +50,14 @@ type: project
 - **Auth quirks:** localhost skips login entirely (`auth_state` + `VITE_DEV_TOKEN`);
   Keycloak field on deployed envs is `input[name="username"]`, not email. AI responses
   arrive over WebSocket ~2s late — evidence needs waits.
+- **Playwright MCP click gotcha (live UI exploration, analyst slot):**
+  `mcp__playwright__browser_click` on the "Support Assistant" launcher (and other
+  MUI-overlay-guarded buttons) throws `Unexpected token` CSS parse errors when the
+  selector embeds quoted text, and plain clicks get intercepted by the overlay. Use
+  a JS-evaluate click (`browser_evaluate`, `el => el.click()`) instead of
+  `browser_click` for these elements — see `.claude/rules/mui-patterns.md` § MUI
+  Overlay Interception for the Python-side equivalent. (session
+  `8e0c1151-9d68-4798-af94-b78ba4d7a0a8`, Analyst slots for ELITEA-1796/1737.)
 - **Case source:** markdown + YAML frontmatter in
   `../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/` (read locally or via
   `gh api`). Read the FULL file — description, preconditions, data, steps + expected.
@@ -60,8 +68,13 @@ type: project
   strict-per-bug, body names the case ID + originating task.
 - **Reviewer slot:** triangulate case file ↔ AFS ↔ PR diff; PRs target `automation/base`;
   check: testid-only discipline, no `fallback` population, locators as page-class
-  fields only (none built inside methods/specs), every test step wrapped in
-  `allure.step` — any of these missing is `CHANGES_REQUESTED`.
+  fields only (none built inside methods/specs — **including a raw selector
+  chained off an existing field inside a method, e.g.
+  `self.some_field.locator(".css-class")`, which looks compliant at a glance but
+  isn't**), every test step wrapped in `allure.step` — any of these missing is
+  `CHANGES_REQUESTED`. This exact shape slipped through review in PR #22
+  (`automation/pages/skill_form_page.py:272`, ELITEA-1737) — grep diffs for
+  `\.locator(` inside method bodies, not just top-level class definitions.
 
 ## My Role Focus
 
