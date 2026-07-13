@@ -856,10 +856,9 @@ class AgentDetailPage(AgentFormPage):
         # reads from an RTK Query cache that must invalidate + refetch before
         # the counter/card reflect the new attachment. Poll for the counter
         # text to actually change rather than trusting networkidle alone.
-        import time as _time
-        deadline = _time.time() + timeout / 1000
+        deadline = time.time() + timeout / 1000
         counter_after = counter_before
-        while _time.time() < deadline:
+        while time.time() < deadline:
             counter_after = self.get_skills_counter_text(timeout=1000)
             if counter_after != counter_before:
                 break
@@ -882,11 +881,28 @@ class AgentDetailPage(AgentFormPage):
         counter.wait_for(state="visible", timeout=timeout)
         return (counter.text_content() or "").strip()
 
+    def _skills_section_content(self):
+        """Return a locator scoped to the Skills accordion's content container.
+
+        LOCATOR: `ApplicationSkills.jsx` renders the "+ Skill" button + the
+        "N/5 skills added." counter inside a `headerRow` Box, and the
+        `SkillCard` list as siblings of that `headerRow` Box, both inside one
+        shared `containerStyles` Box (no data-testid on this Box). Scoped via
+        the counter text, walking up 2 ancestor `div`s: ancestor::div[1] is
+        `headerRow` itself, ancestor::div[2] is the shared `containerStyles`
+        Box that also holds the skill cards (ELITEA-1735 exploration).
+        """
+        return self.page.get_by_text("skills added.").locator("xpath=ancestor::div[2]")
+
     def is_skill_attached(self, skill_name: str, timeout: int = 5000) -> bool:
         """Check whether a skill card for *skill_name* is rendered in the Skills section.
 
         LOCATOR: SkillCard has no data-testid; located by its rendered
-        skill-name text within the Skills section content.
+        skill-name text, scoped within the Skills section's content
+        container (`_skills_section_content()`) — NOT page-wide — so this
+        can't false-positive on the skill name appearing elsewhere (e.g. a
+        chat response echoing the name, or a stray identical string on
+        another part of the page).
 
         Args:
             skill_name: Name of the skill to look for.
@@ -894,9 +910,9 @@ class AgentDetailPage(AgentFormPage):
         """
         self.ensure_skills_section_visible(timeout=timeout)
         try:
-            self.page.get_by_text(skill_name, exact=True).first.wait_for(
-                state="visible", timeout=timeout,
-            )
+            self._skills_section_content().get_by_text(
+                skill_name, exact=True,
+            ).first.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
             return False
