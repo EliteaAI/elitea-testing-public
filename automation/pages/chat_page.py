@@ -469,9 +469,20 @@ class ChatPage(BasePage):
     ])
 
     def _is_transient_message(self, text: str) -> bool:
-        """Check if the message is a transient state that should be ignored."""
-        return text.lower().strip().rstrip(".…") in self.TRANSIENT_MESSAGES or \
-               text.lower().strip() in self.TRANSIENT_MESSAGES
+        """Check if the message is a transient state that should be ignored.
+
+        Normalises non-breaking spaces (``\\xa0``, used by the "Waking the
+        agent…" placeholder when an agent is cold-starting after being newly
+        added as a chat participant — confirmed live during ELITEA-1736
+        implementer Phase 2) to regular spaces before matching against
+        ``TRANSIENT_MESSAGES``, which is written with plain-space literals.
+        Without this, the nbsp variant silently fails the membership check
+        and ``wait_for_message_content_stable`` treats the placeholder as
+        real, stable content — a false-stable race, not a real defect.
+        """
+        normalized = text.replace("\xa0", " ").lower().strip()
+        return normalized.rstrip(".…") in self.TRANSIENT_MESSAGES or \
+               normalized in self.TRANSIENT_MESSAGES
 
     def wait_for_message_content_stable(
         self, stable_duration_ms: int = 2000, timeout: int = 30000
@@ -2062,6 +2073,81 @@ class ChatPage(BasePage):
         self.wait_for_network(timeout=timeout)
 
         logger.info("Toolkit '%s' added as chat participant", toolkit_name)
+
+    def is_agent_participant_in_composer(self, agent_name: str, timeout: int = 10000) -> bool:
+        """Return True if *agent_name* is shown as the active agent in the composer.
+
+        LOCATOR: ``getByRole("button", { name: "Switch Agent" })`` — no
+        data-testid, but a stable ``aria-label="Switch Agent"`` on the
+        composer's ButtonGroup once an agent is added as a chat participant
+        (confirmed live via DOM inspection during ELITEA-1736 implementer
+        Phase 2; matches the AFS's own "Switch Agent -> {agent name}"
+        wording literally — it's the button's accessible name, not just
+        rendered text). Replaces the model-name display used when no agent
+        participant is active.
+
+        NOTE (ELITEA-1736 Phase-2 exploration): the "Agents in this
+        conversation" collapsed-participants badge documented in the AFS
+        renders its participant count via a CSS ``::after`` pseudo-element
+        (``content: "${count}"`` in ``CollapsedPerticapantsList.jsx``), which
+        has no DOM text node and is not readable via ``text_content()`` or
+        any accessible-name query — confirmed by reading the EliteaUI
+        source. This "Switch Agent" button is the stable, semantic signal
+        instead; the AFS's own Expected Results names both as equivalent
+        evidence of participant membership.
+
+        Args:
+            agent_name: The agent's exact display name.
+            timeout: Maximum wait time in milliseconds.
+        """
+        switch_agent_btn = self.page.get_by_role("button", name="Switch Agent")
+        switch_agent_btn.wait_for(state="visible", timeout=timeout)
+        text = switch_agent_btn.text_content() or ""
+        found = agent_name in text
+        logger.info(
+            "'Switch Agent' composer button text: %r — contains agent name %r: %s",
+            text, agent_name, found,
+        )
+        return found
+
+    @action("Send chat message with skill mention")
+    def send_message_with_skill_mention(
+        self, skill_name: str, prompt: str, timeout: int = 10000,
+    ):
+        """Type "~<skill_name> <prompt>" in the main chat input and send it.
+
+        Same "Mention skill" popper mechanics as
+        ``AgentDetailPage.send_chat_message_with_mention`` (MentionSkillList —
+        a plain div-based list with NO ARIA role and NO data-testid on its
+        items), confirmed live for the chat-participant surface during
+        ELITEA-1736 exploration. Uses ``press_sequentially`` throughout —
+        never ``fill()`` — because filling the whole textbox value would
+        destroy the mention chip inserted after selecting from the popper.
+
+        Args:
+            skill_name: Exact name of the attached skill to mention.
+            prompt: Text to append after the mention chip.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Sending mention message: ~%s %s", skill_name, prompt[:60])
+        self.message_input.wait_for(state="visible", timeout=timeout)
+        self.message_input.click()
+        self.message_input.press_sequentially("~", delay=50)
+
+        mention_header = self.page.get_by_text("Mention skill", exact=True)
+        mention_header.wait_for(state="visible", timeout=timeout)
+        mention_container = mention_header.locator("xpath=ancestor::div[2]")
+        mention_item = mention_container.get_by_text(skill_name, exact=True).first
+        mention_item.wait_for(state="visible", timeout=timeout)
+        mention_item.click()
+        self.page.wait_for_timeout(300)
+
+        self.message_input.press_sequentially(f" {prompt}", delay=30)
+        self.page.wait_for_timeout(300)
+
+        self.send_button.wait_for(state="visible", timeout=timeout)
+        self.send_button.click(force=True, timeout=timeout)
+        logger.info("Mention message sent (~%s)", skill_name)
 
     # ------------------------------------------------------------------
     # UI state wait helpers
