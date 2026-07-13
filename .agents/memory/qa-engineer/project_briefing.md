@@ -41,9 +41,11 @@ type: project
 
 ## Elitea Project Specifics (seeded by scout 2026-07-10)
 
-- **Explore against `http://localhost:5173`** — the EliteaUI fork on `automation/testids`
-  (DEV backend). Start it with the `start-ui-localhost` skill. Every team-added testid
-  exists THERE; deployed envs lag behind — never validate handles against dev/next.
+- **Explore against `http://localhost:5173`** — `EliteaAI/EliteaUI` (no fork) on its
+  `automation/testids` **integration branch** (DEV backend). Start it with the
+  `start-ui-localhost` skill. That branch carries every testid the team ever created —
+  merged to EliteaUI `main` *and* still sitting in an open draft PR — so deployed envs
+  always lag it. **Never validate handles against dev/next.**
 - **Handles are testids only.** If an element lacks one, that's a finding for the AFS
   ("testid needed: `{section}-{element}-{type}`") — the implementer adds it via
   `add-data-testid`. Never spec CSS/text selectors.

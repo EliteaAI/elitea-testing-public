@@ -2,7 +2,8 @@
 
 Playwright/pytest test-automation suite for the Elitea AI platform. This team turns
 onetest TMS cases into merged, honest automated tests on the **`automation/base`**
-branch, run against a **local EliteaUI fork** (`automation/testids` → DEV backend).
+branch, run against a **local `EliteaAI/EliteaUI` checkout** on the `automation/testids`
+integration branch (→ DEV backend). No fork — the branch lives on the org repo.
 
 ## Tech Stack
 
@@ -12,7 +13,7 @@ branch, run against a **local EliteaUI fork** (`automation/testids` → DEV back
 - **Reporting:** allure-pytest (mandatory — `--alluredir` in `pytest.ini` addopts), pytest-html/json
 - **Lint/type:** ruff (line 120, py311 target), mypy
 - **System under test:** Elitea (React UI + REST API, Keycloak auth) — locally via
-  EliteaUI fork on `http://localhost:5173`
+  EliteaUI (`automation/testids`) on `http://localhost:5173`
 
 ## Repository Structure
 

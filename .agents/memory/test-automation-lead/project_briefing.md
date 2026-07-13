@@ -39,9 +39,10 @@ type: project
   IS your merge gate. You merge (squash) small PRs autonomously.
 - **Merge-gate extra check:** before merging a test PR, confirm its testids are
   PUSHED to origin `automation/testids` (`cd ../EliteaUI && git fetch origin &&
-  git status` / compare with `git log origin/automation/testids..automation/testids`
-  → must be empty). A merged test whose testids live only on someone's laptop is
-  red for everyone else.
+  git log origin/automation/testids..automation/testids` → must be empty). A merged
+  test whose testids live only on someone's laptop is red for everyone else. Note this
+  gates on the **integration branch**, not on EliteaUI `main` — a testid still in an
+  open draft PR is fine for `automation/base`; it only blocks the `main` promotion.
 - **Intake**: cases from `../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/`
   (tag `automated:UI:regression`, status `draft`). Rules in
   `.agents/test-automation.yaml` § intake: dedup by `[Automate][ELITEA-<id>]` title
@@ -61,9 +62,13 @@ type: project
   operator to log in — don't fall back to the shared token for writes.
 - **Dedup with the list API, never `--search`** (search index lags → duplicates like
   #17/#18): `env -u GITHUB_TOKEN gh issue list --state all --limit 200 --json title | grep "ELITEA-<id>"`.
-- **Batch operations only on explicit user request** (with clarifications): EliteaUI
-  upstream PR, DEV restart, GHA runs, `automation/base → main` gate. Testids merge
-  upstream + deploy BEFORE tests cross to `main` — paired and ordered.
+- **Batch promotion only on explicit user request** (with clarifications): DEV restart,
+  GHA runs, `automation/base → main` gate. Testids merge to EliteaUI `main` + deploy
+  BEFORE the tests that use them cross to `main` — ordered, and still the invariant.
+  **Testids are no longer batched** (changed 2026-07-13, fork retired): they promote
+  per-case as **draft PRs** to `EliteaAI/EliteaUI` opened by `add-data-testid`. Never
+  mark one ready or merge it — that's the human's call. `promote-automation-batch` is
+  now tests-only; its Stage 1 just *verifies* the needed testids merged and deployed.
 - **onetest MCP write verbs** (`create_run`, `record_result`, `create_defect`, …)
   create REAL GitHub issues — never fire casually.
 

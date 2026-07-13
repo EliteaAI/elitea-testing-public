@@ -167,12 +167,91 @@ MUI forwards data-testid to the root element:
 
 ---
 
+## Git flow — dual-target (do this once, at the end of the case's testid work)
+
+`EliteaAI/EliteaUI` is worked on **directly — there is no fork.** `automation/testids` is a permanent
+**integration branch** holding every testid the team ever wrote: merged *and* still in review. The dev
+server runs it, which is why agents never wait on the UI team's review.
+
+Each testid must land in **two** places:
+
+| Target | How | Why |
+|---|---|---|
+| `automation/testids` | merged in immediately, **no review** | unblocks the dev server and every other agent, right now |
+| `EliteaAI/EliteaUI` `main` | **draft PR** from `testids/<case>-<slug>`, cut from fresh `main` | the UI team reviews a clean, single-case diff |
+
+**Cut the review branch from `main`, never from `automation/testids`.** A PR's diff is computed against
+its merge-base — a branch cut from the integration branch would drag every *other* case's unmerged testid
+into your PR. Cutting from `main` is the entire reason the UI team sees one clean case.
+
+### Step 1 — edit and commit on `automation/testids` (dev server is live on it)
+
+Make your JSX edits **on `automation/testids`**, where the dev server already is. Vite HMR shows them
+instantly — that is the fast feedback loop. Verify in the DOM snapshot, then commit:
+
+```bash
+cd ../EliteaUI                      # you are already on automation/testids
+git add src/                        # ONLY files under src/ — nothing else in the UI repo
+git commit -m "test: [EL-1737] add data-testid for skills import button"
+```
+
+> **Never `git checkout -b … origin/main` while the dev server is running.** It reverts the working tree
+> to `main`, silently stripping every pending testid out from under the live UI. Build the review branch
+> in a **worktree** (below) so the served tree is never disturbed.
+
+### Step 2 — build the review branch in a worktree, open the draft PR
+
+```bash
+cd ../EliteaUI
+git fetch origin
+CASE=EL-1737-skills-import
+
+# Replay THIS case's testid commits onto a branch cut from fresh main — in a
+# separate worktree, so the dev server's tree is never touched.
+git worktree add -b "testids/$CASE" ../.testid-pr origin/main
+git -C ../.testid-pr cherry-pick <sha>...<sha>     # this case's testid commits only
+
+# Verify the review diff is exactly the testids and nothing else:
+git -C ../.testid-pr diff origin/main --stat
+git -C ../.testid-pr diff origin/main | grep -E '^[+-]' | grep -v '^[+-][+-]' | grep -vc 'data-testid'
+#   ^ must be 0. Any non-testid line means you dragged in unrelated work — STOP.
+#   (Character classes, not '^\+\+\+' — this workspace's grep is ugrep and rejects that.)
+
+git -C ../.testid-pr push -u origin "testids/$CASE"
+gh pr create --repo EliteaAI/EliteaUI --base main --head "testids/$CASE" --draft \
+  --title "test($CASE): add data-testids for …" \
+  --body "Attribute-only additions for the automated regression suite. UI behaviour unchanged."
+
+git worktree remove ../.testid-pr    # clean up; dev server never noticed
+```
+
+**Open it as a DRAFT.** A human flips it to *ready* when the UI team should look. Agents do open these
+PRs — the old blanket ban on PRing `EliteaAI/EliteaUI` is repealed — but they never mark them ready and
+never merge them.
+
+### Step 3 — push the integration branch
+
+```bash
+git push origin automation/testids       # plain FF push. NEVER --force.
+```
+
+`automation/testids` is a shared org branch: **never rebase it, never force-push it.** Sync it with
+`git merge origin/main` (see the `sync-base-branches` skill).
+
+**Invariant:** `origin/automation/testids` must contain every testid that any test on
+`origin/automation/base` references. Never merge a test PR whose testids aren't pushed.
+
+---
+
 ## Checklist
 
 Before completing:
 - [ ] All requested elements have testids added (or documented why not)
 - [ ] Naming convention followed: `{section}-{element}-{type}`
 - [ ] No duplicate testids introduced
-- [ ] Changes are in correct EliteaUI branch
+- [ ] Edits committed on `automation/testids` and pushed (plain FF, never `--force`)
+- [ ] Review branch `testids/<case>` cut from **fresh `origin/main`** (not from `automation/testids`)
+- [ ] Review diff vs `main` contains **only** `data-testid` lines — verified, not assumed
+- [ ] **Draft** PR opened against `EliteaAI/EliteaUI` `main`; left as draft, not marked ready
 - [ ] Output includes ready-to-use LocatorDescriptor definitions
 - [ ] Snapshot confirms testids are visible in DOM

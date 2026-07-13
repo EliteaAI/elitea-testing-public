@@ -66,7 +66,8 @@ One case ↔ one test id; extensions append to the covering test's docstring/mar
   (`page.locator(…)`, `get_by_*` calls in methods) and never in spec files.
 - **Missing testid on the target?** Do NOT fall back to CSS/text. Add the testid to
   EliteaUI via the `add-data-testid` skill (edits `../EliteaUI/src`, commits to
-  `automation/testids`, Vite HMR picks it up live). Naming `{section}-{element}-{type}`,
+  a `testids/<case>` branch merged into `automation/testids`, Vite HMR picks it up
+  live). Naming `{section}-{element}-{type}`,
   e.g. `agent-form-save-button` vs `pipeline-form-save-button` — verify uniqueness
   before adding.
 - **Stop+flag rule:** if a testid genuinely can't be placed (element outside

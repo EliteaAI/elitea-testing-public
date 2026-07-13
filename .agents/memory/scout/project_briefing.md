@@ -37,8 +37,9 @@ type: project
 - **Seed complete** — CLAUDE.md rewritten, AGENTS.md project sections added (bundle
   block preserved), full `.agents/*` set written, 4 memory briefings adjusted.
 - **Topology:** three siblings under the parent folder (NOT a git repo, don't init):
-  this repo (`automation/base`), `../EliteaUI` (fork, `automation/testids`,
-  upstream read-only), `../onetest-ai-tm-Elitea` (TMS, `.onetest/` cwd-relative).
+  this repo (`automation/base`), `../EliteaUI` (**`EliteaAI/EliteaUI` directly — no fork**;
+  `automation/testids` integration branch, push but no admin),
+  `../onetest-ai-tm-Elitea` (TMS, `.onetest/` cwd-relative).
 - **TMS = onetest** (custom adapter, MCP server `onetest-tms` in `.mcp.json`);
   intake/back-write policy in `.agents/test-automation.yaml`.
 - **Exploration shortcuts:** framework truth = `pyproject.toml` + `automation/pytest.ini`

@@ -9,7 +9,7 @@ platform. Working branch: **`automation/base`** (never PR `main` directly).
 <parent>/                        ← this repo's parent folder (sibling clones; no env var needed)
 ├── .env  .env.test              master secrets — NEVER commit, NEVER print
 ├── elitea-testing-public/       THIS repo · branch automation/base · .venv (Python 3.13)
-├── EliteaUI/                    UI fork · branch automation/testids · npm run dev → :5173
+├── EliteaUI/                    EliteaAI/EliteaUI (NO fork) · branch automation/testids · npm run dev → :5173
 └── onetest-ai-tm-Elitea/        TMS repo (test cases as markdown + GitHub issues)
 ```
 
@@ -31,11 +31,19 @@ cd ../EliteaUI && npm run dev                                    # → http://lo
 
 ## Critical Conventions
 
-- **Primary test target is `http://localhost:5173`** — the EliteaUI fork on
+- **Primary test target is `http://localhost:5173`** — `EliteaAI/EliteaUI` on
   `automation/testids` (points at the DEV backend). Deployed envs (dev/next.elitea.ai)
   are CI's job, not the local loop's.
-- **PRs target `automation/base`**, never `main`. Testid edits commit to EliteaUI
-  `automation/testids` — never open a PR to `EliteaAI/EliteaUI` yourself.
+- **Test PRs target `automation/base`**, never `main`.
+- **Testids: dual-target.** `automation/testids` is a permanent **integration branch
+  on `EliteaAI/EliteaUI`** (no fork) holding every testid — merged *and* still in
+  review. Cut `testids/<case>-<slug>` from **fresh `origin/main`**, merge it into
+  `automation/testids` immediately (no review), and open a **draft PR to `main`** for
+  the UI team. Cutting from `main` — not from the integration branch — is what keeps
+  that PR a clean single-case diff.
+- **Never rebase or force-push `automation/testids`** — it's a shared org branch.
+  Sync it with `git merge origin/main`. If review changes a testid, resolve the next
+  merge **in favour of `main`**.
 - **Locators are testid-only**: `LocatorDescriptor(testid="agent-form-save-button")`.
   `fallback` is dead code — never populate it. Naming: `{section}-{element}-{type}`.
   Locators live **only as page-object class fields** — never inside methods or specs.
