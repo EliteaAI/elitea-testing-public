@@ -55,7 +55,9 @@ pushing new testids to that branch, and every push would silently mutate the PR 
 looking at it.
 
 ```bash
-cd "$LOCAL_ELITEA_FOLDER/EliteaUI"
+# WORKSPACE = parent folder holding the three sibling clones (no env var needed)
+WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
+cd "$WORKSPACE/EliteaUI"
 git checkout automation/testids
 git log --oneline upstream/main..HEAD          # review exactly what ships. Testid commits only.
 
@@ -115,7 +117,9 @@ A zero count means it has not deployed yet. Wait; do not proceed.
 ## Stage 3 — The gate: run `automation/base` against DEV
 
 ```bash
-cd "$LOCAL_ELITEA_FOLDER/elitea-testing-public"
+# WORKSPACE = parent folder holding the three sibling clones (no env var needed)
+WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
+cd "$WORKSPACE/elitea-testing-public"
 gh workflow run "UI Tests DEV" \
   -f ref=automation/base \
   -f suite=all \

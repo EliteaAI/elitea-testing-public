@@ -143,7 +143,7 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **Squash / rebase / merge**: squash (default) for small PRs into `automation/base`.
 
 ### Additional notes
-- Parent folder of this clone = `$LOCAL_ELITEA_FOLDER` (plain directory, NOT a git
+- Parent folder of this clone = the workspace (plain directory, NOT a git
   repo — never `git init` it; the three-sibling layout is load-bearing).
 - No `env.sh` — paths are repo-relative (`../EliteaUI`, `../onetest-ai-tm-Elitea`);
   `GITHUB_TOKEN` comes from the master `.env` when needed by `.mcp.json`.
