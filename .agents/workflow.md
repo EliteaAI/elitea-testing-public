@@ -48,7 +48,20 @@ git push --force-with-lease origin automation/testids   # only after a rebase th
 ```
 
 If `package.json` dependencies or `package-lock.json` changed → re-run `npm install`
-(a bare version bump doesn't require it).
+(a bare version bump doesn't require it). Also pull teammates' testids at the same
+moment: `git pull origin automation/testids` (before the rebase).
+
+### Testid commit & push discipline (the fork)
+
+- **During work:** commit testid edits directly onto local `automation/testids`
+  (no work branches, no PRs inside the fork). The dev server serves your working
+  tree — Vite HMR shows edits immediately; no pull/push needed to "update the UI".
+- **On green — together with opening the test PR:** `git push origin automation/testids`
+  (plain fast-forward push). Invariant: **origin `automation/testids` must contain
+  every testid that origin `automation/base` tests reference** — never merge a test
+  PR whose testids aren't pushed.
+- **`--force-with-lease` is ONLY for after an upstream rebase** — never for routine
+  pushes.
 
 **Test repo ← main** (periodically): merge/rebase `main` into `automation/base`.
 
@@ -98,9 +111,12 @@ environment — not per test.
 ## Work tracking
 
 Board #9 discipline lives in `.agents/profile.md` § Issue tracker — status machine,
-human-only `Approved`, `question`/`bug` labels, work-log comments. Board mechanics:
-`gh project item-list 9 --owner EliteaAI --format json`, `gh project field-list …`,
-`gh project item-edit` — look up ids each time, never hardcode.
+human-only `Approved`, `question`/`bug` labels, work-log comments, and the
+**identity rule**: every tracker/board write is prefixed `env -u GITHUB_TOKEN` so it
+runs as the keyring account, never the shared `GITHUB_TOKEN`. Board mechanics:
+`env -u GITHUB_TOKEN gh project item-list 9 --owner EliteaAI --format json`,
+`… gh project field-list …`, `… gh project item-edit` — look up ids each time,
+never hardcode.
 Interactive session → the human in the room authorizes work; factory mode → work only
 the one issue the dispatch names.
 

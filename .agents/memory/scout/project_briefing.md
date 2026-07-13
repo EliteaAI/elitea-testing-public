@@ -48,7 +48,11 @@ type: project
 - **Operator decisions on record:** no `env.sh` (killed — repo-relative paths instead);
   no onboarding GitHub issue (local `.agents/onboarding.md` only); memory briefings
   adjusted not replaced; leave room for non-UI surfaces (api present, mobile/perf later).
-- **Open gaps:** `gh` lacks `project` scope (board card moves); no flaky-test list yet.
+- **Identity rule:** shared `GITHUB_TOKEN` env var = shared token, no `project`
+  scope; ALL tracker/board writes use `env -u GITHUB_TOKEN gh …` so they run as
+  the operator's OWN keyring account (portable — whoever runs the agents, on any
+  machine). Dedup via list API, never `--search` (index lag → dup #17/#18).
+- **Open gaps:** no flaky-test list yet.
 
 ## My Role Focus
 
