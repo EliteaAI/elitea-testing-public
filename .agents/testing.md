@@ -80,6 +80,10 @@ One case ↔ one test id; extensions append to the covering test's docstring/mar
   shell env vars. Add new keys to config.py + the master env file — grep for an
   existing key first.
 - `test-data/` at repo root; toolkit factories in `automation/toolkit_factories.py`.
+- **Toolkit credentials are test data**: `GIT_HUB_TOKEN`, `JIRA_USERNAME`/`JIRA_API_KEY`
+  in `.env.test` get typed into the Elitea UI to create toolkits (`toolkit_configs.py`);
+  affected tests `pytest.skip` when unset. These are NOT tracker identities — see
+  `profile.md` § Roles & sample users.
 - Prefer read-only assertions on stable existing data; seed minimally + clean up
   loudly only when the observable requires fresh state (workflow skill Hard Rule 10).
 - Data-dependent tests: serial mode (pytest-xdist is installed — shared state must

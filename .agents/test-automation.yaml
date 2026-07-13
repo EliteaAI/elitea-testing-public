@@ -28,8 +28,13 @@ intake:
   tracking_repo: EliteaAI/elitea-testing-public
   board: { owner: EliteaAI, number: 9 }
   title_format: "[Automate][ELITEA-<id>] <case title>"
-  # Dedup BEFORE filing — any hit (open or closed) means skip:
-  dedup: gh issue list --search "[ELITEA-<id>] in:title" --state all
+  # Dedup BEFORE filing — any hit (open or closed) means skip.
+  # Use the REAL-TIME list API, never --search (search index lags minutes →
+  # duplicate filings, cf. issues #17/#18):
+  dedup: env -u GITHUB_TOKEN gh issue list --state all --limit 200 --json title
+    | grep "ELITEA-<id>"
+  # Identity: ALL tracker writes prefixed `env -u GITHUB_TOKEN` — run as the
+  # keyring account, never the shared GITHUB_TOKEN (see profile.md § Issue tracker).
   issue_body: name the source file path + the case metadata
   board_placement: auto-add only — set NO status, assign NOBODY; a human approves
     by dragging to Approved

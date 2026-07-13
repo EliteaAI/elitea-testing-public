@@ -35,7 +35,10 @@ type: project
   the merge gate — no CI on `automation/base`.
 - **The per-test loop:** explore UI → missing testid? use `add-data-testid` (edits
   `../EliteaUI/src` ONLY, commits to `automation/testids`, HMR live-reloads) →
-  `page-object-generator` → write test → green → PR to `automation/base` (never `main`).
+  `page-object-generator` → write test → green → **push the fork**
+  (`git push origin automation/testids`, plain fast-forward) → PR to `automation/base`
+  (never `main`). Invariant: never let a test PR merge while its testids exist only
+  locally — origin testids branch must cover origin base tests.
 - **Locators: testid-only** `LocatorDescriptor(testid="…")` — `fallback` is dead code,
   strictly never populate it. Locators are **class-level page-object fields only** —
   never constructed inside method bodies, never in spec files.

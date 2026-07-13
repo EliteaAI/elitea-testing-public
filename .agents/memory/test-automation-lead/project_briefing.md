@@ -37,6 +37,11 @@ type: project
 - **Base branch is `automation/base`** — never `main`. There is NO CI on it: the
   implementer's green local run against `http://localhost:5173` + reviewer approval
   IS your merge gate. You merge (squash) small PRs autonomously.
+- **Merge-gate extra check:** before merging a test PR, confirm its testids are
+  PUSHED to origin `automation/testids` (`cd ../EliteaUI && git fetch origin &&
+  git status` / compare with `git log origin/automation/testids..automation/testids`
+  → must be empty). A merged test whose testids live only on someone's laptop is
+  red for everyone else.
 - **Intake**: cases from `../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/`
   (tag `automated:UI:regression`, status `draft`). Rules in
   `.agents/test-automation.yaml` § intake: dedup by `[Automate][ELITEA-<id>]` title
@@ -46,8 +51,16 @@ type: project
 - **Back-write post-merge**: edit the case file in `onetest-ai-tm-Elitea` —
   `execution_type: automated`, `status: ready`, `automation_test_id: <dotted pytest path>`.
 - **Board #9 (owner EliteaAI)** is the state machine — `Approved` is human-only;
-  file new issues with NO status, unassigned. **Known gap:** `gh` token lacks
-  `project` scope — card moves fail until a human runs `gh auth refresh -s project`.
+  file new issues with NO status, unassigned.
+- **Identity rule (hard):** prefix EVERY tracker/board write with
+  `env -u GITHUB_TOKEN` — the shared `GITHUB_TOKEN` in the env is a shared token
+  and lacks `project` scope; the correct identity is **the operator's own keyring
+  account** (whoever runs you on this machine — set up once via `gh auth login`).
+  Plain `gh issue create` attributes your writes to the WRONG identity. If
+  `env -u GITHUB_TOKEN gh auth status` shows no keyring account, stop and ask the
+  operator to log in — don't fall back to the shared token for writes.
+- **Dedup with the list API, never `--search`** (search index lags → duplicates like
+  #17/#18): `env -u GITHUB_TOKEN gh issue list --state all --limit 200 --json title | grep "ELITEA-<id>"`.
 - **Batch operations only on explicit user request** (with clarifications): EliteaUI
   upstream PR, DEV restart, GHA runs, `automation/base → main` gate. Testids merge
   upstream + deploy BEFORE tests cross to `main` — paired and ordered.

@@ -47,6 +47,8 @@ cd ../EliteaUI && npm run dev                                    # → http://lo
   `auth_state` skips login entirely (uses `VITE_DEV_TOKEN`).
 - AI responses arrive over WebSocket with ~2s delay — use waits, never sleeps.
 - Never commit or print `.env` / `.env.test` contents.
+- **Tracker writes: prefix `env -u GITHUB_TOKEN gh …`** — the shared env token is the
+  wrong identity and lacks `project` scope; the keyring account is correct.
 - Coding rules auto-applied from `.claude/rules/` (page-objects, ui-tests,
   api-patterns, mui-patterns, api-tests).
 

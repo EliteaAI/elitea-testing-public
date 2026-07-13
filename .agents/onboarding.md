@@ -63,11 +63,25 @@ have dedicated agents), Step 7 persona rewrite (defaults fit).
 - Memory briefings adjusted, not replaced.
 - Seed leaves room for expansion beyond UI (test-type recorded as `mixed`, ui primary).
 
+## Late additions (round 2 — board/identity review)
+
+- **Identity rule seeded (portable):** the shared `GITHUB_TOKEN` env var (shared
+  token, no `project` scope) overrides the keyring login. All tracker/board writes
+  MUST be prefixed `env -u GITHUB_TOKEN` so they run as **the operator's own
+  keyring account** — whoever runs the agents on whatever machine, never the shared
+  token, never a hardcoded person. Per-machine setup: `gh auth login` once with
+  your own account (`repo`, `project`, `read:org` scopes). On this machine the
+  keyring account was switched to the operator's own. Captured in `profile.md`,
+  `workflow.md`, `test-automation.yaml`, Tal's briefing, `CLAUDE.md`.
+- **Dedup rule hardened:** intake dedup now uses the real-time list API instead of
+  `--search` (search-index lag caused duplicate filings #17/#18; #17 closed).
+- **Board auto-add:** operator configured the project workflow themselves — the
+  yaml's `board_placement: auto-add` policy stands.
+
 ## Open items
 
-1. **`gh` token lacks `project` scope** — board #9 card moves will fail until a human
-   runs `gh auth refresh -s project` (and `-s admin:org` only if org-level setup ops
-   are ever needed). Read/write on issues works today.
+1. ~~`gh` token lacks `project` scope~~ — superseded by the identity rule above:
+   board ops run via `env -u GITHUB_TOKEN` (keyring account has the scope).
 2. No known-flaky-test list yet — `.agents/testing.md` § Known issues collects them.
 3. `automation/base` has no PR history — `.agents/workflow.md` § Unconfirmed notes the
    review-approval count; refresh after ~10 PRs land.

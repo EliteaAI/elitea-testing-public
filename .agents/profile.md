@@ -51,6 +51,13 @@ Env-var names only — **never secrets**. All resolve from `automation/.env.test
 | `${TEST_USER}` | Standard authenticated user (Keycloak) | `TEST_USER_EMAIL`, `TEST_USER_PASSWORD` |
 | API token | Direct API calls | `ELITEA_API_TOKEN` |
 | localhost dev auth | `auth_state` skips login on localhost | `VITE_DEV_TOKEN` (in `EliteaUI/.env`) |
+| GitHub toolkit test data | Fed INTO the Elitea UI/API to create GitHub toolkits & credentials (toolkit tests, `github_credential` fixture, guardrails tests — they SKIP without it) | `GIT_HUB_TOKEN` (in `.env.test`) |
+| Jira toolkit test data | Same pattern for Jira toolkits | `JIRA_USERNAME`, `JIRA_API_KEY` |
+
+**Do not confuse the GitHub tokens.** `GIT_HUB_TOKEN` (`.env.test`) is *test data for
+the system under test* — it configures toolkits inside Elitea and must stay. The
+shell's `GITHUB_TOKEN` is infra (github MCP server) and is exactly the token the
+Identity rule below excludes from `gh` tracker writes. Neither is a tracker identity.
 
 ## Project systems
 
@@ -63,8 +70,20 @@ Env-var names only — **never secrets**. All resolve from `automation/.env.test
   to the entry column — file them unassigned, set no status.
 - **Load-bearing labels**: `question` (parked decision) and `bug` (product defect) mark
   issues the factory must NEVER work as tasks; body must name origin ("Found while working #N").
-- **Known gap**: `gh` token lacks `project` scope — board card moves fail until
-  `gh auth refresh -s project` (human action).
+- **Identity rule — NEVER write to the tracker as the shared token.** The shell /
+  `.env` exports `GITHUB_TOKEN` (a shared token, wrong attribution, no `project`
+  scope) which overrides the keyring login. **Every `gh` command that writes issues,
+  comments, or board items MUST be prefixed with `env -u GITHUB_TOKEN`** so it runs
+  as **the operator's own keyring account** — whoever is running the agents on this
+  machine, not any specific person and not the shared token:
+  `env -u GITHUB_TOKEN gh issue create …`, `env -u GITHUB_TOKEN gh project item-edit …`.
+  Per-machine setup (once): `gh auth login` with your own account (scopes: `repo`,
+  `project`, `read:org`), then `env -u GITHUB_TOKEN gh auth status` must show YOUR
+  account as active. The shared `GITHUB_TOKEN` stays exported only for `.mcp.json`'s
+  github MCP server.
+- **Dedup rule**: before filing, check with the real-time list API — NOT `--search`
+  (the search index lags minutes and causes duplicate filings, cf. #17/#18):
+  `env -u GITHUB_TOKEN gh issue list --state all --limit 200 --json title | grep "ELITEA-<id>"`.
 
 ### Test Management System (TMS)
 - **System**: onetest (custom — markdown cases + GitHub-issue executions, MCP server `onetest-tms`)
