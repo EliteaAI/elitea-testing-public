@@ -424,7 +424,7 @@ paths:
       summary: Get conversation details (participants, metadata, message count)
       description: >
         Returns metadata and participants. message_groups is typically empty —
-        call getEliteaCoreMessages to retrieve messages with limit/offset.
+        call GET /messages/{mode}/{project_id}/{conversation_id} to retrieve messages with limit/offset.
       tags: [Conversations]
       parameters:
         - name: conversation_id

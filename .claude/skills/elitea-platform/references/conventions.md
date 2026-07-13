@@ -10,13 +10,78 @@ The 90% of the platform you'll touch every day. For full endpoint details load `
 
 > **History note.** Older docs and existing scripts in the wild reference `https://nexus.elitea.ai/` as "production". That host has been retired — `next.elitea.ai` is now the only ELITEA environment. If you see `nexus.elitea.ai` in a config, PAT example, or old code path, replace it with `next.elitea.ai`. Symptom of the old host still being targeted: a `307 → 302 → 400 access_denied` redirect chain through Centry's OIDC gateway. There is no separate "production" vs "pre-prod" — they were consolidated.
 
-**v2 is canonical** — use `/api/v2/elitea_core/...` for everything except these v1-only subsystems:
+**v2 is the ONLY surface. Every `/api/v1/...` route is gone.** ELITEA 2.0.4 (02-Jul-2026) completed the v1 deprecation; on `next.elitea.ai` the v1 paths now return **404**, not a deprecation warning (verified live 2026-07-13 — `auth`, `projects`, `configurations`, `secrets`, `artifacts`, `models` all 404). The live OpenAPI spec contains zero v1 paths.
 
-| Subsystem | Path |
+If you have code, a doc, or an example still calling v1, it is broken today. Translation table:
+
+| v1 (dead — 404) | v2 (verified live) |
 |---|---|
-| Configurations / Credentials | `/api/v1/configurations/...` |
-| Artifacts / Buckets | `/api/v1/artifacts/...` |
-| Secrets | `/api/v1/secrets/...` |
+| `GET /api/v1/auth/me` or `/auth/user` | `GET /api/v2/auth/user/{mode}` |
+| `GET /api/v1/projects/projects` | `GET /api/v2/projects/project/{mode}/{project_id}` |
+| `POST /api/v1/configurations/configurations/{pid}` | `POST /api/v2/configurations/configurations/{pid}` |
+| `*/api/v1/configurations/configuration/{pid}/{cid}` | `/api/v2/configurations/configuration/{pid}/{cid}` |
+| `GET /api/v1/configurations/models/{pid}` | `GET /api/v2/configurations/models/{pid}` |
+| `GET /api/v1/secrets/secret/default/{pid}/{name}` | `GET /api/v2/secrets/secret/{mode}/{pid}/{secret}` |
+| `POST /api/v1/secrets/secrets/default/{pid}` | `POST /api/v2/secrets/secrets/{mode}/{pid}` |
+| `/api/v1/artifacts/buckets/default/{pid}` | `/api/v2/artifacts/buckets/{mode}/{pid}` |
+| `/api/v1/artifacts/artifacts/default/{pid}/{bucket}` | `/api/v2/artifacts/artifacts/{mode}/{pid}/{bucket}` |
+| `/api/v1/applications/upload_icon/...` | No v2 equivalent in the live spec — assume dead |
+
+Note the shape change: configurations, secrets and artifacts moved to `/api/v2/` **and** gained a `{mode}` segment (`default`) that the v1 forms didn't carry in the same position. A blind `s/v1/v2/` will produce a 404 — fix the path shape too.
+
+Third-party ELITEA docs still showing v1 (the Power Automate guide, the webhooks how-to) are stale and carry no deprecation notice. Don't copy from them.
+
+## 1a. The live OpenAPI spec — ground truth for "does this endpoint exist?"
+
+Never guess an endpoint, and don't trust a hardcoded list (including the ones in these skills). The platform publishes its own spec, and it comes in **two surfaces**:
+
+| URL | Paths | What it is |
+|---|---|---|
+| `/shared/openapi/` | **81** | raw OpenAPI 3.1 **JSON** — the project/user surface |
+| **`/shared/openapi/?all=true`** | **133** | raw JSON — **everything.** Use this. |
+| `/shared/swagger/` · **`/shared/swagger/?all=true`** | 81 · 133 | the **Swagger UI** for the same two surfaces — browse in a browser, don't parse |
+
+**`?all=true` is the flag that matters.** The 81-path view is a strict *subset*. The extra 52 paths are: the whole `/api/v2/admin/*` surface (36), `support_assistant` (5), `projects/groups` + `monitoring` (6), `configurations/check_connections`, `vectorstore`, the task `DELETE`, and the three 2.0.4 **"Build with AI"** draft generators (`generate_application_draft`, `generate_skill_draft`, `generate_project_context_draft`).
+
+**`?full=true` is a NO-OP** — byte-identical to the bare path. It's `?all=true` you want. (Both can be passed together; only `all` does anything.)
+
+**Hosts:** the same paths work on **`next.elitea.ai`** and **`dev.elitea.ai`** — but each environment needs **its own PAT**. A next token gets a `302` on dev. Unauthenticated → `302` to login. Don't send `Content-Type` on the GET (see § 3).
+
+**Bundled helper:** `scripts/fetch_openapi_spec.py` wraps all of this (defaults to `?all=true`).
+
+```bash
+python3 scripts/fetch_openapi_spec.py                 # summary: path count, v1 count, groups
+python3 scripts/fetch_openapi_spec.py --grep skill    # which paths exist for a feature
+python3 scripts/fetch_openapi_spec.py --show <path>   # full schema for one path
+python3 scripts/fetch_openapi_spec.py --diff          # live vs the bundled snapshot
+python3 scripts/fetch_openapi_spec.py --update        # refresh references/openapi-spec.json
+python3 scripts/fetch_openapi_spec.py --user-surface  # the reduced 81-path view
+python3 scripts/fetch_openapi_spec.py --base-url https://dev.elitea.ai   # needs a DEV token
+```
+
+`references/openapi-spec.json` is a **snapshot** (refreshed 2026-07-13, **133 paths**, zero v1). Re-run `--update` whenever the platform ships; `--diff` tells you if it's drifted.
+
+### 🚨 The spec is authoritative but NOT complete
+
+Even the 133-path surface has **false negatives** — routes that work in production but are declared nowhere. Verified live 2026-07-13:
+
+| Endpoint | Spec | Reality |
+|---|---|---|
+| `GET /elitea_core/application_task/{mode}/{pid}/{task_id}` | absent | **works** — the async-predict poll |
+| `GET /elitea_core/application/{mode}/{pid}/{app_id}/{version_name}` | absent | **works** — get a version by name |
+| `PATCH /elitea_core/skill/{mode}/{pid}/{skill_id}` | absent | **works** — this is the skill-attach call |
+| `PATCH /elitea_core/skill/{mode}/{pid}/{skill_id}/{version_id}` | **declared** | **rejected** → `400 "version_id path segment is not supported for PATCH"` |
+
+The last two rows are the lesson in miniature: for the *same feature*, the spec **omits the working route and advertises the broken one**.
+
+**So "absent from the spec" is evidence, not proof, that a route is dead.** Before you conclude a route is gone, check two things:
+
+1. **Are you looking at the full surface?** Fetch with `?all=true`. Several routes "missing" from the 81-path view are simply admin-tier.
+2. **Are you using the right `{mode}`?** Admin-scoped routes live under `mode=administration` and **404 on `prompt_lib`/`default`** — which looks exactly like a dead route. `vectorstore` is the cautionary example: it is alive and declared (`POST`/`DELETE`), but it 404s on the two modes you'd reach for first.
+
+Only then, to distinguish a genuinely missing route from a working-but-undeclared one: **call it and compare the failure against a deliberately bogus path** (`/api/v2/elitea_core/totally_bogus_route`).
+- **Byte-identical generic 404** → the route really doesn't exist.
+- **Anything specific** — a 400 with a message, a 500, a validation error → a real handler ran. The route exists, it's just undocumented.
 
 ## 2. The `mode` URL segment
 
@@ -79,7 +144,7 @@ When you `GET` a configuration, credential, or toolkit settings, **secret-typed 
 ```
 
 To resolve:
-- `GET /api/v1/secrets/secret/default/{project_id}/{secret_name}` → `{"value": "ghp_..."}`
+- `GET /api/v2/secrets/secret/default/{project_id}/{secret_name}` → `{"value": "ghp_..."}`
 - OR call `PATCH /api/v2/elitea_core/version/prompt_lib/{project_id}/{application_id}/{version_id}` with the `X-SECRET` header — returns the version with all configuration references resolved inline
 
 Fields auto-vaulted (from `SENSITIVE_TOOLKIT_SETTINGS`): `access_key, password, username, api_key, access_token, token, app_private_key, google_cse_id, google_api_key, app_id, client_secret, gitlab_personal_access_token, private_token, sonar_token, qtest_api_token, client_id, oauth2`.
@@ -99,16 +164,31 @@ When a toolkit's `settings` needs a credential, use the **name reference**, NOT 
 }
 ```
 
-- `elitea_title` matches the credential's `alita_title` (or `elitea_title`) field
 - `private = not credential.shared` (a credential is "private" when not shared)
 
 The same pattern applies for `pgvector_configuration`, `embedding_model.ai_credentials`, etc.
+
+### What `elitea_title` actually is (verified live 2026-07-13)
+
+**It's the slug ID, not the display name.** A credential carries both:
+
+```json
+{ "elitea_title": "bot_elitea_kb",     // ← the ID. Toolkits reference THIS.
+  "label":        "Bot Elitea KB" }    // ← the human display name.
+```
+
+Four things that will bite you:
+
+1. **`elitea_title` is REQUIRED on create.** The server does **not** derive it from `label`. Omit it and you get `400 {"error": "Field required", "field": "elitea_title"}`.
+2. **🚨 Uppercase is silently lowercased.** Send `ZZScratchUpper4` and the server stores `zzscratchupper4` — with a success response. A toolkit setting that references the *cased* form will then silently fail to resolve the credential. **Always write `elitea_title` in lowercase yourself**, so what you send is what you get.
+3. **Hyphens ARE allowed**, despite the validation error text implying otherwise. Spaces, dots and colons are rejected.
+4. The docs call this the **"Credential ID"**, auto-derived from the name (spaces → underscores, lowercased). Same field, different name. That's also the key used to match a per-user private credential on a shared toolkit — and that match is **case-sensitive**, which is exactly why point 2 matters.
 
 ## 7. Status codes & their meanings
 
 | Code | Meaning in this API |
 |---|---|
-| 200 | OK; also returned by **configuration create** (`POST /api/v1/configurations/...`) — unlike most other creates |
+| 200 | OK; also returned by **configuration create** (`POST /api/v2/configurations/configurations/{project_id}`) — unlike most other creates |
 | 201 | Created (standard POST result) |
 | 202 | Accepted — message still streaming, poll for completion |
 | 204 | No Content — typical DELETE |
@@ -173,7 +253,7 @@ POST /api/v2/elitea_core/applications/prompt_lib/{project_id}
 ### Create credential
 
 ```
-POST /api/v1/configurations/configurations/{project_id}
+POST /api/v2/configurations/configurations/{project_id}
      body: {
        "elitea_title": "name-for-reference-from-toolkits",
        "label": "Human label",
@@ -235,7 +315,7 @@ live-verified).
   like `<<name>>` and describe the real form in words. Single-brace `{var}` (pipeline fstring) is unaffected.
   Avatar/icon: `icon_meta` is set by the UI flow (upload via `POST …/upload_icon` → returns full
   `{url,name,size,…}`); it is NOT reliably settable via create/version/app PUT (they drop it).
-- **Listing PUBLISHED agents in the public studio (project `1`):** the applications list `total` is **unfiltered** (counts draft/rejected/on_moderation/embedded too — e.g. 604 total but only ~73 published). Filter with **`?statuses=published`** (plural, comma-separated; `?statuses=published,embedded` to widen). The singular `?status=` is **silently ignored** (returns everything). The MCP `getEliteaCoreApplications` exposes no query params, so drop to direct REST when filtering. ~58% of published agents **lack `meta.default_version_id`**; for those, `GET /application/prompt_lib/1/{id}` returns the prompt under **`version_details.instructions`** (top-level `instructions` is absent) — read both shapes. List rows never carry `instructions`; they do carry `description`, `tags`, `meta.adoption.{project_count,conversation_count}`.
+- **Listing PUBLISHED agents in the public studio (project `1`):** the applications list `total` is **unfiltered** (counts draft/rejected/on_moderation/embedded too — e.g. 604 total but only ~73 published). Filter with **`?statuses=published`** (plural, comma-separated; `?statuses=published,embedded` to widen). The singular `?status=` is **silently ignored** (returns everything). The MCP `get_elitea_core_applications` exposes no query params, so drop to direct REST when filtering. ~58% of published agents **lack `meta.default_version_id`**; for those, `GET /application/prompt_lib/1/{id}` returns the prompt under **`version_details.instructions`** (top-level `instructions` is absent) — read both shapes. List rows never carry `instructions`; they do carry `description`, `tags`, `meta.adoption.{project_count,conversation_count}`.
 - **Public project (`promptlib_public`, id 1): you can't direct-predict an UNPUBLISHED/draft agent** — `POST /predict/...` on a draft returns `500 {"error":"Can not do predict"}` (verified 2026-06-04; non-public projects predict drafts fine). Only PUBLISHED versions are API-runnable in public; test public drafts in the UI or publish first. **Unpublishing an agent removes its published version AND cascade-deletes its embedded sub-agents** (e.g. a linked evaluator) — re-create + re-link them after unpublish.
 - **Publish flow:** `POST …/publish_validate/...` then `…/publish/...` both need `{version_name: "<new>"}`
   (must NOT reuse `"base"`); publish runs an AI-validation that needs platform Postgres — a DB outage
@@ -258,16 +338,19 @@ live-verified).
 Query the live catalog first:
 
 ```
-GET /api/v1/configurations/models/{project_id}?include_shared=true
+GET /api/v2/configurations/models/{project_id}?include_shared=true
 → { "total": N, "items": [
       { "name": "eu.anthropic.claude-sonnet-4-6", "display_name": "Anthropic Claude 4.6 Sonnet",
         "project_id": 1, "shared": true, "context_window": 400000, "max_output_tokens": 128000,
-        "supports_reasoning": true, "supports_vision": true, ... },
+        "supports_reasoning": true, "supports_vision": true,
+        "low_tier": false, "high_tier": true, "default": false, ... },
       ...
     ] }
 ```
 
-Copy `items[].name` verbatim into `llm_settings.model_name` and use `items[].project_id` as `llm_settings.model_project_id`. The shared catalog lives in `project_id=1` (the `promptlib_public` project). Use `scripts/list_models.py` to print a project's catalog.
+> **v1 is retired — this endpoint moved to v2.** `GET /api/v1/configurations/models/...` now 404s on next.elitea.ai; use the v2 path above (verified 2026-07). More broadly, `references/openapi-spec.json` is v2-only (70 paths, incl. `configurations` and `secrets`) and is the source of truth for valid endpoints — prefer v2 everywhere and verify any lingering v1 path in that spec before using it.
+
+Copy `items[].name` verbatim into `llm_settings.model_name` and use `items[].project_id` as `llm_settings.model_project_id`. The shared catalog lives in `project_id=1` (the `promptlib_public` project). Use `scripts/list_models.py` to print a project's catalog. Each model self-reports its tier via `low_tier` / `high_tier` / `supports_reasoning` / `context_window` — use these to pick models by capability (e.g. a cheap classifier vs. a strong reasoner) instead of hardcoding names.
 
 **To verify your choice actually took effect**, fire a predict and inspect `thinking_steps[].generation_info.model_name` in the response — if it doesn't match what you configured, the runtime fell back. The api-reference dummy examples (`claude-sonnet-4-5`, `claude-opus-4-6`) are **illustrative only**; do not paste them into production payloads without confirming via the models endpoint.
 
@@ -279,12 +362,12 @@ ELITEA exposes two surfaces:
 
 | Surface | Read | Write |
 |---|---|---|
-| **MCP (`mcp__elitea-next__*`)** | ✅ Works for GETs (`getProjectsProject`, `getEliteaCoreApplications`, `getEliteaCoreTools`, `getAuthUser`) | ❌ Most write tools (`postEliteaCoreApplications`, `postEliteaCorePredict`, `postEliteaCoreVersions`, `putEliteaCoreVersion`, etc.) expose only `mode`/`project_id` in their schema with `additionalProperties: false` — they cannot carry a JSON body and 415 immediately. |
+| **MCP (`mcp__elitea-next__*`)** | ✅ Works for GETs (`get_projects_project`, `get_elitea_core_applications`, `get_elitea_core_tools`, `get_auth_user`) | ❌ Most write tools (`post_elitea_core_applications`, `POST /predict/...` (REST — no MCP predict), `post_elitea_core_versions`, `put_elitea_core_version`, etc.) expose only `mode`/`project_id` in their schema with `additionalProperties: false` — they cannot carry a JSON body and 415 immediately. |
 | **Direct REST (curl/httpx)** | ✅ | ✅ — required for any operation that needs a body |
 
 > **Rule of thumb:** use MCP tools for reads (cleaner, no auth-host juggling); fall back to direct REST against `next.elitea.ai` (or whichever host your PAT covers — see §1) for any create/update/predict call. The `scripts/build_agent_payload.py` and `scripts/update_version_field.py` helpers exist because of this asymmetry — both pull live state via REST, mutate, and PUT/POST back.
 
-Tangentially: `mcp__elitea-next__getProjectsProject` is mis-described in its schema as "Retrieve a single project" but actually returns **all projects accessible to the caller** when given any valid `project_id` (e.g., your `personal_project_id` from `getAuthUser`). Use that to discover project IDs by name without crawling.
+Tangentially: `mcp__elitea-next__get_projects_project` is mis-described in its schema as "Retrieve a single project" but actually returns **all projects accessible to the caller** when given any valid `project_id` (e.g., your `personal_project_id` from `get_auth_user`). Use that to discover project IDs by name without crawling.
 
 ## 13. ELITEA 2.0.3+ changes worth knowing
 

@@ -289,7 +289,7 @@ nodes:
             'project_id': int(target_project_id) if target_project_id else 0,
             'entity_id': int(target_entity_id) if target_entity_id else 0,
             'entity_type': target_entity_type,
-            'fetch_method': 'GET /api/v1/configurations/configuration/{project_id}/{config_id}',
+            'fetch_method': 'GET /api/v2/configurations/configuration/{project_id}/{config_id}',
         }
 
         if not target_project_id:
@@ -297,13 +297,13 @@ nodes:
         elif not target_entity_id:
             result['error'] = 'entity_id missing from UI context'
         else:
+            # No Content-Type on a GET — the proxy rejects it with 400.
             headers = {
                 'Authorization': f'Bearer {elitea_client.auth_token}',
-                'Content-Type': 'application/json',
             }
             url = (
                 f"{elitea_client.base_url.rstrip('/')}"
-                f"/api/v1/configurations/configuration/{int(target_project_id)}/{int(target_entity_id)}"
+                f"/api/v2/configurations/configuration/{int(target_project_id)}/{int(target_entity_id)}"
             )
             try:
                 async with httpx.AsyncClient(timeout=30, follow_redirects=True) as http:

@@ -38,22 +38,28 @@ security:
   - bearerAuth: []
 ```
 
-Save as `.yaml` (or `.json`) and stick the whole thing inline in `settings.schema` when creating the toolkit, OR host it externally and pass `settings.schema_url`.
+Save as `.yaml` (or `.json`) and stick the whole thing inline in **`settings.spec`** when creating the toolkit.
 
-## ELITEA-specific extensions
+> **Field names — get these right.** The toolkit settings keys are **`spec`** and **`openapi_configuration`**. Earlier versions of this file said `schema` and `credentials_configuration`; those are wrong and will not bind. The UI labels the credential field "OpenAPI credentials configuration", which is the tell. There is also **no `schema_url` field** — the spec field itself accepts JSON, YAML, a URL, or raw text, so a hosted spec goes in the same `spec` key.
+
+**Base URL.** If your spec's `servers[0].url` is relative, set the toolkit's `Base Url` field — it must be absolute (`http://` or `https://`). This is a first-class toolkit field, not a spec extension.
+
+## ELITEA-specific extensions — UNVERIFIED
 
 | Extension | Where | Purpose |
 |---|---|---|
 | `x-elitea-base-url` | top-level | Override `servers[0].url` at runtime |
 | `x-elitea-operation-name` | per operation | User-facing tool name (overrides `operationId`) |
 | `x-elitea-tool-description` | per operation | Override `summary` as the LLM-visible description |
-| `x-elitea-credentials-key` | securityScheme | Reference into `settings.credentials_configuration.data` |
+| `x-elitea-credentials-key` | securityScheme | Reference into the credential's `data` |
 
-Most cases don't need extensions — vanilla OpenAPI 3 works.
+> ⚠️ **None of these `x-` extensions appear in the ELITEA docs.** The OpenAPI toolkit page documents no vendor extensions at all, and gives a first-class `Base Url` toolkit field as the documented answer to the `x-elitea-base-url` use case. Our own `examples/elitea-api.yaml` uses them and reportedly works, which is evidence they exist undocumented — but treat them as unsupported until confirmed against a live toolkit. **Vanilla OpenAPI 3 works and is the safe path.**
 
 ## Example: catalog of real toolkits
 
 The `examples/` directory contains four real specs you can copy:
+
+- `elitea-api.yaml` · `openapi/elitea-builder-runtime-api.yaml` · `githubissues.json` · `githuboardmoovement.json`
 
 ### `elitea-api.yaml` — ELITEA's own API as a toolkit
 
@@ -75,11 +81,9 @@ Demonstrates:
 
 Note: JSON form of OpenAPI is also accepted by ELITEA.
 
-### `githubissuesfieldeditor.json` — GitHub Issue field editing
+### `openapi/elitea-builder-runtime-api.yaml` — the full ELITEA build + runtime API
 
-Demonstrates:
-- **Narrow exposure pattern** — same underlying API as `githubissues.json` but only the `PATCH /issues/{n}` mutations, scoped to specific fields (assignees, labels, milestone, state)
-- Useful when you want a low-privilege agent that can edit but not create
+The largest worked spec in the repo. Reach for it when an agent needs to *build* ELITEA artifacts (create agents, versions, toolkits) rather than just call one.
 
 ### `githuboardmoovement.json` — GitHub Projects v2 Boards
 
@@ -101,14 +105,14 @@ Input schemas are built from `parameters` (path/query) + `requestBody.content."a
 
 ## Auth wiring
 
-If your `securitySchemes` declares bearer auth, the toolkit settings need:
+**A credential is mandatory** — even for a public API with no auth, where you attach an **Anonymous** credential. There is no "no credential" option.
 
 ```json
 {
   "type": "openapi",
   "settings": {
-    "schema": "<the YAML/JSON spec>",
-    "credentials_configuration": {
+    "spec": "<the YAML/JSON spec>",
+    "openapi_configuration": {
       "elitea_title": "my-api-creds",  // name of a stored credential
       "private": true
     }
@@ -116,9 +120,15 @@ If your `securitySchemes` declares bearer auth, the toolkit settings need:
 }
 ```
 
-The credential's `data.access_token` (or `data.api_key`, depending on type) gets injected as `Authorization: Bearer ...` on every tool call.
+Three credential types, with their exact fields:
 
-For non-bearer auth (API key in header, basic auth, etc.) — describe it in `securitySchemes` and the platform handles it.
+| Type | Fields |
+|---|---|
+| **API Key** | `Api Key` (the token value) · `Auth Type` (`Bearer` \| `Basic` \| `Custom`) · `Custom Header Name` (required only when Auth Type is `Custom`) |
+| **OAuth 2.0** | `client_id` · `client_secret` · `token_url` · `auth_url` (optional) · `scope` (optional) · `method` (optional — `default` or `Basic`) |
+| **Anonymous** | none — use for public APIs |
+
+For an API Key credential with `Auth Type: Bearer`, the value is injected as `Authorization: Bearer ...` on every tool call. For `Custom`, it goes into the header you name.
 
 ## Creation workflow
 
@@ -129,7 +139,7 @@ $EDITOR my-toolkit.yaml
 # 2. Validate locally
 python3 -c "import yaml; yaml.safe_load(open('my-toolkit.yaml'))"
 
-# 3. (If auth needed) Create the credential
+# 3. Create the credential (mandatory — use an Anonymous credential for public APIs)
 curl -X POST -H "Authorization: Bearer $ELITEA_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -139,18 +149,19 @@ curl -X POST -H "Authorization: Bearer $ELITEA_TOKEN" \
     "data": {"access_token": "<token>"},
     "shared": false
   }' \
-  "https://next.elitea.ai/api/v1/configurations/configurations/$PROJECT_ID"
+  "https://next.elitea.ai/api/v2/configurations/configurations/$PROJECT_ID"
+# → 200, not 201
 
 # 4. Create the toolkit
-SCHEMA=$(jq -Rs . < my-toolkit.yaml)   # JSON-escape the YAML
+SPEC=$(jq -Rs . < my-toolkit.yaml)   # JSON-escape the YAML
 curl -X POST -H "Authorization: Bearer $ELITEA_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
     \"type\": \"openapi\",
     \"name\": \"My Toolkit\",
     \"settings\": {
-      \"schema\": $SCHEMA,
-      \"credentials_configuration\": {\"elitea_title\": \"my-api-creds\", \"private\": true}
+      \"spec\": $SPEC,
+      \"openapi_configuration\": {\"elitea_title\": \"my-api-creds\", \"private\": true}
     }
   }" \
   "https://next.elitea.ai/api/v2/elitea_core/tools/prompt_lib/$PROJECT_ID"

@@ -56,7 +56,7 @@ def load_token() -> str:
 
 def fetch_models(base_url: str, project_id: int, token: str, include_shared: bool) -> dict:
     qs = "?include_shared=true" if include_shared else ""
-    url = f"{base_url.rstrip('/')}/api/v1/configurations/models/{project_id}{qs}"
+    url = f"{base_url.rstrip('/')}/api/v2/configurations/models/{project_id}{qs}"
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
     try:
         with urllib.request.urlopen(req) as r:

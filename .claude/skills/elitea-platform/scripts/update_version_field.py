@@ -9,6 +9,9 @@ Quirks handled:
   * `tools[].author_id` is REQUIRED on PUT (not on POST). We preserve it from
     the GET response.
   * `tools[].settings.available_tools` is a server-only echo; we strip it.
+  * `notes` (2.0.4) is a top-level version field (str, max 1000, nullable) that
+    holds internal implementation comments. It is never sent to the LLM — but a
+    PUT that omits it WIPES it, so we carry it through like `author_id`.
   * The api-reference's "flat update payload" lives at
     `PUT /api/v2/elitea_core/version/prompt_lib/{project_id}/{app_id}/{ver_id}`
     (note: `version`, singular). Don't confuse with the agent-entity PUT
@@ -172,6 +175,8 @@ def main() -> None:
         "agent_type": v.get("agent_type", "openai"),
         "welcome_message": v.get("welcome_message", ""),
         "meta": v.get("meta", {"step_limit": 25}),
+        # `notes` (2.0.4) is a top-level version field. A PUT that omits it wipes it.
+        "notes": v.get("notes"),
     }
 
     before = json.dumps(payload, sort_keys=True)

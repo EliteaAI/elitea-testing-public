@@ -214,8 +214,9 @@ components:
       properties:
         type:
           type: string
-          description: openapi | application | custom_python | mcp_<flavor> | github | jira | datasource
-            | artifact ...
+          description: openapi | application | mcp_<flavor> | github | jira | confluence | azure_devops
+            | artifact | sandbox ... (NOT custom_python or datasource — those are retired; read the live
+            registry at GET /api/v2/elitea_core/toolkits/prompt_lib/{project_id})
         name:
           type: string
         description:
@@ -519,7 +520,7 @@ components:
           type: string
           nullable: true
 paths:
-  /api/v1/configurations/models/{project_id}:
+  /api/v2/configurations/models/{project_id}:
     get:
       operationId: listModels
       summary: List LLM models available to project 630
@@ -1602,7 +1603,7 @@ paths:
           description: Toolkit attached
         '204':
           description: Toolkit detached
-  /api/v1/auth/user:
+  /api/v2/auth/user/{mode}:
     get:
       operationId: getAuthUser
       summary: Identify the current user (and their private-space project id)
@@ -1610,6 +1611,14 @@ paths:
         space project. Use to identify who called you and to resolve 'my private space'.
       tags:
       - Models
+      parameters:
+      - name: mode
+        in: path
+        required: true
+        description: Use 'default'.
+        schema:
+          type: string
+          default: default
       responses:
         '200':
           description: User identity

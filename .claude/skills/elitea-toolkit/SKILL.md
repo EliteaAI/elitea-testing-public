@@ -1,11 +1,11 @@
 ---
 name: elitea-toolkit
-description: Create, configure, and link ELITEA toolkits — OpenAPI/REST toolkits, MCP server toolkits, datasource toolkits, custom Python toolkits, and application-as-tool. Knows the toolkit type registry, the OpenAPI spec format ELITEA accepts (with examples), how credentials and secrets link in via `{"elitea_title", "private"}` references, and the patch/associate flow for binding toolkits to agent versions with `selected_tools`. Use this skill whenever the user wants to wrap an external API as an ELITEA toolkit, expose an MCP server to agents, or wire a tool onto an agent/pipeline. Real ELITEA-on-OpenAPI specs live under `examples/`.
+description: Create, configure, and link ELITEA toolkits — OpenAPI/REST toolkits, MCP server toolkits, first-class integrations (GitHub/Jira/ADO/…), artifact toolkits, per-toolkit indexing, and application-as-tool (sub-agents). Knows the toolkit type registry, the OpenAPI spec format ELITEA accepts (with examples), how credentials and secrets link in via `{"elitea_title", "private"}` references, and the patch/associate flow for binding toolkits to agent versions with `selected_tools`. Use this skill whenever the user wants to wrap an external API as an ELITEA toolkit, expose an MCP server to agents, or wire a tool onto an agent/pipeline. Real ELITEA-on-OpenAPI specs live under `examples/`.
 ---
 
 # ELITEA Toolkit — Create, Configure, Link
 
-A toolkit is an ELITEA wrapper around an external capability (REST API, MCP server, datasource, python code, or another ELITEA agent). Once created, toolkits are linked to agent versions with optional `selected_tools` filtering.
+A toolkit is an ELITEA wrapper around an external capability (REST API, MCP server, indexed data, or another ELITEA agent). Once created, toolkits are linked to agent versions with optional `selected_tools` filtering.
 
 > **Growing this skill:** when a session reveals a new toolkit-type pattern, OpenAPI extension, or credential-shape gotcha, append it to `references/{toolkit-types,openapi-toolkits}.md` or add a reusable spec to `examples/`. See `elitea-platform/references/growing-this-toolkit.md` for the full routing decision tree.
 
@@ -25,14 +25,13 @@ A toolkit is an ELITEA wrapper around an external capability (REST API, MCP serv
 | File | What it shows |
 |---|---|
 | `elitea-api.yaml` | **OpenAPI spec for ELITEA's own REST API** wrapped as a toolkit — so ELITEA agents can call ELITEA endpoints. Demonstrates `x-elitea-base-url`, `x-elitea-operation-name`, OAuth-style header auth, parameter location (path/query/body) declarations. Use this as the template for any new OpenAPI toolkit. |
+| `openapi/elitea-builder-runtime-api.yaml` | The **full ELITEA build + runtime API** as one OpenAPI toolkit — the biggest worked spec in the repo. |
 | `githubissues.json` | **GitHub Issues toolkit** — REST operations for listing/creating/searching issues. Demonstrates `Accept: application/vnd.github.v3+json` headers, pagination params, `body` schema for `POST /issues`. |
-| `githubissuesfieldeditor.json` | GitHub issue **field-update** operations (assignees, labels, milestone). Subset/specialization of `githubissues.json` — useful pattern when you want to expose a narrow set of operations to a specific agent. |
 | `githuboardmoovement.json` | GitHub Projects (v2 Board) movement operations. Demonstrates GraphQL endpoint wrapping (`POST /graphql` with the query in the body). |
-| `EliteaApi.json` | (See note below) Possibly an older JSON form of the ELITEA-API toolkit. Cross-check with `elitea-api.yaml` for current shape. |
 
 ## Core rules (always in effect)
 
-- **`type` field determines the toolkit kind.** Common values: `openapi` (OpenAPI/REST), `mcp_server` (live MCP), `datasource` (RAG), `application` (agent-as-tool), `custom_python` (sandbox code), `github`, `jira`, `confluence`, `gitlab`, `artifact`, etc. To get the live registry: `GET /api/v2/elitea_core/toolkits/prompt_lib/{project_id}` returns JSON-schemas for every type.
+- **`type` field determines the toolkit kind.** Live values include `openapi` (REST), `mcp`/`mcp_stdio`/`mcp_<flavor>` (MCP servers), `application` (agent-as-tool), `artifact`, `sandbox`, and the first-class integrations (`github`, `jira`, `confluence`, `gitlab`, `azure_devops`, `sharepoint`, `figma`, …). **`datasource` and `custom_python` are NOT valid types** — verified against the live registry (64 types, 2026-07-13); use per-toolkit indexing and pipeline `code` nodes instead. Always read the registry rather than trusting a hardcoded list: `GET /api/v2/elitea_core/toolkits/prompt_lib/{project_id}`.
 - **Credentials reference by name, not id.** Inside `settings`, use `{"elitea_title": "<credential-title>", "private": <bool>}`. `private = not credential.shared`.
 - **Sensitive fields come back as `"{{secret.<name>}}"`** on subsequent GETs — that's expected, resolve via the secrets endpoint when you need the raw value.
 - **`selected_tools` is the linking filter.** When you `PATCH /tool/...` to link a toolkit to an agent version, pass `selected_tools: ["op_name_1", "op_name_2"]` to expose only specific operations; omit/null to expose all.
@@ -44,9 +43,9 @@ A toolkit is an ELITEA wrapper around an external capability (REST API, MCP serv
 1. **Write the OpenAPI spec.** Start by copying `examples/elitea-api.yaml` or `examples/githubissues.json` as a template. Required: `info`, `paths`, optional `components.securitySchemes`. ELITEA-specific extensions:
    - `x-elitea-base-url` — overrides `servers[0].url`
    - `x-elitea-operation-name` (per operation) — the user-facing tool name
-2. **Create credential** (if the API needs auth):
-   `POST /api/v1/configurations/configurations/{project_id}` with `type: "github"` (or appropriate), `data: { access_token: "..." }`. The server stores `access_token` as a secret automatically.
-3. **Create the toolkit:** `POST /api/v2/elitea_core/tools/prompt_lib/{project_id}` with `type: "openapi"`, `settings: { schema: <inline-or-url>, credentials_configuration: {elitea_title: "...", private: true} }`.
+2. **Create credential** — **mandatory**, even for public APIs (use an Anonymous credential there):
+   `POST /api/v2/configurations/configurations/{project_id}` with `type: "github"` (or appropriate), `data: { access_token: "..." }`. Returns **200**, not 201. The server stores `access_token` as a secret automatically.
+3. **Create the toolkit:** `POST /api/v2/elitea_core/tools/prompt_lib/{project_id}` with `type: "openapi"`, `settings: { spec: <inline JSON/YAML/URL>, openapi_configuration: {elitea_title: "...", private: true} }`. The keys are `spec` and `openapi_configuration` — **not** `schema` / `credentials_configuration`.
 4. **Verify tools were discovered:** `GET /api/v2/elitea_core/toolkit_available_tools/prompt_lib/{project_id}/{toolkit_id}`.
 5. **Test a single operation** before linking: `POST /api/v2/elitea_core/test_toolkit_tool/prompt_lib/{project_id}` with `{toolkit_config, tool_name, tool_params}` — see `elitea-testing` skill.
 6. **Link to an agent version:** `PATCH /api/v2/elitea_core/tool/prompt_lib/{project_id}/{toolkit_id}` with `{entity_id: <agent_id>, entity_version_id: <version_id>, entity_type: "agent", has_relation: true, selected_tools: [...]}`.
@@ -61,13 +60,17 @@ A toolkit is an ELITEA wrapper around an external capability (REST API, MCP serv
 
 ## Upstream documentation (self-learning)
 
-On first invocation in a session, fetch the latest toolkit docs from upstream and cache:
+Live docs are fetchable as plain markdown — append `.md` to any `docs.elitea.ai` path. Index: **https://docs.elitea.ai/llms.txt**.
 
-- https://raw.githubusercontent.com/EliteaAI/elitea.github.io/mintlify/docs/menus/toolkits.mdx
-- https://raw.githubusercontent.com/EliteaAI/elitea.github.io/mintlify/docs/menus/mcps.mdx
-- https://raw.githubusercontent.com/EliteaAI/elitea.github.io/mintlify/docs/menus/credentials.mdx
+- https://docs.elitea.ai/menus/toolkits.md
+- https://docs.elitea.ai/menus/mcps.md
+- https://docs.elitea.ai/menus/credentials.md
+- https://docs.elitea.ai/integrations/toolkits/openapi_toolkit.md
+- https://docs.elitea.ai/integrations/mcp/create-and-use-remote-mcp.md
+- https://docs.elitea.ai/how-tos/indexing/indexing-overview.md
+- Per-integration pages: `https://docs.elitea.ai/integrations/toolkits/<name>_toolkit.md`
 
-If 404, the docs moved — fall back to `references/toolkit-types.md`.
+**The live registry beats all of them:** `GET /api/v2/elitea_core/toolkits/prompt_lib/{project_id}` returns the JSON-schema for every valid toolkit type (64 of them). When a doc and the registry disagree, the registry is right.
 
 ## Related skills
 
