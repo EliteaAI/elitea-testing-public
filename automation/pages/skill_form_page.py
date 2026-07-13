@@ -39,6 +39,11 @@ class SkillFormPage(BasePage):
         description="Skill instructions CodeMirror editor wrapper"
     )
 
+    instructions_editor_content = LocatorDescriptor(
+        testid="skill-instructions-editor-content",
+        description="Skill instructions CodeMirror content element (.cm-content)"
+    )
+
     save_button = LocatorDescriptor(
         testid="skill-save-button",
         description="Save skill button"
@@ -267,10 +272,13 @@ class SkillFormPage(BasePage):
         """Return the current text content of the Instructions CodeMirror editor.
 
         CodeMirror has no ``input_value()`` — read the rendered text content
-        of the ``.cm-content`` element instead.
+        of the ``.cm-content`` element instead, addressed via its own
+        ``skill-instructions-editor-content`` testid (set directly on the
+        CodeMirror content node via EditorView.contentAttributes in
+        EliteaUI, ELITEA-1737) rather than a raw CSS selector chained off
+        the wrapper testid.
         """
-        content = self.instructions_editor.locator(".cm-content")
-        return (content.text_content() or "").strip()
+        return (self.instructions_editor_content.text_content() or "").strip()
 
     def get_tags(self) -> list[str]:
         """Return the currently committed tags as a list of strings.
