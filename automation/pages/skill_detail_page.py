@@ -109,14 +109,23 @@ class SkillDetailPage(SkillFormPage):
 
         Falls back to the 'Copy ID' button text if URL parsing fails.
 
+        URL pattern is ``/skills/all/{skillId}`` (base version, one digit
+        segment) or ``/skills/all/{skillId}/{versionId}`` (a named version
+        is active, two digit segments) — the Skill ID is always the
+        *first* digit segment, so this scans forward and returns on the
+        first match (fixed from a reversed/last-match scan that returned
+        the Version ID instead of the Skill ID once a second digit segment
+        was present — ELITEA-1738; identical result for existing
+        single-segment callers).
+
         Returns:
             Skill ID as string.
         """
         url = self.page.url
         # Extract the numeric ID from the URL path segment
-        # e.g. /skills/all/42 → "42"
-        parts = url.rstrip("/").split("/")
-        for part in reversed(parts):
+        # e.g. /skills/all/42 → "42"; /skills/all/42/43 → "42"
+        parts = [p for p in url.split("?")[0].rstrip("/").split("/") if p]
+        for part in parts:
             if part.isdigit():
                 return part
 
@@ -303,3 +312,123 @@ class SkillDetailPage(SkillFormPage):
         download = download_info.value
         logger.info("Skill base version exported — filename: %s", download.suggested_filename)
         return download
+
+    @action("Export current version via menu")
+    def export_version_via_menu(self, timeout: int = 10000) -> Download:
+        """Export whichever version is currently selected via the overflow menu.
+
+        Thin wrapper around :meth:`export_base_version_via_menu` — that
+        method already exports whatever version is currently active (the
+        ``export-version-menuitem`` testid is version-scoped, not
+        base-specific); this alias just avoids the misleading "base" in the
+        call site's name when exporting a non-base version (ELITEA-1738).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the download event.
+
+        Returns:
+            Playwright ``Download`` object for the exported ``.md`` file.
+        """
+        return self.export_base_version_via_menu(timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # Version management (Save As Version / VERSION selector)
+    # ------------------------------------------------------------------
+
+    def get_version_id(self) -> str:
+        """Read the current Version ID from the URL's second path segment.
+
+        URL pattern: ``/skills/all/{skillId}/{versionId}`` — only present
+        once a non-base version has been created/selected; on the initial
+        ``base`` version the URL is just ``/skills/all/{skillId}`` and the
+        Version ID equals the Skill ID.
+
+        Returns:
+            Version ID as string.
+        """
+        url = self.page.url
+        parts = [p for p in url.split("?")[0].rstrip("/").split("/") if p]
+        digit_parts = [p for p in parts if p.isdigit()]
+        if len(digit_parts) >= 2:
+            return digit_parts[-1]
+        if len(digit_parts) == 1:
+            # No explicit version segment yet — Version ID equals Skill ID.
+            return digit_parts[0]
+        raise RuntimeError(f"Cannot determine version ID from URL: {url}")
+
+    @action("Save current edits as a new version")
+    def save_as_version(self, version_name: str, timeout: int = 10000):
+        """Click "Save As Version", fill the Name field, and confirm.
+
+        Opens the "Create version" dialog via the "Save As Version" button
+        (in the version tab bar, distinct from the overflow menu), types the
+        new version name, and clicks the dialog's Save. Waits for the
+        ``Version "{version_name}" created`` toast and for the URL to gain a
+        new version-id path segment.
+
+        LOCATOR: "Save As Version" button and the dialog's Name textbox have
+        no ``data-testid`` yet (confirmed in ELITEA-1738 AFS exploration) —
+        located by stable accessible role/name per the project's locator
+        priority order (data-testid > accessible role).
+
+        Args:
+            version_name: Name for the new version (e.g. ``"ver_1"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Saving current edits as new version: %r", version_name)
+        previous_version_id = self.get_version_id()
+
+        save_as_version_btn = self.page.get_by_role("button", name="Save As Version")
+        save_as_version_btn.click()
+
+        dialog = self.page.get_by_role("dialog")
+        dialog.wait_for(state="visible", timeout=timeout)
+        name_field = dialog.get_by_role("textbox", name="Name")
+        name_field.click()
+        name_field.type(version_name)
+        self.page.wait_for_timeout(200)
+
+        dialog.get_by_role("button", name="Save").click()
+
+        self.page.get_by_text(f'Version "{version_name}" created').wait_for(
+            state="visible", timeout=timeout
+        )
+        self.page.wait_for_function(
+            "prevId => window.location.pathname.split('/').filter(Boolean).pop() !== prevId",
+            arg=previous_version_id,
+            timeout=timeout,
+        )
+        self.wait_for_network(timeout=5000)
+        logger.info(
+            "New version %r created — URL: %s", version_name, self.page.url
+        )
+
+    def get_version_selector_value(self) -> str:
+        """Return the currently displayed value of the VERSION selector.
+
+        LOCATOR: ``#skill-version-select`` — confirmed present live
+        (``SkillTabBar.jsx``), no ``data-testid`` yet.
+
+        Returns:
+            The version name currently shown in the selector (e.g. ``"ver_1"``).
+        """
+        return (self.page.locator("#skill-version-select").text_content() or "").strip()
+
+    @action("Switch to a different skill version")
+    def switch_version(self, version_name: str, timeout: int = 10000):
+        """Select a different version from the VERSION combobox.
+
+        LOCATOR: ``#skill-version-select`` — no ``data-testid`` yet.
+
+        Args:
+            version_name: The version name to select (e.g. ``"base"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Switching to version: %r", version_name)
+        selector = self.page.locator("#skill-version-select")
+        selector.click()
+        option = self.page.get_by_role("option", name=version_name, exact=True)
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.wait_for_network(timeout=5000)
+        logger.info("Switched to version: %r", version_name)

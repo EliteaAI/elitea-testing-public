@@ -166,20 +166,27 @@ class SkillFormPage(BasePage):
 
     @action("Fill instructions editor")
     def fill_instructions(self, text: str):
-        """Fill the CodeMirror instructions editor.
+        """Replace the CodeMirror instructions editor's content.
 
-        CodeMirror does not respond to fill() — it requires a click to focus,
-        then Ctrl+A to select existing content, then keyboard.type() to insert.
+        CodeMirror does not respond to fill(). On an *empty* editor,
+        click + Ctrl+A + keyboard.type() works. On an *already-populated*
+        editor (editing an existing skill's instructions), Ctrl+A does not
+        reliably select the existing content first — typed text ends up
+        inserted rather than replacing it, producing a doubled value
+        (``"new text" + "old text"``). Mirrors the same finding documented
+        for the Description textarea (:meth:`set_description`) — use
+        ``Locator.select_text()`` + Backspace to reliably clear first,
+        which works for both empty and populated editors alike.
 
         Args:
             text: Instructions text to enter.
         """
-        # Click the editor wrapper to focus CodeMirror, then type via keyboard.
-        # CodeMirror renders its own internal textbox — clicking the wrapper
-        # transfers focus into it without needing to locate the inner element.
         self.instructions_editor.click()
         self.page.wait_for_timeout(200)
-        self.page.keyboard.press("Control+a")
+        self.instructions_editor_content.select_text()
+        self.page.wait_for_timeout(100)
+        self.page.keyboard.press("Backspace")
+        self.page.wait_for_timeout(100)
         self.page.keyboard.type(text)
         self.page.wait_for_timeout(300)
         logger.info("Filled instructions editor")
