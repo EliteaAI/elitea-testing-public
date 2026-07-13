@@ -148,6 +148,29 @@ class SkillFormPage(BasePage):
         self.page.wait_for_timeout(200)
         logger.info("Added tag: %r", tag)
 
+    @action("Select existing tag from autocomplete")
+    def select_existing_tag(self, tag_name: str, timeout: int = 5000):
+        """Select a previously-created tag from the Tags autocomplete dropdown.
+
+        Unlike :meth:`add_tag` (type + Enter, which commits a brand-new tag),
+        this selects an existing project-scoped tag suggestion — confirmed
+        live (ELITEA-1740 AFS exploration): once a tag exists in the project,
+        later skills' Tags combobox surfaces it as a clickable
+        ``get_by_role("option", ...)`` item in the MUI Autocomplete listbox.
+
+        Args:
+            tag_name: Existing tag text to select from the dropdown.
+            timeout: Maximum wait time in milliseconds for the option to appear.
+        """
+        tag_field = self.tags_input.locator("input")
+        tag_field.click()
+        tag_field.type(tag_name)
+        option = self.page.get_by_role("option", name=tag_name, exact=True)
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.page.wait_for_timeout(200)
+        logger.info("Selected existing tag: %r", tag_name)
+
     def _fill_text_input(self, locator, text: str):
         """Fill a standard MUI text input with React-safe keyboard events.
 
