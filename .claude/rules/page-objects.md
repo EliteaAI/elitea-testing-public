@@ -284,11 +284,34 @@ def click_save(self):
     self.save_button.click()  # GOOD
 ```
 
+❌ **Don't chain a raw selector off an existing field inside a method** — this
+looks compliant (it starts from a real class field) but still bakes an
+untracked, non-testid selector into method code. Real case that merged in
+PR #22 (`automation/pages/skill_form_page.py:272`, ELITEA-1737):
+```python
+instructions_editor = LocatorDescriptor(testid="skill-instructions-editor")
+
+def get_instructions_text(self):
+    content = self.instructions_editor.locator(".cm-content")  # BAD - raw CSS chained on
+    return content.text_content()
+```
+
+✅ **Give the sub-element its own testid + LocatorDescriptor:**
+```python
+instructions_editor_content = LocatorDescriptor(testid="skill-instructions-editor-content")
+
+def get_instructions_text(self):
+    return self.instructions_editor_content.text_content()  # GOOD
+```
+
 ## Sign off Checklist
 
 Verify:
 - [ ] No duplicate methods across page objects
 - [ ] All locators use LocatorDescriptor with testid + fallback
+- [ ] No raw selectors chained off an existing field inside a method (e.g.
+      `self.some_field.locator(".css-class")`) — give the sub-element its own
+      testid + LocatorDescriptor instead
 - [ ] Complex locators documented in docstring
 - [ ] Method names follow conventions
 - [ ] Class docstring includes URL pattern
