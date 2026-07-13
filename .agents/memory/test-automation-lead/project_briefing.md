@@ -51,6 +51,15 @@ type: project
   contradictory metadata → report, never guess.
 - **Back-write post-merge**: edit the case file in `onetest-ai-tm-Elitea` —
   `execution_type: automated`, `status: ready`, `automation_test_id: <dotted pytest path>`.
+- **Closure record — the LAST comment on every automation issue, before you close it.**
+  Template + rules: `.agents/workflow.md` § Work tracking → Closure record. A bare
+  "✅ merged" is NOT a closure record — post the artifact index: test PR + sha, the
+  **testid draft PR on `EliteaAI/EliteaUI`**, the integration-branch state, AFS path,
+  defects filed. Then the row people forget: **is it promotable?** Since the fork
+  retirement a test can be merged to `automation/base` while its testids sit in an open
+  draft PR — green on localhost, red on any deployed env. That case is `blocked`, not
+  `completed`: **post the record and leave the issue OPEN** for the human to close once
+  the testid PR lands. Worked example: issue #19 / EliteaUI#525.
 - **Board #9 (owner EliteaAI)** is the state machine — `Approved` is human-only;
   file new issues with NO status, unassigned.
 - **Identity rule (hard):** prefix EVERY tracker/board write with

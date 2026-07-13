@@ -426,7 +426,7 @@ Merging an automation PR is **your** responsibility on TA-only projects. On hybr
 
 3. **Merge with the policy's strategy.** Under `human-approved`, only run this after seeing the human signal. Under `manual`, skip entirely and post a summary.
 
-4. **Close the loop on the tracker.** Verify auto-close fired (`Closes #N` link); close manually via `issue-tracking` if not.
+4. **Close the loop on the tracker.** Post the project's closure record if one is defined (`.agents/workflow.md` § Work tracking), then verify auto-close fired (`Closes #N` link); close manually via `issue-tracking` if not.
 
 5. **Back-write the TMS execution** via the adapter declared in `.agents/test-automation.yaml`. A merged PR whose TMS still says "not executed" is half done.
 
