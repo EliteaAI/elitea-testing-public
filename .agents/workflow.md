@@ -163,6 +163,48 @@ never hardcode.
 Interactive session → the human in the room authorizes work; factory mode → work only
 the one issue the dispatch names.
 
+### Closure record — the last comment on every automation issue
+
+The work-log comments posted during a run (Started → AFS ready → PR opened → review →
+merged) are a **narrative**. The closure record is the **artifact index**. Nobody
+re-reads the narrative six months later; they read this one comment to find out where
+the work lives and whether it's actually finished. **A bare "✅ merged" is not a closure
+record** — that was the gap on #19.
+
+The lead posts this as the final comment on the automation issue, **before** closing it:
+
+```markdown
+🔗 **Closure record — <CASE-ID>**
+
+| Artifact | Where | State |
+|---|---|---|
+| Test | `elitea-testing-public` PR #<N> — `tests/<case>-<slug>` → `automation/base` | ✅ merged (`<sha>`) |
+| Testids | `EliteaAI/EliteaUI` PR #<M> — `testids/<case>-<slug>` → `main` | 📝 open, **draft** |
+| Testids (integration) | `EliteaAI/EliteaUI` @ `automation/testids` | ✅ merged — dev server serves them |
+| AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `automation/base` |
+| Defects filed | #<X>, #<Y> — or "none" | |
+
+**Status:** merged to `automation/base` · ⚠️ NOT yet promotable to `main` — blocked on EliteaUI PR #<M>.
+**Unblocks when:** #<M> is marked ready, merged, and deployed to DEV. **Owner:** human.
+**Still open:** <follow-ups, or "none">
+```
+
+**Why the promotability row is load-bearing here.** Since the fork retirement, a case's
+testids can sit in an **open draft PR** while its test is already merged to
+`automation/base`. Such a test is **green on localhost and red on any deployed env** —
+`automation/testids` has the testids, DEV does not. So *"merged" ≠ "done"*, and the
+record must say which. `promote-automation-batch` Stage 1 checks exactly this and will
+block the batch; the closure record is what makes that blockage predictable instead of
+a surprise months later.
+
+**Do not close an issue whose testids are still in an unmerged PR** — it is `blocked`,
+not `completed`. Closing it hides a real cross-repo dependency. Leave it open with the
+closure record posted, and let the human close it when the testid PR lands.
+
+Worked example: [issue #19](https://github.com/EliteaAI/elitea-testing-public/issues/19)
+(ELITEA-1737) — test merged, testids still in draft PR EliteaUI#525, therefore not
+promotable. That is a correct, honest end state.
+
 ## Traps (cost someone an hour already)
 
 - `requirements.txt` is **mkdocs-only**. Real deps: `pip install -e ".[reporting]"` —
