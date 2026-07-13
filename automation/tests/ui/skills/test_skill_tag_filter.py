@@ -79,6 +79,30 @@ class TestSkillTagFilter:
         form_page = SkillFormPage(page)
         detail_page = SkillDetailPage(page)
 
+        # Console-error capture across the whole test (tag creation +
+        # filtering), mirroring test_skill_export_import.py's pattern.
+        # Filters out the single known-and-not-filed cosmetic React
+        # dev-mode warning ("Invalid value for prop `sx` on <svg>", fired
+        # from TagEditor's SvgCheckedIcon when selecting an existing tag
+        # from the autocomplete dropdown — AFS Known Defects #2) so a
+        # real regression isn't masked by an expected, harmless warning.
+        console_messages = []
+
+        def _is_known_sx_svg_warning(msg) -> bool:
+            text = msg.text
+            return (
+                "Invalid value for prop" in text
+                and "sx" in text
+                and "svg" in text.lower()
+            )
+
+        page.on(
+            "console",
+            lambda msg: console_messages.append(msg)
+            if msg.type == "error" and not _is_known_sx_svg_warning(msg)
+            else None,
+        )
+
         # ------------------------------------------------------------------
         # Step 1 — Capture baseline; create 3 skills with tags; verify visible
         # ------------------------------------------------------------------
@@ -175,6 +199,24 @@ class TestSkillTagFilter:
                 f"{len(visible_names)}: {visible_names!r}"
             )
 
+            # Each card renders its own tags (case's step 1 expected result:
+            # "visible in the Skills list with their respective tags").
+            skill_a_tags = {t.lower() for t in list_page.get_card_tags(skill_a_name)}
+            skill_b_tags = {t.lower() for t in list_page.get_card_tags(skill_b_name)}
+            skill_c_tags = {t.lower() for t in list_page.get_card_tags(skill_c_name)}
+            assert skill_a_tags == {"formatting", "output"}, (
+                f"Skill A's card should show tags {{'formatting', 'output'}}, "
+                f"got: {skill_a_tags!r}"
+            )
+            assert skill_b_tags == {"formatting", "english"}, (
+                f"Skill B's card should show tags {{'formatting', 'english'}}, "
+                f"got: {skill_b_tags!r}"
+            )
+            assert skill_c_tags == {"translation"}, (
+                f"Skill C's card should show tags {{'translation'}}, "
+                f"got: {skill_c_tags!r}"
+            )
+
         # ------------------------------------------------------------------
         # Step 2 — Filter by `formatting` (shared tag) — Skill A + B only
         # ------------------------------------------------------------------
@@ -228,4 +270,13 @@ class TestSkillTagFilter:
             )
             assert list_page.skill_exists_in_list(skill_c_name), (
                 f"{skill_c_name!r} should be visible again after clearing the filter"
+            )
+
+        # ------------------------------------------------------------------
+        # Console errors — none expected across tag creation/filtering
+        # ------------------------------------------------------------------
+        with allure.step("Verify no console errors during tag creation/filtering"):
+            assert not console_messages, (
+                "Expected no console errors during tag creation/filtering, got: "
+                f"{[m.text for m in console_messages]}"
             )

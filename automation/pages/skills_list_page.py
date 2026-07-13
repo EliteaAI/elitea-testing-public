@@ -113,6 +113,44 @@ class SkillsListPage(BasePage):
         cards = self.page.get_by_test_id("entity-card-name").all()
         return [(c.text_content() or "").strip() for c in cards]
 
+    def get_card_tags(self, skill_name: str) -> list[str]:
+        """Return the tag chip texts currently rendered on a specific skill's card.
+
+        LOCATOR: tag text (``CardTagSectionItem`` in ``EliteaUI/src/
+        components/CardTagSectionItem.jsx``, rendered via
+        ``CardTagSection.jsx``) has no ``data-testid`` — confirmed live via
+        DOM inspection that it renders as a ``Typography variant="bodySmall"``
+        (MUI class ``MuiTypography-bodySmall``), which is not shared with any
+        other element inside the card (mirrors the existing
+        ``.MuiChip-label`` pattern already used in
+        :meth:`SkillFormPage.get_tags`). Scoped to the specific card via the
+        nearest ``MuiCard-root`` ancestor of that card's ``entity-card-name``
+        element, so two cards can't cross-contaminate each other's tags.
+
+        Args:
+            skill_name: The skill's exact name shown on its card
+                (case-insensitive substring match, consistent with
+                :meth:`skill_exists_in_list`).
+
+        Returns:
+            List of tag text strings currently rendered on that card, in
+            display order. Empty list if the card isn't found.
+        """
+        card_name = self.page.get_by_test_id("entity-card-name").filter(
+            has_text=re.compile(re.escape(skill_name), re.IGNORECASE)
+        ).first
+        if card_name.count() == 0:
+            return []
+        card = card_name.locator(
+            "xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), "
+            "' MuiCard-root ')]"
+        ).first
+        tag_labels = card.locator(".MuiTypography-bodySmall")
+        return [
+            (tag_labels.nth(i).text_content() or "").strip()
+            for i in range(tag_labels.count())
+        ]
+
     def wait_for_skill_absent(self, name: str, timeout: int = 10000):
         """Wait until a skill is no longer visible in the list.
 
