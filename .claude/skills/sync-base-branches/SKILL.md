@@ -37,10 +37,51 @@ cd "$WORKSPACE"
 for d in elitea-testing-public EliteaUI; do
   test -f "$d/.git/shallow" && echo "SHALLOW: $d — run: git -C $d fetch --unshallow origin"
 done
-# Both trees must be clean. Stop if not — never sync over uncommitted work.
 git -C elitea-testing-public status --porcelain
 git -C EliteaUI status --porcelain
 ```
+
+### Step 0 — Land the working tree before syncing
+
+Never merge or rebase over uncommitted work: if it conflicts, your changes get tangled into the
+resolution. But a dirty tree is **normal** here — agents accumulate memories and specs as they go. Do
+not dead-stop on it. Classify what's there and land it:
+
+**Commit** (these are deliverables):
+- `.agents/**` — agent memories, briefings, daily logs, seeded config
+- `.claude/skills/**`, `.claude/rules/**`, `CLAUDE.md`, `AGENTS.md`
+- `test-specs/**` — test specs are part of the deliverable
+- `automation/**` — tests, page objects, fixtures
+- Test *data* a test genuinely needs (e.g. an example attachment to upload)
+
+**Leave untracked** (strays — do not commit, do not delete; a human reviews them periodically):
+- Screenshots and Playwright-MCP leftovers (`*.png` at the repo root, trace dumps)
+- Scratch files, one-off debug output
+
+**Never commit:** `.env`, `.env.test`, `.claude/settings.local.json`, or any file containing a token,
+password, or key. (They are gitignored — keep it that way.)
+
+### Step 0b — Secret scan. This repo is PUBLIC.
+
+`elitea-testing-public` is a public repository, and `.env.test` holds a live API token, a test-user
+password, a GitHub PAT, and a Jira key. Before committing, verify none of those **values** appear in
+what you are about to push — an agent memory or a test spec can easily quote one by accident.
+
+```bash
+git add <the deliverables>
+python3 scripts/scan-secrets.py        # exit 0 = clean, 1 = leak found
+```
+
+A non-zero exit means **stop and do not push** — remove the value, and rotate the credential, because
+if it reached a commit it must be assumed compromised. Public URLs (`localhost:5173`, `dev.elitea.ai`)
+are not secrets; tokens, passwords, keys, and the test-user credentials are.
+
+The scanner reads the real values out of `.env.test` and greps staged files for them, so it catches a
+pasted token even when it is not in an obvious `KEY=value` shape. Confirm it is actually working with
+`python3 scripts/scan-secrets.py --selftest` (it plants a real secret in a temp file and asserts it
+catches it) — a scanner that silently passes everything is worse than no scanner at all.
+
+Then commit, and only then proceed to Part 1.
 
 ## Part 1 — Test repo: merge `origin/main` into `automation/base`
 
@@ -54,7 +95,30 @@ git merge origin/main
 ```
 
 On conflict: resolve, `git add`, `git merge --continue`. Conflicts here are usually two tests touching
-the same page object — keep both locators. Then:
+the same page object — keep both locators.
+
+**Then check what you just pulled in.** `main` carries framework changes, not just tests — a merge can
+alter `config.py`, `conftest.py`, `api/client.py`, or fixtures, and a new *required* config field will
+break every test at import time before a single one runs.
+
+```bash
+# WORKSPACE = parent folder holding the three sibling clones (no env var needed)
+WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
+cd "$WORKSPACE/elitea-testing-public"
+git diff ORIG_HEAD..HEAD --stat -- automation/config.py automation/conftest.py automation/fixtures automation/api
+
+# Did config.py gain a setting? If it has no default, .env.test needs a new key.
+git diff ORIG_HEAD..HEAD -- automation/config.py | grep -E '^\+\s+\w+:' || echo "  no new settings"
+
+# The suite must still import and collect. This is the real check.
+cd automation
+../.venv/bin/python -c "from config import settings; from api.client import APIClient; print('imports OK')"
+../.venv/bin/pytest tests/ui/smoke/ --collect-only -q -p no:cacheprovider 2>&1 | tail -2
+```
+
+If a new setting has a default (e.g. `cf_ext_rate: str = ""`), it is optional — nothing to do. If it has
+no default, add the key to `.env.test` **and tell the human**, because every teammate's `.env.test`
+needs it too.
 
 ```bash
 git push origin automation/base      # plain push. If this needs --force, STOP: something is wrong.
@@ -168,3 +232,6 @@ is expected and fine. Report the actual numbers; do not claim success without ru
 - Commit anything to the fork's `main`. It is a mirror of upstream, nothing else.
 - Use bare `--force`. `--force-with-lease` refusing is a signal, not an obstacle.
 - Sync while another agent has uncommitted testid work.
+- Dead-stop on a dirty tree. Classify it (Step 0), commit the deliverables, leave the strays.
+- Push to this public repo without running the secret scan (Step 0b).
+- Report success from branch counts alone — the suite must still import and collect.
