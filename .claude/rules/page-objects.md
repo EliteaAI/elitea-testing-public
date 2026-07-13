@@ -26,35 +26,33 @@ class DetailPage(FormPage):  # Inherits get_name()
     pass
 ```
 
-## Locator Strategy: testid-first
+## Locator Strategy: testid-only
 
-**All locators must use `LocatorDescriptor`** with testid-first strategy:
+**All locators must use `LocatorDescriptor` with data-testid.** Fallback selectors are NOT allowed.
 
 ```python
 from .locator_descriptor import LocatorDescriptor
 
 class MyPage(BasePage):
-    # Preferred: data-testid (most stable)
+    # ONLY data-testid is allowed
     save_button = LocatorDescriptor(testid="save-button")
-    
-    # Alternative: ID or CSS selector (when testid not available)
-    refresh_btn = LocatorDescriptor(locator="#RefreshButton")
-    delete_btn = LocatorDescriptor(locator='[aria-label="Delete"]')
+    refresh_btn = LocatorDescriptor(testid="toolkit-reload-button")
 ```
 
-**Priority:**
-1. `testid` — use if element has `data-testid`
-2. `locator` — use if element has `id` or stable attribute
-3. **Neither exists** → run `add-data-testid` skill to add testid in EliteaUI
+**If element lacks data-testid** → run `add-data-testid` skill to add it in EliteaUI first.
 
-**Never use direct locators:**
+**FORBIDDEN:**
 ```python
-# ❌ WRONG
+# ❌ WRONG - fallback/locator selectors not allowed
+button = LocatorDescriptor(locator="#SomeId")
+button = LocatorDescriptor(locator='[aria-label="Delete"]')
+
+# ❌ WRONG - direct locators in __init__
 def __init__(self, page):
     self.button = page.locator('button')
 
-# ✅ CORRECT
-button = LocatorDescriptor(testid="save-btn")
+# ✅ CORRECT - testid only
+button = LocatorDescriptor(testid="save-button")
 ```
 
 ## Architecture Pattern
@@ -108,22 +106,31 @@ def test_edit_name(page):
     form.name_input.click()  # Direct locator access
 ```
 
-## Locator Priority Order
+## Locator Rules
 
-1. **data-testid** — most stable, add via `add-data-testid` skill if missing
-2. **#element-id** — use if already exists in UI
-3. **aria-label** — `locator='[aria-label="Delete"]'`
-4. **CSS classes** — last resort, fragile
+**data-testid is REQUIRED for all elements.** No fallback selectors allowed.
 
-**If element lacks testid and id:** Run `add-data-testid` skill to add `data-testid` in EliteaUI.
+If element lacks data-testid → run `add-data-testid` skill to add it in EliteaUI first.
 
-**For scoped selectors (inside parent locator):** Use string constants:
+**Scoped selectors (inside parent locator):** Use data-testid string constants:
 ```python
 # Define at class level
-CHAT_DELETE_SELECTOR = '[aria-label="Delete"]'
+CHAT_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
 
 # Use inside method
-card.locator(self.CHAT_DELETE_SELECTOR)
+message.locator(self.CHAT_DELETE_SELECTOR)
+```
+
+**Locators MUST be class-level fields, NEVER inline in methods:**
+```python
+# ❌ WRONG - inline locator in method
+def click_save(self):
+    self.page.locator('[data-testid="save"]').click()
+
+# ✅ CORRECT - class-level LocatorDescriptor
+save_button = LocatorDescriptor(testid="save-button")
+def click_save(self):
+    self.save_button.click()
 ```
 
 ## Inheritance Rules

@@ -144,20 +144,11 @@ If methods are missing, use `page-object-generator`:
 Skill(skill="page-object-generator", args="PageName - add method_name for [element description]")
 ```
 
-**Follow `.claude/rules/page-objects.md`:**
-- Use LocatorDescriptor for element definitions
+**Follow `.claude/rules/page-objects.md` strictly:**
+- All locators MUST use `LocatorDescriptor(testid="...")` — no fallback/locator allowed
+- Locators MUST be class-level fields, NEVER inline in methods
 - Add proper waits
 - One method per action
-
-**LocatorDescriptor patterns:**
-```python
-# Preferred: data-testid (added by Stage 2.5 or already exists)
-element = LocatorDescriptor(testid="section-element-type")
-
-# Alternative: ID or CSS selector (legacy/third-party elements)
-element = LocatorDescriptor(locator="#ElementId")
-element = LocatorDescriptor(locator='[aria-label="Delete"]')
-```
 
 **After Stage 3 — report to user:**
 > Stage 3 complete: Page object methods
