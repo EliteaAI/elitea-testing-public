@@ -28,21 +28,27 @@ class TestHomePage:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/smoke-suite/ELITEA-1049_ui-smoke-test-platform-loads.md", "onetest-ai Test Case link")
     def test_page_loads(self, page):
         """The home page should load without errors."""
-        bp = BasePage(page)
-        bp.navigate("/")
-        # The page title or a key element should be visible
-        assert page.title(), "Page title should not be empty"
+        with allure.step("Step 1 — Navigate to home page"):
+            bp = BasePage(page)
+            bp.navigate("/")
+
+        with allure.step("Step 2 — Verify page title is not empty"):
+            assert page.title(), "Page title should not be empty"
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1143_platform-availability-basic-navigation.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/smoke-suite/ELITEA-1049_ui-smoke-test-platform-loads.md", "onetest-ai Test Case link")
     def test_main_content_visible(self, page):
         """The main content area should render after navigation."""
-        bp = BasePage(page)
-        bp.navigate("/")
-        # Wait for any <main> element or a known root container
-        main = page.locator("main, #root, #app, [role='main']").first
-        main.wait_for(state="visible", timeout=15000)
-        assert main.is_visible(), "Main content area should be visible"
+        with allure.step("Step 1 — Navigate to home page"):
+            bp = BasePage(page)
+            bp.navigate("/")
+
+        with allure.step("Step 2 — Wait for main content area to appear"):
+            main = page.locator("main, #root, #app, [role='main']").first
+            main.wait_for(state="visible", timeout=15000)
+
+        with allure.step("Step 3 — Verify main content area is visible"):
+            assert main.is_visible(), "Main content area should be visible"
 
 
 

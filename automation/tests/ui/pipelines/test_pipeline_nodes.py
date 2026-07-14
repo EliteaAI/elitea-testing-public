@@ -42,46 +42,34 @@ class TestAddNode:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0853_pipeline-node-operations-add-edit-delete-connect.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_add_human_in_the_loop_node_and_connect_to_end(self, page, pipeline_id):
-        """PIPE-031: Add a HITL node and connect it to END.
+        """PIPE-031: Add a HITL node and connect it to END."""
+        with allure.step("Step 1 — Navigate to pipeline canvas"):
+            pipelines = _navigate_to_canvas(page, pipeline_id)
+            initial_count = pipelines.get_node_count()
 
-        Exercises the complete user flow of adding a Human-in-the-loop node
-        to the pipeline canvas and wiring it into the graph. Verifies:
-        1. The node appears on the canvas with correct type
-        2. The node can be connected to END via drag operation
+        with allure.step("Step 2 — Add Human-in-the-loop node via + menu"):
+            pipelines.add_node("Human-in-the-loop")
 
-        The HITL node has three output handles (approve, edit, reject).
-        This test connects the approve handle to END.
-        """
-        pipelines = _navigate_to_canvas(page, pipeline_id)
+        with allure.step("Step 3 — Wait for HITL node to appear on canvas"):
+            hitl_id = pipelines.wait_for_node_on_canvas("hitl", timeout=UI_ELEMENT_TIMEOUT)
+            assert hitl_id, (
+                "Human-in-the-loop node should have a non-empty data-id after being added"
+            )
 
-        initial_count = pipelines.get_node_count()
+        with allure.step("Step 4 — Verify node count increased"):
+            node_count = pipelines.get_node_count()
+            assert node_count == initial_count + 1, (
+                f"Node count should be {initial_count + 1} after adding HITL node: "
+                f"before={initial_count}, after={node_count}"
+            )
 
-        # Add the HITL node via the + menu
-        pipelines.add_node("Human-in-the-loop")
+        with allure.step("Step 5 — Connect HITL node to END (approve handle)"):
+            pipelines.fit_view()
+            pipelines.wait_for_network()
+            pipelines.connect_nodes(hitl_id, "END", source_handle="approve")
+            pipelines.wait_for_network()
 
-        # Wait for the node to appear — HITL maps to CSS class "hitl"
-        hitl_id = pipelines.wait_for_node_on_canvas("hitl", timeout=UI_ELEMENT_TIMEOUT)
-
-        # Verify the node is present on the canvas
-        assert hitl_id, (
-            "Human-in-the-loop node should have a non-empty data-id after being added"
-        )
-
-        node_count = pipelines.get_node_count()
-        assert node_count == initial_count + 1, (
-            f"Node count should be {initial_count + 1} after adding HITL node: "
-            f"before={initial_count}, after={node_count}"
-        )
-
-        # Fit view so both nodes are visible for the drag operation.
-        pipelines.fit_view()
-        pipelines.wait_for_network()
-
-        # Connect HITL → END (using approve handle)
-        pipelines.connect_nodes(hitl_id, "END", source_handle="approve")
-        pipelines.wait_for_network()
-
-        # Verify the edge was created
-        assert pipelines.edge_exists(hitl_id, "END"), (
-            f"Edge from HITL node '{hitl_id}' to 'END' should exist after connecting"
-        )
+        with allure.step("Step 6 — Verify edge from HITL to END exists"):
+            assert pipelines.edge_exists(hitl_id, "END"), (
+                f"Edge from HITL node '{hitl_id}' to 'END' should exist after connecting"
+            )

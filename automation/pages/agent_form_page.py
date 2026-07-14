@@ -592,6 +592,21 @@ class AgentFormPage(BasePage):
         self.page.keyboard.type(text)
         self.page.wait_for_timeout(500)
 
+    def get_welcome_message_fullscreen_value(self) -> str:
+        """Get the current text value from the welcome message fullscreen dialog.
+
+        Returns:
+            The text content of the fullscreen textarea (CodeMirror).
+        """
+        cm_content = self.welcome_message_fullscreen_textarea.locator(
+            '.cm-content[contenteditable="true"]'
+        )
+        if cm_content.count() == 0:
+            cm_content = self.page.locator(
+                '[role="dialog"] .cm-content[contenteditable="true"]'
+            )
+        return cm_content.text_content() or ""
+
     # ------------------------------------------------------------------
     # Conversation Starter methods
     # ------------------------------------------------------------------
@@ -755,3 +770,18 @@ class AgentFormPage(BasePage):
         self.page.keyboard.press("Control+a")
         self.page.keyboard.type(text)
         self.page.wait_for_timeout(500)
+
+    def get_conversation_starter_fullscreen_value(self) -> str:
+        """Get the current text value from the conversation starter fullscreen dialog.
+
+        Returns:
+            The text content of the fullscreen textarea (CodeMirror).
+        """
+        cm_content = self.conversation_starter_fullscreen_textarea.locator(
+            '.cm-content[contenteditable="true"]'
+        )
+        if cm_content.count() == 0:
+            cm_content = self.page.locator(
+                '[role="dialog"] .cm-content[contenteditable="true"]'
+            )
+        return cm_content.text_content() or ""

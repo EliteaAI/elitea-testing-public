@@ -51,28 +51,7 @@ class TestToolkitCredentialIndicators:
         credential_api,
         toolkit_api,
     ):
-        """E2E test: verify all indicators and fix invalid credentials on Toolkit.
-
-        Flow:
-        1. Create Jira credential with invalid token
-        2. Create toolkit with that credential
-        3. Verify all indicators:
-           - Status indicator with "Authentication failed:" tooltip
-           - Warning message with "Authentication failed:" text
-           - Reload button with "Reload and apply changes" tooltip
-           - Open in new tab button with "Open in new tab" tooltip
-           - Save button is disabled
-        4. Click "Open in new tab" and verify new tab opens
-        5. Fix credential via API
-        6. Close the new tab and return to original
-        7. Click Reload
-        8. Verify after fix:
-           - Status indicator gone
-           - Warning message gone
-           - Reload button gone
-           - Open in new tab remains
-           - Save button enabled
-        """
+        """E2E test: verify all indicators and fix invalid credentials on Toolkit."""
         if not settings.jira_api_key or not settings.jira_username:
             pytest.skip("JIRA_USERNAME and JIRA_API_KEY not set in .env.test - required for e2e test")
 
@@ -84,131 +63,143 @@ class TestToolkitCredentialIndicators:
         new_tab = None
 
         try:
-            invalid_payload = {
-                "type": "jira",
-                "elitea_title": f"tk_jira_{ts}",
-                "label": cred_name,
-                "data": {
-                    "base_url": settings.jira_base_url,
-                    "username": settings.jira_username,
-                    "api_key": "invalid_expired_token_12345",
-                },
-                "shared": False,
-            }
-            cred = credential_api.create_credential(invalid_payload)
-            credential_id = cred["id"]
-            logger.info("Created invalid Jira credential: %s", credential_id)
-
-            toolkit = toolkit_api.create_toolkit(
-                name=toolkit_name,
-                description="Toolkit for credential indicators test",
-                toolkit_type="jira",
-                settings={
-                    "jira_configuration": {
-                        "elitea_title": cred["elitea_title"],
-                        "private": True,
+            with allure.step("Step 1 — Create Jira credential with invalid token"):
+                invalid_payload = {
+                    "type": "jira",
+                    "elitea_title": f"tk_jira_{ts}",
+                    "label": cred_name,
+                    "data": {
+                        "base_url": settings.jira_base_url,
+                        "username": settings.jira_username,
+                        "api_key": "invalid_expired_token_12345",
                     },
-                    "cloud": True,
-                    "limit": 5,
-                    "api_version": "Auto",
-                    "verify_ssl": True,
-                },
-            )
-            toolkit_id = toolkit["id"]
-            logger.info("Created Jira toolkit: %s", toolkit_id)
+                    "shared": False,
+                }
+                cred = credential_api.create_credential(invalid_payload)
+                credential_id = cred["id"]
+                logger.info("Created invalid Jira credential: %s", credential_id)
 
-            toolkit_page = ToolkitDetailPage(page)
-            toolkit_page.navigate_to_toolkit(toolkit_id)
+            with allure.step("Step 2 — Create toolkit with invalid credential"):
+                toolkit = toolkit_api.create_toolkit(
+                    name=toolkit_name,
+                    description="Toolkit for credential indicators test",
+                    toolkit_type="jira",
+                    settings={
+                        "jira_configuration": {
+                            "elitea_title": cred["elitea_title"],
+                            "private": True,
+                        },
+                        "cloud": True,
+                        "limit": 5,
+                        "api_version": "Auto",
+                        "verify_ssl": True,
+                    },
+                )
+                toolkit_id = toolkit["id"]
+                logger.info("Created Jira toolkit: %s", toolkit_id)
 
-            assert toolkit_page.has_credential_status_indicator(timeout=15000), (
-                "Expected status indicator for invalid credential"
-            )
-            status_tooltip = toolkit_page.get_credential_status_indicator_tooltip()
-            assert status_tooltip and any(
-                err in status_tooltip for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
-            ), f"Status tooltip should contain error message, got: '{status_tooltip}'"
-            logger.info("Status indicator verified: %s", status_tooltip)
+            with allure.step("Step 3 — Navigate to toolkit detail page"):
+                toolkit_page = ToolkitDetailPage(page)
+                toolkit_page.navigate_to_toolkit(toolkit_id)
 
-            warning = toolkit_page.get_authentication_warning(timeout=5000)
-            assert warning and any(
-                err in warning for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
-            ), f"Warning message should contain error message, got: '{warning}'"
-            logger.info("Warning message verified: %s", warning)
+            with allure.step("Step 4 — Verify status indicator with error tooltip"):
+                assert toolkit_page.has_credential_status_indicator(timeout=15000), (
+                    "Expected status indicator for invalid credential"
+                )
+                status_tooltip = toolkit_page.get_credential_status_indicator_tooltip()
+                assert status_tooltip and any(
+                    err in status_tooltip for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
+                ), f"Status tooltip should contain error message, got: '{status_tooltip}'"
+                logger.info("Status indicator verified: %s", status_tooltip)
 
-            assert toolkit_page.has_reload_button(timeout=5000), "Expected reload button"
-            reload_tooltip = toolkit_page.get_reload_button_tooltip()
-            assert reload_tooltip == "Reload and apply changes", (
-                f"Reload tooltip should be 'Reload and apply changes', got: '{reload_tooltip}'"
-            )
-            logger.info("Reload button verified")
+            with allure.step("Step 5 — Verify warning message"):
+                warning = toolkit_page.get_authentication_warning(timeout=5000)
+                assert warning and any(
+                    err in warning for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
+                ), f"Warning message should contain error message, got: '{warning}'"
+                logger.info("Warning message verified: %s", warning)
 
-            assert toolkit_page.has_open_in_new_tab_button(timeout=5000), (
-                "Expected open-in-new-tab button"
-            )
-            open_tooltip = toolkit_page.get_open_in_new_tab_button_tooltip()
-            assert open_tooltip == "Open in new tab", (
-                f"Open tooltip should be 'Open in new tab', got: '{open_tooltip}'"
-            )
-            logger.info("Open in new tab button verified")
+            with allure.step("Step 6 — Verify Reload button with tooltip"):
+                assert toolkit_page.has_reload_button(timeout=5000), "Expected reload button"
+                reload_tooltip = toolkit_page.get_reload_button_tooltip()
+                assert reload_tooltip == "Reload and apply changes", (
+                    f"Reload tooltip should be 'Reload and apply changes', got: '{reload_tooltip}'"
+                )
+                logger.info("Reload button verified")
 
-            assert toolkit_page.is_save_button_disabled(), (
-                "Save button should be disabled when credentials are invalid"
-            )
-            logger.info("Save button is disabled (as expected with invalid credentials)")
+            with allure.step("Step 7 — Verify Open in new tab button"):
+                assert toolkit_page.has_open_in_new_tab_button(timeout=5000), (
+                    "Expected open-in-new-tab button"
+                )
+                open_tooltip = toolkit_page.get_open_in_new_tab_button_tooltip()
+                assert open_tooltip == "Open in new tab", (
+                    f"Open tooltip should be 'Open in new tab', got: '{open_tooltip}'"
+                )
+                logger.info("Open in new tab button verified")
 
-            toolkit_page.hover_credential_row()
-            open_btn = page.locator('button[aria-label="Open in new tab"]')
-            with page.context.expect_page() as new_page_info:
-                open_btn.click()
-            new_tab = new_page_info.value
-            new_tab.wait_for_load_state("domcontentloaded")
-            assert "/credentials/" in new_tab.url or "/configurations/" in new_tab.url, (
-                f"New tab should open credential page, got: {new_tab.url}"
-            )
-            logger.info("Open in new tab works - opened: %s", new_tab.url)
+            with allure.step("Step 8 — Verify Save button is disabled"):
+                assert toolkit_page.is_save_button_disabled(), (
+                    "Save button should be disabled when credentials are invalid"
+                )
+                logger.info("Save button is disabled (as expected with invalid credentials)")
 
-            valid_payload = {
-                "type": "jira",
-                "elitea_title": cred["elitea_title"],
-                "label": cred_name,
-                "data": {
-                    "base_url": settings.jira_base_url,
-                    "username": settings.jira_username,
-                    "api_key": settings.jira_api_key,
-                },
-                "shared": False,
-            }
-            credential_api.update_credential(credential_id, valid_payload)
-            logger.info("Updated credential to valid Jira credentials")
+            with allure.step("Step 9 — Click Open in new tab and verify"):
+                toolkit_page.hover_credential_row()
+                open_btn = page.locator('button[aria-label="Open in new tab"]')
+                with page.context.expect_page() as new_page_info:
+                    open_btn.click()
+                new_tab = new_page_info.value
+                new_tab.wait_for_load_state("domcontentloaded")
+                assert "/credentials/" in new_tab.url or "/configurations/" in new_tab.url, (
+                    f"New tab should open credential page, got: {new_tab.url}"
+                )
+                logger.info("Open in new tab works - opened: %s", new_tab.url)
 
-            page.wait_for_timeout(2000)
+            with allure.step("Step 10 — Fix credential via API"):
+                valid_payload = {
+                    "type": "jira",
+                    "elitea_title": cred["elitea_title"],
+                    "label": cred_name,
+                    "data": {
+                        "base_url": settings.jira_base_url,
+                        "username": settings.jira_username,
+                        "api_key": settings.jira_api_key,
+                    },
+                    "shared": False,
+                }
+                credential_api.update_credential(credential_id, valid_payload)
+                logger.info("Updated credential to valid Jira credentials")
+                page.wait_for_timeout(2000)
 
-            new_tab.close()
-            new_tab = None
-            page.bring_to_front()
-            logger.info("Closed new tab and returned to original page")
+            with allure.step("Step 11 — Close new tab and return to original"):
+                new_tab.close()
+                new_tab = None
+                page.bring_to_front()
+                logger.info("Closed new tab and returned to original page")
 
-            page.wait_for_timeout(1000)
-            toolkit_page.click_credential_reload()
-            logger.info("Clicked reload button")
+            with allure.step("Step 12 — Click Reload button"):
+                page.wait_for_timeout(1000)
+                toolkit_page.click_credential_reload()
+                logger.info("Clicked reload button")
 
-            toolkit_page.wait_for_no_status_indicator(timeout=15000)
-            logger.info("Status indicator disappeared")
+            with allure.step("Step 13 — Verify indicators disappear after fix"):
+                toolkit_page.wait_for_no_status_indicator(timeout=15000)
+                logger.info("Status indicator disappeared")
 
-            assert not toolkit_page.has_authentication_warning(timeout=3000), (
-                "Warning message should disappear after fixing credentials"
-            )
-            logger.info("Warning message disappeared")
+                assert not toolkit_page.has_authentication_warning(timeout=3000), (
+                    "Warning message should disappear after fixing credentials"
+                )
+                logger.info("Warning message disappeared")
 
-            assert not toolkit_page.has_reload_button(timeout=3000), (
-                "Reload button should disappear after fixing credentials"
-            )
-            logger.info("Reload button disappeared")
+                assert not toolkit_page.has_reload_button(timeout=3000), (
+                    "Reload button should disappear after fixing credentials"
+                )
+                logger.info("Reload button disappeared")
 
-            assert toolkit_page.has_open_in_new_tab_button(timeout=5000), (
-                "Open in new tab should remain visible after fixing credentials"
-            )
-            logger.info("Open in new tab button still present - toolkit e2e test passed")
+                assert toolkit_page.has_open_in_new_tab_button(timeout=5000), (
+                    "Open in new tab should remain visible after fixing credentials"
+                )
+                logger.info("Open in new tab button still present - toolkit e2e test passed")
 
         finally:
             if new_tab:
@@ -246,27 +237,7 @@ class TestPipelineCredentialIndicators:
         toolkit_api,
         pipeline_api,
     ):
-        """E2E test: verify all indicators and fix invalid credentials on Pipeline.
-
-        Flow:
-        1. Create Jira credential with invalid token
-        2. Create toolkit with that credential
-        3. Create pipeline and add toolkit node
-        4. Verify all indicators:
-           - Status indicator with "Authentication failed:" tooltip
-           - Warning message with "Authentication failed:" text
-           - Reload button with "Reload and apply changes" tooltip
-           - Open in new tab button with "Open in new tab" tooltip
-        5. Click "Open in new tab" and verify new tab opens
-        6. Fix credential via API
-        7. Close the new tab and return to original
-        8. Click Reload
-        9. Verify after fix:
-           - Status indicator gone
-           - Warning message gone
-           - Reload button gone
-           - Open in new tab remains
-        """
+        """E2E test: verify all indicators and fix invalid credentials on Pipeline."""
         from pages.pipeline_detail_page import PipelineDetailPage
 
         if not settings.jira_api_key or not settings.jira_username:
@@ -282,141 +253,151 @@ class TestPipelineCredentialIndicators:
         new_tab = None
 
         try:
-            invalid_payload = {
-                "type": "jira",
-                "elitea_title": f"pipe_jira_{ts}",
-                "label": cred_name,
-                "data": {
-                    "base_url": settings.jira_base_url,
-                    "username": settings.jira_username,
-                    "api_key": "invalid_expired_token_12345",
-                },
-                "shared": False,
-            }
-            cred = credential_api.create_credential(invalid_payload)
-            credential_id = cred["id"]
-            logger.info("Created invalid Jira credential: %s", credential_id)
-
-            toolkit = toolkit_api.create_toolkit(
-                name=toolkit_name,
-                description="Toolkit for pipeline indicator test",
-                toolkit_type="jira",
-                settings={
-                    "jira_configuration": {
-                        "elitea_title": cred["elitea_title"],
-                        "private": True,
+            with allure.step("Step 1 — Create Jira credential with invalid token"):
+                invalid_payload = {
+                    "type": "jira",
+                    "elitea_title": f"pipe_jira_{ts}",
+                    "label": cred_name,
+                    "data": {
+                        "base_url": settings.jira_base_url,
+                        "username": settings.jira_username,
+                        "api_key": "invalid_expired_token_12345",
                     },
-                    "cloud": True,
-                    "limit": 5,
-                    "api_version": "Auto",
-                    "verify_ssl": True,
-                },
-            )
-            toolkit_id = toolkit["id"]
-            logger.info("Created Jira toolkit: %s", toolkit_id)
+                    "shared": False,
+                }
+                cred = credential_api.create_credential(invalid_payload)
+                credential_id = cred["id"]
+                logger.info("Created invalid Jira credential: %s", credential_id)
 
-            pipeline = pipeline_api.create_pipeline(
-                name=pipeline_name,
-                description="Pipeline for credential indicator test",
-            )
-            pipeline_id = pipeline["id"]
-            logger.info("Created pipeline: %s", pipeline_id)
+            with allure.step("Step 2 — Create toolkit with invalid credential"):
+                toolkit = toolkit_api.create_toolkit(
+                    name=toolkit_name,
+                    description="Toolkit for pipeline indicator test",
+                    toolkit_type="jira",
+                    settings={
+                        "jira_configuration": {
+                            "elitea_title": cred["elitea_title"],
+                            "private": True,
+                        },
+                        "cloud": True,
+                        "limit": 5,
+                        "api_version": "Auto",
+                        "verify_ssl": True,
+                    },
+                )
+                toolkit_id = toolkit["id"]
+                logger.info("Created Jira toolkit: %s", toolkit_id)
 
-            pipeline_page = PipelineDetailPage(page)
-            pipeline_page.navigate(pipeline_id)
+            with allure.step("Step 3 — Create pipeline"):
+                pipeline = pipeline_api.create_pipeline(
+                    name=pipeline_name,
+                    description="Pipeline for credential indicator test",
+                )
+                pipeline_id = pipeline["id"]
+                logger.info("Created pipeline: %s", pipeline_id)
 
-            add_toolkit_btn = page.locator('div[data-tour="agent-tools"] button').first
-            add_toolkit_btn.wait_for(state="visible", timeout=10000)
-            add_toolkit_btn.click()
-            page.wait_for_timeout(500)
+            with allure.step("Step 4 — Navigate to pipeline and add toolkit"):
+                pipeline_page = PipelineDetailPage(page)
+                pipeline_page.navigate(pipeline_id)
 
-            popper = page.locator('.MuiPopper-root')
-            popper.wait_for(state="visible", timeout=5000)
-            search_input = popper.locator('input')
-            if search_input.count() > 0:
-                search_input.first.fill(toolkit_name)
+                add_toolkit_btn = page.locator('div[data-tour="agent-tools"] button').first
+                add_toolkit_btn.wait_for(state="visible", timeout=10000)
+                add_toolkit_btn.click()
                 page.wait_for_timeout(500)
-            toolkit_option = popper.locator(f'li:has-text("{toolkit_name}")')
-            toolkit_option.first.click()
-            page.wait_for_timeout(2000)
-            logger.info("Added toolkit to pipeline via TOOLS panel")
 
-            assert pipeline_page.has_toolkit_warning_message(timeout=15000), (
-                "Expected warning message for invalid credential in pipeline"
-            )
-            warning_msg = pipeline_page.get_toolkit_warning_message()
-            assert warning_msg and "Authentication failed" in warning_msg, (
-                f"Warning message should contain 'Authentication failed', got: '{warning_msg}'"
-            )
-            logger.info("Warning message verified: %s", warning_msg)
+                popper = page.locator('.MuiPopper-root')
+                popper.wait_for(state="visible", timeout=5000)
+                search_input = popper.locator('input')
+                if search_input.count() > 0:
+                    search_input.first.fill(toolkit_name)
+                    page.wait_for_timeout(500)
+                toolkit_option = popper.locator(f'li:has-text("{toolkit_name}")')
+                toolkit_option.first.click()
+                page.wait_for_timeout(2000)
+                logger.info("Added toolkit to pipeline via TOOLS panel")
 
-            assert pipeline_page.has_toolkit_reload_button(toolkit_name, timeout=5000), (
-                "Expected reload button on toolkit item"
-            )
-            reload_tooltip = pipeline_page.get_toolkit_reload_button_tooltip(toolkit_name)
-            assert reload_tooltip == "refresh toolkit", (
-                f"Reload tooltip should be 'refresh toolkit', got: '{reload_tooltip}'"
-            )
-            logger.info("Reload button verified")
+            with allure.step("Step 5 — Verify warning message"):
+                assert pipeline_page.has_toolkit_warning_message(timeout=15000), (
+                    "Expected warning message for invalid credential in pipeline"
+                )
+                warning_msg = pipeline_page.get_toolkit_warning_message()
+                assert warning_msg and "Authentication failed" in warning_msg, (
+                    f"Warning message should contain 'Authentication failed', got: '{warning_msg}'"
+                )
+                logger.info("Warning message verified: %s", warning_msg)
 
-            assert pipeline_page.has_toolkit_open_in_new_tab_button(toolkit_name, timeout=5000), (
-                "Expected open-in-new-tab button on toolkit item"
-            )
-            open_tooltip = pipeline_page.get_toolkit_open_in_new_tab_button_tooltip(toolkit_name)
-            assert open_tooltip == "open in new tab", (
-                f"Open tooltip should be 'open in new tab', got: '{open_tooltip}'"
-            )
-            logger.info("Open in new tab button verified")
+            with allure.step("Step 6 — Verify Reload button"):
+                assert pipeline_page.has_toolkit_reload_button(toolkit_name, timeout=5000), (
+                    "Expected reload button on toolkit item"
+                )
+                reload_tooltip = pipeline_page.get_toolkit_reload_button_tooltip(toolkit_name)
+                assert reload_tooltip == "refresh toolkit", (
+                    f"Reload tooltip should be 'refresh toolkit', got: '{reload_tooltip}'"
+                )
+                logger.info("Reload button verified")
 
-            new_tab = pipeline_page.click_toolkit_open_in_new_tab(toolkit_name)
-            assert "/toolkits/" in new_tab.url or "/tools/" in new_tab.url, (
-                f"New tab should open toolkit page, got: {new_tab.url}"
-            )
-            logger.info("Open in new tab works - opened: %s", new_tab.url)
+            with allure.step("Step 7 — Verify Open in new tab button"):
+                assert pipeline_page.has_toolkit_open_in_new_tab_button(toolkit_name, timeout=5000), (
+                    "Expected open-in-new-tab button on toolkit item"
+                )
+                open_tooltip = pipeline_page.get_toolkit_open_in_new_tab_button_tooltip(toolkit_name)
+                assert open_tooltip == "open in new tab", (
+                    f"Open tooltip should be 'open in new tab', got: '{open_tooltip}'"
+                )
+                logger.info("Open in new tab button verified")
 
-            valid_payload = {
-                "type": "jira",
-                "elitea_title": cred["elitea_title"],
-                "label": cred_name,
-                "data": {
-                    "base_url": settings.jira_base_url,
-                    "username": settings.jira_username,
-                    "api_key": settings.jira_api_key,
-                },
-                "shared": False,
-            }
-            credential_api.update_credential(credential_id, valid_payload)
-            logger.info("Updated credential to valid Jira credentials")
+            with allure.step("Step 8 — Click Open in new tab and verify"):
+                new_tab = pipeline_page.click_toolkit_open_in_new_tab(toolkit_name)
+                assert "/toolkits/" in new_tab.url or "/tools/" in new_tab.url, (
+                    f"New tab should open toolkit page, got: {new_tab.url}"
+                )
+                logger.info("Open in new tab works - opened: %s", new_tab.url)
 
-            page.wait_for_timeout(2000)
+            with allure.step("Step 9 — Fix credential via API"):
+                valid_payload = {
+                    "type": "jira",
+                    "elitea_title": cred["elitea_title"],
+                    "label": cred_name,
+                    "data": {
+                        "base_url": settings.jira_base_url,
+                        "username": settings.jira_username,
+                        "api_key": settings.jira_api_key,
+                    },
+                    "shared": False,
+                }
+                credential_api.update_credential(credential_id, valid_payload)
+                logger.info("Updated credential to valid Jira credentials")
+                page.wait_for_timeout(2000)
 
-            new_tab.close()
-            new_tab = None
-            page.bring_to_front()
-            logger.info("Closed new tab and returned to original page")
+            with allure.step("Step 10 — Close new tab and return to original"):
+                new_tab.close()
+                new_tab = None
+                page.bring_to_front()
+                logger.info("Closed new tab and returned to original page")
 
-            page.wait_for_timeout(1000)
-            pipeline_page.hover_toolkit_item(toolkit_name)
-            reload_btn = page.locator('#RefreshButton')
-            reload_btn.click()
-            pipeline_page.wait_for_network(timeout=10000)
-            page.wait_for_timeout(3000)
-            logger.info("Clicked reload button")
+            with allure.step("Step 11 — Click Reload button"):
+                page.wait_for_timeout(1000)
+                pipeline_page.hover_toolkit_item(toolkit_name)
+                reload_btn = page.locator('#RefreshButton')
+                reload_btn.click()
+                pipeline_page.wait_for_network(timeout=10000)
+                page.wait_for_timeout(3000)
+                logger.info("Clicked reload button")
 
-            pipeline_page.wait_for_no_toolkit_status_indicator(toolkit_name, timeout=15000)
-            logger.info("Warning message disappeared")
+            with allure.step("Step 12 — Verify indicators disappear after fix"):
+                pipeline_page.wait_for_no_toolkit_status_indicator(toolkit_name, timeout=15000)
+                logger.info("Warning message disappeared")
 
-            assert not pipeline_page.has_toolkit_reload_button(toolkit_name, timeout=3000), (
-                "Reload button should disappear after fixing credentials"
-            )
-            logger.info("Reload button disappeared")
+                assert not pipeline_page.has_toolkit_reload_button(toolkit_name, timeout=3000), (
+                    "Reload button should disappear after fixing credentials"
+                )
+                logger.info("Reload button disappeared")
 
-            assert pipeline_page.has_toolkit_open_in_new_tab_button(toolkit_name, timeout=5000), (
-                "Open in new tab should remain visible after fixing credentials"
-            )
-            logger.info("Open in new tab button still present")
-
-            logger.info("Pipeline e2e test passed")
+                assert pipeline_page.has_toolkit_open_in_new_tab_button(toolkit_name, timeout=5000), (
+                    "Open in new tab should remain visible after fixing credentials"
+                )
+                logger.info("Open in new tab button still present")
+                logger.info("Pipeline e2e test passed")
 
         finally:
             if new_tab:
@@ -460,27 +441,7 @@ class TestAgentCredentialIndicators:
         toolkit_api,
         agent_api,
     ):
-        """E2E test: verify all indicators and fix invalid credentials on Agent.
-
-        Flow:
-        1. Create Jira credential with invalid token
-        2. Create toolkit with that credential
-        3. Create agent and add toolkit
-        4. Verify all indicators:
-           - Status indicator with "Authentication failed:" tooltip
-           - Warning message with "Authentication failed:" text
-           - Reload button with "Reload and apply changes" tooltip
-           - Open in new tab button with "Open in new tab" tooltip
-        5. Click "Open in new tab" and verify new tab opens
-        6. Fix credential via API
-        7. Close the new tab and return to original
-        8. Click Reload
-        9. Verify after fix:
-           - Status indicator gone
-           - Warning message gone
-           - Reload button gone
-           - Open in new tab remains
-        """
+        """E2E test: verify all indicators and fix invalid credentials on Agent."""
         from pages.agent_detail_page import AgentDetailPage
 
         if not settings.jira_api_key or not settings.jira_username:
@@ -496,146 +457,155 @@ class TestAgentCredentialIndicators:
         new_tab = None
 
         try:
-            invalid_payload = {
-                "type": "jira",
-                "elitea_title": f"agent_jira_{ts}",
-                "label": cred_name,
-                "data": {
-                    "base_url": settings.jira_base_url,
-                    "username": settings.jira_username,
-                    "api_key": "invalid_expired_token_12345",
-                },
-                "shared": False,
-            }
-            cred = credential_api.create_credential(invalid_payload)
-            credential_id = cred["id"]
-            logger.info("Created invalid Jira credential: %s", credential_id)
-
-            toolkit = toolkit_api.create_toolkit(
-                name=toolkit_name,
-                description="Toolkit for agent indicator test",
-                toolkit_type="jira",
-                settings={
-                    "jira_configuration": {
-                        "elitea_title": cred["elitea_title"],
-                        "private": True,
+            with allure.step("Step 1 — Create Jira credential with invalid token"):
+                invalid_payload = {
+                    "type": "jira",
+                    "elitea_title": f"agent_jira_{ts}",
+                    "label": cred_name,
+                    "data": {
+                        "base_url": settings.jira_base_url,
+                        "username": settings.jira_username,
+                        "api_key": "invalid_expired_token_12345",
                     },
-                    "cloud": True,
-                    "limit": 5,
-                    "api_version": "Auto",
-                    "verify_ssl": True,
-                },
-            )
-            toolkit_id = toolkit["id"]
-            logger.info("Created Jira toolkit: %s", toolkit_id)
+                    "shared": False,
+                }
+                cred = credential_api.create_credential(invalid_payload)
+                credential_id = cred["id"]
+                logger.info("Created invalid Jira credential: %s", credential_id)
 
-            agent = agent_api.create_agent(
-                name=agent_name,
-                description="Agent for credential indicator test",
-            )
-            agent_id = agent["id"]
-            logger.info("Created agent: %s", agent_id)
+            with allure.step("Step 2 — Create toolkit with invalid credential"):
+                toolkit = toolkit_api.create_toolkit(
+                    name=toolkit_name,
+                    description="Toolkit for agent indicator test",
+                    toolkit_type="jira",
+                    settings={
+                        "jira_configuration": {
+                            "elitea_title": cred["elitea_title"],
+                            "private": True,
+                        },
+                        "cloud": True,
+                        "limit": 5,
+                        "api_version": "Auto",
+                        "verify_ssl": True,
+                    },
+                )
+                toolkit_id = toolkit["id"]
+                logger.info("Created Jira toolkit: %s", toolkit_id)
 
-            agent_page = AgentDetailPage(page)
-            agent_page.navigate(agent_id)
+            with allure.step("Step 3 — Create agent"):
+                agent = agent_api.create_agent(
+                    name=agent_name,
+                    description="Agent for credential indicator test",
+                )
+                agent_id = agent["id"]
+                logger.info("Created agent: %s", agent_id)
 
-            agent_page.add_toolkit(toolkit_name)
-            page.wait_for_timeout(2000)
-            logger.info("Added toolkit to agent")
+            with allure.step("Step 4 — Navigate to agent and add toolkit"):
+                agent_page = AgentDetailPage(page)
+                agent_page.navigate(agent_id)
+                agent_page.add_toolkit(toolkit_name)
+                page.wait_for_timeout(2000)
+                logger.info("Added toolkit to agent")
 
-            assert agent_page.has_toolkit_status_indicator(toolkit_name, timeout=15000), (
-                "Expected status indicator on toolkit in agent"
-            )
-            status_tooltip = agent_page.get_toolkit_status_indicator_tooltip(toolkit_name)
-            assert status_tooltip and any(
-                err in status_tooltip for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
-            ), f"Status tooltip should contain error message, got: '{status_tooltip}'"
-            logger.info("Status indicator verified: %s", status_tooltip)
+            with allure.step("Step 5 — Verify status indicator with error tooltip"):
+                assert agent_page.has_toolkit_status_indicator(toolkit_name, timeout=15000), (
+                    "Expected status indicator on toolkit in agent"
+                )
+                status_tooltip = agent_page.get_toolkit_status_indicator_tooltip(toolkit_name)
+                assert status_tooltip and any(
+                    err in status_tooltip for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
+                ), f"Status tooltip should contain error message, got: '{status_tooltip}'"
+                logger.info("Status indicator verified: %s", status_tooltip)
 
-            warning_msg = agent_page.get_toolkit_warning_message(toolkit_name)
-            assert warning_msg and any(
-                err in warning_msg for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
-            ), f"Warning message should contain error message, got: '{warning_msg}'"
-            logger.info("Warning message verified: %s", warning_msg)
+            with allure.step("Step 6 — Verify warning message"):
+                warning_msg = agent_page.get_toolkit_warning_message(toolkit_name)
+                assert warning_msg and any(
+                    err in warning_msg for err in ("Authentication failed:", "Access forbidden:", "Connection error:")
+                ), f"Warning message should contain error message, got: '{warning_msg}'"
+                logger.info("Warning message verified: %s", warning_msg)
 
-            assert agent_page.has_toolkit_reload_button(toolkit_name, timeout=5000), (
-                "Expected reload button on toolkit card"
-            )
-            reload_tooltip = agent_page.get_toolkit_reload_button_tooltip(toolkit_name)
-            assert reload_tooltip == "refresh toolkit", (
-                f"Reload tooltip should be 'refresh toolkit', got: '{reload_tooltip}'"
-            )
-            logger.info("Reload button verified")
+            with allure.step("Step 7 — Verify Reload button"):
+                assert agent_page.has_toolkit_reload_button(toolkit_name, timeout=5000), (
+                    "Expected reload button on toolkit card"
+                )
+                reload_tooltip = agent_page.get_toolkit_reload_button_tooltip(toolkit_name)
+                assert reload_tooltip == "refresh toolkit", (
+                    f"Reload tooltip should be 'refresh toolkit', got: '{reload_tooltip}'"
+                )
+                logger.info("Reload button verified")
 
-            assert agent_page.has_toolkit_open_in_new_tab_button(toolkit_name, timeout=5000), (
-                "Expected open-in-new-tab button on toolkit card"
-            )
-            open_tooltip = agent_page.get_toolkit_open_in_new_tab_button_tooltip(toolkit_name)
-            assert open_tooltip == "open in new tab", (
-                f"Open tooltip should be 'open in new tab', got: '{open_tooltip}'"
-            )
-            logger.info("Open in new tab button verified")
+            with allure.step("Step 8 — Verify Open in new tab button"):
+                assert agent_page.has_toolkit_open_in_new_tab_button(toolkit_name, timeout=5000), (
+                    "Expected open-in-new-tab button on toolkit card"
+                )
+                open_tooltip = agent_page.get_toolkit_open_in_new_tab_button_tooltip(toolkit_name)
+                assert open_tooltip == "open in new tab", (
+                    f"Open tooltip should be 'open in new tab', got: '{open_tooltip}'"
+                )
+                logger.info("Open in new tab button verified")
 
-            new_tab_url = agent_page.click_toolkit_open_in_new_tab(toolkit_name)
-            assert "/toolkits/" in new_tab_url or "/tools/" in new_tab_url, (
-                f"New tab should open toolkit page, got: {new_tab_url}"
-            )
-            logger.info("Open in new tab works - opened: %s", new_tab_url)
+            with allure.step("Step 9 — Click Open in new tab and verify"):
+                new_tab_url = agent_page.click_toolkit_open_in_new_tab(toolkit_name)
+                assert "/toolkits/" in new_tab_url or "/tools/" in new_tab_url, (
+                    f"New tab should open toolkit page, got: {new_tab_url}"
+                )
+                logger.info("Open in new tab works - opened: %s", new_tab_url)
 
-            all_pages = page.context.pages
-            for p in all_pages:
-                if p.url != page.url:
-                    new_tab = p
-                    break
+                all_pages = page.context.pages
+                for p in all_pages:
+                    if p.url != page.url:
+                        new_tab = p
+                        break
 
-            valid_payload = {
-                "type": "jira",
-                "elitea_title": cred["elitea_title"],
-                "label": cred_name,
-                "data": {
-                    "base_url": settings.jira_base_url,
-                    "username": settings.jira_username,
-                    "api_key": settings.jira_api_key,
-                },
-                "shared": False,
-            }
-            credential_api.update_credential(credential_id, valid_payload)
-            logger.info("Updated credential to valid Jira credentials")
+            with allure.step("Step 10 — Fix credential via API"):
+                valid_payload = {
+                    "type": "jira",
+                    "elitea_title": cred["elitea_title"],
+                    "label": cred_name,
+                    "data": {
+                        "base_url": settings.jira_base_url,
+                        "username": settings.jira_username,
+                        "api_key": settings.jira_api_key,
+                    },
+                    "shared": False,
+                }
+                credential_api.update_credential(credential_id, valid_payload)
+                logger.info("Updated credential to valid Jira credentials")
+                page.wait_for_timeout(2000)
 
-            page.wait_for_timeout(2000)
+            with allure.step("Step 11 — Close new tab and return to original"):
+                if new_tab:
+                    new_tab.close()
+                    new_tab = None
+                page.bring_to_front()
+                logger.info("Closed new tab and returned to original page")
 
-            if new_tab:
-                new_tab.close()
-                new_tab = None
-            page.bring_to_front()
-            logger.info("Closed new tab and returned to original page")
+            with allure.step("Step 12 — Click Reload button"):
+                agent_page.click_toolkit_reload_button(toolkit_name)
+                logger.info("Clicked reload button")
+                page.wait_for_timeout(3000)
 
-            agent_page.click_toolkit_reload_button(toolkit_name)
-            logger.info("Clicked reload button")
+            with allure.step("Step 13 — Verify indicators disappear after fix"):
+                assert not agent_page.has_toolkit_status_indicator(toolkit_name, timeout=5000), (
+                    "Status indicator should disappear after fixing credentials"
+                )
+                logger.info("Status indicator disappeared")
 
-            page.wait_for_timeout(3000)
+                assert not agent_page.has_toolkit_warning_message(toolkit_name, timeout=3000), (
+                    "Warning message should disappear after fixing credentials"
+                )
+                logger.info("Warning message disappeared")
 
-            assert not agent_page.has_toolkit_status_indicator(toolkit_name, timeout=5000), (
-                "Status indicator should disappear after fixing credentials"
-            )
-            logger.info("Status indicator disappeared")
+                assert not agent_page.has_toolkit_reload_button(toolkit_name, timeout=3000), (
+                    "Reload button should disappear after fixing credentials"
+                )
+                logger.info("Reload button disappeared")
 
-            assert not agent_page.has_toolkit_warning_message(toolkit_name, timeout=3000), (
-                "Warning message should disappear after fixing credentials"
-            )
-            logger.info("Warning message disappeared")
-
-            assert not agent_page.has_toolkit_reload_button(toolkit_name, timeout=3000), (
-                "Reload button should disappear after fixing credentials"
-            )
-            logger.info("Reload button disappeared")
-
-            assert agent_page.has_toolkit_open_in_new_tab_button(toolkit_name, timeout=5000), (
-                "Open in new tab should remain visible after fixing credentials"
-            )
-            logger.info("Open in new tab button still present")
-
-            logger.info("Agent e2e test passed")
+                assert agent_page.has_toolkit_open_in_new_tab_button(toolkit_name, timeout=5000), (
+                    "Open in new tab should remain visible after fixing credentials"
+                )
+                logger.info("Open in new tab button still present")
+                logger.info("Agent e2e test passed")
 
         finally:
             if new_tab:

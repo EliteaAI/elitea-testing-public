@@ -68,15 +68,6 @@ class TestContextManagementSettings:
         - P1 (10,000 tokens): Standard value propagates correctly
         - P2 (32,000 tokens): Updated value propagates (not cached)
 
-        Steps:
-            1. Navigate to profile settings.
-            2. Enable context management for new conversations.
-            3. Set Max Context Tokens to the parameterized value.
-            4. Navigate to chat and create a new conversation.
-            5. Send a short message to trigger Context Budget panel.
-            6. Verify the panel is visible.
-            7. Verify the max tokens displayed equals the configured value.
-
         Cleanup: deletes the created conversation via API.
         """
         conv_id = None
@@ -88,72 +79,82 @@ class TestContextManagementSettings:
         original_tokens = profile.get_max_context_tokens()
 
         try:
-            # --- Given: profile has context management enabled with specified tokens ---
-            profile.set_max_context_tokens(expected_max_tokens)
+            # ------------------------------------------------------------------
+            # Step 1-3 — Navigate to profile; enable context management; set max tokens
+            # ------------------------------------------------------------------
+            with allure.step(f"Step 1-3 — Set Max Context Tokens to {expected_max_tokens}"):
+                profile.set_max_context_tokens(expected_max_tokens)
 
-            # Reload page to verify the autosave actually persisted
-            page.reload()
-            profile.wait_for_page_load()
+                page.reload()
+                profile.wait_for_page_load()
 
-            # Verify the profile field saved correctly before navigating away
-            saved_tokens = profile.get_max_context_tokens()
-            assert saved_tokens == expected_max_tokens, (
-                f"Profile should show {expected_max_tokens} tokens after reload, "
-                f"got {saved_tokens}"
-            )
-
-            # --- When: user creates a new conversation and sends a message ---
-            chat = ChatPage(page)
-            chat.navigate_to_chat()
-            chat.wait_for_page_load()
-            chat.click_create_conversation(timeout=NAVIGATION_TIMEOUT)
-
-            # Extract conversation ID from URL for cleanup
-            match = re.search(r"/chat/(\d+)", page.url)
-            if match:
-                conv_id = match.group(1)
-                logger.info("Conversation created with ID: %s", conv_id)
-
-            # Send a message — Context Budget panel only appears after the first message
-            chat.send_message(f"at_ctx_budget_test_{expected_max_tokens // 1000}k", use_enter=True)
-            chat.wait_for_input_ready(timeout=NAVIGATION_TIMEOUT)
-
-            # Extract ID from URL if not already found (URL updates after first message)
-            if not conv_id:
-                try:
-                    page.wait_for_url(
-                        lambda url: re.search(r"/chat/\d+", url) is not None,
-                        timeout=5000,
-                    )
-                    match = re.search(r"/chat/(\d+)", page.url)
-                    if match:
-                        conv_id = match.group(1)
-                        logger.info("Conversation ID found after first message: %s", conv_id)
-                except Exception:
-                    logger.info("URL did not update to /chat/{id}")
-
-            chat.wait_for_ai_response(initial_count=0, timeout=AI_RESPONSE_TIMEOUT)
-
-            # --- Then: Context Budget panel displays the configured max tokens ---
-            # The Context Budget panel may not be visible in all UI versions.
-            # Skip gracefully if the feature is not available.
-            try:
-                chat.wait_for_context_budget_panel(timeout=UI_ELEMENT_TIMEOUT)
-            except Exception:
-                pytest.skip(
-                    "Context Budget panel not visible after sending message — "
-                    "feature may be disabled or renamed in current UI version"
+                saved_tokens = profile.get_max_context_tokens()
+                assert saved_tokens == expected_max_tokens, (
+                    f"Profile should show {expected_max_tokens} tokens after reload, "
+                    f"got {saved_tokens}"
                 )
 
-            assert chat.is_context_budget_panel_visible(), (
-                "Context Budget panel should be visible after sending the first message"
-            )
+            # ------------------------------------------------------------------
+            # Step 4 — Navigate to chat and create a new conversation
+            # ------------------------------------------------------------------
+            with allure.step("Step 4 — Navigate to chat and create a new conversation"):
+                chat = ChatPage(page)
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+                chat.click_create_conversation(timeout=NAVIGATION_TIMEOUT)
 
-            actual_max_tokens = chat.get_context_budget_max_tokens()
-            assert actual_max_tokens == expected_max_tokens, (
-                f"Context Budget panel should show {expected_max_tokens} tokens "
-                f"(matching the profile setting), but showed {actual_max_tokens}"
-            )
+                match = re.search(r"/chat/(\d+)", page.url)
+                if match:
+                    conv_id = match.group(1)
+                    logger.info("Conversation created with ID: %s", conv_id)
+
+            # ------------------------------------------------------------------
+            # Step 5 — Send a short message to trigger Context Budget panel
+            # ------------------------------------------------------------------
+            with allure.step("Step 5 — Send a short message to trigger Context Budget panel"):
+                chat.send_message(f"at_ctx_budget_test_{expected_max_tokens // 1000}k", use_enter=True)
+                chat.wait_for_input_ready(timeout=NAVIGATION_TIMEOUT)
+
+                if not conv_id:
+                    try:
+                        page.wait_for_url(
+                            lambda url: re.search(r"/chat/\d+", url) is not None,
+                            timeout=5000,
+                        )
+                        match = re.search(r"/chat/(\d+)", page.url)
+                        if match:
+                            conv_id = match.group(1)
+                            logger.info("Conversation ID found after first message: %s", conv_id)
+                    except Exception:
+                        logger.info("URL did not update to /chat/{id}")
+
+                chat.wait_for_ai_response(initial_count=0, timeout=AI_RESPONSE_TIMEOUT)
+
+            # ------------------------------------------------------------------
+            # Step 6 — Verify the panel is visible
+            # ------------------------------------------------------------------
+            with allure.step("Step 6 — Verify Context Budget panel is visible"):
+                try:
+                    chat.wait_for_context_budget_panel(timeout=UI_ELEMENT_TIMEOUT)
+                except Exception:
+                    pytest.skip(
+                        "Context Budget panel not visible after sending message — "
+                        "feature may be disabled or renamed in current UI version"
+                    )
+
+                assert chat.is_context_budget_panel_visible(), (
+                    "Context Budget panel should be visible after sending the first message"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 7 — Verify the max tokens displayed equals the configured value
+            # ------------------------------------------------------------------
+            with allure.step(f"Step 7 — Verify max tokens equals {expected_max_tokens}"):
+                actual_max_tokens = chat.get_context_budget_max_tokens()
+                assert actual_max_tokens == expected_max_tokens, (
+                    f"Context Budget panel should show {expected_max_tokens} tokens "
+                    f"(matching the profile setting), but showed {actual_max_tokens}"
+                )
 
         finally:
             # Restore profile Max Context Tokens to avoid poisoning subsequent tests.
