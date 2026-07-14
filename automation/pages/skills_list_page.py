@@ -8,7 +8,7 @@ Handles: /skills/all
 import re
 import time
 import logging
-from playwright.sync_api import Page
+from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -58,6 +58,27 @@ class SkillsListPage(BasePage):
     import_success_toast_message = LocatorDescriptor(
         testid="toast-message",
         description="App-wide Toast component's message container"
+    )
+
+    search_input = LocatorDescriptor(
+        testid="agent-search-input",
+        description=(
+            "Page-header search input. Shared SearchBar component "
+            "(EliteaUI/src/components/SearchBar.jsx, rendered from "
+            "RightPanel.jsx) — the testid literally says 'agent' even "
+            "though this same instance renders on the Skills page "
+            "(ELITEA-1739 AFS Concrete Handles); not a functional defect."
+        )
+    )
+
+    search_send_button = LocatorDescriptor(
+        testid="skills-search-send-button",
+        description=(
+            "Send-icon button next to the search input (StyledSendIcon, "
+            "SearchBar.jsx onClick={onSearch}) — one of the two intended "
+            "activation modes that trigger the grid-fetch (the other is "
+            "pressing Enter in the input)."
+        )
     )
 
     def __init__(self, page: Page):
@@ -208,6 +229,185 @@ class SkillsListPage(BasePage):
         raise TimeoutError(
             f"Skill '{name}' still visible in list after {timeout}ms"
         )
+
+    # ------------------------------------------------------------------
+    # Search (ELITEA-1739)
+    # ------------------------------------------------------------------
+    #
+    # SearchBar.jsx's onChange handler deliberately only updates local
+    # component state — it never fetches. The grid-fetching endpoint
+    # (GET .../elitea_core/skills/prompt_lib/{project}?...&query=<text>)
+    # only re-fires on one of two intended activation events: pressing
+    # Enter in the input, or clicking the send-icon button. A fill-and-wait
+    # alone does NOT activate the filter — this is confirmed, intended
+    # product behavior (see AFS ELITEA-1739), not a workaround for a bug.
+
+    SKILLS_GRID_ENDPOINT = "/elitea_core/skills/prompt_lib/"
+
+    def _wait_for_grid_response(self, timeout: int):
+        """Context manager waiting for the grid-fetching GET to resolve."""
+        return self.page.expect_response(
+            lambda r: self.SKILLS_GRID_ENDPOINT in r.url and r.request.method == "GET",
+            timeout=timeout,
+        )
+
+    def _settle_after_grid_response(self):
+        """Give the grid a moment to re-render after its response resolves.
+
+        Mirrors :meth:`filter_by_tag`'s documented lag: the response
+        resolving doesn't guarantee the grid has re-rendered yet (RTK
+        Query → Redux store → React re-render is one more tick) — querying
+        ``entity-card-name`` immediately after the response can still
+        return the pre-filter card set.
+        """
+        self.wait_for_network(timeout=5000)
+        self.page.wait_for_timeout(300)
+
+    def _type_query(self, query: str, timeout: int):
+        """Type a query into the search input via real keyboard events.
+
+        ``StyledInputBase`` (MUI ``InputBase``) needs real keyboard events
+        to trigger React's ``onChange`` — Playwright's ``.fill()`` sets the
+        DOM value directly and React's controlled-input tracking doesn't
+        see it as user input (``.claude/rules/mui-patterns.md`` § MUI Form
+        Fields), so ``searchString`` component state never updates and the
+        subsequent Enter/send-icon activation submits a stale (empty)
+        query. ``press_sequentially`` fires the same keydown/input events a
+        real user typing would.
+
+        Args:
+            query: Text to type.
+            timeout: Maximum wait time in milliseconds for the input to be visible.
+        """
+        self.search_input.wait_for(state="visible", timeout=timeout)
+        self.search_input.click(force=True)
+        self.search_input.press_sequentially(query, delay=50)
+
+    @action("Search skills (Enter activation)")
+    def search(self, query: str, timeout: int = 10000):
+        """Type the query and press Enter to activate the grid fetch.
+
+        Args:
+            query: Text to search for.
+            timeout: Maximum wait time in milliseconds for the grid response.
+        """
+        logger.info("Searching skills for: %r (Enter activation)", query)
+        self._type_query(query, timeout)
+        with self._wait_for_grid_response(timeout):
+            self.search_input.press("Enter")
+        self._settle_after_grid_response()
+        logger.info("Search activated via Enter for query: %r", query)
+
+    @action("Search skills (send-icon activation)")
+    def search_via_send_button(self, query: str, timeout: int = 10000):
+        """Type the query and click the send-icon to activate the grid fetch.
+
+        Alternate activation mode to :meth:`search` — both are intended
+        entry points per ``SearchBar.jsx`` (``onKeyDown`` on Enter,
+        ``onClick={onSearch}`` on the send-icon).
+
+        Args:
+            query: Text to search for.
+            timeout: Maximum wait time in milliseconds for the grid response.
+        """
+        logger.info("Searching skills for: %r (send-icon activation)", query)
+        self._type_query(query, timeout)
+        with self._wait_for_grid_response(timeout):
+            self.search_send_button.click()
+        self._settle_after_grid_response()
+        logger.info("Search activated via send-icon for query: %r", query)
+
+    @action("Clear skills search")
+    def clear_search(self, timeout: int = 10000):
+        """Clear the search box, restoring the full grid.
+
+        Bare ``.fill("")`` was unreliable during analyst exploration on
+        this input (one attempt left stale characters concatenated with
+        new input) — see AFS ELITEA-1739 Concrete Handles. Clears via the
+        native ``HTMLInputElement`` value-setter + a bubbling ``input``
+        event instead (mirrors a real backspace-to-empty).
+
+        Confirmed live (Phase 2 exploration): this alone re-fetches the
+        grid — ``SearchBar.jsx``'s ``onChange`` handler (``handleInputChange``)
+        calls ``onClear()`` directly whenever the value becomes empty with
+        no active tag filters, which dispatches ``resetQuery()`` and causes
+        an immediate re-fetch; no Enter/send-icon press is needed or wanted
+        here. (Pressing Enter afterward would instead re-run ``onSearch()``
+        with an empty, sub-minimum-length string, surfacing the "at least 3
+        letters" toast for no benefit — see :meth:`search_below_min_length`.)
+
+        A re-fetch only happens if the Redux ``query`` state actually
+        changes. If the field held leftover text from a query that was
+        NEVER actually dispatched (e.g. a sub-minimum-length attempt via
+        :meth:`search_below_min_length` — state stayed at its previous
+        value the whole time), clearing is a no-op transition and no
+        request fires; this is tolerated rather than treated as a failure.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the grid response.
+        """
+        logger.info("Clearing skills search")
+        self.search_input.wait_for(state="visible", timeout=timeout)
+        clear_js = (
+            "el => {"
+            " const setter = Object.getOwnPropertyDescriptor("
+            "   window.HTMLInputElement.prototype, 'value').set;"
+            " setter.call(el, '');"
+            " el.dispatchEvent(new Event('input', { bubbles: true }));"
+            "}"
+        )
+        try:
+            with self._wait_for_grid_response(timeout=min(timeout, 3000)):
+                self.search_input.evaluate(clear_js)
+            self._settle_after_grid_response()
+            logger.info("Search cleared and grid re-fetched")
+        except PlaywrightTimeoutError:
+            logger.info(
+                "Search cleared — no grid re-fetch (query state was already "
+                "empty, e.g. a prior sub-minimum-length query never activated)"
+            )
+
+    @action("Attempt skills search below minimum query length")
+    def search_below_min_length(self, query: str, timeout: int = 3000):
+        """Type a sub-minimum-length query and press Enter; verify no fetch.
+
+        EliteaUI enforces a client-side minimum search length
+        (``MIN_SEARCH_KEYWORD_LENGTH = 3``, ``EliteaUI/src/common/
+        constants.js``) inside ``SearchBar.jsx``'s ``onSearch()`` — below
+        that length it shows a "must be at least 3 letters" toast instead
+        of dispatching a query, for BOTH activation modes (Enter and the
+        send-icon share the same ``onSearch`` callback). Confirmed live
+        during ELITEA-1739 Phase 2 exploration — a 2-character query
+        (e.g. the case's literal "Co") cannot activate the grid filter;
+        see AFS Known Defects — Clarification #4 (case-text drift, not a
+        product bug).
+
+        Does not raise if the grid unexpectedly DOES fire — it returns
+        ``False`` so the caller can assert honestly either way, rather
+        than this helper silently swallowing a product regression.
+
+        Args:
+            query: A query string shorter than the minimum (e.g. ``"Co"``).
+            timeout: Grace window in milliseconds to detect an unexpected fetch.
+
+        Returns:
+            True if the grid-fetching endpoint did NOT fire (expected,
+            current product behavior); False if it unexpectedly did.
+        """
+        logger.info("Attempting sub-minimum-length skills search: %r", query)
+        self._type_query(query, timeout=10000)
+        try:
+            with self._wait_for_grid_response(timeout):
+                self.search_input.press("Enter")
+            logger.warning(
+                "Grid unexpectedly re-fetched for sub-minimum-length query %r", query
+            )
+            return False
+        except PlaywrightTimeoutError:
+            logger.info(
+                "Confirmed: grid did not re-fetch for sub-minimum-length query %r", query
+            )
+            return True
 
     # ------------------------------------------------------------------
     # Tag filtering
