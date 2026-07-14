@@ -52,25 +52,37 @@ def test_feature_with_model():  # Only useful test
     assert result_is_valid()
 ```
 
-**GOOD - Complete flow + variations:**
+**GOOD - Complete flow + variations with allure.step():**
 ```python
+import allure
+
 @pytest.mark.p1
 def test_feature_with_detailed_input(page, fixture):
     """Full user flow with realistic input."""
-    page.enable_feature()
-    page.select_model("GPT-5")
-    page.do_action("A rich, realistic description...")
-    page.wait_for_result()
-    assert result_is_valid()
+    with allure.step("Step 1 — Enable feature and select model"):
+        page.enable_feature()
+        page.select_model("GPT-5")
+
+    with allure.step("Step 2 — Perform action with detailed input"):
+        page.do_action("A rich, realistic description...")
+
+    with allure.step("Step 3 — Wait for result and verify"):
+        page.wait_for_result()
+        assert result_is_valid()
 
 @pytest.mark.p2
 def test_feature_with_minimal_input(page, fixture):
     """Variation: works with minimal input too."""
-    page.enable_feature()
-    page.select_model("GPT-5")
-    page.do_action("Simple request")
-    page.wait_for_result()
-    assert result_is_valid()
+    with allure.step("Step 1 — Enable feature and select model"):
+        page.enable_feature()
+        page.select_model("GPT-5")
+
+    with allure.step("Step 2 — Perform action with minimal input"):
+        page.do_action("Simple request")
+
+    with allure.step("Step 3 — Wait for result and verify"):
+        page.wait_for_result()
+        assert result_is_valid()
 ```
 
 ## What NOT to Create as Separate Tests
@@ -111,8 +123,37 @@ What different inputs/paths produce different (but valid) outcomes?
 2. **Check page objects** - `grep -l "feature" pages/*.py`
 3. **Add missing methods** - Use page-object-generator skill
 
+## Allure Step Format
+
+**REQUIRED:** All tests must use `with allure.step()` blocks for Allure reporting.
+
+**Format:** `"Step N — Brief description of action"`
+
+```python
+with allure.step("Step 1 — Navigate to agent detail page"):
+    detail_page.navigate(agent_id)
+
+with allure.step("Step 2 — Update agent name"):
+    detail_page.update_name(new_name)
+
+with allure.step("Step 3 — Save and verify changes persisted"):
+    detail_page.click_save()
+    detail_page.reload_and_wait()
+    assert detail_page.name_input.input_value() == new_name
+```
+
+**Rules:**
+- Add `import allure` at top of file
+- Group logically related actions in one step
+- Use numbered steps: "Step 1 —", "Step 2 —", etc.
+- Step description should be human-readable action, not code
+- Reference: `test_artifacts_multi_file.py` for example
+
 ## Checklist
 
+- [ ] `import allure` added to file
+- [ ] All test code wrapped in `with allure.step()` blocks
+- [ ] Steps numbered sequentially ("Step 1 —", "Step 2 —", etc.)
 - [ ] Primary test covers complete user flow
 - [ ] Setup steps inline, not separate tests
 - [ ] At least one variation test

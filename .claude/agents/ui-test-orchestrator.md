@@ -175,6 +175,7 @@ Skill(skill="ui-test-creator", args="{feature description} in {file/class from s
 - **P1 Primary test:** Complete user flow with realistic input
 - **P2 Variation tests:** Different inputs/edge cases
 - All setup steps inline — no separate precondition tests
+- **All tests must use `with allure.step()` blocks** — numbered steps for Allure reporting
 
 **After Stage 4 — report to user:**
 > Stage 4 complete: Tests written
@@ -225,6 +226,7 @@ Skill(skill="superpowers:verification-before-completion")
 - [ ] Locators use LocatorDescriptor (testid preferred, locator for legacy)
 - [ ] Primary test (P1) covers complete user flow
 - [ ] At least one variation test (P2)
+- [ ] All tests use `with allure.step()` blocks (numbered steps)
 - [ ] test-quality-checker passed (no Critical/High issues)
 - [ ] test-deduplication passed (no near-duplicates)
 - [ ] EliteaUI changes committed (if Stage 2.5 ran)
