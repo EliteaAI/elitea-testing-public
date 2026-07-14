@@ -228,9 +228,13 @@ record must say which. `promote-automation-batch` Stage 1 checks exactly this an
 block the batch; the closure record is what makes that blockage predictable instead of
 a surprise months later.
 
-**Do not close an issue whose testids are still in an unmerged PR** — it is `blocked`,
-not `completed`. Closing it hides a real cross-repo dependency. Leave it open with the
-closure record posted, and let the human close it when the testid PR lands.
+**Do not close an issue whose testids are still in an unmerged PR** — and do not
+park it in `Blocked` either: nothing is stuck. Post the closure record, leave the
+issue OPEN, and move the card to **`Ready`** — the agent-terminal state: delivered,
+reviewable, awaiting external merges / human acceptance. **`Done` is human-only**
+(the human closes + moves when the case is promotable/accepted), symmetric with
+human-only `Approved` on the way in. `Blocked` means a REAL blocker only
+(`Waiting on #N` — an open `question`/`bug` that stops work).
 
 Worked example: [issue #19](https://github.com/EliteaAI/elitea-testing-public/issues/19)
 (ELITEA-1737) — test merged, testids still in draft PRs EliteaUI#525/#526, therefore
