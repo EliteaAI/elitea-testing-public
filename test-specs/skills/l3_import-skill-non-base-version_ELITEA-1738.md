@@ -231,10 +231,13 @@ where unchanged — not re-verified in isolation in this run except where noted:
 | Skill create form / detail form fields | Existing `SkillFormPage` (`automation/pages/skill_form_page.py`) — `name_input`, `description_input`, `instructions_editor` / `instructions_editor_content`, `save_button` | n/a — reuse existing page object |
 | Skill detail page (ID, controls menu, export) | Existing `SkillDetailPage` (`automation/pages/skill_detail_page.py`) — `controls_menu_button`, `get_skill_id()`, `export_base_version_via_menu()` | n/a — reuse existing page object; **new** method needed for exporting a *non-default* version, see Automation Hints |
 | Overflow-menu **Export** item (version-scoped) | `page.get_by_test_id("export-version-menuitem")` — confirmed present and correctly exports the *currently selected* version (not always base) in this run | `page.get_by_role("menuitem", name="Export")` scoped to VERSION group |
-| **VERSION selector** (base ⇄ ver_1 switcher on the edit/detail page — distinct from `SkillDetailPage`'s read-only "Version" display) | `page.locator("#skill-version-select")` — confirmed present live (`SkillTabBar.jsx`, `id="skill-version-select"`); **no `data-testid` yet** | `page.get_by_role("combobox", name=<current version name>)` — works but name changes with selection, not stable across steps |
-| **"Save As Version" button** (creates a new named version from current edits) | `page.get_by_role("button", name="Save As Version")` — confirmed live; **no `data-testid` yet** | none robust — accessible name is stable text, low risk |
-| **"Create version" dialog** — Name textbox | `page.get_by_role("dialog").get_by_role("textbox", name="Name")` — confirmed live, single unlabelled-by-testid field | none needed, dialog scoping is sufficient |
-| **"Create version" dialog** — Save (confirm) button | `page.get_by_role("dialog").get_by_role("button", name="Save")` — disabled until Name is non-empty | none needed |
+| **VERSION selector** (base ⇄ ver_1 switcher on the edit/detail page — distinct from `SkillDetailPage`'s read-only "Version" display) | `page.get_by_test_id("skill-version-select")` (`SkillDetailPage.version_selector`) — **testid added in the ELITEA-1738 testid rework** (`SkillTabBar.jsx` now passes `data-testid="skill-version-select"` through `SingleSelect.jsx`'s new `data-testid` prop) | n/a — testid-only, no fallback |
+| VERSION selector — dropdown option (per version) | `page.locator('[data-testid="version-option-{name}"]')` (`SkillDetailPage.VERSION_OPTION` template constant) — **testid added in the rework**, keyed by version *name* via a new `testId` field returned from `buildVersionOption()` (`version.helpers.jsx`); shared by every version-selector consumer (skill/agent/pipeline), not just this page — additive: falls back to the pre-existing `select-option-{value}` (id-keyed) testid when `option.testId` is absent | n/a — testid-only, no fallback |
+| **"Save As Version" button** (creates a new named version from current edits) | `page.get_by_test_id("skill-save-as-version-button")` (`SkillDetailPage.save_as_version_button`) — **testid added in the rework** (`SaveSkillVersionButton.jsx`) | n/a — testid-only, no fallback |
+| **"Create version" dialog** — Name textbox | Two testids added in the rework, mirroring the CreateSkillForm split: `skill-create-version-name-input` lands on the MuiFormControl-root wrapper (`SkillDetailPage.create_version_name_input`); `skill-create-version-name-input-field` lands on the real `<input>` (`SkillDetailPage.create_version_name_input_field`, used for `.click()`/`.type()`) | n/a — testid-only, no fallback |
+| **"Create version" dialog** — Save (confirm) button | `page.get_by_test_id("skill-create-version-save-button")` (`SkillDetailPage.create_version_save_button`) — **testid added in the rework** via `BaseModal`'s existing `confirmButtonDataTestId` prop (previously unused by this call site) | n/a — testid-only, no fallback |
+| **"Create version" dialog** container | `page.get_by_test_id("skill-create-version-dialog")` (`SkillDetailPage.create_version_dialog`) — **testid added in the rework** via `BaseModal`'s existing `data-testid` prop (previously unused by this call site) | n/a — testid-only, no fallback |
+| `Version "{name}" created` toast | `page.get_by_test_id("toast-message")` (`SkillDetailPage.version_toast_message`) — **reused** the same app-wide Toast `toast-message` testid already exposed as `SkillsListPage.import_success_toast_message` (ELITEA-1737), asserted by `.text_content()` equality inside `save_as_version()` rather than located by the expected text | n/a — testid-only, no fallback |
 | Skills list **Import** button | `page.get_by_test_id("skills-import-button")` — **now has a testid** (confirmed live this run); ELITEA-1737's AFS flagged this as missing at the time — **resolved since**, no action needed | `page.get_by_role("button", name="Import")` |
 | Import-parameters dialog **Import** (confirm) button | `page.get_by_role("dialog").get_by_role("button", name="Import")` — scoping to the dialog required, toolbar button shares the same accessible name | none needed if scoped correctly |
 | Import-parameters dialog **Show details** toggle | `page.get_by_role("button", name="Show details")` — confirmed live | none needed |
@@ -319,11 +322,14 @@ case's own steps.
     exports ver_1 too); rename or add a thin wrapper, implementer's call.
 - Two testids flagged as missing in ELITEA-1737's AFS are now confirmed
   present (`skills-import-button`, `delete-confirm-name-input`) — no
-  `add-data-testid` work needed for those. Two *new* elements in this
-  case still lack testids and are lower priority (their accessible-role
-  locators are stable and unique in this run): the `#skill-version-select`
-  combobox and the "Save As Version" button. Flag via `add-data-testid`
-  only if they prove flaky in CI — not blocking for initial implementation.
+  `add-data-testid` work needed for those. **Update (ELITEA-1738 testid
+  rework, follow-up to the merged automation, locator-policy audit
+  finding):** the VERSION selector, its per-option dropdown items, the
+  "Save As Version" button, and the "Create version" dialog (container +
+  Name field + Save button) all gained `data-testid` attributes — see the
+  Concrete Handles table above. No raw role/text/CSS-id locators remain in
+  `SkillDetailPage.save_as_version()` / `get_version_selector_value()` /
+  `switch_version()`.
 - Read the downloaded file's frontmatter with `yaml.safe_load`, same
   approach as ELITEA-1737: assert `name`, `description`, `tags`, and (new
   for this case) `elitea_version == "ver_1"`; the body (after the closing

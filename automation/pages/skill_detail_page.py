@@ -56,6 +56,59 @@ class SkillDetailPage(SkillFormPage):
         description="Export the current (base) version via the overflow menu"
     )
 
+    # ------------------------------------------------------------------
+    # Version management (Save As Version / VERSION selector) — testids
+    # added in the ELITEA-1738 rework (see EliteaUI `automation/testids`:
+    # SaveSkillVersionButton.jsx, SingleSelect.jsx, SingleSelectMenuItem.jsx,
+    # version.helpers.jsx, SkillTabBar.jsx).
+    # ------------------------------------------------------------------
+
+    save_as_version_button = LocatorDescriptor(
+        testid="skill-save-as-version-button",
+        description='"Save As Version" button in the version tab bar'
+    )
+
+    create_version_dialog = LocatorDescriptor(
+        testid="skill-create-version-dialog",
+        description='"Create version" dialog opened by "Save As Version"'
+    )
+
+    # Wrapper testid lands on the MuiFormControl-root (InputBase's leftProps
+    # spread onto MuiTextField), not the real <input> — same split documented
+    # for CreateSkillForm's Name/Description fields. Use the *_field
+    # descriptor below to type into the actual input element.
+    create_version_name_input = LocatorDescriptor(
+        testid="skill-create-version-name-input",
+        description='"Create version" dialog — Name field wrapper'
+    )
+
+    create_version_name_input_field = LocatorDescriptor(
+        testid="skill-create-version-name-input-field",
+        description='"Create version" dialog — Name field, real <input> element'
+    )
+
+    create_version_save_button = LocatorDescriptor(
+        testid="skill-create-version-save-button",
+        description='"Create version" dialog — confirm ("Save") button'
+    )
+
+    version_toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide Toast component's message container (reused "
+                     "for the 'Version \"{name}\" created' toast)"
+    )
+
+    version_selector = LocatorDescriptor(
+        testid="skill-version-select",
+        description="VERSION selector (base ⇄ named-version switcher)"
+    )
+
+    # Dynamic (runtime-parameterized) testid for a VERSION-selector option,
+    # keyed by version name — set in buildVersionOption() (EliteaUI
+    # version.helpers.jsx), shared by every version selector consumer
+    # (skill/agent/pipeline), not just this page.
+    VERSION_OPTION = '[data-testid="version-option-{}"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -366,10 +419,10 @@ class SkillDetailPage(SkillFormPage):
         ``Version "{version_name}" created`` toast and for the URL to gain a
         new version-id path segment.
 
-        LOCATOR: "Save As Version" button and the dialog's Name textbox have
-        no ``data-testid`` yet (confirmed in ELITEA-1738 AFS exploration) —
-        located by stable accessible role/name per the project's locator
-        priority order (data-testid > accessible role).
+        LOCATOR: testid-based throughout (ELITEA-1738 testid rework) — the
+        "Save As Version" button, the "Create version" dialog, its Name
+        field, and the confirm button all carry ``data-testid`` now (see the
+        class-level ``LocatorDescriptor`` fields above).
 
         Args:
             version_name: Name for the new version (e.g. ``"ver_1"``).
@@ -378,20 +431,19 @@ class SkillDetailPage(SkillFormPage):
         logger.info("Saving current edits as new version: %r", version_name)
         previous_version_id = self.get_version_id()
 
-        save_as_version_btn = self.page.get_by_role("button", name="Save As Version")
-        save_as_version_btn.click()
+        self.save_as_version_button.click()
 
-        dialog = self.page.get_by_role("dialog")
-        dialog.wait_for(state="visible", timeout=timeout)
-        name_field = dialog.get_by_role("textbox", name="Name")
-        name_field.click()
-        name_field.type(version_name)
+        self.create_version_dialog.wait_for(state="visible", timeout=timeout)
+        self.create_version_name_input_field.click()
+        self.create_version_name_input_field.type(version_name)
         self.page.wait_for_timeout(200)
 
-        dialog.get_by_role("button", name="Save").click()
+        self.create_version_save_button.click()
 
-        self.page.get_by_text(f'Version "{version_name}" created').wait_for(
-            state="visible", timeout=timeout
+        self.version_toast_message.wait_for(state="visible", timeout=timeout)
+        toast_text = self.version_toast_message.text_content()
+        assert toast_text == f'Version "{version_name}" created', (
+            f"Expected 'Version \"{version_name}\" created' toast, got: {toast_text!r}"
         )
         self.page.wait_for_function(
             "prevId => window.location.pathname.split('/').filter(Boolean).pop() !== prevId",
@@ -406,28 +458,31 @@ class SkillDetailPage(SkillFormPage):
     def get_version_selector_value(self) -> str:
         """Return the currently displayed value of the VERSION selector.
 
-        LOCATOR: ``#skill-version-select`` — confirmed present live
-        (``SkillTabBar.jsx``), no ``data-testid`` yet.
+        LOCATOR: ``skill-version-select`` testid (ELITEA-1738 testid rework —
+        ``SkillTabBar.jsx`` now passes ``data-testid`` through to
+        ``SingleSelect``).
 
         Returns:
             The version name currently shown in the selector (e.g. ``"ver_1"``).
         """
-        return (self.page.locator("#skill-version-select").text_content() or "").strip()
+        return (self.version_selector.text_content() or "").strip()
 
     @action("Switch to a different skill version")
     def switch_version(self, version_name: str, timeout: int = 10000):
         """Select a different version from the VERSION combobox.
 
-        LOCATOR: ``#skill-version-select`` — no ``data-testid`` yet.
+        LOCATOR: ``skill-version-select`` testid for the combobox trigger;
+        each dropdown option carries a name-keyed ``version-option-{name}``
+        testid (ELITEA-1738 testid rework — set in ``buildVersionOption()``,
+        shared by every version-selector consumer, not just this page).
 
         Args:
             version_name: The version name to select (e.g. ``"base"``).
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Switching to version: %r", version_name)
-        selector = self.page.locator("#skill-version-select")
-        selector.click()
-        option = self.page.get_by_role("option", name=version_name, exact=True)
+        self.version_selector.click()
+        option = self.page.locator(self.VERSION_OPTION.format(version_name))
         option.wait_for(state="visible", timeout=timeout)
         option.click()
         self.wait_for_network(timeout=5000)
