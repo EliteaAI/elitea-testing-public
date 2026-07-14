@@ -1851,6 +1851,109 @@ class AgentDetailPage(AgentFormPage):
         self.instructions_input.clear()
 
     # ------------------------------------------------------------------
+    # Instructions field skill mention ("~" trigger) — ELITEA-1791
+    # ------------------------------------------------------------------
+    #
+    # This is a DIFFERENT entry point from send_chat_message_with_mention()
+    # above: that method drives the embedded-chat message input
+    # (data-testid="chat-message-input"), while these methods drive the
+    # Instructions accordion field (data-testid="agent-instructions-input",
+    # inherited from AgentFormPage.instructions_input). Both surfaces
+    # render the same "Mention skill" popper component, but the two input
+    # fields are separate and must not be confused.
+
+    def _instructions_mention_container(self, timeout: int = 10000):
+        """Return a locator scoped to the open "Mention skill" panel.
+
+        LOCATOR: same header text / container-depth pattern as the
+        embedded-chat mention flow (``send_chat_message_with_mention``) —
+        the header text node's 2nd ancestor `div` holds the candidate rows.
+        """
+        mention_header = self.page.get_by_text("Mention skill", exact=True)
+        mention_header.wait_for(state="visible", timeout=timeout)
+        return mention_header.locator("xpath=ancestor::div[2]")
+
+    @action("Type ~ in Instructions field")
+    def type_tilde_in_instructions(self, timeout: int = 10000) -> Locator:
+        """Type "~" in the Agent Instructions field and wait for the
+        "Mention skill" suggestion panel to appear.
+
+        Targets ``instructions_input`` (the Instructions accordion textarea,
+        accessible name "Guidelines for the AI agent") — NOT the embedded
+        chat input (see module note above). No fixed wait / network-idle
+        wait is used: the mention list is a client-side filter over data
+        the page already holds (attached-skills data fetched when the
+        Skills accordion loaded), so no additional network request fires
+        between typing "~" and the panel appearing (ELITEA-1791
+        exploration) — this waits only on the "Mention skill" header text
+        becoming visible.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator scoped to the mention suggestion panel container, for
+            asserting on the candidate rows it contains.
+        """
+        logger.info("Typing ~ in Instructions field to open mention panel")
+        self.instructions_input.click()
+        self.instructions_input.press_sequentially("~", delay=50)
+        return self._instructions_mention_container(timeout=timeout)
+
+    def get_instructions_mention_item(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return a locator for a mention candidate row by exact skill name,
+        scoped to the open "Mention skill" panel (Instructions field).
+
+        Use this for both positive assertions (row is visible) and negative
+        assertions (``expect(locator).to_have_count(0)`` for a skill that
+        must NOT be offered) — a count-based assertion on this exact-text
+        locator is stronger than counting rows, since it can't be fooled by
+        the unattached skill appearing under a different label.
+
+        Args:
+            skill_name: Exact name of the skill to look for.
+            timeout: Maximum wait time in milliseconds for the panel header.
+        """
+        container = self._instructions_mention_container(timeout=timeout)
+        return container.get_by_text(skill_name, exact=True)
+
+    @action("Select skill from Instructions mention panel")
+    def select_skill_from_instructions_mention(self, skill_name: str, timeout: int = 5000):
+        """Click a skill row in the open "Mention skill" panel (Instructions
+        field), inserting "~<skill_name>" as plain text into the field.
+
+        Must be called while the panel is open (after
+        ``type_tilde_in_instructions()``).
+
+        Args:
+            skill_name: Exact name of the attached skill to select.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting '%s' from Instructions mention panel", skill_name)
+        item = self.get_instructions_mention_item(skill_name, timeout=timeout).first
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+        self.page.wait_for_timeout(300)
+
+    @action("Clear Instructions field")
+    def clear_instructions_field(self):
+        """Clear the Instructions field content (case step 6's own described
+        technique: "removing Skill A reference" before re-triggering "~").
+
+        Uses Playwright's ``clear()`` — the same MUI-field-clearing call
+        already trusted elsewhere in this page object (``fill_form()`` in
+        ``AgentFormPage``) — rather than a manual Control+a/Delete key
+        sequence: exploration found the manual sequence unreliable here
+        (only the leading "~" was removed, not the full mention text),
+        while ``clear()`` empties the field reliably and still fires
+        React's ``onChange`` (unlike ``fill()`` with a non-empty value,
+        which is the pattern ``clear()`` itself is exempt from per
+        `.claude/rules/mui-patterns.md`).
+        """
+        self.instructions_input.click()
+        self.instructions_input.clear()
+
+    # ------------------------------------------------------------------
     # Embedded chat (right panel)
     # ------------------------------------------------------------------
 
