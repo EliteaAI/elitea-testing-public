@@ -190,12 +190,26 @@ class TestAgentMaxFiveSkillsLimit:
                 ), "add-skill button should be enabled before any skills are attached"
 
             with allure.step("Steps 4-8 — Attach Skills 1-5 one at a time"):
-                # Capture every skill-attach PATCH from here on, so the
-                # blocked-6th-attach step below can assert on real network
-                # traffic (no additional PATCH fires) rather than only UI
-                # state — this is what the AFS Axis 2 row actually claims.
+                # Capture every skill-attach PATCH (method, url, response
+                # status) from here on, so the blocked-6th-attach step below
+                # can assert on real network traffic (status 201 per attach,
+                # no additional PATCH after 5/5) rather than only UI state —
+                # this is what the AFS Axis 2 row actually claims.
                 attach_requests = detail_page.capture_requests_matching(
                     "skill/prompt_lib", method="PATCH"
+                )
+                # Console-error capture across the attach flow, the blocked
+                # 6th-attach attempt, and the reload — mirrors the
+                # established pattern in test_skill_tag_filter.py /
+                # test_skill_export_import.py (page.on("console", ...),
+                # collect type == "error", assert empty). No shared helper
+                # exists yet for this pattern (checked: only those two
+                # inline occurrences), so it's reused inline here rather
+                # than inventing a new abstraction for a single caller.
+                console_messages = []
+                page.on(
+                    "console",
+                    lambda msg: console_messages.append(msg) if msg.type == "error" else None,
                 )
                 for idx, name in enumerate(SKILL_NAMES, start=1):
                     detail_page.attach_skill(name, timeout=UI_ELEMENT_TIMEOUT)
@@ -210,6 +224,14 @@ class TestAgentMaxFiveSkillsLimit:
                     assert len(attach_requests) == idx, (
                         f"Expected exactly {idx} skill-attach PATCH request(s) "
                         f"after attaching skill #{idx}, captured: {attach_requests!r}"
+                    )
+                    assert attach_requests[-1]["status"] == 201, (
+                        f"Skill-attach PATCH for skill #{idx} ('{name}') should "
+                        f"return 201, captured: {attach_requests[-1]!r}"
+                    )
+                    assert not console_messages, (
+                        f"Expected no console errors after attaching skill #{idx} "
+                        f"('{name}'), got: {[m.text for m in console_messages]}"
                     )
 
             with allure.step(
@@ -265,6 +287,10 @@ class TestAgentMaxFiveSkillsLimit:
                     f"No PATCH request should ever target the 6th skill "
                     f"(id={sixth_skill['id']}), captured: {attach_requests!r}"
                 )
+                assert not console_messages, (
+                    "Expected no console errors after the blocked 6th-attach "
+                    f"attempt, got: {[m.text for m in console_messages]}"
+                )
 
             with allure.step(
                 "Step 10 — Agent persists with exactly 5 Skills attached "
@@ -287,6 +313,10 @@ class TestAgentMaxFiveSkillsLimit:
                 assert detail_page.is_add_skill_button_disabled(
                     timeout=UI_ELEMENT_TIMEOUT
                 ), "add-skill button should still be disabled after reload"
+                assert not console_messages, (
+                    "Expected no console errors after the full page reload, "
+                    f"got: {[m.text for m in console_messages]}"
+                )
 
         finally:
             # Cleanup per AFS: delete the agent first (teardown hygiene —
@@ -310,3 +340,28 @@ class TestAgentMaxFiveSkillsLimit:
                     logger.warning(
                         "Cleanup: failed to delete skill id=%s: %s", skill_id, exc
                     )
+
+        # Cleanup verification — only reached if the flow above didn't raise
+        # (an exception in the try block propagates past `finally`, so this
+        # never runs on top of an already-failed test and can't mask it).
+        # Confirms the 5 created skills and the agent are actually gone, not
+        # just that the delete calls didn't raise.
+        with allure.step(
+            "Cleanup verification — the 5 created skills and the Agent are "
+            "gone; no orphaned elitea-1790-* test data remains"
+        ):
+            remaining_skill_ids = {
+                s["id"] for s in skill_api.list_skills(limit=500).get("rows", [])
+            }
+            leaked_skill_ids = set(skill_ids) & remaining_skill_ids
+            assert not leaked_skill_ids, (
+                f"Cleanup should have deleted all 5 created skills; still "
+                f"present: {leaked_skill_ids!r}"
+            )
+            remaining_agent_ids = {
+                a["id"] for a in agent_api.list_agents().get("rows", [])
+            }
+            assert agent_id not in remaining_agent_ids, (
+                f"Cleanup should have deleted agent id={agent_id}; it is "
+                "still present in the agents list"
+            )
