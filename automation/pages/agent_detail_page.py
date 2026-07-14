@@ -1101,6 +1101,81 @@ class AgentDetailPage(AgentFormPage):
         """Close the open Versions menu by pressing Escape."""
         self.page.keyboard.press("Escape")
 
+    def is_remove_skill_button_visible(self, skill_name: str, timeout: int = 5000) -> bool:
+        """Point-in-time check: is the "remove skill" icon button currently
+        present for the given skill's card?
+
+        The button is **hover-revealed** — absent from the accessibility
+        tree for an un-hovered card (ELITEA-1792 exploration). The real
+        mouse cursor is moved to a neutral corner first: a prior action
+        (e.g. clicking a popper menu item during ``attach_skill()``) can
+        leave the browser's actual cursor resting over a card that renders
+        in roughly the same screen position once the popper closes, which
+        keeps that card's CSS ``:hover`` state engaged even though no test
+        code explicitly hovered it — confirmed live in ELITEA-1792
+        exploration. Moving the mouse away first makes this a genuine
+        "unhovered" check rather than an accidental false-positive.
+
+        Args:
+            skill_name: Exact name of the attached skill whose card is checked.
+            timeout: Maximum wait time in milliseconds for the card itself.
+        """
+        self.page.mouse.move(0, 0)
+        card = self._skill_card(skill_name, timeout=timeout)
+        return card.get_by_role("button", name="remove skill").count() > 0
+
+    @action("Remove skill")
+    def remove_skill(self, skill_name: str, timeout: int = 10000):
+        """Remove an attached skill from the agent (ELITEA-1792).
+
+        Mirrors ``remove_toolkit()`` above: the "remove skill" icon button
+        (and its "open in new tab" sibling) is **hover-revealed** — absent
+        from the accessibility tree for an un-hovered card (ELITEA-1792
+        exploration) — so the card must be hovered first. Neither button
+        carries a `data-testid`; ``get_by_role("button", name="remove
+        skill")`` scoped to the specific card (via ``_skill_card()``) is
+        the only reliable handle.
+
+        Clicking the icon does **not** remove the skill instantly: it opens
+        a "Remove skill?" confirmation dialog (same shape as the "Remove
+        toolkit?" dialog handled in ``remove_toolkit()``) with "Cancel" /
+        "Remove" buttons. Confirming fires the detach auto-save (PATCH
+        .../skill/prompt_lib/{project}/{skill-id} -> 200, contrast with
+        attach's 201) — no agent-level Save is required afterward.
+
+        Args:
+            skill_name: Exact name of the attached skill to remove.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Removing skill '%s' from agent", skill_name)
+
+        card = self._skill_card(skill_name, timeout=timeout)
+        card.scroll_into_view_if_needed()
+        card.hover()
+        self.page.wait_for_timeout(500)  # hover-reveal CSS transition
+
+        remove_btn = card.get_by_role("button", name="remove skill")
+        remove_btn.wait_for(state="visible", timeout=5000)
+        remove_btn.click(force=True)
+        self.page.wait_for_timeout(500)
+
+        # Handle the "Remove skill?" confirmation dialog.
+        dialog = Dialog.wait_for(self.page)
+        Dialog.click_first_button(dialog, "Remove", "Confirm", "Delete")
+
+        # Wait for network idle so the detach PATCH + Skills refetch settle.
+        self.wait_for_network(timeout=timeout)
+
+        # Explicitly wait for the skill's card to disappear from the DOM —
+        # the Skills section reads from an RTK Query cache that refetches
+        # asynchronously (same timing caveat as attach_skill()).
+        try:
+            card.wait_for(state="hidden", timeout=10000)
+        except Exception:
+            pass
+
+        logger.info("Skill '%s' removed from agent", skill_name)
+
     # ------------------------------------------------------------------
     # Instructions field skill mention ("~" trigger) — ELITEA-1791
     # ------------------------------------------------------------------
