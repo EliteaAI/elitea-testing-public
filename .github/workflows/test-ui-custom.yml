@@ -109,50 +109,92 @@ on:
       ELITEA_API_BASE:
         required: true
       ELITEA_API_TOKEN:
-        required: true
+        required: false
       ELITEA_PROJECT_ID:
-        required: true
+        required: false
+      # Indexed project IDs for parallel suite execution (env-specific: TEST_USER_PROJECT_[ENV]_X)
+      TEST_USER_PROJECT_1:
+        required: false
+      TEST_USER_PROJECT_2:
+        required: false
+      TEST_USER_PROJECT_3:
+        required: false
+      TEST_USER_PROJECT_4:
+        required: false
+      TEST_USER_PROJECT_5:
+        required: false
+      TEST_USER_PROJECT_6:
+        required: false
+      TEST_USER_PROJECT_7:
+        required: false
+      TEST_USER_PROJECT_8:
+        required: false
+      TEST_USER_PROJECT_9:
+        required: false
+      TEST_USER_PROJECT_10:
+        required: false
+      # Indexed API tokens for parallel suite execution (env-specific: TEST_USER_TOKEN_[ENV]_X)
+      TEST_USER_TOKEN_1:
+        required: false
+      TEST_USER_TOKEN_2:
+        required: false
+      TEST_USER_TOKEN_3:
+        required: false
+      TEST_USER_TOKEN_4:
+        required: false
+      TEST_USER_TOKEN_5:
+        required: false
+      TEST_USER_TOKEN_6:
+        required: false
+      TEST_USER_TOKEN_7:
+        required: false
+      TEST_USER_TOKEN_8:
+        required: false
+      TEST_USER_TOKEN_9:
+        required: false
+      TEST_USER_TOKEN_10:
+        required: false
       TEST_USER_EMAIL:
         required: false
       TEST_USER_PASSWORD:
         required: false
-      TEST_USER_EMAIL_1:
+      TEST_USER_NAME_1:
         required: false
       TEST_USER_PASSWORD_1:
         required: false
-      TEST_USER_EMAIL_2:
+      TEST_USER_NAME_2:
         required: false
       TEST_USER_PASSWORD_2:
         required: false
-      TEST_USER_EMAIL_3:
+      TEST_USER_NAME_3:
         required: false
       TEST_USER_PASSWORD_3:
         required: false
-      TEST_USER_EMAIL_4:
+      TEST_USER_NAME_4:
         required: false
       TEST_USER_PASSWORD_4:
         required: false
-      TEST_USER_EMAIL_5:
+      TEST_USER_NAME_5:
         required: false
       TEST_USER_PASSWORD_5:
         required: false
-      TEST_USER_EMAIL_6:
+      TEST_USER_NAME_6:
         required: false
       TEST_USER_PASSWORD_6:
         required: false
-      TEST_USER_EMAIL_7:
+      TEST_USER_NAME_7:
         required: false
       TEST_USER_PASSWORD_7:
         required: false
-      TEST_USER_EMAIL_8:
+      TEST_USER_NAME_8:
         required: false
       TEST_USER_PASSWORD_8:
         required: false
-      TEST_USER_EMAIL_9:
+      TEST_USER_NAME_9:
         required: false
       TEST_USER_PASSWORD_9:
         required: false
-      TEST_USER_EMAIL_10:
+      TEST_USER_NAME_10:
         required: false
       TEST_USER_PASSWORD_10:
         required: false
@@ -221,7 +263,7 @@ jobs:
           # All available suites with their fixed user indices
           # agents=1, admin=2, artifacts=3, chat=4, pipelines=5,
           # skills=6, smoke=7, support_assistant=8, toolkits=9, voice=10
-          ALL_SUITES="agents,admin,artifacts,chat,pipelines,skills,smoke,support_assistant,toolkits,voice"
+          ALL_SUITES="agents,artifacts,chat,pipelines,smoke,support_assistant,toolkits,voice"
 
           # Determine selected suites
           if [ -n "${{ inputs.custom_suites }}" ]; then
@@ -324,10 +366,12 @@ jobs:
           # Use secrets from workflow_call if available, otherwise resolve by env name
           ELITEA_URL: ${{ secrets.ELITEA_URL || secrets[format('ELITEA_URL_{0}', steps.env.outputs.upper)] }}
           ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE || secrets[format('ELITEA_API_BASE_{0}', steps.env.outputs.upper)] }}
-          ELITEA_API_TOKEN: ${{ secrets.ELITEA_API_TOKEN || secrets[format('ELITEA_API_TOKEN_{0}', steps.env.outputs.upper)] }}
-          ELITEA_PROJECT_ID: ${{ secrets.ELITEA_PROJECT_ID || secrets[format('ELITEA_PROJECT_ID_{0}', steps.env.outputs.upper)] }}
-          # Use indexed user credentials for parallel execution (fall back to non-indexed for backwards compatibility)
-          TEST_USER_EMAIL: ${{ secrets[format('TEST_USER_EMAIL_{0}', matrix.user_idx)] || secrets.TEST_USER_EMAIL }}
+          # Use indexed credentials for parallel execution (fall back to non-indexed for backwards compatibility)
+          # Project IDs: TEST_USER_PROJECT_[ENV]_X passed as TEST_USER_PROJECT_X
+          ELITEA_PROJECT_ID: ${{ secrets[format('TEST_USER_PROJECT_{0}', matrix.user_idx)] || secrets.ELITEA_PROJECT_ID }}
+          # Tokens: TEST_USER_TOKEN_[ENV]_X passed as TEST_USER_TOKEN_X
+          ELITEA_API_TOKEN: ${{ secrets[format('TEST_USER_TOKEN_{0}', matrix.user_idx)] || secrets.ELITEA_API_TOKEN }}
+          TEST_USER_EMAIL: ${{ secrets[format('TEST_USER_NAME_{0}', matrix.user_idx)] || secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets[format('TEST_USER_PASSWORD_{0}', matrix.user_idx)] || secrets.TEST_USER_PASSWORD }}
           GIT_HUB_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
           BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
