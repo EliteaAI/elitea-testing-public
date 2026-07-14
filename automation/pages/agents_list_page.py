@@ -5,13 +5,16 @@ Handles: /agents/all
 - Search and filter agents
 - Navigate to create agent
 - Select agent from list
+- Import an Agent from an exported ``.agent.md`` file
 """
 
+import re
 import logging
 from playwright.sync_api import Page
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
+from components.mui import Dialog
 from utils.actions import action
 
 
@@ -296,3 +299,128 @@ class AgentsListPage(BasePage):
             # Fallback: check if button has active/selected class
             classes = self.card_view_button.get_attribute("class") or ""
             return "selected" in classes.lower() or "active" in classes.lower()
+
+    # ------------------------------------------------------------------
+    # Import (ELITEA-1795)
+    # ------------------------------------------------------------------
+
+    @action("Import agent from file")
+    def import_agent(self, file_path: str, timeout: int = 10000):
+        """Import an Agent from an exported ``.agent.md`` file.
+
+        LOCATOR: the page-toolbar "Import" button (``AgentsList.jsx``, to
+        the left of the table/card view toggle) has **no** ``data-testid``
+        — confirmed via direct DOM inspection
+        (``element.getAttribute('data-testid')`` -> ``null``, AFS
+        ELITEA-1795 exploration) — resolved by accessible role/name until
+        a testid is added. Clicking it opens a native OS file chooser
+        directly (no intermediate menu).
+
+        Handles the file chooser and waits for the "Import parameters"
+        preview dialog to render. Does NOT click the dialog's own Import
+        (confirm) button — call :meth:`confirm_agent_import` separately
+        once the preview has been verified.
+
+        Args:
+            file_path: Absolute path to the exported ``.agent.md`` file.
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Importing agent from file: %s", file_path)
+        import_button = self.page.get_by_role("button", name="Import")
+        with self.page.expect_file_chooser() as fc_info:
+            import_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(file_path)
+
+        dialog = Dialog.wait_for(self.page, timeout=timeout)
+        dialog.get_by_text("Import parameters").wait_for(state="visible", timeout=timeout)
+        logger.info("Import parameters dialog visible")
+
+    @action("Expand import preview details")
+    def expand_import_preview_details(self, timeout: int = 10000):
+        """Expand every "Show details" toggle in the Import parameters dialog.
+
+        Unlike the Skill import dialog (a single entity preview), the
+        Agent import dialog renders two collapsed preview sections —
+        "Main entity" (the Agent) and "Skills" (each embedded Skill) —
+        each behind its own "Show details" toggle
+        (``IWModalEntityCardWrapper``, ``defaultExpanded=false``). Clicks
+        all of them so Description/Instructions preview text is actually
+        rendered (non-zero height) before assertions read it.
+
+        Clicking a toggle flips its own accessible name to "Hide details",
+        so the "Show details" locator is re-queried and its first match
+        clicked repeatedly until none remain — a fixed-count loop indexed
+        by ``nth()`` would go out of bounds after the first click shrinks
+        the live match set.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        dialog = self.page.get_by_role("dialog")
+        show_details_buttons = dialog.get_by_role("button", name="Show details")
+        expanded_count = 0
+        while show_details_buttons.count() > 0:
+            show_details_buttons.first.click()
+            expanded_count += 1
+            self.page.wait_for_timeout(200)
+        if expanded_count:
+            # Grid-template-rows CSS transition (0.4s) — wait for at least
+            # one Instructions label to actually be visible rather than a
+            # fixed sleep.
+            dialog.get_by_text("Instructions:").first.wait_for(
+                state="visible", timeout=timeout,
+            )
+        logger.info(
+            "Expanded %d 'Show details' toggle(s) in import dialog", expanded_count,
+        )
+
+    @action("Confirm agent import in dialog")
+    def confirm_agent_import(self, timeout: int = 15000):
+        """Click the "Import parameters" dialog's scoped Import (confirm) button.
+
+        Scoped to the dialog because the page-toolbar Import button and
+        the dialog's confirm button share the same accessible name
+        ("Import"). Confirming transitions to the "Import Complete"
+        success dialog (handled by :meth:`confirm_import_complete`), not
+        directly to the new Agent's detail page.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the success dialog.
+        """
+        logger.info("Confirming agent import")
+        dialog = self.page.get_by_role("dialog")
+        dialog.get_by_role("button", name="Import").click()
+
+        success_dialog = Dialog.wait_for(self.page, timeout=timeout)
+        success_dialog.get_by_text("Import Complete").wait_for(
+            state="visible", timeout=timeout,
+        )
+        logger.info("Import Complete dialog visible")
+
+    @action("Confirm import complete")
+    def confirm_import_complete(self, timeout: int = 15000) -> int:
+        """Click "Got it" on the "Import Complete" success dialog.
+
+        Auto-navigates to the newly imported Agent's detail page. Parses
+        and returns the new Agent's numeric ID from the resulting URL.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the navigation.
+
+        Returns:
+            The imported Agent's numeric ID.
+        """
+        dialog = self.page.get_by_role("dialog")
+        dialog.get_by_role("button", name="Got it").click()
+        self.page.wait_for_url(re.compile(r".*/agents/all/\d+"), timeout=timeout)
+        self.wait_for_network(timeout=5000)
+
+        match = re.search(r"/agents/all/(\d+)", self.page.url)
+        if not match:
+            raise ValueError(
+                f"Could not parse imported Agent ID from URL: {self.page.url}"
+            )
+        agent_id = int(match.group(1))
+        logger.info("Import complete — navigated to agent id=%d", agent_id)
+        return agent_id
