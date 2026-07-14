@@ -37,7 +37,8 @@ This file only records what those don't.
 
 ## Git
 
-- Work branches from `automation/base`: `automation/<case-id>-<slug>` / `tests/<id>-<slug>`
+- Work branches from `automation/base`: `tests/<case-id>-<slug>` (canonical; older
+  `automation/<case-id>-<slug>` branches exist historically — don't create new ones)
 - Commits: conventional-ish — `test: (5199) …`, `fix: …`, `refactor: …`, `docs(afs): …`
 - PRs: small, one per test/feature area, target `automation/base`, squash merge
 - Testid commits: on a `testids/<case>-<slug>` branch cut from fresh `origin/main`,

@@ -62,8 +62,11 @@ See `.agents/profile.md` § Roles & sample users.
 
 ## Testing & Conventions
 
-Full detail in `.agents/testing.md` (framework, run commands, locator ladder, AFS
-conventions) and `.agents/conventions.md` (pointers to `.claude/rules/*`).
+Full detail in `.agents/testing.md` (framework, run commands, **locator policy —
+testid-only, there is no ladder**, AFS conventions) and `.agents/conventions.md`
+(pointers to `.claude/rules/*`). Hard per-role overrides: `.agents/role-overrides.md`
+— it wins over any skill's defaults/examples. Team goal: `data-testid` on every
+element new tests touch; UI-automation coverage is measured by testid presence.
 Way of work — the two-branch dance, sync procedures, batch operations — in
 `.agents/workflow.md`. Three-repo topology in `.agents/architecture.md`.
 

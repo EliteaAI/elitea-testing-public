@@ -44,9 +44,11 @@ cd ../EliteaUI && npm run dev                                    # → http://lo
 - **Never rebase or force-push `automation/testids`** — it's a shared org branch.
   Sync it with `git merge origin/main`. If review changes a testid, resolve the next
   merge **in favour of `main`**.
-- **Locators are testid-only**: `LocatorDescriptor(testid="agent-form-save-button")`.
-  `fallback` is dead code — never populate it. Naming: `{section}-{element}-{type}`.
-  Locators live **only as page-object class fields** — never inside methods or specs.
+- **Locators are testid-only — there is NO fallback ladder**: missing testid ⇒ add it
+  via `add-data-testid` (team measures UI coverage by testid presence).
+  `LocatorDescriptor(testid="agent-form-save-button")`; `fallback`/`locator` params are
+  forbidden. Naming: `{section}-{element}-{type}`. Locators live **only as page-object
+  class fields** — never inside methods or specs. Overrides: `.agents/role-overrides.md`.
 - **Test steps wrapped in `with allure.step("Step N — …"):`** so they reach reports.
 - **`.env.test` beats shell env vars** (`config.py` orders dotenv first). Edit the file,
   don't export.

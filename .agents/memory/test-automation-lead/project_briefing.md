@@ -51,6 +51,12 @@ type: project
   contradictory metadata → report, never guess.
 - **Back-write post-merge**: edit the case file in `onetest-ai-tm-Elitea` —
   `execution_type: automated`, `status: ready`, `automation_test_id: <dotted pytest path>`.
+- **HARD OVERRIDES: `.agents/role-overrides.md` § Orchestrator slot** — dispatch-prompt
+  contract (every implementer/reviewer dispatch carries the testid-only policy line
+  verbatim; the workflow skill's example ladder does NOT apply on this project),
+  run `sync-base-branches` BEFORE the first case of a session (2026-07-14 audit:
+  0/11 sessions did), and closure-record promotability is a fact you VERIFY against
+  EliteaUI branches, never copy from the AFS (#35/#36/#37 shipped false rows).
 - **Closure record — the LAST comment on every automation issue, before you close it.**
   Template + rules: `.agents/workflow.md` § Work tracking → Closure record. A bare
   "✅ merged" is NOT a closure record — post the artifact index: test PR + sha, the

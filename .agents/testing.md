@@ -54,26 +54,44 @@ The `automation_test_id` back-written to the TMS case is the **dotted pytest pat
 e.g. `tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_toolkits_section_visible`.
 One case ↔ one test id; extensions append to the covering test's docstring/markers.
 
-## Locator strategy
+## Locator policy (AUTHORITATIVE — overrides any skill's example ladder)
+
+_This section is the "locator strategy" the `test-automation-workflow` skill
+defers to. **This project has no locator ladder — the ladder is one rung:
+`data-testid`.** The skill's `getByRole → testid → …` sequence is a generic
+example and does not apply here. See also `.agents/role-overrides.md`._
+
+**Why (team goal):** the team wants `data-testid` on every element new tests
+touch, and **measures UI-automation coverage via testid presence**. A
+role/label/CSS handle isn't just brittle — it is invisible to the coverage
+metric. Every raw handle silently shrinks measured coverage. (Ruled by the team
+in PR #23, "Enforce testid-only locators"; confirmed by the operator 2026-07-14.)
 
 - **Testid-only via `LocatorDescriptor`** (`automation/pages/locator_descriptor.py`):
-  `LocatorDescriptor(testid="agent-form-save-button")`. The `fallback` parameter is
-  **dead code** — `__get__` never calls it when testid is set. **Strictly never
-  populate it** (note: `.claude/rules/page-objects.md` was corrected on 2026-07-10 —
-  the old "testid + fallback" example is obsolete).
+  `LocatorDescriptor(testid="agent-form-save-button")`. Never populate `fallback=`
+  (dead code) or `locator=` (kept in the API for legacy only — forbidden in new
+  code per `.claude/rules/page-objects.md`).
 - **Locators live ONLY as page-object class fields** — `LocatorDescriptor` attributes
   declared at class level. Never construct a locator inside a method body
-  (`page.locator(…)`, `get_by_*` calls in methods) and never in spec files.
-- **Missing testid on the target?** Do NOT fall back to CSS/text. Add the testid to
-  EliteaUI via the `add-data-testid` skill (edits `../EliteaUI/src`, commits to
-  a `testids/<case>` branch merged into `automation/testids`, Vite HMR picks it up
-  live). Naming `{section}-{element}-{type}`,
+  (`page.locator(…)`, `get_by_*` calls in methods), never chain a raw selector off
+  an existing field (`self.x.locator(".css")`), and never in spec files. Scoped
+  sub-selectors: UPPER_CASE class constants containing `[data-testid="…"]` only.
+- **Missing testid on the target? That is work to do, not a reason to rung down.**
+  The escalation test is OR, not AND: missing testid *alone* ⇒ add it to EliteaUI
+  via the `add-data-testid` skill (dual-target flow: commit on `automation/testids`,
+  draft PR to `main`; Vite HMR picks it up live). Naming `{section}-{element}-{type}`,
   e.g. `agent-form-save-button` vs `pipeline-form-save-button` — verify uniqueness
   before adding.
-- **Stop+flag rule:** if a testid genuinely can't be placed (element outside
-  `EliteaUI/src`, third-party widget), surface to the lead — don't ship brittle CSS.
+- **Stop+flag rule:** ONLY if a testid genuinely can't be placed (element outside
+  `EliteaUI/src`, third-party widget like ReactFlow's `rf__wrapper`), surface to
+  the lead — don't ship brittle CSS.
+- **Existing raw handles in `automation/pages/` are tracked tech debt**
+  (issues #25/#42, ~350 call sites), not precedent. Never cite neighbors to
+  justify a new raw handle.
 - Authoritative rules: `.claude/rules/page-objects.md`, `.claude/rules/ui-tests.md`,
-  `.claude/rules/mui-patterns.md` (auto-applied).
+  `.claude/rules/mui-patterns.md` (auto-applied; team-owned — where mui-patterns
+  shows non-testid workarounds, prefer adding the testid; the workaround is only
+  for elements that fail the stop+flag test).
 
 ## Test data strategy
 
