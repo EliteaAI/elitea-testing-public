@@ -8,3 +8,4 @@
 - [Shared-caller enumeration gap](shared_caller_enumeration_gap.md)
 - [Interrupted dispatch recovery](interrupted_dispatch_recovery.md) — after an interrupted turn, check git/PR/branch state before re-dispatching — the subagent may have already completed and landed real work
 - [Mechanical grep gate coverage](mechanical_grep_gate_coverage.md) — a self-check grep alternation must cover every clause of the policy being enforced (lexical AND structural), not just the clause the task started from
+- [Bulk TMS intake technique](bulk_tms_intake_technique.md) — recursive git-trees pull, dedup-by-title-substring, contradiction clustering, python env-unset gotcha, and board Done read-back verification for large backlog-intake runs
