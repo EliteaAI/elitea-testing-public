@@ -222,8 +222,10 @@ not `completed`. Closing it hides a real cross-repo dependency. Leave it open wi
 closure record posted, and let the human close it when the testid PR lands.
 
 Worked example: [issue #19](https://github.com/EliteaAI/elitea-testing-public/issues/19)
-(ELITEA-1737) — test merged, testids still in draft PR EliteaUI#525, therefore not
-promotable. That is a correct, honest end state.
+(ELITEA-1737) — test merged, testids still in draft PRs EliteaUI#525/#526, therefore
+NOT promotable. (Note: #19 was subsequently closed by a human while the drafts were
+still open — the correction comment on the issue documents the deviation. The rule
+stands: agents leave such issues OPEN; only a human may close early.)
 
 ## Traps (cost someone an hour already)
 

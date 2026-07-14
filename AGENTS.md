@@ -31,7 +31,7 @@ automation/
     ├── api/             ← API tests
     └── unit/            ← framework unit tests
 .claude/rules/           ← auto-applied coding rules (page-objects, ui-tests, api-*, mui)
-.claude/skills/          ← 33 skills incl. start-ui-localhost, add-data-testid,
+.claude/skills/          ← project skills incl. start-ui-localhost, add-data-testid,
                            page-object-generator, test-automation pipeline skills,
                            and Elitea domain knowledge: elitea-platform (REST API
                            reference — load first), elitea-pipeline, elitea-toolkit,

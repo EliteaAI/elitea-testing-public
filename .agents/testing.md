@@ -24,7 +24,27 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
   `HEADLESS=true` for quiet runs. CI-on-deployed-envs uses the GHA workflows
   (`.github/workflows/test-ui-*.yml`) — not the local loop's concern.
 - **Local verification gate:** there is no CI on `automation/base`; a test must run
-  green locally against `http://localhost:5173` before its PR. That run IS the merge gate.
+  green locally against `http://localhost:5173` before its PR — that is the
+  *implementer's* gate. The *merge* gate is separate and stricter — see § Merge gate.
+
+## Merge gate (the section the workflow skill defers to — N and semantics)
+
+- **N = 3, and it means three SEPARATE consecutive pytest invocations of the SAME
+  spec** — not one invocation in which 3 different tests pass (the 30e159d9
+  anti-pattern). Three processes, same test node id(s), zero failures between them.
+- **Run by the LEAD, independently, strictly BEFORE `gh pr merge`.** Reviewer
+  `APPROVED` is necessary but not sufficient; the implementer's green run is not
+  the gate; running the gate after the merge is a violation even if it passes
+  (the baf8f3cf anti-pattern — self-caught, now codified).
+- **Sanctioned-RED exception (isolated known defect):** a spec whose failure is
+  (a) deterministic — identical failure 3/3, (b) single-cause, tied to an OPEN
+  defect issue linked in the test (soft-assert or `# Known defect: #N` comment
+  per the no-masking decision tree), may merge RED: 3/3 *identical* failures IS
+  its deterministic gate, and staying red in CI is the correct signal until the
+  product fix ships. Anything else red — flaky, multi-cause, no linked defect —
+  blocks. Record the exception explicitly in the closure record.
+- Gate runs use a clean process each time: `cd automation && HEADLESS=true
+  ../.venv/bin/pytest <node-id> -v -p no:cacheprovider` (×3).
 
 ## Structure
 
