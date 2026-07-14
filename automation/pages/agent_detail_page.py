@@ -905,6 +905,61 @@ class AgentDetailPage(AgentFormPage):
             counter_text = self.get_skills_counter_text(timeout=1000)
         return counter_text
 
+    def _add_skill_button_locator(self) -> Locator:
+        """Return a locator for the Skills section "+ Skill" button, disabled-state aware.
+
+        LOCATOR: Normally has accessible name "Skill" (BaseBtn, no
+        data-testid — see ``attach_skill()``). The instant 5/5 skills are
+        attached, MUI wraps the button in
+        `<span aria-label="Maximum number of skills reached">` — disabled
+        elements don't fire hover/focus for native tooltips, so MUI moves the
+        `aria-label` to the wrapper `<span>` rather than the inner
+        (disabled) `<button>` itself (ELITEA-1790 exploration). This method
+        resolves the *inner* button either way: via the aria-label wrapper
+        when present (disabled state), falling back to the accessible-name
+        lookup otherwise (enabled state).
+        """
+        disabled_wrapper_btn = self.page.locator(
+            '[aria-label="Maximum number of skills reached"] button'
+        )
+        if disabled_wrapper_btn.count() > 0:
+            return disabled_wrapper_btn.first
+        return self.page.get_by_role("button", name="Skill", exact=True)
+
+    def is_add_skill_button_disabled(self, timeout: int = 5000) -> bool:
+        """Return True if the Skills section "+ Skill" button is disabled.
+
+        The button becomes disabled the instant 5/5 skills are attached
+        (proactive disable — not merely an on-click rejection); see
+        ``get_add_skill_button_tooltip()`` for the accompanying message.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the button.
+        """
+        self.ensure_skills_section_visible(timeout=timeout)
+        btn = self._add_skill_button_locator()
+        btn.wait_for(state="visible", timeout=timeout)
+        return not btn.is_enabled()
+
+    def get_add_skill_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ Skill" button's tooltip wrapper aria-label text.
+
+        Only present once the 5-skill limit is reached (the wrapper doesn't
+        exist while the button is enabled). Returns None if not found within
+        the timeout.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        wrapper = self.page.locator(
+            '[aria-label="Maximum number of skills reached"]'
+        )
+        try:
+            wrapper.first.wait_for(state="visible", timeout=timeout)
+            return wrapper.first.get_attribute("aria-label")
+        except Exception:
+            return None
+
     def _skills_section_content(self):
         """Return a locator scoped to the Skills accordion's content container.
 

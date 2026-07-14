@@ -126,6 +126,54 @@ class BasePage:
         else:
             logger.debug("No banner overlay found to dismiss")
 
+    def capture_requests_matching(self, url_substring: str, method: str | None = None) -> list[dict]:
+        """Start capturing network requests whose URL contains *url_substring*.
+
+        Attaches ``page.on("request", ...)`` and ``page.on("response", ...)``
+        listeners and returns a list that is populated live (append-only) as
+        matching requests fire from this point forward — read it any time
+        after calling this to see every matching request captured so far,
+        including its response status once the response has arrived (status
+        is ``None`` until then; responses are matched to entries by URL).
+
+        Args:
+            url_substring: Substring to match against each request's URL
+                (e.g. ``"skill/prompt_lib"``).
+            method: Optional HTTP method filter (e.g. ``"PATCH"``). When
+                omitted, all methods are captured.
+
+        Returns:
+            A list of ``{"method": str, "url": str, "status": int | None}``
+            dicts, appended to live as matching requests occur, with
+            ``status`` filled in once the matching response arrives.
+        """
+        captured: list[dict] = []
+
+        def _on_request(request):
+            if url_substring not in request.url:
+                return
+            if method is not None and request.method.upper() != method.upper():
+                return
+            captured.append({"method": request.method, "url": request.url, "status": None})
+
+        def _on_response(response):
+            if url_substring not in response.url:
+                return
+            if method is not None and response.request.method.upper() != method.upper():
+                return
+            # Match to the most recent same-URL entry still awaiting a status.
+            for entry in reversed(captured):
+                if entry["url"] == response.url and entry["status"] is None:
+                    entry["status"] = response.status
+                    break
+
+        self.page.on("request", _on_request)
+        self.page.on("response", _on_response)
+        logger.debug(
+            "Started capturing requests matching %r (method=%s)", url_substring, method
+        )
+        return captured
+
     def get_clipboard_text(self) -> str:
         """Read text from the system clipboard.
 
