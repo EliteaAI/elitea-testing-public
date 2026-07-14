@@ -7,12 +7,19 @@
 - **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids` branch → DEV backend, project `Private` / `${ELITEA_PROJECT_ID}`=399), model: Anthropic Claude 4.5 Sonnet
 - **User set**: `${TEST_USER}` (on localhost, `auth_state` fixture skips login via `VITE_DEV_TOKEN`)
 - **Analyst**: qa-engineer (Sage), analyst slot
-- **Status**: defect-found — see Known Defects. Skill creation, attachment, and
-  explicit `~mention` invocation (steps 1–3, 5–6) are ready-for-automation; step 4
+- **Status**: ready-for-automation (Phase 3 handles-only rework, 2026-07-14 —
+  see Handles Reference rework note). Coverage, steps, and defect handling are
+  unchanged from the prior pass: skill creation, attachment, and explicit
+  `~mention` invocation (steps 1–3, 5–6) are ready-for-automation outright; step 4
   (plain-message non-invocation) has a confirmed intermittent product defect
-  (github.com/EliteaAI/elitea-testing-public/issues/38). Recommend automating with
+  (github.com/EliteaAI/elitea-testing-public/issues/38) and should automate with
   `expect.soft()` around the step-4 assertion per project's isolated-defect policy
-  (`.agents/profile.md` § Bug filing), ticket linked, rest of the flow hard-asserted.
+  (`.agents/profile.md` § Bug filing), ticket linked, rest of the flow
+  hard-asserted. What changed in this pass: every Handles Reference row is now
+  testid-only with a live-verified provenance column — the prior pass's
+  role/text/xpath handles (shipped in PR #39 off a since-retracted "no testid
+  needed" amendment) are replaced with either a confirmed on-main testid or an
+  explicit `testid needed:` work order for the implementer.
 
 ## Preconditions
 - User is logged in (on localhost, `auth_state` fixture skips login).
@@ -116,29 +123,49 @@ skills + 1 agent, all created and torn down within the test).
 
 ## Handles Reference
 
-| Element | testid / locator | Notes |
-|---|---|---|
-| Skill Name field | `skill-name-input` | kebab-case validation |
-| Skill Description field | `skill-description-input` | |
-| Skill Instructions editor | `skill-instructions-editor-content` | CodeMirror; use `press_sequentially` |
-| Skill Save button | `skill-save-button` | |
-| Nav-blocker confirm | `alert-dialog-confirm-button` | fires on every Save from create form |
-| Agent Name field | `agent-name-input` | |
-| Agent Description field | `agent-description-input` | |
-| Agent Instructions field | `agent-instructions-input` | |
-| Agent Save button | `agent-save-button` | |
-| Agent add-skill button | **none** — but has a stable accessible name: `getByRole('button', { name: 'Skill', exact: true })` (BaseBtn renders a plus icon + visible "Skill" text label) | **implementer-amendment (ELITEA-1735 Phase 2):** original analyst note said "role/position only, no accessible name" — re-verified against `SkillMenu.jsx` source and live DOM; the button's accessible name IS "Skill", stable and unambiguous (distinct from the Toolkits section's "+ Toolkit" button, name "Toolkit"). No `add-data-testid` request needed. |
-| Skill-attach popper item (add-skill flow, step 4-5) | Real MUI `MenuItem`, `role="menuitem"`, accessible name = skill name, `data-testid="toolkit-menu-item"` (generic/shared name, reused from the Toolkits popper) | Confirmed via `UnifiedDropdown.jsx` — `getByRole('menuitem', { name: 'elitea-1735-skill-uppercase' })` works as originally documented. |
-| Chat "~mention" popper item (step 7-8) | **implementer-amendment (ELITEA-1735 Phase 2):** the original row here claimed the same "ARIA `menuitem`" handle for this popper too — that is **incorrect for this popper**. `MentionSkillList.jsx` / `MentionToolItem.jsx` (the "Mention skill" header popper triggered by typing `~` in chat) renders items as plain `<Box>` divs with **no ARIA role and no `data-testid`** — an entirely different, unrelated component from the add-skill-to-agent popper above (which does use real `role="menuitem"`). Automated via text-based lookup scoped under the "Mention skill" header container: `page.get_by_text("Mention skill", exact=True).locator("xpath=ancestor::div[2]").get_by_text(skill_name, exact=True)`. | corrects the Handles Reference row that conflated the two distinct "Mention skill"-labeled poppers used in this case (add-skill-to-agent vs. chat `~mention`). |
-| Chat message input | `chat-message-input` | mention-aware; use `press_sequentially`, never `fill()`, when a `~mention` chip must be preserved |
-| Chat send button | `chat-send-button` | |
-| Clear-the-chat button | accessible name `clear the chat` (no testid) | |
-| Skill controls (overflow) menu | `skill-controls-menu-button` | opens VERSION/SKILL grouped menu |
-| Delete-skill menu item | `skill-delete-menu-item` | in the SKILL group |
-| Agent actions (overflow) menu | `agent-actions-menu-button` | opens VERSION/AGENT grouped menu |
-| Delete-agent menu item | `delete-agent-menuitem` | in the AGENT group |
-| Delete-confirmation name field | `delete-confirm-name-input` (scope to inner `#name` field) | shared component, used by both skill and agent delete flows |
-| Delete-confirmation confirm button | `getByRole('button', { name: 'Delete' })` scoped to the dialog | enabled only once the typed name matches |
+**Rework note (ELITEA-1735 Phase 3 — handles-only rework of PR #39):** PR #39
+shipped several non-testid handles (`get_by_role`, `get_by_text`,
+`get_by_label`, ancestor-xpath walks) on the strength of a since-retracted
+analyst amendment claiming "the accessible name is stable, no testid
+needed" for the add-skill button. Per `.agents/role-overrides.md` §
+Implementer slot, amending a testid request away is out of contract — a
+testid request is satisfied by a testid or escalated to the lead, never
+re-scoped down. That amendment is now void. Every row below was re-verified
+live (Playwright MCP, snapshot-first, browser discipline) on
+2026-07-14 against a freshly created Skill (id 382) + Agent (id 4742) in
+project `Private`/399 — both entities created, exercised, and deleted in
+this verification pass. `git fetch origin` was run in `../EliteaUI`
+immediately before every provenance check below; commands and their output
+are the provenance basis, not inference from source alone.
+
+| Element | Primary handle | Provenance | Notes |
+|---|---|---|---|
+| Skill Name field | `skill-name-input` | on-main ✓ (confirmed via live DOM, this run) | kebab-case validation |
+| Skill Description field | `skill-description-input` | on-main ✓ (confirmed via live DOM, this run) | |
+| Skill Instructions editor | `skill-instructions-editor-content` | on-main ✓ (confirmed via live DOM, this run) | CodeMirror; use `press_sequentially`, not `fill` |
+| Skill Save button | `skill-save-button` | on-main ✓ (confirmed via live DOM, this run) | |
+| Nav-blocker confirm | `alert-dialog-confirm-button` | on-main ✓ (confirmed via live DOM, this run) | fires on every Save from create form |
+| Agent Name field | `agent-name-input` | on-main ✓ (confirmed via live DOM, this run) | |
+| Agent Description field | `agent-description-input` | on-main ✓ (confirmed via live DOM, this run) | |
+| Agent Instructions field | `agent-instructions-input` | on-main ✓ (confirmed via live DOM, this run) | |
+| Agent Save button | `agent-save-button` | on-main ✓ (confirmed via live DOM, this run) | |
+| Agent add-skill button ("+ Skill", `SkillMenu.jsx`) | `testid needed: agent-add-skill-button` | needs-adding — `git grep -in "agent-add-skill" origin/main origin/automation/testids -- '*.jsx'` → no hits; no open UI-repo PR touches this element (`gh pr list --repo EliteaAI/EliteaUI --search skill` checked, 6 open, none add this testid) | Confirmed live: `BaseBtn` renders no `data-testid` and no `aria-label`; its accessible name resolves from visible text content "Skill" (`getByRole('button', {name:'Skill', exact:true})` DOES technically work — verified via `element.evaluate` on live DOM, `ariaLabel: null, textContent: "Skill"`). **That accessible-name stability is irrelevant to the policy**: per role-overrides.md this is implementer work, not a note — spec it as `testid needed`, never re-scoped to a role/name handle. |
+| Skills section container (`ApplicationSkills.jsx`, the `Box` wrapping header row + cards) | `testid needed: agent-skills-section` | needs-adding — no hits on main or automation/testids; source confirms (`ApplicationSkills.jsx`) the container `Box` carries only `sx` styling, no `data-testid` | Scope: exactly the container the case's test touches (header row + counter + cards), per role-overrides.md's no-blanket-add rule — do not testid the whole accordion, just this content Box. |
+| Skills counter text ("N/5 skills added.") | `testid needed: agent-skills-counter` | needs-adding — no hits on main or automation/testids | Live-confirmed the counter updates 0/5 → 1/5 on attach with no testid on the `Typography` node (`ApplicationSkills.jsx`). |
+| Attached skill card (`SkillCard.jsx`) | `testid needed: skill-card-{skill_id}` (dynamic; `skill.skill_id` is in scope in the component) | needs-adding — no hits on main or automation/testids | Live-confirmed: card renders name + `base` version with zero testid anywhere in `cardContainer`/`cardHeader`/action buttons; `skill_id` is available as a prop, so the dynamic id is a same-PR addition, not a follow-up. |
+| Skill-attach popper item (add-skill flow, step 4–5; shared `UnifiedDropdown.jsx`) | `[data-testid="toolkit-menu-item"]` scoped by accessible name (`getByRole('menuitem', {name: skill_name})` filtered to the testid) | on-main ✓ — `git grep -n "toolkit-menu-item" origin/main -- '*.jsx'` → 2 hits, `src/components/UnifiedDropdown.jsx:303,339`; also on `origin/automation/testids` (same 2 lines) | **Live-confirmed for the SKILL-attach flow specifically**, not just toolkits: attached a real skill end-to-end this run — clicking the "+ Skill" button opens `UnifiedDropdown` and the resulting `menuitem` for the skill (`elitea-1735-rework-verify`) carries `data-testid="toolkit-menu-item"` (checked via live `element.evaluate` → `{testid: "toolkit-menu-item", role: "menuitem"}`). Name is generic/shared (reused from the Toolkits popper) but present on every `UnifiedDropdown` consumer including skills — implementer needs the additive `Popper.select_menuitem`-sibling helper called out in dispatch, not a modification to the existing method (other callers depend on it). |
+| Chat message input, real `<input>` node (`UserInput.jsx` `slotProps.htmlInput`) | `chat-message-input`, as a class-level `LocatorDescriptor` field | on-main ✓ — `git grep -n "chat-message-input" origin/main` → `src/ComponentsLib/Chat/UserInput.jsx:360` (plus an unrelated FSD constants-file reference, not a second DOM node) | Live-confirmed via `getByTestId('chat-message-input').evaluate(...)` → testid present. Implementer note: promote out of the inline `get_by_test_id(...)` call in the method body used by PR #39 into a class field — the testid itself was already correct, only its Python-side shape violated policy. |
+| Chat send button | `chat-send-button`, already a class field `chat_send_button` — reuse it | on-main ✓ — `git grep -n "chat-send-button" origin/main` → `src/[fsd]/features/chat/ui/chat-button/SendButton.jsx:76` | No new work; PR #39 re-constructed this handle inline instead of reusing the existing field — stop doing that, nothing to add. |
+| Last chat response text (`ApplicationAnswer.jsx`) | `skill-test-last-response`, as a class-level `LocatorDescriptor` field | on-main ✓ — `git grep -n "skill-test-last-response" origin/main` → `src/[fsd]/features/chat/ui/chat-box/ApplicationAnswer.jsx:593` (conditional: `isLastMessage ? 'skill-test-last-response' : 'chat-answer-content'`) | Same shape fix as the chat input row: testid already correct and present on main, just needs to move from an inline call into a class field. |
+| Clear-the-chat button (shared `ClearChatButton.jsx`, 5 consumers incl. the agent detail page) | `testid needed: chat-clear-button` on the shared component | needs-adding — no hits on main or automation/testids | Confirmed ambiguity live and in source: `ClearChatButton.jsx` (`aria-label="clear the chat"`) and `RunHistoryContainer.jsx:77` (`aria-label="clear the chat"`, unrelated raw button) both carry the identical literal aria-label — PR #39's `get_by_label("clear the chat").first` is a footgun (works today by DOM order, not by contract). Adding the testid to the shared component is safe for all 5 consumers (additive, no behavior change). |
+| Mention popper container (`MentionSkillList.jsx`) | `testid needed: skill-mention-list` on the container `Box` | needs-adding — no hits on main or automation/testids | Live-confirmed: typed `~` in `chat-message-input`, popper appeared with header text "Mention skill"; container `Box` and the header `Typography` both carry no `role` and no `data-testid` (`element.evaluate` → `{testid: null, role: null}`). PR #39's ancestor-xpath walk (`get_by_text("Mention skill").locator("xpath=ancestor::div[2]")`) is exactly the fragile pattern this policy exists to kill. |
+| Mention popper item (`MentionToolItem.jsx`, shared with `InstructionsSlashSuggestionList.jsx` via `MentionToolList.jsx`) | `testid needed: skill-mention-item-{skill-name}` via an optional `testId` prop (only `MentionSkillList` passes it; `InstructionsSlashSuggestionList` leaves it undefined) | needs-adding — no hits on main or automation/testids | Live-confirmed: the rendered item (`elitea-1735-rework-verify` / description) is a plain `<Box onClick>` with no `role`, no `data-testid` (`element.evaluate` → `{testid: null, role: null, tag: "DIV"}`). Additive optional prop — the other `MentionToolItem` consumer is unaffected since it won't pass `testId`. |
+| Skill controls (overflow) menu | `skill-controls-menu-button` | on-main ✓ (confirmed via live DOM, this run — used to delete the verification skill) | opens VERSION/SKILL grouped menu |
+| Delete-skill menu item | `skill-delete-menu-item` | on-main ✓ (confirmed via live DOM, this run) | in the SKILL group |
+| Agent actions (overflow) menu | `agent-actions-menu-button` | on-main ✓ (confirmed via live DOM, this run — used to delete the verification agent) | opens VERSION/AGENT grouped menu |
+| Delete-agent menu item | `delete-agent-menuitem` | on-main ✓ (confirmed via live DOM, this run) | in the AGENT group |
+| Delete-confirmation name field | `delete-confirm-name-input` (scope to inner `#name` field) | on-main ✓ (confirmed via live DOM, this run) | shared component, used by both skill and agent delete flows |
+| Delete-confirmation confirm button | `testid needed: delete-confirm-button` — currently `getByRole('button', { name: 'Delete' })` scoped to the dialog | needs-adding (role/name handle in use today; no testid found on main or automation/testids for this specific button) | Out of this case's touch-scope per role-overrides.md's no-blanket-add rule (the case doesn't assert *this* button as its own observable, cleanup only uses it) — flagged here for completeness, not filed as a blocking request for ELITEA-1735; the implementer may fold it into the same `add-data-testid` batch as the other cleanup-flow testids if convenient, but it does not block `ready-for-automation` for this case. |
 
 ## Expected Results
 - Skills 1 and 2 are created and saved successfully with distinct IDs.
