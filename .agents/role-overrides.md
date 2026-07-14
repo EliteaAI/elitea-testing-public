@@ -78,3 +78,7 @@ metric*. Every raw handle silently shrinks measured coverage.
   false "fully promotable" rows exactly that way.
 - Run `sync-base-branches` before dispatching the first case of a session, not
   after the batch.
+- **Never dispatch `ui-test-orchestrator` or `failure-investigator`.** They are
+  installed for the HUMAN team's direct use only — their flows bypass the pipeline's
+  gates (AFS, fresh-session review, merge gate, closure record). Every stage they
+  cover has a canonical owner in your pipeline.
