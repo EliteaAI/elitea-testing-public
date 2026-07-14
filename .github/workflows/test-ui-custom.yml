@@ -235,7 +235,7 @@ jobs:
           echo "Selected suites: $SELECTED"
 
           # Build JSON matrix with suite name and user index
-          # Use jq for reliable JSON generation
+          # Use jq for reliable JSON generation, compact output for GITHUB_OUTPUT
           JSON=$(echo "$SELECTED" | tr ',' '\n' | while read -r s; do
             s=$(echo "$s" | xargs)  # trim whitespace
             if [ -z "$s" ]; then continue; fi
@@ -244,12 +244,12 @@ jobs:
             IDX=$(echo "$ALL_SUITES" | tr ',' '\n' | grep -n "^${s}$" | cut -d: -f1)
 
             if [ -z "$IDX" ]; then
-              echo "::warning::Unknown suite '$s', using user index 1"
+              echo "::warning::Unknown suite '$s', using user index 1" >&2
               IDX=1
             fi
 
             echo "{\"suite\":\"$s\",\"user_idx\":\"$IDX\"}"
-          done | jq -s '.')
+          done | jq -sc '.')
 
           echo "Matrix JSON: $JSON"
           echo "matrix={\"include\":$JSON}" >> $GITHUB_OUTPUT
