@@ -37,6 +37,35 @@ metric*. Every raw handle silently shrinks measured coverage.
   neighbors is how the debt grew; never cite existing code to justify a new raw
   handle.
 
+## Every role — before filing a UI "doesn't work" bug: the interaction-discovery ladder
+
+A case text that under-specifies HOW a control activates is normal — never
+assume your first guess (e.g. live filtering) is the intended mode. Before
+declaring UI behavior broken, exhaust, in order:
+1. **Wait out a debounce** (~1.5s after typing) — some controls are just slow.
+2. **Press Enter** in the field.
+3. **Look for an adjacent activation control** — search/submit icon or button
+   (check `aria-label`s near the field in the DOM snapshot).
+4. **Blur the field** (Tab out) — some inputs commit on blur.
+5. **Compare with the nearest working analog** in the app (e.g. how does the
+   Agents list search behave?).
+6. **Read the source — this is the decisive step.** `../EliteaUI/src` is checked
+   out locally; the component's handlers state the INTENDED mode as fact:
+   `grep -rn "<placeholder or label text>" ../EliteaUI/src/` → open the
+   component → `onChange` handler filtering = live; `onKeyDown` + `Enter` /
+   an `onClick={onSearch}` button = explicit activation. (Worked example:
+   #44 — SearchBar.jsx activates on Enter/icon-click, not on typing.)
+
+Then, and only then:
+- **Intended mode (per code) fails** ⇒ CONFIRMED product `bug` — the report
+  MUST name the intended activation mode with the code pointer, so nobody
+  re-litigates it.
+- **An alternative mode works but the case text implied otherwise** ⇒ NOT a
+  product bug: file a case-text **clarification** issue (the #40 pattern) so
+  the TMS case gets fixed; optionally note a UX-discoverability concern as
+  its own observation. Filing it as `bug` creates false red and wastes a
+  repro cycle (#44 is the cautionary example).
+
 ## Analyst slot (qa-engineer)
 
 - The AFS **Handles Reference must list testids as the only primary handles.** An
