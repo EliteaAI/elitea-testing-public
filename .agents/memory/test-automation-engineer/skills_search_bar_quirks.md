@@ -50,6 +50,21 @@ timeout, since no request fires at all in that scenario. Wrap the clear's
 `expect_response` in a try/except and tolerate the no-fetch case — it's a
 legitimate state, not a bug.
 
+## Grid search matches on DESCRIPTION text too, not just NAME
+
+Discovered during the ELITEA-1739 analyst rerun (Known Defects Clarification
+#5): the grid-fetching endpoint (`GET .../elitea_core/skills/prompt_lib/
+{project_id}?...&query=<text>`) matches the query substring against BOTH the
+skill's name and its free-text description. A short/common substring like
+`ter` collided with unrelated skills purely via description text (e.g.
+`automated-test-explainer`'s description contains "interaction", and stray
+`elitea-1793-ghost-skill` fixtures matched via "after-remove"). **When
+picking a partial-search test term, verify it's clean against every OTHER
+skill's description in the target environment, not just its name** — a
+short/common trigram is a high-collision choice in any shared or long-lived
+test environment; prefer a distinctive, low-collision full word instead
+(e.g. `content` over `ter`).
+
 ## Settle wait after every grid-fetching response
 
 Same lag documented for `filter_by_tag()`/`clear_tag_filter()`: the
