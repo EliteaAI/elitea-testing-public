@@ -31,7 +31,7 @@ NAVIGATION_TIMEOUT = 15_000
 FORM_SAVE_TIMEOUT = 15_000
 SEARCH_TIMEOUT = 10_000
 
-SKILL_NAMES = ["formatter", "code-reviewer", "content-writer"]
+SKILL_NAMES = ["formatter", "content-reviewer", "content-writer"]
 SKILL_DESCRIPTION = "Test skill for ELITEA-1739 search-by-name verification."
 SKILL_INSTRUCTIONS = (
     "You are a test skill created for ELITEA-1739 search-by-name "
@@ -48,7 +48,11 @@ def three_search_skills(page, skill_api):
 
     Yields:
         list[str]: the 3 skill names in creation order — ``formatter``,
-        ``code-reviewer``, ``content-writer``.
+        ``content-reviewer``, ``content-writer``. ``content-reviewer`` is a
+        same-family rename of the original ``code-reviewer`` (AFS analyst
+        rerun, Known Defects Clarification #5) chosen so it shares the
+        ``content`` token with ``content-writer``, restoring a genuine
+        partial-match subset for Step 2.
     """
     created_ids = []
     list_page = SkillsListPage(page)
@@ -108,26 +112,21 @@ class TestSkillSearch:
                 )
 
         with allure.step(
-            "Step 2 — Search partial name 'Co' via Enter; verify the "
-            "sub-minimum-length query does not filter the grid "
-            "(live-contract correction — see AFS Known Defects "
-            "Clarification #4: EliteaUI enforces a 3-character minimum "
-            "search length; 'Co' is 2 characters and cannot activate "
-            "either activation mode)"
+            "Step 2 — Search partial name 'content' via Enter; verify the "
+            "grid narrows to exactly {content-writer, content-reviewer} "
+            "(AFS analyst rerun, Known Defects Clarification #5 — the "
+            "'content' term is 7 characters, well above the 3-character "
+            "minimum, and is verified clean against every skill's name "
+            "AND description, restoring the case's original partial-match "
+            "intent)"
         ):
-            grid_did_not_fetch = list_page.search_below_min_length(
-                "Co", timeout=3000
-            )
-            assert grid_did_not_fetch, (
-                "Expected the grid-fetching endpoint NOT to fire for a "
-                "sub-minimum-length ('Co', 2 chars) query — if this now "
-                "fails, EliteaUI's MIN_SEARCH_KEYWORD_LENGTH behavior "
-                "changed and the AFS/test need updating accordingly"
-            )
+            list_page.search("content", timeout=SEARCH_TIMEOUT)
             visible = {n.lower() for n in list_page.get_visible_skill_names()}
-            assert set(skill_names).issubset(visible), (
-                "Grid should remain unfiltered (all skills still visible) "
-                f"after a sub-minimum-length query, got: {visible}"
+            assert visible == {"content-writer", "content-reviewer"}, (
+                "Expected exactly {'content-writer', 'content-reviewer'} "
+                f"visible after searching 'content', got: {visible} — "
+                "'formatter' and the pre-existing 'automated-test-explainer' "
+                "must be excluded"
             )
 
         with allure.step(

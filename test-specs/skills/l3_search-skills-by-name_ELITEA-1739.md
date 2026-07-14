@@ -26,33 +26,60 @@
   lowercase letters, digits and hyphens only (no spaces), and cannot start or
   end with a hyphen." Confirmed live in this run (screenshot: typing
   `Formatter` into the Name field shows this exact validation message).
-- Skill 2 name: `code-reviewer` (kebab-case equivalent of case's "Code Reviewer").
-- Skill 3 name: `content-writer` (kebab-case equivalent of case's "Content Writer").
+- Skill 2 name: `content-reviewer` — **renamed from `code-reviewer`** (analyst
+  rerun, this amendment). See Known Defects — Clarification #5 for why:
+  the original kebab-case trio (`formatter`/`code-reviewer`/`content-writer`)
+  shares **no natural 3+-character substring at all** between any two names
+  (checked exhaustively — confirmed empty for every pair), so no partial
+  term could ever satisfy the case's core "type a partial name, see the
+  matching subset" intent without a rename. `content-reviewer` is a minimal,
+  same-family rename of `code-reviewer` (still "a reviewer skill", just
+  reviewing content instead of code) chosen specifically to share the
+  `content` token with `content-writer` — see the rationale in
+  Clarification #5 for why `formatter` was left untouched (it anchors
+  Step 3's exact-match assertion) and why the more obvious `ter` substring
+  (already shared naturally between `formatter`/`content-writer`) was
+  rejected.
+- Skill 3 name: `content-writer` (kebab-case equivalent of case's "Content
+  Writer") — **unchanged**.
 - Skill description (all 3): `"Test skill for ELITEA-1739 search-by-name
   verification."` (any non-empty string satisfies the required field; content
-  not asserted by this case).
+  not asserted by this case). **Important, discovered this amendment:** the
+  Skills grid search endpoint matches this description text too, not just
+  the name — see Clarification #5. This shared description string does
+  NOT itself contain `content` (or `format`/`formatter`), so it does not
+  contaminate either search term used in this AFS; keep it that way if the
+  description is ever changed.
 - Skill instructions (all 3): any non-empty string under the 2500-char limit,
   e.g. `"You are a test skill created for ELITEA-1739 search-by-name
   verification. Respond with FORMATTER."` (content not asserted by this case).
-- Partial search term: `Co` (case-preserved as written; matching is
-  case-insensitive live). **Implementer correction (Phase 2 exploration,
-  ELITEA-1739 automation pass):** this 2-character term cannot activate
-  EITHER activation mode — `EliteaUI/src/common/constants.js` sets
-  `MIN_SEARCH_KEYWORD_LENGTH = 3`, enforced inside `SearchBar.jsx`'s
-  `onSearch()` before dispatching a query (both Enter's `onKeyDown` and the
-  send-icon's `onClick` funnel through the same `onSearch()`). Confirmed
-  live: typing `Co` + Enter shows a "must be at least 3 letters" toast and
-  the grid is NOT re-fetched/filtered — this invalidates this AFS's
-  original Step 2 claim (added during the Clarification #2 rework) that
-  the grid narrows to `code-reviewer`/`content-writer` for this term. See
-  Known Defects — Clarification #4. The corrected, live-contract Step 2
-  now asserts the actual behavior (no filter, toast) rather than the
-  stale claim, per the reverse-masking guard.
-- Exact search term: `formatter` (kebab-case equivalent of case's "Formatter").
-- Non-existent search term: `Translator` (as written in the case).
+- Partial search term: `content` (7 characters — well above the 3-character
+  minimum). **Corrected this amendment (analyst rerun following the
+  implementer's Clarification #4 finding — see Known Defects Clarification
+  #5 for the full investigation):** matches `content-writer` and
+  `content-reviewer` (renamed above) by substring in the NAME; excludes
+  `formatter` (no `content` substring) and the pre-existing
+  `automated-test-explainer` (no `content` substring in name OR
+  description). Live-verified via network capture: grid response for
+  `query=content` returns `{"total": 2, "rows": [{"id":..,"name":
+  "content-writer"}, {"id":..,"name":"content-reviewer"}]}` — exactly the
+  2 expected cards, nothing else. This restores the case's original
+  partial-match intent (a genuine narrow-to-a-subset assertion), which
+  Clarification #4's correction had left unexercised.
+- Exact search term: `formatter` (kebab-case equivalent of case's
+  "Formatter") — **unchanged, and re-verified this amendment** to still
+  isolate exactly 1 card after the `code-reviewer` → `content-reviewer`
+  rename (network response: `{"total": 1, "rows": [{"name":
+  "formatter"}]}`) — confirming the rename does not regress Step 3.
+- Non-existent search term: `Translator` (as written in the case) — unchanged.
 - Pre-existing skill in the same project at exploration time: `automated-test-explainer`
   (id `15`) — present throughout, relevant because it unexpectedly appears in
-  partial-match results (see Known Defects).
+  partial-match results **for some terms** (see Known Defects — both
+  Clarification #3, the popover-only anomaly, and Clarification #5, the
+  newly-discovered grid-level description-matching behavior). The
+  corrected term `content` was chosen specifically because it does NOT
+  appear in this skill's name or description, so it is correctly excluded
+  in this AFS's Step 2.
 
 No `reuse-existing` or `generate-shared-with-cleanup` data applies — search
 verification only needs the 3 skills created fresh and torn down in the same
@@ -60,34 +87,39 @@ run.
 
 ## Test Steps
 1. Navigate to `${BASE_URL}/skills/create`, create 3 skills named `formatter`,
-   `code-reviewer`, `content-writer` (fill Name/Description/Instructions,
+   `content-reviewer`, `content-writer` (fill Name/Description/Instructions,
    Save, confirm the "unsaved changes" nav-blocker dialog for each — same
    flow as ELITEA-1737/1738). Navigate to `${BASE_URL}/skills/all`.
    - **Verify**: all 3 new skill cards plus the pre-existing
      `automated-test-explainer` (4 total) render in the grid. Confirmed live
-     (skill ids `126`, `127`, `128`).
+     this amendment (skill ids `438` `formatter`, `439` `content-reviewer`,
+     `440` `content-writer` — re-verified end-to-end in a fresh run; prior
+     AFS versions used ids `126`/`127`/`128` for the original
+     `code-reviewer` name, now superseded).
 2. Click into the page-header search box (`data-testid="agent-search-input"`
-   — see Concrete Handles for the naming quirk), type `Co`, then **press
-   Enter** (activation mode confirmed by source: `EliteaUI/src/components/SearchBar.jsx`
-   — `onChange` only updates local state, `onKeyDown` fires `onSearch()` on
-   Enter, and the send-icon button's `onClick={onSearch}` does the same;
-   `onChange` alone never triggers a fetch by design).
-   - **Verify (corrected — see Known Defects Clarification #4):** **Fails
-     to activate, and correctly so.** `Co` is only 2 characters;
-     `MIN_SEARCH_KEYWORD_LENGTH = 3` blocks `onSearch()` from dispatching
-     a query below that length — instead of filtering, the app shows a
-     "The search key word should be at least 3 letters long" toast, and
-     the grid remains unchanged (all 4 cards still visible). Confirmed
-     live via network capture: `GET .../elitea_core/skills/prompt_lib/399?...`
-     does **not** re-fire for this query, on either Enter or the send-icon
-     (both share `onSearch()`). The separate
-     `GET .../elitea_core/search_options/prompt_lib/399?query=Co&...`
-     quick-jump popover still fires on every keystroke regardless (no
-     minimum-length gate there) — see Note #3 for that popover's own
-     unrelated matching anomaly. The AFS's prior claim (from the
-     Clarification #2 rework) that the grid narrows to `code-reviewer`/
-     `content-writer` for this term was itself case-text drift — not
-     confirmed against the live minimum-length gate.
+   — see Concrete Handles for the naming quirk), type `content`, then
+   **press Enter** (activation mode confirmed by source:
+   `EliteaUI/src/components/SearchBar.jsx` — `onChange` only updates local
+   state, `onKeyDown` fires `onSearch()` on Enter, and the send-icon
+   button's `onClick={onSearch}` does the same; `onChange` alone never
+   triggers a fetch by design).
+   - **Verify (corrected this amendment — see Known Defects Clarification
+     #5):** **Passes, and exercises the case's actual partial-match
+     intent.** `content` (7 characters, above the 3-character minimum)
+     activates the grid fetch and narrows it to exactly 2 cards:
+     `content-writer` and `content-reviewer`; `formatter` and the
+     pre-existing `automated-test-explainer` are correctly excluded.
+     Confirmed live via network capture:
+     `GET .../elitea_core/skills/prompt_lib/399?...&query=content` →
+     `{"total": 2, "rows": [{"id":440,"name":"content-writer"},
+     {"id":439,"name":"content-reviewer"}]}`. Zero console errors during
+     this interaction. This step previously (Clarification #4) asserted a
+     no-op/toast edge case instead of a real partial-match narrowing,
+     because the case's literal term `Co` (2 characters) could never
+     activate the grid filter — see Clarification #4 for that history,
+     and Clarification #5 for why `Co`/`ter` were replaced with `content`
+     plus the `content-reviewer` rename rather than simply picking a
+     different 2-character-safe term.
 3. Clear the field (native select-all + type-over), type `formatter`
    (exact kebab-case name of Skill 1), then click the **send-icon button**
    next to the field (the second intended activation mode — see step 2).
@@ -109,7 +141,7 @@ run.
    re-fetch is triggered the same way as any other query, via Enter or the
    send-icon).
    - **Verify**: **Passes.** Grid is restored to all 4 cards
-     (`formatter`, `code-reviewer`, `content-writer`,
+     (`formatter`, `content-reviewer`, `content-writer`,
      `automated-test-explainer`) — placeholder text `Let's find something
      amazing!` returns, popover is empty.
 
@@ -126,16 +158,19 @@ component state; it never fetches. Once activated, the grid
 (`GET .../elitea_core/skills/prompt_lib/{project_id}?...&query=<text>`)
 correctly narrows/empties/restores exactly as the case describes.
 
-**Step 2's partial-search expectation does NOT hold as originally
-written** — the case's literal partial term (`Co`, 2 characters) is below
-EliteaUI's client-side minimum search length (3 characters) and cannot
-activate the grid filter via either mode; see Known Defects —
-Clarification #4. The corrected, live-contract expectation for Step 2 is:
-the grid remains unfiltered and a "must be at least 3 letters" toast
-appears. Automating a genuine ≥2-result partial-match scenario (matching
-the case's original intent) would require different skill names sharing a
-3+-character substring absent from the others — a test-data decision left
-to the analyst, not invented here (see Automation Hints).
+**Step 2's partial-search expectation, as originally written, could not
+hold live** — the case's literal partial term (`Co`, 2 characters) is
+below EliteaUI's client-side minimum search length (3 characters) and
+cannot activate the grid filter via either mode; see Known Defects —
+Clarification #4. **This amendment restores the case's original intent**
+by correcting the test data instead of the assertion: partial term
+`content` (7 characters, safely above the minimum) plus renaming Skill 2
+from `code-reviewer` to `content-reviewer` (see Known Defects —
+Clarification #5) now narrows the grid to exactly the expected 2-card
+subset (`content-writer`, `content-reviewer`), excluding `formatter` and
+`automated-test-explainer` — live-verified via network capture. This is
+the genuine partial-match narrowing the case describes, not an
+edge-case substitute.
 
 ## Coverage Map
 
@@ -143,9 +178,9 @@ to the analyst, not invented here (see Automation Hints).
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| Test Data: 3 skills named Formatter/Code Reviewer/Content Writer | names as literally specified | step 1 | step 1 (kebab-case substitutes used) | clarification *(case-text drift — see Known Defects #1; product's kebab-case-only name validation is intentional, already tracked, not a new bug)* |
+| Test Data: 3 skills named Formatter/Code Reviewer/Content Writer | names as literally specified | step 1 | step 1 (kebab-case substitutes used; Skill 2 further renamed `code-reviewer` → `content-reviewer`) | clarification *(case-text drift — see Known Defects #1 for the kebab-case substitution and #5 for the `content-reviewer` rename; product's kebab-case-only name validation is intentional and already tracked, not a new bug; the rename is a test-data fix, not a product-behavior clarification)* |
 | 1 Create 3 Skills, all visible in list | 3 skills created and visible | step 1 | step 1: 4 cards visible (3 new + 1 pre-existing) | asserted |
-| 2 Search by partial name "Co" → only Code Reviewer/Content Writer shown, Formatter excluded | list filters to 2 matching cards | step 2 | step 2: asserts the corrected, live-contract behavior — grid remains unfiltered (all skills still visible), no fetch fires | asserted, but expected-result corrected *(reverse-masking guard — see Known Defects Clarification #4: "Co" is 2 characters, below EliteaUI's 3-character minimum search length, so the case's literal 2-result-narrow claim cannot hold live; the implementer asserts the live behavior instead of the stale claim. A genuine ≥2-result partial-match test would need different skill names sharing a 3+-char substring — left to analyst rerun, not invented by the implementer)* |
+| 2 Search by partial name "Co" → only Code Reviewer/Content Writer shown, Formatter excluded | list filters to 2 matching cards | step 2 | step 2 (this amendment): grid narrows to exactly `content-writer` + `content-reviewer`, excluding `formatter` and `automated-test-explainer`, via corrected term `content` | asserted *(case's original intent now genuinely exercised — see Known Defects Clarification #5. Supersedes the prior amendment's Clarification #4 substitute, which had asserted an unfiltered-grid/toast edge case instead of a real partial-match narrowing because the case's literal term "Co" (2 chars) could never activate the grid filter)* |
 | 3 Search by exact name "Formatter" → only Formatter shown | list filters to 1 card | step 3 | step 3: grid narrows to 1 card (`formatter`) after **send-icon click** | asserted *(same activation-mode caveat as step 2)* |
 | 4 Search by non-existent name → empty state | list shows 0 cards | step 4 | step 4: grid shows 0 cards after **Enter** | asserted *(same activation-mode caveat as step 2)* |
 | 5 Clear search → all 3 (4) Skills listed again | list restored | step 5 | step 5: grid restored to 4 cards after clearing + **Enter** | asserted *(same activation-mode caveat — clearing alone only resets local state, per SearchBar.jsx `onChange`)* |
@@ -159,13 +194,33 @@ to the analyst, not invented here (see Automation Hints).
   send-icon click) — *added: this is source-confirmed activation-mode
   evidence (`EliteaUI/src/components/SearchBar.jsx`), useful context for the
   implementer, not itself a case requirement.*
-- the popover's own result set for query `Co` includes
+- the popover's own result set for the (now-superseded) query `Co` included
   `automated-test-explainer` (no literal "co" substring in its name) while
-  correctly including `code-reviewer`/`content-writer` — *added: a real,
-  narrower anomaly in the popover's own matching logic, filed separately as
+  correctly including the pre-rename `code-reviewer`/`content-writer` —
+  *added: a real, narrower anomaly in the popover's own matching logic,
+  filed separately as
   [GitHub issue #207](https://github.com/EliteaAI/elitea-testing-public/issues/207)
   since it's independent of this case's core (grid) assertions and not
-  blocking; out of scope for this AFS's automation.*
+  blocking; out of scope for this AFS's automation. This is a distinct
+  finding from Clarification #5's grid-level description-matching
+  discovery below — the popover anomaly matches with NO substring at all,
+  while the grid's `content`/`ter` behavior matches via the DESCRIPTION
+  field, which is a real (if different) mechanism, not a bug.*
+- **(this amendment) the Skills grid search endpoint matches on
+  DESCRIPTION text, not just NAME** — discovered while investigating why
+  the naturally-shared `ter` substring (between `formatter` and
+  `content-writer`) unexpectedly also matched `automated-test-explainer`
+  (via "interac**ter**action"... i.e. "in**ter**action" in its
+  description) and stray `elitea-1793-ghost-skill` fixtures (via "af**ter**"
+  in their description). This is a genuine, previously-undocumented
+  product search behavior — *added: not itself filed as a defect (broader
+  full-text search across name+description is plausibly intentional
+  product behavior, not obviously wrong), but it directly shaped this
+  amendment's test-data choice: the corrected term `content` and the
+  `content-reviewer` rename were verified clean against BOTH name and
+  description fields of every skill present in the live exploration
+  environment, not just name. See Clarification #5 for the full
+  investigation trail.*
 - step 2 asserts no console errors from the app itself during normal typing,
   and separately documents one transient CORS/redirect error on a single
   debounced `search_options` request (302 → `dev.elitea.ai` auth-oidc-login,
@@ -177,9 +232,14 @@ to the analyst, not invented here (see Automation Hints).
 ## Cleanup
 1. Delete each of the 3 test skills via the overflow menu → "Delete skill" →
    type the skill name to confirm → click Delete (same flow as
-   ELITEA-1737/1738). Verified in this run: all 3 (`formatter` id `126`,
-   `code-reviewer` id `127`, `content-writer` id `128`) deleted cleanly;
-   grid returned to just the pre-existing `automated-test-explainer`.
+   ELITEA-1737/1738). Verified in the original exploration: all 3
+   (`formatter` id `126`, `code-reviewer` id `127`, `content-writer` id
+   `128`) deleted cleanly; grid returned to just the pre-existing
+   `automated-test-explainer`. **Re-verified this amendment** with the
+   corrected fixture set (`formatter` id `438`, `content-reviewer` id
+   `439` — renamed live from `code-reviewer` mid-run, then deleted under
+   its new name, `content-writer` id `440`) — same clean deletion flow,
+   same restored end state.
 2. For automated cleanup, use the existing `skill_api` fixture
    (`SkillAPI.delete_skill(skill_id)`, `automation/api/client.py:1182`) in
    test teardown for all 3 created skill IDs, mirroring the pattern in
@@ -228,7 +288,7 @@ alternative if `fill("")` proves flaky in CI.
 - `GET /elitea_core/search_options/prompt_lib/{project_id}?query=<text>&sort=id&order=desc&entities[]=tag&entities[]=skill&tag_limit=20&tag_offset=0&col_limit=20&col_offset=0`
   — fires on every keystroke (debounced), populates the Tags/Skills
   suggestions popover only, independent of the grid endpoint above.
-  Response body for `query=Co`:
+  Response body for the now-superseded `query=Co`:
   `{"skill": {"total": 3, "rows": [{"id":128,"name":"content-writer"},
   {"id":127,"name":"code-reviewer"},{"id":15,"name":"automated-test-explainer"}]}}`
   — note `automated-test-explainer` appears here despite not containing
@@ -239,6 +299,25 @@ alternative if `fill("")` proves flaky in CI.
   with a browser CORS error (`net::ERR_FAILED`); the very next debounced
   call with the same query returned `200` normally. Transient, self-healed,
   not reproduced a second time in this run — documented, not filed.
+- **(this amendment) the grid-fetching endpoint itself matches on
+  DESCRIPTION text, not just NAME.** Response body for `query=ter`
+  (investigated, then rejected as the Step 2 term — see Clarification #5):
+  `{"total": 5, "rows": [{"id":440,"name":"content-writer"},
+  {"id":438,"name":"formatter"},{"id":288,"name":"elitea-1793-ghost-skill"},
+  {"id":286,"name":"elitea-1793-ghost-skill"},
+  {"id":15,"name":"automated-test-explainer"}]}` — `elitea-1793-ghost-skill`
+  and `automated-test-explainer` both matched via their DESCRIPTION text
+  ("ghost-skill-af**ter**-remove verification" and "step-by-step
+  breakdown with in**ter**action layer", respectively), not their names.
+  Response body for the corrected `query=content` (Step 2's final term):
+  `{"total": 2, "rows": [{"id":440,"name":"content-writer"},
+  {"id":439,"name":"content-reviewer"}]}` — clean, exactly the 2 expected
+  skills, verified against both name and description of every skill
+  present in the live exploration environment.
+- Response body for the unchanged exact-match term `query=formatter`
+  (Step 3), re-verified after the `code-reviewer` → `content-reviewer`
+  rename: `{"total": 1, "rows": [{"id":438,"name":"formatter"}]}` —
+  confirms the rename does not regress Step 3's single-card assertion.
 
 ## Known Defects Found During Exploration
 
@@ -249,9 +328,10 @@ alternative if `fill("")` proves flaky in CI.
    for ELITEA-1737/1738 — see
    `.agents/memory/qa-engineer/skill_form_and_export_import_quirks.md`)
    rejects them. This AFS substitutes kebab-case equivalents
-   (`formatter`, `code-reviewer`, `content-writer`) that preserve the case's
-   search-matching intent. Not re-filed as a new issue — same underlying,
-   already-documented product behavior.
+   (`formatter`, `content-writer`, and originally `code-reviewer` — see
+   Clarification #5 for its subsequent rename to `content-reviewer`) that
+   preserve the case's search-matching intent. Not re-filed as a new
+   issue — same underlying, already-documented product behavior.
 
 2. **Case-text drift (CLARIFICATION, not a new bug) — search activation mode
    omitted from case steps.** A first analyst pass assumed the Skills-list
@@ -310,21 +390,65 @@ alternative if `fill("")` proves flaky in CI.
    analyst pass could re-scope Step 2 with different skill names sharing a
    3+ character substring (none of `formatter`/`code-reviewer`/
    `content-writer` share one — checked exhaustively) to restore that
-   original intent; left as a recommendation, not implemented here (see
-   Automation Hints).
+   original intent; left as a recommendation, not implemented here — this
+   recommendation is what triggered the analyst rerun documented in
+   Clarification #5.
+
+5. **Test-data fix (analyst rerun, this amendment) — restores Step 2's
+   original partial-match intent, closing the gap left by Clarification
+   #4.** Following Clarification #4's recommendation, this amendment
+   re-scoped Step 2's test data instead of its assertion. First
+   investigated the exhaustively-checked claim from Clarification #4:
+   confirmed computationally that no pair among `formatter`/
+   `code-reviewer`/`content-writer` shares any 3+-character substring at
+   all (checked all pairwise 3-grams — empty in every case), so **some**
+   change to the test data was unavoidable to get a genuine ≥2-result
+   partial-match scenario. The one *natural* candidate once a name is
+   allowed to change — reusing the un-renamed pair `formatter`/
+   `content-writer`, which DO share `ter` (from "forma**tter**" and
+   "wri**ter**") — was tried first and **rejected**: live network capture
+   (`GET .../skills/prompt_lib/399?query=ter`) showed the grid search
+   endpoint matches on **description text, not just name**, and both the
+   pre-existing `automated-test-explainer` (description contains
+   "in**ter**action") and stray same-environment `elitea-1793-ghost-skill`
+   fixtures (description contains "af**ter**-remove") leaked into the
+   `ter` result set — contaminating the "excludes automated-test-explainer"
+   requirement and demonstrating `ter` is a poor, high-collision choice
+   generally (a very common English trigram). This description-matching
+   behavior is itself a new, previously-undocumented finding — see Network
+   Behavior for the raw response — but is not filed as a defect since
+   full-text search across name+description is plausibly intentional, not
+   obviously wrong.
+   Given that constraint, and that `formatter` needed to stay untouched
+   (Step 3's exact-match assertion depends on it being the only skill
+   whose name contains "formatter" — renaming `content-writer` to
+   something formatter-family, e.g. `content-formatter`, was considered
+   and rejected because it would make Step 3's exact search for
+   `formatter` match 2 cards instead of 1, regressing an already-passing,
+   untouched step), the minimal remaining option was renaming Skill 2:
+   `code-reviewer` → `content-reviewer`. This shares the `content` token
+   (7 characters) with `content-writer` as a distinctive, low-collision
+   term (verified clean against every skill's name AND description in the
+   live exploration environment, unlike `ter`) while keeping `code-reviewer`
+   recognizably in the same family (still "a reviewer skill", now
+   reviewing content instead of code — a natural adjacent skill name, not
+   an arbitrary token). Live-verified end-to-end after the rename:
+   Step 2's corrected term `content` narrows the grid to exactly
+   `content-writer` + `content-reviewer` (network: `{"total": 2, ...}`),
+   and Step 3's unchanged term `formatter` still isolates exactly 1 card
+   (network: `{"total": 1, ...}`), confirming no regression. Not filed as
+   a GitHub issue — this is purely a test-data correction, not a product
+   defect or case-text drift.
 
 ## Blocked Steps
-None outright, but see Known Defects — Clarification #4: Step 2 as
-literally written (partial term `Co`) cannot exercise the case's original
-"partial search narrows to a subset" intent against the live product's
-3-character search minimum — the implementer instead asserts the
-corrected, live-contract behavior for that step. Steps 1, 3, 4, 5 were
-executed end-to-end live and their expected results are achievable against
-the current product, once the intended activation mode (Enter / send-icon
-click) is used after typing — see Known Defects — Clarification #2. This
-AFS remains `ready-for-automation` for steps 1/3/4/5; Step 2's original
-intent is a candidate for analyst rerun with different test data (not a
-blocker for shipping the rest of this case).
+None. Step 2's partial-match scenario, left unexercised after Clarification
+#4's edge-case substitution, is now restored via the Clarification #5
+test-data fix (rename + corrected term) and live-verified end-to-end.
+Steps 1, 3, 4, 5 remain executed end-to-end live and their expected
+results are achievable against the current product, once the intended
+activation mode (Enter / send-icon click) is used after typing — see
+Known Defects — Clarification #2. This AFS is `ready-for-automation` for
+all 5 steps.
 
 ## Automation Hints
 - Framework: Playwright + pytest, per `.agents/testing.md`. Likely home:
@@ -357,22 +481,35 @@ blocker for shipping the rest of this case).
     empty (sub-minimum-length) string and only produces the "at least 3
     letters" toast for no benefit (see Clarification #4) — this
     superseded the AFS's original recommendation to also press Enter.
-  - A new `search_below_min_length(query)` method is needed for Step 2's
-    corrected assertion (Clarification #4) — types the query and presses
-    Enter, but expects NO grid re-fetch (returns whether the grid
-    correctly stayed silent), rather than asserting a fetch that cannot
-    happen for a sub-3-character query.
+  - **(this amendment) `search_below_min_length(query)` is no longer
+    needed for Step 2** — the corrected term `content` (7 characters) is a
+    normal, above-minimum query, so Step 2 now uses the same `search()`
+    method as every other step. This method remains a candidate for a
+    *separate*, dedicated edge-case test of the 3-character minimum
+    (`MIN_SEARCH_KEYWORD_LENGTH`) if the team wants explicit coverage of
+    that boundary — see the retired scenario preserved in Known Defects
+    Clarification #4 — but it is not part of this case's automated flow
+    any more.
   - Consider whether `skill_exists_in_list()` needs a companion
     `visible_skill_count()` / `get_visible_skill_names()` to assert the
     **exact** filtered set (not just presence/absence of one name), since
     this case's core assertions are about the whole visible set (e.g. "only
-    Code Reviewer and Content Writer, Formatter is not shown") — reusing
+    Content Reviewer and Content Writer, Formatter is not shown") — reusing
     `agent_exists_in_list`'s loose `text="{name}"` locator (as
     `AgentsListPage` currently does) would silently pass even if a future
     regression only broke the grid while leaving the (separate) suggestions
     popover working, since it matches text anywhere on the page. The Skills
     equivalent must scope strictly to `entity-card-name` cards in the grid
     to be a meaningful regression guard.
+  - **(this amendment) exact-set assertions must account for the grid's
+    description-matching behavior** (Clarification #5) — a naive
+    `get_visible_skill_names() == {expected}` assertion is only safe if the
+    chosen search term is verified clean against every OTHER skill's
+    description in the target environment, not just its name. Prefer
+    distinctive, low-collision terms (e.g. `content`, a full recognizable
+    word) over short/common substrings (e.g. `ter`) precisely because the
+    latter are far more likely to collide with unrelated skills' free-text
+    descriptions in a shared or long-lived test environment.
 - Existing `skill_api` fixture pattern (`SkillAPI` in
   `automation/api/client.py`) should create/delete the 3 test skills in
   setup/teardown, following `test_skill_export_import.py`'s pattern —
