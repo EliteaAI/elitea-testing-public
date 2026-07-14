@@ -80,6 +80,17 @@ Then, and only then:
   its own observation. Filing it as `bug` creates false red and wastes a
   repro cycle (#44 is the cautionary example).
 
+## Every role — live-UI browser discipline (Playwright MCP)
+
+- **Snapshot first, act second** — element refs go stale after EVERY action;
+  re-snapshot before each interaction. Big page: save snapshot to a file, Grep it.
+- **Simplest dedicated tool** (`browser_click`/`browser_type`/`browser_wait_for`).
+  On "ref not found" / "not an input" / timeout: re-snapshot and retarget — never
+  escalate to `browser_evaluate`/`run_code`, EXCEPT the documented overlay quirks
+  (qa-engineer memory: e.g. Support Assistant launcher needs a JS-evaluate click).
+- **Browser-driving Bash commands: timeout=600000 (10 min)** — the 120s default
+  false-fails on Keycloak + SPA navigation + WebSocket AI waits (2–30s).
+
 ## Analyst slot (qa-engineer)
 
 - The AFS **Handles Reference must list testids as the only primary handles.** An
