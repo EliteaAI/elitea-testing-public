@@ -376,3 +376,29 @@ test-automation-workflow) contradicts ambient briefing memory (testid-only), the
 skill wins — even when the briefing contains an explicit, on-point checklist
 instruction. Remediation must therefore land in the skill/rules layer, not in
 more memory writes.
+
+## Addendum 2 — remediation + fresh-eyes verification (same day)
+
+Remediation constraint set by the operator: bundle agents/skills untouchable
+(upstream-owned), project skills/rules team-owned (flag only), scout owns
+`.agents/*` + CLAUDE.md/AGENTS.md. Policy ruling: testid-only (team PR #23 +
+operator confirmation); ui-test-orchestrator + failure-investigator archived.
+
+Applied (commits daed064, 124fe68, 744b8fe): role-overrides.md created (the
+bundle's hook-injected override channel); testing.md § Locator policy +
+§ Merge gate (N=3 = three separate invocations, lead-run, pre-merge;
+sanctioned-RED isolated-defect exception); workflow.md dispatch-prompt contract
++ verified-promotability rule + worktree procedure; profile.md Done-rule;
+briefings ×4; conventions/architecture/AGENTS/CLAUDE aligned; stranded memory
+commit e003d8d cherry-picked back (31 files incl. the lead's gate lessons and
+the ELITEA-1739 AFS); team handoff filed as #55; closure-record corrections
+posted on #26-#28, #30-#37; deviation note on #19 (state left to the human).
+
+A 3-agent fresh-eyes verification of the rewrite found and fixed: inverted
+testid-flow descriptions in conventions.md/architecture.md, the missing
+§ Merge gate, a too-narrow reviewer grep, a stale skill count, and the stranded
+memory. Its claim that role-overrides.md never reaches subagents was REFUTED by
+direct transcript evidence: the full payload arrives as an un-stubbed attachment
+record (43-44KB) in both mains and subagents; the "Output too large" stub is the
+hook's log record only. Residue (team option, not a bug): ~11k tokens of shared
+docs injected per dispatch — trimmable via the SDLC_SHARED_DOCS tunable.
