@@ -80,6 +80,25 @@ Then, and only then:
   its own observation. Filing it as `bug` creates false red and wastes a
   repro cycle (#44 is the cautionary example).
 
+## Every role — screenshot evidence ATTACHES, never local paths
+
+A screenshot referenced by a machine path (`.playwright-mcp/…`,
+`automation/screenshots/…`) is evidence only you can see — useless on the
+tracker (the #51 anti-pattern). When an issue/comment cites a screenshot,
+UPLOAD it and embed it inline:
+
+```bash
+env -u GITHUB_TOKEN gh release upload evidence <file.png> --clobber --repo EliteaAI/elitea-testing-public
+# then embed in the issue body/comment:
+# ![what it shows](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/<file.png>)
+```
+
+The `evidence` prerelease is the attachment store (create once with
+`gh release create evidence --prerelease --title "Evidence store" …` if
+missing). Name files `<CASE-ID>-<step>-<what>.png` — the store is flat, names
+are the only namespace. Local paths may ACCOMPANY the embed (for on-machine
+lookup), never replace it.
+
 ## Every role — live-UI browser discipline (Playwright MCP)
 
 - **Snapshot first, act second** — element refs go stale after EVERY action;
