@@ -9,7 +9,11 @@
 - **Host:** Claude Code (`.claude/agents/`).
 - **Dispatch:** host-native subagents via the built-in `Agent` tool.
 - **Installed personas:** 4 — see the roster below. (Legacy standalone agents
-  `ui-test-orchestrator.md` and `failure-investigator.md` are also installed;
+  `ui-test-orchestrator.md` and `failure-investigator.md` were ARCHIVED to
+  `.claude/archive/agents/` on 2026-07-14 (operator-approved): the orchestrator was a
+  competing pre-pipeline flow bypassing the AFS/review/closure gates. Load-bearing
+  skills they referenced (`add-data-testid`, `page-object-generator`,
+  `start-ui-localhost`) remain active;
   they are NOT part of the pipeline roster — mine them for context only.)
 
 ## Team roster

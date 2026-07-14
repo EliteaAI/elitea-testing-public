@@ -50,8 +50,10 @@ backwrite_on_done:
   # Post-merge, orchestrator's job — edit the case file in cases_repo:
   execution_type: automated
   status: ready
-  automation_test_id: dotted pytest path, e.g.
+  automation_test_id: dotted pytest path — DOTTED, not the file-path node-id form, e.g.
     tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_toolkits_section_visible
+    # (2026-07-14 audit: 4 of 11 back-writes used node-id paths — wrong; fix on sight)
+  automation_pr: URL of the merged automation/base PR (observed practice, now policy)
 
 reporting:
   # No pytest-wired TMS reporter exists and none should be added silently.

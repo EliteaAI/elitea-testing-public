@@ -46,9 +46,14 @@ type: project
   `start-ui-localhost` skill. That branch carries every testid the team ever created —
   merged to EliteaUI `main` *and* still sitting in an open draft PR — so deployed envs
   always lag it. **Never validate handles against dev/next.**
-- **Handles are testids only.** If an element lacks one, that's a finding for the AFS
-  ("testid needed: `{section}-{element}-{type}`") — the implementer adds it via
-  `add-data-testid`. Never spec CSS/text selectors.
+- **Handles are testids only — HARD OVERRIDE, `.agents/role-overrides.md`.** If an
+  element lacks one, the AFS row is `testid needed: {section}-{element}-{type}` — the
+  implementer adds it via `add-data-testid`. Never spec CSS/text/role selectors as
+  primary handles, never soften a missing testid into a MINOR defect (issue #46
+  anti-pattern), and as reviewer: any ADDED non-testid handle in pages/tests is
+  `CHANGES_REQUESTED` — **neighborhood consistency is not a waiver** (the PR #41
+  "convention drift consistent with its neighbors" waiver is exactly how 40 raw
+  selectors merged in one day). Mechanical diff grep per role-overrides.md.
 - **Auth quirks:** localhost skips login entirely (`auth_state` + `VITE_DEV_TOKEN`);
   Keycloak field on deployed envs is `input[name="username"]`, not email. AI responses
   arrive over WebSocket ~2s late — evidence needs waits.

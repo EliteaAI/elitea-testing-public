@@ -61,24 +61,26 @@ case's unmerged testid into your review PR. Cutting from `main` is what keeps th
 UI team's PR to a clean single-case diff.
 
 ```bash
-cd ../EliteaUI
+cd ../EliteaUI                            # dev server is live on automation/testids
 git fetch origin
 
-# 1. cut the per-case branch from FRESH main
-git checkout -b testids/EL-1737-skills-import origin/main
-#    …edit JSX under src/ ONLY… then commit
+# 1. edit JSX under src/ ONLY, commit ON automation/testids (HMR shows it instantly),
+#    then push the integration branch (plain FF — NEVER --force)
+git add src/ && git commit -m "test: [EL-1737] add data-testid for …"
+git merge origin/main && git push origin automation/testids
 
-# 2. land it on the integration branch IMMEDIATELY (no review, no waiting)
-git checkout automation/testids
-git merge origin/main                       # keep integration branch current
-git merge --no-ff testids/EL-1737-skills-import
-git push origin automation/testids          # plain FF push — NEVER --force
+# 2. build the review branch in a WORKTREE — never `git checkout origin/main` in the
+#    main tree: that strips every pending testid out from under the running dev server
+git worktree add -b testids/EL-1737-skills-import ../.testid-pr origin/main
+git -C ../.testid-pr cherry-pick <this case's testid commits>
+git -C ../.testid-pr push -u origin testids/EL-1737-skills-import
 
-# 3. push the case branch and open a DRAFT PR to main for the UI team
-git push -u origin testids/EL-1737-skills-import
+# 3. open the DRAFT PR to main for the UI team, then clean up
 gh pr create --repo EliteaAI/EliteaUI --base main --draft \
   --head testids/EL-1737-skills-import --title "test(EL-1737): add data-testids for …"
+git worktree remove ../.testid-pr
 ```
+(Full procedure with diff-verification steps: `add-data-testid` skill § Git flow.)
 
 **Agents open that PR as a draft.** A human flips it to *ready* when the UI team
 should look at it. (This repeals the old rule that agents never PR `EliteaAI/EliteaUI`.)
@@ -117,10 +119,14 @@ JSX attributes. If `package.json` / `package-lock.json` changed → re-run `npm 
    `automation/testids`, so every team-added testid is present — including ones
    still in review.
 2. **Explore** the live UI (Playwright MCP) — find elements lacking testids.
-3. **`add-data-testid` skill** — cuts `testids/<case>` from `origin/main`, edits JSX
-   under `../EliteaUI/src` (ONLY files under `src/`), merges to `automation/testids`,
-   opens the draft PR. Vite HMR reloads — no restart. Naming `{section}-{element}-{type}`;
-   verify uniqueness first.
+3. **`add-data-testid` skill — MANDATORY for every element the test touches that
+   lacks a testid.** There is no fallback rung: locator policy is testid-only
+   (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`) because the
+   team measures UI-automation coverage by testid presence — a role/CSS handle is
+   invisible to that metric. The skill edits JSX under `../EliteaUI/src` (ONLY files
+   under `src/`), commits on `automation/testids`, builds `testids/<case>` from
+   `origin/main` in a worktree, opens the draft PR. Vite HMR reloads — no restart.
+   Naming `{section}-{element}-{type}`; verify uniqueness first.
 4. **`page-object-generator` skill** — emit **testid-only** descriptors:
    `LocatorDescriptor(testid="agent-form-save-button")`. Never populate `fallback`.
 5. **Write the test**, run it green against localhost, PR into `automation/base`.
@@ -147,6 +153,14 @@ real environment — not per test.
 - Every automation PR into `automation/base`: adversarial review by `qa-engineer`
   (fresh session, `code-review` + triangulation vs TMS case and AFS) →
   `APPROVED` | `CHANGES_REQUESTED`; the lead merges.
+- **Dispatch-prompt contract (lead):** every implementer and reviewer dispatch
+  prompt carries the locator-policy line verbatim — see
+  `.agents/role-overrides.md` § Orchestrator slot. The dispatch prompt is the gate.
+- **Reviewer mechanical check:** any non-testid handle *added* in
+  `automation/pages/` or `automation/tests/` is `CHANGES_REQUESTED` — grep the PR
+  diff for added `get_by_role|get_by_label|get_by_text|page.locator|.locator(`
+  lines; each hit must be a `[data-testid=` selector. Existing raw handles are
+  tracked tech debt (#25/#42), not precedent.
 - Commit authority: the implementer commits on the work branch the lead names
   (or creates one from `automation/base` when dispatched standalone). Testid commits
   to `automation/testids` are part of the implementer/analyst loop.
@@ -171,7 +185,13 @@ re-reads the narrative six months later; they read this one comment to find out 
 the work lives and whether it's actually finished. **A bare "✅ merged" is not a closure
 record** — that was the gap on #19.
 
-The lead posts this as the final comment on the automation issue, **before** closing it:
+The lead posts this as the final comment on the automation issue, **before** closing it.
+**The promotability row is a verified fact, not a copy of the AFS/implementer claim**
+(#35/#36/#37 shipped false "fully promotable" rows that way): grep the case's test +
+page-object diff for the testids it uses, then check each against `EliteaAI/EliteaUI`
+**main** and `automation/testids` (`git grep 'data-testid="<id>"' origin/main -- src/`
+and the same against `origin/automation/testids`). Only testids present on **main**
+make a case promotable:
 
 ```markdown
 🔗 **Closure record — <CASE-ID>**

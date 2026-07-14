@@ -4,6 +4,25 @@ description: Stack overlay (test-automation) — onboard a test-automation engag
 type: project
 ---
 
+## Ownership map (WHO owns WHAT — decide before editing anything)
+
+- **Upstream bundle** (arozumenko/sdlc-skills → bundles/test-automation): the four
+  role agents, workflow/analysis skills (`test-automation-workflow`,
+  `test-case-analysis`, `seeding-a-project`, `memory`, …), the sdlc-skills hooks.
+  **NEVER edit.** The bundle is designed to be overridden, not patched: generic
+  workflow in skills; project way-of-work in `.agents/` (`testing.md` owns locator
+  strategy per the skill's own contract; `role-overrides.md` is the hook-injected
+  per-slot override channel — occupy those seams instead).
+- **Team-owned** (test-automation team updates them, scout only FLAGS):
+  `.claude/rules/*`, project skills (`add-data-testid`, `page-object-generator`,
+  `test-quality-checker`, `start-ui-localhost`, `sync-base-branches`,
+  `promote-automation-batch`, …), framework code (`automation/`), EliteaUI.
+- **Scout-owned levers**: `.agents/*` (incl. role memories), `CLAUDE.md`, `AGENTS.md`.
+- Precedence lesson (2026-07-14 audit, hook-verified 43/43): ambient briefings LOSE
+  to the actively-executing skill text; overrides must land in the skill's declared
+  deference points (`.agents/testing.md`, `.agents/role-overrides.md`) and in the
+  lead's dispatch prompts — not in more memory prose.
+
 ## Project Knowledge
 
 - **Engagement type:** Test-automation. The product under test can be **any

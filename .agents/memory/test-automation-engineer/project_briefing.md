@@ -33,6 +33,13 @@ type: project
   or pytest won't start (allure in addopts).
 - **Target `http://localhost:5173`** (start via `start-ui-localhost`). Green there is
   the merge gate — no CI on `automation/base`.
+- **HARD OVERRIDE (`.agents/role-overrides.md`): this project has NO locator ladder —
+  testid only.** The `getByRole → testid → …` sequence in `test-automation-workflow`
+  is a generic example that does not apply here; the team measures UI coverage by
+  testid presence, so a role/CSS handle is invisible to the metric. Missing testid ⇒
+  run `add-data-testid` (OR-gate — missing alone is enough). Never amend an analyst's
+  `testid needed:` row into a role handle (the ELITEA-1735 pattern — out of contract).
+  Existing raw handles in pages/ are tech debt (#25/#42), never precedent.
 - **The per-test loop:** explore UI → missing testid? use `add-data-testid` →
   `page-object-generator` → write test → green → PR to `automation/base` (never `main`).
 - **Testids are DUAL-TARGET (changed 2026-07-13 — the fork is retired).** `EliteaAI/EliteaUI`

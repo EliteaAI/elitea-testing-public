@@ -10,7 +10,9 @@ languages: [python]
 
 Playwright/pytest suite automating onetest TMS cases against the Elitea platform,
 run locally against `EliteaAI/EliteaUI` on its `automation/testids` integration
-branch. Currently UI-focused; API tests exist and
+branch. **Team goal: `data-testid` on every element new tests touch — UI-automation
+coverage is measured by testid presence** (locator policy: `.agents/testing.md`).
+Currently UI-focused; API tests exist and
 other surfaces (mobile, perf) may be added later — nothing in this seed assumes
 UI-only.
 
@@ -66,8 +68,11 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **System**: github-issues
 - **Project / board key**: `EliteaAI/elitea-testing-public` + GitHub Projects board **#9** (owner `EliteaAI`)
 - **URL**: https://github.com/EliteaAI/elitea-testing-public/issues · https://github.com/orgs/EliteaAI/projects/9
-- **Board status machine**: `Todo` → `Approved` (HUMAN-ONLY drag) → `In Progress` → `Blocked` → `Done`
-  (Done = PR merged, nothing else). Agents never set `Approved`. New issues auto-add
+- **Board status machine**: `Todo` → `Approved` (HUMAN-ONLY drag) → `In Progress` → `Blocked` → `Done`.
+  **Done requires BOTH: PR merged AND the closure record posted** (`.agents/workflow.md`
+  § Work tracking → Closure record) with a *verified* promotability row. A merged test
+  whose testids sit in an unmerged EliteaUI PR is `Blocked`, not `Done` — the issue
+  stays open. Agents never set `Approved`. New issues auto-add
   to the entry column — file them unassigned, set no status.
 - **Load-bearing labels**: `question` (parked decision) and `bug` (product defect) mark
   issues the factory must NEVER work as tasks; body must name origin ("Found while working #N").
@@ -127,7 +132,8 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **Comment PR link on the originating issue**: yes — work-log comments
   (🔧 started / 📝 update / 🚫 blocked / ✅ done) + PR link on the tracking card
 - **Board tracking**: assign self, move to `In Progress` when starting; `Blocked` +
-  "Waiting on #N" when parked; `Done` only after merge
+  "Waiting on #N" when parked; `Done` only after merge + closure record (verified
+  promotability — see workflow.md; never copy the implementer's claim)
 - **Gating**: no automated result reporters wired into pytest; back-writes are
   explicit orchestrator actions, never per-local-run
 

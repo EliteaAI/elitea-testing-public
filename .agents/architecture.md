@@ -56,6 +56,14 @@ onetest-tms MCP (npx @onetest/tms) ──reads/writes──▶ onetest-ai-tm-Eli
 | Settings / Admin | Configuration, guardrails, voice | `tests/ui/admin/`, `tests/ui/voice/` |
 | Support Assistant | Chatbot widget | `tests/ui/support_assistant/` |
 
+## Coverage measurement (design driver)
+
+The team measures **UI-automation coverage by `data-testid` presence**: every
+element a test touches must carry one, so covered UI is enumerable by grepping
+testids in EliteaUI and correlating with `LocatorDescriptor` usage. This is why
+the locator policy is testid-only with no fallback ladder (`.agents/testing.md`)
+and why testid creation is a mandatory step of every case, not an optimization.
+
 ## Why the integration-branch design exists
 
 Locators are testids in EliteaUI JSX → `EliteaAI/EliteaUI` `main` is owned by the
