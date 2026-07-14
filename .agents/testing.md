@@ -103,6 +103,21 @@ presence ≈ tested is.
   (`page.locator(…)`, `get_by_*` calls in methods), never chain a raw selector off
   an existing field (`self.x.locator(".css")`), and never in spec files. Scoped
   sub-selectors: UPPER_CASE class constants containing `[data-testid="…"]` only.
+- **Dynamic (runtime-parameterized) testids — the canonical pattern.** A testid whose
+  value depends on data (`skill-tag-option-<name>`) cannot be a static field. The
+  compliant shape is the SAME class-constant mechanism, templated:
+  ```python
+  # class level — the testid pattern is part of the locator inventory
+  SKILL_TAG_OPTION = '[data-testid="skill-tag-option-{}"]'
+  # call site — format with test-generated data only
+  option = self.page.locator(self.SKILL_TAG_OPTION.format(tag_name))
+  ```
+  Inline `get_by_test_id(f"…{var}")` in a method body is NOT compliant — the pattern
+  must live at class level so the testid inventory stays greppable (coverage
+  tooling reads class-level `[data-testid=` strings). Dynamic testid naming:
+  `{section}-{element}-{param}` with the parameter as the suffix.
+  (Origin: #19 rework FAIL-1 — the canon was silent, the agent improvised; this
+  section closes that gap.)
 - **Missing testid on the target? That is work to do, not a reason to rung down.**
   The escalation test is OR, not AND: missing testid *alone* ⇒ add it to EliteaUI
   via the `add-data-testid` skill (dual-target flow: commit on `automation/testids`,

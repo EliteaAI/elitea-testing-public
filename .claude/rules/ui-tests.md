@@ -126,42 +126,44 @@ FORM_SAVE_TIMEOUT = 15_000     # Form save + network settle
 
 ## Test Structure
 
-**Use clear Given/When/Then structure:**
+**Every step wrapped in `allure.step` (MANDATORY — steps must reach reports),
+inside a clear Given/When/Then flow:**
 
 ```python
+import allure
+
 @pytest.mark.p0
 @pytest.mark.smoke
 def test_create_agent_via_ui(page, agent_api):
-    """Create agent through UI and verify in list.
-    
-    Steps:
-    1. Navigate to create agent page
-    2. Fill name + description + instructions
-    3. Click Save
-    4. Verify navigation to detail page
-    5. Verify agent appears in list
-    """
-    # Given - Setup
+    """Create agent through UI and verify in list."""
     agent_name = "autotest_create_ui"
-    
-    # When - Action
     agent_page = AgentPage(page)
-    agent_page.navigate_to_create_agent()
-    agent_page.fill_agent_form(
-        name=agent_name,
-        description="Created by automation",
-        instructions="Test instructions"
-    )
-    agent_page.click_save()
-    
-    # Then - Verification
-    agent_page.wait_for_agent_detail()
-    assert agent_page.get_name() == agent_name
-    
-    # Cleanup
+
+    with allure.step("Step 1 — Navigate to create agent page"):
+        agent_page.navigate_to_create_agent()
+
+    with allure.step("Step 2 — Fill name + description + instructions"):
+        agent_page.fill_agent_form(
+            name=agent_name,
+            description="Created by automation",
+            instructions="Test instructions",
+        )
+
+    with allure.step("Step 3 — Save"):
+        agent_page.click_save()
+
+    with allure.step("Step 4 — Verify detail page shows the new agent"):
+        agent_page.wait_for_agent_detail()
+        assert agent_page.get_name() == agent_name   # asserts live INSIDE their step
+
+    # Cleanup (not a case step — no allure.step needed)
     agent_id = agent_page.get_agent_id_from_info()
     agent_api.delete_agent(int(agent_id))
 ```
+
+Rules: one `allure.step` per AFS step, numbered `"Step N — …"`; assertions sit
+inside the step they verify; setup/cleanup outside case steps stay unwrapped.
+A test whose steps don't reach the Allure report is `CHANGES_REQUESTED`.
 
 ## Assertion Quality Standards
 
