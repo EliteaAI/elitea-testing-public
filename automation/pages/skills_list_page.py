@@ -97,6 +97,74 @@ class SkillsListPage(BasePage):
         cards = self.page.get_by_test_id("entity-card-name").all()
         return any(name.lower() in (c.text_content() or "").lower() for c in cards)
 
+    def get_visible_skill_names(self) -> list[str]:
+        """Return the names of all skill cards currently visible in the grid.
+
+        Point-in-time check — no waiting. Companion to
+        :meth:`skill_exists_in_list`, used when a test needs the exact set
+        of visible skills (e.g. tag-filter exclusion checks), not just a
+        single name's presence.
+
+        Returns:
+            List of card name strings, in display order (as rendered — not
+            lower-cased; callers doing case-insensitive comparison should
+            lower-case both sides themselves).
+        """
+        cards = self.page.get_by_test_id("entity-card-name").all()
+        return [(c.text_content() or "").strip() for c in cards]
+
+    def get_card_tags(self, skill_name: str) -> list[str]:
+        """Return the tag chip texts currently rendered on a specific skill's card.
+
+        LOCATOR: tag text (``CardTagSectionItem`` in ``EliteaUI/src/
+        components/CardTagSectionItem.jsx``, rendered via
+        ``CardTagSection.jsx``) has no ``data-testid`` — confirmed live via
+        DOM inspection that it renders as a ``Typography variant="bodySmall"``
+        (MUI class ``MuiTypography-bodySmall``), which is not shared with any
+        other element inside the card (mirrors the existing
+        ``.MuiChip-label`` pattern already used in
+        :meth:`SkillFormPage.get_tags`). Scoped to the specific card via the
+        nearest ``MuiCard-root`` ancestor of that card's ``entity-card-name``
+        element, so two cards can't cross-contaminate each other's tags.
+
+        CAVEAT (not exercised by ELITEA-1740's data — document, don't fix):
+        ``.MuiTypography-bodySmall`` scoped to the card would *also* match
+        two other elements that happen to share the same MUI variant class:
+        (1) ``CardTagSection.jsx``'s "+N" overflow badge, which only renders
+        once a card has more tags than ``MAX_NUMBER_TAGS_SHOWN`` (currently
+        2); and (2) ``Like.jsx``'s like-count ``Typography``, which only
+        renders when ``pageViewMode !== ViewMode.Owner``. Every skill this
+        AFS creates has ≤ 2 tags, and the Skills page renders in Owner
+        view, so neither collision fires here. A future caller testing a
+        skill with > 2 tags, or driving a non-Owner view of this page,
+        should re-verify this locator or tighten the scope (e.g. exclude the
+        overflow/like elements explicitly) rather than trust this method's
+        output blindly.
+
+        Args:
+            skill_name: The skill's exact name shown on its card
+                (case-insensitive substring match, consistent with
+                :meth:`skill_exists_in_list`).
+
+        Returns:
+            List of tag text strings currently rendered on that card, in
+            display order. Empty list if the card isn't found.
+        """
+        card_name = self.page.get_by_test_id("entity-card-name").filter(
+            has_text=re.compile(re.escape(skill_name), re.IGNORECASE)
+        ).first
+        if card_name.count() == 0:
+            return []
+        card = card_name.locator(
+            "xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), "
+            "' MuiCard-root ')]"
+        ).first
+        tag_labels = card.locator(".MuiTypography-bodySmall")
+        return [
+            (tag_labels.nth(i).text_content() or "").strip()
+            for i in range(tag_labels.count())
+        ]
+
     def wait_for_skill_absent(self, name: str, timeout: int = 10000):
         """Wait until a skill is no longer visible in the list.
 
@@ -115,6 +183,71 @@ class SkillsListPage(BasePage):
         raise TimeoutError(
             f"Skill '{name}' still visible in list after {timeout}ms"
         )
+
+    # ------------------------------------------------------------------
+    # Tag filtering
+    # ------------------------------------------------------------------
+
+    @action("Filter skills by tag")
+    def filter_by_tag(self, tag_name: str, timeout: int = 10000):
+        """Click a tag chip in the page-header "Tags" filter panel.
+
+        LOCATOR: the Tags-panel chip (``StyledChip`` in
+        ``EliteaUI/src/components/Categories.jsx``) has no ``data-testid`` —
+        located by accessible role/name (confirmed live in the ELITEA-1740
+        AFS exploration); tag names are unique per project, so this is
+        unambiguous without extra scoping.
+
+        Waits for the grid-fetching endpoint
+        (``GET .../elitea_core/skills/prompt_lib/{project}?...``) to re-fire
+        with the new ``tags=<id>`` query param before returning — the URL
+        updates synchronously via React Router, but the grid re-render
+        depends on the API round trip.
+
+        Args:
+            tag_name: Tag chip text to click (e.g. ``"formatting"``).
+            timeout: Maximum wait time in milliseconds for the grid response.
+        """
+        logger.info("Filtering skills by tag: %r", tag_name)
+        with self.page.expect_response(
+            lambda r: "/elitea_core/skills/prompt_lib/" in r.url
+            and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            self.page.get_by_role("button", name=tag_name, exact=True).click()
+        # The response resolving doesn't guarantee the grid has re-rendered
+        # yet (RTK Query → Redux store → React re-render is one more tick) —
+        # confirmed live: querying entity-card-name immediately after the
+        # response can still return the pre-filter card set.
+        self.wait_for_network(timeout=5000)
+        self.page.wait_for_timeout(300)
+        logger.info("Tag filter applied: %r — URL: %s", tag_name, self.page.url)
+
+    @action("Clear tag filter")
+    def clear_tag_filter(self, timeout: int = 10000):
+        """Click "Clear all" in the Tags filter panel to reset the filter.
+
+        LOCATOR: "Clear all" (``Tooltip`` wrapping an ``IconButton`` in
+        ``Categories.jsx``) has no ``data-testid`` — it is only rendered
+        while a tag filter is active, so it's unambiguous in context.
+
+        Waits for the grid-fetching endpoint to re-fire with the ``tags``
+        param cleared before returning.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the grid response.
+        """
+        logger.info("Clearing tag filter")
+        with self.page.expect_response(
+            lambda r: "/elitea_core/skills/prompt_lib/" in r.url
+            and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            self.page.get_by_role("button", name="Clear all").click()
+        # See filter_by_tag() docstring — grid re-render lags the response.
+        self.wait_for_network(timeout=5000)
+        self.page.wait_for_timeout(300)
+        logger.info("Tag filter cleared — URL: %s", self.page.url)
 
     # ------------------------------------------------------------------
     # Import
