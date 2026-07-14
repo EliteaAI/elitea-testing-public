@@ -126,6 +126,39 @@ class BasePage:
         else:
             logger.debug("No banner overlay found to dismiss")
 
+    def capture_requests_matching(self, url_substring: str, method: str | None = None) -> list[dict]:
+        """Start capturing network requests whose URL contains *url_substring*.
+
+        Attaches a ``page.on("request", ...)`` listener and returns a list
+        that is populated live (append-only) as matching requests fire from
+        this point forward — read it any time after calling this to see
+        every matching request captured so far.
+
+        Args:
+            url_substring: Substring to match against each request's URL
+                (e.g. ``"skill/prompt_lib"``).
+            method: Optional HTTP method filter (e.g. ``"PATCH"``). When
+                omitted, all methods are captured.
+
+        Returns:
+            A list of ``{"method": str, "url": str}`` dicts, appended to
+            live as matching requests occur.
+        """
+        captured: list[dict] = []
+
+        def _on_request(request):
+            if url_substring not in request.url:
+                return
+            if method is not None and request.method.upper() != method.upper():
+                return
+            captured.append({"method": request.method, "url": request.url})
+
+        self.page.on("request", _on_request)
+        logger.debug(
+            "Started capturing requests matching %r (method=%s)", url_substring, method
+        )
+        return captured
+
     def get_clipboard_text(self) -> str:
         """Read text from the system clipboard.
 

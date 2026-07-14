@@ -190,6 +190,13 @@ class TestAgentMaxFiveSkillsLimit:
                 ), "add-skill button should be enabled before any skills are attached"
 
             with allure.step("Steps 4-8 — Attach Skills 1-5 one at a time"):
+                # Capture every skill-attach PATCH from here on, so the
+                # blocked-6th-attach step below can assert on real network
+                # traffic (no additional PATCH fires) rather than only UI
+                # state — this is what the AFS Axis 2 row actually claims.
+                attach_requests = detail_page.capture_requests_matching(
+                    "skill/prompt_lib", method="PATCH"
+                )
                 for idx, name in enumerate(SKILL_NAMES, start=1):
                     detail_page.attach_skill(name, timeout=UI_ELEMENT_TIMEOUT)
                     counter = detail_page.get_skills_counter_text()
@@ -199,6 +206,10 @@ class TestAgentMaxFiveSkillsLimit:
                     )
                     assert detail_page.is_skill_attached(name), (
                         f"Skill card for '{name}' should render after attaching"
+                    )
+                    assert len(attach_requests) == idx, (
+                        f"Expected exactly {idx} skill-attach PATCH request(s) "
+                        f"after attaching skill #{idx}, captured: {attach_requests!r}"
                     )
 
             with allure.step(
@@ -220,11 +231,16 @@ class TestAgentMaxFiveSkillsLimit:
 
             with allure.step(
                 "Step 9 (continued) — no 6th skill is attached; counter and "
-                "attached-skill set remain unchanged. Per the AFS, the "
-                "control is genuinely disabled at the actionability level "
-                "(a real Playwright click() would time out) — asserted via "
-                "the disabled-state check above, not a literal click-and-"
-                "expect-error"
+                "attached-skill set remain unchanged; no additional "
+                "skill-attach PATCH fires. Per the AFS, the control is "
+                "genuinely disabled at the actionability level (a real "
+                "Playwright click() would time out) — asserted via the "
+                "disabled-state check above, not a literal click-and-"
+                "expect-error. The 'no popper opens' claim in the AFS is "
+                "NOT separately asserted here: the popper's only trigger is "
+                "this same disabled button, so 'does the popper open' is "
+                "untestable by construction once toBeDisabled() holds — see "
+                "the AFS amendment note for this row."
             ):
                 counter_before = detail_page.get_skills_counter_text()
                 assert not detail_page.is_skill_attached(sixth_skill_name), (
@@ -234,6 +250,20 @@ class TestAgentMaxFiveSkillsLimit:
                 assert detail_page.get_skills_counter_text() == counter_before, (
                     "Skills counter must remain unchanged with the add-skill "
                     "control disabled"
+                )
+                # Real network-traffic assertion (not just UI state): exactly
+                # the 5 PATCH requests from Steps 4-8 have fired — no 6th one,
+                # for any skill id, appeared after reaching 5/5.
+                assert len(attach_requests) == 5, (
+                    "No additional skill-attach PATCH request should fire "
+                    f"once the limit is reached, captured: {attach_requests!r}"
+                )
+                sixth_skill_id_suffix = f"/{sixth_skill['id']}"
+                assert not any(
+                    req["url"].endswith(sixth_skill_id_suffix) for req in attach_requests
+                ), (
+                    f"No PATCH request should ever target the 6th skill "
+                    f"(id={sixth_skill['id']}), captured: {attach_requests!r}"
                 )
 
             with allure.step(
