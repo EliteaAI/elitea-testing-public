@@ -402,3 +402,11 @@ direct transcript evidence: the full payload arrives as an un-stubbed attachment
 record (43-44KB) in both mains and subagents; the "Output too large" stub is the
 hook's log record only. Residue (team option, not a bug): ~11k tokens of shared
 docs injected per dispatch — trimmable via the SDLC_SHARED_DOCS tunable.
+
+**Correction (later 2026-07-14):** the two archived agents were RESTORED to
+`.claude/agents/` by operator ruling — kept for the human team's direct use.
+The pipeline still never dispatches them (guard added to `.agents/role-overrides.md`
+§ Orchestrator slot; framing updated in `.agents/team-comms.md`). Also: the testid
+git flow was standardized on Model B (commits born on `automation/testids`,
+cherry-picked to main-based review branches) by operator ruling, superseding
+Addendum 2's "worktree procedure" description.
