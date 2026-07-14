@@ -25,6 +25,13 @@ metric*. Every raw handle silently shrinks measured coverage.
   test is OR, not AND: *missing testid alone* ⇒ add it. Only "testid genuinely
   cannot be placed" (outside `EliteaUI/src`, third-party widget) escalates to the
   lead.
+- **The scope is exactly the elements the case's test touches — NEVER blanket-add**
+  (team ruling 2026-07-14): testids on elements no test uses are front-end noise
+  AND corrupt the coverage metric — the "highlight what has a testid" visualization
+  is honest only while *presence ≈ tested*. Adding testids "while you're in there"
+  to untouched elements = `CHANGES_REQUESTED`. (Optional testid PROPS on shared
+  components are fine — they render nothing unless a caller opts in — but each new
+  prop is a component-API change the UI team reviews as a pattern.)
 - **The surrounding code is NOT precedent.** `automation/pages/` contains ~350
   pre-policy raw handles (tracked tech debt, issues #25/#42). Matching the
   neighbors is how the debt grew; never cite existing code to justify a new raw

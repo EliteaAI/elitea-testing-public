@@ -87,6 +87,13 @@ role/label/CSS handle isn't just brittle — it is invisible to the coverage
 metric. Every raw handle silently shrinks measured coverage. (Ruled by the team
 in PR #23, "Enforce testid-only locators"; confirmed by the operator 2026-07-14.)
 
+**The inverse also holds — scope is load-bearing (team ruling 2026-07-14):**
+testids go ONLY on elements tests actually touch. Blanket-adding to untested
+elements is front-end noise and makes untested UI light up as "covered" in the
+presence-based visualization — it corrupts the metric from the other side.
+Coverage density (N testids / M components) is NOT a target; honest
+presence ≈ tested is.
+
 - **Testid-only via `LocatorDescriptor`** (`automation/pages/locator_descriptor.py`):
   `LocatorDescriptor(testid="agent-form-save-button")`. Never populate `fallback=`
   (dead code) or `locator=` (kept in the API for legacy only — forbidden in new
