@@ -194,6 +194,38 @@ class Popper:
         option.click()
 
     @staticmethod
+    def select_menuitem_by_testid(
+        popper: Locator, text: str, page: Page, timeout: int = 10000,
+    ):
+        """Select a menuitem from the popper by text, scoped to the
+        ``toolkit-menu-item`` testid (shared across every ``UnifiedDropdown``
+        consumer — toolkits, participants, skills).
+
+        Additive sibling to :meth:`select_menuitem` — added for
+        ELITEA-1735's testid-only rework. ``select_menuitem`` itself is NOT
+        modified: it has other merged callers (toolkit/participant flows)
+        that rely on its raw ``li[role="menuitem"]:has-text(...)`` behavior
+        unchanged (`.claude/rules/page-objects.md` § shared-caller files).
+        Use this method for any new caller that can rely on the
+        ``toolkit-menu-item`` testid being present.
+
+        Args:
+            popper: Locator of the popper element.
+            text: Text content of the menuitem to select.
+            page: Playwright Page for logging.
+            timeout: Maximum wait time in milliseconds.
+        """
+        option = popper.locator('[data-testid="toolkit-menu-item"]').filter(
+            has_text=text
+        ).first
+        option.wait_for(state="visible", timeout=timeout)
+        logger.info(
+            "Selecting menuitem (by testid): %s",
+            option.text_content().strip()[:60],
+        )
+        option.click()
+
+    @staticmethod
     def search_and_select(
         popper: Locator,
         page: Page,

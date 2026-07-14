@@ -56,10 +56,13 @@ class AgentDetailPage(AgentFormPage):
     TOOLKIT_TOOL_BLOCKED_SELECTOR = '[data-testid="toolkit-tools-unavailable-banner"]'
     CHAT_MESSAGE_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
     CHAT_MESSAGE_ITEM_SELECTOR = '[data-testid="chat-message-item"]'
-    CHAT_INPUT_FIELD_SELECTOR = 'textarea, input'
     CHAT_ARTIFACT_FILE_LIST_SELECTOR = '[data-testid="chat-artifact-file-list"]'
     CHAT_ARTIFACT_FILE_CARD_SELECTOR = '[data-testid="chat-artifact-file-card"]'
     CHAT_ANSWER_CONTENT_SELECTOR = '[data-testid="chat-answer-content"]'
+    # Dynamic (runtime-parameterized) testid templates — see
+    # .claude/rules/page-objects.md "Dynamic testids" for the naming pattern.
+    SKILL_CARD_SELECTOR = '[data-testid="skill-card-{}"]'
+    SKILL_MENTION_ITEM_SELECTOR = '[data-testid="skill-mention-item-{}"]'
 
     # --- Sensitive action authorization ---
     sensitive_action_panel = LocatorDescriptor(testid="sensitive-action-panel")
@@ -68,12 +71,20 @@ class AgentDetailPage(AgentFormPage):
     # --- Embedded chat ---
     chat_message_list = LocatorDescriptor(testid="chat-message-list")
     chat_message_item = LocatorDescriptor(testid="chat-message-item")
-    chat_input = LocatorDescriptor(testid="chat-input")
+    chat_message_input = LocatorDescriptor(testid="chat-message-input")
     chat_send_button = LocatorDescriptor(testid="chat-send-button")
     chat_delete_button = LocatorDescriptor(testid="chat-delete-button")
     chat_answer_content = LocatorDescriptor(testid="chat-answer-content")
     chat_artifact_file_list = LocatorDescriptor(testid="chat-artifact-file-list")
     chat_artifact_file_card = LocatorDescriptor(testid="chat-artifact-file-card")
+    chat_clear_button = LocatorDescriptor(testid="chat-clear-button")
+    skill_test_last_response = LocatorDescriptor(testid="skill-test-last-response")
+
+    # --- Skills section (agent-skills attach/mention flow, ELITEA-1735) ---
+    agent_add_skill_button = LocatorDescriptor(testid="agent-add-skill-button")
+    skills_section = LocatorDescriptor(testid="agent-skills-section")
+    skills_counter = LocatorDescriptor(testid="agent-skills-counter")
+    skill_mention_list = LocatorDescriptor(testid="skill-mention-list")
 
     # --- Actions menu ---
     actions_menu_button = LocatorDescriptor(testid="agent-actions-menu-button")
@@ -799,27 +810,35 @@ class AgentDetailPage(AgentFormPage):
     def ensure_skills_section_visible(self, timeout: int = 5000):
         """Scroll to the Skills accordion section and wait for it to render.
 
+        LOCATOR: ``agent-skills-section`` testid on the accordion content
+        container (`ApplicationSkills.jsx`) — added in ELITEA-1735's
+        testid-only rework, replacing the prior ``get_by_text("skills
+        added.")`` handle.
+
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        counter = self.page.get_by_text("skills added.")
-        counter.scroll_into_view_if_needed()
-        counter.wait_for(state="visible", timeout=timeout)
+        self.skills_section.scroll_into_view_if_needed()
+        self.skills_section.wait_for(state="visible", timeout=timeout)
         self.page.wait_for_timeout(300)  # Animation settle
 
     @action("Attach skill")
     def attach_skill(self, skill_name: str, timeout: int = 10000):
         """Attach a skill to the agent version via the Skills section "+ Skill" button.
 
-        Clicks the "+ Skill" button (accessible name "Skill" — a BaseBtn with
-        a plus icon and visible "Skill" text label; ELITEA-1735 exploration
-        found this has a stable accessible name, unlike the AFS's original
-        "position-only, no testid" note), waits for the UnifiedDropdown
-        popper (shared with the Toolkits "+ Toolkit" flow — real MUI
-        MenuItem, role="menuitem", accessible name = skill name), and
-        selects the matching item. Attachment is an immediate API-level
-        auto-save (PATCH .../skill/prompt_lib/{project}/{id} -> 201); no
-        agent-level Save is required afterward.
+        LOCATOR: Clicks ``agent-add-skill-button`` (the "+ Skill" `BaseBtn`
+        in `SkillMenu.jsx`) — added in ELITEA-1735's testid-only rework,
+        replacing the prior `get_by_role("button", name="Skill")` handle
+        (shipped off a since-retracted "accessible name is stable" amendment;
+        see `.agents/role-overrides.md` § Implementer slot). Waits for the
+        UnifiedDropdown popper (shared with the Toolkits "+ Toolkit" flow)
+        and selects the matching item via the additive
+        ``Popper.select_menuitem_by_testid`` helper (scoped to
+        ``[data-testid="toolkit-menu-item"]``, confirmed live for the
+        skill-attach flow specifically — see the ELITEA-1735 AFS Handles
+        Reference). Attachment is an immediate API-level auto-save (PATCH
+        .../skill/prompt_lib/{project}/{id} -> 201); no agent-level Save is
+        required afterward.
 
         Args:
             skill_name: Exact name of the skill to attach.
@@ -829,12 +848,11 @@ class AgentDetailPage(AgentFormPage):
         self.ensure_skills_section_visible(timeout=timeout)
         counter_before = self.get_skills_counter_text(timeout=timeout)
 
-        add_btn = self.page.get_by_role("button", name="Skill", exact=True)
-        add_btn.wait_for(state="visible", timeout=timeout)
-        add_btn.click(force=True)
+        self.agent_add_skill_button.wait_for(state="visible", timeout=timeout)
+        self.agent_add_skill_button.click(force=True)
 
         popper = Popper.wait_for(self.page, timeout=timeout)
-        Popper.select_menuitem(popper, skill_name, self.page, timeout=timeout)
+        Popper.select_menuitem_by_testid(popper, skill_name, self.page, timeout=timeout)
         self.wait_for_network(timeout=timeout)
 
         # The attach PATCH resolving is not sufficient — the Skills section
@@ -859,12 +877,15 @@ class AgentDetailPage(AgentFormPage):
     def get_skills_counter_text(self, timeout: int = 5000) -> str:
         """Return the Skills section counter text, e.g. "2/5 skills added.".
 
+        LOCATOR: ``agent-skills-counter`` testid on the `Typography` node
+        (`ApplicationSkills.jsx`) — added in ELITEA-1735's testid-only
+        rework, replacing the prior ``get_by_text("skills added.")`` handle.
+
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        counter = self.page.get_by_text("skills added.")
-        counter.wait_for(state="visible", timeout=timeout)
-        return (counter.text_content() or "").strip()
+        self.skills_counter.wait_for(state="visible", timeout=timeout)
+        return (self.skills_counter.text_content() or "").strip()
 
     def wait_for_skills_counter(self, expected_prefix: str, timeout: int = 10000) -> str:
         """Poll the Skills section counter until it starts with *expected_prefix*.
@@ -893,23 +914,23 @@ class AgentDetailPage(AgentFormPage):
     def _add_skill_button_locator(self) -> Locator:
         """Return a locator for the Skills section "+ Skill" button, disabled-state aware.
 
-        LOCATOR: Normally has accessible name "Skill" (BaseBtn, no
-        data-testid — see ``attach_skill()``). The instant 5/5 skills are
-        attached, MUI wraps the button in
+        LOCATOR: Normally resolved via the ``agent-add-skill-button`` testid
+        (added in ELITEA-1735's testid-only rework — see ``attach_skill()``).
+        The instant 5/5 skills are attached, MUI wraps the button in
         `<span aria-label="Maximum number of skills reached">` — disabled
         elements don't fire hover/focus for native tooltips, so MUI moves the
         `aria-label` to the wrapper `<span>` rather than the inner
         (disabled) `<button>` itself (ELITEA-1790 exploration). This method
         resolves the *inner* button either way: via the aria-label wrapper
-        when present (disabled state), falling back to the accessible-name
-        lookup otherwise (enabled state).
+        when present (disabled state), falling back to the testid lookup
+        otherwise (enabled state).
         """
         disabled_wrapper_btn = self.page.locator(
             '[aria-label="Maximum number of skills reached"] button'
         )
         if disabled_wrapper_btn.count() > 0:
             return disabled_wrapper_btn.first
-        return self.page.get_by_role("button", name="Skill", exact=True)
+        return self.agent_add_skill_button
 
     def is_add_skill_button_disabled(self, timeout: int = 5000) -> bool:
         """Return True if the Skills section "+ Skill" button is disabled.
@@ -948,25 +969,30 @@ class AgentDetailPage(AgentFormPage):
     def _skills_section_content(self):
         """Return a locator scoped to the Skills accordion's content container.
 
-        LOCATOR: `ApplicationSkills.jsx` renders the "+ Skill" button + the
-        "N/5 skills added." counter inside a `headerRow` Box, and the
-        `SkillCard` list as siblings of that `headerRow` Box, both inside one
-        shared `containerStyles` Box (no data-testid on this Box). Scoped via
-        the counter text, walking up 2 ancestor `div`s: ancestor::div[1] is
-        `headerRow` itself, ancestor::div[2] is the shared `containerStyles`
-        Box that also holds the skill cards (ELITEA-1735 exploration).
+        LOCATOR: ``agent-skills-section`` testid on the shared
+        `containerStyles` Box (`ApplicationSkills.jsx`) that wraps the
+        header row (add-skill button + counter) and the `SkillCard` list —
+        added in ELITEA-1735's testid-only rework, replacing the prior
+        counter-text-based ancestor-xpath walk.
         """
-        return self.page.get_by_text("skills added.").locator("xpath=ancestor::div[2]")
+        return self.skills_section
 
     def is_skill_attached(self, skill_name: str, timeout: int = 5000) -> bool:
         """Check whether a skill card for *skill_name* is rendered in the Skills section.
 
-        LOCATOR: SkillCard has no data-testid; located by its rendered
-        skill-name text, scoped within the Skills section's content
-        container (`_skills_section_content()`) — NOT page-wide — so this
-        can't false-positive on the skill name appearing elsewhere (e.g. a
-        chat response echoing the name, or a stray identical string on
-        another part of the page).
+        LOCATOR: SkillCard's name `Typography` still has no data-testid of
+        its own (only the outer card container does, as
+        ``skill-card-{skill_id}`` — see ``SKILL_CARD_SELECTOR``), so this
+        keeps matching by rendered skill-name text, scoped within the
+        Skills section's testid-bearing content container
+        (``_skills_section_content()``) — NOT page-wide — so this can't
+        false-positive on the skill name appearing elsewhere (e.g. a chat
+        response echoing the name, or a stray identical string on another
+        part of the page). Kept skill-name-keyed (rather than switching to
+        ``SKILL_CARD_SELECTOR``'s skill_id) because this method has 10+
+        merged callers across the skills test suite that only have the
+        name in scope — additive-only per `.claude/rules/page-objects.md`
+        § shared-caller files.
 
         Args:
             skill_name: Name of the skill to look for.
@@ -1295,10 +1321,8 @@ class AgentDetailPage(AgentFormPage):
             timeout: Maximum wait time for elements.
         """
         logger.info("Sending message in embedded chat: %s", message[:60])
-        # chat_input contains the container; find the actual input element inside
-        input_field = self.chat_input.locator(self.CHAT_INPUT_FIELD_SELECTOR).first
-        input_field.wait_for(state="visible", timeout=timeout)
-        input_field.fill(message)
+        self.chat_message_input.wait_for(state="visible", timeout=timeout)
+        self.chat_message_input.fill(message)
         self.page.wait_for_timeout(300)
 
         self.chat_send_button.wait_for(state="visible", timeout=timeout)
@@ -1311,15 +1335,17 @@ class AgentDetailPage(AgentFormPage):
     ):
         """Type "~<skill_name> <prompt>" in the embedded chat and send it.
 
-        Uses ``press_sequentially`` (never ``fill()``) throughout: typing "~"
-        opens the "Mention skill" popper (MentionSkillList — a plain div-based
-        list with NO ARIA role and NO data-testid on its items, unlike the
-        UnifiedDropdown popper used by ``attach_skill()``); selecting an item
-        inserts a mention chip into the input. Appending the prompt text via
-        ``fill()`` would replace the whole textbox value and destroy that
-        chip, so the prompt is also typed via ``press_sequentially``
-        (ELITEA-1735 exploration; ``MentionToolItem.jsx`` confirmed no
-        role/testid on mention items).
+        LOCATOR: Typing "~" opens the "Mention skill" popper
+        (`MentionSkillList.jsx`), now carrying the ``skill-mention-list``
+        testid on its container and ``skill-mention-item-{skill-name}`` on
+        each row (`MentionToolItem.jsx`'s additive optional ``testId``
+        prop) — added in ELITEA-1735's testid-only rework, replacing the
+        prior "Mention skill" header-text + ancestor-xpath walk. Uses
+        ``press_sequentially`` (never ``fill()``) throughout: selecting a
+        mention item inserts a chip into the input, and appending the
+        prompt text via ``fill()`` would replace the whole textbox value
+        and destroy that chip, so the prompt is also typed via
+        ``press_sequentially`` (ELITEA-1735 exploration).
 
         Args:
             skill_name: Exact name of the attached skill to mention.
@@ -1327,47 +1353,47 @@ class AgentDetailPage(AgentFormPage):
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Sending mention message: ~%s %s", skill_name, prompt[:60])
-        chat_input = self.page.get_by_test_id("chat-message-input")
-        chat_input.wait_for(state="visible", timeout=timeout)
-        chat_input.click()
-        chat_input.press_sequentially("~", delay=50)
+        self.chat_message_input.wait_for(state="visible", timeout=timeout)
+        self.chat_message_input.click()
+        self.chat_message_input.press_sequentially("~", delay=50)
 
-        # Wait for the "Mention skill" popper and select the matching item by
-        # its rendered label text (no role="menuitem", no data-testid).
-        mention_header = self.page.get_by_text("Mention skill", exact=True)
-        mention_header.wait_for(state="visible", timeout=timeout)
-        mention_container = mention_header.locator("xpath=ancestor::div[2]")
-        mention_item = mention_container.get_by_text(skill_name, exact=True).first
+        # Wait for the "Mention skill" popper and select the matching item
+        # by its dynamic testid, scoped within the popper's own container.
+        self.skill_mention_list.wait_for(state="visible", timeout=timeout)
+        mention_item = self.skill_mention_list.locator(
+            self.SKILL_MENTION_ITEM_SELECTOR.format(skill_name)
+        ).first
         mention_item.wait_for(state="visible", timeout=timeout)
         mention_item.click()
         self.page.wait_for_timeout(300)
 
-        chat_input.press_sequentially(f" {prompt}", delay=30)
+        self.chat_message_input.press_sequentially(f" {prompt}", delay=30)
         self.page.wait_for_timeout(300)
 
-        send_btn = self.page.get_by_test_id("chat-send-button")
-        send_btn.wait_for(state="visible", timeout=timeout)
-        send_btn.click()
+        self.chat_send_button.wait_for(state="visible", timeout=timeout)
+        self.chat_send_button.click()
         logger.info("Mention message sent (~%s)", skill_name)
 
     @action("Clear embedded chat")
     def clear_embedded_chat(self, timeout: int = 10000):
         """Click the "Clear the chat" button in the embedded chat panel.
 
-        LOCATOR: No data-testid; located via the stable
-        ``aria-label="clear the chat"`` attribute set on ``ClearChatButton.jsx``.
-        The same aria-label is also used by ``RunHistoryContainer.jsx``
-        elsewhere on the agent detail page, so this resolves to >1 element —
-        ``.first`` picks the embedded-chat panel's own button (first in DOM
-        order; ELITEA-1735 exploration).
+        LOCATOR: ``chat-clear-button`` testid on ``ClearChatButton.jsx`` —
+        added in ELITEA-1735's testid-only rework, replacing the prior
+        ``get_by_label("clear the chat").first`` handle. The old handle
+        worked only by DOM order: `RunHistoryContainer.jsx` carries the
+        identical literal ``aria-label="clear the chat"`` on an unrelated
+        button elsewhere on the agent detail page, so a `.first` pick was a
+        footgun, not a contract. The new testid is scoped to the shared
+        `ClearChatButton.jsx` component (5 consumers incl. this page) and
+        disambiguates unambiguously.
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Clearing embedded chat")
-        clear_btn = self.page.get_by_label("clear the chat").first
-        clear_btn.wait_for(state="visible", timeout=timeout)
-        clear_btn.click()
+        self.chat_clear_button.wait_for(state="visible", timeout=timeout)
+        self.chat_clear_button.click()
         self.page.wait_for_timeout(500)
         logger.info("Embedded chat cleared")
 
@@ -1512,7 +1538,11 @@ class AgentDetailPage(AgentFormPage):
         "Thought for N secs" trace, timestamps) mixed into the body — unusable
         for exact-formatting assertions (ELITEA-1735 exploration). This method
         reads the correct testid for the last message directly, mirroring
-        ``SkillDetailPage.get_last_test_response()``.
+        ``SkillDetailPage.get_last_test_response()``. Uses the class-level
+        ``skill_test_last_response`` field (promoted out of an inline
+        ``get_by_test_id()`` call in ELITEA-1735's testid-only rework — the
+        testid itself was already correct and present on `main`, only its
+        Python-side shape violated the page-object locator policy).
 
         Returns:
             Last AI response body text as string (stripped), or "" if no
@@ -1522,9 +1552,8 @@ class AgentDetailPage(AgentFormPage):
         if messages.count() == 0:
             return ""
 
-        last_response = self.page.get_by_test_id("skill-test-last-response")
-        if last_response.count() > 0:
-            return (last_response.last.text_content() or "").strip()
+        if self.skill_test_last_response.count() > 0:
+            return (self.skill_test_last_response.last.text_content() or "").strip()
 
         # Fall back to the general-purpose extraction for older UI builds
         # that don't render the skill-test-last-response testid.
