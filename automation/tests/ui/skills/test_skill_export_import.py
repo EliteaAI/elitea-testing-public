@@ -190,22 +190,34 @@ class TestSkillExportImport:
         # ------------------------------------------------------------------
         with allure.step("Step 7 — Upload exported file; verify Import parameters dialog"):
             list_page.import_skill(str(download_path), timeout=IMPORT_TIMEOUT)
-            dialog = page.get_by_role("dialog")
-            assert dialog.get_by_text("Type: Skill | Version: base").is_visible(), (
-                "Import dialog should show Type: Skill | Version: base"
+            # Preview fields are addressed by their own testids (set on the
+            # dialog's underlying content nodes in EliteaUI, ELITEA-1737
+            # rework) and asserted by text content, rather than located BY
+            # the expected text — the name/description/instructions values
+            # are test-generated data, not static copy.
+            preview_name = page.get_by_test_id("skill-import-preview-name")
+            preview_type_version = page.get_by_test_id("skill-import-preview-type-version")
+            assert preview_type_version.text_content() == "Type: Skill | Version: base", (
+                f"Import dialog should show 'Type: Skill | Version: base', "
+                f"got: {preview_type_version.text_content()!r}"
             )
-            assert dialog.get_by_text(skill_name).first.is_visible(), (
-                "Import dialog should preview the source skill's name"
+            assert preview_name.text_content() == skill_name, (
+                f"Import dialog should preview the source skill's name: "
+                f"expected {skill_name!r}, got {preview_name.text_content()!r}"
             )
 
             # Description/Instructions preview fields render collapsed by
             # default ("Show details" toggle) — expand before reading them.
             list_page.expand_import_preview_details(timeout=IMPORT_TIMEOUT)
-            assert dialog.get_by_text(skill_description, exact=False).is_visible(), (
-                "Import dialog should preview the source skill's description"
+            preview_description = page.get_by_test_id("skill-import-preview-description")
+            preview_instructions = page.get_by_test_id("skill-import-preview-instructions")
+            assert preview_description.text_content() == skill_description, (
+                f"Import dialog should preview the source skill's description: "
+                f"expected {skill_description!r}, got {preview_description.text_content()!r}"
             )
-            assert dialog.get_by_text(skill_instructions, exact=False).is_visible(), (
-                "Import dialog should preview the source skill's instructions"
+            assert preview_instructions.text_content() == skill_instructions, (
+                f"Import dialog should preview the source skill's instructions: "
+                f"expected {skill_instructions!r}, got {preview_instructions.text_content()!r}"
             )
 
         # ------------------------------------------------------------------
@@ -213,9 +225,14 @@ class TestSkillExportImport:
         # ------------------------------------------------------------------
         with allure.step("Step 8 — Confirm import; verify success toast and new unique ID"):
             list_page.confirm_import(timeout=NAVIGATION_TIMEOUT)
-            success_toast = page.get_by_text("Skill imported successfully.")
-            assert success_toast.is_visible(timeout=UI_ELEMENT_TIMEOUT), (
-                "Expected 'Skill imported successfully.' toast after import"
+            # ``toast-message`` is a generic testid on the app-wide Toast
+            # component's message container (EliteaUI ELITEA-1737 rework) —
+            # asserted by text content rather than located BY the text.
+            success_toast = page.get_by_test_id("toast-message")
+            success_toast.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            assert success_toast.text_content() == "Skill imported successfully.", (
+                f"Expected 'Skill imported successfully.' toast after import, "
+                f"got: {success_toast.text_content()!r}"
             )
 
             imported_skill_id = detail_page.get_skill_id()
@@ -426,27 +443,38 @@ class TestSkillExportImportNonBaseVersion:
         with allure.step("Step 5 — Navigate to Skills list; import file; verify preview dialog"):
             list_page.navigate()
             list_page.import_skill(str(download_path), timeout=IMPORT_TIMEOUT)
-            dialog = page.get_by_role("dialog")
+            # Preview fields are addressed by their own testids (set on the
+            # dialog's underlying content nodes in EliteaUI, ELITEA-1737
+            # rework) and asserted by text content, rather than located BY
+            # the expected text.
+            preview_type_version = page.get_by_test_id("skill-import-preview-type-version")
+            preview_name = page.get_by_test_id("skill-import-preview-name")
             # The dialog's "Version: base" label is hardcoded
             # (SkillImportModal.jsx), not derived from the file's
             # elitea_version field — it always reads "base" regardless of
             # which version was exported.
-            assert dialog.get_by_text("Type: Skill | Version: base").is_visible(), (
-                "Import dialog should show Type: Skill | Version: base "
-                "(hardcoded label, regardless of exported version)"
+            assert preview_type_version.text_content() == "Type: Skill | Version: base", (
+                f"Import dialog should show 'Type: Skill | Version: base' "
+                f"(hardcoded label, regardless of exported version), "
+                f"got: {preview_type_version.text_content()!r}"
             )
-            assert dialog.get_by_text(skill_name).first.is_visible(), (
-                "Import dialog should preview the source skill's name"
+            assert preview_name.text_content() == skill_name, (
+                f"Import dialog should preview the source skill's name: "
+                f"expected {skill_name!r}, got {preview_name.text_content()!r}"
             )
 
             list_page.expand_import_preview_details(timeout=IMPORT_TIMEOUT)
-            assert dialog.get_by_text(skill_description, exact=False).is_visible(), (
-                "Import dialog should preview the ver_1 description"
+            preview_description = page.get_by_test_id("skill-import-preview-description")
+            preview_instructions = page.get_by_test_id("skill-import-preview-instructions")
+            assert preview_description.text_content() == skill_description, (
+                f"Import dialog should preview the ver_1 description: "
+                f"expected {skill_description!r}, got {preview_description.text_content()!r}"
             )
-            assert dialog.get_by_text(ver1_instructions, exact=False).is_visible(), (
+            assert preview_instructions.text_content() == ver1_instructions, (
                 "Import dialog preview should show the ver_1 instructions "
                 "(not the source skill's original base instructions), proving "
-                "the exported ver_1 content is what's staged for import"
+                f"the exported ver_1 content is what's staged for import — "
+                f"got: {preview_instructions.text_content()!r}"
             )
 
         # ------------------------------------------------------------------
@@ -454,9 +482,14 @@ class TestSkillExportImportNonBaseVersion:
         # ------------------------------------------------------------------
         with allure.step("Step 6 — Confirm import; verify success toast and new unique ID"):
             list_page.confirm_import(timeout=NAVIGATION_TIMEOUT)
-            success_toast = page.get_by_text("Skill imported successfully.")
-            assert success_toast.is_visible(timeout=UI_ELEMENT_TIMEOUT), (
-                "Expected 'Skill imported successfully.' toast after import"
+            # ``toast-message`` is a generic testid on the app-wide Toast
+            # component's message container (EliteaUI ELITEA-1737 rework) —
+            # asserted by text content rather than located BY the text.
+            success_toast = page.get_by_test_id("toast-message")
+            success_toast.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            assert success_toast.text_content() == "Skill imported successfully.", (
+                f"Expected 'Skill imported successfully.' toast after import, "
+                f"got: {success_toast.text_content()!r}"
             )
 
             imported_skill_id = detail_page.get_skill_id()
