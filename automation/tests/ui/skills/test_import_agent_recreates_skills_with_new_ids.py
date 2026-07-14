@@ -101,7 +101,9 @@ class TestImportAgentRecreatesSkillsWithNewIds:
            new/unique.
         7. Navigate to the Skills list; verify two cards share the Skill's
            name (source + imported); verify the imported Skill's own
-           detail page shows a new ID and verbatim content.
+           detail page shows a new ID and verbatim content; verify the
+           source Skill AND the source Agent are both unaffected by the
+           import (Axis 2 additions — import must be purely additive).
         8. Edit + save the imported Agent; verify a clean save.
         """
         unique_suffix = uuid.uuid4().hex[:8]
@@ -319,7 +321,8 @@ class TestImportAgentRecreatesSkillsWithNewIds:
                 "Step 7 — Navigate to the Skills list; verify two cards "
                 "share the Skill's name (source + imported); verify the "
                 "imported Skill's own detail page shows a new ID and "
-                "verbatim content"
+                "verbatim content; verify the source Skill AND source Agent "
+                "are both unaffected by the import"
             ):
                 skills_list_page = SkillsListPage(page)
                 skills_list_page.navigate()
@@ -358,6 +361,22 @@ class TestImportAgentRecreatesSkillsWithNewIds:
                 assert source_skill_detail_page.get_name() == skill_name, (
                     "Source skill should remain unchanged and independently "
                     "addressable after the import"
+                )
+
+                # Positive check: the source Agent is likewise unaffected by
+                # the import (Axis 2 addition — mirrors the source-Skill
+                # check above). Re-navigate to the source Agent's own ID and
+                # confirm its name/description still match what was set in
+                # Step 1, before the import ever ran.
+                source_agent_detail_page = AgentDetailPage(page)
+                source_agent_detail_page.navigate(source_agent_id)
+                assert source_agent_detail_page.get_name() == source_agent_name, (
+                    "Source agent's name should remain unchanged and "
+                    "independently addressable after the import"
+                )
+                assert source_agent_detail_page.get_description() == source_agent_description, (
+                    "Source agent's description should remain unchanged after "
+                    "the import — the import must not mutate the source Agent"
                 )
 
             with allure.step(
