@@ -6,3 +6,5 @@
 - [Merge gate: gh pr diff staleness check](merge_gate_gh_pr_diff_staleness.md)
 - [Resuming subagents for narrow fixups](resuming_subagents_for_narrow_fixups.md)
 - [Shared-caller enumeration gap](shared_caller_enumeration_gap.md)
+- [Interrupted dispatch recovery](interrupted_dispatch_recovery.md) — after an interrupted turn, check git/PR/branch state before re-dispatching — the subagent may have already completed and landed real work
+- [Mechanical grep gate coverage](mechanical_grep_gate_coverage.md) — a self-check grep alternation must cover every clause of the policy being enforced (lexical AND structural), not just the clause the task started from

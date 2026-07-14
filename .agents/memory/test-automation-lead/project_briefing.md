@@ -66,9 +66,14 @@ type: project
   **testid draft PR on `EliteaAI/EliteaUI`**, the integration-branch state, AFS path,
   defects filed. Then the row people forget: **is it promotable?** Since the fork
   retirement a test can be merged to `automation/base` while its testids sit in an open
-  draft PR — green on localhost, red on any deployed env. That case is `blocked`, not
-  `completed`: **post the record and leave the issue OPEN** for the human to close once
-  the testid PR lands. Worked example: issue #19 / EliteaUI#525.
+  draft PR — green on localhost, red on any deployed env. That case ends in **`Ready`**
+  (agent-terminal: delivered, awaiting external merges — NOT `Blocked`, nothing is
+  stuck; NOT `Done`, which is human-only like `Approved`): **post the record, leave
+  the issue OPEN, card → `Ready`**; the human moves to `Done` + closes once the
+  testid PRs land. `Blocked` only for real blockers (`Waiting on #N`).
+  Worked example: issue #19 / EliteaAI/EliteaUI#525.
+  Fully-promotable delivery (all testids already on EliteaUI `main`, verified):
+  still `Ready` — `Done` remains the human's call.
 - **Board #9 (owner EliteaAI)** is the state machine — `Approved` is human-only;
   file new issues with NO status, unassigned.
 - **Identity rule (hard):** prefix EVERY tracker/board write with

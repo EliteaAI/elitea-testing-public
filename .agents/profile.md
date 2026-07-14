@@ -68,11 +68,12 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **System**: github-issues
 - **Project / board key**: `EliteaAI/elitea-testing-public` + GitHub Projects board **#9** (owner `EliteaAI`)
 - **URL**: https://github.com/EliteaAI/elitea-testing-public/issues · https://github.com/orgs/EliteaAI/projects/9
-- **Board status machine**: `Todo` → `Approved` (HUMAN-ONLY drag) → `In Progress` → `Blocked` → `Done`.
-  **Done requires BOTH: PR merged AND the closure record posted** (`.agents/workflow.md`
-  § Work tracking → Closure record) with a *verified* promotability row. A merged test
-  whose testids sit in an unmerged EliteaUI PR is `Blocked`, not `Done` — the issue
-  stays open. Agents never set `Approved`. New issues auto-add
+- **Board status machine**: `Todo` → `Approved` (HUMAN-ONLY) → `In Progress` →
+  **`Ready`** (agent-terminal: test merged + closure record with *verified*
+  promotability posted, issue OPEN, awaiting external merges / human acceptance)
+  → `Done` (HUMAN-ONLY: promotable/accepted, human closes the issue). `Blocked`
+  is a side state for REAL blockers only (`Waiting on #N`). Agents never set
+  `Approved` or `Done` — humans own both ends. New issues auto-add
   to the entry column — file them unassigned, set no status.
 - **Load-bearing labels**: `question` (parked decision) and `bug` (product defect) mark
   issues the factory must NEVER work as tasks; body must name origin ("Found while working #N").
