@@ -297,3 +297,16 @@ successfully.
   this test's setup fast and focused on the mention-scoping behavior itself —
   only the Instructions-field `~`-trigger interaction needs to go through the
   UI/`agent_detail_page`.
+- **Implementer amendment (PR #49 review):** `SkillAPI` has no `create_skill`
+  endpoint (confirmed during implementation — see `agent_instructions_tilde_mention_quirks`
+  memory entry), so all 3 skills are created via UI, same as the sibling
+  ELITEA-1790 (`test_agent_max_five_skills_limit.py`). Agent creation was
+  *also* kept on the UI path — even though `AgentAPI.create_agent()` exists at
+  `automation/api/client.py:366` — for consistency with that same sibling test
+  and because the test still needs a live `AgentDetailPage` instance
+  immediately after creation (to click Instructions, attach 2 skills, and
+  drive the `~`-trigger); API-creating the agent would only save one
+  `fill_form`/`save_and_wait_for_navigation` round-trip while adding a second,
+  divergent agent-setup pattern to this file area. Not a hard rule — a future
+  pass could switch this one call to `agent_api.create_agent()` if setup speed
+  becomes a real constraint.

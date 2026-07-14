@@ -117,15 +117,6 @@ class TestTildeMentionListsOnlyAttachedSkills:
         skill_c_id = None
         agent_id = None
 
-        # Console-error capture across the whole flow — established pattern
-        # (test_agent_max_five_skills_limit.py / test_skill_tag_filter.py):
-        # page.on("console", ...), collect type == "error", assert empty.
-        console_messages = []
-        page.on(
-            "console",
-            lambda msg: console_messages.append(msg) if msg.type == "error" else None,
-        )
-
         try:
             with allure.step(
                 "Step 1a — Confirm/create 3 distinct Skills: reuse a "
@@ -235,6 +226,20 @@ class TestTildeMentionListsOnlyAttachedSkills:
                 # additional fetch on '~' (AFS Network Behavior / Axis 2).
                 skills_requests = detail_page.capture_requests_matching(
                     "application_skills", method="GET"
+                )
+
+                # Console-error capture scoped to the actual '~' trigger
+                # interactions under test (this step's trigger + step 6's
+                # re-trigger below) — established pattern
+                # (test_agent_max_five_skills_limit.py / test_skill_tag_filter.py):
+                # page.on("console", ...), collect type == "error", assert
+                # empty. Registered here (not before setup) so incidental
+                # console noise from skill/agent creation and attach can't
+                # fail an assertion that's about mention-trigger scoping.
+                console_messages = []
+                page.on(
+                    "console",
+                    lambda msg: console_messages.append(msg) if msg.type == "error" else None,
                 )
 
                 detail_page.type_tilde_in_instructions(timeout=UI_ELEMENT_TIMEOUT)
