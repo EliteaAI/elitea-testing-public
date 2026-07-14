@@ -76,6 +76,33 @@ pre-existing issues on the board were filed without the module bracket at
 all (an earlier convention) — that's fine, the dedup key is just the
 `ELITEA-<id>` substring so old and new formats coexist without collision.
 
+## Bulk-filing pitfall: `returncode == 0` is not proof of success under concurrency
+
+**Confirmed live on 2026-07-14**: a 5-way-concurrent `ThreadPoolExecutor`
+batch of 138 `gh issue create` calls reported 138/138 "OK" by checking only
+`proc.returncode == 0`. A follow-up cross-check against a fresh
+`gh issue list` pull found **59 of those 138 had never actually landed** —
+those calls returned exit code 0 with **empty stdout** (no issue URL),
+silently miscounted as success. Root cause unconfirmed (suspected `gh`/
+GitHub secondary rate-limiting under concurrent burst creation), but the
+mitigation is proven:
+
+- **Never trust `returncode == 0` alone for `gh issue create` in a batch.**
+  Regex-match stdout against `^https://github\.com/.../issues/\d+$` before
+  counting a call as successful.
+- **Prefer sequential filing over high-concurrency parallel** for a burst
+  of 100+ tracker writes — the repair run refiled the missing 59
+  sequentially (no thread pool) with the stricter check and got 59/59
+  clean on the first attempt, 0 retries.
+- **Always do a final cross-check pass**: after "filing" N candidates,
+  re-pull the full issue list and confirm every candidate ID is actually
+  present. Don't rely on the filing loop's own self-reported tally —
+  it's exactly the thing that was wrong here.
+- If gaps are found after the fact, file a **second** tracking-only
+  summary issue documenting the gap + repair rather than silently
+  patching and pretending the first summary was accurate — the original
+  summary's counts stay wrong on record otherwise.
+
 ## Bulk-filing pitfall: env var removal
 
 To run `gh` as the keyring identity (never the shared `GITHUB_TOKEN`) from

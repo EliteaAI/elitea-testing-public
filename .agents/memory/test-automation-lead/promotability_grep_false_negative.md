@@ -1,0 +1,66 @@
+---
+name: Promotability grep can false-negative on non-attribute-string testids
+description: A closure-record promotability check that greps for `data-testid="<value>"` (literal JSX attribute syntax) will wrongly report a testid as absent when it's actually set via an object-literal prop, a conditional JSX expression, or a spread — grep the bare value first, then read the line to classify syntax
+type: feedback
+---
+
+## What happened
+
+Issue #26 (ELITEA-1735 testid-only rework), closure-record promotability check.
+I ran:
+
+```bash
+git grep -q "data-testid=\"$t\"" origin/main -- src/
+```
+
+for every testid the case's diff uses, and got `no` for both `chat-message-input`
+and `skill-test-last-response` on **both** `origin/main` and
+`origin/automation/testids` — which would have meant the test literally could
+never pass anywhere, contradicting the fact that the test had just run GREEN
+3/3 against a live app serving one of those two branches.
+
+Re-grepping with the bare value (`git grep -n "chat-message-input" origin/main --
+src/`, no attribute-syntax assumption) found both immediately:
+
+```jsx
+// UserInput.jsx — object-literal prop, not a JSX attribute string
+slotProps={{ htmlInput: { 'data-testid': 'chat-message-input' } }}
+
+// ApplicationAnswer.jsx — conditional JSX expression
+data-testid={isLastMessage ? 'skill-test-last-response' : 'chat-answer-content'}
+```
+
+Neither matches `data-testid="literal-value"` — the first sets the attribute
+through a nested prop object (MUI `slotProps`), the second through a ternary
+expression. Both are real, both render the correct DOM attribute, both were
+already confirmed live via `element.evaluate()` in the analyst's earlier pass
+— the grep pattern was simply too narrow to see them.
+
+## Why it matters
+
+A promotability row is the load-bearing fact in a closure record — it's what
+tells `promote-automation-batch` (and a human skimming the issue six months
+later) whether a merged test can survive on a deployed env. A false NEGATIVE
+here is less dangerous than a false POSITIVE (worst case you under-claim
+readiness, not over-claim it) — but it still corrupts the record: a case
+correctly reported as "blocked, 7 of 11 testids draft-only" could just as
+easily have been mis-reported as "blocked, 9 of 11" if I hadn't sanity-checked
+the two suspicious "no/no" rows against the fact that the test was passing.
+
+## Rule going forward
+
+When verifying testid presence for a closure record:
+
+1. **First grep the bare value/substring**, not the attribute-string pattern:
+   `git grep -n "<testid-value>" origin/<ref> -- src/` — this catches every
+   syntax shape (literal attribute, object-literal prop, conditional
+   expression, template string, spread).
+2. **Then read the matched line(s)** to confirm it's actually a `data-testid`
+   assignment (not, e.g., a comment or an unrelated string that happens to
+   contain the same substring) and to classify the syntax for your own
+   understanding — but don't require it to match a specific attribute-string
+   shape before counting it as present.
+3. If a row's grep comes back genuinely empty on both refs, cross-check it
+   against known behavior (did the test actually use this element? did it
+   pass?) before trusting the negative — a real absence and a syntax-pattern
+   miss both look identical as bare "no" output until you look at *why*.
