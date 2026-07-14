@@ -202,6 +202,28 @@ class ChatPage(BasePage):
         description="Individual message items (user + AI)"
     )
 
+    # ------------------------------------------------------------------
+    # Active participant / skill-mention popper (ELITEA-1736 testid rework)
+    # ------------------------------------------------------------------
+
+    switch_participant_button = LocatorDescriptor(
+        testid="chat-switch-participant-button",
+        description=(
+            "Composer's active-participant button (was 'Switch Agent'/"
+            "'Switch Pipeline' Tooltip-derived accessible name). Shown once"
+            " an agent or pipeline is added as a chat participant."
+        )
+    )
+
+    mention_skill_list = LocatorDescriptor(
+        testid="skill-mention-list",
+        description="Container for the '~mention' skill autocomplete popper's item list"
+    )
+
+    # Dynamic per-row testid for a skill in the mention popper — templated,
+    # never an inline f-string get_by_test_id (.claude/rules/page-objects.md).
+    MENTION_SKILL_ITEM = '[data-testid="skill-mention-item-{}"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
         
@@ -2077,14 +2099,14 @@ class ChatPage(BasePage):
     def is_agent_participant_in_composer(self, agent_name: str, timeout: int = 10000) -> bool:
         """Return True if *agent_name* is shown as the active agent in the composer.
 
-        LOCATOR: ``getByRole("button", { name: "Switch Agent" })`` — no
-        data-testid, but a stable ``aria-label="Switch Agent"`` on the
-        composer's ButtonGroup once an agent is added as a chat participant
-        (confirmed live via DOM inspection during ELITEA-1736 implementer
-        Phase 2; matches the AFS's own "Switch Agent -> {agent name}"
-        wording literally — it's the button's accessible name, not just
-        rendered text). Replaces the model-name display used when no agent
-        participant is active.
+        LOCATOR: ``chat-switch-participant-button`` — the composer's
+        active-participant button, added to EliteaUI on ``automation/testids``
+        during the ELITEA-1736 testid rework (draft PR EliteaAI/EliteaUI#541).
+        Previously located via its Tooltip-derived accessible name
+        ("Switch Agent"/"Switch Pipeline"); the testid resolves the same
+        physical element regardless of which participant type is active.
+        Replaces the model-name display used when no agent participant is
+        active.
 
         NOTE (ELITEA-1736 Phase-2 exploration): the "Agents in this
         conversation" collapsed-participants badge documented in the AFS
@@ -2092,26 +2114,26 @@ class ChatPage(BasePage):
         (``content: "${count}"`` in ``CollapsedPerticapantsList.jsx``), which
         has no DOM text node and is not readable via ``text_content()`` or
         any accessible-name query — confirmed by reading the EliteaUI
-        source. This "Switch Agent" button is the stable, semantic signal
-        instead; the AFS's own Expected Results names both as equivalent
-        evidence of participant membership.
+        source. This button is the stable, semantic signal instead; the
+        AFS's own Expected Results names both as equivalent evidence of
+        participant membership.
 
         Args:
             agent_name: The agent's exact display name.
             timeout: Maximum wait time in milliseconds.
         """
-        switch_agent_btn = self.page.get_by_role("button", name="Switch Agent")
-        switch_agent_btn.wait_for(state="visible", timeout=timeout)
-        text = switch_agent_btn.text_content() or ""
+        switch_participant_btn = self.switch_participant_button
+        switch_participant_btn.wait_for(state="visible", timeout=timeout)
+        text = switch_participant_btn.text_content() or ""
         found = agent_name in text
         logger.info(
-            "'Switch Agent' composer button text: %r — contains agent name %r: %s",
+            "Switch-participant composer button text: %r — contains agent name %r: %s",
             text, agent_name, found,
         )
         return found
 
     def is_switch_agent_button_visible(self, timeout: int = 3000) -> bool:
-        """Return True if the "Switch Agent" composer button currently exists.
+        """Return True if the active-participant composer button currently exists.
 
         Unlike ``is_agent_participant_in_composer()`` (which asserts a
         *positive* expectation and raises if the button never appears —
@@ -2126,7 +2148,7 @@ class ChatPage(BasePage):
             timeout: Maximum wait time in milliseconds.
         """
         try:
-            self.page.get_by_role("button", name="Switch Agent").wait_for(
+            self.switch_participant_button.wait_for(
                 state="visible", timeout=timeout,
             )
             return True
@@ -2140,10 +2162,13 @@ class ChatPage(BasePage):
         """Type "~<skill_name> <prompt>" in the main chat input and send it.
 
         Same "Mention skill" popper mechanics as
-        ``AgentDetailPage.send_chat_message_with_mention`` (MentionSkillList —
-        a plain div-based list with NO ARIA role and NO data-testid on its
-        items), confirmed live for the chat-participant surface during
-        ELITEA-1736 exploration. Uses ``press_sequentially`` throughout —
+        ``AgentDetailPage.send_chat_message_with_mention`` (``MentionSkillList``
+        — a plain div-based list, now testid-backed: ``skill-mention-list``
+        for the container and ``skill-mention-item-{name}`` per row, added to
+        EliteaUI on ``automation/testids`` during the sibling ELITEA-1735
+        rework, commit 916fcc3, draft PR EliteaAI/EliteaUI#540; confirmed
+        already live for this chat-participant surface too during the
+        ELITEA-1736 testid rework). Uses ``press_sequentially`` throughout —
         never ``fill()`` — because filling the whole textbox value would
         destroy the mention chip inserted after selecting from the popper.
 
@@ -2157,10 +2182,10 @@ class ChatPage(BasePage):
         self.message_input.click()
         self.message_input.press_sequentially("~", delay=50)
 
-        mention_header = self.page.get_by_text("Mention skill", exact=True)
-        mention_header.wait_for(state="visible", timeout=timeout)
-        mention_container = mention_header.locator("xpath=ancestor::div[2]")
-        mention_item = mention_container.get_by_text(skill_name, exact=True).first
+        self.mention_skill_list.wait_for(state="visible", timeout=timeout)
+        mention_item = self.mention_skill_list.locator(
+            self.MENTION_SKILL_ITEM.format(skill_name)
+        )
         mention_item.wait_for(state="visible", timeout=timeout)
         mention_item.click()
         self.page.wait_for_timeout(300)
