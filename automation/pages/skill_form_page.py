@@ -59,6 +59,26 @@ class SkillFormPage(BasePage):
         description="Tags combobox wrapper (MUI Autocomplete root)"
     )
 
+    name_input_field = LocatorDescriptor(
+        testid="skill-name-input-field",
+        description="Skill name — real <input> element (skill-name-input is the wrapper)"
+    )
+
+    description_input_field = LocatorDescriptor(
+        testid="skill-description-input-field",
+        description="Skill description — real <textarea> element (skill-description-input is the wrapper)"
+    )
+
+    tags_input_field = LocatorDescriptor(
+        testid="skill-tags-input-field",
+        description="Tags combobox — real <input> element (skill-tags-input is the wrapper)"
+    )
+
+    tag_chip = LocatorDescriptor(
+        testid="skill-tag-chip",
+        description="Committed tag chip (one per tag; shared testid, collection locator)"
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -114,13 +134,17 @@ class SkillFormPage(BasePage):
         click + Ctrl+A pattern in :meth:`fill_form` only reliably clears an
         *empty* field; ``Control+a`` alone does not reliably select existing
         content here (typed text ends up inserted rather than replacing it).
-        Uses Locator.select_text() + Backspace to clear the real (first,
-        non-``aria-hidden``) textarea before typing the replacement.
+        Uses Locator.select_text() + Backspace to clear the real, editable
+        textarea (addressed directly via its own
+        ``skill-description-input-field`` testid, set on the real element via
+        MUI's ``inputProps``/``htmlInput`` slot, not a raw CSS chain off the
+        ``skill-description-input`` wrapper testid) before typing the
+        replacement.
 
         Args:
             description: New description text.
         """
-        field = self.description_input.locator("textarea").first
+        field = self.description_input_field
         field.click()
         field.select_text()
         self.page.wait_for_timeout(100)
@@ -135,13 +159,13 @@ class SkillFormPage(BasePage):
         """Type a tag into the Tags combobox and commit it with Enter.
 
         The Tags field is a MUI Autocomplete (``skill-tags-input`` testid on
-        the root wrapper); the actual text input is the wrapper's single
-        ``input`` element.
+        the root wrapper); the actual text input carries its own
+        ``skill-tags-input-field`` testid.
 
         Args:
             tag: Tag text to type and commit.
         """
-        tag_field = self.tags_input.locator("input")
+        tag_field = self.tags_input_field
         tag_field.click()
         tag_field.type(tag)
         tag_field.press("Enter")
@@ -155,17 +179,20 @@ class SkillFormPage(BasePage):
         Unlike :meth:`add_tag` (type + Enter, which commits a brand-new tag),
         this selects an existing project-scoped tag suggestion — confirmed
         live (ELITEA-1740 AFS exploration): once a tag exists in the project,
-        later skills' Tags combobox surfaces it as a clickable
-        ``get_by_role("option", ...)`` item in the MUI Autocomplete listbox.
+        later skills' Tags combobox surfaces it as a clickable option in the
+        MUI Autocomplete listbox. Each option carries its own
+        ``skill-tag-option-{tag_name}`` testid (set directly on the
+        ``<li role="option">`` node), rather than being addressed via
+        ``get_by_role("option", name=...)``.
 
         Args:
             tag_name: Existing tag text to select from the dropdown.
             timeout: Maximum wait time in milliseconds for the option to appear.
         """
-        tag_field = self.tags_input.locator("input")
+        tag_field = self.tags_input_field
         tag_field.click()
         tag_field.type(tag_name)
-        option = self.page.get_by_role("option", name=tag_name, exact=True)
+        option = self.page.get_by_test_id(f"skill-tag-option-{tag_name}")
         option.wait_for(state="visible", timeout=timeout)
         option.click()
         self.page.wait_for_timeout(200)
@@ -285,18 +312,19 @@ class SkillFormPage(BasePage):
         """Return the current value of the Name input field.
 
         The ``skill-name-input`` testid is on the MUI FormControl wrapper,
-        not the inner ``<input>``, so the value is read from the descendant
-        input element.
+        not the inner ``<input>`` — the real element carries its own
+        ``skill-name-input-field`` testid.
         """
-        return self.name_input.locator("input").input_value()
+        return self.name_input_field.input_value()
 
     def get_description(self) -> str:
         """Return the current value of the Description field.
 
         The ``skill-description-input`` testid is on the MUI FormControl
-        wrapper; the actual field renders as a ``<textarea>`` (multiline).
+        wrapper; the actual ``<textarea>`` carries its own
+        ``skill-description-input-field`` testid.
         """
-        return self.description_input.locator("textarea").first.input_value()
+        return self.description_input_field.input_value()
 
     def get_instructions(self) -> str:
         """Return the current text content of the Instructions CodeMirror editor.
@@ -313,11 +341,12 @@ class SkillFormPage(BasePage):
     def get_tags(self) -> list[str]:
         """Return the currently committed tags as a list of strings.
 
-        Reads the MUI Chip labels rendered inside the Tags combobox
-        (each committed tag renders as a removable chip).
+        Reads each committed-tag chip via the shared ``skill-tag-chip``
+        testid (one element per tag; the delete icon is an SVG with no
+        text nodes, so each chip's text content is exactly its tag name).
 
         Returns:
             List of tag name strings, in display order.
         """
-        chips = self.tags_input.locator(".MuiChip-label")
+        chips = self.tag_chip
         return [chips.nth(i).text_content() or "" for i in range(chips.count())]
