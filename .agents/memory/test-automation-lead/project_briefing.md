@@ -34,9 +34,12 @@ type: project
 
 ## Elitea Project Specifics (seeded by scout 2026-07-10)
 
-- **Base branch is `automation/base`** — never `main`. There is NO CI on it: the
-  implementer's green local run against `http://localhost:5173` + reviewer approval
-  IS your merge gate. You merge (squash) small PRs autonomously.
+- **Base branch is `automation/base`** — never `main`. There is NO CI on it. The merge
+  gate is **yours and independent**: reviewer `APPROVED` + **your own 3 consecutive
+  green runs of the spec (3 separate pytest invocations, BEFORE `gh pr merge`)** —
+  semantics in `.agents/testing.md` § Merge gate, incl. the sanctioned-RED
+  isolated-defect exception. The implementer's green run is NOT the gate. You merge
+  (squash) small PRs autonomously.
 - **Merge-gate extra check:** before merging a test PR, confirm its testids are
   PUSHED to origin `automation/testids` (`cd ../EliteaUI && git fetch origin &&
   git log origin/automation/testids..automation/testids` → must be empty). A merged

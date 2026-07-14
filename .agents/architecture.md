@@ -73,10 +73,10 @@ hard. So **`automation/testids` is a permanent integration branch on the org rep
 that accumulates every testid the team ever wrote — merged *and* still-in-review — and
 the local dev server runs it. No agent ever waits on the UI team.
 
-Each testid is **dual-targeted**: its `testids/<case>` branch is cut from fresh `main`
-(so its review PR shows one clean case), merged straight into `automation/testids`
-(so agents are unblocked instantly), and opened as a **draft PR to `main`** for the UI
-team. Tests, meanwhile, accumulate on `automation/base` and reach `main` in periodic
+Each testid is **dual-targeted**: its commits land directly on `automation/testids`
+(so agents are unblocked instantly) and are cherry-picked onto a `testids/<case>`
+branch cut from fresh `main` (so the review PR shows one clean case), opened as a
+**draft PR to `main`** for the UI team. Tests, meanwhile, accumulate on `automation/base` and reach `main` in periodic
 **batches**, gated on their testids having merged and deployed first.
 
 **Why tests are batched but testids aren't:** testids are leaf additions that don't

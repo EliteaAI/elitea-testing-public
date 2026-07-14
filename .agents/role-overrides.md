@@ -57,7 +57,9 @@ metric*. Every raw handle silently shrinks measured coverage.
 - **Any non-testid handle ADDED in `automation/pages/` or `automation/tests/` is
   `CHANGES_REQUESTED`.** Not a nit, not a non-blocking tech-debt note, not waived
   for neighborhood consistency. Mechanical check on every PR:
-  `git diff <base>... | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|page\.locator|\.locator\()'`
+  `git diff <base>... | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\.locator|\.locator\()'`
+  (`get_by_test_id` included: inline Playwright calls are also banned — locators are
+  class-level `LocatorDescriptor` fields)
   — every hit must be a `[data-testid=` selector or it blocks.
 - "Selector stability per testing.md" in the review checklist means **this**
   policy, not the skill's example ladder.
