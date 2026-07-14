@@ -111,7 +111,28 @@ on:
       ELITEA_API_TOKEN:
         required: false
       ELITEA_PROJECT_ID:
-        required: true
+        required: false
+      # Indexed project IDs for parallel suite execution (env-specific: TEST_USER_PROJECT_[ENV]_X)
+      TEST_USER_PROJECT_1:
+        required: false
+      TEST_USER_PROJECT_2:
+        required: false
+      TEST_USER_PROJECT_3:
+        required: false
+      TEST_USER_PROJECT_4:
+        required: false
+      TEST_USER_PROJECT_5:
+        required: false
+      TEST_USER_PROJECT_6:
+        required: false
+      TEST_USER_PROJECT_7:
+        required: false
+      TEST_USER_PROJECT_8:
+        required: false
+      TEST_USER_PROJECT_9:
+        required: false
+      TEST_USER_PROJECT_10:
+        required: false
       # Indexed API tokens for parallel suite execution (env-specific: TEST_USER_TOKEN_[ENV]_X)
       TEST_USER_TOKEN_1:
         required: false
@@ -345,8 +366,9 @@ jobs:
           # Use secrets from workflow_call if available, otherwise resolve by env name
           ELITEA_URL: ${{ secrets.ELITEA_URL || secrets[format('ELITEA_URL_{0}', steps.env.outputs.upper)] }}
           ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE || secrets[format('ELITEA_API_BASE_{0}', steps.env.outputs.upper)] }}
-          ELITEA_PROJECT_ID: ${{ secrets.ELITEA_PROJECT_ID || secrets[format('ELITEA_PROJECT_ID_{0}', steps.env.outputs.upper)] }}
           # Use indexed credentials for parallel execution (fall back to non-indexed for backwards compatibility)
+          # Project IDs: TEST_USER_PROJECT_[ENV]_X passed as TEST_USER_PROJECT_X
+          ELITEA_PROJECT_ID: ${{ secrets[format('TEST_USER_PROJECT_{0}', matrix.user_idx)] || secrets.ELITEA_PROJECT_ID }}
           # Tokens: TEST_USER_TOKEN_[ENV]_X passed as TEST_USER_TOKEN_X
           ELITEA_API_TOKEN: ${{ secrets[format('TEST_USER_TOKEN_{0}', matrix.user_idx)] || secrets.ELITEA_API_TOKEN }}
           TEST_USER_EMAIL: ${{ secrets[format('TEST_USER_NAME_{0}', matrix.user_idx)] || secrets.TEST_USER_EMAIL }}
