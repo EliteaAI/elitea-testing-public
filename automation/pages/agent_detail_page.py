@@ -881,6 +881,30 @@ class AgentDetailPage(AgentFormPage):
         counter.wait_for(state="visible", timeout=timeout)
         return (counter.text_content() or "").strip()
 
+    def wait_for_skills_counter(self, expected_prefix: str, timeout: int = 10000) -> str:
+        """Poll the Skills section counter until it starts with *expected_prefix*.
+
+        The Skills section reads from an RTK Query cache that refetches
+        asynchronously — after a full page reload the counter can render
+        transiently as "0/5 skills added." before the real attachment data
+        arrives (same underlying cache-invalidation timing already handled
+        in ``attach_skill()``). A single unconditioned read right after
+        reload/navigation is a race; poll until it settles or times out.
+
+        Args:
+            expected_prefix: Text the counter should start with, e.g. "1/".
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The final counter text observed (whether or not it matched).
+        """
+        deadline = time.time() + timeout / 1000
+        counter_text = self.get_skills_counter_text(timeout=timeout)
+        while not counter_text.startswith(expected_prefix) and time.time() < deadline:
+            self.page.wait_for_timeout(300)
+            counter_text = self.get_skills_counter_text(timeout=1000)
+        return counter_text
+
     def _skills_section_content(self):
         """Return a locator scoped to the Skills accordion's content container.
 
@@ -916,6 +940,111 @@ class AgentDetailPage(AgentFormPage):
             return True
         except Exception:
             return False
+
+    def _skill_card(self, skill_name: str, timeout: int = 5000):
+        """Return a locator scoped to a single attached skill's card.
+
+        LOCATOR: `SkillCard.jsx` renders the skill-name `Typography` inside a
+        `titleRow` Box, inside a `contentBox` Box, inside the `cardHeader` Box
+        that also holds `SkillVersionSelector` and the action buttons — no
+        data-testid on any of these Boxes. Scoped via the skill-name text
+        (exact match, within the Skills section content container so it
+        can't false-positive elsewhere on the page), walking up 3 ancestor
+        `div`s to reach `cardHeader` (ELITEA-1789 exploration).
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds.
+        """
+        name_el = self._skills_section_content().get_by_text(
+            skill_name, exact=True,
+        ).first
+        name_el.wait_for(state="visible", timeout=timeout)
+        return name_el.locator("xpath=ancestor::div[3]")
+
+    def get_skill_version_text(self, skill_name: str, timeout: int = 5000) -> str:
+        """Return the currently displayed version text on a skill's card.
+
+        LOCATOR: `SkillVersionSelector.jsx` renders the version name in a
+        `<span class="version-text">` — no data-testid, no ARIA role
+        (see Known Defect github.com/EliteaAI/elitea-testing-public/issues/46:
+        the trigger `Box` wrapping this span has `tabIndex=-1`, `role=null`,
+        no `aria-label`). `.version-text` scoped to the specific skill's card
+        (via `_skill_card()`) is the only reliable handle — an
+        accessibility-tree/role-based locator resolves to the wrong,
+        non-interactive ancestor `Box` and silently no-ops (confirmed live,
+        ELITEA-1789 AFS).
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        version_text = card.locator(".version-text")
+        version_text.wait_for(state="visible", timeout=timeout)
+        return (version_text.text_content() or "").strip()
+
+    @action("Open skill version selector")
+    def open_skill_version_selector(self, skill_name: str, timeout: int = 10000):
+        """Click a skill card's version-selector trigger to open the Versions menu.
+
+        MUST click `.version-text` (CSS-class-scoped to the specific skill's
+        card) — NOT a `get_by_role`/accessibility-tree-derived locator. The
+        trigger `Box` has no ARIA role and `tabIndex=-1`
+        (github.com/EliteaAI/elitea-testing-public/issues/46); a role-based
+        click resolves to the wrong ancestor `Box` one level up and silently
+        does nothing (confirmed live twice in ELITEA-1789 exploration).
+
+        Args:
+            skill_name: Exact name of the attached skill whose version
+                selector should be opened.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        version_text = card.locator(".version-text")
+        version_text.wait_for(state="visible", timeout=timeout)
+        version_text.click()
+
+        menu_header = self.page.get_by_text("Versions", exact=True)
+        menu_header.wait_for(state="visible", timeout=timeout)
+
+    def is_versions_menu_open(self, timeout: int = 2000) -> bool:
+        """Check whether the "Versions" menu (opened by the version selector) is visible.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            self.page.get_by_text("Versions", exact=True).wait_for(
+                state="visible", timeout=timeout,
+            )
+            return True
+        except Exception:
+            return False
+
+    def get_versions_menu_item_names(self, timeout: int = 5000) -> list[str]:
+        """Return the accessible names of every menuitem in the open Versions menu.
+
+        LOCATOR: The Versions popper IS a proper ARIA menu once opened —
+        `role="menuitem"` on each version entry — only the trigger lacks
+        semantics (see `open_skill_version_selector()`).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        menu_header = self.page.get_by_text("Versions", exact=True)
+        menu_header.wait_for(state="visible", timeout=timeout)
+        menu_container = menu_header.locator("xpath=ancestor::div[2]")
+        items = menu_container.get_by_role("menuitem")
+        items.first.wait_for(state="visible", timeout=timeout)
+        return [
+            (items.nth(i).text_content() or "").strip()
+            for i in range(items.count())
+        ]
+
+    def close_versions_menu(self):
+        """Close the open Versions menu by pressing Escape."""
+        self.page.keyboard.press("Escape")
 
     # ------------------------------------------------------------------
     # Embedded chat (right panel)
