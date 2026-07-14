@@ -37,10 +37,11 @@ cd ../EliteaUI && npm run dev                                    # → http://lo
 - **Test PRs target `automation/base`**, never `main`.
 - **Testids: dual-target.** `automation/testids` is a permanent **integration branch
   on `EliteaAI/EliteaUI`** (no fork) holding every testid — merged *and* still in
-  review. Cut `testids/<case>-<slug>` from **fresh `origin/main`**, merge it into
-  `automation/testids` immediately (no review), and open a **draft PR to `main`** for
-  the UI team. Cutting from `main` — not from the integration branch — is what keeps
-  that PR a clean single-case diff.
+  review; the dev server always serves them ALL. Commit testids **straight onto
+  `automation/testids`** (HMR live), then cherry-pick them onto `testids/<case>-<slug>`
+  cut from **fresh `origin/main`** (in a worktree) and open a **draft PR to `main`**
+  for the UI team. The PR branch is built on `main` — never on the integration
+  branch — which is what keeps its diff a clean single case.
 - **Never rebase or force-push `automation/testids`** — it's a shared org branch.
   Sync it with `git merge origin/main`. If review changes a testid, resolve the next
   merge **in favour of `main`**.

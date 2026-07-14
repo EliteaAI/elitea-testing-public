@@ -29,7 +29,7 @@ runs that branch, so no test and no agent is ever blocked on review latency.
 | Repo | Long-lived branch | Rule |
 |---|---|---|
 | elitea-testing-public | `automation/base` (cut from `main`) | small PRs into it, one per test/feature area; **never PR `main` directly** |
-| EliteaAI/EliteaUI | `automation/testids` (integration) | **never PR it into `main`.** Per-case `testids/<CASE>-<slug>` branches merge *into* it |
+| EliteaAI/EliteaUI | `automation/testids` (integration) | **never PR it into `main`.** Testid commits are born ON it; per-case `testids/<CASE>-<slug>` review branches (built on `main`) receive them by cherry-pick |
 
 - There is **no CI on `automation/base`** — the green local run before PR is the
   only verification. You are the CI.
@@ -41,24 +41,28 @@ runs that branch, so no test and no agent is ever blocked on review latency.
 
 ### Testid flow — the dual-target rule
 
-A testid branch is **cut from `main`** but **lands in two places**:
+A testid is committed **once, straight onto `automation/testids`** (the dev server
+runs it — instant HMR feedback, durable the moment it exists), then **cherry-picked
+onto a per-case review branch built on fresh `main`**:
 
 ```
 main ──●────────────────────────●─────────●   EliteaAI/EliteaUI
         \                      /         /    ▲ DRAFT PR — UI team reviews.
          ● testids/EL-1737 ───╯         /       Diff = ONLY this case. Clean.
-          \       ● testids/EL-1796 ───╯
-           ▼       ▼   (merged immediately, NO review)
-    ══════════════════════════════════════▶  automation/testids
-             ▲                                ← dev server :5173 runs THIS
-             ╰── main merged in, often           agents see EVERY testid,
-                                                 merged AND still-in-review
+          \       ● testids/EL-1796 ───╯        (branches BUILT ON main,
+           ▲       ▲                              filled by cherry-pick)
+           ┆ cherry-pick ┆
+    ══●══════●═══════════════════════════▶  automation/testids
+      ▲   testid commits BORN here           ← dev server :5173 runs THIS
+      ╰── main merged in, often                 agents see EVERY testid,
+                                                merged AND still-in-review
 ```
 
-**Cut from `main`, not from `automation/testids`.** A PR's diff is computed against
-its merge-base — a branch cut from the integration branch would drag every other
-case's unmerged testid into your review PR. Cutting from `main` is what keeps the
-UI team's PR to a clean single-case diff.
+**The review branch is built on `main`, never on `automation/testids`.** A PR's
+diff is computed against its merge-base — a branch cut from the integration branch
+would drag every other case's unmerged testid into your review PR. Building it on
+`main` and cherry-picking only this case's commits is what keeps the UI team's PR
+to a clean single-case diff (verify with the diff-check in `add-data-testid`).
 
 ```bash
 cd ../EliteaUI                            # dev server is live on automation/testids
