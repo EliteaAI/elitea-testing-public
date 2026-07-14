@@ -12,7 +12,7 @@ Handles: /agents/all/{id}
 import logging
 import time
 from urllib.parse import urlparse
-from playwright.sync_api import Page, Locator
+from playwright.sync_api import Page, Locator, Download
 
 from .base_page import BasePage
 from .agent_form_page import AgentFormPage
@@ -1622,6 +1622,37 @@ class AgentDetailPage(AgentFormPage):
         Dialog.click_button(dialog, "Delete")
         self.wait_for_network(timeout=timeout)
         logger.info("Agent deleted via menu")
+
+    @action("Export agent via menu")
+    def export_agent_via_menu(self, timeout: int = 10000) -> Download:
+        """Export the current Agent version via the actions overflow menu
+        (ELITEA-1794).
+
+        Opens the overflow (three-dot) menu (``open_actions_menu()``) and
+        clicks the VERSION-scoped "Export" menuitem — located between "Set
+        as a default" (disabled) and "Share" in the menu's VERSION group
+        (``ApplicationControls.jsx`` / ``useExportApplicationMenu()``).
+        Unlike the Skill overflow menu's export item (``export-version-menuitem``
+        data-testid), this menuitem carries **no** data-testid — confirmed
+        live and in source (ELITEA-1794 exploration) — so it's resolved by
+        its accessible name only, scoped implicitly to the just-opened menu.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the download event.
+
+        Returns:
+            Playwright ``Download`` object for the exported
+            ``{agent-name}.agent.md`` file.
+        """
+        logger.info("Exporting agent via actions menu")
+        self.open_actions_menu()
+
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.page.get_by_role("menuitem", name="Export").click()
+
+        download = download_info.value
+        logger.info("Agent exported — filename: %s", download.suggested_filename)
+        return download
 
     # ------------------------------------------------------------------
     # Navigation helpers
