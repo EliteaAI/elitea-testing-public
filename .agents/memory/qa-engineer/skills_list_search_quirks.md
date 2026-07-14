@@ -1,22 +1,42 @@
 ---
 name: Skills list search quirks
-description: Skills-list search box (shared "agent-search-input" testid) never filters the grid — issue #44; AgentsListPage.agent_exists_in_list() is unscoped and would miss the same bug; native value-setter needed to reliably clear the input
+description: Skills-list search box (shared "agent-search-input" testid) only filters the grid on Enter/send-icon (issue #44 closed not-planned — onChange deliberately doesn't fetch); MIN_SEARCH_KEYWORD_LENGTH=3 blocks queries below 3 chars; grid search matches DESCRIPTION text too, not just name; AgentsListPage.agent_exists_in_list() is unscoped; native value-setter needed to reliably clear the input
 type: feedback
 ---
 
-Discovered while analysing ELITEA-1739 (Search Skills by Name, localhost:5173):
+Discovered/corrected across three analyst passes on ELITEA-1739 (Search
+Skills by Name, localhost:5173):
 
-- **The Skills-list page-header search box does NOT filter the Skills grid at
-  all**, in any state (partial match, exact match, non-existent match, or
-  cleared). Confirmed via full network log: `GET .../elitea_core/skills/
-  prompt_lib/{project}?...&query=...` (the grid-fetching endpoint) fires
-  exactly once, at initial page load, with `query=` always empty — no
-  keystroke ever re-triggers it. Typing instead only drives a **separate**
-  endpoint, `GET .../elitea_core/search_options/prompt_lib/{project}?
-  query=<text>&entities[]=tag&entities[]=skill...`, which populates an
-  unrelated Tags/Skills "quick-jump" popover below the search box — the grid
-  itself is completely unaffected. Filed:
-  github.com/EliteaAI/elitea-testing-public/issues/44.
+- **The grid DOES filter — but only on Enter or the send-icon click, never
+  on plain keystrokes.** An early pass mis-read this as "search never
+  works" and filed issue #44 as a MAJOR defect; reading
+  `EliteaUI/src/components/SearchBar.jsx` showed this is intentional:
+  `onChange` only updates local component state (no fetch); `onKeyDown`
+  fires `onSearch()` on Enter; the send-icon's `onClick={onSearch}` does
+  the same. Issue #44 closed "not planned". A **separate** endpoint,
+  `GET .../elitea_core/search_options/prompt_lib/{project}?query=<text>&
+  entities[]=tag&entities[]=skill...`, fires on every keystroke (debounced)
+  and populates an unrelated Tags/Skills "quick-jump" popover — independent
+  of the grid-fetching `GET .../elitea_core/skills/prompt_lib/{project}?
+  ...&query=<text>` endpoint, which only fires on the two intended
+  activation events.
+- **`MIN_SEARCH_KEYWORD_LENGTH = 3`** (`EliteaUI/src/common/constants.js`)
+  blocks `onSearch()` from dispatching ANY query below 3 characters, for
+  BOTH activation modes — shows a "must be at least 3 letters" toast
+  instead, grid stays unfiltered. A 2-char partial term (e.g. the ELITEA-1739
+  case's literal "Co") can never narrow the grid; pick partial-search test
+  terms ≥3 chars.
+- **The grid search endpoint matches on DESCRIPTION text too, not just
+  NAME** — a real, previously-undocumented mechanism found while choosing
+  ELITEA-1739's Step 2 partial term. Query `ter` unexpectedly matched
+  `automated-test-explainer` (via "interaction" in its description) and
+  unrelated `elitea-1793-ghost-skill` fixtures (via "after" in theirs),
+  despite neither name containing "ter". Not filed as a defect (full-text
+  search across name+description is plausibly intentional), but it means
+  **short/common substrings are unsafe partial-search test terms** in any
+  shared or long-lived environment — prefer a distinctive, full word
+  (verified clean against every other skill's name AND description) over a
+  generic 3-gram.
 - That popover's own matching logic is also not simple substring matching:
   query `"Co"` matched `automated-test-explainer` (no literal "co" in the
   name) while excluding `formatter` — noted in the AFS but not filed as a
@@ -50,4 +70,8 @@ Discovered while analysing ELITEA-1739 (Search Skills by Name, localhost:5173):
   calls `self.search_input.fill("")`) is reused for a Skills search test,
   verify it doesn't hit the same flakiness.
 - Full AFS: `test-specs/skills/l3_search-skills-by-name_ELITEA-1739.md`
-  (status `defect-found`).
+  (status `ready-for-automation` after 3 amendments — activation-mode
+  correction, then min-length correction by the implementer, then this
+  entry's description-matching fix restoring the case's genuine
+  partial-match assertion via a `code-reviewer` → `content-reviewer`
+  rename sharing `content` with `content-writer`).

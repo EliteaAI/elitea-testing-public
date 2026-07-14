@@ -45,25 +45,45 @@ Extract `ELITEA-(\d+)` from every title into a set; any candidate case
 whose `id` numeral is in that set is already carded — skip regardless of
 its own status/automation fields.
 
-## Classification order matters
+## Classification — the real judgment is dedup, not the case's own status fields
 
-Apply in this order per case (after the dedup-against-tracker check):
-1. Already has a tracker issue → skip (dedup).
-2. Strict already-automated rule (`execution_type: automated` AND
-   `status: ready` AND non-empty `automation_test_id`) → skip.
-3. Partial match on that rule (some but not all three signals present) →
-   contradictory — do NOT file, do NOT skip silently, report it.
-4. Otherwise → candidate to file.
+**Corrected policy, confirmed by the human on 2026-07-14 (run 4), supersedes
+the earlier "strict already-automated rule" approach used in run 1:**
+`execution_type: automated` inside
+`tests/automated-full-regression-ui/` does NOT mean the case is actually
+automated. Every case in that folder is *planned* for automation;
+`execution_type`/`status`/`automation_test_id` can be stale or
+inconsistent data (a tagging artifact), not a reliable completion signal.
+**The sole judgment for whether to file a card is: does a board task
+already exist for this case ID?** Nothing else.
 
-**Contradictory metadata often clusters by module, not randomly.** In the
-2026-07-14 run all 66 contradictory cases were the entire `artifacts`
-module, sharing `status: draft` + `execution_type: automated` + empty
-`automation_test_id` — almost certainly `execution_type: automated` means
-something different in that module's authoring convention ("designated
-for automation") than elsewhere. When a contradiction pattern spans an
-entire module, flag it as ONE systemic note in the summary rather than
-filing N separate `question` issues — cheaper for a human to triage and
-correctly represents "one root cause," not N independent ambiguities.
+Correct classification order per case:
+1. Already has a tracker issue (`ELITEA-<id>` substring match against the
+   full issue-title pull) → skip (dedup). This is the ONLY exclusion rule.
+2. Otherwise → file it, regardless of what its own status/execution_type/
+   automation_test_id fields say.
+
+**Run-1 mistake (corrected in run 4):** treated a strict AND-of-three
+rule (`execution_type: automated` AND `status: ready` AND non-empty
+`automation_test_id`) as grounds to skip, and treated any *partial* match
+of that rule as "contradictory metadata" to park unfiled pending human
+review. That was over-cautious and wrong per the clarified policy — 66
+cases (the entire `artifacts` module, all sharing `status: draft` +
+`execution_type: automated` + empty `automation_test_id`) got parked in
+run 1 and had to be filed in a dedicated run-4 correction pass once none
+of them turned out to have an existing board task. **Contradictory-looking
+metadata does not, by itself, block filing — only an existing tracker
+issue does.** If a case's own `automation_test_id` looks genuinely
+populated with a real test reference (e.g. a `tests.ui....` dotted path
+or `file.py::Class::method` pointer), that's a *strong hint* it may
+already be covered — but even then, verify against the tracker/repo
+before treating it as a skip signal; don't derive the skip decision from
+the field alone.
+
+**Still worth noting when a "looks weird" pattern clusters by module** — a
+whole-module `execution_type`/`status` mismatch, like the `artifacts`
+case, is worth one line in the summary issue as an FYI on data hygiene,
+but it is NOT a reason to withhold filing.
 
 ## Title format nuance
 
