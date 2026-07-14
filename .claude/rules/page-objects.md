@@ -44,7 +44,11 @@ class MyPage(BasePage):
         testid="unique-testid",        # data-testid — the only locator source
         description="What this element does"
     )
+    save_button = LocatorDescriptor(testid="save-button")
+    refresh_btn = LocatorDescriptor(testid="toolkit-reload-button")
 ```
+
+**If element lacks data-testid** → run `add-data-testid` skill to add it in EliteaUI first.
 
 **Never use direct or fallback locators:**
 ```python
@@ -54,6 +58,10 @@ def __init__(self, page):
 
 # ❌ WRONG — fallback is dead code, forbidden
 button = LocatorDescriptor(testid="save-btn", fallback=lambda page: ...)
+
+# ❌ WRONG — fallback/locator selectors not allowed
+button = LocatorDescriptor(locator="#SomeId")
+button = LocatorDescriptor(locator='[aria-label="Delete"]')
 
 # ✅ CORRECT — class field, testid only
 button = LocatorDescriptor(testid="save-btn", description="Save the form")
@@ -110,27 +118,31 @@ def test_edit_name(page):
     form.name_input.click()  # Direct locator access
 ```
 
-## Locator Priority Order
+## Locator Rules
 
-1. **data-testid** - Most robust, future-proof
-2. **Accessible roles** - `get_by_role("button", name="Text")`
-3. **aria-label** - `locator('[aria-label="Delete"]')`
-4. **Stable attributes** - `#element-id`
-5. **CSS classes** - Last resort, fragile
+**data-testid is REQUIRED for all elements.** No fallback selectors allowed.
 
-**For elements without aria-label:** Document the locator strategy in docstring:
+If element lacks data-testid → run `add-data-testid` skill to add it in EliteaUI first.
 
+**Scoped selectors (inside parent locator):** Use data-testid string constants:
 ```python
-def delete_message(self, index: int):
-    """Delete message by hovering and clicking delete button.
-    
-    LOCATOR: Delete button has NO aria-label. Located as last button
-    after hover. Button order: Copy (0), Regenerate (1), Delete (2).
-    """
-    message = self.messages_container.nth(index)
-    message.hover()
-    buttons = message.locator('button')
-    buttons.last.click(force=True)  # Last button = Delete
+# Define at class level
+CHAT_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
+
+# Use inside method
+message.locator(self.CHAT_DELETE_SELECTOR)
+```
+
+**Locators MUST be class-level fields, NEVER inline in methods:**
+```python
+# ❌ WRONG - inline locator in method
+def click_save(self):
+    self.page.locator('[data-testid="save"]').click()
+
+# ✅ CORRECT - class-level LocatorDescriptor
+save_button = LocatorDescriptor(testid="save-button")
+def click_save(self):
+    self.save_button.click()
 ```
 
 ## Inheritance Rules
@@ -279,7 +291,7 @@ def click_save(self):
 
 ✅ **Use LocatorDescriptor:**
 ```python
-save_button = LocatorDescriptor(testid="save", fallback=...)
+save_button = LocatorDescriptor(testid="save-button")
 def click_save(self):
     self.save_button.click()  # GOOD
 ```
@@ -308,10 +320,11 @@ def get_instructions_text(self):
 
 Verify:
 - [ ] No duplicate methods across page objects
-- [ ] All locators use LocatorDescriptor with testid + fallback
+- [ ] All locators use LocatorDescriptor with testid only (NO fallback)
 - [ ] No raw selectors chained off an existing field inside a method (e.g.
       `self.some_field.locator(".css-class")`) — give the sub-element its own
       testid + LocatorDescriptor instead
+- [ ] Scoped selectors use UPPER_CASE string constants
 - [ ] Complex locators documented in docstring
 - [ ] Method names follow conventions
 - [ ] Class docstring includes URL pattern
