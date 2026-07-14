@@ -134,7 +134,7 @@ name_input = LocatorDescriptor(testid="agent-form-name-input")
 ## EliteaUI Changes Summary
 
 Files modified: [count]
-Branch: feat/EL-XXXX/add-data-test-ids-automation
+Branches: automation/testids (commit born here) → testids/<case>-<slug> (review PR to main, cherry-picked)
 ```
 
 ---
@@ -177,7 +177,7 @@ Each testid must land in **two** places:
 
 | Target | How | Why |
 |---|---|---|
-| `automation/testids` | merged in immediately, **no review** | unblocks the dev server and every other agent, right now |
+| `automation/testids` | committed directly, **no review** | unblocks the dev server and every other agent, right now |
 | `EliteaAI/EliteaUI` `main` | **draft PR** from `testids/<case>-<slug>`, cut from fresh `main` | the UI team reviews a clean, single-case diff |
 
 **Cut the review branch from `main`, never from `automation/testids`.** A PR's diff is computed against

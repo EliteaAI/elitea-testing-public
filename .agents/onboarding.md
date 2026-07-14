@@ -105,7 +105,7 @@ push, not admin) as a permanent **integration branch** accumulating every testid
 merged and still-in-review alike.
 
 Testids are now **dual-targeted per case**, not batched: a `testids/<case>-<slug>`
-branch is cut from fresh `origin/main`, merged immediately into `automation/testids`
+branch is cut from fresh `origin/main` and filled by cherry-pick from `automation/testids`
 (no review — unblocks agents), and opened as a **draft PR to `main`** for the UI team.
 Cutting from `main` rather than the integration branch is what keeps that PR to a clean
 single-case diff. Agents may now open those PRs (as drafts) — the old blanket ban on

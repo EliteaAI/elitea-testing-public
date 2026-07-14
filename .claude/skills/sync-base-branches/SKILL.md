@@ -196,8 +196,9 @@ git log --oneline 'origin/main@{1}..origin/main' --grep='test-id\|testid\|test i
 
 ### Open draft PRs — nothing to do here
 
-Testid promotion is **per-case and continuous**: each `testids/<case>` branch was cut from `main`, merged
-into `automation/testids`, and opened as its own draft PR. Those PRs are independent of this sync — you do
+Testid promotion is **per-case and continuous**: each testid commit is born on `automation/testids`,
+cherry-picked onto its `testids/<case>` branch (built on fresh `main`), and opened as its own draft PR
+to `main`. Those PRs are independent of this sync — you do
 not rebase them, do not batch them, and do not need "one in flight at a time". Merging `main` into
 `automation/testids` does not touch them.
 
@@ -240,8 +241,10 @@ a green sync with a broken UI is the failure mode this catches.
 - Rebase or force-push `automation/base` or `automation/testids`. Ever. Both are shared branches;
   `--force` has no legitimate use on either. (Force-pushing a short-lived `testids/<case>` branch to
   resolve a PR conflict is fine — that is a different branch.)
-- Commit directly onto `automation/testids`. Testids arrive by merging a `testids/<case>` branch that was
-  cut from fresh `origin/main` — that is what keeps each review PR a clean single-case diff.
+- Cut a `testids/<case>` review branch FROM `automation/testids`. Testid commits are born ON the
+  integration branch (that's the norm — the dev server serves it), but the review branch is built on
+  fresh `origin/main` and receives them by cherry-pick — that is what keeps each review PR a clean
+  single-case diff.
 - Push to the retired `fork` remote (`bermudas/EliteaUI`) if it still exists locally.
 - Silently resolve a testid divergence in favour of our branch. `main` wins; then fix the LocatorDescriptor.
 - Sync while another agent has uncommitted testid work.
