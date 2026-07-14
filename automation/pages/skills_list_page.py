@@ -35,6 +35,31 @@ class SkillsListPage(BasePage):
         description="Import skill button in the page toolbar"
     )
 
+    import_preview_name = LocatorDescriptor(
+        testid="skill-import-preview-name",
+        description="Import parameters dialog — previewed skill name"
+    )
+
+    import_preview_type_version = LocatorDescriptor(
+        testid="skill-import-preview-type-version",
+        description="Import parameters dialog — previewed 'Type: ... | Version: ...' label"
+    )
+
+    import_preview_description = LocatorDescriptor(
+        testid="skill-import-preview-description",
+        description="Import parameters dialog — previewed skill description (expanded details)"
+    )
+
+    import_preview_instructions = LocatorDescriptor(
+        testid="skill-import-preview-instructions",
+        description="Import parameters dialog — previewed skill instructions (expanded details)"
+    )
+
+    import_success_toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide Toast component's message container"
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
