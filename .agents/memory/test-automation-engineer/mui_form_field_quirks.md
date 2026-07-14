@@ -1,6 +1,6 @@
 ---
 name: MUI form field quirks
-description: Reusable Playwright/MUI gotchas found implementing ELITEA-1737 (skill export/import) — wrapper-testid resolution, replacing pre-filled text, download filenames, silent maxlength truncation
+description: Reusable Playwright/MUI gotchas found implementing ELITEA-1737/1738 (skill export/import) — wrapper-testid resolution, replacing pre-filled text, download filenames, silent maxlength truncation, SingleSelect option testids
 type: feedback
 ---
 
@@ -89,3 +89,32 @@ live via `playwright-cli` eval before wiring the locator. Useful pattern
 when adding a testid to a third-party-style component that doesn't have an
 explicit testid prop of its own — but always verify placement live, since
 prop-spread order varies by component.
+
+## Shared `SingleSelect` component: per-option testid is keyed to `value`, not `label`
+
+`SingleSelectMenuItem.jsx` already carries a generic
+`data-testid={`select-option-${option.value}`}` on every MUI `Select`
+dropdown item app-wide (from an earlier EL-5010 pass). Fine when
+`option.value` happens to equal a stable, known-ahead-of-time string (e.g.
+the voice picker in `user_profile_settings_page.py`, where
+`value === name.lower()`). **Not usable when `value` is a numeric/opaque id
+the test doesn't know until runtime** (e.g. a version's DB id, only known
+after creating it) — confirmed for `SkillTabBar`'s VERSION selector
+(`buildVersionOption()` sets `value: id`).
+
+Fix (ELITEA-1738 rework): added an *optional* `option.testId` field.
+`SingleSelectMenuItem` now does
+`data-testid={option.testId ?? `select-option-${option.value}`}` —
+additive, zero regression risk for existing callers that never set
+`option.testId`. `buildVersionOption()` (`version.helpers.jsx`) sets
+`testId: `version-option-${name}`` so every version-selector consumer
+(skill/agent/pipeline) gets a name-keyed option testid for free. Also had
+to add `data-testid` pass-through to `SingleSelect.jsx` itself (it
+destructures every prop explicitly, no `...rest` spread, so a new prop
+needs an explicit destructure + forward — unlike `BaseBtn`/`BaseModal`
+which already had `data-testid`/`*DataTestId` plumbing).
+
+**Pattern for any future "generic component's existing testid is keyed to
+the wrong field" situation**: don't rip out the existing testid (blast
+radius = every consumer); add an optional override field on the data object
+the component already renders from, with the old testid as the fallback.
