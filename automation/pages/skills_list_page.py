@@ -127,6 +127,20 @@ class SkillsListPage(BasePage):
         nearest ``MuiCard-root`` ancestor of that card's ``entity-card-name``
         element, so two cards can't cross-contaminate each other's tags.
 
+        CAVEAT (not exercised by ELITEA-1740's data — document, don't fix):
+        ``.MuiTypography-bodySmall`` scoped to the card would *also* match
+        two other elements that happen to share the same MUI variant class:
+        (1) ``CardTagSection.jsx``'s "+N" overflow badge, which only renders
+        once a card has more tags than ``MAX_NUMBER_TAGS_SHOWN`` (currently
+        2); and (2) ``Like.jsx``'s like-count ``Typography``, which only
+        renders when ``pageViewMode !== ViewMode.Owner``. Every skill this
+        AFS creates has ≤ 2 tags, and the Skills page renders in Owner
+        view, so neither collision fires here. A future caller testing a
+        skill with > 2 tags, or driving a non-Owner view of this page,
+        should re-verify this locator or tighten the scope (e.g. exclude the
+        overflow/like elements explicitly) rather than trust this method's
+        output blindly.
+
         Args:
             skill_name: The skill's exact name shown on its card
                 (case-insensitive substring match, consistent with
