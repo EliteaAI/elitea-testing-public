@@ -202,13 +202,20 @@ make a case promotable:
 
 | Artifact | Where | State |
 |---|---|---|
-| Test | `elitea-testing-public` PR #<N> — `tests/<case>-<slug>` → `automation/base` | ✅ merged (`<sha>`) |
-| Testids | `EliteaAI/EliteaUI` PR #<M> — `testids/<case>-<slug>` → `main` | 📝 open, **draft** |
+| Test | #<N> — `tests/<case>-<slug>` → `automation/base` | ✅ merged (`<sha>`) |
+| Testids | EliteaAI/EliteaUI#<M> — `testids/<case>-<slug>` → `main` | 📝 open, **draft** |
 | Testids (integration) | `EliteaAI/EliteaUI` @ `automation/testids` | ✅ merged — dev server serves them |
 | AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `automation/base` |
 | Defects filed | #<X>, #<Y> — or "none" | |
 
-**Status:** merged to `automation/base` · ⚠️ NOT yet promotable to `main` — blocked on EliteaUI PR #<M>.
+**Status:** merged to `automation/base` · ⚠️ NOT yet promotable to `main` — blocked on EliteaAI/EliteaUI#<M>.
+
+> **Cross-repo links: write `EliteaAI/EliteaUI#<M>` as PLAIN TEXT — never inside
+> backticks, never bare `#<M>`.** Bare `#<M>` links to THIS repo's #M (wrong), and
+> GitHub never auto-links inside code spans. The `owner/repo#N` form renders as a
+> clickable cross-repo link AND leaves a "mentioned in…" backlink on the EliteaUI
+> PR — the UI team sees which case waits on their review. Same-repo references
+> (the test PR) stay bare `#<N>`.
 **Unblocks when:** #<M> is marked ready, merged, and deployed to DEV. **Owner:** human.
 **Still open:** <follow-ups, or "none">
 ```
