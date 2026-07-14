@@ -53,6 +53,7 @@ automation/.env
 .claude/settings.local.json
 elitea_testing.egg-info/
 .playwright-mcp
+.playwright-cli/*
 
 # Accidental pip install artifacts (from shell redirect errors)
 automation/=*
