@@ -191,86 +191,75 @@ class TestCreateCredential:
         try:
             base_url = settings.app_base_url
 
-            # Step 1: Navigate to credential creation page
-            page.goto(
-                f"{base_url}/credentials/create-credential",
-                wait_until="domcontentloaded",
-            )
-            page.wait_for_load_state("networkidle", timeout=30000)
-            page.wait_for_timeout(1000)
+            with allure.step("Step 1 — Navigate to credential creation page"):
+                page.goto(
+                    f"{base_url}/credentials/create-credential",
+                    wait_until="domcontentloaded",
+                )
+                page.wait_for_load_state("networkidle", timeout=30000)
+                page.wait_for_timeout(1000)
 
-            # Step 2: Click the credential type card (e.g. "GitHub", "Jira")
-            type_card = page.get_by_text(cfg.display_name, exact=True).first
-            type_card.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            type_card.click()
-            page.wait_for_load_state("networkidle", timeout=30000)
+            with allure.step(f"Step 2 — Click credential type card: {cfg.display_name}"):
+                type_card = page.get_by_text(cfg.display_name, exact=True).first
+                type_card.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                type_card.click()
+                page.wait_for_load_state("networkidle", timeout=30000)
 
-            # Wait for form to fully render after page transition
-            name_field = page.get_by_role("textbox", name="Display Name")
-            name_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            page.wait_for_timeout(1000)  # MUI form render
+            with allure.step("Step 3 — Fill Display Name"):
+                name_field = page.get_by_role("textbox", name="Display Name")
+                name_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                page.wait_for_timeout(1000)
+                name_field.click()
+                name_field.type(cred_name)
+                page.wait_for_timeout(300)
 
-            # Fill Display Name — use click+type to trigger React onChange
-            name_field.click()
-            name_field.type(cred_name)
-            page.wait_for_timeout(300)
+            with allure.step("Step 4 — Fill auth-specific fields"):
+                _fill_credential_auth_fields(page, cfg, token)
+                pre_save_value = name_field.input_value()
+                logger.info("Pre-save Display Name: %r (expected %r)", pre_save_value, cred_name)
+                page.screenshot(path=f"/tmp/cred_form_presave_{cfg.credential.type}.png")
 
-            # Type-specific auth field filling
-            _fill_credential_auth_fields(page, cfg, token)
+            with allure.step("Step 5 — Click Save button"):
+                save_btn = page.get_by_role("button", name="Save")
+                save_btn.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                save_btn.evaluate("el => el.click()")
+                page.wait_for_load_state("networkidle", timeout=FORM_SAVE_TIMEOUT)
+                page.wait_for_timeout(3000)
+                page.screenshot(path=f"/tmp/cred_after_save_{cfg.credential.type}.png")
+                print(f"📸 After save: URL={page.url}")
 
-            # Verify Display Name survived auth field filling
-            pre_save_value = name_field.input_value()
-            logger.info("Pre-save Display Name: %r (expected %r)", pre_save_value, cred_name)
-            page.screenshot(path=f"/tmp/cred_form_presave_{cfg.credential.type}.png")
+            with allure.step("Step 6 — Verify navigation to credentials list"):
+                assert "/credentials" in page.url, \
+                    f"Expected to navigate to /credentials but got: {page.url}"
+                logger.info("Waiting 3s for backend to sync credential...")
+                page.wait_for_timeout(3000)
 
-            # Save
-            save_btn = page.get_by_role("button", name="Save")
-            save_btn.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            save_btn.evaluate("el => el.click()")
-            page.wait_for_load_state("networkidle", timeout=FORM_SAVE_TIMEOUT)
-            page.wait_for_timeout(3000)
-            
-            # Screenshot after save to see result
-            page.screenshot(path=f"/tmp/cred_after_save_{cfg.credential.type}.png")
-            print(f"📸 After save: URL={page.url}")
+            with allure.step("Step 7 — Verify credential exists via API"):
+                fresh_cookies = page.context.cookies()
+                print(f"\n🍪 Using fresh cookies from browser context: {len(fresh_cookies)} cookies")
+                fresh_api = CredentialAPI(browser_cookies=fresh_cookies)
+                print(f"🔗 CredentialAPI: base_url={fresh_api.base_url} project_id={fresh_api.project_id}")
+                try:
+                    raw_response = fresh_api.list_credentials()
+                    print(f"📊 Raw API response: {raw_response}")
 
-            # Verify we're back on credentials list (NOT still on create form)
-            # UI navigates to /credentials/all after successful save
-            assert "/credentials" in page.url, \
-                f"Expected to navigate to /credentials but got: {page.url}"
-
-            # Add delay for backend to sync
-            logger.info("Waiting 3s for backend to sync credential...")
-            page.wait_for_timeout(3000)
-
-            # Verify via API — use FRESH cookies from browser context
-            fresh_cookies = page.context.cookies()
-            print(f"\n🍪 Using fresh cookies from browser context: {len(fresh_cookies)} cookies")
-            fresh_api = CredentialAPI(browser_cookies=fresh_cookies)
-            print(f"🔗 CredentialAPI: base_url={fresh_api.base_url} project_id={fresh_api.project_id}")
-            try:
-                # First check raw API response
-                raw_response = fresh_api.list_credentials()
-                print(f"📊 Raw API response: {raw_response}")
-                
-                items = fresh_api.list_all_credentials()
-                print(f"✅ API returned {len(items)} credentials total")
-                for c in items:
-                    if c.get("label") == cred_name:
-                        created_id = c["id"]
-                        break
-                if created_id is None:
-                    labels = [c.get("label", "") for c in items[:10]]
-                    logger.error("Credential '%s' not found in %d total items. First 10 labels: %s",
-                                 cred_name, len(items), labels)
-                assert created_id is not None, f"Credential '{cred_name}' not found via API"
-            finally:
-                fresh_api.close()
+                    items = fresh_api.list_all_credentials()
+                    print(f"✅ API returned {len(items)} credentials total")
+                    for c in items:
+                        if c.get("label") == cred_name:
+                            created_id = c["id"]
+                            break
+                    if created_id is None:
+                        labels = [c.get("label", "") for c in items[:10]]
+                        logger.error("Credential '%s' not found in %d total items. First 10 labels: %s",
+                                     cred_name, len(items), labels)
+                    assert created_id is not None, f"Credential '{cred_name}' not found via API"
+                finally:
+                    fresh_api.close()
 
         finally:
             if created_id:
                 try:
-                    # Use fresh cookies for cleanup too
                     cleanup_cookies = page.context.cookies()
                     cleanup_api = CredentialAPI(browser_cookies=cleanup_cookies)
                     cleanup_api.delete_credential(created_id)
@@ -298,55 +287,56 @@ class TestCreateToolkit:
         created_id = None
 
         try:
-            page.goto(
-                f"{settings.app_base_url}/toolkits/create",
-                wait_until="domcontentloaded",
-            )
-            page.wait_for_load_state("networkidle", timeout=30000)
-            page.wait_for_timeout(1000)
+            with allure.step("Step 1 — Navigate to toolkit creation page"):
+                page.goto(
+                    f"{settings.app_base_url}/toolkits/create",
+                    wait_until="domcontentloaded",
+                )
+                page.wait_for_load_state("networkidle", timeout=30000)
+                page.wait_for_timeout(1000)
 
-            # Click toolkit type card
-            card = page.get_by_text(cfg.ui_card_text).first
-            card.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            card.click()
-            page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
-            page.wait_for_timeout(1000)
+            with allure.step(f"Step 2 — Click toolkit type card: {cfg.ui_card_text}"):
+                card = page.get_by_text(cfg.ui_card_text).first
+                card.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                card.click()
+                page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
+                page.wait_for_timeout(1000)
 
-            # Fill Toolkit Name
-            name_field = page.get_by_role("textbox", name="Toolkit Name")
-            name_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            name_field.click()
-            name_field.type(tk_name)
-            page.wait_for_timeout(300)
+            with allure.step("Step 3 — Fill Toolkit Name"):
+                name_field = page.get_by_role("textbox", name="Toolkit Name")
+                name_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                name_field.click()
+                name_field.type(tk_name)
+                page.wait_for_timeout(300)
 
-            # Fill Description
-            desc_field = page.get_by_role("textbox", name="Description")
-            desc_field.click()
-            desc_field.type(f"Test {cfg.display_name} toolkit for automation")
-            page.wait_for_timeout(300)
+            with allure.step("Step 4 — Fill Description"):
+                desc_field = page.get_by_role("textbox", name="Description")
+                desc_field.click()
+                desc_field.type(f"Test {cfg.display_name} toolkit for automation")
+                page.wait_for_timeout(300)
 
-            # Select credential from dropdown
-            _select_credential_dropdown(page, cfg, cred_name)
+            with allure.step("Step 5 — Select credential from dropdown"):
+                _select_credential_dropdown(page, cfg, cred_name)
 
-            # Fill type-specific fields
-            _fill_toolkit_form_fields(page, cfg)
+            with allure.step("Step 6 — Fill type-specific fields"):
+                _fill_toolkit_form_fields(page, cfg)
 
-            # Save
-            save_btn = page.get_by_role("button", name="Save")
-            save_btn.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            save_btn.evaluate("el => el.click()")
-            page.wait_for_load_state("networkidle", timeout=FORM_SAVE_TIMEOUT)
-            page.wait_for_timeout(3000)
+            with allure.step("Step 7 — Click Save button"):
+                save_btn = page.get_by_role("button", name="Save")
+                save_btn.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                save_btn.evaluate("el => el.click()")
+                page.wait_for_load_state("networkidle", timeout=FORM_SAVE_TIMEOUT)
+                page.wait_for_timeout(3000)
 
-            assert "/toolkits/create" not in page.url
+            with allure.step("Step 8 — Verify navigation away from create form"):
+                assert "/toolkits/create" not in page.url
 
-            # Get ID for cleanup
-            toolkits = toolkit_api.list_toolkits()
-            rows = toolkits if isinstance(toolkits, list) else toolkits.get("rows", [])
-            for t in rows:
-                if t.get("name") == tk_name:
-                    created_id = t["id"]
-                    break
+                toolkits = toolkit_api.list_toolkits()
+                rows = toolkits if isinstance(toolkits, list) else toolkits.get("rows", [])
+                for t in rows:
+                    if t.get("name") == tk_name:
+                        created_id = t["id"]
+                        break
 
         finally:
             if created_id:
@@ -372,157 +362,141 @@ class TestToolkitTestSettings:
         tk_id = managed_toolkit["id"]
         base_url = settings.app_base_url
 
-        # Navigate to toolkit detail
-        page.goto(f"{base_url}/toolkits/all", wait_until="domcontentloaded")
-        page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
-        page.wait_for_timeout(1000)
+        with allure.step("Step 1 — Navigate to toolkit detail page"):
+            page.goto(f"{base_url}/toolkits/all", wait_until="domcontentloaded")
+            page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
+            page.wait_for_timeout(1000)
 
-        page.goto(f"{base_url}/toolkits/all/{tk_id}", wait_until="domcontentloaded")
-        # Skip networkidle wait here — socket.io polling on toolkit detail page
-        # keeps network active indefinitely, so rely on element-level wait below.
-        page.wait_for_timeout(2000)
+            page.goto(f"{base_url}/toolkits/all/{tk_id}", wait_until="domcontentloaded")
+            page.wait_for_timeout(2000)
 
-        # Wait for Test Settings
-        page.locator('text="Test Settings"').wait_for(
-            state="visible", timeout=UI_ELEMENT_TIMEOUT,
-        )
+        with allure.step("Step 2 — Wait for Test Settings panel"):
+            page.locator('text="Test Settings"').wait_for(
+                state="visible", timeout=UI_ELEMENT_TIMEOUT,
+            )
 
-        # Open tool dropdown (right panel, x > 700)
-        # Try multiple strategies to find the dropdown:
-        # 1. "Select" placeholder text in right panel
-        # 2. Combobox role in right panel
-        # 3. Dropdown trigger near "Tool" label
-        tool_dropdown = None
+        with allure.step("Step 3 — Open Tool dropdown"):
+            tool_dropdown = None
 
-        # Strategy 1: Look for "Select" text with x > 700
-        select_elements = page.get_by_text("Select", exact=True)
-        for i in range(select_elements.count()):
-            elem = select_elements.nth(i)
-            bb = elem.bounding_box()
-            if bb and bb["x"] > 700:
-                tool_dropdown = elem
-                break
-
-        # Strategy 2: Look for combobox in right panel
-        if tool_dropdown is None:
-            comboboxes = page.locator('[role="combobox"]')
-            for i in range(comboboxes.count()):
-                elem = comboboxes.nth(i)
+            select_elements = page.get_by_text("Select", exact=True)
+            for i in range(select_elements.count()):
+                elem = select_elements.nth(i)
                 bb = elem.bounding_box()
                 if bb and bb["x"] > 700:
                     tool_dropdown = elem
                     break
 
-        # Strategy 3: Look for dropdown trigger near "Tool" label in Test Settings
-        if tool_dropdown is None:
-            tool_label = page.locator('.index-config-field:has(span:text("Tool"))').first
-            if tool_label.count() > 0:
-                dropdown = tool_label.locator('[role="combobox"], .MuiSelect-root, input').first
-                if dropdown.count() > 0 and dropdown.is_visible():
-                    tool_dropdown = dropdown
+            if tool_dropdown is None:
+                comboboxes = page.locator('[role="combobox"]')
+                for i in range(comboboxes.count()):
+                    elem = comboboxes.nth(i)
+                    bb = elem.bounding_box()
+                    if bb and bb["x"] > 700:
+                        tool_dropdown = elem
+                        break
 
-        assert tool_dropdown is not None, (
-            "Could not find the Tool dropdown in the Test Settings panel"
-        )
-        tool_dropdown.click()
-        page.wait_for_timeout(1000)
+            if tool_dropdown is None:
+                tool_label = page.locator('.index-config-field:has(span:text("Tool"))').first
+                if tool_label.count() > 0:
+                    dropdown = tool_label.locator('[role="combobox"], .MuiSelect-root, input').first
+                    if dropdown.count() > 0 and dropdown.is_visible():
+                        tool_dropdown = dropdown
 
-        # Search for the test tool
-        visible_search = Popper.find_visible_search_input(page, timeout=UI_ELEMENT_TIMEOUT)
-        visible_search.fill(cfg.test_tool_name)
-        page.wait_for_timeout(500)
-
-        # Select from menu
-        keyword = cfg.test_tool_name.lower().split()[0]
-        selected = Popper.select_menuitem_by_content(
-            page, lambda text: keyword in text.lower(),
-        )
-        assert selected, f"Could not find '{cfg.test_tool_name}' in dropdown"
-        page.wait_for_timeout(1000)
-
-        # Fill tool-specific parameters in the Test Settings panel (right side)
-        if cfg.test_tool_params:
-            for field_label, value in cfg.test_tool_params.items():
-                _fill_test_settings_param(page, field_label, value)
-
-        # Run tool — wait for button to become enabled, then click
-        run_btn = page.get_by_role("button", name="Run Tool")
-        run_btn.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        run_btn.first.scroll_into_view_if_needed()
-        page.wait_for_timeout(500)
-
-        # Wait for button to be enabled (not disabled)
-        try:
-            page.wait_for_function(
-                """() => {
-                    const btn = document.querySelector('button:has(> span)');
-                    const buttons = document.querySelectorAll('button');
-                    for (const b of buttons) {
-                        if (b.textContent.includes('Run Tool') || b.textContent.includes('RUN TOOL')) {
-                            return !b.disabled;
-                        }
-                    }
-                    return false;
-                }""",
-                timeout=UI_ELEMENT_TIMEOUT,
+            assert tool_dropdown is not None, (
+                "Could not find the Tool dropdown in the Test Settings panel"
             )
-        except Exception:
-            logger.warning("Run Tool button may still be disabled — attempting click anyway")
+            tool_dropdown.click()
+            page.wait_for_timeout(1000)
 
-        run_btn.first.click(force=True)
-
-        # Wait for either success result or error indicator
-        success_locator = page.locator(f'text="{cfg.test_tool_result_indicator}"')
-        error_locator = page.locator('text="Error debugging info"')
-
-        try:
-            page.wait_for_function(
-                """(indicator) => {
-                    const text = document.querySelector('main')?.textContent || '';
-                    return text.includes(indicator) || text.includes('Error debugging info');
-                }""",
-                arg=cfg.test_tool_result_indicator,
-                timeout=TOOLKIT_EXECUTION_TIMEOUT,
-            )
-        except Exception:
-            pass  # Fall through to assertions for better error reporting
-
-        page.wait_for_timeout(2000)
-
-        # Check for tool execution error
-        if error_locator.is_visible():
-            # Expand error details for better diagnostics
-            error_locator.click()
+        with allure.step(f"Step 4 — Select tool: {cfg.test_tool_name}"):
+            visible_search = Popper.find_visible_search_input(page, timeout=UI_ELEMENT_TIMEOUT)
+            visible_search.fill(cfg.test_tool_name)
             page.wait_for_timeout(500)
-            content = page.locator("main").text_content()
-            # Extract the error message after "Error debugging info"
-            error_idx = content.find("Error debugging info")
-            error_detail = content[error_idx:error_idx + 300] if error_idx >= 0 else ""
-            pytest.fail(
-                f"Tool execution failed for {cfg.display_name}: {error_detail}"
+
+            keyword = cfg.test_tool_name.lower().split()[0]
+            selected = Popper.select_menuitem_by_content(
+                page, lambda text: keyword in text.lower(),
             )
+            assert selected, f"Could not find '{cfg.test_tool_name}' in dropdown"
+            page.wait_for_timeout(1000)
 
-        # Verify success — tool indicator must be visible
-        content = page.locator("main").text_content()
-        assert cfg.test_tool_result_indicator in content, (
-            f"Expected '{cfg.test_tool_result_indicator}' in page after tool run"
-        )
+        with allure.step("Step 5 — Fill tool-specific parameters"):
+            if cfg.test_tool_params:
+                for field_label, value in cfg.test_tool_params.items():
+                    _fill_test_settings_param(page, field_label, value)
 
-        # Expand collapsed tool output if present, then check content
-        if cfg.test_tool_result_content:
-            # Try clicking the result row to expand collapsed output
-            result_row = page.locator(f'text="{cfg.test_tool_result_indicator}"').first
+        with allure.step("Step 6 — Click Run Tool button"):
+            run_btn = page.get_by_role("button", name="Run Tool")
+            run_btn.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            run_btn.first.scroll_into_view_if_needed()
+            page.wait_for_timeout(500)
+
             try:
-                result_row.click()
-                page.wait_for_timeout(1000)
+                page.wait_for_function(
+                    """() => {
+                        const btn = document.querySelector('button:has(> span)');
+                        const buttons = document.querySelectorAll('button');
+                        for (const b of buttons) {
+                            if (b.textContent.includes('Run Tool') || b.textContent.includes('RUN TOOL')) {
+                                return !b.disabled;
+                            }
+                        }
+                        return false;
+                    }""",
+                    timeout=UI_ELEMENT_TIMEOUT,
+                )
             except Exception:
-                pass  # May not be expandable
+                logger.warning("Run Tool button may still be disabled — attempting click anyway")
+
+            run_btn.first.click(force=True)
+
+        with allure.step("Step 7 — Wait for tool execution result"):
+            success_locator = page.locator(f'text="{cfg.test_tool_result_indicator}"')
+            error_locator = page.locator('text="Error debugging info"')
+
+            try:
+                page.wait_for_function(
+                    """(indicator) => {
+                        const text = document.querySelector('main')?.textContent || '';
+                        return text.includes(indicator) || text.includes('Error debugging info');
+                    }""",
+                    arg=cfg.test_tool_result_indicator,
+                    timeout=TOOLKIT_EXECUTION_TIMEOUT,
+                )
+            except Exception:
+                pass
+
+            page.wait_for_timeout(2000)
+
+        with allure.step("Step 8 — Verify tool execution success"):
+            if error_locator.is_visible():
+                error_locator.click()
+                page.wait_for_timeout(500)
+                content = page.locator("main").text_content()
+                error_idx = content.find("Error debugging info")
+                error_detail = content[error_idx:error_idx + 300] if error_idx >= 0 else ""
+                pytest.fail(
+                    f"Tool execution failed for {cfg.display_name}: {error_detail}"
+                )
 
             content = page.locator("main").text_content()
-            assert cfg.test_tool_result_content in content, (
-                f"Expected '{cfg.test_tool_result_content}' in tool output "
-                f"for {cfg.display_name}"
+            assert cfg.test_tool_result_indicator in content, (
+                f"Expected '{cfg.test_tool_result_indicator}' in page after tool run"
             )
+
+            if cfg.test_tool_result_content:
+                result_row = page.locator(f'text="{cfg.test_tool_result_indicator}"').first
+                try:
+                    result_row.click()
+                    page.wait_for_timeout(1000)
+                except Exception:
+                    pass
+
+                content = page.locator("main").text_content()
+                assert cfg.test_tool_result_content in content, (
+                    f"Expected '{cfg.test_tool_result_content}' in tool output "
+                    f"for {cfg.display_name}"
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -540,35 +514,36 @@ class TestChatWithToolkit:
         """Add toolkit to chat, send a message, verify tool execution."""
         cfg = toolkit_config
         tk_name = managed_toolkit["name"]
-        chat = ChatPage(page)
-        chat.navigate_to_chat(conversation_id=conversation_id)
-        chat.wait_for_page_load()
 
-        page.wait_for_load_state("networkidle", timeout=30000)
-        page.wait_for_timeout(2000)
+        with allure.step("Step 1 — Navigate to chat"):
+            chat = ChatPage(page)
+            chat.navigate_to_chat(conversation_id=conversation_id)
+            chat.wait_for_page_load()
+            page.wait_for_load_state("networkidle", timeout=30000)
+            page.wait_for_timeout(2000)
 
-        # Add toolkit using ChatPage method
-        chat.add_toolkit_participant(tk_name, timeout=UI_ELEMENT_TIMEOUT)
-        page.wait_for_timeout(1000)
+        with allure.step(f"Step 2 — Add toolkit participant: {tk_name}"):
+            chat.add_toolkit_participant(tk_name, timeout=UI_ELEMENT_TIMEOUT)
+            page.wait_for_timeout(1000)
 
-        # Send message
-        initial_count = chat.get_message_count()
-        chat.send_message(cfg.chat_message, use_enter=True)
-        chat.wait_for_input_ready()
+        with allure.step("Step 3 — Send message to invoke toolkit"):
+            initial_count = chat.get_message_count()
+            chat.send_message(cfg.chat_message, use_enter=True)
+            chat.wait_for_input_ready()
 
-        # Wait for response
-        chat.wait_for_message_content_stable(
-            stable_duration_ms=3000,
-            timeout=TOOLKIT_EXECUTION_TIMEOUT,
-        )
+        with allure.step("Step 4 — Wait for AI response"):
+            chat.wait_for_message_content_stable(
+                stable_duration_ms=3000,
+                timeout=TOOLKIT_EXECUTION_TIMEOUT,
+            )
 
-        # Verify
-        last_msg = chat.get_last_message_text()
-        assert "thinking" not in last_msg.lower()
-        assert any(kw in last_msg.lower() for kw in cfg.chat_response_keywords), (
-            f"Expected keywords {cfg.chat_response_keywords} in response: {last_msg[:500]}"
-        )
-        assert chat.get_message_count() > initial_count
+        with allure.step("Step 5 — Verify response contains expected keywords"):
+            last_msg = chat.get_last_message_text()
+            assert "thinking" not in last_msg.lower()
+            assert any(kw in last_msg.lower() for kw in cfg.chat_response_keywords), (
+                f"Expected keywords {cfg.chat_response_keywords} in response: {last_msg[:500]}"
+            )
+            assert chat.get_message_count() > initial_count
 
 
 # ---------------------------------------------------------------------------
