@@ -142,10 +142,13 @@ Branches: automation/testids (commit born here) → testids/<case>-<slug> (revie
 ## Edge Cases
 
 ### Element Not Found
-If element cannot be located in EliteaUI:
-1. Report which element couldn't be found
-2. Provide the fallback locator (role/text-based) for page object
-3. Continue with other elements
+If the element cannot be located in EliteaUI source:
+1. Report which element couldn't be found (search terms tried, dirs covered)
+2. **STOP+FLAG for that element — never emit a fallback/role/text locator**
+   (testid-only policy: `.agents/testing.md` § Locator policy). The lead
+   decides: deeper source hunt, UI-team question, or stop+flag exception
+   (third-party widget)
+3. Continue with the other elements
 
 ### Duplicate Elements
 If same text appears multiple times:
@@ -154,8 +157,13 @@ If same text appears multiple times:
 
 ### Dynamic/Generated Elements
 For elements in loops (list items, messages):
-1. Add testid to the container/wrapper
-2. Use index-based selection in tests: `page.getByTestId("message-item").nth(0)`
+1. Add testid to the container/wrapper; index-select in the page object
+   (`.nth(i)`)
+2. If items need identity (select-by-name), emit a PARAMETERIZED testid in the
+   JSX (`data-testid={`skill-tag-option-${name}`}`) and report the pattern —
+   the page object consumes it via a class-level template constant
+   (`'[data-testid="skill-tag-option-{}"]'` + `.format()`), never an inline
+   f-string `get_by_test_id`
 
 ### MUI Components
 MUI forwards data-testid to the root element:

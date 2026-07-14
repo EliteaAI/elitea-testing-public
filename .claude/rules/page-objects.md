@@ -133,6 +133,21 @@ CHAT_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
 message.locator(self.CHAT_DELETE_SELECTOR)
 ```
 
+**Dynamic (runtime-parameterized) testids — same mechanism, templated:**
+```python
+# ✅ CORRECT — class-level template constant; the pattern stays in the inventory
+SKILL_TAG_OPTION = '[data-testid="skill-tag-option-{}"]'
+
+def select_tag(self, tag_name: str):
+    self.page.locator(self.SKILL_TAG_OPTION.format(tag_name)).click()
+
+# ❌ WRONG — inline f-string get_by_test_id in a method body (invisible to the
+# class-level testid inventory; the #19-rework FAIL-1 shape)
+def select_tag(self, tag_name: str):
+    self.page.get_by_test_id(f"skill-tag-option-{tag_name}").click()
+```
+Naming for dynamic testids: `{section}-{element}-{param}` (parameter last).
+
 **Locators MUST be class-level fields, NEVER inline in methods:**
 ```python
 # ❌ WRONG - inline locator in method

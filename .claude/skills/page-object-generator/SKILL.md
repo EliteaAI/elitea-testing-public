@@ -37,7 +37,7 @@ Generate or refactor Page Object Model code by exploring pages with Playwright M
 ## Rules
 
 **Read `.claude/rules/page-objects.md` before generating any code.** It contains:
-- LocatorDescriptor pattern with testid + fallback
+- LocatorDescriptor pattern — **testid-only** (`fallback=`/`locator=` are legacy, never generated)
 - Architecture pattern (list/form/detail + optional facade)
 - Method naming conventions
 - Common patterns (hover, MUI fields)
@@ -77,8 +77,13 @@ For complex elements:
 ### Step 4: Generate Code
 
 Follow templates and patterns from `.claude/rules/page-objects.md`:
-- Use LocatorDescriptor for ALL elements
-- Add testid (even if not in frontend) + fallback
+- Use LocatorDescriptor for ALL elements — `LocatorDescriptor(testid="…")`, nothing else
+- Element lacks a testid in the frontend? STOP and route through `add-data-testid`
+  (it adds the testid to EliteaUI first) — NEVER emit a fallback or invent a
+  testid that doesn't exist in the DOM
+- Dynamic (runtime-parameterized) testids: class-level template constant
+  `NAME = '[data-testid="{section}-{element}-{}"]'` + `.format()` at the call
+  site — per `.agents/testing.md` § Locator policy
 - Follow method naming conventions
 - Document complex locators in docstrings
 
@@ -106,7 +111,8 @@ grep -n "def " automation/pages/$ARGUMENTS
 
 Compare against `.claude/rules/page-objects.md` checklist:
 - [ ] LocatorDescriptor for all elements
-- [ ] testid + fallback for each
+- [ ] testid-only — zero `fallback=`/`locator=` params, zero raw selectors in
+      methods, dynamic testids as class-level template constants
 - [ ] Method names follow conventions
 - [ ] Class docstring includes URL
 - [ ] No duplicate methods
@@ -129,9 +135,10 @@ If duplicates: recommend moving to BasePage or shared parent.
 ### Step R5: Apply Transformations
 
 Follow transformation patterns from `.claude/rules/page-objects.md`:
-- Convert direct locators → LocatorDescriptor
-- Add missing fallbacks
-- Extract inline selectors
+- Convert direct locators → LocatorDescriptor(testid=…) — adding the testid to
+  EliteaUI via `add-data-testid` where missing
+- Strip `fallback=`/`locator=` from declarations being touched (legacy params)
+- Extract inline selectors → class-level `[data-testid=` constants/templates
 - Remove duplicates via inheritance
 
 ### Step R6: Output

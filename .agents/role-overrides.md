@@ -32,6 +32,20 @@ metric*. Every raw handle silently shrinks measured coverage.
   to untouched elements = `CHANGES_REQUESTED`. (Optional testid PROPS on shared
   components are fine — they render nothing unless a caller opts in — but each new
   prop is a component-API change the UI team reviews as a pattern.)
+- **Fresh ground truth (hard rule).** Any verification against `origin/*` refs —
+  promotability greps, "does this testid exist on main", branch-state checks —
+  is preceded by `git fetch origin` in that repo, in the same command block. A
+  verification against a stale clone is not a verification (#19 rework shipped a
+  false "0 of 12 on main" row exactly this way; truth was 5/12, added by the UI
+  team's own EL-5400). Name the ref you checked and PASTE the command output.
+- **Declared-improvisation protocol (canon gaps).** When the canon has NO pattern
+  for your case: pick the most spirit-compliant option AND declare it explicitly —
+  in the Run Report and the PR description — as a proposed pattern with reasoning
+  ("no sanctioned shape for X; chose Y because Z"). A DECLARED improvisation is a
+  canon-gap escalation: the reviewer verifies the reasoning, the auditor reports it
+  as a `question` — it can never solo-FAIL a delivery. An UNDECLARED improvisation
+  is a violation, full stop. (Origin: #19 FAIL-1 — a semantically-correct
+  improvisation was indistinguishable from a violation because it was silent.)
 - **The surrounding code is NOT precedent.** `automation/pages/` contains ~350
   pre-policy raw handles (tracked tech debt, issues #25/#42). Matching the
   neighbors is how the debt grew; never cite existing code to justify a new raw
@@ -71,6 +85,12 @@ Then, and only then:
 - The AFS **Handles Reference must list testids as the only primary handles.** An
   element without one is specced as `testid needed: {section}-{element}-{type}` —
   never "resolve by accessible role/name", never a CSS/role handle as primary.
+- **Every handle row carries a PROVENANCE column**, verified at analysis time with
+  a fresh fetch (`cd ../EliteaUI && git fetch origin` first): `on-main ✓` /
+  `on-automation/testids only (draft #N)` / `needs-adding`. The implementer and the
+  closure record inherit this verified data instead of re-deriving it — and the UI
+  team adds testids in parallel (75+ on main already), so never assume "we didn't
+  add it" means "it doesn't exist".
 - Do not soften a testid demand into a MINOR defect or a note; it is implementer
   work, and the AFS is its work order.
 
@@ -85,8 +105,15 @@ Then, and only then:
 - Locators are class-level `LocatorDescriptor(testid=…)` fields ONLY — no
   `fallback=`, no `locator=`, nothing built in method bodies, no raw selector
   chained off an existing field (`self.x.locator(".css")`). Scoped sub-selectors
-  use UPPER_CASE `[data-testid="…"]` string constants per
-  `.claude/rules/page-objects.md`.
+  and **dynamic testids** use UPPER_CASE `[data-testid="…"]` string/template
+  constants per `.claude/rules/page-objects.md` and `.agents/testing.md`
+  § Locator policy (inline `get_by_test_id(f"…")` is NOT the compliant shape).
+- **Self-check before handoff:** run the reviewer's mechanical grep (below) on
+  your own diff and PASTE its output in the Run Report — an empty result is the
+  evidence, a missing paste is a gap. Catching your own hit costs minutes; a
+  review round costs a session.
+- **`locator_descriptor.py`'s `locator=`/`fallback=` params are LEGACY** — kept so
+  old code imports; never valid in new code, whatever any docstring example shows.
 
 ## Reviewer slot (qa-engineer, fresh session)
 
@@ -96,7 +123,16 @@ Then, and only then:
   `git diff <base>... | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\.locator|\.locator\()'`
   (`get_by_test_id` included: inline Playwright calls are also banned — locators are
   class-level `LocatorDescriptor` fields)
-  — every hit must be a `[data-testid=` selector or it blocks.
+  — a hit is COMPLIANT only if the line contains a literal `[data-testid=` selector
+  OR references an UPPER_CASE class constant whose class-level definition is a
+  `[data-testid=` string/template (one-hop check — look it up). Everything else blocks.
+- **Claims require pasted output.** The verdict comment includes the mechanical
+  grep's actual output verbatim — an empty result is shown as empty. "Grep gate
+  clean" without the paste is not a finding, it is the #19 FAIL-2 anti-pattern;
+  no paste ⇒ no `APPROVED`.
+- **Declared improvisations** (see § Every role): verify the reasoning and say so
+  explicitly in the verdict; if sound, APPROVED + recommend the canon addition —
+  do not block solely for the gap the canon itself left.
 - "Selector stability per testing.md" in the review checklist means **this**
   policy, not the skill's example ladder.
 
@@ -107,11 +143,13 @@ Then, and only then:
   + `.agents/testing.md` § Locator policy). The workflow skill's example ladder
   does not apply. New non-testid handles are CHANGES_REQUESTED."* The dispatch
   prompt is the gate — put the policy where it cannot lose.
-- **Closure records state verified facts.** Before writing the promotability row,
-  check it: which testids the case's tests use (`grep` the diff), and which of
-  those exist on `EliteaAI/EliteaUI` **main** vs only on `automation/testids`
-  (`git grep` both). Never copy the AFS/implementer's claim — #35/#36/#37 shipped
-  false "fully promotable" rows exactly that way.
+- **Closure records state verified facts.** Before writing the promotability row:
+  `cd ../EliteaUI && git fetch origin` FIRST (a stale clone produced the #19
+  rework's false 0-of-12 row — truth was 5/12, the UI team's own EL-5400 testids),
+  then check which testids the case's tests use (`grep` the diff) against **main**
+  vs `automation/testids` (`git grep` both), and PASTE the output into the record
+  (verbatim block in `.agents/workflow.md` § Closure record). Never copy the
+  AFS/implementer's claim — #35/#36/#37 shipped false rows exactly that way.
 - Run `sync-base-branches` before dispatching the first case of a session, not
   after the batch.
 - **Never dispatch `ui-test-orchestrator` or `failure-investigator`.** They are

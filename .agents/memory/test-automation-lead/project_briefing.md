@@ -52,8 +52,10 @@ type: project
   search (all states), ≤10 new cards per run, already-automated exclusion (all three:
   `execution_type: automated` + `status: ready` + non-empty `automation_test_id`),
   contradictory metadata → report, never guess.
-- **Back-write post-merge**: edit the case file in `onetest-ai-tm-Elitea` —
-  `execution_type: automated`, `status: ready`, `automation_test_id: <dotted pytest path>`.
+- **Back-write post-merge**: edit the case file in `onetest-ai-tm-Elitea` — ALL FOUR:
+  `execution_type: automated`, `status: ready`, `automation_test_id: <dotted pytest
+  path>`, **`automation_pr: <merged PR URL>`** (#19 rework FAIL-4 = the fourth field
+  forgotten).
 - **HARD OVERRIDES: `.agents/role-overrides.md` § Orchestrator slot** — dispatch-prompt
   contract (every implementer/reviewer dispatch carries the testid-only policy line
   verbatim; the workflow skill's example ladder does NOT apply on this project),

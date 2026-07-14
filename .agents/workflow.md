@@ -191,10 +191,22 @@ record** — that was the gap on #19.
 
 The lead posts this as the final comment on the automation issue, **before** closing it.
 **The promotability row is a verified fact, not a copy of the AFS/implementer claim**
-(#35/#36/#37 shipped false "fully promotable" rows that way): grep the case's test +
-page-object diff for the testids it uses, then check each against `EliteaAI/EliteaUI`
-**main** and `automation/testids` (`git grep 'data-testid="<id>"' origin/main -- src/`
-and the same against `origin/automation/testids`). Only testids present on **main**
+(#35/#36/#37 shipped false rows by copying; the #19 rework shipped a false row from a
+STALE clone — claimed 0/12 on main, truth was 5/12, added by the UI team's own
+EL-5400). The verification block, verbatim — **the fetch is part of the check**, and
+the output gets PASTED into the record:
+
+```bash
+cd ../EliteaUI && git fetch origin      # fresh ground truth — NON-OPTIONAL
+for t in <every testid the case's diff uses>; do
+  printf "%-32s main:%-3s testids:%s\n" "$t" \
+    "$(git grep -q "data-testid=\"$t\"" origin/main -- src/ && echo YES || echo no)" \
+    "$(git grep -q "data-testid=\"$t\"" origin/automation/testids -- src/ && echo YES || echo no)"
+done
+```
+
+The UI team adds testids in parallel (EL-5400, EL-5634, …) — absence of OUR draft
+does not mean absence on main. Only testids present on **main**
 make a case promotable:
 
 ```markdown
