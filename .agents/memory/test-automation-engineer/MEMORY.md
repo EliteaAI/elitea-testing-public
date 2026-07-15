@@ -1,5 +1,6 @@
 # Memory index — test-automation-engineer
 
+- [MCP/toolkit create form implementer quirks](mcp_toolkit_create_form_implementer_quirks.md) — McpFormPage testid gaps (CodeMirror content, detail title, native checkbox/secret inputs via contentTestId/inputProps passthrough seams), MAX_NAME_LENGTH=32 truncation, select_text+Backspace for pre-populated numeric fields, detail-page placeholder-title race (from ELITEA-1922)
 - [Skill version selector testid rework quirks (implementer)](skill_version_selector_testid_rework_quirks.md) — SkillVersionSelector.jsx's Versions <Menu> portals to document.body (not a DOM descendant of skill-card-{id}), so its new testids carry skill_id/version_name identity directly; resolving skill_id from a card's own data-testid attribute; prefix-match testid selector for menu-item enumeration; is_versions_menu_open()/get_versions_menu_item_names() needed a new skill_name param (from ELITEA-1789 rework)
 - [Project briefing](project_briefing.md) — Stack overlay (test-automation) — implementer slot; turn a ready AFS into a merged, honest automated test
 - [MUI form field quirks](mui_form_field_quirks.md) — wrapper-testid resolution, replacing pre-filled text, download filenames, silent maxlength truncation, SingleSelect option testids, MUI Tooltip-on-disabled-child label placement (from ELITEA-1737/1738/1790)
