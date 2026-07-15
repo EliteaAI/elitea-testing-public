@@ -19,6 +19,7 @@ from playwright.sync_api import Locator, Page, Response
 
 from .base_page import BasePage
 from .credentials_list_recovery import recover_from_credentials_list_crash
+from .locator_descriptor import LocatorDescriptor
 
 logger = logging.getLogger("elitea.pages.credentials_list")
 
@@ -31,8 +32,18 @@ class CredentialsListPage(BasePage):
     URL: /credentials/all
     """
 
-    ENTITY_CARD_SELECTOR = '[data-testid="entity-card"]'
-    ENTITY_CARD_NAME_SELECTOR = '[data-testid="entity-card-name"]'
+    # Shared Card.jsx component testid (also used by Mcp/Skills/Agents/
+    # Pipelines list pages) — collection locator, one per visible card.
+    entity_card = LocatorDescriptor(
+        testid="entity-card",
+        description="Credential card outer container (card view)",
+    )
+
+    entity_card_name = LocatorDescriptor(
+        testid="entity-card-name",
+        description="Credential card name (title) — collection locator, one per visible card",
+    )
+
     # Parameterized template — credential id filled in per-call, per the
     # dynamic-testid convention (.claude/rules/page-objects.md).
     PIN_TOGGLE_BUTTON = '[data-testid="credential-pin-toggle-button-{}"]'
@@ -50,7 +61,7 @@ class CredentialsListPage(BasePage):
         super().navigate("/credentials/all")
         self.wait_for_network()
         recover_from_credentials_list_crash(self.page)
-        self.page.locator(self.ENTITY_CARD_SELECTOR).first.wait_for(
+        self.entity_card.first.wait_for(
             state="visible", timeout=UI_ELEMENT_TIMEOUT
         )
 
@@ -88,7 +99,7 @@ class CredentialsListPage(BasePage):
         above/below another) rather than absolute page position — mirrors
         the AFS's before/after snapshot-diff approach.
         """
-        names = self.page.locator(self.ENTITY_CARD_NAME_SELECTOR)
+        names = self.entity_card_name
         return [names.nth(i).text_content() or "" for i in range(names.count())]
 
     def click_credential_card(self, display_name: str) -> None:
@@ -101,6 +112,6 @@ class CredentialsListPage(BasePage):
         card order) and just performs the click, avoiding a redundant
         navigation round-trip.
         """
-        card = self.page.locator(self.ENTITY_CARD_SELECTOR).filter(has_text=display_name)
+        card = self.entity_card.filter(has_text=display_name)
         card.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         card.first.click()
