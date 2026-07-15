@@ -100,6 +100,19 @@ class Settings(BaseSettings):
     github_repo: str = "EliteaAI/elitea-testing"
 
     # ------------------------------------------------------------------
+    # MCP (ELITEA-1954)
+    # ------------------------------------------------------------------
+    # The environment's pre-existing "Remote Github" MCP toolkit id — reused
+    # read-only by mcp_pipeline_with_toolkits (its cached tool list renders
+    # client-side without a live OAuth reconnection). NOT discoverable via
+    # ToolkitAPI.list_all_toolkits(): that endpoint returns an empty list on
+    # this environment regardless of auth method (confirmed both via cookie
+    # and Bearer session during ELITEA-1954 implementer Phase 2 exploration)
+    # — a real API/environment quirk, not a test bug. Override via env if the
+    # environment's Remote Github toolkit id ever changes.
+    remote_github_mcp_toolkit_id: int = 3
+
+    # ------------------------------------------------------------------
     # Jira toolkit
     # ------------------------------------------------------------------
     jira_base_url: str = ""

@@ -791,6 +791,108 @@ class PipelineAPI:
         _raise_for_status(resp)
         return resp.json()
 
+    def create_pipeline_with_mcp_node(
+        self,
+        name: str,
+        description: str,
+        tools: list[dict],
+        *,
+        toolkit_name: str,
+        tool: str,
+        input_mapping: Optional[dict] = None,
+        node_id: str = "MCP 1",
+    ) -> dict:
+        """Create a pipeline with a single MCP node pre-configured with a Toolkit + Tool.
+
+        Used to seed the precondition for ELITEA-1954 (MCP node Toolkit/Tool
+        switching): a pipeline with an MCP node already configured, and
+        >=2 MCP toolkits attached in the pipeline's TOOLS section — without
+        needing to drive the UI to attach toolkits or configure the node.
+
+        Args:
+            name: Pipeline display name.
+            description: Short description.
+            tools: Full toolkit JSON objects (as returned by
+                ``ToolkitAPI.get_toolkit`` / ``create_remote_mcp_toolkit``)
+                to attach in the pipeline's TOOLS section. The MCP node's
+                Toolkit dropdown lists exactly these (``ToolSelect.jsx``
+                reads ``version_details.tools``) — a bare ``{"id": ...}``
+                reference is rejected by the API (confirmed empirically:
+                400 "Missing 'settings'"), so full objects are required.
+            toolkit_name: The node's initial ``toolkit_name`` YAML field —
+                must match one of ``tools``' cleaned display names (spaces/
+                punctuation stripped; see EliteaUI's ``cleanString`` /
+                ``genToolkitName`` — e.g. toolkit "Remote Github" ->
+                ``toolkit_name: RemoteGithub``).
+            tool: The node's initial ``tool`` YAML field (a tool name from
+                the ``toolkit_name`` toolkit's ``settings.selected_tools``).
+            input_mapping: Optional initial ``input_mapping`` dict for the
+                node (defaults to empty — the initial tool/toolkit pairing
+                only needs to exist for the test's Step 3 "read current
+                values"; it does not need a fully valid mapping since the
+                test immediately switches Toolkit/Tool away from it).
+            node_id: The node's YAML id (also the entry point).
+
+        Returns:
+            Created pipeline JSON (same shape as ``create_pipeline_with_nodes``).
+        """
+        import yaml as _yaml
+
+        node = {
+            "id": node_id,
+            "type": "mcp",
+            "toolkit_name": toolkit_name,
+            "tool": tool,
+            "input": ["input"],
+            "output": ["messages"],
+            "input_mapping": input_mapping or {},
+            "structured_output": False,
+            "transition": "END",
+        }
+        instructions_yaml = _yaml.dump(
+            {"entry_point": node_id, "nodes": [node]},
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+        )
+
+        url = self._applications_url()
+        payload = {
+            "name": name,
+            "description": description,
+            "type": "interface",
+            "versions": [
+                {
+                    "name": "base",
+                    "tags": [],
+                    "instructions": instructions_yaml,
+                    "variables": [],
+                    "tools": tools,
+                    "llm_settings": {
+                        "max_tokens": -1,
+                        "temperature": 0.6,
+                        "reasoning_effort": "medium",
+                        "model_name": settings.default_model_name,
+                        "model_project_id": settings.default_model_project_id,
+                    },
+                    "conversation_starters": [],
+                    "agent_type": "pipeline",
+                    "welcome_message": "",
+                    "pipeline_settings": {
+                        "nodes": [],
+                        "edges": [],
+                        "orientation": "vertical",
+                        "layout_version": "1.0",
+                    },
+                    "meta": {"step_limit": 25},
+                }
+            ],
+        }
+        logger.debug("CREATE pipeline with MCP node %s name=%s", url, name)
+        resp = self._session.post(url, json=payload)
+        _raise_for_status(resp)
+        return resp.json()
+
     def export_pipeline(self, pipeline_id: int, fmt: str = "md") -> bytes:
         """Export a pipeline as markdown.
 
@@ -1453,6 +1555,108 @@ class ToolkitAPI:
         logger.debug("DELETE toolkit %s", url)
         resp = self._session.delete(url)
         _raise_for_status(resp)
+
+    def get_toolkit(self, toolkit_id: int) -> dict:
+        """Fetch a single toolkit's full JSON representation.
+
+        Used to re-embed an existing toolkit (e.g. the environment's
+        pre-existing ``Remote Github`` MCP, id 3) as a full object in a
+        pipeline version's ``tools`` list — the create/update endpoint
+        requires the full toolkit dict (``type`` + ``settings``), not a
+        bare ``{"id": ...}`` reference (confirmed empirically: a bare
+        reference 400s with "Missing 'settings'").
+        """
+        url = self._toolkits_url(toolkit_id)
+        logger.debug("GET toolkit %s", url)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        return resp.json()
+
+    def sync_mcp_tools(self, url: str, timeout: int = 60, ssl_verify: bool = True) -> list[dict]:
+        """Probe a remote MCP server and return its live tool list.
+
+        Hits the same ``mcp_sync_tools`` endpoint the UI's "Load Tools"
+        button calls (``EliteaUI/src/api/toolkits.js``). Returns the raw
+        tool list — each item shaped ``{"name", "description", "inputSchema"}``
+        — for ``create_remote_mcp_toolkit`` to convert into the toolkit's
+        ``available_mcp_tools`` schema.
+
+        Args:
+            url: The MCP server's URL (e.g. ``https://mcp.deepwiki.com/mcp``).
+            timeout: Seconds to wait for the MCP handshake.
+            ssl_verify: Whether to verify the server's TLS certificate.
+
+        Returns:
+            List of tool dicts as reported by the MCP server.
+
+        Raises:
+            RuntimeError: If the sync call reports failure (bad URL, MCP
+                server unreachable, auth required, etc.).
+        """
+        sync_url = (
+            f"{self.base_url}/elitea_core/mcp_sync_tools/prompt_lib/{self.project_id}"
+            f"?await_response=true"
+        )
+        payload = {"url": url, "timeout": timeout, "ssl_verify": ssl_verify}
+        logger.debug("POST mcp_sync_tools %s url=%s", sync_url, url)
+        resp = self._session.post(
+            sync_url, json=payload, headers={"Content-Type": "application/json"}
+        )
+        _raise_for_status(resp)
+        result = resp.json().get("result", {})
+        if not result.get("success"):
+            raise RuntimeError(f"mcp_sync_tools failed for {url!r}: {result}")
+        return result.get("tools", [])
+
+    def create_remote_mcp_toolkit(self, name: str, description: str, url: str, tools: list[dict]) -> dict:
+        """Create a Remote MCP toolkit with a real, working tool list.
+
+        Unlike a bare toolkit create, this populates ``settings.selected_tools``
+        and ``settings.available_mcp_tools`` from an already-synced tool list
+        (see ``sync_mcp_tools``) — the pipeline MCP node's Toolkit/Tool
+        dropdowns resolve tool names and parameter schemas straight from
+        these fields client-side (``useFunctionInputMapping``: MCP toolkits
+        carry their schemas synchronously in ``settings.available_mcp_tools``,
+        no live reconnection needed at pipeline-load time — confirmed via
+        ELITEA-1954 exploration; this is why a plain
+        ``create_toolkit(type="mcp", ...)`` without a synced tool list
+        produces a toolkit whose pipeline-node Tool dropdown never
+        populates).
+
+        Args:
+            name: Toolkit display name.
+            description: Short description.
+            url: The MCP server URL.
+            tools: Raw tool list from ``sync_mcp_tools(url)``.
+
+        Returns:
+            The created toolkit's JSON representation.
+        """
+        available_mcp_tools = [
+            {
+                "label": tool["name"],
+                "value": tool["name"],
+                "args_schema": tool.get("inputSchema", {}),
+                "description": tool.get("description", ""),
+            }
+            for tool in tools
+        ]
+        toolkit_settings = {
+            "url": url,
+            "headers": {},
+            "client_id": "",
+            "client_secret": "",
+            "scopes": [],
+            "timeout": "300",
+            "cache_ttl": "300",
+            "enable_caching": True,
+            "ssl_verify": True,
+            "selected_tools": [tool["name"] for tool in tools],
+            "available_mcp_tools": available_mcp_tools,
+        }
+        return self.create_toolkit(
+            name=name, description=description, toolkit_type="mcp", settings=toolkit_settings
+        )
 
     def close(self):
         """Close the underlying HTTP session."""
