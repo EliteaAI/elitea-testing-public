@@ -71,6 +71,20 @@ fixture (not just the raw create form) to work, do a throwaway
 the API path is a safe workaround for the UI bug, it has the identical root
 cause.
 
+## Update (2026-07-16, ELITEA-1872 analyst pass, issue #79)
+
+Still open. Re-confirmed the same `create_agent()` 400 directly (not via a
+fixture-dependent test this time, a standalone script call). Used the
+`create_agent_full()` + `reasoning_effort: "none"` + no-`temperature`
+workaround (same shape as the ELITEA-1884/ELITEA-1888 precedent) to get a
+disposable agent (id 4882, deleted after use) and completed the ELITEA-1872
+case cleanly. Posted another work-log comment on #524 (no new issue —
+already covered). At this point the workaround is proven across three
+separate cases (1884, 1888, 1872) — worth someone eventually promoting it
+into the shared `agent_id` fixture itself rather than re-deriving it per
+case; flagged that suggestion in the #79 AFS but didn't action it (out of
+scope for a single-case analyst pass).
+
 ## For future sessions
 
 - Before starting any case that needs a **freshly created** Agent, check
