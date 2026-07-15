@@ -22,6 +22,99 @@
   **not** this case's target and not re-asserted here). This case is the first
   coverage of the **Instructions-field** mention scoping specifically.
 
+## Rework — testid-only pass (issue #33, 2026-07-15)
+
+PR #49 (merged to `automation/base` as `af4dde0`) implemented this case's
+Instructions-field mention flow correctly in behavior, but shipped 2 raw
+non-testid handles in `automation/pages/agent_detail_page.py` (a 3rd handle
+named in the reopen directive turned out, on inspection, to already be
+testid-compliant — see below), violating the
+project's testid-only locator policy (`.agents/role-overrides.md` +
+`.agents/testing.md` § Locator policy — no fallback ladder, `data-testid` is
+the only rung). Reopened for rework per the operator's directive on issue
+#33 and `.agents/retrospectives/2026-07-14-framework-alignment-audit.md`.
+
+**Root cause of the drift:** at analysis time (this AFS's original Concrete
+Handles table, rows for "`~`-mention suggestion panel container" and
+"`~`-mention candidate row") the analyst correctly observed that the panel
+had no `data-testid`/`role="menuitem"` on its rows and documented the
+`get_by_text('Mention skill')` + ancestor-xpath / `get_by_text(skillName)`
+workaround as the best handle available **at that time**. What the analysis
+missed: the exact same panel component (`MentionSkillList.jsx`) is **already
+consumed by the embedded-chat mention flow**
+(`AgentDetailPage.send_chat_message_with_mention`, same file), which already
+carries `data-testid="skill-mention-list"` on the container and a dynamic
+`data-testid="skill-mention-item-{skill-name}"` per row — added under
+ELITEA-1735's testid-only rework. Since the Instructions-field mention panel
+and the embedded-chat mention panel render the **identical shared
+component**, the existing testids apply to the Instructions-field surface
+for free — no new testid was ever needed. This is a case of "second entry
+point into an already-testid'd component," not a genuine testid gap.
+
+### Rework verification (live localhost:5173, playwright-testing MCP)
+
+Read the current `agent_detail_page.py` (methods
+`_instructions_mention_container` lines 1251–1260, `get_instructions_mention_item`
+lines 1289–1304, `select_skill_from_instructions_mention` lines 1306–1322) and
+`tests/ui/skills/test_agent_instructions_tilde_mention.py`. Confirmed via
+`git grep` against `EliteaUI` (after `git fetch origin`) that
+`data-testid="skill-mention-list"` (container, `MentionSkillList.jsx:56`) and
+the dynamic `testId={`skill-mention-item-${item.name}`}` (row,
+`MentionSkillList.jsx:81`) exist on `origin/automation/testids` (the live
+dev-server integration branch — confirmed present and already reachable by
+`automation_base`'s existing `skill_mention_list` `LocatorDescriptor` and
+`SKILL_MENTION_ITEM_SELECTOR` template, both already declared class-level in
+`agent_detail_page.py` lines 68 and 108 and already exercised by
+`send_chat_message_with_mention`) but **absent from `origin/main`** — they
+ship in still-open draft PR **#540**
+(`testids/ELITEA-1735-skills-testids` → `main`, `EliteaAI/EliteaUI`), not yet
+merged. `InstructionsInput.jsx` (the Instructions-field mention consumer)
+also exists on `origin/main`, confirming this file isn't itself new/unmerged
+— only the testids on the shared `MentionSkillList.jsx`/`MentionToolItem.jsx`
+pair are pending in #540.
+
+**Scope discipline applied:** no new testid is being requested. The fix is
+to point the 2 rework'd methods at the **already-declared** `skill_mention_list`
+LocatorDescriptor and `SKILL_MENTION_ITEM_SELECTOR` template — the same
+fields `send_chat_message_with_mention` already uses — not to add anything
+new to `MentionSkillList.jsx`/`MentionToolItem.jsx` or touch any neighboring
+element.
+
+### Handles needing rework (implementer scope)
+
+| # | Current (raw, non-testid) | File:line (current) | Rework to |
+|---|---|---|---|
+| 1 | `self.page.get_by_text("Mention skill", exact=True)` then `.locator("xpath=ancestor::div[2]")` | `agent_detail_page.py:1258-1260` (`_instructions_mention_container`) | `self.skill_mention_list` (existing `LocatorDescriptor(testid="skill-mention-list")`, class field at line 108) — method can likely be deleted entirely once callers reference `self.skill_mention_list` directly (mirrors `send_chat_message_with_mention`'s direct use, no intermediate container-lookup method) |
+| 2 | `container.get_by_text(skill_name, exact=True)` | `agent_detail_page.py:1304` (`get_instructions_mention_item`) | `self.skill_mention_list.locator(self.SKILL_MENTION_ITEM_SELECTOR.format(skill_name))` — identical pattern already used at `agent_detail_page.py:1412-1414` inside `send_chat_message_with_mention` |
+
+Note on the dispatch prompt's 3rd bullet ("around line 1412 —
+`self.skill_mention_list.locator(...)` for the mention candidate row"): that
+line range is `send_chat_message_with_mention`'s **existing, already-correct**
+testid-based row lookup (the embedded-chat surface, out of this case's
+scope) — not a 3rd raw handle. The 2 rows above are the actual full set of
+raw handles in the Instructions-field flow; there is no 3rd one. Likely a
+stale line reference in the dispatch (the file has moved since PR #49
+merged), as the dispatch itself anticipated ("check current line numbers").
+
+`select_skill_from_instructions_mention` (lines 1306–1322) needs no direct
+edit — it only calls `get_instructions_mention_item()`, so fixing #2 above
+fixes it transitively. `type_tilde_in_instructions` (lines 1262–1287) needs
+no direct edit either beyond its `return self._instructions_mention_container(...)`
+call, which either keeps working (if the container helper is kept, now
+backed by the testid) or is replaced with `return self.skill_mention_list` if
+the helper method is removed — implementer's call, per existing project
+precedent (ELITEA-1789/#31, ELITEA-1740/#30 reworks) of inlining once a
+single-field testid replaces a multi-line workaround.
+
+### Downstream verify
+
+The regression test (`test_agent_instructions_tilde_mention.py`) calls only
+`type_tilde_in_instructions()`, `get_instructions_mention_item()`, and
+`select_skill_from_instructions_mention()` — all 3 stay behavior-identical
+after the rework (same return types, same call signatures), so the existing
+test file needs no changes, only a fresh green run once the page-object
+methods are reworked.
+
 ## Preconditions
 - User is logged in (on localhost, `auth_state` fixture skips login).
 - A project is selected/accessible (`Private`, id `399` in this run).
@@ -219,30 +312,31 @@ Three entities existed transiently in this run: 2 freshly-created Skills (`elite
    its own `try/except` (mirrors the pattern used in
    ELITEA-1735/1737/1738/1739/1789/1790).
 
-## Concrete Handles (discovered during exploration)
+## Concrete Handles (discovered during exploration; PROVENANCE added in the
+2026-07-15 testid-only rework pass — see § Rework above)
 
-| Element | Recommended Locator | Fallback |
-|---|---|---|
-| Skill Name field | `getByTestId('skill-name-input')` | — (testid is the only reliable handle; kebab-case validation applies) |
-| Skill Description field | `getByTestId('skill-description-input')` | — |
-| Skill Instructions editor | `getByTestId('skill-instructions-editor-content')` | CodeMirror inner content — use `press_sequentially`, never `fill` |
-| Skill Save button | `getByTestId('skill-save-button')` | — |
-| Nav-blocker confirm (fires on Skill-create Save) | `getByTestId('alert-dialog-confirm-button')` | — |
-| Agent Name field | `getByTestId('agent-name-input')` | — |
-| Agent Description field | `getByTestId('agent-description-input')` | — |
-| Agent Save button (create form) | `getByTestId('agent-save-button')` | — |
-| Agent detail-page Skills add-skill button (<5 attached) | `getByRole('button', { name: 'Skill', exact: true })` | no `data-testid` — matches ELITEA-1735/1789/1790's implementer-amended handle |
-| Skill-attach popper item | `role="menuitem"`, accessible name = skill name (search box placeholder `"Search skills..."`) | use `exact: true` on the name match to avoid ambiguous substring matches between `elitea-1791-skill-b`/`-c` |
-| Skills-added counter text | `getByText(/\d\/5 skills added\./)` | — |
-| **Agent Instructions field (this case's actual target)** | `getByTestId('agent-instructions-input')` — accessible name "Guidelines for the AI agent" | — no fallback needed, stable testid confirmed live |
-| **`~`-mention suggestion panel container** | `getByText('Mention skill', exact: true)` locates the header; sibling rows below it are the mention candidates | same component/header text as the existing `AgentDetailPage.send_chat_message_with_mention` embedded-chat mention flow — do not confuse the two call sites, they target different input fields |
-| **`~`-mention candidate row** | row containing the skill's exact name as a text node, `[cursor=pointer]`; use `page.get_by_text(skillName, exact=True)` scoped under the "Mention skill" panel container (same pattern as `AgentDetailPage.send_chat_message_with_mention`'s `mention_container.get_by_text(skill_name, exact=True).first`) | no `data-testid`/`role="menuitem"` on these rows (unlike the Skills-attach popper) — confirmed via snapshot, plain `generic [cursor=pointer]` |
-| Agent actions (overflow) menu | `getByTestId('agent-actions-menu-button')` | — |
-| Delete-agent menu item | `getByTestId('delete-agent-menuitem')` | — |
-| Skill controls (overflow) menu | `getByTestId('skill-controls-menu-button')` | — |
-| Delete-skill menu item | `getByTestId('skill-delete-menu-item')` | — |
-| Delete-confirmation name field | `getByTestId('delete-confirm-name-input')` scoped to inner `#name` field | shared component, both agent and skill delete flows |
-| Delete-confirmation confirm button | `getByRole('button', { name: 'Delete' })` scoped to the dialog | enabled only once typed name matches |
+| Element | Recommended Locator | Fallback | PROVENANCE |
+|---|---|---|---|
+| Skill Name field | `getByTestId('skill-name-input')` | — (testid is the only reliable handle; kebab-case validation applies) | on `main` |
+| Skill Description field | `getByTestId('skill-description-input')` | — | on `main` |
+| Skill Instructions editor | `getByTestId('skill-instructions-editor-content')` | CodeMirror inner content — use `press_sequentially`, never `fill` | on `main` |
+| Skill Save button | `getByTestId('skill-save-button')` | — | on `main` |
+| Nav-blocker confirm (fires on Skill-create Save) | `getByTestId('alert-dialog-confirm-button')` | — | on `main` |
+| Agent Name field | `getByTestId('agent-name-input')` | — | on `main` |
+| Agent Description field | `getByTestId('agent-description-input')` | — | on `main` |
+| Agent Save button (create form) | `getByTestId('agent-save-button')` | — | on `main` |
+| Agent detail-page Skills add-skill button (<5 attached) | `getByRole('button', { name: 'Skill', exact: true })` | no `data-testid` — matches ELITEA-1735/1789/1790's implementer-amended handle | not testid'd — role/name handle remains the team-accepted exception here (see ELITEA-1735/1789/1790 precedent), unchanged by this rework |
+| Skill-attach popper item | `role="menuitem"`, accessible name = skill name (search box placeholder `"Search skills..."`) | use `exact: true` on the name match to avoid ambiguous substring matches between `elitea-1791-skill-b`/`-c` | not testid'd — same team-accepted exception, unchanged by this rework |
+| Skills-added counter text | `getByText(/\d\/5 skills added\./)` | — | not testid'd — unchanged by this rework |
+| **Agent Instructions field (this case's actual target)** | `getByTestId('agent-instructions-input')` — accessible name "Guidelines for the AI agent" | — no fallback needed, stable testid confirmed live | on `main` |
+| **`~`-mention suggestion panel container — REWORKED** | `getByTestId('skill-mention-list')` — same `LocatorDescriptor` (`skill_mention_list`, `agent_detail_page.py:108`) already used by `send_chat_message_with_mention`; **superseded** `getByText('Mention skill', exact: true)` + `xpath=ancestor::div[2]` (raw handle, PR #49) | none — testid-only, no fallback permitted | **on `automation/testids`** (`MentionSkillList.jsx:56`, confirmed via `git grep` after `git fetch origin`), **not yet on `main`** — ships in open draft PR **#540** (`testids/ELITEA-1735-skills-testids` → `main`, `EliteaAI/EliteaUI`). `testid needed: NO` — testid already exists, reuse only |
+| **`~`-mention candidate row — REWORKED** | `self.skill_mention_list.locator(self.SKILL_MENTION_ITEM_SELECTOR.format(skill_name))` — dynamic testid `skill-mention-item-{skill_name}`, same template constant (`agent_detail_page.py:68`) and pattern already used by `send_chat_message_with_mention` (`agent_detail_page.py:1412-1414`); **superseded** `page.get_by_text(skillName, exact=True)` scoped under the panel container (raw handle, PR #49) | none — testid-only, no fallback permitted | **on `automation/testids`** (`MentionSkillList.jsx:81`, `testId={`skill-mention-item-${item.name}`}` on `MentionToolItem`), **not yet on `main`** — same draft PR **#540**. `testid needed: NO` — testid already exists, reuse only |
+| Agent actions (overflow) menu | `getByTestId('agent-actions-menu-button')` | — | on `main` |
+| Delete-agent menu item | `getByTestId('delete-agent-menuitem')` | — | on `main` |
+| Skill controls (overflow) menu | `getByTestId('skill-controls-menu-button')` | — | on `main` |
+| Delete-skill menu item | `getByTestId('skill-delete-menu-item')` | — | on `main` |
+| Delete-confirmation name field | `getByTestId('delete-confirm-name-input')` scoped to inner `#name` field | shared component, both agent and skill delete flows | on `main` |
+| Delete-confirmation confirm button | `getByRole('button', { name: 'Delete' })` scoped to the dialog | enabled only once typed name matches | not testid'd — unchanged by this rework |
 
 ## Network Behavior
 - `GET /api/v2/elitea_core/application_skills/prompt_lib/{project}/{agent-id}` —
