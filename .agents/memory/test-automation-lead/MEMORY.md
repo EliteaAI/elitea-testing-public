@@ -3,6 +3,7 @@
 - [Project briefing](project_briefing.md) — Stack overlay (test-automation) — orchestration starting context for Tal
 - [Live-run gate is pre-merge, not post](live_run_gate_is_pre_merge_not_post.md) — the orchestrator's independent N=3 live-run gate must run before `gh pr merge`, never after; reviewer APPROVED (even with its own independent run) is not a substitute
 - [Isolated defect: red is expected](isolated_defect_red_is_expected.md)
+- [Promotability must cover every testid dependency, not just this case's own PR](promotability_must_cover_every_dependency_not_just_this_prs.md) — a "no new testid needed, already exists" claim still needs a main-vs-testids check; a reused testid can be just as un-promoted as a new one if it came from a different still-open case
 - [Merge gate: gh pr diff staleness check](merge_gate_gh_pr_diff_staleness.md)
 - [Resuming subagents for narrow fixups](resuming_subagents_for_narrow_fixups.md)
 - [Shared-caller enumeration gap](shared_caller_enumeration_gap.md)
@@ -28,3 +29,4 @@
 - [Reviewer full-recheck catches new findings on rework](reviewer_full_recheck_catches_new_findings_on_rework.md) — a re-review dispatch after a fix round must explicitly ask the fresh reviewer to re-run the FULL standing checklist, not just verify the named delta; round 2 legitimately caught 2 findings round 1 missed
 - [Never ScheduleWakeup on a live background process](never_schedulewakeup_on_live_background_process.md) — in headless factory mode, waiting on an in-flight background Bash/Monitor task must be a blocking foreground call or an in-turn poll; ScheduleWakeup ends the turn and can orphan/kill the process being waited on, forcing a costly redo
 - [TMS backwrite is a manual git edit, not an MCP verb](tms_backwrite_is_manual_git_edit_not_mcp_verb.md) — onetest-tms MCP has no case-file-frontmatter write tool; backwrite_on_done means editing the case markdown directly in the sibling onetest-ai-tm-Elitea clone and pushing to main, per the ELITEA-1894 precedent commit shape
+- [Pre-supply sibling AFS context to analyst](pre_supply_sibling_afs_context_to_analyst.md) — when a new case echoes an already-automated sibling (same shared component/flow, different entity), name the sibling AFS + implementation directly in the analyst dispatch prompt instead of leaving discovery to chance
