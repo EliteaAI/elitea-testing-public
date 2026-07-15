@@ -44,6 +44,10 @@ class AgentDetailPage(AgentFormPage):
     # --- Toolkits section ---
     toolkits_section = LocatorDescriptor(testid="agent-toolkits-section")
     add_toolkit_button = LocatorDescriptor(testid="agent-add-toolkit-button")
+    # "+ MCP" add button (ToolMenu.jsx) — shares the Tools section's
+    # ToolCard/agent-toolkit-card rendering with Toolkit attachments; see
+    # add_mcp() below (ELITEA-1950).
+    add_mcp_button = LocatorDescriptor(testid="agent-add-mcp-button")
     toolkit_card = LocatorDescriptor(testid="agent-toolkit-card")
     toolkit_delete_button = LocatorDescriptor(testid="agent-toolkit-delete-button")
     toolkit_search_input = LocatorDescriptor(testid="toolkit-search-input")
@@ -508,6 +512,55 @@ class AgentDetailPage(AgentFormPage):
         self.wait_for_network(timeout=timeout)
         logger.info("Toolkit '%s' added to agent", toolkit_name)
 
+    @action("Add MCP")
+    def add_mcp(self, mcp_name: str, timeout: int = 10000):
+        """Attach a Remote MCP to the agent via the Tools section "+ MCP" button.
+
+        Mirrors :meth:`add_toolkit` — the "+ MCP" button (`agent-add-mcp-button`,
+        `ToolMenu.jsx`) opens the same shared `UnifiedDropdown` popper component
+        as the Toolkit/Skill/Agent/Pipeline add buttons (confirmed: the popper's
+        search input carries the same `toolkit-search-input` testid and menu
+        items the same `toolkit-menu-item` testid regardless of entity type —
+        `UnifiedDropdown.jsx` renders it unconditionally). Unlike the Toolkit
+        popper, MCP names are rendered **without** space-stripping, so the
+        match is done against the exact name (ELITEA-1950 AFS § Concrete
+        Handles). Attaching is an immediate API-level auto-save
+        (`PATCH .../tool/prompt_lib/{project}/{tool_id}` -> 201, mirroring
+        `attach_skill()`); the agent-level Save button stays disabled and is
+        not clicked. The resulting card and its removal flow are identical to
+        `add_toolkit()` / `remove_toolkit()` / `is_toolkit_attached()` — MCP
+        and Toolkit cards share the same `ToolCard.jsx` component and
+        `agent-toolkit-card` / `agent-toolkit-delete-button` testids, so no
+        MCP-specific card/removal methods are needed.
+
+        Args:
+            mcp_name: Exact name of the MCP to attach.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Adding MCP '%s' to agent", mcp_name)
+
+        # Ensure the Tools section is expanded and visible
+        self.ensure_toolkits_section_visible(timeout=timeout)
+
+        # Click the "+ MCP" button to open the popper
+        self.add_mcp_button.wait_for(state="visible", timeout=timeout)
+        self.add_mcp_button.click(force=True)
+        self.page.wait_for_timeout(1000)
+
+        # Wait for the popper to appear and search for the MCP
+        popper = Popper.wait_for(self.page, timeout=timeout)
+
+        search_input = popper.locator('[data-testid="toolkit-search-input"]')
+        if search_input.count() > 0 and search_input.is_visible():
+            Popper.search(popper, mcp_name[:20], self.page)
+
+        # MCP names are NOT space-stripped in the popper (unlike Toolkit),
+        # so match against the exact name.
+        Popper.select_menuitem(popper, mcp_name, self.page, timeout=timeout)
+        self.page.wait_for_timeout(1000)
+        self.wait_for_network(timeout=timeout)
+        logger.info("MCP '%s' added to agent", mcp_name)
+
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit is attached to the agent.
 
@@ -580,6 +633,58 @@ class AgentDetailPage(AgentFormPage):
             pass
 
         logger.info("Toolkit '%s' removed from agent", toolkit_name)
+
+    @action("Remove MCP")
+    def remove_mcp(self, mcp_name: str, timeout: int = 10000):
+        """Remove an attached MCP from the agent configuration.
+
+        Additive sibling to :meth:`remove_toolkit` for the MCP card case —
+        `remove_toolkit()` itself is NOT modified, it has other merged
+        callers relying on its behavior unchanged (page-objects shared-caller
+        rule). The only difference from `remove_toolkit()`: the confirmation
+        dialog is located via `Dialog.wait_for_visible()` instead of
+        `Dialog.wait_for()`. An unauthenticated MCP card renders a
+        `McpAuthModal` (`keepMounted`, per its "Log in" button) that stays in
+        the DOM hidden even when closed; plain `Dialog.wait_for()`'s
+        `.first` can bind to that permanently-hidden dialog instead of the
+        "Remove MCP?" confirmation that actually opens, and time out even
+        though the real dialog is visible on screen (confirmed live,
+        ELITEA-1950). Everything else — card lookup, hover-reveal delete
+        icon, disappearance wait — is identical, since MCP and Toolkit cards
+        share the same `ToolCard.jsx` component and testids.
+
+        Args:
+            mcp_name: Name of the MCP to remove.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Removing MCP '%s' from agent", mcp_name)
+
+        card = self.toolkit_card.filter(has_text=mcp_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        card.scroll_into_view_if_needed()
+        self.page.wait_for_timeout(300)
+
+        card.hover()
+        self.page.wait_for_timeout(500)
+
+        delete_btn = card.locator('[data-testid="agent-toolkit-delete-button"]').first
+        delete_btn.wait_for(state="visible", timeout=5000)
+        delete_btn.click(force=True)
+        self.page.wait_for_timeout(500)
+
+        # Handle the "Remove MCP?" confirmation dialog — scoped to the
+        # actually-visible dialog (see docstring: McpAuthModal quirk).
+        dialog = Dialog.wait_for_visible(self.page)
+        Dialog.click_first_button(dialog, "Remove", "Confirm", "Delete")
+
+        self.wait_for_network(timeout=timeout)
+
+        try:
+            card.wait_for(state="hidden", timeout=10000)
+        except Exception:
+            pass
+
+        logger.info("MCP '%s' removed from agent", mcp_name)
 
     # ------------------------------------------------------------------
     # Toolkit credential indicators (Enhancement #5114, Bug #5183)
