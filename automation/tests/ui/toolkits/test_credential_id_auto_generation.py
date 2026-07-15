@@ -16,12 +16,15 @@ import time
 import allure
 import pytest
 
+from config import settings
 from pages.credential_create_page import CredentialCreatePage
 from pages.credential_detail_page import CredentialDetailPage
 
 logger = logging.getLogger(__name__)
 
 pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.p1, pytest.mark.regression]
+
+SAVE_RESPONSE_TIMEOUT = 15_000
 
 
 class TestCredentialIdAutoGeneration:
@@ -32,7 +35,6 @@ class TestCredentialIdAutoGeneration:
         "credentials/ELITEA-1972_credential-id-auto-generation.md",
         "onetest-ai Test Case link",
     )
-    @pytest.mark.p1
     def test_credential_id_auto_generation_and_url_stability(self, page, credential_api):
         """The ID field auto-generates from the Display Name and the URL id is stable across rename."""
         ts = str(int(time.time()))
@@ -58,7 +60,24 @@ class TestCredentialIdAutoGeneration:
                 assert create_page.is_save_enabled(), "Save should become enabled once Display Name is filled"
 
             with allure.step("Step 3 — Save the credential"):
-                create_page.save_button.click()
+                with page.expect_response(
+                    lambda r: f"/configurations/configurations/{settings.elitea_project_id}" in r.url
+                    and r.request.method == "POST",
+                    timeout=SAVE_RESPONSE_TIMEOUT,
+                ) as create_response_info:
+                    create_page.save_button.click()
+                create_response = create_response_info.value
+                assert create_response.status == 200, (
+                    f"Expected 200 from credential-create POST, got {create_response.status}"
+                )
+                create_body = create_response.json()
+                assert create_body.get("label") == initial_name, (
+                    f"Expected created credential label {initial_name!r}, got {create_body.get('label')!r}"
+                )
+                assert create_body.get("elitea_title") == expected_initial_id, (
+                    f"Expected created credential elitea_title {expected_initial_id!r}, "
+                    f"got {create_body.get('elitea_title')!r}"
+                )
                 create_page.wait_for_network()
 
             with allure.step(
@@ -92,7 +111,23 @@ class TestCredentialIdAutoGeneration:
                 )
                 assert detail_page.is_id_field_disabled(), "ID field should remain disabled while live-mirroring"
 
-                detail_page.save_button.click()
+                with page.expect_response(
+                    lambda r: (
+                        f"/configurations/configuration/{settings.elitea_project_id}/{credential_id}" in r.url
+                    )
+                    and r.request.method == "PUT",
+                    timeout=SAVE_RESPONSE_TIMEOUT,
+                ) as rename_response_info:
+                    detail_page.save_button.click()
+                rename_response = rename_response_info.value
+                assert rename_response.status == 200, (
+                    f"Expected 200 from credential-rename PUT, got {rename_response.status}"
+                )
+                rename_body = rename_response.json()
+                assert rename_body.get("elitea_title") == expected_renamed_id, (
+                    f"Expected renamed elitea_title {expected_renamed_id!r}, "
+                    f"got {rename_body.get('elitea_title')!r}"
+                )
                 detail_page.wait_for_network()
 
             with allure.step(
