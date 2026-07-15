@@ -156,10 +156,13 @@ lookup), never replace it.
   — a hit is COMPLIANT only if the line contains a literal `[data-testid=` selector
   OR references an UPPER_CASE class constant whose class-level definition is a
   `[data-testid=` string/template (one-hop check — look it up). Everything else blocks.
-- **Claims require pasted output.** The verdict comment includes the mechanical
-  grep's actual output verbatim — an empty result is shown as empty. "Grep gate
-  clean" without the paste is not a finding, it is the #19 FAIL-2 anti-pattern;
-  no paste ⇒ no `APPROVED`.
+- **Show your grep to the orchestrator.** Include the mechanical grep's actual
+  command + output in the verdict you return to Tal — command (so scope/pattern
+  is auditable) + result (hits verbatim, or explicit "0 hits / (no matches)" for
+  empty). This is how Tal (and you) know it was really run on the full diff, not
+  a weak subset — the #19 FAIL-2 lesson. (The delivery audit does NOT require this
+  paste to survive into the tracker: the auditor re-runs the grep itself. It's
+  reviewer discipline, not a tracker-artifact gate.)
 - **Declared improvisations** (see § Every role): verify the reasoning and say so
   explicitly in the verdict; if sound, APPROVED + recommend the canon addition —
   do not block solely for the gap the canon itself left.
