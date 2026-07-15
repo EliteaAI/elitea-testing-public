@@ -64,3 +64,41 @@ When verifying testid presence for a closure record:
    against known behavior (did the test actually use this element? did it
    pass?) before trusting the negative — a real absence and a syntax-pattern
    miss both look identical as bare "no" output until you look at *why*.
+
+## Deeper variant: runtime-templated testids (id/key props, not literal strings at all)
+
+Issue #62 control-audit (ELITEA-1894, PR #514). Even a bare-value grep for
+`agent-actions-menu-button`, `agent-actions-export-menuitem`, and
+`delete-agent-menuitem` came back **empty on both refs** — because the
+literal string never exists in EliteaUI source anywhere. These testids are
+assembled at runtime, several files away from where the case's own diff
+lives, by a *shared* menu component:
+
+```jsx
+// DotMenu.jsx — generic dropdown shared by many entities
+data-testid={id ? `${id}-menu-button` : undefined}
+data-testid={testId ? `${testId}-menuitem` : undefined}   // testId = item.key
+```
+
+fed by call sites that only set the short `id`/`key`:
+
+```jsx
+// ApplicationControls.jsx
+<Controls.ControlsDropdown id="agent-actions" menuItems={menuItems} />
+// ExportApplicationButton.jsx
+{ key: 'agent-actions-export', label: 'Export', ... }
+```
+
+Rule: when a bare-value grep for a `*-menu-button` / `*-menuitem` (or any
+testid that reads like `{something}-{suffix}`) comes back empty on a ref
+where the test demonstrably passes, don't stop at "false — corrupted
+claim." Search for the shared component that likely template-constructs it
+(grep the suffix alone, e.g. `-menu-button"` or `-menuitem`, across the
+whole `src/` tree) and trace which `id`/`key` prop feeds it. Confirm
+presence/absence by diffing that upstream `id`/`key` source between refs
+instead — that's what actually determines whether the templated testid
+renders. This is a different mechanism from the object-literal/conditional
+case above (there the attribute assignment itself was on a different line
+shape; here the *value* itself isn't a literal at all) — treat "empty bare
+grep" as "go find the template," not as automatic proof of absence,
+whenever the element in question is a shared dropdown/menu/list item.
