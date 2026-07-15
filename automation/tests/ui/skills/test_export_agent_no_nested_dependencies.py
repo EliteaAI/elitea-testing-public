@@ -170,17 +170,29 @@ class TestExportAgentNoNestedDependencies:
                     "Skill dependency for this case"
                 )
 
-            # Step 4 (case step 2, "select the version to export from the
-            # version dropdown"): per AFS Blocked Steps, the dropdown has no
-            # dedicated testid yet (out of this case's scope to add — the
-            # testid-only locator policy forbids a raw role/CSS locator in
-            # the spec). A freshly created agent has exactly one ("base")
-            # version selected by default, so the export in Step 5 below
-            # necessarily exercises that default selection; the exported
-            # frontmatter's content (asserted in Step 7) is the durable
-            # proof that the correct (only) version was exported. Accepted
-            # per the AFS's judgment call (a) — single-version
-            # default-selection proof satisfies case step 2.
+            with allure.step(
+                "Step 4 — Confirm the version dropdown/info shows a version "
+                "selected before export (case step 2: 'select the version "
+                "to export from the version dropdown')"
+            ):
+                # The version dropdown itself has no dedicated testid yet
+                # (out of this case's scope to add — the testid-only locator
+                # policy forbids a raw role/CSS locator in the spec). A
+                # freshly created agent has exactly one ("base") version
+                # selected by default, so the export in Step 5 below
+                # necessarily exercises that default selection. Per the
+                # AFS's accepted judgment call (a), this requires the
+                # dropdown element and its default state to be "confirmed
+                # present and functional" — asserted here via the
+                # Information section's Version ID (`copy-version-id`,
+                # on-main), which reflects exactly the version the dropdown
+                # currently has selected.
+                version_id = detail_page.get_version_id()
+                assert version_id, (
+                    "Agent detail page should show a non-empty Version ID, "
+                    "confirming the version dropdown has a version "
+                    "selected/present before export"
+                )
 
             with allure.step(
                 "Step 5 — Open the agent-actions overflow menu; click "
