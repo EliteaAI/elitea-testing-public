@@ -1,6 +1,6 @@
 ---
 name: Agent Skill card remove-control quirks (implementer)
-description: is_remove_skill_button_visible() false-positives from residual real-mouse hover after popper clicks (fix: mouse.move(0,0)); attach vs detach PATCH share the same trailing skill-id in the URL — distinguish by status 201 vs 200, not URL alone (from ELITEA-1792)
+description: is_remove_skill_button_visible() false-positives from residual real-mouse hover after popper clicks (fix: mouse.move(0,0)); attach vs detach PATCH share the same trailing skill-id in the URL — distinguish by status 201 vs 200, not URL alone; testid-only rework (skill-card-remove-button) requires .is_visible() not .count()>0 since the button is always DOM-present, only CSS display:none pre-hover (from ELITEA-1792 + rework)
 type: feedback
 ---
 
@@ -46,8 +46,44 @@ you actually mean to assert on.
 
 `AgentDetailPage.remove_skill(skill_name)` mirrors the pre-existing
 `remove_toolkit(toolkit_name)`: hover the card → click the hover-revealed
-icon button (`get_by_role("button", name="remove skill")`, scoped to the
-card) → `Dialog.wait_for()` + `Dialog.click_first_button(dialog, "Remove",
+icon button (now `SKILL_CARD_REMOVE_BUTTON_SELECTOR`, `[data-testid=
+"skill-card-remove-button"]`, scoped to the card — see rework note below)
+→ `Dialog.wait_for()` + `Dialog.click_first_button(dialog, "Remove",
 "Confirm", "Delete")` → `wait_for_network()` → wait for the card to hide.
 Any future "remove X from card" flow on this codebase should follow the
 same shape.
+
+## 3. Testid-only rework (2026-07-15): `.count() > 0` breaks on hover-revealed testids
+
+The original PR #50 handle was `card.get_by_role("button", name="remove
+skill")` — a policy violation (no testid), fixed in the rework (PR #283) by
+adding `data-testid="skill-card-remove-button"` to `SkillCard.jsx`'s
+"remove skill" `IconButton` and introducing
+`SKILL_CARD_REMOVE_BUTTON_SELECTOR = '[data-testid="skill-card-remove-
+button"]'` as a class constant, scoped via `card.locator(...)` (mirrors
+`remove_toolkit()`'s inline `[data-testid="agent-toolkit-delete-button"]`
+string, promoted to a proper class constant per the page-objects rule).
+
+**Gotcha:** porting `is_remove_skill_button_visible()` naively to
+`card.locator(SELECTOR).count() > 0` broke the "button not visible before
+hover" assertion — it now always returned `True`. Root cause:
+`SkillCard.jsx`'s `actionButton` style is `display: none` by default,
+flipped to `display: flex` only by the card's CSS `:hover` rule (`&:hover
+{ '#DeleteButton': { display: 'flex' } }`) — the element (and its
+`data-testid`) is **always present in the DOM**, hover only toggles CSS
+visibility. The old `get_by_role` handle queried the *accessibility tree*,
+which excludes `display:none` elements, so it encoded the hover-reveal
+semantics for free; a raw testid `.locator(...).count()` check does not
+inherit that. **Fix: use `.is_visible()` instead of `.count() > 0`.**
+
+**Generalizable rule:** when replacing a `get_by_role`/accessibility-tree
+handle with a `[data-testid=]` DOM selector on any element that's
+hover-revealed via CSS `display` toggle (not conditional React rendering),
+switch presence checks from `.count() > 0` to `.is_visible()` — DOM
+presence and CSS-visible state diverge exactly on these elements, and
+`get_by_role`'s accessibility-tree semantics silently encoded the
+CSS-visible check that a testid locator does not get automatically. The
+"open in new tab" sibling button (`OpenInNewTabButton`, still no testid —
+out of scope for this rework, not touched by this test) uses the identical
+hover-toggle CSS shape and would hit the same gotcha if a future case
+needs it.
