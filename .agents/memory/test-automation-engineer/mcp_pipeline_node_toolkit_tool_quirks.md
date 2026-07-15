@@ -52,6 +52,20 @@ quirk, not a client bug. **Don't rely on listing to discover a known
 pre-existing toolkit by name** — use a fixed id (config setting, e.g.
 `remote_github_mcp_toolkit_id`), not a search.
 
+**Update (ELITEA-1944, 2026-07-15): this quirk also breaks UI list pages,
+not just the API client.** `/mcps/all` (and presumably any other list page
+backed by the same `tools/prompt_lib/{project}` endpoint) renders from that
+same list endpoint — confirmed live that a toolkit created via raw
+`ToolkitAPI.create_toolkit()` (201, individually GET-able by id) NEVER
+appears on `/mcps/all`, and with zero visible MCPs the app auto-redirects
+`/mcps/all` -> `/mcps/create`. **Any test that needs to seed MCP/toolkit
+test data so it's visible in the UI must create it through the UI form
+flow** (e.g. `McpFormPage.select_remote_mcp_type()` /
+`.fill_name()`/`.fill_url()`/`.save_and_wait_for_created()`), never via
+`ToolkitAPI.create_toolkit()` — the raw-API path is fine for delete-by-id
+cleanup (unaffected by the quirk) but not for creating data a UI test will
+later read back.
+
 ## Provisioning an MCP toolkit with a REAL, non-empty Tool dropdown — API-only recipe
 
 A plain `create_toolkit(type="mcp", settings={"url": ...})` produces a toolkit
