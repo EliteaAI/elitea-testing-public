@@ -33,10 +33,8 @@
   which would make ID-uniqueness comparison unverifiable).
 - The Agent import feature is available. **Confirmed live**: an "Import" button
   exists in the Agents list page toolbar (`/agents/all`), to the left of the
-  table/card view toggle. It carries **no `data-testid`** (confirmed via
-  `element.getAttribute('data-testid')` → `null`) — this is a gap for the
-  implementer; resolve by accessible role/name (`getByRole('button', { name:
-  'Import' })`) until a testid is added.
+  table/card view toggle. **Amended 2026-07-15 (testid-rework)**: it now carries
+  the `agents-import-button` data-testid (see Handles Reference for provenance).
 
 ## Test Data
 
@@ -87,8 +85,7 @@ total, all created and torn down within the run.
      (confirmed by reading the file directly) — same embedding behavior
      documented in ELITEA-1794.
 2. Navigate to `${BASE_URL}/agents/all`. Click the "Import" button in the page
-   toolbar (`getByRole('button', { name: 'Import' })` — no testid, see
-   Preconditions).
+   toolbar (`agents-import-button`, see Handles Reference).
    - **Verify** (case step 1): a native OS file chooser opens (confirmed via
      Playwright MCP's "Modal state: [File chooser]" signal).
 3. Select the exported Agent `.md` file from Step 1 in the file chooser.
@@ -103,8 +100,9 @@ total, all created and torn down within the run.
      text verbatim, proving the dialog parses the embedded Skill content
      client-side from the file, not from a live lookup by ID.
 4. Click the "Import" button inside the dialog (distinct from the page-toolbar
-   "Import" button in Step 2 — this one is scoped to the dialog,
-   `getByRole('button', { name: 'Import' })` inside `getByRole('dialog')`).
+   "Import" button in Step 2 — this one carries its own
+   `agent-import-confirm-button` data-testid, so no dialog-scoping workaround
+   is needed).
    - **Verify** (case step 2, continued): import completes without error. A
      minor unrelated console warning fired during this transition — `Warning:
      validateDOMNesting(...): <p> cannot appear as a descendant of <p>` inside
@@ -118,7 +116,7 @@ total, all created and torn down within the run.
      el-1795-agent-a1b2c3d4" and "1 skills: el-1795-skill-a1b2c3d4" — confirming
      both a new Agent and a new Skill entity were created (not merely an Agent
      linking to the pre-existing Skill by ID). Click "Got it"
-     (`getByRole('button', { name: 'Got it' })`) — this auto-navigates to the
+     (`agent-import-complete-got-it-button`) — this auto-navigates to the
      newly imported Agent's detail page.
 6. **(Case step 3)** Verify the imported Agent appears in the Agents list with a
    name matching the exported Agent.
@@ -171,21 +169,38 @@ total, all created and torn down within the run.
 
 ## Handles Reference
 
-| Element | testid / locator | Notes |
-|---|---|---|
-| Skill Name / Description / Instructions fields | same as ELITEA-1794 (`Name *` / `Description *` textboxes, `skill-instructions-editor-content`) | |
-| Agent Name / Description / Instructions fields | `agent-name-input` / `agent-description-input` / `agent-instructions-input` | same as ELITEA-1794 |
-| Agent add-skill button | no testid; `getByRole('button', { name: 'Skill', exact: true })` | matches ELITEA-1794/1789/1792 |
-| Agent actions (overflow) menu | `agent-actions-menu-button` | opens VERSION/AGENT grouped menu |
-| "Export" menuitem | no testid; `getByRole('menuitem', { name: 'Export' })` scoped to the opened overflow menu | same as ELITEA-1794 |
-| **Agents list "Import" button (this case's core element, new handle)** | **no `data-testid`** (confirmed via DOM inspection — gap for implementer); `getByRole('button', { name: 'Import' })` scoped to the Agents list page toolbar | Clicking opens a native file chooser directly (no intermediate menu) |
-| File chooser | native OS dialog, handled via Playwright's `page.on('filechooser')` / MCP `browser_file_upload` | Accepts `.md` files |
-| **Import parameters dialog (this case's core element, new handle)** | `getByRole('dialog')` with heading "Import parameters"; scoped "Import" button = `dialog.getByRole('button', { name: 'Import' })` | Distinct from the page-toolbar Import button — same accessible name, different scope. Shows Project selector, "Main entity" (Agent) preview, and "Skills" preview sections, each with "Show details" toggles and "Full screen view" buttons per field |
-| Import-dialog Skill preview name text | `dialog.getByText(skillName)` | Confirms client-side parse of the uploaded file's embedded skill content before any import API call |
-| "Import Complete" success dialog | `getByRole('dialog')` with heading "Import Complete"; lists `"{n} agents:"` and `"{n} skills:"` with the created entity names; confirm via `getByRole('button', { name: 'Got it' })` | Auto-navigates to the new Agent's detail page on "Got it" |
-| Imported Agent detail page Skills counter | same as ELITEA-1794/1789/1792 pattern — accordion region text `"{n}/5 skills added."` | **Timing-sensitive** — see Known Defects; do not assert immediately after the post-import auto-navigation |
-| `application_skills` API endpoint (wait-condition for the timing issue) | `GET /api/v2/elitea_core/application_skills/prompt_lib/{project}/{agent-id}` → `200 OK`, body `{"skills": [{"name", "skill_id", "version_id", "version_name", ...}], "max_skills": n}` | Implementer should `page.waitForResponse` on this URL pattern (or poll the skills counter/card) before asserting the imported Agent's attached Skill, instead of asserting on first paint |
-| Skill controls (overflow) menu / Delete-skill menu item / Delete-agent menu item / Delete-confirmation dialog | same testids as ELITEA-1794 (`skill-controls-menu-button`, `skill-delete-menu-item`, `delete-agent-menuitem`, `delete-confirm-name-input` → inner `#name`, `getByRole('button', {name:'Delete'})` scoped to dialog) | |
+> **Amended 2026-07-15 (ELITEA-1795 testid-rework, PR review of automation PR
+> #54, framework-alignment audit `elitea-testing-public#37`).** Per
+> `.agents/role-overrides.md` § Analyst slot, every primary handle below is now
+> a testid, and a **Provenance** column records whether that testid is live on
+> `EliteaUI` `main`, only on the shared `automation/testids` integration branch
+> pending a draft PR, or still missing entirely. Rows still resolving via
+> role/text (`Agent add-skill button`) are pre-existing, out-of-scope tech debt
+> shared with ELITEA-1735/1789/1792/1794 — flagged `needs-adding`, not fixed
+> here.
+
+| Element | testid | Provenance | Notes |
+|---|---|---|---|
+| Skill Name / Description fields | same as ELITEA-1794 (`Name *` / `Description *` textboxes) | on-main ✓ | |
+| Skill Instructions editor | `skill-instructions-editor-content` | on-automation/testids only (draft EliteaUI#526) | CodeMirror; not yet on `main` — pre-existing dependency this case has always had (same gap tracked for ELITEA-1737/1794); this means the case remains localhost-green-only, not yet promotable, independent of this rework |
+| Agent Name / Description / Instructions fields | `agent-name-input` / `agent-description-input` / `agent-instructions-input` | on-main ✓ | same as ELITEA-1794 |
+| Agent add-skill button | no testid; `getByRole('button', { name: 'Skill', exact: true })` | needs-adding | matches ELITEA-1794/1789/1792's amended handle; out of this case's scope |
+| Agent actions (overflow) menu | `agent-actions-menu-button` | on-main ✓ | opens VERSION/AGENT grouped menu |
+| "Export" menuitem | `agent-actions-export-menuitem` | on-automation/testids only (draft EliteaUI#549) | same as ELITEA-1794's own rework |
+| **Agents list "Import" button (this case's core element)** | `agents-import-button` | on-automation/testids only (draft EliteaUI#552) | Added via `add-data-testid` as an optional `testId` prop on the shared `ToolbarImportButton` component (also used by the Pipelines list, left unwired there — out of this case's scope), wired from `Applications.jsx`. Clicking opens a native file chooser directly (no intermediate menu) |
+| File chooser | native OS dialog, handled via Playwright's `page.on('filechooser')` / MCP `browser_file_upload` | n/a (not a UI handle) | Accepts `.md` files |
+| **Import parameters dialog (this case's core element)** | `agent-import-preview-dialog` | on-automation/testids only (draft EliteaUI#552) | `ImportWizardModal`'s `Modal.BaseModal` carries this testid only while showing the "Import parameters" step (state-dependent — see "Import Complete success dialog" row below for the succeed-state value). Shows Project selector, "Main entity" (Agent) preview, and "Skills" preview sections, each with "Show details" toggles and "Full screen view" buttons per field |
+| Import-dialog Main-entity name preview | `agent-import-preview-name` | on-automation/testids only (draft EliteaUI#552) | `IWModalEntityCardWrapper`'s `titleTestId` prop, wired from `IWModalDetails` for the Main-entity card only |
+| Import-dialog Skill name preview | `agent-import-preview-skill-name` | on-automation/testids only (draft EliteaUI#552) | Same mechanism, wired for the Skill-entity card(s); shared testid across every Skill card in the preview (this case attaches exactly one, asserted via `.first`) — confirms client-side parse of the uploaded file's embedded skill content before any import API call |
+| Import-dialog "Show details"/"Hide details" toggle | `agent-import-preview-card-toggle` | on-automation/testids only (draft EliteaUI#552) | Shared testid across every entity-preview card (Main entity + each Skill); rendered ONLY while its own card is collapsed (`IWModalEntityCardWrapper`'s `isExpanded` state), so a "click until none remain" loop naturally converges |
+| Import-dialog Skill instructions preview | `agent-import-preview-skill-instructions` | on-automation/testids only (draft EliteaUI#552) | `IWModalEntityCard`'s `instructionsTestId` prop, wired only for Skill cards (not Main entity, since this case doesn't assert the Agent's own instructions preview) |
+| Import-dialog scoped Import (confirm) button | `agent-import-confirm-button` | on-automation/testids only (draft EliteaUI#552) | Distinct testid from the page-toolbar's `agents-import-button`, so no dialog-scoping workaround is needed (previously both shared the accessible name "Import") |
+| **"Import Complete" success dialog** | `agent-import-complete-dialog` | on-automation/testids only (draft EliteaUI#552) | Same `Modal.BaseModal` as the preview dialog, switched to this testid once import succeed/fork data lands — its mere visibility is the semantic equivalent of the "Import Complete" heading being shown |
+| Import-Complete Agents/Skills name lists | `agent-import-complete-list-agents` / `agent-import-complete-list-skills` | on-automation/testids only (draft EliteaUI#552) | `IWModalSucceedContent`'s per-category container, dynamic `agent-import-complete-list-{key}` (agents/skills/toolkits/pipelines); asserted via substring-in-text-content rather than locating by the literal name |
+| Import-Complete "Got it" button | `agent-import-complete-got-it-button` | on-automation/testids only (draft EliteaUI#552) | Auto-navigates to the new Agent's detail page on click |
+| Imported Agent detail page Skills counter | same as ELITEA-1794/1789/1792 pattern — accordion region text `"{n}/5 skills added."` | on-main ✓ | **Timing-sensitive** — see Known Defects; do not assert immediately after the post-import auto-navigation |
+| `application_skills` API endpoint (wait-condition for the timing issue) | `GET /api/v2/elitea_core/application_skills/prompt_lib/{project}/{agent-id}` → `200 OK`, body `{"skills": [{"name", "skill_id", "version_id", "version_name", ...}], "max_skills": n}` | n/a (network call, not a UI handle) | Implementer waits on this URL pattern via `page.expect_response` before asserting the imported Agent's attached Skill, instead of asserting on first paint |
+| Skill controls (overflow) menu / Delete-skill menu item / Delete-agent menu item / Delete-confirmation dialog | same testids as ELITEA-1794 (`skill-controls-menu-button`, `skill-delete-menu-item`, `delete-agent-menuitem`, `delete-confirm-name-input` → inner `#name`, `getByRole('button', {name:'Delete'})` scoped to dialog) | on-main ✓ (except `delete-confirm-name-input`: on-automation/testids only, draft EliteaUI#525; and the dialog's own Delete button: needs-adding) | |
 
 ## Expected Results
 - Importing an Agent `.md` file with embedded Skill content via the Agents list
@@ -228,7 +243,7 @@ total, all created and torn down within the run.
 | `application_skills` API response body (`skill_id`, `version_id`, `version_name`) | Gives the implementer a concrete, non-UI-dependent assertion surface for "Agent is linked to the new Skill" that's immune to the first-paint timing race documented in Known Defects |
 | Original source Skill (302) and source Agent (4712) unaffected after import | Confirms the import is purely additive — no mutation of the source entities — a plausible-but-unstated regression risk worth a positive check |
 | Console warning during "Import Complete" dialog transition (`validateDOMNesting` `<p>`-in-`<p>`) | Documented as an observation so the implementer doesn't mistake it for import-correctness noise; not asserted against since it's cosmetic and pre-existing in `IWModalSucceedContent.jsx` |
-| Agents list "Import" button has no `data-testid` | Flagged so the implementer doesn't waste time searching page objects for a handle that doesn't exist yet — resolve by role/name until a testid is added |
+| Agents list "Import" button + Import-flow dialogs now testid-only | **Amended 2026-07-15 (testid-rework)**: the 19 raw role/text handles this flow originally required were replaced with `data-testid`s (see Handles Reference — `agents-import-button`, `agent-import-preview-dialog`, `agent-import-preview-name`, `agent-import-preview-skill-name`, `agent-import-preview-card-toggle`, `agent-import-preview-skill-instructions`, `agent-import-confirm-button`, `agent-import-complete-dialog`, `agent-import-complete-list-agents`/`-skills`, `agent-import-complete-got-it-button`) via EliteaUI draft PR #552 |
 
 ## Known Defects
 

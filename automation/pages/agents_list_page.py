@@ -14,7 +14,6 @@ from playwright.sync_api import Page
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from components.mui import Dialog
 from utils.actions import action
 
 
@@ -53,6 +52,67 @@ class AgentsListPage(BasePage):
         testid="agents-page-header",
         fallback=lambda page: page.locator('text="Agents"').first,
         description="Agents page header"
+    )
+
+    # -- Import (ELITEA-1795, testid-only rework — EliteaUI draft PR #552) --
+    import_button = LocatorDescriptor(
+        testid="agents-import-button",
+        description="Import agent button in the Agents list page toolbar"
+    )
+
+    import_preview_dialog = LocatorDescriptor(
+        testid="agent-import-preview-dialog",
+        description="'Import parameters' preview dialog"
+    )
+
+    import_preview_name = LocatorDescriptor(
+        testid="agent-import-preview-name",
+        description="Import preview — the Main entity (Agent) name"
+    )
+
+    import_preview_skill_name = LocatorDescriptor(
+        testid="agent-import-preview-skill-name",
+        description="Import preview — the embedded Skill's name (shared "
+                     "testid across every Skill card in the preview)"
+    )
+
+    import_preview_card_toggle = LocatorDescriptor(
+        testid="agent-import-preview-card-toggle",
+        description="'Show details' toggle, shared by every entity-preview "
+                     "card (Main entity + each Skill). Rendered ONLY while "
+                     "collapsed (removed from the DOM once expanded) so a "
+                     "'click until none remain' loop naturally converges"
+    )
+
+    import_preview_skill_instructions = LocatorDescriptor(
+        testid="agent-import-preview-skill-instructions",
+        description="Import preview — the embedded Skill's instructions "
+                     "text (visible only once its card is expanded)"
+    )
+
+    import_confirm_button = LocatorDescriptor(
+        testid="agent-import-confirm-button",
+        description="'Import parameters' dialog's scoped Import (confirm) button"
+    )
+
+    import_complete_dialog = LocatorDescriptor(
+        testid="agent-import-complete-dialog",
+        description="'Import Complete' success dialog"
+    )
+
+    import_complete_agents_list = LocatorDescriptor(
+        testid="agent-import-complete-list-agents",
+        description="'Import Complete' dialog — imported Agents name list"
+    )
+
+    import_complete_skills_list = LocatorDescriptor(
+        testid="agent-import-complete-list-skills",
+        description="'Import Complete' dialog — imported Skills name list"
+    )
+
+    import_complete_got_it_button = LocatorDescriptor(
+        testid="agent-import-complete-got-it-button",
+        description="'Import Complete' dialog's 'Got it' confirm/navigate button"
     )
 
     def __init__(self, page: Page):
@@ -308,32 +368,30 @@ class AgentsListPage(BasePage):
     def import_agent(self, file_path: str, timeout: int = 10000):
         """Import an Agent from an exported ``.agent.md`` file.
 
-        LOCATOR: the page-toolbar "Import" button (``AgentsList.jsx``, to
-        the left of the table/card view toggle) has **no** ``data-testid``
-        — confirmed via direct DOM inspection
-        (``element.getAttribute('data-testid')`` -> ``null``, AFS
-        ELITEA-1795 exploration) — resolved by accessible role/name until
-        a testid is added. Clicking it opens a native OS file chooser
-        directly (no intermediate menu).
+        Clicks the page-toolbar Import button (``agents-import-button``
+        data-testid — added via ``add-data-testid`` in the ELITEA-1795
+        testid-only rework, threading an optional ``testId`` prop through
+        the shared ``ToolbarImportButton``; see EliteaUI draft PR #552).
+        Clicking it opens a native OS file chooser directly (no
+        intermediate menu).
 
         Handles the file chooser and waits for the "Import parameters"
-        preview dialog to render. Does NOT click the dialog's own Import
-        (confirm) button — call :meth:`confirm_agent_import` separately
-        once the preview has been verified.
+        preview dialog (``agent-import-preview-dialog``) to render. Does
+        NOT click the dialog's own Import (confirm) button — call
+        :meth:`confirm_agent_import` separately once the preview has been
+        verified.
 
         Args:
             file_path: Absolute path to the exported ``.agent.md`` file.
             timeout: Maximum wait time in milliseconds for the dialog.
         """
         logger.info("Importing agent from file: %s", file_path)
-        import_button = self.page.get_by_role("button", name="Import")
         with self.page.expect_file_chooser() as fc_info:
-            import_button.click()
+            self.import_button.click()
         file_chooser = fc_info.value
         file_chooser.set_files(file_path)
 
-        dialog = Dialog.wait_for(self.page, timeout=timeout)
-        dialog.get_by_text("Import parameters").wait_for(state="visible", timeout=timeout)
+        self.import_preview_dialog.wait_for(state="visible", timeout=timeout)
         logger.info("Import parameters dialog visible")
 
     @action("Expand import preview details")
@@ -348,27 +406,28 @@ class AgentsListPage(BasePage):
         all of them so Description/Instructions preview text is actually
         rendered (non-zero height) before assertions read it.
 
-        Clicking a toggle flips its own accessible name to "Hide details",
-        so the "Show details" locator is re-queried and its first match
-        clicked repeatedly until none remain — a fixed-count loop indexed
-        by ``nth()`` would go out of bounds after the first click shrinks
-        the live match set.
+        Every toggle carries the SAME ``agent-import-preview-card-toggle``
+        data-testid, but only while its own card is collapsed — the JSX
+        omits the attribute once expanded (``IWModalEntityCardWrapper``'s
+        own ``isExpanded`` state). So the locator is re-queried and its
+        first match clicked repeatedly until none remain — a fixed-count
+        loop indexed by ``nth()`` would go out of bounds after the first
+        click shrinks the live match set.
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        dialog = self.page.get_by_role("dialog")
-        show_details_buttons = dialog.get_by_role("button", name="Show details")
+        toggles = self.import_preview_card_toggle
         expanded_count = 0
-        while show_details_buttons.count() > 0:
-            show_details_buttons.first.click()
+        while toggles.count() > 0:
+            toggles.first.click()
             expanded_count += 1
             self.page.wait_for_timeout(200)
         if expanded_count:
-            # Grid-template-rows CSS transition (0.4s) — wait for at least
-            # one Instructions label to actually be visible rather than a
-            # fixed sleep.
-            dialog.get_by_text("Instructions:").first.wait_for(
+            # Grid-template-rows CSS transition (0.4s) — wait for the
+            # Skill instructions preview to actually be visible rather
+            # than a fixed sleep.
+            self.import_preview_skill_instructions.first.wait_for(
                 state="visible", timeout=timeout,
             )
         logger.info(
@@ -379,23 +438,20 @@ class AgentsListPage(BasePage):
     def confirm_agent_import(self, timeout: int = 15000):
         """Click the "Import parameters" dialog's scoped Import (confirm) button.
 
-        Scoped to the dialog because the page-toolbar Import button and
-        the dialog's confirm button share the same accessible name
-        ("Import"). Confirming transitions to the "Import Complete"
-        success dialog (handled by :meth:`confirm_import_complete`), not
-        directly to the new Agent's detail page.
+        Resolved via the ``agent-import-confirm-button`` data-testid —
+        distinct from the page-toolbar Import button's own
+        ``agents-import-button`` testid, so no dialog-scoping is needed
+        (previously both shared the accessible name "Import"). Confirming
+        transitions to the "Import Complete" success dialog (handled by
+        :meth:`confirm_import_complete`), not directly to the new Agent's
+        detail page.
 
         Args:
             timeout: Maximum wait time in milliseconds for the success dialog.
         """
         logger.info("Confirming agent import")
-        dialog = self.page.get_by_role("dialog")
-        dialog.get_by_role("button", name="Import").click()
-
-        success_dialog = Dialog.wait_for(self.page, timeout=timeout)
-        success_dialog.get_by_text("Import Complete").wait_for(
-            state="visible", timeout=timeout,
-        )
+        self.import_confirm_button.click()
+        self.import_complete_dialog.wait_for(state="visible", timeout=timeout)
         logger.info("Import Complete dialog visible")
 
     @action("Confirm import complete")
@@ -411,8 +467,7 @@ class AgentsListPage(BasePage):
         Returns:
             The imported Agent's numeric ID.
         """
-        dialog = self.page.get_by_role("dialog")
-        dialog.get_by_role("button", name="Got it").click()
+        self.import_complete_got_it_button.click()
         self.page.wait_for_url(re.compile(r".*/agents/all/\d+"), timeout=timeout)
         self.wait_for_network(timeout=5000)
 

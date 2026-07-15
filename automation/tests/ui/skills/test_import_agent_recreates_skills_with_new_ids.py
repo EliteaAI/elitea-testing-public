@@ -197,23 +197,33 @@ class TestImportAgentRecreatesSkillsWithNewIds:
                 "Step 3 — Verify the 'Import parameters' preview dialog "
                 "previews the embedded Agent + Skill content client-side"
             ):
-                dialog = page.get_by_role("dialog")
-                assert dialog.get_by_text("Import parameters").is_visible(), (
+                assert agents_list_page.import_preview_dialog.is_visible(), (
                     "Import parameters dialog should be visible after selecting the file"
                 )
-                assert dialog.get_by_text(source_agent_name).first.is_visible(), (
+                assert agents_list_page.import_preview_name.is_visible(), (
                     "Import dialog should preview the exported Agent's name"
                 )
-                assert dialog.get_by_text(skill_name).first.is_visible(), (
+                assert agents_list_page.import_preview_name.text_content() == source_agent_name, (
+                    "Import dialog's Main-entity name preview should show the "
+                    "exported Agent's name verbatim"
+                )
+                assert agents_list_page.import_preview_skill_name.first.is_visible(), (
                     "Import dialog should preview the embedded Skill's name"
+                )
+                assert agents_list_page.import_preview_skill_name.first.text_content() == skill_name, (
+                    "Import dialog's Skill-entity name preview should show the "
+                    "embedded Skill's name verbatim"
                 )
 
                 agents_list_page.expand_import_preview_details(timeout=IMPORT_TIMEOUT)
-                assert dialog.get_by_text(skill_instructions, exact=False).is_visible(), (
+                skill_instructions_preview = (
+                    agents_list_page.import_preview_skill_instructions.first.text_content()
+                )
+                assert skill_instructions_preview == skill_instructions, (
                     "Import dialog should preview the embedded Skill's full "
                     f"instructions verbatim (incl. marker {MARKER!r}), proving "
                     "the dialog parses the uploaded file's content client-side, "
-                    "not via a live lookup by ID"
+                    f"not via a live lookup by ID — got: {skill_instructions_preview!r}"
                 )
 
             with allure.step(
@@ -222,18 +232,23 @@ class TestImportAgentRecreatesSkillsWithNewIds:
             ):
                 agents_list_page.confirm_agent_import(timeout=IMPORT_TIMEOUT)
 
-                success_dialog = page.get_by_role("dialog")
-                assert success_dialog.get_by_text("Import Complete").is_visible(), (
-                    "Success dialog should show the 'Import Complete' heading"
+                # The dialog only carries the "agent-import-complete-dialog"
+                # data-testid once ImportWizardModal has switched to the
+                # succeed state (see IWModalDetails/index.jsx) — its mere
+                # visibility is the semantic equivalent of the "Import
+                # Complete" heading being shown.
+                assert agents_list_page.import_complete_dialog.is_visible(), (
+                    "Success dialog should be visible after confirming the import"
                 )
-                assert success_dialog.get_by_text(source_agent_name).is_visible(), (
-                    "Success dialog should list the imported Agent's name — "
-                    "confirming a new Agent entity was created"
+                assert source_agent_name in agents_list_page.import_complete_agents_list.text_content(), (
+                    "Success dialog's Agents list should include the imported "
+                    "Agent's name — confirming a new Agent entity was created"
                 )
-                assert success_dialog.get_by_text(skill_name).is_visible(), (
-                    "Success dialog should list the imported Skill's name — "
-                    "confirming a new Skill entity was created (not merely an "
-                    "Agent linking to the pre-existing source Skill by ID)"
+                assert skill_name in agents_list_page.import_complete_skills_list.text_content(), (
+                    "Success dialog's Skills list should include the imported "
+                    "Skill's name — confirming a new Skill entity was created "
+                    "(not merely an Agent linking to the pre-existing source "
+                    "Skill by ID)"
                 )
 
             with allure.step(
