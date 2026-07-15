@@ -18,8 +18,10 @@
 ## Preconditions
 - User is logged in (on localhost, `auth_state` fixture skips login).
 - A project is selected/accessible (`Private`, id `399` in this run).
-- An existing agent is available in the "base" version — **satisfied by reusing an
-  existing project agent, not by creating a fresh one.** See Test Data below for why.
+- An existing agent is available in the "base" version — **satisfied by creating a
+  dedicated, disposable agent per run via `AgentAPI.create_agent_full()`** (amended
+  post-merge after a shared debris-pool reuse pattern was found to exhaust; see Test Data
+  below for the full history).
 
 ## Test Data
 
@@ -28,26 +30,38 @@ Agent creation via the default UI create flow (and via the existing
 `AgentAPI.create_agent()` fixture) is currently broken by an **open, unrelated**
 defect — [EliteaAI/elitea-testing-public#524](https://github.com/EliteaAI/elitea-testing-public/issues/524)
 ("`temperature` is not allowed together with a `reasoning_effort`" 400 on the project's
-reasoning-capable default model). This was NOT hit or re-triggered by this run (this
-case's precondition only requires an *existing* agent, so agent-creation was avoided
-entirely), but it means the implementer **cannot** use "create a fresh dedicated agent
-via UI/API, run the test, delete it" as the setup pattern until #524 is fixed or
-`AgentAPI.create_agent()`'s default `llm_settings` payload is patched to avoid the
-conflict (e.g. `reasoning_effort: "none"` or omit `temperature`).
+reasoning-capable default model). This was NOT hit or re-triggered by the analyst run
+(this case's precondition only requires an *existing* agent, so agent-creation was
+avoided entirely there), but it means the implementer **cannot** use
+`AgentAPI.create_agent()`'s shared default `llm_settings` payload as-is — that method has
+4 other callers across the suite and patching its shared defaults is out of scope for
+this case.
 
-### Proven working pattern (used and verified live in this run)
-Reuse an existing, disposable, single-purpose agent already present in the project (this
-run used agent id `4745`, name `elitea-1735-skills-agent` — one of several duplicate
-debris agents left over from ELITEA-1735 runs, `GET
-/api/v2/elitea_core/applications/prompt_lib/399` confirmed `total: 10` before, `total: 9`
-after cleanup), then delete the **whole agent** at teardown via the existing
-`delete_agent_via_menu()` page-object method / `delete-agent-menuitem` testid. This
-avoids the #524 create-path entirely and leaves the project agent count unchanged
-end-to-end. **Do not reuse a long-lived shared fixture agent** (e.g. id `3` "Test Agent")
-for this pattern — the case's Step 3 (Save As Version) permanently adds a new version to
-whatever agent it targets, and there is no "delete version" UI/API found in this run
-(only whole-agent delete), so a shared fixture would accumulate versions across every
-automated run.
+### Implementer amendment — self-sufficient dedicated-agent pattern (post-merge, same-PR)
+**Superseded below.** The AFS originally recommended reusing an existing disposable
+"debris" agent (`elitea-1735-skills-agent`, one of several duplicates left over from
+ELITEA-1735 runs) and deleting the whole agent at teardown. That pattern **shipped and
+passed the implementer's local runs and reviewer's APPROVED verdict**, but the
+test-automation lead's own independent 3x pre-merge live-run gate caught a real gap on
+run 3/3: `AssertionError: ... none found in the project` — the debris pool is **finite**
+and this test permanently deletes one member of it at teardown every run. Three
+consecutive gate runs exhausted the remaining pool. This is not flake; it is guaranteed
+to recur once the pool is empty, so the reuse-existing pattern could not merge as-is.
+
+**Fixed pattern (current, in the implemented test):** create a **dedicated,
+uniquely-named agent** per run via `AgentAPI.create_agent_full()` (a raw-payload method
+already present in `automation/api/client.py`, unaffected by `create_agent()`'s shared
+defaults), with an `llm_settings` payload that sets `reasoning_effort: "none"` and omits
+`temperature` — avoiding the #524-triggering combination in this test's own fixture data
+without touching or "fixing" #524 itself (#524 remains open, and `AgentAPI.create_agent()`'s
+shared defaults are untouched — 4 other callers still use them as before). The agent is
+deleted in full at teardown via the existing `delete_agent_via_menu()` page-object method
+/ `delete-agent-menuitem` testid, exactly as before. This makes the test create-and-clean
+its own data on every run — sustainable indefinitely, with no shared/finite pool to
+exhaust. **Do not reuse a long-lived shared fixture agent** (e.g. id `3` "Test Agent") —
+the case's Step 3 (Save As Version) permanently adds a new version to whatever agent it
+targets, and there is no "delete version" UI/API (only whole-agent delete), so a shared
+fixture would accumulate versions across every automated run.
 
 ### Literal values
 | Field | Value |
@@ -212,7 +226,15 @@ comment was posted to #524 by this run since it was not re-triggered.
 
 ## Cleanup
 
-- The reused agent (id `4745`, `elitea-1735-skills-agent`, including the `v2-test`
+- **Current implementation:** the dedicated agent created via `AgentAPI.create_agent_full()`
+  at the start of the run (including the `v2-test` version created during the test) is
+  deleted at teardown via the same `delete_agent_via_menu()` mechanism described below —
+  overflow menu (`agent-actions-menu-button`) → "AGENT" group → `delete-agent-menuitem` →
+  type-to-confirm dialog → `Delete`. Because the agent is created fresh per run and fully
+  deleted at teardown, the project's agent count returns to its pre-run baseline every
+  time — no shared pool to exhaust, no manual pool replenishment ever needed again.
+- **Analyst-run historical record (superseded, kept for provenance):** the reused agent
+  (id `4745`, `elitea-1735-skills-agent`, including the `v2-test`
   version created during this run) was deleted live via the UI: overflow menu
   (`agent-actions-menu-button`) → "AGENT" group → `delete-agent-menuitem` → type-to-confirm
   dialog (name typed into the `#name` input inside `delete-confirm-name-input`) →

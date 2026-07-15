@@ -5,25 +5,26 @@ Edits an existing agent's Instructions, saves the change as a new named
 version via "Save As Version", and verifies the new version is visible
 (and active) in the VERSION dropdown alongside "base".
 
-Test-data strategy (per AFS — see below): agent creation via the default
-UI/API create flow is currently broken by an open, unrelated defect
-(EliteaAI/elitea-testing-public#524 — `temperature`/`reasoning_effort`
-conflict), so this test does NOT use the `agent_id` fixture (which calls
-`AgentAPI.create_agent()`). Instead it reuses an existing disposable
-"debris" agent already present in the project (one of several duplicate
-agents left over from ELITEA-1735 runs, named `elitea-1735-skills-agent`)
-and deletes the WHOLE agent at teardown via `delete_agent_via_menu()`. A
-long-lived shared fixture agent (e.g. id 3 "Test Agent") is deliberately
-NOT reused — this case's Step 3 permanently adds a new version to whatever
-agent it targets, and there is no "delete version" UI/API, so a shared
-fixture would accumulate versions across every automated run.
+Test-data strategy (per AFS — see below, amended after the lead's live-run
+gate caught pool exhaustion on run 3/3): this test creates a **dedicated,
+uniquely-named agent** for each run via `AgentAPI.create_agent_full()` with
+an `llm_settings` payload that avoids the open, unrelated
+EliteaAI/elitea-testing-public#524 defect (`temperature` + a non-`'none'`
+`reasoning_effort` 400 on the project's reasoning-capable default model) by
+setting `reasoning_effort: "none"` and omitting `temperature` entirely. The
+agent is deleted at teardown via `delete_agent_via_menu()` — this test is
+therefore fully self-sufficient (create-and-clean every run) and does not
+depend on any shared/finite pool of pre-existing data.
 
 Spec: test-specs/agents/lcritical_save-as-version-creates-named-version-visible-in-dropdown_ELITEA-1888.md
 """
 
+import uuid
+
 import pytest
 import allure
 
+from config import settings
 from pages.agent_detail_page import AgentDetailPage
 
 pytestmark = [pytest.mark.ui, pytest.mark.agents]
@@ -34,13 +35,45 @@ pytestmark = [pytest.mark.ui, pytest.mark.agents]
 UI_ELEMENT_TIMEOUT = 10000
 NAVIGATION_TIMEOUT = 15000
 
-# Name pattern for the disposable debris agents left over from ELITEA-1735
-# runs — reused here to avoid the broken create-agent flow (see module
-# docstring / AFS Test Data).
-DEBRIS_AGENT_NAME = "elitea-1735-skills-agent"
-
 VERSION_NAME = "v2-test"
 INSTRUCTION_APPEND = " Additionally."
+BASE_INSTRUCTIONS = "You are a helpful assistant."
+
+
+def _build_dedicated_agent_payload(name: str) -> dict:
+    """Build a create-agent payload for a dedicated, disposable test agent.
+
+    Uses ``reasoning_effort: "none"`` and omits ``temperature`` entirely so
+    agent creation does not hit the open #524 defect (`temperature` is not
+    allowed together with a `reasoning_effort` other than 'none' on the
+    project's reasoning-capable default model). This does not "fix" #524 —
+    it simply avoids the known-bad combination in this test's own fixture
+    payload; #524 remains open and unrelated to this test's assertions.
+    """
+    return {
+        "name": name,
+        "description": "Auto-created for ELITEA-1888 save-as-version test",
+        "type": "interface",
+        "versions": [
+            {
+                "name": "base",
+                "tags": [],
+                "instructions": BASE_INSTRUCTIONS,
+                "variables": [],
+                "tools": [],
+                "llm_settings": {
+                    "max_tokens": -1,
+                    "reasoning_effort": "none",
+                    "model_name": settings.default_model_name,
+                    "model_project_id": settings.default_model_project_id,
+                },
+                "conversation_starters": [],
+                "agent_type": "openai",
+                "welcome_message": "",
+                "meta": {"step_limit": 25},
+            }
+        ],
+    }
 
 
 class TestAgentSaveAsVersion:
@@ -55,15 +88,13 @@ class TestAgentSaveAsVersion:
     def test_save_as_version_creates_named_version_visible_in_dropdown(self, page, agent_api):
         """Editing Instructions and clicking Save As Version creates a named
         version that appears (and is active) in the VERSION dropdown."""
-        with allure.step("Precondition — reuse an existing disposable agent in its 'base' version"):
-            agents = agent_api.list_agents().get("rows", [])
-            debris_agents = [a for a in agents if a.get("name") == DEBRIS_AGENT_NAME]
-            assert debris_agents, (
-                f"Expected at least one existing disposable agent named "
-                f"{DEBRIS_AGENT_NAME!r} to reuse (agent creation is blocked by "
-                f"issue #524 — see module docstring); none found in the project"
-            )
-            agent_id = debris_agents[0]["id"]
+        with allure.step("Precondition — create a dedicated disposable agent in its 'base' version"):
+            # API enforces a 32-char max on agent name (confirmed live: creating
+            # with the full "elitea-1888-save-as-version-<hex8>" name 400s with
+            # "String should have at most 32 characters") — keep the prefix short.
+            agent_name = f"elitea-1888-sav-{uuid.uuid4().hex[:8]}"
+            agent = agent_api.create_agent_full(_build_dedicated_agent_payload(agent_name))
+            agent_id = agent["id"]
 
         detail_page = None
         try:
@@ -159,7 +190,7 @@ class TestAgentSaveAsVersion:
                 )
                 detail_page.close_versions_menu()
         finally:
-            with allure.step("Cleanup — delete the reused agent (including the new version)"):
+            with allure.step("Cleanup — delete the dedicated agent (including the new version)"):
                 try:
                     if detail_page is not None and "/agents/all/" in detail_page.page.url:
                         detail_page.delete_agent_via_menu(timeout=NAVIGATION_TIMEOUT)
