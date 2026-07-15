@@ -1,6 +1,7 @@
 # Memory index — qa-engineer
 
 - [Project briefing](project_briefing.md) — Stack overlay (test-automation) — analyst + reviewer slots in Tal's pipeline
+- [Toolkit/MCP creation form quirks](toolkit_mcp_create_form_quirks.md) — shared `ToolBaseProperty.jsx` renderer testid inventory (`toolkit-field-{k}-*`, `toolkit-type-card-{itemKey}`) reused across MCP/Toolkit/Application create forms; secret fields persist as `{{secret.<hex>}}` reference tokens never plaintext; type-selector card click-locator-ambiguity gotcha (not a product bug); existing `ToolkitAPI.delete_toolkit()` cleanup helper
 - [Support Assistant launcher click quirk](support_assistant_launcher_click_quirk.md) — native click times out on launcher (MUI overlay intercept); must use JS-evaluate click; case's data-testid selectors don't exist live
 - [Skill form and export/import quirks](skill_form_and_export_import_quirks.md) — kebab-case-only Skill name validation; overflow menu VERSION vs SKILL groups (Export/Delete testids); exported .md has no version: key; import dialog flow
 - [Agent Instructions field tilde-mention quirks](agent_instructions_tilde_mention_quirks.md) — `agent-instructions-input` testid; two distinct `~`-mention surfaces (Instructions field vs embedded chat) share one "Mention skill" panel component but are separate call sites; client-side filter, no network round-trip
