@@ -7,15 +7,20 @@ when clicked via a correctly-scoped locator, and attachment + version
 selection persist across a full page reload (attach is auto-saved via API,
 so there is no explicit agent-level Save to click).
 
-Known defect (non-blocking, isolated): the version-selector trigger has no
-`data-testid`, no ARIA role, and `tabIndex=-1` — filed as
-github.com/EliteaAI/elitea-testing-public/issues/46. Per the AFS, this is
-hard-asserted (not `expect.soft()`'d): nothing in this case's own pass/fail
-criteria is flaky, and the gap is a handle-quality/accessibility issue, not
-an intermittent functional failure. `AgentDetailPage.open_skill_version_selector()`
-/ `get_skill_version_text()` use a CSS-class-scoped locator (`.version-text`)
-per the AFS's explicit guidance — NOT a `get_by_role`/accessibility-tree
-locator, which resolves to the wrong ancestor and silently no-ops.
+Known defect (non-blocking, isolated) — SPLIT in the ELITEA-1789 testid-only
+rework: the version-selector trigger's testid gap is now closed
+(`skill-version-selector-trigger-{skill_id}` / `skill-version-selector-menu-{skill_id}`
+/ `skill-version-option-{version_name}`, added via `add-data-testid`, EliteaUI
+draft PR #545) — but the trigger still carries no ARIA role, no accessible
+name, and `tabIndex=-1`, so it remains not keyboard-operable. That surviving
+a11y half stays open as github.com/EliteaAI/elitea-testing-public/issues/46.
+Per the AFS, this case's own pass/fail criteria are hard-asserted (not
+`expect.soft()`'d): nothing here is flaky, and the gap is a handle-quality/
+accessibility issue, not an intermittent functional failure.
+`AgentDetailPage.open_skill_version_selector()` / `get_skill_version_text()`
+now use testid-scoped `LocatorDescriptor`/template-constant locators —
+replacing this test's PR #47 predecessor's CSS-class (`.version-text`) +
+raw-text + xpath-ancestor handles, per `.agents/testing.md` § Locator policy.
 
 Spec: test-specs/skills/l3_attach-skill-to-agent-with-version-selector_ELITEA-1789.md
 """
@@ -171,14 +176,16 @@ class TestAttachSkillToAgentWithVersionSelector:
                 detail_page.open_skill_version_selector(
                     SKILL_NAME, timeout=UI_ELEMENT_TIMEOUT,
                 )
-                assert detail_page.is_versions_menu_open(timeout=UI_ELEMENT_TIMEOUT), (
-                    "Clicking the version selector (.version-text, correctly-scoped) "
+                assert detail_page.is_versions_menu_open(
+                    SKILL_NAME, timeout=UI_ELEMENT_TIMEOUT,
+                ), (
+                    "Clicking the version selector (testid-scoped trigger) "
                     "should open a real 'Versions' menu"
                 )
 
             with allure.step("Step 7 — Default version (base) is pre-selected"):
                 menu_items = detail_page.get_versions_menu_item_names(
-                    timeout=UI_ELEMENT_TIMEOUT,
+                    SKILL_NAME, timeout=UI_ELEMENT_TIMEOUT,
                 )
                 assert menu_items == ["base"], (
                     f"Versions menu should list exactly one entry, 'base' "
