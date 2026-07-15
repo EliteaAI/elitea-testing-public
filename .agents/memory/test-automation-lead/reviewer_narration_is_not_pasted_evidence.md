@@ -83,3 +83,29 @@ Two lessons stack here:
   the specific evidentiary claim (e.g. "pasted") against the actual
   artifact it's describing. A closure record is itself an unverified claim
   until checked, same as any other work-log comment.
+
+## Recurrence (issue #34, ELITEA-1792 rework, PR #283) — zero artifact, not just unpasted
+
+Third occurrence, and a step further than #26/#32: this time there is no
+reviewer artifact **anywhere retrievable** — `gh api .../pulls/283/reviews`
+→ `[]`, `.../pulls/283/comments` → `[]`, `.../issues/283/comments` → `[]`.
+The only record of round-1 CHANGES_REQUESTED and round-2 APPROVED is the
+orchestrator's own paraphrase inside the issue-#34 work-log ("Mechanical
+grep gate clean (pasted, all hits compliant)") — i.e. the orchestrator
+asserts a paste exists that isn't retrievable on the PR at all, not even
+as unpasted narration. A subtlety worth flagging for future audits: the PR
+body in this case DID contain a pasted mechanical grep, but it was
+explicitly labeled by the implementer as their own Phase-3 "reviewer
+self-check" — don't let that label cause you to credit it as the fresh
+reviewer's independent artifact. The two are different actors under the
+slot contract (implementer self-check vs. fresh-session reviewer) even
+when one borrows the other's vocabulary.
+
+Three recurrences now (#26, #32, #34) despite the #26 remedy (make the
+paste requirement explicit in dispatch prompts). Given the pattern keeps
+recurring across different orchestrator sessions/dispatches, the fix
+probably needs to move from "say it more clearly in the prompt" to a
+structural check: the orchestrator should refuse to treat a review as
+complete until it can `gh api` the PR/issue and see the reviewer's own
+comment with its own paste, not just accept the reviewer subagent's
+self-report back to the dispatching session.
