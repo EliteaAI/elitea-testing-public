@@ -190,7 +190,7 @@ class TestGhostSkillAfterAgentRemoved:
                 )
 
             with allure.step("Step 5 — Remove the agent from the chat's participants"):
-                chat.remove_agent_participant(AGENT_NAME, timeout=UI_ELEMENT_TIMEOUT)
+                chat.remove_agent_participant(agent_id, timeout=UI_ELEMENT_TIMEOUT)
 
                 assert not chat.is_switch_agent_button_visible(timeout=3000), (
                     "Composer should no longer show the 'Switch Agent' "
