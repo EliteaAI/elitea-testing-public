@@ -13,9 +13,14 @@ button share the same accessible name ("Discard") but are two distinct
 DOM elements — they now carry distinct testids
 (``credential-form-discard-button`` vs ``credential-discard-confirm-button``)
 so no dialog-scoping workaround is needed.
+
+ID-autogeneration/URL-stability handles (``get_credential_id_from_url()``,
+``is_id_field_disabled()``) were added for ELITEA-1972 (see test-specs/
+toolkits-credentials/l1_credential-id-auto-generation_ELITEA-1972.md).
 """
 
 import logging
+import re
 
 from playwright.sync_api import Page
 
@@ -116,6 +121,19 @@ class CredentialDetailPage(CredentialFormFieldsMixin, BasePage):
     def get_display_name(self) -> str:
         """Return the current Display Name field value."""
         return self.display_name_input.input_value()
+
+    def get_credential_id_from_url(self) -> str:
+        """Extract the numeric credential id from the current detail-page URL.
+
+        URL shape: ``/credentials/all/{numeric_id}?viewMode=owner&name=...``.
+        """
+        match = re.search(r"/credentials/all/(\d+)", self.page.url)
+        assert match, f"Expected a numeric credential id in the URL, got: {self.page.url}"
+        return match.group(1)
+
+    def is_id_field_disabled(self) -> bool:
+        """Return True if the ID (elitea_title) field is disabled (read-only)."""
+        return not self.id_input.is_enabled()
 
     def is_discard_enabled(self) -> bool:
         return self.discard_button.is_enabled()
