@@ -96,6 +96,13 @@ class AgentDetailPage(AgentFormPage):
 
     # --- Skills section (agent-skills attach/mention flow, ELITEA-1735) ---
     agent_add_skill_button = LocatorDescriptor(testid="agent-add-skill-button")
+    # Tooltip wrapper span for the add-skill button (ELITEA-1790 testid-only
+    # rework — added via add-data-testid to SkillMenu.jsx; see EliteaUI draft
+    # PR #546). MUI's Tooltip clones its accessible label onto this wrapper
+    # (not onto the inner, disabled BaseBtn) once the 5-skill limit is
+    # reached, so it needs its own testid rather than a raw parent-traversal
+    # chained off `agent_add_skill_button`.
+    agent_add_skill_button_tooltip = LocatorDescriptor(testid="agent-add-skill-button-tooltip")
     skills_section = LocatorDescriptor(testid="agent-skills-section")
     skills_counter = LocatorDescriptor(testid="agent-skills-counter")
     skill_mention_list = LocatorDescriptor(testid="skill-mention-list")
@@ -925,27 +932,6 @@ class AgentDetailPage(AgentFormPage):
             counter_text = self.get_skills_counter_text(timeout=1000)
         return counter_text
 
-    def _add_skill_button_locator(self) -> Locator:
-        """Return a locator for the Skills section "+ Skill" button, disabled-state aware.
-
-        LOCATOR: Normally resolved via the ``agent-add-skill-button`` testid
-        (added in ELITEA-1735's testid-only rework — see ``attach_skill()``).
-        The instant 5/5 skills are attached, MUI wraps the button in
-        `<span aria-label="Maximum number of skills reached">` — disabled
-        elements don't fire hover/focus for native tooltips, so MUI moves the
-        `aria-label` to the wrapper `<span>` rather than the inner
-        (disabled) `<button>` itself (ELITEA-1790 exploration). This method
-        resolves the *inner* button either way: via the aria-label wrapper
-        when present (disabled state), falling back to the testid lookup
-        otherwise (enabled state).
-        """
-        disabled_wrapper_btn = self.page.locator(
-            '[aria-label="Maximum number of skills reached"] button'
-        )
-        if disabled_wrapper_btn.count() > 0:
-            return disabled_wrapper_btn.first
-        return self.agent_add_skill_button
-
     def is_add_skill_button_disabled(self, timeout: int = 5000) -> bool:
         """Return True if the Skills section "+ Skill" button is disabled.
 
@@ -953,30 +939,40 @@ class AgentDetailPage(AgentFormPage):
         (proactive disable — not merely an on-click rejection); see
         ``get_add_skill_button_tooltip()`` for the accompanying message.
 
+        LOCATOR: ``agent-add-skill-button`` testid (ELITEA-1735) — the SAME
+        DOM node in both the enabled and disabled state (only the `disabled`
+        prop toggles on `SkillMenu.jsx`'s `BaseBtn`), so no separate
+        disabled-state lookup is needed (ELITEA-1790 testid-only rework;
+        superseded the prior `[aria-label="Maximum number of skills
+        reached"] button` raw handle).
+
         Args:
             timeout: Maximum wait time in milliseconds for the button.
         """
         self.ensure_skills_section_visible(timeout=timeout)
-        btn = self._add_skill_button_locator()
-        btn.wait_for(state="visible", timeout=timeout)
-        return not btn.is_enabled()
+        self.agent_add_skill_button.wait_for(state="visible", timeout=timeout)
+        return not self.agent_add_skill_button.is_enabled()
 
     def get_add_skill_button_tooltip(self, timeout: int = 5000) -> str | None:
-        """Return the "+ Skill" button's tooltip wrapper aria-label text.
+        """Return the "+ Skill" button's tooltip text ("Maximum number of
+        skills reached") once the 5-skill limit is reached.
 
-        Only present once the 5-skill limit is reached (the wrapper doesn't
-        exist while the button is enabled). Returns None if not found within
-        the timeout.
+        LOCATOR: ``agent-add-skill-button-tooltip`` testid (ELITEA-1790
+        testid-only rework — added via `add-data-testid` to `SkillMenu.jsx`;
+        see EliteaUI draft PR #546) on the MUI `<Box component="span">`
+        Tooltip wrapper. MUI relocates the accessible tooltip label to this
+        wrapper rather than the inner (disabled) button, since disabled
+        elements don't fire hover/focus. Superseded the prior
+        `[aria-label="Maximum number of skills reached"]` raw handle.
+        Returns None if not found within the timeout (e.g. below the limit,
+        where the wrapper carries no label).
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        wrapper = self.page.locator(
-            '[aria-label="Maximum number of skills reached"]'
-        )
         try:
-            wrapper.first.wait_for(state="visible", timeout=timeout)
-            return wrapper.first.get_attribute("aria-label")
+            self.agent_add_skill_button_tooltip.wait_for(state="visible", timeout=timeout)
+            return self.agent_add_skill_button_tooltip.get_attribute("aria-label")
         except Exception:
             return None
 
