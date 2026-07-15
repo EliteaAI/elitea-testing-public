@@ -1,5 +1,6 @@
 # Memory index — test-automation-engineer
 
+- [Skill version selector testid rework quirks (implementer)](skill_version_selector_testid_rework_quirks.md) — SkillVersionSelector.jsx's Versions <Menu> portals to document.body (not a DOM descendant of skill-card-{id}), so its new testids carry skill_id/version_name identity directly; resolving skill_id from a card's own data-testid attribute; prefix-match testid selector for menu-item enumeration; is_versions_menu_open()/get_versions_menu_item_names() needed a new skill_name param (from ELITEA-1789 rework)
 - [Project briefing](project_briefing.md) — Stack overlay (test-automation) — implementer slot; turn a ready AFS into a merged, honest automated test
 - [MUI form field quirks](mui_form_field_quirks.md) — wrapper-testid resolution, replacing pre-filled text, download filenames, silent maxlength truncation (from ELITEA-1737)
 - [Agent embedded chat quirks](agent_embedded_chat_quirks.md) — get_last_chat_message() testid bug on the last message, two distinct "Mention skill" poppers (real menuitem vs plain div), add-skill button accessible name, clear-chat aria-label collision, attach-skill counter race (from ELITEA-1735)
