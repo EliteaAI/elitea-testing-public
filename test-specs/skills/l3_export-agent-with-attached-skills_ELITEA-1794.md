@@ -91,9 +91,9 @@ No `reuse-existing` or shared fixture applies — this is a fresh-state flow (1 
    attached (already satisfied by Test Step 3's verification).
 5. (Case step 2) Open the agent-actions overflow menu
    (`agent-actions-menu-button`, same handle documented for ELITEA-1792) and click
-   the `Export` menuitem (in the `VERSION` group, alongside `Set as a default`
-   (disabled), `Share`, `Fork`, `Publish`, `Delete` (disabled) — this is a new
-   handle, not documented in prior AFS files in this batch).
+   the `Export` menuitem (`agent-actions-export-menuitem` — added 2026-07-15 via
+   `add-data-testid`, see Handles Reference — in the `VERSION` group, alongside
+   `Set as a default` (disabled), `Share`, `Fork`, `Publish`, `Delete` (disabled)).
    - **Verify** (case step 2): a file download is initiated. Confirmed live via
      the Playwright MCP download event: `elitea-1794-export-agent.agent.md`
      downloaded automatically, no save-location dialog. Network trace shows `GET
@@ -142,28 +142,37 @@ No `reuse-existing` or shared fixture applies — this is a fresh-state flow (1 
 
 ## Handles Reference
 
-| Element | testid / locator | Notes |
-|---|---|---|
-| Skill Name field | `skill-name-input` (wrapper) → descendant `input` or `getByRole('textbox', { name: 'Name *' })` | kebab-case validation |
-| Skill Description field | `skill-description-input` (wrapper) → descendant `textarea` or `getByRole('textbox', { name: 'Description *' })` | same wrapper-div caveat |
-| Skill Instructions editor | `skill-instructions-editor-content` | CodeMirror; `.fill()` worked directly in this run |
-| Skill Save button | `skill-save-button` | |
-| Nav-blocker confirm | `alert-dialog-confirm-button` | fires on Skill-create Save |
-| Agent Name field | `agent-name-input` | same wrapper-div fill caveat as Skill Name |
-| Agent Description field | `agent-description-input` | |
-| Agent Instructions field | `agent-instructions-input` | `.fill()` works directly (single-line MUI Textarea, not a wrapper div) |
-| Agent Save button | `agent-save-button` (create form) | |
-| Agent add-skill button | no testid; `getByRole('button', { name: 'Skill', exact: true })` | matches ELITEA-1735/1789/1792's amended handle |
-| Skill-attach popper item | `role="menuitem"`, accessible name = skill name (search box placeholder `"Search skills..."`) | |
-| **Agent actions (overflow) menu (this case's core element)** | `agent-actions-menu-button` | opens VERSION/AGENT grouped menu |
-| **"Export" menuitem (this case's core element, new handle)** | no dedicated testid observed; `getByRole('menuitem', { name: 'Export' })` scoped to the opened overflow menu | Located in the `VERSION` group, between `Set as a default` (disabled) and `Share`. Clicking it triggers an immediate browser download — no confirmation dialog, no save-location prompt in this local/headed run. |
-| Downloaded file naming pattern | `{agent-name}.agent.md` | Double extension (`.agent.md`) — still resolves as a valid `.md` file for the case's "has a `.md` extension" criterion |
-| Export network call | `GET /api/v2//elitea_core/export_import/prompt_lib/{project}/{agent-id}?format=md&follow_version_ids={agent-id}` → `200 OK` | Note the doubled `//` after `/v2` — cosmetic URL-construction quirk, does not affect response; not filed as a defect since it doesn't violate any pass/fail criterion |
-| Skill controls (overflow) menu | `skill-controls-menu-button` | opens VERSION/SKILL grouped menu (cleanup) |
-| Delete-skill menu item | `skill-delete-menu-item` | in the SKILL group |
-| Delete-agent menu item | `delete-agent-menuitem` | in the AGENT group |
-| Delete-confirmation name field | `delete-confirm-name-input` (scope to inner `#name` field) | shared component, both agent and skill delete flows |
-| Delete-confirmation confirm button | `getByRole('button', { name: 'Delete' })` scoped to the dialog | enabled only once typed name matches |
+> **Amended 2026-07-15 (ELITEA-1794 testid-rework, PR review of automation PR #53).**
+> Per `.agents/role-overrides.md` § Analyst slot, every primary handle below is now
+> a testid, and a **Provenance** column records whether that testid is live on
+> `EliteaUI` `main`, only on the shared `automation/testids` integration branch
+> pending a draft PR, or still missing entirely. Two rows that still resolve via
+> role/text (`Agent add-skill button`, `Skill-attach popper item`, `Delete-confirmation
+> confirm button`) are pre-existing, out-of-scope tech debt shared with
+> ELITEA-1735/1789/1792 — flagged `needs-adding`, not fixed here.
+
+| Element | testid | Provenance | Notes |
+|---|---|---|---|
+| Skill Name field | `skill-name-input` (wrapper) → descendant `input` or `getByRole('textbox', { name: 'Name *' })` | on-main ✓ | kebab-case validation |
+| Skill Description field | `skill-description-input` (wrapper) → descendant `textarea` or `getByRole('textbox', { name: 'Description *' })` | on-main ✓ | same wrapper-div caveat |
+| Skill Instructions editor | `skill-instructions-editor-content` | on-automation/testids only (draft EliteaUI#526) | CodeMirror; `.fill()` worked directly in this run; not yet on `main` — pre-existing dependency this case has always had (same gap tracked for ELITEA-1737) |
+| Skill Save button | `skill-save-button` | on-main ✓ | |
+| Nav-blocker confirm | `alert-dialog-confirm-button` | on-main ✓ | fires on Skill-create Save |
+| Agent Name field | `agent-name-input` | on-main ✓ | same wrapper-div fill caveat as Skill Name |
+| Agent Description field | `agent-description-input` | on-main ✓ | |
+| Agent Instructions field | `agent-instructions-input` | on-main ✓ | `.fill()` works directly (single-line MUI Textarea, not a wrapper div) |
+| Agent Save button | `agent-save-button` (create form) | on-main ✓ | |
+| Agent add-skill button | no testid; `getByRole('button', { name: 'Skill', exact: true })` | needs-adding | matches ELITEA-1735/1789/1792's amended handle; out of this case's scope |
+| Skill-attach popper item | `role="menuitem"`, accessible name = skill name (search box placeholder `"Search skills..."`) | needs-adding | out of this case's scope |
+| **Agent actions (overflow) menu (this case's core element)** | `agent-actions-menu-button` | on-main ✓ | opens VERSION/AGENT grouped menu |
+| **"Export" menuitem (this case's core element)** | `agent-actions-export-menuitem` | on-automation/testids only (draft EliteaUI#549) | Located in the `VERSION` group, between `Set as a default` (disabled) and `Share`. Clicking it triggers an immediate browser download — no confirmation dialog, no save-location prompt. **Amended 2026-07-15**: replaces the prior `getByRole('menuitem', { name: 'Export' })` handle (PR #53 review finding, `CHANGES_REQUESTED`) — added via `add-data-testid` as `key: 'agent-actions-export'` on `useExportApplicationMenu()`'s menu item (`ExportApplicationButton.jsx`), rendered by `DotMenu.jsx`'s existing `testId: item.key` → `${testId}-menuitem` convention. |
+| Downloaded file naming pattern | `{agent-name}.agent.md` | n/a (not a UI handle) | Double extension (`.agent.md`) — still resolves as a valid `.md` file for the case's "has a `.md` extension" criterion |
+| Export network call | `GET /api/v2//elitea_core/export_import/prompt_lib/{project}/{agent-id}?format=md&follow_version_ids={agent-id}` → `200 OK` | n/a (network call, not a UI handle) | Note the doubled `//` after `/v2` — cosmetic URL-construction quirk, does not affect response; not filed as a defect since it doesn't violate any pass/fail criterion |
+| Skill controls (overflow) menu | `skill-controls-menu-button` | on-main ✓ | opens VERSION/SKILL grouped menu (cleanup) |
+| Delete-skill menu item | `skill-delete-menu-item` | on-main ✓ | in the SKILL group |
+| Delete-agent menu item | `delete-agent-menuitem` | on-main ✓ | in the AGENT group |
+| Delete-confirmation name field | `delete-confirm-name-input` (scope to inner `#name` field) | on-automation/testids only (draft EliteaUI#525) | shared component, both agent and skill delete flows; not yet on `main` |
+| Delete-confirmation confirm button | `getByRole('button', { name: 'Delete' })` scoped to the dialog | needs-adding | enabled only once typed name matches; out of this case's scope |
 
 ## Expected Results
 - An Agent with 1 attached Skill is created successfully.
