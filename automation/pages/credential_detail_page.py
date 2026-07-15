@@ -17,6 +17,15 @@ so no dialog-scoping workaround is needed.
 ID-autogeneration/URL-stability handles (``get_credential_id_from_url()``,
 ``is_id_field_disabled()``) were added for ELITEA-1972 (see test-specs/
 toolkits-credentials/l1_credential-id-auto-generation_ELITEA-1972.md).
+
+Three-dot menu / pin-toggle handles (``controls_menu_button``,
+``pin_toggle_menuitem``, ``open_controls_menu()``,
+``get_pin_toggle_menu_label()``, ``click_pin_toggle_menu_item()``) were
+added for ELITEA-1974 (see test-specs/toolkits-credentials/
+l1_credential-pin-unpin_ELITEA-1974.md). The ``pin-toggle-credential-menuitem``
+testid required a one-line fix in ``CredentialsControls.jsx`` (the
+``pinMenuItem`` spread never set a ``key``, unlike its sibling ``Delete``
+item) — added via ``add-data-testid``.
 """
 
 import logging
@@ -79,6 +88,18 @@ class CredentialDetailPage(CredentialFormFieldsMixin, BasePage):
     discard_confirm_button = LocatorDescriptor(
         testid="credential-discard-confirm-button",
         description="Discard button inside the confirmation modal",
+    )
+
+    # ------------------------------------------------------------------
+    # Three-dot menu (ControlsDropdown / DotMenu, id="controls" default)
+    # ------------------------------------------------------------------
+    controls_menu_button = LocatorDescriptor(
+        testid="controls-menu-button",
+        description="Three-dot menu button in the tab bar (pre-existing testid)",
+    )
+    pin_toggle_menuitem = LocatorDescriptor(
+        testid="pin-toggle-credential-menuitem",
+        description="Pin/Unpin toggle menu item inside the three-dot menu",
     )
 
     def __init__(self, page: Page):
@@ -151,3 +172,28 @@ class CredentialDetailPage(CredentialFormFieldsMixin, BasePage):
         """Click Discard inside the confirmation modal and wait for it to close."""
         self.discard_confirm_button.click()
         self.discard_confirm_modal.wait_for(state="detached", timeout=UI_ELEMENT_TIMEOUT)
+
+    def open_controls_menu(self) -> None:
+        """Click the three-dot menu button and wait for the pin-toggle item to render."""
+        self.controls_menu_button.click()
+        self.pin_toggle_menuitem.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def get_pin_toggle_menu_label(self) -> str:
+        """Return the pin-toggle menu item's current text ("Pin to top" / "Unpin from top")."""
+        return self.pin_toggle_menuitem.text_content() or ""
+
+    def click_pin_toggle_menu_item(self):
+        """Click the pin-toggle menu item and wait for the underlying
+        ``POST``/``DELETE .../social/pin/prompt_lib/{project}/configuration/{id}``
+        response, per the AFS's wait-on-network-response guidance (no fixed sleep).
+
+        Returns:
+            The matched Playwright ``Response``.
+        """
+        credential_id = self.get_credential_id_from_url()
+        pattern = "/social/pin/prompt_lib/"
+        with self.page.expect_response(
+            lambda r: pattern in r.url and r.url.rstrip("/").endswith(f"/configuration/{credential_id}")
+        ) as response_info:
+            self.pin_toggle_menuitem.click()
+        return response_info.value
