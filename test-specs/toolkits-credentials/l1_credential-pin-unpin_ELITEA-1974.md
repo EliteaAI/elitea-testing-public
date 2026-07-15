@@ -220,19 +220,27 @@ outcome.
 
 | Element | Recommended Locator | Fallback |
 |---|---|---|
-| Credentials list → "Pin to top" / "Unpin from top" icon button (`PinButton.jsx`, used in `DataTableRow.jsx`'s card/list rendering) | **testid needed** — confirmed live via `browser_evaluate`: zero `data-testid` attribute on the `IconButton` (`aria-label` only, "Pin to top"/"Unpin from top", flips with state). Request via `add-data-testid`, suggested name `credential-pin-toggle-button` scoped per-row (the shared `PinButton` component is reused across Skills/Toolkits/Applications/MCPs list rows per the widget's `entityType` prop — a single scoped testid pattern like `{entity}-pin-toggle-button` would benefit all of them, not just Credentials) — **to-verify in implementer Phase 2** whether the testid should be scoped per-card (e.g. include an id/index) since multiple rows render the same component | `page.get_by_role("button", { name: "Pin to top" })` scoped to the specific card container (by adjacent display-name text) — **do not** use an unscoped `.nth(n)` positional index as this AFS did during exploration; that breaks the moment sort order or page size changes |
+| Credentials list → "Pin to top" / "Unpin from top" icon button (`PinButton.jsx`, used in `DataTableRow.jsx`'s card/list rendering) | **confirmed live, landed testid** — `data-testid="credential-pin-toggle-button-{id}"`, scoped per-row by credential id, added via `add-data-testid` and merged on `EliteaAI/EliteaUI#569`. `page.get_by_test_id(f"credential-pin-toggle-button-{credential_id}")` (`CredentialsListPage.pin_toggle_button()`) | `page.get_by_role("button", { name: "Pin to top" })` scoped to the specific card container (by adjacent display-name text) — **do not** use an unscoped `.nth(n)` positional index as this AFS did during exploration; that breaks the moment sort order or page size changes |
 | Credential detail page → three-dot menu button (`ControlsDropdown.jsx` → `DotMenu.jsx`, `id="controls"` default) | `page.get_by_test_id("controls-menu-button")` — **confirmed live, existing testid** (`data-testid={id + '-menu-button'}` in `DotMenu.jsx`, `id="controls"` passed by default from `ControlsDropdown`) | `page.get_by_role("button")` inside the tab-bar controls group, right of the disabled Discard/Save buttons |
-| Credential detail page → pin-toggle menu item ("Pin to top" / "Unpin from top", `usePinMenu.hooks.jsx` → rendered via `DotMenu`'s `BasicMenuItem`) | **testid needed** — confirmed via source read: `DotMenu.jsx` only sets `data-testid={testId ? \`${testId}-menuitem\` : undefined}` where `testId = item.key`; the pin menu item object built in `CredentialsControls.jsx` (`{...pinMenuItem, disabled: ...}`) never sets a `key`, so `testId` is `undefined` and the rendered `MenuItem` gets **no `data-testid`** — unlike the adjacent **Delete** item, which does set `key: 'delete-credentials'` and correctly gets `delete-credentials-menuitem`. Suggested fix: add `key: 'pin-toggle-credential'` (or similar) to the `pinMenuItem` spread in `CredentialsControls.jsx`, which would then flow through to `{key}-menuitem` automatically — **to-verify in implementer Phase 2**, and note this same gap likely applies to `SkillControls.jsx` / `ToolkitsControls.jsx` / `ApplicationControls.jsx`, which all consume `usePinMenu` the same way (not independently re-confirmed for those other pages in this run) | `page.get_by_role("menuitem", { name: "Unpin from top" })` / `page.get_by_role("menuitem", { name: "Pin to top" })` — unambiguous in this run since only one menu is open at a time and only one item carries that exact accessible name |
+| Credential detail page → pin-toggle menu item ("Pin to top" / "Unpin from top", `usePinMenu.hooks.jsx` → rendered via `DotMenu`'s `BasicMenuItem`) | **confirmed live, landed testid** — `data-testid="pin-toggle-credential-menuitem"`. Fixed by adding `key: 'pin-toggle-credential'` to the `pinMenuItem` spread in `CredentialsControls.jsx` (it previously never set a `key`, unlike the sibling `Delete` item), which flows through `DotMenu.jsx`'s `{testId}-menuitem` convention — landed on `EliteaAI/EliteaUI#569`. `page.get_by_test_id("pin-toggle-credential-menuitem")` (`CredentialDetailPage.pin_toggle_menuitem`). Same gap likely applies to `SkillControls.jsx` / `ToolkitsControls.jsx` / `ApplicationControls.jsx`, which all consume `usePinMenu` the same way — not fixed for those other pages in this run | `page.get_by_role("menuitem", { name: "Unpin from top" })` / `page.get_by_role("menuitem", { name: "Pin to top" })` — unambiguous in this run since only one menu is open at a time and only one item carries that exact accessible name |
 | Credential detail page → "Delete" menu item | `page.get_by_test_id("delete-credentials-menuitem")` — **confirmed via source** (`key: 'delete-credentials'` set in `CredentialsControls.jsx`, flows to `DotMenu`'s `testId` prop); not independently clicked/live-confirmed in this run since Delete is outside this case's scope | `page.get_by_role("menuitem", { name: "Delete" })` |
 
 **Summary for the implementer / `add-data-testid`:** two testid gaps found
-— (1) the list-view Pin/Unpin icon button has zero `data-testid` on any of
-the four+ entity types that reuse `PinButton.jsx`; (2) the pin-toggle menu
-item on the entity-detail three-dot menu has zero `data-testid` on any of
-the four+ entity types that reuse `usePinMenu.hooks.jsx` via `DotMenu`,
-purely because the `pinMenuItem` object never sets a `key` (unlike its
-sibling `Delete` item, which does and correctly gets one). Both are
-one-line fixes at the shared-component/call-site level, not per-page.
+during analysis — (1) the list-view Pin/Unpin icon button had zero
+`data-testid` on any of the four+ entity types that reuse `PinButton.jsx`;
+(2) the pin-toggle menu item on the entity-detail three-dot menu had zero
+`data-testid` on any of the four+ entity types that reuse
+`usePinMenu.hooks.jsx` via `DotMenu`, purely because the `pinMenuItem`
+object never set a `key` (unlike its sibling `Delete` item, which does and
+correctly gets one). Both were one-line fixes at the shared-component/
+call-site level, not per-page. **Update (implementer Phase 2, ELITEA-1974
+round 1 fix pass):** both testids landed and are confirmed live on
+`EliteaAI/EliteaUI#569` — `credential-pin-toggle-button-{id}` (per-row,
+scoped by credential id) and `pin-toggle-credential-menuitem` — and are now
+wired into `CredentialsListPage.pin_toggle_button()` /
+`CredentialDetailPage.pin_toggle_menuitem` respectively. The Skills/
+Toolkits/Applications sibling gaps remain open (out of scope for this
+case).
 
 ## Network Behavior
 - `POST /api/v2/social/pin/prompt_lib/{project_id}/configuration/{id}` —
