@@ -65,6 +65,15 @@ class AgentDetailPage(AgentFormPage):
     # Prefix-match variant: used when only the skill *name* is known (not the
     # skill_id), to filter all attached-skill cards by rendered name text.
     SKILL_CARD_ANY_SELECTOR = '[data-testid^="skill-card-"]'
+    # Static testid (not per-instance dynamic) for the "remove skill" icon
+    # button — added via `add-data-testid` for ELITEA-1792 (EliteaUI draft
+    # PR #547). Mirrors the shape `remove_toolkit()` uses for the sibling
+    # toolkit-card delete button (`[data-testid="agent-toolkit-delete-button"]`
+    # scoped via `card.locator(...)`), promoted to a class-level constant per
+    # `.claude/rules/page-objects.md` (scoped selectors use UPPER_CASE string
+    # constants): scoped within a single skill's card (resolved via
+    # `_skill_card()`), so no per-skill dynamic suffix is needed.
+    SKILL_CARD_REMOVE_BUTTON_SELECTOR = '[data-testid="skill-card-remove-button"]'
     SKILL_MENTION_ITEM_SELECTOR = '[data-testid="skill-mention-item-{}"]'
     # Version-selector testids (ELITEA-1789 testid-only rework — added via
     # add-data-testid to SkillVersionSelector.jsx; see EliteaUI draft PR #545).
@@ -1176,13 +1185,35 @@ class AgentDetailPage(AgentFormPage):
         exploration. Moving the mouse away first makes this a genuine
         "unhovered" check rather than an accidental false-positive.
 
+        LOCATOR: `skill-card-remove-button` — added via `add-data-testid`
+        in the ELITEA-1792 testid-only rework (EliteaUI draft PR #547),
+        replacing the prior `get_by_role("button", name="remove skill")`
+        handle. Scoped within the specific skill's card (`_skill_card()`)
+        via `SKILL_CARD_REMOVE_BUTTON_SELECTOR`. The "open in new tab"
+        sibling button is untouched by this test and still carries no
+        `data-testid` — out of scope for this rework.
+
+        VISIBILITY, not DOM presence: the button element is always in the
+        DOM (`SkillCard.jsx`'s `actionButton` style is `display: none` by
+        default, flipped to `display: flex` only on the card's `:hover`
+        CSS rule) — a `data-testid` attribute exists on it regardless of
+        hover state. The prior `get_by_role` handle queried the
+        accessibility tree, which excludes `display:none` elements, so it
+        naturally encoded the hover-reveal semantics this method's callers
+        rely on. A DOM-presence check (`.count() > 0`) on the testid would
+        silently always return True and break that semantic — confirmed
+        live during this rework (initial `.count()` implementation failed
+        the "not visible before hover" assertion in
+        ``test_remove_attached_skill_from_agent.py``). `.is_visible()`
+        replicates the accessibility-tree behavior correctly.
+
         Args:
             skill_name: Exact name of the attached skill whose card is checked.
             timeout: Maximum wait time in milliseconds for the card itself.
         """
         self.page.mouse.move(0, 0)
         card = self._skill_card(skill_name, timeout=timeout)
-        return card.get_by_role("button", name="remove skill").count() > 0
+        return card.locator(self.SKILL_CARD_REMOVE_BUTTON_SELECTOR).is_visible()
 
     @action("Remove skill")
     def remove_skill(self, skill_name: str, timeout: int = 10000):
@@ -1191,10 +1222,16 @@ class AgentDetailPage(AgentFormPage):
         Mirrors ``remove_toolkit()`` above: the "remove skill" icon button
         (and its "open in new tab" sibling) is **hover-revealed** — absent
         from the accessibility tree for an un-hovered card (ELITEA-1792
-        exploration) — so the card must be hovered first. Neither button
-        carries a `data-testid`; ``get_by_role("button", name="remove
-        skill")`` scoped to the specific card (via ``_skill_card()``) is
-        the only reliable handle.
+        exploration) — so the card must be hovered first.
+
+        LOCATOR: `skill-card-remove-button` — added via `add-data-testid`
+        in the ELITEA-1792 testid-only rework (EliteaUI draft PR #547),
+        replacing the prior `get_by_role("button", name="remove skill")`
+        handle. Scoped to the specific card (via ``_skill_card()``) through
+        the class-level `SKILL_CARD_REMOVE_BUTTON_SELECTOR` constant. The
+        "open in new tab" sibling is never clicked or asserted by this
+        test, so it's still untested and still carries no `data-testid` —
+        out of scope for this rework.
 
         Clicking the icon does **not** remove the skill instantly: it opens
         a "Remove skill?" confirmation dialog (same shape as the "Remove
@@ -1214,7 +1251,7 @@ class AgentDetailPage(AgentFormPage):
         card.hover()
         self.page.wait_for_timeout(500)  # hover-reveal CSS transition
 
-        remove_btn = card.get_by_role("button", name="remove skill")
+        remove_btn = card.locator(self.SKILL_CARD_REMOVE_BUTTON_SELECTOR)
         remove_btn.wait_for(state="visible", timeout=5000)
         remove_btn.click(force=True)
         self.page.wait_for_timeout(500)
