@@ -20,6 +20,7 @@ import logging
 from playwright.sync_api import Page
 
 from .base_page import BasePage
+from .credentials_list_recovery import recover_from_credentials_list_crash
 from .locator_descriptor import LocatorDescriptor
 
 logger = logging.getLogger("elitea.pages.credential_detail")
@@ -98,34 +99,17 @@ class CredentialDetailPage(BasePage):
     def _recover_from_credentials_list_crash(self) -> bool:
         """Reload once if /credentials/all crashed with the known refetch race.
 
-        Known defect (github.com/EliteaAI/elitea-testing-public#518):
-        ``CredentialsList.jsx``'s mount effect calls ``onRefetch()`` twice
-        unconditionally on this exact pathname, and
-        ``useLoadCredentials.js``'s underlying RTK Query ``refetch()`` throws
-        "Cannot refetch a query that has not been started yet" when the
-        query hasn't started — an unhandled error that trips the route's
-        error boundary. Live-verified during ELITEA-1971 exploration at a
-        ~60% reproduction rate; out of scope for the Discard flow this page
-        object exists to test, so a single reload recovers (the race window
-        doesn't reliably re-trigger on the second mount) rather than letting
-        every Discard-flow run flake on an unrelated, already-filed bug.
-
-        This is a recovery-only check (not a test locator/assertion) — text
-        match against the app's generic React-Router error boundary output,
-        the same "workaround, not policy exception" pattern as
-        ``BasePage.dismiss_banner_if_present()``.
+        Delegates to the shared :func:`recover_from_credentials_list_crash`
+        helper (github.com/EliteaAI/elitea-testing-public#518) — see that
+        module for the full root-cause writeup. Extracted out of this page
+        object so :class:`CredentialCreatePage` (which also lands on
+        ``/credentials/all``) doesn't need a duplicate method
+        (``.claude/rules/page-objects.md`` "NO Method Duplication").
 
         Returns:
             True if the crash was detected and recovered from.
         """
-        crashed = self.page.get_by_text("Unexpected Application Error!").count() > 0
-        if crashed:
-            logger.warning(
-                "Recovering from known CredentialsList crash (elitea-testing-public#518) — reloading"
-            )
-            self.page.reload(wait_until="domcontentloaded")
-            self.wait_for_network()
-        return crashed
+        return recover_from_credentials_list_crash(self.page)
 
     def wait_for_page_load(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
         """Wait for the credential detail page to render its Display Name field."""
