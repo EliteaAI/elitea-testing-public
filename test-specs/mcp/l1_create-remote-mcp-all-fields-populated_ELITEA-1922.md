@@ -44,33 +44,33 @@
    - **Verify**: field displays the typed value.
 5. Fill Url (`[data-testid="toolkit-field-url-input"]`) with `https://mcp.example.com/sse`.
    - **Verify**: field displays the typed value.
-6. Click into the Headers JSON editor (`[data-testid="toolkit-field-headers-editor"]`, a CodeMirror instance nested inside an expandable "Headers" accordion — the accordion is expanded by default), select-all (`Ctrl/Cmd+A`) to clear the default `{}`, then type `{"Authorization": "Bearer test123"}`.
+6. Click into the Headers JSON editor (`[data-testid="toolkit-field-headers-editor"]`, a CodeMirror instance nested inside an expandable "Headers" accordion — the accordion is expanded by default; the editable `.cm-content` node itself carries its own `[data-testid="toolkit-field-headers-editor-content"]`, see Concrete Handles), select-all (`Ctrl/Cmd+A`) to clear the default `{}`, then type `{"Authorization": "Bearer test123"}`.
    - **Verify**: editor content shows the typed JSON with CodeMirror line numbers/gutter.
 7. Fill Client Id (`[data-testid="toolkit-field-client_id-input"]`) with `test_client_id`.
    - **Verify**: field displays the typed value.
-8. Fill Client Secret (`[data-testid="toolkit-field-client_secret-input"]`) with `test_secret_value`. The field is in "Password" view by default (masked visually; the toggler also offers a "Secret" view for referencing a stored platform secret — not used by this case).
+8. Fill Client Secret (`[data-testid="toolkit-field-client_secret-input-field"]` — the real `<input>`, not the `toolkit-field-client_secret-input` wrapper `<Box>`) with `test_secret_value`. The field is in "Password" view by default (masked visually; the toggler also offers a "Secret" view for referencing a stored platform secret — not used by this case).
    - **Verify**: field accepts input (value is visually masked but present in the DOM value).
 9. Fill Scopes (`[data-testid="toolkit-field-scopes-input"]`) with `read,write`. The field auto-normalizes to `read, write` (comma+space) on input — this is cosmetic formatting, not a data change (see Coverage Map).
    - **Verify**: field shows the (possibly reformatted) value.
 10. Clear and fill Timeout (`[data-testid="toolkit-field-timeout-input"]`) with `600`, replacing the default `300`.
     - **Verify**: field shows `600`.
-11. Verify Enable Caching checkbox (`[data-testid="toolkit-field-enable_caching-checkbox"]`) is checked by default.
-    - **Verify**: `input.checked === true` (the testid lands on the MUI `<span>` wrapper — chain `.locator('input')` for the checked-state assertion).
+11. Verify Enable Caching checkbox (`[data-testid="toolkit-field-enable_caching-checkbox-field"]` — the real `<input>` carrying `.checked`; the `toolkit-field-enable_caching-checkbox` testid is the MUI `<span>` click target only) is checked by default.
+    - **Verify**: `input.checked === true`.
 12. Clear and fill Cache TTL (`[data-testid="toolkit-field-cache_ttl-input"]`) with `120`, replacing the default `300`.
     - **Verify**: field shows `120`.
-13. Verify Ssl Verify checkbox (`[data-testid="toolkit-field-ssl_verify-checkbox"]`) is checked by default, then click it to uncheck.
+13. Verify Ssl Verify checkbox (`[data-testid="toolkit-field-ssl_verify-checkbox-field"]` for the `.checked` assertion; click the `[data-testid="toolkit-field-ssl_verify-checkbox"]` span to toggle it) is checked by default, then click it to uncheck.
     - **Verify**: before click, `input.checked === true`; after click, `input.checked === false`.
 14. Click Save (`[data-testid="toolkit-form-save-button"]`).
     - **Verify**: `POST /api/v2/elitea_core/tools/prompt_lib/${PROJECT_ID}` returns `201 Created`; page navigates to `${BASE_URL}/mcps/all/{id}?name={toolkit_name}`.
-15. On the MCP detail page, verify the page title contains the toolkit name and the Form view shows all values persisted:
-    - **Verify**: `h1`/heading text = generated toolkit name; Toolkit Name, Description, Url, Headers, Client Id, Scopes, Timeout (`600`), Cache TTL (`120`) fields show the saved values; Enable Caching checked; Ssl Verify unchecked. Client Secret field on the detail page shows a secret-reference token (`{{secret.<32-char-hex>}}`), NOT the literal `test_secret_value` — this is correct, intentional secret-management behavior (see Coverage Map / Known Defects — none found).
-16. Switch to "Raw Json" view (`[data-testid="toolkit-raw-json-view-toggle"]`) on the detail page.
+15. On the MCP detail page (title read from `[data-testid="toolkit-detail-title"]`), verify the page title contains the toolkit name and the Form view shows all values persisted:
+    - **Verify**: `h1`/heading text = generated toolkit name; Toolkit Name, Description, Url, Headers, Client Id, Scopes, Timeout (`600`), Cache TTL (`120`) fields show the saved values; Enable Caching checked; Ssl Verify unchecked. Client Secret field on the detail page shows the secret-reference **hex id bare** (`[0-9a-f]{32}`, e.g. `dcd2cc2335674b9ba848368c9a247929`), NOT the literal `test_secret_value` and NOT the `{{secret.<hex>}}` wrapper syntax (that wrapper only appears in the Raw Json view, see step 16) — this is correct, intentional secret-management behavior (see Coverage Map / Known Defects). **CLARIFICATION (implementer Phase 4, reverse-masking guard):** this line originally claimed the Form view shows the full `{{secret.<hex>}}` wrapper too — live product confirmed at implementation time shows the bare hex on the Form view's `<input>` DOM value instead; corrected here per live observation, not case-text assumption.
+16. Switch to "Raw Json" view (`[data-testid="toolkit-raw-json-view-toggle"]`) on the detail page; read the JSON from the CodeMirror editor's editable node (`[data-testid="toolkit-raw-json-editor-content"]`).
     - **Verify**: JSON contains `"name": "<toolkit_name>"`, `"description": "Full configuration test MCP"`, `"settings.url": "https://mcp.example.com/sse"`, `"settings.headers": {"Authorization": "Bearer test123"}`, `"settings.client_id": "test_client_id"`, `"settings.client_secret": "{{secret.<hex>}}"` (reference token, not plaintext), `"settings.scopes": ["read", "write"]`, `"settings.timeout": "600"` (string, not number — see Coverage Map), `"settings.cache_ttl": "120"` (string), `"settings.enable_caching": true`, `"settings.ssl_verify": false`, `"type": "mcp"`.
 
 ## Expected Results
 - The Remote MCP toolkit is created successfully and the detail page (`/mcps/all/{id}`) loads with the correct name.
 - Every configured field is correctly reflected in BOTH the Form view and the Raw Json view.
-- `client_secret` is never displayed or persisted as plaintext in the Raw JSON — only as a `{{secret.<id>}}` reference (intentional platform secret-management behavior, confirmed by cross-checking the Form view's masked-field value against the Raw JSON reference id — both show the same hex id).
+- `client_secret` is never displayed or persisted as plaintext — the Raw JSON shows the `{{secret.<hex>}}` wrapper, the Form view's `<input>` DOM value shows the same hex bare, no wrapper (intentional platform secret-management behavior; the two representations differ in syntax but carry the same hex id — cross-check them for equality rather than asserting an exact string on either alone).
 
 ## Coverage Map
 
@@ -122,16 +122,20 @@ All testids below were added during this session (draft PR `EliteaAI/EliteaUI#55
 | Toolkit Name input | `[data-testid="toolkit-form-name-input"]` | none |
 | Description input | `[data-testid="toolkit-form-description-input"]` | none |
 | Url input | `[data-testid="toolkit-field-url-input"]` | none |
-| Headers JSON editor (CodeMirror) | `[data-testid="toolkit-field-headers-editor"]` — testid is on the editor's wrapping `<Box>`; interact via `.locator('.cm-content')` or similar CodeMirror-specific sub-selector for typing | none |
+| Headers JSON editor (CodeMirror) | `[data-testid="toolkit-field-headers-editor"]` — testid is on the editor's wrapping `<Box>`; the editable `.cm-content` node itself now carries its own `[data-testid="toolkit-field-headers-editor-content"]` (added during implementer exploration, see below) — use that testid directly for typing/reading, no CSS-class sub-selector needed | none |
 | Client Id input | `[data-testid="toolkit-field-client_id-input"]` | none |
-| Client Secret input | `[data-testid="toolkit-field-client_secret-input"]` — testid lands on the outer container `<Box>` (MUI TextField's root, not the native `<input>`); chain `.locator('input')` to type/read the value | none |
+| Client Secret input | `[data-testid="toolkit-field-client_secret-input-field"]` — the real `<input>` element, addressable directly (added during implementer exploration; supersedes the originally-recommended `toolkit-field-client_secret-input` wrapper `<Box>` + `.locator('input')` chain below the table) | none |
 | Scopes input | `[data-testid="toolkit-field-scopes-input"]` | none |
 | Timeout input | `[data-testid="toolkit-field-timeout-input"]` | none |
 | Cache TTL input | `[data-testid="toolkit-field-cache_ttl-input"]` | none |
-| Enable Caching checkbox | `[data-testid="toolkit-field-enable_caching-checkbox"]` — testid lands on the MUI `<span>` wrapper (click works directly on this element); chain `.locator('input')` for `.checked` assertions | none |
-| Ssl Verify checkbox | `[data-testid="toolkit-field-ssl_verify-checkbox"]` — same click/assert pattern as above | none |
+| Enable Caching checkbox | `[data-testid="toolkit-field-enable_caching-checkbox"]` — MUI `<span>` wrapper, click target; for `.checked` assertions use the real `<input>`'s own `[data-testid="toolkit-field-enable_caching-checkbox-field"]` directly (added during implementer exploration; supersedes the `.locator('input')` chain) | none |
+| Ssl Verify checkbox | `[data-testid="toolkit-field-ssl_verify-checkbox"]` — MUI `<span>` wrapper, click target; for `.checked` assertions use `[data-testid="toolkit-field-ssl_verify-checkbox-field"]` directly (added during implementer exploration; same pattern as Enable Caching above) | none |
 | Form / Raw Json view toggle | `[data-testid="toolkit-form-view-toggle"]` / `[data-testid="toolkit-raw-json-view-toggle"]` | none |
+| Raw Json editor content (CodeMirror) | `[data-testid="toolkit-raw-json-editor-content"]` — the editable `.cm-content` node, addressable directly for reading the persisted JSON (added during implementer exploration) | none |
 | Save button | `[data-testid="toolkit-form-save-button"]` | none |
+| Detail page title heading | `[data-testid="toolkit-detail-title"]` — plain MUI `Typography`, not an `h1`; renders an "Edit Toolkit" placeholder until the tool-detail GET resolves (added during implementer exploration) | none |
+
+> **Implementer exploration note (same-PR AFS amendment, `docs(afs)` commit):** five native-input/content testids (`toolkit-field-client_secret-input-field`, `toolkit-field-enable_caching-checkbox-field`, `toolkit-field-ssl_verify-checkbox-field`, `toolkit-field-headers-editor-content`, `toolkit-raw-json-editor-content`) plus `toolkit-detail-title` were added to EliteaUI during implementation specifically to eliminate the `.locator('input')` / `.locator('.cm-content')` wrapper-chaining this table originally recommended (see rows above) — chaining an untested CSS selector off a wrapper testid violates the testid-only locator policy (`.claude/rules/page-objects.md`). All references above are updated to point at the new testids directly; no wrapper-chaining remains anywhere in this spec.
 
 ## Network Behavior
 - `POST /api/v2/elitea_core/tools/prompt_lib/${PROJECT_ID}` — fires on Save click; `201 Created` on success; response body's `id` is the new toolkit id, needed for teardown and for constructing the expected detail-page URL.
@@ -158,5 +162,5 @@ None. All 15 case steps were executed to completion against the live local envir
 - Use `ToolkitAPI` (`automation/api/client.py`) for teardown (`delete_toolkit(toolkit_id)`) — already exists, no new API client code needed.
 - Wait strategy: wait for the `POST .../tools/prompt_lib/{project}` response (`201`) before asserting navigation to the detail page, not a fixed timeout or URL-poll — the save button's `onClick` triggers an async event-emitter chain (`ToolEvents.SaveEvent`) with a `setTimeout(..., 0)` inside (`CreateToolkitToolTabBar.jsx`), so a network-response wait is the correct signal, not a UI-state poll.
 - Headers JSON editor is CodeMirror, not a plain `<textarea>` — clearing existing content requires `Ctrl/Cmd+A` then type, not `.fill()`.
-- Client Secret masked-field assertions: never assert the literal secret value in the Raw JSON — assert the `{{secret\.[A-Za-z0-9_]+}}` reference-token pattern instead (regex: `^\{\{secret\.[A-Za-z0-9_]+\}\}$`, confirmed at `SecretField.jsx` line 20's `secretRegex` in EliteaUI source).
+- Client Secret masked-field assertions: never assert the literal secret value, and never a bare `!= plaintext` check (lets an empty/garbage render pass undetected). The two views use **different syntax for the same hex id** — Raw JSON (`settings.client_secret`) is the full `{{secret\.[A-Za-z0-9_]+}}` wrapper (regex: `^\{\{secret\.([A-Za-z0-9_]+)\}\}$`, confirmed at `SecretField.jsx` line 20's `secretRegex` in EliteaUI source), while the Form view's `toolkit-field-client_secret-input-field` DOM value is the **bare hex** (`^[0-9a-f]{32}$`, no wrapper — confirmed live at implementer Phase 4, corrects this AFS's earlier claim that the Form view also shows the wrapper). Match each view against its own shape, then cross-check the two extracted hex ids are equal — that equality is what actually proves the Form-view value is the secret-reference id and not a coincidentally hex-shaped string.
 - If the test harness ever navigates away from a filled-but-unsaved form (e.g., on a mid-test failure path), expect a native `beforeunload` confirm dialog — register a `page.on('dialog', d => d.accept())` handler or an equivalent Playwright dialog-auto-accept fixture before that navigation, or the run will hang.
