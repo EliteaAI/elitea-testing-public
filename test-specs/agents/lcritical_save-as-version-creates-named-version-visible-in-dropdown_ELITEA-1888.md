@@ -183,6 +183,24 @@ no discrepancy.**
 | Confirmed `?viewMode=owner` is a required query param on `/agents/all/{id}` (its absence 404s) | Not documented anywhere in the existing page object's `navigate()` docstring beyond the code itself already using it — worth calling out explicitly since a naive re-implementation without reading the existing `AgentDetailPage.navigate()` could drop it and silently 404 |
 | Instructions field content preserved verbatim in the new version (not reset to base) | Directly grounds the case's implicit expectation that "Save As Version" snapshots the *current, edited* form state, not the version's last-saved state — worth an explicit assertion in the automated test since it's easy to omit |
 
+## Implementer amendment (Phase 2 exploration, same-PR)
+
+- **Discard button has no live `data-testid` on the Agent detail page.**
+  `AgentFormPage.discard_button` declares `testid="discard-button"`, but
+  `document.querySelectorAll('[data-testid]')` on a live agent detail page
+  (both before and after the Instructions edit) does not include it —
+  confirmed via `get_by_test_id("discard-button")` timing out during
+  implementation. This is a pre-existing gap distinct from
+  `PipelineFormPage`/`CredentialDetailPage`, whose own `discard-button`
+  testids ARE live on their respective pages. Since Discard-button
+  enabled/disabled state is an Axis-2 addition (not one of the original
+  case's 7 steps) and adding the testid would require a new
+  `add-data-testid` dual-target cycle out of proportion to this
+  observation, the implemented test asserts Save / Save As Version button
+  state only (both testids — `agent-save-button`, `agent-save-as-version-button`
+  — confirmed live) and omits the Discard-button assertion. Flagging here
+  for whoever next touches the Agent form's Discard button.
+
 ## Known Defects
 
 None hit or newly filed by this run. For context only:

@@ -41,6 +41,39 @@ class AgentDetailPage(AgentFormPage):
     copy_id_button = LocatorDescriptor(testid="copy-id")
     copy_version_id_button = LocatorDescriptor(testid="copy-version-id")
 
+    # --- Version management (Save As Version / VERSION selector) — testids
+    # added in the ELITEA-1888 testid-only rework (see EliteaUI draft PR
+    # #567: SaveNewVersionButton.jsx, VersionSelect.jsx,
+    # ApplicationVersionSelect.jsx, BaseModal.jsx). `save_as_version_button`
+    # itself is inherited from AgentFormPage. ---
+    version_selector_trigger = LocatorDescriptor(
+        testid="agent-version-selector-trigger",
+        description="VERSION dropdown trigger (base ⇄ named-version switcher)"
+    )
+    create_version_name_input = LocatorDescriptor(
+        testid="agent-version-dialog-name-input",
+        description='"Create version" dialog — Name field'
+    )
+    create_version_save_button = LocatorDescriptor(
+        testid="agent-version-dialog-save-button",
+        description='"Create version" dialog — confirm ("Save") button; '
+                     'disabled until Name is non-empty'
+    )
+    create_version_cancel_button = LocatorDescriptor(
+        testid="agent-version-dialog-cancel-button",
+        description='"Create version" dialog — Cancel button'
+    )
+    create_version_close_button = LocatorDescriptor(
+        testid="agent-version-dialog-close-button",
+        description='"Create version" dialog — X close button'
+    )
+
+    # Dynamic (runtime-parameterized) testid for a VERSION-selector option,
+    # keyed by version name — the same `version-option-{}` template shared
+    # by every version selector consumer (skill/agent/pipeline); see also
+    # SkillDetailPage.VERSION_OPTION.
+    VERSION_OPTION = '[data-testid="version-option-{}"]'
+
     # --- Toolkits section ---
     toolkits_section = LocatorDescriptor(testid="agent-toolkits-section")
     add_toolkit_button = LocatorDescriptor(testid="agent-add-toolkit-button")
@@ -226,6 +259,136 @@ class AgentDetailPage(AgentFormPage):
             Version ID as string.
         """
         return self.copy_version_id_button.text_content().strip()
+
+    # ------------------------------------------------------------------
+    # Version management (Save As Version / VERSION selector, ELITEA-1888)
+    # ------------------------------------------------------------------
+
+    @action("Open the Create version dialog")
+    def open_save_as_version_dialog(self, timeout: int = 10000):
+        """Click "Save As Version" and wait for the "Create version" dialog.
+
+        Uses ``save_as_version_button`` (inherited from AgentFormPage).
+        Split from :meth:`confirm_new_version` so callers can assert on
+        the dialog's just-opened state (e.g. Save disabled while Name is
+        empty) before typing a name.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening the Create version dialog")
+        self.save_as_version_button.click()
+        Dialog.wait_for(self.page, timeout=timeout)
+
+    @action("Confirm the new agent version")
+    def confirm_new_version(self, version_name: str, timeout: int = 10000):
+        """Type the version name into the open "Create version" dialog and confirm.
+
+        Call after :meth:`open_save_as_version_dialog`. Types via
+        ``press_sequentially`` (MUI/React onChange requirement —
+        `.claude/rules/mui-patterns.md`), clicks the dialog's Save button,
+        and waits for the dialog to close and for the URL to gain a new
+        version-id path segment (mirrors
+        ``SkillDetailPage.save_as_version()``'s wait strategy). The app
+        also appends a transient ``isFromCreation=true`` query param that
+        self-strips once the new version has loaded; this method does not
+        assert on it directly.
+
+        Args:
+            version_name: Name for the new version (e.g. ``"v2-test"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Confirming new agent version: %r", version_name)
+        previous_version_id = self.get_version_id()
+
+        self.create_version_name_input.click()
+        self.create_version_name_input.press_sequentially(version_name, delay=50)
+
+        self.create_version_save_button.click()
+        Dialog.wait_for_hidden(self.page, timeout=timeout)
+
+        self.page.wait_for_function(
+            "prevId => window.location.pathname.split('/').filter(Boolean).pop() !== prevId",
+            arg=previous_version_id,
+            timeout=timeout,
+        )
+        self.wait_for_network(timeout=5000)
+
+        # The URL's version-id segment updates before the VERSION selector's
+        # displayed text re-renders (confirmed live — a race, not a fixed
+        # delay: the new version's data loads via a follow-up API call).
+        # Poll the trigger's own text rather than sleeping.
+        self.page.wait_for_function(
+            """name => {
+                const el = document.querySelector('[data-testid="agent-version-selector-trigger"]');
+                return !!el && el.innerText.trim() === name;
+            }""",
+            arg=version_name,
+            timeout=timeout,
+        )
+        logger.info(
+            "New agent version %r created — URL: %s", version_name, self.page.url
+        )
+
+    @action("Save current edits as a new agent version")
+    def save_as_version(self, version_name: str, timeout: int = 10000):
+        """Click "Save As Version", fill the Name field, and confirm.
+
+        Convenience wrapper combining :meth:`open_save_as_version_dialog`
+        and :meth:`confirm_new_version` for callers that don't need to
+        assert on the dialog's intermediate state.
+
+        Args:
+            version_name: Name for the new version (e.g. ``"v2-test"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.open_save_as_version_dialog(timeout=timeout)
+        self.confirm_new_version(version_name, timeout=timeout)
+
+    def get_version_selector_value(self) -> str:
+        """Return the currently displayed value of the VERSION selector.
+
+        Returns:
+            The version name currently shown on the closed trigger
+            (e.g. ``"base"`` or ``"v2-test"``).
+        """
+        return (self.version_selector_trigger.text_content() or "").strip()
+
+    def open_version_selector(self):
+        """Click the VERSION dropdown trigger to open the options list."""
+        self.version_selector_trigger.click()
+
+    def is_version_option_visible(self, version_name: str, timeout: int = 5000) -> bool:
+        """Check whether a version is present in the open VERSION dropdown.
+
+        LOCATOR: dynamic ``version-option-{version_name}`` testid (see
+        ``VERSION_OPTION`` above) — call after ``open_version_selector()``.
+
+        Args:
+            version_name: Exact version name (e.g. ``"base"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        option = self.page.locator(self.VERSION_OPTION.format(version_name))
+        try:
+            option.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def is_version_option_active(self, version_name: str) -> bool:
+        """Check whether a version option is the currently active/selected one.
+
+        Reads the MUI-rendered ``aria-selected`` attribute on the
+        ``version-option-{version_name}`` option (confirmed live —
+        ``aria-selected="true"`` on the option matching the current
+        version, ``"false"`` on the others). Call after
+        ``open_version_selector()``.
+
+        Args:
+            version_name: Exact version name (e.g. ``"v2-test"``).
+        """
+        option = self.page.locator(self.VERSION_OPTION.format(version_name))
+        return option.get_attribute("aria-selected") == "true"
 
     # ------------------------------------------------------------------
     # Internal tools (switches)

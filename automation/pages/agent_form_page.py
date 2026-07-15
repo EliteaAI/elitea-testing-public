@@ -162,7 +162,6 @@ class AgentFormPage(BasePage):
 
     save_as_version_button = LocatorDescriptor(
         testid="agent-save-as-version-button",
-        fallback=lambda page: page.get_by_role("button", name="Save As Version"),
         description="Save as new version button"
     )
 
