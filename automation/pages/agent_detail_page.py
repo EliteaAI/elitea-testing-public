@@ -1251,13 +1251,16 @@ class AgentDetailPage(AgentFormPage):
     def _instructions_mention_container(self, timeout: int = 10000):
         """Return a locator scoped to the open "Mention skill" panel.
 
-        LOCATOR: same header text / container-depth pattern as the
-        embedded-chat mention flow (``send_chat_message_with_mention``) —
-        the header text node's 2nd ancestor `div` holds the candidate rows.
+        LOCATOR: ``skill_mention_list`` (``data-testid="skill-mention-list"``,
+        class field above) — the same panel component the embedded-chat
+        mention flow (``send_chat_message_with_mention``) already targets by
+        testid. The Instructions-field mention panel and the embedded-chat
+        mention panel render the identical shared component
+        (``MentionSkillList.jsx``), so the existing testid applies here for
+        free (ELITEA-1791 testid-only rework, issue #33).
         """
-        mention_header = self.page.get_by_text("Mention skill", exact=True)
-        mention_header.wait_for(state="visible", timeout=timeout)
-        return mention_header.locator("xpath=ancestor::div[2]")
+        self.skill_mention_list.wait_for(state="visible", timeout=timeout)
+        return self.skill_mention_list
 
     @action("Type ~ in Instructions field")
     def type_tilde_in_instructions(self, timeout: int = 10000) -> Locator:
@@ -1301,7 +1304,7 @@ class AgentDetailPage(AgentFormPage):
             timeout: Maximum wait time in milliseconds for the panel header.
         """
         container = self._instructions_mention_container(timeout=timeout)
-        return container.get_by_text(skill_name, exact=True)
+        return container.locator(self.SKILL_MENTION_ITEM_SELECTOR.format(skill_name))
 
     @action("Select skill from Instructions mention panel")
     def select_skill_from_instructions_mention(self, skill_name: str, timeout: int = 5000):
