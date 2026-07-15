@@ -43,6 +43,38 @@ class Dialog:
         return dialog.first
 
     @staticmethod
+    def wait_for_visible(page: Page, timeout: int = 5000) -> Locator:
+        """Wait for a dialog to become visible, ignoring any ``role="dialog"``
+        elements that are kept mounted-but-hidden in the DOM.
+
+        Additive sibling to :meth:`wait_for` — ``wait_for`` itself is NOT
+        modified: it has other merged callers relying on its plain
+        ``.first`` behavior unchanged (mui-patterns shared-caller rule).
+
+        Some MUI ``Dialog`` consumers set ``keepMounted`` (e.g.
+        ``McpAuthModal.jsx``, used by the MCP-card "Log in" flow), so an
+        unrelated, permanently-hidden dialog can sort before the dialog
+        actually being opened in DOM/portal order. Plain ``.first`` then
+        polls the wrong (hidden) element and times out even though a
+        different dialog is visible. Scoping to Playwright's ``:visible``
+        pseudo-class selects only the dialog that is actually shown.
+        Confirmed live for `AgentDetailPage.remove_mcp()` (ELITEA-1950):
+        an unauthenticated MCP card's `McpAuthModal` stayed mounted+hidden
+        and broke the plain `Dialog.wait_for()` call the "Remove MCP?"
+        confirmation dialog needs.
+
+        Args:
+            page: Playwright Page instance.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator pointing to the first currently-visible dialog.
+        """
+        dialog = page.locator('[role="dialog"]:visible')
+        dialog.first.wait_for(state="visible", timeout=timeout)
+        return dialog.first
+
+    @staticmethod
     def click_button(dialog: Locator, text: str):
         """Click a button inside a dialog by its text content.
 
