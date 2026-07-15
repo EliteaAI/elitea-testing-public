@@ -20,6 +20,8 @@ import logging
 from playwright.sync_api import Page
 
 from .base_page import BasePage
+from .credential_form_fields import CredentialFormFieldsMixin
+from .credentials_list_recovery import recover_from_credentials_list_crash
 from .locator_descriptor import LocatorDescriptor
 
 logger = logging.getLogger("elitea.pages.credential_detail")
@@ -27,10 +29,14 @@ logger = logging.getLogger("elitea.pages.credential_detail")
 UI_ELEMENT_TIMEOUT = 10_000
 
 
-class CredentialDetailPage(BasePage):
+class CredentialDetailPage(CredentialFormFieldsMixin, BasePage):
     """Credential detail/edit page.
 
     URL: /credentials/all/{numeric_id}
+
+    Inherits the Display Name field + Save button (``set_display_name()``,
+    ``is_save_enabled()``) from :class:`CredentialFormFieldsMixin`, shared
+    with :class:`CredentialCreatePage`.
     """
 
     # ------------------------------------------------------------------
@@ -45,10 +51,6 @@ class CredentialDetailPage(BasePage):
     # ------------------------------------------------------------------
     # Credential detail form fields
     # ------------------------------------------------------------------
-    display_name_input = LocatorDescriptor(
-        testid="toolkit-field-label-input",
-        description="Credential Display Name input (shared ToolBaseProperty renderer)",
-    )
     id_input = LocatorDescriptor(
         testid="toolkit-field-elitea_title-input",
         description="Credential ID (elitea_title) input — disabled, mirrors Display Name",
@@ -57,10 +59,6 @@ class CredentialDetailPage(BasePage):
     # ------------------------------------------------------------------
     # Tab-bar controls
     # ------------------------------------------------------------------
-    save_button = LocatorDescriptor(
-        testid="credential-form-save-button",
-        description="Save credential button (tab-bar)",
-    )
     discard_button = LocatorDescriptor(
         testid="credential-form-discard-button",
         description="Discard button (tab-bar) — opens the confirm modal",
@@ -98,62 +96,26 @@ class CredentialDetailPage(BasePage):
     def _recover_from_credentials_list_crash(self) -> bool:
         """Reload once if /credentials/all crashed with the known refetch race.
 
-        Known defect (github.com/EliteaAI/elitea-testing-public#518):
-        ``CredentialsList.jsx``'s mount effect calls ``onRefetch()`` twice
-        unconditionally on this exact pathname, and
-        ``useLoadCredentials.js``'s underlying RTK Query ``refetch()`` throws
-        "Cannot refetch a query that has not been started yet" when the
-        query hasn't started — an unhandled error that trips the route's
-        error boundary. Live-verified during ELITEA-1971 exploration at a
-        ~60% reproduction rate; out of scope for the Discard flow this page
-        object exists to test, so a single reload recovers (the race window
-        doesn't reliably re-trigger on the second mount) rather than letting
-        every Discard-flow run flake on an unrelated, already-filed bug.
-
-        This is a recovery-only check (not a test locator/assertion) — text
-        match against the app's generic React-Router error boundary output,
-        the same "workaround, not policy exception" pattern as
-        ``BasePage.dismiss_banner_if_present()``.
+        Delegates to the shared :func:`recover_from_credentials_list_crash`
+        helper (github.com/EliteaAI/elitea-testing-public#518) — see that
+        module for the full root-cause writeup. Extracted out of this page
+        object so :class:`CredentialCreatePage` (which also lands on
+        ``/credentials/all``) doesn't need a duplicate method
+        (``.claude/rules/page-objects.md`` "NO Method Duplication").
 
         Returns:
             True if the crash was detected and recovered from.
         """
-        crashed = self.page.get_by_text("Unexpected Application Error!").count() > 0
-        if crashed:
-            logger.warning(
-                "Recovering from known CredentialsList crash (elitea-testing-public#518) — reloading"
-            )
-            self.page.reload(wait_until="domcontentloaded")
-            self.wait_for_network()
-        return crashed
+        return recover_from_credentials_list_crash(self.page)
 
     def wait_for_page_load(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
         """Wait for the credential detail page to render its Display Name field."""
         self.wait_for_network(timeout=timeout)
         self.display_name_input.wait_for(state="visible", timeout=timeout)
 
-    def set_display_name(self, value: str) -> None:
-        """Replace the Display Name field's value, triggering React onChange.
-
-        MUI fields don't fire React's onChange on Playwright's ``fill()`` —
-        use ``select_text()`` + ``type()`` instead
-        (.claude/rules/mui-patterns.md). NOTE: ``press("Control+a")`` does
-        NOT select-all on this field — live-verified during Phase 2
-        exploration: it moves the caret to position 0 without selecting,
-        so subsequent typing prepends instead of replacing. ``select_text()``
-        sets the DOM selection directly and is unaffected by whatever
-        intercepts the Ctrl+A keydown.
-        """
-        self.display_name_input.click()
-        self.display_name_input.select_text()
-        self.display_name_input.type(value)
-
     def get_display_name(self) -> str:
         """Return the current Display Name field value."""
         return self.display_name_input.input_value()
-
-    def is_save_enabled(self) -> bool:
-        return self.save_button.is_enabled()
 
     def is_discard_enabled(self) -> bool:
         return self.discard_button.is_enabled()
