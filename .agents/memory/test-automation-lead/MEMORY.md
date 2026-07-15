@@ -2,6 +2,7 @@
 
 - [Project briefing](project_briefing.md) — Stack overlay (test-automation) — orchestration starting context for Tal
 - [Live-run gate is pre-merge, not post](live_run_gate_is_pre_merge_not_post.md) — the orchestrator's independent N=3 live-run gate must run before `gh pr merge`, never after; reviewer APPROVED (even with its own independent run) is not a substitute
+- [Closure record must paste the 3x merge-gate output, not narrate it](closure_record_must_paste_merge_gate_output.md) — a narrated "3/3 GREEN, 3 separate invocations" summary fails a later control audit even when the gate genuinely ran; paste the fenced output (or 3 distinct timings) when authoring the closure record, not just when auditing one
 - [Isolated defect: red is expected](isolated_defect_red_is_expected.md)
 - [Promotability must cover every testid dependency, not just this case's own PR](promotability_must_cover_every_dependency_not_just_this_prs.md) — a "no new testid needed, already exists" claim still needs a main-vs-testids check; a reused testid can be just as un-promoted as a new one if it came from a different still-open case
 - [Merge gate: gh pr diff staleness check](merge_gate_gh_pr_diff_staleness.md)
@@ -38,3 +39,4 @@
 - [Locator grep must cover components/, not just pages/](locator_grep_must_cover_components_dir.md) — the item-1 mechanical grep must scan the whole automation/ diff including shared components/ helpers; a new raw locator "mirroring an existing method one line above" in a shared file is still a solo-FAIL, not grandfathered precedent
 - [Testid grep quoting gotcha in closure-record promotability checks](testid_grep_quoting_gotcha.md) — `git grep "data-testid=\"$t\""` silently under-reports on EliteaUI (mixes single-quoted object-literal props and wrapper props like `buttonTestId="..."`); grep the bare testid string instead
 - [Bug #524 confirmed NOT to affect skill create](bug_524_does_not_affect_skill_create.md) — skill creation uses a different endpoint/payload with no temperature/reasoning_effort fields; don't park skills-only cases on #524 without further evidence
+- [Finite test-data pool exhaustion only surfaces at the 3x gate](finite_test_data_pool_exhaustion_caught_by_gate.md) — a "reuse an existing resource, delete at teardown" strategy against a finite, non-replenishing pool passes 1-2 runs and fails deterministically once empty; implementer/reviewer local GREENs miss it, only the mandated 3x-consecutive gate catches it — prefer create-and-clean over scavenge-and-consume
