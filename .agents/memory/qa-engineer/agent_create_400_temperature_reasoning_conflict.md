@@ -48,6 +48,29 @@ that the Skill detail page (`/skills/all/{id}`) has an enabled "Save As Version"
 button next to disabled Save/Discard. The blocker is specifically Agent *creation*,
 not the versioning mechanism in general.
 
+## Update (2026-07-15, ELITEA-1897 analyst pass, issue #71)
+
+Confirmed **still open** and confirmed the blast radius is even wider than
+first thought: this also breaks the **API-side fixture path**, not just the
+raw UI create form. `automation/api/client.py::AgentAPI.create_agent()`
+hard-codes `"temperature": 0.6, "reasoning_effort": "medium"` in its default
+`llm_settings` (~L386-390) — the exact same conflicting combination. Ran two
+unrelated existing tests that depend on the `agent_id` fixture
+(`test_agent_detail_page_loads`, `test_agent_instructions_field`) — **both
+error at setup** with the identical 400. This means essentially every test
+using `agent_id`, `agent_with_toolkit_instructions`, or any other fixture that
+calls `AgentAPI.create_agent()` is currently failing at setup — a much larger
+blast radius than "the create-agent UI form is broken." Added a corroborating
+comment to #524 with this finding. AFS this surfaced in:
+`test-specs/agents/l2_agent-execution-name-description-sufficient_ELITEA-1897.md`
+(Status: `defect-found`/blocked — couldn't get past step 1).
+
+**Sharper guidance for future sessions**: before trusting ANY agent-dependent
+fixture (not just the raw create form) to work, do a throwaway
+`agent_api.create_agent(...)` call first if #524 is still open — don't assume
+the API path is a safe workaround for the UI bug, it has the identical root
+cause.
+
 ## For future sessions
 
 - Before starting any case that needs a **freshly created** Agent, check
