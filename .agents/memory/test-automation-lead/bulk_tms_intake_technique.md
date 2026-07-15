@@ -32,6 +32,26 @@ Parse each file's YAML frontmatter (delimited by `---\n...\n---`) into a
 dict per case: `id`, `title`, `module`, `status`, `execution_type`,
 `automation_test_id`, `tags`, etc.
 
+**Incremental runs (source has grown since last pull):** diff the current
+path list against the previous run's saved list — anything new needs
+fetching, nothing else does. Confirmed on 2026-07-15 (run 7): source grew
+219→436 files (217 new, 0 removed) in one run; a plain `diff` on two saved
+path-list files instantly isolates the delta, no need to re-fetch or
+re-classify the unchanged 219.
+
+**Hash-cache gotcha:** if the fetch script derives its per-file cache
+filename via `echo "$path" | shasum`, that hash includes a **trailing
+newline byte** (`echo` appends `\n` by default). Any later cross-language
+re-derivation of "the same" hash — e.g. Python's
+`hashlib.sha1(path.encode())` — will NOT match unless it also hashes
+`path + '\n'`. This caused a real false "0 files found" failure on
+2026-07-15 even though the original fetch had succeeded and cached
+everything correctly; the fetch script itself was fine, only the
+lookup-by-recomputed-hash step was wrong. Either hash `(path + '\n')` on
+the Python side to match, or switch the shell script to `echo -n` — but
+only do the latter before any cache entries exist under the old scheme,
+since switching mid-stream desyncs previously-cached files.
+
 ## Dedup
 
 Pull the tracker's full issue list once, never `--search` (index lag
