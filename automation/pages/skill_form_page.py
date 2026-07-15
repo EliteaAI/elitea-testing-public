@@ -79,6 +79,11 @@ class SkillFormPage(BasePage):
         description="Committed tag chip (one per tag; shared testid, collection locator)"
     )
 
+    # Dynamic (runtime-parameterized) testid template — Tags autocomplete
+    # option for a previously-created project tag. See
+    # ``select_existing_tag()``.
+    SKILL_TAG_OPTION = '[data-testid="skill-tag-option-{}"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -91,9 +96,7 @@ class SkillFormPage(BasePage):
 
         Waits for the Name input to be visible and network to settle.
         """
-        self.page.get_by_test_id("skill-name-input").wait_for(
-            state="visible", timeout=timeout
-        )
+        self.name_input.wait_for(state="visible", timeout=timeout)
         self.wait_for_network(timeout=10000)
         self.page.wait_for_timeout(1000)
         logger.info("Skill form loaded")
@@ -182,8 +185,9 @@ class SkillFormPage(BasePage):
         later skills' Tags combobox surfaces it as a clickable option in the
         MUI Autocomplete listbox. Each option carries its own
         ``skill-tag-option-{tag_name}`` testid (set directly on the
-        ``<li role="option">`` node), rather than being addressed via
-        ``get_by_role("option", name=...)``.
+        ``<li role="option">`` node), addressed via the
+        :attr:`SKILL_TAG_OPTION` class-level template constant rather than
+        an inline per-call testid lookup.
 
         Args:
             tag_name: Existing tag text to select from the dropdown.
@@ -192,7 +196,7 @@ class SkillFormPage(BasePage):
         tag_field = self.tags_input_field
         tag_field.click()
         tag_field.type(tag_name)
-        option = self.page.get_by_test_id(f"skill-tag-option-{tag_name}")
+        option = self.page.locator(self.SKILL_TAG_OPTION.format(tag_name))
         option.wait_for(state="visible", timeout=timeout)
         option.click()
         self.page.wait_for_timeout(200)

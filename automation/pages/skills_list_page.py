@@ -81,6 +81,41 @@ class SkillsListPage(BasePage):
         )
     )
 
+    skill_card_name = LocatorDescriptor(
+        testid="entity-card-name",
+        description=(
+            "Skill card name (title) — shared component testid (Card.jsx, "
+            "renders for skills/agents/pipelines alike); collection locator, "
+            "one per visible card."
+        )
+    )
+
+    skill_card = LocatorDescriptor(
+        testid="entity-card",
+        description=(
+            "Skill card outer container (Card.jsx wrapper Box) — scopes "
+            "per-card queries (e.g. that card's own tag chips) without an "
+            "xpath-ancestor/CSS-class hack. Shared component testid; "
+            "collection locator, one per visible card."
+        )
+    )
+
+    tags_panel_clear_all = LocatorDescriptor(
+        testid="tags-panel-clear-all",
+        description=(
+            "\"Clear all\" button in the page-header Tags filter panel "
+            "(Categories.jsx) — only rendered while a tag filter is active."
+        )
+    )
+
+    # Dynamic (runtime-parameterized) testid template — Tags filter panel's
+    # per-tag chip (Categories.jsx StyledChip). See ``filter_by_tag()``.
+    TAGS_PANEL_CHIP = '[data-testid="tags-panel-chip-{}"]'
+
+    # Scoped sub-selector — a skill card's own (non-overflow) tag chip.
+    # See ``get_card_tags()``.
+    CARD_TAG_CHIP = '[data-testid="entity-card-tag-chip"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -140,7 +175,7 @@ class SkillsListPage(BasePage):
         Returns:
             True if the skill is visible right now, False otherwise.
         """
-        cards = self.page.get_by_test_id("entity-card-name").all()
+        cards = self.skill_card_name.all()
         return any(name.lower() in (c.text_content() or "").lower() for c in cards)
 
     def get_visible_skill_names(self) -> list[str]:
@@ -156,36 +191,25 @@ class SkillsListPage(BasePage):
             lower-cased; callers doing case-insensitive comparison should
             lower-case both sides themselves).
         """
-        cards = self.page.get_by_test_id("entity-card-name").all()
+        cards = self.skill_card_name.all()
         return [(c.text_content() or "").strip() for c in cards]
 
     def get_card_tags(self, skill_name: str) -> list[str]:
         """Return the tag chip texts currently rendered on a specific skill's card.
 
-        LOCATOR: tag text (``CardTagSectionItem`` in ``EliteaUI/src/
-        components/CardTagSectionItem.jsx``, rendered via
-        ``CardTagSection.jsx``) has no ``data-testid`` — confirmed live via
-        DOM inspection that it renders as a ``Typography variant="bodySmall"``
-        (MUI class ``MuiTypography-bodySmall``), which is not shared with any
-        other element inside the card (mirrors the existing
-        ``.MuiChip-label`` pattern already used in
-        :meth:`SkillFormPage.get_tags`). Scoped to the specific card via the
-        nearest ``MuiCard-root`` ancestor of that card's ``entity-card-name``
-        element, so two cards can't cross-contaminate each other's tags.
-
-        CAVEAT (not exercised by ELITEA-1740's data — document, don't fix):
-        ``.MuiTypography-bodySmall`` scoped to the card would *also* match
-        two other elements that happen to share the same MUI variant class:
-        (1) ``CardTagSection.jsx``'s "+N" overflow badge, which only renders
-        once a card has more tags than ``MAX_NUMBER_TAGS_SHOWN`` (currently
-        2); and (2) ``Like.jsx``'s like-count ``Typography``, which only
-        renders when ``pageViewMode !== ViewMode.Owner``. Every skill this
-        AFS creates has ≤ 2 tags, and the Skills page renders in Owner
-        view, so neither collision fires here. A future caller testing a
-        skill with > 2 tags, or driving a non-Owner view of this page,
-        should re-verify this locator or tighten the scope (e.g. exclude the
-        overflow/like elements explicitly) rather than trust this method's
-        output blindly.
+        LOCATOR: each tag chip carries its own ``entity-card-tag-chip``
+        testid, set on ``CardTagSectionItem``'s root element
+        (``EliteaUI/src/components/CardTagSectionItem.jsx``, rendered via
+        ``CardTagSection.jsx``) — distinct from the "+N" overflow badge,
+        which now carries ``entity-card-tag-overflow`` instead (a boolean
+        ``isOverflow`` prop drives which testid renders; ELITEA-1740
+        rework). Scoped to the specific card via the ``entity-card``
+        container testid on ``Card.jsx``'s outer wrapper, filtered to the
+        card whose ``entity-card-name`` matches ``skill_name`` — so two
+        cards can't cross-contaminate each other's tags, and the "+N"
+        overflow badge / ``Like.jsx``'s like-count element (previously a
+        collision risk under the shared ``.MuiTypography-bodySmall`` CSS
+        class) can no longer be picked up by this query.
 
         Args:
             skill_name: The skill's exact name shown on its card
@@ -196,16 +220,13 @@ class SkillsListPage(BasePage):
             List of tag text strings currently rendered on that card, in
             display order. Empty list if the card isn't found.
         """
-        card_name = self.page.get_by_test_id("entity-card-name").filter(
+        card_name = self.skill_card_name.filter(
             has_text=re.compile(re.escape(skill_name), re.IGNORECASE)
         ).first
         if card_name.count() == 0:
             return []
-        card = card_name.locator(
-            "xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), "
-            "' MuiCard-root ')]"
-        ).first
-        tag_labels = card.locator(".MuiTypography-bodySmall")
+        card = self.skill_card.filter(has=card_name).first
+        tag_labels = card.locator(self.CARD_TAG_CHIP)
         return [
             (tag_labels.nth(i).text_content() or "").strip()
             for i in range(tag_labels.count())
@@ -418,10 +439,9 @@ class SkillsListPage(BasePage):
         """Click a tag chip in the page-header "Tags" filter panel.
 
         LOCATOR: the Tags-panel chip (``StyledChip`` in
-        ``EliteaUI/src/components/Categories.jsx``) has no ``data-testid`` —
-        located by accessible role/name (confirmed live in the ELITEA-1740
-        AFS exploration); tag names are unique per project, so this is
-        unambiguous without extra scoping.
+        ``EliteaUI/src/components/Categories.jsx``) carries a dynamic
+        ``tags-panel-chip-{name}`` testid (ELITEA-1740 rework) via the
+        :attr:`TAGS_PANEL_CHIP` template constant.
 
         Waits for the grid-fetching endpoint
         (``GET .../elitea_core/skills/prompt_lib/{project}?...``) to re-fire
@@ -439,7 +459,7 @@ class SkillsListPage(BasePage):
             and r.request.method == "GET",
             timeout=timeout,
         ):
-            self.page.get_by_role("button", name=tag_name, exact=True).click()
+            self.page.locator(self.TAGS_PANEL_CHIP.format(tag_name)).click()
         # The response resolving doesn't guarantee the grid has re-rendered
         # yet (RTK Query → Redux store → React re-render is one more tick) —
         # confirmed live: querying entity-card-name immediately after the
@@ -453,8 +473,9 @@ class SkillsListPage(BasePage):
         """Click "Clear all" in the Tags filter panel to reset the filter.
 
         LOCATOR: "Clear all" (``Tooltip`` wrapping an ``IconButton`` in
-        ``Categories.jsx``) has no ``data-testid`` — it is only rendered
-        while a tag filter is active, so it's unambiguous in context.
+        ``Categories.jsx``) carries a static ``tags-panel-clear-all`` testid
+        (ELITEA-1740 rework) — it is only rendered while a tag filter is
+        active.
 
         Waits for the grid-fetching endpoint to re-fire with the ``tags``
         param cleared before returning.
@@ -468,7 +489,7 @@ class SkillsListPage(BasePage):
             and r.request.method == "GET",
             timeout=timeout,
         ):
-            self.page.get_by_role("button", name="Clear all").click()
+            self.tags_panel_clear_all.click()
         # See filter_by_tag() docstring — grid re-render lags the response.
         self.wait_for_network(timeout=5000)
         self.page.wait_for_timeout(300)

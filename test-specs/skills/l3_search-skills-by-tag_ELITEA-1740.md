@@ -164,24 +164,43 @@ between filter assertions in steps 3–5 above; see Axis 2.)*
 
 ## Concrete Handles (discovered during exploration)
 
-| Element | Recommended Locator | Fallback |
-|---|---|---|
-| Skill create form: Tags combobox | `page.get_by_role("combobox", name="Tags")` — confirmed live, scoped within the create/edit form's "General" accordion section | none needed — accessible name is unique on the page |
-| Skill create form: Tags autocomplete option (existing tag suggestion) | `page.get_by_role("option", name=tag_name)` — confirmed live (MUI `Autocomplete`/`listbox`) | none needed |
-| Skill create form: added tag chip (inside the Tags field) | `page.get_by_role("button", name=tag_name)` scoped to the Tags field container — confirmed live; chips render as `<button>` with the tag text as accessible name | none needed within that scope |
-| Skills-list page-header "Tags" filter panel — clickable tag chip | `page.get_by_role("button", name=tag_name)` scoped to the panel below the search input (heading text "Tags") — confirmed live; **no dedicated testid exists** on `StyledChip`/`Categories.jsx` (`EliteaUI/src/components/Categories.jsx`) | scope more tightly via a parent container if a page ever has two chips with the same tag name in different panels (not observed in this run) |
-| Skills-list "Clear all" (tag filter) button | `page.get_by_role("button", name="Clear all")` — confirmed live via `Tooltip title="Clear all"` wrapping an `IconButton` in `Categories.jsx`; **no dedicated testid** | none needed — only rendered while a tag filter is active, so it's unambiguous in context |
-| Skills grid cards | Existing `SkillsListPage.skill_exists_in_list(name)` (`automation/pages/skills_list_page.py`) — uses `page.get_by_test_id("entity-card-name")` | n/a — reuse existing page object method |
-| Skill create form fields | Existing `SkillFormPage` (`automation/pages/skill_form_page.py`) — `name_input`, `description_input`, `instructions_editor_content`, `save_button` | n/a — reuse existing page object |
-| Skills grid card — a specific skill's own tag chips (per-card, not the filter panel) | `SkillsListPage.get_card_tags(skill_name)` (added during implementer review round 2) — DOM-verified live via `browser-verify`/CDP: tag text (`CardTagSectionItem` in `EliteaUI/src/components/CardTagSectionItem.jsx`, rendered via `CardTagSection.jsx`) has no `data-testid`; it renders as `Typography variant="bodySmall"` → MUI class `.MuiTypography-bodySmall`. Scoped to the specific card via `xpath=ancestor::div[...MuiCard-root...]` from that card's `entity-card-name` element, so two cards' tags don't cross-contaminate. Mirrors the existing `.MuiChip-label` pattern already used in `SkillFormPage.get_tags()` | **Caveat (not exercised by this case's data, ≤2 tags/skill, Owner view):** `.MuiTypography-bodySmall` scoped to the card would *also* match `CardTagSection.jsx`'s "+N" overflow badge (fires once a card has more tags than `MAX_NUMBER_TAGS_SHOWN=2`) and `Like.jsx`'s like-count Typography (renders whenever `pageViewMode !== ViewMode.Owner`). A future caller with >2 tags per skill or a non-Owner view should re-verify or tighten the scope — see the docstring caveat on `get_card_tags()` in `skills_list_page.py`. |
+> **Amended 2026-07-15 (implementer rework, testid-only locator policy,
+> `.agents/role-overrides.md`).** The original exploration below found no
+> `data-testid` on several Tags-panel/card elements and used role/text
+> locators as a stop-gap (out of contract under the team's testid-only
+> ruling). The rework added the missing testids via `add-data-testid`
+> (`EliteaAI/EliteaUI` draft PR
+> [#544](https://github.com/EliteaAI/EliteaUI/pull/544)) and converted every
+> handle below to `LocatorDescriptor(testid=...)` / UPPER_CASE
+> `[data-testid=...]` template constants in
+> `automation/pages/skills_list_page.py` /
+> `automation/pages/skill_form_page.py`. The table now reflects the
+> **testid-only** state; the original role/text locators are struck through
+> for traceability.
 
-**Automation hint**: none of the Tags-panel elements (filter chip, "Clear
-all") carry a `data-testid` today. Role+accessible-name locators worked
-reliably and unambiguously in this exploration (tag names are unique per
-project), so this AFS does **not** block on `add-data-testid` — but if the
-automation engineer hits ambiguity (e.g. a future page reusing the same tag
-name in two panels), route through `add-data-testid` rather than falling
-back to a CSS selector, per `.claude/rules/page-objects.md`.
+| Element | Locator | PROVENANCE |
+|---|---|---|
+| Skills grid cards | `SkillsListPage.skill_card_name` — `LocatorDescriptor(testid="entity-card-name")` (pre-existing, class-level field added in this rework) | on-main ✓ (pre-existing testid) |
+| Skill create form fields | Existing `SkillFormPage` (`automation/pages/skill_form_page.py`) — `name_input`, `description_input`, `instructions_editor_content`, `save_button` | on-main ✓ (pre-existing testids) |
+| Skills grid card — outer container (scopes per-card queries) | `SkillsListPage.skill_card` — `LocatorDescriptor(testid="entity-card")`, added in this rework on `Card.jsx`'s outer wrapper `Box` | on-automation/testids only (draft [#544](https://github.com/EliteaAI/EliteaUI/pull/544)) |
+| Skills grid card — a specific skill's own tag chips (per-card, not the filter panel) | `SkillsListPage.get_card_tags(skill_name)` — scopes via `skill_card.filter(has=skill_card_name...)`, reads `card.locator(self.CARD_TAG_CHIP)` where `CARD_TAG_CHIP = '[data-testid="entity-card-tag-chip"]'`. ~~Was: `.MuiTypography-bodySmall` scoped via an xpath `ancestor::div[...MuiCard-root...]`~~ — the documented collision risk with the "+N" overflow badge and `Like.jsx`'s like-count element is now structurally impossible: `CardTagSectionItem` takes an `isOverflow` prop and renders `entity-card-tag-overflow` instead of `entity-card-tag-chip` for the "+N" badge, and `Like.jsx` was never in this query's scope to begin with. | on-automation/testids only (draft [#544](https://github.com/EliteaAI/EliteaUI/pull/544)) |
+| Skills-list page-header "Tags" filter panel — clickable tag chip | `SkillsListPage.filter_by_tag(tag_name)` — `self.page.locator(self.TAGS_PANEL_CHIP.format(tag_name))` where `TAGS_PANEL_CHIP = '[data-testid="tags-panel-chip-{}"]'` (dynamic testid on `Categories.jsx`'s `StyledChip`). ~~Was: `page.get_by_role("button", name=tag_name, exact=True)`~~ | on-automation/testids only (draft [#544](https://github.com/EliteaAI/EliteaUI/pull/544)) |
+| Skills-list "Clear all" (tag filter) button | `SkillsListPage.tags_panel_clear_all` — `LocatorDescriptor(testid="tags-panel-clear-all")` on the `IconButton` in `Categories.jsx`. ~~Was: `page.get_by_role("button", name="Clear all")`~~ | on-automation/testids only (draft [#544](https://github.com/EliteaAI/EliteaUI/pull/544)) |
+| Skill create form: Tags autocomplete option (existing tag suggestion) | `SkillFormPage.select_existing_tag(tag_name)` — `self.page.locator(self.SKILL_TAG_OPTION.format(tag_name))` where `SKILL_TAG_OPTION = '[data-testid="skill-tag-option-{}"]'` (pre-existing dynamic testid; the rework converted the call site from an inline f-string `get_by_test_id(...)` to the class-constant template shape) | on-main ✓ (pre-existing testid; only the Python-side construction changed) |
+| Skill create form: Tags combobox / added tag chip (inside the Tags field) | Existing `SkillFormPage.tags_input` / `tags_input_field` / `tag_chip` / `add_tag()` — unchanged by this rework (not in the ELITEA-1740 test's raw-handle list) | on-main ✓ (pre-existing testids) |
+
+**Automation hint (superseded)**: the original hint below ("none of the
+Tags-panel elements carry a `data-testid` today... does not block on
+`add-data-testid`") no longer applies — this rework added all 4 missing
+testids. Kept for historical traceability only:
+
+> none of the Tags-panel elements (filter chip, "Clear all") carry a
+> `data-testid` today. Role+accessible-name locators worked reliably and
+> unambiguously in this exploration (tag names are unique per project), so
+> this AFS does not block on `add-data-testid` — but if the automation
+> engineer hits ambiguity (e.g. a future page reusing the same tag name in
+> two panels), route through `add-data-testid` rather than falling back to a
+> CSS selector, per `.claude/rules/page-objects.md`.
 
 ## Network Behavior
 - `GET /api/v2/elitea_core/tags/prompt_lib/399?offset=0&limit=50&entity_coverage=skill`
