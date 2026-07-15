@@ -102,3 +102,38 @@ case above (there the attribute assignment itself was on a different line
 shape; here the *value* itself isn't a literal at all) — treat "empty bare
 grep" as "go find the template," not as automatic proof of absence,
 whenever the element in question is a shared dropdown/menu/list item.
+
+### Third occurrence: template-literal column testid, only the suffix is checkable
+
+Issue #66 (ELITEA-1944, PR #523, EliteaUI#564). Same failure shape again, this
+time on a `GridTableHeader.jsx` column-header testid:
+
+```jsx
+data-testid={
+  columnTestIdPrefix ? `${columnTestIdPrefix}-column-header-${column.field}` : undefined
+}
+```
+
+A bare-value grep for `mcp-table-column-header-name` (the fully composed
+string I expected to render for the `name` column) came back empty on
+**both** `main` and `automation/testids` — even though the implementer's own
+live DOM check and the merged, passing test both confirmed the attribute was
+actually rendering. The composed string never exists in source at all: it's
+built from a prop (`columnTestIdPrefix`, itself set to the literal
+`'mcp-table'` in a *third* file, `DataTable.jsx`) concatenated with a runtime
+`column.field` value. No single grep target can prove presence here — the
+value is assembled from two separate variables in two separate files, only
+one of which (`columnTestIdPrefix`'s literal `'mcp-table'` assignment) is a
+static string at all.
+
+What actually worked: grep for the **prop name** (`columnTestIdPrefix`)
+across `src/`, confirmed present on `automation/testids` / absent on `main`.
+For the sibling testid on the same PR that *was* a plain literal
+(`mcp-table-row-name` in `DataTableNameCell.jsx`, no interpolation), the
+ordinary bare-value grep worked fine — so check each testid on its own
+diff-syntax merits, don't apply one grep strategy uniformly across an
+entire case's testid list. General rule: before grepping, glance at the
+`add-data-testid`/implementer diff for each testid's assignment line — if
+it's a template literal or multi-file composition, grep the prop/constant
+name that's actually static, not the fully-composed value you expect to
+see in the DOM.
