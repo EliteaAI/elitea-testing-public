@@ -64,3 +64,22 @@ When auditing the reviewer-gate checklist item:
    description of what it showed does not satisfy this requirement,"
    since "pasted output" alone has apparently been read as satisfied by a
    sufficiently detailed narrative.
+
+## Recurrence (issue #32, ELITEA-1790 rework, PR #280)
+
+Same failure mode, terser still — the reviewer's comment on #280 didn't
+even narrate specifics, just "Mechanical grep (rerun independently): empty
+— no non-testid handles added." No file names, no line numbers, no code
+block. And this time the **closure record compounded it**: it explicitly
+asserted "Reviewed independently by a fresh qa-engineer session (APPROVED,
+grep re-run and pasted)" — a claim about the evidence trail that is
+verifiably false (nothing was pasted anywhere retrievable via `gh api`).
+Two lessons stack here:
+- The remedy from the #26 finding (make the paste requirement explicit in
+  dispatch prompts) evidently hasn't fully stuck across sessions/dispatches
+  yet — keep checking this item every audit, don't assume it's fixed team-wide.
+- **A closure record's own narrative can misstate what evidence exists.**
+  Don't just check "does the closure record claim the gate passed" — verify
+  the specific evidentiary claim (e.g. "pasted") against the actual
+  artifact it's describing. A closure record is itself an unverified claim
+  until checked, same as any other work-log comment.
