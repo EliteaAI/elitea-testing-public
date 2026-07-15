@@ -34,9 +34,20 @@ TOOLKIT_TIMEOUT = "600"
 TOOLKIT_CACHE_TTL = "120"
 
 # Client Secret is never persisted as plaintext — only as a
-# {{secret.<hex>}} reference token (SecretField.jsx's own secretRegex,
-# confirmed at ELITEA-1922 AFS exploration).
-SECRET_REFERENCE_RE = re.compile(r"^\{\{secret\.[A-Za-z0-9_]+\}\}$")
+# {{secret.<hex>}} reference token in the Raw Json (SecretField.jsx's own
+# secretRegex, confirmed at ELITEA-1922 AFS exploration).
+SECRET_REFERENCE_RE = re.compile(r"^\{\{secret\.([A-Za-z0-9_]+)\}\}$")
+
+# The Form view's Client Secret <input> DOM value is the BARE hex id, not
+# the full {{secret.<hex>}} wrapper — confirmed live during implementer
+# Phase 4 (the AFS's step-15 text describing the Form view as also showing
+# the full reference-token wrapper does not match the live product; a
+# reverse-masking-guard CLARIFICATION was filed rather than asserting the
+# stale case text, see AFS § Known Defects). Cross-checking this bare hex
+# against the hex embedded in the Raw Json's reference token (step 16) is
+# what actually proves it's the secret-reference id and not a coincidental
+# non-plaintext string.
+SECRET_HEX_RE = re.compile(r"^[0-9a-f]{32}$")
 
 
 @allure.issue(
@@ -146,13 +157,22 @@ def test_create_remote_mcp_all_fields_populated(page, toolkit_api: ToolkitAPI):
             assert form.is_enable_caching_checked(), "Enable Caching should remain checked"
             assert not form.is_ssl_verify_checked(), "Ssl Verify should remain unchecked"
 
-            # Client Secret must never round-trip as plaintext — only a
-            # {{secret.<hex>}} reference token (security-relevant behavior,
-            # AFS Axis 2 addition).
+            # Client Secret must never round-trip as plaintext — only the
+            # bare secret-reference hex id (security-relevant behavior, AFS
+            # Axis 2 addition). Match the hex-id shape, not just
+            # "!= plaintext" — a bare inequality check would pass on an
+            # empty or garbage render just as easily as on the correct
+            # secret-reference value. The Form view's DOM value is the bare
+            # hex (not the {{secret.<hex>}} wrapper the Raw Json uses — see
+            # SECRET_HEX_RE comment); step 16 cross-checks this same hex
+            # against the Raw Json's reference token to prove it's really
+            # the secret-reference id, not a coincidental hex-shaped string.
             secret_value = form.get_client_secret_value()
-            assert secret_value != TOOLKIT_CLIENT_SECRET, (
-                "Client Secret field must not display the literal plaintext secret"
+            assert SECRET_HEX_RE.match(secret_value), (
+                f"Client Secret field must show the bare secret-reference hex id, "
+                f"never plaintext — got: {secret_value!r}"
             )
+            assert TOOLKIT_CLIENT_SECRET not in secret_value
 
         with allure.step("Step 16 — Switch to Raw Json view; verify every persisted value"):
             form.switch_to_raw_json_view()
@@ -180,11 +200,21 @@ def test_create_remote_mcp_all_fields_populated(page, toolkit_api: ToolkitAPI):
             assert mcp_settings["ssl_verify"] is False
 
             client_secret_json = mcp_settings["client_secret"]
-            assert SECRET_REFERENCE_RE.match(client_secret_json), (
+            secret_match = SECRET_REFERENCE_RE.match(client_secret_json)
+            assert secret_match, (
                 f"client_secret in Raw Json must be a {{{{secret.<hex>}}}} reference token, "
                 f"never plaintext — got: {client_secret_json!r}"
             )
             assert TOOLKIT_CLIENT_SECRET not in client_secret_json
+
+            # Cross-check: the Form view's bare hex (step 15) and the Raw
+            # Json's wrapped reference token must carry the SAME hex id —
+            # proves the Form view value is genuinely the secret-reference
+            # id, not just a coincidentally hex-shaped string.
+            assert secret_match.group(1) == secret_value, (
+                f"Form view Client Secret hex ({secret_value!r}) should match the "
+                f"Raw Json reference token's hex ({secret_match.group(1)!r})"
+            )
 
     finally:
         # Not a case step — cleanup for the persistent server-side toolkit

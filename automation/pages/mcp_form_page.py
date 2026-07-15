@@ -13,8 +13,9 @@ object covers both surfaces (ELITEA-1922 AFS, confirmed live).
 
 import json
 import logging
+import time
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -206,17 +207,66 @@ class McpFormPage(BasePage):
     # (observed live: "600" typed into a "300"-filled Timeout produced
     # "600300"). select_text() + Backspace is the same reliable-clear
     # pattern already used by SkillFormPage.fill_instructions/set_description.
+    #
+    # Every step below waits on the real DOM/focus/selection state it
+    # depends on instead of a fixed delay (no waitForTimeout — see
+    # _wait_for_input_value_stable for why "wait until stable" rather than
+    # "wait until equal to *text*" is used after typing).
     # ------------------------------------------------------------------
+
+    def _wait_for_selection_applied(self, locator, timeout_ms: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Wait until *locator*'s full value is selected, or it has nothing to select.
+
+        ``Locator.select_text()`` performs the browser selection
+        synchronously, but a MUI controlled-input re-render can reset
+        ``selectionStart``/``selectionEnd`` on the next tick — poll the
+        real DOM selection state (not a fixed delay) before sending
+        Backspace, so Backspace can't race a not-yet-applied selection.
+        """
+        handle = locator.element_handle()
+        self.page.wait_for_function(
+            """(el) => el.value.length === 0 ||
+               (el.selectionStart === 0 && el.selectionEnd === el.value.length)""",
+            arg=handle,
+            timeout=timeout_ms,
+        )
+
+    def _wait_for_input_value_stable(
+        self, locator, stable_duration_ms: int = 150, timeout_ms: int = UI_ELEMENT_TIMEOUT
+    ) -> None:
+        """Poll *locator*'s value until it stops changing for *stable_duration_ms*.
+
+        Used after typing instead of asserting an exact final value: some
+        fields cosmetically reformat on input (e.g. Scopes normalizes
+        ``"read,write"`` -> ``"read, write"`` — AFS Axis 2), so the final
+        DOM value isn't always known ahead of time. Waiting for the value
+        to stop mutating is the real signal that typing + any reformat
+        handler have both finished — same "poll until unchanged" pattern
+        as ``ChatPage.wait_for_message_content_stable``.
+        """
+        deadline = time.monotonic() + timeout_ms / 1000.0
+        stable_duration = stable_duration_ms / 1000.0
+        last_value = None
+        stable_since = time.monotonic()
+        while time.monotonic() < deadline:
+            current_value = locator.input_value()
+            if current_value != last_value:
+                last_value = current_value
+                stable_since = time.monotonic()
+            elif time.monotonic() - stable_since >= stable_duration:
+                return
+            time.sleep(0.05)
+        raise TimeoutError(f"Input value did not stabilise within {timeout_ms}ms (last: {last_value!r})")
 
     def _fill_text_input(self, locator, text: str) -> None:
         locator.click()
-        self.page.wait_for_timeout(150)
+        expect(locator).to_be_focused(timeout=UI_ELEMENT_TIMEOUT)
         locator.select_text()
-        self.page.wait_for_timeout(100)
+        self._wait_for_selection_applied(locator)
         self.page.keyboard.press("Backspace")
-        self.page.wait_for_timeout(100)
+        expect(locator).to_have_value("", timeout=UI_ELEMENT_TIMEOUT)
         self.page.keyboard.type(text)
-        self.page.wait_for_timeout(200)
+        self._wait_for_input_value_stable(locator)
 
     @action("Fill Toolkit Name")
     def fill_name(self, name: str) -> None:
@@ -230,6 +280,49 @@ class McpFormPage(BasePage):
     def fill_url(self, url: str) -> None:
         self._fill_text_input(self.url_input, url)
 
+    def _wait_for_contenteditable_selection_applied(
+        self, locator, timeout_ms: int = UI_ELEMENT_TIMEOUT
+    ) -> None:
+        """Wait until *locator*'s (contenteditable) text is fully selected, or empty.
+
+        CodeMirror's ``.cm-content`` is a contenteditable node, not an
+        ``<input>`` — it has no ``selectionStart``/``selectionEnd``, so the
+        real DOM selection state is read via ``window.getSelection()``
+        instead. Same purpose as ``_wait_for_selection_applied``: don't send
+        Backspace before the browser selection has actually applied.
+        """
+        handle = locator.element_handle()
+        self.page.wait_for_function(
+            """(el) => el.textContent.length === 0 ||
+               (window.getSelection() &&
+                window.getSelection().toString().length === el.textContent.length)""",
+            arg=handle,
+            timeout=timeout_ms,
+        )
+
+    def _wait_for_text_content_stable(
+        self, locator, stable_duration_ms: int = 150, timeout_ms: int = UI_ELEMENT_TIMEOUT
+    ) -> None:
+        """Poll *locator*'s ``text_content()`` until it stops changing.
+
+        CodeMirror equivalent of ``_wait_for_input_value_stable`` — waits
+        for the editor's rendered text to converge (typing + any CodeMirror
+        formatting/line-wrap re-render) rather than a fixed delay.
+        """
+        deadline = time.monotonic() + timeout_ms / 1000.0
+        stable_duration = stable_duration_ms / 1000.0
+        last_text = None
+        stable_since = time.monotonic()
+        while time.monotonic() < deadline:
+            current_text = locator.text_content() or ""
+            if current_text != last_text:
+                last_text = current_text
+                stable_since = time.monotonic()
+            elif time.monotonic() - stable_since >= stable_duration:
+                return
+            time.sleep(0.05)
+        raise TimeoutError(f"Editor text did not stabilise within {timeout_ms}ms (last: {last_text!r})")
+
     @action("Fill Headers JSON editor")
     def fill_headers_json(self, json_text: str) -> None:
         """Replace the Headers CodeMirror editor content with *json_text*.
@@ -238,16 +331,17 @@ class McpFormPage(BasePage):
         select-then-Backspace-then-type sequence as
         :meth:`SkillFormPage.fill_instructions` (proven reliable against
         both an empty and a pre-populated editor — plain ``Ctrl+A`` alone
-        does not always select existing content first).
+        does not always select existing content first). Each step waits on
+        the editor's real focus/selection/content state, not a fixed delay.
         """
         self.headers_editor.click()
-        self.page.wait_for_timeout(200)
+        expect(self.headers_editor_content).to_be_focused(timeout=UI_ELEMENT_TIMEOUT)
         self.headers_editor_content.select_text()
-        self.page.wait_for_timeout(100)
+        self._wait_for_contenteditable_selection_applied(self.headers_editor_content)
         self.page.keyboard.press("Backspace")
-        self.page.wait_for_timeout(100)
+        expect(self.headers_editor_content).to_have_text("", timeout=UI_ELEMENT_TIMEOUT)
         self.page.keyboard.type(json_text)
-        self.page.wait_for_timeout(300)
+        self._wait_for_text_content_stable(self.headers_editor_content)
 
     def get_headers_json_text(self) -> str:
         """Return the current text content of the Headers CodeMirror editor."""
@@ -293,8 +387,19 @@ class McpFormPage(BasePage):
 
     @action("Toggle Ssl Verify checkbox")
     def click_ssl_verify_checkbox(self) -> None:
+        """Click the Ssl Verify checkbox and wait for its checked state to flip.
+
+        Waits on the real ``<input>``'s ``.checked`` state (the
+        ``ssl_verify_checkbox`` testid is only the MUI ``<span>`` click
+        target) instead of a fixed delay, so a slow React re-render can't
+        race the caller's next assertion.
+        """
+        was_checked = self.ssl_verify_checkbox_field.is_checked()
         self.ssl_verify_checkbox.click()
-        self.page.wait_for_timeout(200)
+        if was_checked:
+            expect(self.ssl_verify_checkbox_field).not_to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
+        else:
+            expect(self.ssl_verify_checkbox_field).to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
 
     # ------------------------------------------------------------------
     # Save + view toggle
@@ -332,13 +437,11 @@ class McpFormPage(BasePage):
     def switch_to_raw_json_view(self) -> None:
         self.raw_json_view_toggle.click()
         self.raw_json_editor_content.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        self.page.wait_for_timeout(300)
 
     @action("Switch to Form view")
     def switch_to_form_view(self) -> None:
         self.form_view_toggle.click()
         self.name_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        self.page.wait_for_timeout(300)
 
     def get_raw_json(self) -> dict:
         """Read and parse the Raw Json view's current content as JSON."""
