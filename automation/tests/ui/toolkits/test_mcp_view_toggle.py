@@ -120,7 +120,8 @@ def test_mcp_dashboard_view_toggle_card_table(page, toolkit_api: ToolkitAPI):
                 "MCP cards should no longer be visible once Table view is active"
             )
             visible_headers = list_page.get_visible_table_column_headers()
-            assert list(visible_headers) == list(McpListPage.TABLE_COLUMN_HEADERS), (
+            expected_headers = [label for _, label in McpListPage.TABLE_COLUMNS]
+            assert list(visible_headers) == expected_headers, (
                 f"All table column headers should be visible, got: {visible_headers}"
             )
             visible_row_names = list_page.get_visible_table_row_names(original_card_names)

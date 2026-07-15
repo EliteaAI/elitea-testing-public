@@ -65,16 +65,31 @@ class McpListPage(BasePage):
         description="MCP card name (title) — collection locator, one per visible card",
     )
 
-    # Table view renders no per-row/per-cell testids (confirmed live — plain
-    # DOM, no role="row"/MuiDataGrid-row/<tr> structure with testids). Column
-    # headers and row presence are asserted via visible text as an interim
-    # measure (AFS Concrete Handles) until a follow-up adds per-row testids.
-    TABLE_COLUMN_HEADERS = (
-        "Name & Description",
-        "Authors",
-        "Created",
-        "Status",
-        "Actions",
+    # Table view column headers (EliteaUI draft PR EliteaAI/EliteaUI#564,
+    # ELITEA-1944 fix pass): GridTableHeader.jsx's new optional
+    # `columnTestIdPrefix` prop, wired only when DataTable's cardType is MCP
+    # (`isMCPs`), renders `data-testid="mcp-table-column-header-{field}"` on
+    # each header cell — zero impact on Agents/Pipelines/Skills/Credentials/
+    # Toolkits table views, which don't set the prop (confirmed live).
+    TABLE_COLUMN_HEADER_TESTID = '[data-testid="mcp-table-column-header-{}"]'
+
+    # Column field ids (EliteaUI SortFields / DataTable.jsx columnsMeta) in
+    # display order, paired with their visible label for readable assertions.
+    TABLE_COLUMNS = (
+        ("name", "Name & Description"),
+        ("author", "Authors"),
+        ("created_at", "Created"),
+        ("online", "Status"),
+        ("actions", "Actions"),
+    )
+
+    # Table view row name (same draft PR): DataTableNameCell.jsx renders
+    # `data-testid="mcp-table-row-name"` on each row's name Typography,
+    # gated the same way — a shared, collection-style testid mirroring the
+    # `entity-card-name` convention already used in card view.
+    mcp_table_row_name = LocatorDescriptor(
+        testid="mcp-table-row-name",
+        description="MCP name cell in table-view rows — collection locator, one per visible row",
     )
 
     def __init__(self, page: Page):
@@ -202,27 +217,34 @@ class McpListPage(BasePage):
     def get_visible_table_column_headers(self) -> list[str]:
         """Return which of the expected table column headers are visible.
 
-        No per-column testids exist (AFS Concrete Handles) — matched via
-        visible text, same as the AFS's live exploration approach.
+        Resolved via the per-column ``mcp-table-column-header-{field}``
+        testid (EliteaUI draft PR #564) — each column's field id is checked
+        for visibility, and its display label is returned on a match.
         """
         visible = []
-        for header in self.TABLE_COLUMN_HEADERS:
-            if self.page.get_by_text(header, exact=True).count() > 0:
-                visible.append(header)
+        for field, label in self.TABLE_COLUMNS:
+            header = self.page.locator(self.TABLE_COLUMN_HEADER_TESTID.format(field))
+            if header.count() > 0 and header.first.is_visible():
+                visible.append(label)
         return visible
 
     def get_visible_table_row_names(self, candidate_names: list[str]) -> list[str]:
-        """Return which of *candidate_names* are visible as table row text.
+        """Return which of *candidate_names* are visible as table row names.
 
-        Individual table rows carry no ``data-testid`` (confirmed live — the
-        table renders via plain DOM), so row presence is verified via visible
-        text matching, per the AFS's interim measure.
+        Resolved via the shared ``mcp-table-row-name`` testid (EliteaUI
+        draft PR #564) — a collection locator, one per visible row, matched
+        by text content (same pattern as :meth:`get_card_names`).
 
         Args:
             candidate_names: MCP names to check (typically the names
                 captured from card view via :meth:`get_card_names`).
         """
-        return [
-            name for name in candidate_names
-            if self.page.get_by_text(name, exact=True).count() > 0
-        ]
+        try:
+            self.mcp_table_row_name.first.wait_for(state="visible", timeout=5000)
+        except Exception:
+            return []
+        visible_names = {
+            self.mcp_table_row_name.nth(i).text_content().strip()
+            for i in range(self.mcp_table_row_name.count())
+        }
+        return [name for name in candidate_names if name in visible_names]

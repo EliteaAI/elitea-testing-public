@@ -213,10 +213,20 @@ defensive `force=True`).
 | MCP card name (card view) | `[data-testid="entity-card-name"]` | none |
 | MCP card tag chip (card view) | `[data-testid="entity-card-tag-chip"]` | none |
 | Page header | no dedicated `mcps-page-header` testid found live (unlike Agents' `agents-page-header` / Pipelines' `pipelines-page-header`) — the "MCPs" heading text has no `data-testid`. **Add via `add-data-testid`** if the implementer wants a `wait_for_page_load()` pattern matching the sibling list pages (both `AgentsListPage.wait_for_page_load()` and `PipelinesListPage.wait_for_page_load()` wait on their page-header testid); until then, wait on `agent-card-view-button` visibility as a load-complete proxy (confirmed present as soon as the list renders) | none |
-| Table view rows | no `data-testid` on individual table rows/cells (confirmed live — table renders via plain DOM, no `role="row"`/`.MuiDataGrid-row`/`<tr>` structure with testids). Implementer can assert row count via text content matching MCP names (see step 6) as an interim measure, or **add via `add-data-testid`** if a more robust per-row locator is needed for a future MCP table-view case | none |
+| Table view column header (per column) | `[data-testid="mcp-table-column-header-{field}"]` — `{field}` is the column's `SortFields` id (`name`, `author`, `created_at`, `online`, `actions`). Added via `add-data-testid` in the reviewer fix-pass (EliteaUI draft PR `EliteaAI/EliteaUI#564`): `GridTableHeader.jsx` gained an optional `columnTestIdPrefix` prop, wired only from `DataTable.jsx` when `isMCPs` is true — zero impact on Agents/Pipelines/Skills/Credentials/Toolkits table views, which don't set the prop | none — testid-only policy |
+| Table view row name (per row) | `[data-testid="mcp-table-row-name"]` — shared testid across all visible rows (collection locator, matched by text), mirroring the `entity-card-name` convention in card view. Added in the same fix-pass: `DataTableNameCell.jsx`'s row-name `Typography` gets the testid only when `cardType` contains `"mcp"` | none |
 
-**Missing testids to flag for `add-data-testid` (not blocking this case, but
-recommended for the implementer or a follow-up):**
+**Testids added in the reviewer fix-pass (EliteaUI draft PR `EliteaAI/EliteaUI#564`,
+cherry-picked from `automation/testids` commit `3eba20e`):** the original session below flagged
+these as missing/interim; the implementer fix-pass (2026-07-15, responding to a
+`CHANGES_REQUESTED` review on PR #523 for a non-testid `get_by_text()` locator
+violation) added them via `add-data-testid` rather than leaving the interim
+text-matching approach — see the two rows above. The original "Missing testids
+to flag" list below is kept for history; item 2 (the page-header testid) is
+still open.
+
+**Still-missing testids to flag for `add-data-testid` (not blocking this case,
+but recommended for a follow-up):**
 1. `mcps-page-header` (or similar) on the "MCPs" heading — parity with
    Agents/Pipelines list pages, needed for a clean `wait_for_page_load()`.
 2. MCP-scoped view-toggle testids (`mcp-table-view-button` /
