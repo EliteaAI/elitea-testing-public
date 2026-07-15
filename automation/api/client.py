@@ -893,6 +893,108 @@ class PipelineAPI:
         _raise_for_status(resp)
         return resp.json()
 
+    def create_pipeline_with_mcp_node(
+        self,
+        name: str,
+        description: str,
+        tools: list[dict],
+        *,
+        toolkit_name: str,
+        tool: str,
+        input_mapping: Optional[dict] = None,
+        node_id: str = "MCP 1",
+    ) -> dict:
+        """Create a pipeline with a single MCP node pre-configured with a Toolkit + Tool.
+
+        Used to seed the precondition for ELITEA-1954 (MCP node Toolkit/Tool
+        switching): a pipeline with an MCP node already configured, and
+        >=2 MCP toolkits attached in the pipeline's TOOLS section — without
+        needing to drive the UI to attach toolkits or configure the node.
+
+        Args:
+            name: Pipeline display name.
+            description: Short description.
+            tools: Full toolkit JSON objects (as returned by
+                ``ToolkitAPI.get_toolkit`` / ``create_remote_mcp_toolkit``)
+                to attach in the pipeline's TOOLS section. The MCP node's
+                Toolkit dropdown lists exactly these (``ToolSelect.jsx``
+                reads ``version_details.tools``) — a bare ``{"id": ...}``
+                reference is rejected by the API (confirmed empirically:
+                400 "Missing 'settings'"), so full objects are required.
+            toolkit_name: The node's initial ``toolkit_name`` YAML field —
+                must match one of ``tools``' cleaned display names (spaces/
+                punctuation stripped; see EliteaUI's ``cleanString`` /
+                ``genToolkitName`` — e.g. toolkit "Remote Github" ->
+                ``toolkit_name: RemoteGithub``).
+            tool: The node's initial ``tool`` YAML field (a tool name from
+                the ``toolkit_name`` toolkit's ``settings.selected_tools``).
+            input_mapping: Optional initial ``input_mapping`` dict for the
+                node (defaults to empty — the initial tool/toolkit pairing
+                only needs to exist for the test's Step 3 "read current
+                values"; it does not need a fully valid mapping since the
+                test immediately switches Toolkit/Tool away from it).
+            node_id: The node's YAML id (also the entry point).
+
+        Returns:
+            Created pipeline JSON (same shape as ``create_pipeline_with_nodes``).
+        """
+        import yaml as _yaml
+
+        node = {
+            "id": node_id,
+            "type": "mcp",
+            "toolkit_name": toolkit_name,
+            "tool": tool,
+            "input": ["input"],
+            "output": ["messages"],
+            "input_mapping": input_mapping or {},
+            "structured_output": False,
+            "transition": "END",
+        }
+        instructions_yaml = _yaml.dump(
+            {"entry_point": node_id, "nodes": [node]},
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+        )
+
+        url = self._applications_url()
+        payload = {
+            "name": name,
+            "description": description,
+            "type": "interface",
+            "versions": [
+                {
+                    "name": "base",
+                    "tags": [],
+                    "instructions": instructions_yaml,
+                    "variables": [],
+                    "tools": tools,
+                    "llm_settings": {
+                        "max_tokens": -1,
+                        "temperature": 0.6,
+                        "reasoning_effort": "medium",
+                        "model_name": settings.default_model_name,
+                        "model_project_id": settings.default_model_project_id,
+                    },
+                    "conversation_starters": [],
+                    "agent_type": "pipeline",
+                    "welcome_message": "",
+                    "pipeline_settings": {
+                        "nodes": [],
+                        "edges": [],
+                        "orientation": "vertical",
+                        "layout_version": "1.0",
+                    },
+                    "meta": {"step_limit": 25},
+                }
+            ],
+        }
+        logger.debug("CREATE pipeline with MCP node %s name=%s", url, name)
+        resp = self._session.post(url, json=payload)
+        _raise_for_status(resp)
+        return resp.json()
+
     def export_pipeline(self, pipeline_id: int, fmt: str = "md") -> bytes:
         """Export a pipeline as markdown.
 
