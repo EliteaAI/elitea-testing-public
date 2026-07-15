@@ -109,3 +109,28 @@ structural check: the orchestrator should refuse to treat a review as
 complete until it can `gh api` the PR/issue and see the reviewer's own
 comment with its own paste, not just accept the reviewer subagent's
 self-report back to the dispatching session.
+
+## Recurrence (issue #35, ELITEA-1793 rework, PR #284) — merge-gate evidence bundled into the same gap
+
+Fourth recurrence of the reviewer-gate shape, plus a new wrinkle: the SAME
+single pre-merge comment (`.../issues/284/comments`, one entry, posted by
+the PR-opening identity 7 seconds before the merge commit) narrates BOTH
+"Reviewer: APPROVED (... mechanical grep gate pasted + verified 8/8
+compliant ...)" AND "Orchestrator independent live-run gate: 3/3
+deterministic (three separate pytest invocations, clean worktree, fresh
+env)" — neither claim has a fenced command+output block anywhere on the PR
+or issue. The PR body's OWN pasted 8/8-compliant grep (present, real,
+correct) sits under a heading literally worded "Mechanical grep (reviewer's
+own gate, pasted verbatim)" but was authored at PR-creation time by the PR
+opener (the implementer's Phase-3 self-check), not posted independently by
+a fresh-session reviewer afterward — the same implementer-self-check-
+mislabeled-as-reviewer conflation as the #34 recurrence.
+
+**New lesson**: the merge-gate item (§ checklist 5, the lead's own 3×
+pre-merge invocations) is exposed to the exact same evidence-shape failure
+as the reviewer-gate item (§ checklist 6) — a single narrated "did the
+gate, it passed" comment written by the orchestrator right before merging
+satisfies neither. Audit both checklist items independently even when they
+show up bundled in one comment; a shared root cause (one actor writing one
+summary comment instead of each gate leaving its own artifact) doesn't
+make it one finding — it's two checklist items failing the same way.
