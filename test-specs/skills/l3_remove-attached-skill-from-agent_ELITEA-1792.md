@@ -142,28 +142,28 @@ skills + 1 agent, all created and torn down within the run).
 
 ## Handles Reference
 
-| Element | testid / locator | Notes |
-|---|---|---|
-| Skill Name field | `skill-name-input` (wrapper) → target descendant `input` or use `getByRole('textbox', { name: 'Name *' })` | kebab-case validation; `.fill()` on the testid div itself throws |
-| Skill Description field | `skill-description-input` (wrapper) → descendant `textarea` or `getByRole('textbox', { name: 'Description *' })` | same wrapper-div caveat |
-| Skill Instructions editor | `skill-instructions-editor-content` | CodeMirror; use `press_sequentially`/`type(slowly=true)` |
-| Skill Save button | `skill-save-button` | |
-| Nav-blocker confirm | `alert-dialog-confirm-button` | fires on Skill-create Save; did **not** fire on Agent-create Save |
-| Agent Name field | `agent-name-input` | same wrapper-div fill caveat as Skill Name |
-| Agent Description field | `agent-description-input` | |
-| Agent Instructions field | `agent-instructions-input` | this run used `.fill()` via testid successfully on the Agent Instructions field (single-line MUI `Textarea`, not a wrapper div) — contrast with Skill Name/Description above |
-| Agent Save button | `agent-save-button` (create form) | stays **disabled** on the detail page once a skill is attached/removed — both operations auto-save, nothing to click |
-| Agent add-skill button | no testid; `getByRole('button', { name: 'Skill', exact: true })` | matches ELITEA-1735/1789's amended handle |
-| Skill-attach popper item | `role="menuitem"`, accessible name = skill name (search box placeholder `"Search skills..."`) | |
-| **Attached-skill card "remove skill" button (this case's core element)** | no testid; `getByRole('button', { name: 'remove skill' })`, scoped to the specific skill's card | **Hover-revealed** — not present in the accessibility tree for an un-hovered card; hover the card first (or use a `force` click if the automation framework's click already dispatches a hover). Sibling button `"open in new tab"` shares the same reveal-on-hover behavior. |
-| **"Remove skill?" confirmation dialog (new discovery, not in case text)** | dialog heading `"Remove skill?"`; buttons `getByRole('button', { name: 'Cancel' })` / `getByRole('button', { name: 'Remove' })` scoped to the dialog | Same shape as the existing `remove_toolkit()` "Remove toolkit?" dialog (`automation/pages/agent_detail_page.py:504`, `Dialog.click_first_button(dialog, "Remove", "Confirm", "Delete")`) — a `remove_skill()` page-object method should follow the identical click-then-confirm pattern |
-| Skill card version selector | `.version-text` CSS class, scoped to the skill's card (see ELITEA-1789 for the accessibility-tree click gotcha, issue #46) | not this case's target but visible on both cards during exploration |
-| Agent actions (overflow) menu | `agent-actions-menu-button` | opens VERSION/AGENT grouped menu |
-| Delete-agent menu item | `delete-agent-menuitem` | in the AGENT group |
-| Skill controls (overflow) menu | `skill-controls-menu-button` | opens VERSION/SKILL grouped menu |
-| Delete-skill menu item | `skill-delete-menu-item` | in the SKILL group |
-| Delete-confirmation name field | `delete-confirm-name-input` (scope to inner `#name` field) | shared component, both agent and skill delete flows |
-| Delete-confirmation confirm button | `getByRole('button', { name: 'Delete' })` scoped to the dialog | enabled only once typed name matches |
+| Element | testid / locator | Provenance | Notes |
+|---|---|---|---|
+| Skill Name field | `skill-name-input` (wrapper) → target descendant `input` or use `getByRole('textbox', { name: 'Name *' })` | pre-dates provenance column | kebab-case validation; `.fill()` on the testid div itself throws |
+| Skill Description field | `skill-description-input` (wrapper) → descendant `textarea` or `getByRole('textbox', { name: 'Description *' })` | pre-dates provenance column | same wrapper-div caveat |
+| Skill Instructions editor | `skill-instructions-editor-content` | pre-dates provenance column | CodeMirror; use `press_sequentially`/`type(slowly=true)` |
+| Skill Save button | `skill-save-button` | pre-dates provenance column | |
+| Nav-blocker confirm | `alert-dialog-confirm-button` | pre-dates provenance column | fires on Skill-create Save; did **not** fire on Agent-create Save |
+| Agent Name field | `agent-name-input` | pre-dates provenance column | same wrapper-div fill caveat as Skill Name |
+| Agent Description field | `agent-description-input` | pre-dates provenance column | |
+| Agent Instructions field | `agent-instructions-input` | pre-dates provenance column | this run used `.fill()` via testid successfully on the Agent Instructions field (single-line MUI `Textarea`, not a wrapper div) — contrast with Skill Name/Description above |
+| Agent Save button | `agent-save-button` (create form) | pre-dates provenance column | stays **disabled** on the detail page once a skill is attached/removed — both operations auto-save, nothing to click |
+| Agent add-skill button | no testid; `getByRole('button', { name: 'Skill', exact: true })` | pre-dates provenance column | matches ELITEA-1735/1789's amended handle |
+| Skill-attach popper item | `role="menuitem"`, accessible name = skill name (search box placeholder `"Search skills..."`) | pre-dates provenance column | |
+| **Attached-skill card "remove skill" button (this case's core element)** | `skill-card-remove-button`, scoped to the specific skill's card via `SKILL_CARD_REMOVE_BUTTON_SELECTOR` | on-`automation/testids` (commit `fc0c02f`) via draft PR EliteaUI#547, not yet on `main` | **REWORK (2026-07-15):** replaced the prior `getByRole('button', { name: 'remove skill' })` raw handle — testid-only policy violation (team ruling PR #23) — with a `data-testid` added via `add-data-testid`. **Hover-revealed** — not present in the accessibility tree for an un-hovered card; hover the card first (or use a `force` click). Sibling button `"open in new tab"` shares the same reveal-on-hover behavior but is out of scope (no testid added — this test never touches it). |
+| **"Remove skill?" confirmation dialog (new discovery, not in case text)** | dialog heading `"Remove skill?"`; buttons `getByRole('button', { name: 'Cancel' })` / `getByRole('button', { name: 'Remove' })` scoped to the dialog | no testid on `DeleteEntityModal.jsx` action buttons (framework-scale change, out of scope for this rework) | Same shape as the existing `remove_toolkit()` "Remove toolkit?" dialog (`automation/pages/agent_detail_page.py:504`, `Dialog.click_first_button(dialog, "Remove", "Confirm", "Delete")`) — a `remove_skill()` page-object method should follow the identical click-then-confirm pattern |
+| Skill card version selector | `.version-text` CSS class, scoped to the skill's card (see ELITEA-1789 for the accessibility-tree click gotcha, issue #46) | pre-dates provenance column | not this case's target but visible on both cards during exploration |
+| Agent actions (overflow) menu | `agent-actions-menu-button` | pre-dates provenance column | opens VERSION/AGENT grouped menu |
+| Delete-agent menu item | `delete-agent-menuitem` | pre-dates provenance column | in the AGENT group |
+| Skill controls (overflow) menu | `skill-controls-menu-button` | pre-dates provenance column | opens VERSION/SKILL grouped menu |
+| Delete-skill menu item | `skill-delete-menu-item` | pre-dates provenance column | in the SKILL group |
+| Delete-confirmation name field | `delete-confirm-name-input` (scope to inner `#name` field) | pre-dates provenance column | shared component, both agent and skill delete flows |
+| Delete-confirmation confirm button | `getByRole('button', { name: 'Delete' })` scoped to the dialog | pre-dates provenance column | enabled only once typed name matches |
 
 ## Expected Results
 - An Agent with 2 attached Skills (A and B) is created successfully.
