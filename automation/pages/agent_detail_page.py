@@ -62,7 +62,21 @@ class AgentDetailPage(AgentFormPage):
     # Dynamic (runtime-parameterized) testid templates — see
     # .claude/rules/page-objects.md "Dynamic testids" for the naming pattern.
     SKILL_CARD_SELECTOR = '[data-testid="skill-card-{}"]'
+    # Prefix-match variant: used when only the skill *name* is known (not the
+    # skill_id), to filter all attached-skill cards by rendered name text.
+    SKILL_CARD_ANY_SELECTOR = '[data-testid^="skill-card-"]'
     SKILL_MENTION_ITEM_SELECTOR = '[data-testid="skill-mention-item-{}"]'
+    # Version-selector testids (ELITEA-1789 testid-only rework — added via
+    # add-data-testid to SkillVersionSelector.jsx; see EliteaUI draft PR #545).
+    SKILL_VERSION_TRIGGER_SELECTOR = '[data-testid="skill-version-selector-trigger-{}"]'
+    SKILL_VERSION_MENU_SELECTOR = '[data-testid="skill-version-selector-menu-{}"]'
+    SKILL_VERSION_OPTION_SELECTOR = '[data-testid="skill-version-option-{}"]'
+    # Prefix-match variant: used to enumerate ALL entries in the currently
+    # open Versions menu (the per-row testid is keyed by version_name, which
+    # isn't known in advance when enumerating) — safe because MUI unmounts
+    # MenuItems while their Menu is closed, so only one card's menu items
+    # are ever in the DOM at a time.
+    SKILL_VERSION_OPTION_ANY_SELECTOR = '[data-testid^="skill-version-option-"]'
 
     # --- Sensitive action authorization ---
     sensitive_action_panel = LocatorDescriptor(testid="sensitive-action-panel")
@@ -1010,56 +1024,75 @@ class AgentDetailPage(AgentFormPage):
     def _skill_card(self, skill_name: str, timeout: int = 5000):
         """Return a locator scoped to a single attached skill's card.
 
-        LOCATOR: `SkillCard.jsx` renders the skill-name `Typography` inside a
-        `titleRow` Box, inside a `contentBox` Box, inside the `cardHeader` Box
-        that also holds `SkillVersionSelector` and the action buttons — no
-        data-testid on any of these Boxes. Scoped via the skill-name text
-        (exact match, within the Skills section content container so it
-        can't false-positive elsewhere on the page), walking up 3 ancestor
-        `div`s to reach `cardHeader` (ELITEA-1789 exploration).
+        LOCATOR: `skill-card-{skill_id}` — added in the ELITEA-1735 rework
+        (draft EliteaUI#540, not yet on `main`; confirmed live against
+        `automation/testids`). The skill's numeric id isn't known to
+        callers of this method (only the skill *name* is), so this filters
+        every `[data-testid^="skill-card-"]` element (within the Skills
+        section content container, so it can't false-positive elsewhere on
+        the page) by its rendered name text — same `.filter(has_text=...)`
+        pattern already used for toolkit cards (`_get_toolkit_card()` above).
+        Replaces the ELITEA-1789 rework's prior `get_by_text(skill_name,
+        exact=True)` + `xpath=ancestor::div[3]` walk with a testid-scoped
+        lookup (ELITEA-1789 testid-only rework).
 
         Args:
             skill_name: Exact name of the attached skill.
             timeout: Maximum wait time in milliseconds.
         """
-        name_el = self._skills_section_content().get_by_text(
-            skill_name, exact=True,
-        ).first
-        name_el.wait_for(state="visible", timeout=timeout)
-        return name_el.locator("xpath=ancestor::div[3]")
+        card = self._skills_section_content().locator(
+            self.SKILL_CARD_ANY_SELECTOR
+        ).filter(has_text=skill_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        return card
+
+    def _get_skill_id_from_card(self, card: Locator) -> str:
+        """Extract the skill_id embedded in a card's `skill-card-{skill_id}` testid.
+
+        Args:
+            card: Locator scoped to a single skill card (from `_skill_card()`).
+
+        Returns:
+            The skill_id string parsed out of the card's data-testid attribute.
+        """
+        testid = card.get_attribute("data-testid") or ""
+        return testid.removeprefix("skill-card-")
 
     def get_skill_version_text(self, skill_name: str, timeout: int = 5000) -> str:
         """Return the currently displayed version text on a skill's card.
 
-        LOCATOR: `SkillVersionSelector.jsx` renders the version name in a
-        `<span class="version-text">` — no data-testid, no ARIA role
-        (see Known Defect github.com/EliteaAI/elitea-testing-public/issues/46:
-        the trigger `Box` wrapping this span has `tabIndex=-1`, `role=null`,
-        no `aria-label`). `.version-text` scoped to the specific skill's card
-        (via `_skill_card()`) is the only reliable handle — an
-        accessibility-tree/role-based locator resolves to the wrong,
-        non-interactive ancestor `Box` and silently no-ops (confirmed live,
-        ELITEA-1789 AFS).
+        LOCATOR: `skill-version-selector-trigger-{skill_id}` — added via
+        `add-data-testid` in the ELITEA-1789 testid-only rework (EliteaUI
+        draft PR #545), replacing the prior `.version-text` CSS-class
+        handle. See Known Defect
+        github.com/EliteaAI/elitea-testing-public/issues/46: the trigger
+        still carries no ARIA role / `tabIndex=-1` / no accessible name —
+        a testid closes the automation-handle gap only, not the surviving
+        keyboard-accessibility half of that issue.
 
         Args:
             skill_name: Exact name of the attached skill.
             timeout: Maximum wait time in milliseconds.
         """
         card = self._skill_card(skill_name, timeout=timeout)
-        version_text = card.locator(".version-text")
-        version_text.wait_for(state="visible", timeout=timeout)
-        return (version_text.text_content() or "").strip()
+        skill_id = self._get_skill_id_from_card(card)
+        trigger = card.locator(self.SKILL_VERSION_TRIGGER_SELECTOR.format(skill_id))
+        trigger.wait_for(state="visible", timeout=timeout)
+        return (trigger.text_content() or "").strip()
 
     @action("Open skill version selector")
     def open_skill_version_selector(self, skill_name: str, timeout: int = 10000):
         """Click a skill card's version-selector trigger to open the Versions menu.
 
-        MUST click `.version-text` (CSS-class-scoped to the specific skill's
-        card) — NOT a `get_by_role`/accessibility-tree-derived locator. The
-        trigger `Box` has no ARIA role and `tabIndex=-1`
-        (github.com/EliteaAI/elitea-testing-public/issues/46); a role-based
-        click resolves to the wrong ancestor `Box` one level up and silently
-        does nothing (confirmed live twice in ELITEA-1789 exploration).
+        LOCATOR: `skill-version-selector-trigger-{skill_id}` for the click
+        target, `skill-version-selector-menu-{skill_id}` to confirm the menu
+        opened — both added via `add-data-testid` in the ELITEA-1789
+        testid-only rework (EliteaUI draft PR #545), replacing the prior
+        `.version-text` CSS-class click + raw `get_by_text("Versions")`
+        handle. The "Versions" `<Menu>` React-portals to `document.body`
+        (confirmed live via `browser_evaluate`: not a DOM descendant of the
+        skill's card) — so the menu testid is looked up page-wide, not
+        scoped to the card.
 
         Args:
             skill_name: Exact name of the attached skill whose version
@@ -1067,41 +1100,61 @@ class AgentDetailPage(AgentFormPage):
             timeout: Maximum wait time in milliseconds.
         """
         card = self._skill_card(skill_name, timeout=timeout)
-        version_text = card.locator(".version-text")
-        version_text.wait_for(state="visible", timeout=timeout)
-        version_text.click()
+        skill_id = self._get_skill_id_from_card(card)
 
-        menu_header = self.page.get_by_text("Versions", exact=True)
-        menu_header.wait_for(state="visible", timeout=timeout)
+        trigger = card.locator(self.SKILL_VERSION_TRIGGER_SELECTOR.format(skill_id))
+        trigger.wait_for(state="visible", timeout=timeout)
+        trigger.click()
 
-    def is_versions_menu_open(self, timeout: int = 2000) -> bool:
+        menu = self.page.locator(self.SKILL_VERSION_MENU_SELECTOR.format(skill_id))
+        menu.wait_for(state="visible", timeout=timeout)
+
+    def is_versions_menu_open(self, skill_name: str, timeout: int = 2000) -> bool:
         """Check whether the "Versions" menu (opened by the version selector) is visible.
 
+        LOCATOR: `skill-version-selector-menu-{skill_id}` — the menu portals
+        to `document.body`, so it's resolved page-wide once `skill_id` is
+        known via the skill's card (ELITEA-1789 testid-only rework).
+
         Args:
+            skill_name: Exact name of the attached skill whose menu is checked.
             timeout: Maximum wait time in milliseconds.
         """
         try:
-            self.page.get_by_text("Versions", exact=True).wait_for(
+            skill_id = self._get_skill_id_from_card(
+                self._skill_card(skill_name, timeout=timeout)
+            )
+            self.page.locator(self.SKILL_VERSION_MENU_SELECTOR.format(skill_id)).wait_for(
                 state="visible", timeout=timeout,
             )
             return True
         except Exception:
             return False
 
-    def get_versions_menu_item_names(self, timeout: int = 5000) -> list[str]:
-        """Return the accessible names of every menuitem in the open Versions menu.
+    def get_versions_menu_item_names(self, skill_name: str, timeout: int = 5000) -> list[str]:
+        """Return the text of every version entry in the open Versions menu.
 
-        LOCATOR: The Versions popper IS a proper ARIA menu once opened —
-        `role="menuitem"` on each version entry — only the trigger lacks
-        semantics (see `open_skill_version_selector()`).
+        LOCATOR: the menu header carries `skill-version-selector-menu-{skill_id}`;
+        each entry carries `skill-version-option-{version_name}`. Enumeration
+        (rather than a single known-name lookup) uses the PREFIX-match
+        `skill-version-option-` selector page-wide (not scoped to the card,
+        since the menu portals to `document.body`) — MUI unmounts `MenuItem`s
+        while their `<Menu>` is closed, so only the currently-open menu's
+        entries are ever in the DOM, making the prefix match safe (ELITEA-1789
+        testid-only rework — replaces the prior raw `get_by_text("Versions")`
+        + `xpath=ancestor::div[2]` + `get_by_role("menuitem")` chain).
 
         Args:
+            skill_name: Exact name of the attached skill whose menu is read.
             timeout: Maximum wait time in milliseconds.
         """
-        menu_header = self.page.get_by_text("Versions", exact=True)
+        skill_id = self._get_skill_id_from_card(
+            self._skill_card(skill_name, timeout=timeout)
+        )
+        menu_header = self.page.locator(self.SKILL_VERSION_MENU_SELECTOR.format(skill_id))
         menu_header.wait_for(state="visible", timeout=timeout)
-        menu_container = menu_header.locator("xpath=ancestor::div[2]")
-        items = menu_container.get_by_role("menuitem")
+
+        items = self.page.locator(self.SKILL_VERSION_OPTION_ANY_SELECTOR)
         items.first.wait_for(state="visible", timeout=timeout)
         return [
             (items.nth(i).text_content() or "").strip()
