@@ -1,5 +1,50 @@
 # Test Case: Ghost skill not shown after Agent participant removed (Chat `~` mention)
 
+## Rework Note (issue #35 — framework-alignment audit)
+
+This AFS is **amended in place** (Phase-2 "amend-in-PR" convention) to close a
+compliance gap flagged by the framework-alignment audit against the merged
+PR #52 (implementer's original delivery for this case): PR #52 added 9 new
+methods to `automation/pages/chat_page.py`, all locating elements via raw
+`get_by_role`/`aria-label`/text+`xpath` handles instead of `data-testid`, in
+violation of `.agents/testing.md` § Locator policy (testid-only, no ladder —
+see `.agents/role-overrides.md`). This rework re-verifies the flow, confirms
+2 reuse cases against testids already added by prior case reworks, and specs
+5 NEW testids for the participant-removal flow (previously unexplored by any
+prior testid rework). **No test/page-object code is written here** — this is
+the analyst slot's rework of the spec-of-record; the implementer applies the
+`add-data-testid` dual-target flow and rewires `chat_page.py` per the
+Handles Reference below.
+
+**Provenance verified fresh** (`cd ../EliteaUI && git fetch origin` run
+immediately before every check below, 2026-07-15).
+
+## Implementer Amendment (Phase 2 — issue #35 rework, 2026-07-15)
+
+Two decisions made while wiring the Handles Reference below, recorded here
+per the amend-in-PR convention:
+
+1. **`remove_agent_participant()` signature changed from `agent_name: str`
+   to `agent_id: int`.** The dynamic `chat-participant-row-{uniqueId}`
+   testid this method now resolves against requires `uniqueId =
+   getChatParticipantUniqueId(participant)`, which for an agent participant
+   is `application_{agent_id}_{project_id}` — computable from the agent's
+   numeric ID (already captured by the test as `agent_id`), not from its
+   display name. This removes the last text/xpath-ancestor walk from the
+   method entirely. The test's call site was updated to pass `agent_id`
+   instead of `AGENT_NAME`.
+2. **A 6th testid was added beyond the AFS's original 5**:
+   `chat-participants-badge-button` on `CollapsedPerticapantsList.jsx`'s
+   `IconButton` (line ~223, inside the `chat-participants-badge-{section}`
+   Box the AFS specced). The AFS named a testid for the wrapping Box only,
+   but the actual click target (the IconButton) has no accessible name —
+   `get_by_role`/CSS-tag lookup would have been needed to click it, which
+   the locator policy also forbids. Declared improvisation per
+   `.agents/role-overrides.md`'s canon-gap protocol: the button is touched
+   by this same test, so adding its testid is in-scope, not scope creep.
+   Cherry-picked into the same EliteaUI draft PR (EliteaAI/EliteaUI#548,
+   commit `be48cd5`).
+
 ## Metadata
 - **TMS ID**: ELITEA-1793
 - **Linked Story**: none
@@ -136,34 +181,52 @@ conversation).
      description text, exactly as in step 5 — as if the agent were still
      a participant. See Known Defects.
 
-## Handles Reference
+## Handles Reference (testid-only — amended for the PR #52 audit rework)
 
-| Element | testid / locator | Notes |
-|---|---|---|
-| Skill Name field | `getByRole('textbox', { name: 'Name *' })` | kebab-case-only client validation |
-| Skill Description field | `getByRole('textbox', { name: 'Description *' })` | |
-| Skill Instructions editor | `skill-instructions-editor-content` | CodeMirror; use `press_sequentially` |
-| Skill Save button | `skill-save-button` | |
-| Agent Name field | `agent-name-input` | mixed-case + spaces accepted (unlike Skill Name) |
-| Agent Description field | `agent-description-input` | |
-| Agent Instructions field | `agent-instructions-input` | |
-| Agent Save button | `agent-save-button` | |
-| Agent add-skill button (Skills accordion) | `getByRole('button', { name: 'Skill', exact: true })` | Confirmed live; same handle as ELITEA-1735/1736 |
-| Skill-attach popper item | `role="menuitem"`, accessible name = skill name | |
-| Chat composer "+" button | `plus-menu-button` | Opens tooltip menu: Modules / Agents / Pipelines / Toolkits / MCPs |
-| "Agents" menuitem in plus-menu | `role="menuitem"`, accessible name `"Agents"` | Opens "Search agents..." popper |
-| Agent-select popper item (chat participant add) | `role="menuitem"`, accessible name = agent's display name | |
-| Chat message input | `chat-message-input` | mention-aware; use `press_sequentially`, never `fill()` — ref changes across composer re-renders (e.g. after agent add/remove), always re-snapshot before reusing |
-| Chat send button | `chat-send-button` | not used in this case (never sent a message) |
-| "Mention skill" popper container | plain `<div>` headed `"Mention skill"`, **no ARIA role, no testid** (`MentionSkillList.jsx`) | Contains either skill-name menuitem-like rows, or the empty-state text `"No skills attached to this agent"` when the participant agent has no skills / no participant exists |
-| "Switch Agent" composer button (agent-as-participant) | no testid; `aria-label="Switch Agent"` — `getByRole('button', { name: 'Switch Agent' })` | Renders once an agent is added as chat participant; text = agent name |
-| "Agents in this conversation" participant badge | no testid; wrapping `div[aria-label="Agents in this conversation"]` containing `getByRole('button', { name: <participant count> })` | Click opens the small "Agents" participants popper (step 7). **Disappears entirely from the DOM** when the participant count returns to 0 — assert absence, not a `"0"` label. |
-| "Agents" participants popper | plain `<div>` headed `"Agents"`, one row per participant (agent name + version, e.g. `"base"`) | No ARIA role/testid on rows |
-| Participant row "Edit agent" / "Remove agent" icon buttons | `button "Edit agent"`, `button "Remove agent"` | **Hover-revealed** — absent from the accessibility-tree snapshot until the row is hovered (same hover-reveal pattern as the agent-detail Skills card's remove control) |
-| "Remove agent?" confirmation dialog | `heading "Remove agent? Close"`, body text `"Are you sure to remove the {agent name} agent from chat?"`, `button "Cancel"`, `button "Remove"` | Standard MUI confirm dialog, no type-to-confirm (unlike agent/skill entity delete) |
-| Agent overflow menu (agent detail page) | `agent-actions-menu-button` | AGENT group → `delete-agent-menuitem` |
-| Skill overflow menu (skill detail page) | `skill-controls-menu-button` | SKILL group → `skill-delete-menu-item` |
-| Delete-confirmation name field | `delete-confirm-name-input` (scope to inner `#name` field) | shared component across agent/skill delete flows; type-to-confirm required |
+Locator policy: testid-only (`.agents/role-overrides.md` +
+`.agents/testing.md` § Locator policy). The `test-automation-workflow`
+skill's example ladder does not apply. Every row below is testid-first;
+where the case's steps 1–3 (skill/agent create, attach-skill popper) reuse
+handles from an EARLIER, already-reviewed case (ELITEA-1735/1736/1737) that
+predate PR #52 and are **out of scope for this rework** (PR #52 only touched
+`chat_page.py`'s participant-removal + mention-popper methods), they are
+kept unchanged and marked accordingly — not retrofitted here to avoid scope
+creep beyond this ticket.
+
+PROVENANCE legend: `on-main ✓` / `on-automation/testids only (draft #N)` /
+`needs-adding`. Verified fresh (`cd ../EliteaUI && git fetch origin` run
+immediately before each `git grep <ref>` below, 2026-07-15).
+
+| Element | testid / locator | Provenance | Notes |
+|---|---|---|---|
+| Skill Name field | `getByRole('textbox', { name: 'Name *' })` | — (out of scope, pre-existing, `skill_form_page.py`) | From ELITEA-1735/1736/1737; not touched by PR #52 |
+| Skill Description field | `getByRole('textbox', { name: 'Description *' })` | — (out of scope, pre-existing) | Same as above |
+| Skill Instructions editor | `skill-instructions-editor-content` | on-automation/testids only (draft EliteaAI/EliteaUI#525) | `CreateSkillForm.jsx:303` `contentTestId=`; CodeMirror, use `press_sequentially` |
+| Skill Save button | `skill-save-button` | on-main ✓ | |
+| Agent Name field | `agent-name-input` | on-main ✓ | `CreateAgentForm.jsx:133` |
+| Agent Description field | `agent-description-input` | on-main ✓ | `CreateAgentForm.jsx:166` |
+| Agent Instructions field | `agent-instructions-input` | on-main ✓ | `InstructionsInput.jsx:347` |
+| Agent Save button | `agent-save-button` | on-main ✓ | `CreateApplicationTabBar.jsx:70` / `SaveApplicationButton.jsx:72` |
+| Agent add-skill button (Skills accordion) | `getByRole('button', { name: 'Skill', exact: true })` | — (out of scope, pre-existing) | Same handle as ELITEA-1735/1736; not touched by PR #52 |
+| Skill-attach popper item | `role="menuitem"`, accessible name = skill name | — (out of scope, pre-existing) | Same as above |
+| Chat composer "+" button | `plus-menu-button` | on-main ✓ | |
+| "Agents" menuitem in plus-menu | `role="menuitem"`, accessible name `"Agents"` | — (out of scope, pre-existing) | Not touched by PR #52 |
+| Agent-select popper item (chat participant add) | `role="menuitem"`, accessible name = agent's display name | — (out of scope, pre-existing) | Not touched by PR #52 |
+| Chat message input | `chat-message-input` | on-main ✓ | `ComponentsLib/Chat/UserInput.jsx:360`; mention-aware, use `press_sequentially`, never `fill()` — always re-snapshot after composer re-render |
+| Chat send button | `chat-send-button` | on-main ✓ | not used in this case (never sent a message) |
+| **"Switch Agent" composer button** — **REUSE, do not re-add** | `switch_participant_button` field → `chat-switch-participant-button` | on-automation/testids only (draft EliteaAI/EliteaUI#541) | `AgentEditorPanel.jsx:219`. Added for ELITEA-1736; PR #52 wrongly re-implemented `is_switch_agent_button_visible()` via raw `get_by_role('button', {name:'Switch Agent'})` instead of reusing the existing `LocatorDescriptor` field. **Fix: rewire the method to use `self.switch_participant_button` (already present at `chat_page.py:209`).** |
+| **"Mention skill" popper container** — **REUSE, do not re-add** | `mention_skill_list` field → `skill-mention-list` | on-automation/testids only (draft EliteaAI/EliteaUI#540) | `MentionSkillList.jsx:56`. Added for ELITEA-1735, confirmed already live for the chat surface during ELITEA-1736. PR #52's `open_mention_skill_popper()`/`is_skill_in_mention_popper()` wrongly located it via `get_by_text("Mention skill")` + `xpath=ancestor::div[2]` instead of reusing this field. **Fix: rewire both methods to use `self.mention_skill_list`.** |
+| **Mention-popper skill row** — **REUSE, do not re-add** | `MENTION_SKILL_ITEM` class constant → `[data-testid="skill-mention-item-{}"]` | on-automation/testids only (draft EliteaAI/EliteaUI#540) | `MentionSkillList.jsx:81` `testId={`skill-mention-item-${item.name}`}`. `is_skill_in_mention_popper()` wrongly used `popper.get_by_text(skill_name, exact=True)`. **Fix: `self.mention_skill_list.locator(self.MENTION_SKILL_ITEM.format(skill_name))`** (same pattern already used by `send_message_with_skill_mention`, `chat_page.py:2186-2187`). |
+| **Mention-popper empty state — NEW testid needed** | proposed `skill-mention-list-empty` | needs-adding | `MentionSkillList.jsx:67` (the `<Box sx={styles.empty}>` wrapping the `"No skills attached to this agent"` `Typography`, `EMPTY_LABEL` const at line 11). Container already has `skill-mention-list`, but `is_mention_popper_empty_state()` currently asserts via a bare `popper.get_by_text("No skills attached to this agent", exact=False)` — scoped inside a testid container, but still an added `get_by_text(` line that fails the reviewer's mechanical grep verbatim. **Fix: add `data-testid="skill-mention-list-empty"` to the `Box` at line 67; rewire the method to `self.mention_skill_list.get_by_test_id("skill-mention-list-empty")`.** |
+| **"Agents in this conversation" participant badge — NEW testid needed** | proposed `chat-participants-badge-{section}` (dynamic; this case only ever exercises `section="agents"` → `chat-participants-badge-agents`) | needs-adding | `CollapsedPerticapantsList.jsx:218` — the `<Box sx={styles.root}>` wrapping the section's `IconButton` (participant-count badge rendered via a CSS `::after`, per `.agents/memory/qa-engineer/…` — no DOM text node) — inside the `ENTITY_SECTIONS.map(entity => …)` loop (`entity.section` gives `'agents'`/`'pipelines'`/`'toolkits'`/`'mcp'`). PR #52's `is_participants_badge_visible()`/`open_participants_popover()` locate it via `[aria-label="Agents in this conversation"]`, resolving against the `StyledTooltip`'s auto-derived `aria-label` from its `title` prop (`${entity.label} in this conversation`, line 207) — brittle and Tooltip-internal. **Fix: template the testid per section (canonical dynamic-testid pattern, `.agents/testing.md` § Locator policy), add it to the `Box` at line 218, and only ever call it with `.format("agents")` in this test — do NOT hardcode a testid per other section, that's out of this test's scope.** |
+| **"Agents" participants popper — NEW testid needed** | proposed `chat-participants-popper` | needs-adding | `CollapsedParticipantsDropdown.jsx:136` — the `<Paper sx={[styles.paper, sx]}>` (the actual Popper/Grow content container; heading `Typography` at line 144 renders `entityType` prop, `"Agents"` for this flow). PR #52 located it via `page.locator("p").filter(has_text=re.compile(r"^Agents$"))` + `xpath=ancestor::div[3]` (with an explicit code comment acknowledging the fragility). **Fix: add `data-testid="chat-participants-popper"` to the `Paper` at line 136; rewire `open_participants_popover()` to `self.page.get_by_test_id("chat-participants-popper")`.** NOTE: this component renders once per open entity-type section — since only one section (`openSectionType`) is ever open at a time in this test's single-agent-participant flow, a static testid is unambiguous here; flag to the implementer if a future multi-entity-type case needs disambiguation. |
+| **Participant row — NEW testid needed** | proposed `chat-participant-row-{uniqueId}` (dynamic; `uniqueId` = `getChatParticipantUniqueId(participant)`, e.g. `application_4687_399`) | needs-adding | `ParticipantItem.jsx:250` — the hoverable `<Box onClick={onClickHandler} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} sx={styles.contentWrapper}>` (the row `contentWrapper`, shared by every participant type via this one component). PR #52's `remove_agent_participant()` locates the row via `popper.get_by_text(agent_name, exact=True).first.locator("xpath=ancestor::div[2]")` — fragile ancestor-walk off free text. **Fix: add `data-testid={`chat-participant-row-${getChatParticipantUniqueId(participant)}`}` to this `Box` (helper already imported one level up in `CollapsedParticipantsDropdown.jsx`; import `getChatParticipantUniqueId` from `@/[fsd]/features/chat/participants/lib/helpers` into `ParticipantItem.jsx` too); rewire the page-object method to hover `self.page.locator(self.PARTICIPANT_ROW.format(unique_id))` (new UPPER_CASE class constant, same templated pattern as `MENTION_SKILL_ITEM`). |
+| **"Remove agent" hover-reveal icon button — NEW testid needed** | proposed `chat-participant-remove-button` (static; scope via the row's dynamic testid, no need for the button itself to be dynamic — multiple simultaneous rows disambiguate through the parent row testid) | needs-adding | `DeleteParticipantButton.jsx:75` — the `<IconButton disabled={disabled} onClick={onClickDelete} variant="elitea" color="tertiary" id="DeleteButton" sx={sx}>` (shared `ParticipantActions`/`DeleteParticipantButton` component, used by every participant type; label text is `Remove ${entityType}` — `"Remove agent"` for this case). PR #52 locates it via `row.get_by_role("button", name="Remove agent")` (hover-reveal already correctly handled with `row.hover()` + a 300ms CSS-transition wait — keep that mechanic, only the locator changes). **Fix: add `data-testid="chat-participant-remove-button"` to the `IconButton`; rewire to `row.get_by_test_id("chat-participant-remove-button")` where `row` is now resolved via the new `chat-participant-row-{uniqueId}` testid instead of the old ancestor-walk.** |
+| "Edit agent" icon button — **NOT touched by this test, no testid added** | — | out-of-scope (flagged for future work) | `EditParticipantButton.jsx` (same `ParticipantActions` row). The case's step 7 hovers the row (which reveals both buttons) but only ever clicks "Remove agent" — per `.agents/role-overrides.md`'s scope rule ("exactly the elements the case's test touches"), do NOT add a testid to the Edit button in this rework; whichever case first exercises agent-in-chat editing should add `chat-participant-edit-button` then. |
+| "Remove agent?" confirmation dialog | `Dialog.wait_for(page)` / `Dialog.click_button(dialog, "Remove")` (`automation/components/mui.py`) — `[role="dialog"]` + `button:has-text(...)`, **NOT testid-based** | — (pre-existing shared framework component, out of scope) | Checked per dispatch instructions: the shared `Dialog` helper is generic role/text-based infra reused across ~15+ existing flows, predates this rework, and is not new code PR #52 introduced — retrofitting it to testid is a framework-wide change outside this ticket's scope, not something to fix ad hoc here. Body text `"Are you sure to remove the {agent name} agent from chat?"`, buttons `"Cancel"`/`"Remove"`. No type-to-confirm (unlike agent/skill entity delete). |
+| Agent overflow menu (agent detail page) | `agent-actions-menu-button` | on-main ✓ (dynamically constructed: `DotMenu.jsx:346` `` data-testid={id ? `${id}-menu-button` : undefined} `` with `id="agent-actions"` from `ApplicationControls.jsx:219` — not a literal string in source, confirmed by tracing the prop, not a plain grep) | AGENT group → `delete-agent-menuitem` (same dynamic pattern: `DotMenu.jsx:57` `` `${testId}-menuitem` `` with `testId={item.key}`, `key: 'delete-agent'` from `DeleteApplicationButton.jsx:63`) |
+| Skill overflow menu (skill detail page) | `skill-controls-menu-button` | on-main ✓ | `SkillControls.jsx:233` (explicit `anchorButtonProps`) |
+| Delete-confirmation name field | `delete-confirm-name-input` (scope to inner `#name` field) | on-automation/testids only (draft EliteaAI/EliteaUI#525) | `DeleteEntityModal.jsx:81`; shared component across agent/skill delete flows; type-to-confirm required |
 
 ## Expected Results
 - Adding an agent as a chat participant surfaces its attached skill via
