@@ -29,3 +29,14 @@ listed. When auditing: don't stop at grep-checking the table rows — pull the
 full comment body and grep it for `[^/]#[0-9]+` (bare, not preceded by
 `owner/repo`) to catch stray bare links in prose lines, and sanity-check any
 "N things" language against the actual enumerated list.
+
+**Recurrence, issue #36 (2026-07-15):** this time the bare-link violation was
+IN the artifact table itself (`` `EliteaUI` PR #549 ``, `` `EliteaUI` PR
+#526 `` — two rows), not just prose below it — confirmed dead links via
+`gh api repos/<this-repo>/issues/549`/`526` → both 404. `.agents/workflow.md`'s
+worked example shows the correct table form (`EliteaAI/EliteaUI#<M>`), but a
+delivery can still drift off it inside the table, not just in the free-text
+lines underneath. Don't assume table rows are safe just because the canon's
+example gets them right — grep the WHOLE comment (table + prose) every time,
+per the rule above; this occurrence is exactly why that rule says "entire
+posted comment."

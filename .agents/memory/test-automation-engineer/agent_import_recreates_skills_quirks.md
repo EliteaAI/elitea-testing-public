@@ -6,12 +6,31 @@ type: feedback
 
 ## Agent import flow (ELITEA-1795)
 
-- Agents list toolbar "Import" button (`/agents/all`) has **no data-testid**
-  — resolve via `page.get_by_role("button", name="Import")`. Clicking opens
-  a native OS file chooser directly (no intermediate menu).
-- Selecting a `.md` file opens an "Import parameters" dialog
-  (`getByRole('dialog')`, heading "Import parameters") with TWO collapsed
-  preview sections, each behind its own "Show details" toggle:
+> **Superseded 2026-07-15 (testid-only rework, issue #37, PR #287).** All raw
+> role/text handles below are now `data-testid`s: `agents-import-button`
+> (toolbar), `agent-import-preview-dialog` / `agent-import-complete-dialog`
+> (state-dependent on the SAME `Modal.BaseModal`), `agent-import-preview-name`
+> / `agent-import-preview-skill-name` (Main-entity vs Skill-entity name
+> previews), `agent-import-preview-card-toggle` (shared "Show details" toggle
+> — rendered only while its own card is collapsed, so the shrinking-locator
+> loop below still converges), `agent-import-preview-skill-instructions`,
+> `agent-import-confirm-button`, `agent-import-complete-list-agents` /
+> `-skills` (per-category containers), `agent-import-complete-got-it-button`.
+> Added via EliteaUI draft PR #552 (threads EL-1737's optional-testId-prop
+> convention through the shared `ImportWizardModal`, which serves BOTH
+> Agent-import and Pipeline-import with no code-level flag distinguishing
+> them — a genuine canon gap, resolved as a declared improvisation; see the
+> `test-automation-engineer` daily log 2026-07-15 09:02 entry for the full
+> reasoning). The functional/behavioral facts below (dialog structure, API
+> shape, the shrinking-locator bug) are still accurate — only the *handle*
+> descriptions are outdated.
+
+- Agents list toolbar "Import" button (`/agents/all`) now resolves via the
+  `agents-import-button` data-testid. Clicking opens a native OS file
+  chooser directly (no intermediate menu).
+- Selecting a `.md` file opens an "Import parameters" dialog (now
+  `agent-import-preview-dialog`, heading "Import parameters") with TWO
+  collapsed preview sections, each behind its own "Show details" toggle:
   - "Main entity" (the Agent: name/type, then Description/Instructions/
     Welcome message/Chat starters/Other behind the toggle)
   - "Skills" (each embedded Skill: name/type, then Description/
