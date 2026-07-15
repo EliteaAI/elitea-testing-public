@@ -53,6 +53,13 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
 
     pipeline_page = PipelineDetailPage(page)
 
+    # Registered before Step 1 so console errors from every step (node
+    # click, dropdown opens, tool selection, Input-mapping render) are
+    # captured — not just from Step 9 onward. AFS Expected Results require
+    # "no console errors at any step".
+    console_errors = []
+    page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+
     with allure.step("Step 1 — Navigate to the pipeline; verify configuration panel loads"):
         pipeline_page.navigate(pipeline_id)
         pipeline_page.dismiss_banner_if_present()
@@ -93,8 +100,7 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
         )
         # Close by selecting the new toolkit directly (step 5) rather than a
         # separate close action — the AFS steps 4→5 are one continuous flow.
-        option = page.locator(pipeline_page.SELECT_OPTION.format(new_toolkit_name))
-        option.click(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.select_open_listbox_option(new_toolkit_name, timeout=UI_ELEMENT_TIMEOUT)
 
     with allure.step("Step 5 — Select the other MCP; Toolkit combobox shows the new name"):
         new_toolkit_value = pipeline_page.get_mcp_node_toolkit_value()
@@ -125,8 +131,7 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
         )
 
     with allure.step("Step 7 — Select a tool from the new MCP's list; Tool combobox shows it"):
-        option = page.locator(pipeline_page.SELECT_OPTION.format("ask_question"))
-        option.click(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.select_open_listbox_option("ask_question", timeout=UI_ELEMENT_TIMEOUT)
         selected_tool = pipeline_page.get_mcp_node_tool_value()
         assert selected_tool == "ask_question", (
             f"Tool select should show 'ask_question' after selection, got {selected_tool!r}"
@@ -144,19 +149,14 @@ def test_mcp_node_change_toolkit_and_tool(page, mcp_pipeline_with_toolkits):
         # behavior (per-tool-parameter mapping), distinct from the separate,
         # tool-agnostic Input/Output state-variable selects (which do NOT
         # change with tool selection — see AFS Coverage Map row 8).
-        repo_name_field = page.locator(
-            pipeline_page.MCP_NODE_INPUT_MAPPING_VALUE.format("repoName")
-        )
-        question_field = page.locator(
-            pipeline_page.MCP_NODE_INPUT_MAPPING_VALUE.format("question")
-        )
-        assert repo_name_field.is_visible(), "repoName Value field should be visible"
-        assert question_field.is_visible(), "question Value field should be visible"
+        assert pipeline_page.is_mcp_node_input_mapping_value_visible(
+            "repoName", timeout=UI_ELEMENT_TIMEOUT
+        ), "repoName Value field should be visible"
+        assert pipeline_page.is_mcp_node_input_mapping_value_visible(
+            "question", timeout=UI_ELEMENT_TIMEOUT
+        ), "question Value field should be visible"
 
     with allure.step("Step 9 — Fill Input-mapping fields; Save; verify 201 + no console errors"):
-        console_errors = []
-        page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
-
         pipeline_page.fill_mcp_node_input_mapping_value("repoName", _REPO_NAME_VALUE)
         pipeline_page.fill_mcp_node_input_mapping_value("question", _QUESTION_VALUE)
 

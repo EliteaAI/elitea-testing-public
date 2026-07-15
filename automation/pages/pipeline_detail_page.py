@@ -827,6 +827,23 @@ class PipelineDetailPage(PipelineFormPage):
         count = options.count()
         return [(options.nth(i).text_content() or "").strip() for i in range(count)]
 
+    def select_open_listbox_option(self, option_value: str, timeout: int = 5000) -> None:
+        """Click an option in the currently-open Toolkit/Tool listbox.
+
+        Use this when the caller needs to inspect the open option list (e.g.
+        via ``get_open_listbox_option_names``) before choosing one — the
+        dropdown is already open, so this only performs the click. When no
+        prior inspection is needed, prefer ``select_mcp_node_toolkit`` /
+        ``select_mcp_node_tool``, which open the dropdown and select in one
+        call.
+
+        Args:
+            option_value: The option's value (matches ``select-option-{value}``).
+            timeout: Maximum wait time for the option to be clickable.
+        """
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.click(timeout=timeout)
+
     def select_mcp_node_toolkit(self, toolkit_name: str, timeout: int = 5000) -> None:
         """Open the Toolkit dropdown and select *toolkit_name*.
 
@@ -882,6 +899,28 @@ class PipelineDetailPage(PipelineFormPage):
         field.press("Control+a")
         field.press("Delete")
         field.press_sequentially(value, delay=20)
+
+    def is_mcp_node_input_mapping_value_visible(self, param_name: str, timeout: int = 5000) -> bool:
+        """Check whether an Input-mapping "Value" field is visible for *param_name*.
+
+        Used right after a Tool selection to confirm the mapping section
+        rendered a Value field for each of the new tool's parameters — a
+        pure visibility/rendering check, distinct from reading its content
+        (see ``get_mcp_node_input_mapping_value``).
+
+        Args:
+            param_name: The tool parameter name (e.g. ``"repoName"``).
+            timeout: Maximum wait time for the field to appear.
+
+        Returns:
+            True if the field is visible within *timeout*, False otherwise.
+        """
+        field = self.page.locator(self.MCP_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        try:
+            field.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
 
     def is_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:
         """Check whether the "Input mapping (required N)" accordion is visible.
