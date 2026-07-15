@@ -74,6 +74,27 @@ class AgentDetailPage(AgentFormPage):
     # SkillDetailPage.VERSION_OPTION.
     VERSION_OPTION = '[data-testid="version-option-{}"]'
 
+    # --- Variables section (ELITEA-1884 testid-only rework — added via
+    # add-data-testid to ApplicationVariables.jsx / VariableList.jsx; see
+    # EliteaUI draft PR #568). `ApplicationVariables.jsx` renders `null`
+    # (the whole section absent from the DOM, not merely empty/collapsed)
+    # when the current Instructions text contains zero `{{name}}`
+    # references — confirmed live in the ELITEA-1884 analyst run. ---
+    variables_section = LocatorDescriptor(
+        testid="agent-variables-section",
+        description='"Variables" accordion section — absent from the DOM '
+                    "entirely when Instructions has zero {{name}} references"
+    )
+    # Dynamic (runtime-parameterized) testid templates, keyed by variable
+    # name — same class-constant + `.format()` pattern as VERSION_OPTION
+    # above (`.agents/testing.md` § Locator policy).
+    VARIABLE_ROW = '[data-testid="agent-variable-row-{}"]'
+    VARIABLE_INPUT = '[data-testid="agent-variable-input-{}"]'
+    # Prefix-match variant: enumerates every currently-rendered variable row
+    # (used to read back DOM order, which mirrors first-appearance order in
+    # the Instructions text — see get_variable_row_names()).
+    VARIABLE_ROW_ANY_SELECTOR = '[data-testid^="agent-variable-row-"]'
+
     # --- Toolkits section ---
     toolkits_section = LocatorDescriptor(testid="agent-toolkits-section")
     add_toolkit_button = LocatorDescriptor(testid="agent-add-toolkit-button")
@@ -389,6 +410,85 @@ class AgentDetailPage(AgentFormPage):
         """
         option = self.page.locator(self.VERSION_OPTION.format(version_name))
         return option.get_attribute("aria-selected") == "true"
+
+    # ------------------------------------------------------------------
+    # Variables section (derived live from Instructions text, ELITEA-1884)
+    # ------------------------------------------------------------------
+
+    def is_variables_section_visible(self, timeout: int = 5000) -> bool:
+        """Return True if the "Variables" accordion section is rendered.
+
+        LOCATOR: ``agent-variables-section`` testid. `ApplicationVariables.jsx`
+        returns ``null`` (the section entirely absent from the DOM, not just
+        empty/collapsed) whenever the current Instructions text contains zero
+        ``{{name}}`` references — confirmed live in the ELITEA-1884 analyst
+        run. Callers checking for absence should expect this to return
+        ``False`` promptly (no long timeout needed) rather than waiting out
+        a full default timeout for a node that will never appear.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            self.variables_section.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def is_variable_row_visible(self, variable_name: str, timeout: int = 5000) -> bool:
+        """Return True if a variable row for *variable_name* is rendered.
+
+        LOCATOR: dynamic ``agent-variable-row-{variable_name}`` testid (see
+        ``VARIABLE_ROW`` above). The Variables list is derived live from the
+        Instructions textarea via regex parsing — no save/reload is required
+        for a row to appear or disappear after editing Instructions.
+
+        Args:
+            variable_name: Exact variable name (e.g. ``"tone"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        row = self.page.locator(self.VARIABLE_ROW.format(variable_name))
+        try:
+            row.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def wait_for_variable_row_hidden(self, variable_name: str, timeout: int = 5000):
+        """Wait until the variable row for *variable_name* is absent/hidden.
+
+        Use this (rather than a bare negative ``is_variable_row_visible``
+        check) right after editing Instructions to remove a ``{{name}}``
+        reference — the row's disappearance is instant/client-side (derived
+        re-render off the Instructions textarea, no round-trip), but this
+        still avoids a race against React's render cycle.
+
+        Args:
+            variable_name: Exact variable name (e.g. ``"department"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        row = self.page.locator(self.VARIABLE_ROW.format(variable_name))
+        row.wait_for(state="hidden", timeout=timeout)
+
+    def get_variable_row_names(self, timeout: int = 5000) -> list[str]:
+        """Return variable names in the order their rows render in the DOM.
+
+        LOCATOR: ``VARIABLE_ROW_ANY_SELECTOR`` prefix-match, read back via
+        each row's own ``data-testid`` attribute. DOM order mirrors
+        first-appearance order of each ``{{name}}`` reference in the
+        Instructions text (confirmed live, ELITEA-1884 AFS Axis 2).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the section itself.
+        """
+        self.variables_section.wait_for(state="visible", timeout=timeout)
+        rows = self.page.locator(self.VARIABLE_ROW_ANY_SELECTOR)
+        names = []
+        for i in range(rows.count()):
+            testid = rows.nth(i).get_attribute("data-testid") or ""
+            if testid.startswith("agent-variable-row-"):
+                names.append(testid[len("agent-variable-row-"):])
+        return names
 
     # ------------------------------------------------------------------
     # Internal tools (switches)
