@@ -1,6 +1,6 @@
 ---
 name: MUI form field quirks
-description: Reusable Playwright/MUI gotchas found implementing ELITEA-1737/1738 (skill export/import) — wrapper-testid resolution, replacing pre-filled text, download filenames, silent maxlength truncation, SingleSelect option testids
+description: Reusable Playwright/MUI gotchas found implementing ELITEA-1737/1738/1790 — wrapper-testid resolution, replacing pre-filled text, download filenames, silent maxlength truncation, SingleSelect option testids, Tooltip-on-disabled-child label placement
 type: feedback
 ---
 
@@ -118,3 +118,33 @@ which already had `data-testid`/`*DataTestId` plumbing).
 the wrong field" situation**: don't rip out the existing testid (blast
 radius = every consumer); add an optional override field on the data object
 the component already renders from, with the old testid as the fallback.
+
+## MUI `Tooltip` wraps disabled children: the accessible label lands on the wrapper span, not the child
+
+When a `<Tooltip title="...">` wraps a `<Box component="span">` that in turn
+wraps a `disabled` button (`SkillMenu.jsx`'s "+ Skill" add button at the
+5-skill limit), MUI moves the tooltip's accessible label/description to the
+wrapper `<span>`, never onto the disabled child — disabled elements don't
+fire hover/focus events, so MUI can't attach the tooltip mechanism there.
+Confirmed live (ELITEA-1790 rework): `<Box component="span" aria-label="...">`
+wraps `<BaseBtn disabled ... data-testid="agent-add-skill-button">`.
+
+A testid on the inner button does NOT let you read the tooltip text off
+that same element — `.get_attribute("aria-label")` on the button returns
+`None`. Two compliant options, in order of preference:
+1. If the wrapper is plain first-party JSX (usually is, for a `Box`/`span`
+   wrapper an app author wrote), give **it** its own testid too
+   (`{section}-{element}-tooltip`) via `add-data-testid` — this project's
+   testid-only policy forbids reaching the wrapper via a raw
+   `xpath=".."`/`locator("..")` parent traversal chained off the button's
+   field, even though it's tempting since the button field already exists
+   (only `[data-testid="…"]` string/template constants are sanctioned scoped
+   sub-selectors — see `.agents/testing.md` § Locator policy).
+2. Only if the wrapper is a genuinely third-party/library-internal node you
+   can't attach a prop to, stop+flag to the lead instead of improvising a
+   raw selector.
+
+Watch for this same shape (Tooltip + disabled child) anywhere else a
+button/control becomes conditionally disabled with an accompanying tooltip
+message — the label will be on the ancestor, not the control, and needs its
+own handle.
