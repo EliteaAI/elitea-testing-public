@@ -116,6 +116,16 @@ class PipelineDetailPage(PipelineFormPage):
         description="MCP node's tool-agnostic Output state-variable select"
     )
 
+    mcp_node_input_mapping_required_heading = LocatorDescriptor(
+        testid="pipeline-mcp-node-input-mapping-heading",
+        description=(
+            "MCP node's 'Input mapping (required N)' accordion heading "
+            "(BasicAccordion.jsx summary, gated to nodeType==mcp in "
+            "BaseToolNode.jsx — added via add-data-testid for ELITEA-1954 "
+            "review fix pass; case steps 4 and 6)"
+        )
+    )
+
     # Dynamic (runtime-parameterized) testid — the Input-mapping "Value"
     # field is one per tool parameter (e.g. RepoName, Question). Class-level
     # template constant per .agents/testing.md § Locator policy, formatted
@@ -126,6 +136,12 @@ class PipelineDetailPage(PipelineFormPage):
     # selects (SingleSelectMenuItem.jsx: `select-option-{value}`) — confirmed
     # present and reliable per ELITEA-1954 AFS Concrete Handles.
     SELECT_OPTION = '[data-testid="select-option-{}"]'
+
+    # Prefix-match variant of SELECT_OPTION for enumerating every option
+    # currently rendered in an open Toolkit/Tool listbox — same testid
+    # family (`select-option-{value}`), no value known up front. Still
+    # testid-keyed, not a raw role/CSS selector.
+    SELECT_OPTION_PREFIX = '[data-testid^="select-option-"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -782,12 +798,16 @@ class PipelineDetailPage(PipelineFormPage):
     def open_mcp_node_toolkit_select(self, timeout: int = 5000) -> None:
         """Open the MCP node's Toolkit dropdown."""
         self.mcp_node_toolkit_select.click(timeout=timeout)
-        self.page.locator('[role="listbox"]').wait_for(state="visible", timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(
+            state="visible", timeout=timeout
+        )
 
     def open_mcp_node_tool_select(self, timeout: int = 5000) -> None:
         """Open the MCP node's Tool dropdown."""
         self.mcp_node_tool_select.click(timeout=timeout)
-        self.page.locator('[role="listbox"]').wait_for(state="visible", timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(
+            state="visible", timeout=timeout
+        )
 
     def get_open_listbox_option_names(self) -> list[str]:
         """Return the visible text of every option in the currently-open listbox.
@@ -797,13 +817,13 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             List of option display texts, in DOM order.
         """
-        # Native MUI <Select> menu items carry role="option" (confirmed live
-        # during ELITEA-1954 Phase 2 exploration) — NOT role="menuitem",
-        # which is the different Popper-based search-widget convention
-        # documented in .claude/rules/mui-patterns.md § MUI Popper / Dropdown
-        # Pattern (a different component: agent toolkit search, not a
-        # SingleSelect).
-        options = self.page.locator('[role="listbox"] [role="option"]')
+        # Each option carries `data-testid="select-option-{value}"`
+        # (SingleSelectMenuItem.jsx) — the same testid family already used
+        # by select_mcp_node_toolkit/select_mcp_node_tool via SELECT_OPTION.
+        # Only one listbox is open at a time (MUI portals it to <body>), so
+        # a prefix match across the whole page enumerates exactly this
+        # listbox's options.
+        options = self.page.locator(self.SELECT_OPTION_PREFIX)
         count = options.count()
         return [(options.nth(i).text_content() or "").strip() for i in range(count)]
 
@@ -873,12 +893,13 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             True if the section with the exact required count is visible.
         """
-        heading = self.page.get_by_text(f"Input mapping (required {required_count})", exact=True)
+        heading = self.mcp_node_input_mapping_required_heading
         try:
             heading.wait_for(state="visible", timeout=timeout)
-            return True
         except Exception:
             return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (required {required_count})"
 
     def save_and_wait_for_update(self, project_id: str, pipeline_id: int, timeout: int = 15000) -> dict:
         """Click Save and wait for the update PUT's 201 response.
