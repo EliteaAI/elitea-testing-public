@@ -10,15 +10,22 @@
 - **User set**: `${TEST_USER}` (on localhost, `auth_state` fixture skips login via
   `VITE_DEV_TOKEN`)
 - **Analyst**: qa-engineer (Sage), analyst slot
-- **Status**: ready-for-automation — case executed end-to-end, fully passes. No
-  defect found; the limit is enforced, and enforcement is **stronger** than the
-  case text implies (see Coverage Map / clarification below): the add-skill
-  control is proactively **disabled** (not merely rejecting a 6th click) the
-  instant 5/5 is reached, with an accessible tooltip ("Maximum number of skills
-  reached") confirming the reason. Confirmed the disabled state is real at the
-  DOM/actionability level — Playwright's own `click()` timed out attempting to
-  interact with it (element genuinely not enabled), which is stronger evidence
-  than an on-click rejection message would have been.
+- **Status**: `ready-for-automation` — **REWORK pass (locator-compliance only,
+  no re-execution)**. This case was previously automated and merged (PR #48);
+  behavior is already proven and is NOT being re-verified here. A
+  framework-alignment audit (2026-07-15) found 3 raw non-testid handles in the
+  merged implementation, all traceable to the two Concrete-Handles rows below
+  that were written as "no `data-testid`" at analysis time — under
+  `.agents/role-overrides.md` § Analyst slot, a missing testid is a work item,
+  never an accepted permanent handle. Fresh-fetch re-verification (this pass)
+  found one of the two is **not actually a fresh testid-needed item**: the
+  button's testid (`agent-add-skill-button`) already exists on
+  `automation/testids` (draft EliteaUI#540) — it just needs to be *used*,
+  not added. The wrapper-span raw handle is replaced by a scoped read off
+  that same testid (no new testid). See **Handles Reference — Rework**
+  below for the full corrected work order. Original functional finding (no
+  defect; limit enforcement is stronger than the case text implies) stands
+  unchanged.
 
 ## Preconditions
 - User is logged in (on localhost, `auth_state` fixture skips login).
@@ -222,8 +229,8 @@ final skills-list screenshot confirms only `automated-test-explainer` remains.
 | Agent Name field | `getByTestId('agent-name-input')` | — |
 | Agent Description field | `getByTestId('agent-description-input')` | — |
 | Agent Save button (create form) | `getByTestId('agent-save-button')` | — |
-| Agent detail-page Skills add-skill button (normal, <5 attached) | `getByRole('button', { name: 'Skill', exact: true })` | no `data-testid` — matches ELITEA-1735/1789's implementer-amended handle |
-| **Agent detail-page Skills add-skill button (at 5/5, disabled — this case's core assertion)** | `getByLabel('Maximum number of skills reached')` locating the wrapping `<span>`, then `.locator('button')` for the actual disabled control, or directly `page.locator('[aria-label="Maximum number of skills reached"] button')` | no `data-testid`; `aria-label` lives on the MUI-Tooltip wrapper `<span>`, not the `<button>` itself (MUI wraps disabled buttons in an aria-labelled span since disabled elements don't fire hover/focus for native tooltips) — **assert `toBeDisabled()` on the inner button**, and optionally assert the wrapper's `aria-label` text for the message |
+| Agent detail-page Skills add-skill button (normal AND disabled state — SAME DOM button) | `getByTestId('agent-add-skill-button')` — **`on-automation/testids only (draft EliteaUI#540)`**, not yet on `origin/main` (see Handles Reference — Rework below) | superseded raw handle (pre-rework): `getByRole('button', { name: 'Skill', exact: true })` |
+| **Agent detail-page Skills add-skill button (at 5/5, disabled — this case's core assertion)** | Same testid as above, `getByTestId('agent-add-skill-button')` covers both enabled and disabled state; assert `toBeDisabled()` on it | superseded raw handle (pre-rework): `page.locator('[aria-label="Maximum number of skills reached"] button')` / `page.locator('[aria-label="Maximum number of skills reached"]')` for the wrapper — no new testid needed for the wrapper span; see reasoning below |
 | Skill-attach popper item | `role="menuitem"`, accessible name = skill name (search box placeholder `"Search skills..."`, `getByRole('menuitem', { name: skillName, exact: true })` — **use `exact: true`**, a substring match on `elitea-1790-skill-` will ambiguously match multiple menuitems) | — |
 | Skills-added counter text | `getByText(/\d\/5 skills added\./)` | — |
 | Attached-skill card name + version | card shows skill name as plain text + `.version-text` span for the version label (see ELITEA-1789 for version-selector interaction specifics, not exercised by this case) | — |
@@ -233,6 +240,134 @@ final skills-list screenshot confirms only `automated-test-explainer` remains.
 | Delete-skill menu item | `getByTestId('skill-delete-menu-item')` | — |
 | Delete-confirmation name field | `getByTestId('delete-confirm-name-input')` scoped to inner `#name` field | shared component, both agent and skill delete flows |
 | Delete-confirmation confirm button | `getByRole('button', { name: 'Delete' })` scoped to the dialog | enabled only once typed name matches |
+
+## Handles Reference — Rework (2026-07-15, locator-compliance pass)
+
+Per `.agents/role-overrides.md` § Analyst slot: this project has NO locator
+ladder, only `data-testid`; every handle row below carries a PROVENANCE
+column verified with a **fresh fetch** (`cd ../EliteaUI && git fetch origin`
+run immediately before the greps, in the same command block).
+
+### Raw handles found in the merged implementation (PR #48) — testid work items
+
+**Correction during this rework pass:** my first grep pass wrongly concluded
+`agent-add-skill-button` was `needs-adding` — that grep matched an unrelated
+line ("Maximum number of skills reached") at the same line number on both
+refs and I stopped there without diffing the rest of the file. A full
+repo-wide `git grep` (below) shows the testid **already exists** on
+`automation/testids` — added by draft PR **EliteaUI#540** ("test: [EL-1735]
+add data-testid hooks for agent-skills attach/mention flow",
+`testids/ELITEA-1735-skills-testids`, still `DRAFT` as of 2026-07-15) — and
+is genuinely **absent from `origin/main`**. This also matches this agent's
+own prior memory note (ELITEA-1789 rework session, same day): "`agent-add-skill-button`
+now has a real testid (same draft #540)". Corrected table:
+
+| # | Raw handle (superseded) | Where used | Testid to use | Provenance (verified 2026-07-15, fresh fetch) |
+|---|---|---|---|---|
+| 1 | `page.get_by_role("button", name="Skill", exact=True)` | Skills-section "+ Skill" add button, enabled state | **`agent-add-skill-button`** | `on-automation/testids only (draft EliteaUI#540)` — NOT a new-testid work item; no `add-data-testid` run needed, just switch the locator to the testid that already exists on the dev server. Blocked from promoting to `main` until #540 merges. |
+| 2 | `page.locator('[aria-label="Maximum number of skills reached"] button')` | Same button, disabled state (SAME DOM node as #1 — only the `disabled` prop toggles) | **`agent-add-skill-button`** (same testid — one node, one handle, regardless of disabled state) | same as #1 — same node, same provenance |
+| 3 | `page.locator('[aria-label="Maximum number of skills reached"]')` | Wrapper `<span>` used to read the tooltip/aria-label text | *(none proposed — see reasoning below)* | n/a — no testid needed on the wrapper; reasoning below |
+
+**Why one testid covers both button states (#1 and #2).** Source
+(`../EliteaUI/src/[fsd]/features/skill/ui/SkillMenu.jsx`) shows a single
+`<BaseBtn>` whose only state change between "normal" and "at-limit" is the
+`disabled` prop (`disabled={isButtonDisabled}`, where `isButtonDisabled =
+disabled || isEntityUnsaved`) — not two components, not a swapped node. On
+`automation/testids` (post-#540) the testid sits directly on that `<BaseBtn>`:
+`data-testid="agent-add-skill-button"` at line 180, alongside the existing
+`disabled={isButtonDisabled}` at line 176 — same node, same testid, both
+states. The implementer asserts `toBeDisabled()`/`not toBeDisabled()` on the
+*same* located element rather than needing two testids.
+
+**Why the wrapper span (#3) does not need its own testid.** The `aria-label`
+lives on MUI's `<Box component="span">` Tooltip wrapper (`SkillMenu.jsx:153,
+158`) because MUI wraps disabled buttons in an aria-labelled span — disabled
+elements don't fire hover/focus, so the tooltip mechanism moves the
+accessible description to the ancestor. Once the button itself carries
+`agent-add-skill-button`, the implementer does not need a second testid to
+read that text: `page.get_by_test_id("agent-add-skill-button").locator("xpath=..")`
+(one hop to the immediate parent `<span>`) yields the wrapper without ever
+locating it independently — the testid-located button is still the anchor,
+per `.agents/testing.md` § Locator policy's "scoped sub-selector off an
+existing field" allowance (`.claude/rules/page-objects.md`). Adding a
+second, unused-for-navigation testid purely to assert one attribute would be
+exactly the "testid on an element no test uses for locating" pattern the
+team's scope rule (role-overrides.md § Every role — locator policy) doesn't
+require — the button's testid is the load-bearing handle; the aria-label
+text is read off it, not located via a rung of its own. **Documented as a
+judgment call, not a hard rule**: if the implementer finds the one-hop
+parent traversal awkward in practice (e.g. MUI DOM structure changes), a
+second testid on the wrapper span (`agent-skill-limit-tooltip`) is an
+acceptable escalation — not required by this AFS.
+
+### Provenance verification — fresh-fetch command output (verbatim)
+
+```
+$ cd ../EliteaUI && git fetch origin
+   (ran clean; no output — nothing new beyond what was already local)
+
+$ git rev-parse origin/main automation/testids
+1707d98c7932173d271815216318f1fe1d9d2b1c
+96b4dae933cb899d1bcd05916c4f2fc2d03eb7e1
+
+$ git grep -n "agent-add-skill-button" origin/main
+(no output — exit 1, not found on main)
+
+$ git grep -n "agent-add-skill-button" automation/testids
+automation/testids:src/[fsd]/features/skill/ui/SkillMenu.jsx:180:              data-testid="agent-add-skill-button"
+
+$ git log automation/testids --oneline -- 'src/[fsd]/features/skill/ui/SkillMenu.jsx' | head -3
+916fcc3 test: [EL-1735] add data-testid hooks for agent-skills attach/mention flow
+e44a6f9 feat: [EL-5699] custom icon upload for skills (#493)
+a1eaf9c feat: [EL-5206] Skills library UI (#350)
+
+$ env -u GITHUB_TOKEN gh pr list --repo EliteaAI/EliteaUI --search "agent-add-skill-button" --state all
+540	test: [EL-1735] add data-testid hooks for agent-skills attach/mention flow	testids/ELITEA-1735-skills-testids	DRAFT	2026-07-14T19:16:32Z
+```
+
+**Verdict: `on-automation/testids only (draft EliteaUI#540)`.** The testid
+already exists on the dev-server-serving integration branch (commit
+`916fcc3`, "test: [EL-1735] add data-testid hooks for agent-skills
+attach/mention flow") and is exposed by draft PR #540 to `main`
+(`testids/ELITEA-1735-skills-testids`, still `DRAFT`). It is genuinely absent
+from `origin/main` today. **This means no fresh `add-data-testid` run is
+needed for this handle** — the implementer switches the two raw-handle call
+sites to `LocatorDescriptor(testid="agent-add-skill-button")` and the value
+is already live at `localhost:5173` (which serves ALL of
+`automation/testids`, merged or draft, per this project's dual-target
+convention). Promoting this case's own test to `main` remains blocked until
+PR #540 merges — track that dependency in the closure record, don't
+re-derive it.
+
+**Wrapper span (#3) — confirmed no additional testid on either ref**, same
+grep pattern applied to the `aria-label` string itself:
+
+```
+$ git grep -n "Maximum number of skills reached" origin/main -- src
+origin/main:src/[fsd]/features/skill/ui/SkillMenu.jsx:162:      ? 'Maximum number of skills reached'
+
+$ git grep -n "Maximum number of skills reached" automation/testids -- src
+automation/testids:src/[fsd]/features/skill/ui/SkillMenu.jsx:162:      ? 'Maximum number of skills reached'
+```
+
+Both resolve to the same source line (the `tooltipTitle` ternary) — the
+wrapper `<Box component="span">` itself carries no `data-testid` on either
+ref, and none is being requested (see reasoning above: read via a one-hop
+parent traversal off the button's testid instead).
+
+### `skill-instructions-editor-content` provenance (dependency of `_create_skill` helper)
+
+| Check | Command | Result |
+|---|---|---|
+| On `origin/main`? | `git grep -n "skill-instructions-editor-content" origin/main -- src` | **No match** (exit 1) — absent from main |
+| On `automation/testids`? | `git grep -n "skill-instructions-editor-content" automation/testids -- src` | **Match**: `automation/testids:src/[fsd]/features/skill/ui/skill-details/form/CreateSkillForm.jsx:303: contentTestId="skill-instructions-editor-content"` |
+
+**Verdict: `on-automation/testids only (draft #526)`** — confirmed via fresh
+fetch, not assumed. The testid exists today only on the integration branch;
+`_create_skill`'s dependency on it remains blocked from promoting to `main`
+until EliteaUI PR #526 merges. This is a pre-existing condition (not
+introduced by this rework) but is re-confirmed here per the fresh-ground-truth
+rule rather than carried forward from a stale prior claim.
 
 ## Network Behavior
 - `PATCH /api/v2/elitea_core/skill/prompt_lib/{project}/{skill-id}` → `201
@@ -280,3 +415,22 @@ successfully.
   (`SkillAPI` in `automation/api/client.py`) rather than the UI, to keep this
   test's own setup fast and focused on the Agent-Skills-limit behavior itself
   — only the Agent-side attach flow needs to go through the UI/`agent_detail_page`.
+- **Rework work order (blocking, this pass)**: `agent-add-skill-button`
+  already exists on `automation/testids` (draft EliteaUI#540 — no
+  `add-data-testid` run needed for this handle). Replace both raw-handle
+  call sites (`get_by_role("button", name="Skill", exact=True)` and
+  `[aria-label="Maximum number of skills reached"] button`) with a single
+  class-level `LocatorDescriptor(testid="agent-add-skill-button")` field on
+  `agent_detail_page.py`, assert `toBeDisabled()`/not on that one field for
+  both states. The wrapper-span raw handle
+  (`[aria-label="Maximum number of skills reached"]`, used only to read the
+  tooltip text) does not get its own testid per the reasoning in Handles
+  Reference — Rework above — read the `aria-label` off the testid-located
+  button's parent instead. Because `agent-add-skill-button` lives only on
+  `automation/testids` today, this test can run and pass locally
+  immediately, but **promoting it to `main`-targeted CI is blocked until
+  EliteaUI#540 merges** — track that as a promotability dependency, same
+  as the pre-existing `skill-instructions-editor-content` dependency below.
+  This AFS also depends on `skill-instructions-editor-content` for
+  `_create_skill`, which is `on-automation/testids only (draft #526)` — not
+  yet promotable to `main` until #526 merges (see provenance table above).
