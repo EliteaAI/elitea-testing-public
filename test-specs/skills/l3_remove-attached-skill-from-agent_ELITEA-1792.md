@@ -160,10 +160,10 @@ skills + 1 agent, all created and torn down within the run).
 | Skill card version selector | `.version-text` CSS class, scoped to the skill's card (see ELITEA-1789 for the accessibility-tree click gotcha, issue #46) | pre-dates provenance column | not this case's target but visible on both cards during exploration |
 | Agent actions (overflow) menu | `agent-actions-menu-button` | pre-dates provenance column | opens VERSION/AGENT grouped menu |
 | Delete-agent menu item | `delete-agent-menuitem` | pre-dates provenance column | in the AGENT group |
-| Skill controls (overflow) menu | `skill-controls-menu-button` | opens VERSION/SKILL grouped menu |
-| Delete-skill menu item | `skill-delete-menu-item` | in the SKILL group |
-| Delete-confirmation name field | `delete-confirm-name-input` (scope to inner `#name` field) | shared component, both agent and skill delete flows |
-| Delete-confirmation confirm button | `getByRole('button', { name: 'Delete' })` scoped to the dialog | enabled only once typed name matches |
+| Skill controls (overflow) menu | `skill-controls-menu-button` | pre-dates provenance column | opens VERSION/SKILL grouped menu |
+| Delete-skill menu item | `skill-delete-menu-item` | pre-dates provenance column | in the SKILL group |
+| Delete-confirmation name field | `delete-confirm-name-input` (scope to inner `#name` field) | pre-dates provenance column | shared component, both agent and skill delete flows |
+| Delete-confirmation confirm button | `getByRole('button', { name: 'Delete' })` scoped to the dialog | pre-dates provenance column | enabled only once typed name matches |
 
 ## Expected Results
 - An Agent with 2 attached Skills (A and B) is created successfully.
