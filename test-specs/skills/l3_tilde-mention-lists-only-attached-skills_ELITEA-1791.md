@@ -25,8 +25,10 @@
 ## Rework — testid-only pass (issue #33, 2026-07-15)
 
 PR #49 (merged to `automation/base` as `af4dde0`) implemented this case's
-Instructions-field mention flow correctly in behavior, but shipped 3 raw
-non-testid handles in `automation/pages/agent_detail_page.py`, violating the
+Instructions-field mention flow correctly in behavior, but shipped 2 raw
+non-testid handles in `automation/pages/agent_detail_page.py` (a 3rd handle
+named in the reopen directive turned out, on inspection, to already be
+testid-compliant — see below), violating the
 project's testid-only locator policy (`.agents/role-overrides.md` +
 `.agents/testing.md` § Locator policy — no fallback ladder, `data-testid` is
 the only rung). Reopened for rework per the operator's directive on issue
