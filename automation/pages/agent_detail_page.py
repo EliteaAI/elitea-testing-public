@@ -120,6 +120,10 @@ class AgentDetailPage(AgentFormPage):
     actions_menu_button = LocatorDescriptor(testid="agent-actions-menu-button")
     actions_menu = LocatorDescriptor(testid="agent-actions-menu")
     delete_agent_menuitem = LocatorDescriptor(testid="delete-agent-menuitem")
+    # VERSION-group "Export" menuitem (ELITEA-1794 testid-only rework — added
+    # via add-data-testid to ExportApplicationButton.jsx's
+    # useExportApplicationMenu(); see EliteaUI draft PR #549).
+    export_agent_menuitem = LocatorDescriptor(testid="agent-actions-export-menuitem")
 
     # --- Navigation ---
     back_button = LocatorDescriptor(testid="back-button")
@@ -1729,10 +1733,10 @@ class AgentDetailPage(AgentFormPage):
         clicks the VERSION-scoped "Export" menuitem — located between "Set
         as a default" (disabled) and "Share" in the menu's VERSION group
         (``ApplicationControls.jsx`` / ``useExportApplicationMenu()``).
-        Unlike the Skill overflow menu's export item (``export-version-menuitem``
-        data-testid), this menuitem carries **no** data-testid — confirmed
-        live and in source (ELITEA-1794 exploration) — so it's resolved by
-        its accessible name only, scoped implicitly to the just-opened menu.
+        Resolved via the ``agent-actions-export-menuitem`` data-testid (added
+        via `add-data-testid` in ELITEA-1794's testid-only rework; see
+        EliteaUI draft PR #549) — analogous to the Skill overflow menu's
+        export item (``export-version-menuitem`` data-testid).
 
         Args:
             timeout: Maximum wait time in milliseconds for the download event.
@@ -1745,7 +1749,7 @@ class AgentDetailPage(AgentFormPage):
         self.open_actions_menu()
 
         with self.page.expect_download(timeout=timeout) as download_info:
-            self.page.get_by_role("menuitem", name="Export").click()
+            self.export_agent_menuitem.click()
 
         download = download_info.value
         logger.info("Agent exported — filename: %s", download.suggested_filename)
