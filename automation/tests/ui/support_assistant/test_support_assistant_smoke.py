@@ -47,6 +47,10 @@ class TestSupportAssistantLauncher:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0626_support-assistant-floating-launcher-is-visible-on-every-main-applicati.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0625_support-assistant-panel-opens-on-launcher-click-and-closes-on-x-button.md", "onetest-ai Test Case link")
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/support-assistant/ELITEA-1796_launcher-visible-widget-opens-and-closes.md",
+        "onetest-ai Test Case link",
+    )
     def test_launcher_visible_and_opens_widget(self, page):
         """Launcher is visible and opens Support Assistant widget.
 
