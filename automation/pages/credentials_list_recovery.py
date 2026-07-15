@@ -42,8 +42,5 @@ def recover_from_credentials_list_crash(page: Page) -> bool:
             "Recovering from known CredentialsList crash (elitea-testing-public#518) — reloading"
         )
         page.reload(wait_until="domcontentloaded")
-        try:
-            page.wait_for_load_state("networkidle", timeout=15000)
-        except Exception:
-            logger.debug("networkidle not reached after crash-recovery reload — continuing")
+        page.wait_for_load_state("networkidle", timeout=15000)
     return crashed

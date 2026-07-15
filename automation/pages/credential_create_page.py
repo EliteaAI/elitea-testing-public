@@ -21,6 +21,7 @@ import logging
 from playwright.sync_api import Page
 
 from .base_page import BasePage
+from .credential_form_fields import CredentialFormFieldsMixin
 from .credentials_list_recovery import recover_from_credentials_list_crash
 from .locator_descriptor import LocatorDescriptor
 
@@ -29,10 +30,14 @@ logger = logging.getLogger("elitea.pages.credential_create")
 UI_ELEMENT_TIMEOUT = 10_000
 
 
-class CredentialCreatePage(BasePage):
+class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
     """Credential create page (client-side required-field validation).
 
     URL: /credentials/create-credential/{type}
+
+    Inherits the Display Name field + Save button (``set_display_name()``,
+    ``is_save_enabled()``) from :class:`CredentialFormFieldsMixin`, shared
+    with :class:`CredentialDetailPage`.
     """
 
     # ------------------------------------------------------------------
@@ -45,10 +50,6 @@ class CredentialCreatePage(BasePage):
     # ------------------------------------------------------------------
     # Create-form fields
     # ------------------------------------------------------------------
-    display_name_input = LocatorDescriptor(
-        testid="toolkit-field-label-input",
-        description="Credential Display Name input (shared ToolBaseProperty renderer)",
-    )
     base_url_input = LocatorDescriptor(
         testid="toolkit-field-base_url-input",
         description="Base Url required field (Jira credential type)",
@@ -60,14 +61,6 @@ class CredentialCreatePage(BasePage):
     username_input = LocatorDescriptor(
         testid="toolkit-field-username-input",
         description="Username required field (Jira credential type)",
-    )
-
-    # ------------------------------------------------------------------
-    # Tab-bar controls
-    # ------------------------------------------------------------------
-    save_button = LocatorDescriptor(
-        testid="credential-form-save-button",
-        description="Save credential button (tab-bar) — gated on required-field validation",
     )
 
     def __init__(self, page: Page):
@@ -92,21 +85,6 @@ class CredentialCreatePage(BasePage):
         """Wait for the create-credential form to render its Display Name field."""
         self.wait_for_network(timeout=timeout)
         self.display_name_input.wait_for(state="visible", timeout=timeout)
-
-    def set_display_name(self, value: str) -> None:
-        """Replace the Display Name field's value, triggering React onChange.
-
-        MUI fields don't fire React's onChange on Playwright's ``fill()`` —
-        and ``press("Control+a")`` does NOT select-all on this field either
-        (live-verified: it moves the caret to position 0 without selecting,
-        so subsequent typing prepends instead of replacing — same quirk
-        documented in ``CredentialDetailPage.set_display_name``). Uses
-        ``select_text()`` + ``type()`` instead, which sets the DOM selection
-        directly.
-        """
-        self.display_name_input.click()
-        self.display_name_input.select_text()
-        self.display_name_input.type(value)
 
     def clear_display_name(self) -> None:
         """Clear the Display Name field via select-all + Backspace, triggering onChange."""
@@ -140,6 +118,3 @@ class CredentialCreatePage(BasePage):
         self.username_input.click()
         self.username_input.select_text()
         self.username_input.press("Backspace")
-
-    def is_save_enabled(self) -> bool:
-        return self.save_button.is_enabled()

@@ -20,6 +20,7 @@ import logging
 from playwright.sync_api import Page
 
 from .base_page import BasePage
+from .credential_form_fields import CredentialFormFieldsMixin
 from .credentials_list_recovery import recover_from_credentials_list_crash
 from .locator_descriptor import LocatorDescriptor
 
@@ -28,10 +29,14 @@ logger = logging.getLogger("elitea.pages.credential_detail")
 UI_ELEMENT_TIMEOUT = 10_000
 
 
-class CredentialDetailPage(BasePage):
+class CredentialDetailPage(CredentialFormFieldsMixin, BasePage):
     """Credential detail/edit page.
 
     URL: /credentials/all/{numeric_id}
+
+    Inherits the Display Name field + Save button (``set_display_name()``,
+    ``is_save_enabled()``) from :class:`CredentialFormFieldsMixin`, shared
+    with :class:`CredentialCreatePage`.
     """
 
     # ------------------------------------------------------------------
@@ -46,10 +51,6 @@ class CredentialDetailPage(BasePage):
     # ------------------------------------------------------------------
     # Credential detail form fields
     # ------------------------------------------------------------------
-    display_name_input = LocatorDescriptor(
-        testid="toolkit-field-label-input",
-        description="Credential Display Name input (shared ToolBaseProperty renderer)",
-    )
     id_input = LocatorDescriptor(
         testid="toolkit-field-elitea_title-input",
         description="Credential ID (elitea_title) input — disabled, mirrors Display Name",
@@ -58,10 +59,6 @@ class CredentialDetailPage(BasePage):
     # ------------------------------------------------------------------
     # Tab-bar controls
     # ------------------------------------------------------------------
-    save_button = LocatorDescriptor(
-        testid="credential-form-save-button",
-        description="Save credential button (tab-bar)",
-    )
     discard_button = LocatorDescriptor(
         testid="credential-form-discard-button",
         description="Discard button (tab-bar) — opens the confirm modal",
@@ -116,28 +113,9 @@ class CredentialDetailPage(BasePage):
         self.wait_for_network(timeout=timeout)
         self.display_name_input.wait_for(state="visible", timeout=timeout)
 
-    def set_display_name(self, value: str) -> None:
-        """Replace the Display Name field's value, triggering React onChange.
-
-        MUI fields don't fire React's onChange on Playwright's ``fill()`` —
-        use ``select_text()`` + ``type()`` instead
-        (.claude/rules/mui-patterns.md). NOTE: ``press("Control+a")`` does
-        NOT select-all on this field — live-verified during Phase 2
-        exploration: it moves the caret to position 0 without selecting,
-        so subsequent typing prepends instead of replacing. ``select_text()``
-        sets the DOM selection directly and is unaffected by whatever
-        intercepts the Ctrl+A keydown.
-        """
-        self.display_name_input.click()
-        self.display_name_input.select_text()
-        self.display_name_input.type(value)
-
     def get_display_name(self) -> str:
         """Return the current Display Name field value."""
         return self.display_name_input.input_value()
-
-    def is_save_enabled(self) -> bool:
-        return self.save_button.is_enabled()
 
     def is_discard_enabled(self) -> bool:
         return self.discard_button.is_enabled()
