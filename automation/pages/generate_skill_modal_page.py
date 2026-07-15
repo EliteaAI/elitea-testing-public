@@ -9,10 +9,10 @@ Covers:
 - Simulating/mocking the generate-draft network call (failure and retry)
 - Reading the failure error alert and the transient loading state
 - Detecting the transition to the review-form step after a successful
-  generation (review-form field-level locators are out of scope here —
-  the Skill review form only surfaces Name/Description/Instructions, no
-  Welcome Message/conversation starters unlike the Agent review form —
-  see ELITEA-2001 AFS Axis 2)
+  generation
+- Reading/editing the review-form's Name/Description/Instructions fields
+  (added for ELITEA-1990; no Welcome Message/conversation starters unlike
+  the Agent review form — see ELITEA-2001 AFS Axis 2)
 
 Shell behavior (loading -> error -> retry -> review) is shared with the
 Agent "Build with AI" flow via ``GenerateEntityModalPageBase`` — see
@@ -82,8 +82,60 @@ class GenerateSkillModalPage(GenerateEntityModalPageBase):
         description="Create Skill button (review step)"
     )
 
+    review_name_input = LocatorDescriptor(
+        testid="generate-skill-review-name-input",
+        description="Review-form Name field (editable before creation)",
+    )
+
+    review_description_input = LocatorDescriptor(
+        testid="generate-skill-review-description-input",
+        description="Review-form Description field (editable before creation)",
+    )
+
+    review_instructions_input = LocatorDescriptor(
+        testid="generate-skill-review-instructions-input",
+        description="Review-form Instructions field (editable before creation)",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
     def _is_generate_draft_url(self, url: str) -> bool:
         return "generate_skill_draft" in url
+
+    # ------------------------------------------------------------------
+    # Review-form field access (Name / Description / Instructions)
+    # ------------------------------------------------------------------
+
+    def get_review_name(self) -> str:
+        """Return the current value of the review-form Name field."""
+        return self.review_name_input.input_value()
+
+    def get_review_description(self) -> str:
+        """Return the current value of the review-form Description field."""
+        return self.review_description_input.input_value()
+
+    def get_review_instructions(self) -> str:
+        """Return the current value of the review-form Instructions field."""
+        return self.review_instructions_input.input_value()
+
+    def set_review_name(self, value: str):
+        """Overwrite the review-form Name field with ``value``.
+
+        The testid resolves to the native ``<input>`` (wired via MUI
+        ``slotProps.htmlInput``, same mechanism as ``prompt_input``), so a
+        plain ``fill()`` correctly triggers React's controlled-component
+        ``onChange``.
+        """
+        self.review_name_input.click()
+        self.review_name_input.fill(value)
+
+    def set_review_description(self, value: str):
+        """Overwrite the review-form Description field with ``value``."""
+        self.review_description_input.click()
+        self.review_description_input.fill(value)
+
+    def set_review_instructions(self, value: str):
+        """Overwrite the review-form Instructions field with ``value``."""
+        self.review_instructions_input.click()
+        self.review_instructions_input.fill(value)
