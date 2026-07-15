@@ -1,10 +1,48 @@
 ---
 name: Ghost skill mention popper + participants popper quirks (implementer)
-description: get_by_role("paragraph", ...) never matches Playwright's role tree even when Chromium's own a11y snapshot labels a <p> "paragraph" — use a p+has_text filter instead; participants-popper ancestor depth is div[3] from the "Agents" heading (not div[2]); Escape-dismiss leaves the literal "~" in the input, so re-typing "~" without clearing first produces "~~" and the popper never reopens (from ELITEA-1793)
+description: SUPERSEDED by the ELITEA-1793 testid rework (issue #35, PR #284) — all raw get_by_role/xpath-ancestor handles below were replaced with testid-only locators. Escape-dismiss leaving the literal "~" in the input is still true and still handled the same way. See ghost_skill_participant_popper_quirks section "Rework update" for the current shape.
 type: feedback
 ---
 
-## Context
+## Rework update (2026-07-15, issue #35 / PR #284) — read this first
+
+The raw-handle gotchas documented below (sections 1-2, and the "Reusable
+pattern") describe the **pre-rework** state of `chat_page.py` (merged PR
+#52) and are now **obsolete** — the framework-alignment audit flagged all
+of PR #52's handles as testid-policy violations, and the rework
+(elitea-testing-public PR #284) replaced every one of them:
+
+- `open_participants_popover()` now clicks
+  `PARTICIPANTS_BADGE.format(section)` → `PARTICIPANTS_BADGE_BUTTON`
+  (scoped) and returns `self.participants_popper`
+  (`chat-participants-popper` testid) — no more `p`-tag+text-filter or
+  `ancestor::div[3]` walk.
+- `remove_agent_participant()` signature changed from `agent_name: str` to
+  `agent_id: int` — it resolves the row directly via
+  `PARTICIPANT_ROW.format(f"application_{agent_id}_{project_id}")`
+  (`getChatParticipantUniqueId()`'s shape, confirmed by reading
+  `participants.helpers.js`), no more `get_by_text(agent_name)` +
+  `ancestor::div[2]`.
+- `open_mention_skill_popper()` / `is_mention_popper_open()` now just wait
+  on `self.mention_skill_list` (`skill-mention-list` testid) — no more
+  `get_by_text("Mention skill")` + ancestor walk.
+- `is_skill_in_mention_popper()` tries `MENTION_SKILL_ITEM.format(name)`
+  first, then falls back to `MENTION_SKILL_ITEM_PREFIX` (a
+  `[data-testid^="skill-mention-item-"]` prefix-match constant) +
+  `.filter(has_text=...)` for description-substring checks.
+- `is_mention_popper_empty_state()` now checks `MENTION_LIST_EMPTY`
+  (`skill-mention-list-empty` testid) instead of `get_by_text(...)`.
+
+**Section 3 below (Escape leaves the literal "~") is still accurate and
+unchanged** — that's a product-behavior fact, not a locator technique, so
+the rework didn't touch it.
+
+Full testid map + the dynamic-testid-evades-literal-grep lesson:
+`.agents/memory/qa-engineer/elitea_1793_participant_removal_testid_map.md`.
+
+---
+
+## [OBSOLETE — pre-rework] Original context
 
 Implementing ELITEA-1793 ("Ghost skill not shown after Agent participant
 removed") — a `defect-found` AFS with a confirmed, deterministic (2/2)
@@ -14,7 +52,7 @@ while writing `ChatPage.open_participants_popover()` /
 `remove_agent_participant()` / `open_mention_skill_popper()` that the
 analyst's manual/live-tool exploration couldn't have caught the same way:
 
-## 1. `get_by_role("paragraph", ...)` matches 0 elements, even when the live a11y tree shows role "paragraph"
+## 1. [OBSOLETE] `get_by_role("paragraph", ...)` matches 0 elements, even when the live a11y tree shows role "paragraph"
 
 `playwright-cli snapshot` (and any accessibility-tree dump) will show a
 plain `<p>` element as `paragraph [ref=...]: Agents` — but calling
@@ -25,45 +63,33 @@ snapshot's "paragraph" role label does not correspond to a role Playwright's
 snapshot's structural-role labels (paragraph, generic, etc.) as if they were
 `getByRole`-queryable ARIA roles — only roles from the real ARIA spec
 (button, menuitem, dialog, heading, ...) are reliably queryable that way.
-For a `<p>` with no other distinguishing attribute, fall back to
-`page.locator("p").filter(has_text=re.compile(r"^Agents$"))` — a CSS-tag +
-exact-text filter — and document why (locator ladder tier 5, last resort).
+This whole workaround is now moot: `chat-participants-popper` resolves the
+popper directly, no text-based lookup needed at all.
 
-## 2. Popper container ancestor depth must be verified live, per popper — don't assume the same depth as a different popper
+## 2. [OBSOLETE] Popper container ancestor depth had to be verified live, per popper
 
-The "Mention skill" popper's container is `ancestor::div[2]` from its
-heading (existing code, `send_message_with_skill_mention`). The "Agents"
-participants popper's container is **`ancestor::div[3]`** from its heading
-— a different depth, confirmed by walking both the heading and a
-participant-row element's ancestor chains to their first common ancestor
-via a `run-code` snippet:
-```js
-function ancestors(node){ const arr=[]; let c=node; while(c){ arr.push(c); c=c.parentElement; } return arr; }
-const common = rowAncestors.find(a => headingAncestors.includes(a));
-```
-Guessing "it's probably the same div[N] as the other popper in this file"
-is a real trap — verify per-popper via this technique before writing the
-locator, not by pattern-matching an existing method.
+The "Mention skill" popper's container used to be `ancestor::div[2]` from
+its heading, and the "Agents" participants popper's container was
+`ancestor::div[3]` — different depths, confirmed by walking ancestor
+chains to a first-common-ancestor via `run-code`. Now both poppers resolve
+via their own testid (`skill-mention-list` / `chat-participants-popper`) —
+no ancestor-walk of any kind remains in either code path.
 
 ## 3. Escape-dismissing the mention popper leaves the literal "~" in the input — retyping "~" without clearing first breaks the trigger
 
-Per the AFS itself: dismissing the "Mention skill" popper via Escape does
-NOT clear the composer input — the literal `~` character remains. If a
-later step types `~` again without clearing first, the input ends up
-`~~`, which does **not** re-trigger the popper (confirmed live: screenshot
-showed literal `~~` in the composer with no popper open, causing a
-false-negative 10s timeout). `open_mention_skill_popper()` now does
-`Control+a` + `Backspace` before every `press_sequentially("~")` so the
-trigger is always a single fresh `~` regardless of prior composer state.
+**Still true post-rework — not a locator issue, a product-behavior fact.**
+Dismissing the "Mention skill" popper via Escape does NOT clear the
+composer input — the literal `~` character remains. If a later step types
+`~` again without clearing first, the input ends up `~~`, which does
+**not** re-trigger the popper (confirmed live: screenshot showed literal
+`~~` in the composer with no popper open, causing a false-negative 10s
+timeout). `open_mention_skill_popper()` still does `Control+a` +
+`Backspace` before every `press_sequentially("~")` so the trigger is
+always a single fresh `~` regardless of prior composer state.
 
-## Reusable pattern
+## [OBSOLETE] Reusable pattern
 
-`ChatPage.open_participants_popover()` returns the `ancestor::div[3]`
-container from the `p`-tag-filtered "Agents" heading; participant rows are
-reached via `popper.get_by_text(agent_name, exact=True).first` then
-`ancestor::div[2]` from THAT text node (different depth again — verified
-separately, since it's measuring from the row's inner text node up to the
-row itself, not from the popper heading down to the container).
-`ChatPage.open_mention_skill_popper()` always clears-then-types `~`. Both
-new methods are additive on `chat_page.py` (existing methods/callers
-untouched — verified via `git diff | grep -E '^-[^-]'` empty).
+The text-based ancestor-walk pattern this section described has been fully
+replaced by testid-based resolution (see "Rework update" above). The
+Escape/`~~` handling in section 3 is the only part of this entry still in
+effect.
