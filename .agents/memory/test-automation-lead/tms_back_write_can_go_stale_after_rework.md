@@ -53,3 +53,17 @@ at all.
    implicit excuse for skipping the `automation_pr` check — grep the
    frontmatter for the literal field on every audit, independent of any
    claim about what did or didn't need updating.
+
+## Recurrence (issue #32, ELITEA-1790 rework, PR #280)
+
+Same failure, different shape: this time `automation_pr` wasn't missing,
+it was **present but stale** — still `#48` (the superseded original PR)
+instead of `#280` (the merged rework). Notable because the convention was
+clearly known and followed in the SAME session window: sibling cases
+ELITEA-1789 (`onetest-ai-tm-Elitea` commit `38b6766`) and ELITEA-1740
+(commit `98f71dd`) both got an explicit "refresh automation_pr after
+testid-only rework" commit. It was simply skipped for this one case.
+Confirms the check needs to be **"does the field's PR number match the PR
+that actually merged,"** not just **"is the field present"** — a populated
+field can still be wrong, and per-case memory of "I usually do this" isn't
+a substitute for checking each case's `git log` on the TMS file.
