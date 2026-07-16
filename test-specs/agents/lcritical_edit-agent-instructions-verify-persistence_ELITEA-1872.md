@@ -14,12 +14,18 @@
 - **Analyst**: qa-engineer (Sage), analyst slot
 - **Status**: `ready-for-automation` — case executed end-to-end against the
   live system, all 5 steps verified, feature under test (Instructions field
-  persistence) has **no defect**. All required testids already exist. One
-  **pre-existing, already-open, unrelated** defect
+  persistence) has **no functional defect**. All required testids already
+  exist. One **pre-existing, already-open, unrelated** defect
   ([#524](https://github.com/EliteaAI/elitea-testing-public/issues/524))
   blocks the *test-data setup* step (creating a fresh agent) via the
   project's standard helpers — see Preconditions and Known Defects below —
   but does not affect the Instructions-field observable this case verifies.
+  **Amended post-implementation:** the implementer's automated run
+  additionally surfaced and filed
+  [#538](https://github.com/EliteaAI/elitea-testing-public/issues/538), an
+  isolated/non-blocking console-warning defect not caught by this AFS's
+  original manual pass — see Step 3 and Known Defects Found below for the
+  full amendment.
 
 ## Preconditions
 
@@ -117,14 +123,26 @@
      — confirmed live via accessibility snapshot before/after).
 3. Click `agent-save-button` (plain Save — this case operates on the
    `base` version, not Save As Version) and wait for network idle.
-   - **Verify — PASSES.** `PUT
+   - **Verify — PASSES**, with one amendment from the implementer's
+     automated run. `PUT
      /api/v2/elitea_core/application/prompt_lib/{project_id}/{agent_id}`
-     returns **`201 Created`**. Zero console errors, zero console
-     warnings (checked both `error` and `warning` levels). Save/Discard
-     buttons return to `[disabled]` — matching the case's "confirmation is
-     shown or save button returns to default state" acceptance criterion
-     (this app's confirmation mechanism *is* the disabled-button
-     transition; no separate toast was observed for this action).
+     returns **`201 Created`**. Save/Discard buttons return to `[disabled]`
+     — matching the case's "confirmation is shown or save button returns to
+     default state" acceptance criterion (this app's confirmation mechanism
+     *is* the disabled-button transition; no separate toast was observed
+     for this action). **Console warnings — amended:** this analyst pass
+     observed zero console warnings via manual click-through, but the
+     implementer's scripted/automated run (Step 2's typing action,
+     specifically) reliably reproduced a React "Maximum update depth
+     exceeded" warning — isolated via a scoped probe to the typing action
+     itself (does not fire on navigate, does not fire on Save, does not
+     block the `201` or the persistence proof in Steps 4-5). Filed as
+     [#538](https://github.com/EliteaAI/elitea-testing-public/issues/538),
+     handled as a deferred/soft assertion at the end of the implemented
+     test so it doesn't mask the feature-under-test proof — see Known
+     Defects Found below. Not a case-text/reverse-masking issue: the
+     original manual pass simply didn't reproduce it as reliably as
+     scripted keystroke input does.
 4. Reload the page (full navigation via `page.goto` / browser reload —
    not an SPA route change) to
    `${BASE_URL}/agents/all/{agent_id}?viewMode=owner`.
@@ -213,15 +231,38 @@ here).
 
 ## Known Defects Found
 
-**None new.** The feature under test — Instructions field edit, save,
-reload, persistence — behaves exactly as the case describes; no
-reverse-masking, no defect. The only defect encountered was the
-**already-open** [#524](https://github.com/EliteaAI/elitea-testing-public/issues/524),
-which affects test-data setup (creating a fresh agent via the project's
-default helpers), not the feature under test. This run **reconfirmed and
-expanded the documented scope** of #524 (also hits `AgentAPI.create_agent()`
-directly, not just the UI form) via a work-log comment on the existing
-ticket — no new issue filed (dedup: same root cause).
+**Amended post-implementation (docs(afs) fixup, reviewer-flagged).** The
+original analyst pass reported **none new** — that stands for the *feature
+under test itself* (Instructions field edit, save, reload, persistence
+behaves exactly as the case describes; no reverse-masking, no functional
+defect). Two defects are now on record for this case:
+
+1. **[#524](https://github.com/EliteaAI/elitea-testing-public/issues/524)
+   (already-open, pre-existing).** Affects test-data setup (creating a
+   fresh agent via the project's default helpers), not the feature under
+   test. This run **reconfirmed and expanded the documented scope** of
+   #524 (also hits `AgentAPI.create_agent()` directly, not just the UI
+   form) via a work-log comment on the existing ticket — no new issue
+   filed (dedup: same root cause).
+
+2. **[#538](https://github.com/EliteaAI/elitea-testing-public/issues/538)
+   (new, filed by the implementer, isolated/non-blocking).** Typing into
+   `agent-instructions-input` (Step 2) reliably triggers a React "Maximum
+   update depth exceeded" console warning — confirmed via a scoped probe
+   to fire only during the typing action (not on navigate, not on Save).
+   Does not block the Save `201` or the Steps 4-5 persistence proof. Not
+   reproduced by this AFS's original manual click-through (see Step 3
+   amendment above) — scripted/automated keystroke input reproduces it
+   more reliably than a manual click-through does; this is a real product
+   render-loop issue, not a masking or case-text-drift finding. **Handling
+   in the implemented test:** the console-warning assertion is deferred to
+   a final side-channel check, run *after* all Steps 1-5 assertions have
+   already passed, so the known/isolated defect doesn't mask the
+   feature-under-test proof (same precedent as
+   `test_credential_required_fields_validation.py`'s `expect.soft()`
+   handling of #526). The implemented test is therefore stably RED at
+   that one final assertion — an honest, non-masked defect signal, not a
+   weakened one.
 
 ## Cleanup steps
 
