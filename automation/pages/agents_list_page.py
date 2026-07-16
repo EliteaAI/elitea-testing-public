@@ -197,6 +197,20 @@ class AgentsListPage(BasePage):
         description="Agent card name (title) — collection locator, one per visible card",
     )
 
+    # Shared Card.jsx component testids (ELITEA-1899 testid-only rework —
+    # `entity-card` mirrors the pre-existing pattern used by
+    # CredentialsListPage/SkillsListPage/McpListPage; `entity-card-icon` is
+    # NEW this run, added via add-data-testid to Card.jsx — see EliteaUI
+    # commit 6bb6a23c on automation/testids).
+    entity_card = LocatorDescriptor(
+        testid="entity-card",
+        description="Agent card outer container (card view) — collection locator",
+    )
+    entity_card_icon = LocatorDescriptor(
+        testid="entity-card-icon",
+        description="Agent card icon — collection locator, one per visible card",
+    )
+
     def get_agent_card_names(self, timeout: int = 5000) -> list[str]:
         """Return names of all agent cards visible on the dashboard.
 
@@ -233,6 +247,28 @@ class AgentsListPage(BasePage):
             return True
         except Exception:
             return False
+
+    def get_card_icon_src(self, name: str, timeout: int = 10000) -> str:
+        """Return the ``src`` of a matching agent card's icon ``<img>``.
+
+        LOCATOR: scopes ``entity_card`` by visible name text, then reads
+        the ``entity-card-icon`` testid's inner ``<img>`` (ELITEA-1899 —
+        confirmed live: the card matching ``name`` shows the exact same
+        icon URL as the agent header, not just a visual/screenshot-only
+        match).
+
+        Args:
+            name: Exact agent name to match the card by.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The card icon's ``img.src`` value.
+        """
+        card = self.entity_card.filter(has_text=name).first
+        card.wait_for(state="visible", timeout=timeout)
+        icon = card.locator('[data-testid="entity-card-icon"] img')
+        icon.wait_for(state="visible", timeout=timeout)
+        return icon.get_attribute("src") or ""
 
     @action("Select agent")
     def select_agent(self, name: str, timeout: int = 5000):
