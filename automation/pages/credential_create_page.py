@@ -1,7 +1,8 @@
 """Credential create page object.
 
-URL: /credentials/create-credential/{type} (entry via /credentials/all →
-credential-type-selector card).
+URL: /credentials/create-credential/{type} — navigated to directly (see
+``navigate_to_type()`` docstring for why this changed from the earlier
+click-a-card-on-/credentials/all flow, ELITEA-1963).
 
 Covers the Create-Credential form's client-side Save-button gating on
 required fields (``ToolBase.jsx``'s ``validateRequiredFields()`` helper +
@@ -22,7 +23,6 @@ from playwright.sync_api import Page
 
 from .base_page import BasePage
 from .credential_form_fields import CredentialFormFieldsMixin
-from .credentials_list_recovery import recover_from_credentials_list_crash
 from .locator_descriptor import LocatorDescriptor
 
 logger = logging.getLogger("elitea.pages.credential_create")
@@ -67,18 +67,30 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
         super().__init__(page)
 
     def navigate_to_type(self, credential_type: str) -> None:
-        """Navigate to /credentials/all and open the create form for *credential_type*.
+        """Navigate directly to the create form for *credential_type*.
 
         Args:
             credential_type: The credential type slug (e.g. ``"jira"``),
-                matching the ``toolkit-type-card-{type}`` testid convention.
+                matching the ``/credentials/create-credential/{type}`` route
+                and the ``toolkit-type-card-{type}`` testid convention.
+
+        Note (infra fix, ELITEA-1963): previously this navigated to
+        ``/credentials/all`` and clicked the ``toolkit-type-card-{type}``
+        card there. ``CredentialsList.jsx`` only renders that type-selector
+        grid on ``/credentials/all`` when the project has **zero**
+        credentials (see its "Navigate to New Credential page for private
+        projects with no credentials" auto-redirect effect) — once any
+        credential exists (the normal state of a shared DEV project), the
+        card never renders and the old flow times out waiting for it. The
+        create-form URL (``/credentials/create-credential/{type}``) is a
+        stable, directly-routable target per ``EliteaUI/src/routes.js``
+        (``CreateCredentialTypeFromMain``), so navigating there directly
+        avoids the now-broken card-click intermediary entirely. Verified
+        against the live app that this lands on the same create form the
+        card click used to reach (same testids: ``toolkit-field-label-input``,
+        ``credential-form-save-button``, etc.).
         """
-        self.navigate("/credentials/all")
-        self.wait_for_network()
-        recover_from_credentials_list_crash(self.page)
-        type_card = self.page.locator(self.TYPE_CARD_SELECTOR.format(credential_type))
-        type_card.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        type_card.first.click()
+        self.navigate(f"/credentials/create-credential/{credential_type}")
         self.wait_for_page_load()
 
     def wait_for_page_load(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
