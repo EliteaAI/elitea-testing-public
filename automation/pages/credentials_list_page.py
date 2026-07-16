@@ -97,7 +97,7 @@ class CredentialsListPage(BasePage):
             state="visible", timeout=UI_ELEMENT_TIMEOUT
         )
 
-    def search(self, term: str) -> Response:
+    def search(self, term: str, *, assert_unfiltered_while_typing: bool = False) -> Response:
         """Type *term* into the search box and press Enter (explicit-activation
         control — typing alone does NOT filter, per ELITEA-1965's interaction-
         discovery finding: ``SearchBar.jsx``'s ``dispatch(actions.setQuery(...))``
@@ -108,9 +108,26 @@ class CredentialsListPage(BasePage):
         {project}?...&query={term}&section=credentials...`` response rather than a
         fixed sleep.
 
+        Args:
+            term: The search term to type.
+            assert_unfiltered_while_typing: When ``True``, asserts the card
+                list is still at its pre-type baseline count right after
+                typing *and before Enter is pressed* — proof that typing
+                alone does not trigger a filter (a future regression that
+                flips this control to live-filter-as-you-type would fail
+                here). Opt-in (default ``False``) and intended for a single
+                call site right after a freshly-settled, unfiltered list
+                (e.g. right after ``navigate()``): callers made right after
+                ``clear_search()`` race a known React-re-render lag (see
+                ``clear_search()``'s docstring) that this flag does not
+                attempt to distinguish from a real defect, so it would be
+                unreliable there.
+
         Returns:
             The matched Playwright ``Response``.
         """
+        if assert_unfiltered_while_typing:
+            pre_type_card_count = self.entity_card_name.count()
         with self.page.expect_response(
             lambda r: (
                 f"/configurations/configurations/{settings.elitea_project_id}" in r.url
@@ -121,6 +138,18 @@ class CredentialsListPage(BasePage):
         ) as response_info:
             self.search_input.click()
             self.search_input.press_sequentially(term, delay=20)
+            if assert_unfiltered_while_typing:
+                # Synchronous `.count()` read (not the auto-retrying
+                # `expect()`, which would just wait for eventual settle and
+                # prove nothing about this window) — right after typing and
+                # BEFORE Enter is pressed.
+                post_type_card_count = self.entity_card_name.count()
+                assert post_type_card_count == pre_type_card_count, (
+                    f"Typing {term!r} must not filter the list before Enter is "
+                    f"pressed (explicit-activation control) — expected the "
+                    f"pre-type baseline of {pre_type_card_count} card(s), got "
+                    f"{post_type_card_count} right after typing"
+                )
             self.search_input.press("Enter")
         response = response_info.value
         # The response resolves as soon as headers/body arrive — the React

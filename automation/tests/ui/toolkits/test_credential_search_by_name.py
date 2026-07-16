@@ -148,7 +148,11 @@ class TestCredentialSearchByName:
             with allure.step(
                 "Step 3 — Type 'alpha' and press Enter: only autotest_cred_alpha is displayed"
             ):
-                search_response = list_page.search(SEARCH_ALPHA)
+                # assert_unfiltered_while_typing=True — proves typing alone does not
+                # trigger a filter (explicit-activation control, per this test's own
+                # docstring) BEFORE Enter is pressed, not just after. Called right after
+                # Step 2's fresh, settled navigate() so the pre-type baseline is stable.
+                search_response = list_page.search(SEARCH_ALPHA, assert_unfiltered_while_typing=True)
                 assert search_response.status == 200, (
                     f"Expected 200 from the filtered configurations GET, got {search_response.status}"
                 )
