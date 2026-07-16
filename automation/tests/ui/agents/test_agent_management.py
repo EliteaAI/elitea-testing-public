@@ -39,6 +39,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.agents]
 UI_ELEMENT_TIMEOUT = 10000
 NAVIGATION_TIMEOUT = 15000
 FORM_SAVE_TIMEOUT = 15000
+AI_RESPONSE_TIMEOUT = 30000
 
 # ELITEA-1872 test data
 SEED_INSTRUCTIONS = "You are a test agent."
@@ -94,6 +95,102 @@ def _build_dedicated_agent_payload(name: str) -> dict:
                     "reasoning_effort": "none",
                     "model_name": settings.default_model_name,
                     "model_project_id": settings.default_model_project_id,
+                },
+                "conversation_starters": [],
+                "agent_type": "openai",
+                "welcome_message": "",
+                "meta": {"step_limit": 25},
+            }
+        ],
+    }
+
+
+def _wait_for_chat_message_count(
+    detail_page, min_count: int, timeout: int = UI_ELEMENT_TIMEOUT
+) -> int:
+    """Poll the embedded chat message count until it exceeds *min_count*.
+
+    The user's own message is appended client-side right after the send
+    click, but rendering isn't synchronous with the click event returning —
+    asserting ``get_chat_message_count() > min_count`` immediately after
+    ``send_chat_message()`` races the render and can observe the pre-send
+    count (confirmed live). Poll instead, same bounded-deadline idiom as
+    ``_wait_for_resolved_save_count`` above.
+
+    Returns:
+        The observed message count once it exceeds *min_count* (or the last
+        observed count if the timeout elapses).
+    """
+    deadline = time.time() + timeout / 1000
+    count = detail_page.get_chat_message_count()
+    while time.time() < deadline and count <= min_count:
+        detail_page.page.wait_for_timeout(200)
+        count = detail_page.get_chat_message_count()
+    return count
+
+
+def _build_execution_agent_payload(name: str, description: str, instructions: str) -> dict:
+    """Build a create-agent payload for a dedicated, toolkit-free execution-test agent
+    that both creates successfully AND can open an embedded-chat conversation.
+
+    Uses ``reasoning_effort: "low"`` (fast, minimal-step reasoning — avoids
+    the multi-minute "thinking" latency observed live with ``"medium"``,
+    which exceeded this test's 30s ``AI_RESPONSE_TIMEOUT``) and omits both
+    ``temperature`` and the model fields (``model_name``/``model_project_id``)
+    entirely, letting the backend apply its own valid default model (same as
+    the plain UI create-form path, which never sets ``llm_settings`` model
+    fields either).
+
+    This combination was reached by live elimination during ELITEA-1897
+    implementation (2026-07-16), not copied from the existing
+    ``reasoning_effort: "none"`` workaround pattern
+    (``_build_dedicated_agent_payload`` above / ELITEA-1884's
+    ``test_agent_remove_variable.py``):
+
+    - ``reasoning_effort`` other than ``"none"`` + an explicit ``temperature``
+      hits the known, unrelated #524 defect (400 on *creation*).
+    - ``reasoning_effort: "none"`` avoids #524's 400 on creation, but — newly
+      confirmed live in this pass — breaks the embedded chat entirely: the
+      ``POST .../conversations/prompt_lib/{project}`` call needed to open the
+      chat panel 500s ("Internal Server Error") whenever the agent's
+      ``llm_settings.reasoning_effort`` is ``"none"``, regardless of whether
+      model fields are set. Confirmed via live elimination: same payload with
+      only ``reasoning_effort`` flipped from ``"none"`` to ``"medium"`` (model
+      fields held constant/absent both times) changes the conversation-create
+      response from 500 to 201. Filed as a new defect — see
+      https://github.com/EliteaAI/elitea-testing-public/issues/560.
+    - ``reasoning_effort: "medium"`` avoids both #524 and the "none" conversation-
+      creation 500, but drives noticeably slower "thinking" latency on this
+      project's default reasoning-capable model — observed live to exceed a
+      30s response wait. ``"low"`` (fast, minimal-step reasoning per the UI's
+      own ``ReasoningSlider`` tooltip) keeps the same safe combination while
+      responding well within timeout.
+    - Setting ``settings.default_model_name``/``default_model_project_id``
+      (used by the *other* existing "none" fixtures, which never open the
+      embedded chat and so never exercise conversation-creation) is also
+      stale/invalid for this project (``model_project_id: 0`` resolves to no
+      real model) — irrelevant to those fixtures' own assertions, but would
+      have compounded confusion here. Omitting the model fields entirely
+      (backend default, same as the UI form) sidesteps that gap too.
+
+    Deliberately carries no ``tools``/toolkit attachment — ELITEA-1897's whole
+    point is proving a *plain*, toolkit-free instructions field is sufficient
+    for chat execution.
+    """
+    return {
+        "name": name,
+        "description": description,
+        "type": "interface",
+        "versions": [
+            {
+                "name": "base",
+                "tags": [],
+                "instructions": instructions,
+                "variables": [],
+                "tools": [],
+                "llm_settings": {
+                    "max_tokens": -1,
+                    "reasoning_effort": "low",
                 },
                 "conversation_starters": [],
                 "agent_type": "openai",
@@ -651,3 +748,118 @@ class TestAgentActions:
                     agent_api.delete_agent(aid)
                 except Exception as cleanup_exc:
                     print(f"Warning: Failed to cleanup agent {aid}: {cleanup_exc}")
+
+
+class TestAgentExecution:
+    """Agent execution — instructions field alone does not prevent execution (ELITEA-1897).
+
+    Verifies that an agent created with only Name + Description + Instructions
+    (no toolkit attached) executes correctly via the embedded chat: the Save
+    button succeeds, the chat accepts a message, the agent responds with the
+    expected content, and no persistent spinner/error state is left behind.
+
+    Spec: test-specs/agents/l2_agent-execution-name-description-sufficient_ELITEA-1897.md
+
+    Note: this case's differentiator vs ``TestCreateAgent.test_create_agent_via_ui``
+    is chat *execution* (steps 2-4 below), not agent creation mechanics — agent
+    creation here goes through ``agent_api.create_agent_full()`` (a dedicated,
+    toolkit-free payload, per the AFS's Automation Hints and Cleanup
+    recommendation), not the UI create-form, since UI-form creation is already
+    covered by ``test_create_agent_via_ui``.
+    """
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1897_agent-execution-name-description-sufficient.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_agent_executes_with_name_description_instructions_only(self, page, agent_api):
+        """A toolkit-free agent (Name+Description+Instructions only) executes
+        via the embedded chat and responds without hanging."""
+        agent_name = f"autotest_{uuid.uuid4().hex[:8]}_1897"[:32]
+        agent_description = (
+            "Agent for ELITEA-1897 — name+description+instructions execution check"
+        )
+        agent_instructions = (
+            "You are a plain test assistant with no external tools attached. "
+            "Follow the user's literal instructions exactly."
+        )
+        test_message = "Reply with: CONFIRMED"
+
+        with allure.step(
+            "Step 1 — Create agent with Name, Description, Instructions filled"
+        ):
+            payload = _build_execution_agent_payload(
+                agent_name, agent_description, agent_instructions
+            )
+            agent = agent_api.create_agent_full(payload)
+            agent_id = agent["id"]
+            assert agent_id, "Agent creation response should include an id"
+
+        detail_page = AgentDetailPage(page)
+        console_errors = []
+        page.on(
+            "console",
+            lambda msg: console_errors.append(msg) if msg.type == "error" else None,
+        )
+
+        try:
+            with allure.step(
+                "Step 1 (verify) — Agent created successfully; detail page shows it"
+            ):
+                detail_page.navigate(agent_id)
+                assert detail_page.get_name() == agent_name, (
+                    f"Agent detail page should show the created agent's name '{agent_name}'"
+                )
+
+            with allure.step(f'Step 2 — Send "{test_message}" in the embedded chat'):
+                initial_count = detail_page.get_chat_message_count()
+                detail_page.send_chat_message(test_message)
+                after_send_count = _wait_for_chat_message_count(
+                    detail_page, initial_count, timeout=UI_ELEMENT_TIMEOUT
+                )
+                assert after_send_count > initial_count, (
+                    "Embedded chat should show the user's message after sending "
+                    f"(count stayed at {after_send_count})"
+                )
+
+            with allure.step(
+                'Step 3 — Verify agent responds with a message containing "CONFIRMED"'
+            ):
+                detail_page.wait_for_chat_response(
+                    initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT
+                )
+                response_text = detail_page.get_last_chat_response_text()
+                assert response_text, (
+                    "Embedded chat should show a non-empty AI response after the wait"
+                )
+                assert "CONFIRMED" in response_text.upper(), (
+                    f"Expected response to contain 'CONFIRMED', got: {response_text!r}"
+                )
+
+            with allure.step(
+                "Step 4 — Verify no persistent spinner/error state (no hang)"
+            ):
+                # No dedicated spinner-absence testid exists (AFS Concrete
+                # Handles gap) — stand-in per existing wait_for_chat_response
+                # convention: response actually arrived, chat input is
+                # re-enabled (not stuck), and no console errors were raised.
+                assert detail_page.get_chat_message_count() > initial_count, (
+                    "Response should have actually arrived (message count increased), "
+                    "not left the chat hanging"
+                )
+                assert detail_page.chat_message_input.is_enabled(), (
+                    "Chat input should be re-enabled after the response, not stuck "
+                    "disabled/hung"
+                )
+                assert not console_errors, (
+                    "Expected no console errors during agent execution, got: "
+                    f"{[m.text for m in console_errors]}"
+                )
+        finally:
+            with allure.step("Cleanup — delete the dedicated agent"):
+                try:
+                    agent_api.delete_agent(agent_id)
+                except Exception as cleanup_exc:
+                    print(f"Warning: Failed to cleanup agent {agent_id}: {cleanup_exc}")

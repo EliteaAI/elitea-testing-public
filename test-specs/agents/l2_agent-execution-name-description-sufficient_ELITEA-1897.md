@@ -6,8 +6,8 @@
 - **Priority**: l2 (source case priority: high)
 - **Environment Explored**: local (`http://localhost:5173`, EliteaAI/EliteaUI `automation/testids` → DEV backend, project `Private` id `399`)
 - **User set**: `${TEST_USER}` (localhost `auth_state` skip-login via `VITE_DEV_TOKEN`, user `project_user_659`)
-- **Analyst**: qa-engineer (agent), 2026-07-15
-- **Status**: defect-found (blocked on an already-filed, unresolved regression — see § Known Defects)
+- **Analyst**: qa-engineer (agent), 2026-07-15; **re-verification pass**: qa-engineer (agent), 2026-07-16
+- **Status**: **ready-for-automation** — re-executed end-to-end live on 2026-07-16 after #524 was confirmed fixed. All 4 case steps completed with no blockers. No new defects found. (Was `defect-found`/blocked on 2026-07-15; #524 is now closed-by-fix.)
 
 ## Preconditions
 - User is logged in to the Elitea platform (satisfied automatically on localhost via `auth_state`/`VITE_DEV_TOKEN` — no Keycloak login step needed in this environment).
@@ -25,31 +25,31 @@
 
 ## Test Steps
 
-**BLOCKED before step 1 completes** — see § Known Defects Found During Exploration.
-Steps below are the case's intended flow; steps 2–4 could not be executed live
-because step 1 (agent creation) 400s on save, both via the UI form and via the
-API fixture path (`AgentAPI.create_agent()`) that existing tests use to bypass
-the UI form. This is a defect in the product/test-client default `llm_settings`
-payload, not a locator or case-authoring problem.
+**RE-EXECUTED END-TO-END LIVE 2026-07-16** — all 6 sub-steps below completed with
+no blockers, now that #524 is fixed. (The 2026-07-15 pass below is preserved as
+history; the 2026-07-16 OBSERVED lines are the current ground truth.)
 
 1. Navigate to `${BASE_URL}/agents/create`
    - **Verify**: "New Agent" tab/form is shown
+   - **OBSERVED (2026-07-16, live)**: form loads, "New Agent" tab selected, all fields present as before.
 2. Fill Name (`agent-name-input`), Description (`agent-description-input`), Instructions (`agent-instructions-input`)
+   - **OBSERVED (2026-07-16, live)**: all three testids confirmed present and fillable via `page.getByTestId(...)`. Filled with `autotest_ELITEA1897_confirm` / description / plain toolkit-free instructions text.
 3. Click Save (`agent-save-button`)
    - **Verify** (per case): agent created successfully, lands on `/agents/all/{id}`
-   - **OBSERVED (2026-07-15, live)**: Save does NOT navigate away. `POST /api/v2/elitea_core/applications/prompt_lib/399` → **400 Bad Request**:
+   - **OBSERVED (2026-07-15, live, historical — superseded)**: Save did NOT navigate away. `POST /api/v2/elitea_core/applications/prompt_lib/399` → **400 Bad Request**:
      `{"type": "value_error", "loc": ["versions", 0, "llm_settings"], "msg": "Value error, temperature is not allowed together with a reasoning_effort (other than 'none') — reasoning models reject a custom temperature"}`.
-     A toast/alert surfaces the same message to the user; the form does not clear or recover; retry reproduces the identical error (deterministic, not intermittent).
-4. In the embedded chat panel (`chat-message-input` / `chat-send-button`), send `"Reply with: CONFIRMED"`
-   - **NOT REACHED** — no agent exists to navigate to.
+   - **OBSERVED (2026-07-16, live, current)**: Save button enabled once all three required fields were filled; click navigated immediately to `/agents/all/4903?destTab=configuration&name=autotest_ELITEA1897_confirm&viewMode=owner`. Network: `POST /api/v2/elitea_core/applications/prompt_lib/399` → **201 Created** (was 400). **#524 confirmed fixed** — bug is gone, not intermittently avoided; standard UI create-form flow now works with the platform's default model/llm_settings combination.
+4. In the embedded chat panel (`chat-message-input`), send `"Reply with: CONFIRMED"` (Enter submits, equivalent to `chat-send-button`)
+   - **OBSERVED (2026-07-16, live)**: message typed and submitted via `page.getByTestId('chat-message-input').fill(...)` + `.press('Enter')`. Message appears immediately in the chat list as a "Test Bot to autotest_ELITEA1897_confirm" turn.
 5. Verify the agent responds with a message containing `"CONFIRMED"` (`chat-message-item` / `skill-test-last-response` testids)
-   - **NOT REACHED**
+   - **OBSERVED (2026-07-16, live)**: response arrived ~15s after send (well within the existing `AI_RESPONSE_TIMEOUT`=30s constant; "Thought for 3 secs" shown in the UI, model `Anthropic Claude 4.5 Sonnet`). Response text: exactly `"CONFIRMED"` — case assertion satisfied.
 6. Verify no error state / "waking the agent" spinner hangs indefinitely
-   - **NOT REACHED** — no dedicated spinner/hang-detection testid or page-object method exists anywhere in `automation/pages/agent_detail_page.py` today (confirmed by full-file review); this assertion has no existing handle to reuse and will need one authored once step 1 is unblocked (see § Automation Hints).
+   - **OBSERVED (2026-07-16, live)**: no persistent spinner — chat input textbox returned to an active/enabled state, response rendered with normal action icons (Read out / Copy / Regenerate / Delete), 0 console errors (checked both `warning` and `error` levels), no error toast. No hang.
 
 ## Expected Results
 - Per case: agent created; embedded chat responds with a message containing "CONFIRMED"; no persistent spinner/error state.
-- **Actual (observed)**: agent creation itself fails at the API boundary before any chat interaction is possible. See § Known Defects.
+- **Actual (observed 2026-07-16)**: matches expected exactly. Agent created (id 4903), embedded chat responded with the literal text "CONFIRMED", no error/hang state observed. Case **PASSES**.
+- (2026-07-15 historical actual, superseded: agent creation failed at the API boundary before any chat interaction was possible — see #524, now fixed.)
 
 ## Coverage Map
 
@@ -58,55 +58,59 @@ payload, not a locator or case-authoring problem.
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
 | Precondition: user logged in | session valid | n/a (auto via `auth_state`) | — | asserted (environment-level, not a test assertion) |
-| Step 1: Create agent with Name, Description, Instructions filled | agent created successfully | AFS step 1–3 | step 3 | **blocked** — real defect (#524) prevents save from succeeding via UI form; confirmed live 2026-07-15, deterministic (100% repro, 3/3 including the pre-existing filed report's 2/2) |
-| Step 2: Send "Reply with: CONFIRMED" in embedded chat | message submitted | AFS step 4 | — | blocked *(unreachable — no agent to chat with)* |
-| Step 3: Verify agent responds with message containing "CONFIRMED" | response contains "CONFIRMED" | AFS step 5 | — | blocked *(unreachable)* |
-| Step 4: Verify no error state / hanging "waking the agent" spinner | no persistent spinner/error | AFS step 6 | — | blocked *(unreachable; also no existing handle — see Automation Hints)* |
-| Objective (description): agent w/ Name+Description+Instructions executes via embedded chat without hanging | as above | AFS steps 4–6 | — | blocked |
+| Step 1: Create agent with Name, Description, Instructions filled | agent created successfully | AFS step 1–3 | step 3 | **covered** — re-verified live 2026-07-16: `POST .../applications/prompt_lib/399` → 201, navigation to `/agents/all/4903`, deterministic (not intermittent — single clean attempt, no retries needed) |
+| Step 2: Send "Reply with: CONFIRMED" in embedded chat | message submitted | AFS step 4 | step 4 | covered — message appears in chat list turn |
+| Step 3: Verify agent responds with message containing "CONFIRMED" | response contains "CONFIRMED" | AFS step 5 | step 5 | covered — response text observed as exactly `"CONFIRMED"`, arrived ~15s post-send |
+| Step 4: Verify no error state / hanging "waking the agent" spinner | no persistent spinner/error | AFS step 6 | step 6 | covered — no spinner/error observed; input re-enabled, 0 console errors; **no dedicated positive-assertion handle exists** (see Concrete Handles gap, unchanged) — implementer should assert on response-arrived + no-console-error + no-timeout as the stand-in, per existing `wait_for_chat_response` convention |
+| Objective (description): agent w/ Name+Description+Instructions executes via embedded chat without hanging | as above | AFS steps 4–6 | steps 4–6 | covered |
 
 ### Axis 2 — Analyst additions
 
-- Confirmed the defect is **not** limited to the raw `/agents/create` UI form — it also breaks `automation/api/client.py::AgentAPI.create_agent()`, the API convenience method the existing test suite's `agent_id` fixture (and several other fixtures, e.g. `agent_with_toolkit_instructions`) uses to provision agents. Ran two unrelated existing tests (`test_agent_detail_page_loads`, `test_agent_instructions_field`) that depend on the `agent_id` fixture — both error at setup with the identical 400. *Added: this widens the defect's blast radius far beyond ELITEA-1897 and is the reason this AFS is `defect-found`/`blocked` rather than merely noting a local repro — every agent-dependent fixture in the suite is currently broken, which the implementer needs to know before attempting ANY agent-creation-dependent automation, not just this case.*
-- No other assertions added beyond the case — automation of steps 4–6 could not begin.
+- Re-ran the exact repro from the 2026-07-15 blocked pass (Name+Description+Instructions, plain, no toolkit) — **#524 no longer reproduces**: `POST /api/v2/elitea_core/applications/prompt_lib/399` now returns 201 with the platform's current default model/`llm_settings` combination for the create-form path. This closes the blast-radius concern raised in the prior pass (the `agent_id`/`AgentAPI.create_agent()` fixture path was not independently re-exercised in this pass since the case only requires the UI form path, but the same backend validation is what changed, so that path is expected fixed too — flag for the implementer to spot-check on first use rather than assume).
+- No assertions added beyond the case's 4 steps. Cleanup (delete) verified via UI flow — `DELETE /api/v2/elitea_core/application/prompt_lib/399/4903` → 204.
 
 ## Cleanup
-- No agent was successfully created (Save 400s before an agent ID exists), so there is nothing to delete from this analysis run.
-- **Recommendation for the eventual implementer**: once the defect is fixed, follow the project's existing pattern (`agent_with_toolkit_instructions` fixture in `tests/ui/chat/test_agent_with_toolkit_chat.py`, or the plain `agent_id` fixture) — create per-test via `agent_api.create_agent(...)`, `yield`, then `agent_api.delete_agent(aid)` in a `finally`/fixture-teardown block. Do **not** reuse a shared stable agent for this case: the case's whole point is verifying a *freshly created* agent (with only Name+Description+Instructions, no toolkit) executes without hanging, so a fresh instance per run is load-bearing, not incidental — Hard Rule 10's "prefer reuse" guidance doesn't apply here.
+- **Agent created during this pass (id 4903, name `autotest_ELITEA1897_confirm`) was deleted** via the UI Delete flow (table-view row → "more" action menu → Delete → typed exact name to confirm → Delete). Verified via network: `DELETE /api/v2/elitea_core/application/prompt_lib/399/4903` → **204 No Content**. Nothing left behind from this analysis run.
+- **Recommendation for the implementer (confirmed, not just a suggestion)**: create per-test via `agent_api.create_agent(...)` (existing `automation/api/client.py::AgentAPI`), `yield`, then `agent_api.delete_agent(aid)` in a `finally`/fixture-teardown block — same pattern as `agent_with_toolkit_instructions`/`agent_id` fixtures, but **without attaching a toolkit** (plain instructions only). Do **not** reuse a shared stable agent for this case: the case's whole point is verifying a *freshly created* agent (Name+Description+Instructions only, no toolkit) executes without hanging, so a fresh instance per run is load-bearing, not incidental — Hard Rule 10's "prefer reuse" guidance doesn't apply here. This was re-confirmed by manually exercising the create→chat→delete lifecycle live in this pass with no friction.
 
 ## Concrete Handles (discovered during exploration)
 
-All handles below were directly observed live via Playwright MCP snapshots against `http://localhost:5173/agents/create`; the embedded-chat handles are corroborated by the existing `automation/pages/agent_detail_page.py` page object (already testid-based, no gaps found there).
+All handles below were directly observed live via Playwright MCP against `http://localhost:5173/agents/create` and the resulting `/agents/all/{id}` detail page, **re-verified against the current live DOM on 2026-07-16 (post-#524-fix)** — all still accurate, no drift since the 2026-07-15 pass.
 
 | Element | Testid (confirmed) | Notes |
 |---|---|---|
-| Agent Name field | `agent-name-input` | Confirmed live via generated Playwright code (`page.getByTestId('agent-name-input')`) |
-| Agent Description field | `agent-description-input` | Confirmed live |
-| Agent Instructions field | `agent-instructions-input` | Confirmed live; matches `AgentFormPage.instructions_input` in existing page object |
-| Save button (create form) | `agent-save-button` | Confirmed live; disabled until required fields pass validation, enabled once Name+Description+Instructions filled |
-| Embedded chat message input | `chat-message-input` | Existing `AgentDetailPage.chat_message_input` — not independently re-verified live (blocked before reaching detail page), but already exercised by 2+ merged specs (`test_agent_with_github_toolkit.py`, `test_agent_management.py`) |
-| Embedded chat send button | `chat-send-button` | Existing `AgentDetailPage.chat_send_button` — same caveat as above |
-| Embedded chat message list / items | `chat-message-list`, `chat-message-item` | Existing `AgentDetailPage._embedded_chat_messages()` |
-| Last AI response text (non-last message) | `chat-answer-content` | Existing `get_last_chat_message()` |
-| Last AI response text (last message specifically) | `skill-test-last-response` | Existing `get_last_chat_response_text()` — **prefer this one** for the case's step 3 assertion, since it's the message actually asserted on |
-| "No hang / no error state" spinner or loading indicator | **none found** | No `data-testid` for a loading/spinner/"waking the agent" state exists anywhere in `agent_detail_page.py` or its templates as explored. **Gap**: if the implementer needs a positive assertion (not just "response arrived within timeout"), this needs `add-data-testid` on whatever loading indicator EliteaUI renders during a pending agent response (likely a `CircularProgress`/skeleton in `ApplicationAnswer.jsx` or the chat input's disabled/pending state) — flagging per this project's "missing testid ⇒ add it, don't rung down" rule. In the interim, "response text is non-empty and stable within `AI_RESPONSE_TIMEOUT`, no timeout exception raised" is an acceptable stand-in per project convention (`wait_for_chat_response`'s existing content-stability polling already encodes this implicitly). |
+| Agent Name field | `agent-name-input` | Re-confirmed live 2026-07-16 (`page.getByTestId('agent-name-input').fill(...)`) |
+| Agent Description field | `agent-description-input` | Re-confirmed live 2026-07-16 |
+| Agent Instructions field | `agent-instructions-input` | Re-confirmed live 2026-07-16; matches `AgentFormPage.instructions_input` in existing page object |
+| Save button (create form) | `agent-save-button` | Re-confirmed live 2026-07-16; disabled until required fields pass validation, enabled once Name+Description+Instructions filled; click now succeeds (201, navigates to `/agents/all/{id}`) |
+| Embedded chat message input | `chat-message-input` | **Independently re-verified live 2026-07-16** (previously blocked, now confirmed): `page.getByTestId('chat-message-input').fill(...)` + `.press('Enter')` submits the turn correctly. Matches `AgentDetailPage.chat_message_input`. |
+| Embedded chat send button | `chat-send-button` | Not separately exercised this pass — Enter-to-submit was used instead and worked; existing `AgentDetailPage.chat_send_button` should be equally valid (same existing page-object method used by 2 merged specs) |
+| Embedded chat message list / items | `chat-message-list`, `chat-message-item` | Confirmed live 2026-07-16 — chat turns render as list items with sender name, timestamp, content |
+| Last AI response text (non-last message) | `chat-answer-content` | Not independently re-exercised (only one AI turn occurred); existing `get_last_chat_message()` unchanged |
+| Last AI response text (last message specifically) | `skill-test-last-response` | Not independently re-exercised via testid lookup this pass (verified via accessibility snapshot text instead — response text confirmed exactly `"CONFIRMED"`); **still recommended** for the case's step 3 assertion per existing `get_last_chat_response_text()` |
+| "No hang / no error state" spinner or loading indicator | **still none found** | Re-confirmed 2026-07-16: no dedicated loading/spinner/"waking the agent" testid exists. The response rendered directly (with a "Thought for N secs" collapsible header) with no observable intermediate spinner state to assert against. **Gap unchanged** — implementer should use "response arrived within `AI_RESPONSE_TIMEOUT`, 0 console errors, no timeout exception" as the stand-in per existing `wait_for_chat_response` convention; file `add-data-testid` work separately if a positive spinner-absence assertion becomes a hard requirement. |
 
 ## Network Behavior
-- `POST /api/v2/elitea_core/applications/prompt_lib/399` — agent creation. **Currently returns 400** for any Name+Description(+Instructions)-only payload where the resolved default model (`eu.anthropic.claude-sonnet-4-5-20250929-v1:0`, `supports_reasoning: true`) receives a non-null `temperature` alongside a non-`"none"` `reasoning_effort` in `versions[0].llm_settings` — see `GET /api/v2/configurations/models/399?include_shared=true` for the model's `supports_reasoning` flag. Confirmed via both the UI form's own payload construction and `AgentAPI.create_agent()`'s hard-coded `{"temperature": 0.6, "reasoning_effort": "medium"}` defaults (`automation/api/client.py` ~L386-390).
-- Once unblocked: expect the standard embedded-chat WebSocket flow (~2s delay per project convention) for the "Reply with: CONFIRMED" turn — no toolkit call expected (plain instructions, no toolkit attached), so this should be a simple LLM turn with no tool-execution round trip, unlike the toolkit-chat specs' `TOOLKIT_EXECUTION_TIMEOUT` (120s) — `AI_RESPONSE_TIMEOUT` (30s per existing module constants) should be sufficient once the defect is fixed.
+- `POST /api/v2/elitea_core/applications/prompt_lib/399` — agent creation. **RE-VERIFIED 2026-07-16: now returns 201 Created** for the same Name+Description+Instructions-only payload that 400'd on 2026-07-15. #524's root cause (temperature + reasoning_effort conflict on the default reasoning-capable model) is resolved — confirmed via direct network inspection during this live pass (`page.getByTestId(...)`-driven form fill + Save click), not just re-reading the ticket.
+- Embedded-chat WebSocket flow: send → response arrived in **~15s** (well under the existing `AI_RESPONSE_TIMEOUT`=30s constant), UI showed "Thought for 3 secs", model `Anthropic Claude 4.5 Sonnet`. No toolkit call involved (plain instructions, no toolkit attached) — a simple LLM turn, no tool-execution round trip, confirming the AFS's prior expectation.
+- `DELETE /api/v2/elitea_core/application/prompt_lib/399/4903` — cleanup delete. **204 No Content.**
 
 ## Known Defects Found During Exploration
 
-- **[CRITICAL/BLOCKING]** Agent creation fails with 400 on the default create form/API payload: `temperature` set alongside a non-`"none"` `reasoning_effort` for a `supports_reasoning: true` default model. **Already filed**: [EliteaAI/elitea-testing-public#524](https://github.com/EliteaAI/elitea-testing-public/issues/524) (filed same day, prior to this analysis, by a different case — ELITEA-1889). Re-confirmed independently live for this case (Name+Description+Instructions, matching this case's exact preconditions) and additionally confirmed the same defect breaks the `agent_id`/`agent_api.create_agent()` fixture path used across the whole existing agent test suite — **added a corroborating comment to #524** with this fixture-level finding (see issue comment, 2026-07-15). No new issue filed (dedup — same root cause, same tracked ticket).
-- This is a **blocking** defect per the project's no-masking policy (`.agents/profile.md` § Bug filing: "blocking defect → natural fail + blocked") — not isolated/soft-assertable, since it prevents the case's very first step from completing at all.
+- **#524 — CONFIRMED FIXED, re-verified independently in this pass.** Agent creation via the UI create-form (Name+Description+Instructions, exact same repro as the 2026-07-15 blocked pass) now succeeds: `POST .../applications/prompt_lib/399` → 201 (was 400), navigates to `/agents/all/{id}` as expected. No new defects were found during this re-execution — end-to-end flow (create → chat → confirm response → delete) completed cleanly with 0 console errors and no unexpected network failures.
+- No new GitHub issue filed — nothing new to report; #524 stays as the historical record of the now-resolved blocker. Per dispatch: this pass's job was re-verification, not a fresh defect hunt, and none surfaced.
 
 ## Blocked Steps
 
-- **All of steps 2–4** (send message, verify "CONFIRMED" response, verify no hang/error state) are blocked because step 1 (create agent) cannot complete — `POST .../applications/prompt_lib/{project}` 400s deterministically for both the UI create-form path and the `AgentAPI.create_agent()` fixture path. Unblock condition: EliteaAI/elitea-testing-public#524 is fixed (backend accepts a valid default `llm_settings` for reasoning-capable default models, or the UI/API client stops sending an incompatible default `temperature`+`reasoning_effort` combination).
-- Once unblocked, no further blockers are anticipated: the embedded-chat send/wait/assert mechanics are already proven working code paths (`send_chat_message`, `wait_for_chat_response`, `get_last_chat_response_text` in `automation/pages/agent_detail_page.py`), exercised by 2 already-merged specs (`tests/ui/agents/test_agent_with_github_toolkit.py`, `tests/ui/chat/test_agent_with_toolkit_chat.py`). The only net-new work once unblocked is: (a) a toolkit-free agent-creation fixture/inline setup (existing fixtures all attach a toolkit or require one), and (b) the "no hang / no error state" positive assertion, which currently has no dedicated handle (see Concrete Handles gap above).
+- **None.** All 6 sub-steps (form load, fill, save, send message, verify response, verify no-hang) completed live with no blockers as of 2026-07-16. (Historical: 2026-07-15 pass had all of steps 2–4 blocked on #524; that blocker is resolved — see Known Defects above.)
 
 ## Automation Hints
 
 - Framework: Playwright + pytest, confirmed from `.agents/testing.md`.
-- Once unblocked, this case is a strong candidate to **extend** `tests/ui/agents/test_agent_management.py::TestCreateAgent::test_create_agent_via_ui` (creates an agent via the UI form with Name+Description+Instructions already) by appending an embedded-chat send/verify block — rather than writing a wholly separate spec — since steps 1–3 (create via UI, all three fields) are identical to that test's existing steps 1–4. Alternatively, a small new test in `tests/ui/agents/test_agent_management.py` (or a new `TestAgentExecution` class) using the plain `agent_id`/API-created agent (no toolkit) + `send_chat_message("Reply with: CONFIRMED")` + `wait_for_chat_response()` + `get_last_chat_response_text()` containment assertion is equally valid and avoids coupling this case's assertions to the create-form test's unrelated concerns (list-page verification, cleanup timing). **Recommend the latter** (new focused test) given the create-form test's finally-block cleanup already has a distinct responsibility.
+- **Verified: no existing spec fully covers this case's observable.** Checked both AFS-named candidates live during this pass:
+  - `tests/ui/agents/test_agent_management.py::TestCreateAgent::test_create_agent_via_ui` — creates an agent via the UI form with Name+Description+Instructions and verifies detail-page navigation + list-page presence, but **does not touch the embedded chat at all** (no send, no response assertion). Confirmed by reading the full test body (lines 113–182) — it stops at "Verify agent appears in the list" and cleans up. Not a covering spec for this case's core observable (chat execution).
+  - `tests/ui/agents/test_agent_with_github_toolkit.py::test_add_toolkit_to_agent` — does send a chat message and assert on the response, but the whole point of that fixture is a **toolkit-attached** agent whose response is expected to mention "branch" (GitHub toolkit output) — a categorically different observable from this case's plain-instructions "CONFIRMED" echo, and it depends on `github_toolkit`/`GIT_HUB_TOKEN` test data this case doesn't need. Not a covering or reasonably-extendable spec (attaching a toolkit here would violate the case's explicit intent of proving toolkit-free instructions alone are sufficient).
+  - **Conclusion: `ready-for-automation` (fresh implementation), not `extend-existing`.** Neither candidate's gap is "a small number of missing assertions" — `test_create_agent_via_ui` is missing the entire chat-execution half of the case, and `test_agent_with_github_toolkit` tests a fundamentally different (toolkit-coupled) code path. Per the skill's own boundary rule ("if the gap is large enough that the extension would be a near-rewrite... treat as ready-for-automation"), this is squarely fresh-implementation territory.
+- **Recommended implementation shape**: a new focused test (e.g. `TestAgentExecution::test_agent_executes_with_name_description_instructions_only` in `tests/ui/agents/test_agent_management.py`, or a new file if the class doesn't fit) using `agent_api.create_agent(...)` (plain, no toolkit) → `yield` → `agent_api.delete_agent(aid)` in teardown, then `send_chat_message("Reply with: CONFIRMED")` → `wait_for_chat_response()` → assert `"CONFIRMED" in get_last_chat_response_text().upper()` (case-insensitive per AFS Test Data recommendation) → assert 0 console errors / no timeout raised as the no-hang stand-in.
 - Do not reuse `agent_with_toolkit_instructions` (chat toolkit fixture) or the GitHub-toolkit fixtures — this case explicitly wants a **plain**, toolkit-free agent, since its point is proving instructions alone (no tool coupling) still executes.
-- Re-verify all Concrete Handles above live once #524 is fixed — they were captured from the create form's initial render only; the post-fix payload/response shape may differ.
+- All Concrete Handles above are now confirmed against the current (post-fix) live DOM — no further re-verification needed before implementation.
