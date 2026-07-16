@@ -72,7 +72,7 @@ class SkillsListPage(BasePage):
     )
 
     search_send_button = LocatorDescriptor(
-        testid="skills-search-send-button",
+        testid="search-send-button",
         description=(
             "Send-icon button next to the search input (StyledSendIcon, "
             "SearchBar.jsx onClick={onSearch}) — one of the two intended "
