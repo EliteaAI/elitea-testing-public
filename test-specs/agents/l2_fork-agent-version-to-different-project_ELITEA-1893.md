@@ -35,9 +35,36 @@
 
 ## Test Data
 
+### Implementer amendment (review R1, `docs(afs): amend selectors per
+implementer exploration` rule) — source agent reclassified from
+`reuse-existing` to `generate-per-test`
+
+The analyst's live-run source agent was the pre-existing `Test Agent`
+(id `3`) in project `Private` (399), reused as-is since Fork never
+mutates its source. The shipped implementation (PR #571,
+`test_fork_agent_to_different_project.py`) does **not** reuse that
+hardcoded id — it **creates a fresh source agent via the UI at the top
+of every test run** (Step 1: `el-1893-agent-{uuid8}`, deleted via
+`agent_api.delete_agent()` in `finally`) instead.
+
+**Why**: depending on a specific hardcoded agent id (`3`) that happens
+to exist in one environment's `Private` project is an environment
+coupling this suite otherwise avoids — the id may not exist (or may
+have been mutated/deleted by other tests/environments) on a fresh
+localhost checkout, a different developer's seed data, or a deployed
+env. Every sibling Fork/Export/Import test in this suite
+(ELITEA-1794/1795/1889/1988/1989, etc.) creates its own source
+Agent/Skill per run for the same reason — reusing a magic id would be
+the outlier, not the norm. Since Fork's source is read-only for the
+whole flow (case steps 1–8 never mutate it — only the *forked copy* in
+the target project is asserted/mutated/deleted), creating a disposable
+source agent costs one extra UI create+delete per run and buys full
+environment independence; this is the Hard-Rule-10 "read-only-by-default"
+call applied to the *source* side of a fork/export-style case (the
+*destination* side still needs `generate-per-test` fresh state, since
+forking inherently creates a new entity — see below, unchanged).
+
 ### reuse-existing
-- Source agent: `Test Agent` (id `3`) in project `Private` (399) — used
-  as-is, no mutation (Fork does not modify the source).
 - Target projects (both pre-existing, not created this run): `Elitea
   Testing Team` (id `471`) and `UI Testing` (id `400`).
 
@@ -73,7 +100,11 @@ in that identity's permission set for project 471.
   test (which should target project 400 as above, cleanly avoiding
   the leftover-orphan condition).
 
-### generate-per-test (created by the fork action itself)
+### generate-per-test (created fresh by the implementation itself)
+- Source agent — created via the UI at the top of every run (see
+  Implementer amendment above), no nested Skills/toolkits/sub-agents
+  attached; deleted via API in `finally`, always (independent of
+  fork/cleanup outcome).
 - Forked agent — created fresh by the Fork action in each run; deleted
   in the successful (400) run. No other new entities are created (this
   source agent has no nested Skills/toolkits/sub-agents, so the wizard

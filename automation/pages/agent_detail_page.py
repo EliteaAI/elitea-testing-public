@@ -187,7 +187,13 @@ class AgentDetailPage(AgentFormPage):
     # via add-data-testid: `key: 'agent-actions-fork'` in
     # ForkEntityButton.jsx's useForkEntityMenu(), mirroring the sibling
     # Export menuitem above; see EliteaUI automation/testids commit
-    # 61328689).
+    # 61328689). Review R1 fix (commit 5dbc7530): `useForkEntityMenu()` is a
+    # SHARED hook also consumed by ToolkitsControls.jsx (Toolkit Fork) and
+    # the Pipeline path — the key is now resolved per `entity_name`
+    # (`applications` -> `agent-actions-fork`, `toolkits` ->
+    # `toolkit-actions-fork`, `pipelines` -> `pipeline-actions-fork`), so
+    # this testid value is unchanged for the Agent context but no longer
+    # leaks onto Toolkit/Pipeline Fork menuitems.
     fork_menuitem = LocatorDescriptor(testid="agent-actions-fork-menuitem")
 
     # --- Fork wizard (ELITEA-1893) — shares the ImportWizardModal dialog
@@ -222,12 +228,24 @@ class AgentDetailPage(AgentFormPage):
         description="Fork wizard — 'Show details' toggle, one per rendered "
                      "entity-preview card",
     )
+    # Testid corrected in review R1 (ELITEA-1893): the original
+    # `agent-fork-project-select` was rendered via a state-conditional
+    # `data-testid={isForking ? '...' : '...'}` ternary in IWModalContent.jsx
+    # — forbidden per `.agents/testing.md` § Locator policy ("the element
+    # keeps ONE testid; state is a separate attribute"). Fixed by giving the
+    # SAME ProjectSelect DOM node (shared by both the Import and Fork
+    # wizards; `isForking` is a mount-time prop, not per-render-toggled
+    # state) a single unconditional testid instead. Declared improvisation:
+    # since AgentDetailPage only ever renders this dialog in Fork context
+    # (AgentsListPage owns the Import context separately), the shared
+    # testid unambiguously resolves the target project selector here — no
+    # `data-*` mode filter needed.
     fork_project_select_trigger = LocatorDescriptor(
-        testid="agent-fork-project-select",
-        description="Fork wizard — target Project selector trigger (added "
-                     "via add-data-testid to ProjectSelect's usage in "
-                     "IWModalContent.jsx; see EliteaUI automation/testids "
-                     "commit 61328689)",
+        testid="agent-import-wizard-project-select",
+        description="Fork wizard — target Project selector trigger (shared "
+                     "with the Import wizard's own use of the same "
+                     "ProjectSelect DOM node — see comment above; EliteaUI "
+                     "automation/testids commit 5dbc7530)",
     )
     fork_confirm_button = LocatorDescriptor(
         testid="agent-fork-confirm-button",

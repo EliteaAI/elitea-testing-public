@@ -21,10 +21,14 @@ cleanup — see AFS § Test Data), and verifies:
 One MINOR, isolated product defect (React `validateDOMNesting` `<p>`-in-
 `<p>` console warning on the Fork/Import "Complete" dialog) is filed as
 https://github.com/EliteaAI/elitea-testing-public/issues/570 and does not
-block the functional flow; the console-cleanliness assertion around the
-Fork Complete dialog is soft-asserted (`pytest.mark.xfail`-free `assert`
-demoted via `assert_soft` pattern — see Step 6b) with a `# Known defect:
-#570` comment so it doesn't mask any *other* console error.
+block the functional flow; the console-cleanliness check around the Fork
+Complete dialog uses the pytest-native soft-assertion equivalent (a
+``soft_failures`` list + a final ``pytest.fail()``, mirroring
+``test_skill_agent_interaction.py``'s known-defect #38 handling — Playwright's
+``expect.soft()`` only supports ``Page``/``Locator``/``APIResponse``, not a
+raw console-message list) with a `# Known defect: #570` comment, so it
+doesn't mask any *other* console error and never demotes the failure to a
+log-only signal.
 
 Spec: test-specs/agents/l2_fork-agent-version-to-different-project_ELITEA-1893.md
 """
@@ -113,6 +117,17 @@ class TestForkAgentToDifferentProject:
         target_project_agent_api = AgentAPI(
             browser_cookies=_browser_cookies, project_id=str(TARGET_PROJECT_ID),
         )
+        # pytest has no built-in expect.soft() for a raw console-message list
+        # (Playwright's Python expect.soft() only supports Page/Locator/
+        # APIResponse — see playwright.sync_api.Expect._dispatch). This list
+        # is the pytest-native equivalent, mirroring
+        # test_skill_agent_interaction.py's known-defect #38 handling: record
+        # the known-defect (#570) failure here instead of raising immediately,
+        # so downstream steps (7-9, hard-asserted) still execute and report.
+        # If anything lands here, the test fails at the very end via
+        # pytest.fail() — the defect is never masked, but it doesn't block
+        # the rest of the flow.
+        soft_failures = []
 
         try:
             with allure.step(
@@ -221,6 +236,19 @@ class TestForkAgentToDifferentProject:
                 "Step 6 — Click 'Fork'; verify the fork POST returns 201 "
                 "Created and the dialog re-renders as 'Fork Complete'"
             ):
+                # Console messages are captured starting BEFORE the fork
+                # click (not after the dialog is already open) so the
+                # listener actually observes the "Fork Complete" dialog's
+                # own render — the known defect (#570, see Step 6b) fires
+                # exactly at that render, and a listener attached afterward
+                # would silently never see it (Playwright console listeners
+                # are forward-looking only, no backfill).
+                console_messages = []
+                page.on(
+                    "console",
+                    lambda msg: console_messages.append(msg) if msg.type == "error" else None,
+                )
+
                 with page.expect_response(
                     lambda r: (
                         f"/elitea_core/fork/prompt_lib/{TARGET_PROJECT_ID}" in r.url
@@ -244,23 +272,15 @@ class TestForkAgentToDifferentProject:
                     "source Agent's name — confirming a new forked entity "
                     "was created"
                 )
+                page.wait_for_timeout(500)  # let any deferred console errors surface
 
             with allure.step(
                 "Step 6b — Console-cleanliness check around the Fork "
-                "Complete dialog (soft-asserted: a known, isolated, "
-                "non-blocking defect fires a validateDOMNesting warning "
-                "here — see below)"
+                "Complete dialog (a known, isolated, non-blocking defect "
+                "fires a validateDOMNesting warning here — soft-asserted "
+                "via the pytest-native soft_failures/pytest.fail() "
+                "mechanism, not a demoted log-only check)"
             ):
-                # Console messages are captured from THIS point forward
-                # (post-fork, dialog already open) so the check is scoped
-                # tightly to the Fork Complete dialog's own render, not
-                # the whole test's console history.
-                console_messages = []
-                page.on(
-                    "console",
-                    lambda msg: console_messages.append(msg) if msg.type == "error" else None,
-                )
-                page.wait_for_timeout(500)  # let any deferred console errors surface
                 unexpected_errors = [
                     m.text for m in console_messages
                     if "validateDOMNesting" not in m.text
@@ -273,16 +293,19 @@ class TestForkAgentToDifferentProject:
                 # warning on IWModalSucceedContent.jsx's "Forked:" label.
                 # Does not block the functional flow (fork completes,
                 # forked agent config matches source — verified in Step
-                # 8). Soft-asserted so this isolated, filed defect doesn't
-                # fail the whole test, while still being visible in the
-                # report.
+                # 8). Recorded in soft_failures (real soft-assertion
+                # equivalent — see the pytest.fail() call at the end of
+                # this test) rather than only logged, so a regression here
+                # (e.g. #570 spreading to a second, different warning)
+                # still fails the test instead of silently passing.
                 known_defect_errors = [
                     m.text for m in console_messages if "validateDOMNesting" in m.text
                 ]
                 if known_defect_errors:
-                    logger.warning(
-                        "Known defect #570 reproduced (validateDOMNesting "
-                        "on Fork Complete dialog): %s", known_defect_errors,
+                    soft_failures.append(
+                        "Known defect https://github.com/EliteaAI/elitea-testing-public/issues/570: "
+                        f"validateDOMNesting console error(s) on the Fork Complete "
+                        f"dialog: {known_defect_errors!r}"
                     )
 
             with allure.step(
@@ -348,6 +371,13 @@ class TestForkAgentToDifferentProject:
                 # cleanup marker so the finally block doesn't attempt a
                 # redundant (and now-404) API delete.
                 forked_agent_id = None
+
+            if soft_failures:
+                pytest.fail(
+                    "Soft assertion(s) failed (known isolated product defect, "
+                    "not test/infrastructure — rest of the flow, steps 7-9, "
+                    "passed cleanly):\n" + "\n".join(soft_failures)
+                )
 
         finally:
             # Cleanup per AFS: source agent (project 399, via the
