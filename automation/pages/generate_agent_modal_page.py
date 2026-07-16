@@ -22,10 +22,15 @@ Skill "Build with AI" flow via ``GenerateEntityModalPageBase`` — see
 ``generate_skill_modal_page.py`` for the sibling entity page object.
 """
 
+import logging
+
 from playwright.sync_api import Locator, Page
 
 from .generate_entity_modal_page_base import GenerateEntityModalPageBase
 from .locator_descriptor import LocatorDescriptor
+from utils.actions import action
+
+logger = logging.getLogger("elitea.pages.generate_agent_modal")
 
 
 class GenerateAgentModalPage(GenerateEntityModalPageBase):
@@ -155,3 +160,59 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
         """
         checkbox = self.page.locator(self.RESOURCE_CHECKBOX.format(entity_type, item_id))
         return checkbox.locator("input").is_checked()
+
+    # ------------------------------------------------------------------
+    # Suggested Resources — selection (ELITEA-1909)
+    # ------------------------------------------------------------------
+
+    @action("Select suggested resource")
+    def select_resource(self, entity_type: str, item_id):
+        """Click a suggestion card's checkbox to select it (see
+        ELITEA-1909 AFS Concrete Handles).
+
+        Args:
+            entity_type: ``"toolkit"``, ``"mcp"``, ``"pipeline"``, ``"agent"``, or ``"skill"``.
+            item_id: The suggested item's id (as returned in the draft response).
+        """
+        self.page.locator(self.RESOURCE_CHECKBOX.format(entity_type, item_id)).click()
+        logger.info("Selected suggested resource %s/%s", entity_type, item_id)
+
+    # ------------------------------------------------------------------
+    # Create Agent (review step -> created agent) — ELITEA-1909
+    # ------------------------------------------------------------------
+
+    @action("Click Create Agent")
+    def click_approve_and_wait_for_creation(self, timeout: int = 15000):
+        """Click "Create Agent" and wait for the three sequential network
+        calls the review step fires: the base-agent create (POST), the
+        selected-Toolkit association (PATCH .../tool/prompt_lib/...), and
+        the selected-Agent association (PATCH .../application_relation/prompt_lib/...).
+
+        Per the ELITEA-1909 AFS Automation Hints, the UI's auto-navigation
+        to the created agent's detail page can otherwise race ahead of the
+        association calls completing — waiting on all three responses
+        explicitly (rather than relying on navigation timing) avoids that.
+
+        Returns:
+            tuple: ``(create_response, toolkit_patch_response, agent_relation_patch_response)``
+        """
+        with self.page.expect_response(
+            lambda r: "/elitea_core/applications/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as create_info, self.page.expect_response(
+            lambda r: "/elitea_core/tool/prompt_lib/" in r.url and r.request.method == "PATCH",
+            timeout=timeout,
+        ) as toolkit_patch_info, self.page.expect_response(
+            lambda r: "/elitea_core/application_relation/prompt_lib/" in r.url and r.request.method == "PATCH",
+            timeout=timeout,
+        ) as relation_patch_info:
+            self.approve_button.click()
+
+        create_response = create_info.value
+        toolkit_patch_response = toolkit_patch_info.value
+        relation_patch_response = relation_patch_info.value
+        logger.info(
+            "Create Agent: create=%d toolkit-patch=%d agent-relation-patch=%d",
+            create_response.status, toolkit_patch_response.status, relation_patch_response.status,
+        )
+        return create_response, toolkit_patch_response, relation_patch_response
