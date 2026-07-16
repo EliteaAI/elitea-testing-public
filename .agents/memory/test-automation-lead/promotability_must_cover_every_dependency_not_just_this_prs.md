@@ -29,3 +29,14 @@ claim in a PR/AFS still needs its own main-vs-testids row in the verification
 block, sourced by finding which commit/PR actually introduced it
 (`git log -p origin/automation/testids -- <file>` grepped for the testid
 string) so the true blocking PR can be named.
+
+**Recurrence (control-audit, issue #78, ELITEA-1974, 2026-07-15/16):** exact
+same shape, exact same unrelated blocker PR (`EliteaUI#544`, still open) —
+this time the reused dependency was `entity-card` again, in a *different*
+case's delivery, caught during an independent control audit rather than
+self-caught by the deliverer. The closure record named only the case's own
+`EliteaUI#569` as the blocker. Confirms this isn't a one-off slip: any
+Credentials/Mcp/Skills/Applications/Toolkits list-page case that reuses the
+shared `Card.jsx` `entity-card` testid inherits the SAME #544 blocker until
+that sibling case's testid PR merges — worth checking for on every future
+case in this family, not just re-deriving from scratch each time.
