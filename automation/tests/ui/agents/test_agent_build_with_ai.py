@@ -72,12 +72,14 @@ SUGGESTED_RESOURCES_PROMPT_TEXT = "An agent that queries GitHub and runs Jira up
 # Hints: the only live-suggestible resource in this project (`Remote
 # Github` MCP, id 3) has an empty description, so a live run alone cannot
 # demonstrate the "description shown when present" half of step 4, nor
-# populate the Toolkit/Pipeline categories the case's Pass criteria also
-# names. Mocking is the read-only-by-default resolution (Hard Rule 10):
-# it exercises the full case scope — multiple populated categories, both
-# the "has description" and "no description" rendering paths, and the
-# "empty category renders no section" path — without creating, mutating,
-# or tearing down any real project fixture.
+# populate the Toolkit/Pipeline/Agent categories the case's Pass criteria
+# also names ("relevant Toolkits/Agents/Pipelines/MCPs" — step 3 and Pass
+# criteria). Mocking is the read-only-by-default resolution (Hard Rule 10):
+# it exercises the full case scope — all four named categories populated,
+# both the "has description" and "no description" rendering paths, and the
+# "empty category renders no section" path (via the untouched `skill`
+# category) — without creating, mutating, or tearing down any real project
+# fixture.
 #
 # The `suggested_mcp` entry mirrors the AFS's live-observed Network
 # Behavior payload exactly (id 3, "Remote Github", description: null) so
@@ -129,7 +131,14 @@ SUGGESTED_RESOURCES_DRAFT_PAYLOAD = {
             "description": "Automates Jira ticket updates.",
         }
     ],
-    "suggested_agents": [],
+    "suggested_agents": [
+        {
+            "id": 303,
+            "type": "agent",
+            "name": "Jira Triage Agent",
+            "description": "Triages incoming Jira tickets and assigns them to the right team.",
+        }
+    ],
     "suggested_skills": [],
 }
 
@@ -252,9 +261,9 @@ class TestAgentBuildWithAISuggestedResources:
     def test_generated_draft_includes_suggested_resources_section(self, page):
         """Submitting a description implying resource use surfaces a
         Suggested Resources section in the review form: relevant
-        Toolkit/MCP/Pipeline suggestions are shown (each with a name, and a
-        description when the underlying resource has one), categories with
-        no suggestions render no section at all, and no suggestion is
+        Toolkit/Agent/Pipeline/MCP suggestions are shown (each with a name,
+        and a description when the underlying resource has one), categories
+        with no suggestions render no section at all, and no suggestion is
         pre-selected."""
         list_page = AgentsListPage(page)
         modal = GenerateAgentModalPage(page)
@@ -279,7 +288,18 @@ class TestAgentBuildWithAISuggestedResources:
         # ------------------------------------------------------------------
         with allure.step("Step 2 — Wait for generation to complete"):
             modal.mock_generate_success(SUGGESTED_RESOURCES_DRAFT_PAYLOAD)
-            response = modal.click_generate_and_wait_for_response(timeout=GENERATE_RESPONSE_TIMEOUT)
+
+            with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+                modal.generate_button.click()
+
+                # Case step 2's "Verify": the modal shows the loading state
+                # before transitioning to the review form. Mirrors ELITEA-1915's
+                # Step 5, which asserts the same loading indicator the same
+                # way — checked here, in-flight, before the (artificially
+                # delayed) mocked response resolves.
+                modal.wait_for_loading_visible(timeout=LOADING_STATE_TIMEOUT)
+
+            response = response_info.value
 
             assert response.status == 200, (
                 f"Expected the generate-draft request to succeed, got {response.status}"
@@ -299,7 +319,7 @@ class TestAgentBuildWithAISuggestedResources:
         # ------------------------------------------------------------------
         with allure.step(
             "Step 3 — Verify Suggested Resources section shown with relevant "
-            "Toolkits/MCP/Pipelines; empty categories render no section"
+            "Toolkits/Agents/Pipelines/MCPs; empty categories render no section"
         ):
             assert modal.is_resource_section_visible("toolkit"), (
                 'The "Suggested Toolkits:" section should be present when suggested_toolkits is non-empty'
@@ -310,11 +330,11 @@ class TestAgentBuildWithAISuggestedResources:
             assert modal.is_resource_section_visible("pipeline"), (
                 'The "Suggested Pipelines:" section should be present when suggested_pipelines is non-empty'
             )
+            assert modal.is_resource_section_visible("agent"), (
+                'The "Suggested Agents:" section should be present when suggested_agents is non-empty'
+            )
             # ResourceSuggestions.jsx: `if (!items?.length) return null` — an
             # empty category renders no section at all, not an empty one.
-            assert not modal.is_resource_section_visible("agent"), (
-                'The "Suggested Agents:" section should NOT render when suggested_agents is empty'
-            )
             assert not modal.is_resource_section_visible("skill"), (
                 'The "Suggested Skills:" section should NOT render when suggested_skills is empty'
             )
@@ -362,6 +382,16 @@ class TestAgentBuildWithAISuggestedResources:
                 "Automates Jira ticket updates."
             ), "Pipeline suggestion card should display the resource's description"
 
+            assert modal.get_resource_name_text("agent", 303) == "Jira Triage Agent", (
+                "Agent suggestion card should display the resource's name"
+            )
+            assert modal.resource_description_exists("agent", 303), (
+                "Agent suggestion has a non-empty description and should render a description element"
+            )
+            assert modal.get_resource_description_text("agent", 303) == (
+                "Triages incoming Jira tickets and assigns them to the right team."
+            ), "Agent suggestion card should display the resource's description"
+
         # ------------------------------------------------------------------
         # Step 5 — Verify no resource is pre-selected
         # ------------------------------------------------------------------
@@ -371,6 +401,9 @@ class TestAgentBuildWithAISuggestedResources:
             )
             assert not modal.is_resource_checked("mcp", 3), (
                 "MCP suggestion should not be pre-selected"
+            )
+            assert not modal.is_resource_checked("agent", 303), (
+                "Agent suggestion should not be pre-selected"
             )
             assert not modal.is_resource_checked("pipeline", 202), (
                 "Pipeline suggestion should not be pre-selected"
