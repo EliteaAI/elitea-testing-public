@@ -17,10 +17,9 @@ instead — no agent is created, edited, or deleted; nothing to clean up.
 Markers:
     - ui: requires browser
     - agents: agent-related tests
-    - p1: high priority (frontmatter priority is "critical"/l1; marked p1 as
-      the closest existing marker — no p0-vs-p1 distinction is drawn in this
-      AFS beyond "critical", and p1 is the project's convention for
-      non-smoke regression coverage of a critical-but-non-blocking flow)
+    - p0: critical priority (frontmatter priority is "critical"/l1 —
+      matches pytest.ini's p0 marker, the project's convention for
+      must-pass-for-deploy coverage)
 """
 
 import allure
@@ -35,7 +34,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.agents]
 NAVIGATION_TIMEOUT = 15000
 
 
-@pytest.mark.p1
+@pytest.mark.p0
 @pytest.mark.regression
 def test_back_button_from_agent_detail_returns_to_intact_agents_list(page):
     """Back button on agent detail page returns to Agents dashboard with

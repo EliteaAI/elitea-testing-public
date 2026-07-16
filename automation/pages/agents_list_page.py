@@ -168,9 +168,7 @@ class AgentsListPage(BasePage):
     # Agent list operations
     # ------------------------------------------------------------------
 
-    # Card name testid, scoped as a class constant per the project's dynamic-
-    # selector convention (`.agents/testing.md` § Locator policy). Fixed
-    # (ELITEA-1869): the previous locator —
+    # Fixed (ELITEA-1869): the previous locator —
     # ``'[class*="CardContent"] >> text, [class*="cardContent"] >> text'`` —
     # combined a CSS selector list with a chained Playwright text engine in a
     # single selector string; Playwright parses the whole string as one
@@ -180,8 +178,16 @@ class AgentsListPage(BasePage):
     # cards present, 0 matched), so this method always returned ``[]``,
     # silently. No existing test exercised this method before ELITEA-1869
     # (confirmed via repo-wide grep), so this is a straight fix, not a
-    # shared-caller change.
-    ENTITY_CARD_NAME = '[data-testid="entity-card-name"]'
+    # shared-caller change. Now resolved via the shared ``entity-card-name``
+    # Card.jsx testid (also used by Credentials/Mcp/Skills/Pipelines list
+    # pages — see ``CredentialsListPage.entity_card_name`` for the identical
+    # collection-locator pattern), a proper class-level ``LocatorDescriptor``
+    # per the testid-only policy (`.claude/rules/page-objects.md`), instead
+    # of a raw locator string built/used inside the method body.
+    entity_card_name = LocatorDescriptor(
+        testid="entity-card-name",
+        description="Agent card name (title) — collection locator, one per visible card",
+    )
 
     def get_agent_card_names(self, timeout: int = 5000) -> list[str]:
         """Return names of all agent cards visible on the dashboard.
@@ -190,7 +196,7 @@ class AgentsListPage(BasePage):
             List of agent name strings.
         """
         self.wait_for_network(timeout=timeout)
-        cards = self.page.locator(self.ENTITY_CARD_NAME)
+        cards = self.entity_card_name
 
         try:
             cards.first.wait_for(state="visible", timeout=timeout)
