@@ -309,6 +309,10 @@ class TestSupportAssistantAttachments:
     """
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0577_support-assistant-files-can-be-attached-via-click-to-browse-drag-and-d.md", "onetest-ai Test Case link")
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/support-assistant/ELITEA-1802_attach-button-present-and-opens-file-picker.md",
+        "onetest-ai Test Case link",
+    )
     def test_attach_button_present_and_opens_picker(self, page, tmp_path):
         """Attach button opens file picker dialog.
 
