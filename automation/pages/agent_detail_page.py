@@ -189,6 +189,33 @@ class AgentDetailPage(AgentFormPage):
     # --- Navigation ---
     back_button = LocatorDescriptor(testid="back-button")
 
+    # --- Icon picker (ELITEA-1899 testid-only rework — added via
+    # add-data-testid to EntityIcon.jsx/ApplicationEditForm.jsx/
+    # SelectIconDialog.jsx/ProjectIconItem.jsx; see EliteaUI commit
+    # 6bb6a23c on automation/testids). `agent_icon_button` is ALSO present
+    # on the create-form route (CreateAgentForm.jsx) — both are separate
+    # React components sharing this testid string (see this project's
+    # dual-component gotcha, `.agents/memory/qa-engineer/
+    # agent_form_dual_component_and_icon_picker_quirks.md`). ---
+    agent_icon_button = LocatorDescriptor(
+        testid="agent-form-icon-button",
+        description=(
+            "Agent icon avatar/button (opens the icon picker). CRITICAL: "
+            "only fires onClick to open the dialog once its hover-triggered "
+            "edit-pencil overlay is already mounted — a bare single "
+            "`.click()` with no prior `.hover()` only renders the overlay "
+            "and does NOT open the dialog (reproduced deterministically "
+            "2/2, ELITEA-1899 AFS). Callers must hover() before click()."
+        ),
+    )
+    icon_picker_dialog = LocatorDescriptor(testid="agent-icon-picker-dialog")
+    icon_picker_close_button = LocatorDescriptor(testid="agent-icon-picker-close-button")
+    icon_picker_default_icon = LocatorDescriptor(testid="agent-icon-picker-default-icon")
+    # Dynamic (runtime-parameterized) testid templates — same class-constant
+    # + `.format()` pattern as VERSION_OPTION / VARIABLE_ROW above.
+    ICON_PICKER_OPTION = '[data-testid="agent-icon-picker-option-{}"]'
+    ICON_PICKER_UPLOADED = '[data-testid="agent-icon-picker-uploaded-{}"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -413,6 +440,80 @@ class AgentDetailPage(AgentFormPage):
         """
         option = self.page.locator(self.VERSION_OPTION.format(version_name))
         return option.get_attribute("aria-selected") == "true"
+
+    # ------------------------------------------------------------------
+    # Icon picker (ELITEA-1899)
+    # ------------------------------------------------------------------
+
+    @action("Open the icon picker dialog")
+    def open_icon_picker(self, timeout: int = 10000):
+        """Open the agent icon picker dialog.
+
+        LOCATOR: ``agent-form-icon-button`` (see field docstring above).
+        Must ``hover()`` immediately before ``click()`` — the icon's
+        clickable state only mounts once its hover-triggered edit-pencil
+        overlay is rendered; a bare single ``.click()`` with no prior
+        ``.hover()`` merely triggers the hover state and does not open the
+        dialog (confirmed live, ELITEA-1899 AFS Automation Hints — real
+        users are unaffected since mouse movement naturally precedes a
+        real click).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening the agent icon picker dialog")
+        self.agent_icon_button.scroll_into_view_if_needed()
+        self.agent_icon_button.hover()
+        self.agent_icon_button.click()
+        self.icon_picker_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Icon picker dialog opened")
+
+    @action("Select a default icon option")
+    def select_icon_option(self, index: int, timeout: int = 10000) -> str:
+        """Select a "Default" icon option by index and return its resulting src.
+
+        LOCATOR: dynamic ``agent-icon-picker-option-{index}`` testid (see
+        ``ICON_PICKER_OPTION`` above). Selecting closes the dialog
+        immediately and persists via its own ``PUT
+        .../upload_icon/prompt_lib/{project}/{versionId}`` call — decoupled
+        from the agent form's Save/Discard state (ELITEA-1899 AFS).
+
+        Args:
+            index: 0-based index of the default icon option to select.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The header icon's ``img.src`` value after the dialog closes.
+        """
+        logger.info("Selecting icon picker option index=%d", index)
+        option = self.page.locator(self.ICON_PICKER_OPTION.format(index))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.icon_picker_dialog.wait_for(state="hidden", timeout=timeout)
+        self.wait_for_network(timeout=timeout)
+        src = self.get_header_icon_src(timeout=timeout)
+        logger.info("Icon option %d selected — header icon src: %s", index, src)
+        return src
+
+    def get_header_icon_src(self, timeout: int = 10000) -> str:
+        """Return the ``src`` of the agent header icon's ``<img>`` element.
+
+        LOCATOR: ``agent-form-icon-button`` (see field docstring above),
+        scoped down to its inner ``<img>``. A freshly-created agent with no
+        icon explicitly selected yet renders an inline SVG placeholder (no
+        ``<img>`` at all) instead — confirmed live against a fresh agent —
+        so this returns ``""`` in that case rather than timing out.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.agent_icon_button.wait_for(state="visible", timeout=timeout)
+        img = self.agent_icon_button.locator("img")
+        try:
+            img.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        return img.get_attribute("src") or ""
 
     # ------------------------------------------------------------------
     # Variables section (derived live from Instructions text, ELITEA-1884)
