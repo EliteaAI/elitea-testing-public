@@ -110,6 +110,21 @@ lookup), never replace it.
 - **Browser-driving Bash commands: timeout=600000 (10 min)** — the 120s default
   false-fails on Keycloak + SPA navigation + WebSocket AI waits (2–30s).
 
+## Every role — batch shell round-trips (time-audit finding, 2026-07-16)
+
+- **Combine related read-only shell commands into ONE Bash call** (`git status &&
+  git log --oneline -3 && grep -c X file`) instead of one call each. Measured across
+  35 delivered cases: misc-bash + git turns alone were **45% of all model time**
+  (~5,700 turns × ~5 s each — the round-trip itself costs ~5 s regardless of how
+  trivial the command is). Halving them saves ~7 min/case. Same for `gh` reads.
+- **Scope file reads** — `Read` with offset/limit or a targeted `Grep`, not whole
+  files: file-reading turns carry the largest payloads (12 KB avg) and the biggest
+  context growth (~8.6k cache-creation tokens/turn), making them the slowest turns.
+- Keep WRITE-side commands (commits, pushes, board writes) separate and reviewable —
+  batching is for reads/checks, not for irreversible actions.
+- Playwright MCP needs no such economy — its turns are the cheapest in the stack
+  (3.3 s avg, compact snapshots); don't avoid it for "weight" reasons.
+
 ## Analyst slot (qa-engineer)
 
 - The AFS **Handles Reference must list testids as the only primary handles.** An
