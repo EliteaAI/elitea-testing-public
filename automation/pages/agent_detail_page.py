@@ -493,6 +493,44 @@ class AgentDetailPage(AgentFormPage):
                 names.append(testid[len("agent-variable-row-"):])
         return names
 
+    @action("Fill variable value")
+    def fill_variable_value(self, variable_name: str, value: str, timeout: int = 5000):
+        """Type a value into a variable's value input.
+
+        LOCATOR: dynamic ``agent-variable-input-{variable_name}`` testid (see
+        ``VARIABLE_INPUT`` above). Confirmed live (ELITEA-1883) that both
+        ``.fill()`` (direct DOM value set) and ``press_sequentially()``
+        round-trip correctly through Save for this field — unlike
+        ``instructions_input``, which requires keyboard events for React
+        ``onChange`` (`.claude/rules/mui-patterns.md`). Uses ``click()`` +
+        ``press_sequentially()`` per the project's MUI convention, for
+        consistency with other form fields in this codebase.
+
+        Args:
+            variable_name: Exact variable name (e.g. ``"MY_VAR"``).
+            value: Value to type into the input.
+            timeout: Maximum wait time in milliseconds.
+        """
+        field = self.page.locator(self.VARIABLE_INPUT.format(variable_name))
+        field.wait_for(state="visible", timeout=timeout)
+        field.click()
+        field.press_sequentially(value, delay=30)
+        logger.info("Filled variable '%s' value: %r", variable_name, value)
+
+    def get_variable_value(self, variable_name: str, timeout: int = 5000) -> str:
+        """Return the current DOM value of a variable's value input.
+
+        LOCATOR: dynamic ``agent-variable-input-{variable_name}`` testid (see
+        ``VARIABLE_INPUT`` above).
+
+        Args:
+            variable_name: Exact variable name (e.g. ``"MY_VAR"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        field = self.page.locator(self.VARIABLE_INPUT.format(variable_name))
+        field.wait_for(state="visible", timeout=timeout)
+        return field.input_value()
+
     # ------------------------------------------------------------------
     # Internal tools (switches)
     # ------------------------------------------------------------------
