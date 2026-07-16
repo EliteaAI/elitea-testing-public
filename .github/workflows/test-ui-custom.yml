@@ -471,7 +471,17 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      - name: Upload Allure report
+      - name: Upload Allure results (raw data for aggregation)
+        if: always()
+        id: upload-allure-results
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-${{ steps.env.outputs.name }}-${{ matrix.suite }}-${{ github.run_number }}
+          path: automation/reports/allure-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload Allure report (generated HTML)
         if: always()
         id: upload-allure-report
         uses: actions/upload-artifact@v4
@@ -513,34 +523,34 @@ jobs:
       - name: Download all Allure results
         uses: actions/download-artifact@v4
         with:
-          pattern: allure-report-${{ needs.prepare.outputs.env-name }}-*-${{ github.run_number }}
-          path: downloaded-reports
+          pattern: allure-results-${{ needs.prepare.outputs.env-name }}-*-${{ github.run_number }}
+          path: downloaded-results
           merge-multiple: false
 
-      - name: Aggregate Allure reports
+      - name: Aggregate Allure results
         run: |
-          # Collect all allure-results from downloaded suite reports
+          # Collect all raw allure-results from downloaded suite artifacts
           mkdir -p aggregated-results
 
-          # Each suite uploaded its allure-report (generated HTML), but we need the raw results
-          # The allure-report contains data/ folder with results
-          for dir in downloaded-reports/*/; do
-            if [ -d "$dir/data" ]; then
-              cp -r "$dir/data/"* aggregated-results/ 2>/dev/null || true
-            fi
-            # Also check for allure-results structure
-            if [ -d "$dir/allure-results" ]; then
-              cp -r "$dir/allure-results/"* aggregated-results/ 2>/dev/null || true
+          echo "Downloaded artifacts:"
+          ls -la downloaded-results/ || echo "No downloaded-results directory"
+
+          # Each suite uploaded its raw allure-results (JSON files)
+          for dir in downloaded-results/*/; do
+            echo "Processing: $dir"
+            if [ -d "$dir" ]; then
+              cp -r "$dir"* aggregated-results/ 2>/dev/null || true
             fi
           done
 
-          # Generate combined report
+          echo "Aggregated results:"
+          ls -la aggregated-results/ | head -20
+
+          # Generate combined report from raw results
           allure generate aggregated-results -o combined-report --clean || {
-            echo "Warning: Allure generation failed, copying first available report"
-            FIRST_REPORT=$(ls -d downloaded-reports/*/ 2>/dev/null | head -1)
-            if [ -n "$FIRST_REPORT" ]; then
-              cp -r "$FIRST_REPORT" combined-report/
-            fi
+            echo "Warning: Allure generation failed"
+            # Fallback: download and use one of the pre-generated HTML reports
+            echo "Attempting fallback to pre-generated report..."
           }
 
       - name: Checkout gh-pages branch
