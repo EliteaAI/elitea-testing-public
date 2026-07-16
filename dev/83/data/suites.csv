@@ -1,5 +1,5 @@
 "Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
-"failed","Thu Jul 16 13:57:23 UTC 2026","Thu Jul 16 13:57:53 UTC 2026","29817","tests.ui.skills","test_export_agent_no_nested_dependencies","TestExportAgentNoNestedDependencies","","","test_export_agent_no_nested_dependencies","Create an Agent with no attached Skills/sub-Agents but with an
+"failed","Thu Jul 16 15:16:33 UTC 2026","Thu Jul 16 15:17:02 UTC 2026","29316","tests.ui.skills","test_export_agent_no_nested_dependencies","TestExportAgentNoNestedDependencies","","","test_export_agent_no_nested_dependencies","Create an Agent with no attached Skills/sub-Agents but with an
         external GitHub toolkit attached, export it via the actions overflow
         menu, and verify the downloaded file's raw content: correct
         frontmatter, no ``skills:`` key, instructions embedded verbatim, and
@@ -25,45 +25,7 @@
            any credential-shaped substring — only the toolkit's non-secret
            `elitea_title` reference.
         "
-"failed","Thu Jul 16 13:56:11 UTC 2026","Thu Jul 16 13:57:22 UTC 2026","71173","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 5 Skills + an Agent, attach all 5 Skills one at a time,
-        verify the add-skill control disables at 5/5 with a tooltip (rather
-        than a literal 6th-click rejection), and verify persistence via a
-        full page reload.
-
-        Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md):
-        1. Create 5 Skills via UI. A 6th distinct skill is looked up via the
-           project's existing skills (via ``skill_api``) rather than assumed
-           by name — any pre-existing skill satisfies the case's ""6 distinct
-           Skills"" precondition.
-        2. Create an Agent.
-        3. Skills section starts at 0/5, add-skill control enabled.
-        4-8. Attach Skills 1-5 one at a time; counter increments ""N/5 skills
-           added."" and a card renders after each attach.
-        9. Add-skill control becomes disabled the instant 5/5 is reached,
-           with an accessible tooltip — a 6th skill cannot be attached.
-        10. Confirm persistence via a full page reload (attach is
-           auto-saved via API; no explicit agent-level Save is available).
-        "
-"failed","Thu Jul 16 13:58:31 UTC 2026","Thu Jul 16 13:59:30 UTC 2026","58326","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
-        participant, confirm '~mention' shows the skill, dismiss, remove the
-        participant, and (soft-asserted, known defect) confirm the skill no
-        longer appears in '~mention' afterward.
-
-        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
-        1. Create Skill, create Agent, attach the skill to the agent.
-        2. Open Chat, add the agent as a participant.
-        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
-        4. Dismiss the popper with Escape without selecting anything.
-        5. Remove the agent from the chat's participants.
-        6. Type '~' again — soft-asserted per known defect #51: the removed
-           agent's skill should NOT be listed, but live product still shows
-           it (ghost).
-        7. Control check: a fresh conversation that never had a participant
-           shows the correct ""No skills attached to this agent"" empty state
-           — proving the ghost is specifically a stale-state-after-removal
-           bug, not ""the mention list always shows all project skills"".
-        "
-"passed","Thu Jul 16 13:54:58 UTC 2026","Thu Jul 16 13:56:10 UTC 2026","72217","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
+"passed","Thu Jul 16 15:14:00 UTC 2026","Thu Jul 16 15:14:55 UTC 2026","54683","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
         mention panel in the Instructions field is scoped to only the
         attached 2 — the 3rd (unattached) Skill never appears, including
         on a second, independent ""~"" trigger after clearing the field.
@@ -82,7 +44,45 @@
         6. Select-all + delete, retype ""~"" — same 2-item scoped list
            reappears; Skill C still absent (re-evaluated live).
         "
-"passed","Thu Jul 16 13:57:53 UTC 2026","Thu Jul 16 13:58:31 UTC 2026","37649","tests.ui.skills","test_export_agent_with_attached_skills","TestExportAgentWithAttachedSkills","","","test_export_agent_with_attached_skills","Create a Skill + an Agent, attach the Skill, export the Agent via
+"failed","Thu Jul 16 15:17:38 UTC 2026","Thu Jul 16 15:18:33 UTC 2026","54835","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
+        participant, confirm '~mention' shows the skill, dismiss, remove the
+        participant, and (soft-asserted, known defect) confirm the skill no
+        longer appears in '~mention' afterward.
+
+        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
+        1. Create Skill, create Agent, attach the skill to the agent.
+        2. Open Chat, add the agent as a participant.
+        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
+        4. Dismiss the popper with Escape without selecting anything.
+        5. Remove the agent from the chat's participants.
+        6. Type '~' again — soft-asserted per known defect #51: the removed
+           agent's skill should NOT be listed, but live product still shows
+           it (ghost).
+        7. Control check: a fresh conversation that never had a participant
+           shows the correct ""No skills attached to this agent"" empty state
+           — proving the ghost is specifically a stale-state-after-removal
+           bug, not ""the mention list always shows all project skills"".
+        "
+"passed","Thu Jul 16 15:14:55 UTC 2026","Thu Jul 16 15:16:32 UTC 2026","96539","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 5 Skills + an Agent, attach all 5 Skills one at a time,
+        verify the add-skill control disables at 5/5 with a tooltip (rather
+        than a literal 6th-click rejection), and verify persistence via a
+        full page reload.
+
+        Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md):
+        1. Create 5 Skills via UI. A 6th distinct skill is looked up via the
+           project's existing skills (via ``skill_api``) rather than assumed
+           by name — any pre-existing skill satisfies the case's ""6 distinct
+           Skills"" precondition.
+        2. Create an Agent.
+        3. Skills section starts at 0/5, add-skill control enabled.
+        4-8. Attach Skills 1-5 one at a time; counter increments ""N/5 skills
+           added."" and a card renders after each attach.
+        9. Add-skill control becomes disabled the instant 5/5 is reached,
+           with an accessible tooltip — a 6th skill cannot be attached.
+        10. Confirm persistence via a full page reload (attach is
+           auto-saved via API; no explicit agent-level Save is available).
+        "
+"passed","Thu Jul 16 15:17:02 UTC 2026","Thu Jul 16 15:17:38 UTC 2026","35064","tests.ui.skills","test_export_agent_with_attached_skills","TestExportAgentWithAttachedSkills","","","test_export_agent_with_attached_skills","Create a Skill + an Agent, attach the Skill, export the Agent via
         the actions overflow menu, and verify the downloaded file's raw
         content embeds the Skill's full content verbatim.
 
