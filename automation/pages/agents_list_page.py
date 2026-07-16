@@ -168,6 +168,21 @@ class AgentsListPage(BasePage):
     # Agent list operations
     # ------------------------------------------------------------------
 
+    # Card name testid, scoped as a class constant per the project's dynamic-
+    # selector convention (`.agents/testing.md` § Locator policy). Fixed
+    # (ELITEA-1869): the previous locator —
+    # ``'[class*="CardContent"] >> text, [class*="cardContent"] >> text'`` —
+    # combined a CSS selector list with a chained Playwright text engine in a
+    # single selector string; Playwright parses the whole string as one
+    # locator chain, so the comma is consumed inside the chain instead of
+    # acting as a top-level OR. The result matched 0 elements (verified via
+    # a standalone Playwright script against the live dashboard — 6 real
+    # cards present, 0 matched), so this method always returned ``[]``,
+    # silently. No existing test exercised this method before ELITEA-1869
+    # (confirmed via repo-wide grep), so this is a straight fix, not a
+    # shared-caller change.
+    ENTITY_CARD_NAME = '[data-testid="entity-card-name"]'
+
     def get_agent_card_names(self, timeout: int = 5000) -> list[str]:
         """Return names of all agent cards visible on the dashboard.
 
@@ -175,7 +190,7 @@ class AgentsListPage(BasePage):
             List of agent name strings.
         """
         self.wait_for_network(timeout=timeout)
-        cards = self.page.locator('[class*="CardContent"] >> text, [class*="cardContent"] >> text')
+        cards = self.page.locator(self.ENTITY_CARD_NAME)
 
         try:
             cards.first.wait_for(state="visible", timeout=timeout)
