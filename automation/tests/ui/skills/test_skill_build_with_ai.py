@@ -396,6 +396,10 @@ class TestSkillBuildWithAIReviewFormEditableFields:
 
             modal.fill_prompt(REVIEW_PROMPT_TEXT)
 
+            assert modal.get_prompt_value() == REVIEW_PROMPT_TEXT, (
+                "Prompt textarea should display the entered description"
+            )
+
             assert modal.is_generate_enabled(), (
                 "Generate button should become enabled once the prompt is non-empty"
             )
