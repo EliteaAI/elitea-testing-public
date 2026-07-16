@@ -1,6 +1,6 @@
 ---
 name: SearchBar activation is submit-based, not live-filter
-description: Shared SearchBar.jsx (agent-search-input testid) filters only on Enter/send-icon click, never on typing (issue #44); MIN_SEARCH_KEYWORD_LENGTH=3 blocks queries below 3 chars; grid search matches DESCRIPTION text too, not just name — short/common substrings are unsafe partial-search test terms
+description: Shared SearchBar.jsx (agent-search-input testid) filters only on Enter/send-icon click, never on typing (issue #44); MIN_SEARCH_KEYWORD_LENGTH=3 blocks queries below 3 chars; grid search matches DESCRIPTION text too, not just name — short/common substrings are unsafe partial-search test terms; clearing after a ZERO-result search wrongly redirects to the create-entity page (issue #551, Credentials instance) — clear-icon still has no testid
 type: feedback
 ---
 
@@ -20,12 +20,43 @@ likely others) is **submit-activated, not live-filtering**:
   on every keystroke regardless — but it only feeds a quick-jump
   Tags/Skills suggestion popover, not the main grid. Don't confuse the two
   when reading Network tab evidence.
-- The cancel/X icon clears both the input and the grid filter correctly.
+- The cancel/X icon clears both the input and the grid filter correctly —
+  **but only when the search it's clearing had non-empty results.**
+  Clearing right after a ZERO-result search is a separate, confirmed defect
+  (see "Clear-after-empty-search redirect defect" below) — don't generalize
+  "clear works" from a happy-path-only test.
 - Neither the cancel nor send icon has an `aria-label` — they're invisible
   to the accessibility tree/snapshot; to interact with them programmatically
   you have to locate the `<svg>` by DOM traversal from the input testid (walk
   up ~3 parents, `querySelectorAll('svg')`) and tag a temp id for a real
-  Playwright click, rather than relying on accessible name/role.
+  Playwright click, rather than relying on accessible name/role. **Update
+  (ELITEA-1965 session, later than the original #44 finding):** the send
+  icon now HAS a testid — `data-testid="skills-search-send-button"`,
+  hardcoded in `SearchBar.jsx`, same literal value on every page that uses
+  the shared component (a pre-existing naming oddity, not page-specific).
+  The cancel/X icon (`StyledCancelIcon` in `SearchBarComponents.jsx`) still
+  has NO testid at all — still needs the DOM-traversal workaround, or
+  `add-data-testid` if a case needs to click it as a real automation target.
+
+## Clear-after-empty-search redirect defect (ELITEA-1965, filed elitea-testing-public#551)
+
+On the Credentials list (`CredentialsList.jsx`, likely the same shape on any
+other list page that shares the "redirect empty project to create" pattern —
+not yet checked on Agents/Skills/Pipelines/Toolkits/MCPs), clicking the
+cancel/X icon **immediately after a search that returned zero results**
+navigates away from the list page to its create-entity page, instead of
+restoring the full list. Root cause: a `useEffect` guards
+`!hasQuery && total === 0` to redirect an *empty project* to "create your
+first X"; `onClear()` flips `hasQuery` to `false` synchronously, but `total`
+is still the stale `0` from the just-cleared search until the unfiltered
+list re-fetches — a one-render race. Scoped: clearing after a **non-empty**
+search does NOT trigger this (`total` is already non-zero when `hasQuery`
+flips). Reproduced 2/2, deterministic, single native click, fresh page nav
+each time. If a case on any OTHER list page needs "clear after no-results"
+covered, check whether that page's list component has the same
+"redirect empty project" `useEffect` shape before assuming it's fine —
+this is exactly the kind of interaction the original SearchBar exploration
+(above) never exercised.
 
 **Why this matters:** issue #44 was initially reported (and by me,
 independently re-confirmed) as "search box doesn't filter the grid" by only
