@@ -1,5 +1,7 @@
 # Memory index — test-automation-engineer
 
+- [MCP list first-navigation timeout flake](mcp_list_first_navigation_timeout_flake.md) — `McpListPage`'s `card_view_button` wait intermittently times out on the first `/mcps/all` navigation of a fresh pytest process (~40% observed) — OneDrive I/O contention on Chromium cold-start, not a product defect; also causes `has_any_mcp()` to misclassify a slow-but-present project as empty and spuriously seed an extra MCP (from ELITEA-1941)
+
 - [Support Assistant AI-response 60s timeout flakiness](support_assistant_ai_response_timeout_flakiness.md) — `test_support_assistant_smoke.py`'s `AI_RESPONSE_TIMEOUT=60_000` is tight enough that any test in the file waiting on a live AI response can intermittently time out — observed hitting 3 different tests across 2 full-file runs in one sitting; non-deterministic, don't panic-fix the constant inline, flag as a candidate flake-investigation task instead (from ELITEA-1798)
 
 - [MCP Raw Json per-line CodeMirror edit technique](mcp_raw_json_per_line_codemirror_edit.md) — `fill_raw_json_line()` on `McpFormPage`: click the target line's own div (`get_by_text(current_line_text, exact=True)` — whitespace-normalized, no need to include indentation), `Home`, `Shift+End`, type replacement; whole-document `Ctrl+A`+delete corrupts the JSON. Selection-wait must compare against `el.textContent.trim().length`, not the raw indented length, or `wait_for_function` times out (from ELITEA-1927)

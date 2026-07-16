@@ -1,5 +1,6 @@
 # Memory index — qa-engineer
 
+- [Shared list-page search empty-state and clear-redirect bug class](shared_list_search_empty_state_and_clear_redirect_bug.md) — CardList.jsx's customEmptyState always wins over the query-aware placeholder (don't testid the dead one); clearing a zero-match search redirects to the entity's create page — confirmed on Credentials (#551) and MCP (#585), same root-cause shape, likely present on other CardList-based pages too
 - [Project briefing](project_briefing.md) — Stack overlay (test-automation) — analyst + reviewer slots in Tal's pipeline
 - [EliteaUI testid commit-message format](eliteaui_testid_commit_message_format.md) — commitlint on EliteaUI requires literal `[EL-NNNN]` subject prefix (not `[ELITEA-NNNN]`); use `[EL-0000]` + real TMS id in parens for TMS-only testid commits
 - [Agent form dual-component and icon-picker quirks](agent_form_dual_component_and_icon_picker_quirks.md) — CreateAgentForm.jsx vs ApplicationEditForm.jsx are separate files sharing identical testid strings (a one-route-only testid edit silently no-ops on the other); icon picker needs hover-before-click to open, and auto-persists independently of the form Save button
