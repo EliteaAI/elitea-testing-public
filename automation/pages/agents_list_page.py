@@ -168,6 +168,27 @@ class AgentsListPage(BasePage):
     # Agent list operations
     # ------------------------------------------------------------------
 
+    # Fixed (ELITEA-1869): the previous locator —
+    # ``'[class*="CardContent"] >> text, [class*="cardContent"] >> text'`` —
+    # combined a CSS selector list with a chained Playwright text engine in a
+    # single selector string; Playwright parses the whole string as one
+    # locator chain, so the comma is consumed inside the chain instead of
+    # acting as a top-level OR. The result matched 0 elements (verified via
+    # a standalone Playwright script against the live dashboard — 6 real
+    # cards present, 0 matched), so this method always returned ``[]``,
+    # silently. No existing test exercised this method before ELITEA-1869
+    # (confirmed via repo-wide grep), so this is a straight fix, not a
+    # shared-caller change. Now resolved via the shared ``entity-card-name``
+    # Card.jsx testid (also used by Credentials/Mcp/Skills/Pipelines list
+    # pages — see ``CredentialsListPage.entity_card_name`` for the identical
+    # collection-locator pattern), a proper class-level ``LocatorDescriptor``
+    # per the testid-only policy (`.claude/rules/page-objects.md`), instead
+    # of a raw locator string built/used inside the method body.
+    entity_card_name = LocatorDescriptor(
+        testid="entity-card-name",
+        description="Agent card name (title) — collection locator, one per visible card",
+    )
+
     def get_agent_card_names(self, timeout: int = 5000) -> list[str]:
         """Return names of all agent cards visible on the dashboard.
 
@@ -175,7 +196,7 @@ class AgentsListPage(BasePage):
             List of agent name strings.
         """
         self.wait_for_network(timeout=timeout)
-        cards = self.page.locator('[class*="CardContent"] >> text, [class*="cardContent"] >> text')
+        cards = self.entity_card_name
 
         try:
             cards.first.wait_for(state="visible", timeout=timeout)

@@ -113,14 +113,15 @@ generated and nothing needs teardown.
 | Back button (agent detail page header) | `data-testid="back-button"` — confirmed present/visible via DOM query before click; already wired to `AgentDetailPage.back_button` / `AgentDetailPage.click_back_button()` (`automation/pages/agent_detail_page.py:187,2130-2138`), also exposed via the `AgentPage` facade (`automation/pages/agent_page.py:254-256`) | none needed — testid pre-exists project-wide (also used by `BackButton.jsx`, a shared component reused across multiple entity-detail pages) | pre-existing |
 | Agents dashboard header | existing `AgentsListPage.page_header` (`testid="agents-page-header"`) | none | pre-existing |
 | Agent card (click into detail) | existing `AgentsListPage.select_agent(name)` — **note:** this pre-existing method uses a raw `page.locator(f'text="{name}"')`, not a `data-testid` (`automation/pages/agents_list_page.py:209-220`); it predates the current testid-only locator policy (`.claude/rules/page-objects.md`). Not a new gap introduced by this case — flagging for the implementer/lead rather than blocking this AFS, since the case only needs to *reuse* the existing method, not add a new locator. | none currently | pre-existing (policy-noncompliant, informational only) |
-| Agent list card names (post-back verification) | existing `AgentsListPage.get_agent_card_names()` (`automation/pages/agents_list_page.py:171-188`) — same testid caveat as above (uses `[class*="CardContent"]` CSS selector, not testid) | none currently | pre-existing (policy-noncompliant, informational only) |
+| Agent list card names (post-back verification) | `AgentsListPage.get_agent_card_names()` (`automation/pages/agents_list_page.py`) — **fixed in PR #545 (R1)**: was a raw `page.locator('[class*="CardContent"] >> text, ...')` string built/used inside the method body (the broken locator this case's fix targeted); now resolved via a proper class-level `entity_card_name = LocatorDescriptor(testid="entity-card-name")` field, matching the identical collection-locator pattern already used by `CredentialsListPage.entity_card_name` / `McpListPage` / `SkillsListPage` for the shared `Card.jsx` testid | none needed — testid-compliant | testid-compliant (fixed) |
 
 No new testids were required for this case — the Back button, dashboard
 header, and list-reading helpers all already exist and were exercised live.
-The two "policy-noncompliant" notes above are pre-existing technical debt
-in `AgentsListPage`, out of scope for this AFS to fix (this case doesn't
-touch new UI surface), but worth the implementer/lead knowing about if a
-future `add-data-testid` pass targets agent cards.
+The `get_agent_card_names()` row above was policy-noncompliant at AFS
+authoring time (raw CSS-selector locator built/used inside the method body,
+violating `.claude/rules/page-objects.md` § Locators); the implementer pass
+(PR #545, R1 fix) converted it to a `LocatorDescriptor(testid="entity-card-name")`
+class field per that same policy, so it is no longer technical debt.
 
 ## Network Behavior
 - `GET /api/v2/elitea_core/applications/prompt_lib/399?agents_type=classic&sort_by=created_at&sort_order=desc&query=&limit=20&offset=0` — fires on both the initial Step 1 navigate AND again after the Step 3 Back click; `200 OK` both times. This is the implementer's strongest wait signal for "list has re-loaded" post-back (wait for this response, or for `networkidle`, before asserting list contents — don't assert immediately on URL change).
