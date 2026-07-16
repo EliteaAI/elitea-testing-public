@@ -33,3 +33,15 @@ record, not just auditing one): always paste the literal per-testid
 prose — even a technically-accurate summary reads as unverified to a later
 auditor and burns an audit cycle establishing what a paste would have
 settled instantly.
+
+**Recurrence (#113, ELITEA-1881, audited 2026-07-16):** same shape again —
+closure record asserted "this is the only testid dependency... VERIFIED" in
+bold prose, no pasted `git fetch`+grep block; also no artifact table (prose
+bullets instead) and the testid commit ref was backticked (`` `0b058c94` ``)
+instead of the clickable `EliteaAI/EliteaUI@<sha>` form canon requires.
+Underlying claim was again independently confirmed TRUE — still FAILed item
+4. The canon template (`.agents/workflow.md` § Closure record) had been
+updated to its current artifact-table form ~9.75h before this record was
+posted, so it's not a stale-template excuse — worth double-checking the
+closure-record template is fresh (`git log -1 -- .agents/workflow.md`)
+before authoring one, not just before auditing one.
