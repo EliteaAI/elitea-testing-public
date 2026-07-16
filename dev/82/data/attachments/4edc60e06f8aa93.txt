@@ -1,0 +1,1 @@
+WARNING  elitea.pages.chat:chat_page.py:288 Message input did not become editable within timeout
