@@ -32,3 +32,17 @@ Net practical guidance: run BOTH forms when auditing (bare-value first for
 recall against conditional JSX, then confirm any hit by inspecting the
 matched line or re-checking the exact attribute string) rather than
 trusting either form alone.
+
+**A second collision shape, found delivering ELITEA-1988 (issue #101):**
+the false-positive source doesn't have to be another testid at all — it
+can be an unrelated **import/directory path** that happens to contain the
+testid string as a substring. `git grep -- "generate-skill-modal"` on
+`origin/main` returned a hit, but the matched line was
+`import { GenerateSkillButton } from '@/[fsd]/features/skill/ui/generate-skill-modal';`
+— the folder is named `generate-skill-modal/` (matching the feature, not
+the testid), and no `modalTestId="generate-skill-modal"` prop exists on
+`main` at all. Same rule applies: always `git grep -n` and read the
+matched line before trusting a promotability YES, regardless of whether
+you suspect a testid-family collision or a path/import collision — the
+fix is identical (inspect the line), only the source of the false
+positive differs.
