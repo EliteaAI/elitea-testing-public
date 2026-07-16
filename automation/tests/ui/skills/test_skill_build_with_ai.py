@@ -8,8 +8,14 @@ Covers ELITEA-1990: the generated draft's review-form fields (Name,
 Description, Instructions) are editable before creation, and the skill is
 created with the edited values (not the originally-generated ones).
 
+Covers ELITEA-1989 (extend-existing gap fill): the loading state shown
+during generation displays the exact text "Generating skill draft...", and
+the resulting review form shows only Name/Description/Instructions — no
+tools/agents/pipelines/toolkits/MCPs/resources section is rendered.
+
 Spec: test-specs/skills/l2_build-with-ai-generation-failure-retry_ELITEA-2001.md
 Spec: test-specs/skills/l2_generated-skill-draft-fields-are-editable-before-creation_ELITEA-1990.md
+Spec: test-specs/skills/lextend_skill-draft-generated-from-natural-language-description_ELITEA-1989.md
 Covers: GenerateSkillModal (GenerateEntityModal.jsx via GenerateSkillModal.jsx)
 
 Shares the modal-shell behavior with the Agent flow
@@ -201,7 +207,13 @@ class TestSkillBuildWithAIReviewFormEditableFields:
     """Build with AI (P2): the generated draft's review-form fields (Name,
     Description, Instructions) accept user edits before creation, and the
     created skill reflects the edited values, not the originally-generated
-    ones."""
+    ones.
+
+    Also covers ELITEA-1989 (extend-existing gap fill, see
+    ``test_loading_state_shows_exact_text_and_review_form_has_no_extra_sections``
+    below): the loading state's exact text during generation, and the
+    absence of any tools/agents/pipelines/toolkits/MCPs/resources section on
+    the review form."""
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
@@ -350,3 +362,85 @@ class TestSkillBuildWithAIReviewFormEditableFields:
             # Defect #2).
             if skill_id is not None:
                 skill_api.delete_skill(skill_id)
+
+    # ------------------------------------------------------------------
+    # ELITEA-1989 — extend-existing gap fill: loading-state exact text +
+    # absence of any tools/agents/pipelines/toolkits/MCPs/resources section
+    # on the review form. Both handles (`generate-skill-loading-indicator`,
+    # the three `review_*_input` fields) already exist on
+    # `GenerateSkillModalPage`/`GenerateEntityModalPageBase` — no new
+    # testids or locators added by this test.
+    # ------------------------------------------------------------------
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/build_with_ai/ELITEA-1989_skill-draft-generated-from-natural-language-description.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p1
+    @pytest.mark.regression
+    def test_loading_state_shows_exact_text_and_review_form_has_no_extra_sections(self, page):
+        """During generation, the loading indicator displays the exact text
+        "Generating skill draft...", and once the review form is shown it
+        contains only the Name/Description/Instructions fields — no
+        tools/agents/pipelines/toolkits/MCPs/resources section renders."""
+        list_page = SkillsListPage(page)
+        modal = GenerateSkillModalPage(page)
+
+        # ------------------------------------------------------------
+        # Step 1 — Open modal, enter prompt
+        # ------------------------------------------------------------
+        with allure.step("Step 1 — Open modal, enter prompt"):
+            list_page.navigate_to_create()
+            modal.open_modal()
+
+            modal.fill_prompt(REVIEW_PROMPT_TEXT)
+
+            assert modal.is_generate_enabled(), (
+                "Generate button should become enabled once the prompt is non-empty"
+            )
+
+        # ------------------------------------------------------------
+        # Step 2 — Click Generate; verify the loading state shows the
+        # exact text "Generating skill draft..." while generation is in
+        # flight (mocked, with the shared base's artificial delay_ms so
+        # the transient state is reliably observable — same pattern as
+        # ELITEA-2001's retry step).
+        # ------------------------------------------------------------
+        with allure.step('Step 2 — Verify loading state text during generation'):
+            modal.mock_generate_success(GENERATED_DRAFT_PAYLOAD)
+
+            with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+                modal.generate_button.click()
+                modal.wait_for_loading_visible(timeout=LOADING_STATE_TIMEOUT)
+
+                assert modal.loading_indicator.text_content() == "Generating skill draft...", (
+                    "Loading indicator should display the exact text "
+                    "'Generating skill draft...' while a draft is being generated"
+                )
+
+            response = response_info.value
+            assert response.status == 200, (
+                f"Expected the mocked generate-draft request to resolve 200, got {response.status}"
+            )
+            modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+
+        # ------------------------------------------------------------
+        # Step 3 — Verify the review form shows only the three known
+        # fields, and no tools/agents/pipelines/toolkits/MCPs/resources
+        # section is present anywhere in the dialog.
+        # ------------------------------------------------------------
+        with allure.step("Step 3 — Verify no extra sections render on the review form"):
+            forbidden_terms_pattern = re.compile(
+                r"\b(tools?|agents?|pipelines?|toolkits?|mcps?|resources?)\b",
+                re.IGNORECASE,
+            )
+            dialog_text = modal.modal.text_content() or ""
+            forbidden_match = forbidden_terms_pattern.search(dialog_text)
+            matched_term = forbidden_match.group(0) if forbidden_match else ""
+
+            assert forbidden_match is None, (
+                "Review form should not render a tools/agents/pipelines/toolkits/"
+                f"MCPs/resources section, but found forbidden term {matched_term!r} "
+                "in the dialog"
+            )
