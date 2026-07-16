@@ -23,3 +23,15 @@ Also noted: none of the `data-testid` attributes the ELITEA-1796 TMS case's Test
 Only the case's own documented fallback selectors are real. `support_assistant_page.py` is fallback-only
 (no testids at all), which is a pre-existing violation of `.claude/rules/page-objects.md`'s testid-only
 mandate — flagged as framework debt, not fixed as part of case analysis.
+
+**Root cause of the missing testids, confirmed 2026-07-16 (ELITEA-1802 analysis):** the Support
+Assistant widget is NOT first-party EliteaUI JSX — it ships as the third-party npm package
+`@eliteaai/elitea-assistant` (`EliteaUI/node_modules/@eliteaai/elitea-assistant`), mounted once at
+`[fsd]/app/root.jsx` via `[fsd]/widgets/support-assistant/ui/SupportAssistant.jsx`.
+`grep -rn 'aria-label="Attach file"' EliteaUI/src` (and equivalents for the launcher/title/attach
+selectors) returns nothing in first-party source. This means `add-data-testid` (which edits
+EliteaUI JSX files) **cannot** remediate any Support Assistant selector — there is no first-party
+JSX to add a `data-testid` to. Treat every raw selector in `support_assistant_page.py` as a
+permanent scope exception, not open tech debt to fix via the normal testid workflow. If testid
+coverage on this widget is ever required, it has to be requested upstream in the
+`@eliteaai/elitea-assistant` package itself, not patched in this repo.
