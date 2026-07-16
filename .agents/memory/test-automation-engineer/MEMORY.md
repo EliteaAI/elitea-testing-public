@@ -1,5 +1,7 @@
 # Memory index — test-automation-engineer
 
+- [Support Assistant AI-response 60s timeout flakiness](support_assistant_ai_response_timeout_flakiness.md) — `test_support_assistant_smoke.py`'s `AI_RESPONSE_TIMEOUT=60_000` is tight enough that any test in the file waiting on a live AI response can intermittently time out — observed hitting 3 different tests across 2 full-file runs in one sitting; non-deterministic, don't panic-fix the constant inline, flag as a candidate flake-investigation task instead (from ELITEA-1798)
+
 - [MCP Raw Json per-line CodeMirror edit technique](mcp_raw_json_per_line_codemirror_edit.md) — `fill_raw_json_line()` on `McpFormPage`: click the target line's own div (`get_by_text(current_line_text, exact=True)` — whitespace-normalized, no need to include indentation), `Home`, `Shift+End`, type replacement; whole-document `Ctrl+A`+delete corrupts the JSON. Selection-wait must compare against `el.textContent.trim().length`, not the raw indented length, or `wait_for_function` times out (from ELITEA-1927)
 
 - [Fork wizard and ProjectSelect testid passthrough](fork_wizard_and_projectselect_testid_passthrough.md) — Fork wizard shares ImportWizardModal testids with the Agents-list Import flow (re-declare on both page objects, not duplication); `fork_entity_card_toggle.count()==1` proves "no Nested entities section" without a text locator; `ProjectSelect`/`SingleSelect` already has `data-testid` passthrough — the fix for a testid gap is always at the call site (e.g. `IWModalContent.jsx`), never the leaf component (from ELITEA-1893)
