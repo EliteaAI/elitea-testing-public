@@ -61,3 +61,6 @@ automation/=*
 !**/.env*.example
 
 factory/*
+
+# Reversible process-change notes (local-only; how to restore a suspended policy)
+.agents/_reverted/

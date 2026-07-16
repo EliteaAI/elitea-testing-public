@@ -1,6 +1,6 @@
 ---
 name: promote-automation-batch
-description: Promotes an accumulated batch of tests from automation/base to elitea-testing-public main, gated on a green CI run against a deployed env — after confirming the testids they depend on have merged to EliteaAI/EliteaUI main and deployed. Human-triggered only; never run autonomously. Does NOT promote testids: those go per-case via draft PRs from add-data-testid.
+description: Promotes an accumulated batch of tests from automation/base to elitea-testing-public main, gated on a green CI run against a deployed env — after confirming the testids they depend on are on EliteaAI/EliteaUI main and deployed. Human-triggered only; never run autonomously. Does NOT promote testids: a human cherry-picks those from automation/testids to main (per-case draft-PR flow suspended 2026-07-16).
 allowed-tools:
   - Bash
   - Read
@@ -15,15 +15,16 @@ Promotes an accumulated batch of **tests** from `automation/base` into
 follow-on from finishing a test. It gates a merge into `main`. Wait to be asked. If asked, confirm the
 scope first: *which* tests, and against which environment.
 
-> **Changed 2026-07-13 — this skill no longer promotes testids.** It used to batch-PR accumulated testids
-> from a fork to `EliteaAI/EliteaUI`. That fork is retired: testids now live on `automation/testids` (an
-> integration branch on the org repo) and promote **per case**, continuously, as draft PRs opened by
-> `add-data-testid`. This skill's job is now only the **tests** side. It does not open EliteaUI PRs.
+> **This skill never promotes testids.** Its job is only the **tests** side; it does not open EliteaUI PRs.
+> (History: it once batch-PR'd testids from a fork; the fork was retired 2026-07-13.) **Changed
+> 2026-07-16:** testids live on `automation/testids` and are promoted to EliteaUI `main` by a **human
+> cherry-pick** — agents no longer open per-case `main` PRs (`.agents/_reverted/`). This skill still just
+> *verifies* the needed testids are already on `main` and deployed before promoting the tests.
 
 ## Why the order is fixed
 
-Tests on `automation/base` use testids that may exist only on `automation/testids` — i.e. still sitting in
-an unmerged draft PR. Such a test **cannot pass on a deployed env until its testid is merged to
+Tests on `automation/base` use testids that may exist only on `automation/testids` — i.e. **not yet
+cherry-picked to `main`** by a human. Such a test **cannot pass on a deployed env until its testid is on
 `EliteaAI/EliteaUI` `main` and redeployed**. So the UI always lands first, and the green run against the
 deployed env is the gate that proves it.
 
@@ -38,23 +39,27 @@ Do not reorder. Do not skip step 2 — it is the whole gate.
 
 ---
 
-## Stage 1 — Confirm the testid prerequisites are merged AND live
+## Stage 1 — Confirm the testid prerequisites are on `main` AND live
 
-Testid promotion is not this skill's job, but testid *readiness* is its precondition.
+Testid promotion (the human's cherry-pick to `main`) is not this skill's job, but testid *readiness* is its
+precondition. Check each testid this batch depends on directly against `main`:
 
 ```bash
-# Which testid PRs are still open (= their testids are NOT on DEV yet)?
-gh pr list --repo EliteaAI/EliteaUI --state open --search "head:testids/" \
-  --json number,title,isDraft,headRefName
+cd ../EliteaUI && git fetch origin
+# For every testid the batch's tests use — is it on main yet (human already promoted)?
+for t in <testids the batch depends on>; do
+  printf "%-32s main:%s\n" "$t" \
+    "$(git grep -q "data-testid=\"$t\"" origin/main -- src/ && echo YES || echo NO)"
+done
 ```
 
-Any test in this batch that depends on a testid from a **still-open** PR cannot be promoted. Two options,
+Any test in this batch that depends on a testid **not yet on `main`** cannot be promoted. Two options,
 both requiring the human's call:
 
 - **Wait** — leave those tests on `automation/base` for the next batch (the default; nothing is blocked
   locally, the suite keeps running against `automation/testids`).
-- **Nudge** — ask the human to mark the draft PR ready so the UI team reviews it. Never mark it ready
-  yourself, never merge it yourself.
+- **Nudge** — ask the human to cherry-pick the outstanding testids from `automation/testids` → `main` and
+  deploy. Never promote the tests ahead of their testids.
 
 Then confirm the merged testids are actually **live on DEV**, not merely merged. A merged PR that hasn't
 deployed still fails every test.

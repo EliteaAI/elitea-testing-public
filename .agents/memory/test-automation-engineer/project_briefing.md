@@ -42,18 +42,17 @@ type: project
   Existing raw handles in pages/ are tech debt (#25/#42), never precedent.
 - **The per-test loop:** explore UI → missing testid? use `add-data-testid` →
   `page-object-generator` → write test → green → PR to `automation/base` (never `main`).
-- **Testids are DUAL-TARGET (changed 2026-07-13 — the fork is retired).** `EliteaAI/EliteaUI`
-  is worked on directly. `automation/testids` is a permanent **integration branch on the org
-  repo** holding every testid — merged *and* still in review; the dev server runs it, so you
-  never wait on the UI team. `add-data-testid` does the git flow for you:
+- **Testids live on `automation/testids` — commit + push, then STOP (current policy,
+  2026-07-16).** `EliteaAI/EliteaUI` is worked on directly. `automation/testids` is a
+  permanent **integration branch on the org repo** holding every testid — merged *and*
+  still in review; the dev server runs it, so you never wait on the UI team.
+  `add-data-testid` does the git flow for you:
   1. edit `../EliteaUI/src` ONLY, commit **on `automation/testids`** (HMR live-reloads);
-  2. replay that commit onto `testids/<case>-<slug>` **cut from fresh `origin/main`**
-     (in a worktree — never `checkout origin/main` with the dev server up, it strips every
-     pending testid out of the served tree);
-  3. push `automation/testids` (plain FF) and open a **DRAFT PR** to EliteaUI `main`.
-  Cut from `main`, *not* from `automation/testids` — otherwise the review PR drags in every
-  other case's unmerged testids. **Never rebase or force-push `automation/testids`**: shared
-  org branch, merge `origin/main` into it. Agents open these PRs but never mark them ready.
+  2. `git merge origin/main` then **push `automation/testids`** (plain FF). Done.
+  **You do NOT open a PR to EliteaUI `main`** — promotion is a human cherry-pick from
+  `automation/testids`, out of band. (The old per-case `testids/<case>-<slug>` draft-PR
+  flow is **suspended 2026-07-16** — see `.agents/_reverted/`.) **Never rebase or
+  force-push `automation/testids`**: shared org branch, merge `origin/main` into it.
   Invariant: never let a test PR merge while its testids exist only locally — origin
   `automation/testids` must cover origin `automation/base` tests.
 - **Locators: testid-only** `LocatorDescriptor(testid="…")` — `fallback` is dead code,

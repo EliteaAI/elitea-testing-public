@@ -41,10 +41,11 @@ This file only records what those don't.
   `automation/<case-id>-<slug>` branches exist historically — don't create new ones)
 - Commits: conventional-ish — `test: (5199) …`, `fix: …`, `refactor: …`, `docs(afs): …`
 - PRs: small, one per test/feature area, target `automation/base`, squash merge
-- Testid commits: land ON `automation/testids` first (dev server runs it — HMR live),
-  then are cherry-picked onto `testids/<case>-<slug>` cut from fresh `origin/main` in a
-  worktree, opened as a draft PR to EliteaUI `main`. Message describing the testids added.
-  (Full flow: `.agents/workflow.md` § Testid flow / `add-data-testid` § Git flow.)
+- Testid commits: land ON `automation/testids` (dev server runs it — HMR live) and are
+  **pushed** — that's the agent's terminal step. A human cherry-picks them to EliteaUI
+  `main`; agents open no `main` PR (suspended 2026-07-16 — `.agents/_reverted/`). Message
+  describing the testids added.
+  (Full flow: `.agents/workflow.md` § Testid flow / `add-data-testid`.)
 
 ## Hard don'ts
 

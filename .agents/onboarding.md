@@ -122,3 +122,27 @@ code is a layered shared substrate, and per-case review already happens on the
 Migration performed: fork demoted to a `fork` remote; `automation/testids` rebuilt on
 fresh `main` + the 3 pending testids; catch-up draft PR EliteaAI/EliteaUI#525 opened.
 Docs/skills rewritten accordingly. See `.agents/workflow.md`.
+
+## Revision — 2026-07-16: per-case draft PRs to EliteaUI `main` SUSPENDED
+
+By operator request, agents **no longer open per-case draft PRs to `EliteaAI/EliteaUI`
+`main`**. The dual-target flow above is trimmed to its first half: testids are committed
+**and pushed** to `automation/testids` (dev server serves them live) — and that is the
+agent's terminal step. **A human cherry-picks `automation/testids` → `main`** when they
+choose. No `testids/<case>-<slug>` branch, no cherry-pick-to-review-branch, no
+`gh pr create` against EliteaUI.
+
+Unchanged: testids still committed + pushed to `automation/testids`; the merge-gate check
+that testids are on `origin/automation/testids` before a test PR merges; syncing
+`origin/main` → `automation/testids` via `git merge` (`sync-base-branches`).
+
+Transition: the **already-open** per-case draft PRs on `EliteaAI/EliteaUI` `main` are
+being **closed by a human with a comment** (the testids remain safe on
+`automation/testids`). Agents should not reopen or recreate them.
+
+This is a **suspended, reversible** policy — restore instructions and the verbatim
+originals live in `.agents/_reverted/RESTORE-testid-draft-pr-flow.md` (git-ignored).
+Files updated: `.agents/{workflow,testing,conventions,architecture,profile,team-comms,
+role-overrides}.md`, the three role `project_briefing.md` memories (+ suspend-banners on
+the `test-automation-lead` promotability lessons), `add-data-testid`,
+`factory/loops/{control,tal}.md`, `promote-automation-batch`.

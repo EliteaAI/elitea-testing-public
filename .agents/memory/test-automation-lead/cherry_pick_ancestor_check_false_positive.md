@@ -4,6 +4,14 @@ description: Never verify "did this testid commit land on automation/testids" wi
 type: feedback
 ---
 
+> ⏸ **PARTIALLY SUSPENDED 2026-07-16.** Agents no longer cherry-pick testids onto a
+> `testids/<case>` review branch or open a `main` PR (see
+> `.agents/_reverted/RESTORE-testid-draft-pr-flow.md`), so the *review-branch
+> ancestor-check* scenario below can't arise right now. **Still fully in force:**
+> confirm the testid commit was actually **pushed** to `origin/automation/testids`
+> (not just committed locally) before merging a dependent test — that half is the
+> live merge-gate check.
+
 ## What happened
 
 Issue #28 (ELITEA-1738) rework, PR #206. A fresh reviewer raised a "Critical,

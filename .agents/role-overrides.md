@@ -117,7 +117,8 @@ lookup), never replace it.
   never "resolve by accessible role/name", never a CSS/role handle as primary.
 - **Every handle row carries a PROVENANCE column**, verified at analysis time with
   a fresh fetch (`cd ../EliteaUI && git fetch origin` first): `on-main ✓` /
-  `on-automation/testids only (draft #N)` / `needs-adding`. The implementer and the
+  `on-automation/testids only (awaiting human promotion to main)` / `needs-adding`.
+  The implementer and the
   closure record inherit this verified data instead of re-deriving it — and the UI
   team adds testids in parallel (75+ on main already), so never assume "we didn't
   add it" means "it doesn't exist".
