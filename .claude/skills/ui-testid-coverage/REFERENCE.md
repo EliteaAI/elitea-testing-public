@@ -13,6 +13,7 @@ false "not covered" results. All six occur in real React code:
 | 4 | Template literal | `` data-testid={`tags-panel-chip-${name}`} `` | dynamic; base pattern only |
 | 5 | Multi-line conditional | `data-testid={\n cond ? 'a' : 'b'\n}` | **line-based grep misses this** — two different testids by state |
 | 6 | Helper-computed | `const t = \`version-option-${n}\`` then `data-testid={t}` | value computed away from the attribute |
+| 7 | **Generic factory** | `DotMenu.jsx`: `` data-testid={id ? `${id}-menu` : undefined} `` + `testId: item.key` with `key: 'agent-actions-export'` at the call site | the FULL testid (`agent-actions-export-menuitem`) exists **nowhere as a string** — it's `key/id` + a suffix template joined at runtime. Literal grep false-negatives HARD on these (proven 2026-07-16: 5 "phantom" ids, 8 cases wrongly flagged). Before declaring an id missing, grep its PREFIX segments (`agent-actions-export`, `agent-actions`) and look for `-menu`/`-menuitem`/`-menu-button`-style suffix templates in shared components |
 
 **Match-all regex family** (what the script uses):
 - literal/object: `[Tt]est[Ii]d['"]?\s*[=:]\s*(['"])([^'"]+)\1`
