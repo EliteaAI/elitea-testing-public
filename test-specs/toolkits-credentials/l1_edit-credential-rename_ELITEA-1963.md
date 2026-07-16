@@ -320,3 +320,24 @@ backend, including the full create → open → rename → save → reopen → r
   assert `detail_page.id_input.input_value() == original_elitea_title` —
   that assertion is false per this AFS's live findings and would make the
   test fail against correct product behavior.
+
+**Implementer amendment (Phase 2, ELITEA-1963 PR):** `CredentialCreatePage
+.navigate_to_type()` was found broken against the current live app —
+`CredentialsList.jsx` only renders the `/credentials/all` type-selector
+card grid when the project has **zero** credentials (its "navigate to New
+Credential page for private projects with no credentials" redirect); once
+any credential already exists (the normal state of the shared DEV project
+used here), the card the old flow waited for never renders, and
+`navigate_to_type()` times out. This is infrastructure, not a product
+defect (confirmed live: `/credentials/create-credential/{type}` is a
+stable, directly-routable URL per `EliteaUI/src/routes.js`'s
+`CreateCredentialTypeFromMain`, landing on the identical create form).
+Fixed `navigate_to_type()` to navigate to that URL directly instead of
+clicking the card. This is a shared method with 3 callers
+(`test_credential_edit_rename.py` new here,
+`test_credential_id_auto_generation.py` ELITEA-1972,
+`test_credential_required_fields_validation.py` ELITEA-1975) — all three
+were re-run after the fix: this case's new test and ELITEA-1972's test now
+pass; ELITEA-1975's test now reaches (rather than timing out before) its
+own already-documented known-defect #526 soft-assertion, unchanged from
+its pre-existing behavior once that defect is reachable.
