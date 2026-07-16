@@ -208,18 +208,27 @@ of the gap:
 | Artifact | Where | State |
 |---|---|---|
 | Test | #<N> — `tests/<case>-<slug>` → `automation/base` | ✅ merged (`<sha>`) |
-| Testids | `EliteaAI/EliteaUI` @ `automation/testids` | ✅ pushed — dev server serves them; **human promotes to `main`** |
+| Testids | EliteaAI/EliteaUI@<sha> (+ EliteaAI/EliteaUI@<sha> …) on `automation/testids` | ✅ pushed — dev server serves them; **human cherry-picks to `main`** |
 | AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `automation/base` |
 | Defects filed | #<X>, #<Y> — or "none" | |
 
 **Status:** merged to `automation/base` · testids on `automation/testids` · ⚠️ NOT yet on `main` (awaiting human cherry-pick) → not deployable-env-promotable yet.
 
-> **Cross-repo links** (whenever you reference an `EliteaAI/EliteaUI` issue/PR):
-> write `EliteaAI/EliteaUI#<M>` as PLAIN TEXT — never inside backticks, never bare
-> `#<M>`. Bare `#<M>` links to THIS repo's #M (wrong), and GitHub never auto-links
-> inside code spans. The `owner/repo#N` form renders as a clickable cross-repo link
-> AND leaves a "mentioned in…" backlink on the EliteaUI side. Same-repo references
-> (the test PR) stay bare `#<N>`.
+Since there's no longer a testid PR, the record points at the **commits** the human
+will cherry-pick. List every testid commit's SHA (get them from the fetch block above):
+
+```bash
+# the case's testid commits on the integration branch, newest first
+git -C ../EliteaUI log origin/main..origin/automation/testids --oneline -- src/ | grep -i "<CASE-ID>"
+```
+
+> **Cross-repo links** (whenever you reference `EliteaAI/EliteaUI`): write the full
+> `owner/repo` form as PLAIN TEXT — never inside backticks, never bare. **Commits:**
+> `EliteaAI/EliteaUI@<sha>` renders as a clickable cross-repo commit link (this is the
+> testid row's link now). **Issues/PRs:** `EliteaAI/EliteaUI#<M>`. Bare `#<M>` / bare
+> `@<sha>` resolve against THIS repo (wrong), and GitHub never auto-links inside code
+> spans. Both forms also leave a "mentioned in…" backlink on the EliteaUI side.
+> Same-repo references (the test PR) stay bare `#<N>`.
 **Unblocks when:** a human cherry-picks the testids `automation/testids` → `main`, and they deploy to DEV. **Owner:** human.
 **Still open:** <follow-ups, or "none">
 ```
