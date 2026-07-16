@@ -376,6 +376,61 @@ class McpFormPage(BasePage):
         """Return the current text content of the Headers CodeMirror editor."""
         return self.headers_editor_content.text_content() or ""
 
+    @action("Edit a single line in the Raw Json editor")
+    def fill_raw_json_line(self, current_line_text: str, new_line_text: str) -> None:
+        """Replace one line of the Raw Json CodeMirror editor with *new_line_text*.
+
+        The Raw Json editor (``toolkit-raw-json-editor-content``) is a
+        CodeMirror ``.cm-content`` node rendering one ``<div>`` per JSON
+        line — NOT a single contenteditable blob. A whole-document select
+        (``Ctrl+A`` / ``Ctrl+Home``+``Ctrl+Shift+End``) followed by delete
+        does **not** reliably clear the entire document in this environment
+        (confirmed live at ELITEA-1927 implementer exploration: one attempt
+        left a stray character behind, producing invalid JSON). The
+        reliable approach is per-line: locate the target line's own
+        ``<div>`` by its current text (matching :meth:`fill_headers_json`'s
+        select-then-type discipline, scoped to a single line), click it,
+        select just that line via ``Home``/``Shift+End``, then type the
+        full replacement line (including trailing comma/brace) to overwrite
+        the selection.
+
+        Args:
+            current_line_text: Exact current text of the target line (used
+                to locate the line's div via ``get_by_text(..., exact=True)``
+                scoped inside the editor).
+            new_line_text: Full replacement text for that line.
+        """
+        line = self.raw_json_editor_content.get_by_text(current_line_text, exact=True)
+        line.click()
+        self.page.keyboard.press("Home")
+        self.page.keyboard.press("Shift+End")
+        self._wait_for_line_selection_applied(line)
+        self.page.keyboard.type(new_line_text)
+        self._wait_for_text_content_stable(self.raw_json_editor_content)
+
+    def _wait_for_line_selection_applied(self, line_locator, timeout_ms: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Wait until *line_locator*'s content is selected via ``Home``/``Shift+End``.
+
+        Unlike :meth:`_wait_for_contenteditable_selection_applied` (used for
+        whole-editor selection where the editable text has no leading
+        indentation), a Raw Json line's ``textContent`` includes leading
+        indentation whitespace that ``Home`` does not select (``Home`` moves
+        to the first non-whitespace character, confirmed live at ELITEA-1927
+        implementer exploration — e.g. a 22-char indented line yields a
+        20-char selection). Comparing against the *trimmed* text length is
+        the correct equality check here.
+        """
+        handle = line_locator.element_handle()
+        self.page.wait_for_function(
+            """(el) => {
+                const trimmedLen = el.textContent.trim().length;
+                const sel = window.getSelection();
+                return trimmedLen === 0 || (sel && sel.toString().length === trimmedLen);
+            }""",
+            arg=handle,
+            timeout=timeout_ms,
+        )
+
     @action("Fill Client Id")
     def fill_client_id(self, client_id: str) -> None:
         self._fill_text_input(self.client_id_input, client_id)
