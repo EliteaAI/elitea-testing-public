@@ -165,6 +165,22 @@ class AgentDetailPage(AgentFormPage):
     chat_clear_button = LocatorDescriptor(testid="chat-clear-button")
     skill_test_last_response = LocatorDescriptor(testid="skill-test-last-response")
 
+    # --- LLM model selector (embedded chat panel, ELITEA-1881) ---
+    # `model-selector-button`/`model-selector-name` are static testids on
+    # LLMModelSelector.jsx. Each dropdown option carries a DYNAMIC testid
+    # keyed by the model's stable API `name` field (e.g.
+    # `model-selector-option-eu.anthropic.claude-sonnet-4-5-20250929-v1:0`),
+    # added via add-data-testid during the ELITEA-1881 analyst pass
+    # (EliteaUI automation/testids commit 0b058c94). Callers select/verify
+    # an option by its rendered DISPLAY name (e.g. "Anthropic Claude 4.5
+    # Sonnet"), not the API name, so — mirroring
+    # SKILL_VERSION_OPTION_ANY_SELECTOR's "keyed by a value not known in
+    # advance" precedent — selection filters this prefix-match ANY selector
+    # by display text rather than formatting a per-model template.
+    model_selector_button = LocatorDescriptor(testid="model-selector-button")
+    model_selector_name = LocatorDescriptor(testid="model-selector-name")
+    MODEL_SELECTOR_OPTION_ANY_SELECTOR = '[data-testid^="model-selector-option-"]'
+
     # --- Skills section (agent-skills attach/mention flow, ELITEA-1735) ---
     agent_add_skill_button = LocatorDescriptor(testid="agent-add-skill-button")
     # Tooltip wrapper span for the add-skill button (ELITEA-1790 testid-only
@@ -2273,6 +2289,92 @@ class AgentDetailPage(AgentFormPage):
         self.chat_send_button.click()
         logger.info("Mention message sent (~%s)", skill_name)
 
+    # ------------------------------------------------------------------
+    # LLM model selector (embedded chat panel, ELITEA-1881)
+    # ------------------------------------------------------------------
+
+    @action("Open LLM model selector")
+    def open_model_selector(self, timeout: int = 5000):
+        """Click the embedded chat panel's model selector to open the dropdown.
+
+        LOCATOR: ``model-selector-button`` testid.
+
+        Args:
+            timeout: Maximum wait for the first option to become visible.
+        """
+        logger.info("Opening LLM model selector")
+        self.model_selector_button.click()
+        self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def get_selected_model_name(self) -> str:
+        """Return the currently displayed model name on the closed selector.
+
+        LOCATOR: ``model-selector-name`` testid.
+        """
+        return (self.model_selector_name.text_content() or "").strip()
+
+    def is_model_option_visible(self, display_name: str, timeout: int = 5000) -> bool:
+        """Return True if a model option with *display_name* is visible in
+        the open dropdown.
+
+        LOCATOR: ``MODEL_SELECTOR_OPTION_ANY_SELECTOR``, filtered by the
+        option's rendered display text (see class-level docstring comment
+        for why display text — not the dynamic testid's API-name suffix —
+        is the selection key).
+
+        Args:
+            display_name: Exact rendered model name (e.g.
+                "Anthropic Claude 4.5 Sonnet").
+            timeout: Maximum wait time in milliseconds.
+        """
+        option = self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).filter(
+            has_text=display_name
+        )
+        try:
+            option.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def close_model_selector(self, timeout: int = 5000):
+        """Close the open model-selector dropdown via Escape, without
+        selecting anything.
+
+        Mirrors ``ChatPage.close_open_dialogs()``'s Escape-key pattern.
+        Use after verifying option visibility (e.g. Step 3) when the caller
+        doesn't want to leave the dropdown open before a subsequent
+        :meth:`open_model_selector` call — reopening while it's already
+        open would toggle it closed instead.
+        """
+        self.page.keyboard.press("Escape")
+        self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).first.wait_for(
+            state="hidden", timeout=timeout
+        )
+
+    @action("Select LLM model")
+    def select_llm_model(self, display_name: str, timeout: int = 5000):
+        """Select a model from the OPEN model-selector dropdown by its
+        rendered display name.
+
+        Call after :meth:`open_model_selector`. Does not click Save — the
+        caller decides when to persist via ``save_button``/``click_save()``
+        (inherited from ``AgentFormPage``).
+
+        Args:
+            display_name: Exact rendered model name (e.g.
+                "Anthropic Claude 4.5 Sonnet").
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting LLM model: %s", display_name)
+        option = self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).filter(
+            has_text=display_name
+        )
+        option.first.wait_for(state="visible", timeout=timeout)
+        option.first.click()
+        logger.info("LLM model '%s' selected", display_name)
+
     @action("Clear embedded chat")
     def clear_embedded_chat(self, timeout: int = 10000):
         """Click the "Clear the chat" button in the embedded chat panel.
@@ -2457,6 +2559,30 @@ class AgentDetailPage(AgentFormPage):
         # Fall back to the general-purpose extraction for older UI builds
         # that don't render the skill-test-last-response testid.
         return self.get_last_chat_message()
+
+    def get_last_chat_message_full_text(self) -> str:
+        """Return the RAW text of the entire last embedded-chat ``<li>``.
+
+        Unlike :meth:`get_last_chat_response_text` (which reads only the
+        answer body), this includes the "Thought for Ns" trace accordion —
+        where the responding model's display name (e.g. "Anthropic Claude
+        4.5 Sonnet") is rendered as plain text with no dedicated testid.
+        Confirmed live during ELITEA-1881 implementation
+        (``ApplicationThinkView.jsx``'s reasoning-step label) — flagged in
+        the ELITEA-1881 AFS Concrete Handles table as "not remediated,
+        flagging for a future add-data-testid pass" rather than in scope
+        for this case's own remediation. Use this only for a substring
+        containment check (e.g. "is the model name present anywhere in
+        this response"); it is not a clean assertion target on its own.
+
+        Returns:
+            Full raw text of the last message ``<li>``, or "" if no
+            messages are present yet.
+        """
+        messages = self._embedded_chat_messages()
+        if messages.count() == 0:
+            return ""
+        return (messages.last.text_content() or "").strip()
 
     def wait_for_sensitive_action_authorization(
         self, timeout: int = 30000, click_authorize: bool = True
