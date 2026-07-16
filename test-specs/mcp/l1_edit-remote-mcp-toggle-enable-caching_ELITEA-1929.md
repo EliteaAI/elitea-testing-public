@@ -245,6 +245,24 @@ list rendering; invalid `<p>`-in-`<p>` DOM nesting in `ToolBaseProperty.jsx`'s
 tooltip) were observed on every page load/reload during this session — not
 new, not tied to this case's actions, already tracked. No new defect filed.
 
+> **Amended by implementer** (fix-only round R1, PR #548, 2026-07-16): a
+> **third** console error was discovered live while implementing the console
+> check for this case — not present in the analyst's original session above
+> and not covered by `#291`: `"MUI: The value provided to the Tabs component
+> is invalid"`, reproducing on every detail-page load, traced to
+> `ConfigurationTab.jsx` / `StyledTabs.jsx`. No functional impact on this
+> case's own assertions (the checkbox toggle/save/reload/Raw-Json flow all
+> still pass). Filed as
+> [`EliteaAI/elitea-testing-public#549`](https://github.com/EliteaAI/elitea-testing-public/issues/549).
+> Per the no-defect-masking policy this is **not** silently filtered the way
+> the `#291` warnings are — the shipped test tracks it as an isolated soft
+> failure (`pytest.fail()` collecting soft assertions at the end of the test,
+> same pattern as `test_skill_agent_interaction.py`'s `expect.soft()`
+> equivalent) so it stays visible without blocking the rest of the flow. This
+> means the shipped test is **expected to run RED** (soft-failure red, not a
+> product-blocking red) until `#549` is fixed — that is the correct,
+> non-masked signal, not a test defect.
+
 ## Blocked Steps
 
 None. All 7 case steps were executed to completion against the live local
