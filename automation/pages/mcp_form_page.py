@@ -129,6 +129,16 @@ class McpFormPage(BasePage):
         testid="toolkit-form-save-button",
         description="Save button on the create form",
     )
+    detail_save_button = LocatorDescriptor(
+        testid="toolkit-detail-save-button",
+        description="Save button on the detail (edit) page — added ELITEA-1929, "
+        "EliteaUI PR #572",
+    )
+    detail_discard_button = LocatorDescriptor(
+        testid="toolkit-detail-discard-button",
+        description="Discard button on the detail (edit) page — added ELITEA-1929, "
+        "EliteaUI PR #572",
+    )
     detail_title = LocatorDescriptor(
         testid="toolkit-detail-title",
         description="Toolkit detail page name heading (renders 'Edit Toolkit' "
@@ -176,6 +186,25 @@ class McpFormPage(BasePage):
             timeout=UI_ELEMENT_TIMEOUT,
         ):
             self.navigate(f"/mcps/all/{toolkit_id}")
+        self._wait_for_detail_data_rendered()
+
+    def wait_for_page_load(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Wait for the detail page to be ready — used by :meth:`BasePage.reload_and_wait`.
+
+        Delegates to :meth:`_wait_for_detail_data_rendered` (waits past the
+        "Edit Toolkit" placeholder), so ``reload_and_wait()`` confirms real
+        toolkit data has re-rendered after a full page reload, not just that
+        the network went idle (ELITEA-1929 § Automation Hints).
+
+        Note for future callers: ``BasePage.reload_and_wait()`` dispatches to
+        this method via ``hasattr(self, 'wait_for_page_load')`` duck-typing —
+        defining it here changes ``reload_and_wait()``'s behavior for *every*
+        caller of ``McpFormPage`` (e.g. the create-form flow too), not just
+        the detail-page flow this method was added for. No current sibling
+        caller is affected since ``_wait_for_detail_data_rendered()`` is safe
+        to call from any state, but a future create-form-only caller of
+        ``reload_and_wait()`` would also route through here.
+        """
         self._wait_for_detail_data_rendered()
 
     def _wait_for_detail_data_rendered(self) -> None:
@@ -385,6 +414,21 @@ class McpFormPage(BasePage):
     def is_ssl_verify_checked(self) -> bool:
         return self.ssl_verify_checkbox_field.is_checked()
 
+    @action("Toggle Enable Caching checkbox")
+    def click_enable_caching_checkbox(self) -> None:
+        """Click the Enable Caching checkbox and wait for its checked state to flip.
+
+        Same wait-on-real-``<input>``-state approach as
+        :meth:`click_ssl_verify_checkbox` (the ``enable_caching_checkbox``
+        testid is only the MUI ``<span>`` click target).
+        """
+        was_checked = self.enable_caching_checkbox_field.is_checked()
+        self.enable_caching_checkbox.click()
+        if was_checked:
+            expect(self.enable_caching_checkbox_field).not_to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
+        else:
+            expect(self.enable_caching_checkbox_field).to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
+
     @action("Toggle Ssl Verify checkbox")
     def click_ssl_verify_checkbox(self) -> None:
         """Click the Ssl Verify checkbox and wait for its checked state to flip.
@@ -432,6 +476,27 @@ class McpFormPage(BasePage):
         self.page.wait_for_url("**/mcps/all/**", timeout=UI_ELEMENT_TIMEOUT)
         self._wait_for_detail_data_rendered()
         return body
+
+    @action("Click Save on the detail page and wait for the toolkit to be updated")
+    def save_and_wait_for_updated(
+        self, project_id: str, toolkit_id: int, timeout: int = SAVE_RESPONSE_TIMEOUT
+    ) -> dict:
+        """Click Save on the detail (edit) page, wait for the update PUT's 200, return its JSON body.
+
+        Mirrors :meth:`save_and_wait_for_created` for the detail page's own
+        Save button (``toolkit-detail-save-button``, added ELITEA-1929) —
+        waits on the real ``PUT .../tool/prompt_lib/{project}/{id}`` network
+        response instead of a fixed timeout or UI-state poll (ELITEA-1929 AFS
+        § Automation Hints).
+        """
+        with self.page.expect_response(
+            lambda r: f"/tool/prompt_lib/{project_id}/{toolkit_id}" in r.url
+            and r.request.method == "PUT"
+            and r.status == 200,
+            timeout=timeout,
+        ) as response_info:
+            self.detail_save_button.click()
+        return response_info.value.json()
 
     @action("Switch to Raw Json view")
     def switch_to_raw_json_view(self) -> None:
