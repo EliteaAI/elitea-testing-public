@@ -86,7 +86,7 @@ class TestAgentIconManagement:
     """Agent icon can be changed and persists on the agents list card (ELITEA-1899, p3)."""
 
     @allure.issue(
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1899_agent-icon-change-persists-on-list-card.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1899_agent-icon-can-be-changed-and-persists-on-agents-list-card.md",
         "onetest-ai Test Case link",
     )
     @pytest.mark.p3

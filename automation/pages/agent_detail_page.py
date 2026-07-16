@@ -211,6 +211,16 @@ class AgentDetailPage(AgentFormPage):
     icon_picker_dialog = LocatorDescriptor(testid="agent-icon-picker-dialog")
     icon_picker_close_button = LocatorDescriptor(testid="agent-icon-picker-close-button")
     icon_picker_default_icon = LocatorDescriptor(testid="agent-icon-picker-default-icon")
+    # Inner <img> of agent_icon_button — separate testid (not a raw ".locator
+    # img" chain off agent_icon_button) added via add-data-testid to
+    # EliteaUI's EliteAImage.jsx/EntityIcon.jsx (ELITEA-1899 review fix-pass;
+    # EliteaUI automation/testids commit 558160a6). Only rendered once an
+    # icon.url is set — see get_header_icon_src()'s placeholder-SVG quirk.
+    agent_icon_img = LocatorDescriptor(
+        testid="agent-form-icon-img",
+        description="Agent header icon's <img> element (absent until an "
+                     "icon.url is set — see get_header_icon_src())",
+    )
     # Dynamic (runtime-parameterized) testid templates — same class-constant
     # + `.format()` pattern as VERSION_OPTION / VARIABLE_ROW above.
     ICON_PICKER_OPTION = '[data-testid="agent-icon-picker-option-{}"]'
@@ -498,22 +508,22 @@ class AgentDetailPage(AgentFormPage):
     def get_header_icon_src(self, timeout: int = 10000) -> str:
         """Return the ``src`` of the agent header icon's ``<img>`` element.
 
-        LOCATOR: ``agent-form-icon-button`` (see field docstring above),
-        scoped down to its inner ``<img>``. A freshly-created agent with no
-        icon explicitly selected yet renders an inline SVG placeholder (no
-        ``<img>`` at all) instead — confirmed live against a fresh agent —
-        so this returns ``""`` in that case rather than timing out.
+        LOCATOR: ``agent-form-icon-img`` (see field docstring above) — its
+        own testid, not a raw tag chained off ``agent_icon_button``. A
+        freshly-created agent with no icon explicitly selected yet renders
+        an inline SVG placeholder (no ``<img>`` at all) instead — confirmed
+        live against a fresh agent — so this returns ``""`` in that case
+        rather than timing out.
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
         self.agent_icon_button.wait_for(state="visible", timeout=timeout)
-        img = self.agent_icon_button.locator("img")
         try:
-            img.wait_for(state="visible", timeout=timeout)
+            self.agent_icon_img.wait_for(state="visible", timeout=timeout)
         except Exception:
             return ""
-        return img.get_attribute("src") or ""
+        return self.agent_icon_img.get_attribute("src") or ""
 
     # ------------------------------------------------------------------
     # Variables section (derived live from Instructions text, ELITEA-1884)
