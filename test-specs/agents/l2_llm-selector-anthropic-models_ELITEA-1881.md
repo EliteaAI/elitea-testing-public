@@ -66,7 +66,7 @@
 |---|---|---|---|---|
 | Precondition: user logged in | — | N/A (env-level) | `auth_state` fixture / `VITE_DEV_TOKEN` | asserted (env precondition, not a runtime step) |
 | Precondition: existing agent available | — | N/A | reused "Test Agent" id 3 | asserted |
-| Precondition: Anthropic models configured | — | step 3 | `GET /api/v2/configurations/models/399` response body contains all 3 target `name`s | asserted |
+| Precondition: Anthropic models configured | — | step 3 | covered indirectly — step 3's UI dropdown-visibility check (all 3 `model-selector-option-{name}` testids present); the implementation does not add a direct `GET /api/v2/configurations/models/399` network assertion | asserted (indirect, via UI) |
 | 1 Navigate to agent detail page | page loads | step 1 | `step 1`: form sections + chat panel visible | asserted |
 | 2 Click model selector dropdown | dropdown opens | step 2 | `step 2`: `menu` with menuitems visible | asserted |
 | 3 Verify all 3 Anthropic models present | all 3 listed | step 3 | `step 3`: 3 `model-selector-option-{name}` testids present, display names match (with "Anthropic " prefix — see clarification below) | asserted, **clarification** on exact display-name text |

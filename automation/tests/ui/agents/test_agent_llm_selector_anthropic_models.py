@@ -127,10 +127,15 @@ class TestAgentLlmSelectorAnthropicModels:
             agent_id = agent["id"]
 
         detail_page = None
-        console_errors = []
+        # Captures both "error" and "warning" console messages — the case's
+        # Expected Results call for "0 errors/warnings" across the flow, not
+        # just errors (per AFS Axis-2 console-message check).
+        console_issues = []
         page.on(
             "console",
-            lambda msg: console_errors.append(msg) if msg.type == "error" else None,
+            lambda msg: console_issues.append(msg)
+            if msg.type in ("error", "warning")
+            else None,
         )
 
         try:
@@ -222,10 +227,10 @@ class TestAgentLlmSelectorAnthropicModels:
                             f"attributed to a different model {other!r}"
                         )
 
-            with allure.step("Verify no console errors across the full flow"):
-                assert not console_errors, (
-                    "Expected no console errors across the 3-model select/save/chat "
-                    f"flow, got: {[m.text for m in console_errors]}"
+            with allure.step("Verify no console errors or warnings across the full flow"):
+                assert not console_issues, (
+                    "Expected no console errors/warnings across the 3-model "
+                    f"select/save/chat flow, got: {[(m.type, m.text) for m in console_issues]}"
                 )
         finally:
             with allure.step("Cleanup — delete the dedicated agent"):
@@ -235,4 +240,17 @@ class TestAgentLlmSelectorAnthropicModels:
                     else:
                         agent_api.delete_agent(agent_id)
                 except Exception as cleanup_exc:
-                    print(f"Warning: Failed to cleanup agent {agent_id}: {cleanup_exc}")
+                    print(
+                        f"Warning: UI-menu delete failed for agent {agent_id}: "
+                        f"{cleanup_exc}. Falling back to API delete."
+                    )
+                    # UI-teardown hiccup is a documented flake class (see
+                    # mui-patterns.md) — fall back to the API so the
+                    # disposable test agent doesn't leak either way.
+                    try:
+                        agent_api.delete_agent(agent_id)
+                    except Exception as api_cleanup_exc:
+                        print(
+                            f"Warning: API fallback delete also failed for agent "
+                            f"{agent_id}: {api_cleanup_exc}"
+                        )
