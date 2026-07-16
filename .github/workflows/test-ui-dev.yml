@@ -15,6 +15,11 @@ on:
         description: 'Custom suites (comma-separated)'
         type: string
         default: ''
+      parallel_jobs:
+        description: 'Number of parallel runners (1-9)'
+        type: choice
+        options: ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+        default: '9'
       markers:
         description: 'Pytest markers'
         default: ''
@@ -38,6 +43,7 @@ jobs:
       environment: dev
       suite: ${{ inputs.suite || 'all' }}
       custom_suites: ${{ inputs.custom_suites || '' }}
+      parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
       markers: ${{ inputs.markers || '' }}
       ref: ${{ inputs.ref || 'main' }}
       publish_to_tms: ${{ github.event_name == 'schedule' || inputs.publish_to_tms }}
