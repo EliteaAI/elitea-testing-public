@@ -9,8 +9,13 @@ Resources section (Toolkits/MCP/Pipelines/Agents/Skills), each suggested
 item shows a name (and description when the underlying resource has one),
 and no suggestion is pre-selected.
 
+Covers ELITEA-1909: only explicitly selected suggested resources (Toolkit,
+nested Agent) are attached to the created agent, and a non-selected
+suggested resource is absent.
+
 Spec: test-specs/agents/l2_build-with-ai-generation-failure-retry_ELITEA-1915.md
 Spec: test-specs/agents/l2_build-with-ai-generated-draft-suggested-resources_ELITEA-1907.md
+Spec: test-specs/agents/l2_build-with-ai-selected-suggested-resources-attached-to-created-agent_ELITEA-1909.md
 Covers: GenerateAgentModal (GenerateEntityModal.jsx via GenerateAgentModal.jsx)
 
 Markers:
@@ -23,11 +28,16 @@ Usage:
     pytest tests/ui/agents/test_agent_build_with_ai.py -v
 """
 
+import logging
+
 import allure
 import pytest
 
+from pages.agent_detail_page import AgentDetailPage
 from pages.agents_list_page import AgentsListPage
 from pages.generate_agent_modal_page import GenerateAgentModalPage
+
+logger = logging.getLogger("elitea.tests.agents.build_with_ai")
 
 pytestmark = [pytest.mark.ui, pytest.mark.agents]
 
@@ -38,6 +48,11 @@ NAVIGATION_TIMEOUT = 15000
 GENERATE_RESPONSE_TIMEOUT = 15000
 LOADING_STATE_TIMEOUT = 3000
 REVIEW_FORM_TIMEOUT = 15000
+
+# ELITEA-1909's generate-draft call is a real (non-mocked) LLM call, unlike
+# ELITEA-1915/1907's mocked responses — a longer, more generous timeout
+# avoids flaking on ordinary LLM-latency variance.
+LIVE_GENERATE_RESPONSE_TIMEOUT = 30000
 
 PROMPT_TEXT = (
     "Create a customer support triage agent that categorizes incoming "
@@ -408,3 +423,186 @@ class TestAgentBuildWithAISuggestedResources:
             assert not modal.is_resource_checked("pipeline", 202), (
                 "Pipeline suggestion should not be pre-selected"
             )
+
+
+class TestAgentBuildWithAISelectedResourcesAttached:
+    """Build with AI (P2): only explicitly selected suggested resources
+    (Toolkit, nested Agent) are attached to the created agent; non-selected
+    suggested resources are absent."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agents/build_with_ai/ELITEA-1909_build-with-ai-selected-suggested-resources-attached-to-created-agent.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_selected_suggested_resources_attached_and_non_selected_absent(
+        self, page, agent_api, github_toolkit, github_relevant_agents
+    ):
+        """Selecting one suggested Toolkit and one suggested Agent (leaving a
+        second suggested Agent unchecked) and clicking "Create Agent"
+        attaches exactly the selected resources to the created agent's Tools
+        section; the deliberately-unselected Agent is absent."""
+        list_page = AgentsListPage(page)
+        modal = GenerateAgentModalPage(page)
+        selected_agent = github_relevant_agents["selected"]
+        not_selected_agent = github_relevant_agents["not_selected"]
+
+        # Names both fixture agents explicitly so the suggestion engine's
+        # relevance match surfaces both as `suggested_agents` candidates —
+        # see ELITEA-1909 AFS Automation Hints (prompt text and fixture
+        # descriptions are coupled by design).
+        prompt_text = (
+            "An agent that queries GitHub repositories using the GitHub toolkit "
+            f"and delegates issue-triage and pull-request-review work to a "
+            f"{selected_agent['name']} or a {not_selected_agent['name']} sub-agent."
+        )
+
+        created_agent_id = None
+        try:
+            # ------------------------------------------------------------------
+            # Steps 1-2 — GitHub toolkit fixture (case step 1) already created;
+            # generate a draft mentioning it and both fixture agents (case step 2)
+            # ------------------------------------------------------------------
+            with allure.step("Step 1-2 — Generate an agent draft mentioning the GitHub toolkit"):
+                list_page.navigate_to_create()
+                modal.open_modal()
+                modal.fill_prompt(prompt_text)
+
+                assert modal.get_prompt_value() == prompt_text, (
+                    "Prompt textarea should contain exactly the entered text"
+                )
+
+                response = modal.click_generate_and_wait_for_response(
+                    timeout=LIVE_GENERATE_RESPONSE_TIMEOUT
+                )
+                assert response.status == 200, (
+                    f"Expected the generate-draft request to succeed, got {response.status}"
+                )
+                modal.wait_for_review_form()
+
+            # ------------------------------------------------------------------
+            # Step 3 — Suggested Resources area shows the Toolkit and both Agents
+            # ------------------------------------------------------------------
+            with allure.step("Step 3 — Verify Suggested Toolkits/Agents sections are populated"):
+                assert modal.is_resource_section_visible("toolkit"), (
+                    'The "Suggested Toolkits:" section should be present with the created GitHub toolkit'
+                )
+                assert modal.get_resource_name_text("toolkit", github_toolkit["id"]) == github_toolkit["name"], (
+                    "Suggested toolkit card should be the GitHub toolkit created for this test"
+                )
+                assert modal.is_resource_section_visible("agent"), (
+                    'The "Suggested Agents:" section should be present — requires the '
+                    "github_relevant_agents precondition (see AFS Preconditions)"
+                )
+                assert modal.get_resource_name_text("agent", selected_agent["id"]) == selected_agent["name"], (
+                    "Suggested agent card should be the fixture agent intended for selection"
+                )
+                assert modal.get_resource_name_text("agent", not_selected_agent["id"]) == not_selected_agent["name"], (
+                    "Suggested agent card should also include the fixture agent intended to stay unselected"
+                )
+                assert not modal.is_resource_checked("toolkit", github_toolkit["id"]), (
+                    "Toolkit suggestion should not be pre-selected"
+                )
+                assert not modal.is_resource_checked("agent", selected_agent["id"]), (
+                    "Agent suggestion should not be pre-selected"
+                )
+                assert not modal.is_resource_checked("agent", not_selected_agent["id"]), (
+                    "Agent suggestion should not be pre-selected"
+                )
+
+            # ------------------------------------------------------------------
+            # Steps 3-4 (case) — select the suggested Toolkit and the
+            # "selected" suggested Agent; deliberately leave the other
+            # suggested Agent unchecked
+            # ------------------------------------------------------------------
+            with allure.step("Step 3-4 — Select the suggested Toolkit and one suggested Agent"):
+                modal.select_resource("toolkit", github_toolkit["id"])
+                modal.select_resource("agent", selected_agent["id"])
+
+                assert modal.is_resource_checked("toolkit", github_toolkit["id"]), (
+                    "Toolkit card should be checked/selected after clicking its checkbox"
+                )
+                assert modal.is_resource_checked("agent", selected_agent["id"]), (
+                    f"{selected_agent['name']!r} card should be checked/selected after clicking its checkbox"
+                )
+                assert not modal.is_resource_checked("agent", not_selected_agent["id"]), (
+                    f"{not_selected_agent['name']!r} card should remain unchecked — this test's negative fixture"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 5 (case) — Click "Create Agent"; verify the three
+            # sequential network calls and the auto-navigation to the
+            # created agent's detail page
+            # ------------------------------------------------------------------
+            with allure.step('Step 5 — Click "Create Agent"'):
+                create_response, toolkit_patch_response, relation_patch_response = (
+                    modal.click_approve_and_wait_for_creation()
+                )
+
+                assert create_response.status == 201, (
+                    f"Expected the base-agent create call to resolve 201, got {create_response.status}"
+                )
+                created_agent_id = create_response.json()["id"]
+
+                assert toolkit_patch_response.status == 201, (
+                    f"Expected the selected-Toolkit association PATCH to resolve 201, "
+                    f"got {toolkit_patch_response.status}"
+                )
+                assert toolkit_patch_response.json().get("has_relation") is True, (
+                    "Toolkit association response should confirm has_relation: true"
+                )
+
+                assert relation_patch_response.status == 201, (
+                    f"Expected the selected-Agent association PATCH to resolve 201, "
+                    f"got {relation_patch_response.status}"
+                )
+                assert relation_patch_response.json().get("has_relation") is True, (
+                    "Agent association response should confirm has_relation: true"
+                )
+
+                page.wait_for_url(f"**/agents/all/{created_agent_id}**")
+
+            # ------------------------------------------------------------------
+            # Step 6 (case) — created Agent detail page is displayed
+            # ------------------------------------------------------------------
+            detail_page = AgentDetailPage(page)
+            with allure.step("Step 6 — Verify the created Agent detail page is displayed"):
+                detail_page.wait_for_page_load()
+                assert f"/agents/all/{created_agent_id}" in page.url, (
+                    f"Expected to land on the created agent's detail page, got {page.url}"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 7 (case) — selected Toolkit present in the Tools section
+            # ------------------------------------------------------------------
+            with allure.step("Step 7 — Verify the selected Toolkit is present in the Tools section"):
+                assert detail_page.is_toolkit_attached(github_toolkit["name"]), (
+                    f"Selected toolkit {github_toolkit['name']!r} should appear in the Tools section"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 8 (case) — selected nested Agent present in the same
+            # Tools section (shares ToolCard.jsx/agent-toolkit-card with
+            # Toolkit cards — see AFS Concrete Handles)
+            # ------------------------------------------------------------------
+            with allure.step("Step 8 — Verify the selected nested Agent is present in the Tools section"):
+                assert detail_page.is_toolkit_attached(selected_agent["name"]), (
+                    f"Selected nested agent {selected_agent['name']!r} should appear in the Tools section"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 9 (case) — non-selected suggested resource is absent
+            # ------------------------------------------------------------------
+            with allure.step("Step 9 — Verify the non-selected suggested Agent is absent"):
+                assert not detail_page.is_toolkit_attached(not_selected_agent["name"]), (
+                    f"Non-selected agent {not_selected_agent['name']!r} should NOT appear in the Tools section"
+                )
+        finally:
+            if created_agent_id is not None:
+                try:
+                    agent_api.delete_agent(created_agent_id)
+                    logger.info("Deleted created agent %s", created_agent_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete created agent %s during teardown: %s", created_agent_id, exc)
