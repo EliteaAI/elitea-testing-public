@@ -1,6 +1,6 @@
 ---
 name: MCP/toolkit create form implementer quirks
-description: McpFormPage testid gaps (CodeMirror content, detail title, native checkbox/secret inputs), MAX_NAME_LENGTH=32 truncation, select_text+Backspace for pre-populated numeric fields, detail-page placeholder-title race (from ELITEA-1922 implementer session)
+description: McpFormPage testid gaps (CodeMirror content, detail title, native checkbox/secret inputs, detail-page Save/Discard buttons), MAX_NAME_LENGTH=32 truncation, select_text+Backspace for pre-populated numeric fields, detail-page placeholder-title race, missing wait_for_page_load meant reload_and_wait() silently fell back to bare networkidle (from ELITEA-1922, updated ELITEA-1929)
 type: reference
 ---
 
@@ -44,6 +44,28 @@ instead of the native input:** check whether the underlying primitive already
 exposes a `contentTestId`/`inputProps`-passthrough seam before reaching for
 `.locator('input')` — most of EliteaUI's shared field primitives already have
 one, it's just not always wired at the call site that needs it.
+
+- `toolkit-detail-save-button` / `toolkit-detail-discard-button` (ELITEA-1929,
+  EliteaUI PR #572) — `ToolkitsTabBar.jsx`'s Save `MuiButton` and
+  `Button.DiscardButton` had zero testid on the **detail** page, unlike the
+  create-form's `toolkit-form-save-button`. `DiscardButton` already accepted
+  a `dataTestId` prop (passthrough to `BaseBtn`'s `data-testid`) — just wire
+  it at the call site; the Save `MuiButton` needed a plain `data-testid` add,
+  MUI forwards it to the root element as usual.
+
+## `wait_for_page_load` was never defined on `McpFormPage`
+
+`BasePage.reload_and_wait()` calls `self.wait_for_page_load(timeout=...)`
+*if the page object defines one* (`hasattr` check), else falls back to a bare
+`wait_for_network()` (networkidle). `McpFormPage` never defined
+`wait_for_page_load` — any test calling `reload_and_wait()` on it was
+silently trusting networkidle alone, which does NOT prove the detail title
+has re-rendered past the "Edit Toolkit" placeholder (same race documented
+above for `navigate_to_detail`). Added `wait_for_page_load()` as a thin
+delegate to the existing `_wait_for_detail_data_rendered()` (ELITEA-1929) —
+any future McpFormPage-based test calling `reload_and_wait()` now gets the
+real placeholder-aware wait for free. Worth checking any *other* page object
+lacking `wait_for_page_load` before trusting its `reload_and_wait()` calls.
 
 ## Non-testid gotchas
 
