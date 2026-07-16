@@ -202,6 +202,74 @@ class ChatPage(BasePage):
         description="Individual message items (user + AI)"
     )
 
+    # ------------------------------------------------------------------
+    # Active participant / skill-mention popper (ELITEA-1736 testid rework)
+    # ------------------------------------------------------------------
+
+    switch_participant_button = LocatorDescriptor(
+        testid="chat-switch-participant-button",
+        description=(
+            "Composer's active-participant button (was 'Switch Agent'/"
+            "'Switch Pipeline' Tooltip-derived accessible name). Shown once"
+            " an agent or pipeline is added as a chat participant."
+        )
+    )
+
+    mention_skill_list = LocatorDescriptor(
+        testid="skill-mention-list",
+        description="Container for the '~mention' skill autocomplete popper's item list"
+    )
+
+    # Dynamic per-row testid for a skill in the mention popper — templated,
+    # never an inline f-string get_by_test_id (.claude/rules/page-objects.md).
+    MENTION_SKILL_ITEM = '[data-testid="skill-mention-item-{}"]'
+
+    # ------------------------------------------------------------------
+    # Participant removal + "Mention skill" popper testid rework
+    # (ELITEA-1793 framework-alignment rework, issue #35 — closes PR #52's
+    # raw text/aria-label/xpath-ancestor/role-based handle gap; EliteaUI
+    # draft PR EliteaAI/EliteaUI#548, commits ab81f3b/be48cd5 on
+    # automation/testids)
+    # ------------------------------------------------------------------
+
+    # Empty-state row inside the mention popper ("No skills attached to
+    # this agent") — scoped sub-selector, resolved against
+    # ``self.mention_skill_list``, never a page-level field.
+    MENTION_LIST_EMPTY = '[data-testid="skill-mention-list-empty"]'
+
+    # Prefix-match selector enumerating every mention-item row regardless
+    # of skill name — used by ``is_skill_in_mention_popper()`` to fall back
+    # to a substring (e.g. description) search across all rows.
+    MENTION_SKILL_ITEM_PREFIX = '[data-testid^="skill-mention-item-"]'
+
+    # "Agents in this conversation" collapsed-participants badge — dynamic
+    # per entity section (this case only ever calls ``.format("agents")``).
+    PARTICIPANTS_BADGE = '[data-testid="chat-participants-badge-{}"]'
+
+    # The badge's clickable trigger IconButton — static, but only ever
+    # resolved scoped under a ``PARTICIPANTS_BADGE`` container (multiple
+    # sections can render simultaneously, each with its own trigger).
+    # Declared improvisation: the AFS specced a testid for the wrapping Box
+    # only; this button is the actual click target and has no accessible
+    # name, so a second testid was added to keep the click testid-only
+    # (see .agents/role-overrides.md's canon-gap protocol).
+    PARTICIPANTS_BADGE_BUTTON = '[data-testid="chat-participants-badge-button"]'
+
+    participants_popper = LocatorDescriptor(
+        testid="chat-participants-popper",
+        description="'Agents'/'Pipelines'/etc. participants popper container (Popper/Grow Paper)"
+    )
+
+    # Dynamic per-participant row inside the participants popper —
+    # uniqueId = getChatParticipantUniqueId(participant), e.g.
+    # "application_4687_399" for an agent participant.
+    PARTICIPANT_ROW = '[data-testid="chat-participant-row-{}"]'
+
+    # Hover-reveal "Remove <entityType>" icon button — static, scoped via
+    # the row's dynamic testid (multiple simultaneous rows disambiguate
+    # through the parent row selector, not this button's own testid).
+    PARTICIPANT_REMOVE_BUTTON = '[data-testid="chat-participant-remove-button"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
         
@@ -469,9 +537,20 @@ class ChatPage(BasePage):
     ])
 
     def _is_transient_message(self, text: str) -> bool:
-        """Check if the message is a transient state that should be ignored."""
-        return text.lower().strip().rstrip(".…") in self.TRANSIENT_MESSAGES or \
-               text.lower().strip() in self.TRANSIENT_MESSAGES
+        """Check if the message is a transient state that should be ignored.
+
+        Normalises non-breaking spaces (``\\xa0``, used by the "Waking the
+        agent…" placeholder when an agent is cold-starting after being newly
+        added as a chat participant — confirmed live during ELITEA-1736
+        implementer Phase 2) to regular spaces before matching against
+        ``TRANSIENT_MESSAGES``, which is written with plain-space literals.
+        Without this, the nbsp variant silently fails the membership check
+        and ``wait_for_message_content_stable`` treats the placeholder as
+        real, stable content — a false-stable race, not a real defect.
+        """
+        normalized = text.replace("\xa0", " ").lower().strip()
+        return normalized.rstrip(".…") in self.TRANSIENT_MESSAGES or \
+               normalized in self.TRANSIENT_MESSAGES
 
     def wait_for_message_content_stable(
         self, stable_duration_ms: int = 2000, timeout: int = 30000
@@ -2062,6 +2141,323 @@ class ChatPage(BasePage):
         self.wait_for_network(timeout=timeout)
 
         logger.info("Toolkit '%s' added as chat participant", toolkit_name)
+
+    def is_agent_participant_in_composer(self, agent_name: str, timeout: int = 10000) -> bool:
+        """Return True if *agent_name* is shown as the active agent in the composer.
+
+        LOCATOR: ``chat-switch-participant-button`` — the composer's
+        active-participant button, added to EliteaUI on ``automation/testids``
+        during the ELITEA-1736 testid rework (draft PR EliteaAI/EliteaUI#541).
+        Previously located via its Tooltip-derived accessible name
+        ("Switch Agent"/"Switch Pipeline"); the testid resolves the same
+        physical element regardless of which participant type is active.
+        Replaces the model-name display used when no agent participant is
+        active.
+
+        NOTE (ELITEA-1736 Phase-2 exploration): the "Agents in this
+        conversation" collapsed-participants badge documented in the AFS
+        renders its participant count via a CSS ``::after`` pseudo-element
+        (``content: "${count}"`` in ``CollapsedPerticapantsList.jsx``), which
+        has no DOM text node and is not readable via ``text_content()`` or
+        any accessible-name query — confirmed by reading the EliteaUI
+        source. This button is the stable, semantic signal instead; the
+        AFS's own Expected Results names both as equivalent evidence of
+        participant membership.
+
+        Args:
+            agent_name: The agent's exact display name.
+            timeout: Maximum wait time in milliseconds.
+        """
+        switch_participant_btn = self.switch_participant_button
+        switch_participant_btn.wait_for(state="visible", timeout=timeout)
+        text = switch_participant_btn.text_content() or ""
+        found = agent_name in text
+        logger.info(
+            "Switch-participant composer button text: %r — contains agent name %r: %s",
+            text, agent_name, found,
+        )
+        return found
+
+    def is_switch_agent_button_visible(self, timeout: int = 3000) -> bool:
+        """Return True if the active-participant composer button currently exists.
+
+        Unlike ``is_agent_participant_in_composer()`` (which asserts a
+        *positive* expectation and raises if the button never appears —
+        the correct behavior for its existing callers), this is a safe
+        boolean check for callers that need to assert the button's
+        *absence* (e.g. after removing the last agent participant) without
+        a TimeoutError. Added for ELITEA-1793; the two methods are
+        intentionally not merged to keep ``is_agent_participant_in_composer``'s
+        existing raise-on-timeout contract byte-identical for its callers.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            self.switch_participant_button.wait_for(
+                state="visible", timeout=timeout,
+            )
+            return True
+        except Exception:
+            return False
+
+    @action("Send chat message with skill mention")
+    def send_message_with_skill_mention(
+        self, skill_name: str, prompt: str, timeout: int = 10000,
+    ):
+        """Type "~<skill_name> <prompt>" in the main chat input and send it.
+
+        Same "Mention skill" popper mechanics as
+        ``AgentDetailPage.send_chat_message_with_mention`` (``MentionSkillList``
+        — a plain div-based list, now testid-backed: ``skill-mention-list``
+        for the container and ``skill-mention-item-{name}`` per row, added to
+        EliteaUI on ``automation/testids`` during the sibling ELITEA-1735
+        rework, commit 916fcc3, draft PR EliteaAI/EliteaUI#540; confirmed
+        already live for this chat-participant surface too during the
+        ELITEA-1736 testid rework). Uses ``press_sequentially`` throughout —
+        never ``fill()`` — because filling the whole textbox value would
+        destroy the mention chip inserted after selecting from the popper.
+
+        Args:
+            skill_name: Exact name of the attached skill to mention.
+            prompt: Text to append after the mention chip.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Sending mention message: ~%s %s", skill_name, prompt[:60])
+        self.message_input.wait_for(state="visible", timeout=timeout)
+        self.message_input.click()
+        self.message_input.press_sequentially("~", delay=50)
+
+        self.mention_skill_list.wait_for(state="visible", timeout=timeout)
+        mention_item = self.mention_skill_list.locator(
+            self.MENTION_SKILL_ITEM.format(skill_name)
+        )
+        mention_item.wait_for(state="visible", timeout=timeout)
+        mention_item.click()
+        self.page.wait_for_timeout(300)
+
+        self.message_input.press_sequentially(f" {prompt}", delay=30)
+        self.page.wait_for_timeout(300)
+
+        self.send_button.wait_for(state="visible", timeout=timeout)
+        self.send_button.click(force=True, timeout=timeout)
+        logger.info("Mention message sent (~%s)", skill_name)
+
+    # ------------------------------------------------------------------
+    # Participant removal + "Mention skill" popper inspection (ELITEA-1793)
+    # ------------------------------------------------------------------
+
+    def is_participants_badge_visible(self, timeout: int = 3000, section: str = "agents") -> bool:
+        """Return True if the participants badge for *section* exists in the DOM.
+
+        LOCATOR: ``chat-participants-badge-{section}`` (dynamic per entity
+        section) — added to EliteaUI on ``automation/testids`` during the
+        ELITEA-1793 testid rework (draft PR EliteaAI/EliteaUI#548, closing
+        the framework-alignment audit's gap on PR #52's raw
+        ``[aria-label="Agents in this conversation"]`` handle). This
+        container **disappears entirely from the DOM** once the
+        participant count returns to 0 for that section (it is not
+        rendered showing a "0" label) — callers must assert absence via
+        this method, not a text-content check for "0".
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+            section: Entity section — "agents" (default), "pipelines",
+                "toolkits", or "mcp". This case only ever exercises "agents".
+        """
+        badge = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
+        try:
+            badge.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def open_participants_popover(self, timeout: int = 10000, section: str = "agents"):
+        """Click the participants badge for *section* to open the participants popper.
+
+        LOCATORS: ``chat-participants-badge-{section}`` (badge wrapper) →
+        ``chat-participants-badge-button`` (its clickable IconButton,
+        scoped under the badge wrapper) → ``chat-participants-popper`` (the
+        opened Popper/Grow content container) — all added to EliteaUI on
+        ``automation/testids`` during the ELITEA-1793 testid rework, closing
+        the framework-alignment audit's gap on PR #52's raw
+        ``[aria-label=...]`` + CSS-tag-and-text-filter + xpath-ancestor
+        handles.
+
+        Returns the ``participants_popper`` Locator.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+            section: Entity section — "agents" (default), "pipelines",
+                "toolkits", or "mcp". This case only ever exercises "agents".
+        """
+        badge_container = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
+        badge_button = badge_container.locator(self.PARTICIPANTS_BADGE_BUTTON)
+        badge_button.first.wait_for(state="visible", timeout=timeout)
+        badge_button.first.click()
+
+        self.participants_popper.wait_for(state="visible", timeout=timeout)
+        return self.participants_popper
+
+    @action("Remove agent participant from chat")
+    def remove_agent_participant(self, agent_id: int, timeout: int = 10000):
+        """Remove the agent participant identified by *agent_id* from chat.
+
+        Opens the participants popper, resolves the participant row
+        directly via its dynamic ``chat-participant-row-{uniqueId}``
+        testid (``uniqueId`` = ``getChatParticipantUniqueId(participant)``
+        in EliteaUI — for an agent participant this is
+        ``application_{agent_id}_{project_id}``, confirmed both live and by
+        reading ``participants.helpers.js`` during the ELITEA-1793 testid
+        rework), hovers it to reveal its hover-only "Remove agent" icon
+        button (``chat-participant-remove-button``, same hover-reveal
+        pattern as the agent-detail Skills card's remove control — see
+        ``.agents/memory/qa-engineer/agent_skill_card_remove_control_quirks.md``),
+        clicks it, and confirms via the "Remove agent?" dialog. No text
+        lookup or xpath-ancestor walk needed — replaces PR #52's raw
+        text-and-ancestor-walk and accessible-name-based handles.
+
+        Args:
+            agent_id: Numeric ID of the participant agent to remove.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Removing agent participant id=%s from chat", agent_id)
+        popper = self.open_participants_popover(timeout=timeout)
+
+        unique_id = f"application_{agent_id}_{settings.elitea_project_id}"
+        row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+        row.wait_for(state="visible", timeout=timeout)
+        row.scroll_into_view_if_needed()
+        row.hover()
+        self.page.wait_for_timeout(300)  # hover-reveal CSS transition
+
+        remove_btn = row.locator(self.PARTICIPANT_REMOVE_BUTTON)
+        remove_btn.wait_for(state="visible", timeout=timeout)
+        remove_btn.click(force=True)
+
+        dialog = Dialog.wait_for(self.page, timeout=timeout)
+        Dialog.click_button(dialog, "Remove")
+        self.wait_for_network(timeout=timeout)
+
+        # Residual real-mouse hover can keep :hover engaged on the wrong
+        # element after the confirm click (same gotcha documented for the
+        # agent-detail Skills card remove control, ELITEA-1792 implementer
+        # memory) — reset before any subsequent hover-reveal check.
+        self.page.mouse.move(0, 0)
+        logger.info("Agent participant id=%s removed from chat", agent_id)
+
+    @action("Open Mention skill popper")
+    def open_mention_skill_popper(self, timeout: int = 10000):
+        """Clear the message input and type "~" to open the "Mention skill" popper.
+
+        Uses ``press_sequentially`` — never ``fill()`` — because a
+        ``fill()`` bypasses the mention-trigger keyup handler and the
+        popper never opens (same gotcha as ``send_message_with_skill_mention``).
+        Clears any pre-existing content (e.g. a literal "~" left over from a
+        previously dismissed popper — dismissing via Escape does NOT clear
+        the input) via Control+a/Backspace before typing, so the trigger is
+        always a single fresh "~" and never something like "~~" that no
+        longer opens the popper.
+
+        NOTE: the composer's message input is a *fresh* element after any
+        re-render (e.g. right after an agent participant is added/removed) —
+        ``self.message_input`` re-resolves the ``LocatorDescriptor`` on each
+        access (a live ``get_by_test_id`` locator, not a captured element
+        handle), so no manual re-snapshot/ref bookkeeping is needed here.
+
+        Returns the ``mention_skill_list`` Locator (``skill-mention-list``
+        testid — REUSE of the same field ``send_message_with_skill_mention``
+        already uses; replaces PR #52's raw heading-text-and-ancestor-walk
+        handle). Contains either skill-name rows (when the active agent participant
+        has attached skills) or the empty-state row
+        (``skill-mention-list-empty``, "No skills attached to this agent")
+        when there is no participant, or the participant has no skills.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.message_input.wait_for(state="visible", timeout=timeout)
+        self.message_input.click()
+        self.message_input.press("Control+a")
+        self.message_input.press("Backspace")
+        self.message_input.press_sequentially("~", delay=50)
+
+        self.mention_skill_list.wait_for(state="visible", timeout=timeout)
+        return self.mention_skill_list
+
+    def is_skill_in_mention_popper(self, popper, skill_name: str, timeout: int = 3000) -> bool:
+        """Return True if *skill_name* appears as a row inside an open mention popper.
+
+        First tries an exact match via the row's ``skill-mention-item-{name}``
+        testid (``MENTION_SKILL_ITEM``, same pattern as
+        ``send_message_with_skill_mention``). Falls back to a substring
+        match across all mention-item rows (``MENTION_SKILL_ITEM_PREFIX``)
+        for callers checking a row's *description* text rather than its
+        exact name (e.g. this case's step 3 assertion) — replaces PR #52's
+        raw exact-text-match handle.
+
+        Args:
+            popper: The popper container Locator returned by
+                ``open_mention_skill_popper()``.
+            skill_name: Exact skill name, or a substring of a row's text
+                (e.g. its description) to look for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            exact_item = popper.locator(self.MENTION_SKILL_ITEM.format(skill_name))
+            exact_item.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            pass
+
+        try:
+            matching_rows = popper.locator(self.MENTION_SKILL_ITEM_PREFIX).filter(
+                has_text=skill_name,
+            )
+            matching_rows.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def is_mention_popper_empty_state(self, popper, timeout: int = 3000) -> bool:
+        """Return True if the mention popper shows the "No skills attached to this agent" empty state.
+
+        LOCATOR: ``skill-mention-list-empty`` (``MENTION_LIST_EMPTY``) —
+        added to EliteaUI on ``automation/testids`` during the ELITEA-1793
+        testid rework, replacing PR #52's raw empty-state-text handle.
+
+        Args:
+            popper: The popper container Locator returned by
+                ``open_mention_skill_popper()``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            popper.locator(self.MENTION_LIST_EMPTY).first.wait_for(
+                state="visible", timeout=timeout,
+            )
+            return True
+        except Exception:
+            return False
+
+    def dismiss_mention_popper(self):
+        """Press Escape to dismiss an open "Mention skill" popper without selecting anything."""
+        self.page.keyboard.press("Escape")
+
+    def is_mention_popper_open(self, timeout: int = 2000) -> bool:
+        """Return True if the "Mention skill" popper is currently visible.
+
+        LOCATOR: ``mention_skill_list`` (``skill-mention-list`` testid) —
+        REUSE of the same field used elsewhere in this file; replaces
+        PR #52's raw heading-text handle.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            self.mention_skill_list.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
 
     # ------------------------------------------------------------------
     # UI state wait helpers

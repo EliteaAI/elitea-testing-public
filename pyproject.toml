@@ -17,6 +17,7 @@ dependencies = [
     "requests>=2.31",
     "httpx>=0.25",
     "beautifulsoup4>=4.12",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]

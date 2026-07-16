@@ -1,7 +1,14 @@
 """Annotation-driven locator descriptors for Page Objects.
 
 Provides a clean way to define locators using Python descriptors and type hints.
-Priority: testid > locator. Use add-data-testid skill if element lacks both.
+
+POLICY (testid-only — .claude/rules/page-objects.md, .agents/testing.md):
+new code passes `testid=` and NOTHING else. If the element lacks a data-testid,
+add one to EliteaUI via the add-data-testid skill — never reach for `locator=`
+or `fallback=`. Both are LEGACY-ONLY parameters kept so old page objects keep
+importing; they are never valid in new or modified declarations. For
+runtime-parameterized testids use the class-level template-constant pattern
+(.agents/testing.md § Locator policy), not this class.
 """
 
 from typing import Optional, Callable
@@ -9,18 +16,16 @@ from playwright.sync_api import Locator, Page
 
 
 class LocatorDescriptor:
-    """Descriptor for declaring page locators with testid-first strategy.
+    """Descriptor for declaring page locators. Testid-only in new code.
 
-    Usage:
+    Usage (the ONLY sanctioned form):
         class MyPage(BasePage):
-            # Preferred: data-testid (most stable)
             login_button = LocatorDescriptor(testid="login-button")
 
-            # Alternative: CSS/ID selector (when testid not available)
-            refresh_btn = LocatorDescriptor(locator="#RefreshButton")
-            delete_btn = LocatorDescriptor(locator='[aria-label="Delete"]')
-
-    Priority: testid > locator. If element has neither, use add-data-testid skill.
+    Element has no data-testid? Add one via the add-data-testid skill —
+    do NOT use `locator=` or `fallback=`: both are legacy-only (old code
+    keeps importing; new/modified declarations must not pass them, and the
+    reviewer's mechanical gate blocks them).
     """
 
     def __init__(
@@ -34,10 +39,10 @@ class LocatorDescriptor:
         """Initialize locator descriptor.
 
         Args:
-            testid: data-testid attribute value (preferred, takes priority)
-            locator: CSS selector string (e.g. "#id", '[aria-label="..."]')
+            testid: data-testid attribute value — the only parameter new code passes
+            locator: LEGACY ONLY — never in new code (add a testid instead)
             description: Human-readable description for docs
-            fallback: DEPRECATED - use locator parameter instead
+            fallback: LEGACY ONLY — dead code when testid is set; never in new code
         """
         self.testid = testid
         self.locator_selector = locator

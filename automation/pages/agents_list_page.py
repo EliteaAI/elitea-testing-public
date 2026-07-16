@@ -5,8 +5,10 @@ Handles: /agents/all
 - Search and filter agents
 - Navigate to create agent
 - Select agent from list
+- Import an Agent from an exported ``.agent.md`` file
 """
 
+import re
 import logging
 from playwright.sync_api import Page
 
@@ -28,9 +30,17 @@ class AgentsListPage(BasePage):
         description="Search agents input field"
     )
 
+    # Fixed (ELITEA-1870): the previous testid ("create-agent-button") does
+    # not exist in the live DOM (confirmed via a full
+    # `[data-testid]` inventory on /agents/all — 0 matches); the real,
+    # confirmed-live testid on the sidebar create-agent control is
+    # "sidebar-create-button". The old `fallback` (a `get_by_label("Create
+    # Agent")` role lookup) also doesn't match live and is dropped per the
+    # testid-only locator policy (`.claude/rules/page-objects.md` — no
+    # fallback param). This is a page-object housekeeping fix; the button's
+    # click-to-navigate behavior itself was already correct.
     create_agent_button = LocatorDescriptor(
-        testid="create-agent-button",
-        fallback=lambda page: page.get_by_label("Create Agent").get_by_role("button"),
+        testid="sidebar-create-button",
         description="Create Agent button in sidebar"
     )
 
@@ -50,6 +60,67 @@ class AgentsListPage(BasePage):
         testid="agents-page-header",
         fallback=lambda page: page.locator('text="Agents"').first,
         description="Agents page header"
+    )
+
+    # -- Import (ELITEA-1795, testid-only rework — EliteaUI draft PR #552) --
+    import_button = LocatorDescriptor(
+        testid="agents-import-button",
+        description="Import agent button in the Agents list page toolbar"
+    )
+
+    import_preview_dialog = LocatorDescriptor(
+        testid="agent-import-preview-dialog",
+        description="'Import parameters' preview dialog"
+    )
+
+    import_preview_name = LocatorDescriptor(
+        testid="agent-import-preview-name",
+        description="Import preview — the Main entity (Agent) name"
+    )
+
+    import_preview_skill_name = LocatorDescriptor(
+        testid="agent-import-preview-skill-name",
+        description="Import preview — the embedded Skill's name (shared "
+                     "testid across every Skill card in the preview)"
+    )
+
+    import_preview_card_toggle = LocatorDescriptor(
+        testid="agent-import-preview-card-toggle",
+        description="'Show details' toggle, shared by every entity-preview "
+                     "card (Main entity + each Skill). Rendered ONLY while "
+                     "collapsed (removed from the DOM once expanded) so a "
+                     "'click until none remain' loop naturally converges"
+    )
+
+    import_preview_skill_instructions = LocatorDescriptor(
+        testid="agent-import-preview-skill-instructions",
+        description="Import preview — the embedded Skill's instructions "
+                     "text (visible only once its card is expanded)"
+    )
+
+    import_confirm_button = LocatorDescriptor(
+        testid="agent-import-confirm-button",
+        description="'Import parameters' dialog's scoped Import (confirm) button"
+    )
+
+    import_complete_dialog = LocatorDescriptor(
+        testid="agent-import-complete-dialog",
+        description="'Import Complete' success dialog"
+    )
+
+    import_complete_agents_list = LocatorDescriptor(
+        testid="agent-import-complete-list-agents",
+        description="'Import Complete' dialog — imported Agents name list"
+    )
+
+    import_complete_skills_list = LocatorDescriptor(
+        testid="agent-import-complete-list-skills",
+        description="'Import Complete' dialog — imported Skills name list"
+    )
+
+    import_complete_got_it_button = LocatorDescriptor(
+        testid="agent-import-complete-got-it-button",
+        description="'Import Complete' dialog's 'Got it' confirm/navigate button"
     )
 
     def __init__(self, page: Page):
@@ -105,6 +176,27 @@ class AgentsListPage(BasePage):
     # Agent list operations
     # ------------------------------------------------------------------
 
+    # Fixed (ELITEA-1869): the previous locator —
+    # ``'[class*="CardContent"] >> text, [class*="cardContent"] >> text'`` —
+    # combined a CSS selector list with a chained Playwright text engine in a
+    # single selector string; Playwright parses the whole string as one
+    # locator chain, so the comma is consumed inside the chain instead of
+    # acting as a top-level OR. The result matched 0 elements (verified via
+    # a standalone Playwright script against the live dashboard — 6 real
+    # cards present, 0 matched), so this method always returned ``[]``,
+    # silently. No existing test exercised this method before ELITEA-1869
+    # (confirmed via repo-wide grep), so this is a straight fix, not a
+    # shared-caller change. Now resolved via the shared ``entity-card-name``
+    # Card.jsx testid (also used by Credentials/Mcp/Skills/Pipelines list
+    # pages — see ``CredentialsListPage.entity_card_name`` for the identical
+    # collection-locator pattern), a proper class-level ``LocatorDescriptor``
+    # per the testid-only policy (`.claude/rules/page-objects.md`), instead
+    # of a raw locator string built/used inside the method body.
+    entity_card_name = LocatorDescriptor(
+        testid="entity-card-name",
+        description="Agent card name (title) — collection locator, one per visible card",
+    )
+
     def get_agent_card_names(self, timeout: int = 5000) -> list[str]:
         """Return names of all agent cards visible on the dashboard.
 
@@ -112,7 +204,7 @@ class AgentsListPage(BasePage):
             List of agent name strings.
         """
         self.wait_for_network(timeout=timeout)
-        cards = self.page.locator('[class*="CardContent"] >> text, [class*="cardContent"] >> text')
+        cards = self.entity_card_name
 
         try:
             cards.first.wait_for(state="visible", timeout=timeout)
@@ -296,3 +388,123 @@ class AgentsListPage(BasePage):
             # Fallback: check if button has active/selected class
             classes = self.card_view_button.get_attribute("class") or ""
             return "selected" in classes.lower() or "active" in classes.lower()
+
+    # ------------------------------------------------------------------
+    # Import (ELITEA-1795)
+    # ------------------------------------------------------------------
+
+    @action("Import agent from file")
+    def import_agent(self, file_path: str, timeout: int = 10000):
+        """Import an Agent from an exported ``.agent.md`` file.
+
+        Clicks the page-toolbar Import button (``agents-import-button``
+        data-testid — added via ``add-data-testid`` in the ELITEA-1795
+        testid-only rework, threading an optional ``testId`` prop through
+        the shared ``ToolbarImportButton``; see EliteaUI draft PR #552).
+        Clicking it opens a native OS file chooser directly (no
+        intermediate menu).
+
+        Handles the file chooser and waits for the "Import parameters"
+        preview dialog (``agent-import-preview-dialog``) to render. Does
+        NOT click the dialog's own Import (confirm) button — call
+        :meth:`confirm_agent_import` separately once the preview has been
+        verified.
+
+        Args:
+            file_path: Absolute path to the exported ``.agent.md`` file.
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Importing agent from file: %s", file_path)
+        with self.page.expect_file_chooser() as fc_info:
+            self.import_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(file_path)
+
+        self.import_preview_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Import parameters dialog visible")
+
+    @action("Expand import preview details")
+    def expand_import_preview_details(self, timeout: int = 10000):
+        """Expand every "Show details" toggle in the Import parameters dialog.
+
+        Unlike the Skill import dialog (a single entity preview), the
+        Agent import dialog renders two collapsed preview sections —
+        "Main entity" (the Agent) and "Skills" (each embedded Skill) —
+        each behind its own "Show details" toggle
+        (``IWModalEntityCardWrapper``, ``defaultExpanded=false``). Clicks
+        all of them so Description/Instructions preview text is actually
+        rendered (non-zero height) before assertions read it.
+
+        Every toggle carries the SAME ``agent-import-preview-card-toggle``
+        data-testid, but only while its own card is collapsed — the JSX
+        omits the attribute once expanded (``IWModalEntityCardWrapper``'s
+        own ``isExpanded`` state). So the locator is re-queried and its
+        first match clicked repeatedly until none remain — a fixed-count
+        loop indexed by ``nth()`` would go out of bounds after the first
+        click shrinks the live match set.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        toggles = self.import_preview_card_toggle
+        expanded_count = 0
+        while toggles.count() > 0:
+            toggles.first.click()
+            expanded_count += 1
+            self.page.wait_for_timeout(200)
+        if expanded_count:
+            # Grid-template-rows CSS transition (0.4s) — wait for the
+            # Skill instructions preview to actually be visible rather
+            # than a fixed sleep.
+            self.import_preview_skill_instructions.first.wait_for(
+                state="visible", timeout=timeout,
+            )
+        logger.info(
+            "Expanded %d 'Show details' toggle(s) in import dialog", expanded_count,
+        )
+
+    @action("Confirm agent import in dialog")
+    def confirm_agent_import(self, timeout: int = 15000):
+        """Click the "Import parameters" dialog's scoped Import (confirm) button.
+
+        Resolved via the ``agent-import-confirm-button`` data-testid —
+        distinct from the page-toolbar Import button's own
+        ``agents-import-button`` testid, so no dialog-scoping is needed
+        (previously both shared the accessible name "Import"). Confirming
+        transitions to the "Import Complete" success dialog (handled by
+        :meth:`confirm_import_complete`), not directly to the new Agent's
+        detail page.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the success dialog.
+        """
+        logger.info("Confirming agent import")
+        self.import_confirm_button.click()
+        self.import_complete_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Import Complete dialog visible")
+
+    @action("Confirm import complete")
+    def confirm_import_complete(self, timeout: int = 15000) -> int:
+        """Click "Got it" on the "Import Complete" success dialog.
+
+        Auto-navigates to the newly imported Agent's detail page. Parses
+        and returns the new Agent's numeric ID from the resulting URL.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the navigation.
+
+        Returns:
+            The imported Agent's numeric ID.
+        """
+        self.import_complete_got_it_button.click()
+        self.page.wait_for_url(re.compile(r".*/agents/all/\d+"), timeout=timeout)
+        self.wait_for_network(timeout=5000)
+
+        match = re.search(r"/agents/all/(\d+)", self.page.url)
+        if not match:
+            raise ValueError(
+                f"Could not parse imported Agent ID from URL: {self.page.url}"
+            )
+        agent_id = int(match.group(1))
+        logger.info("Import complete — navigated to agent id=%d", agent_id)
+        return agent_id

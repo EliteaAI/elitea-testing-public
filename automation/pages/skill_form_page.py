@@ -39,6 +39,11 @@ class SkillFormPage(BasePage):
         description="Skill instructions CodeMirror editor wrapper"
     )
 
+    instructions_editor_content = LocatorDescriptor(
+        testid="skill-instructions-editor-content",
+        description="Skill instructions CodeMirror content element (.cm-content)"
+    )
+
     save_button = LocatorDescriptor(
         testid="skill-save-button",
         description="Save skill button"
@@ -48,6 +53,36 @@ class SkillFormPage(BasePage):
         testid="skill-cancel-button",
         description="Cancel button"
     )
+
+    tags_input = LocatorDescriptor(
+        testid="skill-tags-input",
+        description="Tags combobox wrapper (MUI Autocomplete root)"
+    )
+
+    name_input_field = LocatorDescriptor(
+        testid="skill-name-input-field",
+        description="Skill name — real <input> element (skill-name-input is the wrapper)"
+    )
+
+    description_input_field = LocatorDescriptor(
+        testid="skill-description-input-field",
+        description="Skill description — real <textarea> element (skill-description-input is the wrapper)"
+    )
+
+    tags_input_field = LocatorDescriptor(
+        testid="skill-tags-input-field",
+        description="Tags combobox — real <input> element (skill-tags-input is the wrapper)"
+    )
+
+    tag_chip = LocatorDescriptor(
+        testid="skill-tag-chip",
+        description="Committed tag chip (one per tag; shared testid, collection locator)"
+    )
+
+    # Dynamic (runtime-parameterized) testid template — Tags autocomplete
+    # option for a previously-created project tag. See
+    # ``select_existing_tag()``.
+    SKILL_TAG_OPTION = '[data-testid="skill-tag-option-{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -61,9 +96,7 @@ class SkillFormPage(BasePage):
 
         Waits for the Name input to be visible and network to settle.
         """
-        self.page.get_by_test_id("skill-name-input").wait_for(
-            state="visible", timeout=timeout
-        )
+        self.name_input.wait_for(state="visible", timeout=timeout)
         self.wait_for_network(timeout=10000)
         self.page.wait_for_timeout(1000)
         logger.info("Skill form loaded")
@@ -95,6 +128,80 @@ class SkillFormPage(BasePage):
         self.fill_instructions(instructions)
         logger.info("Filled skill form: name=%r", name)
 
+    @action("Set description")
+    def set_description(self, description: str):
+        """Replace the Description field's content (works on pre-filled fields).
+
+        The Description field renders as two ``<textarea>`` elements (MUI's
+        autosize shadow copy plus the real, editable one) — the wrapper-level
+        click + Ctrl+A pattern in :meth:`fill_form` only reliably clears an
+        *empty* field; ``Control+a`` alone does not reliably select existing
+        content here (typed text ends up inserted rather than replacing it).
+        Uses Locator.select_text() + Backspace to clear the real, editable
+        textarea (addressed directly via its own
+        ``skill-description-input-field`` testid, set on the real element via
+        MUI's ``inputProps``/``htmlInput`` slot, not a raw CSS chain off the
+        ``skill-description-input`` wrapper testid) before typing the
+        replacement.
+
+        Args:
+            description: New description text.
+        """
+        field = self.description_input_field
+        field.click()
+        field.select_text()
+        self.page.wait_for_timeout(100)
+        self.page.keyboard.press("Backspace")
+        self.page.wait_for_timeout(100)
+        self.page.keyboard.type(description)
+        self.page.wait_for_timeout(300)
+        logger.info("Set description: %r", description[:60])
+
+    @action("Add tag")
+    def add_tag(self, tag: str):
+        """Type a tag into the Tags combobox and commit it with Enter.
+
+        The Tags field is a MUI Autocomplete (``skill-tags-input`` testid on
+        the root wrapper); the actual text input carries its own
+        ``skill-tags-input-field`` testid.
+
+        Args:
+            tag: Tag text to type and commit.
+        """
+        tag_field = self.tags_input_field
+        tag_field.click()
+        tag_field.type(tag)
+        tag_field.press("Enter")
+        self.page.wait_for_timeout(200)
+        logger.info("Added tag: %r", tag)
+
+    @action("Select existing tag from autocomplete")
+    def select_existing_tag(self, tag_name: str, timeout: int = 5000):
+        """Select a previously-created tag from the Tags autocomplete dropdown.
+
+        Unlike :meth:`add_tag` (type + Enter, which commits a brand-new tag),
+        this selects an existing project-scoped tag suggestion — confirmed
+        live (ELITEA-1740 AFS exploration): once a tag exists in the project,
+        later skills' Tags combobox surfaces it as a clickable option in the
+        MUI Autocomplete listbox. Each option carries its own
+        ``skill-tag-option-{tag_name}`` testid (set directly on the
+        ``<li role="option">`` node), addressed via the
+        :attr:`SKILL_TAG_OPTION` class-level template constant rather than
+        an inline per-call testid lookup.
+
+        Args:
+            tag_name: Existing tag text to select from the dropdown.
+            timeout: Maximum wait time in milliseconds for the option to appear.
+        """
+        tag_field = self.tags_input_field
+        tag_field.click()
+        tag_field.type(tag_name)
+        option = self.page.locator(self.SKILL_TAG_OPTION.format(tag_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.page.wait_for_timeout(200)
+        logger.info("Selected existing tag: %r", tag_name)
+
     def _fill_text_input(self, locator, text: str):
         """Fill a standard MUI text input with React-safe keyboard events.
 
@@ -113,20 +220,27 @@ class SkillFormPage(BasePage):
 
     @action("Fill instructions editor")
     def fill_instructions(self, text: str):
-        """Fill the CodeMirror instructions editor.
+        """Replace the CodeMirror instructions editor's content.
 
-        CodeMirror does not respond to fill() — it requires a click to focus,
-        then Ctrl+A to select existing content, then keyboard.type() to insert.
+        CodeMirror does not respond to fill(). On an *empty* editor,
+        click + Ctrl+A + keyboard.type() works. On an *already-populated*
+        editor (editing an existing skill's instructions), Ctrl+A does not
+        reliably select the existing content first — typed text ends up
+        inserted rather than replacing it, producing a doubled value
+        (``"new text" + "old text"``). Mirrors the same finding documented
+        for the Description textarea (:meth:`set_description`) — use
+        ``Locator.select_text()`` + Backspace to reliably clear first,
+        which works for both empty and populated editors alike.
 
         Args:
             text: Instructions text to enter.
         """
-        # Click the editor wrapper to focus CodeMirror, then type via keyboard.
-        # CodeMirror renders its own internal textbox — clicking the wrapper
-        # transfers focus into it without needing to locate the inner element.
         self.instructions_editor.click()
         self.page.wait_for_timeout(200)
-        self.page.keyboard.press("Control+a")
+        self.instructions_editor_content.select_text()
+        self.page.wait_for_timeout(100)
+        self.page.keyboard.press("Backspace")
+        self.page.wait_for_timeout(100)
         self.page.keyboard.type(text)
         self.page.wait_for_timeout(300)
         logger.info("Filled instructions editor")
@@ -199,5 +313,44 @@ class SkillFormPage(BasePage):
     # ------------------------------------------------------------------
 
     def get_name(self) -> str:
-        """Return the current value of the Name input field."""
-        return self.name_input.input_value()
+        """Return the current value of the Name input field.
+
+        The ``skill-name-input`` testid is on the MUI FormControl wrapper,
+        not the inner ``<input>`` — the real element carries its own
+        ``skill-name-input-field`` testid.
+        """
+        return self.name_input_field.input_value()
+
+    def get_description(self) -> str:
+        """Return the current value of the Description field.
+
+        The ``skill-description-input`` testid is on the MUI FormControl
+        wrapper; the actual ``<textarea>`` carries its own
+        ``skill-description-input-field`` testid.
+        """
+        return self.description_input_field.input_value()
+
+    def get_instructions(self) -> str:
+        """Return the current text content of the Instructions CodeMirror editor.
+
+        CodeMirror has no ``input_value()`` — read the rendered text content
+        of the ``.cm-content`` element instead, addressed via its own
+        ``skill-instructions-editor-content`` testid (set directly on the
+        CodeMirror content node via EditorView.contentAttributes in
+        EliteaUI, ELITEA-1737) rather than a raw CSS selector chained off
+        the wrapper testid.
+        """
+        return (self.instructions_editor_content.text_content() or "").strip()
+
+    def get_tags(self) -> list[str]:
+        """Return the currently committed tags as a list of strings.
+
+        Reads each committed-tag chip via the shared ``skill-tag-chip``
+        testid (one element per tag; the delete icon is an SVG with no
+        text nodes, so each chip's text content is exactly its tag name).
+
+        Returns:
+            List of tag name strings, in display order.
+        """
+        chips = self.tag_chip
+        return [chips.nth(i).text_content() or "" for i in range(chips.count())]
