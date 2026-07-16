@@ -54,3 +54,26 @@ FAIL. `EliteaUI#544` (EL-1740) remains open as of this recurrence; its own
 canon question `#277` has now also crossed the 24h unanswered threshold —
 worth escalating since resolving/merging #544 removes this blocker from an
 entire case family at once instead of relitigating it per-case.
+
+**Fourth recurrence + new gotcha (delivery, issue #94, ELITEA-1929,
+2026-07-16):** this test's testid dependencies spanned its own draft
+(`EliteaUI#572`) AND an unrelated upstream case's draft (`EliteaUI#554`,
+ELITEA-1922 — the Remote-MCP-form fields), same shape as above. New wrinkle:
+several of the upstream testids are **schema-driven via JS template
+literals** — e.g. `` `toolkit-field-${k}-checkbox` `` in
+`ToolBaseProperty.jsx`, `` `toolkit-type-card-${itemKey}` `` in
+`CategoryItemCard.jsx` — so there is no literal `data-testid="toolkit-field-
+enable_caching-checkbox"` string anywhere in the source; only the template
+pattern exists, and the concrete value only materializes at render time from
+a schema key. A `data-testid="<id>"` literal-quote grep reports **not
+found even on the branch that genuinely has the code** — this is a
+different failure mode than the earlier single-vs-double-quote gotcha
+(`'data-testid': 'x'` vs `data-testid="x"`), which was purely a
+quoting-style miss. Fix: when a literal-quote grep comes back empty on
+BOTH `main` and `automation/testids` for a testid the implementer/AFS
+claims exists, don't conclude "missing everywhere" — retry with a
+bare-substring `git grep -- "<id>"` (no `data-testid=` anchor, no quote
+assumption) before treating it as a real gap; if that also finds nothing,
+grep for the base id with the trailing dynamic segment stripped (e.g.
+search `toolkit-field-` and `-checkbox` separately) to catch the
+template-literal case.

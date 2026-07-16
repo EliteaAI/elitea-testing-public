@@ -66,6 +66,18 @@ filing a "click doesn't work" defect on these cards, retry with a clean, unambig
 locator (ideally the testid above) in a fresh context — if that works on the first
 try, the original finding was locator ambiguity, not a defect.
 
+## Detail-page Save/Discard buttons have NO testid (found ELITEA-1929, 2026-07-16)
+
+Unlike the create-form's `toolkit-form-save-button`, the **detail/edit page's**
+Save/Discard buttons (appear next to the toolkit title once the form is dirty,
+e.g. `/mcps/all/{id}`) carry no `data-testid` at all — confirmed live, only
+reachable via `getByRole('button', { name: 'Save' })` during the ELITEA-1929
+session. Run `add-data-testid` to add e.g. `toolkit-detail-save-button` /
+`toolkit-detail-discard-button` before writing any detail-page edit-and-save
+automation. This gap was NOT caught by the ELITEA-1922 AFS/implementation
+because that case only exercises the create-form's Save (which does have a
+testid) — check both call sites before assuming "Save" is covered project-wide.
+
 ## Cleanup
 
 `ToolkitAPI.delete_toolkit(toolkit_id)` already exists in `automation/api/client.py`
