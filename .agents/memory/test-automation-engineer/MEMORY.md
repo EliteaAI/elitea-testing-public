@@ -1,5 +1,7 @@
 # Memory index — test-automation-engineer
 
+- [MCP Raw Json per-line CodeMirror edit technique](mcp_raw_json_per_line_codemirror_edit.md) — `fill_raw_json_line()` on `McpFormPage`: click the target line's own div (`get_by_text(current_line_text, exact=True)` — whitespace-normalized, no need to include indentation), `Home`, `Shift+End`, type replacement; whole-document `Ctrl+A`+delete corrupts the JSON. Selection-wait must compare against `el.textContent.trim().length`, not the raw indented length, or `wait_for_function` times out (from ELITEA-1927)
+
 - [Fork wizard and ProjectSelect testid passthrough](fork_wizard_and_projectselect_testid_passthrough.md) — Fork wizard shares ImportWizardModal testids with the Agents-list Import flow (re-declare on both page objects, not duplication); `fork_entity_card_toggle.count()==1` proves "no Nested entities section" without a text locator; `ProjectSelect`/`SingleSelect` already has `data-testid` passthrough — the fix for a testid gap is always at the call site (e.g. `IWModalContent.jsx`), never the leaf component (from ELITEA-1893)
 
 - [EntityIcon SVG placeholder + hover-before-click implementer quirks](entity_icon_svg_placeholder_and_hover_open_quirk.md) — EntityIcon.jsx (agent-form-icon-button / entity-card-icon) renders NO `<img>` at all (inline SVG placeholder) until the first icon selection — only picker options always render `<img>`; page-object methods reading `img.src` must handle this case. Also confirms the icon's hover-before-click-to-open quirk (from ELITEA-1899)
