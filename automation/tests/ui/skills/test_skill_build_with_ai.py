@@ -13,9 +13,16 @@ during generation displays the exact text "Generating skill draft...", and
 the resulting review form shows only Name/Description/Instructions — no
 tools/agents/pipelines/toolkits/MCPs/resources section is rendered.
 
+Covers ELITEA-1988 (extend-existing gap fill): standalone, first-class
+visibility assertions that clicking "Build with AI" opens the modal, and
+that the modal displays a prompt input, a "Generate" button, and a
+"Cancel" button — the latter never referenced by any other test in this
+file before this gap fill.
+
 Spec: test-specs/skills/l2_build-with-ai-generation-failure-retry_ELITEA-2001.md
 Spec: test-specs/skills/l2_generated-skill-draft-fields-are-editable-before-creation_ELITEA-1990.md
 Spec: test-specs/skills/lextend_skill-draft-generated-from-natural-language-description_ELITEA-1989.md
+Spec: test-specs/skills/lextend_clicking-build-with-ai-opens-the-generation-modal_ELITEA-1988.md
 Covers: GenerateSkillModal (GenerateEntityModal.jsx via GenerateSkillModal.jsx)
 
 Shares the modal-shell behavior with the Agent flow
@@ -447,4 +454,62 @@ class TestSkillBuildWithAIReviewFormEditableFields:
                 "Review form should not render a tools/agents/pipelines/toolkits/"
                 f"MCPs/resources section, but found forbidden term {matched_term!r} "
                 "in the dialog"
+            )
+
+
+# ---------------------------------------------------------------------------
+# ELITEA-1988 — extend-existing gap fill: standalone, first-class visibility
+# assertions that clicking "Build with AI" opens the modal, and that the
+# modal's prompt input, Generate button, and Cancel button are all visible.
+# All four handles already exist on GenerateSkillModalPage/
+# GenerateEntityModalPageBase — no new testids or locators added by this
+# test. The Cancel button (`generate-skill-cancel-button`) is referenced by
+# no other test in this file before this gap fill.
+# ---------------------------------------------------------------------------
+
+
+class TestSkillBuildWithAIModalElements:
+    """Build with AI (P1, smoke): clicking "Build with AI" opens the
+    generation modal, and the modal displays the expected static elements —
+    a natural-language prompt input, a "Generate" button, and a "Cancel"
+    button."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/build_with_ai/ELITEA-1988_clicking-build-with-ai-opens-the-generation-modal.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p1
+    @pytest.mark.smoke
+    @pytest.mark.regression
+    def test_build_with_ai_opens_modal_with_expected_elements(self, page):
+        """Clicking "Build with AI" opens the modal, and the modal shows a
+        prompt input, a "Generate" button, and a "Cancel" button — all
+        asserted as explicit, standalone visibility checks (no prompt is
+        entered, no network call is made; case never reaches the network
+        layer)."""
+        list_page = SkillsListPage(page)
+        modal = GenerateSkillModalPage(page)
+
+        with allure.step("Step 1-2 — Navigate to New Skill screen, click Build with AI"):
+            list_page.navigate_to_create()
+            modal.open_modal()
+
+            assert modal.modal.is_visible(), (
+                "Build with AI modal should be open after clicking the button"
+            )
+
+        with allure.step("Step 3 — Verify prompt input is visible"):
+            assert modal.prompt_input.is_visible(), (
+                "Natural-language prompt input should be visible in the modal"
+            )
+
+        with allure.step("Step 4 — Verify Generate button is visible"):
+            assert modal.generate_button.is_visible(), (
+                "Generate button should be visible in the modal"
+            )
+
+        with allure.step("Step 5 — Verify Cancel button is visible"):
+            assert modal.cancel_button.is_visible(), (
+                "Cancel button should be visible in the modal"
             )
