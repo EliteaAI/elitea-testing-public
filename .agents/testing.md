@@ -120,8 +120,8 @@ presence ≈ tested is.
   section closes that gap.)
 - **Missing testid on the target? That is work to do, not a reason to rung down.**
   The escalation test is OR, not AND: missing testid *alone* ⇒ add it to EliteaUI
-  via the `add-data-testid` skill (dual-target flow: commit on `automation/testids`,
-  draft PR to `main`; Vite HMR picks it up live). Naming `{section}-{element}-{type}`,
+  via the `add-data-testid` skill (commit **and push `automation/testids`** — Vite HMR
+  picks it up live; a human promotes to `main`, no agent PR). Naming `{section}-{element}-{type}`,
   e.g. `agent-form-save-button` vs `pipeline-form-save-button` — verify uniqueness
   before adding.
 - **Stop+flag rule:** ONLY if a testid genuinely can't be placed (element outside

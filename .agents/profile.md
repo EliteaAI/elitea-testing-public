@@ -145,8 +145,9 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **Merge policy**: auto-merge into `automation/base` — the orchestrator merges once the
   test ran green locally + review passed. There is NO CI on `automation/base`; the
   green local run IS the gate.
-- **Testid PRs to `EliteaAI/EliteaUI` `main`**: agents open them, **as drafts**, one per
-  case, from a `testids/<case>` branch cut off fresh `main`. A human flips them to ready.
+- **Testids to `EliteaAI/EliteaUI` `main`**: **agents do NOT open `main` PRs (suspended
+  2026-07-16 — `.agents/_reverted/`).** Testids are committed + **pushed** to
+  `automation/testids` and stop there; a **human** cherry-picks them to `main` out of band.
 - **Batch promotion is human-triggered only** (never autonomous): DEV restart, GHA runs,
   `automation/base → main` gate PR. Testids are NOT batched any more — they promote
   per-case. See `.agents/workflow.md` § Promotion.

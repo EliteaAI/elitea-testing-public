@@ -44,8 +44,9 @@ type: project
   PUSHED to origin `automation/testids` (`cd ../EliteaUI && git fetch origin &&
   git log origin/automation/testids..automation/testids` → must be empty). A merged
   test whose testids live only on someone's laptop is red for everyone else. Note this
-  gates on the **integration branch**, not on EliteaUI `main` — a testid still in an
-  open draft PR is fine for `automation/base`; it only blocks the `main` promotion.
+  gates on the **integration branch**, not on EliteaUI `main` — a testid not yet on
+  `main` is fine for `automation/base`; getting it to `main` is a human cherry-pick
+  from `automation/testids` (agents open no `main` PR — suspended 2026-07-16).
 - **Intake**: cases from `../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/`
   (tag `automated:UI:regression`, status `draft`). Rules in
   `.agents/test-automation.yaml` § intake: dedup by `[Automate][ELITEA-<id>]` title
@@ -65,15 +66,16 @@ type: project
 - **Closure record — the LAST comment on every automation issue, before you close it.**
   Template + rules: `.agents/workflow.md` § Work tracking → Closure record. A bare
   "✅ merged" is NOT a closure record — post the artifact index: test PR + sha, the
-  **testid draft PR on `EliteaAI/EliteaUI`**, the integration-branch state, AFS path,
-  defects filed. Then the row people forget: **is it promotable?** Since the fork
-  retirement a test can be merged to `automation/base` while its testids sit in an open
-  draft PR — green on localhost, red on any deployed env. That case ends in **`Ready`**
-  (agent-terminal: delivered, awaiting external merges — NOT `Blocked`, nothing is
-  stuck; NOT `Done`, which is human-only like `Approved`): **post the record, leave
-  the issue OPEN, card → `Ready`**; the human moves to `Done` + closes once the
-  testid PRs land. `Blocked` only for real blockers (`Waiting on #N`).
-  Worked example: issue #19 / EliteaAI/EliteaUI#525.
+  **testids on `automation/testids`** (committed + pushed), AFS path, defects filed.
+  Then the row people forget: **is it promotable?** A test can be merged to
+  `automation/base` while its testids are on `automation/testids` but **not yet on
+  `main`** — green on localhost, red on any deployed env. Getting them to `main` is a
+  **human** cherry-pick (agents open no `main` PR — suspended 2026-07-16,
+  `.agents/_reverted/`). That case ends in **`Ready`** (agent-terminal: delivered,
+  awaiting the human's testid promotion — NOT `Blocked`, nothing is stuck; NOT `Done`,
+  which is human-only like `Approved`): **post the record, leave the issue OPEN,
+  card → `Ready`**; the human moves to `Done` + closes once the testids are on `main`.
+  `Blocked` only for real blockers (`Waiting on #N`).
   Fully-promotable delivery (all testids already on EliteaUI `main`, verified):
   still `Ready` — `Done` remains the human's call.
 - **Board #9 (owner EliteaAI)** is the state machine — `Approved` is human-only;
@@ -88,12 +90,12 @@ type: project
 - **Dedup with the list API, never `--search`** (search index lags → duplicates like
   #17/#18): `env -u GITHUB_TOKEN gh issue list --state all --limit 200 --json title | grep "ELITEA-<id>"`.
 - **Batch promotion only on explicit user request** (with clarifications): DEV restart,
-  GHA runs, `automation/base → main` gate. Testids merge to EliteaUI `main` + deploy
+  GHA runs, `automation/base → main` gate. Testids must be on EliteaUI `main` + deployed
   BEFORE the tests that use them cross to `main` — ordered, and still the invariant.
-  **Testids are no longer batched** (changed 2026-07-13, fork retired): they promote
-  per-case as **draft PRs** to `EliteaAI/EliteaUI` opened by `add-data-testid`. Never
-  mark one ready or merge it — that's the human's call. `promote-automation-batch` is
-  now tests-only; its Stage 1 just *verifies* the needed testids merged and deployed.
+  **Testid promotion to `main` is a human cherry-pick from `automation/testids`**
+  (2026-07-16 — agents open no `main` PR; the old per-case draft-PR flow is suspended,
+  `.agents/_reverted/`). `promote-automation-batch` is tests-only; its Stage 1 just
+  *verifies* the needed testids are on `main` and deployed.
 - **onetest MCP write verbs** (`create_run`, `record_result`, `create_defect`, …)
   create REAL GitHub issues — never fire casually.
 

@@ -2,8 +2,11 @@
 
 _Seeded 2026-07-10 from operator way-of-work brief + PR sampling (merged PRs #10–15
 on `main`). **Revised 2026-07-13: the EliteaUI fork was retired** — `automation/testids`
-now lives on `EliteaAI/EliteaUI` directly, and testids reach `main` via per-case draft
-PRs instead of a batch. Refresh when the process shifts._
+now lives on `EliteaAI/EliteaUI` directly. **Revised 2026-07-16 (current): agents no
+longer open per-case draft PRs to EliteaUI `main`.** Testids terminate on
+`automation/testids` (committed + pushed); a **human** cherry-picks them to `main`.
+This is a suspended-not-deleted policy — restore notes in
+`.agents/_reverted/RESTORE-testid-draft-pr-flow.md`. Refresh when the process shifts._
 
 ## Git host
 
@@ -29,65 +32,51 @@ runs that branch, so no test and no agent is ever blocked on review latency.
 | Repo | Long-lived branch | Rule |
 |---|---|---|
 | elitea-testing-public | `automation/base` (cut from `main`) | small PRs into it, one per test/feature area; **never PR `main` directly** |
-| EliteaAI/EliteaUI | `automation/testids` (integration) | **never PR it into `main`.** Testid commits are born ON it; per-case `testids/<CASE>-<slug>` review branches (built on `main`) receive them by cherry-pick |
+| EliteaAI/EliteaUI | `automation/testids` (integration) | **never PR it into `main`, and (since 2026-07-16) never open per-case `main` PRs at all.** Testid commits are born ON it, committed + pushed, and stop there. A human cherry-picks them to `main`. |
 
 - There is **no CI on `automation/base`** — the green local run before PR is the
   only verification. You are the CI.
 - There is **no `pending_testid` marker**. Do not invent one.
 - Test work branches: `tests/<case-id>-<slug>`, cut from **`automation/base`**.
-- Testid branches: `testids/<case-id>-<slug>`, cut from **fresh `origin/main`** (see below).
+- Testid work: committed **straight onto `automation/testids`** and pushed — no
+  per-case branch, no PR (see § Testid flow below). *(Suspended 2026-07-16: the
+  old `testids/<case-id>-<slug>` review branch + draft PR to `main` is on hold —
+  `.agents/_reverted/`.)*
 - Commit style (sampled from history): conventional-ish — `test: (5199) Add guardrails
   live-reload UI tests`, `refactor: use default gpt-5.2 model`, `docs(afs): amend selectors…`.
 
-### Testid flow — the dual-target rule
+### Testid flow — commit + push `automation/testids`, then stop
 
-A testid is committed **once, straight onto `automation/testids`** (the dev server
-runs it — instant HMR feedback, durable the moment it exists), then **cherry-picked
-onto a per-case review branch built on fresh `main`**:
+**Current policy (2026-07-16): a testid is committed once, straight onto
+`automation/testids`, and pushed. That is the agent's terminal step.** The dev
+server runs that branch, so the testid is live under HMR the moment it exists and
+every other agent sees it. Promotion to EliteaUI `main` is a **human** cherry-pick
+from `automation/testids`, done out of band — **agents do not open EliteaUI `main`
+PRs.**
 
 ```
-main ──●────────────────────────●─────────●   EliteaAI/EliteaUI
-        \                      /         /    ▲ DRAFT PR — UI team reviews.
-         ● testids/EL-1737 ───╯         /       Diff = ONLY this case. Clean.
-          \       ● testids/EL-1796 ───╯        (branches BUILT ON main,
-           ▲       ▲                              filled by cherry-pick)
-           ┆ cherry-pick ┆
-    ══●══════●═══════════════════════════▶  automation/testids
-      ▲   testid commits BORN here           ← dev server :5173 runs THIS
-      ╰── main merged in, often                 agents see EVERY testid,
-                                                merged AND still-in-review
+    ══●══════●═══════════════════════════▶  automation/testids   (agent stops here)
+      ▲   testid commits BORN + pushed        ← dev server :5173 runs THIS
+      ╰── main merged in, often                  agents see EVERY testid
+                                              ┄┄▶ human cherry-picks → main, later
 ```
-
-**The review branch is built on `main`, never on `automation/testids`.** A PR's
-diff is computed against its merge-base — a branch cut from the integration branch
-would drag every other case's unmerged testid into your review PR. Building it on
-`main` and cherry-picking only this case's commits is what keeps the UI team's PR
-to a clean single-case diff (verify with the diff-check in `add-data-testid`).
 
 ```bash
 cd ../EliteaUI                            # dev server is live on automation/testids
 git fetch origin
 
-# 1. edit JSX under src/ ONLY, commit ON automation/testids (HMR shows it instantly),
-#    then push the integration branch (plain FF — NEVER --force)
+# edit JSX under src/ ONLY, commit ON automation/testids (HMR shows it instantly),
+# keep it in sync with main, then push the integration branch (plain FF — NEVER --force)
 git add src/ && git commit -m "test: [EL-1737] add data-testid for …"
 git merge origin/main && git push origin automation/testids
-
-# 2. build the review branch in a WORKTREE — never `git checkout origin/main` in the
-#    main tree: that strips every pending testid out from under the running dev server
-git worktree add -b testids/EL-1737-skills-import ../.testid-pr origin/main
-git -C ../.testid-pr cherry-pick <this case's testid commits>
-git -C ../.testid-pr push -u origin testids/EL-1737-skills-import
-
-# 3. open the DRAFT PR to main for the UI team, then clean up
-gh pr create --repo EliteaAI/EliteaUI --base main --draft \
-  --head testids/EL-1737-skills-import --title "test(EL-1737): add data-testids for …"
-git worktree remove ../.testid-pr
 ```
-(Full procedure with diff-verification steps: `add-data-testid` skill § Git flow.)
+(Full procedure: `add-data-testid` skill.)
 
-**Agents open that PR as a draft.** A human flips it to *ready* when the UI team
-should look at it. (This repeals the old rule that agents never PR `EliteaAI/EliteaUI`.)
+> **Suspended, not deleted.** The prior flow — cherry-pick each case onto a
+> `testids/<case>-<slug>` branch cut from fresh `main` and open a **draft PR to
+> `main`** — is on hold as of 2026-07-16 by operator request. To restore it see
+> `.agents/_reverted/RESTORE-testid-draft-pr-flow.md`. Until then, **the human owns
+> the `automation/testids` → `main` promotion**; agents never create that PR.
 
 ### Sync: `automation/testids` ← `main`
 
@@ -128,8 +117,8 @@ JSX attributes. If `package.json` / `package-lock.json` changed → re-run `npm 
    (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`) because the
    team measures UI-automation coverage by testid presence — a role/CSS handle is
    invisible to that metric. The skill edits JSX under `../EliteaUI/src` (ONLY files
-   under `src/`), commits on `automation/testids`, builds `testids/<case>` from
-   `origin/main` in a worktree, opens the draft PR. Vite HMR reloads — no restart.
+   under `src/`), commits **and pushes `automation/testids`** — and stops there
+   (no `main` PR; a human promotes). Vite HMR reloads — no restart.
    Naming `{section}-{element}-{type}`; verify uniqueness first.
 4. **`page-object-generator` skill** — emit **testid-only** descriptors:
    `LocatorDescriptor(testid="agent-form-save-button")`. Never populate `fallback`.
@@ -139,12 +128,14 @@ Nothing in this loop waits on external review. That is the point.
 
 ## Promotion — HUMAN-TRIGGERED ONLY
 
-Testid promotion is no longer batched — it happens per case, continuously, via the
-draft PRs above. What remains batched is **the tests**, and the lead performs it
-**only on explicit request** — never autonomously (`promote-automation-batch` skill):
+Testid promotion to EliteaUI `main` is a **human** step (2026-07-16): the human
+cherry-picks from `automation/testids` when they choose. Agents don't gate on it and
+don't open that PR. What the lead performs — **only on explicit request**, never
+autonomously — is the **test** batch promotion (`promote-automation-batch` skill):
 
-1. Confirm the testids the batch depends on have **merged to `EliteaAI/EliteaUI` `main`
-   and deployed** to the target env. Tests cannot cross into `main` ahead of their testids.
+1. Confirm the testids the batch depends on are **present on `EliteaAI/EliteaUI` `main`
+   and deployed** to the target env (a human will have promoted them from
+   `automation/testids`). Tests cannot cross into `main` ahead of their testids.
 2. Run the suite from GHA against the deployed env.
 3. Open the `automation/base → main` gate PR (gate = green deployed run) and merge.
 
@@ -205,9 +196,11 @@ for t in <every testid the case's diff uses>; do
 done
 ```
 
-The UI team adds testids in parallel (EL-5400, EL-5634, …) — absence of OUR draft
-does not mean absence on main. Only testids present on **main**
-make a case promotable:
+The UI team also adds testids in parallel (EL-5400, EL-5634, …). Only testids present
+on **main** make a case promotable — and, since 2026-07-16, getting them there is a
+**human** cherry-pick from `automation/testids`, not an agent PR. So the row reports
+ground truth (on `automation/testids` ✓, on `main` yet?) and names the human as owner
+of the gap:
 
 ```markdown
 🔗 **Closure record — <CASE-ID>**
@@ -215,44 +208,43 @@ make a case promotable:
 | Artifact | Where | State |
 |---|---|---|
 | Test | #<N> — `tests/<case>-<slug>` → `automation/base` | ✅ merged (`<sha>`) |
-| Testids | EliteaAI/EliteaUI#<M> — `testids/<case>-<slug>` → `main` | 📝 open, **draft** |
-| Testids (integration) | `EliteaAI/EliteaUI` @ `automation/testids` | ✅ merged — dev server serves them |
+| Testids | `EliteaAI/EliteaUI` @ `automation/testids` | ✅ pushed — dev server serves them; **human promotes to `main`** |
 | AFS | `test-specs/<feature>/l<pri>_<slug>_<CASE-ID>.md` | on `automation/base` |
 | Defects filed | #<X>, #<Y> — or "none" | |
 
-**Status:** merged to `automation/base` · ⚠️ NOT yet promotable to `main` — blocked on EliteaAI/EliteaUI#<M>.
+**Status:** merged to `automation/base` · testids on `automation/testids` · ⚠️ NOT yet on `main` (awaiting human cherry-pick) → not deployable-env-promotable yet.
 
-> **Cross-repo links: write `EliteaAI/EliteaUI#<M>` as PLAIN TEXT — never inside
-> backticks, never bare `#<M>`.** Bare `#<M>` links to THIS repo's #M (wrong), and
-> GitHub never auto-links inside code spans. The `owner/repo#N` form renders as a
-> clickable cross-repo link AND leaves a "mentioned in…" backlink on the EliteaUI
-> PR — the UI team sees which case waits on their review. Same-repo references
+> **Cross-repo links** (whenever you reference an `EliteaAI/EliteaUI` issue/PR):
+> write `EliteaAI/EliteaUI#<M>` as PLAIN TEXT — never inside backticks, never bare
+> `#<M>`. Bare `#<M>` links to THIS repo's #M (wrong), and GitHub never auto-links
+> inside code spans. The `owner/repo#N` form renders as a clickable cross-repo link
+> AND leaves a "mentioned in…" backlink on the EliteaUI side. Same-repo references
 > (the test PR) stay bare `#<N>`.
-**Unblocks when:** #<M> is marked ready, merged, and deployed to DEV. **Owner:** human.
+**Unblocks when:** a human cherry-picks the testids `automation/testids` → `main`, and they deploy to DEV. **Owner:** human.
 **Still open:** <follow-ups, or "none">
 ```
 
-**Why the promotability row is load-bearing here.** Since the fork retirement, a case's
-testids can sit in an **open draft PR** while its test is already merged to
-`automation/base`. Such a test is **green on localhost and red on any deployed env** —
+**Why the promotability row is load-bearing here.** A case's testids can sit on
+`automation/testids` (pushed, serving the dev server) while `main` doesn't have them
+yet — because promotion to `main` is now a **human** cherry-pick, done when they
+choose. Such a test is **green on localhost and red on any deployed env** —
 `automation/testids` has the testids, DEV does not. So *"merged" ≠ "done"*, and the
-record must say which. `promote-automation-batch` Stage 1 checks exactly this and will
-block the batch; the closure record is what makes that blockage predictable instead of
-a surprise months later.
+record must say which, naming the human as owner of the promotion. `promote-automation-batch`
+Stage 1 checks exactly this before a test batch crosses to `main`.
 
-**Do not close an issue whose testids are still in an unmerged PR** — and do not
+**Do not close an issue whose testids aren't yet on `main`** — and do not
 park it in `Blocked` either: nothing is stuck. Post the closure record, leave the
 issue OPEN, and move the card to **`Ready`** — the agent-terminal state: delivered,
-reviewable, awaiting external merges / human acceptance. **`Done` is human-only**
+reviewable, awaiting the human's testid promotion / acceptance. **`Done` is human-only**
 (the human closes + moves when the case is promotable/accepted), symmetric with
 human-only `Approved` on the way in. `Blocked` means a REAL blocker only
 (`Waiting on #N` — an open `question`/`bug` that stops work).
 
 Worked example: [issue #19](https://github.com/EliteaAI/elitea-testing-public/issues/19)
-(ELITEA-1737) — test merged, testids still in draft PRs EliteaUI#525/#526, therefore
-NOT promotable. (Note: #19 was subsequently closed by a human while the drafts were
-still open — the correction comment on the issue documents the deviation. The rule
-stands: agents leave such issues OPEN; only a human may close early.)
+(ELITEA-1737) — test merged, testids on `automation/testids` but not yet cherry-picked
+to `main`, therefore NOT promotable. (Historical note: under the prior flow #19's
+testids sat in draft PRs EliteaUI#525/#526; a human closed #19 while those were open.
+The rule stands: agents leave such issues OPEN; only a human may close early.)
 
 ## Traps (cost someone an hour already)
 
