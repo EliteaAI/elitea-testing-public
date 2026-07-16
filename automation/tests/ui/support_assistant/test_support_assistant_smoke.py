@@ -132,6 +132,10 @@ class TestSupportAssistantMessaging:
     """
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0647_user-sends-a-message-via-the-send-button-and-receives-a-complete-assis.md", "onetest-ai Test Case link")
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/support-assistant/ELITEA-1798_send-message-and-receive-ai-response.md",
+        "onetest-ai Test Case link",
+    )
     def test_send_message_and_receive_response(self, page):
         """User can send a message and receive AI response.
 
