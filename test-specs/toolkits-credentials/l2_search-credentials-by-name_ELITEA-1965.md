@@ -193,8 +193,8 @@ element lacking a testid is `testid needed: ...`, not a lower-tier handle.
 | Element | Testid | Provenance | Fallback |
 |---|---|---|---|
 | Search input (shared `SearchBar`, reused on every list page incl. Credentials) | `agent-search-input` (default `testId` prop value in `SearchBar.jsx`; page-specific override exists only for Pipelines→`pipeline-search-input`, Credentials uses the default) | **on-main ✓** | none (testid-only; do not use `getByPlaceholder`) |
-| Search submit / send icon | `skills-search-send-button` (hardcoded in `SearchBar.jsx`, same value on every page — pre-existing naming oddity, not introduced by this AFS) | **on-automation/testids only** (draft `EliteaAI/EliteaUI#543`, EL-1739) | none |
-| Search **Clear (X)** icon | `agent-search-clear-button` — **implementer confirmed** the analyst's proposed naming (mirrors the send button's generic cross-page naming); added via `add-data-testid` | **on-automation/testids ✓** (draft `EliteaAI/EliteaUI#573`) | none |
+| Search submit / send icon | `search-send-button` — **amended 2026-07-16**: renamed from `skills-search-send-button` by EliteaUI PR #581 review fix `e0407b70` (shared SearchBar now carries generic testids by design) | **on-automation/testids ✓** (rename back-ported `4faa35d8`) | none |
+| Search **Clear (X)** icon | `search-clear-button` — **amended 2026-07-16**: renamed from `agent-search-clear-button` by the same PR #581 fix | **on-automation/testids ✓** (rename back-ported `4faa35d8`) | none |
 | Credential card outer container (list) | `entity-card` | **on-automation/testids only** (draft `EliteaAI/EliteaUI#544`, EL-1740) | none |
 | Credential card name/title (list) | `entity-card-name` | **on-main ✓** | none |
 | Create-form Display Name input (used to seed test credentials) | `toolkit-field-label-input` (`ToolBaseProperty.jsx`'s dynamic `toolkit-field-${k}-input` pattern, `k="label"`) | **on-automation/testids only** (draft `EliteaAI/EliteaUI#554`, EL-1922) | none |
@@ -209,8 +209,8 @@ search-related locators/methods yet — this case is the first to need them.
 Add, as class-level `LocatorDescriptor` fields:
 ```python
 search_input = LocatorDescriptor(testid="agent-search-input", description="Credentials search box (shared SearchBar component)")
-search_send_button = LocatorDescriptor(testid="skills-search-send-button", description="Search submit icon (shared component, generic testid)")
-search_clear_button = LocatorDescriptor(testid="agent-search-clear-button", description="Search clear (X) icon — testid added via add-data-testid for ELITEA-1965")
+search_send_button = LocatorDescriptor(testid="search-send-button", description="Search submit icon (shared component, generic testid — renamed by EliteaUI PR #581 fix)")
+search_clear_button = LocatorDescriptor(testid="search-clear-button", description="Search clear (X) icon — added via add-data-testid for ELITEA-1965, renamed by EliteaUI PR #581 fix")
 ```
 and methods `search(term: str)` (type + press Enter, wait for the
 `configurations` GET response) and `clear_search()` (click

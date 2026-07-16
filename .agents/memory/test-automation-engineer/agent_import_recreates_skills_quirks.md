@@ -4,6 +4,14 @@ description: Agent .agent.md import flow (toolbar Import button, Import paramete
 type: feedback
 ---
 
+> ⚠️ **AMENDED 2026-07-16 (EliteaUI PR #581 review fix, commit `e0407b70`).** The
+> "toggle testid rendered only while collapsed → shrinking-locator loop converges"
+> mechanism below is **GONE and the pattern is outlawed** (`.agents/testing.md`
+> § Locator policy): the toggle testid is now ALWAYS present, with
+> `data-expanded={isExpanded}` carrying the state. Expand-all loops must filter
+> `[data-testid="agent-import-preview-card-toggle"][data-expanded="false"]` —
+> counting on testid disappearance now loops forever.
+
 ## Agent import flow (ELITEA-1795)
 
 > **Superseded 2026-07-15 (testid-only rework, issue #37, PR #287).** All raw

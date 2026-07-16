@@ -55,6 +55,12 @@ type: project
   force-push `automation/testids`**: shared org branch, merge `origin/main` into it.
   Invariant: never let a test PR merge while its testids exist only locally — origin
   `automation/testids` must cover origin `automation/base` tests.
+- **Testid conventions (PR #581 rulings, 2026-07-16):** stable identity + `data-*`
+  state attributes (never state-conditional testids; state filters like
+  `[data-testid="x"][data-expanded="false"]` are the compliant shape); shared
+  components take a `testId` prop, never a hardcoded feature-scoped value; props
+  named `testId`/`<part>TestId`, never `dataTestId`. Full rules:
+  `.agents/testing.md` § Locator policy + `add-data-testid` § Conventions.
 - **Locators: testid-only** `LocatorDescriptor(testid="…")` — `fallback` is dead code,
   strictly never populate it. Locators are **class-level page-object fields only** —
   never constructed inside method bodies, never in spec files.

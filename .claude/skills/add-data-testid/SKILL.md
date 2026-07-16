@@ -36,6 +36,23 @@ Adds `data-testid` attributes to EliteaUI components for robust test automation 
 - `settings-theme-toggle`
 - `credentials-name-input`
 
+## Conventions (UI-team rulings — EliteaUI PR #581 review, 2026-07-16)
+
+1. **Testid = stable identity; state via `data-*` attributes.** Never make a testid's
+   presence or value depend on component state. Wrong: `data-testid={!isExpanded ?
+   id : undefined}`, `data-testid={done ? 'x-complete' : 'x-preview'}`. Right:
+   ```jsx
+   data-testid={toggleTestId}
+   data-expanded={isExpanded}
+   ```
+   Automation filters on the state attribute (`[data-testid="x"][data-expanded="false"]`).
+2. **Shared components (`src/components/`, `src/[fsd]/shared/`) never hardcode a
+   feature-scoped testid.** Use a GENERIC value (`search-send-button`) or accept a
+   `testId` prop and wire the `{section}-…` value at the feature's call site — the
+   section in the name is the CALLER's, not the shared component's first consumer.
+3. **Testid props are named `testId` / `<part>TestId`** (`closeButtonTestId`) —
+   never `dataTestId` / `<part>DataTestId`; the `data` prefix is redundant.
+
 ## Process
 
 ### Step 1: Parse Elements from Snapshot

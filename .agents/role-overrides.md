@@ -124,6 +124,11 @@ lookup), never replace it.
   add it" means "it doesn't exist".
 - Do not soften a testid demand into a MINOR defect or a note; it is implementer
   work, and the AFS is its work order.
+- **State is specced as a `data-*` attribute filter, never as a state-dependent
+  testid** (`.agents/testing.md` § Locator policy, PR #581 ruling). If the case
+  asserts an element's state (expanded/selected/disabled), the handle row names the
+  stable testid + the state attribute (`[data-testid="x"][data-expanded="false"]`)
+  — never `testid needed: x-expanded` / `x-collapsed` variants.
 
 ## Implementer slot (test-automation-engineer)
 
@@ -164,6 +169,11 @@ lookup), never replace it.
   a weak subset — the #19 FAIL-2 lesson. (The delivery audit does NOT require this
   paste to survive into the tracker: the auditor re-runs the grep itself. It's
   reviewer discipline, not a tracker-artifact gate.)
+- **Testid-convention check on any EliteaUI JSX in the case's diff** (PR #581
+  ruling, `.agents/testing.md` § Locator policy): a state-conditional testid
+  (`data-testid={cond ? … : …}` / `… : undefined`), a feature-scoped testid
+  hardcoded in a shared component (`src/components/`, `src/[fsd]/shared/`), or a
+  `dataTestId`-style prop name is `CHANGES_REQUESTED`.
 - **Declared improvisations** (see § Every role): verify the reasoning and say so
   explicitly in the verdict; if sound, APPROVED + recommend the canon addition —
   do not block solely for the gap the canon itself left.

@@ -47,6 +47,11 @@ type: project
   those already on EliteaUI `main` *and* those still only on `automation/testids`
   (awaiting a human's cherry-pick to `main`) — so deployed envs always lag it.
   **Never validate handles against dev/next.**
+- **State handles (PR #581 ruling, 2026-07-16):** spec element state as a stable
+  testid + `data-*` attribute filter (`[data-testid="x"][data-expanded="false"]`),
+  never a state-dependent testid; as reviewer, a state-conditional testid or a
+  feature-scoped testid hardcoded in a shared component in the UI diff is
+  `CHANGES_REQUESTED` (`.agents/testing.md` § Locator policy).
 - **Handles are testids only — HARD OVERRIDE, `.agents/role-overrides.md`.** If an
   element lacks one, the AFS row is `testid needed: {section}-{element}-{type}` — the
   implementer adds it via `add-data-testid`. Never spec CSS/text/role selectors as

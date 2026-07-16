@@ -118,6 +118,26 @@ presence ≈ tested is.
   `{section}-{element}-{param}` with the parameter as the suffix.
   (Origin: #19 rework FAIL-1 — the canon was silent, the agent improvised; this
   section closes that gap.)
+- **Testid = stable identity; state via `data-*` attributes (UI-team ruling,
+  EliteaUI PR #581 review, 2026-07-16).** Never add a testid whose presence or VALUE
+  changes with component state (`data-testid={!isExpanded ? id : undefined}` and
+  state-switched ternaries are both outlawed). The element keeps ONE testid; state is
+  a separate attribute (`data-expanded`, `data-state`). Automation asserts state by
+  filtering on that attribute — a testid-keyed selector with a `data-*` state filter
+  (`'[data-testid="x"][data-expanded="false"]'` as a class constant) IS compliant
+  testid-only locating, and is the required replacement for "click until the testid
+  disappears" loops. *Grandfathered:* the two-state import dialog
+  (`agent-import-preview-dialog`/`agent-import-complete-dialog`) predates this ruling
+  and stays until the UI team asks; do not add new testids in that shape.
+- **Shared components never hardcode feature-scoped testids (same ruling).** A
+  component under `src/components/` or `src/[fsd]/shared/` gets either a GENERIC
+  testid (`search-send-button`) or a caller-supplied `testId` prop wired at the
+  feature's call site. `{section}-{element}-{type}` naming refers to the CALL SITE's
+  section, never the shared component's first consumer (the `agent-search-clear-button`
+  -on-shared-SearchBar mistake — it leaked into skills and credentials pages).
+- **Testid prop naming: `testId` / `<part>TestId`** (`closeButtonTestId`), never a
+  `data` prefix (`dataTestId`, `closeButtonDataTestId`) — the prop always lands as
+  `data-testid`, the prefix is noise.
 - **Missing testid on the target? That is work to do, not a reason to rung down.**
   The escalation test is OR, not AND: missing testid *alone* ⇒ add it to EliteaUI
   via the `add-data-testid` skill (commit **and push `automation/testids`** — Vite HMR

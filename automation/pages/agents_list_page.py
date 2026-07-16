@@ -84,12 +84,19 @@ class AgentsListPage(BasePage):
                      "testid across every Skill card in the preview)"
     )
 
+    # Toggle testid is ALWAYS present since EliteaUI PR #581 review fix
+    # (e0407b70): state moved to a data-expanded attribute. Collapsed-only
+    # scoping happens via this constant, per .agents/testing.md § Locator
+    # policy (testid-keyed selector + data-* state filter).
+    IMPORT_PREVIEW_COLLAPSED_TOGGLE_SELECTOR = (
+        '[data-testid="agent-import-preview-card-toggle"][data-expanded="false"]'
+    )
+
     import_preview_card_toggle = LocatorDescriptor(
         testid="agent-import-preview-card-toggle",
-        description="'Show details' toggle, shared by every entity-preview "
-                     "card (Main entity + each Skill). Rendered ONLY while "
-                     "collapsed (removed from the DOM once expanded) so a "
-                     "'click until none remain' loop naturally converges"
+        description="'Show details'/'Hide details' toggle, shared by every "
+                     "entity-preview card (Main entity + each Skill). Always "
+                     "present; data-expanded carries the state (PR #581 fix)"
     )
 
     import_preview_skill_instructions = LocatorDescriptor(
@@ -480,17 +487,19 @@ class AgentsListPage(BasePage):
         rendered (non-zero height) before assertions read it.
 
         Every toggle carries the SAME ``agent-import-preview-card-toggle``
-        data-testid, but only while its own card is collapsed — the JSX
-        omits the attribute once expanded (``IWModalEntityCardWrapper``'s
-        own ``isExpanded`` state). So the locator is re-queried and its
-        first match clicked repeatedly until none remain — a fixed-count
-        loop indexed by ``nth()`` would go out of bounds after the first
-        click shrinks the live match set.
+        data-testid, ALWAYS present, with ``data-expanded`` reflecting the
+        card's state (EliteaUI PR #581 review fix ``e0407b70`` — the old
+        JSX omitted the testid once expanded). So the loop queries the
+        COLLAPSED subset via ``IMPORT_PREVIEW_COLLAPSED_TOGGLE_SELECTOR``
+        and clicks its first match until none remain — each click flips
+        ``data-expanded`` to true, shrinking the collapsed set, so the
+        loop converges exactly as before. Looping on the bare testid
+        would never terminate now.
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        toggles = self.import_preview_card_toggle
+        toggles = self.page.locator(self.IMPORT_PREVIEW_COLLAPSED_TOGGLE_SELECTOR)
         expanded_count = 0
         while toggles.count() > 0:
             toggles.first.click()

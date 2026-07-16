@@ -31,9 +31,13 @@ likely others) is **submit-activated, not live-filtering**:
   up ~3 parents, `querySelectorAll('svg')`) and tag a temp id for a real
   Playwright click, rather than relying on accessible name/role. **Update
   (ELITEA-1965 session, later than the original #44 finding):** the send
-  icon now HAS a testid — `data-testid="skills-search-send-button"`,
-  hardcoded in `SearchBar.jsx`, same literal value on every page that uses
-  the shared component (a pre-existing naming oddity, not page-specific).
+  icon now HAS a testid — **renamed 2026-07-16 (PR #581 review fix `e0407b70`)
+  to the generic `data-testid="search-send-button"`** (was
+  `skills-search-send-button`; the clear/X icon similarly became
+  `search-clear-button`, was `agent-search-clear-button`), hardcoded in
+  `SearchBar.jsx`, same literal value on every page that uses the shared
+  component — now by design (shared components carry generic testids,
+  `.agents/testing.md` § Locator policy).
   The cancel/X icon (`StyledCancelIcon` in `SearchBarComponents.jsx`) still
   has NO testid at all — still needs the DOM-traversal workaround, or
   `add-data-testid` if a case needs to click it as a real automation target.
