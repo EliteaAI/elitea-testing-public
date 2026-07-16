@@ -29,3 +29,18 @@ open question already exists for the *murkier* wired-but-uninvoked shape and
 recommends "no carve-out" (as #511 does): an orphan is a fortiori covered by
 that same recommendation, so don't file a third overlapping question for a
 case that's strictly clearer-cut than the one still open.
+
+## Case history
+
+- Issue #85 (ELITEA-1907, PR #543/EliteaUI#570): `generate-agent-resource-section-title-`
+  declared, never referenced. Orphan shape, solo-FAIL.
+- Issue #94 (ELITEA-1929, PR #548/EliteaUI#572): `toolkit-detail-discard-button`
+  declared as `detail_discard_button`, never referenced by any test/page-object
+  method (`grep -rn 'detail_discard_button' automation/ --include='*.py'`
+  matched only its own definition). The AFS had speculatively grouped
+  "Save/Discard" together in its testid-gap note, but the implemented case
+  only exercised Save — worth watching for: an AFS that names a *pair* of
+  elements in its gap note doesn't mean both need testids if the case only
+  touches one. Orphan shape, solo-FAIL, sibling (`toolkit-detail-save-button`)
+  in the same PR was correctly wired and used — the FAIL is per-testid, not
+  per-PR, don't let one compliant sibling launder an orphan one.
