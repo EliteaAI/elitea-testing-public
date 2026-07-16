@@ -30,9 +30,11 @@ UPDATED_DESCRIPTION = "Updated via raw JSON"
 # never renders it (confirmed live on 2 fresh toolkits, consistent with the
 # sibling ELITEA-1922 AFS's own exhaustive schema assertions). This is
 # case-text drift, not a product defect — CLARIFICATION filed as
-# EliteaAI/elitea-testing-public#574 (AFS § Known Defects Found /
-# Reverse-masking guard: asserting a phantom field would reverse-mask a stale
-# case, so only the 8 real fields are asserted).
+# EliteaAI/elitea-testing-public#574. Per AFS Step 3 instruction, only the 8
+# real fields are asserted present; "available_mcp_tools" is asserted
+# NEITHER present NOR absent — it's a documented clarification, not a
+# regression oracle, so a future product change that legitimately adds the
+# field back won't break this test.
 EXPECTED_SETTINGS_KEYS = {
     "url",
     "timeout",
@@ -157,17 +159,8 @@ def test_mcp_edit_raw_json_description(page, toolkit_api: ToolkitAPI):
             assert not missing, (
                 f"Raw Json 'settings' should contain all expected fields, missing: {missing}"
             )
-            # "available_mcp_tools" is case-text drift, not a live product
-            # field — see EXPECTED_SETTINGS_KEYS comment / AFS Known Defects.
-            assert "available_mcp_tools" not in raw_json, (
-                "'available_mcp_tools' is not a live Raw Json field (case-text drift, "
-                "see EliteaAI/elitea-testing-public#574) — if this now fails because the "
-                "product started rendering it, update this assertion to require it."
-            )
-            assert "available_mcp_tools" not in settings_obj, (
-                "'available_mcp_tools' is not a live Raw Json settings field (case-text "
-                "drift, see EliteaAI/elitea-testing-public#574)"
-            )
+            # "available_mcp_tools" is deliberately not asserted present or
+            # absent here — see EXPECTED_SETTINGS_KEYS comment / AFS Step 3.
 
         with allure.step(
             'Step 4 — Modify "description" value in the Raw Json editor to '

@@ -380,6 +380,17 @@ class McpFormPage(BasePage):
     def fill_raw_json_line(self, current_line_text: str, new_line_text: str) -> None:
         """Replace one line of the Raw Json CodeMirror editor with *new_line_text*.
 
+        DECLARED IMPROVISATION (lead-approved, 2026-07-16): the Raw Json
+        editor's per-line ``<div>`` nodes are CodeMirror-internal render
+        nodes, not app JSX — no testid can be placed on them (analogous to
+        the third-party-widget Stop+flag exception, e.g. ReactFlow's
+        ``rf__wrapper``, per ``.agents/testing.md`` § Locator policy).
+        ``get_by_text()`` scoped inside the testid-anchored
+        ``raw_json_editor_content`` parent (itself a
+        ``LocatorDescriptor(testid=...)`` field) is the sanctioned pattern
+        for this specific canon-gap; do not extend it to any handle that
+        COULD carry a testid.
+
         The Raw Json editor (``toolkit-raw-json-editor-content``) is a
         CodeMirror ``.cm-content`` node rendering one ``<div>`` per JSON
         line — NOT a single contenteditable blob. A whole-document select
