@@ -49,3 +49,20 @@ this was caught by cross-checking against `gh pr list`, but a future run
 might not catch it and would then post a false "0% promotable" (or worse,
 a false "promotable" if the literal pattern happens to match unrelated
 text) into a permanent closure record.
+
+## Recurrence (2026-07-16, control audit of #95/ELITEA-1989)
+
+The doc fix above never landed — `workflow.md` § Closure record (still,
+as of this writing, ~line 203-204) uses the literal `data-testid=\"$t\"`
+form. #95's closure record pasted that exact snippet + a claimed "9/9 YES"
+on `automation/testids` for the `generate-skill-modal` FSD slice's
+testids, wired via the same `buttonTestId="..."` → `data-testid={...}`
+indirection this entry already names. Re-running the pasted command
+verbatim (fresh fetch) gave 9/9 `no` — the delivery's own memory log
+repeated the same false claim, so this wasn't just a comment typo but a
+real methodology gap. The bottom-line conclusion (not promotable) was
+still correct once indirection is accounted for, but the pasted
+"evidence" itself was not reproducible — control audit FAILed item 3 on
+that basis. Filed `.agents/workflow.md`'s fix as a tracked canon-gap issue
+(#553) since a memory lesson alone isn't stopping recurrence — the doc
+itself needs to change.
