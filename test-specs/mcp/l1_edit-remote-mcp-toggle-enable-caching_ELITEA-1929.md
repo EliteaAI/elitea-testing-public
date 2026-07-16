@@ -32,18 +32,35 @@
 
 ## Test Data
 
+> **Amended by implementer** (fix-only round R1, PR #548, 2026-07-16): this
+> section originally classified the Remote MCP toolkit as `reuse-existing`
+> (id `1244` / `autotest_remote_mcp_full`), matching the analyst's live
+> session. During implementation, `ToolkitAPI.list_all_toolkits()` — the API
+> the harness would need to rediscover `1244` (or any) toolkit id at test
+> runtime without hardcoding a leftover manual-session id — returns an empty
+> list on this environment regardless of auth method (same documented quirk
+> as `config.py`'s `remote_github_mcp_toolkit_id` comment and
+> `.agents/memory/test-automation-engineer/mcp_pipeline_node_toolkit_tool_quirks.md`).
+> With no reliable read-only way to rediscover an existing Remote MCP's id at
+> runtime, the implementer used the seed-and-teardown variant this AFS's own
+> § Cleanup (option 3, below) already anticipated as a safe alternative —
+> reclassifying the toolkit from `reuse-existing` to
+> `generate-shared-with-cleanup` for automation purposes. No case behavior or
+> assertion changed; toggling Enable Caching has no destructive effect on the
+> toolkit's other fields either way.
+
+### generate-shared-with-cleanup
+- An MCP toolkit is created per test run via the existing `McpFormPage`
+  create flow (same helper pattern as `test_mcp_view_toggle.py`'s
+  `_seed_mcp_via_ui`) and torn down via `ToolkitAPI.delete_toolkit()` in a
+  `finally` block. Enable Caching defaults to checked on creation
+  (AFS-confirmed live), matching this case's stated precondition, so no
+  additional setup is needed before Step 1.
+
 ### reuse-existing
 - `${TEST_USER}` — only needed on deployed envs; localhost skips login entirely.
 - `${ELITEA_PROJECT_ID}` = `399` (from `.env.test`, confirmed live via the
   sidebar's project textbox).
-- An existing Remote MCP toolkit id (e.g. `1244` / `autotest_remote_mcp_full`,
-  confirmed live) — this case is read/toggle/write on an existing toolkit, not a
-  create flow; no new toolkit needs to be generated per-test. Implementer should
-  reuse whatever Remote MCP the suite already maintains (or the first one
-  returned by the MCP list, per the "read-only-by-default" pattern already used
-  in `test_mcp_view_toggle.py`'s `has_any_mcp()` check) rather than seeding a
-  dedicated one — toggling Enable Caching has no destructive side effect on the
-  toolkit's other fields.
 
 ## Test Steps
 
@@ -142,25 +159,33 @@
 
 ## Cleanup
 
+> **Amended by implementer** (fix-only round R1, PR #548, 2026-07-16): items
+> 1–2 below describe the analyst's own live session, which reused the
+> pre-existing `1244` toolkit and therefore needed no create/delete. The
+> shipped implementation instead follows the option-3 seed-and-teardown
+> variant (see § Test Data amendment above for why) — item 3 is the path
+> actually taken, not just an available alternative.
+
 1. This case's own step 7 IS its cleanup: it re-enables and re-saves Enable
    Caching, restoring the toolkit's original state. **Confirmed live**: after
    step 7, `input.checked === true` on both the in-session Form view and a
    follow-up reload — the reused toolkit (`autotest_remote_mcp_full`, id `1244`)
-   was left in exactly the state it was found in (screenshot:
-   `test-results/screenshots/ELITEA-1929-step7-final-reenabled.png`).
-2. No toolkit was created or deleted by this case (it reuses an existing Remote
-   MCP) — no `ToolkitAPI.delete_toolkit()` teardown call is needed for THIS
-   case's own data. If the implementer's harness needs to guarantee a Remote MCP
-   exists (empty-project edge case), see § Preconditions for the seed-if-empty
-   pattern already used by `test_mcp_view_toggle.py` — that seeded toolkit would
-   carry its own teardown via `ToolkitAPI.delete_toolkit()`, independent of this
-   case's own no-create/no-delete nature.
-3. If test isolation requires NOT depending on a shared/leftover toolkit like
-   `1244`, the implementer may instead seed a dedicated toolkit per test run
-   (same UI create flow as `test_mcp_view_toggle.py`'s `_seed_mcp_via_ui`) and
-   tear it down via `ToolkitAPI.delete_toolkit(toolkit_id)` in `finally` —
-   either approach is safe for this case's assertions since toggling Enable
-   Caching has no destructive effect on other fields.
+   was left in exactly the state it was found in during the analyst's session
+   (screenshot: `test-results/screenshots/ELITEA-1929-step7-final-reenabled.png`).
+   This still holds for the shipped implementation's seeded toolkit too — step
+   7 restores its Enable Caching state before the `finally`-block delete runs.
+2. The analyst's own exploration session created or deleted no toolkit (it
+   reused an existing Remote MCP) — no `ToolkitAPI.delete_toolkit()` teardown
+   call was needed for that session's data. The **shipped implementation**
+   does not follow this path (see item 3).
+3. **Shipped implementation**: seeds a dedicated toolkit per test run (same UI
+   create flow as `test_mcp_view_toggle.py`'s `_seed_mcp_via_ui`) and tears it
+   down via `ToolkitAPI.delete_toolkit(toolkit_id)` in `finally` — required
+   because `ToolkitAPI.list_all_toolkits()` returns empty on this environment
+   (see § Test Data amendment), leaving no reliable read-only way to
+   rediscover `1244` or any other existing Remote MCP's id at runtime. Safe
+   for this case's assertions since toggling Enable Caching has no
+   destructive effect on other fields.
 
 ## Concrete Handles (discovered during exploration)
 

@@ -195,6 +195,15 @@ class McpFormPage(BasePage):
         "Edit Toolkit" placeholder), so ``reload_and_wait()`` confirms real
         toolkit data has re-rendered after a full page reload, not just that
         the network went idle (ELITEA-1929 § Automation Hints).
+
+        Note for future callers: ``BasePage.reload_and_wait()`` dispatches to
+        this method via ``hasattr(self, 'wait_for_page_load')`` duck-typing —
+        defining it here changes ``reload_and_wait()``'s behavior for *every*
+        caller of ``McpFormPage`` (e.g. the create-form flow too), not just
+        the detail-page flow this method was added for. No current sibling
+        caller is affected since ``_wait_for_detail_data_rendered()`` is safe
+        to call from any state, but a future create-form-only caller of
+        ``reload_and_wait()`` would also route through here.
         """
         self._wait_for_detail_data_rendered()
 

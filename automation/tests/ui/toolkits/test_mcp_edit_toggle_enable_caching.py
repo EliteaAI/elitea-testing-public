@@ -56,6 +56,70 @@ def test_mcp_edit_toggle_enable_caching(page, toolkit_api: ToolkitAPI):
     create_response = form.save_and_wait_for_created(project_id)
     toolkit_id = create_response["id"]
 
+    # Console listener — same pattern as test_mcp_attach_via_tools_section.py /
+    # test_skill_tag_filter.py: capture "error"-type console messages, filter
+    # out the two pre-existing React dev-mode warnings already filed as
+    # EliteaAI/elitea-testing-public#291 (missing `key` prop in list
+    # rendering on the /mcps/create type-picker; invalid `<p>`-in-`<p>` DOM
+    # nesting from ToolBaseProperty.jsx's InfoTooltip — the latter also
+    # fires on this case's detail page since ToolBaseProperty.jsx is the
+    # same shared field renderer, confirmed live during this fix pass), so a
+    # real regression introduced by this toggle/save/reload flow isn't
+    # masked by an expected, already-tracked warning (AFS Step 4 / Expected
+    # Results).
+    #
+    # A THIRD console error was discovered live while implementing this
+    # check (not documented in the AFS or #291): "MUI: The `value` provided
+    # to the Tabs component is invalid" — reproduces on every detail-page
+    # load, traced to ConfigurationTab.jsx/StyledTabs.jsx, no functional
+    # impact on this case's assertions. Filed as
+    # EliteaAI/elitea-testing-public#549. Per the no-defect-masking policy
+    # this is NOT silently filtered like the #291 warnings — it's tracked as
+    # a soft failure (pytest-native expect.soft() equivalent, same pattern
+    # as test_skill_agent_interaction.py) so it stays visible without
+    # blocking the rest of the flow. Anything else is a genuinely new,
+    # hard-failing regression.
+    console_messages = []
+    soft_failures = []
+
+    def _is_known_291_warning(msg) -> bool:
+        text = msg.text
+        return (
+            'unique "key" prop' in text
+            or ("validateDOMNesting" in text and "<p>" in text)
+            # Chromium/Playwright collapses the printf-style %s placeholders
+            # differently across builds — the raw un-substituted template is
+            # also matched so the filter doesn't depend on that formatting.
+            or ("validateDOMNesting" in text and "%s" in text)
+        )
+
+    def _is_known_549_warning(msg) -> bool:
+        text = msg.text
+        return "Tabs component is invalid" in text
+
+    page.on(
+        "console",
+        lambda msg: console_messages.append(msg)
+        if msg.type == "error" and not _is_known_291_warning(msg)
+        else None,
+    )
+
+    def _check_no_new_console_errors(step_label: str) -> None:
+        """Split captured console errors: known #549 -> soft; anything else -> hard fail."""
+        new_549 = [m for m in console_messages if _is_known_549_warning(m)]
+        unexpected = [m for m in console_messages if not _is_known_549_warning(m)]
+        for msg in new_549:
+            soft_failures.append(
+                "Known defect github.com/EliteaAI/elitea-testing-public/issues/549: "
+                f"{step_label} — MUI Tabs invalid-value console error: {msg.text!r}"
+            )
+        assert not unexpected, (
+            f"{step_label} — unexpected new console errors beyond the two "
+            "pre-existing dev-mode warnings tracked in #291 and the known "
+            f"#549 Tabs warning, got: {[m.text for m in unexpected]}"
+        )
+        console_messages.clear()
+
     try:
         with allure.step(
             "Step 1 — Open the Remote MCP detail page in Form view"
@@ -92,6 +156,7 @@ def test_mcp_edit_toggle_enable_caching(page, toolkit_api: ToolkitAPI):
             assert save_response.get("id") == toolkit_id, (
                 f"Save response should reference the same toolkit id, got: {save_response.get('id')!r}"
             )
+            _check_no_new_console_errors("Step 4 (Save)")
 
         with allure.step(
             'Step 5 — Reload page; verify "Enable Caching" is still unchecked'
@@ -135,6 +200,14 @@ def test_mcp_edit_toggle_enable_caching(page, toolkit_api: ToolkitAPI):
             assert form.is_enable_caching_checked(), (
                 "Enable Caching should be checked again after reload — cleanup restored "
                 "the toolkit's original state"
+            )
+            _check_no_new_console_errors("Step 7 (re-Save + reload)")
+
+        if soft_failures:
+            pytest.fail(
+                "Soft assertion(s) failed (known non-blocking product defect, "
+                "not test/infrastructure — rest of the flow passed cleanly):\n"
+                + "\n".join(soft_failures)
             )
     finally:
         # Not a case step — teardown for the toolkit seeded above.
