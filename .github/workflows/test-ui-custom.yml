@@ -66,6 +66,11 @@ on:
         required: false
         type: string
         default: ''
+      update_correlation:
+        description: 'Rebuild correlation.json + coverage.md in TMS repo after publishing'
+        required: false
+        type: boolean
+        default: false
 
   workflow_call:
     inputs:
@@ -103,6 +108,11 @@ on:
         required: false
         type: string
         default: ''
+      update_correlation:
+        description: 'Rebuild correlation.json + coverage.md in TMS repo after publishing'
+        required: false
+        type: boolean
+        default: false
     secrets:
       ELITEA_URL:
         required: true
@@ -709,3 +719,39 @@ jobs:
             -f branch="main"
 
           echo "✓ Pushed to EliteaAI/onetest-ai-tm-Elitea/reports/automated/${FILENAME}"
+
+      - name: Checkout TMS repo
+        if: always() && inputs.update_correlation == true
+        uses: actions/checkout@v4
+        with:
+          repository: EliteaAI/onetest-ai-tm-Elitea
+          token: ${{ secrets.GIT_HUB_TOKEN }}
+          path: tms
+
+      - name: Run correlation and coverage
+        if: always() && inputs.update_correlation == true
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          ENV_NAME="${{ needs.test.outputs.env-name }}"
+          SUITE="${{ inputs.custom_suites != '' && inputs.custom_suites || inputs.suite }}"
+          SUITE_UPPER=$(echo "$SUITE" | tr '[:lower:]' '[:upper:]' | tr ',' '-')
+          SUFFIX="${{ inputs.tms_report_suffix }}"
+          STATUS=$(cat status.txt)
+
+          RUN_ID="RUN-ELITEA-${DATE}-${{ github.run_number }}-${ENV_NAME^^}-${SUITE_UPPER}"
+          if [ -n "$SUFFIX" ]; then
+            RUN_ID="${RUN_ID}-$(echo "$SUFFIX" | tr '[:lower:]' '[:upper:]')"
+          fi
+          RUN_ID="${RUN_ID}-${STATUS}"
+
+          cd tms
+          bash onetest-tms/scripts/correlate-results.sh \
+            --automated "reports/automated/junit-${RUN_ID}.json"
+          bash onetest-tms/scripts/automation-coverage.sh
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add reports/correlation.json reports/coverage.md
+          git diff --cached --quiet || \
+            git commit -m "correlation: rebuild for ${RUN_ID}"
+          git push
