@@ -57,14 +57,19 @@ class CredentialsListPage(BasePage):
         description="Credentials search box (shared SearchBar component, default testId)",
     )
     search_send_button = LocatorDescriptor(
-        testid="skills-search-send-button",
-        description="Search submit (send) icon — shared component, generic cross-page testid",
+        testid="search-send-button",
+        description=(
+            "Search submit (send) icon — shared SearchBar, generic testid "
+            "(renamed from skills-search-send-button by EliteaUI PR #581 "
+            "review fix e0407b70)"
+        ),
     )
     search_clear_button = LocatorDescriptor(
-        testid="agent-search-clear-button",
+        testid="search-clear-button",
         description=(
             "Search clear (X) icon — testid added via add-data-testid for "
-            "ELITEA-1965 (EliteaAI/EliteaUI#573)"
+            "ELITEA-1965 (EliteaAI/EliteaUI#573); renamed from "
+            "agent-search-clear-button by EliteaUI PR #581 review fix e0407b70"
         ),
     )
     search_empty_state = LocatorDescriptor(

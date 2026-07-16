@@ -77,7 +77,8 @@ class SkillsListPage(BasePage):
             "Send-icon button next to the search input (StyledSendIcon, "
             "SearchBar.jsx onClick={onSearch}) — one of the two intended "
             "activation modes that trigger the grid-fetch (the other is "
-            "pressing Enter in the input)."
+            "pressing Enter in the input). Renamed from "
+            "skills-search-send-button by EliteaUI PR #581 review fix e0407b70."
         )
     )
 
