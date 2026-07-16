@@ -30,9 +30,17 @@ class AgentsListPage(BasePage):
         description="Search agents input field"
     )
 
+    # Fixed (ELITEA-1870): the previous testid ("create-agent-button") does
+    # not exist in the live DOM (confirmed via a full
+    # `[data-testid]` inventory on /agents/all — 0 matches); the real,
+    # confirmed-live testid on the sidebar create-agent control is
+    # "sidebar-create-button". The old `fallback` (a `get_by_label("Create
+    # Agent")` role lookup) also doesn't match live and is dropped per the
+    # testid-only locator policy (`.claude/rules/page-objects.md` — no
+    # fallback param). This is a page-object housekeeping fix; the button's
+    # click-to-navigate behavior itself was already correct.
     create_agent_button = LocatorDescriptor(
-        testid="create-agent-button",
-        fallback=lambda page: page.get_by_label("Create Agent").get_by_role("button"),
+        testid="sidebar-create-button",
         description="Create Agent button in sidebar"
     )
 
