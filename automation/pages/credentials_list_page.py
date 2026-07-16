@@ -17,6 +17,8 @@ import logging
 
 from playwright.sync_api import Locator, Page, Response
 
+from config import settings
+
 from .base_page import BasePage
 from .credentials_list_recovery import recover_from_credentials_list_crash
 from .locator_descriptor import LocatorDescriptor
@@ -24,6 +26,7 @@ from .locator_descriptor import LocatorDescriptor
 logger = logging.getLogger("elitea.pages.credentials_list")
 
 UI_ELEMENT_TIMEOUT = 10_000
+SEARCH_RESPONSE_TIMEOUT = 15_000
 
 
 class CredentialsListPage(BasePage):
@@ -42,6 +45,35 @@ class CredentialsListPage(BasePage):
     entity_card_name = LocatorDescriptor(
         testid="entity-card-name",
         description="Credential card name (title) — collection locator, one per visible card",
+    )
+
+    # Shared SearchBar.jsx component testids (also used by every other list
+    # page — Skills, Mcp, Agents, Pipelines). Credentials uses the default
+    # `testId` prop value for the input; the send/clear icons carry
+    # pre-existing, hardcoded, cross-page-generic testids (not scoped per
+    # page — see ELITEA-1965 AFS Concrete Handles for provenance).
+    search_input = LocatorDescriptor(
+        testid="agent-search-input",
+        description="Credentials search box (shared SearchBar component, default testId)",
+    )
+    search_send_button = LocatorDescriptor(
+        testid="skills-search-send-button",
+        description="Search submit (send) icon — shared component, generic cross-page testid",
+    )
+    search_clear_button = LocatorDescriptor(
+        testid="agent-search-clear-button",
+        description=(
+            "Search clear (X) icon — testid added via add-data-testid for "
+            "ELITEA-1965 (EliteaAI/EliteaUI#573)"
+        ),
+    )
+    search_empty_state = LocatorDescriptor(
+        testid="credentials-search-empty-state",
+        description=(
+            "Zero-results empty-state container ('Nothing found. Create yours "
+            "now!') — testid added via add-data-testid for ELITEA-1965 "
+            "(EliteaAI/EliteaUI#574)"
+        ),
     )
 
     # Parameterized template — credential id filled in per-call, per the
@@ -64,6 +96,84 @@ class CredentialsListPage(BasePage):
         self.entity_card.first.wait_for(
             state="visible", timeout=UI_ELEMENT_TIMEOUT
         )
+
+    def search(self, term: str, *, assert_unfiltered_while_typing: bool = False) -> Response:
+        """Type *term* into the search box and press Enter (explicit-activation
+        control — typing alone does NOT filter, per ELITEA-1965's interaction-
+        discovery finding: ``SearchBar.jsx``'s ``dispatch(actions.setQuery(...))``
+        fires only from ``onSearch()``, wired to ``onKeyDown``/Enter or the send
+        icon's ``onClick``).
+
+        Waits for the server-side filtered ``GET .../configurations/configurations/
+        {project}?...&query={term}&section=credentials...`` response rather than a
+        fixed sleep.
+
+        Args:
+            term: The search term to type.
+            assert_unfiltered_while_typing: When ``True``, asserts the card
+                list is still at its pre-type baseline count right after
+                typing *and before Enter is pressed* — proof that typing
+                alone does not trigger a filter (a future regression that
+                flips this control to live-filter-as-you-type would fail
+                here). Opt-in (default ``False``) and intended for a single
+                call site right after a freshly-settled, unfiltered list
+                (e.g. right after ``navigate()``): callers made right after
+                ``clear_search()`` race a known React-re-render lag (see
+                ``clear_search()``'s docstring) that this flag does not
+                attempt to distinguish from a real defect, so it would be
+                unreliable there.
+
+        Returns:
+            The matched Playwright ``Response``.
+        """
+        if assert_unfiltered_while_typing:
+            pre_type_card_count = self.entity_card_name.count()
+        with self.page.expect_response(
+            lambda r: (
+                f"/configurations/configurations/{settings.elitea_project_id}" in r.url
+                and f"query={term}" in r.url
+                and r.request.method == "GET"
+            ),
+            timeout=SEARCH_RESPONSE_TIMEOUT,
+        ) as response_info:
+            self.search_input.click()
+            self.search_input.press_sequentially(term, delay=20)
+            if assert_unfiltered_while_typing:
+                # Synchronous `.count()` read (not the auto-retrying
+                # `expect()`, which would just wait for eventual settle and
+                # prove nothing about this window) — right after typing and
+                # BEFORE Enter is pressed.
+                post_type_card_count = self.entity_card_name.count()
+                assert post_type_card_count == pre_type_card_count, (
+                    f"Typing {term!r} must not filter the list before Enter is "
+                    f"pressed (explicit-activation control) — expected the "
+                    f"pre-type baseline of {pre_type_card_count} card(s), got "
+                    f"{post_type_card_count} right after typing"
+                )
+            self.search_input.press("Enter")
+        response = response_info.value
+        # The response resolves as soon as headers/body arrive — the React
+        # re-render driven by the Redux dispatch is a task tick later. Wait
+        # for network to settle so callers reading card state right after
+        # search() don't race the render.
+        self.wait_for_network()
+        return response
+
+    def clear_search(self) -> None:
+        """Click the search box's Clear (X) icon and wait for network to settle.
+
+        Per the AFS's Network Behavior section, clearing does not reliably fire
+        a fresh GET distinguishable by a ``query=`` predicate in the success
+        (non-empty-result) path — ``onClear()`` dispatches ``resetQuery()``,
+        which the ``useLoadAllCredentials`` hook reacts to with a re-fetch, so
+        a generic network-settle wait is used instead of a response predicate.
+        This also correctly covers the zero-results known-defect path (#551),
+        where clicking Clear navigates away from ``/credentials/all`` entirely
+        rather than triggering an in-place re-fetch — ``wait_for_network()``
+        still applies after a client-side route change.
+        """
+        self.search_clear_button.click()
+        self.wait_for_network()
 
     def pin_toggle_button(self, credential_id) -> Locator:
         """Return the list-row "Pin to top"/"Unpin from top" icon button for *credential_id*."""
