@@ -3,11 +3,20 @@
 Handles: /mcps/all
 - MCP list display (card / table view)
 - View toggle (Card list view <-> Table view)
+- Search by name (shared ``SearchBar.jsx`` component)
 
 Mirrors the identical card/table toggle pattern already implemented in
 ``AgentsListPage`` (agents_list_page.py) and ``PipelinesListPage``
 (pipelines_list_page.py) — both share the same underlying MUI
 ``ToggleButtonGroup`` component.
+
+Search mirrors ``CredentialsListPage.search()`` / ``clear_search()``
+(credentials_list_page.py) — same shared ``SearchBar.jsx`` component,
+explicit-activation (Enter/send-icon, not live-filter-as-you-type). Unlike
+Credentials, MCP filtering is client-side against an already-fetched list
+(no server round-trip observed on Enter — ELITEA-1941 AFS § Network
+Behavior), so there is no response predicate to await; a network-settle +
+short render-lag wait is used instead.
 """
 
 import logging
@@ -92,6 +101,31 @@ class McpListPage(BasePage):
         description="MCP name cell in table-view rows — collection locator, one per visible row",
     )
 
+    # Shared SearchBar.jsx component testids (also used by Credentials/
+    # Skills/Toolkits/Applications list pages) — same shared component, same
+    # mechanics as CredentialsListPage. ELITEA-1941 AFS Concrete Handles.
+    search_input = LocatorDescriptor(
+        testid="agent-search-input",
+        description="MCP search box (shared SearchBar component, default testId)",
+    )
+    search_send_button = LocatorDescriptor(
+        testid="search-send-button",
+        description="Search submit (send) icon — shared SearchBar, generic testid",
+    )
+    search_clear_button = LocatorDescriptor(
+        testid="search-clear-button",
+        description="Search clear (X) icon — shared SearchBar, generic testid",
+    )
+
+    # Shared EmptyStatePage.jsx component testid (also used by Toolkits/
+    # Applications/Skills/Pipelines/PersonalTokens list pages) — renders for
+    # both "zero MCPs in project" and "zero MCPs match this search" (same
+    # generic copy, see ELITEA-1941 AFS step 6 CLARIFICATION).
+    empty_state_title = LocatorDescriptor(
+        testid="empty-state-title",
+        description="Zero-results/zero-MCPs empty-state title ('No MCPs yet')",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -148,6 +182,49 @@ class McpListPage(BasePage):
         self.card_view_button.wait_for(state="visible", timeout=timeout)
         self.wait_for_network(timeout=10000)
         logger.info("MCP dashboard loaded")
+
+    # ------------------------------------------------------------------
+    # Search
+    # ------------------------------------------------------------------
+
+    @action("Search MCPs by name")
+    def search(self, term: str) -> None:
+        """Type *term* into the search box and press Enter (explicit-activation
+        control — typing alone does NOT filter, same ``SearchBar.jsx`` mechanics
+        as ``CredentialsListPage.search()``: ``onChange`` only updates local
+        input state, the actual filter dispatch fires only from ``onSearch()``,
+        wired to Enter/the send icon, and only once the trimmed term is
+        ``>= MIN_SEARCH_KEYWORD_LENGTH`` (3) characters).
+
+        Filtering here is client-side against an already-fetched MCP list (no
+        new XHR observed firing on Enter — ELITEA-1941 AFS § Network
+        Behavior), so this waits for network-idle plus a short settle instead
+        of a response predicate — confirmed ~1-1.5s live render lag (AFS §
+        Automation Hints).
+        """
+        self.search_input.click()
+        self.search_input.press_sequentially(term, delay=20)
+        self.search_input.press("Enter")
+        self.wait_for_network()
+        self.page.wait_for_timeout(1500)  # MUI/React filter re-render settle
+        logger.info("Searched MCPs for %r", term)
+
+    @action("Clear MCP search")
+    def clear_search(self) -> None:
+        """Click the search box's Clear (X) icon and wait for the list to settle.
+
+        KNOWN DEFECT (EliteaAI/elitea-testing-public#585, ELITEA-1941): clicking
+        Clear while the zero-match empty state is showing navigates away to
+        ``/mcps/create`` instead of restoring the list — this method still
+        performs the click and the network-settle wait; asserting the
+        resulting state (restored list vs. the defect's redirect) is the
+        caller's responsibility, same division of concerns as
+        ``CredentialsListPage.clear_search()``.
+        """
+        self.search_clear_button.click()
+        self.wait_for_network()
+        self.page.wait_for_timeout(1500)  # MUI/React filter re-render settle
+        logger.info("Cleared MCP search")
 
     # ------------------------------------------------------------------
     # View switching
