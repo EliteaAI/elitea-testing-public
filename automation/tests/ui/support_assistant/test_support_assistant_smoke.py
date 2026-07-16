@@ -272,6 +272,7 @@ class TestSupportAssistantViewModes:
     """
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/elitea-chat-bot/ELITEA-0624_support-assistant-expands-to-full-view-mode-and-collapses-back-to-widg.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/support-assistant/ELITEA-1801_expand-to-full-view-and-collapse-back.md", "onetest-ai Test Case link")
     def test_expand_collapse_fullview(self, page):
         """Widget can expand to full view and collapse back.
 
@@ -290,6 +291,9 @@ class TestSupportAssistantViewModes:
 
         with allure.step("Step 3 — Verify full view mode"):
             assert support_page.is_widget_open(), "Widget should still be open in full view"
+            assert support_page.is_fullview_mode(), (
+                "Widget container should carry the --expanded modifier class after expand"
+            )
 
         with allure.step("Step 4 — Click collapse button"):
             support_page.collapse_to_widget(timeout=WIDGET_TIMEOUT)
@@ -297,6 +301,9 @@ class TestSupportAssistantViewModes:
 
         with allure.step("Step 5 — Verify widget mode restored"):
             assert support_page.is_widget_open(), "Widget should still be open after collapse"
+            assert not support_page.is_fullview_mode(), (
+                "Widget container should lose the --expanded modifier class after collapse"
+            )
 
 
 class TestSupportAssistantAttachments:
