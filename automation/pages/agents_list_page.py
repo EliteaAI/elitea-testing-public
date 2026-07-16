@@ -210,6 +210,13 @@ class AgentsListPage(BasePage):
         testid="entity-card-icon",
         description="Agent card icon — collection locator, one per visible card",
     )
+    # Inner <img> of entity_card_icon — its own testid (not a raw ".locator
+    # img" chain appended to the entity-card-icon testid), added via
+    # add-data-testid to EliteaUI's EliteAImage.jsx/EntityIcon.jsx
+    # (ELITEA-1899 review fix-pass; EliteaUI automation/testids commit
+    # 558160a6). Scoped per-card in get_card_icon_src() via
+    # `card.locator(...)` since it's a collection locator (one per card).
+    ENTITY_CARD_ICON_IMG_SELECTOR = '[data-testid="entity-card-icon-img"]'
 
     def get_agent_card_names(self, timeout: int = 5000) -> list[str]:
         """Return names of all agent cards visible on the dashboard.
@@ -252,10 +259,11 @@ class AgentsListPage(BasePage):
         """Return the ``src`` of a matching agent card's icon ``<img>``.
 
         LOCATOR: scopes ``entity_card`` by visible name text, then reads
-        the ``entity-card-icon`` testid's inner ``<img>`` (ELITEA-1899 —
-        confirmed live: the card matching ``name`` shows the exact same
-        icon URL as the agent header, not just a visual/screenshot-only
-        match).
+        the ``entity-card-icon-img`` testid (see ``ENTITY_CARD_ICON_IMG_SELECTOR``
+        above) — its own testid, not a raw ``<img>`` tag chained off
+        ``entity-card-icon`` (ELITEA-1899 — confirmed live: the card
+        matching ``name`` shows the exact same icon URL as the agent
+        header, not just a visual/screenshot-only match).
 
         Args:
             name: Exact agent name to match the card by.
@@ -266,7 +274,7 @@ class AgentsListPage(BasePage):
         """
         card = self.entity_card.filter(has_text=name).first
         card.wait_for(state="visible", timeout=timeout)
-        icon = card.locator('[data-testid="entity-card-icon"] img')
+        icon = card.locator(self.ENTITY_CARD_ICON_IMG_SELECTOR)
         icon.wait_for(state="visible", timeout=timeout)
         return icon.get_attribute("src") or ""
 
