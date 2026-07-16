@@ -10,6 +10,7 @@ Handles: /agents/all/{id}
 """
 
 import logging
+import re
 import time
 from urllib.parse import urlparse
 from playwright.sync_api import Page, Locator, Download
@@ -182,6 +183,92 @@ class AgentDetailPage(AgentFormPage):
     # via add-data-testid to ExportApplicationButton.jsx's
     # useExportApplicationMenu(); see EliteaUI draft PR #549).
     export_agent_menuitem = LocatorDescriptor(testid="agent-actions-export-menuitem")
+    # VERSION-group "Fork" menuitem (ELITEA-1893 testid-only rework — added
+    # via add-data-testid: `key: 'agent-actions-fork'` in
+    # ForkEntityButton.jsx's useForkEntityMenu(), mirroring the sibling
+    # Export menuitem above; see EliteaUI automation/testids commit
+    # 61328689). Review R1 fix (commit 5dbc7530): `useForkEntityMenu()` is a
+    # SHARED hook also consumed by ToolkitsControls.jsx (Toolkit Fork) and
+    # the Pipeline path — the key is now resolved per `entity_name`
+    # (`applications` -> `agent-actions-fork`, `toolkits` ->
+    # `toolkit-actions-fork`, `pipelines` -> `pipeline-actions-fork`), so
+    # this testid value is unchanged for the Agent context but no longer
+    # leaks onto Toolkit/Pipeline Fork menuitems.
+    fork_menuitem = LocatorDescriptor(testid="agent-actions-fork-menuitem")
+
+    # --- Fork wizard (ELITEA-1893) — shares the ImportWizardModal dialog
+    # family with the Agents-list Import flow (AgentsListPage's
+    # import_preview_dialog/import_complete_dialog carry the SAME testids;
+    # re-declared here because Fork is triggered from the agent-actions
+    # menu on THIS page, not from the Agents list toolbar). The dialog
+    # container swaps its own testid in place from
+    # "agent-import-preview-dialog" (pre-fork) to
+    # "agent-import-complete-dialog" (post-fork) — do not assert on a
+    # single fixed testid persisting across the fork action. ---
+    fork_wizard_dialog = LocatorDescriptor(
+        testid="agent-import-preview-dialog",
+        description="Fork wizard 'Fork parameters' dialog (pre-fork state)",
+    )
+    fork_complete_dialog = LocatorDescriptor(
+        testid="agent-import-complete-dialog",
+        description="Fork wizard 'Fork Complete' dialog (post-fork state — "
+                     "same container as fork_wizard_dialog, testid swaps)",
+    )
+    fork_main_entity_name = LocatorDescriptor(
+        testid="agent-import-preview-name",
+        description="Fork wizard — Main entity card's name",
+    )
+    # Every rendered entity-preview card (Main entity + each nested
+    # dependency, if any) carries this SAME toggle testid — so its count()
+    # is a direct, testid-based proxy for "how many entity cards are
+    # showing", used to confirm no "Nested entities" section renders for a
+    # dependency-free source agent (AFS Axis 2).
+    fork_entity_card_toggle = LocatorDescriptor(
+        testid="agent-import-preview-card-toggle",
+        description="Fork wizard — 'Show details' toggle, one per rendered "
+                     "entity-preview card",
+    )
+    # Testid corrected in review R1 (ELITEA-1893): the original
+    # `agent-fork-project-select` was rendered via a state-conditional
+    # `data-testid={isForking ? '...' : '...'}` ternary in IWModalContent.jsx
+    # — forbidden per `.agents/testing.md` § Locator policy ("the element
+    # keeps ONE testid; state is a separate attribute"). Fixed by giving the
+    # SAME ProjectSelect DOM node (shared by both the Import and Fork
+    # wizards; `isForking` is a mount-time prop, not per-render-toggled
+    # state) a single unconditional testid instead. Declared improvisation:
+    # since AgentDetailPage only ever renders this dialog in Fork context
+    # (AgentsListPage owns the Import context separately), the shared
+    # testid unambiguously resolves the target project selector here — no
+    # `data-*` mode filter needed.
+    fork_project_select_trigger = LocatorDescriptor(
+        testid="agent-import-wizard-project-select",
+        description="Fork wizard — target Project selector trigger (shared "
+                     "with the Import wizard's own use of the same "
+                     "ProjectSelect DOM node — see comment above; EliteaUI "
+                     "automation/testids commit 5dbc7530)",
+    )
+    fork_confirm_button = LocatorDescriptor(
+        testid="agent-fork-confirm-button",
+        description="Fork wizard — 'Fork' confirm button (added via "
+                     "add-data-testid to IWModalForkButton.jsx's "
+                     "Button.BaseBtn, mirroring the sibling Import button's "
+                     "agent-import-confirm-button; see EliteaUI "
+                     "automation/testids commit 61328689)",
+    )
+    fork_complete_agents_list = LocatorDescriptor(
+        testid="agent-import-complete-list-agents",
+        description="Fork Complete dialog — forked Agents name list",
+    )
+    fork_complete_got_it_button = LocatorDescriptor(
+        testid="agent-import-complete-got-it-button",
+        description="Fork Complete dialog — 'Got it' confirm/navigate button",
+    )
+    # Dynamic (runtime-parameterized) testid template for the Fork wizard's
+    # Project-selector dropdown options — same shared `select-option-{value}`
+    # family (SingleSelectMenuItem.jsx) already used by
+    # PipelineDetailPage.SELECT_OPTION, keyed by the numeric project id
+    # (confirmed live, ELITEA-1893 AFS: select-option-399/400/471).
+    FORK_PROJECT_OPTION = '[data-testid="select-option-{}"]'
 
     # --- Navigation ---
     back_button = LocatorDescriptor(testid="back-button")
@@ -2271,6 +2358,97 @@ class AgentDetailPage(AgentFormPage):
         download = download_info.value
         logger.info("Agent exported — filename: %s", download.suggested_filename)
         return download
+
+    # ------------------------------------------------------------------
+    # Fork wizard (ELITEA-1893)
+    # ------------------------------------------------------------------
+
+    @action("Open Fork wizard")
+    def open_fork_wizard(self, timeout: int = 10000):
+        """Open the Fork wizard via the actions overflow menu (VERSION group).
+
+        Opens the overflow (three-dot) menu (``open_actions_menu()``) and
+        clicks the VERSION-scoped "Fork" menuitem, then waits for the
+        wizard dialog (``agent-import-preview-dialog``, titled "Fork
+        parameters") to become visible.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening Fork wizard via actions menu")
+        self.open_actions_menu()
+        self.fork_menuitem.click()
+        self.fork_wizard_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Fork wizard dialog visible")
+
+    @action("Select Fork target project")
+    def select_fork_target_project(self, project_id: int, timeout: int = 10000):
+        """Open the Fork wizard's Project selector and pick a target project.
+
+        LOCATOR: ``fork_project_select_trigger`` opens the dropdown; the
+        option is resolved via the dynamic ``select-option-{project_id}``
+        testid (see ``FORK_PROJECT_OPTION`` above) — a stable, semantic
+        handle keyed by the project's actual numeric id, not its list
+        position (confirmed live, ELITEA-1893 AFS).
+
+        Args:
+            project_id: Numeric id of the target project (must differ from
+                the agent's current project).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting Fork target project id=%d", project_id)
+        self.fork_project_select_trigger.click()
+        option = self.page.locator(self.FORK_PROJECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        logger.info("Fork target project id=%d selected", project_id)
+
+    @action("Confirm Fork")
+    def confirm_fork(self, timeout: int = 15000):
+        """Click the Fork wizard's "Fork" confirm button.
+
+        Waits for the dialog to re-render in place as the "Fork Complete"
+        state (``agent-import-complete-dialog`` — same container, testid
+        swaps once the fork operation succeeds; see class docstring note
+        on ``fork_wizard_dialog``/``fork_complete_dialog``).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the success dialog.
+        """
+        logger.info("Confirming Fork")
+        self.fork_confirm_button.click()
+        self.fork_complete_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Fork Complete dialog visible")
+
+    @action("Confirm Fork complete (Got it)")
+    def confirm_fork_complete(self, timeout: int = 15000) -> int:
+        """Click "Got it" on the Fork Complete dialog.
+
+        Auto-navigates to the newly forked Agent's detail page, inside the
+        target project. Parses and returns the new Agent's numeric ID from
+        the resulting URL.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the navigation.
+
+        Returns:
+            The forked Agent's numeric ID.
+        """
+        self.fork_complete_got_it_button.click()
+        self.page.wait_for_url(re.compile(r".*/agents/all/\d+"), timeout=timeout)
+        self.wait_for_network(timeout=5000)
+
+        match = re.search(r"/agents/all/(\d+)", self.page.url)
+        if not match:
+            raise ValueError(
+                f"Could not parse forked Agent ID from URL: {self.page.url}"
+            )
+        forked_agent_id = int(match.group(1))
+        logger.info(
+            "Fork complete — navigated to forked agent id=%d (%s)",
+            forked_agent_id, self.page.url,
+        )
+        return forked_agent_id
 
     # ------------------------------------------------------------------
     # Navigation helpers
