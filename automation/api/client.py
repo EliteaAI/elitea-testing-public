@@ -388,7 +388,7 @@ class AgentAPI:
                     "tools": [],
                     "llm_settings": {
                         "max_tokens": -1,
-                        "temperature": 0.6,
+                        "temperature": None,  # None (not 0.6): reasoning models reject temperature — #563, mirrors #524 UI fix
                         "reasoning_effort": "medium",
                         "model_name": settings.default_model_name,
                         "model_project_id": settings.default_model_project_id,
@@ -587,7 +587,7 @@ class PipelineAPI:
                     "tools": [],
                     "llm_settings": {
                         "max_tokens": -1,
-                        "temperature": 0.6,
+                        "temperature": None,  # None (not 0.6): reasoning models reject temperature — #563, mirrors #524 UI fix
                         "reasoning_effort": "medium",
                         "model_name": settings.default_model_name,
                         "model_project_id": settings.default_model_project_id,
@@ -704,7 +704,7 @@ class PipelineAPI:
                     "tools": [],
                     "llm_settings": {
                         "max_tokens": -1,
-                        "temperature": 0.6,
+                        "temperature": None,  # None (not 0.6): reasoning models reject temperature — #563, mirrors #524 UI fix
                         "reasoning_effort": "medium",
                         "model_name": model_name,
                         "model_project_id": settings.default_model_project_id,
@@ -768,7 +768,7 @@ class PipelineAPI:
                     "tools": [],
                     "llm_settings": {
                         "max_tokens": -1,
-                        "temperature": 0.6,
+                        "temperature": None,  # None (not 0.6): reasoning models reject temperature — #563, mirrors #524 UI fix
                         "reasoning_effort": "medium",
                         "model_name": settings.default_model_name,
                         "model_project_id": settings.default_model_project_id,
@@ -870,7 +870,7 @@ class PipelineAPI:
                     "tools": tools,
                     "llm_settings": {
                         "max_tokens": -1,
-                        "temperature": 0.6,
+                        "temperature": None,  # None (not 0.6): reasoning models reject temperature — #563, mirrors #524 UI fix
                         "reasoning_effort": "medium",
                         "model_name": settings.default_model_name,
                         "model_project_id": settings.default_model_project_id,
