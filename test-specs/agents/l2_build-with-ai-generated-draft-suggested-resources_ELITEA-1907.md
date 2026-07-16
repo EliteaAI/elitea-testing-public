@@ -1,0 +1,120 @@
+# Test Case: Build with AI — generated draft includes Suggested Resources section (Agent)
+
+## Metadata
+- **TMS ID**: ELITEA-1907
+- **Linked Story**: none
+- **Priority**: l2 (case priority: `medium`)
+- **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids` branch → DEV backend, project `Private` / `${ELITEA_PROJECT_ID}`=399)
+- **User set**: `${TEST_USER}`
+- **Analyst**: qa-engineer (Sage), analyst slot
+- **Status**: ready-for-automation
+- **Case-gate note**: same gap as prior "Build with AI" AFS's (ELITEA-1915): `.agents/testing.md` has no `TMS case-gate` section defining excluded statuses. Case frontmatter carries `status: draft` / `execution_type: manual`; per the skill's default this run proceeded and fetched/executed the case. Flagging again for scout.
+
+## Preconditions
+- User is logged in to Elitea (on localhost, `auth_state` fixture skips login via `VITE_DEV_TOKEN`). Role check: the "Build with AI" entry point (`generate-agent-open-button`) is gated behind `PERMISSIONS.applications.update` per ELITEA-1915's exploration — `${TEST_USER}` rendered the button live in this run, confirming it carries sufficient (editor/admin-equivalent) permission; no separate role elevation was needed.
+- A project is selected/accessible (`Private`, id `399` in this run).
+- **Precondition data audit (live-verified, matters for Coverage Map / Test Data below):** project `399` at the time of this run contained:
+  - **MCPs**: several configured, including one named `Remote Github` (id `3`) — relevant to the "GitHub" half of the test prompt.
+  - **Toolkits**: **zero** configured (navigating to `/toolkits/all` redirects straight to the empty-state `/toolkits/create`) — no GitHub or Jira toolkit instance exists in this project.
+  - **Agents**: 6 configured (`guardrails_test_agent` ×3, `at_ctx_budget_test_10k`, `Test Agent`, `uililulu`) — none semantically related to GitHub/Jira.
+  - **Pipelines**: not inventoried in this run (out of scope once the pattern was established via Toolkits/Agents — see Known Defects/Gaps).
+  - This directly explains the live suggestion result (see Test Steps step 3): the suggestion engine appears to draw candidates from **project-configured resources**, filtered by relevance to the prompt — not from the toolkit-type catalog. With zero Toolkits and no relevant Agents/Pipelines in inventory, only the one relevant configured MCP could be suggested. This is a **test-data gap for full multi-category coverage**, not a defect — see Known Defects/Gaps and Automation Hints.
+
+## Test Data
+
+### reuse-existing (no fixture creation/teardown needed)
+- Natural-language prompt (per case, verbatim): `"An agent that queries GitHub and runs Jira updates"` — live-verified: enables the Generate button (`disabled={!description.trim()}`) and produces a draft with `suggested_mcp` containing the pre-existing `Remote Github` MCP (project id 399, MCP id 3).
+- `${TEST_USER}` — already has sufficient permission to open the modal (confirmed live, see Preconditions).
+
+### generate-shared-with-cleanup (needed for FULL step-4 coverage — not created in this run, see gap below)
+- To assert "every category can be populated with a name+description" per the case's Pass criteria, the environment needs **at least one configured Toolkit/Agent/Pipeline whose name/description semantically matches "GitHub"/"Jira"/generic resource-use language, and which itself has a non-empty description field**. Not created in this exploration to avoid mutating shared project fixtures (`Remote Github` MCP is reused by other automated cases per this project's existing test-data conventions) — flagged as a fixture gap for the implementer (see Automation Hints).
+
+No test data is created or persisted in the product by this AFS's steps (no agent is ever submitted via "Create Agent"). See Cleanup.
+
+## Test Steps
+
+1. Navigate to `${BASE_URL}/agents/create?viewMode=owner`. In the "General" accordion section header, click **"Build with AI"** (`data-testid="generate-agent-open-button"` — present and working live, unlike ELITEA-1915's exploration which found this testid missing; it has since landed) to open the `GenerateAgentModal`. Fill the prompt textarea (`data-testid="generate-agent-prompt-input"`) with the exact test-data prompt: `"An agent that queries GitHub and runs Jira updates"`.
+   - **Verify**: textarea contains exactly the entered text; **"Generate"** button (`data-testid="generate-agent-submit-button"`) becomes enabled. Confirmed live via snapshot before/after fill.
+
+2. Click **"Generate"**.
+   - **Verify**: the modal shows the loading state (`data-testid="generate-agent-loading-indicator"`, `"Generating agent draft..."`), then transitions to the review form once the real (unmocked) DEV backend responds. Confirmed live: `POST /api/v2/elitea_core/generate_application_draft/prompt_lib/399 => [200]` resolved within this run (fast — well under ELITEA-1915's ~30s worst case; no explicit timing assertion needed beyond a generous network-response wait).
+
+3. Observe the review form once generation completes.
+   - **Verify**: `GenerateAgentReviewForm` renders with populated Name (`"GitHub & Jira Integration"`), Description, Instructions, Welcome Message, and 4 conversation starters — all non-empty and contextually relevant to the prompt (name/description mention both GitHub and Jira explicitly). Below the starters, a **`"Suggested MCP:"`** section is present and populated with one item: **`"Remote Github"`**, with an unchecked checkbox to its left. Confirmed via accessibility snapshot and network response body (`GET`-equivalent inspection of the `generate_application_draft` response, see Network Behavior).
+   - **No `"Suggested Toolkits:"`, `"Suggested Pipelines:"`, `"Suggested Agents:"`, or `"Suggested Skills:"` sections rendered** — source-confirmed why: `ResourceSuggestions.jsx:10` (`if (!items?.length) return null;`) hides the whole titled section when its `items` array is empty, and the response body's `suggested_toolkits`/`suggested_pipelines`/`suggested_agents`/`suggested_skills` were all `[]` for this run. Per the Preconditions data audit, this matches the live project inventory (zero toolkits; agents exist but none relevant) rather than indicating a suggestion-engine failure — see step 3's Coverage Map row and Known Defects/Gaps for the caveat this leaves on full coverage. Screenshots: `test-results/screenshots/ELITEA-1907-step3-review-form.png` (full modal), `test-results/screenshots/ELITEA-1907-step3-suggested-mcp-section.png` (cropped to the section — unchecked checkbox + name, no description, visible).
+
+4. Inspect the one rendered suggestion card (`"Remote Github"`, under "Suggested MCP:").
+   - **Verify (name)**: the card's name text reads exactly `"Remote Github"`, matching `SuggestionItem.jsx:48` (`{item.name}`). **Confirmed: asserted.**
+   - **Verify (description) — PARTIAL, environment-limited**: the card shows **no description text** underneath the name. Root-caused via source + live data, not a suggestion-rendering bug: the response body's `suggested_mcp[0].description` is `null` (confirmed via network inspection), and the underlying `Remote Github` MCP entity's own "Description" field (`/mcps/all/3`, form field `Description`) is live-confirmed **empty** — the suggestion engine is correctly passing through the resource's actual (blank) description, and `SuggestionItem.jsx:20-21`'s `showSecondary = secondaryText && secondaryText !== item.name` correctly and deliberately hides the secondary-text row when there's nothing to show (no broken conditional, no fallback placeholder either way). **This means the case's step 4 could not be positively demonstrated end-to-end in this environment** — the only available suggestion candidate happens to have no description of its own. See Known Defects/Gaps below; this is a **test-data gap, not a product defect** (component code is correct for both the "has description" and "no description" cases — only the "has description" path lacks a live fixture to exercise it in this project).
+
+5. Verify no resource is pre-selected.
+   - **Verify**: the `Remote Github` card's checkbox renders unchecked in the initial snapshot (no `checked` attribute in the accessibility tree). **Source-confirmed why, beyond the single live observation**: `GenerateAgentModal.jsx:50-54` initializes all five selection sets (`selectedToolkitIds`, `selectedAgentIds`, `selectedMcpIds`, `selectedPipelineIds`, `selectedSkillIds`) via `useState(new Set())` (empty), and `handleDraftGenerated` (`GenerateAgentModal.jsx:106-112`, fired on every successful generation) explicitly resets all five to fresh empty `Set()`s — so "none pre-selected" is guaranteed by source for **every** generation, not just this run's single MCP suggestion, and would hold identically if multiple categories/items were populated.
+
+## Expected Results
+Matches the case's stated Pass criteria for the parts the live environment could exercise: the review form displays a Suggested Resources section (step 3), each rendered card shows its name (step 4, name half), and no resource is pre-selected (step 5) — all live-verified and source-confirmed. The **description half of step 4 is not fully demonstrated** in this environment (see step 4 and Known Defects/Gaps) because the only live-suggestible resource in this project's inventory has no description of its own; this is a fixture gap, not a functional failure of the feature under test.
+
+## Coverage Map
+
+### Axis 1 — Case coverage
+
+| Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
+|---|---|---|---|---|
+| Precondition: user has admin/editor role | Build with AI accessible | step 1 | step 1: `generate-agent-open-button` rendered and clickable for `${TEST_USER}` | asserted |
+| Precondition: Toolkits/Agents/Pipelines/MCPs exist that could be suggested | achievable | Preconditions data audit | live inventory check of `/toolkits/all`, `/agents/all`, MCPs list — MCPs and Agents exist; Toolkits do not | asserted *(with a caveat — see Known Defects/Gaps: inventory is thin for Toolkits, limiting step-3/4 breadth)* |
+| Precondition: GenerateAgentModal accessible from New Agent page | modal opens | step 1 | step 1: modal dialog renders on click | asserted |
+| 1 Submit description implying resource use | loading → review form transition | steps 1–2 | step 2: loading indicator then review form, network 200 | asserted |
+| 2 Wait for generation to complete | review/edit form displayed | step 2 | step 2: `GenerateAgentReviewForm` fields populated | asserted |
+| 3 Verify Suggested Resources section shown with relevant Toolkits/Agents/Pipelines/MCPs | section present, populated | step 3 | step 3: `"Suggested MCP:"` section present with 1 relevant item; other 4 categories correctly absent per empty/irrelevant inventory | asserted *(scoped — see step 3 note: absence of the other 4 categories is explained by live inventory, not exercised as "populated" per the case's broader phrasing)* |
+| 4 Verify each suggested resource shows name and description | name + description shown | step 4 | step 4: name asserted; description NOT demonstrable with current fixture data | clarification *(test-data gap, not a product defect — see Known Defects/Gaps)* |
+| 5 Verify no resource is pre-selected | all cards unselected | step 5 | step 5: checkbox unchecked, source-confirmed reset-on-generate for all 5 categories | asserted |
+
+### Axis 2 — Analyst additions
+
+- step 1 confirms the `generate-agent-open-button` testid (flagged as **missing** in ELITEA-1915's AFS) is now present and functional — *added: closes the loop on that earlier flagged gap for the entry point specifically; the review-form's own fields and the Suggested Resources cards are a **separate, still-open** testid gap (see Concrete Handles) — the earlier fix did not extend to them.*
+- step 3 documents the exact conditional-render rule (`ResourceSuggestions.jsx:10`) that hides an entire category section when its array is empty — *added: source-confirmed detail an implementer needs to write a category-count-aware assertion instead of assuming all 5 titled sections always render.*
+- step 4 documents the precise root cause of the missing description (empty source-entity field, not a rendering bug) with both a live data check (network response) and a UI check (the MCP's own edit form) — *added: without this, an implementer might misclassify the empty description as a functional bug rather than a fixture gap.*
+- step 5 documents the `handleDraftGenerated` reset call and its `GenerateAgentModal.jsx:106-112` location — *added: mirrors the ELITEA-1915 pattern of citing the exact reset mechanism so "none pre-selected" is asserted as a guaranteed invariant, not an incidental one-run observation.*
+
+## Cleanup
+1. No product state is created by any step in this AFS — the draft is never approved ("Create Agent" is not clicked). Navigating away from `/agents/create` (as done during the Preconditions data audit) is sufficient; no explicit modal-close was performed in this run, but per ELITEA-1915's source citation, `handleClose` (`GenerateEntityModal.jsx:42-53`) fully resets all local state including `handleDraftGenerated`'s selection-set reset.
+2. No temporary fixtures were created in this exploration (the `Remote Github` MCP used for verification is pre-existing, shared project test data — not created or modified by this AFS). No API/DB cleanup needed.
+3. If the implementer creates the `generate-shared-with-cleanup` fixture recommended above (a described Toolkit/Agent/etc. for full step-4 coverage), it must be torn down per this project's existing per-entity API cleanup pattern (`ToolkitAPI.delete_toolkit()` / equivalent — see this agent's memory note on toolkit/MCP create-form quirks) in suite teardown, not left behind.
+
+## Concrete Handles (discovered during exploration)
+
+| Element | Recommended Locator | Fallback |
+|---|---|---|
+| "Build with AI" open button | `page.get_by_test_id("generate-agent-open-button")` — confirmed live, present (gap closed since ELITEA-1915) | n/a — already present |
+| Prompt textarea | `page.get_by_test_id("generate-agent-prompt-input")` — confirmed live, present | n/a — already present |
+| Generate button | `page.get_by_test_id("generate-agent-submit-button")` — confirmed live, present | n/a — already present |
+| Loading indicator | `page.get_by_test_id("generate-agent-loading-indicator")` — confirmed live, present | n/a — already present |
+| Review form Name/Description/Instructions/Welcome Message fields (`GenerateAgentReviewForm.jsx:92-153`) | **testid needed** — plain MUI `TextField`s, zero `data-testid` props (source-confirmed, matches this agent's memory note on the shell/wrapper-vs-review-form testid gap pattern seen for Skill in ELITEA-1990). Suggested names: `generate-agent-review-{name,description,instructions,welcome_message}-input`, mirroring the Skill fix's naming | Per this project's locator policy (testid-only, no fallback ladder) — **flag, do not substitute a CSS/text selector.** Not needed for THIS case's own assertions (name/description/starters aren't asserted by ELITEA-1907), but flagged since the fields are visually adjacent to the Suggested Resources section this case DOES assert on, and a future "edit generated draft fields" case will need them |
+| `"Suggested {Category}:"` section title (`ResourceSuggestions.jsx:14`) | **testid needed** — plain MUI `Typography`, zero `data-testid`. Suggested name: `generate-agent-resource-section-{entityType}` (e.g. `generate-agent-resource-section-mcp`), templated per this project's dynamic-testid convention | Flag — do not substitute `getByText("Suggested MCP:")` in automated code (case-text/label could change); acceptable only as this exploration's interim mechanism |
+| Suggestion item card / row (`SuggestionItem.jsx:26`) | **testid needed** — zero `data-testid` on the card `Box`. Suggested name: `generate-agent-resource-item-{entityType}-{item.id}` | Flag — no stable role/label exists (the whole card is a plain clickable `Box`, not a button/listitem) |
+| Suggestion item checkbox (`SuggestionItem.jsx:30-36`, via `BaseCheckbox`) | **testid needed** — zero `data-testid` passed through to `BaseCheckbox`. Suggested name: `generate-agent-resource-checkbox-{entityType}-{item.id}` | Flag — `getByRole("checkbox")` scoped to the card is usable only for exploration (no accessible name on the checkbox itself to disambiguate multiple cards) |
+| Suggestion item name text (`SuggestionItem.jsx:44-49`) | **testid needed** — plain `Typography`, zero `data-testid`. Suggested name: `generate-agent-resource-name-{entityType}-{item.id}` | Flag |
+| Suggestion item description text (`SuggestionItem.jsx:50-57`, conditionally rendered) | **testid needed** — plain `Typography`, zero `data-testid`, AND conditionally absent from the DOM entirely when `showSecondary` is falsy (see step 4). Suggested name: `generate-agent-resource-description-{entityType}-{item.id}` | Flag — an automated assertion must account for the element sometimes not existing in the DOM at all (empty-description resources), not just being empty text |
+
+**Summary for the implementer / `add-data-testid`:** the "Build with AI" **shell** (modal, prompt input, generate/loading/error controls) is now fully wired with testids — the ELITEA-1915 gap is closed for those elements. What remains ungapped, confirmed by this exploration, is (a) `GenerateAgentReviewForm.jsx`'s own editable fields, and (b) the entire `ResourceSuggestions.jsx` / `SuggestionItem.jsx` component pair (section titles, cards, checkboxes, name/description text) — **zero** `data-testid` anywhere in either file. This exactly matches the pattern this agent's memory already documents for the Skill flow (ELITEA-1990): shell testids landing does not imply the entity-specific review-form child, or in this case the resource-suggestion sub-tree, are covered — they are independent surfaces requiring their own `add-data-testid` pass.
+
+## Network Behavior
+- `POST /api/v2/elitea_core/generate_application_draft/prompt_lib/{project_id}` — sole endpoint the modal calls. Body: `{"user_description": "An agent that queries GitHub and runs Jira updates"}`. Response (this run, `200`): `{"name": "GitHub & Jira Integration", "description": "...", "instructions": "...", "welcome_message": "...", "conversation_starters": [...4 items...], "suggested_toolkits": [], "suggested_mcp": [{"id": 3, "type": "mcp", "name": "Remote Github", "description": null}], "suggested_pipelines": [], "suggested_agents": [], "suggested_skills": []}`. This response body is the authoritative source for step 3/4's assertions — an implementer should assert against the response shape directly (wait on this response) in addition to/instead of only the rendered DOM, since it's the more stable contract.
+- No other network calls are specific to this case's flow; surrounding page-load traffic (`applications`, `tags`, `models`, `permissions`, etc.) is unrelated.
+
+## Known Defects Found During Exploration
+
+**No functional product defect found.** One gap and one self-inflicted non-issue to record:
+
+1. **[Non-blocking — test-data/fixture gap, not filed as a bug] Step 4 (description-per-card) could not be fully demonstrated live.** The only project-configured resource relevant to this run's prompt (`Remote Github` MCP) has an empty `description` field on the entity itself, and the suggestion payload correctly passes that through as `null`. `SuggestionItem.jsx`'s conditional rendering (`showSecondary = secondaryText && secondaryText !== item.name`) is source-confirmed correct for both the "has description" and "no description" cases — there is no broken logic to file. What's missing is environment data: no configured Toolkit/Agent/Pipeline/MCP in project 399 both (a) matches "GitHub"/"Jira" relevance and (b) carries a non-empty description. Recommend the implementer add exactly one such fixture (see Test Data § generate-shared-with-cleanup and Automation Hints) so the description-rendering path has something real to assert against; until then, an automated test for step 4 should assert "name is always shown; description is shown when present, absent from the DOM when not" rather than "description is always shown", to match the verified (not merely hoped-for) contract.
+2. **[Non-blocking, informational — not filed, per this project's testid-vs-tracker routing] `data-testid` coverage gap in `GenerateAgentReviewForm.jsx` and the entire `ResourceSuggestions.jsx`/`SuggestionItem.jsx` pair.** See Concrete Handles. Routed to `add-data-testid`, not the issue tracker, per `.agents/testing.md` § Locator policy (same routing as ELITEA-1915's finding #2).
+3. **[Not a defect — self-inflicted, ruled out during exploration]** While probing the generated-draft response body for a second time via a page-context `fetch()` call, the request CORS-failed (redirected through `dev.elitea.ai/forward-auth/...`). This exactly matches this agent's existing memory note ("raw `fetch()` DELETE/any-verb from page JS context CORS-fails on this app") — confirmed again here for a `GET`-style refetch attempt, not a real product error; the actual generation request (via the real app code, `useGenerateAgentDraftMutation`) succeeded cleanly with zero console errors. Not filed; noted only to explain the 2 console errors visible in this session's log so a reviewer doesn't mistake them for a live defect.
+
+## Blocked Steps
+None outright — all 5 case steps were executed live. Step 4's description-half is **environment-limited, not blocked**: it has a clear, source-grounded resolution (component logic verified correct; only a fixture is missing), documented above rather than left as a bare gap.
+
+## Automation Hints
+- Framework: Playwright + pytest, per `.agents/testing.md`. Likely home: `automation/tests/ui/agents/test_agent_build_with_ai.py` — reuse/extend the file ELITEA-1915 recommended (same modal, same page object) rather than creating a second one.
+- Page object: `automation/pages/generate_agent_modal_page.py` (`GenerateAgentModalPage`, already exists per ELITEA-1915's implementation) — extend with the Suggested Resources locators from Concrete Handles **once their testids land** via `add-data-testid`. Per this project's strict testid-only locator policy, do not automate steps 3-5 with role/text-based selectors in the interim.
+- **Fixture recommendation (blocks full step-4 coverage today):** before implementing this case's step 4 assertion in full, create one small, purpose-built fixture resource (a Toolkit or MCP, via the existing toolkit/MCP creation helpers noted in this agent's memory) named/described to be relevant to a fixed test prompt, WITH a non-empty description, and tear it down in the test's own cleanup (`ToolkitAPI.delete_toolkit()` or equivalent — do not touch the shared `Remote Github` MCP, which other cases likely depend on). Without this fixture, step 4 can only assert the "name" half plus the documented present/absent-in-DOM behavior for description.
+- Wait strategy: `page.wait_for_response(matches the generate_application_draft URL)` for step 2, then assert against the parsed response body directly for steps 3/4 (see Network Behavior) in addition to the rendered DOM — the response body is the more stable, less rendering-detail-coupled contract.
+- For step 5, no polling/wait is needed beyond the review-form render itself — the unselected state is the initial `useState(new Set())` value, not something that settles asynchronously.

@@ -57,3 +57,50 @@ ad-hoc console approach doesn't replicate.
 
 Never use a bare page-context `fetch()` DELETE as a cleanup shortcut on
 this app — it will silently fail with a CORS error, not a clean 200/204.
+Also true for a page-context `fetch()` GET re-probe of a POST response
+(confirmed again in ELITEA-1907) — same CORS redirect through
+`dev.elitea.ai/forward-auth/...`. Use `browser_network_request(index,
+part: 'response-body')` on the original request instead of re-fetching.
+
+## ELITEA-1907: ResourceSuggestions/SuggestionItem — third independent
+## testid-bare surface in the Agent "Build with AI" tree
+
+`GenerateAgentReviewForm.jsx` renders `<ResourceSuggestions>` (one per
+category: toolkit/mcp/pipeline/agent/skill) which renders `<SuggestionItem>`
+per suggested resource. Confirmed (2026-07-16) both files have ZERO
+`data-testid` anywhere — section title, card, checkbox, name text,
+description text. This is a fourth surface (shell / wrapper / review-form
+fields / **resource-suggestion sub-tree**) independent of the three already
+tracked above — landing testids on the review-form's own TextFields would
+NOT cover this one either. Suggested naming for whoever runs
+`add-data-testid` next: `generate-agent-resource-section-{entityType}`,
+`generate-agent-resource-item-{entityType}-{id}`,
+`generate-agent-resource-checkbox-{entityType}-{id}`,
+`generate-agent-resource-name-{entityType}-{id}`,
+`generate-agent-resource-description-{entityType}-{id}` (dynamic,
+`{entityType}-{id}` param order per this project's naming convention).
+
+## ELITEA-1907: suggestion categories are inventory-gated, not just
+## relevance-gated — thin test-project data silently hides whole sections
+
+`ResourceSuggestions.jsx` returns `null` (renders nothing, not even the
+section title) when its `items` array is empty. The generate-draft
+response's `suggested_toolkits`/`suggested_agents`/`suggested_pipelines`/
+`suggested_mcp`/`suggested_skills` arrays appear to be filtered from
+**project-configured resources only** (not the toolkit-type catalog) AND
+by relevance to the prompt. Confirmed live in project 399: zero configured
+Toolkits at all (nav to `/toolkits/all` redirects to the empty
+`/toolkits/create` state) → `suggested_toolkits` always `[]` regardless of
+prompt; 6 configured Agents but none GitHub/Jira-relevant → correctly `[]`
+for that prompt. **Before treating an empty suggestion category as a
+suggestion-engine defect, audit the project's actual configured-resource
+inventory for that category first** — an empty category is very often a
+thin-fixture artifact of this shared dev-backend project, not a bug.
+Corollary: a suggested resource's `description` in the response is a
+straight pass-through of that resource's OWN description field — if you
+need to prove the "card shows name + description" UI path, you need a
+fixture resource that (a) is relevant to your test prompt AND (b) itself
+has a non-empty description filled in. The one pre-existing relevant
+resource in project 399 (`Remote Github` MCP, id 3) has an empty
+description, so it can only prove the "name shown, description
+correctly absent" half, not the "description shown" half.

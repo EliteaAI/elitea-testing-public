@@ -40,3 +40,17 @@ Credentials/Mcp/Skills/Applications/Toolkits list-page case that reuses the
 shared `Card.jsx` `entity-card` testid inherits the SAME #544 blocker until
 that sibling case's testid PR merges — worth checking for on every future
 case in this family, not just re-deriving from scratch each time.
+
+**Third recurrence (control-audit, issue #83, ELITEA-1963, 2026-07-16):**
+same `entity-card`/`EliteaUI#544` blocker, third case in the family, and this
+time the delivering session's own closure record HAD already done real
+diligence — it correctly caught and disclosed two OTHER reused-testid
+blockers (`EliteaUI#562`, `EliteaUI#554`) that neither of the prior two
+deliveries surfaced — and still mis-marked the `entity-card` row as "already
+fully promoted." Lesson sharpened: partial diligence on a promotability table
+does not earn partial credit on the audit — every row is an independent hard
+claim, and getting 2 of 3 rows right while the 3rd is flatly wrong is still a
+FAIL. `EliteaUI#544` (EL-1740) remains open as of this recurrence; its own
+canon question `#277` has now also crossed the 24h unanswered threshold —
+worth escalating since resolving/merging #544 removes this blocker from an
+entire case family at once instead of relitigating it per-case.
