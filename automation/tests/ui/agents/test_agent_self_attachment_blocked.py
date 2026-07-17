@@ -103,12 +103,11 @@ class TestAgentSelfAttachmentBlocked:
             "is absent from the unfiltered initial list"
         ):
             popper = detail_page.open_agent_picker(timeout=UI_ELEMENT_TIMEOUT)
+            # '{AGENT_NAME}' should not appear in its own unfiltered agent
+            # picker list
             expect(
                 detail_page.get_agent_picker_menuitem(popper, AGENT_NAME)
-            ).not_to_be_visible(timeout=UI_ELEMENT_TIMEOUT), (
-                f"'{AGENT_NAME}' should not appear in its own unfiltered "
-                "agent picker list"
-            )
+            ).not_to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step(
             f"Step 3 — Search the picker for the agent's own exact name "
@@ -137,12 +136,11 @@ class TestAgentSelfAttachmentBlocked:
             "items after searching its own name (DOM-level, not "
             "network-response-level — see module docstring)"
         ):
+            # '{AGENT_NAME}' should not appear in its own agent picker
+            # search results, even when searching its exact own name
             expect(
                 detail_page.get_agent_picker_menuitem(popper, AGENT_NAME)
-            ).not_to_be_visible(timeout=UI_ELEMENT_TIMEOUT), (
-                f"'{AGENT_NAME}' should not appear in its own agent picker "
-                "search results, even when searching its exact own name"
-            )
+            ).not_to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
         assert not console_errors, (
             "Expected no console errors from the agent-picker search flow, "
