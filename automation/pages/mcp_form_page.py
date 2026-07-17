@@ -150,6 +150,56 @@ class McpFormPage(BasePage):
     # evaluate()-based waits, e.g. dismiss_banner_if_present()).
     DETAIL_TITLE_SELECTOR = '[data-testid="toolkit-detail-title"]'
 
+    # ------------------------------------------------------------------
+    # Tools section (Configuration accordion, "TOOLS" sub-heading) —
+    # added ELITEA-1933. Testids added to EliteaUI this session
+    # (ToolActionsSelector.jsx / EmptyMcpTools.jsx / ToolActionsItems.jsx /
+    # ChipWithCheckIcon.jsx / TestToolSettings.jsx), confirmed live.
+    # ------------------------------------------------------------------
+    tools_empty_state = LocatorDescriptor(
+        testid="toolkit-tools-empty-state",
+        description="Tools section empty-state message, shown before any tool is loaded",
+    )
+    load_tools_button = LocatorDescriptor(
+        testid="toolkit-load-tools-button",
+        description="'Load Tools' clickable label in the Tools section header",
+    )
+    test_tool_select = LocatorDescriptor(
+        testid="toolkit-test-tool-select",
+        description="Test Settings panel's 'Tool' select — choosing an option renders "
+        "that tool's parameter schema as live input fields (NOT the Tools-section "
+        "pill click, which only toggles selected_tools membership — case-text "
+        "clarification filed as issue #595, see ELITEA-1933 AFS)",
+    )
+
+    # Dynamic (runtime-parameterized) testid — one MUI Chip per discovered tool.
+    # Class-level template constant per .agents/testing.md § Locator policy;
+    # never an inline f-string get_by_test_id in a method body.
+    TOOL_CHIP = '[data-testid="toolkit-tool-chip-{}"]'
+    TOOL_CHIP_PREFIX = '[data-testid^="toolkit-tool-chip-"]'
+
+    # Shared dropdown-option testid family (SingleSelectMenuItem.jsx), same
+    # pattern already used by PipelineDetailPage.SELECT_OPTION — this page
+    # object's own copy since it has no shared base with pipeline_detail_page.
+    SELECT_OPTION = '[data-testid="select-option-{}"]'
+
+    # Test Settings panel's schema-rendered parameter fields — one per
+    # tool-schema property, keyed by the JSON-schema property name (e.g.
+    # "repoName", "question"). Added ELITEA-1933 review pass (EliteaUI
+    # CommonStringField.jsx / AnyOfPatternField.jsx, both consumed only via
+    # ToolFormContainer.jsx -> TestToolSettings.jsx, so this testid never
+    # collides with the create/detail form's own toolkit-field-* testids,
+    # which come from a different component (ToolBaseProperty.jsx)). Dynamic
+    # class-level template constant per .agents/testing.md § Locator policy —
+    # args_schema properties differ per MCP tool, so no fixed testid exists.
+    TEST_PARAM_FIELD = '[data-testid="toolkit-test-param-{}"]'
+
+    # Raw Json editor's own testid, fed into page.evaluate() JS (a raw DOM
+    # query string, not a Playwright locator) by get_raw_json_full() — same
+    # "class-level selector constant consumed by evaluate()" shape as
+    # DETAIL_TITLE_SELECTOR above.
+    RAW_JSON_EDITOR_SELECTOR = '[data-testid="toolkit-raw-json-editor-content"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -579,6 +629,125 @@ class McpFormPage(BasePage):
         text = self.raw_json_editor_content.text_content() or ""
         return json.loads(text)
 
+    def get_raw_json_full(self) -> dict:
+        """Read and parse the Raw Json view's FULL content, working around CodeMirror virtualization.
+
+        :meth:`get_raw_json` reads ``raw_json_editor_content.text_content()`` in a
+        single call, which silently truncates on a payload this large — CodeMirror
+        only keeps a viewport-sized window of ``.cm-line`` nodes in the DOM at a
+        time (confirmed live at ELITEA-1933 implementer exploration: a 3-tool
+        ``available_mcp_tools`` payload truncates mid-schema at ~30 of ~85 lines
+        with NO error — the read either raises ``json.JSONDecodeError`` or, worse,
+        happens to end on a coincidentally-valid partial JSON that silently passes
+        an assertion against the wrong data).
+
+        Declared as a NEW method rather than a modification of
+        :meth:`get_raw_json` per the additive-only shared-caller-file rule
+        (test-automation-workflow skill § Hard Rules → 3): three existing specs
+        (``test_mcp_create_remote.py``, ``test_mcp_edit_raw_json_description.py``,
+        ``test_mcp_edit_toggle_enable_caching.py``) call ``get_raw_json()`` today
+        against small (<30-line) payloads where the truncation never triggers —
+        changing that method's body would have been an unproven behavior change
+        for those callers, so this case gets its own method instead. All three
+        callers re-ran green, unmodified, against this same commit (see PR
+        description).
+
+        Approach: the CodeMirror ``.cm-content`` node itself never overflows (its
+        own ``scrollHeight`` always equals its ``clientHeight`` — it grows to fit
+        the full document), so scrolling it directly is a no-op. The actual
+        scrollable ancestor (a MUI Grid column wrapping the whole Configuration
+        panel) is what CodeMirror's internal viewport-visibility tracking keys
+        off — found by walking up from the editor for the first ancestor with
+        real overflow (``scrollHeight > clientHeight``), rather than hardcoding a
+        MUI-generated ``css-*`` class name (confirmed live: the class hash is not
+        a stable selector).
+
+        Scrolls that ancestor in ``clientHeight``-sized steps from 0 to its
+        ``scrollHeight``; after each step, reads every currently-rendered
+        ``.cm-line`` node's ``offsetTop`` (stable within the CM6 document — a
+        given line keeps the same absolute offset no matter which scroll
+        position revealed it) paired with its text. Aggregating by ``offsetTop``
+        across all steps both de-duplicates lines seen more than once (adjacent
+        scroll windows overlap) and reconstructs correct document order (final
+        sort by that same key). A single scroll-to-bottom-then-read does NOT
+        work: CodeMirror replaces its rendered line set on each scroll rather
+        than extending it (confirmed live — scrolling straight to the bottom
+        surfaces only the last ~53 lines, never the first ~30).
+
+        Returns:
+            The full Raw Json payload, parsed.
+        """
+        ancestor_meta = self.page.evaluate(
+            """(selector) => {
+                const el = document.querySelector(selector);
+                let node = el;
+                while (node && node !== document.body) {
+                    const cs = getComputedStyle(node);
+                    if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll')
+                            && node.scrollHeight > node.clientHeight) {
+                        return {scrollHeight: node.scrollHeight, clientHeight: node.clientHeight};
+                    }
+                    node = node.parentElement;
+                }
+                return null;
+            }""",
+            self.RAW_JSON_EDITOR_SELECTOR,
+        )
+        if ancestor_meta is None:
+            # No scrollable ancestor — the whole document already fits in one
+            # render (small payload), so a single text_content() read is
+            # complete and correct (same read get_raw_json() performs).
+            return self.get_raw_json()
+
+        collected: dict[int, str] = {}
+        # Half the viewport height per step (not clientHeight - a fixed small
+        # margin) — CodeMirror's render window varies with viewport size
+        # (confirmed live: a headless run's narrower viewport left a gap between
+        # scroll steps that a fixed "-40" margin didn't cover, producing invalid
+        # JSON), so a proportional 50% overlap is used instead to stay safe
+        # across viewport sizes.
+        step = max(ancestor_meta["clientHeight"] // 2, 50)
+        scroll_height = ancestor_meta["scrollHeight"]
+        positions = list(range(0, scroll_height, step)) + [scroll_height]
+        for pos in positions:
+            # Async evaluate: set scrollTop, then await two animation frames
+            # before reading .cm-line — CodeMirror's viewport-visibility
+            # recompute is itself rAF-scheduled off the scroll event, so a
+            # synchronous set-then-read in one tick (the first version of this
+            # method) sometimes read the PREVIOUS scroll position's rendered
+            # lines, leaving a gap between steps that broke the reconstructed
+            # JSON (confirmed live: passed when driven by separate slow
+            # subprocess calls during manual exploration, failed under pytest's
+            # faster back-to-back calls). Two rAFs is a condition-based wait on
+            # the browser's own render pipeline, not an arbitrary sleep.
+            pairs = self.page.evaluate(
+                """async ([selector, scrollTop]) => {
+                    const el = document.querySelector(selector);
+                    let node = el;
+                    while (node && node !== document.body) {
+                        const cs = getComputedStyle(node);
+                        if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll')
+                                && node.scrollHeight > node.clientHeight) {
+                            node.scrollTop = scrollTop;
+                            break;
+                        }
+                        node = node.parentElement;
+                    }
+                    await new Promise(resolve => requestAnimationFrame(
+                        () => requestAnimationFrame(resolve)
+                    ));
+                    return Array.from(el.querySelectorAll('.cm-line')).map(
+                        line => [line.offsetTop, line.textContent]
+                    );
+                }""",
+                [self.RAW_JSON_EDITOR_SELECTOR, pos],
+            )
+            for top, text in pairs:
+                collected[top] = text
+
+        full_text = "\n".join(collected[top] for top in sorted(collected))
+        return json.loads(full_text)
+
     def get_detail_heading_text(self) -> str:
         """Return the toolkit detail page's title heading text.
 
@@ -588,3 +757,104 @@ class McpFormPage(BasePage):
         confirmed at ELITEA-1922 implementer exploration).
         """
         return self.detail_title.text_content() or ""
+
+    # ------------------------------------------------------------------
+    # Tools section — Load Tools, discovered tool pills — added ELITEA-1933
+    # ------------------------------------------------------------------
+
+    def get_tools_empty_state_text(self) -> str:
+        """Return the Tools section's empty-state message text (shown before Load Tools)."""
+        return self.tools_empty_state.text_content() or ""
+
+    @action("Click Load Tools and wait for tools discovery to resolve")
+    def click_load_tools(self, project_id: str, timeout: int = SAVE_RESPONSE_TIMEOUT) -> dict:
+        """Click "Load Tools" and wait for the tools-discovery POST to resolve.
+
+        Waits on the real ``POST .../mcp_sync_tools/prompt_lib/{project}
+        ?await_response=true`` response (the actual tools-discovery call) rather
+        than the transient "Successfully fetched N tools" toast (auto-dismisses,
+        unreliable timing) or a fixed timeout (AFS § Automation Hints /
+        Network Behavior).
+
+        Args:
+            project_id: Project id, used to scope the response URL match.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the ``200`` ``mcp_sync_tools`` response.
+        """
+        with self.page.expect_response(
+            lambda r: f"/mcp_sync_tools/prompt_lib/{project_id}" in r.url
+            and "await_response=true" in r.url
+            and r.request.method == "POST"
+            and r.status == 200,
+            timeout=timeout,
+        ) as response_info:
+            self.load_tools_button.click()
+        return response_info.value.json()
+
+    def get_discovered_tool_names(self) -> list[str]:
+        """Return the tool names of every discovered-tool pill in the Tools section.
+
+        Reads each pill's dynamic ``toolkit-tool-chip-{tool_name}`` testid (see
+        :attr:`TOOL_CHIP_PREFIX`) rather than its visible label — the label is a
+        cosmetically reformatted display string (e.g. ``read_wiki_structure`` ->
+        "Read wiki structure"), while the testid suffix carries the tool's raw
+        ``value`` (the same identifier used in Raw Json's ``available_mcp_tools``/
+        ``selected_tools``), so this is the stable cross-check handle.
+        """
+        prefix = "toolkit-tool-chip-"
+        chips = self.page.locator(self.TOOL_CHIP_PREFIX)
+        testids = [chips.nth(i).get_attribute("data-testid") or "" for i in range(chips.count())]
+        return [t[len(prefix):] for t in testids if t.startswith(prefix)]
+
+    def is_tool_chip_selected(self, tool_name: str) -> bool:
+        """Return whether the discovered-tool pill for *tool_name* shows the checkmark (is selected).
+
+        Reads the ``data-selected`` state attribute (UI-team ruling — testid is
+        stable identity, state lives in a separate ``data-*`` attribute, never
+        baked into the testid itself), not the checkmark icon's presence via a
+        CSS/SVG selector.
+        """
+        chip = self.page.locator(self.TOOL_CHIP.format(tool_name))
+        return chip.get_attribute("data-selected") == "true"
+
+    @action("Toggle a discovered tool's selection")
+    def toggle_tool_selected(self, tool_name: str) -> None:
+        """Click the discovered-tool pill for *tool_name*, toggling its ``selected_tools`` membership.
+
+        Named ``toggle_tool_selected`` rather than a "click shows details"-style
+        name — the case text's step 8 ("clicking a tool shows details/schema") is
+        the AFS's case-text clarification (issue #595): a Tools-section pill click
+        only toggles selection, it never opens a schema panel. Use
+        :meth:`select_test_tool` for the schema-on-select behavior.
+        """
+        was_selected = self.is_tool_chip_selected(tool_name)
+        self.page.locator(self.TOOL_CHIP.format(tool_name)).click()
+        expected = "false" if was_selected else "true"
+        expect(self.page.locator(self.TOOL_CHIP.format(tool_name))).to_have_attribute(
+            "data-selected", expected, timeout=UI_ELEMENT_TIMEOUT
+        )
+
+    @action("Select a tool in the Test Settings panel")
+    def select_test_tool(self, tool_name: str) -> None:
+        """Open the Test Settings "Tool" dropdown and select *tool_name*.
+
+        This is the affordance that actually renders the tool's parameter schema
+        as live input fields — NOT the Tools-section pill click (AFS step 9 /
+        issue #595 case-text clarification).
+        """
+        self.test_tool_select.click()
+        option = self.page.locator(self.SELECT_OPTION.format(tool_name))
+        option.click(timeout=UI_ELEMENT_TIMEOUT)
+
+    def is_test_param_field_visible(self, field_key: str, timeout: int = UI_ELEMENT_TIMEOUT) -> bool:
+        """Wait for and return whether the Test Settings panel's *field_key* parameter field is visible.
+
+        *field_key* is the JSON-schema property name (e.g. ``"repoName"``,
+        ``"question"``) rendered after :meth:`select_test_tool` — see
+        :attr:`TEST_PARAM_FIELD`.
+        """
+        field = self.page.locator(self.TEST_PARAM_FIELD.format(field_key))
+        field.wait_for(state="visible", timeout=timeout)
+        return field.is_visible()
