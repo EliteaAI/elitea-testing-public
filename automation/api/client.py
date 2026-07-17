@@ -1428,6 +1428,39 @@ class SkillAPI:
         _raise_for_status(resp)
         return resp.json()
 
+    def create_skill(self, name: str, description: str, instructions: str) -> dict:
+        """Create a new skill and return its JSON representation.
+
+        Mirrors ``AgentAPI.create_agent_full()``'s "raw payload" convenience
+        pattern, scoped to the fields the Skill create endpoint actually
+        needs. Payload shape confirmed source-side against EliteaUI's
+        ``skillsApi.js`` (``skillCreate`` mutation): ``{name, description,
+        versions: [{name: "base", instructions}]}`` — ``"base"`` is
+        ``LATEST_VERSION_NAME`` (``entities/version/lib/constants``). Added
+        for ELITEA-1911 (the AFS's own exploration created its fixture
+        Skills via the live UI form, flagging this convenience method as
+        the missing piece — see the AFS's Automation Hints).
+
+        Args:
+            name: Skill name. The UI form constrains this to lowercase
+                letters, digits, and hyphens, max 32 characters, no leading
+                or trailing hyphen (live-confirmed client-side validation
+                message) — callers should pre-validate names against that
+                format to avoid surprises if the API enforces it too.
+            description: Skill description (required by the API).
+            instructions: The "base" version's instructions text.
+        """
+        url = self._skills_url()
+        payload = {
+            "name": name,
+            "description": description,
+            "versions": [{"name": "base", "instructions": instructions}],
+        }
+        logger.debug("CREATE skill %s name=%s", url, name)
+        resp = self._session.post(url, json=payload)
+        _raise_for_status(resp)
+        return resp.json()
+
     def delete_skill(self, skill_id: int) -> None:
         """Delete a skill by ID.
 
