@@ -103,6 +103,11 @@ class AgentDetailPage(AgentFormPage):
     # ToolCard/agent-toolkit-card rendering with Toolkit attachments; see
     # add_mcp() below (ELITEA-1950).
     add_mcp_button = LocatorDescriptor(testid="agent-add-mcp-button")
+    # "+ Agent" add button (ToolMenu.jsx) — opens a popper listing other
+    # project agents that could be attached as sub-agent tools. Added
+    # ELITEA-1887, pushed to automation/testids commit ce74cd40. See
+    # open_agent_picker() below.
+    add_agent_button = LocatorDescriptor(testid="agent-add-agent-button")
     toolkit_card = LocatorDescriptor(testid="agent-toolkit-card")
     toolkit_delete_button = LocatorDescriptor(testid="agent-toolkit-delete-button")
     toolkit_search_input = LocatorDescriptor(testid="toolkit-search-input")
@@ -1087,6 +1092,68 @@ class AgentDetailPage(AgentFormPage):
         self.page.wait_for_timeout(1000)
         self.wait_for_network(timeout=timeout)
         logger.info("MCP '%s' added to agent", mcp_name)
+
+    @action("Open agent picker")
+    def open_agent_picker(self, timeout: int = 10000) -> Locator:
+        """Open the Tools section's "+ Agent" picker popper (ELITEA-1887).
+
+        Mirrors :meth:`add_toolkit` / :meth:`add_mcp`'s click-then-wait-for-
+        popper pattern, but deliberately does NOT select anything — this
+        picker is used to inspect which agents it lists (self-attachment
+        exclusion check), never to attach.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator of the visible MUI popper (see ``components.mui.Popper``).
+        """
+        logger.info("Opening agent picker")
+        self.ensure_toolkits_section_visible(timeout=timeout)
+        self.add_agent_button.wait_for(state="visible", timeout=timeout)
+        self.add_agent_button.click(force=True)
+        self.page.wait_for_timeout(1000)
+        return Popper.wait_for(self.page, timeout=timeout)
+
+    @action("Search agent picker")
+    def search_agent_picker(self, popper: Locator, query: str, settle_ms: int = 1000):
+        """Type *query* into the agent picker's search input (ELITEA-1887).
+
+        Reuses the shared ``toolkit-search-input`` testid — the same
+        ``UnifiedDropdown`` popper component family as the Toolkit/MCP/Skill
+        pickers renders it unconditionally regardless of entity type.
+
+        Args:
+            popper: Locator of the popper element (from :meth:`open_agent_picker`).
+            query: Text to type into the search field.
+            settle_ms: Milliseconds to wait after typing for the debounced
+                search request to fire (server-side debounce is 200ms).
+        """
+        Popper.search(popper, query, self.page, settle_ms=settle_ms)
+
+    def get_agent_picker_menuitem(self, popper: Locator, agent_name: str) -> Locator:
+        """Return the picker's menuitem locator for *agent_name*, scoped to *popper*.
+
+        The picker's dynamically-named list items carry no per-item testid
+        (same established pattern as :meth:`components.mui.Popper.select_menuitem`'s
+        targets), so matching is by exact accessible name via ``role="menuitem"``.
+        The returned locator may resolve to zero elements — that's the
+        expected/asserted state for ELITEA-1887 (self-attachment blocked):
+        the backend does NOT filter the current agent out of its own search
+        results (confirmed via network capture — the API response includes
+        the self-agent row); self-exclusion is enforced entirely
+        client-side (``ToolMenu.jsx:401``). Callers must assert DOM-level
+        menu-item absence via this locator, never network-response
+        emptiness.
+
+        Args:
+            popper: Locator of the popper element.
+            agent_name: Exact agent name to look for.
+
+        Returns:
+            Locator scoped to the matching menuitem (may be empty/hidden).
+        """
+        return popper.get_by_role("menuitem", name=agent_name, exact=True)
 
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit is attached to the agent.
