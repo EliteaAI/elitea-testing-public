@@ -183,6 +183,17 @@ class McpFormPage(BasePage):
     # object's own copy since it has no shared base with pipeline_detail_page.
     SELECT_OPTION = '[data-testid="select-option-{}"]'
 
+    # Test Settings panel's schema-rendered parameter fields — one per
+    # tool-schema property, keyed by the JSON-schema property name (e.g.
+    # "repoName", "question"). Added ELITEA-1933 review pass (EliteaUI
+    # CommonStringField.jsx / AnyOfPatternField.jsx, both consumed only via
+    # ToolFormContainer.jsx -> TestToolSettings.jsx, so this testid never
+    # collides with the create/detail form's own toolkit-field-* testids,
+    # which come from a different component (ToolBaseProperty.jsx)). Dynamic
+    # class-level template constant per .agents/testing.md § Locator policy —
+    # args_schema properties differ per MCP tool, so no fixed testid exists.
+    TEST_PARAM_FIELD = '[data-testid="toolkit-test-param-{}"]'
+
     # Raw Json editor's own testid, fed into page.evaluate() JS (a raw DOM
     # query string, not a Playwright locator) by get_raw_json_full() — same
     # "class-level selector constant consumed by evaluate()" shape as
@@ -836,3 +847,14 @@ class McpFormPage(BasePage):
         self.test_tool_select.click()
         option = self.page.locator(self.SELECT_OPTION.format(tool_name))
         option.click(timeout=UI_ELEMENT_TIMEOUT)
+
+    def is_test_param_field_visible(self, field_key: str, timeout: int = UI_ELEMENT_TIMEOUT) -> bool:
+        """Wait for and return whether the Test Settings panel's *field_key* parameter field is visible.
+
+        *field_key* is the JSON-schema property name (e.g. ``"repoName"``,
+        ``"question"``) rendered after :meth:`select_test_tool` — see
+        :attr:`TEST_PARAM_FIELD`.
+        """
+        field = self.page.locator(self.TEST_PARAM_FIELD.format(field_key))
+        field.wait_for(state="visible", timeout=timeout)
+        return field.is_visible()

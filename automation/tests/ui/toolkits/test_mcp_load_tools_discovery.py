@@ -124,16 +124,18 @@ def test_mcp_load_tools_discovery(page, toolkit_api: ToolkitAPI):
         ):
             form.select_test_tool("ask_question")
             # ask_question's schema requires repoName (string or array-of-strings,
-            # anyOf) and question (string) — assert the rendered field labels,
-            # which are the schema-on-select proof (AFS step 9 / Concrete Handles:
-            # Test Settings fields have no testid, located by label text per
-            # .claude/rules/mui-patterns.md § Test Settings Panel).
-            page.get_by_text("repoName", exact=False).first.wait_for(state="visible", timeout=10_000)
-            assert page.get_by_text("repoName", exact=False).first.is_visible(), (
+            # anyOf) and question (string) — assert the rendered fields, which are
+            # the schema-on-select proof (AFS step 9). Located via the dynamic
+            # toolkit-test-param-{fieldKey} testid (EliteaUI automation/testids
+            # commit a3c58b93, CommonStringField.jsx / AnyOfPatternField.jsx) —
+            # per-review fix: these are ordinary EliteaUI elements, not a
+            # documented stop+flag exception, so a raw get_by_text() locator was
+            # a testid-only policy violation (.agents/testing.md § Locator policy).
+            assert form.is_test_param_field_visible("repoName"), (
                 "ask_question's 'repoName' parameter field should render after selecting "
                 "the tool in the Test Settings dropdown"
             )
-            assert page.get_by_text("question", exact=False).first.is_visible(), (
+            assert form.is_test_param_field_visible("question"), (
                 "ask_question's 'question' parameter field should render after selecting "
                 "the tool in the Test Settings dropdown"
             )
