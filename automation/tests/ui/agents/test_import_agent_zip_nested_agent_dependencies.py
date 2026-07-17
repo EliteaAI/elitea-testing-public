@@ -140,6 +140,15 @@ class TestImportAgentZipNestedAgentDependencies:
         imported_nested_agent_id = None
         download_path = None
 
+        # Registered before Step 1 (not inside it) so the zero-console-errors
+        # assertion at the end genuinely covers the FULL flow — agent
+        # creation + attach included, not just export/import onward.
+        console_messages = []
+        page.on(
+            "console",
+            lambda msg: console_messages.append(msg) if msg.type == "error" else None,
+        )
+
         try:
             with allure.step(
                 "Step 1 — Precondition setup: create a nested Agent, then a "
@@ -169,12 +178,6 @@ class TestImportAgentZipNestedAgentDependencies:
                 "Step 2 — Export the main Agent via the actions overflow "
                 "menu; verify a .zip file is downloaded"
             ):
-                console_messages = []
-                page.on(
-                    "console",
-                    lambda msg: console_messages.append(msg) if msg.type == "error" else None,
-                )
-
                 download = detail_page.export_agent_via_menu(timeout=UI_ELEMENT_TIMEOUT)
                 assert download.suggested_filename.endswith(".zip"), (
                     "Exporting an Agent with a nested Agent dependency should "
