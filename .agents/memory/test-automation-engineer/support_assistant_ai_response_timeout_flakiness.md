@@ -54,3 +54,19 @@ mandated full-file regression run flakes on an AI-response wait:
    enough signal that the 60s ceiling itself may need raising or the wait
    strategy needs hardening, but that's a framework-scale call, not an
    implementer-scope fix.
+
+## 3rd occurrence (ELITEA-1799, 2026-07-17, PR #608)
+
+A single full-file run (all 6 tests in the file) hit ALL 4 AI-response-
+dependent tests failing simultaneously with the identical
+`Page.wait_for_function: Timeout 60000ms exceeded` signature —
+`test_widget_state_persists_after_close_reopen`,
+`test_send_message_and_receive_response`,
+`test_new_chat_creates_fresh_session` (the one being extended by this PR),
+and `test_history_restore_and_continue`. This is worse than the prior 2
+occurrences (2-3 tests across 2 separate runs) — same run hit every
+AI-dependent test in the file. An immediate isolated re-run of the target
+test (`-p no:cacheprovider`) was clean. Escalation signal is now stronger:
+3 separate sittings, worst occurrence yet — still recommend raising this as
+a dedicated flake-investigation candidate rather than accepting it as
+permanent background noise.
