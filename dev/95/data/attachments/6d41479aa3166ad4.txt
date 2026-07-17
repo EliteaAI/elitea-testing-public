@@ -1,0 +1,4 @@
+📸 After save: URL=https://dev.elitea.ai/app/credentials/create-credential/confluence
+
+🍪 Using fresh cookies from browser context: 6 cookies
+🔗 CredentialAPI: base_url=https://dev.elitea.ai/api/v2 project_id=579

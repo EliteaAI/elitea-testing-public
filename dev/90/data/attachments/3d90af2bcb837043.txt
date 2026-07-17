@@ -1,1 +1,0 @@
-WARNING  elitea.tests.skills:test_skill_conversation_interaction.py:200 Known defect #38 reproduced: plain message was forced UPPER CASE: 'WHY DID THE ROBOT GO ON A DIET?\nIT HAD TOO MANY BYTES.'
