@@ -105,6 +105,22 @@ class AgentsListPage(BasePage):
                      "text (visible only once its card is expanded)"
     )
 
+    # -- Nested-Agent preview (ELITEA-1902, testid-only rework — EliteaUI
+    # commit 74f72323 on automation/testids) -- the "Nested entities" block
+    # renders nested-Agent dependency cards with these NEW testids, mirroring
+    # the Skill-card pattern above (name/instructions text, shared
+    # `import_preview_card_toggle` toggle across every card type).
+    import_preview_nested_agent_name = LocatorDescriptor(
+        testid="agent-import-preview-nested-agent-name",
+        description="Import preview — the nested (dependency) Agent's name"
+    )
+
+    import_preview_nested_agent_instructions = LocatorDescriptor(
+        testid="agent-import-preview-nested-agent-instructions",
+        description="Import preview — the nested (dependency) Agent's "
+                     "instructions text (visible only once its card is expanded)"
+    )
+
     import_confirm_button = LocatorDescriptor(
         testid="agent-import-confirm-button",
         description="'Import parameters' dialog's scoped Import (confirm) button"
@@ -479,12 +495,13 @@ class AgentsListPage(BasePage):
         """Expand every "Show details" toggle in the Import parameters dialog.
 
         Unlike the Skill import dialog (a single entity preview), the
-        Agent import dialog renders two collapsed preview sections —
-        "Main entity" (the Agent) and "Skills" (each embedded Skill) —
-        each behind its own "Show details" toggle
-        (``IWModalEntityCardWrapper``, ``defaultExpanded=false``). Clicks
-        all of them so Description/Instructions preview text is actually
-        rendered (non-zero height) before assertions read it.
+        Agent import dialog renders collapsed preview sections — "Main
+        entity" (the Agent), "Skills" (each embedded Skill), and (ELITEA-1902)
+        "Nested entities" (each embedded nested Agent) — each behind its own
+        "Show details" toggle (``IWModalEntityCardWrapper``,
+        ``defaultExpanded=false``). Clicks all of them so Description/
+        Instructions preview text is actually rendered (non-zero height)
+        before assertions read it.
 
         Every toggle carries the SAME ``agent-import-preview-card-toggle``
         data-testid, ALWAYS present, with ``data-expanded`` reflecting the
@@ -506,12 +523,18 @@ class AgentsListPage(BasePage):
             expanded_count += 1
             self.page.wait_for_timeout(200)
         if expanded_count:
-            # Grid-template-rows CSS transition (0.4s) — wait for the
-            # Skill instructions preview to actually be visible rather
-            # than a fixed sleep.
-            self.import_preview_skill_instructions.first.wait_for(
-                state="visible", timeout=timeout,
-            )
+            # Grid-template-rows CSS transition (0.4s) — wait for whichever
+            # instructions preview this dialog actually renders to become
+            # visible rather than a fixed sleep. A Skill-only import (the
+            # pre-ELITEA-1902 caller) renders `import_preview_skill_instructions`;
+            # a nested-Agent-only import (ELITEA-1902) renders
+            # `import_preview_nested_agent_instructions` instead — neither
+            # locator exists in the other scenario, so `.or_()` resolves on
+            # whichever one is actually present without changing behavior
+            # for the pre-existing Skill-only callers.
+            self.import_preview_skill_instructions.first.or_(
+                self.import_preview_nested_agent_instructions.first
+            ).wait_for(state="visible", timeout=timeout)
         logger.info(
             "Expanded %d 'Show details' toggle(s) in import dialog", expanded_count,
         )
