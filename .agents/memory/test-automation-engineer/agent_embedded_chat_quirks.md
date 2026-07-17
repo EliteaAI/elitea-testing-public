@@ -61,3 +61,20 @@ an agent's embedded chat panel). Source: `automation/pages/agent_detail_page.py`
    `get_skills_counter_text()` for a change rather than trusting
    `wait_for_network()` alone (silent race otherwise: attach "succeeds" with
    no error, counter briefly still reads the old value).
+
+6. **`chat-message-item` is a SHARED testid for BOTH agent and user bubbles**
+   (ELITEA-1885) — there's no separate "agent bubble"/"user bubble" testid.
+   Disambiguate by scoping into the item and checking child testids: agent
+   bubbles carry `chat-read-out-button` (TTS, agent-only) and either
+   `skill-test-last-response` (if last/only message) or
+   `chat-answer-content` (if not) — the same
+   `isLastMessage ? 'skill-test-last-response' : 'chat-answer-content'`
+   ternary from finding #1 above; user bubbles carry
+   `chat-message-delete-button` instead and neither of the agent markers.
+   Added `AgentDetailPage.get_last_chat_message_agent_markers()` (returns
+   `(has_read_out, has_answer_marker, has_delete_button)` scoped to the
+   last/only `chat-message-item`) plus two new scoped-selector constants
+   `CHAT_READ_OUT_BUTTON_SELECTOR` / `SKILL_TEST_LAST_RESPONSE_SELECTOR`
+   for this. A lone welcome message (before any user message) is always
+   "last", so `skill-test-last-response` — not `chat-answer-content` — is
+   the one that actually fires for that case.
