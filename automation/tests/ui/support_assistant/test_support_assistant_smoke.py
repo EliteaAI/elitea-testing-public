@@ -220,6 +220,12 @@ class TestSupportAssistantNewSession:
             # Captured live, before New Chat resets the view — used in Step 6
             # to verify this exact content survives the move to history.
             response_before_new_chat = support_page.get_last_message_text()
+            # Total (user + assistant) baseline — get_message_count() is total,
+            # while count_before above is assistant-only. Step 4-5 and Step 6
+            # both compare against get_message_count() results later, so the
+            # baseline must be captured in the same (total) units here to avoid
+            # a unit mismatch (assistant-only vs total).
+            total_count_before = support_page.get_message_count()
 
         with allure.step("Step 3 — Click New Chat"):
             support_page.start_new_chat(timeout=WIDGET_TIMEOUT)
@@ -228,9 +234,9 @@ class TestSupportAssistantNewSession:
         with allure.step("Step 4-5 — Verify clean slate (welcome or empty state)"):
             support_page.wait_for_widget_ready(timeout=WIDGET_TIMEOUT)
             reset_message_count = support_page.get_message_count()
-            assert reset_message_count < count_before, (
-                f"Message count should reset after New Chat: had {count_before} "
-                f"assistant messages before, {reset_message_count} total messages now"
+            assert reset_message_count < total_count_before, (
+                f"Message count should reset after New Chat: had {total_count_before} "
+                f"total messages before, {reset_message_count} total messages now"
             )
 
         with allure.step(
@@ -268,11 +274,11 @@ class TestSupportAssistantNewSession:
             # current truncated behavior — expected to fail once the
             # account's active conversation exceeds the threshold, per
             # `.agents/testing.md` § Merge gate's Sanctioned-RED exception.
-            if restored_message_count < count_before:
+            if restored_message_count < total_count_before:
                 soft_failures.append(
                     "Known defect https://github.com/EliteaAI/elitea-testing-public/issues/607: "
                     f"restored session shows {restored_message_count} total message(s), "
-                    f"fewer than the {count_before} assistant message(s) already present "
+                    f"fewer than the {total_count_before} total message(s) already present "
                     "before New Chat — the message sent immediately before New Chat "
                     "appears to have been truncated out of the restored view."
                 )
