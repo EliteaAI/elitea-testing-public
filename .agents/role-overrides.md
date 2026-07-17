@@ -82,10 +82,14 @@ Then, and only then:
 
 ## Every role — screenshot evidence ATTACHES, never local paths
 
-A screenshot referenced by a machine path (`.playwright-mcp/…`,
-`automation/screenshots/…`) is evidence only you can see — useless on the
-tracker (the #51 anti-pattern). When an issue/comment cites a screenshot,
-UPLOAD it and embed it inline:
+**The rule is positive, not a blocklist: ANY local path OR bare `.png` filename
+in an issue/comment must be uploaded + embedded.** This covers *every* on-disk
+form — `.playwright-mcp/…`, `automation/screenshots/…`, `test-results/screenshots/…`,
+**and a naked `ELITEA-1933-step-08-tool.png` with no path at all**. Don't reason
+"my path isn't in the forbidden examples" — if a reader on GitHub can't click it
+and see the image, it isn't evidence (the #51/#526/#595 anti-pattern: local paths
+and bare names shipped to the tracker where nobody but the author can open them).
+When an issue/comment cites a screenshot, UPLOAD it and embed it inline:
 
 ```bash
 env -u GITHUB_TOKEN gh release upload evidence <file.png> --clobber --repo EliteaAI/elitea-testing-public
