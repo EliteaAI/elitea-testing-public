@@ -77,3 +77,34 @@ assumption) before treating it as a real gap; if that also finds nothing,
 grep for the base id with the trailing dynamic segment stripped (e.g.
 search `toolkit-field-` and `-checkbox` separately) to catch the
 template-literal case.
+
+**`EliteaUI#544` (the `entity-card`/`entity-card-name` blocker) is now
+RESOLVED (delivery, issue #139, ELITEA-1991, 2026-07-17):** first case in
+this family since the four recurrences above where `entity-card` AND
+`entity-card-name` both checked `main:YES` on a fresh `git fetch` — the
+long-standing shared-blocker for the whole Credentials/Mcp/Skills/
+Applications/Toolkits list-page family has been merged/cherry-picked to
+`main` at some point between 2026-07-16 and 2026-07-17. **Do not keep
+treating `entity-card`/`entity-card-name` as an automatic blocker for new
+cases in this family** — but do NOT skip the per-case check either:
+promotability facts age in both directions (a blocker can clear, a
+previously-clear testid can regress if `main` and `automation/testids`
+diverge). Always re-derive fresh via `git fetch` + `git grep` per case;
+this entry records the historical shape of the blocker and its resolution
+date, not a standing exemption.
+
+**Fifth recurrence-adjacent gotcha (same delivery, issue #139,
+ELITEA-1991):** the `generate-skill-open-button`/`generate-skill-*`/
+`skill-*` family false-negatived on a literal `data-testid="x"`-quoted grep
+the same way `entity-card` and the ELITEA-1929/ELITEA-1911 families did,
+but via yet another mechanism: `buttonTestId="generate-skill-open-button"`
+is a **prop passed at the call site** (`GenerateSkillButton.jsx`), forwarded
+down to a child component that applies it as the actual `data-testid`
+attribute elsewhere in the tree — not a template literal, not an
+object-property shorthand, just plain prop-drilling. Same fix applies:
+bare-substring `git grep -- "<id>"` (no quote/attribute anchor at all)
+catches all three variants (template literals, object-property shorthand,
+prop-drilling) uniformly. At this point the literal-quoted-attribute grep
+should be treated as unreliable BY DEFAULT for this codebase's promotability
+checks — always run the bare-substring form first, and only fall back to
+the anchored form as an extra confirmation, never as the sole check.
