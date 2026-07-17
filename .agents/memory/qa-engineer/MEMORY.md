@@ -1,5 +1,6 @@
 # Memory index — qa-engineer
 
+- [Agent nested-agent export/import quirks](agent_nested_agent_export_import_quirks.md) — ELITEA-1902: exporting an Agent with a nested Agent dependency produces a `.zip` of multiple `.agent.md` files (not a single `.md`); import-preview's Nested-entities cards had zero testids until this run (now closed, `74f72323`); both entities always recreated with new IDs; nested-agent attach shares the `agent-toolkit-card` testid; no `attach_agent()` convenience method exists yet
 - [Shared list-page search empty-state and clear-redirect bug class](shared_list_search_empty_state_and_clear_redirect_bug.md) — CardList.jsx's customEmptyState always wins over the query-aware placeholder (don't testid the dead one); clearing a zero-match search redirects to the entity's create page — confirmed on Credentials (#551) and MCP (#585), same root-cause shape, likely present on other CardList-based pages too
 - [Project briefing](project_briefing.md) — Stack overlay (test-automation) — analyst + reviewer slots in Tal's pipeline
 - [EliteaUI testid commit-message format](eliteaui_testid_commit_message_format.md) — commitlint on EliteaUI requires literal `[EL-NNNN]` subject prefix (not `[ELITEA-NNNN]`); use `[EL-0000]` + real TMS id in parens for TMS-only testid commits
