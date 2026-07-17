@@ -677,8 +677,14 @@ class TestAgentBuildWithAISelectedResourcesAttached:
                 assert modal.get_resource_name_text("skill", selected_skill["id"]) == selected_skill["name"], (
                     "Suggested skill card should be the fixture skill intended for selection"
                 )
+                assert modal.get_resource_description_text("skill", selected_skill["id"]) == selected_skill["description"], (
+                    "Suggested skill card should show the fixture skill's description"
+                )
                 assert modal.get_resource_name_text("skill", not_selected_skill["id"]) == not_selected_skill["name"], (
                     "Suggested skill card should also include the fixture skill intended to stay unselected"
+                )
+                assert modal.get_resource_description_text("skill", not_selected_skill["id"]) == not_selected_skill["description"], (
+                    "Suggested skill card should show the sibling fixture skill's description too"
                 )
                 assert not modal.is_resource_checked("skill", selected_skill["id"]), (
                     "Skill suggestion should not be pre-selected"
