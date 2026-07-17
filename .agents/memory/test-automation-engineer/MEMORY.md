@@ -1,5 +1,7 @@
 # Memory index — test-automation-engineer
 
+- [MCP Raw Json full-read (CodeMirror virtualization) and Load Tools quirks](mcp_raw_json_codemirror_full_read_and_load_tools_quirks.md) — `get_raw_json_full()` technique (scroll the real overflow ancestor, not the CM content node; aggregate `.cm-line` by `offsetTop`; double-rAF wait per step, not a sleep) plus the Load Tools/tool-chip/Test Settings testid wiring (from ELITEA-1933)
+
 - [MCP list first-navigation timeout flake](mcp_list_first_navigation_timeout_flake.md) — `McpListPage`'s `card_view_button` wait intermittently times out on the first `/mcps/all` navigation of a fresh pytest process (~40% observed) — OneDrive I/O contention on Chromium cold-start, not a product defect; also causes `has_any_mcp()` to misclassify a slow-but-present project as empty and spuriously seed an extra MCP (from ELITEA-1941)
 
 - [Support Assistant AI-response 60s timeout flakiness](support_assistant_ai_response_timeout_flakiness.md) — `test_support_assistant_smoke.py`'s `AI_RESPONSE_TIMEOUT=60_000` is tight enough that any test in the file waiting on a live AI response can intermittently time out — observed hitting 3 different tests across 2 full-file runs in one sitting; non-deterministic, don't panic-fix the constant inline, flag as a candidate flake-investigation task instead (from ELITEA-1798)
