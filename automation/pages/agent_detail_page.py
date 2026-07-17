@@ -121,6 +121,18 @@ class AgentDetailPage(AgentFormPage):
     CHAT_ARTIFACT_FILE_LIST_SELECTOR = '[data-testid="chat-artifact-file-list"]'
     CHAT_ARTIFACT_FILE_CARD_SELECTOR = '[data-testid="chat-artifact-file-card"]'
     CHAT_ANSWER_CONTENT_SELECTOR = '[data-testid="chat-answer-content"]'
+    # Agent-only child (TTS read-out button) and its non-last/last-message
+    # sibling testid — scoped, per-message-item lookups used by
+    # get_last_chat_message_agent_markers() (ELITEA-1885) to distinguish an
+    # agent bubble from a user bubble. See CHAT_ANSWER_CONTENT_SELECTOR above
+    # for the non-last-message half of the same ternary
+    # (`ApplicationAnswer.jsx`'s `isLastMessage ? 'skill-test-last-response'
+    # : 'chat-answer-content'`); ``skill_test_last_response`` already exists
+    # as a page-level LocatorDescriptor for the common "only message"
+    # case, but a scoped string constant is needed here to check its
+    # presence within a *specific* message item rather than page-wide.
+    CHAT_READ_OUT_BUTTON_SELECTOR = '[data-testid="chat-read-out-button"]'
+    SKILL_TEST_LAST_RESPONSE_SELECTOR = '[data-testid="skill-test-last-response"]'
     # Dynamic (runtime-parameterized) testid templates — see
     # .claude/rules/page-objects.md "Dynamic testids" for the naming pattern.
     SKILL_CARD_SELECTOR = '[data-testid="skill-card-{}"]'
@@ -2226,6 +2238,42 @@ class AgentDetailPage(AgentFormPage):
             Integer count of message items currently in the chat.
         """
         return self._embedded_chat_messages().count()
+
+    def get_last_chat_message_agent_markers(self) -> tuple[bool, bool, bool]:
+        """Return agent/user code-path markers for the last (or only) message.
+
+        Scoped inside the last ``chat-message-item`` — works equally for a
+        single-message list, where "last" == "only" (ELITEA-1885: welcome
+        message before any user message).
+
+        Returns:
+            ``(has_read_out, has_answer_marker, has_delete_button)``:
+
+            - ``has_read_out`` — ``chat-read-out-button`` present
+              (agent-only: TTS read-out, rendered by ``ApplicationAnswer.jsx``).
+            - ``has_answer_marker`` — either ``skill-test-last-response``
+              (this item is the last/only message) or ``chat-answer-content``
+              (non-last) is present — the ``isLastMessage ? ... : ...``
+              ternary from ``ApplicationAnswer.jsx``.
+            - ``has_delete_button`` — ``chat-message-delete-button`` present
+              (user-message-only, per ``UserMessage.jsx``).
+
+            A message rendered via the agent code path has
+            ``(True, True, False)``. Returns ``(False, False, False)`` if the
+            chat has no messages.
+        """
+        messages = self._embedded_chat_messages()
+        if messages.count() == 0:
+            return (False, False, False)
+
+        last_msg = messages.last
+        has_read_out = last_msg.locator(self.CHAT_READ_OUT_BUTTON_SELECTOR).count() > 0
+        has_answer_marker = (
+            last_msg.locator(self.CHAT_ANSWER_CONTENT_SELECTOR).count() > 0
+            or last_msg.locator(self.SKILL_TEST_LAST_RESPONSE_SELECTOR).count() > 0
+        )
+        has_delete_button = last_msg.locator(self.CHAT_MESSAGE_DELETE_SELECTOR).count() > 0
+        return (has_read_out, has_answer_marker, has_delete_button)
 
     @action("Send embedded chat message")
     def send_chat_message(self, message: str, timeout: int = 10000):
