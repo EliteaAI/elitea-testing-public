@@ -291,26 +291,66 @@ Expected-Final-State clause 3 could not be **asserted as passing**
      `== 1` for the single welcome message) immediately after
      `wait_for_widget_ready()`. This is verified-passing behavior on the
      live product — safe to lock in now.
-- **Paused pending GH#607**: do NOT add an assertion for "history
-  preserves the full previous session" yet. Asserting the *current*
-  (truncated) behavior would be reverse-masking a real defect; asserting
-  the *correct* behavior would fail deterministically against today's
-  product for any account whose Support Assistant conversation has grown
-  past ~100 message groups (which real accounts, including this project's
-  own shared test user, do reach). Once GH#607 lands, add: open History →
-  select the session pushed there by New Chat → assert the message
-  immediately preceding New Chat (and its AI response) are both visible
-  in the restored view.
-- Framework/page object: no new locators needed; existing
+- **Amended 2026-07-17 (implementer pass) — EFS-3 handling per sanctioned-RED
+  merge-gate policy, not deferred:** the recommendation above (omit the
+  assertion until GH#607 lands) was superseded during implementation.
+  `.agents/testing.md` § Merge gate → "Sanctioned-RED exception (isolated
+  known defect)" expects the assertion to be **added now**, asserting
+  correct behavior, with a `# Known defect: #607` comment — this keeps the
+  defect visible in the suite rather than only visible via the filed issue
+  (precedent: issues #26/#27 ELITEA-1735/1736's soft-assert handling of
+  intermittent defect #38; #551/#526/#585's `expect.soft()` handling of
+  deterministic ones). Implemented in `test_new_chat_creates_fresh_session`
+  Step 6: open History → select the session pushed there by New Chat
+  (`index=0`) → compare `get_message_count()` and `get_last_message_text()`
+  (captured live right before the New Chat click) against their post-restore
+  values. **Uses the `soft_failures` list + final `pytest.fail()` pattern**
+  (already established in `test_fork_agent_to_different_project.py` /
+  `test_skill_agent_interaction.py`) instead of `expect.soft()`, because
+  Playwright's Python `expect.soft()` only supports Page/Locator/APIResponse
+  — not the raw str/int values these getters return — and because adding a
+  fresh `page.get_by_text(...)` locator to reach for that API would itself
+  be a **new non-testid handle added in `automation/tests/`**, which this
+  project's reviewer mechanically flags per `.agents/workflow.md` § Review
+  gates (the widget's "permanent scope exception" covers *reusing* its
+  already-documented handles, not authoring new ones). No new locator is
+  introduced; both checks read existing `SupportAssistantPage` getters only.
+  - **Live-verification finding (implementer Phase 2, same day):** this
+    assertion does **not** currently reproduce RED. Multiple consecutive
+    local runs (`HEADLESS=true pytest ... -v -p no:cacheprovider`) were all
+    GREEN — the shared dev-token test account's *currently-active*
+    conversation carries far fewer than ~100 message groups (observed
+    growing by roughly +1 assistant message per run, since this test's own
+    Step 2 send accumulates against whatever conversation was already
+    active), nowhere near the threshold GH#607 requires. This is a
+    different account state than the one this AFS's analyst pass observed
+    hours earlier the same day (218 groups on conversation id 503, "HI
+    Chat") — that conversation still exists in the account's history
+    (`get_history_session_count()` reports 20 sessions) but is no longer
+    the most-recently-updated one, so `select_history_session(index=0)`
+    does not currently land on it. GH#607 is confirmed still **OPEN**
+    (unresolved) — this is not the defect being fixed; it's that *this
+    specific test's own* conversation hasn't accumulated enough volume to
+    trip the truncation path *right now*. Per the AFS's own Preconditions
+    note ("a condition any long-lived, actively-used account will
+    eventually reach, not a contrived setup") this was always understood as
+    eventual, not guaranteed-at-every-instant — but it means
+    `.agents/testing.md`'s Sanctioned-RED bar ("3/3 identical failures IS
+    its deterministic gate") is **not currently met**, and the
+    orchestrator's independent merge-gate run should be evaluated with this
+    in mind rather than assumed automatically RED. See the Run Report for
+    the implementer-local verdict.
+- Framework/page object: no new locators needed and none added; existing
   `SupportAssistantPage` (`open_widget`, `send_message`, `wait_for_response`,
   `start_new_chat`, `open_history`, `get_history_session_count`,
   `select_history_session`, `get_assistant_message_count`,
-  `get_message_count`) already covers everything steps 1–9 need.
+  `get_message_count`, `get_last_message_text`) already covers everything
+  steps 1–9 and the Step 6 EFS-3 check need.
 - **TMS back-write** (orchestrator, post-merge, per `.agents/testing.md` §
-  Coverage tagging): once the traceability gap-assertion above merges,
-  back-write `automation_test_id:
+  Coverage tagging): once this PR merges, back-write `automation_test_id:
   tests.ui.support_assistant.test_support_assistant_smoke.TestSupportAssistantNewSession.test_new_chat_creates_fresh_session`
-  to ELITEA-1799 — but leave `status: draft` (not `ready`) until GH#607 is
-  resolved and the history-preservation assertion is actually added,
-  since the case's own Expected Final State is not yet fully verified
-  true against the live product.
+  to ELITEA-1799 — leave `status: draft` (not `ready`) until GH#607 is
+  resolved AND the Step 6 assertion has been observed reproducing RED
+  against the live product (see live-verification finding above), since
+  the case's own Expected Final State is not yet fully verified true
+  against the live product.
