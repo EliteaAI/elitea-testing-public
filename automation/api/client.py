@@ -22,6 +22,24 @@ from config import settings
 logger = logging.getLogger("elitea.api")
 
 
+def _default_llm_settings(model_name: str = None) -> dict:
+    """Return default LLM settings for agent/pipeline creation.
+
+    Args:
+        model_name: Optional model name override. Uses settings.default_model_name if not provided.
+
+    Returns:
+        dict with max_tokens, temperature, reasoning_effort, model_name, model_project_id
+    """
+    return {
+        "max_tokens": -1,
+        "temperature": 0.6,
+        "reasoning_effort": "none",
+        "model_name": model_name or settings.default_model_name,
+        "model_project_id": settings.default_model_project_id,
+    }
+
+
 def _create_retry_session() -> requests.Session:
     """Create a requests Session with retry on 429 (rate limit).
 
@@ -386,13 +404,7 @@ class AgentAPI:
                     "instructions": instructions,
                     "variables": [],
                     "tools": [],
-                    "llm_settings": {
-                        "max_tokens": -1,
-                        "temperature": None,  # None (not 0.6): reasoning models reject temperature — #563, mirrors #524 UI fix
-                        "reasoning_effort": "medium",
-                        "model_name": settings.default_model_name,
-                        "model_project_id": settings.default_model_project_id,
-                    },
+                    "llm_settings": _default_llm_settings(),
                     "conversation_starters": [],
                     "agent_type": "openai",
                     "welcome_message": "",
@@ -585,13 +597,7 @@ class PipelineAPI:
                     "instructions": instructions,
                     "variables": [],
                     "tools": [],
-                    "llm_settings": {
-                        "max_tokens": -1,
-                        "temperature": None,  # None (not 0.6): reasoning models reject temperature — #563, mirrors #524 UI fix
-                        "reasoning_effort": "medium",
-                        "model_name": settings.default_model_name,
-                        "model_project_id": settings.default_model_project_id,
-                    },
+                    "llm_settings": _default_llm_settings(),
                     "conversation_starters": [],
                     "agent_type": "pipeline",
                     "welcome_message": "",
@@ -702,13 +708,7 @@ class PipelineAPI:
                     "instructions": instructions_yaml,
                     "variables": [],
                     "tools": [],
-                    "llm_settings": {
-                        "max_tokens": -1,
-                        "temperature": None,  # None (not 0.6): reasoning models reject temperature — #563, mirrors #524 UI fix
-                        "reasoning_effort": "medium",
-                        "model_name": model_name,
-                        "model_project_id": settings.default_model_project_id,
-                    },
+                    "llm_settings": _default_llm_settings(model_name),
                     "conversation_starters": [],
                     "agent_type": "pipeline",
                     "welcome_message": "",
@@ -766,13 +766,7 @@ class PipelineAPI:
                     "instructions": instructions_yaml,
                     "variables": [],
                     "tools": [],
-                    "llm_settings": {
-                        "max_tokens": -1,
-                        "temperature": None,  # None (not 0.6): reasoning models reject temperature — #563, mirrors #524 UI fix
-                        "reasoning_effort": "medium",
-                        "model_name": settings.default_model_name,
-                        "model_project_id": settings.default_model_project_id,
-                    },
+                    "llm_settings": _default_llm_settings(),
                     "conversation_starters": [],
                     "agent_type": "pipeline",
                     "welcome_message": "",
@@ -868,13 +862,7 @@ class PipelineAPI:
                     "instructions": instructions_yaml,
                     "variables": [],
                     "tools": tools,
-                    "llm_settings": {
-                        "max_tokens": -1,
-                        "temperature": None,  # None (not 0.6): reasoning models reject temperature — #563, mirrors #524 UI fix
-                        "reasoning_effort": "medium",
-                        "model_name": settings.default_model_name,
-                        "model_project_id": settings.default_model_project_id,
-                    },
+                    "llm_settings": _default_llm_settings(),
                     "conversation_starters": [],
                     "agent_type": "pipeline",
                     "welcome_message": "",
