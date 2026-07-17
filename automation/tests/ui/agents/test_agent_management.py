@@ -200,6 +200,69 @@ def _build_execution_agent_payload(name: str, description: str, instructions: st
         ],
     }
 
+# ELITEA-1872 test data
+SEED_INSTRUCTIONS = "You are a test agent."
+NEW_INSTRUCTIONS = "You are an updated test assistant."
+
+
+def _wait_for_resolved_save_count(
+    page, save_requests: list, expected_count: int, timeout: int = FORM_SAVE_TIMEOUT
+) -> None:
+    """Poll *save_requests* until at least *expected_count* entries resolve.
+
+    The Save PUT is dispatched after a short client-side debounce, so
+    ``wait_for_load_state("networkidle")`` (via ``click_save()``) can resolve
+    before the debounced PUT is even issued — confirmed live, same race
+    documented in ``test_agent_remove_variable.py`` (ELITEA-1884). Poll the
+    captured entries (populated by ``capture_requests_matching``) instead of
+    asserting immediately after ``click_save()``.
+    """
+    deadline = time.time() + timeout / 1000
+    while time.time() < deadline:
+        resolved = [r for r in save_requests if r["status"] is not None]
+        if len(resolved) >= expected_count:
+            return
+        page.wait_for_timeout(200)
+
+
+def _build_dedicated_agent_payload(name: str) -> dict:
+    """Build a create-agent payload for a dedicated, disposable test agent.
+
+    Uses ``reasoning_effort: "none"`` and omits ``temperature`` entirely so
+    agent creation does not hit the open, unrelated
+    https://github.com/EliteaAI/elitea-testing-public/issues/524 defect
+    (``temperature`` is not allowed together with a ``reasoning_effort``
+    other than ``'none'`` on the project's reasoning-capable default model).
+    This does not "fix" #524 — it simply avoids the known-bad combination in
+    this test's own fixture payload; #524 remains open and unrelated to this
+    test's assertions. Same pattern as
+    ``tests/ui/agents/test_agent_remove_variable.py`` (ELITEA-1884).
+    """
+    return {
+        "name": name,
+        "description": "Auto-created for ELITEA-1872 edit-instructions test",
+        "type": "interface",
+        "versions": [
+            {
+                "name": "base",
+                "tags": [],
+                "instructions": SEED_INSTRUCTIONS,
+                "variables": [],
+                "tools": [],
+                "llm_settings": {
+                    "max_tokens": -1,
+                    "reasoning_effort": "none",
+                    "model_name": settings.default_model_name,
+                    "model_project_id": settings.default_model_project_id,
+                },
+                "conversation_starters": [],
+                "agent_type": "openai",
+                "welcome_message": "",
+                "meta": {"step_limit": 25},
+            }
+        ],
+    }
+
 
 class TestCreateAgent:
     """Create Agent (P0): create via UI, verify in list and via API."""
