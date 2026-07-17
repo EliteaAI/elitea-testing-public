@@ -59,6 +59,10 @@ def _attach_toolkit_to_agent(
         f"Toolkit '{toolkit_name}' should appear in the agent's Toolkits section"
     )
     agents.save_and_wait(timeout=timeout)
+    # Re-navigate to agent to ensure embedded chat is properly initialized
+    # (working tests like guardrails use fresh page after save)
+    agents.navigate_to_agent(agent_id)
+    agents.wait_for_agent_detail()
     return agents
 
 
