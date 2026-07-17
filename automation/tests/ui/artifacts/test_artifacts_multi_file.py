@@ -127,10 +127,6 @@ class TestArtifactMultiFileDownload:
                 f"Toolkit '{toolkit_name}' should appear in the agent's Toolkits section"
             )
             agent_page.save_and_wait(timeout=FORM_SAVE_TIMEOUT)
-            # Re-navigate to agent to ensure embedded chat is properly initialized
-            # (working tests like guardrails use fresh page after save)
-            agent_page.navigate_to_agent(agent_id)
-            agent_page.wait_for_agent_detail()
             logger.info("Attached toolkit '%s' to agent %d and saved", toolkit_name, agent_id)
 
         # ------------------------------------------------------------------
