@@ -30,11 +30,17 @@ def _default_llm_settings(model_name: str = None) -> dict:
 
     Returns:
         dict with max_tokens, temperature, reasoning_effort, model_name, model_project_id
+
+    Note:
+        Settings match UI-created agent defaults:
+        - temperature: null (not 0.6) - lets the model use its default
+        - reasoning_effort: "medium" (not "none") - matches UI default
+        - model_project_id: 1 (not 0) - 0 may cause conversation creation issues
     """
     return {
         "max_tokens": -1,
-        "temperature": 0.6,
-        "reasoning_effort": "none",
+        "temperature": None,  # Match UI default (null)
+        "reasoning_effort": "medium",  # Match UI default
         "model_name": model_name or settings.default_model_name,
         "model_project_id": settings.default_model_project_id,
     }
