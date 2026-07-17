@@ -20,7 +20,11 @@ Usage:
     pytest test_agent_management.py -v -m p0
 """
 
+import time
+import uuid
+
 import pytest
+from config import settings
 from pages.agents_list_page import AgentsListPage
 from pages.agent_form_page import AgentFormPage
 from pages.agent_detail_page import AgentDetailPage
@@ -35,6 +39,69 @@ pytestmark = [pytest.mark.ui, pytest.mark.agents]
 UI_ELEMENT_TIMEOUT = 10000
 NAVIGATION_TIMEOUT = 15000
 FORM_SAVE_TIMEOUT = 15000
+
+# ELITEA-1872 test data
+SEED_INSTRUCTIONS = "You are a test agent."
+NEW_INSTRUCTIONS = "You are an updated test assistant."
+
+
+def _wait_for_resolved_save_count(
+    page, save_requests: list, expected_count: int, timeout: int = FORM_SAVE_TIMEOUT
+) -> None:
+    """Poll *save_requests* until at least *expected_count* entries resolve.
+
+    The Save PUT is dispatched after a short client-side debounce, so
+    ``wait_for_load_state("networkidle")`` (via ``click_save()``) can resolve
+    before the debounced PUT is even issued — confirmed live, same race
+    documented in ``test_agent_remove_variable.py`` (ELITEA-1884). Poll the
+    captured entries (populated by ``capture_requests_matching``) instead of
+    asserting immediately after ``click_save()``.
+    """
+    deadline = time.time() + timeout / 1000
+    while time.time() < deadline:
+        resolved = [r for r in save_requests if r["status"] is not None]
+        if len(resolved) >= expected_count:
+            return
+        page.wait_for_timeout(200)
+
+
+def _build_dedicated_agent_payload(name: str) -> dict:
+    """Build a create-agent payload for a dedicated, disposable test agent.
+
+    Uses ``reasoning_effort: "none"`` and omits ``temperature`` entirely so
+    agent creation does not hit the open, unrelated
+    https://github.com/EliteaAI/elitea-testing-public/issues/524 defect
+    (``temperature`` is not allowed together with a ``reasoning_effort``
+    other than ``'none'`` on the project's reasoning-capable default model).
+    This does not "fix" #524 — it simply avoids the known-bad combination in
+    this test's own fixture payload; #524 remains open and unrelated to this
+    test's assertions. Same pattern as
+    ``tests/ui/agents/test_agent_remove_variable.py`` (ELITEA-1884).
+    """
+    return {
+        "name": name,
+        "description": "Auto-created for ELITEA-1872 edit-instructions test",
+        "type": "interface",
+        "versions": [
+            {
+                "name": "base",
+                "tags": [],
+                "instructions": SEED_INSTRUCTIONS,
+                "variables": [],
+                "tools": [],
+                "llm_settings": {
+                    "max_tokens": -1,
+                    "reasoning_effort": "none",
+                    "model_name": settings.default_model_name,
+                    "model_project_id": settings.default_model_project_id,
+                },
+                "conversation_starters": [],
+                "agent_type": "openai",
+                "welcome_message": "",
+                "meta": {"step_limit": 25},
+            }
+        ],
+    }
 
 
 class TestCreateAgent:
@@ -407,6 +474,114 @@ class TestAgentActions:
             assert detail_page.description_input.input_value() == new_desc, (
                 f"Agent description should be '{new_desc}' after save"
             )
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1872_edit-agent-instructions-and-verify-persistence.md",
+        "onetest-ai Test Case link",
+    )
+    @allure.issue("https://github.com/EliteaAI/elitea-testing-public/issues/538", "Known defect #538")
+    @pytest.mark.p1
+    @pytest.mark.regression
+    def test_edit_agent_instructions(self, page, agent_api):
+        """Edit an agent's Instructions field and verify the change persists
+        after a full-navigation page reload (ELITEA-1872).
+
+        Uses a dedicated, disposable agent created via
+        ``AgentAPI.create_agent_full()`` (not the shared ``agent_id``
+        fixture) because the fixture's plain ``create_agent()`` call
+        currently 400s against the DEV backend
+        (https://github.com/EliteaAI/elitea-testing-public/issues/524) —
+        same workaround as ``test_agent_remove_variable.py`` (ELITEA-1884).
+
+        Known defect #538 (isolated, non-blocking): typing into the
+        Instructions field triggers a React "Maximum update depth exceeded"
+        console warning (confirmed live: fires on the typing step only, not
+        on navigate or save; does not block the Save request or persistence).
+        The console side-channel check is deferred to the end of the test
+        (after the case's own persistence assertions have run and proven the
+        feature under test has no defect) so this pre-existing, isolated
+        warning doesn't mask the Steps 1-5 verification — same scoping
+        precedent as ``test_credential_required_fields_validation.py``.
+        """
+        with allure.step("Precondition — create a dedicated disposable agent"):
+            agent_name = f"elitea-1872-instr-{uuid.uuid4().hex[:8]}"[:32]
+            agent = agent_api.create_agent_full(_build_dedicated_agent_payload(agent_name))
+            agent_id = agent["id"]
+
+        detail_page = AgentDetailPage(page)
+        console_messages = []
+        page.on(
+            "console",
+            lambda msg: console_messages.append(msg)
+            if msg.type in ("error", "warning")
+            else None,
+        )
+        save_requests = detail_page.capture_requests_matching(
+            "application/prompt_lib", method="PUT"
+        )
+
+        try:
+            with allure.step("Step 1 — Navigate to agent detail page"):
+                detail_page.navigate(agent_id)
+                assert detail_page.get_instructions() == SEED_INSTRUCTIONS, (
+                    "Instructions field should show the agent's seeded text"
+                )
+                assert not detail_page.is_save_enabled(), (
+                    "Save should start disabled before any edit"
+                )
+
+            with allure.step(
+                "Step 2 — Clear Instructions field and enter new text "
+                "(Known defect #538: typing triggers a React 'Maximum update "
+                "depth exceeded' console warning, asserted in the deferred "
+                "side-channel check below — does not block this step)"
+            ):
+                detail_page.update_text_field("instructions", NEW_INSTRUCTIONS)
+                assert detail_page.get_instructions() == NEW_INSTRUCTIONS, (
+                    "Instructions field should reflect the newly typed text"
+                )
+                assert detail_page.is_save_enabled(), (
+                    "Save should be enabled after the Instructions edit"
+                )
+
+            with allure.step("Step 3 — Click Save and wait for network idle"):
+                detail_page.click_save(timeout=FORM_SAVE_TIMEOUT)
+                _wait_for_resolved_save_count(page, save_requests, expected_count=1)
+                save_responses = [r for r in save_requests if r["status"] is not None]
+                assert save_responses and save_responses[-1]["status"] == 201, (
+                    f"PUT application/prompt_lib/... should return 201, captured: {save_requests!r}"
+                )
+                assert not detail_page.is_save_enabled(), (
+                    "Save should return to disabled after a successful save"
+                )
+
+            with allure.step("Step 4 — Reload the page (full navigation)"):
+                detail_page.reload_and_wait(timeout=NAVIGATION_TIMEOUT)
+
+            with allure.step(
+                "Step 5 — Verify the Instructions field contains the saved text"
+            ):
+                assert detail_page.instructions_input.input_value() == NEW_INSTRUCTIONS, (
+                    "Instructions field should retain the new value after reload, got: "
+                    f"{detail_page.instructions_input.input_value()!r}"
+                )
+
+            with allure.step(
+                "Side-channel check — no console errors/warnings across the flow "
+                "(deferred: Known defect #538 fires during Step 2 typing; checked "
+                "last so the persistence proof above runs and passes regardless)"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors/warnings — see #538 if this is the "
+                    "known 'Maximum update depth exceeded' warning from typing into "
+                    f"Instructions: {[m.text for m in console_messages]}"
+                )
+        finally:
+            with allure.step("Cleanup — delete the dedicated agent"):
+                try:
+                    agent_api.delete_agent(agent_id)
+                except Exception as cleanup_exc:
+                    print(f"Warning: Failed to cleanup agent {agent_id}: {cleanup_exc}")
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0144_agent-edit-and-delete.md", "onetest-ai Test Case link")
     @pytest.mark.p1

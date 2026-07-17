@@ -532,3 +532,138 @@ def github_toolkit_with_invalid_credential(
         logger.info("Deleted toolkit %s", toolkit["id"])
     except Exception as exc:
         logger.warning("Failed to delete toolkit %s: %s", toolkit["id"], exc)
+
+
+# ---------------------------------------------------------------------------
+# MCP toolkit + pipeline fixtures for ELITEA-1954
+# ---------------------------------------------------------------------------
+
+# Public, auth-free MCP endpoint used to provision a throwaway MCP toolkit
+# with a real, non-empty tool list (3 tools: read_wiki_structure,
+# read_wiki_contents, ask_question). Picked over the environment's
+# pre-existing placeholder-URL MCPs (which return zero tools) and over
+# "Remote Github" (whose live OAuth session is disconnected, though its
+# CACHED tool list still renders) — see
+# test-specs/pipelines/l2_mcp-node-change-toolkit-and-tool_ELITEA-1954.md
+# § Test Data for the full rationale.
+_MCP_DEEPWIKI_URL = "https://mcp.deepwiki.com/mcp"
+
+# The environment's pre-existing "Remote Github" MCP toolkit — reused (not
+# created/deleted by this fixture) because its cached tool list renders
+# client-side without a live OAuth reconnection (ELITEA-1954 AFS § Test Data).
+_REMOTE_GITHUB_TOOLKIT_NAME = "Remote Github"
+_REMOTE_GITHUB_TOOLKIT_YAML_NAME = "RemoteGithub"
+_REMOTE_GITHUB_TOOL = "search_repositories"
+
+
+@pytest.fixture
+def mcp_toolkit_with_tools(toolkit_api: ToolkitAPI, request):
+    """Create a throwaway Remote MCP toolkit with a real, working tool list.
+
+    Probes the public, auth-free ``mcp.deepwiki.com`` endpoint via
+    ``ToolkitAPI.sync_mcp_tools`` (the same call the UI's "Load Tools"
+    button makes) and bakes the result into the toolkit's
+    ``settings.selected_tools`` / ``settings.available_mcp_tools`` at
+    creation time, so a pipeline MCP node attached to this toolkit shows a
+    real, non-empty Tool dropdown — a plain ``create_toolkit(type="mcp")``
+    without a synced tool list does NOT populate the Tool dropdown (see
+    ``ToolkitAPI.create_remote_mcp_toolkit`` docstring).
+
+    Yields:
+        dict: ``{"id": int, "name": str, "toolkit_name": str, "tools": list[str]}``
+    """
+    name = f"autotest_mcp_{request.node.name}"[:32]
+    tools = toolkit_api.sync_mcp_tools(_MCP_DEEPWIKI_URL)
+    assert tools, f"mcp_sync_tools returned no tools for {_MCP_DEEPWIKI_URL!r} — endpoint may be down"
+
+    toolkit = toolkit_api.create_remote_mcp_toolkit(
+        name=name,
+        description=f"Auto-created MCP for test {request.node.name}",
+        url=_MCP_DEEPWIKI_URL,
+        tools=tools,
+    )
+    logger.info(
+        "Created MCP toolkit %s (%s) with %d tools for %s",
+        toolkit["id"], name, len(tools), request.node.name,
+    )
+
+    yield {
+        "id": toolkit["id"],
+        "name": name,
+        "toolkit_name": toolkit.get("toolkit_name", name),
+        "tools": [t["name"] for t in tools],
+    }
+
+    try:
+        toolkit_api.delete_toolkit(toolkit["id"])
+        logger.info("Deleted MCP toolkit %s", toolkit["id"])
+    except Exception as exc:
+        logger.warning("Failed to delete MCP toolkit %s: %s", toolkit["id"], exc)
+
+
+@pytest.fixture
+def mcp_pipeline_with_toolkits(
+    mcp_toolkit_with_tools: dict, toolkit_api: ToolkitAPI, pipeline_api: PipelineAPI, request
+):
+    """Create a pipeline with an MCP node pre-configured with a Toolkit + Tool.
+
+    Satisfies the ELITEA-1954 precondition: a pipeline with an MCP node
+    already configured (Toolkit=``RemoteGithub``, Tool=``search_repositories``),
+    with >=2 MCP toolkits attached in the pipeline's TOOLS section — both
+    with real, non-empty tool lists (the environment's pre-existing
+    "Remote Github" MCP, reused read-only, plus the fresh
+    ``mcp_toolkit_with_tools`` fixture).
+
+    Yields:
+        dict: ``{"id": int, "name": str, "node_id": str, "toolkit_name": str,
+        "tool": str, "other_toolkit_name": str, "other_tools": list[str]}``
+        — the "other" fields describe the toolkit/tools the test switches TO.
+    """
+    # NOTE: not discovered via toolkit_api.list_all_toolkits() by name — that
+    # listing endpoint returns an empty list on this environment regardless
+    # of auth method (confirmed during ELITEA-1954 implementer Phase 2
+    # exploration; a real API/environment quirk). The toolkit id is a fixed,
+    # pre-existing environment resource instead (config.py
+    # `remote_github_mcp_toolkit_id`, overridable via env).
+    remote_github = toolkit_api.get_toolkit(settings.remote_github_mcp_toolkit_id)
+    assert remote_github.get("name") == _REMOTE_GITHUB_TOOLKIT_NAME, (
+        f"Environment precondition mismatch: toolkit id {settings.remote_github_mcp_toolkit_id} "
+        f"is {remote_github.get('name')!r}, expected {_REMOTE_GITHUB_TOOLKIT_NAME!r} — "
+        f"update `remote_github_mcp_toolkit_id` in config.py / .env.test if the environment's "
+        f"Remote Github MCP toolkit id has changed."
+    )
+    assert _REMOTE_GITHUB_TOOL in (remote_github.get("settings", {}).get("selected_tools") or []), (
+        f"{_REMOTE_GITHUB_TOOLKIT_NAME!r} toolkit no longer exposes tool {_REMOTE_GITHUB_TOOL!r} — "
+        f"pick a different initial tool for the fixture's precondition node"
+    )
+
+    deepwiki_full = toolkit_api.get_toolkit(mcp_toolkit_with_tools["id"])
+
+    name = f"autotest_pl_{request.node.name}"[:32]
+    node_id = "MCP 1"
+    pipeline = pipeline_api.create_pipeline_with_mcp_node(
+        name=name,
+        description=f"Auto-created MCP pipeline for test {request.node.name}",
+        tools=[remote_github, deepwiki_full],
+        toolkit_name=_REMOTE_GITHUB_TOOLKIT_YAML_NAME,
+        tool=_REMOTE_GITHUB_TOOL,
+        node_id=node_id,
+    )
+    pid = pipeline["id"]
+    logger.info("Created MCP pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield {
+        "id": pid,
+        "name": name,
+        "node_id": node_id,
+        "toolkit_name": _REMOTE_GITHUB_TOOLKIT_YAML_NAME,
+        "tool": _REMOTE_GITHUB_TOOL,
+        "other_toolkit_name": mcp_toolkit_with_tools["toolkit_name"],
+        "other_tools": mcp_toolkit_with_tools["tools"],
+    }
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted MCP pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete MCP pipeline %s: %s", pid, exc)

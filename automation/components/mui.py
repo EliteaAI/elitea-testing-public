@@ -43,6 +43,38 @@ class Dialog:
         return dialog.first
 
     @staticmethod
+    def wait_for_visible(page: Page, timeout: int = 5000) -> Locator:
+        """Wait for a dialog to become visible, ignoring any ``role="dialog"``
+        elements that are kept mounted-but-hidden in the DOM.
+
+        Additive sibling to :meth:`wait_for` — ``wait_for`` itself is NOT
+        modified: it has other merged callers relying on its plain
+        ``.first`` behavior unchanged (mui-patterns shared-caller rule).
+
+        Some MUI ``Dialog`` consumers set ``keepMounted`` (e.g.
+        ``McpAuthModal.jsx``, used by the MCP-card "Log in" flow), so an
+        unrelated, permanently-hidden dialog can sort before the dialog
+        actually being opened in DOM/portal order. Plain ``.first`` then
+        polls the wrong (hidden) element and times out even though a
+        different dialog is visible. Scoping to Playwright's ``:visible``
+        pseudo-class selects only the dialog that is actually shown.
+        Confirmed live for `AgentDetailPage.remove_mcp()` (ELITEA-1950):
+        an unauthenticated MCP card's `McpAuthModal` stayed mounted+hidden
+        and broke the plain `Dialog.wait_for()` call the "Remove MCP?"
+        confirmation dialog needs.
+
+        Args:
+            page: Playwright Page instance.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator pointing to the first currently-visible dialog.
+        """
+        dialog = page.locator('[role="dialog"]:visible')
+        dialog.first.wait_for(state="visible", timeout=timeout)
+        return dialog.first
+
+    @staticmethod
     def click_button(dialog: Locator, text: str):
         """Click a button inside a dialog by its text content.
 
@@ -118,13 +150,20 @@ class Dialog:
         """Type text into a dialog's confirmation input.
 
         Used for type-to-confirm dialogs (e.g. "Delete agent" requires
-        typing the agent name).
+        typing the agent name). Prefers the ``delete-confirm-name-input``
+        testid (present on ``DeleteEntityModal``'s TextField) and falls
+        back to a bare ``input`` locator for any dialog that doesn't carry
+        that testid yet.
 
         Args:
             dialog: Locator of the dialog element.
             confirmation_text: Text to type into the input.
         """
-        confirm_input = dialog.locator("input")
+        testid_wrapper = dialog.get_by_test_id("delete-confirm-name-input")
+        if testid_wrapper.count() > 0:
+            confirm_input = testid_wrapper.locator("input")
+        else:
+            confirm_input = dialog.locator("input")
         confirm_input.click()
         confirm_input.type(confirmation_text)
 
@@ -184,6 +223,38 @@ class Popper:
         ).first
         option.wait_for(state="visible", timeout=timeout)
         logger.info("Selecting menuitem: %s", option.text_content().strip()[:60])
+        option.click()
+
+    @staticmethod
+    def select_menuitem_by_testid(
+        popper: Locator, text: str, page: Page, timeout: int = 10000,
+    ):
+        """Select a menuitem from the popper by text, scoped to the
+        ``toolkit-menu-item`` testid (shared across every ``UnifiedDropdown``
+        consumer — toolkits, participants, skills).
+
+        Additive sibling to :meth:`select_menuitem` — added for
+        ELITEA-1735's testid-only rework. ``select_menuitem`` itself is NOT
+        modified: it has other merged callers (toolkit/participant flows)
+        that rely on its raw ``li[role="menuitem"]:has-text(...)`` behavior
+        unchanged (`.claude/rules/page-objects.md` § shared-caller files).
+        Use this method for any new caller that can rely on the
+        ``toolkit-menu-item`` testid being present.
+
+        Args:
+            popper: Locator of the popper element.
+            text: Text content of the menuitem to select.
+            page: Playwright Page for logging.
+            timeout: Maximum wait time in milliseconds.
+        """
+        option = popper.locator('[data-testid="toolkit-menu-item"]').filter(
+            has_text=text
+        ).first
+        option.wait_for(state="visible", timeout=timeout)
+        logger.info(
+            "Selecting menuitem (by testid): %s",
+            option.text_content().strip()[:60],
+        )
         option.click()
 
     @staticmethod

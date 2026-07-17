@@ -91,6 +91,58 @@ class PipelineDetailPage(PipelineFormPage):
         description="Embedded chat send button"
     )
 
+    # MCP node inline config fields (ELITEA-1954). Testid-only, added via
+    # add-data-testid — BaseToolNode.jsx only sets these when nodeType is
+    # "mcp" (untested node types stay untagged, .agents/testing.md §
+    # Locator policy). Page-wide (not scoped to a specific node container):
+    # correct as long as a test only has a single MCP node on canvas.
+    mcp_node_toolkit_select = LocatorDescriptor(
+        testid="pipeline-mcp-node-toolkit-select",
+        description="MCP node's Toolkit select (inline on the ReactFlow canvas card)"
+    )
+
+    mcp_node_tool_select = LocatorDescriptor(
+        testid="pipeline-mcp-node-tool-select",
+        description="MCP node's Tool select (inline on the ReactFlow canvas card)"
+    )
+
+    mcp_node_input_select = LocatorDescriptor(
+        testid="pipeline-mcp-node-input-select",
+        description="MCP node's tool-agnostic Input state-variable select"
+    )
+
+    mcp_node_output_select = LocatorDescriptor(
+        testid="pipeline-mcp-node-output-select",
+        description="MCP node's tool-agnostic Output state-variable select"
+    )
+
+    mcp_node_input_mapping_required_heading = LocatorDescriptor(
+        testid="pipeline-mcp-node-input-mapping-heading",
+        description=(
+            "MCP node's 'Input mapping (required N)' accordion heading "
+            "(BasicAccordion.jsx summary, gated to nodeType==mcp in "
+            "BaseToolNode.jsx — added via add-data-testid for ELITEA-1954 "
+            "review fix pass; case steps 4 and 6)"
+        )
+    )
+
+    # Dynamic (runtime-parameterized) testid — the Input-mapping "Value"
+    # field is one per tool parameter (e.g. RepoName, Question). Class-level
+    # template constant per .agents/testing.md § Locator policy, formatted
+    # with test-generated data only at the call site.
+    MCP_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-mcp-node-input-mapping-value-{}"]'
+
+    # Select-dropdown option pattern shared by Toolkit/Tool/Input/Output
+    # selects (SingleSelectMenuItem.jsx: `select-option-{value}`) — confirmed
+    # present and reliable per ELITEA-1954 AFS Concrete Handles.
+    SELECT_OPTION = '[data-testid="select-option-{}"]'
+
+    # Prefix-match variant of SELECT_OPTION for enumerating every option
+    # currently rendered in an open Toolkit/Tool listbox — same testid
+    # family (`select-option-{value}`), no value known up front. Still
+    # testid-keyed, not a raw role/CSS selector.
+    SELECT_OPTION_PREFIX = '[data-testid^="select-option-"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -701,6 +753,215 @@ class PipelineDetailPage(PipelineFormPage):
         """
         node = self.page.locator(f'[data-id="{node_id}"]')
         return node.locator(".MuiTypography-labelMedium").first.text_content().strip()
+
+    # ------------------------------------------------------------------
+    # MCP node inline config (ELITEA-1954)
+    # ------------------------------------------------------------------
+
+    def get_mcp_node_toolkit_value(self, timeout: int = 5000) -> str:
+        """Read the MCP node's currently-selected Toolkit display text.
+
+        Args:
+            timeout: Maximum wait time for the select to be visible.
+
+        Returns:
+            The Toolkit select's current display text (empty string if unset).
+        """
+        self.mcp_node_toolkit_select.wait_for(state="visible", timeout=timeout)
+        # MUI's empty-select rendering is a zero-width space (U+200B), not
+        # an empty string — confirmed live during ELITEA-1954 exploration
+        # (same gotcha as user_profile_settings_page.get_current_voice).
+        text = (self.mcp_node_toolkit_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def get_mcp_node_tool_value(self, timeout: int = 5000) -> str:
+        """Read the MCP node's currently-selected Tool display text.
+
+        Returns empty string both when no tool is selected AND when the Tool
+        select isn't rendered at all yet (``BaseToolNode`` only renders it
+        once ``functionOptions.length > 0`` — see AFS step 6, the "Tool
+        field visibly reset to empty" moment right after a Toolkit change).
+
+        Args:
+            timeout: Maximum wait time for the select to be visible (not
+                applied when the element never appears — see above).
+        """
+        try:
+            self.mcp_node_tool_select.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        # MUI's empty-select rendering is a zero-width space (U+200B), not
+        # an empty string — see get_mcp_node_toolkit_value.
+        text = (self.mcp_node_tool_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_mcp_node_toolkit_select(self, timeout: int = 5000) -> None:
+        """Open the MCP node's Toolkit dropdown."""
+        self.mcp_node_toolkit_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def open_mcp_node_tool_select(self, timeout: int = 5000) -> None:
+        """Open the MCP node's Tool dropdown."""
+        self.mcp_node_tool_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def get_open_listbox_option_names(self) -> list[str]:
+        """Return the visible text of every option in the currently-open listbox.
+
+        Call after ``open_mcp_node_toolkit_select`` / ``open_mcp_node_tool_select``.
+
+        Returns:
+            List of option display texts, in DOM order.
+        """
+        # Each option carries `data-testid="select-option-{value}"`
+        # (SingleSelectMenuItem.jsx) — the same testid family already used
+        # by select_mcp_node_toolkit/select_mcp_node_tool via SELECT_OPTION.
+        # Only one listbox is open at a time (MUI portals it to <body>), so
+        # a prefix match across the whole page enumerates exactly this
+        # listbox's options.
+        options = self.page.locator(self.SELECT_OPTION_PREFIX)
+        count = options.count()
+        return [(options.nth(i).text_content() or "").strip() for i in range(count)]
+
+    def select_open_listbox_option(self, option_value: str, timeout: int = 5000) -> None:
+        """Click an option in the currently-open Toolkit/Tool listbox.
+
+        Use this when the caller needs to inspect the open option list (e.g.
+        via ``get_open_listbox_option_names``) before choosing one — the
+        dropdown is already open, so this only performs the click. When no
+        prior inspection is needed, prefer ``select_mcp_node_toolkit`` /
+        ``select_mcp_node_tool``, which open the dropdown and select in one
+        call.
+
+        Args:
+            option_value: The option's value (matches ``select-option-{value}``).
+            timeout: Maximum wait time for the option to be clickable.
+        """
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.click(timeout=timeout)
+
+    def select_mcp_node_toolkit(self, toolkit_name: str, timeout: int = 5000) -> None:
+        """Open the Toolkit dropdown and select *toolkit_name*.
+
+        Args:
+            toolkit_name: The toolkit's display value (matches
+                ``select-option-{toolkit_name}``, e.g. the toolkit's
+                cleaned display name as rendered in the option list).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self.open_mcp_node_toolkit_select(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(toolkit_name))
+        option.click(timeout=timeout)
+
+    def select_mcp_node_tool(self, tool_name: str, timeout: int = 5000) -> None:
+        """Open the Tool dropdown and select *tool_name*.
+
+        Args:
+            tool_name: The tool's value (matches ``select-option-{tool_name}``).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self.open_mcp_node_tool_select(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(tool_name))
+        option.click(timeout=timeout)
+
+    def get_mcp_node_input_mapping_value(self, param_name: str, timeout: int = 5000) -> str:
+        """Read the current value of an Input-mapping "Value" field.
+
+        Args:
+            param_name: The tool parameter name (e.g. ``"repoName"``).
+            timeout: Maximum wait time for the field to be visible.
+
+        Returns:
+            The field's current input value.
+        """
+        field = self.page.locator(self.MCP_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        return field.input_value()
+
+    def fill_mcp_node_input_mapping_value(self, param_name: str, value: str, timeout: int = 5000) -> None:
+        """Fill an Input-mapping "Value" field for a fixed-type tool parameter.
+
+        Uses click + press_sequentially — MUI/React fields need real keyboard
+        events for onChange to fire (.claude/rules/mui-patterns.md).
+
+        Args:
+            param_name: The tool parameter name (e.g. ``"repoName"``).
+            value: The text to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        field = self.page.locator(self.MCP_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        field.click()
+        field.press("Control+a")
+        field.press("Delete")
+        field.press_sequentially(value, delay=20)
+
+    def is_mcp_node_input_mapping_value_visible(self, param_name: str, timeout: int = 5000) -> bool:
+        """Check whether an Input-mapping "Value" field is visible for *param_name*.
+
+        Used right after a Tool selection to confirm the mapping section
+        rendered a Value field for each of the new tool's parameters — a
+        pure visibility/rendering check, distinct from reading its content
+        (see ``get_mcp_node_input_mapping_value``).
+
+        Args:
+            param_name: The tool parameter name (e.g. ``"repoName"``).
+            timeout: Maximum wait time for the field to appear.
+
+        Returns:
+            True if the field is visible within *timeout*, False otherwise.
+        """
+        field = self.page.locator(self.MCP_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        try:
+            field.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def is_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:
+        """Check whether the "Input mapping (required N)" accordion is visible.
+
+        Args:
+            required_count: Expected N in the accordion title.
+            timeout: Maximum wait time.
+
+        Returns:
+            True if the section with the exact required count is visible.
+        """
+        heading = self.mcp_node_input_mapping_required_heading
+        try:
+            heading.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (required {required_count})"
+
+    def save_and_wait_for_update(self, project_id: str, pipeline_id: int, timeout: int = 15000) -> dict:
+        """Click Save and wait for the update PUT's 201 response.
+
+        Waits on the network response itself, not a fixed timeout, per
+        ELITEA-1954 AFS § Network Behavior / Automation Hints.
+
+        Args:
+            project_id: Project id, used to scope the response URL match.
+            pipeline_id: The pipeline's numeric id.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the ``201 Created`` response.
+        """
+        with self.page.expect_response(
+            lambda r: f"/application/prompt_lib/{project_id}/{pipeline_id}" in r.url
+            and r.request.method == "PUT"
+            and r.status == 201,
+            timeout=timeout,
+        ) as response_info:
+            self.save_button.evaluate("el => el.click()")
+        return response_info.value.json()
 
     def connect_nodes(
         self,
