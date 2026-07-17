@@ -216,3 +216,49 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
             create_response.status, toolkit_patch_response.status, relation_patch_response.status,
         )
         return create_response, toolkit_patch_response, relation_patch_response
+
+    # ------------------------------------------------------------------
+    # Create Agent (review step -> created agent) with a selected Skill —
+    # ELITEA-1911. A distinct wait pair from click_approve_and_wait_for_creation()
+    # above: a selected Skill fires GET + PATCH .../skill/prompt_lib/{project}/{id}
+    # (fetchSkillDetails + updateSkillRelation, per skillsApi.js), not the
+    # tool-PATCH / application_relation-PATCH pair the Toolkit/Agent flow fires.
+    # See the ELITEA-1911 AFS Gap assertions #2.
+    # ------------------------------------------------------------------
+
+    @action("Click Create Agent (with selected Skill)")
+    def click_approve_and_wait_for_skill_creation(self, timeout: int = 15000):
+        """Click "Create Agent" and wait for the base-agent create (POST)
+        plus the selected-Skill's association pair: a ``GET`` (fetches the
+        skill's ``version_details.id`` needed as ``skill_version_id``) and
+        the ``PATCH .../skill/prompt_lib/{project}/{skillId}`` that attaches
+        it (``has_relation: true``).
+
+        Same rationale as :meth:`click_approve_and_wait_for_creation`: the
+        UI's auto-navigation to the created agent's detail page can race
+        ahead of the association calls completing, so all three responses
+        are awaited explicitly rather than relying on navigation timing.
+
+        Returns:
+            tuple: ``(create_response, skill_get_response, skill_patch_response)``
+        """
+        with self.page.expect_response(
+            lambda r: "/elitea_core/applications/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as create_info, self.page.expect_response(
+            lambda r: "/elitea_core/skill/prompt_lib/" in r.url and r.request.method == "GET",
+            timeout=timeout,
+        ) as skill_get_info, self.page.expect_response(
+            lambda r: "/elitea_core/skill/prompt_lib/" in r.url and r.request.method == "PATCH",
+            timeout=timeout,
+        ) as skill_patch_info:
+            self.approve_button.click()
+
+        create_response = create_info.value
+        skill_get_response = skill_get_info.value
+        skill_patch_response = skill_patch_info.value
+        logger.info(
+            "Create Agent (with Skill): create=%d skill-get=%d skill-patch=%d",
+            create_response.status, skill_get_response.status, skill_patch_response.status,
+        )
+        return create_response, skill_get_response, skill_patch_response

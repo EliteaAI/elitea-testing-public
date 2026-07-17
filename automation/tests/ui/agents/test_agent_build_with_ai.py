@@ -13,9 +13,15 @@ Covers ELITEA-1909: only explicitly selected suggested resources (Toolkit,
 nested Agent) are attached to the created agent, and a non-selected
 suggested resource is absent.
 
+Covers ELITEA-1911: extends ELITEA-1909's coverage to the Skill suggested-
+resource type — a selected suggested Skill is attached to the created
+agent's SKILLS section (a distinct accordion/network contract from the
+Toolkit/Agent flow), and a non-selected suggested Skill is absent.
+
 Spec: test-specs/agents/l2_build-with-ai-generation-failure-retry_ELITEA-1915.md
 Spec: test-specs/agents/l2_build-with-ai-generated-draft-suggested-resources_ELITEA-1907.md
 Spec: test-specs/agents/l2_build-with-ai-selected-suggested-resources-attached-to-created-agent_ELITEA-1909.md
+Spec: test-specs/agents/lextend_build-with-ai-selected-suggested-skills-attached-to-created-agent_ELITEA-1911.md
 Covers: GenerateAgentModal (GenerateEntityModal.jsx via GenerateAgentModal.jsx)
 
 Markers:
@@ -427,8 +433,9 @@ class TestAgentBuildWithAISuggestedResources:
 
 class TestAgentBuildWithAISelectedResourcesAttached:
     """Build with AI (P2): only explicitly selected suggested resources
-    (Toolkit, nested Agent) are attached to the created agent; non-selected
-    suggested resources are absent."""
+    (Toolkit, nested Agent, Skill — ELITEA-1909 @ELITEA-1909, extended for
+    Skill by ELITEA-1911 @ELITEA-1911) are attached to the created agent;
+    non-selected suggested resources are absent."""
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
@@ -598,6 +605,187 @@ class TestAgentBuildWithAISelectedResourcesAttached:
             with allure.step("Step 9 — Verify the non-selected suggested Agent is absent"):
                 assert not detail_page.is_toolkit_attached(not_selected_agent["name"]), (
                     f"Non-selected agent {not_selected_agent['name']!r} should NOT appear in the Tools section"
+                )
+        finally:
+            if created_agent_id is not None:
+                try:
+                    agent_api.delete_agent(created_agent_id)
+                    logger.info("Deleted created agent %s", created_agent_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete created agent %s during teardown: %s", created_agent_id, exc)
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agents/build_with_ai/ELITEA-1911_build-with-ai-selected-suggested-skills-attached-to-created-agent.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_selected_suggested_skill_attached_and_non_selected_absent(
+        self, page, agent_api, github_relevant_skills
+    ):
+        """Selecting one suggested Skill (leaving a second suggested Skill
+        unchecked) and clicking "Create Agent" attaches exactly the selected
+        Skill to the created agent's SKILLS section; the deliberately-
+        unselected Skill is absent. Extends this class's Toolkit/nested-Agent
+        coverage (ELITEA-1909) to the Skill suggested-resource type
+        (ELITEA-1911) — a genuinely distinct network contract
+        (GET+PATCH .../skill/prompt_lib/...) and a distinct accordion
+        (agent-skills-section, not agent-toolkits-section)."""
+        list_page = AgentsListPage(page)
+        modal = GenerateAgentModalPage(page)
+        selected_skill = github_relevant_skills["selected"]
+        not_selected_skill = github_relevant_skills["not_selected"]
+
+        # Names both fixture skills explicitly so the suggestion engine's
+        # relevance match surfaces both as `suggested_skills` candidates —
+        # see ELITEA-1911 AFS Test Data (prompt text and fixture
+        # descriptions are coupled by design, same pattern as
+        # github_relevant_agents/prompt_text above).
+        prompt_text = (
+            "An agent that manages a GitHub repository by delegating changelog "
+            f"writing to the {selected_skill['name']} skill or issue labeling to "
+            f"the {not_selected_skill['name']} skill."
+        )
+
+        created_agent_id = None
+        try:
+            # ------------------------------------------------------------------
+            # Step 1 — Generate a draft mentioning both fixture Skills; the
+            # Suggested Skills section renders both as unchecked cards
+            # ------------------------------------------------------------------
+            with allure.step("Step 1 — Generate an agent draft mentioning both fixture Skills"):
+                list_page.navigate_to_create()
+                modal.open_modal()
+                modal.fill_prompt(prompt_text)
+
+                assert modal.get_prompt_value() == prompt_text, (
+                    "Prompt textarea should contain exactly the entered text"
+                )
+
+                response = modal.click_generate_and_wait_for_response(
+                    timeout=LIVE_GENERATE_RESPONSE_TIMEOUT
+                )
+                assert response.status == 200, (
+                    f"Expected the generate-draft request to succeed, got {response.status}"
+                )
+                modal.wait_for_review_form()
+
+                assert modal.is_resource_section_visible("skill"), (
+                    'The "Suggested Skills:" section should be present with both fixture Skills'
+                )
+                assert modal.get_resource_name_text("skill", selected_skill["id"]) == selected_skill["name"], (
+                    "Suggested skill card should be the fixture skill intended for selection"
+                )
+                assert modal.get_resource_name_text("skill", not_selected_skill["id"]) == not_selected_skill["name"], (
+                    "Suggested skill card should also include the fixture skill intended to stay unselected"
+                )
+                assert not modal.is_resource_checked("skill", selected_skill["id"]), (
+                    "Skill suggestion should not be pre-selected"
+                )
+                assert not modal.is_resource_checked("skill", not_selected_skill["id"]), (
+                    "Skill suggestion should not be pre-selected"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 2 — Select the suggested Skill; deliberately leave the
+            # sibling suggested Skill unchecked
+            # ------------------------------------------------------------------
+            with allure.step("Step 2 — Select the suggested Skill; leave the sibling Skill unchecked"):
+                # Start capturing skill-relation traffic before the selection
+                # so the post-approve absence check (step 6) below covers the
+                # entire flow, not just the click itself.
+                skill_requests = modal.capture_requests_matching("/elitea_core/skill/prompt_lib/")
+
+                modal.select_resource("skill", selected_skill["id"])
+
+                assert modal.is_resource_checked("skill", selected_skill["id"]), (
+                    f"{selected_skill['name']!r} card should be checked/selected after clicking its checkbox"
+                )
+                assert not modal.is_resource_checked("skill", not_selected_skill["id"]), (
+                    f"{not_selected_skill['name']!r} card should remain unchecked — this test's negative fixture"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 3 — Click "Create Agent"; verify the base-agent create call
+            # plus the selected Skill's GET+PATCH relation pair
+            # ------------------------------------------------------------------
+            with allure.step('Step 3 — Click "Create Agent"'):
+                create_response, skill_get_response, skill_patch_response = (
+                    modal.click_approve_and_wait_for_skill_creation()
+                )
+
+                assert create_response.status == 201, (
+                    f"Expected the base-agent create call to resolve 201, got {create_response.status}"
+                )
+                created_agent_id = create_response.json()["id"]
+
+                assert str(selected_skill["id"]) in skill_get_response.url, (
+                    f"The skill-details GET should target the selected Skill's id, got {skill_get_response.url}"
+                )
+                assert skill_get_response.status == 200, (
+                    f"Expected fetchSkillDetails GET to resolve 200, got {skill_get_response.status}"
+                )
+
+                assert str(selected_skill["id"]) in skill_patch_response.url, (
+                    f"The skill relation PATCH should target the selected Skill's id, got {skill_patch_response.url}"
+                )
+                assert skill_patch_response.status == 201, (
+                    f"Expected the selected-Skill association PATCH to resolve 201, "
+                    f"got {skill_patch_response.status}"
+                )
+                skill_patch_body = skill_patch_response.json()
+                # Live-observed contract (see the ELITEA-1911 AFS amendment
+                # committed alongside this change): the response is
+                # {"skill_id", "skill_version_id", "skill_name",
+                # "version_name"} — NOT {"has_relation": true, ...} as the
+                # AFS's Network Behavior section guessed (that field was
+                # explicitly flagged there as "not independently
+                # re-verified field-by-field"). Asserting the live contract
+                # per the reverse-masking guard, not the unverified case text.
+                assert skill_patch_body.get("skill_id") == selected_skill["id"], (
+                    f"Skill association response should confirm skill_id={selected_skill['id']}, "
+                    f"got {skill_patch_body.get('skill_id')!r}"
+                )
+
+                page.wait_for_url(f"**/agents/all/{created_agent_id}**")
+
+            # ------------------------------------------------------------------
+            # Step 4 (case) — created Agent detail page is displayed
+            # ------------------------------------------------------------------
+            detail_page = AgentDetailPage(page)
+            with allure.step("Step 4 — Verify the created Agent detail page is displayed"):
+                detail_page.wait_for_page_load()
+                assert f"/agents/all/{created_agent_id}" in page.url, (
+                    f"Expected to land on the created agent's detail page, got {page.url}"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 5 (case) — selected Skill present in the SKILLS section
+            # ------------------------------------------------------------------
+            with allure.step("Step 5 — Verify the selected Skill is present in the SKILLS section"):
+                assert detail_page.is_skill_attached(selected_skill["name"]), (
+                    f"Selected skill {selected_skill['name']!r} should appear in the Skills section"
+                )
+                counter_text = detail_page.get_skills_counter_text()
+                assert counter_text.startswith("1/"), (
+                    f'Expected the Skills counter to read "1/N skills added.", got {counter_text!r}'
+                )
+
+            # ------------------------------------------------------------------
+            # Step 6 (case) — non-selected suggested Skill is absent, both by
+            # card and by network log (no relation call ever fired for it)
+            # ------------------------------------------------------------------
+            with allure.step("Step 6 — Verify the non-selected suggested Skill is absent"):
+                assert not detail_page.is_skill_attached(not_selected_skill["name"]), (
+                    f"Non-selected skill {not_selected_skill['name']!r} should NOT appear in the Skills section"
+                )
+                not_selected_calls = [
+                    r for r in skill_requests if str(not_selected_skill["id"]) in r["url"]
+                ]
+                assert not not_selected_calls, (
+                    f"No GET/PATCH .../skill/prompt_lib/.../{not_selected_skill['id']} call should ever fire "
+                    f"for the deliberately-unselected Skill, got: {not_selected_calls}"
                 )
         finally:
             if created_agent_id is not None:

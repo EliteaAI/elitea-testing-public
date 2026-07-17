@@ -15,6 +15,8 @@ Fixtures:
 - pipeline_with_llm_id: Fresh executable pipeline with LLM node
 - github_credential: GitHub API credential (skipped if GITHUB_TOKEN unset)
 - github_toolkit: GitHub toolkit attached to a fresh credential
+- github_relevant_agents: GitHub-relevant Agent pair (selected/not_selected)
+- github_relevant_skills: GitHub-relevant Skill pair (selected/not_selected)
 - invalid_jira_credential: Jira credential with invalid/expired token
 - jira_toolkit_with_invalid_credential: Jira toolkit using invalid credential
 - invalid_github_credential: GitHub credential with invalid token
@@ -25,7 +27,7 @@ import time
 
 import pytest
 
-from api import ArtifactAPI, ConversationAPI, AgentAPI, PipelineAPI, CredentialAPI, ToolkitAPI
+from api import ArtifactAPI, ConversationAPI, AgentAPI, PipelineAPI, CredentialAPI, SkillAPI, ToolkitAPI
 from config import settings
 
 logger = logging.getLogger("elitea.automation.fixtures.data")
@@ -369,6 +371,79 @@ def github_relevant_agents(agent_api: AgentAPI, request):
             logger.info("Deleted GitHub-relevant agent %s", agent["id"])
         except Exception as exc:
             logger.warning("Failed to delete agent %s during teardown: %s", agent["id"], exc)
+
+
+# ---------------------------------------------------------------------------
+# GitHub-relevant Skill pair for ELITEA-1911 ("Build with AI" suggested-Skill
+# precondition — same shape as github_relevant_agents above)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def github_relevant_skills(skill_api: SkillAPI, request):
+    """Create two pre-existing, GitHub-relevant Skills so "Build with AI"'s
+    suggestion engine has real candidates to surface as ``suggested_skills``
+    — the engine only suggests Skills already configured in the project,
+    filtered by semantic relevance to the submitted prompt (see ELITEA-1911
+    AFS Preconditions — same inventory-gating mechanism ``github_relevant_agents``
+    already documents for Toolkits/Agents).
+
+    Yields a dict with ``selected`` and ``not_selected`` sub-dicts, each
+    ``{"id": int, "name": str, "description": str}`` — the caller's test
+    prompt must name both skills by their exact ``name`` for the suggestion
+    engine's relevance match to pick them up (mirrors
+    ``github_relevant_agents``'s Automation Hints).
+
+    Skill names are constrained (live-confirmed via the Skills UI form's
+    validation message, see ``SkillAPI.create_skill()``) to lowercase
+    letters, digits, and hyphens, max 32 characters, no leading/trailing
+    hyphen — the generated names respect this.
+
+    Both skills are deleted in teardown even if the test fails.
+    """
+    suffix = str(int(time.time() * 1000))[-6:]
+    selected_name = f"autotest-gh-changelog-{suffix}"[:32]
+    not_selected_name = f"autotest-gh-issue-label-{suffix}"[:32]
+    selected_description = (
+        "Skill that writes GitHub repository changelog entries from merged pull requests."
+    )
+    not_selected_description = (
+        "Skill that reads GitHub issues and applies priority/severity labels automatically."
+    )
+    selected_instructions = (
+        "You are a skill that reads merged GitHub pull requests and writes concise "
+        "changelog entries summarizing the changes."
+    )
+    not_selected_instructions = (
+        "You are a skill that reads incoming GitHub issues and applies priority and "
+        "severity labels based on their content."
+    )
+
+    selected = skill_api.create_skill(selected_name, selected_description, selected_instructions)
+    not_selected = skill_api.create_skill(
+        not_selected_name, not_selected_description, not_selected_instructions
+    )
+    logger.info(
+        "Created GitHub-relevant skill pair %s (%s) / %s (%s) for %s",
+        selected["id"], selected_name, not_selected["id"], not_selected_name,
+        request.node.name,
+    )
+
+    yield {
+        "selected": {
+            "id": selected["id"], "name": selected_name, "description": selected_description,
+        },
+        "not_selected": {
+            "id": not_selected["id"], "name": not_selected_name, "description": not_selected_description,
+        },
+    }
+
+    for skill in (selected, not_selected):
+        try:
+            skill_api.delete_skill(skill["id"])
+            logger.info("Deleted GitHub-relevant skill %s", skill["id"])
+        except Exception as exc:
+            logger.warning("Failed to delete skill %s during teardown: %s", skill["id"], exc)
 
 
 # ---------------------------------------------------------------------------
