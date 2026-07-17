@@ -126,6 +126,20 @@ value is assembled from two separate variables in two separate files, only
 one of which (`columnTestIdPrefix`'s literal `'mcp-table'` assignment) is a
 static string at all.
 
+### Fourth occurrence: rule applied correctly on first re-check (#128, ELITEA-1911)
+
+Ran the literal `data-testid="$t"`-shaped grep out of habit on the FIRST pass
+of this closure record's verification and got false "no" on several testids
+that plainly work live (`generate-agent-open-button` via a `buttonTestId="..."`
+prop-forwarding wrapper; `generate-agent-resource-section-skill` via a
+template-literal `data-testid={\`generate-agent-resource-section-${entityType}\`}`).
+Caught it against this entry's own rule before writing the closure record,
+re-ran with a bare `git grep -q -- "$t"` substring match, got the correct
+all-YES result on both refs. No bad record shipped. Filing this occurrence
+mainly to confirm the rule holds and is actionable in real time, not just in
+hindsight — the fix is now reliably the FIRST thing reached for, not a
+recovery step after a wrong claim almost went out.
+
 What actually worked: grep for the **prop name** (`columnTestIdPrefix`)
 across `src/`, confirmed present on `automation/testids` / absent on `main`.
 For the sibling testid on the same PR that *was* a plain literal
