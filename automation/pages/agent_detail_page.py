@@ -1158,6 +1158,36 @@ class AgentDetailPage(AgentFormPage):
         """
         return popper.get_by_role("menuitem", name=agent_name, exact=True)
 
+    @action("Attach agent")
+    def attach_agent(self, agent_name: str, timeout: int = 10000):
+        """Attach another Agent as a sub-agent tool via the Tools section's
+        "+ Agent" picker (ELITEA-1902).
+
+        Mirrors :meth:`add_toolkit` / :meth:`add_mcp`'s shape, but wraps
+        :meth:`open_agent_picker` + ``Popper.select_menuitem`` instead of
+        duplicating the click-then-wait-for-popper sequence — the picker
+        itself already existed (ELITEA-1887, self-attachment exclusion
+        check) with no attach convenience method on top of it. The attach
+        auto-persists (agent-level Save button stays disabled/returns to
+        disabled immediately after the picker selection resolves), same
+        auto-persist behavior already documented for `add_toolkit()` /
+        `add_mcp()`. The resulting card renders via the shared
+        ``agent-toolkit-card`` testid (confirmed design — see the
+        `toolkit_card` field's docstring above), so no dedicated
+        sub-agent-card/removal methods are needed; reuse
+        :meth:`is_toolkit_attached` / :meth:`remove_toolkit`.
+
+        Args:
+            agent_name: Exact name of the Agent to attach as a sub-agent tool.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Attaching agent '%s' as a sub-agent tool", agent_name)
+        popper = self.open_agent_picker(timeout=timeout)
+        Popper.select_menuitem(popper, agent_name, self.page, timeout=timeout)
+        self.page.wait_for_timeout(1000)
+        self.wait_for_network(timeout=timeout)
+        logger.info("Agent '%s' attached as a sub-agent tool", agent_name)
+
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit is attached to the agent.
 
