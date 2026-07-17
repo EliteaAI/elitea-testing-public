@@ -152,10 +152,10 @@ pass, see Live Execution Evidence above for outcomes.
 | 6 | Wait up to 60s for AI response | response rendered | `wait_for_response(timeout=AI_RESPONSE_TIMEOUT)` | existing test L195, page object L223-267 | covered |
 | 7 | Assert new assistant message appeared | `count_before > initial_count` | explicit assert | existing test L196-197 | covered |
 | 8 | Click New Chat | New Chat triggered, 1s + networkidle wait | `support_page.start_new_chat()` | existing test L199-200, page object L319-330 | covered |
-| 9 | Wait for widget ready again | fresh/welcome state | `wait_for_widget_ready()` | existing test L203-204 | covered — **but see gap below**: existing test does not assert the message *count* actually reset, only that title+input are visible again |
-| EFS-1 | Old messages no longer displayed | main view clears | *no current assertion* | — | **gap** — safe to add now (verified live: count resets from N to 1) |
-| EFS-2 | Fresh/welcome state shown | welcome message renders | *no current assertion* | — | **gap** — safe to add now (verified live: auto-welcome message appears) |
-| EFS-3 | Previous session preserved in history, not lost | history entry exists AND shows full/current content | *no current assertion; no code can satisfy this correctly right now* | — | **defect** — GH#607 filed; automation of this clause paused until fixed |
+| 9 | Wait for widget ready again | fresh/welcome state | `wait_for_widget_ready()` | existing test L203-204 | covered — message-count reset is now also asserted, see EFS-1/EFS-2 rows below |
+| EFS-1 | Old messages no longer displayed | main view clears | `assert reset_message_count < total_count_before` | existing test, Step 4-5 | covered |
+| EFS-2 | Fresh/welcome state shown | welcome message renders | `wait_for_widget_ready()` + message-count-reset assert | existing test, Step 4-5 | covered |
+| EFS-3 | Previous session preserved in history, not lost | history entry exists AND shows full/current content | `soft_failures` list (total-message-count + last-message comparison) + final `pytest.fail()` | existing test, Step 6 | covered — forward-looking regression net (see Known Defects → Automation impact); currently green because this test's own pre-New-Chat conversation stays under the ~100-group truncation threshold each run, not because GH#607 is resolved |
 | — | Traceability: existing test's `@allure.issue` decorator only points at legacy ELITEA-0641, never ELITEA-1799 | `@allure.issue` should reference ELITEA-1799's own case file | not yet present | existing test L179 | **gap** — same shape as ELITEA-1796/1798/1801/1802 |
 
 ### Axis 2 — assertions beyond the case
@@ -253,11 +253,21 @@ previous session is preserved in history and not lost"). Evidence:
   `test-results/screenshots/ELITEA-1799-step3-new-conversation-created-after-send.png`.
 
 **Automation impact:** per test-case-analysis SKILL.md § Classify findings,
-a confirmed product defect against the case's own contract routes the
-whole case to `defect-found` (automation of the failing assertion paused
-until fixed), even though the rest of the flow (steps 1–9) works and is
-already behaviorally covered by the existing test. See Automation Hints
-for what can safely proceed now vs. what must wait.
+a confirmed product defect against the case's own contract initially routed
+the whole case to `defect-found`. That routing was superseded during
+implementation (see Automation Hints "Amended 2026-07-17"): `.agents/testing.md`
+§ Merge gate's Sanctioned-RED exception directed the assertion to be **added
+now**, not deferred. What actually shipped is a **forward-looking regression
+net**: Step 6 of `test_new_chat_creates_fresh_session` asserts the
+live-contract-correct behavior (the message and response sent immediately
+before New Chat are still present, by count and content, after history
+restore). It is currently **green**, not red — this test's own pre-New-Chat
+conversation stays under GH#607's ~100-message-group truncation threshold on
+each run (see Automation Hints live-verification finding) — but the assertion
+will start failing red once the shared account's active conversation
+naturally grows past that threshold again, consistent with
+`.agents/testing.md` § Merge gate Sanctioned-RED philosophy. GH#607 remains
+open and unresolved.
 
 No other defects found. The case-text drift on the `New Chat` button's
 `data-testid` (case cites `support-assistant-new-chat`, not present in
@@ -268,8 +278,11 @@ correctly and is what the existing automation already uses.
 
 ## Blocked Steps
 None outright blocked — every case step (1–9) executed to completion.
-Expected-Final-State clause 3 could not be **asserted as passing**
-(defect, not a blocker) — see Known Defects.
+Expected-Final-State clause 3 is asserted in the shipped test (Step 6,
+`soft_failures` list + final `pytest.fail()`) as a forward-looking
+regression net, not skipped or deferred — see Known Defects → Automation
+impact for why it currently runs green rather than red against the live
+product.
 
 ## Automation Hints
 - **Safe to proceed now** (independent of GH#607):
@@ -285,6 +298,11 @@ Expected-Final-State clause 3 could not be **asserted as passing**
          "onetest-ai Test Case link",
      )
      ```
+     (Shipped implementation note: the merged test also carries a **4th**
+     `@allure.issue(...)` decorator linking GH#607 directly
+     (`"Known defect #607"`) alongside this 3rd one — not anticipated by
+     this hint, but a reasonable, low-risk addition that keeps the known
+     defect discoverable straight from the test's Allure metadata.)
   2. Strengthen Step 4-5's assertion (test L203-204) to also assert the
      message count actually reset (EFS-1/EFS-2 from the Coverage Map),
      e.g. `assert support_page.get_message_count() < count_before` (or
