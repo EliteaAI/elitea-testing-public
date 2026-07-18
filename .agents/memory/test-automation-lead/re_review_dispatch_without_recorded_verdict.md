@@ -33,3 +33,10 @@ CHANGES_REQUESTED / findings) is recorded. If the log goes straight from
 a checklist-6 FAIL even though a dispatch is evidenced — the canon's FAIL
 condition ("no dispatch, no verdict recorded anywhere") should be read as
 requiring BOTH a dispatch AND a verdict, not either one alone.
+
+**Confirmed recurring on a FIRST review too, not just re-review (#139,
+ELITEA-1991, PR #604):** same exact shape — "Dispatching fresh reviewer
+next." then 9 minutes later straight to the closure record, `gh api
+pulls/N/reviews`, `/comments`, and `issues/N/comments` all empty. The rule
+above isn't fix-round-specific; apply it to EVERY review dispatch mentioned
+in a work-log, first round included.
