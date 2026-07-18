@@ -20,6 +20,15 @@ Tooltip) fires on every successful import — filtered out of the
 zero-console-errors assertion rather than asserted against (see AFS §
 Known Defects).
 
+Also covers ELITEA-1895 ("Export agent with nested agent dependencies —
+produces .zip archive"): Steps 2-3 of this test (export via the actions
+overflow menu producing a `.zip`, then unzipping and asserting exactly one
+`.agent.md` per entity) are a strict behavioural superset of ELITEA-1895's
+4-step case — see
+test-specs/agents/lextend_export-agent-with-nested-dependencies-produces-zip-archive_ELITEA-1895.md
+for the dedup argument and gap-fill record (this cross-reference + the
+second `@allure.issue` decorator below IS that gap-fill).
+
 Spec: test-specs/agents/l3_import-agent-zip-nested-dependencies_ELITEA-1902.md
 """
 
@@ -90,6 +99,11 @@ class TestImportAgentZipNestedAgentDependencies:
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1902_import-agent-zip-with-nested-agent-dependencies.md",
         "onetest-ai Test Case link",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1895_export-agent-with-nested-dependencies-produces-zip-archive.md",
+        "onetest-ai Test Case link (also covers ELITEA-1895 — behavioural duplicate, "
+        "see test-specs/agents/lextend_export-agent-with-nested-dependencies-produces-zip-archive_ELITEA-1895.md)",
     )
     @pytest.mark.p2
     @pytest.mark.regression
