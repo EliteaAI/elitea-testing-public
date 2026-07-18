@@ -1,6 +1,6 @@
 ---
 name: Publish/Unpublish wizard implementer quirks
-description: create_agent_full() tags-must-be-objects payload gotcha, the #614 post-publish auto-navigation reversion (network-trace-confirmed) generalized into a poll+API-tie-breaker pattern applied at BOTH select_version_by_name() and the actions-menu status check, the two-distinct-React-warning-shapes gotcha for #611, the already-filed #554 toolkits-404 noise confirmed to leak in from a page's OWN initial navigate() (not just a mid-test reload), and two real bugs found while hardening (int/str id-comparison mismatch silently defeating an API tie-breaker; an unguarded wait_for_network() leaking a raw TimeoutError past a method's AssertionError contract)
+description: create_agent_full() tags-must-be-objects payload gotcha, the #614 post-publish auto-navigation reversion (network-trace-confirmed) generalized into a poll+API-tie-breaker pattern applied at BOTH select_version_by_name() and the actions-menu status check, the two-distinct-React-warning-shapes gotcha for #611, the already-filed #554 toolkits-404 noise confirmed to leak in from a page's OWN initial navigate() (not just a mid-test reload), two real bugs found while hardening (int/str id-comparison mismatch silently defeating an API tie-breaker; an unguarded wait_for_network() leaking a raw TimeoutError past a method's AssertionError contract), and the closeout-round #614 root-cause trace confirming a genuine shared client-side mechanism (formik.values.version_details raced against ApplicationVersionSelect.jsx's async cache-invalidation refetch) for the same-page case, honestly flagged unconfirmed for the post-reload residual
 type: feedback
 ---
 
@@ -171,3 +171,56 @@ misses the other and fails as "unexpected console error." Anchor the match
 on the component name in the stack trace (`SvgCheckedIcon` here) — stable
 across both message shapes — combined with an OR of both phrase substrings,
 not a single phrase alone.
+
+## Round-2 closeout: #614's "same root cause" claim — investigated, confirmed (with one honest caveat)
+
+Round 2's commit message asserted the actions-menu staleness and the
+`select_version_by_name` staleness were "the same root cause" — but this was
+pure pattern-matching ("both respond to a reload"), never actually traced,
+and issue #614 had zero comments recording it. A dedicated closeout round
+traced the actual EliteaUI source (sibling `EliteaUI/` clone,
+`automation/testids` branch) rather than re-asserting the claim:
+
+- `agent-version-selector-trigger` / `copy-version-id`
+  (`ApplicationVersionSelect.jsx`) and the actions-menu's Publish/Unpublish
+  gates (`usePublishVersion.hooks.js`'s `canShowPublish`,
+  `useUnpublishVersionMenu.hooks.jsx`'s `canUnpublish`) ALL read the SAME
+  `formik.values.version_details`/`.versions`, which Formik re-syncs from
+  `useApplicationDetailsQuery`'s RTK-Query cache via
+  `EditApplication.jsx`'s `enableReinitialize`.
+- The actual race: `ApplicationVersionSelect.jsx`'s post-navigate
+  `useEffect` reconciles the URL's `version` route param against the
+  (possibly stale) `versions` array — if the newly-published clone isn't in
+  it yet, the effect treats the URL as invalid and REDIRECTS BACK
+  (`navigate({..., replace: true})`). This races against the publish/
+  unpublish mutations' own async `invalidatesTags` refetch (the tag
+  invalidation itself is NOT broken — `applicationDetails` provides the
+  bare/general `TAG_TYPE_APPLICATION_DETAILS` tag, which matches regardless
+  of the mutation's `arg.id` always being `undefined` — a latent-but-inert
+  code smell, not the bug). If the synchronous effect runs before the async
+  refetch resolves, it loses the race and reverts.
+- Confirmed this is the IDENTICAL code path whether triggered by the app's
+  own post-publish `navigate()` or by a user's manual dropdown reselect
+  (`VersionSelect.jsx` ALSO calls `navigate()`, via `replaceVersionInPath`,
+  before invoking `onVersionChange`) — explains why the manual-reselect
+  workaround is usually reliable but not always (the ~1/10 residual
+  `select_version_by_name` needed a 2nd cycle for).
+- **What's genuinely NOT confirmed**: the staleness that survives a FULL
+  `page.reload()` in both methods' escalation paths. A hard reload discards
+  the entire client-side Redux/RTK-Query store, so the async-refetch-vs-
+  effect race above cannot explain it — that residual case is flagged as
+  unconfirmed (plausibly backend-side read-after-write lag), not folded
+  into the "confirmed" claim.
+
+Posted the full evidence trail to
+https://github.com/EliteaAI/elitea-testing-public/issues/614#issuecomment-5011102217.
+AFS amended (it had NOT been amended in round 2, despite the round-2 PR
+checklist claiming otherwise — corrected in the same closeout).
+
+**General lesson**: "both symptoms respond to the same workaround" is not
+evidence of "same root cause" — it's evidence the workaround happens to
+cover both. A same-cause claim needs an actual pointer to shared code/state;
+absent that, say "related, not confirmed identical" rather than overclaim.
+When a commit message makes a causal claim about two failure modes, either
+back it with a code citation or scope the claim down to what's actually
+known.
