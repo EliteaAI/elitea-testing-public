@@ -29,6 +29,8 @@ from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.mcp_list")
 
+UI_ELEMENT_TIMEOUT = 10_000
+
 
 class McpListPage(BasePage):
     """Page object for the MCP list/dashboard page.
@@ -286,6 +288,38 @@ class McpListPage(BasePage):
         for i in range(self.mcp_card_name.count()):
             names.append(self.mcp_card_name.nth(i).text_content().strip())
         return names
+
+    @action("Open an MCP card by name from the list")
+    def open_card_by_name(self, name: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the MCP card matching *name*, navigating to its detail page.
+
+        Assumes :meth:`navigate` (or an equivalent list-page load) already
+        happened — this method does NOT re-navigate to ``/mcps/all`` first.
+        This is deliberate: ELITEA-1947's own case has "navigate to the list
+        and verify appears" (step 2) and "click the card" (step 3) as two
+        separate steps/assertions, and the resulting redirect-after-delete
+        assertion (step 8) is only reliable when the detail page was reached
+        via a REAL list-card click, not the create flow's own post-save
+        redirect (AFS § Known Defects Found / Automation Hints) — so callers
+        must land on the list via :meth:`navigate` themselves first, then
+        call this method, rather than this method silently re-navigating and
+        collapsing the two steps into one.
+
+        After the click, the caller is responsible for waiting on the
+        detail page's own ready state (e.g. ``McpFormPage.wait_for_page_load()``)
+        — this method only waits for the click's own network settle, since
+        it has no knowledge of the destination page object's readiness
+        signal.
+
+        Args:
+            name: The MCP card's name (title) text to match.
+            timeout: Maximum time to wait for the matching card to appear.
+        """
+        card = self.mcp_card.filter(has_text=name)
+        card.first.wait_for(state="visible", timeout=timeout)
+        card.first.click()
+        self.wait_for_network()
+        logger.info("Opened MCP card %r from the list", name)
 
     # ------------------------------------------------------------------
     # Table view
