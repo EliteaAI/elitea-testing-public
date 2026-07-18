@@ -76,6 +76,17 @@ class McpListPage(BasePage):
         description="MCP card name (title) — collection locator, one per visible card",
     )
 
+    # Shared CardTagSectionItem.jsx testid (also used by every entity-list
+    # badge/tag, e.g. Toolkits/Applications) — collection locator, one per
+    # tag chip rendered on a card (e.g. "Remote"). Scoped-selector UPPER_CASE
+    # constant per .claude/rules/page-objects.md "Scoped selectors" pattern,
+    # NOT a plain LocatorDescriptor: a page-wide entity-card-tag-chip locator
+    # would resolve to every card's chip, not just the one for a specific
+    # MCP name — this constant is meant to be scoped inside a single matched
+    # `mcp_card` via .filter(has_text=name).locator(CARD_TAG_CHIP_SELECTOR)
+    # (see :meth:`get_card_type_badge_text`, ELITEA-1921 AFS Automation Hints).
+    CARD_TAG_CHIP_SELECTOR = '[data-testid="entity-card-tag-chip"]'
+
     # Table view column headers (EliteaUI draft PR EliteaAI/EliteaUI#564,
     # ELITEA-1944 fix pass): GridTableHeader.jsx's new optional
     # `columnTestIdPrefix` prop, wired only when DataTable's cardType is MCP
@@ -288,6 +299,27 @@ class McpListPage(BasePage):
         for i in range(self.mcp_card_name.count()):
             names.append(self.mcp_card_name.nth(i).text_content().strip())
         return names
+
+    def get_card_type_badge_text(self, name: str, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the type/tag badge text (e.g. "Remote") for the card matching *name*.
+
+        Scoped inside the matching ``mcp_card`` via :attr:`CARD_TAG_CHIP_SELECTOR`
+        (ELITEA-1921 AFS Automation Hints) so this reads the badge for the
+        SPECIFIC card, not the first tag chip anywhere on the page. The API
+        list response carries no ``tags`` field — the badge text is
+        synthesized client-side from the toolkit's ``type`` (AFS Concrete
+        Handles row 13), so there is nothing to assert at the network layer
+        for this value, only in the rendered DOM.
+
+        Args:
+            name: The MCP card's name (title) text to match.
+            timeout: Maximum time to wait for the matching card/chip.
+        """
+        card = self.mcp_card.filter(has_text=name)
+        card.first.wait_for(state="visible", timeout=timeout)
+        chip = card.first.locator(self.CARD_TAG_CHIP_SELECTOR).first
+        chip.wait_for(state="visible", timeout=timeout)
+        return chip.text_content() or ""
 
     @action("Open an MCP card by name from the list")
     def open_card_by_name(self, name: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
