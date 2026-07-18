@@ -16,6 +16,7 @@ import pytest
 from api import ToolkitAPI
 from config import settings
 from pages.mcp_form_page import McpFormPage
+from pages.mcp_list_page import McpListPage
 import allure
 
 logger = logging.getLogger(__name__)
@@ -215,6 +216,106 @@ def test_create_remote_mcp_all_fields_populated(page, toolkit_api: ToolkitAPI):
                 f"Form view Client Secret hex ({secret_value!r}) should match the "
                 f"Raw Json reference token's hex ({secret_match.group(1)!r})"
             )
+
+    finally:
+        # Not a case step — cleanup for the persistent server-side toolkit
+        # this test creates (AFS § Cleanup).
+        if created_id is not None:
+            try:
+                toolkit_api.delete_toolkit(created_id)
+            except Exception:
+                logger.warning("Failed to delete MCP toolkit id=%s during cleanup", created_id, exc_info=True)
+
+
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+    "automated-full-regression-ui/mcp/ELITEA-1921_create-remote-mcp-minimal-required-fields.md",
+    "onetest-ai Test Case link",
+)
+@pytest.mark.mcp
+def test_create_remote_mcp_minimal_required_fields(page, toolkit_api: ToolkitAPI):
+    """Create a Remote MCP toolkit filling only the required fields (Name + Url).
+
+    Distinct scenario from ``test_create_remote_mcp_all_fields_populated``:
+    the Save-button disabled->enabled gating on a minimal form, the
+    minimal-fields create + persist round-trip (every other field left at
+    its schema default), and the "Remote" type badge on the MCP list card
+    — none of which the all-fields test touches (TMS: ELITEA-1921).
+    """
+    # Toolkit Name input carries MAX_NAME_LENGTH=32 (EliteaUI src/common/constants.js) —
+    # silently truncates anything longer. "autotest_remote_mcp_minimal" is
+    # already 27 characters, so a 4-hex-char suffix (NOT the 6-hex-char
+    # pattern above) keeps the generated name at exactly 32 chars — one more
+    # hex digit would silently truncate (AFS Test Data).
+    toolkit_name = f"autotest_remote_mcp_minimal_{uuid.uuid4().hex[:4]}"
+    project_id = str(settings.elitea_project_id)
+    form = McpFormPage(page)
+    list_page = McpListPage(page)
+    created_id: int | None = None
+
+    # A dirty, unsaved form triggers a native beforeunload confirm dialog if
+    # the harness ever navigates away mid-test — auto-accept it (same
+    # pattern as test_create_remote_mcp_all_fields_populated above).
+    page.on("dialog", lambda dialog: dialog.accept())
+
+    try:
+        with allure.step("Step 1 — Navigate to MCP creation page; verify type picker URL"):
+            form.navigate_to_create()
+            assert "/mcps/create" in page.url, f"Expected the MCP type-picker URL, got: {page.url}"
+
+        with allure.step("Step 2 — Verify Local (empty-state) and Remote (card) sections are shown"):
+            assert form.local_empty_state.is_visible(), "Local MCP empty-state message should be visible"
+            assert "Still no local MCP available" in (form.local_empty_state.text_content() or ""), (
+                "Local section should show the 'no local MCP' empty-state copy"
+            )
+            assert form.remote_mcp_type_card.is_visible(), "Remote MCP type card should be visible"
+            assert "Remote MCP" in (form.remote_mcp_type_card.text_content() or ""), (
+                "Remote section card should be labelled 'Remote MCP'"
+            )
+
+        with allure.step("Step 3 — Select Remote MCP type; verify create form loads"):
+            form.select_remote_mcp_type()
+            assert "/mcps/create/mcp" in page.url, f"Expected the Remote MCP form URL, got: {page.url}"
+            assert form.name_input.is_visible(), "Toolkit Name field should be visible on the create form"
+
+        with allure.step("Step 4 — Verify Save is disabled on the pristine, untouched form"):
+            assert form.is_save_button_disabled(), "Save should be disabled before any field is filled"
+
+        with allure.step("Step 5 — Fill Toolkit Name"):
+            form.fill_name(toolkit_name)
+            assert form.name_input.input_value() == toolkit_name
+
+        with allure.step("Step 6 — Fill Url"):
+            form.fill_url(TOOLKIT_URL)
+            assert form.url_input.input_value() == TOOLKIT_URL
+
+        with allure.step("Step 7 — Verify Save becomes enabled once both required fields are filled"):
+            # Do NOT additionally assert an intermediate "disabled after only
+            # one field" state here — Save's enabled/disabled toggle is
+            # dirty-based, not required-field-completeness-based (flips on
+            # the first touched field), so that stricter reading flakes.
+            # Client-side Yup validation still correctly blocks submission of
+            # an incomplete form regardless (AFS Test Steps step 7 note,
+            # CLARIFICATION EliteaAI/elitea-testing-public#633).
+            assert not form.is_save_button_disabled(), "Save should be enabled once Name and Url are both filled"
+
+        with allure.step("Step 8 — Click Save; verify 201 + navigation to detail page"):
+            save_response = form.save_and_wait_for_created(project_id)
+            created_id = save_response["id"]
+            assert isinstance(created_id, int), f"Save response should include a numeric id: {save_response!r}"
+            assert f"/mcps/all/{created_id}" in page.url, (
+                f"Should navigate to the new MCP's detail page, got: {page.url}"
+            )
+
+        with allure.step("Step 9 — Verify detail page shows the persisted name and the two filled fields"):
+            assert toolkit_name in form.get_detail_heading_text()
+            assert form.name_input.input_value() == toolkit_name
+            assert form.url_input.input_value() == TOOLKIT_URL
+
+        with allure.step("Step 10 — Navigate to MCP list; verify the card carries a 'Remote' type badge"):
+            list_page.navigate()
+            badge_text = list_page.get_card_type_badge_text(toolkit_name)
+            assert badge_text == "Remote", f"Expected the 'Remote' type badge, got: {badge_text!r}"
 
     finally:
         # Not a case step — cleanup for the persistent server-side toolkit

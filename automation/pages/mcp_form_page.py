@@ -42,6 +42,13 @@ class McpFormPage(BasePage):
         testid="toolkit-type-card-mcp",
         description="Remote MCP type-selector card on /mcps/create",
     )
+    local_empty_state = LocatorDescriptor(
+        testid="mcp-type-picker-local-empty-state",
+        description="Local MCP section empty-state message on /mcps/create "
+        "('Still no local MCP available. Follow creation guides in our "
+        "Documentation.') — added ELITEA-1921, commit 750d72f7 on "
+        "automation/testids",
+    )
 
     # ------------------------------------------------------------------
     # Shared schema-driven fields (create + detail)
@@ -688,6 +695,19 @@ class McpFormPage(BasePage):
     # ------------------------------------------------------------------
     # Save + view toggle
     # ------------------------------------------------------------------
+
+    def is_save_button_disabled(self) -> bool:
+        """Return whether the create form's Save button is currently disabled.
+
+        Save's enabled/disabled toggle is dirty-based, not required-field-
+        completeness-based (flips to enabled the instant ANY field is
+        touched) — added for ELITEA-1921, see CLARIFICATION #633. Callers
+        should assert the pristine-form (disabled) and both-required-
+        fields-filled (enabled) states only; an intermediate single-field
+        assertion is a documented flake trap (ELITEA-1921 AFS Test Steps
+        step 7 note).
+        """
+        return self.save_button.is_disabled()
 
     @action("Click Save and wait for the toolkit to be created")
     def save_and_wait_for_created(self, project_id: str, timeout: int = SAVE_RESPONSE_TIMEOUT) -> dict:
