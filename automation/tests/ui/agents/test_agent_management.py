@@ -299,9 +299,20 @@ class TestCreateAgent:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0136_agent-creation-field-validation.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/agents/ELITEA-0145_agent-creation-ui-and-api.md", "onetest-ai Test Case link")
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1871_create-agent-instructions-alone-does-not-enable-save.md",
+        "onetest-ai Test Case link (also covers ELITEA-1871 — instructions-alone and "
+        "description-only sub-cases, see "
+        "test-specs/agents/lextend_create-agent-instructions-alone-does-not-enable-save_ELITEA-1871.md)",
+    )
     @pytest.mark.p1
     def test_create_agent_required_fields_validation(self, page):
-        """Save button should be disabled when required fields are empty."""
+        """Save button should be disabled when required fields are empty.
+
+        Also covers ELITEA-1871: Instructions filled alone, and Description filled
+        alone, must each leave Save disabled — only Name AND Description together
+        enable it.
+        """
         with allure.step("Step 1 — Navigate to create agent page"):
             list_page = AgentsListPage(page)
             list_page.navigate_to_create()
@@ -311,12 +322,26 @@ class TestCreateAgent:
         with allure.step("Step 2 — Verify Save disabled with empty fields"):
             assert not form_page.is_save_enabled(), "Save should be disabled with empty required fields"
 
-        with allure.step("Step 3 — Fill only name and verify Save still disabled"):
+        with allure.step("Step 3 — Fill only Instructions and verify Save still disabled"):
+            form_page.fill_form(name="", description="", instructions="Any test instructions text")
+            form_page.wait_for_form_validation()
+            assert not form_page.is_save_enabled(), (
+                "Save should be disabled when only Instructions is filled (name and description empty)"
+            )
+
+        with allure.step("Step 4 — Fill only name and verify Save still disabled"):
             form_page.fill_form(name="autotest_partial", description="")
             form_page.wait_for_form_validation()
             assert not form_page.is_save_enabled(), "Save should be disabled without description"
 
-        with allure.step("Step 4 — Fill both fields and verify Save enabled"):
+        with allure.step("Step 5 — Clear name, fill only Description, verify Save still disabled"):
+            form_page.fill_form(name="", description="Some description")
+            form_page.wait_for_form_validation()
+            assert not form_page.is_save_enabled(), (
+                "Save should be disabled when only Description is filled (name empty)"
+            )
+
+        with allure.step("Step 6 — Fill both fields and verify Save enabled"):
             form_page.fill_form(name="autotest_partial", description="Some description")
             form_page.wait_for_form_validation()
             assert form_page.is_save_enabled(), (
