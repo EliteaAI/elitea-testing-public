@@ -66,3 +66,20 @@ still correct once indirection is accounted for, but the pasted
 that basis. Filed `.agents/workflow.md`'s fix as a tracked canon-gap issue
 (#553) since a memory lesson alone isn't stopping recurrence — the doc
 itself needs to change.
+
+## Recurrence (2026-07-18, #166/ELITEA-1947 delivery)
+
+Same shape a third time, this time on `inputProps={{ 'data-testid': 'X' }}`
+(`NameDescriptionInput.jsx` / `ToolBaseProperty.jsx`'s `toolkit-form-name-input`
+and `toolkit-field-url-input`) — the literal `data-testid=\"$t\"` snippet
+reported both as absent from BOTH `main` and `automation/testids`, which
+contradicted the AFS/PR's explicit "already exists, reused as-is" claim.
+That contradiction (a "no" where the implementer/AFS asserted "yes,
+pre-existing") is the actionable tell: re-check the grep methodology before
+writing the row, don't write "gap" just because the pattern says so. Re-ran
+with a bare fixed-string `git grep -F "<testid>"` and got the correct YES
+on `automation/testids` for both. `.agents/workflow.md` § Closure record
+STILL carries the literal-attribute snippet as of this recurrence — #553
+(or its equivalent) evidently still hasn't landed; worth a direct doc-fix
+dispatch next time a framework-scale window opens rather than relying on
+this memory entry alone to catch it live every time.
