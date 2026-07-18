@@ -83,3 +83,22 @@ STILL carries the literal-attribute snippet as of this recurrence — #553
 (or its equivalent) evidently still hasn't landed; worth a direct doc-fix
 dispatch next time a framework-scale window opens rather than relying on
 this memory entry alone to catch it live every time.
+
+## Recurrence (2026-07-18, #175/ELITEA-1871 delivery) — 4th occurrence
+
+Same shape a fourth time: `CreateAgentForm.jsx` (`inputProps={{ maxLength:
+..., 'data-testid': 'agent-name-input' }}`) and `InstructionsInput.jsx`
+(`inputProps={{ 'data-testid': 'agent-instructions-input' }}`). The literal
+snippet from `workflow.md` reported 3 of 4 already-merged, already-live
+handles absent from both `main` and `automation/testids`. Caught by a
+sanity `grep -rn` on the working tree before trusting the closure-record
+table. **New mistake this time, worth flagging on myself**: before checking
+this memory file, I filed a brand-new issue (#624) proposing the exact same
+fix #553 already proposes — a duplicate, closed after the fact. The
+lesson isn't just the grep pattern; it's **check memory for a matching
+curated entry before filing a "discovery" issue**, not just before doing
+the verification itself. Added the recurrence as a comment on #553 instead
+of a new issue. #553 has now sat open since the #95 audit (2026-07-16)
+through 2 more real deliveries where it would have prevented a live
+mistake — this is no longer a "worth a doc-fix dispatch sometime" note,
+it's costing real turns every single case that has UI-side testids.
