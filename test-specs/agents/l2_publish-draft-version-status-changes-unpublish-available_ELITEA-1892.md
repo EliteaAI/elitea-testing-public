@@ -172,6 +172,7 @@ the AI-validation bar — those are correct product behavior, not failures of th
 | Publish-wizard Preparation-step fields (version name, category, agree-checkbox) do **not** persist if the dialog is cancelled/reopened — confirmed by reopening the dialog after Cancel and finding all fields reset | Automation must re-fill the full Preparation step every time the wizard opens; caching a "already filled" assumption across a Cancel+reopen would be a source of flakiness. |
 | Tags field character restriction: only alphanumeric, whitespace, comma, underscore — **hyphens are rejected** (`Only alphanumeric characters, white space, comma and underscore allowed`), which is a *different* (stricter) regex than the Version-name field's `/^[a-zA-Z0-9._-]*$/` (which explicitly allows hyphens) | This run's first tag attempt (`elitea-1892`, with a hyphen) silently failed to commit — worth flagging explicitly so an implementer doesn't repeat the same confusion typing a hyphenated tag as test data. |
 | Console-error check during the Publish wizard (per `.agents/testing.md` "check console even when UI looks fine") | Found + filed as a MINOR defect (see Known Defects below) — the Stepper's custom step-icon leaks MUI-internal boolean props onto the DOM `<svg>`, producing 4 React console warnings every time the wizard renders. Confirmed isolated to `PublishWizardModal`'s Stepper (a parallel Unpublish-only pass produced 0 console errors). |
+| Console-cleanliness check (Step 6a) must also filter out already-filed, unrelated defect #554 (RTK-Query `toolkitTypes` 404) | Round 2 finding (PR #615 review) — without the filter, Step 6a's assertion intermittently (1/14 runs in the orchestrator's verification batch) failed on an `OTHER_UNEXPECTED` signature unrelated to the Publish/Unpublish flow under test, because the console listener (registered before Step 1's own `navigate()`, deliberately, to observe the wizard's Stepper renders later) also captured #554's already-documented "any page render" 404. Filtered by exact resource URL (`msg.location.url` containing the toolkits endpoint path), matching the technique already established in `test_credential_search_by_name.py` — never a blanket "any 404" filter. See Known Defects below. |
 
 ## Cleanup
 
@@ -217,6 +218,15 @@ re-verified present in the DOM after the commit, driving the full flow a second 
 | Agent Welcome message field | `agent-welcome-message-input` | pre-existing | yes |
 | Agent Save button | `agent-save-button` | pre-existing | yes |
 | Agent create-form Name/Description inputs | `agent-name-input` / `agent-description-input` | pre-existing | yes |
+
+**Round 2 addendum (PR #615 review round 2).** The `agent-version-selector-trigger` / `copy-version-id`
+handles (rows above) and the `publish-version-menuitem` / `unpublish-version-menuitem` handles are the
+concrete DOM surfaces where known defect #614's client-side staleness was observed — see the Known Defects
+section below for the confirmed shared mechanism (all four read the same `formik.values.version_details`
+field) and the poll+reload+API-tie-breaker hardening applied to each call site
+(`select_version_by_name()` / `wait_for_publish_status_menuitem()`). This is not a locator-instability
+issue — the testids themselves are correct and stable; the underlying client state they render can
+transiently lag the true server state.
 
 **Not touched (out of this run's exercised scope, per the team's "testids only on elements a test
 actually touches" ruling):** Cancel buttons in either dialog, the dialog X/close buttons, the
@@ -283,6 +293,52 @@ whoever next automates a case that does need to assert Agent Tags directly.
   automated check; even so, produced a small residual flake rate (~1 run in 9 during implementation) tied to
   this same root cause. Not blocking (the underlying publish/unpublish data is always correct), but noted
   here for whoever revisits this defect or re-tunes the automated test's wait strategy.
+- **[MINOR — amended by implementer, PR #615 review round 2]** The orchestrator's independent 14-run
+  verification batch of round 1's merged fix (above) surfaced that #614's client-side staleness is not
+  confined to the actions-menu — it also manifests at a second, earlier call site:
+  `select_version_by_name()`'s own post-select/post-reload `wait_for_function` check (the
+  VERSION-selector-trigger text / `copy-version-id` / URL three-way match, Test Step 6b) timed out in 1/14
+  runs, independently of the actions-menu symptom already documented above. **Root-cause investigation**
+  (posted to [#614](https://github.com/EliteaAI/elitea-testing-public/issues/614)) traced the *same-page*
+  case of both manifestations to a confirmed shared client-side mechanism: the VERSION-selector-trigger,
+  `copy-version-id`, and the actions-menu's Publish/Unpublish item (`usePublishVersion.hooks.js`'s
+  `canShowPublish` / `useUnpublishVersionMenu.hooks.jsx`'s `canUnpublish`) all read the SAME
+  `formik.values.version_details` field, which `ApplicationVersionSelect.jsx` patches non-atomically via
+  `dispatch(eliteaApi.util.updateQueryData('applicationDetails', ...))` rather than through a query
+  invalidation/refetch — so different consumers of that Formik-derived state (re-synced into `values` via
+  `EditApplication.jsx`'s `enableReinitialize`) can transiently disagree across a render, compounded by
+  MUI's `Menu` not live-updating an already-open item list. The residual staleness that survives a full
+  `page.reload()` (observed in both call sites' escalation paths, ~1/10 and ~1/4 of already-rare
+  occurrences respectively) is **not** explained by that mechanism — a hard reload discards the client-side
+  RTK-Query cache and refetches `applicationDetails` fresh from the backend — and remains **unconfirmed**
+  (most plausibly a backend-side propagation delay, not verifiable from the EliteaUI frontend repo alone).
+  See the issue comment for the full evidence trail; this AFS records the finding, not a re-derivation of
+  it. **Hardening applied**: `select_version_by_name()` now retries a bounded 2 full select+reload cycles
+  and raises a clean `AssertionError` (never a raw Playwright `TimeoutError`) on exhaustion; the test layer
+  (`_confirm_new_version_via_api()`) asks the API whether a distinct `published` version with the expected
+  name already exists server-side before treating the DOM timeout as confirmed #614 (soft-assert) vs. a
+  genuinely different bug (hard fail) — the same poll+API-tie-breaker principle already applied to the
+  actions-menu check. Also fixed in the same round: a type-mismatch bug in the round-1 tie-breaker
+  (`_confirm_version_status_via_api`) that compared the API's numeric version id against the DOM's
+  stringified id without normalizing types, silently turning every *confirmed* #614 occurrence into a false
+  hard-fail (now compared as `str()` on both sides). Verified: two fresh 18-run batches (36 total) after the
+  fix, zero raw uncaught exceptions, zero unexplained failures.
+- **[MINOR — pre-existing, unrelated; filtered, not a new defect — found by implementer, PR #615 review
+  round 2]** The orchestrator's 14-run verification batch also caught 2 unexpected 404 console errors
+  (1/14 runs) inside Test Step 6a's console-cleanliness check (Axis 2's "Console-error check during the
+  Publish wizard" row) — investigated and confirmed as the SAME already-filed, unrelated
+  [EliteaAI/elitea-testing-public#554](https://github.com/EliteaAI/elitea-testing-public/issues/554) (an
+  RTK-Query timing race in `EliteaUI/src/api/toolkits.js`'s `toolkitTypes` endpoint firing before
+  `useSelectedProjectId()` resolves, 404ing on `.../toolkits/prompt_lib/` with an empty projectId segment) —
+  not a new defect. #554 was already filed as reproducible on "any page render"; this run confirms that
+  generalization: it also fires on THIS page's Test Step 1 `navigate()` (a full page load), and because the
+  console listener is registered before Step 1 (deliberately, so it can observe the Publish wizard's own
+  Stepper renders later in Step 6a), that page-load noise was landing inside Step 6a's assertion window.
+  **Automation guidance**: filter #554 out of the console-cleanliness assertion by exact resource URL
+  (`msg.location.url` containing the toolkits endpoint path) — the SAME technique already established in
+  `test_credential_search_by_name.py` — never a blanket "any 404" filter, so an unrelated 404 from a
+  genuinely different resource still surfaces as a real, unexpected failure. Not blocking; does not touch
+  the Publish/Unpublish flow under test.
 
 ## Blocked Steps
 
