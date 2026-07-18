@@ -17,8 +17,8 @@ place (AFS Axis 2). Assertions after Publish therefore track the NEW version
 id returned by ``AgentDetailPage.select_version_by_name()``, never the
 original "base" version id.
 
-Two MINOR, isolated product defects were found live during this run (neither
-blocks the functional flow):
+Three MINOR, isolated product defects were found live during this run
+(neither blocks the functional flow):
 
 1. https://github.com/EliteaAI/elitea-testing-public/issues/611 — React
    console warnings from the Publish wizard Stepper's custom step-icon
@@ -42,7 +42,47 @@ blocks the functional flow):
    — a normal, reliable user action, confirmed live not to revert) before
    asserting against it, exactly as the AFS's own Axis 2 note anticipated
    ("...or re-read the VERSION dropdown after the post-publish
-   navigation").
+   navigation"). The SAME defect stales THREE distinct pieces of
+   version-scoped client state, each hardened with the SAME poll+API-
+   tie-breaker principle (single deterministic failure signature — PR #615
+   review round 2):
+   a. The VERSION selector/URL/Information-panel id triad itself
+      (``select_version_by_name()``, Step 6b) — a bounded 2-cycle
+      select+reload retry first; if that never converges,
+      ``_confirm_new_version_via_api()`` asks the API whether a distinct
+      ``published`` version with the expected name already exists
+      server-side. Step 6c (which depends on this same VERSION-selector
+      state) is skipped when this happens — re-checking it would just
+      re-fail on the identical staleness instead of consolidating into
+      one signature.
+   b. The actions-menu's Publish/Unpublish menuitem (Steps 7/8) — even
+      after (a) agrees. ``wait_for_publish_status_menuitem()`` polls via
+      bounded open/close attempts, then a full-page-reload escalation; if
+      that never converges, ``_confirm_version_status_via_api()`` asks the
+      API whether the version's real status already matches.
+   Only a backend-confirmed match is recorded into the SAME
+   ``soft_failures``/``pytest.fail()`` mechanism as #611; a backend that
+   disagrees too is a genuinely different, real bug and is left to fail
+   hard, never silently downgraded (reverse-masking guard).
+3. https://github.com/EliteaAI/elitea-testing-public/issues/554 — an
+   already-filed, unrelated, intermittent RTK-Query timing race
+   (``EliteaUI/src/api/toolkits.js``'s ``toolkitTypes`` endpoint firing
+   before ``useSelectedProjectId()`` resolves, 404ing on
+   ``.../toolkits/prompt_lib/`` with an empty projectId segment) —
+   confirmed to also fire on THIS page (Step 1's initial ``navigate()``
+   is a full page load, the same trigger condition already documented on
+   #554 as reproducible on any page render, not just Credentials). Since
+   the console listener is registered before Step 1 (deliberately, to
+   observe the Publish wizard's own Stepper renders later), Step 1's own
+   page-load noise was landing inside Step 6a's "wizard console
+   cleanliness" window under the original filter, producing an
+   ``OTHER_UNEXPECTED`` failure distinct from #611/#614 (observed 1/14
+   runs in the PR #615 round-2 verification batch). Filtered using the
+   SAME technique already established in
+   ``test_credential_search_by_name.py`` — matched on
+   ``msg.location.url`` containing the toolkits endpoint path, never a
+   blanket "any 404" filter, so an unrelated 404 from a genuinely
+   different resource still surfaces as a real failure.
 
 Spec: test-specs/agents/l2_publish-draft-version-status-changes-unpublish-available_ELITEA-1892.md
 """
@@ -85,6 +125,116 @@ def _is_known_defect_611(text: str) -> bool:
     if "SvgCheckedIcon" not in text:
         return False
     return "non-boolean attribute" in text or "does not recognize the" in text
+
+
+# Known defect #554 (already filed, unrelated) — confirmed live during PR
+# #615 review round 2 (1/14 runs of the verification batch): an RTK-Query
+# timing race in EliteaUI/src/api/toolkits.js's `toolkitTypes` endpoint
+# fires before `useSelectedProjectId()` resolves, building the URL with an
+# empty projectId segment (".../toolkits/prompt_lib/") which 404s.
+# Intermittent (client-side race, not deterministic) and unrelated to the
+# Publish/Unpublish flow under test here — Step 1's initial navigate() (a
+# full page load, the same trigger condition #554 documents as
+# reproducible on "any page render", not just Credentials, where it was
+# first filed) is the observed source, well before the Publish wizard
+# itself ever opens. SAME filter technique already established in
+# test_credential_search_by_name.py — matched on msg.location.url
+# containing the toolkits endpoint path, NOT a blanket "any 404" filter,
+# so an unrelated 404 from a genuinely different resource still surfaces
+# as a real, unexpected failure.
+def _is_known_554_toolkits_404(msg) -> bool:
+    location_url = (msg.location or {}).get("url", "")
+    return "404" in msg.text and "elitea_core/toolkits/prompt_lib/" in location_url
+
+
+def _confirm_version_status_via_api(
+    agent_api, agent_id: int, version_id, expect_published: bool
+) -> bool:
+    """API-backed tie-breaker for a ``wait_for_publish_status_menuitem``
+    DOM-poll timeout (Known defect #614).
+
+    The underlying publish/unpublish data is confirmed always correct via
+    the API even when the actions-menu DOM lags (implementer + reviewer
+    findings, PR #615). This is the ground truth used to decide whether a
+    menu-poll timeout is PROVABLY #614's cosmetic staleness (backend
+    already agrees with the expected status — safe to soft-assert) or a
+    genuinely different, new bug (backend disagrees too — must stay
+    hard). Per the reverse-masking guard, a menu-poll timeout is never
+    blanket-downgraded to "soft" without this independent confirmation
+    first — only a confirmed-correct backend state earns the known-defect
+    label; a backend that's ALSO wrong is a real, unrelated failure.
+
+    Args:
+        agent_api: The ``AgentAPI`` client (test-level only — page objects
+            never reach into the API layer per the project's layering).
+        agent_id: The agent's numeric id.
+        version_id: The specific version id whose status is in question —
+            accepts either the API's numeric id or the DOM's stringified
+            id (``AgentDetailPage.get_version_id()`` returns ``str``); the
+            comparison below normalizes both sides to ``str`` (PR #615
+            review round 2 fix — an int/str mismatch here made this
+            tie-breaker return ``False`` for EVERY call, silently turning
+            every confirmed #614 occurrence into a false hard-fail).
+        expect_published: ``True`` to confirm status ``"published"``,
+            ``False`` to confirm ``"draft"``.
+
+    Returns:
+        ``True`` only if the API confirms the expected status for
+        ``version_id``; ``False`` if it disagrees or the version can't be
+        found on the agent.
+    """
+    agent = agent_api.get_agent(agent_id)
+    expected_status = "published" if expect_published else "draft"
+    for version in agent.get("versions", []):
+        if str(version.get("id")) == str(version_id):
+            return version.get("status") == expected_status
+    return False
+
+
+def _confirm_new_version_via_api(
+    agent_api, agent_id: int, version_name: str, exclude_version_id
+):
+    """API-backed tie-breaker for a ``select_version_by_name`` DOM-poll
+    timeout (Known defect #614).
+
+    Mirrors ``_confirm_version_status_via_api()``'s role for
+    ``wait_for_publish_status_menuitem`` — the underlying publish data is
+    confirmed always correct via the API even when the VERSION-selector
+    DOM lags (implementer + reviewer findings, PR #615 review round 2).
+    Used to decide whether a ``select_version_by_name`` timeout is
+    PROVABLY #614's cosmetic staleness (a distinct, ``published`` version
+    with the expected name already exists server-side — the publish clone
+    succeeded, only the client-side DOM never reflected it) or a
+    genuinely different, new bug (no such version exists — must stay
+    hard).
+
+    Args:
+        agent_api: The ``AgentAPI`` client (test-level only — page objects
+            never reach into the API layer per the project's layering).
+        agent_id: The agent's numeric id.
+        version_name: The version name Publish was supposed to create,
+            e.g. ``"v1-release"``.
+        exclude_version_id: The pre-publish (Draft/"base") version id —
+            excluded so a stale match against the ORIGINAL version can't
+            be mistaken for confirmation that a NEW one was created.
+            Accepts either the API's numeric id or the DOM's stringified
+            id; compared as ``str`` (same normalization as
+            ``_confirm_version_status_via_api()``).
+
+    Returns:
+        The new version's numeric id if the API confirms a distinct,
+        published version named ``version_name`` exists; ``None`` if no
+        such version is found.
+    """
+    agent = agent_api.get_agent(agent_id)
+    for version in agent.get("versions", []):
+        if (
+            version.get("name") == version_name
+            and str(version.get("id")) != str(exclude_version_id)
+            and version.get("status") == "published"
+        ):
+            return version.get("id")
+    return None
 
 
 def _build_dedicated_agent_payload(name: str) -> dict:
@@ -273,14 +423,18 @@ class TestAgentPublishUnpublishVersion:
                 "soft_failures/pytest.fail() mechanism, not a demoted "
                 "log-only check). Checked HERE, before Step 6b's own "
                 "reload (an implementation technique, not a case step) so "
-                "this assertion stays scoped to the wizard's own console "
-                "output and doesn't pick up unrelated reload-time noise "
-                "(e.g. a pre-existing, out-of-scope toolkits 404 that fires "
-                "on every full page load, confirmed unrelated to #611 live)"
+                "this assertion stays scoped away from Step 6b's OWN "
+                "reload-time noise. The window still spans Step 1's initial "
+                "navigate() (also a full page load) — confirmed live (PR "
+                "#615 review round 2) that the SAME already-filed, "
+                "unrelated toolkits 404 (#554) can fire there too, so it is "
+                "explicitly filtered by resource URL (not blanket-excluded "
+                "as 'any 404') alongside #611"
             ):
                 unexpected_errors = [
                     m.text for m in console_errors
                     if not _is_known_defect_611(m.text)
+                    and not _is_known_554_toolkits_404(m)
                 ]
                 assert not unexpected_errors, (
                     "Expected no UNEXPECTED console errors around the "
@@ -316,58 +470,128 @@ class TestAgentPublishUnpublishVersion:
                 "the previous one; re-selecting by name is the reliable, "
                 "real-user path and is what the AFS's Axis 2 note "
                 'anticipated as the fallback — "...or re-read the VERSION '
-                'dropdown after the post-publish navigation")'
+                'dropdown after the post-publish navigation"). '
+                "select_version_by_name() itself now retries a bounded "
+                "2 full select+reload cycles; if its DOM poll STILL never "
+                "converges, an API-backed tie-breaker "
+                "(_confirm_new_version_via_api) decides whether that's "
+                "confirmed #614 cosmetic staleness (the clone succeeded "
+                "server-side, only the DOM never reflected it) or a "
+                "genuinely different bug — same principle as Step 7/8's "
+                "menuitem tie-breaker (PR #615 review round 2)"
             ):
-                new_version_id = detail_page.select_version_by_name(
-                    VERSION_NAME, timeout=UI_ELEMENT_TIMEOUT
-                )
-                assert new_version_id != base_version_id, (
-                    "Publish should create a NEW version id, distinct from "
-                    f"the original Draft ('base') version id {base_version_id!r} "
-                    "— publishing clones the version rather than flipping "
-                    "its status in place"
-                )
-                assert detail_page.get_version_selector_value() == VERSION_NAME, (
-                    f"VERSION selector should show {VERSION_NAME!r} once "
-                    "explicitly selected"
-                )
+                try:
+                    new_version_id = detail_page.select_version_by_name(
+                        VERSION_NAME, timeout=UI_ELEMENT_TIMEOUT
+                    )
+                    version_dom_converged = True
+                except AssertionError as select_exc:
+                    version_dom_converged = False
+                    new_version_id = _confirm_new_version_via_api(
+                        agent_api, agent_id, VERSION_NAME,
+                        exclude_version_id=base_version_id,
+                    )
+                    if new_version_id is None:
+                        # API disagrees too — NOT confirmed #614 cosmetic
+                        # staleness. A genuinely different, real bug: stay
+                        # hard, don't mask it as the known defect.
+                        raise AssertionError(
+                            f"{select_exc} (API tie-breaker ALSO disagrees — "
+                            f"no distinct 'published' version named "
+                            f"{VERSION_NAME!r} exists server-side either; "
+                            "this is NOT confirmed as known defect #614's "
+                            "cosmetic staleness)"
+                        ) from select_exc
+                    soft_failures.append(
+                        "Known defect https://github.com/EliteaAI/elitea-testing-public/issues/614: "
+                        "select_version_by_name's DOM poll never converged on "
+                        f"{VERSION_NAME!r} even though the API confirms a "
+                        f"distinct published version (id={new_version_id}) "
+                        f"already exists (client-side status staleness, not "
+                        f"a data bug): {select_exc}"
+                    )
+
+                if version_dom_converged:
+                    assert new_version_id != base_version_id, (
+                        "Publish should create a NEW version id, distinct from "
+                        f"the original Draft ('base') version id {base_version_id!r} "
+                        "— publishing clones the version rather than flipping "
+                        "its status in place"
+                    )
+                    assert detail_page.get_version_selector_value() == VERSION_NAME, (
+                        f"VERSION selector should show {VERSION_NAME!r} once "
+                        "explicitly selected"
+                    )
 
             with allure.step(
                 "Step 6c — Open the VERSION dropdown and verify it lists "
                 "both 'base' (unchanged, still Draft) and the new "
-                f"{VERSION_NAME!r} (selected/active)"
+                f"{VERSION_NAME!r} (selected/active). Skipped when Step "
+                "6b's DOM poll never converged (known defect #614, "
+                "API-confirmed) — the VERSION dropdown's own client state "
+                "is the exact thing that failed to converge there, so "
+                "re-checking it here would just re-fail on the SAME "
+                "staleness under a different assertion instead of "
+                "consolidating into Step 6b's already-recorded soft failure"
             ):
-                detail_page.open_version_selector()
-                assert detail_page.is_version_option_visible(
-                    "base", timeout=UI_ELEMENT_TIMEOUT
-                ), "VERSION dropdown should still list the original 'base' version"
-                assert detail_page.is_version_option_visible(
-                    VERSION_NAME, timeout=UI_ELEMENT_TIMEOUT
-                ), f"VERSION dropdown should list the new {VERSION_NAME!r} version"
-                assert detail_page.is_version_option_active(VERSION_NAME), (
-                    f"{VERSION_NAME!r} should be the active/selected option"
-                )
-                assert not detail_page.is_version_option_active("base"), (
-                    "'base' should NOT be the active option anymore — it "
-                    "was never touched by Publish"
-                )
-                detail_page.close_versions_menu()
+                if version_dom_converged:
+                    detail_page.open_version_selector()
+                    assert detail_page.is_version_option_visible(
+                        "base", timeout=UI_ELEMENT_TIMEOUT
+                    ), "VERSION dropdown should still list the original 'base' version"
+                    assert detail_page.is_version_option_visible(
+                        VERSION_NAME, timeout=UI_ELEMENT_TIMEOUT
+                    ), f"VERSION dropdown should list the new {VERSION_NAME!r} version"
+                    assert detail_page.is_version_option_active(VERSION_NAME), (
+                        f"{VERSION_NAME!r} should be the active/selected option"
+                    )
+                    assert not detail_page.is_version_option_active("base"), (
+                        "'base' should NOT be the active option anymore — it "
+                        "was never touched by Publish"
+                    )
+                    detail_page.close_versions_menu()
 
             with allure.step(
                 'Step 7 — Verify "Unpublish" (not "Publish") is now offered '
                 "on this version's overflow menu (Known defect #614: the "
                 "menu's status can lag by a beat even after the VERSION "
-                "selector/URL agree — poll via open/close attempts rather "
-                "than a single point-in-time check)"
+                "selector/URL agree — poll via open/close attempts, then "
+                "an API-backed tie-breaker if the poll never converges, "
+                "rather than a single point-in-time check)"
             ):
-                detail_page.wait_for_publish_status_menuitem(
-                    expect_unpublish=True, timeout=UI_ELEMENT_TIMEOUT
-                )
-                assert not detail_page.publish_version_menuitem.is_visible(), (
-                    "'Publish' should no longer be offered for an "
-                    "already-Published version"
-                )
-                detail_page.close_actions_menu()
+                try:
+                    detail_page.wait_for_publish_status_menuitem(
+                        expect_unpublish=True, timeout=UI_ELEMENT_TIMEOUT
+                    )
+                    menu_converged = True
+                except AssertionError as menu_exc:
+                    menu_converged = False
+                    if not _confirm_version_status_via_api(
+                        agent_api, agent_id, new_version_id, expect_published=True
+                    ):
+                        # API disagrees too — NOT confirmed #614 cosmetic
+                        # staleness. A genuinely different, real bug: stay
+                        # hard, don't mask it as the known defect.
+                        raise AssertionError(
+                            f"{menu_exc} (API tie-breaker ALSO disagrees — "
+                            f"version {new_version_id} is not 'published' "
+                            "server-side either; this is NOT confirmed as "
+                            "known defect #614's cosmetic staleness)"
+                        ) from menu_exc
+                    soft_failures.append(
+                        "Known defect https://github.com/EliteaAI/elitea-testing-public/issues/614: "
+                        "actions-menu never showed 'Unpublish' within the poll "
+                        f"budget even though the API confirms version "
+                        f"{new_version_id} is already 'published' (client-side "
+                        f"status staleness, not a data bug): {menu_exc}"
+                    )
+
+                if menu_converged:
+                    assert not detail_page.publish_version_menuitem.is_visible(), (
+                        "'Publish' should no longer be offered for an "
+                        "already-Published version"
+                    )
+                    detail_page.close_actions_menu()
 
             with allure.step(
                 'Step 8 — Click "Unpublish", confirm in the dialog; verify '
@@ -383,14 +607,36 @@ class TestAgentPublishUnpublishVersion:
                     f"{unpublish_status}"
                 )
 
-                detail_page.wait_for_publish_status_menuitem(
-                    expect_unpublish=False, timeout=UI_ELEMENT_TIMEOUT
-                )
-                assert not detail_page.unpublish_version_menuitem.is_visible(), (
-                    "'Unpublish' should no longer be offered — the version "
-                    "is Draft again"
-                )
-                detail_page.close_actions_menu()
+                try:
+                    detail_page.wait_for_publish_status_menuitem(
+                        expect_unpublish=False, timeout=UI_ELEMENT_TIMEOUT
+                    )
+                    menu_converged = True
+                except AssertionError as menu_exc:
+                    menu_converged = False
+                    if not _confirm_version_status_via_api(
+                        agent_api, agent_id, new_version_id, expect_published=False
+                    ):
+                        raise AssertionError(
+                            f"{menu_exc} (API tie-breaker ALSO disagrees — "
+                            f"version {new_version_id} is not 'draft' "
+                            "server-side either; this is NOT confirmed as "
+                            "known defect #614's cosmetic staleness)"
+                        ) from menu_exc
+                    soft_failures.append(
+                        "Known defect https://github.com/EliteaAI/elitea-testing-public/issues/614: "
+                        "actions-menu never showed 'Publish' within the poll "
+                        f"budget even though the API confirms version "
+                        f"{new_version_id} is already 'draft' again "
+                        f"(client-side status staleness, not a data bug): {menu_exc}"
+                    )
+
+                if menu_converged:
+                    assert not detail_page.unpublish_version_menuitem.is_visible(), (
+                        "'Unpublish' should no longer be offered — the version "
+                        "is Draft again"
+                    )
+                    detail_page.close_actions_menu()
 
             if soft_failures:
                 pytest.fail(

@@ -2933,7 +2933,9 @@ class AgentDetailPage(AgentFormPage):
         return status
 
     @action("Select a version by name from the VERSION dropdown")
-    def select_version_by_name(self, version_name: str, timeout: int = 10000) -> str:
+    def select_version_by_name(
+        self, version_name: str, timeout: int = 10000, attempts: int = 2
+    ) -> str:
         """Explicitly select a version from the VERSION dropdown and wait
         for its data to load, returning its numeric id.
 
@@ -2945,9 +2947,32 @@ class AgentDetailPage(AgentFormPage):
         correctly and durably (no reversion observed after selecting this
         way).
 
+        Each attempt is a full select+reload CYCLE (re-open the dropdown,
+        re-click the option, reload) — not just a re-poll of an
+        already-open dropdown — mirroring
+        :meth:`wait_for_publish_status_menuitem`'s bounded-attempts shape.
+        Escalation added PR #615 review round 2: confirmed live that even
+        the single reload this method already performed as belt-and-braces
+        can occasionally still not be enough on its own (~1/10 runs
+        observed during this case's verification) — the underlying store
+        can still be mid-sync across one reload — so a second full cycle
+        is attempted before giving up.
+
+        This method stays DOM-only by design (page objects never reach
+        into the API layer — see project layering) and always raises on a
+        poll that never converges; it does NOT itself decide whether that
+        timeout is #614's cosmetic staleness or a different, real bug.
+        Callers that need that distinction (e.g. to route a *confirmed*
+        #614 occurrence into a soft-assertion mechanism) should catch the
+        ``AssertionError`` and independently confirm the version's real
+        status via the API before treating it as the known defect — see
+        ``test_agent_publish_unpublish_version.py``'s
+        ``_confirm_new_version_via_api()`` for the reference pattern.
+
         Args:
             version_name: Exact version name to select, e.g. ``"v1-release"``.
-            timeout: Maximum wait time in milliseconds.
+            timeout: Maximum wait time in milliseconds, per wait condition.
+            attempts: Number of full select+reload cycles to try.
 
         Returns:
             The selected version's numeric id, read from the Information
@@ -2955,12 +2980,15 @@ class AgentDetailPage(AgentFormPage):
             text, the Information panel's version-id, and the URL all
             agree (the same three-way consistency check as documented for
             the Save As Version flow's race — see :meth:`confirm_new_version`).
+
+        Raises:
+            AssertionError: if the version-id-matches condition never
+                converges after ``attempts`` full select+reload cycles.
+                The message notes issue #614 as the SUSPECTED cause (DOM
+                status staleness) — this is a hypothesis, not a confirmed
+                diagnosis; only a caller-side API check can confirm it.
         """
         logger.info("Selecting version %r from the VERSION dropdown", version_name)
-        self.open_version_selector()
-        option = self.page.locator(self.VERSION_OPTION.format(version_name))
-        option.wait_for(state="visible", timeout=timeout)
-        option.click()
 
         version_id_matches_js = """name => {
             const trigger = document.querySelector('[data-testid="agent-version-selector-trigger"]');
@@ -2972,27 +3000,67 @@ class AgentDetailPage(AgentFormPage):
             const seg = window.location.pathname.split('/').filter(Boolean).pop();
             return seg === currentId;
         }"""
-        self.page.wait_for_function(version_id_matches_js, arg=version_name, timeout=timeout)
 
-        # Belt-and-braces (issue #614): the VERSION trigger/URL/Information-
-        # panel id can agree while OTHER version-scoped client state (the
-        # overflow menu's Publish/Unpublish item, driven by the version's
-        # `status` field from a separate store) still lags — confirmed live
-        # to occasionally persist across several menu re-opens, not just a
-        # single render tick. A hard reload forces every panel to refetch
-        # fresh from the server (which is always correct per the API), so
-        # it clears staleness a same-page re-render cannot. Uses the SAME
-        # precise wait condition (not a generic "page loaded" heuristic) to
-        # avoid reading an intermediate, not-yet-hydrated paint.
-        self.page.reload(wait_until="domcontentloaded")
-        self.page.wait_for_function(version_id_matches_js, arg=version_name, timeout=timeout)
+        last_exc: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            self.open_version_selector()
+            option = self.page.locator(self.VERSION_OPTION.format(version_name))
+            option.wait_for(state="visible", timeout=timeout)
+            option.click()
 
-        selected_version_id = self.get_version_id()
-        logger.info(
-            "Version %r selected — id=%s (URL: %s)",
-            version_name, selected_version_id, self.page.url,
+            try:
+                self.page.wait_for_function(
+                    version_id_matches_js, arg=version_name, timeout=timeout
+                )
+            except Exception as exc:  # noqa: BLE001 - retried below, re-raised with context above
+                last_exc = exc
+                logger.warning(
+                    "select_version_by_name: VERSION trigger/id/URL never "
+                    "agreed on %r pre-reload (attempt %d/%d) — retrying",
+                    version_name, attempt, attempts,
+                )
+                continue
+
+            # Belt-and-braces (issue #614): the VERSION trigger/URL/Information-
+            # panel id can agree while OTHER version-scoped client state (the
+            # overflow menu's Publish/Unpublish item, driven by the version's
+            # `status` field from a separate store) still lags — confirmed live
+            # to occasionally persist across several menu re-opens, not just a
+            # single render tick. A hard reload forces every panel to refetch
+            # fresh from the server (which is always correct per the API), so
+            # it clears staleness a same-page re-render cannot. Uses the SAME
+            # precise wait condition (not a generic "page loaded" heuristic) to
+            # avoid reading an intermediate, not-yet-hydrated paint.
+            self.page.reload(wait_until="domcontentloaded")
+            try:
+                self.page.wait_for_function(
+                    version_id_matches_js, arg=version_name, timeout=timeout
+                )
+            except Exception as exc:  # noqa: BLE001 - retried below, re-raised with context above
+                last_exc = exc
+                logger.warning(
+                    "select_version_by_name: VERSION trigger/id/URL never "
+                    "agreed on %r post-reload (attempt %d/%d) — retrying the "
+                    "full select+reload cycle (issue #614 escalation)",
+                    version_name, attempt, attempts,
+                )
+                continue
+
+            selected_version_id = self.get_version_id()
+            logger.info(
+                "Version %r selected — id=%s (URL: %s)",
+                version_name, selected_version_id, self.page.url,
+            )
+            return selected_version_id
+
+        raise AssertionError(
+            f"select_version_by_name: VERSION trigger/Information-panel id/"
+            f"URL never converged on {version_name!r} after {attempts} full "
+            f"select+reload attempts (suspected issue #614 client-side "
+            f"status staleness — caller must independently confirm via the "
+            f"API before treating this as the known defect) — last error: "
+            f"{last_exc}"
         )
-        return selected_version_id
 
     def wait_for_publish_status_menuitem(
         self, expect_unpublish: bool, timeout: int = 10000, attempts: int = 4
@@ -3011,6 +3079,17 @@ class AgentDetailPage(AgentFormPage):
         bounded attempts rather than polling a single already-open menu
         (MUI doesn't live-update an already-rendered menu's items).
 
+        This method stays DOM-only by design (page objects never reach
+        into the API layer — see project layering) and always raises on a
+        poll that never converges; it does NOT itself decide whether that
+        timeout is #614's cosmetic staleness or a different, real bug.
+        Callers that need that distinction (e.g. to route a *confirmed*
+        #614 occurrence into a soft-assertion mechanism) should catch the
+        ``AssertionError`` and independently confirm the version's real
+        status via the API before treating it as the known defect — see
+        ``test_agent_publish_unpublish_version.py``'s
+        ``_confirm_version_status_via_api()`` for the reference pattern.
+
         Args:
             expect_unpublish: ``True`` to wait for "Unpublish" (Published
                 version), ``False`` to wait for "Publish" (Draft version).
@@ -3018,7 +3097,10 @@ class AgentDetailPage(AgentFormPage):
             attempts: Number of open/check/close cycles to try.
 
         Raises:
-            AssertionError: if the expected menuitem never appeared.
+            AssertionError: if the expected menuitem never appeared. The
+                message notes issue #614 as the SUSPECTED cause (DOM status
+                staleness) — this is a hypothesis, not a confirmed
+                diagnosis; only a caller-side API check can confirm it.
         """
         target = self.unpublish_version_menuitem if expect_unpublish else self.publish_version_menuitem
         label = "Unpublish" if expect_unpublish else "Publish"
@@ -3039,10 +3121,58 @@ class AgentDetailPage(AgentFormPage):
                     label, attempt, attempts,
                 )
                 self.close_actions_menu()
+
+        # Escalation (PR #615 review round 2): the close/reopen loop above
+        # forces a fresh RENDER but not a fresh FETCH — per the observed
+        # residual flake (~1/10 runs), the underlying store can still be
+        # mid-sync even across several re-renders. A full reload (the same
+        # belt-and-braces technique :meth:`select_version_by_name` already
+        # uses for this exact defect) forces every panel — including
+        # whatever store backs this menuitem — to refetch fresh from the
+        # server, clearing staleness a same-page re-render alone cannot.
+        # One extra open/check after the reload before giving up.
+        logger.warning(
+            "Actions menu never showed %r after %d attempts — reloading "
+            "and retrying once more (issue #614 escalation)",
+            label, attempts,
+        )
+        self.page.reload(wait_until="domcontentloaded")
+        try:
+            self.wait_for_network(timeout=per_attempt_timeout)
+        except Exception:
+            # networkidle is a best-effort settle, not a hard requirement —
+            # this app keeps persistent WebSocket connections open (same
+            # documented behavior as BasePage.navigate(), which wraps this
+            # exact wait in the same try/except for the same reason), so
+            # networkidle can legitimately never fire. domcontentloaded
+            # (already awaited by the reload above) is what actually
+            # matters here. PR #615 review round 2 bugfix: this call was
+            # previously unguarded, so a networkidle timeout leaked a raw
+            # Playwright TimeoutError straight past this method's own
+            # AssertionError contract (observed live: "Timeout 2500ms
+            # exceeded" bypassing the caller's except AssertionError
+            # handling entirely) instead of feeding into the bounded-
+            # attempts/AssertionError flow callers rely on.
+            logger.debug(
+                "networkidle not reached after reload escalation for %r — "
+                "continuing (persistent WebSocket connections expected)",
+                label,
+            )
+        self.open_actions_menu()
+        try:
+            target.wait_for(state="visible", timeout=per_attempt_timeout)
+            logger.info("Actions menu shows %r after reload escalation", label)
+            return
+        except Exception as exc:  # noqa: BLE001 - re-raised with context below
+            last_exc = exc
+            self.close_actions_menu()
+
         raise AssertionError(
             f"Actions menu never showed the expected {label!r} menuitem "
-            f"after {attempts} attempts (issue #614 client-side status "
-            f"staleness) — last error: {last_exc}"
+            f"after {attempts} attempts plus a reload escalation (suspected "
+            f"issue #614 client-side status staleness — caller must "
+            f"independently confirm via the API before treating this as "
+            f"the known defect) — last error: {last_exc}"
         )
 
     @action("Open Unpublish confirm dialog")
