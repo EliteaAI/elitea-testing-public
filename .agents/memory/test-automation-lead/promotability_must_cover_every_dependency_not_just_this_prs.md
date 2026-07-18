@@ -108,3 +108,22 @@ prop-drilling) uniformly. At this point the literal-quoted-attribute grep
 should be treated as unreliable BY DEFAULT for this codebase's promotability
 checks — always run the bare-substring form first, and only fall back to
 the anchored form as an extra confirmation, never as the sole check.
+
+**Sixth variant — the listed rows can themselves be incomplete, even when
+every listed row is individually true (control-audit, issue #162,
+ELITEA-1955, 2026-07-18):** all prior recurrences above were about a
+row being *wrong* (false "already promoted," or false-negative from a grep
+gotcha). This one is different: the closure record's 10-row table was 100%
+accurate for every row it listed, but the table itself dropped a real,
+genuinely-used dependency — `agent-toolkit-card`/`toolkit_card`, asserted
+at the test's Step 2 (`count()==0`) and consumed by `is_toolkit_attached()`
+at Step 8 — that never appeared in the table at all. Ground truth happened
+to be benign (`main:YES testids:YES`, no risk), so it didn't flip the
+promotability verdict this time, but the near-perfect table (9-10 correct
+rows) gave no visible signal that anything was missing. **Lesson: don't
+just re-verify the rows a closure record lists — independently re-derive
+the FULL testid-usage set from the test's own page-object call chain (every
+`LocatorDescriptor` field and UPPER_CASE selector constant actually reached
+by a method the test calls) and diff that set against the table's rows, on
+every audit, even when every listed row checks out clean.** A table that's
+right about everything it says can still be silently short one row.
