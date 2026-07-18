@@ -228,6 +228,17 @@ class AgentDetailPage(AgentFormPage):
     # this testid value is unchanged for the Agent context but no longer
     # leaks onto Toolkit/Pipeline Fork menuitems.
     fork_menuitem = LocatorDescriptor(testid="agent-actions-fork-menuitem")
+    # VERSION-group "Publish"/"Unpublish" menuitems (ELITEA-1892 testid-only
+    # rework — added via add-data-testid: `key: 'publish-version'` /
+    # `key: 'unpublish-version'` in usePublishVersionMenu.hooks.jsx /
+    # useUnpublishVersionMenu.hooks.jsx, same DotMenu `testId: item.key` ->
+    # `data-testid={testId}-menuitem` mechanism already backing
+    # delete_agent_menuitem/fork_menuitem above. Mutually exclusive per
+    # version status: "Publish" renders for a Draft version (canShowPublish),
+    # "Unpublish" renders for a Published version (canUnpublish) — never both
+    # at once for the same version.
+    publish_version_menuitem = LocatorDescriptor(testid="publish-version-menuitem")
+    unpublish_version_menuitem = LocatorDescriptor(testid="unpublish-version-menuitem")
 
     # --- Fork wizard (ELITEA-1893) — shares the ImportWizardModal dialog
     # family with the Agents-list Import flow (AgentsListPage's
@@ -302,6 +313,55 @@ class AgentDetailPage(AgentFormPage):
     # PipelineDetailPage.SELECT_OPTION, keyed by the numeric project id
     # (confirmed live, ELITEA-1893 AFS: select-option-399/400/471).
     FORK_PROJECT_OPTION = '[data-testid="select-option-{}"]'
+
+    # --- Publish wizard (ELITEA-1892) — PublishWizardModal.jsx, non-admin
+    # branch only. Case-text drift (CLARIFICATION #612): the TMS case
+    # describes a single version-name dialog; the live product is a 3-step
+    # wizard (PUBLISH_STEPS = PREPARATION / VALIDATION / PUBLISHING) gated
+    # by an AI content-quality check between steps. The dialog container
+    # itself carries no dedicated testid (plain MUI [role="dialog"],
+    # resolved via components.mui.Dialog) — only its interactive fields do.
+    publish_version_name_input = LocatorDescriptor(
+        testid="agent-publish-version-name-input",
+        description="Publish wizard, Preparation step — version-name input",
+    )
+    publish_category_select = LocatorDescriptor(
+        testid="agent-publish-category-select",
+        description="Publish wizard, Preparation step — Category dropdown "
+                     "trigger (not named in the case text — a hard "
+                     "requirement to enable Continue, see CLARIFICATION #612)",
+    )
+    publish_agree_checkbox = LocatorDescriptor(
+        testid="agent-publish-agree-checkbox",
+        description='Publish wizard, Preparation step — "I agree with the '
+                     'Publishing Terms" checkbox (not named in the case '
+                     "text — a hard requirement to enable Continue)",
+    )
+    publish_continue_button = LocatorDescriptor(
+        testid="agent-publish-continue-button",
+        description="Publish wizard, Preparation step — Continue button "
+                     "(disabled until name + category + agree-checkbox are "
+                     "all filled/checked)",
+    )
+    publish_confirm_button = LocatorDescriptor(
+        testid="agent-publish-confirm-button",
+        description="Publish wizard, Validation step — Publish button "
+                     "(disabled while the AI publish_validate gate reports "
+                     "any Critical issue; canPublish = status !== 'FAIL')",
+    )
+    # Dynamic (runtime-parameterized) testid for the Publish wizard's
+    # Category dropdown options — same shared `select-option-{value}` family
+    # (SingleSelectMenuItem.jsx) as FORK_PROJECT_OPTION above, keyed here by
+    # the category's display label (e.g. select-option-Quality Assurance)
+    # rather than a numeric id.
+    PUBLISH_CATEGORY_OPTION = '[data-testid="select-option-{}"]'
+
+    # --- Unpublish confirm dialog (ELITEA-1892) — UnpublishConfirmModal.jsx,
+    # non-admin branch (no "Reason" textfield). Heading "Unpublish Agent".
+    unpublish_confirm_button = LocatorDescriptor(
+        testid="agent-unpublish-confirm-button",
+        description='Unpublish confirm dialog — "Unpublish" button',
+    )
 
     # --- Navigation ---
     back_button = LocatorDescriptor(testid="back-button")
@@ -2720,6 +2780,315 @@ class AgentDetailPage(AgentFormPage):
             forked_agent_id, self.page.url,
         )
         return forked_agent_id
+
+    # ------------------------------------------------------------------
+    # Publish / Unpublish wizard (ELITEA-1892)
+    # ------------------------------------------------------------------
+
+    def close_actions_menu(self, timeout: int = 5000):
+        """Close the open actions (three-dot) menu by pressing Escape.
+
+        Mirrors :meth:`close_versions_menu`'s Escape-press pattern for the
+        VERSION-options menu. Needed between two separate
+        :meth:`open_actions_menu` calls in the same test (e.g. checking the
+        VERSION group's menuitem before *and* after Publish/Unpublish).
+        """
+        self.page.keyboard.press("Escape")
+        self.actions_menu.wait_for(state="hidden", timeout=timeout)
+
+    @action("Open Publish wizard")
+    def open_publish_wizard(self, timeout: int = 10000):
+        """Open the Publish wizard via the actions overflow menu (VERSION group).
+
+        Opens the overflow menu and clicks the VERSION-scoped "Publish"
+        menuitem, then waits for the wizard's Preparation step (the
+        version-name input) to render. Confirmed live: `usePublishVersion
+        .hooks.js`'s ``canShowPublish`` gate requires
+        ``applications.publish`` permission AND the version's status to be
+        Draft — only render this menuitem when both hold.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening Publish wizard via actions menu")
+        self.open_actions_menu()
+        self.publish_version_menuitem.click()
+        Dialog.wait_for(self.page, timeout=timeout)
+        self.publish_version_name_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Publish wizard Preparation step visible")
+
+    @action("Fill the Publish wizard's Preparation step")
+    def fill_publish_preparation_step(
+        self, version_name: str, category_name: str, timeout: int = 10000
+    ):
+        """Fill the Preparation step: version name, Category, agree-checkbox.
+
+        Call after :meth:`open_publish_wizard`. All three fields are
+        required to enable "Continue" — Category and the Publishing-Terms
+        checkbox are NOT named in the TMS case text (CLARIFICATION #612)
+        but are hard requirements in the live product.
+
+        Args:
+            version_name: Name for the new (to-be-published) version, e.g.
+                ``"v1-release"``.
+            category_name: Exact display label of the Category option to
+                select, e.g. ``"Quality Assurance"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info(
+            "Filling Publish wizard Preparation step — version=%r category=%r",
+            version_name, category_name,
+        )
+        self.publish_version_name_input.click()
+        self.publish_version_name_input.press_sequentially(version_name, delay=50)
+
+        self.publish_category_select.click()
+        option = self.page.locator(self.PUBLISH_CATEGORY_OPTION.format(category_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+
+        self.publish_agree_checkbox.click()
+        logger.info("Publish wizard Preparation step filled")
+
+    def is_publish_continue_enabled(self) -> bool:
+        """Return whether the Preparation step's "Continue" button is enabled."""
+        return self.publish_continue_button.is_enabled()
+
+    @action("Continue from Publish wizard Preparation step")
+    def click_publish_continue(self, timeout: int = 15000) -> int:
+        """Click "Continue" and wait for the ``publish_validate`` response.
+
+        Waits for ``POST .../publish_validate/prompt_lib/{project}/{versionId}``
+        (AFS § Network Behavior — never a fixed sleep) and returns its HTTP
+        status: ``200`` when the AI content-quality gate passes (no
+        Critical issues — the Validation step's "Publish" button becomes
+        enabled), ``422`` when Critical issues remain (button stays
+        disabled).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            HTTP status code of the ``publish_validate`` response.
+        """
+        logger.info("Clicking Publish wizard Continue")
+        with self.page.expect_response(
+            lambda r: "publish_validate" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as validate_info:
+            self.publish_continue_button.click()
+        status = validate_info.value.status
+        # The response resolving does not guarantee the Validation step's DOM
+        # has re-rendered yet (one more React tick) — confirmed live: an
+        # immediate is_visible() check on publish_confirm_button raced and
+        # returned False even though the button rendered moments later.
+        # The button itself is always present on the Validation step
+        # regardless of the Critical-issue outcome (only its enabled state
+        # differs — canPublish = status !== 'FAIL'), so waiting for
+        # visibility here is safe for both the 200 and 422 cases.
+        self.publish_confirm_button.wait_for(state="visible", timeout=timeout)
+        logger.info("publish_validate responded status=%d", status)
+        return status
+
+    @action("Confirm Publish")
+    def confirm_publish(self, timeout: int = 15000) -> int:
+        """Click the Validation step's "Publish" button and wait for the
+        publish request to resolve.
+
+        Waits for ``POST .../publish/prompt_lib/{project}/{versionId}`` to
+        resolve and returns its HTTP status — callers should assert 200.
+        Publish clones the Draft version into a brand-new version that
+        carries the Published status; it does not flip the original Draft
+        version's status in place (AFS Axis 2).
+
+        Does NOT wait for / assert on a post-publish navigation: confirmed
+        live (ELITEA-1892 exploration, filed as
+        https://github.com/EliteaAI/elitea-testing-public/issues/614) that
+        the app's own auto-navigation to the new version is unreliable — it
+        can briefly navigate to the new version's URL and then silently
+        revert to the previously-active version, with no error surfaced
+        (network trace: two ``GET .../version/.../{new_id}`` calls
+        immediately followed by two ``GET .../version/.../{old_id}`` calls).
+        The underlying data is unaffected (verified via API — the new
+        version really is ``published``); only the client-side navigation
+        is unreliable. Callers MUST use :meth:`select_version_by_name` to
+        reliably land on the new version afterward — do not assume Publish
+        alone leaves you there.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            HTTP status code of the ``publish`` response.
+        """
+        logger.info("Confirming Publish")
+        with self.page.expect_response(
+            lambda r: "/publish/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as publish_info:
+            self.publish_confirm_button.click()
+        status = publish_info.value.status
+        self.wait_for_network(timeout=timeout)
+        logger.info("Publish confirmed — status=%d", status)
+        return status
+
+    @action("Select a version by name from the VERSION dropdown")
+    def select_version_by_name(self, version_name: str, timeout: int = 10000) -> str:
+        """Explicitly select a version from the VERSION dropdown and wait
+        for its data to load, returning its numeric id.
+
+        The reliable way to land on (and stay on) a specific version — see
+        :meth:`confirm_publish`'s docstring for why auto-navigation after
+        Publish cannot be trusted (issue #614). Explicitly opening the
+        VERSION dropdown and clicking a named option is a normal,
+        deliberate user action and was confirmed live to navigate
+        correctly and durably (no reversion observed after selecting this
+        way).
+
+        Args:
+            version_name: Exact version name to select, e.g. ``"v1-release"``.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The selected version's numeric id, read from the Information
+            panel once the wait condition confirms the VERSION trigger
+            text, the Information panel's version-id, and the URL all
+            agree (the same three-way consistency check as documented for
+            the Save As Version flow's race — see :meth:`confirm_new_version`).
+        """
+        logger.info("Selecting version %r from the VERSION dropdown", version_name)
+        self.open_version_selector()
+        option = self.page.locator(self.VERSION_OPTION.format(version_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+
+        version_id_matches_js = """name => {
+            const trigger = document.querySelector('[data-testid="agent-version-selector-trigger"]');
+            const versionIdEl = document.querySelector('[data-testid="copy-version-id"]');
+            if (!trigger || trigger.innerText.trim() !== name) return false;
+            if (!versionIdEl) return false;
+            const currentId = versionIdEl.innerText.trim();
+            if (!currentId) return false;
+            const seg = window.location.pathname.split('/').filter(Boolean).pop();
+            return seg === currentId;
+        }"""
+        self.page.wait_for_function(version_id_matches_js, arg=version_name, timeout=timeout)
+
+        # Belt-and-braces (issue #614): the VERSION trigger/URL/Information-
+        # panel id can agree while OTHER version-scoped client state (the
+        # overflow menu's Publish/Unpublish item, driven by the version's
+        # `status` field from a separate store) still lags — confirmed live
+        # to occasionally persist across several menu re-opens, not just a
+        # single render tick. A hard reload forces every panel to refetch
+        # fresh from the server (which is always correct per the API), so
+        # it clears staleness a same-page re-render cannot. Uses the SAME
+        # precise wait condition (not a generic "page loaded" heuristic) to
+        # avoid reading an intermediate, not-yet-hydrated paint.
+        self.page.reload(wait_until="domcontentloaded")
+        self.page.wait_for_function(version_id_matches_js, arg=version_name, timeout=timeout)
+
+        selected_version_id = self.get_version_id()
+        logger.info(
+            "Version %r selected — id=%s (URL: %s)",
+            version_name, selected_version_id, self.page.url,
+        )
+        return selected_version_id
+
+    def wait_for_publish_status_menuitem(
+        self, expect_unpublish: bool, timeout: int = 10000, attempts: int = 4
+    ) -> None:
+        """Poll the actions overflow menu (closing and reopening between
+        attempts) until it shows the expected Publish/Unpublish menuitem.
+
+        Confirmed live (issue #614): the overflow menu's Publish/Unpublish
+        menuitem can render from a STALE version-status snapshot for a beat
+        even after the VERSION selector, Information-panel version-id, and
+        URL have all already agreed on the correct version (observed in
+        ~1/4 runs during this case's implementation) — a single
+        point-in-time ``is_visible()`` check right after switching versions
+        is not reliable. Re-opening the menu (a fresh render pass) is what
+        picks up the corrected status, so this closes and reopens between
+        bounded attempts rather than polling a single already-open menu
+        (MUI doesn't live-update an already-rendered menu's items).
+
+        Args:
+            expect_unpublish: ``True`` to wait for "Unpublish" (Published
+                version), ``False`` to wait for "Publish" (Draft version).
+            timeout: Total time budget in milliseconds, split across attempts.
+            attempts: Number of open/check/close cycles to try.
+
+        Raises:
+            AssertionError: if the expected menuitem never appeared.
+        """
+        target = self.unpublish_version_menuitem if expect_unpublish else self.publish_version_menuitem
+        label = "Unpublish" if expect_unpublish else "Publish"
+        per_attempt_timeout = max(timeout // attempts, 1000)
+        last_exc: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            self.open_actions_menu()
+            try:
+                target.wait_for(state="visible", timeout=per_attempt_timeout)
+                logger.info(
+                    "Actions menu shows %r on attempt %d/%d", label, attempt, attempts
+                )
+                return
+            except Exception as exc:  # noqa: BLE001 - re-raised with context below
+                last_exc = exc
+                logger.warning(
+                    "Actions menu did not show %r on attempt %d/%d — retrying",
+                    label, attempt, attempts,
+                )
+                self.close_actions_menu()
+        raise AssertionError(
+            f"Actions menu never showed the expected {label!r} menuitem "
+            f"after {attempts} attempts (issue #614 client-side status "
+            f"staleness) — last error: {last_exc}"
+        )
+
+    @action("Open Unpublish confirm dialog")
+    def open_unpublish_dialog(self, timeout: int = 10000):
+        """Open the Unpublish confirmation dialog via the actions overflow menu.
+
+        Opens the overflow menu and clicks the VERSION-scoped "Unpublish"
+        menuitem (only rendered for a Published version —
+        ``useUnpublishVersionMenu.hooks.jsx``'s ``canUnpublish`` gate), then
+        waits for the "Unpublish Agent" confirmation dialog
+        (``UnpublishConfirmModal.jsx``) to become visible.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening Unpublish confirm dialog via actions menu")
+        self.open_actions_menu()
+        self.unpublish_version_menuitem.click()
+        Dialog.wait_for(self.page, timeout=timeout)
+        self.unpublish_confirm_button.wait_for(state="visible", timeout=timeout)
+        logger.info("Unpublish confirm dialog visible")
+
+    @action("Confirm Unpublish")
+    def confirm_unpublish(self, timeout: int = 15000) -> int:
+        """Click the Unpublish confirm dialog's "Unpublish" button.
+
+        Waits for ``POST .../unpublish/prompt_lib/{project}/{versionId}`` to
+        resolve and for the dialog to close. Callers should assert the
+        returned status is 200.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            HTTP status code of the ``unpublish`` response.
+        """
+        logger.info("Confirming Unpublish")
+        with self.page.expect_response(
+            lambda r: "/unpublish/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as unpublish_info:
+            self.unpublish_confirm_button.click()
+        status = unpublish_info.value.status
+        Dialog.wait_for_hidden(self.page, timeout=timeout)
+        logger.info("Unpublish confirmed — status=%d", status)
+        return status
 
     # ------------------------------------------------------------------
     # Navigation helpers
