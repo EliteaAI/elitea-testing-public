@@ -47,6 +47,23 @@ class CredentialsListPage(BasePage):
         description="Credential card name (title) — collection locator, one per visible card",
     )
 
+    entity_card_tag_chip = LocatorDescriptor(
+        testid="entity-card-tag-chip",
+        description=(
+            "Credential card type badge (e.g. 'Github') — collection locator, "
+            "one per visible card (ELITEA-1962). Same shared Card.jsx testid "
+            "used by SkillsListPage.CARD_TAG_CHIP for the analogous badge."
+        ),
+    )
+
+    # Sidebar "+" create button (shared component, contextual label reads
+    # "Credential" while on /credentials/*). Not scoped per-page — same
+    # testid AgentsListPage.create_agent_button already uses on /agents/all.
+    create_button = LocatorDescriptor(
+        testid="sidebar-create-button",
+        description="Sidebar '+' create button (opens the credential-type selector)",
+    )
+
     # Shared SearchBar.jsx component testids (also used by every other list
     # page — Skills, Mcp, Agents, Pipelines). Credentials uses the default
     # `testId` prop value for the input; the send/clear icons carry
@@ -84,6 +101,11 @@ class CredentialsListPage(BasePage):
     # Parameterized template — credential id filled in per-call, per the
     # dynamic-testid convention (.claude/rules/page-objects.md).
     PIN_TOGGLE_BUTTON = '[data-testid="credential-pin-toggle-button-{}"]'
+
+    # Scoped sub-selector — a credential card's own type badge, used to
+    # search within a single filtered card (get_type_badge()). Same pattern
+    # as SkillsListPage.CARD_TAG_CHIP.
+    ENTITY_CARD_TAG_CHIP_SELECTOR = '[data-testid="entity-card-tag-chip"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -230,3 +252,24 @@ class CredentialsListPage(BasePage):
         card = self.entity_card.filter(has_text=display_name)
         card.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         card.first.click()
+
+    def get_type_badge(self, display_name: str) -> str:
+        """Return the type-badge text (e.g. "Github") on the card matching *display_name*.
+
+        Scopes to the specific card via the same ``entity_card.filter(has_text=...)``
+        pattern as :meth:`click_credential_card`, so two cards with overlapping
+        badge text can't cross-contaminate the read.
+
+        Args:
+            display_name: The credential's exact Display Name (card title text).
+
+        Returns:
+            The badge text content, or ``""`` if the card or badge isn't found.
+        """
+        card = self.entity_card.filter(has_text=display_name)
+        if card.count() == 0:
+            return ""
+        badge = card.first.locator(self.ENTITY_CARD_TAG_CHIP_SELECTOR)
+        if badge.count() == 0:
+            return ""
+        return badge.first.text_content() or ""

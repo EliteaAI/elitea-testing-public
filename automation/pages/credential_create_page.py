@@ -19,7 +19,7 @@ for the full root-cause writeup.
 
 import logging
 
-from playwright.sync_api import Page
+from playwright.sync_api import Locator, Page
 
 from .base_page import BasePage
 from .credential_form_fields import CredentialFormFieldsMixin
@@ -47,6 +47,13 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
     # .agents/testing.md § Locator policy (dynamic testid pattern).
     TYPE_CARD_SELECTOR = '[data-testid="toolkit-type-card-{}"]'
 
+    # Auth-method radiogroup (ELITEA-1962) — dynamic testid template,
+    # `toolkit-field-auth-radio-{slug}` where slug is the option's underlying
+    # VALUE (lowercased, spaces->hyphens), not its label text. E.g. label
+    # "Anonymous" -> slug "none", label "Token" -> slug "token". See the AFS
+    # Concrete Handles table for the full label-to-slug mapping.
+    AUTH_METHOD_RADIO = '[data-testid="toolkit-field-auth-radio-{}"]'
+
     # ------------------------------------------------------------------
     # Create-form fields
     # ------------------------------------------------------------------
@@ -61,6 +68,14 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
     username_input = LocatorDescriptor(
         testid="toolkit-field-username-input",
         description="Username required field (Jira credential type)",
+    )
+    access_token_input = LocatorDescriptor(
+        testid="toolkit-field-access_token-input-field",
+        description=(
+            "Access Token required field (GitHub credential type, Token auth "
+            "method, secret-toggle wrapper — same rendered field family as "
+            "api_key_input, relabeled for GitHub's Token auth)."
+        ),
     )
 
     def __init__(self, page: Page):
@@ -91,6 +106,23 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
         ``credential-form-save-button``, etc.).
         """
         self.navigate(f"/credentials/create-credential/{credential_type}")
+        self.wait_for_page_load()
+
+    def type_card(self, credential_type: str) -> Locator:
+        """Return the credential-type selector card locator for *credential_type*.
+
+        Only rendered on the "Choose the credentials type" grid — reached via
+        the sidebar "+" button (see :meth:`click_type_card`), as opposed to
+        :meth:`navigate_to_type`'s direct-URL shortcut which skips this grid
+        entirely.
+        """
+        return self.page.locator(self.TYPE_CARD_SELECTOR.format(credential_type))
+
+    def click_type_card(self, credential_type: str) -> None:
+        """Click the credential-type selector card for *credential_type* and
+        wait for the resulting type-specific create form to render (ELITEA-1962).
+        """
+        self.type_card(credential_type).click()
         self.wait_for_page_load()
 
     def wait_for_page_load(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
@@ -130,3 +162,31 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
         self.username_input.click()
         self.username_input.select_text()
         self.username_input.press("Backspace")
+
+    def auth_radio(self, method_slug: str) -> Locator:
+        """Return the Auth radio-button locator for *method_slug* (e.g. ``"token"``).
+
+        The testid lands on the MUI ``FormControlLabel`` wrapping the native
+        ``<input type="radio">`` (not the input itself) — live-verified that
+        Playwright's ``is_checked()`` still resolves correctly through this
+        wrapper, so no extra unwrap is needed by callers.
+        """
+        return self.page.locator(self.AUTH_METHOD_RADIO.format(method_slug))
+
+    def select_auth_method(self, method_slug: str) -> None:
+        """Click the Auth radio button matching *method_slug* (e.g. ``"token"``).
+
+        Args:
+            method_slug: The auth option's underlying value slug, not its
+                label text (see :data:`AUTH_METHOD_RADIO` docstring note).
+        """
+        self.auth_radio(method_slug).click()
+
+    def set_access_token(self, value: str) -> None:
+        """Fill the Access Token field, triggering React onChange.
+
+        Only rendered once the "Token" auth method is selected — call
+        :meth:`select_auth_method` first.
+        """
+        self.access_token_input.click()
+        self.access_token_input.press_sequentially(value, delay=20)
