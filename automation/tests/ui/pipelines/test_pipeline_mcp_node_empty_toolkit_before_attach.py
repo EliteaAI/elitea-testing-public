@@ -107,10 +107,10 @@ def test_mcp_node_empty_toolkit_before_attach(page, pipeline_id, mcp_toolkit_wit
     with allure.step('Step 7 — Go back to TOOLS section, click "+ MCP"; search popper opens'):
         popper = pipeline_page.open_mcp_popper(timeout=UI_ELEMENT_TIMEOUT)
         assert popper.is_visible(), "'+ MCP' popper should open"
-        assert popper.locator(pipeline_page.TOOLKIT_SEARCH_INPUT_SELECTOR).count() > 0, (
+        assert pipeline_page.get_mcp_popper_search_input_count(popper) > 0, (
             "'+ MCP' popper should render a toolkit-search-input search field"
         )
-        assert popper.locator('[data-testid="toolkit-menu-item"]').count() > 0, (
+        assert pipeline_page.get_mcp_popper_menu_item_count(popper) > 0, (
             "'+ MCP' popper should list at least one toolkit-menu-item result row "
             "(the project's available MCPs, including the freshly-provisioned fixture MCP)"
         )

@@ -162,6 +162,13 @@ class PipelineDetailPage(PipelineFormPage):
     # policy (class-level constant for selectors used inside a parent locator).
     TOOLKIT_SEARCH_INPUT_SELECTOR = '[data-testid="toolkit-search-input"]'
 
+    # Scoped selector (inside the '+ MCP' popper) — same `toolkit-menu-item`
+    # testid every UnifiedDropdown popper row shares (see
+    # components/mui.py Popper.select_menuitem_by_testid), per
+    # .agents/testing.md § Locator policy (class-level constant for
+    # selectors used inside a parent locator).
+    TOOLKIT_MENU_ITEM_SELECTOR = '[data-testid="toolkit-menu-item"]'
+
     # Dynamic (runtime-parameterized) testid — the Input-mapping "Value"
     # field is one per tool parameter (e.g. RepoName, Question). Class-level
     # template constant per .agents/testing.md § Locator policy, formatted
@@ -1066,6 +1073,36 @@ class PipelineDetailPage(PipelineFormPage):
         self.add_mcp_button.wait_for(state="visible", timeout=timeout)
         self.add_mcp_button.click(force=True)
         return Popper.wait_for(self.page, timeout=timeout)
+
+    def get_mcp_popper_search_input_count(self, popper: Locator) -> int:
+        """Count of the toolkit-search-input field inside an open "+ MCP" popper.
+
+        Kept as a page-object method rather than a raw ``popper.locator(...)``
+        call in the test, per the testid-only-as-class-field POM rule —
+        callers assert the popper's contents (AFS step 7) via this count.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_mcp_popper`.
+
+        Returns:
+            Number of matching elements (0 or 1 in practice).
+        """
+        return popper.locator(self.TOOLKIT_SEARCH_INPUT_SELECTOR).count()
+
+    def get_mcp_popper_menu_item_count(self, popper: Locator) -> int:
+        """Count of toolkit-menu-item rows inside an open "+ MCP" popper.
+
+        Same rationale as :meth:`get_mcp_popper_search_input_count` — keeps
+        the ``toolkit-menu-item`` testid centralized on the page object
+        instead of constructed inline in the test.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_mcp_popper`.
+
+        Returns:
+            Number of matching menu-item rows.
+        """
+        return popper.locator(self.TOOLKIT_MENU_ITEM_SELECTOR).count()
 
     def select_mcp_in_popper(
         self, popper: Locator, mcp_name: str, project_id: str, timeout: int = 10000
