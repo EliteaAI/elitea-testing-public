@@ -65,10 +65,8 @@ class CredentialDetailPage(CredentialFormFieldsMixin, BasePage):
     # ------------------------------------------------------------------
     # Credential detail form fields
     # ------------------------------------------------------------------
-    id_input = LocatorDescriptor(
-        testid="toolkit-field-elitea_title-input",
-        description="Credential ID (elitea_title) input — disabled, mirrors Display Name",
-    )
+    # id_input is inherited from CredentialFormFieldsMixin (ELITEA-1962) —
+    # same testid, promoted so CredentialCreatePage can share it too.
 
     # ------------------------------------------------------------------
     # Tab-bar controls
