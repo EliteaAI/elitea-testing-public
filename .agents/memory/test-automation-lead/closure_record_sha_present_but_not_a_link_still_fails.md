@@ -31,3 +31,34 @@ When auditing item 4, don't just verify the commit SHAs/repo names are factually
 correct — check the literal rendering: is it a markdown table, and are cross-repo refs
 in `owner/repo@sha` / `owner/repo#N` form as plain text (not inside backticks, not
 bare)? A prose closure record with 100%-correct facts in the wrong format still FAILs.
+
+## Recurrence (control-audit, issue #166, ELITEA-1947, PR #621, 2026-07-18)
+
+Same shape, but this time on a REUSED/dependency commit rather than the case's own
+testid commit — and the closure record otherwise did everything right: it HAD a
+proper markdown table, and it DID cite `c1fdd234` (this case's own commit) in the
+correct clickable `EliteaAI/EliteaUI@c1fdd234` form. But the ELITEA-1922 dependency
+commit `1e04dc97` — cited twice (once in the promotability table, once in the Status
+line) — appeared both times as a bare backticked SHA (`` `1e04dc97` ``) with no repo
+prefix at all, not even a bare `@1e04dc97`. So partial compliance within the same
+record doesn't imply full compliance — check every cited commit independently, not
+just the first one or the case's own.
+
+Compounding find: the same record named the dependency's origin as "already-merged
+case `#…`" — a literal, unfilled ellipsis placeholder standing in for a real issue
+number. `gh search issues --repo EliteaAI/elitea-testing-public "ELITEA-1922"` resolved
+it in under a minute: issue **#60**. A placeholder character left in a posted record is
+a distinct, cheaply-checkable defect from the SHA-format gap — worth grepping for
+non-numeric characters immediately after a bare `#` in closure records generally.
+
+**Notable: this is the exact same dependency commit (`1e04dc97`, same two testid
+families `toolkit-field-${k}-input`/`toolkit-type-card-${itemKey}`) that already
+caused this identical FAIL once before**, on a different downstream case
+(`closure_record_reused_testids_still_need_commit_shas.md`'s "Recurrence 2", #160/
+PR#617). Two unrelated cases both depend on this same still-unpromoted EliteaUI
+commit and both got its citation wrong the same way. Two implications: (1) whoever
+eventually cherry-picks `automation/testids` → `main` should treat `1e04dc97`
+specifically as high-priority — it keeps tripping up downstream closure records, and
+promoting it removes the recurring citation risk entirely; (2) a closure-record author
+citing `1e04dc97` (or any commit already flagged in this memory file) should treat that
+as a specific extra-scrutiny trigger, not just apply the general rule fresh each time.
