@@ -1,6 +1,6 @@
 ---
 name: MCP pipeline node toolkit/tool switch quirks
-description: Pipeline MCP-node config is always inline-expanded (no click-to-open); Toolkit switch resets/repopulates Tool; "Input/Output variables per tool" = a separate per-tool-parameter "Input mapping" accordion, NOT the generic Input/Output state-var dropdowns; missing testids inventory; bare pipeline URL 404 quirk
+description: Pipeline MCP-node config is always inline-expanded (no click-to-open); Toolkit switch resets/repopulates Tool; "Input/Output variables per tool" = a separate per-tool-parameter "Input mapping" accordion, NOT the generic Input/Output state-var dropdowns; missing testids inventory (now added on automation/testids, ELITEA-1955); bare pipeline URL 404 quirk; CORRECTED — MCP-attach popper uses toolkit-menu-item, NOT select-option-{value}
 type: feedback
 ---
 
@@ -87,3 +87,72 @@ intentional (client-state-carried routing) or a gap — filed as a `question`,
 not a `bug`. Practical implication: any test that reloads a pipeline mid-test
 must reuse the full canonical URL (e.g. captured `page.url()`), never
 construct a bare `/pipelines/all/{id}`.
+
+## UPDATE 2026-07-18 (ELITEA-1955) — empty-Toolkit-before-attach + corrections
+
+Context: ELITEA-1955 analysis session (issue #162), AFS at
+`test-specs/pipelines/l3_mcp-node-without-toolkit-attached-first_ELITEA-1955.md`.
+Covers the case this entry's original session didn't: an MCP node added
+**before** any MCP is attached in TOOLS, and the transition when one gets
+attached afterward.
+
+**CORRECTION to this entry's line "select-option-{value} ... AND the
+MCP-attach search popper" above — that's wrong.** Verified live this session
+via `document.querySelectorAll('[data-testid="toolkit-menu-item"]')`: the
+MCP/Toolkit/Agent/Pipeline "+"-button search popper's result rows all carry
+the SAME shared testid `toolkit-menu-item` (`UnifiedDropdown.jsx`), disambiguated
+by text filter — not `select-option-{value}` (that pattern belongs only to
+`SingleSelectMenuItem.jsx`, used by the node's own Toolkit/Tool comboboxes).
+Root cause of the original error: the browser-automation tool's
+auto-generated Playwright code defaults to a role-based locator
+(`getByRole('menuitem', {name})`) even when a testid exists on the element —
+easy to mistake for "no testid present." Verify via `evaluate()` /
+`get_attribute('data-testid')`, not the auto-generated code's locator choice.
+
+**The `pipeline-mcp-node-*` testids this entry originally flagged as
+missing now exist** — added on `automation/testids` (confirmed
+`pipeline-mcp-node-toolkit-select`, `-tool-select`, `-input-mapping-heading`,
+`-input-mapping-value-{param}`; still **not on `main`**, so still
+`automation/testids`-only provenance). The TOOLS-section add-tabs also now
+all have testids except Pipeline: `agent-add-toolkit-button`,
+`agent-add-mcp-button`, `agent-add-agent-button` (confirmed on both `main`
+and `automation/testids`) — only `agent-add-pipeline-button` is still
+missing.
+
+**Empty-Toolkit-dropdown state (before any MCP attached):** opening the
+node's Toolkit combobox with zero MCPs in TOOLS renders MUI's own built-in
+placeholder (`SingleSelect.jsx`'s `renderMenuItems`, `key="__empty__"`
+branch: `<MenuItem value=""><em>None</em></MenuItem>`) — this placeholder
+row carries **no `data-testid`** (confirmed via source + live DOM), even
+though `SingleSelect.jsx` is first-party (`src/[fsd]/shared/ui/select/`),
+not a third-party widget. Recommended assertion does NOT need a new testid:
+count `[data-testid^="select-option-"]` == 0 after opening — that's the
+existing real-option testid family, and its absence IS the "empty" signal.
+Attaching an MCP via TOOLS afterward makes it appear in the SAME
+already-rendered node's dropdown immediately — no node re-creation or page
+reload needed.
+
+**`open_mcp_node_toolkit_select()` breaks on the empty case.** The existing
+page-object method (`pipeline_detail_page.py:798`, from ELITEA-1954) waits
+for `[data-testid^="select-option-"]` to appear after clicking — which never
+happens when the dropdown is genuinely empty, so it times out. Fix/variant:
+wait on the SAME toolkit-select element's own `aria-expanded="true"`
+attribute instead (confirmed this flips correctly regardless of option
+count) — works for both empty and populated dropdowns.
+
+**No `add_mcp()`-equivalent exists yet on `PipelineDetailPage`.**
+`AgentDetailPage.add_mcp()` (`agent_detail_page.py:1108`) already implements
+the "+ MCP" attach flow using testids confirmed to work identically on the
+pipeline page (`agent-add-mcp-button`, `toolkit-search-input`,
+`toolkit-menu-item`, `components.mui.Popper.select_menuitem`) since
+`ApplicationTools.jsx`/`ToolMenu.jsx` is one shared component used by both
+Agent and Pipeline detail forms. Port or extract to a shared mixin rather
+than duplicating — flagged to the lead in the ELITEA-1955 AFS.
+
+**Minor, non-blocking convention note:** `BaseToolNode.jsx`'s Input/Output
+select testids are wired via a prop literally named `dataTestId`
+(`FlowEditorSelect.InputSelect`/`OutputSelect`), which is the specific
+forbidden shape per `.agents/testing.md` § Locator policy (`testId` /
+`<part>TestId` only, never a `data` prefix). Pre-existing since ELITEA-1954,
+no functional impact, not filed as a fresh defect — noted for a future
+cleanup pass only.
