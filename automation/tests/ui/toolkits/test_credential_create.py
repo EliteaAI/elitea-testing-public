@@ -96,8 +96,8 @@ class TestCredentialCreate:
             create_page = CredentialCreatePage(page)
 
             with allure.step("Step 1 — Navigate to the Credentials section from the sidebar"):
-                list_page.navigate()
                 page.on("console", _on_console)
+                list_page.navigate()
 
                 assert list_page.entity_card.first.is_visible(), (
                     "Expected at least one credential card (the seed) on the Credentials list page"

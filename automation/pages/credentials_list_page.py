@@ -47,15 +47,6 @@ class CredentialsListPage(BasePage):
         description="Credential card name (title) — collection locator, one per visible card",
     )
 
-    entity_card_tag_chip = LocatorDescriptor(
-        testid="entity-card-tag-chip",
-        description=(
-            "Credential card type badge (e.g. 'Github') — collection locator, "
-            "one per visible card (ELITEA-1962). Same shared Card.jsx testid "
-            "used by SkillsListPage.CARD_TAG_CHIP for the analogous badge."
-        ),
-    )
-
     # Sidebar "+" create button (shared component, contextual label reads
     # "Credential" while on /credentials/*). Not scoped per-page — same
     # testid AgentsListPage.create_agent_button already uses on /agents/all.
