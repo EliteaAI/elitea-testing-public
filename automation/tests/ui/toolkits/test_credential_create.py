@@ -50,6 +50,55 @@ def _is_known_291_warning(msg) -> bool:
     )
 
 
+def _is_known_518_warning(msg) -> bool:
+    """Filter the pre-existing, already-filed, OPEN CredentialsList.jsx
+    double-``onRefetch()`` crash (elitea-testing-public#518) —
+    ``automation/pages/credentials_list_recovery.py`` documents the same
+    "Cannot refetch a query that has not been started yet" RTK Query error
+    and already recovers the FUNCTIONAL flow (reload-once, wired into
+    ``CredentialsListPage.navigate()``); this filter only keeps the crash's
+    console spam out of this test's own diagnostic side-channel check, same
+    multi-defect-filter idiom as test_credential_search_by_name.py's
+    ``_is_known_291_warning`` + ``_is_known_554_warning`` pair. Reproduces at
+    ~60-75% on any flow landing on /credentials/all, which Step 1's
+    ``list_page.navigate()`` does here.
+
+    Two distinct message SHAPES for the same underlying error (same class of
+    gotcha already documented for #611 — anchor on the component name, don't
+    rely on a single phrase): (1) the raw thrown RTK Query error, whose text
+    contains "Cannot refetch a query that has not been started yet"; and (2)
+    React's error-boundary companion message ("The above error occurred in
+    the <CredentialsList> component:"), which React always logs as a
+    *separate* console.error alongside the raw error and does NOT repeat the
+    original error text. Live-confirmed both shapes fire for this exact
+    crash during PR #617 round-2 verification.
+    """
+    text = msg.text
+    return (
+        "Cannot refetch a query that has not been started yet" in text
+        or ("above error occurred" in text and "<CredentialsList>" in text)
+    )
+
+
+def _is_known_554_warning(msg) -> bool:
+    """Filter the pre-existing, already-filed elitea-testing-public#554 — an
+    RTK-Query timing race in ``EliteaUI/src/api/toolkits.js``'s
+    ``toolkitTypes`` endpoint that fires before ``useSelectedProjectId()``
+    resolves, building the URL with an empty projectId segment
+    (``.../toolkits/prompt_lib/``) which 404s. Same filter established by
+    ``test_credential_search_by_name.py`` for its own repeated
+    create-credential navigations; live-confirmed during PR #617 round-2
+    verification to also leak from THIS test's Step 1
+    ``list_page.navigate()`` (its own docstring already notes it's "likely
+    reproducible on any page render" — now confirmed on a second, unrelated
+    entry point). Matched by ``msg.location.url``, not ``msg.text`` alone
+    (which has no URL) — verify the exact endpoint rather than blanket-
+    filtering any 404, so a genuinely new defect isn't masked.
+    """
+    location_url = (msg.location or {}).get("url", "")
+    return "404" in msg.text and "elitea_core/toolkits/prompt_lib/" in location_url
+
+
 class TestCredentialCreate:
     """ELITEA-1962 — Create a GitHub credential (Token auth) via the sidebar "+" button."""
 
@@ -58,6 +107,7 @@ class TestCredentialCreate:
         "credentials/ELITEA-1962_create-credential.md",
         "onetest-ai Test Case link",
     )
+    @allure.issue("https://github.com/EliteaAI/elitea-testing-public/issues/518", "Known defect #518")
     @pytest.mark.p1
     def test_create_github_credential_via_sidebar_button(self, page, credential_api):
         """Create a GitHub credential with Token auth via the sidebar "+" button
@@ -74,7 +124,12 @@ class TestCredentialCreate:
         console_messages = []
 
         def _on_console(msg):
-            if msg.type in ("error", "warning") and not _is_known_291_warning(msg):
+            if (
+                msg.type in ("error", "warning")
+                and not _is_known_291_warning(msg)
+                and not _is_known_518_warning(msg)
+                and not _is_known_554_warning(msg)
+            ):
                 console_messages.append(msg)
 
         try:
@@ -225,6 +280,14 @@ class TestCredentialCreate:
                 )
 
             with allure.step("Side-channel check — no console errors/warnings across the full flow"):
+                # Known defect: #518 — CredentialsList.jsx's double-onRefetch() crash on
+                # Step 1's list_page.navigate() is filtered by _is_known_518_warning()
+                # above (already tracked, already functionally worked around at the
+                # page-object layer via recover_from_credentials_list_crash()). Known
+                # defect: #554 — the unrelated toolkitTypes 404 race, filtered by
+                # _is_known_554_warning() above, same pattern already established by
+                # test_credential_search_by_name.py. Any OTHER console error/warning
+                # still fails this check for real.
                 assert not console_messages, (
                     f"Unexpected console errors/warnings: {[m.text for m in console_messages]}"
                 )
