@@ -43,6 +43,23 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
   its deterministic gate, and staying red in CI is the correct signal until the
   product fix ships. Anything else red — flaky, multi-cause, no linked defect —
   blocks. Record the exception explicitly in the closure record.
+  - **Closed-set variant (2026-07-18, ELITEA-1892/#615):** "single-cause" does
+    not require literally one defect ID to fire every run. A gate run may
+    legitimately show any subset of a **closed, enumerable set** of known
+    defects touching the same flow — e.g. run A shows only `#611`, run B shows
+    `#611`+`#614` — and still count as one sanctioned signature, PROVIDED
+    every member of the set independently satisfies (a)+(b) on its own (open,
+    filed, soft-asserted) AND every occurrence is verified against an
+    independent ground truth (API response, not just a second DOM read)
+    *before* being classified as the known defect rather than a raw failure —
+    so a genuinely new/unknown cause can never silently fall into the
+    "known" bucket. All terminal failures must route through the identical
+    mechanism (one `soft_failures`/`pytest.fail()` aggregation, not separate
+    ad-hoc catches). What still blocks: any failure that reaches the gate as
+    a raw/uncaught exception, or that the API tie-breaker itself contradicts
+    (real bug, not staleness), or a defect not in the enumerated, linked set.
+    Record which set-members actually fired across the 3 gate runs in the
+    closure record — don't just write "sanctioned RED".
 - Gate runs use a clean process each time: `cd automation && HEADLESS=true
   ../.venv/bin/pytest <node-id> -v -p no:cacheprovider` (×3).
 
