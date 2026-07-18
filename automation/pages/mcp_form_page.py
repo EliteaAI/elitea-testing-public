@@ -13,6 +13,7 @@ object covers both surfaces (ELITEA-1922 AFS, confirmed live).
 
 import json
 import logging
+import re
 import time
 
 from playwright.sync_api import Page, expect
@@ -145,6 +146,49 @@ class McpFormPage(BasePage):
         "placeholder until the tool-detail GET resolves)",
     )
 
+    # ------------------------------------------------------------------
+    # Three-dot actions menu + delete-confirm dialog (detail page only) —
+    # added ELITEA-1947. controls-menu-button/controls-menu are the SAME
+    # generic ControlsDropdown/DotMenu testids already used by
+    # CredentialDetailPage (default id="controls" — ToolkitsControls.jsx
+    # renders via this same shared component with no id override, so the
+    # testid string is identical across Toolkits/MCP/Credentials detail
+    # pages, per the AFS Concrete Handles table).
+    # ------------------------------------------------------------------
+    controls_menu_button = LocatorDescriptor(
+        testid="controls-menu-button",
+        description="Three-dot actions menu button on the MCP detail page",
+    )
+    controls_menu = LocatorDescriptor(
+        testid="controls-menu",
+        description="Three-dot actions menu popup (Export/Fork/Copy link/Pin to top/Delete)",
+    )
+    delete_menuitem = LocatorDescriptor(
+        testid="toolkit-actions-delete-menuitem",
+        description="'Delete' menu item inside the three-dot menu — added via "
+        "add-data-testid for ELITEA-1947 (DeleteToolkitButton.jsx's "
+        "useDeleteToolkitMenu() menuItem had no key before this case)",
+    )
+    delete_confirm_dialog = LocatorDescriptor(
+        testid="delete-confirm-dialog",
+        description="Delete confirmation dialog (DeleteEntityModal, shared across "
+        "~15 entity types) — added via add-data-testid for ELITEA-1947",
+    )
+    delete_confirm_name_input = LocatorDescriptor(
+        testid="delete-confirm-name-input",
+        description="Delete dialog's type-to-confirm Name field — resolves to the "
+        "MUI TextField wrapper, NOT the real <input> (AFS Concrete Handles); "
+        "click + press_sequentially() types into the focused inner input, but "
+        "never call .input_value() on this locator (throws)",
+    )
+    delete_confirm_button = LocatorDescriptor(
+        testid="delete-confirm-button",
+        description="Delete dialog's confirm button — disabled until the typed "
+        "name matches the entity name exactly — added via add-data-testid for "
+        "ELITEA-1947 (two-part fix: OneClickButton.jsx now forwards data-testid, "
+        "DeleteEntityModal.jsx passes it)",
+    )
+
     # Scoped selector for use inside wait_for_function's page-context JS
     # (a raw DOM query, not a Playwright locator — mirrors BasePage's own
     # evaluate()-based waits, e.g. dismiss_banner_if_present()).
@@ -275,6 +319,86 @@ class McpFormPage(BasePage):
             arg=self.DETAIL_TITLE_SELECTOR,
             timeout=UI_ELEMENT_TIMEOUT,
         )
+
+    # ------------------------------------------------------------------
+    # Three-dot actions menu + delete-confirm dialog — added ELITEA-1947.
+    # Mirrors CredentialDetailPage.open_controls_menu() (same shared
+    # ControlsDropdown/DotMenu component/testids); the delete-confirm dialog
+    # methods are new (CredentialDetailPage doesn't yet drive its own Delete
+    # flow through these testids — out of this case's scope).
+    # ------------------------------------------------------------------
+
+    @action("Open the three-dot actions menu")
+    def open_controls_menu(self) -> None:
+        """Click the three-dot menu button and wait for the menu popup to render."""
+        self.controls_menu_button.click()
+        self.controls_menu.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def get_controls_menu_text(self) -> str:
+        """Return the three-dot menu popup's full text content (all menu item labels)."""
+        return self.controls_menu.text_content() or ""
+
+    @action("Click the Delete menu item")
+    def click_delete_menu_item(self) -> None:
+        """Click 'Delete' inside the three-dot menu and wait for the confirm dialog."""
+        self.delete_menuitem.click()
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def get_delete_confirm_dialog_text(self) -> str:
+        """Return the delete confirmation dialog's full text content (title + body)."""
+        return self.delete_confirm_dialog.text_content() or ""
+
+    def is_delete_confirm_button_enabled(self) -> bool:
+        """Return whether the dialog's Delete button is currently enabled."""
+        return self.delete_confirm_button.is_enabled()
+
+    @action("Type the entity name into the delete-confirm dialog")
+    def fill_delete_confirm_name(self, name: str) -> None:
+        """Type *name* into the delete dialog's type-to-confirm Name field.
+
+        ``delete_confirm_name_input`` resolves to the MUI TextField wrapper,
+        not the real ``<input>`` (AFS Concrete Handles) — clicking it focuses
+        the inner input via browser click-delegation, then
+        ``press_sequentially()`` types into the focused input (MUI needs
+        keyboard events for React onChange, per
+        ``.claude/rules/mui-patterns.md``). Waits for the Delete button to
+        become enabled afterwards — the real signal that the typed value has
+        propagated to the dialog's controlled-input comparison — rather than
+        a fixed delay.
+        """
+        self.delete_confirm_name_input.click()
+        self.delete_confirm_name_input.press_sequentially(name, delay=20)
+        expect(self.delete_confirm_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
+
+    @action("Confirm deletion and wait for the DELETE response + redirect")
+    def confirm_delete(self, project_id: str, toolkit_id: int, timeout: int = SAVE_RESPONSE_TIMEOUT) -> None:
+        """Click the dialog's Delete button; wait for the DELETE 204, then the redirect to the list.
+
+        Waits on the real ``DELETE .../tool/prompt_lib/{project}/{id}``
+        network response (AFS § Network Behavior) rather than a fixed
+        timeout, then waits for the URL to become ``/mcps/all``.
+
+        This redirect is a ``window.history``-based ``navigate(-1)``
+        (``DeleteToolkitButton.jsx``) — it only reliably lands on
+        ``/mcps/all`` when the detail page was reached via a REAL
+        list-card navigation (see :meth:`McpListPage.open_card_by_name`),
+        not the create flow's own post-save redirect (AFS § Known Defects
+        Found). This method does not — and cannot — enforce that ordering;
+        it's the caller's responsibility to have navigated correctly.
+
+        Args:
+            project_id: Project id, used to scope the response URL match.
+            toolkit_id: The MCP's numeric id, used to scope the response URL match.
+            timeout: Maximum wait time in milliseconds.
+        """
+        with self.page.expect_response(
+            lambda r: f"/tool/prompt_lib/{project_id}/{toolkit_id}" in r.url
+            and r.request.method == "DELETE"
+            and r.status == 204,
+            timeout=timeout,
+        ):
+            self.delete_confirm_button.click()
+        self.page.wait_for_url("**/mcps/all", timeout=timeout)
 
     # ------------------------------------------------------------------
     # Field fills — MUI text inputs need React-safe keyboard events
@@ -757,6 +881,18 @@ class McpFormPage(BasePage):
         confirmed at ELITEA-1922 implementer exploration).
         """
         return self.detail_title.text_content() or ""
+
+    def get_toolkit_id_from_url(self) -> int:
+        """Extract the numeric MCP/toolkit id from the current detail-page URL.
+
+        URL shape: ``/mcps/all/{numeric_id}`` or
+        ``/mcps/all/{numeric_id}?viewMode=owner&name=...`` — mirrors
+        ``CredentialDetailPage.get_credential_id_from_url()`` (same regex
+        mechanism, different entity path).
+        """
+        match = re.search(r"/mcps/all/(\d+)", self.page.url)
+        assert match, f"Expected a numeric MCP id in the URL, got: {self.page.url}"
+        return int(match.group(1))
 
     # ------------------------------------------------------------------
     # Tools section — Load Tools, discovered tool pills — added ELITEA-1933
