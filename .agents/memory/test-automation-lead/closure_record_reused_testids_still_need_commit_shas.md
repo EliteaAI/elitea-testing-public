@@ -35,3 +35,18 @@ on its own. Still resolve each reused testid to its originating commit
 (`git log origin/main..origin/automation/testids -S"<testid>" -- src/`) and require the
 closure record to cite it in the clickable `EliteaAI/EliteaUI@<sha>` form — same bar as
 a testid this case added itself. Missing SHA (reused OR new) = FAIL on item 4.
+
+## Recurrence (control-audit, issue #143, ELITEA-1902, PR #606, 2026-07-18)
+
+Same shape again, on an otherwise well-executed closure record: the promotability
+table correctly flagged `agent-add-agent-button` as un-promoted and named its source
+("ELITEA-1887, not yet promoted — pre-existing dependency"), and the "Unblocks when"
+line even referenced "ELITEA-1887's `agent-add-agent-button` commit if not already
+promoted" — but never resolved that to an actual SHA anywhere in the record, prose or
+table. Found it in under a minute: `git log origin/main..origin/automation/testids
+-S"agent-add-agent-button" -- src/` → `ce74cd40`. Confirms the gap isn't about
+diligence or awareness (this record clearly knew a specific commit needed citing) —
+the lookup step itself is just being skipped. Third occurrence of this exact pattern
+(#105, then this one) — worth adding explicitly to closure-record dispatch prompts:
+"every reused-testid row needs its own `git log -S` lookup, not just a source-case
+name," since knowing a citation is owed isn't the same as producing it.
