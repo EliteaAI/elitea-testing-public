@@ -140,36 +140,70 @@ product**, matching exactly what the covering test already asserts.
 
 Checked whether [GH#607](https://github.com/EliteaAI/elitea-testing-public/issues/607)
 ("Support Assistant conversation restore truncates to the oldest 100 message
-groups") is relevant to this case. **It does not reproduce here, and — by
-construction — cannot block this case's own pass criteria:**
+groups") is relevant to this case. **Re-verified live during the PR #626
+fix-only round** (2026-07-18) after review flagged the original version of
+this subsection as reversing GH#607's truncation direction and
+self-contradicting on session size. Both are corrected below, backed by a
+fresh live reproduction — not just re-worded.
 
-- The session `select_history_session(index=0)` restores is always the
-  session **this same test run just created and pushed to history** via its
-  own New Chat click a few steps earlier. Within a single test's lifetime
-  that session can only ever accumulate the ~1–2 message pairs the test
-  itself sends — nowhere near GH#607's ~100-message-group truncation
-  threshold. This is the identical characteristic already documented in
-  `l2_new-chat-creates-fresh-session_ELITEA-1799.md`'s "Live-verification
-  finding" for the same reason.
-- Confirmed live: the restored session in this pass held 20 assistant
-  messages (accumulated across multiple prior automated runs against this
-  shared dev-token session, itself created fresh during the ELITEA-1799 pass
-  the day before) — far under the ~100-group cap — and its content matched
-  exactly, no truncation observed.
-- Even in principle, ELITEA-1800's own Pass/Fail criteria (history session
-  exists, restored session is non-empty, follow-up increases the count) are
-  **count-based existence checks**, not full-content-preservation checks
-  (unlike ELITEA-1799's Expected-Final-State clause 3, which explicitly
-  requires the *exact* pre-New-Chat message to survive). GH#607's truncation
-  failure mode (dropping the *oldest* groups, keeping the newest ~100) would
-  still leave `restored_count > 0` and `final_count > restored_count` true
-  even if a session had grown large enough to trip it. **No regression-net
-  assertion is needed here** — this case is structurally insulated from
-  GH#607, unlike ELITEA-1799.
+**The session this case restores is a shared, cross-run, ever-growing
+dev-token conversation — not bounded to a single run's own sends — but
+ELITEA-1800's own assertions are still safe from GH#607, for a verified
+structural reason, not because the session stays small:**
 
-GH#607 remains open and unresolved; this finding does not change that —
-it only establishes that ELITEA-1800's specific assertions are unaffected
-by it.
+- The session `select_history_session(index=0)` restores is whatever
+  conversation was already active/default when the widget opened for this
+  run — the same shared dev-token conversation reused across every automated
+  pass against this module (no per-test creation, no cleanup — consistent
+  with this AFS's own § Cleanup: "nothing persists that needs teardown"). It
+  is **not** bounded to "this run's own 1–2 message pairs": confirmed live
+  the day of the original pass it already held 20 assistant messages: during
+  this fix-only round it has grown to **50 message groups** (id 548, uuid
+  `4f4c45e2-…`) — climbing toward, not safely under, GH#607's ~100-group
+  threshold, and it will keep growing with every future run against this
+  module. Any safety argument resting on "the session is too small to
+  trigger GH#607" is therefore false on its face and was removed.
+- **GH#607's actual failure direction** (re-verified live this round
+  directly against the exact conversation the issue documents — id 503, uuid
+  `f53736b2-e54a-4c95-926d-318cc4483181`, 218 total message groups):
+  `GET /api/v2/support_assistant/conversation/{uuid}` returns exactly the
+  **oldest** 100 message groups (`created_at` ascending; last returned item
+  dated 2026-07-10, stale relative to the 2026-07-18 probe) and silently
+  drops every group after that. **It drops the newest groups and keeps the
+  oldest ~100** — matching the issue's own title exactly. (A prior version of
+  this bullet had this backwards — "dropping the oldest groups, keeping the
+  newest ~100" — directly contradicting this section's own opening line;
+  corrected here.)
+- **Why the delta assertion survives truncation anyway (verified, not
+  assumed):** `select_history_session()` fires the truncating GET exactly
+  once, to establish whatever `restored_count` ends up being — truncated or
+  not doesn't matter here, because Step 15 never checks that count against an
+  absolute floor or exact content, only that a *later* count exceeds it. The
+  follow-up send (`send_message()` + `wait_for_response()`) does **not**
+  re-fire that GET — confirmed via a live network capture during this
+  fix-only round (zero additional `GET .../conversation/{uuid}` calls during
+  or after the send); the new user message and AI response are appended
+  directly to the already-rendered DOM instead. **Directly reproduced against
+  the real GH#607-truncated conversation** (id 503 above) to remove doubt:
+  force-restored it via the widget's own history panel, observed the DOM
+  render exactly 100 truncated message wrappers (`restored_count` = 47
+  assistant messages — GH#607 reproducing live, as expected), sent a
+  follow-up message through the real UI, and watched the count settle at
+  `final_count` = 48 — `final_count > restored_count` (48 > 47) **held true**
+  under genuine, currently-reproducing truncation, with no re-fetch of the
+  conversation occurring at any point after the initial restore.
+- This safety is an implementation detail of the current widget (appends on
+  send, never re-fetches), verified today — not an inherent property of a
+  count-based assertion shape alone. If the widget is ever changed to
+  re-fetch the full conversation after every send, this reasoning would need
+  re-verification, since a re-fetch would reapply the same fixed oldest-100
+  window and could leave `final_count` unchanged (no such re-fetch was
+  observed in the current implementation).
+
+GH#607 remains open and unresolved; this finding does not change that — it
+only establishes that ELITEA-1800's specific assertions are, today, verified
+safe from it, including once the shared session it restores eventually
+crosses the truncation threshold.
 
 ### Additional findings during this pass
 
@@ -357,10 +391,14 @@ what the browser context already discards.
 not block this case's classification.
 
 **GH#607** (Support Assistant conversation restore truncation) — checked for
-relevance per the orchestrator's explicit ask; does **not** reproduce for
-this case and cannot block its Pass/Fail criteria by construction — see the
-dedicated "GH#607 relevance check" subsection above. GH#607 itself remains
-open and unresolved; no action needed against it from this case.
+relevance per the orchestrator's explicit ask. The shared session this case
+restores has not yet crossed the ~100-group truncation threshold (50 groups
+as of this fix-only round, growing every run) — but even once it does,
+GH#607 cannot block this case's Pass/Fail criteria, verified by direct live
+reproduction against the actual GH#607-truncated conversation from the issue
+itself, not by assuming the session stays small. See the dedicated "GH#607
+relevance check" subsection above. GH#607 itself remains open and
+unresolved; no action needed against it from this case.
 
 No other product defects found. All 15 case steps + both flagged
 count-based assertions (Steps 10, 12, 15) executed and passed against the
