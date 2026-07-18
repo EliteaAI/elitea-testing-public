@@ -13,10 +13,10 @@ URL: /pipelines/all/{id}
 import logging
 import re
 import time
-from playwright.sync_api import Page
+from playwright.sync_api import Page, Locator
 from .pipeline_form_page import PipelineFormPage
 from .locator_descriptor import LocatorDescriptor
-from components.mui import Dialog
+from components.mui import Dialog, Popper
 
 logger = logging.getLogger("elitea.pages.pipeline_detail")
 
@@ -101,6 +101,19 @@ class PipelineDetailPage(PipelineFormPage):
         description="MCP node's Toolkit select (inline on the ReactFlow canvas card)"
     )
 
+    # The outer `pipeline-mcp-node-toolkit-select` testid lands on MUI's
+    # MuiInputBase-root wrapper div — confirmed live (ELITEA-1955) that
+    # `aria-expanded` is NOT on that element but on a nested child div
+    # (role="combobox", MUI's own "display" element). Added via
+    # add-data-testid (SingleSelect.jsx SelectDisplayProps) so open/closed
+    # state can be read even when the dropdown renders zero real options
+    # (no select-option-* row to fall back on — see
+    # open_mcp_node_toolkit_select_allow_empty below).
+    mcp_node_toolkit_select_combobox = LocatorDescriptor(
+        testid="pipeline-mcp-node-toolkit-select-combobox",
+        description="MCP node's Toolkit select — inner combobox div carrying aria-expanded"
+    )
+
     mcp_node_tool_select = LocatorDescriptor(
         testid="pipeline-mcp-node-tool-select",
         description="MCP node's Tool select (inline on the ReactFlow canvas card)"
@@ -125,6 +138,36 @@ class PipelineDetailPage(PipelineFormPage):
             "review fix pass; case steps 4 and 6)"
         )
     )
+
+    # TOOLS section (ELITEA-1955). ApplicationTools.jsx / ToolMenu.jsx is a
+    # shared component reused by both Agent and Pipeline detail forms
+    # (confirmed via PipelineConfigurationForm.jsx import) — same testids as
+    # AgentDetailPage's Toolkits-section fields, ported here since
+    # PipelineFormPage/PipelineDetailPage had no TOOLS-section locators yet.
+    toolkits_section = LocatorDescriptor(
+        testid="agent-toolkits-section",
+        description="TOOLS section container (Toolkit/MCP/Agent/Pipeline add buttons + MODULES)"
+    )
+    add_mcp_button = LocatorDescriptor(
+        testid="agent-add-mcp-button",
+        description='"+ MCP" button in the TOOLS section (ToolMenu.jsx)'
+    )
+    toolkit_card = LocatorDescriptor(
+        testid="agent-toolkit-card",
+        description="An attached toolkit/MCP card in the TOOLS section"
+    )
+
+    # Scoped selector (inside the '+ MCP' popper) — same testid family as
+    # AgentDetailPage.toolkit_search_input, per .agents/testing.md § Locator
+    # policy (class-level constant for selectors used inside a parent locator).
+    TOOLKIT_SEARCH_INPUT_SELECTOR = '[data-testid="toolkit-search-input"]'
+
+    # Scoped selector (inside the '+ MCP' popper) — same `toolkit-menu-item`
+    # testid every UnifiedDropdown popper row shares (see
+    # components/mui.py Popper.select_menuitem_by_testid), per
+    # .agents/testing.md § Locator policy (class-level constant for
+    # selectors used inside a parent locator).
+    TOOLKIT_MENU_ITEM_SELECTOR = '[data-testid="toolkit-menu-item"]'
 
     # Dynamic (runtime-parameterized) testid — the Input-mapping "Value"
     # field is one per tool parameter (e.g. RepoName, Question). Class-level
@@ -802,6 +845,53 @@ class PipelineDetailPage(PipelineFormPage):
             state="visible", timeout=timeout
         )
 
+    def open_mcp_node_toolkit_select_allow_empty(self, timeout: int = 5000) -> None:
+        """Open the MCP node's Toolkit dropdown, tolerating zero real options.
+
+        Additive sibling to :meth:`open_mcp_node_toolkit_select` (ELITEA-1955)
+        — that method blocks on a ``select-option-*`` testid appearing, which
+        never renders when the dropdown is genuinely empty (MUI's own
+        placeholder ``<MenuItem value=""><em>None</em></MenuItem>`` carries no
+        testid — confirmed live, see ELITEA-1955 AFS § Concrete Handles).
+        This variant instead waits on the ``mcp_node_toolkit_select_combobox``
+        element's ``aria-expanded="true"`` attribute — that inner div (not the
+        outer ``mcp_node_toolkit_select`` testid, which lands on MUI's
+        MuiInputBase-root wrapper) is the one that actually carries
+        ``aria-expanded``, confirmed to flip regardless of option count.
+        ``open_mcp_node_toolkit_select`` itself is left unmodified
+        (page-objects.md shared-caller rule) — it has an existing merged
+        caller (ELITEA-1954) relying on its option-visible wait.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        from playwright.sync_api import expect
+
+        self.mcp_node_toolkit_select.click(timeout=timeout)
+        expect(self.mcp_node_toolkit_select_combobox).to_have_attribute(
+            "aria-expanded", "true", timeout=timeout
+        )
+
+    def close_mcp_node_toolkit_select(self, timeout: int = 5000) -> None:
+        """Close the open MCP node Toolkit dropdown via Escape, without selecting.
+
+        Mirrors ``AgentDetailPage.close_model_selector()``'s Escape-key
+        pattern. Waits on ``mcp_node_toolkit_select_combobox``'s
+        ``aria-expanded`` flipping back to ``"false"`` — the same element
+        :meth:`open_mcp_node_toolkit_select_allow_empty` waits on to open, so
+        this works whether or not the dropdown had any real options rendered
+        (ELITEA-1955 AFS step 6).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        from playwright.sync_api import expect
+
+        self.page.keyboard.press("Escape")
+        expect(self.mcp_node_toolkit_select_combobox).to_have_attribute(
+            "aria-expanded", "false", timeout=timeout
+        )
+
     def open_mcp_node_tool_select(self, timeout: int = 5000) -> None:
         """Open the MCP node's Tool dropdown."""
         self.mcp_node_tool_select.click(timeout=timeout)
@@ -939,6 +1029,143 @@ class PipelineDetailPage(PipelineFormPage):
             return False
         text = (heading.text_content() or "").strip()
         return text == f"Input mapping (required {required_count})"
+
+    # ------------------------------------------------------------------
+    # TOOLS section — MCP attach (ELITEA-1955)
+    # ------------------------------------------------------------------
+
+    def ensure_toolkits_section_visible(self, timeout: int = 5000) -> None:
+        """Scroll to the TOOLS section and wait for it to be visible.
+
+        Ported from ``AgentDetailPage.ensure_toolkits_section_visible`` —
+        same shared component, same testid (see ``toolkits_section``).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.toolkits_section.scroll_into_view_if_needed()
+        self.toolkits_section.wait_for(state="visible", timeout=timeout)
+        self.page.wait_for_timeout(500)  # Animation settle
+        logger.debug("TOOLS section scrolled into view")
+
+    def open_mcp_popper(self, timeout: int = 10000) -> Locator:
+        """Open the TOOLS section's "+ MCP" popper without selecting anything.
+
+        Ported from ``AgentDetailPage.add_mcp()`` (ELITEA-1950), split into
+        an open/select pair — mirrors the existing
+        ``open_mcp_node_toolkit_select()`` / ``get_open_listbox_option_names()``
+        / ``select_open_listbox_option()`` three-step pattern already used
+        for the node's own Toolkit/Tool selects, so callers can assert the
+        popper's contents (AFS step 7) before selecting (AFS step 8).
+        ApplicationTools.jsx/ToolMenu.jsx is a shared component reused by
+        both Agent and Pipeline detail forms (confirmed via
+        PipelineConfigurationForm.jsx import; ELITEA-1955 AFS Automation
+        Hints), and the same testids apply.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator of the visible MUI popper (see ``components.mui.Popper``).
+        """
+        logger.info("Opening TOOLS section '+ MCP' popper")
+        self.ensure_toolkits_section_visible(timeout=timeout)
+        self.add_mcp_button.wait_for(state="visible", timeout=timeout)
+        self.add_mcp_button.click(force=True)
+        return Popper.wait_for(self.page, timeout=timeout)
+
+    def get_mcp_popper_search_input_count(self, popper: Locator) -> int:
+        """Count of the toolkit-search-input field inside an open "+ MCP" popper.
+
+        Kept as a page-object method rather than a raw ``popper.locator(...)``
+        call in the test, per the testid-only-as-class-field POM rule —
+        callers assert the popper's contents (AFS step 7) via this count.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_mcp_popper`.
+
+        Returns:
+            Number of matching elements (0 or 1 in practice).
+        """
+        return popper.locator(self.TOOLKIT_SEARCH_INPUT_SELECTOR).count()
+
+    def get_mcp_popper_menu_item_count(self, popper: Locator) -> int:
+        """Count of toolkit-menu-item rows inside an open "+ MCP" popper.
+
+        Same rationale as :meth:`get_mcp_popper_search_input_count` — keeps
+        the ``toolkit-menu-item`` testid centralized on the page object
+        instead of constructed inline in the test.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_mcp_popper`.
+
+        Returns:
+            Number of matching menu-item rows.
+        """
+        return popper.locator(self.TOOLKIT_MENU_ITEM_SELECTOR).count()
+
+    def select_mcp_in_popper(
+        self, popper: Locator, mcp_name: str, project_id: str, timeout: int = 10000
+    ) -> dict:
+        """Select *mcp_name* in an already-open "+ MCP" popper.
+
+        Waits on the attach PATCH response itself (not a fixed timeout) per
+        AFS § Network Behavior, so a ``201`` is the only way this call
+        returns — a non-201 or missing response times out here rather than
+        being asserted after the fact. Uses the testid-anchored
+        ``Popper.select_menuitem_by_testid`` helper (matches the
+        ``toolkit-menu-item`` testid shared by every ``UnifiedDropdown``
+        popper row, confirmed live for this popper — ELITEA-1955 AFS §
+        Concrete Handles) rather than the older role-based
+        ``Popper.select_menuitem`` that ``AgentDetailPage.add_mcp()`` uses.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_mcp_popper`.
+            mcp_name: Exact name of the MCP to attach — MCP names are NOT
+                space-stripped in this popper (unlike the Toolkit popper),
+                per ``AgentDetailPage.add_mcp()``'s docstring.
+            project_id: Project id, used to scope the attach response URL match.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the ``201 Created`` attach PATCH response.
+        """
+        logger.info("Selecting MCP '%s' in popper", mcp_name)
+        search_input = popper.locator(self.TOOLKIT_SEARCH_INPUT_SELECTOR)
+        if search_input.count() > 0 and search_input.first.is_visible():
+            Popper.search(popper, mcp_name[:20], self.page)
+
+        with self.page.expect_response(
+            lambda r: f"/tool/prompt_lib/{project_id}/" in r.url
+            and r.request.method == "PATCH"
+            and r.status == 201,
+            timeout=timeout,
+        ) as response_info:
+            Popper.select_menuitem_by_testid(popper, mcp_name, self.page, timeout=timeout)
+
+        logger.info("MCP '%s' attached", mcp_name)
+        return response_info.value.json()
+
+    def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
+        """Check whether a toolkit/MCP card is attached in the TOOLS section.
+
+        Ported from ``AgentDetailPage.is_toolkit_attached`` — same shared
+        ``ToolCard.jsx`` component, same ``agent-toolkit-card`` testid.
+
+        Args:
+            toolkit_name: Toolkit/MCP name to look for.
+            timeout: How long to wait for it to appear.
+
+        Returns:
+            True if a matching card is attached, False otherwise.
+        """
+        try:
+            self.toolkit_card.filter(has_text=toolkit_name).first.wait_for(
+                state="visible", timeout=timeout
+            )
+            return True
+        except Exception:
+            return False
 
     def save_and_wait_for_update(self, project_id: str, pipeline_id: int, timeout: int = 15000) -> dict:
         """Click Save and wait for the update PUT's 201 response.
