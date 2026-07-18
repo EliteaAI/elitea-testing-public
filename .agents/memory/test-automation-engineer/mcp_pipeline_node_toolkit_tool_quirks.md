@@ -190,3 +190,25 @@ at `pipeline-mcp-node-toolkit-select-combobox`
   toolkit_name=, tool=, input_mapping=, node_id=)`
 - `config.py: remote_github_mcp_toolkit_id` (default 3) — the environment's
   fixed pre-existing "Remote Github" MCP, unreachable via listing.
+
+## Defensive stale-data cleanup for a FIXED literal test-data name (ELITEA-1947)
+
+When a case's assertion text hardcodes a literal entity name (e.g. a
+delete-confirm dialog's exact body text quoting `autotest_mcp_to_delete`),
+you can't uuid-suffix the name for uniqueness like other MCP tests do — so a
+prior run that failed between create and delete leaves a same-named stale
+entity for the next run. The AFS's natural instinct ("list-search via the
+API, delete if found") silently does nothing here: `list_all_toolkits()` is
+the confirmed-broken/always-empty endpoint documented above, so a pre-check
+built on it will never find the stale entity (false negative, not an error —
+easy to miss in review).
+
+Working recipe: discover via the UI (the SAME endpoint `/mcps/all` itself
+renders from, so it actually sees what a human/the test would see —
+`McpListPage.has_any_mcp()` + `get_card_names()`), then delete via the raw
+API by id (`ToolkitAPI.delete_toolkit(id)` — delete-by-id IS reliable, only
+LISTING is broken). Get the id by opening the stale card
+(`McpListPage.open_card_by_name()`) and parsing it from the resulting detail
+URL (`McpFormPage.get_toolkit_id_from_url()`, mirrors
+`CredentialDetailPage.get_credential_id_from_url()`) rather than trying to
+read an id off the list card itself (no such testid exists).
