@@ -151,3 +151,31 @@ entire case's testid list. General rule: before grepping, glance at the
 it's a template literal or multi-file composition, grep the prop/constant
 name that's actually static, not the fully-composed value you expect to
 see in the DOM.
+
+### Fifth occurrence: MUI sub-component prop-forwarding derivation, two shapes in one closure record (#162, ELITEA-1955, PR #620)
+
+Two testids on the same closure record, both empty on a bare-value grep on
+**both** refs despite being confirmed live/merged:
+
+```jsx
+// SingleSelect.jsx — MUI's SelectDisplayProps takes an attrs OBJECT that MUI
+// itself spreads onto an internal (not the component's own) DOM node.
+// The composed value never appears as source text anywhere.
+SelectDisplayProps={dataTestId ? { 'data-testid': `${dataTestId}-combobox` } : undefined}
+
+// BaseToolNode.jsx — a *TestIdPrefix prop, consumed by a CHILD component
+// several files away that appends its own suffix per rendered item
+valueTestIdPrefix={isMcpNode ? 'pipeline-mcp-node-input-mapping-value' : undefined}
+```
+
+Same root cause as occurrences 2–4 (composed value, not a static string) but
+a new *mechanism*: occurrence 1 is `slotProps`/ternary within the same
+render; 2–3 are cross-file `id`/`key` template composition; this one is a
+**third-party library prop** (`SelectDisplayProps`) whose entire purpose is
+to forward an attributes object onto a DOM node the component itself doesn't
+directly render — grepping the MUI prop name (`SelectDisplayProps`) or the
+consuming prefix prop (`valueTestIdPrefix`) and reading the assignment line
+resolved both immediately. Same fix as always — read the construction site,
+don't trust the bare-value grep's "no" — but worth recording that the
+"nested/forwarded prop" shape can come from a UI library's own API surface,
+not just this codebase's internal composition patterns.
