@@ -150,6 +150,38 @@ fresh worktree, then `git branch -f <name> HEAD` to force the local ref
 forward, `git checkout <name>`, then push — no need to delete/recreate the
 branch.
 
+## `aria-expanded` is ALSO on the inner combobox div, not the wrapper (ELITEA-1955)
+
+Extends the "data-testid lands on the OUTER wrapper div" gotcha above:
+`click()` works fine on the wrapper testid because its bounding box contains
+the inner div, but **reading `aria-expanded`/`role="combobox"` off the
+wrapper element returns `null`** — those ARIA attributes are set by MUI on
+the NESTED `.MuiSelect-select` display div only. Confirmed live via CDP
+probe (`document.querySelector('[data-testid="..."]')` → wrapper,
+`aria-expanded` attribute `null`; its first child div → `aria-expanded`
+correctly flips `"false"`/`"true"`).
+
+Matters when you need an open/closed signal that doesn't depend on options
+rendering (e.g. asserting a Select opened when it's showing zero real
+options — no `select-option-*` testid exists yet to fall back on waiting
+for). Fix shipped this case: added `SelectDisplayProps` to
+`SingleSelect.jsx`'s `<Select>` so the inner div gets its own DERIVED
+testid, opt-in only for callers already passing `data-testid`:
+
+```jsx
+<Select
+  data-testid={dataTestId}
+  SelectDisplayProps={dataTestId ? { 'data-testid': `${dataTestId}-combobox` } : undefined}
+  ...
+```
+
+Any `SingleSelect`/`ToolSelect` consumer that already has a `data-testid`
+now automatically gets a `<that-id>-combobox` sibling testid for reading
+`aria-expanded` — no per-consumer plumbing needed. Pushed to
+`EliteaAI/EliteaUI` `automation/testids` (commit `301d131c`). Applied first
+at `pipeline-mcp-node-toolkit-select-combobox`
+(`PipelineDetailPage.mcp_node_toolkit_select_combobox`).
+
 ## Reusable API additions
 
 - `ToolkitAPI.get_toolkit(id)`, `sync_mcp_tools(url, timeout, ssl_verify)`,
