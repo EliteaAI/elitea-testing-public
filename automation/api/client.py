@@ -474,6 +474,29 @@ class AgentAPI:
         resp = self._session.delete(url)
         _raise_for_status(resp)
 
+    def unpublish_version(self, version_id: int) -> None:
+        """Unpublish a Published version, reverting its status to Draft.
+
+        Added for ELITEA-1892's publish/unpublish cycle test — a
+        Published version has no dedicated delete endpoint (per the AFS,
+        "no delete-version UI/API, only whole-agent delete"), and
+        ``delete_agent()`` itself 400s with "Cannot delete application
+        with published or embedded versions. Unpublish first." while any
+        version on the agent is still Published. Cleanup paths that create
+        Published versions (directly or via a failed mid-test run) must
+        call this before ``delete_agent()`` to avoid leaking an
+        undeletable agent.
+
+        Args:
+            version_id: The numeric id of the PUBLISHED version to revert
+                (not the agent id — matches ``{versionId}`` in the UI's own
+                ``POST .../unpublish/prompt_lib/{project}/{versionId}`` call).
+        """
+        url = f"{self.base_url}/elitea_core/unpublish/prompt_lib/{self.project_id}/{version_id}"
+        logger.debug("UNPUBLISH version %s", url)
+        resp = self._session.post(url)
+        _raise_for_status(resp)
+
     def export_agent(self, agent_id: int, fmt: str = "md") -> bytes:
         """Export an agent as markdown.
 
