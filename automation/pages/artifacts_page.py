@@ -54,6 +54,64 @@ class ArtifactsPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # "New Bucket" form — /artifacts/create-bucket (ELITEA-1808)
+    # ------------------------------------------------------------------
+
+    bucket_name_input = LocatorDescriptor(
+        testid="artifacts-bucket-name-input",
+        description="Name field on the 'New Bucket' form — pre-filled with the "
+        "literal 'new-bucket' on a fresh (non-edit) load (CreateBucket.jsx)",
+    )
+
+    bucket_retention_measure_combobox = LocatorDescriptor(
+        testid="artifacts-bucket-retention-measure-select-combobox",
+        description="Retention-measure select's clickable combobox on the 'New "
+        "Bucket' form — the shared SingleSelect component auto-derives this "
+        "'-combobox' suffix from the root 'artifacts-bucket-retention-measure-select' "
+        "testid (SingleSelect.jsx); defaults to 'Years'",
+    )
+
+    bucket_retention_value_input = LocatorDescriptor(
+        testid="artifacts-bucket-retention-value-input",
+        description="Retention-value numeric input on the 'New Bucket' form — "
+        "defaults to '1'",
+    )
+
+    bucket_save_button = LocatorDescriptor(
+        testid="artifacts-bucket-save-button",
+        description="Save button on the 'New Bucket' form — submits bucket creation",
+    )
+
+    # ------------------------------------------------------------------
+    # Bucket-row 3-dot menu (left panel, ELITEA-1808)
+    # ------------------------------------------------------------------
+
+    # Dynamic testid template — the bucket row container itself, used as the
+    # hover target that reveals the dot-menu trigger below (BucketItem.jsx's
+    # menuContainer is `display:none` until the row is hovered; the trigger
+    # itself has no bounding box to hover directly until then).
+    BUCKET_ROW = '[data-testid="artifacts-bucket-row-{}"]'
+
+    # Dynamic testid template — dot-menu trigger for a given bucket row.
+    # Fixed live for ELITEA-1808 (was previously a single STATIC, non-unique
+    # testid shared by every bucket in the project — see the AFS's Concrete
+    # Handles table); now templated with the bucket's own name.
+    BUCKET_MENU_BUTTON = '[data-testid="bucket-menu-{}-menu-button"]'
+
+    bucket_menu_upload_files_menuitem = LocatorDescriptor(
+        testid="bucket-menu-upload-files-menuitem",
+        description="'Upload files' item inside a bucket row's dot-menu dropdown "
+        "(ELITEA-1808) — testid is static (not bucket-parameterized): the menu "
+        "item's key ('bucket-menu-upload-files') is fixed regardless of which "
+        "bucket's menu is currently open",
+    )
+
+    # Dynamic testid template — left-panel tree node for a file/folder, keyed
+    # by its full relative path (e.g. 'test.txt', or 'a1/sample.txt' when
+    # nested in a subfolder). FileTreeItem.jsx.
+    ARTIFACTS_TREE_ITEM = '[data-testid="artifacts-tree-item-{}"]'
+
+    # ------------------------------------------------------------------
     # Right panel — file list toolbar
     # ------------------------------------------------------------------
 
@@ -363,6 +421,201 @@ class ArtifactsPage(BasePage):
             return False
 
     # ------------------------------------------------------------------
+    # 'New Bucket' form flow (ELITEA-1808)
+    # ------------------------------------------------------------------
+
+    @action("Click '+ Artifact Bucket' button")
+    def click_create_bucket_button(self, timeout: int = 15000) -> None:
+        """Click '+ Artifact Bucket' and wait for the 'New Bucket' form to render.
+
+        Confirmed live (ELITEA-1808 AFS): this is a full PAGE navigation to
+        ``/artifacts/create-bucket``, not a modal — the caller can assert
+        ``self.page.url`` for that after this returns.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the Name field
+                to become visible.
+        """
+        self.create_bucket_button.click()
+        self.bucket_name_input.wait_for(state="visible", timeout=timeout)
+        logger.info("'New Bucket' form opened")
+
+    @action("Fill bucket name field")
+    def fill_bucket_name(self, name: str) -> None:
+        """Replace the Name field's pre-filled default with *name*.
+
+        The field is pre-filled with the literal ``"new-bucket"`` on a
+        fresh (non-edit) form load (``CreateBucket.jsx``). MUI/React field —
+        a bare ``fill()`` would not trigger ``formik.handleChange``
+        (``.claude/rules/mui-patterns.md``). ``press("Control+a")`` was
+        tried first (per the AFS's original hint) but confirmed live NOT to
+        select-all on this field — it moves the caret to position 0 without
+        selecting, so subsequent typing PREPENDS instead of replacing
+        (leaving a mangled ``"{name}ew-bucket"`` value). Uses
+        ``select_text()`` + ``type()`` instead, which sets the DOM
+        selection directly — the same established workaround already used
+        for this exact MUI quirk in ``credential_form_fields.py``'s
+        ``set_display_name()``.
+
+        Args:
+            name: Bucket name to type. Must satisfy the form's validation
+                (start with a letter; letters, numbers, hyphens only; max 56
+                characters).
+        """
+        self.bucket_name_input.click()
+        self.bucket_name_input.select_text()
+        self.bucket_name_input.type(name)
+        logger.info("Filled bucket name field with '%s'", name)
+
+    @action("Click bucket Save button")
+    def click_bucket_save_button(self, timeout: int = 15000):
+        """Click Save on the 'New Bucket' form and return the creation response.
+
+        Wraps the click in ``page.expect_response`` (the same idiom already
+        used elsewhere in this page object, e.g.
+        :meth:`CredentialDetailPage`-style pin toggling) rather than relying
+        on :meth:`capture_requests_matching`'s async listener alone —
+        confirmed live the listener-populated ``status`` can still read
+        ``None`` immediately after the click resolves (a request/response
+        pairing race, not a product issue); ``expect_response`` blocks until
+        the matching response actually lands.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the response.
+
+        Returns:
+            Playwright ``Response`` object for the bucket-creation POST.
+        """
+        with self.page.expect_response(
+            lambda r: "artifacts/buckets" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as response_info:
+            self.bucket_save_button.click()
+        return response_info.value
+
+    def wait_for_bucket_in_list(self, bucket_name: str, timeout: int = 15000) -> None:
+        """Wait for a bucket to appear in the left-panel bucket list.
+
+        Waits on the CONDITION that the bucket's own dynamic
+        ``artifacts-bucket-row-{name}`` testid becomes visible — **not** a
+        fixed sleep, and **not** an assertion taken immediately after the
+        Save click. Confirmed live (ELITEA-1808 AFS): a snapshot taken
+        immediately after the Save-triggered navigation can catch the
+        bucket list mid-refetch (a transient stale "no buckets" render that
+        self-corrects within ~1-2s once the list refetch completes) — this
+        condition wait absorbs that race entirely.
+
+        **Implementer correction:** the AFS originally suggested waiting on
+        the bucket's dot-menu button testid instead — confirmed live this
+        does NOT work as a wait condition, because that button is
+        hover-gated (``display:none`` until the row is hovered, see
+        :meth:`open_bucket_menu`) and so never reaches Playwright's
+        "visible" state on a row nobody has hovered yet. The row container
+        itself (:attr:`BUCKET_ROW`) has no such gating and is the correct
+        condition.
+
+        Args:
+            bucket_name: Exact name of the bucket to wait for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.page.locator(self.BUCKET_ROW.format(bucket_name)).wait_for(
+            state="visible", timeout=timeout
+        )
+        logger.info("Bucket '%s' visible in the bucket list", bucket_name)
+
+    # ------------------------------------------------------------------
+    # Bucket-row dot-menu flow (ELITEA-1808)
+    # ------------------------------------------------------------------
+
+    @action("Open bucket row's actions dot-menu")
+    def open_bucket_menu(self, bucket_name: str, timeout: int = 10000) -> None:
+        """Hover a bucket row and click its 3-dot actions menu trigger.
+
+        Unlike the file-row dot-menu (:meth:`open_file_actions_menu`), the
+        bucket-row trigger is ``display:none`` until the row is hovered
+        (confirmed live via ``BucketItem.jsx``'s ``menuContainer`` style) —
+        hovering the row (:attr:`BUCKET_ROW`) first is required; the
+        trigger has no bounding box to hover directly before that.
+
+        Waits for the 'Upload files' item to render as proof the dropdown
+        actually opened (this case's own scope — see the AFS's Concrete
+        Handles table: 'Rename' / 'Pin to top' / 'Delete' have no testid
+        added, out of scope for this case).
+
+        Args:
+            bucket_name: Exact name of the bucket whose menu to open.
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            TimeoutError: If the row, the trigger, or the opened menu's
+                'Upload files' item is not visible within *timeout*.
+        """
+        logger.info("Opening actions dot-menu for bucket '%s'", bucket_name)
+        row = self.page.locator(self.BUCKET_ROW.format(bucket_name))
+        row.wait_for(state="visible", timeout=timeout)
+        row.hover()
+
+        trigger = self.page.locator(self.BUCKET_MENU_BUTTON.format(bucket_name))
+        trigger.wait_for(state="visible", timeout=timeout)
+        trigger.click()
+
+        self.bucket_menu_upload_files_menuitem.wait_for(state="visible", timeout=timeout)
+        logger.info("Actions dot-menu open for bucket '%s'", bucket_name)
+
+    @action("Select files via bucket-menu 'Upload files'")
+    def click_bucket_menu_upload_files_item(
+        self, file_paths: list[str], timeout: int = 15000
+    ) -> None:
+        """Click the open bucket-menu's 'Upload files' item and select files.
+
+        Call :meth:`open_bucket_menu` first. This is a second, fresh entry
+        point into the SAME "Upload files to ..." dialog :meth:`upload_files`
+        already drives from the right-panel toolbar — confirmed live
+        (ELITEA-1808 AFS) both converge on the identical modal/endpoint.
+        Waits for the file-chooser modal state to fire (confirmed live: no
+        loading delay, same immediacy as the toolbar upload button per
+        ELITEA-1832's precedent), then sets the given file paths in one
+        call — the click, the chooser firing, and the file selection are
+        one mechanically inseparable Playwright action (matches the AFS's
+        own folding of case steps 9-12). Does not wait for the follow-on
+        "Upload files to ..." dialog — call :meth:`wait_for_upload_path_dialog`
+        next.
+
+        Args:
+            file_paths: Absolute paths of the file(s) to select.
+            timeout: Maximum wait time for the file chooser, in milliseconds.
+        """
+        with self.page.expect_file_chooser(timeout=timeout) as fc_info:
+            self.bucket_menu_upload_files_menuitem.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(file_paths)
+        logger.info(
+            "Selected %d file(s) for upload via bucket-menu: %s",
+            len(file_paths), file_paths,
+        )
+
+    def wait_for_file_in_tree(self, file_name: str, timeout: int = 15000) -> None:
+        """Wait for a file/folder to appear in the left-panel bucket tree (ELITEA-1808).
+
+        Waits on the CONDITION that the item's own dynamic
+        ``artifacts-tree-item-{file_name}`` testid becomes visible — same
+        condition-wait discipline as :meth:`wait_for_bucket_in_list`, never a
+        fixed sleep and never an assertion built on a raw ``page.locator(...)``
+        constructed at the call site (locators stay class-level fields on the
+        page object per ``.claude/rules/page-objects.md``).
+
+        Args:
+            file_name: Full relative path of the file/folder, keyed the same
+                way as the tree node itself (e.g. ``"test.txt"``, or
+                ``"a1/sample.txt"`` when nested in a subfolder).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.page.locator(self.ARTIFACTS_TREE_ITEM.format(file_name)).wait_for(
+            state="visible", timeout=timeout
+        )
+        logger.info("File '%s' visible in the left-panel tree", file_name)
+
+    # ------------------------------------------------------------------
     # File list helpers (right panel)
     # ------------------------------------------------------------------
 
@@ -476,6 +729,34 @@ class ArtifactsPage(BasePage):
             logger.info("File '%s' NOT found in bucket", filename)
             return False
 
+    def get_file_row_text(self, filename: str, timeout: int = 10000) -> str:
+        """Return a file row's full rendered text, by exact file name (ELITEA-1808).
+
+        Reads the WHOLE row's text content via the existing testid-anchored
+        row locator + ``.filter(has_text=...)`` (the same pattern the
+        legacy :meth:`download_file` already uses to locate a row by name)
+        rather than indexing into individual cells: ``ArtifactTable.jsx``
+        renders columns through a shared, generic grid component
+        (``GridTableRowDataCell``) with no per-cell testid, so cell-position
+        indexing would require a new non-testid selector. Reading the whole
+        row's text is sufficient to substring-check a column's rendered
+        value (e.g. the file-type label or the formatted size string) —
+        used for Test Step 16 (Name/Type/Size) without introducing one.
+
+        Args:
+            filename: Exact file name to look up (matches the Name cell's
+                text).
+            timeout: How long to wait for the row to appear.
+
+        Returns:
+            The row's full text content, stripped.
+        """
+        row = self.page.get_by_test_id("artifacts-file-row").filter(has_text=filename).first
+        row.wait_for(state="visible", timeout=timeout)
+        text = (row.text_content() or "").strip()
+        logger.info("Row text for '%s': %r", filename, text)
+        return text
+
     # ------------------------------------------------------------------
     # Upload flow (ELITEA-1832 — duplicate handling)
     # ------------------------------------------------------------------
@@ -531,6 +812,33 @@ class ArtifactsPage(BasePage):
         duplicates" dialog opens purely from local state.
         """
         self.upload_path_upload_button.click()
+
+    def click_upload_path_upload_button_and_capture_response(self, timeout: int = 15000):
+        """Click 'Upload' and return the matching PUT response (ELITEA-1808).
+
+        Additive sibling to :meth:`click_upload_path_upload_button` — that
+        method stays unmodified (ELITEA-1832 relies on it firing ZERO
+        network requests when a duplicate exists; wrapping a response-wait
+        there would time out on that legitimate no-request outcome). This
+        variant is for callers who know the click WILL fire a network PUT
+        (no duplicates possible, e.g. a freshly created, empty bucket) and
+        want to assert on the response directly — confirmed live that
+        deriving the status from :meth:`capture_requests_matching`'s async
+        listener alone can still read ``None`` immediately after the click
+        resolves (a request/response pairing race).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the response.
+
+        Returns:
+            Playwright ``Response`` object for the matching upload PUT.
+        """
+        with self.page.expect_response(
+            lambda r: "artifacts/s3" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as response_info:
+            self.click_upload_path_upload_button()
+        return response_info.value
 
     def wait_for_resolve_duplicates_dialog(self, timeout: int = 10000) -> None:
         """Wait for the 'Resolve duplicates' dialog to become visible.
