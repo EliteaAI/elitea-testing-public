@@ -19,8 +19,11 @@
   left as `testid needed:` work orders — see § Concrete Handles): the "New Bucket" form
   had ZERO testids anywhere; the bucket-row 3-dot menu trigger rendered a single STATIC,
   non-unique testid shared by all 125 buckets in the project; the left-panel tree file
-  node had no testid at all. One CLARIFICATION filed (case-text vs. product: no visible
-  timestamp column in the file table) — [#642](https://github.com/EliteaAI/elitea-testing-public/issues/642).
+  node had no testid at all. One CLARIFICATION filed
+  ([#642](https://github.com/EliteaAI/elitea-testing-public/issues/642)) on a round-1
+  case-text-vs-product premise that a round-2 review later found FALSE (a viewport
+  artifact, not a real absence — see Test Step 16's § Correction record); #642 left open,
+  closing it is the orchestrator's call.
   Not `already-covered` / not `extend-existing` — see § Overlap check below.
 - **Implementer amendment (Phase 2, per `test-automation-workflow` § amend-in-PR rule):**
   a FOURTH testid gap surfaced during implementation, not caught by the analyst pass —
@@ -191,20 +194,30 @@ case's own action (UI-driven creation) makes a pre-seeded fixture actively wrong
       path was not independently confirmed to show a toast in this run before it would
       have auto-dismissed) — use a short polled-absence-or-presence check, never a single
       instantaneous DOM read, and never make this the sole pass condition.
-16. Verify `test.txt` appears in the file table with correct type/size (case step 16 —
-    **partial, see § Known Defects Found for the timestamp gap**).
+16. Verify `test.txt` appears in the file table with correct type/size/timestamp (case
+    step 16 — **full coverage**, see § Correction record below for how this AFS's own
+    round-1 premise was found false).
     - **Verify**: row with Name = `"test.txt"`, Type = `"Text"`, Size = the exact byte
-      count of the generated content (this run: `"51 B"` for a 51-byte file) —
+      count of the generated content (this run: `"51 B"` for a 51-byte file), and a
+      "Last update" timestamp matching `\d{2}-\d{2}-\d{4}, \d{2}:\d{2} (AM|PM)` (pattern
+      only, never an exact value — the clock differs per run) —
       `get_total_file_count_from_pagination() == 1`.
-    - **NOT asserted**: a "timestamp" column — confirmed live the file table has exactly
-      four columns (Name/Type/Size/Actions), no visible upload/last-modified timestamp
-      anywhere in this UI. This is case-text drift, not a product defect (reverse-masking
-      guard) — filed as CLARIFICATION
-      [#642](https://github.com/EliteaAI/elitea-testing-public/issues/642) rather than
-      silently dropped or asserted against a nonexistent element. If the implementer wants
-      an API-level cross-check, `GET ${ELITEA_URL}/artifacts/s3/{bucket}?project_id=...&format=json`
-      returns a `lastModified` ISO-8601 field per file (same technique ELITEA-1832 used for
-      its own step 15) — optional, not required by this case's live-verifiable surface.
+    - **Correction record**: the round-1 analyst pass claimed the file table has exactly
+      four columns (Name/Type/Size/Actions) with **no visible timestamp column anywhere in
+      this UI**, and filed that as case-text drift rather than a defect
+      (CLARIFICATION [#642](https://github.com/EliteaAI/elitea-testing-public/issues/642)).
+      **That premise was false.** Confirmed independently by two separate parties (a
+      round-2 reviewer and the orchestrator, both via live DOM inspection at a normal
+      1600×900 viewport against `localhost:5173`): the file table has a real 5th
+      "Last update" column with a populated timestamp. Root cause of the original miss:
+      the round-1 analyst's exploration screenshot was taken at a narrower viewport that
+      clipped the column off-screen — it was never actually absent. The implementer's
+      `get_file_row_text()` (already in use for Type/Size) already captured the timestamp
+      as the trailing segment of `row_text` (e.g.
+      `'test.txtText60 B19-07-2026, 08:42 AM'`); the fix (PR #643 round-2 response) was
+      adding the missing regex assertion on that trailing segment, not new plumbing.
+      Issue #642 itself is left open/unedited — closing it is the orchestrator's call, not
+      this AFS's or the implementer's.
 17. Verify `test.txt` is also listed in the left-panel tree under the generated bucket
     (case step 17).
     - **Verify**: `[data-testid="artifacts-tree-item-test.txt"]` visible, nested under the
@@ -221,8 +234,9 @@ case's own action (UI-driven creation) makes a pre-seeded fixture actively wrong
   step 7) with a working, uniquely-testid'd 3-dot menu.
 - The bucket-row dot-menu's "Upload files" item opens the identical "Upload files to ..."
   dialog the toolbar upload button uses, pre-filled with the bucket's own path.
-- The uploaded `test.txt` appears in both the right-panel file table (Name/Type/Size — no
-  timestamp column exists) and the left-panel tree, nested under the bucket.
+- The uploaded `test.txt` appears in both the right-panel file table (Name/Type/Size/
+  Last-update timestamp — see Test Step 16 § Correction record) and the left-panel tree,
+  nested under the bucket.
 - No console errors during the flow (see § Known Defects Found for one **ruled-out**
   false-positive from this run's own exploration tooling, not a product defect).
 
@@ -248,7 +262,7 @@ case's own action (UI-driven creation) makes a pre-seeded fixture actively wrong
 | Step 13: Verify "Upload files to ..." modal, Path pre-filled | Modal open, correct path | Test Step 13 | `artifacts-upload-path-dialog` + `artifacts-upload-path-input` text | asserted |
 | Step 14: Click Upload | Upload completes | Test Step 14 | `PUT .../artifacts/s3/{bucket}/test.txt...` → 200 | asserted |
 | Step 15: Verify upload success notification/confirmation | Success shown | Test Step 15 | file-table appearance (primary) + toast (secondary, fidelity caveat) | asserted |
-| Step 16: Verify test.txt in file table w/ type, size, timestamp | Row w/ correct metadata | Test Step 16 | Name/Type/Size asserted; **timestamp column does not exist in this UI** | asserted *(partial)* / clarification *(timestamp — [#642](https://github.com/EliteaAI/elitea-testing-public/issues/642))* |
+| Step 16: Verify test.txt in file table w/ type, size, timestamp | Row w/ correct metadata | Test Step 16 | Name/Type/Size/timestamp all asserted (`LAST_UPDATE_TIMESTAMP_PATTERN` regex on `row_text`'s trailing segment) | asserted *(full — see § Correction record; round-1's "no timestamp column" premise was a viewport artifact, not a real absence — [#642](https://github.com/EliteaAI/elitea-testing-public/issues/642) left open, closing it is the orchestrator's call)* |
 | Step 17: Verify test.txt in left-panel bucket tree | File in tree under bucket | Test Step 17 | `artifacts-tree-item-test.txt` visible, nested | asserted |
 | Expected Final State: bucket created + file in both panels w/ metadata | Composite pass condition | Test Steps 7, 16, 17 | combination of the above | asserted |
 | Pass criterion: "All steps complete without errors" | No errors during flow | All steps | console-error check (0 errors both confirmation passes) | asserted |
@@ -351,11 +365,15 @@ fresh page load before this AFS was written.
 
 ## Known Defects Found During Exploration
 
-**None found as a product defect** — one CLARIFICATION filed
+**None found as a product defect.** One CLARIFICATION was filed
 ([#642](https://github.com/EliteaAI/elitea-testing-public/issues/642), see Test Step 16 /
-Coverage Map) for case-text vs. product drift (no visible timestamp column), and one
-**ruled-out false positive**, documented here per the Synthetic Input Hygiene guard so it
-isn't rediscovered and mis-filed:
+Coverage Map) for an apparent case-text-vs-product drift (round-1 analyst pass: "no visible
+timestamp column") — **round-2 review found that premise FALSE**: the timestamp column is
+real and visible at a normal viewport; the round-1 miss was a narrow-viewport screenshot
+clipping the column off-screen, not a real product absence. Step 16 now asserts the
+timestamp; #642 is left open as the historical record, closing it is the orchestrator's
+call. Also documented here, per the Synthetic Input Hygiene guard so it isn't rediscovered
+and mis-filed, one **ruled-out false positive**:
 
 - During the FIRST verification pass of the newly-added `bucket-menu-{name}-menu-button`
   testid, a raw `element.click()` fired via `page.evaluate()` (not a real user gesture —

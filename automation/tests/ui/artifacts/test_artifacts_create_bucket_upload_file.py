@@ -27,9 +27,12 @@ Test flow:
     with the bucket name.
 14. Click Upload — verifies the upload PUT returns 200.
 15. Verify the upload completes: ``test.txt`` appears in the file table.
-16. Verify ``test.txt``'s row shows the correct Type ("Text") and Size
-    (exact byte count) — no timestamp column exists in this UI (case-text
-    drift, not a product defect — CLARIFICATION #642, not asserted here).
+16. Verify ``test.txt``'s row shows the correct Type ("Text"), Size (exact
+    byte count), and a "Last update" timestamp matching a date-pattern
+    regex (not an exact value — the clock differs per run). Correction:
+    the original analyst pass claimed no timestamp column existed
+    (CLARIFICATION #642) — that was a viewport artifact, not a real
+    absence; see the round-2 fix note above ``LAST_UPDATE_TIMESTAMP_PATTERN``.
 17. Verify ``test.txt`` also appears in the left-panel bucket tree.
 
 AFS: test-specs/artifacts/l2_create-bucket-path1-and-upload-file_ELITEA-1808.md
@@ -45,6 +48,7 @@ Usage:
 """
 
 import logging
+import re
 import time
 
 import allure
@@ -71,6 +75,13 @@ TOAST_INFORMATIONAL_POLL_TIMEOUT = 2_000
 
 FILE_NAME = "test.txt"
 FILE_CONTENT = b"Sample content for ELITEA-1808 create-bucket + upload test.\n"
+
+# ELITEA-1808 round-2 review fix: the file table DOES have a real "Last
+# update" timestamp column (round-1 analyst missed it — a narrower viewport
+# clipped it off-screen; confirmed live at 1600x900 by both the round-2
+# reviewer and the orchestrator). Pattern only, never an exact value — the
+# clock differs per run. Observed live format: "DD-MM-YYYY, HH:MM AM/PM".
+LAST_UPDATE_TIMESTAMP_PATTERN = re.compile(r"\d{2}-\d{2}-\d{4}, \d{2}:\d{2} (AM|PM)")
 
 
 def _generate_bucket_name(node_name: str) -> str:
@@ -279,8 +290,7 @@ class TestArtifactCreateBucketAndUploadFile:
 
             with allure.step(
                 "Step 16 — Verify test.txt appears in the file table with the "
-                "correct Type and Size (no timestamp column exists in this "
-                "UI — case-text drift, CLARIFICATION #642, not asserted here)"
+                "correct Type, Size, and Last-update timestamp"
             ):
                 row_text = artifacts_page.get_file_row_text(
                     FILE_NAME, timeout=UI_ELEMENT_TIMEOUT,
@@ -293,6 +303,14 @@ class TestArtifactCreateBucketAndUploadFile:
                 assert expected_size in row_text, (
                     f"File row should show Size {expected_size!r} (exact byte "
                     f"count), row text was: {row_text!r}"
+                )
+                # Round-2 review fix: the "Last update" column IS real and
+                # visible (see LAST_UPDATE_TIMESTAMP_PATTERN comment above) —
+                # assert its shape, not an exact value (the clock differs
+                # per run).
+                assert LAST_UPDATE_TIMESTAMP_PATTERN.search(row_text), (
+                    f"File row should show a 'Last update' timestamp matching "
+                    f"DD-MM-YYYY, HH:MM AM/PM, row text was: {row_text!r}"
                 )
                 file_count = artifacts_page.get_total_file_count_from_pagination()
                 assert file_count == 1, (
