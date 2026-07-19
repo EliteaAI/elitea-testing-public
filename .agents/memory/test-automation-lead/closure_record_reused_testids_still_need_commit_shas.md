@@ -144,3 +144,26 @@ seeing `toolkit-form-name-input`/`toolkit-form-save-button`/
 `toolkit-type-card-${itemKey}`/`toolkit-field-${k}-input`/`toolkit-detail-title`
 in its testid set) should treat that as a known, pre-resolved lookup — the SHA
 is `1e04dc97` (+ `2cd99034` for `toolkit-detail-title`), no fresh trace needed.
+
+## Recurrence 6 (control-audit only, issue #240, ELITEA-1827, PR #658, 2026-07-19/20) — 8th occurrence, plus a new sub-shape: phantom source case in the prose list
+
+Eighth occurrence, same root gap — canon-fix issue #637 (filed at recurrence 4)
+is still open and unanswered as of this audit. The Testids row read "none newly
+added — 100% reuse of testids already pushed to `automation/testids` by prior
+cases (ELITEA-1824/1809/1832/1808)" with the 4 real commit SHAs relegated to a
+plain fenced code block further down (confirmed via `body_html`: renders as
+`<pre><code>`, no `<a href>` — not even the "SHA present but wrong format"
+shape, since it's inside a code fence rather than prose/backticks).
+
+**New wrinkle**: the prose case-ID list named 4 sources ("1824/1809/1832/1808")
+but the 4 actual cited commits only trace to 3 distinct cases — 1824 (×2
+commits), 1808, and 1832. **ELITEA-1809 was not a real dependency at all** —
+its own testid commit (`3d2edf53`, bucket search-input/clear-button) isn't
+part of this test's call chain anywhere. This is a new failure sub-shape
+worth watching for on future recurrences: once a closure record stops
+resolving reused testids to their actual commits and instead names "the
+cases I remember touching this area," the case list itself can silently drift
+from the real dependency set — a second, independent risk stacked on top of
+the missing-link format violation, both fixed by the same discipline (always
+run `git log -S"<testid>" origin/main..origin/automation/testids -- src/`
+per testid, never reconstruct the source-case list from memory).
