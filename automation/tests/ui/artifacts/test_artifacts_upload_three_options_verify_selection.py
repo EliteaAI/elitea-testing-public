@@ -110,6 +110,14 @@ SUCCESS_TOAST_TEXT = "Your file(s) have been successfully uploaded!"
 # never an exact value — the clock differs per run.
 LAST_UPDATE_TIMESTAMP_PATTERN = re.compile(r"\d{2}-\d{2}-\d{4}, \d{2}:\d{2} (AM|PM)")
 
+# ELITEA-1827 extension (AFS § Gap assertions, Steps 47-54) — a NEW,
+# non-existing two-segment nested path, neither segment existing yet, used
+# to prove a single upload action auto-creates an arbitrarily-deep chain of
+# folders and that the left-panel tree lazy-renders each level on expand.
+NESTED_FOLDER_A = "folder-a"
+NESTED_FOLDER_B = "folder-b"
+NESTED_SUBFOLDER_PATH = f"{NESTED_FOLDER_A}/{NESTED_FOLDER_B}"
+
 
 def _minimal_png_bytes() -> bytes:
     """Build a valid, minimal 1x1 PNG in memory.
@@ -172,6 +180,12 @@ class TestArtifactsUploadThreeOptionsVerifySelection:
     @allure.issue(
         "https://github.com/EliteaAI/elitea-testing-public/issues/649",
         "Known defect #649 — bucket-menu upload doesn't reset path to root",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/artifacts/"
+        "ELITEA-1827_upload-flow-nested-subfolder-non-existing.md",
+        "onetest-ai Test Case link (ELITEA-1827 extension)",
     )
     def test_upload_via_three_options_and_verify_selection(
         self, page, artifact_bucket, tmp_path,
@@ -585,8 +599,124 @@ class TestArtifactsUploadThreeOptionsVerifySelection:
             )
 
         with allure.step(
+            "Step 47 (ELITEA-1827 extension) — Click the TOOLBAR 'Upload "
+            "files' icon again; select sample.txt; native file explorer "
+            "opens immediately and the 'Upload files to ...' modal follows"
+        ):
+            artifacts_page.upload_files([str(txt_path)])
+            artifacts_page.wait_for_upload_path_dialog(timeout=DIALOG_TIMEOUT)
+
+        with allure.step(
+            "Step 48 (ELITEA-1827) — Type a NEW, non-existing two-segment "
+            "nested path 'folder-a/folder-b' into the Path field; verify "
+            "the combined text"
+        ):
+            artifacts_page.upload_path_input_field.click()
+            artifacts_page.upload_path_input_field.type(NESTED_SUBFOLDER_PATH)
+            expect(artifacts_page.upload_path_input_field).to_have_value(
+                NESTED_SUBFOLDER_PATH, timeout=UI_ELEMENT_TIMEOUT,
+            )
+            path_text = artifacts_page.get_upload_path_combined_text()
+            assert path_text == f"{bucket_name}/{NESTED_SUBFOLDER_PATH}", (
+                f"Path field should read '{bucket_name}/{NESTED_SUBFOLDER_PATH}' "
+                f"after typing the nested subfolder path, got: {path_text!r}"
+            )
+
+        with allure.step(
+            "Step 49 (ELITEA-1827) — Click Upload; verify a SINGLE PUT "
+            "lands at the fully-nested key (no separate folder-creation "
+            "request)"
+        ):
+            upload_response = artifacts_page.click_upload_path_upload_button_and_capture_response(
+                timeout=NAVIGATION_TIMEOUT,
+            )
+            assert upload_response.status == 200, (
+                f"Upload PUT should return 200, got: {upload_response.status} "
+                f"for {upload_response.url}"
+            )
+            assert (
+                f"{bucket_name}/{NESTED_SUBFOLDER_PATH}/{TXT_FILE_NAME}"
+                in upload_response.url
+            ), (
+                f"Upload PUT URL should target the fully-nested key "
+                f"'{bucket_name}/{NESTED_SUBFOLDER_PATH}/{TXT_FILE_NAME}', "
+                f"got: {upload_response.url}"
+            )
+
+        with allure.step("Step 50 (ELITEA-1827) — Verify the success notification"):
+            expect(artifacts_page.success_toast_message).to_have_text(
+                SUCCESS_TOAST_TEXT, timeout=UI_ELEMENT_TIMEOUT,
+            )
+
+        with allure.step(
+            "Step 51 (ELITEA-1827) — Verify the left panel shows folder-a "
+            "under the bucket (auto-navigated state right after upload)"
+        ):
+            artifacts_page.wait_for_file_in_tree(
+                f"{NESTED_FOLDER_A}/", timeout=UI_ELEMENT_TIMEOUT,
+            )
+
+        with allure.step(
+            "Step 52 (ELITEA-1827) — Re-load the bucket at its own ROOT "
+            "(fresh page state, not the auto-navigated one); verify "
+            "folder-b's tree node is LAZILY absent until folder-a is "
+            "expanded, then click folder-a to expand it"
+        ):
+            artifacts_page.navigate_to_bucket(bucket_name, timeout=NAVIGATION_TIMEOUT)
+            assert not artifacts_page.is_tree_item_visible(
+                f"{NESTED_SUBFOLDER_PATH}/", timeout=ABSENCE_CHECK_TIMEOUT,
+            ), (
+                f"'{NESTED_FOLDER_B}' tree node should not exist before "
+                f"'{NESTED_FOLDER_A}' is expanded"
+            )
+            artifacts_page.click_tree_item(
+                f"{NESTED_FOLDER_A}/", timeout=UI_ELEMENT_TIMEOUT,
+            )
+            artifacts_page.wait_for_file_in_tree(
+                f"{NESTED_SUBFOLDER_PATH}/", timeout=UI_ELEMENT_TIMEOUT,
+            )
+
+        with allure.step(
+            "Step 53 (ELITEA-1827) — Click folder-b; verify it is selected "
+            "and the breadcrumb shows the full 3-segment nested path"
+        ):
+            artifacts_page.click_tree_item(
+                f"{NESTED_SUBFOLDER_PATH}/", timeout=UI_ELEMENT_TIMEOUT,
+            )
+            assert artifacts_page.is_tree_item_selected(
+                f"{NESTED_SUBFOLDER_PATH}/", timeout=UI_ELEMENT_TIMEOUT,
+            ), (
+                f"Tree item '{NESTED_SUBFOLDER_PATH}/' should carry "
+                f'data-selected="true" once navigated into'
+            )
+            assert artifacts_page.get_breadcrumb_bucket_text(timeout=UI_ELEMENT_TIMEOUT) == bucket_name, (
+                f"Breadcrumb bucket label should read '{bucket_name}'"
+            )
+            assert artifacts_page.get_breadcrumb_folder_names(timeout=UI_ELEMENT_TIMEOUT) == [
+                NESTED_FOLDER_A, NESTED_FOLDER_B,
+            ], (
+                f"Breadcrumb should show the full nested path "
+                f"[{NESTED_FOLDER_A!r}, {NESTED_FOLDER_B!r}]"
+            )
+
+        with allure.step(
+            "Step 54 (ELITEA-1827) — Verify sample.txt is listed in the "
+            "folder-b file table"
+        ):
+            assert artifacts_page.file_exists(TXT_FILE_NAME, timeout=UI_ELEMENT_TIMEOUT), (
+                f"'{TXT_FILE_NAME}' should be visible inside "
+                f"'{NESTED_SUBFOLDER_PATH}/'"
+            )
+            row_text = artifacts_page.get_file_row_text(TXT_FILE_NAME, timeout=UI_ELEMENT_TIMEOUT)
+            assert TXT_FILE_NAME in row_text and "Text" in row_text, (
+                f"'{TXT_FILE_NAME}' row should show Type 'Text', row text was: {row_text!r}"
+            )
+
+        with allure.step(
             "Side-channel check — no console errors across the full "
-            "navigate → 3x-upload → tree/breadcrumb/URL selection flow"
+            "navigate → 3x-upload → tree/breadcrumb/URL selection flow, "
+            "plus the appended ELITEA-1827 nested-subfolder upload extension "
+            "(Steps 47-54)"
         ):
             assert not console_errors, (
                 "Unexpected console errors during the three-options upload "
