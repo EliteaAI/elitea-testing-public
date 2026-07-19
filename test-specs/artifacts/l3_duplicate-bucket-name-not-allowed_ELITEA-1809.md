@@ -464,6 +464,23 @@ expected result):
    value — it drifts across runs as other tests' `autotest-*` buckets leak,
    per those tests' own documented known-defect-#636 cleanup caveats).
 
+4. **`close_bucket_search()` needs the SAME 300ms debounce wait as
+   `search_buckets()`, not just an input-visibility wait.** Confirmed live
+   via a real test run (R1 failure): `BucketsPanel.jsx`'s `filteredBuckets`
+   derives from `debouncedSearchQuery` (`useDebounceValue(searchQuery,
+   300)`), which lags the underlying `searchQuery` state by the same 300ms
+   window even when clearing it to `''` via the clear/X button —
+   `handleSearchClear` sets `isSearchActive` to `false` (unmounting the
+   search input) SYNCHRONOUSLY, but the bucket list itself doesn't
+   re-render to its full, unfiltered state until the debounce elapses. A
+   wait on the search input's visibility alone is therefore not a
+   sufficient completion condition for "list restored" — observed live:
+   asserting `get_visible_bucket_count() == baseline` immediately after the
+   input disappeared caught a stale filtered count (32 rendered vs. 178
+   expected). Fixed by adding the same
+   `BUCKET_SEARCH_DEBOUNCE_WAIT_MS` wait after the input-hidden wait in
+   `close_bucket_search()`.
+
 ## Blocked Steps
 None.
 
