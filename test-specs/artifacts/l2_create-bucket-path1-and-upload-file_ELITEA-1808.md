@@ -130,8 +130,8 @@ case's own action (UI-driven creation) makes a pre-seeded fixture actively wrong
    - `artifacts-bucket-retention-measure-select-combobox` visible, text `"Years"`.
    - `artifacts-bucket-retention-value-input` visible, value `"1"`.
    - `artifacts-bucket-save-button` visible.
-4. Click `artifacts-bucket-name-input`, select-all (`Control+a`), type the generated bucket
-   name via `press_sequentially` (case step 4).
+4. Click `artifacts-bucket-name-input`, select-all via `select_text()`, type the generated
+   bucket name via `type()` (case step 4).
    - **Verify**: field displays the generated name exactly.
 5. Do not touch `artifacts-bucket-retention-measure-select` / `artifacts-bucket-retention-value-input`
    (case step 5 — "leave as default").
@@ -398,10 +398,10 @@ None.
 - Page object: extend `automation/pages/artifacts_page.py` (`ArtifactsPage`). Needs THREE
   new methods this case introduces:
   1. A bucket-creation-form flow (e.g. `create_bucket_via_form(name, wait_for_visible=True)`)
-     — click `create_bucket_button`, fill `artifacts-bucket-name-input` (select-all +
-     `press_sequentially`, MUI pattern), click `artifacts-bucket-save-button`, then wait
+     — click `create_bucket_button`, fill `artifacts-bucket-name-input` (select-all via
+     `select_text()` + `type()`, MUI pattern), click `artifacts-bucket-save-button`, then wait
      on the CONDITION described in Test Step 7 (the new bucket's own dynamic
-     `bucket-menu-{name}-menu-button` becoming visible) — **not** a fixed sleep, **not** an
+     `artifacts-bucket-row-{name}` becoming visible) — **not** a fixed sleep, **not** an
      immediate assertion right after the Save click (see the documented timing note).
   2. A bucket-row dot-menu opener (e.g. `open_bucket_menu(bucket_name)`) — hover the row
      first (unlike the file-row dot-menu, this one IS hover-gated), then click the dynamic
