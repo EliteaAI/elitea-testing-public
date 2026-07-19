@@ -1,6 +1,6 @@
 ---
 name: Artifacts direct bucket+folder URL navigation can race on project-id resolution
-description: A cold-load direct navigation to /artifacts?bucket=X&folder=Y can silently land on an unrelated bucket (~2/5 local repro); root cause + a page-object-level retry mitigation; filed #638
+description: A cold-load direct navigation to /artifacts?bucket=X(&folder=Y) can silently land on an unrelated bucket; root cause + the retry mitigation, now ported to BOTH navigate_to_bucket() and navigate_to_bucket_folder(); filed #638
 type: feedback
 ---
 
@@ -60,13 +60,18 @@ persistent failure). Validated: 8/8 green across two batches after the fix
 landed (one run's longer duration, ~22s vs ~13-15s baseline, is the retry
 firing and self-healing transparently).
 
-**This mitigation lives only in the NEW `navigate_to_bucket_folder()`
-method** — the existing `navigate_to_bucket()` (3 merged callers) was left
-byte-identical per the additive-only-on-shared-caller-files rule, so it does
-NOT get this protection. If a future case hits the same race via
-`navigate_to_bucket()` (bucket-root navigation, no folder), the fix will
-need porting there too — check for it before assuming `navigate_to_bucket()`
-is race-free.
+**UPDATE (ELITEA-1847, PR #661, R2 fix-only round): now ported to
+`navigate_to_bucket()` too.** This note's own prediction ("if a future case
+hits the same race via `navigate_to_bucket()`... check for it before
+assuming it's race-free") came true and was NOT checked at implementation
+time — see the new "Process lesson 2" section below. `navigate_to_bucket()`
+now carries the identical retry-on-URL-param-loss guard (same shape:
+`_retry` kwarg, one retry, `AssertionError` if it fires twice). The
+regression protocol (4 pre-existing callers + the new test, all re-run
+clean-process) confirmed the change is purely defensive with zero impact on
+any existing caller's happy path. **Both `navigate_to_bucket()` and
+`navigate_to_bucket_folder()` are now race-guarded** — no known unprotected
+direct-URL-navigation call site remains in `ArtifactsPage`.
 
 ## Filed
 
@@ -93,9 +98,28 @@ handling — don't defer it to "it's in the PR description."**
 
 - Any case doing a COLD direct-URL navigation into a bucket (not preceded by
   another in-app navigation in the same test) is a candidate for this race.
-  Prefer `navigate_to_bucket_folder()` over rolling your own `super().navigate()`
-  call with bucket/folder params.
-- If you see a `file_exists()` / file-table assertion fail immediately after
-  a bucket navigation with NO other explanation, check the failure screenshot
-  for a bucket-name mismatch (left-panel highlight vs. the bucket you
-  expected) before assuming it's your test's own bug.
+  Both `navigate_to_bucket()` and `navigate_to_bucket_folder()` are now
+  guarded — prefer either over rolling your own `super().navigate()` call
+  with bucket/folder params.
+- If you see a `file_exists()` / file-table / row-count assertion fail
+  immediately after a bucket navigation with NO other explanation, check the
+  failure screenshot for a bucket-name mismatch (left-panel highlight vs. the
+  bucket you expected) before assuming it's your test's own bug, a slow
+  fetch, or reaching for a bigger timeout — a stably-wrong-bucket empty
+  locator never converges no matter how long you wait.
+
+## Process lesson 2 (ELITEA-1847, PR #661 R2 round)
+
+This memory entry's own "For future artifacts cases" section already said,
+verbatim, to check for exactly this race before assuming `navigate_to_bucket()`
+was safe — and the first implementation pass (this same PR's original
+commit) still misdiagnosed a `navigate_to_bucket()`-caused flake as an
+unrelated "S3-listing-fetch lag" and shipped `wait_for_file_count()` as a
+timeout-based workaround instead. The memory index pointed straight at the
+answer and wasn't consulted at Phase 1/2 (Absorb/Explore) time. **Takeaway:
+when a symptom involves a bucket navigation + an empty/stuck locator in this
+codebase, grep this memory directory for "bucket" / "project-id" / "638"
+BEFORE writing a new diagnosis** — a matching entry with a "for future
+cases" section is a strong prior, not just background reading. A fresh
+reviewer session (not the implementer) is what actually caught the gap here;
+don't rely on review to catch what memory already told you.
