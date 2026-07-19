@@ -160,6 +160,28 @@ class ArtifactsPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # Main-panel breadcrumb header (ELITEA-1824)
+    # ------------------------------------------------------------------
+
+    breadcrumb_bucket_label = LocatorDescriptor(
+        testid="artifacts-breadcrumb-bucket-label",
+        description="Bucket-name label in the main-panel toolbar header "
+        "(ArtifactTableToolbar.jsx) — always present once a bucket is "
+        "selected, regardless of folder depth",
+    )
+
+    breadcrumb_folder_label = LocatorDescriptor(
+        testid="artifacts-breadcrumb-folder-label",
+        description="Per-crumb folder-name label rendered by "
+        "BreadcrumbNavigation.jsx — CONDITIONALLY present: absent at bucket "
+        "root, one element per folder level once navigated into a "
+        "subfolder (same conditional-rendering shape as ARTIFACTS_TREE_ITEM, "
+        "not a state-toggled testid). Static (non-parameterized) testid — "
+        "use .first/.count()/text_content() to read a specific crumb, same "
+        "shape as artifacts-file-row/artifacts-folder-row.",
+    )
+
+    # ------------------------------------------------------------------
     # Right panel — file table
     # ------------------------------------------------------------------
 
@@ -167,6 +189,14 @@ class ArtifactsPage(BasePage):
         testid="artifacts-empty-state",
         fallback=lambda page: page.locator('main').get_by_text("No files in this bucket").last,
         description="Empty-state label shown when the selected bucket has no files",
+    )
+
+    upload_files_empty_state_button = LocatorDescriptor(
+        testid="artifacts-upload-files-empty-state-button",
+        description="CENTER 'Upload files' button shown inside the empty-state "
+        "panel (ArtifactTableNoFiles.jsx) — a DIFFERENT element from the "
+        "toolbar's upload_files_button (different class/position, confirmed "
+        "live via DOM inspection during AFS exploration, ELITEA-1824)",
     )
 
     # ------------------------------------------------------------------
@@ -183,6 +213,22 @@ class ArtifactsPage(BasePage):
         testid="artifacts-upload-path-input",
         description="Path field inside the 'Upload files to ...' dialog — shows the "
         "bucket/prefix as a read-only startAdornment before the editable textbox",
+    )
+
+    # ELITEA-1824 implementer note: `upload_path_input` above resolves to the
+    # MuiFormControl-root WRAPPER (label + read-only startAdornment), NOT the
+    # editable native <input> — its text_content() never reflects what the
+    # user has typed (confirmed live: native inputs don't expose value via
+    # textContent). Use `upload_path_input_field` below to read/assert the
+    # typed value.
+    upload_path_input_field = LocatorDescriptor(
+        testid="artifacts-upload-path-input-field",
+        description="The actual editable native <input> inside the Path field "
+        "(ELITEA-1824) — added via slotProps.htmlInput since the TextField-level "
+        "testid above lands on the wrapper, not this element (UploadPathDialog.jsx). "
+        "Use .input_value() here for the user-typed subfolder suffix; the "
+        "read-only bucket/currentPrefix prefix itself is only ever readable via "
+        ":attr:`upload_path_input`'s text_content() (:meth:`get_upload_path_prefix_text`).",
     )
 
     upload_path_upload_button = LocatorDescriptor(
@@ -699,6 +745,61 @@ class ArtifactsPage(BasePage):
         )
         logger.info("Bucket '%s' visible in the bucket list", bucket_name)
 
+    def is_bucket_selected(self, bucket_name: str, timeout: int = 10000) -> bool:
+        """Return whether *bucket_name*'s left-panel row is the selected one.
+
+        Reads the ``data-selected`` attribute (ELITEA-1824) on the already
+        testid-anchored :attr:`BUCKET_ROW` locator — the ONLY compliant
+        state signal per ``.agents/testing.md`` § Locator policy (state via
+        a ``data-*`` attribute on a stable testid, never a CSS-class read).
+        Same "read an attribute of an existing testid-anchored locator"
+        shape already established by :meth:`is_file_checkbox_checked`
+        (ELITEA-1840).
+
+        Args:
+            bucket_name: Exact name of the bucket row to check.
+            timeout: Maximum wait time in milliseconds for the row itself
+                to be visible before reading its attribute.
+
+        Returns:
+            True if the row currently carries ``data-selected="true"``.
+        """
+        row = self.page.locator(self.BUCKET_ROW.format(bucket_name))
+        row.wait_for(state="visible", timeout=timeout)
+        return row.get_attribute("data-selected") == "true"
+
+    @action("Click bucket row (left panel)")
+    def click_bucket_row(self, bucket_name: str, timeout: int = 10000) -> None:
+        """Click *bucket_name*'s own row in the left-panel tree, via its testid.
+
+        New sibling to :meth:`select_bucket` (ELITEA-1824) — that legacy
+        method's own locator predates the testid-only policy (a generic
+        ``[cursor="pointer"]:has-text(...)`` CSS match) and always waits for
+        ``_wait_for_bucket_panel`` afterward, which assumes the click is a
+        *navigate to a possibly-different bucket* action. This method is for
+        the narrower, testid-anchored case: clicking the ALREADY-selected
+        bucket's own row to exercise its expand/collapse **toggle**
+        (confirmed live, CLARIFICATION
+        https://github.com/EliteaAI/elitea-testing-public/issues/651 — a
+        single click on an already-active bucket row toggles rather than
+        unconditionally expands) or to re-select the bucket root after
+        navigating into one of its subfolders. Does not itself wait for any
+        follow-on state — callers needing deterministic toggle sequencing
+        should check the expected post-click condition (e.g. a tree-item's
+        visibility) and click again if it did not yet flip, per the AFS's
+        own guidance.
+
+        Args:
+            bucket_name: Exact name of the bucket row to click.
+            timeout: Maximum wait time in milliseconds for the row itself
+                to be visible before clicking.
+        """
+        row = self.page.locator(self.BUCKET_ROW.format(bucket_name))
+        row.wait_for(state="visible", timeout=timeout)
+        row.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Clicked bucket row '%s'", bucket_name)
+
     # ------------------------------------------------------------------
     # Bucket-row dot-menu flow (ELITEA-1808)
     # ------------------------------------------------------------------
@@ -790,6 +891,80 @@ class ArtifactsPage(BasePage):
             state="visible", timeout=timeout
         )
         logger.info("File '%s' visible in the left-panel tree", file_name)
+
+    def is_tree_item_visible(self, item_key: str, timeout: int = 5000) -> bool:
+        """Return whether a left-panel tree node is currently visible (ELITEA-1824).
+
+        Non-raising sibling to :meth:`wait_for_file_in_tree` (which raises
+        on timeout) — same "poll a short window, return bool" shape as
+        :meth:`is_bucket_empty`/:meth:`bucket_exists`/:meth:`file_exists`.
+        Used for the deterministic toggle-click sequencing case step 37/38
+        (CLARIFICATION https://github.com/EliteaAI/elitea-testing-public/issues/651
+        requires) — check the expected post-click state without failing the
+        test if the toggle hasn't flipped yet on the first click.
+
+        Args:
+            item_key: Full relative path of the file/folder, keyed the same
+                way as the tree node itself (e.g. ``"a1/"`` for a folder).
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if the node is visible within *timeout*, False otherwise.
+        """
+        try:
+            self.page.locator(self.ARTIFACTS_TREE_ITEM.format(item_key)).wait_for(
+                state="visible", timeout=timeout
+            )
+            return True
+        except Exception:
+            return False
+
+    @action("Click tree item (left panel)")
+    def click_tree_item(self, item_key: str, timeout: int = 10000) -> None:
+        """Click a left-panel tree node by its full relative key (ELITEA-1824).
+
+        Testid-anchored sibling to :meth:`navigate_into_folder` (which
+        locates via a raw ``[data-tour="artifacts-buckets-panel"]`` +
+        text-match, predating the testid-only policy) — this method uses
+        the already-established :attr:`ARTIFACTS_TREE_ITEM` template
+        directly, consistent with :meth:`wait_for_file_in_tree` and
+        :meth:`is_tree_item_selected`.
+
+        Args:
+            item_key: Full relative path of the file/folder, keyed the same
+                way as the tree node itself (e.g. ``"a1/"`` for a folder —
+                note the trailing slash on folder keys — or
+                ``"sample.txt"`` for a file, no trailing slash).
+            timeout: Maximum wait time in milliseconds.
+        """
+        item = self.page.locator(self.ARTIFACTS_TREE_ITEM.format(item_key))
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Clicked tree item '%s'", item_key)
+
+    def is_tree_item_selected(self, item_key: str, timeout: int = 10000) -> bool:
+        """Return whether a left-panel tree node is the selected one.
+
+        Reads the ``data-selected`` attribute (ELITEA-1824) on the already
+        testid-anchored :attr:`ARTIFACTS_TREE_ITEM` locator — same
+        attribute-read shape as :meth:`is_bucket_selected` and the
+        established :meth:`is_file_checkbox_checked` precedent (ELITEA-1840).
+
+        Args:
+            item_key: Full relative path of the file/folder, keyed the same
+                way as the tree node itself (e.g. ``"a1/"`` for a folder —
+                note the trailing slash on folder keys — or
+                ``"sample.txt"`` for a file, no trailing slash).
+            timeout: Maximum wait time in milliseconds for the node itself
+                to be visible before reading its attribute.
+
+        Returns:
+            True if the node currently carries ``data-selected="true"``.
+        """
+        item = self.page.locator(self.ARTIFACTS_TREE_ITEM.format(item_key))
+        item.wait_for(state="visible", timeout=timeout)
+        return item.get_attribute("data-selected") == "true"
 
     # ------------------------------------------------------------------
     # File list helpers (right panel)
@@ -1024,6 +1199,30 @@ class ArtifactsPage(BasePage):
         file_chooser.set_files(file_paths)
         logger.info("Selected %d file(s) for upload: %s", len(file_paths), file_paths)
 
+    @action("Select files via native file picker (empty-state entry point)")
+    def upload_files_via_empty_state(self, file_paths: list[str], timeout: int = 15000) -> None:
+        """Click the CENTER empty-state 'Upload files' button and select files.
+
+        A separate entry point from :meth:`upload_files` (the toolbar
+        button) — :attr:`upload_files_empty_state_button` is a DIFFERENT
+        DOM element (ELITEA-1824), only rendered while the selected bucket
+        is empty (``ArtifactTableNoFiles.jsx``). Same
+        click → file-chooser → ``set_files()`` shape as :meth:`upload_files`
+        (confirmed live: no loading delay, same immediacy).
+
+        Args:
+            file_paths: Absolute paths of the file(s) to select.
+            timeout: Maximum wait time for the file chooser, in milliseconds.
+        """
+        with self.page.expect_file_chooser(timeout=timeout) as fc_info:
+            self.upload_files_empty_state_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(file_paths)
+        logger.info(
+            "Selected %d file(s) for upload via empty-state button: %s",
+            len(file_paths), file_paths,
+        )
+
     def wait_for_upload_path_dialog(self, timeout: int = 10000) -> None:
         """Wait for the 'Upload files to ...' dialog to become visible.
 
@@ -1032,6 +1231,33 @@ class ArtifactsPage(BasePage):
         """
         self.upload_path_dialog.wait_for(state="visible", timeout=timeout)
         logger.info("'Upload files to ...' dialog visible")
+
+    @action("Close upload-path dialog (abandon this upload attempt)")
+    def close_upload_path_dialog(self, timeout: int = 10000) -> None:
+        """Close the 'Upload files to ...' dialog without uploading (ELITEA-1824).
+
+        Uses Escape rather than clicking "Cancel" — confirmed via source
+        (``UploadPathDialog.jsx``) the Cancel button carries no testid, and
+        the dialog's ``BaseModal`` wires ``onClose`` (the SAME handler
+        Cancel calls) to the standard MUI Escape-key behavior. Escape needs
+        no locator/selector at all, so it fully respects this project's
+        testid-only locator policy without requiring a new testid for a
+        button whose only use is closing this one dialog.
+
+        Used for the ELITEA-1824 bucket-menu-upload defect (#649) workaround
+        — the buggy Path pre-fill lives in the read-only
+        bucket/currentPrefix ``startAdornment`` (confirmed live: NOT
+        editable — 10x Backspace on the input produces zero change), so the
+        only way to get a clean pre-fill is to abandon this dialog, return
+        to bucket root, and re-open the SAME upload flow from there.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog to
+                become hidden after Escape.
+        """
+        self.page.keyboard.press("Escape")
+        self.upload_path_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("'Upload files to ...' dialog closed via Escape")
 
     def get_upload_path_prefix_text(self) -> str:
         """Return the visible text of the Path field in the upload dialog.
@@ -1044,6 +1270,61 @@ class ArtifactsPage(BasePage):
             The Path field's combined visible text, stripped.
         """
         return (self.upload_path_input.text_content() or "").strip()
+
+    def get_upload_path_normalized_prefix(self) -> str:
+        """Return the read-only bucket/currentPrefix segment, label-stripped (ELITEA-1824).
+
+        :meth:`get_upload_path_prefix_text`'s raw ``text_content()`` read
+        includes the MUI floating label text ("Path") plus zero-width-space
+        (U+200B) padding characters alongside the actual prefix value —
+        confirmed live via DOM inspection: the field's testid'd wrapper's
+        text content is ``"Path" + U+200B + <prefix> + U+200B``, not just
+        ``<prefix>``. This strips both so callers can assert the prefix
+        value directly (e.g. ``"{bucket_name}/"`` or ``"{bucket_name}/a1/"``).
+
+        Returns:
+            The prefix value alone, e.g. ``"{bucket_name}/"``.
+        """
+        raw = self.get_upload_path_prefix_text()
+        return raw.replace("Path", "", 1).replace("​", "").strip()
+
+    def get_upload_path_typed_value(self, timeout: int = 5000) -> str:
+        """Return the Path field's user-typed value (ELITEA-1824).
+
+        The read-only prefix (:meth:`get_upload_path_normalized_prefix`)
+        and the editable, user-typed suffix are two SEPARATE DOM elements
+        (``UploadPathDialog.jsx``'s read-only ``InputAdornment`` vs. its
+        native ``<input>``) — a native ``<input>``'s value is never part of
+        its own or any ancestor's ``text_content()``, confirmed live.
+        Reads :attr:`upload_path_input_field` (the dedicated testid on the
+        actual ``<input>``, added for this case) via ``.input_value()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the field to be
+                visible before reading its value.
+
+        Returns:
+            The exact string currently typed into the editable input (e.g.
+            ``"a1"``), or ``""`` if nothing has been typed.
+        """
+        self.upload_path_input_field.wait_for(state="visible", timeout=timeout)
+        return self.upload_path_input_field.input_value()
+
+    def get_upload_path_combined_text(self) -> str:
+        """Return the FULL path a human sees: prefix + typed suffix (ELITEA-1824).
+
+        Concatenates :meth:`get_upload_path_normalized_prefix` (the
+        read-only bucket/currentPrefix segment) with
+        :meth:`get_upload_path_typed_value` (whatever the user has typed) —
+        the same combined value the case's own steps describe (e.g.
+        ``"{bucket_name}/a1"`` after appending ``"a1"`` to a root-only
+        prefix).
+
+        Returns:
+            The prefix and typed value concatenated, e.g.
+            ``"{bucket_name}/a1"``.
+        """
+        return self.get_upload_path_normalized_prefix() + self.get_upload_path_typed_value()
 
     @action("Confirm upload (triggers client-side duplicate detection)")
     def click_upload_path_upload_button(self) -> None:
@@ -1289,3 +1570,49 @@ class ArtifactsPage(BasePage):
             return True
         except Exception:
             return False
+
+    # ------------------------------------------------------------------
+    # Main-panel breadcrumb header helpers (ELITEA-1824)
+    # ------------------------------------------------------------------
+
+    def get_breadcrumb_bucket_text(self, timeout: int = 10000) -> str:
+        """Return the bucket-name label's text in the main-panel header.
+
+        Always present once a bucket is selected, regardless of folder
+        depth (:attr:`breadcrumb_bucket_label`).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The bucket-name label's stripped text content.
+        """
+        self.breadcrumb_bucket_label.wait_for(state="visible", timeout=timeout)
+        return (self.breadcrumb_bucket_label.text_content() or "").strip()
+
+    def get_breadcrumb_folder_names(self, timeout: int = 3000) -> list[str]:
+        """Return the currently rendered breadcrumb folder-crumb texts.
+
+        :attr:`breadcrumb_folder_label` is CONDITIONALLY present — empty
+        list when the selected bucket is at its root (no folder crumbs
+        rendered), one entry per folder level once navigated into a
+        subfolder.
+
+        Args:
+            timeout: Short wait — used only to let a just-triggered
+                navigation settle; absence is a normal (root) state, not
+                an error, so this does not raise on timeout.
+
+        Returns:
+            List of folder-crumb text strings, in breadcrumb order
+            (outermost first). Empty list at bucket root.
+        """
+        try:
+            self.breadcrumb_folder_label.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return []
+        labels = self.breadcrumb_folder_label
+        count = labels.count()
+        names = [(labels.nth(i).text_content() or "").strip() for i in range(count)]
+        logger.info("Breadcrumb folder crumbs: %s", names)
+        return names

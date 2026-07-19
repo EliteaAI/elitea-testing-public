@@ -58,3 +58,24 @@ is purely Coverage-Map-traceability accuracy, but it's still a legitimate
 CHANGES_REQUESTED/bounce-worthy class: a Coverage Map that overclaims what's
 asserted defeats its own purpose (a future reader can't trust it to know what
 the shipped test actually locks in).
+
+## Addendum (ELITEA-1824/PR #653, round-3) — the same pattern from a NEW cause
+
+ELITEA-1839's lesson above is about analyst-vs-implementer divergence. This
+round found the identical symptom (Coverage Map / Concrete Handles rows
+stale relative to the shipped code) from a different root cause: **my own**
+prior-round AFS amendment was incomplete. That round's Phase 2 exploration
+added 5 testids to close AFS-documented gaps; the PR description and the AFS
+amendment both narrated only 2 of the 5 (the ones top-of-mind while writing
+the summary), leaving the other 3 (`artifacts-upload-files-empty-state-
+button`, `data-selected`, the two breadcrumb-label testids) still reading
+"none"/"testid needed" across 9 separate spots (3 Concrete Handles rows, 5
+Coverage Map rows, 6 Test-Step inline bodies) even though they were fully
+wired and asserted. Same fix shape as before — grep every literal handle
+string across the WHOLE document rather than trusting the named 3 — but the
+trigger this time was self-authored incompleteness, not analyst/implementer
+drift. **Generalized rule: whenever a single PR round's Phase 2 exploration
+adds/changes N handles, grep for all N handle strings across the entire AFS
+before writing the PR description** — narrating only the ones that come to
+mind while summarizing is exactly how a partial amendment ships and bounces
+on the next fresh-reviewer pass.
