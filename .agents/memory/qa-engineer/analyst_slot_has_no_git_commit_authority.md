@@ -1,6 +1,6 @@
 ---
 name: Analyst slot has no git commit authority
-description: workflow.md:159 reserves commits to "the implementer, on the work branch the lead names" — the analyst slot writes/edits the AFS file but never runs git commit/push on it, even though prior docs(afs) commits exist in git log (those were made by the lead, not inferred permission for the analyst)
+description: workflow.md:159 reserves commits to "the implementer, on the work branch the lead names" — the analyst slot writes/edits the AFS file but never runs git commit/push on it, even though prior docs(afs) commits exist in git log (those were made by the lead, not inferred permission for the analyst). RECURRED once already (ELITEA-1808, 2026-07-19) after this entry existed — reading the entry is not enough, actively check it BEFORE the first `git commit` of every analyst-slot session.
 type: feedback
 ---
 
@@ -41,3 +41,28 @@ disk** so the orchestrator/lead can commit it on the branch they name.
   leave it untracked (`git status` should show it as `??`), report the
   path in the handoff message.** Only commit if the calling context
   explicitly names a branch and grants commit authority for this dispatch.
+- **This project's AFS-authoring flow makes a real `add-data-testid` skill
+  call mid-session, and that skill's own instructions end with "commit and
+  push `automation/testids`"** — that part IS correct and IS analyst-slot
+  authority (workflow.md: "Testid commits to `automation/testids` are part
+  of the implementer/analyst loop"). The mistake this entry warns about is
+  specifically committing the **AFS markdown file** to `automation/base`
+  (this repo), not the EliteaUI testid commits — don't overcorrect into
+  skipping the testid push too.
+
+## Recurrence (ELITEA-1808, 2026-07-19)
+
+Made the identical mistake again in a later session, with this entry
+already on file — reasoned from the same kind of `git log -- test-specs/`
+precedent (`f148b882`, `9dcb2805` this time) instead of checking this
+memory entry or `workflow.md` BEFORE the first `git add`/`git commit` of
+the AFS. Caught before session end again (`git revert --no-edit HEAD`,
+recreated the AFS from the reverted commit's git blob via `git show
+<sha>:<path>` rather than retyping — guarantees byte-identical recovery),
+posted a correction comment on the tracking issue. **The lesson from the
+first occurrence — "read the rule, don't pattern-match git log" — did not
+transfer merely by existing in memory.** What was missing both times: an
+explicit trigger to *consult* this file at the moment of temptation. Going
+forward, treat "I'm about to `git add`/`git commit` the AFS file" itself
+as the trigger to open this memory entry (or grep `workflow.md` fresh)
+first — not "did I recall the rule," but "did I check before acting."
