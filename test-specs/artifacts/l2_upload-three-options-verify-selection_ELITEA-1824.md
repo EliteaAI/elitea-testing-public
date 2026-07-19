@@ -155,6 +155,21 @@ specific multi-file, multi-folder state isn't safe to share across parallel/seri
    `"{bucket_name}/a1"` — do NOT type a leading `/`, the prefix already supplies the
    trailing slash.
    - **Verify**: combined Path text reads `"{bucket_name}/a1"`.
+   - **IMPLEMENTER CORRECTION (Phase 2 exploration, ELITEA-1824 automation pass):**
+     this analyst pass's claim that `artifacts-upload-path-input`'s `text_content()`
+     reflects the COMBINED text (prefix + typed value) does **not** hold — confirmed
+     live via DOM inspection (`UploadPathDialog.jsx`): the testid on the `TextField`
+     resolves to the `MuiFormControl-root` WRAPPER (the read-only startAdornment +
+     label), and a native `<input>`'s typed VALUE is never part of any ancestor's
+     `text_content()` — re-reading it after typing `"a1"` still returned only
+     `"Path​{bucket_name}/​"`, unchanged. A new testid,
+     `artifacts-upload-path-input-field` (added via `slotProps.htmlInput`, same
+     pattern as `UserInput.jsx`/`CreateSkillForm.jsx`), now exposes the actual
+     `<input>` so its value is readable via `.input_value()`. The implementer
+     click+types on THIS testid directly (not the outer wrapper) — with a long
+     bucket name the read-only prefix can occupy most of the field's width, so a
+     center-click on the wrapper can miss the actual input entirely. See § Concrete
+     Handles for the new row.
 8. Click `artifacts-upload-path-upload-button` (case step 11).
    - **Verify**: `PUT ${ELITEA_URL}/artifacts/s3/{bucket_name}/a1/sample.txt?project_id=
      ${PROJECT_ID}` → `200 OK` (confirmed live, § Network Behavior).
@@ -219,11 +234,29 @@ specific multi-file, multi-folder state isn't safe to share across parallel/seri
       `currentPrefix` state in `useFileUpload.hooks.js`, not reset for this entry point —
       full detail in § Known Defects). `expect.soft()` this assertion against the buggy
       actual value, tagged `# Known defect: #649`.
-23. **Workaround (required to continue the case meaningfully — do this regardless of step
-    22's soft-assert outcome):** clear the Path field back to empty (removing the inherited
-    `"a1/"` suffix) before clicking Upload, so the file lands at the intended bucket root.
-    Confirmed live this is a simple `select_text()` + type-empty / backspace on
-    `artifacts-upload-path-input`.
+23. **Workaround — CORRECTED (implementer Phase 2 exploration, ELITEA-1824 automation
+    pass).** This analyst pass's claimed workaround (`select_text()` + type-empty /
+    backspace on `artifacts-upload-path-input` to clear the inherited `"a1/"` suffix)
+    was tested live and **does not work**: the buggy value lives in the READ-ONLY
+    `InputAdornment` DOM node (`UploadPathDialog.jsx`'s `startAdornment`, driven
+    directly by the `currentPrefix` prop) — confirmed live that 10 consecutive
+    Backspace presses on the focused (empty) editable input produce **zero change**
+    to that adornment, and the resulting upload still lands at `{bucket_name}/a1/`,
+    not root. A native `<input>` cannot programmatically edit a sibling read-only
+    `<div>`; there is no in-dialog control that resets `currentPrefix`.
+    **Verified-working replacement technique:** (1) close the dialog via `Escape`
+    (`BaseModal`'s `onClose` — the same handler the untestid'd "Cancel" button
+    calls — fires on Escape; no new testid needed since Escape requires no
+    locator), (2) click the bucket's own row in the left panel to navigate back to
+    bucket root (`currentPrefix` becomes `""`), (3) re-open the bucket-menu
+    "Upload files" flow a second time with the same file — now correctly pre-filled
+    `"{bucket_name}/"` (confirmed live, 1/1) — the SAME isolation mechanism this
+    AFS's own § Known Defects section already describes for the manual
+    root-cause-isolation pass, now used as the automated test's actual recovery
+    path rather than only as exploratory proof. This changes WHICH interactions
+    reach the required end state (sample.md at bucket root via the bucket-menu
+    entry point) but not WHAT is asserted — the case's own required outcome (and
+    every Coverage Map row) is unchanged.
 24. Click `artifacts-upload-path-upload-button` (case step 33).
     - **Verify**: `PUT .../artifacts/s3/{bucket_name}/sample.md?project_id={PROJECT_ID}` →
       `200 OK` (root-level key, no `a1/` prefix — confirms the workaround succeeded).
@@ -423,7 +456,8 @@ summarized per row).
 | **Center empty-state "Upload files" button** | none | **testid needed: `artifacts-upload-files-empty-state-button`** | `ArtifactTableNoFiles.jsx`'s `<Button.BaseBtn>` (case step 5) — confirmed via source this run: zero `data-testid` prop anywhere on this element on EITHER branch. This is a DIFFERENT element from the toolbar upload button below — confirmed live via DOM inspection (`document.querySelectorAll('button')` scan) they render as two separate buttons with different classes/positions, only one of which (`artifacts-upload-files-button`) has a testid. |
 | Toolbar "Upload files" button (top-right) | `artifacts-upload-files-button` | on-main ✓ | `ArtifactTableToolbar.jsx`; case step 16's entry point; confirmed live parent carries `aria-label="Upload files"` (matches case's tooltip note) |
 | "Upload files to ..." dialog | `artifacts-upload-path-dialog` | on-automation/testids only | existing (ELITEA-1832) |
-| Upload path input | `artifacts-upload-path-input` | on-automation/testids only | prefix segment is a read-only startAdornment; type only the subfolder suffix, no leading `/` |
+| Upload path input | `artifacts-upload-path-input` | on-automation/testids only | prefix segment is a read-only startAdornment; type only the subfolder suffix, no leading `/`. **IMPLEMENTER CORRECTION**: resolves to the `MuiFormControl-root` WRAPPER only — its `text_content()` never includes the typed value (native `<input>` values aren't part of `textContent`). Use the new row below for the editable input itself. |
+| **Upload path input — editable `<input>` (ELITEA-1824)** | `artifacts-upload-path-input-field` | added this run (implementer, `automation/testids` commit `5fc7549e`) | `UploadPathDialog.jsx`, added via `slotProps.htmlInput` (same pattern as `UserInput.jsx`/`CreateSkillForm.jsx`) — the actual native `<input>`, distinct from the wrapper above. Read via `.input_value()` for the typed subfolder suffix; click+type on THIS testid directly (a center-click on the wrapper can miss the input when a long bucket name makes the read-only prefix occupy most of the field's width). |
 | Upload path "Upload" button | `artifacts-upload-path-upload-button` | on-automation/testids only | existing (ELITEA-1832) |
 | Left-panel tree item (file/folder) | `artifacts-tree-item-{key}` (dynamic) | on-automation/testids only | `FileTreeItem.jsx`; **folder keys carry a trailing slash** (`artifacts-tree-item-a1/`), confirmed live this run — file keys do not (`artifacts-tree-item-sample.txt`) |
 | **Bucket-row / tree-item "selected/highlighted" state (steps 38, 40)** | none | **testid needed: add `data-selected="true"/"false"` attribute** on the ALREADY-testid'd `artifacts-bucket-row-{name}` and `artifacts-tree-item-{key}` elements — NOT a new testid, per `.agents/testing.md` § Locator policy ("state via data-* attribute, never a separate testid") | Confirmed live via `getAttribute` inspection on both elements: zero `data-*` state attribute exists today, the ONLY signal of "selected" is a `background-color: rgba(41, 184, 245, 0.15)` style change via an unstable emotion-hash CSS class (regenerated per build, e.g. `css-guc4qj`) — not automatable per policy as-is |
@@ -520,12 +554,16 @@ Step 23) so all 46 case steps were verified end-to-end live.
   existing `upload_files()`).
 - **#649 recommended treatment**: implement the FULL 46-step flow as written (don't skip
   the buggy assertion), but wrap Test Step 22's Path-value assertion in `expect.soft()`
-  against the documented buggy actual value, tagged `# Known defect: #649`, per this
-  project's merge-gate "Sanctioned-RED exception" (`.agents/testing.md` § Merge gate) —
-  this is precisely the isolated/deterministic/single-cause/open-linked-ticket shape that
-  exception exists for. Then apply Test Step 23's workaround (clear the Path field) so
-  every downstream step (24-37) can still be verified against a clean, defect-free state.
-  Do NOT skip/xfail the whole test — only the one narrow assertion.
+  against the documented CORRECT expected value (bucket root), tagged `# Known defect:
+  #649`, per this project's merge-gate "Sanctioned-RED exception" (`.agents/testing.md`
+  § Merge gate) — this is precisely the isolated/deterministic/single-cause/open-linked-
+  ticket shape that exception exists for. **IMPLEMENTER CORRECTION (Phase 2 exploration):**
+  Test Step 23's originally-documented workaround (select_text()+Backspace) does NOT work
+  — verified live it produces zero change to the buggy value. Use the corrected technique
+  instead (see Test Step 23 above): close the dialog via Escape, click the bucket's own row
+  to return to root, then re-open the SAME bucket-menu upload flow — now correctly
+  pre-filled at root. This still lets every downstream step (24-37) verify a clean,
+  defect-free state. Do NOT skip/xfail the whole test — only the one narrow soft-assert.
 - **Step 37/38 (#651) deterministic sequencing**: a single blind click on an already-active
   bucket row is NOT reliable (toggles based on prior state). Recommended approach: after
   the click, check whether `artifacts-tree-item-a1/` is visible; if not, click the bucket
