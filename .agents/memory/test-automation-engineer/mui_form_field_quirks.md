@@ -4,6 +4,24 @@ description: Reusable Playwright/MUI gotchas found implementing ELITEA-1737/1738
 type: feedback
 ---
 
+## Better fix for TextField-testid-on-wrapper: relocate via `inputProps`, don't chain `.locator("input")`
+
+Third confirmed instance of the pattern below (ELITEA-1808, `CreateBucket.jsx`'s
+Name + Retention-value `TextField`s) — but this time the ANALYST had placed
+`data-testid` directly on `<TextField>` (root/wrapper), and the implementer
+caught it live via `.input_value()` raising
+`Error: Node is not an <input>, <textarea> or <select> element`. Instead of
+adding a `.locator("input")` chain in the page object (the workaround already
+documented below for skill fields), fixed it AT THE SOURCE: moved the
+`data-testid` into `inputProps={{ ..., 'data-testid': '...' }}`, which MUI
+forwards straight onto the real `<input>` — matching the pattern
+`agent-name-input` already uses correctly (`CreateAgentForm.jsx`). This is the
+preferred fix when you're the one adding the testid (or catch a bad one): it
+avoids a non-testid `.locator("input")` chain in automation code entirely.
+Only fall back to the `.locator("input")` workaround for testids you can't
+relocate (shared component you don't own, existing testid with merged callers
+elsewhere that depend on the current DOM shape).
+
 ## MUI multiline TextField testid resolves to the wrapper, not the field
 
 A `data-testid` set on an MUI `TextField`/custom input-enhancer component
