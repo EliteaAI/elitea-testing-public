@@ -53,6 +53,20 @@ class ArtifactsPage(BasePage):
         description="Search buckets button in the left panel header",
     )
 
+    bucket_search_input = LocatorDescriptor(
+        testid="artifacts-bucket-search-input",
+        description="Bucket search input, revealed after clicking the search "
+        "icon in the left panel header (ELITEA-1809) — native MUI InputBase "
+        "on BucketsPanel.jsx, filters client-side with a 300ms debounce",
+    )
+
+    bucket_search_clear_button = LocatorDescriptor(
+        testid="artifacts-bucket-search-clear-button",
+        description="Clear/close (X) button next to the bucket search input "
+        "(ELITEA-1809) — clears the query AND closes the search box in one "
+        "action (BucketsPanel.jsx's handleSearchClear)",
+    )
+
     # ------------------------------------------------------------------
     # "New Bucket" form — /artifacts/create-bucket (ELITEA-1808)
     # ------------------------------------------------------------------
@@ -91,6 +105,17 @@ class ArtifactsPage(BasePage):
     # menuContainer is `display:none` until the row is hovered; the trigger
     # itself has no bounding box to hover directly until then).
     BUCKET_ROW = '[data-testid="artifacts-bucket-row-{}"]'
+
+    # Prefix (any-bucket) variant of BUCKET_ROW — matches EVERY currently
+    # rendered bucket row regardless of name. Same `[data-testid^="…"]`
+    # pattern already established elsewhere in this codebase (e.g.
+    # agent_detail_page.py's SKILL_CARD_ANY_SELECTOR,
+    # chat_page.py's MENTION_SKILL_ITEM_PREFIX). Used by
+    # :meth:`get_visible_bucket_count` (ELITEA-1809) to prove the
+    # bucket-search filter narrows the rendered list — the count-based
+    # equivalent of a total-buckets footer read, without needing a testid on
+    # BucketFooter.jsx (which no case step touches directly).
+    BUCKET_ROW_ANY_SELECTOR = '[data-testid^="artifacts-bucket-row-"]'
 
     # Dynamic testid template — dot-menu trigger for a given bucket row.
     # Fixed live for ELITEA-1808 (was previously a single STATIC, non-unique
@@ -469,6 +494,107 @@ class ArtifactsPage(BasePage):
             return True
         except Exception:
             return False
+
+    # ------------------------------------------------------------------
+    # Bucket search (left panel, ELITEA-1809)
+    # ------------------------------------------------------------------
+
+    # BucketsPanel.jsx's useDebounceValue(searchQuery, 300) is a hardcoded
+    # product constant, not network latency — one of the few places in this
+    # codebase where a short fixed wait is defensible (AFS § Automation
+    # Hints); padded above the 300ms interval itself, same margin the
+    # project already uses for MUI debounce waits elsewhere
+    # (agent_form_page.py).
+    BUCKET_SEARCH_DEBOUNCE_WAIT_MS = 500
+
+    @action("Open bucket search")
+    def open_bucket_search(self, timeout: int = 10000) -> None:
+        """Click the search icon and wait for the search input to appear.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.search_buckets_button.click()
+        self.bucket_search_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Bucket search opened")
+
+    @action("Search buckets")
+    def search_buckets(self, query: str) -> None:
+        """Type *query* into the open bucket search input and wait for the
+        client-side filter's debounce window to elapse.
+
+        Call :meth:`open_bucket_search` first — this method does not open
+        the search box itself.
+
+        Args:
+            query: Search text (e.g. ``"buck"``).
+        """
+        self.bucket_search_input.click()
+        self.bucket_search_input.type(query)
+        self.page.wait_for_timeout(self.BUCKET_SEARCH_DEBOUNCE_WAIT_MS)
+        logger.info("Typed '%s' into bucket search", query)
+
+    @action("Close bucket search")
+    def close_bucket_search(self, timeout: int = 10000) -> None:
+        """Click the clear/X button to clear the query and close the search box.
+
+        Confirmed live (ELITEA-1809 AFS): a single click both clears
+        ``searchQuery`` and sets ``isSearchActive`` to ``False``
+        (``BucketsPanel.jsx``'s ``handleSearchClear``), so the search input
+        itself unmounts immediately — wait for it to become hidden as the
+        first completion condition.
+
+        **Implementer finding (ELITEA-1809):** unmounting the input is NOT
+        sufficient on its own — ``filteredBuckets`` derives from
+        ``debouncedSearchQuery`` (``useDebounceValue(searchQuery, 300)``),
+        which lags the ``searchQuery`` state by the SAME 300ms debounce even
+        when clearing it to ``''``. Confirmed live: reading the bucket list
+        immediately after the input disappears can still catch the stale
+        filtered set. Also waits out :attr:`BUCKET_SEARCH_DEBOUNCE_WAIT_MS`
+        so the full (unfiltered) list has actually re-rendered before
+        returning.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the search input
+                to disappear.
+        """
+        self.bucket_search_clear_button.click()
+        self.bucket_search_input.wait_for(state="hidden", timeout=timeout)
+        self.page.wait_for_timeout(self.BUCKET_SEARCH_DEBOUNCE_WAIT_MS)
+        logger.info("Bucket search closed")
+
+    def count_bucket_rows(self, bucket_name: str) -> int:
+        """Return the number of DOM rows matching *bucket_name*'s dynamic testid.
+
+        Primary duplicate-detection mechanism (ELITEA-1809): a real
+        duplicate bucket, if one had been created, would render a SECOND
+        DOM element sharing the identical dynamic
+        ``artifacts-bucket-row-{name}`` testid — a stronger, DOM-level proof
+        than eyeballing a search-filtered list.
+
+        Args:
+            bucket_name: Exact bucket name.
+
+        Returns:
+            Number of matching DOM elements (0, 1, or more).
+        """
+        return self.page.locator(self.BUCKET_ROW.format(bucket_name)).count()
+
+    def get_visible_bucket_count(self) -> int:
+        """Return the number of bucket rows currently rendered (any bucket).
+
+        Uses the shared testid PREFIX (:attr:`BUCKET_ROW_ANY_SELECTOR`), not
+        one bucket's exact testid — proves the bucket-search filter actually
+        narrows the rendered DOM list (ELITEA-1809 case steps 5/7), and
+        gives a filter-scoped, environment-count-independent way to confirm
+        no new bucket appeared across two search passes (case steps 17/18),
+        without needing a testid on the untested ``BucketFooter.jsx`` total
+        count (which no case step reads directly).
+
+        Returns:
+            Count of currently-visible bucket row elements.
+        """
+        return self.page.locator(self.BUCKET_ROW_ANY_SELECTOR).count()
 
     # ------------------------------------------------------------------
     # 'New Bucket' form flow (ELITEA-1808)
