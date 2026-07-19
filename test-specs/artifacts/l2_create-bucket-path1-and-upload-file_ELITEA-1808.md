@@ -253,8 +253,8 @@ case's own action (UI-driven creation) makes a pre-seeded fixture actively wrong
 | Step 4: Enter bucket name "bucket-1" | Name field shows generated name | Test Step 4 | `artifacts-bucket-name-input` value check | asserted *(generated unique name, not literal "bucket-1" — see § Test Data)* |
 | Step 5: Leave retention as default | Retention remains Years/1 | Test Step 5 | value checks unchanged | asserted |
 | Step 6: Click Save | Save completes | Test Step 6 | `POST .../buckets/...` → 200 | asserted |
-| Step 7: Verify bucket appears in list | Bucket listed in left panel | Test Step 7 | dynamic `bucket-menu-{name}-menu-button` becomes visible | asserted |
-| Step 8: Click 3-dot menu next to bucket | Dropdown menu appears | Test Step 8 | menu with 4 items visible after hover+click | asserted |
+| Step 7: Verify bucket appears in list | Bucket listed in left panel | Test Step 7 | dynamic `artifacts-bucket-row-{name}` becomes visible (`wait_for_bucket_in_list()`) — see § Concrete Handles for why the earlier `bucket-menu-{name}-menu-button` handle was replaced | asserted |
+| Step 8: Click 3-dot menu next to bucket | Dropdown menu appears | Test Step 8 | hover + click opens the menu; `bucket_menu_upload_files_menuitem` ("Upload files", this case's own scope) confirmed visible after — not a 4-item visibility check, since "Rename"/"Pin to top"/"Delete" have no testid added (§ Concrete Handles scope ruling) | asserted |
 | Step 9: Select "Upload files" | File explorer opens | Test Step 9 | `expect_file_chooser` fires | asserted |
 | Step 10: Verify file explorer opens | File explorer open | Test Step 9 (folded) | same observable as step 9 | asserted *(decomposed)* |
 | Step 11: Select test.txt | File selected | Test Step 11 | `file_chooser.set_files([test.txt])` | asserted |
