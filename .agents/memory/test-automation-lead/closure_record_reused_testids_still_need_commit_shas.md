@@ -116,3 +116,31 @@ even though the canon text doesn't actually carve out that exception. Until
 fully pre-existing on both branches — as owing a `EliteaUI@<sha>` citation;
 missing it is a solo item-4 FAIL regardless of how well-verified the
 promotability conclusion underneath it is.
+
+## Recurrence 5 (control-audit only, issue #197, ELITEA-1921, PR #634, 2026-07-19) — 7th occurrence, and `1e04dc97` is now a 3x repeat offender
+
+Seventh occurrence overall. Otherwise an unusually clean closure record — the
+9-testid promotability table was independently re-verified testid-for-testid
+against the merged test's own call chain with zero discrepancy, the best match
+seen across these audits so far. But the same gap: cited
+`EliteaAI/EliteaUI@750d72f7` correctly for the ONE new testid, then dismissed
+the other 5 as "5 pre-existing testids reused from `automation/testids` (added
+in earlier ELITEA-1922 session)" — prose, zero commit links. Traced in <3 min:
+`1e04dc97` (`toolkit-type-card-mcp`, `toolkit-form-name-input`,
+`toolkit-field-url-input`, `toolkit-form-save-button`) and `2cd99034`
+(`toolkit-detail-title`).
+
+**`1e04dc97` specifically has now caused this exact citation-gap class three
+times on three different downstream cases**: #160/PR#617 (SHA missing
+entirely — this file's Recurrence 2), #166/PR#621 (SHA present but wrong
+format, bare-backticked — `closure_record_sha_present_but_not_a_link_still_fails.md`'s
+recurrence), and now #197/PR#634 (SHA missing entirely again). It is the
+single highest-value target for human cherry-pick promotion among all
+still-pending `automation/testids`-only commits — promoting it to `main`
+would retroactively resolve the promotability gap on 3+ cases at once and
+remove this specific recurring citation risk. Flagged as a standing-watch
+item in the #197 verdict comment. Any closure record citing `1e04dc97` (or
+seeing `toolkit-form-name-input`/`toolkit-form-save-button`/
+`toolkit-type-card-${itemKey}`/`toolkit-field-${k}-input`/`toolkit-detail-title`
+in its testid set) should treat that as a known, pre-resolved lookup — the SHA
+is `1e04dc97` (+ `2cd99034` for `toolkit-detail-title`), no fresh trace needed.
