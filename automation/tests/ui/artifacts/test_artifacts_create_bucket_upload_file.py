@@ -49,6 +49,7 @@ import time
 
 import allure
 import pytest
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from pages.artifacts_page import ArtifactsPage
 
@@ -61,6 +62,12 @@ pytestmark = [pytest.mark.ui, pytest.mark.regression]
 # ---------------------------------------------------------------------------
 UI_ELEMENT_TIMEOUT = 10_000       # fields, buttons, menus, rows
 NAVIGATION_TIMEOUT = 15_000       # SPA route transitions, bucket-list refetch
+# ELITEA-1808 AFS step-15 fidelity caveat: the upload path was not
+# independently confirmed to show a toast in the analyst's run (only the
+# separate bucket-creation toast was confirmed in source) — a short POLLED
+# window (Playwright's auto-retrying wait_for, not a raw sleep or a single
+# instantaneous DOM read) records whether it appeared, informationally only.
+TOAST_INFORMATIONAL_POLL_TIMEOUT = 2_000
 
 FILE_NAME = "test.txt"
 FILE_CONTENT = b"Sample content for ELITEA-1808 create-bucket + upload test.\n"
@@ -249,6 +256,26 @@ class TestArtifactCreateBucketAndUploadFile:
                 assert artifacts_page.file_exists(FILE_NAME, timeout=UI_ELEMENT_TIMEOUT), (
                     f"'{FILE_NAME}' should appear in the file table after upload"
                 )
+                # Secondary/informational signal only (AFS Test Step 15
+                # fidelity caveat) — the upload path was never independently
+                # confirmed to show a toast, so its absence is NOT a failure;
+                # a short polled wait (never a single instantaneous DOM read)
+                # just records whether it happened to appear.
+                try:
+                    artifacts_page.success_toast_message.wait_for(
+                        state="visible", timeout=TOAST_INFORMATIONAL_POLL_TIMEOUT,
+                    )
+                    logger.info(
+                        "Informational: success toast observed after upload "
+                        "(not required by this case — AFS fidelity caveat)"
+                    )
+                except PlaywrightTimeoutError:
+                    logger.info(
+                        "Informational: no success toast observed after "
+                        "upload within %dms (not confirmed to fire for "
+                        "uploads — AFS fidelity caveat, not a failure)",
+                        TOAST_INFORMATIONAL_POLL_TIMEOUT,
+                    )
 
             with allure.step(
                 "Step 16 — Verify test.txt appears in the file table with the "
@@ -277,10 +304,9 @@ class TestArtifactCreateBucketAndUploadFile:
                 "Step 17 — Verify test.txt is also listed in the left-panel "
                 "tree under the generated bucket"
             ):
-                tree_item = page.locator(
-                    artifacts_page.ARTIFACTS_TREE_ITEM.format(FILE_NAME)
+                artifacts_page.wait_for_file_in_tree(
+                    FILE_NAME, timeout=UI_ELEMENT_TIMEOUT,
                 )
-                tree_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
 
             with allure.step(
                 "Side-channel check — no console errors across the "

@@ -594,6 +594,27 @@ class ArtifactsPage(BasePage):
             len(file_paths), file_paths,
         )
 
+    def wait_for_file_in_tree(self, file_name: str, timeout: int = 15000) -> None:
+        """Wait for a file/folder to appear in the left-panel bucket tree (ELITEA-1808).
+
+        Waits on the CONDITION that the item's own dynamic
+        ``artifacts-tree-item-{file_name}`` testid becomes visible — same
+        condition-wait discipline as :meth:`wait_for_bucket_in_list`, never a
+        fixed sleep and never an assertion built on a raw ``page.locator(...)``
+        constructed at the call site (locators stay class-level fields on the
+        page object per ``.claude/rules/page-objects.md``).
+
+        Args:
+            file_name: Full relative path of the file/folder, keyed the same
+                way as the tree node itself (e.g. ``"test.txt"``, or
+                ``"a1/sample.txt"`` when nested in a subfolder).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.page.locator(self.ARTIFACTS_TREE_ITEM.format(file_name)).wait_for(
+            state="visible", timeout=timeout
+        )
+        logger.info("File '%s' visible in the left-panel tree", file_name)
+
     # ------------------------------------------------------------------
     # File list helpers (right panel)
     # ------------------------------------------------------------------
