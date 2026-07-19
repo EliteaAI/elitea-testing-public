@@ -37,6 +37,12 @@
   implementer slot: *"Do not soften a testid demand into a MINOR defect or a note; it is
   implementer work, and the AFS is its work order"*). Not `already-covered` / not
   `extend-existing` — see § Overlap check below.
+  **IMPLEMENTER ADDENDUM (Phase 2 exploration, ELITEA-1824 automation pass):** all three of
+  these `testid needed:` gaps (center empty-state button, `data-selected` state attribute,
+  breadcrumb labels) were added this PR round via `automation/testids` commit `9d839c3a`
+  (`EliteaAI/EliteaUI`) and are genuinely wired into `automation/pages/artifacts_page.py`
+  and asserted in the shipped test — see § Concrete Handles and the Coverage Map Axis-1
+  rows for steps 14/35/38/40/44 for the now-`asserted` disposition.
 
 ## Overlap check vs existing automation
 
@@ -138,10 +144,12 @@ specific multi-file, multi-folder state isn't safe to share across parallel/seri
    (case step 5). **Confirmed live via DOM inspection this run: these are two DIFFERENT
    elements.** The toolbar button (top-right, used in step 16) has `data-testid=
    "artifacts-upload-files-button"`. The center empty-state button
-   (`ArtifactTableNoFiles.jsx`'s `<Button.BaseBtn>`) has **NO testid at all** — confirmed
-   via source (`git show origin/automation/testids:src/pages/Artifacts/component/
-   ArtifactTableNoFiles.jsx`, no `data-testid` prop anywhere on the button). See § Concrete
-   Handles for the `testid needed:` row.
+   (`ArtifactTableNoFiles.jsx`'s `<Button.BaseBtn>`) had **NO testid at analyst-pass time**
+   — confirmed via source (`git show origin/automation/testids:src/pages/Artifacts/
+   component/ArtifactTableNoFiles.jsx`, no `data-testid` prop anywhere on the button).
+   **IMPLEMENTED (Phase 2 exploration):** testid `artifacts-upload-files-empty-state-button`
+   added directly on the `<Button.BaseBtn>` prop, `automation/testids` commit `9d839c3a`.
+   See § Concrete Handles for the row.
    - **Verify**: native file-chooser fires immediately (case step 6) — confirmed live via
      `expect_file_chooser()`, no loading delay.
 5. Select `sample.txt` via `file_chooser.set_files([sample_txt_path])` (case step 7).
@@ -186,11 +194,14 @@ specific multi-file, multi-folder state isn't safe to share across parallel/seri
       nodes by their full relative path INCLUDING a trailing `/`, unlike file nodes which
       have no trailing slash, e.g. `artifacts-tree-item-sample.txt`).
 11. Verify the main-panel breadcrumb header shows `"{bucket_name} > a1"` (case step 14).
-    - **Verify**: **no testid exists for this** — confirmed via source
+    - **Verify**: **no testid existed for this at analyst-pass time** — confirmed via source
       (`src/pages/Artifacts/component/BreadcrumbNavigation.jsx` renders each crumb as a
       bare `<Typography variant="headingSmall">` with no `data-testid`; the bucket-name
       label itself is a separate, also-untestid'd `<Typography>` rendered by the toolbar
-      header). See § Concrete Handles for the `testid needed:` rows.
+      header). **IMPLEMENTED (Phase 2 exploration):** `artifacts-breadcrumb-bucket-label`
+      + `artifacts-breadcrumb-folder-label` added, `automation/testids` commit `9d839c3a`.
+      Asserted via `get_breadcrumb_bucket_text() == bucket_name` and
+      `get_breadcrumb_folder_names() == ["a1"]`. See § Concrete Handles for the row.
 12. Verify `sample.txt` is listed in the file table with Name/Type/Size/Last-update
     populated (case step 15).
     - **Verify**: `get_file_row_text("sample.txt")` contains `"sample.txt"`, `"Text"`, a
@@ -232,8 +243,14 @@ specific multi-file, multi-folder state isn't safe to share across parallel/seri
       upload entry point does not reset the dialog's default path to bucket root; it
       inherits whatever folder the user is CURRENTLY navigated into (root cause: shared
       `currentPrefix` state in `useFileUpload.hooks.js`, not reset for this entry point —
-      full detail in § Known Defects). `expect.soft()` this assertion against the buggy
-      actual value, tagged `# Known defect: #649`.
+      full detail in § Known Defects). **CORRECTED (implementer Phase 2 exploration —
+      reconciled with § Automation Hints and the shipped code):** `expect.soft()` this
+      assertion against the documented CORRECT expected value (bucket root only,
+      `"{bucket_name}/"`), **not** the buggy actual value — asserting the live-correct
+      contract means the soft-assert keeps failing loudly for as long as #649 is open, and
+      would flip to passing on its own the moment the product fix lands, rather than
+      silently baking the bug's value in as the "expected" one. Tagged
+      `# Known defect: #649`.
 23. **Workaround — CORRECTED (implementer Phase 2 exploration, ELITEA-1824 automation
     pass).** This analyst pass's claimed workaround (`select_text()` + type-empty /
     backspace on `artifacts-upload-path-input` to clear the inherited `"a1/"` suffix)
@@ -262,7 +279,9 @@ specific multi-file, multi-folder state isn't safe to share across parallel/seri
       `200 OK` (root-level key, no `a1/` prefix — confirms the workaround succeeded).
 25. Verify success toast (case step 34).
 26. Verify the main-panel breadcrumb shows `"{bucket_name}"` only, no subfolder suffix (case
-    step 35) — same `testid needed:` gap as step 11.
+    step 35) — same testids as step 11 (implemented, `automation/testids` commit
+    `9d839c3a`): `get_breadcrumb_bucket_text() == bucket_name` and
+    `get_breadcrumb_folder_names() == []`.
 27. Verify `sample.md` is listed in the file table at bucket root (case step 36).
     - **Verify**: `file_exists("sample.md")` at root; `sample.md` row shows Type
       `"Markdown"`.
@@ -273,13 +292,15 @@ specific multi-file, multi-folder state isn't safe to share across parallel/seri
     blind click is not reliable here).
 29. Verify the bucket is highlighted/selected AND the tree expands to show subfolder `a1`
     (case step 38).
-    - **Verify (selection state)**: **no `data-*` state attribute exists** — confirmed live
-      via `getAttribute` inspection, the ONLY signal is a CSS `background-color` change via
-      an unstable emotion-hash class (`css-guc4qj`-style, regenerated per build). This
-      violates this project's own rule (`.agents/testing.md` § Locator policy: state is a
-      `data-*` filter on the stable testid, never CSS-only) — see § Concrete Handles for
-      the `testid needed:` row (a `data-selected` attribute, NOT a new testid, on the
-      already-testid'd `artifacts-bucket-row-{name}`).
+    - **Verify (selection state)**: **no `data-*` state attribute existed at analyst-pass
+      time** — confirmed live via `getAttribute` inspection, the ONLY signal was a CSS
+      `background-color` change via an unstable emotion-hash class (`css-guc4qj`-style,
+      regenerated per build), violating this project's own rule (`.agents/testing.md` §
+      Locator policy: state is a `data-*` filter on the stable testid, never CSS-only).
+      **IMPLEMENTED (Phase 2 exploration):** `data-selected="true"/"false"` attribute added
+      on the already-testid'd `artifacts-bucket-row-{name}` (`automation/testids` commit
+      `9d839c3a`, NOT a new testid — same element, extra attribute per policy). Asserted via
+      `is_bucket_selected(bucket_name) == True`. See § Concrete Handles for the row.
     - **Verify (expand state)**: `[data-testid="artifacts-tree-item-a1/"]` visible (after
       the deterministic click sequencing from step 28's note).
 30. Click on subfolder `a1` under the bucket in the left panel — `[data-testid=
@@ -287,10 +308,13 @@ specific multi-file, multi-folder state isn't safe to share across parallel/seri
     - **Verify**: URL becomes `...?bucket={bucket_name}&folder=a1`.
 31. Verify `a1` is highlighted AND the breadcrumb shows `"{bucket_name} > a1"` (case step
     40).
-    - **Verify (selection state)**: same `data-*` gap as step 29, on
-      `artifacts-tree-item-a1/` this time — confirmed live, identical finding (class-only,
-      no attribute).
-    - **Verify (breadcrumb)**: same `testid needed:` gap as step 11.
+    - **Verify (selection state)**: same `data-selected` handle as step 29, on
+      `artifacts-tree-item-a1/` this time (`FileTreeItem.jsx`, same `automation/testids`
+      commit `9d839c3a`) — implemented, asserted via
+      `is_tree_item_selected("a1/") == True`.
+    - **Verify (breadcrumb)**: same testids as step 11 — implemented, asserted via
+      `get_breadcrumb_bucket_text() == bucket_name` and
+      `get_breadcrumb_folder_names() == ["a1"]`.
 32. Verify the file table in `"{bucket_name} > a1"` contains EXACTLY 2 files: `sample.txt`
     and `sample.png` (case step 41).
     - **Verify**: `get_total_file_count_from_pagination() == 2`;
@@ -299,8 +323,9 @@ specific multi-file, multi-folder state isn't safe to share across parallel/seri
     - **Verify**: `file_exists("sample.md") == False` while in the `a1` folder view.
 34. Click on the bucket's own row/name (root level) in the left panel (case step 43).
     - **Verify**: URL becomes `...?bucket={bucket_name}` (no `folder` param).
-35. Verify the breadcrumb shows `"{bucket_name}"` only (case step 44) — same
-    `testid needed:` gap as step 11.
+35. Verify the breadcrumb shows `"{bucket_name}"` only (case step 44) — same testids as
+    step 11 — implemented, asserted via `get_breadcrumb_bucket_text() == bucket_name` and
+    `get_breadcrumb_folder_names() == []`.
 36. Verify `sample.md` is listed at the root level (case step 45).
     - **Verify**: `file_exists("sample.md") == True` at root.
 37. Verify the URL reflects the currently-selected bucket and folder path (case step 46).
@@ -343,7 +368,7 @@ specific multi-file, multi-folder state isn't safe to share across parallel/seri
 | Step 11: Click Upload | Upload completes | Test Step 8 | `PUT .../a1/sample.txt` → 200 | asserted |
 | Step 12: Verify success notification | Toast shown | Test Step 9 | `toast-message` exact text, MutationObserver-confirmed | asserted |
 | Step 13: Verify a1 subfolder appears under bucket-1 | a1 visible in tree | Test Step 10 | `artifacts-tree-item-a1/` visible (note trailing slash) | asserted |
-| Step 14: Verify breadcrumb "bucket-1 > a1" | Breadcrumb correct | Test Step 11 | text content of two untestid'd spans | clarification *(testid needed — see § Concrete Handles)* |
+| Step 14: Verify breadcrumb "bucket-1 > a1" | Breadcrumb correct | Test Step 11 | `get_breadcrumb_bucket_text()` == bucket_name + `get_breadcrumb_folder_names()` == ["a1"] (testids added this run — see § Concrete Handles) | asserted |
 | Step 15: Verify sample.txt listed with metadata | Row populated | Test Step 12 | `get_file_row_text()` Name/Type/Size/timestamp | asserted |
 | Step 16: Click toolbar upload icon | File explorer opens | Test Step 13 | `expect_file_chooser()` on `artifacts-upload-files-button` | asserted |
 | Step 17: Verify file explorer opens | Explorer open | Test Step 13 (folded) | same observable | asserted *(decomposed)* |
@@ -364,16 +389,16 @@ specific multi-file, multi-folder state isn't safe to share across parallel/seri
 | Step 32: Verify path has no subfolder | Root-only path | Test Step 22 | same as step 31 | defect *(same #649)* |
 | Step 33: Click Upload | Upload completes | Test Steps 23-24 | workaround clears path first, then `PUT .../sample.md` (root key) → 200 | asserted *(via workaround — see § Known Defects)* |
 | Step 34: Verify success notification | Toast shown | Test Step 25 | same as step 9 | asserted |
-| Step 35: Verify breadcrumb "bucket-1" (root) | Breadcrumb correct | Test Step 26 | same testid gap as step 14 | clarification *(testid needed)* |
+| Step 35: Verify breadcrumb "bucket-1" (root) | Breadcrumb correct | Test Step 26 | same handles as step 14 (`get_breadcrumb_folder_names()` == []) | asserted |
 | Step 36: Verify sample.md at root level | File at root | Test Step 27 | `file_exists("sample.md")` at root | asserted |
 | Step 37: Click bucket-1 in left panel | Bucket selected | Test Step 28 | click is a TOGGLE, not unconditional | clarification *(filed [#651](https://github.com/EliteaAI/elitea-testing-public/issues/651), not a defect)* |
-| Step 38: Verify highlighted + expands to show a1 | Selected + expanded | Test Step 29 | expand state via tree-item visibility (asserted); selected state has NO data-* attribute | clarification *(testid needed — see § Concrete Handles)* |
+| Step 38: Verify highlighted + expands to show a1 | Selected + expanded | Test Step 29 | expand state via tree-item visibility; selected state via `is_bucket_selected()` reading `data-selected` (attribute added this run — see § Concrete Handles) | asserted |
 | Step 39: Click a1 subfolder | a1 selected | Test Step 30 | URL becomes `...&folder=a1` | asserted |
-| Step 40: Verify a1 highlighted + breadcrumb "bucket-1 > a1" | Highlighted + breadcrumb | Test Step 31 | same two gaps as steps 14/38 | clarification *(testid needed)* |
+| Step 40: Verify a1 highlighted + breadcrumb "bucket-1 > a1" | Highlighted + breadcrumb | Test Step 31 | `is_tree_item_selected("a1/")` + same breadcrumb handles as step 14 | asserted |
 | Step 41: Verify exactly 2 files (sample.txt, sample.png) | 2 files shown | Test Step 32 | pagination count + name set | asserted |
 | Step 42: Verify sample.md NOT in a1 view | sample.md absent | Test Step 33 | `file_exists()==False` | asserted |
 | Step 43: Click bucket-1 (root level) | Root shown | Test Step 34 | URL loses `folder` param | asserted |
-| Step 44: Verify breadcrumb "bucket-1" | Breadcrumb correct | Test Step 35 | same testid gap as step 14 | clarification *(testid needed)* |
+| Step 44: Verify breadcrumb "bucket-1" | Breadcrumb correct | Test Step 35 | same handles as step 14 (`get_breadcrumb_folder_names()` == []) | asserted |
 | Step 45: Verify sample.md at root | File at root | Test Step 36 | `file_exists()` at root | asserted |
 | Step 46: Verify URL reflects selection | URL correct | Test Step 37 | `page.url` read directly, no testid needed | asserted |
 | Expected Final State: 3 upload paths correct, URL synced | Composite pass condition | Test Steps 8/16/23-24/30/34/36-37 | combination of the above (Step 33's defect worked around) | asserted *(with the one soft-assert exception, #649)* |
@@ -453,15 +478,15 @@ summarized per row).
 | Bucket row (hover/click target) | `artifacts-bucket-row-{name}` (dynamic) | on-automation/testids only (awaiting promotion) | `BucketItem.jsx`; used for hover-to-reveal-menu, click-to-select/toggle-expand, and as the wait condition after bucket creation |
 | Bucket-menu trigger | `bucket-menu-{name}-menu-button` (dynamic) | on-automation/testids only | `BucketItem.jsx`; hover-gated, must hover `artifacts-bucket-row-{name}` first |
 | Bucket-menu "Upload files" item | `bucket-menu-upload-files-menuitem` | on-automation/testids only | static testid regardless of which bucket's menu is open |
-| **Center empty-state "Upload files" button** | none | **testid needed: `artifacts-upload-files-empty-state-button`** | `ArtifactTableNoFiles.jsx`'s `<Button.BaseBtn>` (case step 5) — confirmed via source this run: zero `data-testid` prop anywhere on this element on EITHER branch. This is a DIFFERENT element from the toolbar upload button below — confirmed live via DOM inspection (`document.querySelectorAll('button')` scan) they render as two separate buttons with different classes/positions, only one of which (`artifacts-upload-files-button`) has a testid. |
+| **Center empty-state "Upload files" button (ELITEA-1824)** | `artifacts-upload-files-empty-state-button` | added this run (implementer, `automation/testids` commit `9d839c3a`) | `ArtifactTableNoFiles.jsx`'s `<Button.BaseBtn>` (case step 5) — analyst pass confirmed via source zero `data-testid` prop existed on EITHER branch; implementer added the testid directly on the `<Button.BaseBtn>` prop. Distinct element from the toolbar upload button below — confirmed live via DOM inspection (`document.querySelectorAll('button')` scan) they render as two separate buttons with different classes/positions. Implemented and driven via `ArtifactsPage.upload_files_via_empty_state()`, genuinely exercised (not just present) in the shipped test. |
 | Toolbar "Upload files" button (top-right) | `artifacts-upload-files-button` | on-main ✓ | `ArtifactTableToolbar.jsx`; case step 16's entry point; confirmed live parent carries `aria-label="Upload files"` (matches case's tooltip note) |
 | "Upload files to ..." dialog | `artifacts-upload-path-dialog` | on-automation/testids only | existing (ELITEA-1832) |
 | Upload path input | `artifacts-upload-path-input` | on-automation/testids only | prefix segment is a read-only startAdornment; type only the subfolder suffix, no leading `/`. **IMPLEMENTER CORRECTION**: resolves to the `MuiFormControl-root` WRAPPER only — its `text_content()` never includes the typed value (native `<input>` values aren't part of `textContent`). Use the new row below for the editable input itself. |
 | **Upload path input — editable `<input>` (ELITEA-1824)** | `artifacts-upload-path-input-field` | added this run (implementer, `automation/testids` commit `5fc7549e`) | `UploadPathDialog.jsx`, added via `slotProps.htmlInput` (same pattern as `UserInput.jsx`/`CreateSkillForm.jsx`) — the actual native `<input>`, distinct from the wrapper above. Read via `.input_value()` for the typed subfolder suffix; click+type on THIS testid directly (a center-click on the wrapper can miss the input when a long bucket name makes the read-only prefix occupy most of the field's width). |
 | Upload path "Upload" button | `artifacts-upload-path-upload-button` | on-automation/testids only | existing (ELITEA-1832) |
 | Left-panel tree item (file/folder) | `artifacts-tree-item-{key}` (dynamic) | on-automation/testids only | `FileTreeItem.jsx`; **folder keys carry a trailing slash** (`artifacts-tree-item-a1/`), confirmed live this run — file keys do not (`artifacts-tree-item-sample.txt`) |
-| **Bucket-row / tree-item "selected/highlighted" state (steps 38, 40)** | none | **testid needed: add `data-selected="true"/"false"` attribute** on the ALREADY-testid'd `artifacts-bucket-row-{name}` and `artifacts-tree-item-{key}` elements — NOT a new testid, per `.agents/testing.md` § Locator policy ("state via data-* attribute, never a separate testid") | Confirmed live via `getAttribute` inspection on both elements: zero `data-*` state attribute exists today, the ONLY signal of "selected" is a `background-color: rgba(41, 184, 245, 0.15)` style change via an unstable emotion-hash CSS class (regenerated per build, e.g. `css-guc4qj`) — not automatable per policy as-is |
-| **Main-panel breadcrumb header (steps 14, 35, 40, 44)** | none | **testid needed: `artifacts-breadcrumb-bucket-label`** (bucket-name span, rendered by `ArtifactTableToolbar.jsx`) **+ `artifacts-breadcrumb-folder-label`** (dynamic, one per crumb, rendered by `BreadcrumbNavigation.jsx`'s per-crumb `<Typography variant="headingSmall">`) | Confirmed via source this run (`BreadcrumbNavigation.jsx`): crumbs render as bare `<Typography>` with zero `data-testid`. The folder label is CONDITIONALLY present (absent at bucket-root state, present when inside a subfolder) — same conditional-rendering shape as the existing `ARTIFACTS_TREE_ITEM` pattern, not a state-toggled testid violation. |
+| **Bucket-row / tree-item "selected/highlighted" state (steps 38, 40, ELITEA-1824)** | `data-selected="true"/"false"` attribute | added this run (implementer, `automation/testids` commit `9d839c3a`) | Attribute added on the ALREADY-testid'd `artifacts-bucket-row-{name}` (`BucketItem.jsx`) and `artifacts-tree-item-{key}` (`FileTreeItem.jsx`) elements — NOT a new testid, per `.agents/testing.md` § Locator policy ("state via data-* attribute, never a separate testid"). Analyst pass confirmed live via `getAttribute` inspection zero `data-*` state attribute existed at that time (only signal was an unstable emotion-hash CSS class, e.g. `css-guc4qj`, regenerated per build). Implemented and read via `ArtifactsPage.is_bucket_selected()` / `is_tree_item_selected()`, genuinely asserted in the shipped test. |
+| **Main-panel breadcrumb header (steps 14, 35, 40, 44, ELITEA-1824)** | `artifacts-breadcrumb-bucket-label` (bucket-name span, `ArtifactTableToolbar.jsx`) + `artifacts-breadcrumb-folder-label` (dynamic, one per crumb, `BreadcrumbNavigation.jsx`) | added this run (implementer, `automation/testids` commit `9d839c3a`) | Analyst pass confirmed via source (`BreadcrumbNavigation.jsx`) crumbs rendered as bare `<Typography>` with zero `data-testid` at that time; implementer added both testids directly on the respective `<Typography variant="headingSmall">` elements. The folder label is CONDITIONALLY present (absent at bucket-root state, present when inside a subfolder) — same conditional-rendering shape as the existing tree-item pattern, not a state-toggled testid violation. Implemented and read via `ArtifactsPage.get_breadcrumb_bucket_text()` / `get_breadcrumb_folder_names()`, genuinely asserted in the shipped test. |
 | File list container / file row / folder row | `artifacts-file-list` / `artifacts-file-row` / `artifacts-folder-row` | on-main ✓ | existing |
 | File-row actions dot-menu trigger | `artifact-actions-{filename}-menu-button` (dynamic) | on-main ✓ | existing (ELITEA-1839); used this run only for exploration cleanup (deleting a mis-placed file), not required by the case's own steps |
 | File-row "Delete" menu item | `artifacts-file-delete-menuitem` | on-automation/testids only | computed via the shared `DotMenu`/`BasicMenuItem` `key`→`${key}-menuitem` mechanism (`ArtifactRowActions.jsx`'s `key: 'artifacts-file-delete'`), same pattern as `bucket-menu-upload-files-menuitem` — not a literal string in source, hence not directly `git grep`-able by the exact testid string |
@@ -571,15 +596,17 @@ Step 23) so all 46 case steps were verified end-to-end live.
   `navigate_to_bucket_folder(bucket_name, "a1")` directly for reaching the folder-selected
   precondition state, and only use the raw click-toggle sequence to specifically exercise
   the toggle behavior itself as its own assertion (not as a means to reach a state).
-- **Breadcrumb assertions (steps 11/26/31/35)**: until the `artifacts-breadcrumb-bucket-
-  label`/`artifacts-breadcrumb-folder-label` testids are added, there is no compliant
-  handle — these steps are blocked at `testid needed:` status, not directly automatable
-  today. Do not substitute a text-content scan of `main` as a workaround (violates the
-  testid-only policy); wait for the implementer to add the testids via `add-data-testid`
-  first.
-- **Selected/highlighted-state assertions (steps 38/40)**: same — blocked on the
-  `data-selected` attribute addition. Do not substitute a CSS-class or computed-style
-  check (unstable, regenerated per build) as a permanent solution.
+- **Breadcrumb assertions (steps 11/26/31/35) — IMPLEMENTED (Phase 2 exploration):** the
+  `artifacts-breadcrumb-bucket-label`/`artifacts-breadcrumb-folder-label` testids were
+  added via `automation/testids` commit `9d839c3a` (no text-content scan of `main`
+  needed — the testid-only policy is satisfied directly). `ArtifactsPage` exposes
+  `get_breadcrumb_bucket_text()` and `get_breadcrumb_folder_names()`; both are genuinely
+  asserted at every AFS step listed above.
+- **Selected/highlighted-state assertions (steps 38/40) — IMPLEMENTED (Phase 2
+  exploration):** the `data-selected` attribute was added on `artifacts-bucket-row-{name}`
+  and `artifacts-tree-item-{key}` in the same commit (`9d839c3a`) — no CSS-class or
+  computed-style check needed. `ArtifactsPage` exposes `is_bucket_selected()` and
+  `is_tree_item_selected()`; both are genuinely asserted at every AFS step listed above.
 - Fixtures: `artifact_bucket` (`automation/fixtures/data_fixtures.py:455`) for the bucket;
   `tmp_path` for all three files, reusing `_minimal_png_bytes()` from
   `test_artifacts_upload_duplicate_cancel.py:75-91` for the PNG.
