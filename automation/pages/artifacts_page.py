@@ -419,19 +419,68 @@ class ArtifactsPage(BasePage):
         logger.info("Navigated to Artifacts page")
 
     @action("Navigate to bucket")
-    def navigate_to_bucket(self, bucket_name: str, timeout: int = 15000) -> None:
+    def navigate_to_bucket(
+        self, bucket_name: str, timeout: int = 15000, _retry: bool = True
+    ) -> None:
         """Navigate directly to a specific bucket via URL and wait for it to load.
 
         Sets ``?bucket={bucket_name}`` in the query string. This is more
         reliable than clicking the bucket in the list because it avoids the
         left-panel scroll and click-interception issues.
 
+        **Known product race (issue #638), same guard as
+        :meth:`navigate_to_bucket_folder`:** on a FRESH page load, EliteaUI's
+        ``Artifacts.jsx`` can still be resolving the selected project id from
+        Redux when this navigation lands, silently stripping the ``bucket``
+        URL param and falling back to the most-recently-used bucket with NO
+        error shown. ``_wait_for_bucket_panel`` doesn't catch this: it
+        loose-matches *any* text in ``main``, including the target bucket's
+        own name still sitting in the left-panel list even while a DIFFERENT
+        bucket is the one actually selected (confirmed live via PR #661's
+        independent re-run — the failure screenshot showed bucket "aa" open
+        instead of the seeded target). ELITEA-1847's original diagnosis
+        attributed the resulting empty-file-table symptom to a separate
+        "S3-listing-fetch lag" race and added :meth:`wait_for_file_count` to
+        poll for it — but with the WRONG bucket loaded, that locator is
+        stably (not transiently) empty and can never converge no matter the
+        timeout. This method re-checks the LIVE URL's ``bucket`` query param
+        after settling and retries the navigation once if it was stripped —
+        by the second attempt the project id is already resolved from the
+        first, so the race window is gone. :meth:`wait_for_file_count`
+        remains a legitimate condition-based wait for the file table to
+        settle (harmless if no fetch lag exists), it just isn't a substitute
+        for loading the correct bucket in the first place.
+
         Args:
             bucket_name: Exact name of the bucket (case-sensitive).
             timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            AssertionError: If the ``bucket`` URL param is still wrong after
+                one retry (i.e. the race fired twice in a row).
         """
         super().navigate(f"/artifacts?bucket={bucket_name}")
         self._wait_for_bucket_panel(bucket_name, timeout=timeout)
+
+        live_bucket_param = urllib.parse.parse_qs(
+            urllib.parse.urlparse(self.page.url).query
+        ).get("bucket", [None])[0]
+        if live_bucket_param != bucket_name:
+            if not _retry:
+                raise AssertionError(
+                    f"Navigation to bucket '{bucket_name}' did not stick "
+                    f"after a retry — URL's bucket param is "
+                    f"{live_bucket_param!r} instead (known product race, "
+                    f"issue #638)"
+                )
+            logger.warning(
+                "Bucket param lost after navigating to '%s' (URL now has %r) "
+                "— retrying once (known product race, issue #638)",
+                bucket_name, live_bucket_param,
+            )
+            self.navigate_to_bucket(bucket_name, timeout=timeout, _retry=False)
+            return
+
         logger.info("Navigated to bucket '%s'", bucket_name)
 
     @action("Navigate to bucket subfolder")
@@ -1087,18 +1136,25 @@ class ArtifactsPage(BasePage):
     def wait_for_file_count(self, expected_count: int, timeout: int = 15000) -> None:
         """Wait until the file table shows exactly *expected_count* rows.
 
-        Condition-based wait for a transient race (ELITEA-1847, confirmed
-        live 3/8 exploratory runs): the breadcrumb bucket-name label renders
-        synchronously from the URL's ``bucket`` query param, independent of
-        the S3-listing fetch that actually populates the file table — so
-        :meth:`navigate_to_bucket`'s own ``_wait_for_bucket_panel()`` (which
-        only waits for that name text to appear) can return *before* the
-        listing fetch has completed. A bare :meth:`get_file_names` call
-        immediately afterward can then transiently read ``[]`` even though
-        the bucket demonstrably has files, self-correcting within ~1-2s.
-        Uses Playwright's own auto-retrying ``expect(...).to_have_count()``
-        on the same row locator :meth:`get_file_names`/:meth:`get_file_count`
-        already use — never a fixed sleep.
+        Condition-based wait for the file table to settle after navigation.
+        ELITEA-1847's original diagnosis (3/8 exploratory runs) attributed
+        the empty-table symptom this guards against to a standalone
+        "S3-listing-fetch lag" race — independent of the bucket-name text
+        :meth:`navigate_to_bucket`'s ``_wait_for_bucket_panel()`` waits on —
+        and added this method to poll past it. PR #661's independent re-run
+        (2/5 clean-process runs) showed that diagnosis was WRONG: the
+        failure screenshot had an unrelated bucket ("aa") open instead of
+        the seeded target, i.e. the already-known issue #638 URL-param-loss
+        race, which :meth:`navigate_to_bucket` now retries around directly
+        (same guard as :meth:`navigate_to_bucket_folder`). With the correct
+        bucket loaded, this method remains a legitimate, harmless
+        condition-based wait for any residual render lag in the file table
+        — it just isn't a substitute for loading the correct bucket, since
+        a stably-wrong-bucket empty table can never converge here no matter
+        the timeout. Uses Playwright's own auto-retrying
+        ``expect(...).to_have_count()`` on the same row locator
+        :meth:`get_file_names`/:meth:`get_file_count` already use — never a
+        fixed sleep.
 
         Args:
             expected_count: The exact number of file/folder rows to wait for.

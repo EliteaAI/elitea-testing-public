@@ -162,11 +162,13 @@ class TestArtifactDeleteSubfolderCheckbox:
             "4 top-level items (a1, folder-a, sample - Copy.md, sample.md)"
         ):
             artifacts_page.navigate_to_bucket(bucket_name, timeout=NAVIGATION_TIMEOUT)
-            # Condition-based wait for a transient race (ELITEA-1847): the
-            # breadcrumb bucket-name label `navigate_to_bucket()` waits on
-            # renders synchronously from the URL, independent of the
-            # S3-listing fetch that populates the file table — see
-            # `wait_for_file_count()`'s own docstring.
+            # `navigate_to_bucket()` now carries the same retry-on-URL-param
+            # -loss guard as `navigate_to_bucket_folder()` (issue #638): PR
+            # #661's independent re-run showed the ORIGINAL 3/8 exploratory
+            # failures were the app silently loading an unrelated bucket, not
+            # a standalone S3-listing-fetch lag as first diagnosed — see
+            # `navigate_to_bucket()`'s docstring. `wait_for_file_count()` is
+            # kept as a real condition-based settle wait for the file table.
             artifacts_page.wait_for_file_count(4, timeout=NAVIGATION_TIMEOUT)
             file_names = set(artifacts_page.get_file_names(timeout=UI_ELEMENT_TIMEOUT))
             assert file_names == {

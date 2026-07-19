@@ -361,15 +361,36 @@ implementation and landed alongside the test:
    on the wrapper's own testid locator lands on — and fires the `onClick` of — the inner button with no
    scoped-selector chaining at all (simpler than the AFS's own "testid-on-wrapper + scoped click-target via
    `.locator("button")`" suggestion, and avoids a raw-tag-selector chain entirely).
-3. **New `wait_for_file_count()` method + a previously-undocumented transient race.** Local runs surfaced a
-   genuine flake (3 failures in 8 runs) in Test Step 1: `get_file_names()` called immediately after
-   `navigate_to_bucket()` occasionally read `[]` for a demonstrably non-empty bucket. Root cause: the breadcrumb
-   bucket-name label `_wait_for_bucket_panel()` waits on renders synchronously from the URL's `bucket` query
-   param, independent of the S3-listing fetch that actually populates the file table — so the existing wait can
-   return before that fetch completes. This is a DIFFERENT race from the one already documented on
-   `navigate_to_bucket_folder()` (issue #638, project-id resolution), specific to the plain `navigate_to_bucket()`
-   path this case uses. Fixed via a new, additive, reusable `ArtifactsPage.wait_for_file_count(expected_count,
-   timeout)` (Playwright auto-retrying `expect(...).to_have_count(...)` on the existing file-row locator — no
-   fixed sleep), called once after Step 1's navigation and again after Step 6's delete-confirm before Step 8's
-   post-delete read. 5/5 clean re-runs after the fix (previously 3/8 flaky). `navigate_to_bucket()`/
-   `_wait_for_bucket_panel()` themselves were left untouched (3+ existing callers; additive-only).
+3. **New `wait_for_file_count()` method — real, but NOT the actual root cause of the observed flake (correction
+   below).** Local runs surfaced a genuine flake (3 failures in 8 runs) in Test Step 1: `get_file_names()` called
+   immediately after `navigate_to_bucket()` occasionally read `[]` for a demonstrably non-empty bucket. The
+   ORIGINAL diagnosis in this AFS (this paragraph, as first written) attributed this to the breadcrumb bucket-name
+   label `_wait_for_bucket_panel()` waits on rendering synchronously from the URL's `bucket` query param,
+   independent of the S3-listing fetch that actually populates the file table — and claimed this was "a DIFFERENT
+   race from the one already documented on `navigate_to_bucket_folder()` (issue #638...)". **That diagnosis was
+   wrong** (see item 4 below) — added `ArtifactsPage.wait_for_file_count(expected_count, timeout)` (Playwright
+   auto-retrying `expect(...).to_have_count(...)` on the existing file-row locator — no fixed sleep; kept as a
+   legitimate settle-wait, harmless even though it wasn't the fix for the actual race) and reported "5/5 clean
+   re-runs after the fix" — a claim that did NOT hold under the reviewer's independent re-run (2/5 failures, see
+   item 4).
+4. **CORRECTION (R2 fix-only round, reviewer-driven): item 3's flake was issue #638, not a separate race.** An
+   independent reviewer re-ran the merged test 5× in an isolated worktree and got 3 pass / 2 fail — both failures
+   hit identically at `wait_for_file_count()` with the row-count locator STABLY stuck at 0 (not transiently empty,
+   confirmed by both failures timing out at the full 15s). The failure screenshot showed the app had silently
+   opened the WRONG bucket ("aa", an unrelated pre-existing bucket) instead of the freshly-seeded target — the
+   exact symptom of issue #638 (project-id-resolution race stripping the `bucket` URL param before the
+   auto-select-bucket effect reads it), already root-caused and guarded for the sibling method
+   `navigate_to_bucket_folder()`. The plain `navigate_to_bucket()` this case uses had no such guard.
+   `wait_for_file_count()` was solving the wrong layer: with the WRONG bucket loaded, the row-count locator is
+   stably empty and can never converge no matter the timeout — item 3's "S3-listing-fetch lag" framing doesn't fit
+   a stably-empty-forever locator, and in hindsight should have been recognized as the same #638 symptom at a
+   second call site. **Fix:** `navigate_to_bucket()` (`automation/pages/artifacts_page.py`) now carries the same
+   retry-on-URL-param-loss guard as `navigate_to_bucket_folder()` — re-checks the live URL's `bucket` query param
+   after `_wait_for_bucket_panel()` settles and retries the navigation once (non-recursive beyond one retry) if
+   the param was silently stripped. This touches a shared method with 4 other merged callers
+   (`test_artifacts_upload_duplicate_cancel.py`, `test_artifacts_upload_three_options_verify_selection.py`,
+   `test_artifacts_multi_file.py`, `test_artifacts_upload_multiple_files.py`); the change is purely defensive (only
+   fires when the URL param check fails — never on the happy path any existing caller exercises) and all 4
+   callers were re-run post-fix (see PR #661 description for the full re-run table). `wait_for_file_count()` is
+   left in place — it's a real, harmless condition-based wait — but its docstring is corrected to no longer claim
+   an independent root cause.
