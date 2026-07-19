@@ -195,8 +195,11 @@ class ArtifactsPage(BasePage):
 
     success_toast_message = LocatorDescriptor(
         testid="toast-message",
-        description="Generic app-wide success toast — not confirmed to fire for "
-        "artifact uploads specifically; used here to assert its ABSENCE",
+        description="Generic app-wide success toast. ELITEA-1832 confirmed its "
+        "ABSENCE on the client-side-only duplicate-upload path; ELITEA-1826 "
+        "independently confirmed its PRESENCE with the exact text 'Your file(s) "
+        "have been successfully uploaded!' on the successful (no-duplicates) "
+        "multi-file upload path — both live-verified, not mutually exclusive.",
     )
 
     # ------------------------------------------------------------------
