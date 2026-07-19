@@ -16,6 +16,7 @@ Actions:
 """
 
 import logging
+import urllib.parse
 from playwright.sync_api import Page, Download
 
 from .base_page import BasePage
@@ -141,6 +142,34 @@ class ArtifactsPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # File row actions dot-menu (ELITEA-1839)
+    # ------------------------------------------------------------------
+
+    # Dynamic testid template — dot-menu trigger for a given file row.
+    # The parameter is the file's BASE name only (row.id = item.name in
+    # ArtifactTable.jsx), even for files nested in a subfolder.
+    ARTIFACT_ACTIONS_MENU_BUTTON = '[data-testid="artifact-actions-{}-menu-button"]'
+
+    download_menu_item = LocatorDescriptor(
+        testid="artifacts-file-download-menuitem",
+        description="'Download' item inside a file row's dot-menu dropdown",
+    )
+
+    delete_menu_item = LocatorDescriptor(
+        testid="artifacts-file-delete-menuitem",
+        description="'Delete' item inside a file row's dot-menu dropdown — "
+        "visibility-only in ELITEA-1839, never clicked",
+    )
+
+    zip_download_progress_dialog = LocatorDescriptor(
+        testid="artifacts-zip-download-progress-dialog",
+        description="'Preparing ...zip' progress dialog — architecturally "
+        "unreachable from the single-file dropdown download path "
+        "(ArtifactTable.jsx onDownload never calls startZipDownload); used "
+        "to assert its ABSENCE as a defensive/regression guard (ELITEA-1839)",
+    )
+
+    # ------------------------------------------------------------------
     # Init
     # ------------------------------------------------------------------
 
@@ -176,6 +205,80 @@ class ArtifactsPage(BasePage):
         super().navigate(f"/artifacts?bucket={bucket_name}")
         self._wait_for_bucket_panel(bucket_name, timeout=timeout)
         logger.info("Navigated to bucket '%s'", bucket_name)
+
+    @action("Navigate to bucket subfolder")
+    def navigate_to_bucket_folder(
+        self, bucket_name: str, folder: str, timeout: int = 15000, _retry: bool = True
+    ) -> None:
+        """Navigate directly into a bucket's subfolder via URL, in one step.
+
+        New sibling method (ELITEA-1839) — :meth:`navigate_to_bucket` has 3
+        merged callers, so it stays byte-identical rather than growing an
+        optional ``folder`` kwarg (additive-only on shared-caller files).
+
+        Sets ``?bucket={bucket_name}&folder={folder}`` in the query string.
+        Confirmed live: the ``folder`` param composes with ``bucket`` in a
+        single navigation, reaching the same subfolder state as a bucket
+        click + a left-panel-tree folder click (:meth:`navigate_into_folder`)
+        without either UI interaction — faster and avoids left-panel
+        scroll/click-interception issues for callers that already know the
+        target subfolder path.
+
+        **Known product race, confirmed live 2/5 local runs (ELITEA-1839
+        exploration; filed as
+        https://github.com/EliteaAI/elitea-testing-public/issues/638):** on a
+        FRESH page load, EliteaUI's
+        ``Artifacts.jsx`` can still be resolving the selected project id from
+        Redux when this navigation lands. If that resolution completes a
+        render *after* mount, a ``selectedProjectId !== queryParams.projectId``
+        effect fires and calls ``setSearchParams({})`` — silently stripping
+        the ``bucket``/``folder`` params from the URL — before the
+        auto-select-bucket effect ever reads them. The app then falls back to
+        the most-recently-used bucket with NO error shown (not even the
+        'Bucket not found' dialog the app has for the normal not-found case,
+        since by then the URL param is simply gone). ``_wait_for_bucket_panel``
+        doesn't catch this: it loose-matches *any* text in ``main``, including
+        the target bucket's own (untruncated) name still sitting in the
+        left-panel list even while a DIFFERENT bucket is the one actually
+        selected. This method re-checks the LIVE URL's ``bucket`` query param
+        after settling and retries the navigation once if it was stripped —
+        by the second attempt the project id is already resolved from the
+        first, so the race window is gone.
+
+        Args:
+            bucket_name: Exact name of the bucket (case-sensitive).
+            folder: Subfolder path to deep-link directly into (e.g. ``"a1"``).
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            AssertionError: If the ``bucket`` URL param is still wrong after
+                one retry (i.e. the race fired twice in a row).
+        """
+        super().navigate(f"/artifacts?bucket={bucket_name}&folder={folder}")
+        self._wait_for_bucket_panel(bucket_name, timeout=timeout)
+
+        live_bucket_param = urllib.parse.parse_qs(
+            urllib.parse.urlparse(self.page.url).query
+        ).get("bucket", [None])[0]
+        if live_bucket_param != bucket_name:
+            if not _retry:
+                raise AssertionError(
+                    f"Navigation to bucket '{bucket_name}' folder '{folder}' "
+                    f"did not stick after a retry — URL's bucket param is "
+                    f"{live_bucket_param!r} instead (known product race, "
+                    f"issue #638)"
+                )
+            logger.warning(
+                "Bucket param lost after navigating to '%s' (URL now has %r) "
+                "— retrying once (known product race, issue #638)",
+                bucket_name, live_bucket_param,
+            )
+            self.navigate_to_bucket_folder(
+                bucket_name, folder, timeout=timeout, _retry=False
+            )
+            return
+
+        logger.info("Navigated to bucket '%s', folder '%s'", bucket_name, folder)
 
     # ------------------------------------------------------------------
     # Wait helpers
@@ -532,6 +635,65 @@ class ArtifactsPage(BasePage):
         logger.info(
             "Download started for '%s' → suggested filename: %s",
             filename, download.suggested_filename,
+        )
+        return download
+
+    @action("Open file actions dot-menu")
+    def open_file_actions_menu(self, filename: str, timeout: int = 10000) -> None:
+        """Click the dot-menu trigger for *filename* to open its actions dropdown.
+
+        Testid-compliant replacement for the legacy :meth:`download_file`'s
+        own hover-reveal + raw-CSS trigger lookup — retained as-is there for
+        ELITEA-1327's own signature/behavior, not copied here. Confirmed live
+        (ELITEA-1839, 2/2 runs): the trigger button is visible WITHOUT
+        hovering the row first in the current app — no hover-then-500ms-wait
+        sequence is needed.
+
+        Args:
+            filename: Exact base file name (e.g. ``"sample.txt"``) — the
+                dot-menu trigger testid uses the base name only, even for
+                files nested in a subfolder.
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            TimeoutError: If the trigger or the opened menu's 'Download' item
+            is not visible within *timeout*.
+        """
+        logger.info("Opening actions dot-menu for '%s'", filename)
+        trigger = self.page.locator(self.ARTIFACT_ACTIONS_MENU_BUTTON.format(filename))
+        trigger.wait_for(state="visible", timeout=timeout)
+        trigger.click()
+        # Wait for the menu to actually render before returning control —
+        # 'Download' is always present for a file row (ArtifactRowActions.jsx).
+        self.download_menu_item.wait_for(state="visible", timeout=timeout)
+        logger.info("Actions dot-menu open for '%s'", filename)
+
+    @action("Click 'Download' menu item")
+    def click_download_menu_item(self, timeout: int = 5000) -> Download:
+        """Click the open dropdown's 'Download' item and capture the download.
+
+        Wraps the click in ``page.expect_download`` with a deliberately
+        SHORT default timeout (ELITEA-1839): a genuinely blocking ZIP-prep
+        flow would exceed it, so the timeout itself doubles as a meaningful
+        immediacy assertion rather than just a wait.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the download event.
+
+        Returns:
+            Playwright ``Download`` object (caller can use ``download.path()``
+            to access the downloaded file's bytes).
+
+        Raises:
+            TimeoutError: If no download event fires within *timeout*.
+        """
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.download_menu_item.click()
+
+        download = download_info.value
+        logger.info(
+            "Download started via dropdown → suggested filename: %s",
+            download.suggested_filename,
         )
         return download
 
