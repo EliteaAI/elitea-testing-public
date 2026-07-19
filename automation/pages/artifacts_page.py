@@ -17,7 +17,7 @@ Actions:
 
 import logging
 import urllib.parse
-from playwright.sync_api import Page, Download
+from playwright.sync_api import Page, Download, expect
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -346,6 +346,55 @@ class ArtifactsPage(BasePage):
         description="'Cancel' button inside the ZIP-download progress dialog "
         "(ELITEA-1840) — visibility-only in this case, never clicked "
         "(Cancel-flow testing is out of scope)",
+    )
+
+    # ------------------------------------------------------------------
+    # Bulk delete flow (ELITEA-1847)
+    # ------------------------------------------------------------------
+
+    delete_files_button = LocatorDescriptor(
+        testid="artifacts-delete-files-button",
+        description="Toolbar 'Delete selected/all files' icon button wrapper "
+        "(ELITEA-1847 — new testid, threaded via DeleteEntityButton.jsx's "
+        "caller-supplied `testId` prop, wired only at ArtifactTableToolbar.jsx's "
+        "call site). MUI clones the Tooltip's dynamic title ('Delete selected "
+        "files' / 'Delete all files', depending on whether every row is "
+        "currently selected) onto this wrapping <Box component=\"span\"> as a "
+        "static aria-label; the inner IconButton itself carries a FIXED, "
+        "non-dynamic aria-label='delete entity' and has no testid of its own. "
+        "Confirmed live (ELITEA-1847): the wrapper's bounding box is "
+        "pixel-identical to the inner button's, so clicking this locator "
+        "directly fires the button's own onClick — no `.locator(\"button\")` "
+        "chaining needed for either the tooltip-text read or the click.",
+    )
+
+    delete_confirm_dialog = LocatorDescriptor(
+        testid="delete-confirm-dialog",
+        description="Delete-confirmation modal root (DeleteEntityModal.jsx, "
+        "shared component, already testid'd) — reused here (ELITEA-1847) to "
+        "confirm deletion of selected artifacts files/folders.",
+    )
+
+    delete_confirm_message = LocatorDescriptor(
+        testid="delete-confirm-message",
+        description="Delete-confirmation modal's message text (ELITEA-1847 — "
+        "new testid added directly to DeleteEntityModal.jsx's existing "
+        "id='alert-dialog-description' Typography, which is kept for a11y). "
+        "Implementer correction to the AFS's own suggestion (reading the "
+        "message via the bare '#alert-dialog-description' id, chained off the "
+        "testid'd dialog root): this project's locator policy requires scoped "
+        "sub-selectors to themselves be data-testid-based (established "
+        "ELITEA-1840 precedent, same reasoning that produced the ZIP dialog's "
+        "own -title/-counter/-current-file testids rather than raw tag "
+        "selectors) — so a testid was added instead of chaining a raw id "
+        "selector off :attr:`delete_confirm_dialog`.",
+    )
+
+    delete_confirm_button = LocatorDescriptor(
+        testid="delete-confirm-button",
+        description="'Delete' (confirm) button inside the delete-confirmation "
+        "modal (DeleteEntityModal.jsx) — do not confuse with "
+        ":attr:`delete_files_button`, the toolbar icon that OPENS this modal.",
     )
 
     # ------------------------------------------------------------------
@@ -1035,6 +1084,29 @@ class ArtifactsPage(BasePage):
             logger.info("No files found in bucket (empty or not loaded)")
             return 0
 
+    def wait_for_file_count(self, expected_count: int, timeout: int = 15000) -> None:
+        """Wait until the file table shows exactly *expected_count* rows.
+
+        Condition-based wait for a transient race (ELITEA-1847, confirmed
+        live 3/8 exploratory runs): the breadcrumb bucket-name label renders
+        synchronously from the URL's ``bucket`` query param, independent of
+        the S3-listing fetch that actually populates the file table — so
+        :meth:`navigate_to_bucket`'s own ``_wait_for_bucket_panel()`` (which
+        only waits for that name text to appear) can return *before* the
+        listing fetch has completed. A bare :meth:`get_file_names` call
+        immediately afterward can then transiently read ``[]`` even though
+        the bucket demonstrably has files, self-correcting within ~1-2s.
+        Uses Playwright's own auto-retrying ``expect(...).to_have_count()``
+        on the same row locator :meth:`get_file_names`/:meth:`get_file_count`
+        already use — never a fixed sleep.
+
+        Args:
+            expected_count: The exact number of file/folder rows to wait for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        expect(self._file_rows()).to_have_count(expected_count, timeout=timeout)
+        logger.info("File table settled at %d row(s)", expected_count)
+
     def get_total_file_count_from_pagination(self) -> int:
         """Parse the total file count from the pagination info text.
 
@@ -1174,6 +1246,100 @@ class ArtifactsPage(BasePage):
         states = {name: self.is_file_checkbox_checked(name, timeout=timeout) for name in names}
         logger.info("Checkbox states: %s", states)
         return states
+
+    # ------------------------------------------------------------------
+    # Bulk delete flow (ELITEA-1847)
+    # ------------------------------------------------------------------
+
+    def get_delete_button_tooltip_text(self, timeout: int = 10000) -> str:
+        """Return the toolbar delete icon's tooltip text.
+
+        Reads the STATIC aria-label MUI's Tooltip clones onto
+        :attr:`delete_files_button`'s wrapping element — no hover or
+        ``role="tooltip"`` popper wait needed, same no-hover-required
+        technique already established for other MUI tooltips in this
+        codebase (ELITEA-1809 memory). The text reflects "Delete selected
+        files" or "Delete all files" depending on whether every currently
+        rendered row is selected.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The tooltip text, e.g. ``"Delete selected files"``.
+        """
+        self.delete_files_button.wait_for(state="visible", timeout=timeout)
+        return self.delete_files_button.get_attribute("aria-label") or ""
+
+    @action("Click toolbar 'Delete files' button")
+    def click_delete_files_button(self, timeout: int = 10000) -> None:
+        """Click the toolbar delete icon to open the delete-confirmation modal.
+
+        Confirmed live (ELITEA-1847): :attr:`delete_files_button` resolves to
+        the wrapping ``<Box component="span">``, whose bounding box is
+        pixel-identical to the inner (testid-less) ``IconButton`` — clicking
+        the wrapper directly fires the button's own ``onClick``, no
+        ``.locator("button")`` chaining required.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the button to
+                become visible before clicking.
+        """
+        self.delete_files_button.wait_for(state="visible", timeout=timeout)
+        self.delete_files_button.click()
+        logger.info("Clicked toolbar 'Delete files' button")
+
+    def get_delete_confirm_message_text(self, timeout: int = 10000) -> str:
+        """Return the delete-confirmation modal's message text.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The message's stripped text content, e.g.
+            ``"Are you sure to delete the selected files?"``.
+        """
+        self.delete_confirm_message.wait_for(state="visible", timeout=timeout)
+        return (self.delete_confirm_message.text_content() or "").strip()
+
+    @action("Confirm delete (delete-confirmation modal)")
+    def confirm_delete(self, timeout: int = 15000):
+        """Click 'Delete' in the confirmation modal and return the DELETE response.
+
+        Wraps the click in ``page.expect_response`` (the same idiom already
+        used elsewhere in this page object, e.g.
+        :meth:`click_bucket_save_button`), matching the artifacts DELETE
+        endpoint. Confirmed live (ELITEA-1847) this fires exactly one request
+        per confirm click, whose ``fname[]`` params are the selected
+        folder(s)' fully-expanded underlying file keys (never a bare folder
+        key) — see ``ArtifactTable.jsx``'s
+        ``expandFoldersToAllItems()``/``getItemsUnderFolder()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the response.
+
+        Returns:
+            Playwright ``Response`` object for the matching DELETE request.
+        """
+        with self.page.expect_response(
+            lambda r: "artifacts/artifacts" in r.url and r.request.method == "DELETE",
+            timeout=timeout,
+        ) as response_info:
+            self.delete_confirm_button.click()
+        return response_info.value
+
+    # Note (ELITEA-1847): the AFS's Axis-2 "cancel-path regression guard"
+    # (select a row, open the modal, click Cancel, confirm zero network +
+    # item still present) was verified live during analyst exploration via
+    # a getByRole("button", {name: "Cancel"}) lookup — explicitly flagged in
+    # the AFS as an exploratory aside outside this case's asserted scope,
+    # not a handle to ship. DeleteEntityModal.jsx's Cancel button carries no
+    # testid (confirmed absent, out of this case's required-elements list
+    # per the AFS's Concrete Handles table) and this project's locator
+    # policy forbids a non-testid `get_by_role` addition in a page object
+    # regardless of scope — so no `cancel_delete()` method is added here.
+    # A future case that needs to assert/drive Cancel specifically should
+    # add a testid via `add-data-testid` first (same AFS guidance).
 
     # ------------------------------------------------------------------
     # Upload flow (ELITEA-1832 — duplicate handling)

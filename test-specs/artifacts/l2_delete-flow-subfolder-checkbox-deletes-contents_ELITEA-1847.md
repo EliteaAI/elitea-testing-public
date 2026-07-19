@@ -336,3 +336,40 @@ order), not an analyst-side blocker — it's a single additive, well-precedented
 - Select-all-checkbox variant (deleting via the header "select all" checkbox, which would flip the tooltip/title
   to "Delete all files") is **not** covered by this case and is out of this case's scope — if a sibling TMS case
   exists for that variant, do not fold it into this implementation.
+
+## Implementer Amendments (Phase 2 Explore, ELITEA-1847)
+
+Two deviations from this AFS's own § Automation Hints / § Concrete Handles, both verified live before
+implementation and landed alongside the test:
+
+1. **`get_delete_confirm_message_text()` reads a NEW `delete-confirm-message` testid, not the bare
+   `#alert-dialog-description` id this AFS suggested.** The AFS's own suggestion (chaining `.locator()` off
+   `delete_confirm_dialog` to reach the id-selected `<Typography>`) conflicts with an established project
+   precedent (ELITEA-1840's own memory finding: "this project's strict locator policy forbids a scoped raw-tag
+   selector... even inside a real testid-anchored parent — scoped sub-selectors must themselves be
+   `[data-testid="…"]`-based" — the same reasoning that produced the ZIP dialog's own `-title`/`-counter`/
+   `-current-file` testids rather than raw tag/id selectors). Verified live via `add-data-testid`:
+   `data-testid="delete-confirm-message"` added directly to `DeleteEntityModal.jsx`'s existing
+   `id="alert-dialog-description"` Typography (the hand-authored a11y `id` is kept, unchanged) — a third generic,
+   non-feature-scoped testid on this already-shared modal (alongside its existing `delete-confirm-dialog`/
+   `delete-confirm-button`), landed on `automation/testids` (commit `a661d92d`). `get_delete_confirm_message_text()`
+   reads this testid directly with zero `.locator()` chaining. Confirmed live the resulting text is byte-identical
+   to the AFS's own asserted live message (`"Are you sure to delete the selected files?"`).
+2. **`click_delete_files_button()` clicks `delete_files_button` directly — no `.locator("button")` scoping
+   needed.** Confirmed live (CDP `getBoundingClientRect()` on both the wrapping `<Box data-testid="artifacts-delete-files-button">`
+   and the inner `<IconButton>`): the two elements' bounding boxes are pixel-identical, so a Playwright `.click()`
+   on the wrapper's own testid locator lands on — and fires the `onClick` of — the inner button with no
+   scoped-selector chaining at all (simpler than the AFS's own "testid-on-wrapper + scoped click-target via
+   `.locator("button")`" suggestion, and avoids a raw-tag-selector chain entirely).
+3. **New `wait_for_file_count()` method + a previously-undocumented transient race.** Local runs surfaced a
+   genuine flake (3 failures in 8 runs) in Test Step 1: `get_file_names()` called immediately after
+   `navigate_to_bucket()` occasionally read `[]` for a demonstrably non-empty bucket. Root cause: the breadcrumb
+   bucket-name label `_wait_for_bucket_panel()` waits on renders synchronously from the URL's `bucket` query
+   param, independent of the S3-listing fetch that actually populates the file table — so the existing wait can
+   return before that fetch completes. This is a DIFFERENT race from the one already documented on
+   `navigate_to_bucket_folder()` (issue #638, project-id resolution), specific to the plain `navigate_to_bucket()`
+   path this case uses. Fixed via a new, additive, reusable `ArtifactsPage.wait_for_file_count(expected_count,
+   timeout)` (Playwright auto-retrying `expect(...).to_have_count(...)` on the existing file-row locator — no
+   fixed sleep), called once after Step 1's navigation and again after Step 6's delete-confirm before Step 8's
+   post-delete read. 5/5 clean re-runs after the fix (previously 3/8 flaky). `navigate_to_bucket()`/
+   `_wait_for_bucket_panel()` themselves were left untouched (3+ existing callers; additive-only).
