@@ -86,6 +86,61 @@ class ArtifactsPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # "Upload files to ..." dialog (ELITEA-1832)
+    # ------------------------------------------------------------------
+
+    upload_path_dialog = LocatorDescriptor(
+        testid="artifacts-upload-path-dialog",
+        description="'Upload files to ...' dialog root — opens after selecting files "
+        "in the native file picker; Path field pre-filled with the bucket name",
+    )
+
+    upload_path_input = LocatorDescriptor(
+        testid="artifacts-upload-path-input",
+        description="Path field inside the 'Upload files to ...' dialog — shows the "
+        "bucket/prefix as a read-only startAdornment before the editable textbox",
+    )
+
+    upload_path_upload_button = LocatorDescriptor(
+        testid="artifacts-upload-path-upload-button",
+        description="'Upload' button inside the 'Upload files to ...' dialog — triggers "
+        "client-side duplicate detection against the bucket's already-fetched listing",
+    )
+
+    # ------------------------------------------------------------------
+    # "Resolve duplicates" dialog (ELITEA-1832)
+    # ------------------------------------------------------------------
+
+    resolve_duplicates_dialog = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-dialog",
+        description="'Resolve duplicates' dialog root — shown when uploaded files "
+        "collide with existing bucket contents",
+    )
+
+    resolve_duplicates_filename = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-filename",
+        description="Duplicate filename row inside the 'Resolve duplicates' dialog — "
+        "one per colliding file (matches multiple elements when several duplicates)",
+    )
+
+    resolve_duplicates_cancel_button = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-cancel-button",
+        description="'Cancel' button inside the 'Resolve duplicates' dialog — aborts "
+        "the ENTIRE upload operation, including any non-duplicate files in the batch",
+    )
+
+    # ------------------------------------------------------------------
+    # Success toast (app-wide generic component, reused across features —
+    # see skills_list_page.SkillsListPage.import_success_toast_message)
+    # ------------------------------------------------------------------
+
+    success_toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="Generic app-wide success toast — not confirmed to fire for "
+        "artifact uploads specifically; used here to assert its ABSENCE",
+    )
+
+    # ------------------------------------------------------------------
     # Init
     # ------------------------------------------------------------------
 
@@ -317,6 +372,106 @@ class ArtifactsPage(BasePage):
         except Exception:
             logger.info("File '%s' NOT found in bucket", filename)
             return False
+
+    # ------------------------------------------------------------------
+    # Upload flow (ELITEA-1832 — duplicate handling)
+    # ------------------------------------------------------------------
+
+    @action("Select files via native file picker")
+    def upload_files(self, file_paths: list[str], timeout: int = 15000) -> None:
+        """Click the upload button and select files via the native file chooser.
+
+        Waits for the file-chooser modal state to fire (confirmed live: it
+        fires the instant the upload button is clicked, no loading delay),
+        then sets the given file paths in one call. Does not wait for the
+        follow-on "Upload files to ..." dialog — call
+        :meth:`wait_for_upload_path_dialog` next.
+
+        Args:
+            file_paths: Absolute paths of the file(s) to select.
+            timeout: Maximum wait time for the file chooser, in milliseconds.
+        """
+        with self.page.expect_file_chooser(timeout=timeout) as fc_info:
+            self.upload_files_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(file_paths)
+        logger.info("Selected %d file(s) for upload: %s", len(file_paths), file_paths)
+
+    def wait_for_upload_path_dialog(self, timeout: int = 10000) -> None:
+        """Wait for the 'Upload files to ...' dialog to become visible.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.upload_path_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("'Upload files to ...' dialog visible")
+
+    def get_upload_path_prefix_text(self) -> str:
+        """Return the visible text of the Path field in the upload dialog.
+
+        Includes the read-only bucket/prefix ``startAdornment`` segment
+        (e.g. ``"{bucket_name}/"``) — used to assert the Path field is
+        pre-filled with the target bucket's name (case step 7).
+
+        Returns:
+            The Path field's combined visible text, stripped.
+        """
+        return (self.upload_path_input.text_content() or "").strip()
+
+    @action("Confirm upload (triggers client-side duplicate detection)")
+    def click_upload_path_upload_button(self) -> None:
+        """Click 'Upload' in the 'Upload files to ...' dialog.
+
+        Triggers the app's client-side duplicate check against the bucket's
+        already-fetched file listing — confirmed live (ELITEA-1832) to fire
+        NO network request when a duplicate is present; the "Resolve
+        duplicates" dialog opens purely from local state.
+        """
+        self.upload_path_upload_button.click()
+
+    def wait_for_resolve_duplicates_dialog(self, timeout: int = 10000) -> None:
+        """Wait for the 'Resolve duplicates' dialog to become visible.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.resolve_duplicates_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("'Resolve duplicates' dialog visible")
+
+    def get_resolve_duplicates_filenames(self) -> list[str]:
+        """Return the duplicate filenames listed in the 'Resolve duplicates' dialog.
+
+        Each row renders the filename split across two adjacent spans (base
+        name + extension); this reads the combined text of every row.
+
+        Returns:
+            List of filename strings, one per duplicate row.
+        """
+        rows = self.resolve_duplicates_filename
+        count = rows.count()
+        names = [(rows.nth(i).text_content() or "").strip() for i in range(count)]
+        logger.info("Duplicate filenames listed: %s", names)
+        return names
+
+    @action("Cancel duplicate resolution (aborts entire upload)")
+    def click_resolve_duplicates_cancel_button(self) -> None:
+        """Click 'Cancel' in the 'Resolve duplicates' dialog.
+
+        Aborts the ENTIRE upload operation, including any non-duplicate
+        files selected in the same batch — confirmed live (ELITEA-1832,
+        2/2 runs): fires no network request, closes the dialog, and leaves
+        bucket contents unchanged.
+        """
+        self.resolve_duplicates_cancel_button.click()
+
+    def wait_for_resolve_duplicates_dialog_closed(self, timeout: int = 10000) -> None:
+        """Wait for the 'Resolve duplicates' dialog to be hidden/removed after Cancel.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.resolve_duplicates_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("'Resolve duplicates' dialog closed")
 
     # ------------------------------------------------------------------
     # Download
