@@ -228,6 +228,53 @@ class ArtifactsPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # Per-row checkbox + ZIP-download progress dialog internals (ELITEA-1840)
+    # ------------------------------------------------------------------
+
+    # Dynamic testid template — checkbox for a given file/folder row. The
+    # parameter is the row's BASE name (row.id = item.name in
+    # ArtifactTable.jsx) — same identity semantics as
+    # ARTIFACT_ACTIONS_MENU_BUTTON above. Threaded via GridTableRow's new
+    # caller-supplied `checkboxTestId` prop (shared component — only wired
+    # at ArtifactTable.jsx's call site, per the AFS's shared-component
+    # testid ruling).
+    ARTIFACT_FILE_CHECKBOX = '[data-testid="artifacts-file-checkbox-{}"]'
+
+    zip_download_progress_title = LocatorDescriptor(
+        testid="artifacts-zip-download-progress-title",
+        description="'Preparing {bucket}.zip' title inside the ZIP-download "
+        "progress dialog (ELITEA-1840)",
+    )
+
+    zip_download_progress_bar = LocatorDescriptor(
+        testid="artifacts-zip-download-progress-bar",
+        description="Determinate MUI LinearProgress bar inside the ZIP-download "
+        "progress dialog (ELITEA-1840) — assert via its 'aria-valuenow' "
+        "attribute, not visual width",
+    )
+
+    zip_download_progress_counter = LocatorDescriptor(
+        testid="artifacts-zip-download-progress-counter",
+        description="'{current} of {total} files' counter inside the "
+        "ZIP-download progress dialog (ELITEA-1840)",
+    )
+
+    zip_download_progress_current_file = LocatorDescriptor(
+        testid="artifacts-zip-download-progress-current-file",
+        description="'Current: {full-relative-key}' label inside the "
+        "ZIP-download progress dialog (ELITEA-1840) — conditionally rendered, "
+        "absent from the DOM until the first file is in flight "
+        "(progress.filename truthy)",
+    )
+
+    zip_download_progress_cancel_button = LocatorDescriptor(
+        testid="artifacts-zip-download-progress-cancel-button",
+        description="'Cancel' button inside the ZIP-download progress dialog "
+        "(ELITEA-1840) — visibility-only in this case, never clicked "
+        "(Cancel-flow testing is out of scope)",
+    )
+
+    # ------------------------------------------------------------------
     # Init
     # ------------------------------------------------------------------
 
@@ -756,6 +803,73 @@ class ArtifactsPage(BasePage):
         text = (row.text_content() or "").strip()
         logger.info("Row text for '%s': %r", filename, text)
         return text
+
+    # ------------------------------------------------------------------
+    # Per-row checkbox selection (ELITEA-1840)
+    # ------------------------------------------------------------------
+
+    @action("Select file checkbox")
+    def select_file_checkbox(self, filename: str, timeout: int = 10000) -> None:
+        """Click the checkbox for a given file/folder row, by base name.
+
+        Args:
+            filename: Exact base file name (e.g. ``"sample.txt"``) — the
+                checkbox testid uses the base name only (``row.id``), even
+                for files nested in a subfolder.
+            timeout: Maximum wait time in milliseconds.
+        """
+        checkbox = self.page.locator(self.ARTIFACT_FILE_CHECKBOX.format(filename))
+        checkbox.wait_for(state="visible", timeout=timeout)
+        checkbox.click()
+        logger.info("Clicked checkbox for '%s'", filename)
+
+    def is_file_checkbox_checked(self, filename: str, timeout: int = 10000) -> bool:
+        """Return whether a given file/folder row's checkbox is checked.
+
+        **Implementer finding (ELITEA-1840):** the checkbox's ``data-testid``
+        (threaded via ``BaseCheckbox``'s ``...restProps`` passthrough) lands
+        on the MUI ``ButtonBase``/``MuiCheckbox-root`` wrapping ``<span>``,
+        NOT on the nested ``<input type="checkbox">`` — confirmed live via
+        DOM query. Playwright's ``Locator.is_checked()`` requires the
+        element itself to be an input/role=checkbox and raises ``"Not a
+        checkbox or radio button"`` on the span, so this reads the MUI
+        ``Mui-checked`` CSS class instead — confirmed live to toggle in
+        lockstep with the underlying input's ``checked`` property on every
+        click. This reads an ATTRIBUTE of the already testid-anchored
+        locator (like reading the progress bar's ``aria-valuenow``), not a
+        new chained/raw selector — no separate testid needed on the input.
+
+        Args:
+            filename: Exact base file name of the row to check.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if the row's checkbox is currently checked.
+        """
+        checkbox = self.page.locator(self.ARTIFACT_FILE_CHECKBOX.format(filename))
+        checkbox.wait_for(state="visible", timeout=timeout)
+        class_attr = checkbox.get_attribute("class") or ""
+        return "Mui-checked" in class_attr
+
+    def get_checkbox_states(self, timeout: int = 10000) -> dict[str, bool]:
+        """Return ``{filename: checked}`` for every visible file/folder row.
+
+        Queries EVERY visible row's checkbox independently (not just the
+        ones a caller just clicked) — needed for case step 6's "remaining
+        unchecked" verification, which must hold for rows the test never
+        touched, not merely the ones it selected.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Dict mapping each visible row's base file name to its checkbox's
+            checked state.
+        """
+        names = self.get_file_names(timeout=timeout)
+        states = {name: self.is_file_checkbox_checked(name, timeout=timeout) for name in names}
+        logger.info("Checkbox states: %s", states)
+        return states
 
     # ------------------------------------------------------------------
     # Upload flow (ELITEA-1832 — duplicate handling)
