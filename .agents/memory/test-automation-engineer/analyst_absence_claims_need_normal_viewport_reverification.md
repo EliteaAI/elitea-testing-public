@@ -63,3 +63,23 @@ match shape not value):
 LAST_UPDATE_TIMESTAMP_PATTERN = re.compile(r"\d{2}-\d{2}-\d{4}, \d{2}:\d{2} (AM|PM)")
 assert LAST_UPDATE_TIMESTAMP_PATTERN.search(row_text), ...
 ```
+
+## Addendum — round-3 confirms the grep-sweep habit, and a new propagation-gap variant (same AFS/PR)
+
+Round 3 (a different pair of findings — Coverage Map Step 7's cell citing a
+retired locator handle, Step 8's overstating "4 items visible" vs. the
+single-item check the code makes) is a variant of the same failure shape but
+NOT the "false absence claim" one above: a *correction* (the retired
+`bucket-menu-{name}-menu-button` handle → `artifacts-bucket-row-{name}`) had
+already landed correctly in the Test Step 7 *prose* section in an earlier
+round, but never got copied into the Coverage Map *summary row* that restates
+the same fact. Applying this entry's grep-sweep habit proactively (searching
+the whole AFS for the stale handle string and the "4 items" phrase before
+declaring the fix done) confirmed the drift was isolated to the one Coverage
+Map row each time — no round-4-causing leftover. Generalizes the corollary
+one step further: it's not just absence claims that need a whole-file grep
+before calling a fix done — ANY correction (handle swap, count claim, exact
+observable) needs the same treatment, because AFSs restate the same fact in
+multiple sections (Status bullet / Test Step prose / Coverage Map / Known
+Defects) and a fix applied to only the section the reviewer happened to name
+leaves the others stale.
