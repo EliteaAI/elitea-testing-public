@@ -153,7 +153,7 @@ share across parallel/serial runs.
 |---|---|---|---|---|
 | Precondition: bucket "bucket-1" with subfolder "a1" containing "sample.txt" | Precondition state exists | Test Data + Test Step 1 | Fresh bucket + subfolder seeded via `ArtifactAPI.upload_file`, confirmed via file table showing `"1 - 1 of 1"` | asserted |
 | Step 1: Navigate to Artifacts section | Artifacts page loads | Test Step 1 | Breadcrumb + file table render | asserted |
-| Step 2: Click bucket-1, navigate to subfolder a1 | Subfolder a1 selected | Test Step 1 | Breadcrumb shows `{bucket} > a1`, confirmed live | asserted *(decomposed — folded into one direct navigation)* |
+| Step 2: Click bucket-1, navigate to subfolder a1 | Subfolder a1 selected | Test Step 1 | Implementation asserts via Test Step 2's `file_exists(sample.txt)` + `file_count == 1` proxy, not a literal breadcrumb assertion — `sample.txt` exists only under `{bucket}/a1`, so this equally proves correct-folder-landing (breadcrumb text was observed live during analyst exploration but not carried into the implemented assertion) | asserted *(decomposed — folded into one direct navigation; proxy assertion, not breadcrumb)* |
 | Step 3: Verify file table shows sample.txt | sample.txt visible | Test Step 2 | File row present, Type "Text", Size "46 B" | asserted |
 | Step 4: Hover row, click 3-dot actions icon | Dropdown menu appears | Test Step 3 | Menu opens after click on `artifact-actions-sample.txt-menu-button` | asserted *(hover not required live — see Test Step 3 drift note)* |
 | Step 5: Verify dropdown shows Download + Delete | Both options visible | Test Step 3 | `[role="menuitem"]` text content = `["Download", "Delete"]` | asserted |
@@ -254,13 +254,47 @@ drift, they are present on `main` too).
   present both times — see Test Step 7).
 
 ## Known Defects Found During Exploration
-None found. Live product behavior matches the case's expected behavior exactly
-across 2/2 identical runs: the dropdown shows exactly Download + Delete, Download
-fires an immediate single GET with no ZIP packaging and no progress modal, the
-downloaded filename is exactly `sample.txt`, and the content is byte-identical to
-the seed. No CLARIFICATION filed either — the case's `bucket-1`/`a1` placeholder
-naming was already established as intentional TMS-authoring shorthand by the
-sibling ELITEA-1832 run, not a case-text drift needing correction.
+None found at the analyst pass (2/2 identical runs). Live product behavior
+matched the case's expected behavior exactly: the dropdown shows exactly
+Download + Delete, Download fires an immediate single GET with no ZIP
+packaging and no progress modal, the downloaded filename is exactly
+`sample.txt`, and the content is byte-identical to the seed. No CLARIFICATION
+filed either — the case's `bucket-1`/`a1` placeholder naming was already
+established as intentional TMS-authoring shorthand by the sibling ELITEA-1832
+run, not a case-text drift needing correction.
+
+**Addendum — found during implementation (amended in PR #639 round 2, per
+reviewer finding; not present at the analyst pass):** implementing this case's
+Test Step 1 direct-URL navigation
+(`${BASE_URL}/artifacts?bucket={bucket_name}&folder=a1`) surfaced an
+intermittent product race, filed as
+[#638](https://github.com/EliteaAI/elitea-testing-public/issues/638) —
+*"Artifacts: direct bucket+folder URL navigation can silently land on the
+wrong bucket (project-id resolution race)."* On a fresh page load, `Artifacts.jsx`
+can still be resolving the selected project id from Redux
+(`useSelectedProjectId()`) when the navigation lands; if that resolution
+completes a render after mount, a `selectedProjectId !== queryParams.projectId`
+effect fires `setSearchParams({})`, silently stripping the `bucket`/`folder`
+query params before the auto-select-bucket effect ever reads them. The app
+then falls back to the most-recently-used bucket with **no error shown** —
+not even the existing "Bucket not found" dialog. Reproduced live ~2/5 local
+runs; confirmed present on both `origin/main` and `automation/testids`
+(byte-identical `Artifacts.jsx`), so it is not a testids-branch drift.
+
+This is a **navigation/setup-path issue, not one of this case's own required
+assertions** — it affects reaching the precondition state (Test Step 1), not
+the dropdown/download/content-integrity observables the case actually tests.
+Per the No-Defect-Masking rule this is handled as infrastructure, not
+suppressed: the shipped test mitigates it test-side in
+`ArtifactsPage.navigate_to_bucket_folder()`, which re-checks the live URL's
+`bucket` query param after navigating and retries the navigation **exactly
+once** (`_retry` flag, no loop) if the param was stripped, logging a
+`logger.warning(...)` on the retry path so CI history shows how often the
+race actually occurs; if the second attempt also fails to land on the target
+bucket it raises `AssertionError` rather than silently proceeding on the
+wrong bucket. The underlying application bug remains **open and unfixed** —
+this mitigation only keeps the test from failing on the same known race the
+real product still has; it does not fix #638.
 
 ## Blocked Steps
 None. The two `testid needed:` rows in § Concrete Handles are implementer work
