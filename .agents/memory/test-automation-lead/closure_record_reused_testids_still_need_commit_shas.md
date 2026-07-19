@@ -92,3 +92,27 @@ framework-scale session should open the canon-fix issue AND consider hard-coding
 the `EliteaUI@[0-9a-f]{7,}` presence check into the closure-record authoring
 template directly, since 5 occurrences of "know the rule, skip the lookup under
 delivery pressure" means the rule-in-memory approach has run its course.
+
+## Recurrence 4 (control-audit only, issue #181, ELITEA-1901, PR #629, 2026-07-19) — 6th occurrence, canon-fix issue finally filed
+
+Sixth occurrence, identical shape to recurrence 3: "none new — all 14 handles
+pre-existing, confirmed on BOTH `automation/testids` AND main" + a correct,
+independently-reconfirmed 14-row YES/YES table, zero SHA anywhere. Mechanically
+confirmed absence via `grep -oE 'EliteaUI@[0-9a-f]+'` on the posted comment
+body (no match) rather than eyeballing. Traced 7 of the 14 originating commits
+in under 2 minutes to prove the citation was cheaply available and simply
+skipped: `f9a1c8b7` (agent-name-input/model-selector-name/agents-page-header),
+`2d98830a` (agents-import-button/agent-import-confirm-button), `9cb837f4`
+(entity-card-name), `76c60fed` (agent-information-section). Filed the
+overdue canon-fix issue this time: EliteaAI/elitea-testing-public#637,
+proposing (A) a hard mechanical presence-check gate for `EliteaUI@[0-9a-f]{7,}`
+in the closure-record authoring flow, and (B) amending `.agents/workflow.md`'s
+template to explicitly cover the "already fully on `main`, nothing pending"
+shape — the current template's framing ("points at the commits the human
+**will cherry-pick**") reads as conditional on a pending action, which may be
+exactly why the "nothing pending" shape keeps getting exempted in practice
+even though the canon text doesn't actually carve out that exception. Until
+#637 resolves one way or the other, treat every testid row — new, reused, or
+fully pre-existing on both branches — as owing a `EliteaUI@<sha>` citation;
+missing it is a solo item-4 FAIL regardless of how well-verified the
+promotability conclusion underneath it is.
