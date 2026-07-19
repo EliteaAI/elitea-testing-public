@@ -40,3 +40,17 @@ derived set against the AFS's table in both directions:
 
 Only the derived set — not the AFS's table verbatim — belongs in the
 promotability check.
+
+## Recurrence (ELITEA-1868, issue #236, PR #657)
+
+Same omission shape again: the AFS's Concrete Handles table (14 rows) never
+listed `empty-state-title`, but the merged `ToolkitsListPage.empty_state_title`
+field IS asserted by the test (step 13's secondary check). Caught by deriving
+the dependency set from `grep -nE 'testid\s*=\s*"'` across the new page
+objects + `import`-following into `ArtifactsPage` for indirect deps, then
+diffing against the AFS table — the same procedure this entry already
+prescribes. Ground truth happened to be benign here too (testid existed on
+`automation/testids`, just needed the fresh main/testids check like every
+other row), but the closure record would have silently shipped a 15-row
+table instead of 16 without the independent re-derivation. Reinforces: do
+this trace on every case, not just ones where a mismatch is suspected.
