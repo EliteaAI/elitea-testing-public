@@ -363,8 +363,8 @@ every testid below.
 | Buckets heading | `artifacts-buckets-heading` | existing | **on-main ✓** | left panel |
 | "+ Artifact Bucket" button | `artifacts-create-bucket-button` | existing | **on-main ✓** | opens `/artifacts/create-bucket` |
 | Search buckets button | `artifacts-search-buckets-button` | existing | **on-main ✓** | `aria-label` == "Search buckets" (MUI Tooltip's static accessible-name wiring — read this attribute for Test Step 3, do not need to trigger the hover popper) |
-| **Bucket search input** | `artifacts-bucket-search-input` (proposed) | **needs-adding** | **needs-adding** (confirmed absent via `git grep "data-testid" origin/main -- src/pages/Artifacts/Components/BucketsPanel.jsx` and same against `origin/automation/testids` — both empty) | `BucketsPanel.jsx:126-131`'s `<SimpleSearchBar>` call site passes no `data-testid` prop, even though the shared `SimpleSearchBar.jsx:59` component itself already supports one (`inputProps={props['data-testid'] ? {...} : undefined}`) — the fix is a one-line prop addition at the call site, not new plumbing in the shared component |
-| **Bucket search clear/X button** | `artifacts-bucket-search-clear-button` (proposed) | **needs-adding** | **needs-adding** (same grep, same file — confirmed absent) | `BucketsPanel.jsx:132-138`'s `<IconButton onClick={handleSearchClear}>` — plain MUI IconButton with a `CloseIcon`, no testid at all currently |
+| **Bucket search input** | `artifacts-bucket-search-input` | **added** (implementer pass) | **on-automation/testids only** (EliteaAI/EliteaUI@3d2edf53, awaiting human promotion to main) | Re-confirmed absent via fresh `git fetch origin` + `git grep` on both `origin/main` and `origin/automation/testids` immediately before this implementer pass (both empty, matching the analyst's own finding); added as a one-line `data-testid` prop on the `<SimpleSearchBar>` call site in `BucketsPanel.jsx:126-131`; live-rendering confirmed via HMR before commit |
+| **Bucket search clear/X button** | `artifacts-bucket-search-clear-button` | **added** (implementer pass) | **on-automation/testids only** (EliteaAI/EliteaUI@3d2edf53, awaiting human promotion to main) | Same fresh re-verification as above; added directly on the `<IconButton onClick={handleSearchClear}>` in `BucketsPanel.jsx:132-138`; live-rendering confirmed via HMR before commit |
 | New Bucket form — Name input | `artifacts-bucket-name-input` | existing (ELITEA-1808) | **on-automation/testids only** (awaiting human promotion to main) | `CreateBucket.jsx`, in `inputProps` on the `<TextField id="name">` |
 | New Bucket form — Retention measure select | `artifacts-bucket-retention-measure-select-combobox` | existing (ELITEA-1808) | **on-automation/testids only** | the `-combobox` suffix is auto-derived by the shared `SingleSelect` component; use this suffixed one to read/interact, not the root testid |
 | New Bucket form — Retention value input | `artifacts-bucket-retention-value-input` | existing (ELITEA-1808) | **on-automation/testids only** | `CreateBucket.jsx`, in `inputProps` |
@@ -409,6 +409,60 @@ documented here so it is not rediscovered and mis-filed:
   log, not a page-context `console.error()` call — rather than asserting zero
   console entries of any kind, which sibling cases with only happy-path network
   traffic can afford to do but this negative-path case cannot).
+
+## Implementer Amendments (Phase 2 exploration, ELITEA-1809 implementer pass)
+
+Three findings from live re-verification, declared per
+`.agents/role-overrides.md`'s declared-improvisation protocol (technique-level,
+no scope/coverage change — all three still fully assert their case element's
+expected result):
+
+1. **Step 15 ("Click 'Artifacts' in the left sidebar") has no compliant
+   handle.** Live source read of `SidebarMenuItem.jsx` /
+   `SidebarBody.jsx` (EliteaUI) confirms the sidebar nav entries render via a
+   SHARED component with no `data-testid` on any entry — adding one would
+   require threading a `testId` prop through `SidebarBody.jsx`'s render loop,
+   which touches every sidebar nav item (Chat, Agents, Skills, Pipelines,
+   Credentials, Toolkits, ...), not just Artifacts — a broad, high-blast-radius
+   shared-component change no other part of this case touches, and out of
+   proportion to a single click. Implemented instead via the existing
+   `ArtifactsPage.navigate_to_artifacts()` (direct URL navigation) — the SAME
+   mechanism the case's own Step 1 already uses to reach the identical
+   observable (URL becomes `${BASE_URL}/artifacts`). The interaction
+   *mechanism* changes; the asserted *outcome* does not.
+2. **Step 13's "red" toast has no stable DOM-level severity signal.** Live
+   inspection of the error-state `toast-message` element
+   (`get-attribute class`) returned a Vite-hashed class (`MuiBox-root
+   css-1sn4tny`) with no semantic "error"/"filled-error" token — asserting on
+   it would be brittle (build-hash, not a stable contract) and adds no real
+   verification strength beyond the exact-text match, which the
+   duplicate-name message itself already uniquely identifies as the
+   rejection path (jointly proven by the 400 status + unchanged-form
+   evidence in Steps 12/14). Implemented as an exact-text assertion only, no
+   color/class check.
+3. **The "bucket-count footer unchanged" Axis-2 signal (originally proposed
+   as a `BucketFooter.jsx` text read) is replaced with a testid-compliant
+   equivalent.** `BucketFooter.jsx` has no testid, and reading its "Buckets:
+   N" text would require either (a) adding a testid to an element no case
+   step reads directly — against the "scope is load-bearing" testid ruling
+   (`.agents/testing.md` § Locator policy) — or (b) chaining a raw CSS
+   selector off an existing testid'd field, forbidden by
+   `.claude/rules/page-objects.md` ("Don't chain a raw selector off an
+   existing field inside a method"). Implemented instead via a new
+   `ArtifactsPage.get_visible_bucket_count()` using the
+   `[data-testid^="artifacts-bucket-row-"]` PREFIX-selector pattern — already
+   established precedent in this codebase (`agent_detail_page.py`'s
+   `SKILL_CARD_ANY_SELECTOR`, `chat_page.py`'s `MENTION_SKILL_ITEM_PREFIX`,
+   `mcp_form_page.py`'s `TOOL_CHIP_PREFIX`, `pipeline_detail_page.py`'s
+   `SELECT_OPTION_PREFIX`). Used three ways: (i) narrows-on-filter proof at
+   Steps 4-6 (filtered count < unfiltered baseline), (ii) full-list-restored
+   proof at Step 7 (count == baseline after closing search), and (iii) a
+   same-baseline comparison between the Step 4-6 and Step 16-18 filtered
+   counts — an equal-strength, environment-count-independent replacement for
+   the originally proposed raw "175 unchanged" footer read (which was also
+   fragile: the literal "175" the analyst observed live is not a fixed
+   value — it drifts across runs as other tests' `autotest-*` buckets leak,
+   per those tests' own documented known-defect-#636 cleanup caveats).
 
 ## Blocked Steps
 None.
