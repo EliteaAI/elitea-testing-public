@@ -61,3 +61,24 @@ or touching the shared method's body. General shape for "I need response-
 capture behavior on a click method other callers use differently."
 
 (from ELITEA-1808, PR #643)
+
+## Addendum — a second valid fix: defer the READ, not the capture mechanism
+
+ELITEA-1826 (3 concurrent PUTs from one multi-file Upload click) hit the same
+`capture_requests_matching()` status race, but `page.expect_response()`
+doesn't scale as cleanly here — it would mean 3 nested context managers
+keyed by filename around one click, more ceremony than the flow needs when
+an independent completion signal already exists. Alternative fix that also
+works: keep `capture_requests_matching()`, but don't read/assert on the
+returned list immediately after the click — defer the read until AFTER a
+separate, reliable completion condition has already resolved (here: the
+file-table's `get_total_file_count_from_pagination() == 3` /
+`get_file_names()` check, itself required by the case). Since the UI-visible
+completion state is only reachable once the server has actually returned
+each PUT's response, by the time that condition holds, every entry in the
+captured list is guaranteed to have a resolved (non-`None`) status — no
+polling, no `page.expect_response()` nesting, zero race. Rule of thumb:
+`page.expect_response()` when there's no other completion signal to piggy-back
+on (or the count is small/fixed); defer-the-read on the existing capture
+list when the test already condition-waits on something the network calls
+must have finished before (from ELITEA-1826, PR pending).
