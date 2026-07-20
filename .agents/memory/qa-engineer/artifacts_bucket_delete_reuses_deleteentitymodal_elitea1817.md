@@ -49,6 +49,20 @@ ELITEA-1817 (analyst pass, 2026-07-20): create a bucket with a 55/56-char name a
    button is unaffected by #636 entirely. Flagged as a comment-worthy note on #636,
    not re-opened/re-investigated as part of this case.
 
+   **Resolution (ELITEA-1866 analyst pass, same day)**: confirmed with hard evidence
+   rather than just a same-session hypothesis. Live A/B this time: UI's own bucket
+   DELETE = `DELETE .../buckets/default/399?name=new-bucket -> 200 OK` (bucket row
+   gone immediately after); toolkit delete for comparison =
+   `DELETE .../elitea_core/tool/prompt_lib/399/{id} -> 204 No Content` (also clean --
+   `ArtifactAPI._toolkits_url()`/`delete_toolkit()` matches this shape exactly, no
+   equivalent defect for toolkits). Posted the concrete comparison + a suggested
+   one-line fix (`ArtifactAPI.delete_bucket()` should send `?name=` query-param, not
+   a path segment) as a comment on #636:
+   https://github.com/EliteaAI/elitea-testing-public/issues/636#issuecomment-5018192261.
+   Practical upshot for any future case that creates a real (non-cancelled) bucket:
+   **use the UI dot-menu Delete flow for teardown, never `ArtifactAPI.delete_bucket()`**,
+   until #636 actually ships a fix.
+
 4. **A TMS case's own test-data label can be wrong, independent of any live-product
    drift.** ELITEA-1817's Test Data table labelled its bucket name "(55 chars)" —
    the literal string is actually 56 characters (`len()` confirmed via a plain
