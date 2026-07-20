@@ -86,6 +86,22 @@ duplicating it.
 - This conversation naturally lands in the **Today** date-group once created/modified (server
   groups by last-activity date) — no separate "seed Today" step is needed beyond creating +
   messaging it in the current test run.
+- **ADDED (PR #693 fix-only pass, reviewer finding #2) — a second, throwaway "other" conversation,
+  created via `ConversationAPI.create_conversation(name)` (plain API create, zero messages, no
+  `+Chat`/UI flow involved) so Step 2's "navigate away" click has a real OTHER conversation to
+  target.** `ChatPage.click_first_other_conversation()` originally depended on an ambient,
+  pre-existing conversation already being present in project 471 for this — an undocumented
+  dependency the review correctly flagged, since nothing in this suite guarantees project 471
+  always holds >=2 conversations (other tests clean up their own). Resolved by seeding this second
+  conversation explicitly rather than documenting the ambient dependency as a precondition,
+  because no fixture or other test actually guarantees a stable second conversation exists — the
+  "reuse-existing" bucket would have recorded a precondition that isn't reliably true. Defect
+  #691 (see above) does NOT apply to this conversation: #691 fires only when the first UI
+  *message* is sent to a zero-message conversation, and no message is ever sent to this one — it
+  exists purely to be clicked. Confirmed live (via the pre-existing sibling test
+  `test_navigate_between_conversations` in `test_conversation_management.py`) that a plain
+  API-created, zero-message conversation renders in the sidebar and is clickable. Cleaned up in
+  the same test-level `finally` block as the primary seeded conversation.
 
 ## Test Steps
 
@@ -341,3 +357,32 @@ Preconditions for why that project choice, not the default Private one, is requi
   `get_context_budget_tokens_text()`/`get_context_budget_max_tokens()` exist, both scoped to the
   tokens line). Once `context-budget-messages-count` / `context-budget-summaries-count` testids
   are added, add matching getters rather than regex-parsing the whole panel's `textContent`.
+
+## AFS Amendment (2026-07-21, PR #693 fix-only pass — reviewer findings #1 and #2)
+
+A fresh reviewer session on PR #693 returned `CHANGES_REQUESTED` with two findings, both
+addressed in the same fix-only commit:
+
+**Finding #1 (BLOCKING) — the console-error check was manual analysis, never automated.** The
+Coverage Map's Pass-criteria row and an Axis 2 bullet both claim a "console-error check" backs
+the `asserted` disposition, and § Expected Results / § Network Behavior both describe checking
+for console errors during the analyst's manual exploration — but neither the test nor
+`chat_page.py` implemented any actual `page.on("console", ...)` handling; the claim was
+manual-observation-only, never translated into a real automated assertion. **Resolution**:
+`test_open_conversation_today_section.py` now registers `page.on("console", _on_console)`
+immediately after `chat = ChatPage(page)` (before Step 1, so every step's console output is
+captured), filtering only the already-documented project-471 `secrets` 403 (via
+`_is_known_project_471_secrets_403()`, same filter idiom as `test_credential_create.py`'s
+`_is_known_554_warning` — matched on both message text and request location URL so a genuinely
+new 403 elsewhere isn't swallowed), and asserts `not console_messages` in a dedicated
+"Side-channel check" step before cleanup. The Pass-criteria row's and Axis 2's "console-error
+check" claims are now backed by a real assertion, not a manual-only observation.
+
+**Finding #2 (non-blocking) — `click_first_other_conversation()`'s ambient-data dependency was
+undocumented.** Addressed via Test Data § generate-per-test (see the new "ADDED" bullet above):
+seeded a second, throwaway, zero-message conversation via `ConversationAPI.create_conversation()`
+so Step 2 always has a real conversation to navigate to, independent of whatever else happens to
+exist in project 471. Chose seeding over documenting a `reuse-existing` precondition because no
+fixture in this suite actually guarantees a second conversation persists in project 471 (every
+other test cleans up its own) — recording it as `reuse-existing` would have documented a
+precondition that isn't reliably true, which is worse than the minimal, self-cleaning seed.

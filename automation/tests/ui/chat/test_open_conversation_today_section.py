@@ -35,6 +35,7 @@ PR description).
 
 import logging
 import re
+import time
 
 import allure
 import pytest
@@ -59,6 +60,25 @@ TEAM_PROJECT_ID = "471"
 
 FIRST_MESSAGE = "Give me a short 5-item numbered list of fun facts about octopuses."
 SECOND_MESSAGE = "Thanks! Now give me 5 more facts, this time about jellyfish."
+
+
+def _is_known_project_471_secrets_403(msg) -> bool:
+    """Filter the pre-existing, already-documented project-471 ``secrets`` 403.
+
+    Project 471 ("Elitea Testing Team") surfaces a ``403 Forbidden`` on
+    ``GET .../secrets/secrets/default/471`` on every page load, regardless
+    of any action taken — an environment/permission-scoping artifact of
+    that specific project, not a symptom of anything this case's
+    automation touches. Already documented in the ``ELITEA-1893`` AFS
+    § Test Data / § Handles Reference and reconfirmed live in this case's
+    own AFS § Network Behavior. Matched on both the message text and the
+    request location URL (same idiom as ``test_credential_create.py``'s
+    ``_is_known_554_warning``) so a genuinely NEW 403 elsewhere isn't
+    accidentally swallowed by a text-only match.
+    """
+    text = msg.text
+    location_url = (msg.location or {}).get("url", "")
+    return "403" in text and "secrets/secrets/default/471" in (text + location_url)
 
 
 def _expected_initials(name: str) -> str:
@@ -105,7 +125,23 @@ class TestOpenConversationFromTodaySection:
         )
         conv_id = None
         conv_name = None
+        other_conv_id = None
         chat = ChatPage(page)
+
+        # Registered before Step 1 so console errors from every step
+        # (project switch, +Chat seeding, navigation, all 10 case steps)
+        # are captured — not just from a later step. AFS Expected Results
+        # require "no console errors specific to this flow"; the known,
+        # already-documented project-471 secrets 403 (AFS § Network
+        # Behavior) is filtered so it can't mask a genuinely NEW error on
+        # the same project.
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_project_471_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
 
         try:
             with allure.step(
@@ -128,6 +164,27 @@ class TestOpenConversationFromTodaySection:
                     "Project selector should show 'Elitea Testing Team' "
                     f"after switching, got: {switched_project_text!r}"
                 )
+
+            # ------------------------------------------------------------------
+            # Setup — seed a second, throwaway conversation via the API so
+            # Step 2 (navigate away) has a real OTHER conversation to click
+            # to, independent of whatever ambient conversations may or may
+            # not already exist in project 471. click_first_other_
+            # conversation() only needs to find ANY conversation besides the
+            # one under test — confirmed live (test_navigate_between_
+            # conversations in test_conversation_management.py) that an
+            # API-created, zero-message conversation renders in the sidebar
+            # and is clickable. No message is ever sent to it, so defect
+            # #691 (which fires only on SENDING the first message to a
+            # zero-message conversation, never on creating/clicking one)
+            # does not apply here. Cleaned up in the same `finally` block as
+            # the seeded conversation under test.
+            # ------------------------------------------------------------------
+            other_conversation = team_conversation_api.create_conversation(
+                f"autotest_2095_other_{int(time.time())}"
+            )
+            other_conv_id = other_conversation["id"]
+            assert other_conv_id, "Expected a numeric id for the throwaway 'other' conversation"
 
             # ------------------------------------------------------------------
             # Setup — seed a fresh conversation + real message history entirely
@@ -327,6 +384,17 @@ class TestOpenConversationFromTodaySection:
                     f"{_expected_initials(owner_name)!r})"
                 )
 
+            with allure.step(
+                "Side-channel check — no unexpected console errors across the full flow"
+            ):
+                # Known artifact: the project-471 secrets 403 is filtered by
+                # _is_known_project_471_secrets_403() above (already
+                # documented, unrelated — see AFS § Network Behavior). Any
+                # OTHER console error still fails this check for real.
+                assert not console_messages, (
+                    f"Unexpected console errors: {[m.text for m in console_messages]}"
+                )
+
         finally:
             if conv_id:
                 try:
@@ -334,3 +402,11 @@ class TestOpenConversationFromTodaySection:
                     logger.info("Cleaned up conversation %s", conv_id)
                 except Exception as exc:
                     logger.warning("Failed to delete conversation %s: %s", conv_id, exc)
+            if other_conv_id:
+                try:
+                    team_conversation_api.delete_conversation(int(other_conv_id))
+                    logger.info("Cleaned up other conversation %s", other_conv_id)
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to delete other conversation %s: %s", other_conv_id, exc
+                    )
