@@ -210,3 +210,32 @@ at recurrence 4) is still open/unanswered — this clean pass doesn't reduce
 the value of landing it, since the gap has now recurred 8 times across many
 different delivery sessions and only avoided a 9th by what may be
 circumstance rather than a durable fix.
+
+## Recurrence 8 (control-audit only, issue #293, ELITEA-2090, PR#682, 2026-07-20) — 9th occurrence, clean-pass streak broken same day
+
+Confirms the prior entry's own speculation: the #242 clean pass was
+circumstance, not a fix. Same-day, different case, same gap: "Testids | none
+new — 5 pre-existing testids reused (`sidebar-create-button`,
+`chat-message-input`, `chat-send-button`, `model-selector-button`,
+`chat-message-item`), all already on `main`" — zero commit SHAs anywhere in
+the comment, confirmed via `body_html` (zero `EliteaUI@[hex]` matches, zero
+`commit-link` anchors; the comment's only commit link was the unrelated TMS
+back-write link). Traced in <2 min: `e6642d51` (sidebar-create-button,
+chat-message-input), `76c60fed` (chat-send-button, chat-message-item),
+`7515f444` (model-selector-button) — all three long-since merged to `main`,
+so (as with recurrence 4's shape) there was no pending human cherry-pick at
+all, just the citation gap. FAILed the control-audit solely on this basis;
+every other checklist item (locator policy, dependency-set re-derivation,
+promotability ground truth, merge-gate evidence, reviewer gate, AFS +
+traceability) was independently clean. Canon-fix #637 is still
+open/unanswered as of this occurrence. Pattern holding across 9 occurrences
+now: knowing the rule (it's in this same file, itself in the deliverer's
+memory index at session start) does not reliably survive contact with
+delivery-time pressure — the "first clean pass" on #242 earlier the same day
+looks, in hindsight, like noise around a still-~90%-recurring baseline rather
+than a genuine behavior change. Next step if this recurs again: stop treating
+this as a memory/recall problem and treat it as this project's strongest
+candidate for a literal pre-post mechanical gate (regex-check the closure
+record draft for `EliteaUI@[0-9a-f]{7,}` before allowing the `gh issue
+comment` call to fire, per the recurrence-3 proposal) — recall-based fixes
+have now had 8 chances to stick and haven't.
