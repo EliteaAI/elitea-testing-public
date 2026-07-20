@@ -1,0 +1,4 @@
+WARNING  elitea.pages.chat:chat_page.py:308 SPA redirected to https://auth.elitea.ai/realms/dev/protocol/openid-connect/auth instead of /chat/880 — retrying
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to chat — Locator.wait_for: Timeout 15000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("chat-message-input") to be visible
