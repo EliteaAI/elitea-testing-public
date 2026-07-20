@@ -47,6 +47,26 @@ class ToolkitDetailPage(BasePage):
         "automation/testids before this case",
     )
 
+    # Configuration/Indexes tabs on the detail view's top tab strip
+    # (EditToolkit.jsx). Both are icon-only with no visible text, so a
+    # role-based `[role="tab"]` locator can't disambiguate them from each
+    # other or from the page's own top-level tab — testids added ELITEA-1866
+    # PR #670 review round 1 (`EliteaAI/EliteaUI` `automation/testids`
+    # commit 0b61e8a2, via the `tabProps` mechanism already used for the
+    # Indexes tab's `data-tour` attribute).
+    configuration_tab = LocatorDescriptor(
+        testid="toolkit-detail-configuration-tab",
+        description="Configuration tab (icon-only, default-selected) on "
+        "the detail view's top tab strip",
+    )
+
+    indexes_tab = LocatorDescriptor(
+        testid="toolkit-detail-indexes-tab",
+        description="Indexes tab (icon-only; disabled until Pgvector/"
+        "Embedding Model are configured) on the detail view's top tab "
+        "strip",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -61,27 +81,24 @@ class ToolkitDetailPage(BasePage):
         return self.toolkit_title.text_content() or ""
 
     def count_config_tabs(self, timeout: int = 5000) -> int:
-        """Return the number of ``[role="tab"]`` elements on the Configuration/Indexes tab strip.
+        """Return how many of the Configuration/Indexes tabs are present.
 
-        SANCTIONED non-testid exception (ELITEA-1866 dispatch brief): both
-        the Configuration and Indexes tabs are icon-only with no visible
-        text, and both currently lack a testid (``toolkit-detail-
-        configuration-tab``/``-indexes-tab`` are flagged OPTIONAL in the
-        AFS — this role-count smoke check already satisfies the case's own
-        step-24 observable, "Configuration and Indexes tabs are shown",
-        without needing per-tab handles). Same carve-out class as
-        ``ToolkitCreationPage.count_category_tabs``.
+        A compliant testid presence/count check against
+        :attr:`configuration_tab`/:attr:`indexes_tab` — NOT a role-based
+        ``[role="tab"]`` count (the page also renders other ``role="tab"``
+        elements — see AFS § step 24 note re: an unexplained third tab
+        element — so counting by role alone risks over-counting).
 
         Args:
-            timeout: Maximum wait time in milliseconds for the first tab
-                to appear before concluding there are none.
+            timeout: Maximum wait time in milliseconds for the
+                Configuration tab (rendered first, default-selected) to
+                appear before concluding neither tab is present.
         """
-        tabs = self.page.get_by_role("tab")
         try:
-            tabs.first.wait_for(state="visible", timeout=timeout)
+            self.configuration_tab.wait_for(state="visible", timeout=timeout)
         except Exception:
             return 0
-        return tabs.count()
+        return self.configuration_tab.count() + self.indexes_tab.count()
 
     def navigate_to_toolkit(self, toolkit_id: int) -> None:
         """Navigate to toolkit detail page and wait for load.

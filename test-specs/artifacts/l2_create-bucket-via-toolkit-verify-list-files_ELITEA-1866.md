@@ -166,10 +166,13 @@ which is the only design that satisfies both "the case demands these exact liter
 6. Verify category filter tabs are displayed (case step 6).
    - **Verify**: confirmed live 12 category tabs render as buttons: "Code Repositories",
      "Communication", "Development", "Documentation", "Integrations", "Mcp", "Office", "Other",
-     "Project Management", "Storage", "Test Management", "Testing". No testids on the individual
-     tab buttons (out of scope for this case — it never clicks a category tab, it uses the search
-     field instead per steps 7-9); a simple `count >= 1` / text-match smoke check on the tab
-     button group satisfies this step's observable without needing per-tab handles.
+     "Project Management", "Storage", "Test Management", "Testing". **PR #670 review round 1
+     fix**: a compliant `count >= 1` testid check against `category-filter-tab` — a generic
+     testid on the shared `GroupedCategory.jsx`/`Filter.CategoryFilter` component's category
+     Chip (also used by the Credential type-picker), added via `add-data-testid` (see §
+     Concrete Handles and § Implementer Amendments item 6). This case still never clicks an
+     individual tab (it filters via the search field per steps 7-9), so no per-tab
+     identification is needed — only presence/count.
 7. Type "art" in the search field (case step 7).
    - **Verify**: `toolkit-wizard-type-search-input` reflects `"art"`
      (`ToolkitCreationPage.search_toolkit_type("art")`, existing ELITEA-1868 method — client-side
@@ -236,11 +239,15 @@ which is the only design that satisfies both "the case demands these exact liter
       `testId` prop per the shared-component testid ruling, wired specifically at the Bucket
       field's call site in `ToolBaseProperty.jsx`).
 16. Verify the tooltip displays the bucket naming rules (case step 16).
-    - **Verify**: confirmed live, tooltip text (via `[role="tooltip"]`) reads exactly:
+    - **Verify**: confirmed live, tooltip text reads exactly:
       "Name of the artifact bucket to use for file storage operations. The bucket name must: •
       Start with a lowercase letter • Contain only lowercase letters, numbers, and hyphens • Be
       unique within your project" — matches the case's expected content (start-with-lowercase,
-      lowercase/numbers/hyphens-only, unique-within-project) word for word.
+      lowercase/numbers/hyphens-only, unique-within-project) word for word. **PR #670 review
+      round 1 fix**: read via the compliant `toolkit-field-bucket-info-tooltip-content` testid
+      (an opt-in `contentTestId` prop threaded through the shared `InfoTooltip` chain, wired
+      only at this Bucket-field call site — see § Concrete Handles and § Implementer
+      Amendments item 6), not the ambient `[role="tooltip"]` landmark used in the first pass.
 17. In the "Toolkit Name *" field enter "my-artifact-toolkit" (case step 17).
     - **Verify**: `toolkit-form-name-input` value === `"my-artifact-toolkit"`
       (`ToolkitCreationPage.fill_name()`, existing ELITEA-1868 method — MUI field, `click()` +
@@ -273,17 +280,16 @@ which is the only design that satisfies both "the case demands these exact liter
       `{id}` is the numeric toolkit ID captured in step 20 (confirmed live: `1524` this run,
       value is run-specific and MUST be captured dynamically, never hardcoded).
 24. Verify "Configuration" and "Indexes" tabs are shown at the top (case step 24).
-    - **Verify**: `document.querySelectorAll('[role="tab"]')` returns (at least) two tabs: the
-      first (index 0, selected by default) is Configuration — icon-only, no visible text, NO
-      testid; the second (index 1) is Indexes — icon-only, no visible text, disabled (Pgvector
-      not configured for this toolkit), carries `data-tour="toolkit-indexes-tab"` (a `data-tour`
-      attribute, NOT a `data-testid` — not usable as a compliant locator) with parent
-      `aria-label="Configure PgVector and Embedding model to enable Indexes options"` (usable as
-      an interim non-testid disambiguator, but per this project's testid-only policy the
-      compliant fix is `testid needed: toolkit-detail-configuration-tab` /
-      `toolkit-detail-indexes-tab`). A third, empty (no icon, no aria-label) tab element also
-      exists in the DOM at index 2 — unexplained by this case's own steps, not asserted on,
-      flagged here only for completeness (not a defect — case doesn't reference a third tab).
+    - **Verify**: both tabs are icon-only with no visible text — Configuration (default-selected)
+      and Indexes (disabled until Pgvector/Embedding Model are configured). **PR #670 review
+      round 1 fix**: verified via the compliant `toolkit-detail-configuration-tab` /
+      `toolkit-detail-indexes-tab` testids (added via `add-data-testid`, using the same
+      `tabProps` mechanism `EditToolkit.jsx` already used for the Indexes tab's `data-tour`
+      attribute — see § Concrete Handles and § Implementer Amendments item 6), a 2-element
+      presence check rather than a `[role="tab"]` count. A third, empty (no icon, no aria-label)
+      tab element also exists in the DOM at index 2 — unexplained by this case's own steps, not
+      asserted on, flagged here only for completeness (not a defect — case doesn't reference a
+      third tab; the testid-based check does not pick it up).
 25. Verify the "TEST SETTINGS" panel is visible with model selector, Tool dropdown, and welcome
     message (case step 25).
     - **Verify (NEW handles, the genuinely fresh surface this case introduces)**: `Test Settings`
@@ -406,7 +412,7 @@ which is the only design that satisfies both "the case demands these exact liter
 | Step 3: Click "+ Toolkit" | "New Toolkit" page opens | Step 3 | URL becomes `/toolkits/create` | asserted |
 | Step 4: Verify "Choose the toolkit type" heading | Page title correct | Step 4 | URL check + live text-match | asserted *(heading itself still has no testid — optional gap carried from ELITEA-1868)* |
 | Step 5: Verify "Search toolkits" search field | Search field visible | Step 5 | `toolkit-wizard-type-search-input` visible, placeholder text confirmed | asserted |
-| Step 6: Verify category filter tabs displayed | All category tabs present | Step 6 | 12 tab buttons confirmed by text-match | asserted *(no testids on individual tabs — out of scope, this case never clicks one)* |
+| Step 6: Verify category filter tabs displayed | All category tabs present | Step 6 | `category-filter-tab` count >= 1 (12 confirmed live) | asserted **(testid added PR #670 review round 1 — see § Implementer Amendments item 6)** |
 | Step 7: Type "art" in search | Filter applied | Step 7 | search input value | asserted |
 | Step 8: Verify only Artifact shown under STORAGE | Filter correct | Step 8 | `toolkit-type-card-artifact` sole visible card (count===1) | asserted |
 | Step 9: Verify no other toolkit types displayed | No other types visible | Step 9 | same count===1 check as step 8 | asserted (folded with step 8) |
@@ -424,7 +430,7 @@ which is the only design that satisfies both "the case demands these exact liter
 | Step 21: Verify navigates to detail view | Detail view shown | Step 21 | same URL check as step 20 | asserted |
 | Step 22: Verify header shows toolkit name | Correct name shown | Step 22 | `toolkit-detail-title` text | asserted **(NEW handle)** |
 | Step 23: Verify URL reflects new toolkit | URL contains toolkit ID | Step 23 | dynamic `{id}` in URL | asserted |
-| Step 24: Verify Configuration/Indexes tabs shown | Both tabs present | Step 24 | 2 icon-only `[role="tab"]` elements confirmed | asserted *(no testids on either tab — `testid needed: toolkit-detail-configuration-tab`/`-indexes-tab`)* |
+| Step 24: Verify Configuration/Indexes tabs shown | Both tabs present | Step 24 | `toolkit-detail-configuration-tab` + `toolkit-detail-indexes-tab` presence (2-element check) | asserted **(testids added PR #670 review round 1 — see § Implementer Amendments item 6)** |
 | Step 25: Verify TEST SETTINGS panel visible | Panel + model selector + Tool dropdown + welcome msg | Step 25 | 4 element checks, one exact-text welcome-message match | asserted **(NEW handles)** |
 | Step 26: Click Tool dropdown | Tool list expands | Step 26 | `toolkit-test-tool-select` click opens listbox | asserted **(NEW handle)** |
 | Step 27: Verify tool list incl. List files | All 16 tools incl. List files | Step 27 | `select-option-*` count===16, `select-option-list_files` present | asserted |
@@ -513,6 +519,7 @@ literal-string and template forms).
 | Toolkits list search input | `agent-search-input` | existing (shared, default prop) | **on-main ✓** | reused from ELITEA-1868 |
 | Toolkit/generic list card | `entity-card` | existing (shared) | **on-main ✓** | reused from ELITEA-1868 |
 | Type-picker search input | `toolkit-wizard-type-search-input` | existing | **on-automation/testids only** | `ToolkitCreationPage.type_search_input`, reused from ELITEA-1868 |
+| **Category filter tab (any, ×12)** | `category-filter-tab` | existing | **on-automation/testids only** | `GroupedCategory.jsx`/`Filter.CategoryFilter` shared component (also used by the Credential type-picker) — added PR #670 review round 1 (commit `0b61e8a2`); generic value reused across every rendered chip, same pattern as `entity-card` |
 | Toolkit type card (dynamic) | `[data-testid="toolkit-type-card-{}"]` template | existing | **on-automation/testids only** | reused from ELITEA-1868 |
 | Toolkit Name input | `toolkit-form-name-input` | existing | **on-automation/testids only** | reused from ELITEA-1868 |
 | Schema field (dynamic, text) | `[data-testid="toolkit-field-{}-input"]` template | existing | **on-automation/testids only** | reused for `bucket`; ELITEA-1868 |
@@ -522,10 +529,11 @@ literal-string and template forms).
 | **MCP checkbox (actual input)** | `toolkit-field-available_by_mcp-checkbox-field` | existing | **on-automation/testids only** | same `toolkit-field-{k}-checkbox-field` template family as `-input`; `ToolBase.jsx` |
 | MCP checkbox (outer wrapper, do NOT use for `.checked` reads) | `toolkit-field-available_by_mcp-checkbox` | existing | **on-automation/testids only** | wrapper `<span>`, not the real `<input>` — same wrapper-vs-input gotcha ELITEA-1824 already documented for a different field |
 | **Bucket-field info icon** | n/a | **testid needed: `toolkit-field-bucket-info-icon`** | n/a | `InfoTooltip.jsx` shared component, only a non-unique `data-info-tooltip` boolean attribute exists (3 instances on this form); needs a caller-supplied `testId` prop per the shared-component testid ruling |
+| **Bucket-field info tooltip CONTENT (popper)** | `toolkit-field-bucket-info-tooltip-content` | existing | **on-automation/testids only** | `InfoTooltip.jsx` — added PR #670 review round 1 (commit `0b61e8a2`): a NEW opt-in `contentTestId` prop threaded through the same 4-layer chain as the trigger icon above, wired ONLY at the Bucket field's call site; the other 2 `InfoTooltip` instances on this form (Pgvector Configuration, Embedding Model) don't pass the prop and are unaffected |
 | "Choose the toolkit type" heading | n/a | **testid needed: `toolkit-wizard-type-picker-heading`** (optional — URL check satisfies the observable) | n/a | carried forward unresolved from ELITEA-1868 AFS |
 | **Toolkit detail header (name)** | `toolkit-detail-title` | existing | **on-automation/testids only** | `EditToolkit.jsx:418` — NEW to this case |
-| **Configuration tab (icon-only)** | n/a | **testid needed: `toolkit-detail-configuration-tab`** | n/a | icon-only, no text, no testid; index-0 `[role="tab"]` is the only current handle |
-| **Indexes tab (icon-only, disabled)** | n/a | **testid needed: `toolkit-detail-indexes-tab`** | n/a | has `data-tour="toolkit-indexes-tab"` (not a testid); index-1 `[role="tab"]` is the only current handle |
+| **Configuration tab (icon-only)** | `toolkit-detail-configuration-tab` | existing | **on-automation/testids only** | `EditToolkit.jsx` — added PR #670 review round 1 (commit `0b61e8a2`) via the `tabProps` mechanism |
+| **Indexes tab (icon-only, disabled)** | `toolkit-detail-indexes-tab` | existing | **on-automation/testids only** | `EditToolkit.jsx` — added PR #670 review round 1 (commit `0b61e8a2`), alongside the pre-existing `data-tour="toolkit-indexes-tab"` attribute in the same `tabProps` object |
 | **Test Settings — model selector** | `model-selector-button`, `model-selector-name` | existing | **on-automation/testids only** | present, not asserted beyond non-empty visibility |
 | **Test Settings — Tool dropdown (combobox)** | `toolkit-test-tool-select`, `toolkit-test-tool-select-combobox` | existing | **on-automation/testids only** | `TestToolSettings.jsx:128` — NEW to this case |
 | **Tool dropdown option (dynamic, 16×)** | `[data-testid="select-option-{tool_key}"]` template | existing (shared) | **on-main ✓** | `SingleSelectMenuItem.jsx` — a pre-existing, already-promoted shared component |
@@ -698,3 +706,39 @@ implementing, not scope changes. All five confirmed live against `http://localho
    for `toolkit-wizard-type-picker-heading`/`toolkit-detail-configuration-tab`/`-indexes-tab`;
    the third is the implementer's own judgment call under the same reasoning, flagged here for
    the reviewer's visibility rather than left silent.
+
+   **RETRACTED — see item 6.** PR #670 review round 1 (fresh-session qa-engineer, CHANGES_REQUESTED)
+   correctly rejected this framing: only the type-picker heading row in § Concrete Handles
+   carries an explicit `(optional)` qualifier — the Configuration/Indexes tab rows and the
+   tooltip-content gap do not, and "cost to thread a testid" (the "high blast-radius" reasoning
+   above) is not the same as "genuinely unplaceable," which is the actual bar for a non-testid
+   exception. All 4 gaps this item claimed were exceptions are real testid work orders and have
+   now been closed — see item 6.
+6. **PR #670 review round 1 fix (test-automation-engineer, implementer slot) — all 3 remaining
+   non-testid handles closed with real testids**, added via `add-data-testid` on
+   `EliteaAI/EliteaUI` `automation/testids` (commit `0b61e8a2`, merged with `origin/main` at
+   `dfd0bcd9`):
+   - `toolkit-detail-configuration-tab` / `toolkit-detail-indexes-tab` — added to
+     `EditToolkit.jsx`'s tab config via the existing `tabProps` mechanism (the same shape
+     already used for the Indexes tab's `data-tour` attribute). `ToolkitDetailPage.
+     count_config_tabs()` rewritten as a 2-element testid presence check, not a `[role="tab"]`
+     count.
+   - `toolkit-field-bucket-info-tooltip-content` — a new opt-in `contentTestId` prop threaded
+     through the shared `InfoTooltip` chain (`ToolBaseProperty` -> `StyledInputEnhancer` ->
+     `InputBase` -> `InfoLabelWithTooltip` -> `InfoTooltip`), wired only at the Bucket field's
+     call site. `InfoTooltip.jsx` wraps its `titleContent` in `<Box data-testid={contentTestId}>`
+     ONLY when the caller passes the prop, so the other 2 `InfoTooltip` instances on this same
+     form (Pgvector Configuration, Embedding Model) are unaffected — confirmed live both before
+     and after the change: still exactly 3 `data-info-tooltip` icons total, only 1 carries the
+     content testid. `ToolkitCreationPage.get_bucket_info_tooltip_text()` rewritten against the
+     new `bucket_info_tooltip_content` `LocatorDescriptor`, no longer `get_by_role("tooltip")`.
+   - `category-filter-tab` — a generic testid added directly to `CategoryFilter.jsx`'s category
+     `Chip` (the shared component `GroupedCategory.jsx` wraps, also used by the Credential
+     type-picker — discovered by source read during this fix, a fact the original dispatch
+     framing didn't have). Named generically (not `toolkit-*`-scoped) per the shared-component
+     testid ruling, since a toolkit-scoped name would mislabel the Credential type-picker's
+     identical chips — same reasoning that already produced the generic `entity-card` precedent.
+     `ToolkitCreationPage.count_category_tabs()` rewritten against the new `CATEGORY_TAB`
+     template constant, no longer 12 hardcoded `get_by_role("button", name=...)` calls.
+
+   Mechanical grep re-run clean after this fix (see PR #670 for the exact command + output).

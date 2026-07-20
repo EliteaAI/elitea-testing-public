@@ -122,6 +122,24 @@ class ToolkitCreationPage(BasePage):
         "case text says 'click', the live product only wires hover/focus)",
     )
 
+    # Bucket-field info tooltip's POPPER CONTENT (not the trigger icon
+    # above). Testid added ELITEA-1866 PR #670 review round 1
+    # (`EliteaAI/EliteaUI` `automation/testids` commit 0b61e8a2): a new
+    # opt-in `contentTestId` prop threaded through the shared InfoTooltip
+    # chain (ToolBaseProperty -> StyledInputEnhancer -> InputBase ->
+    # InfoLabelWithTooltip -> InfoTooltip), wired ONLY at the Bucket
+    # field's call site — the other two InfoTooltip instances on this same
+    # form (Pgvector Configuration, Embedding Model) do not pass the prop
+    # and remain unaffected (confirmed live: still only 3
+    # `data-info-tooltip` icons total, only this one carries the content
+    # testid).
+    bucket_info_tooltip_content = LocatorDescriptor(
+        testid="toolkit-field-bucket-info-tooltip-content",
+        description="Bucket-field info tooltip's popper CONTENT wrapper — "
+        "read the naming-rules text from here, not from the ambient "
+        "[role='tooltip'] landmark",
+    )
+
     save_button = LocatorDescriptor(
         testid="toolkit-form-save-button",
         description="Save button — shared across toolkit/MCP/application creation",
@@ -168,43 +186,30 @@ class ToolkitCreationPage(BasePage):
         logger.info("Searched toolkit types for %r", term)
 
     # Confirmed live (ELITEA-1866 implementer Phase 2 exploration): 12
-    # category tabs render as buttons on the type-picker. No testids on the
-    # individual tab buttons (AFS: out of scope — this case never clicks
-    # one, it filters via the search field instead, steps 7-9).
-    CATEGORY_TAB_NAMES = (
-        "Code Repositories", "Communication", "Development", "Documentation",
-        "Integrations", "Mcp", "Office", "Other", "Project Management",
-        "Storage", "Test Management", "Testing",
-    )
+    # category tabs render as buttons on the type-picker, via the SHARED
+    # ``GroupedCategory.jsx``/``Filter.CategoryFilter`` component (also used
+    # by the Credential type-picker — confirmed by source read, PR #670
+    # review round 1). Generic testid added ELITEA-1866 PR #670 review
+    # round 1 (`EliteaAI/EliteaUI` `automation/testids` commit 0b61e8a2) —
+    # a single shared value reused across every rendered chip, same reuse
+    # pattern as the existing shared ``entity-card`` testid, since this
+    # case's own step-6 observable is only "tabs are present" (count >= 1),
+    # never per-tab identification.
+    CATEGORY_TAB = '[data-testid="category-filter-tab"]'
 
     def count_category_tabs(self, timeout: int = 5000) -> int:
-        """Return how many of the type-picker's known category filter tabs are visible.
-
-        SANCTIONED non-testid exception (ELITEA-1866 dispatch brief — same
-        carve-out class as the AFS's optional
-        ``toolkit-wizard-type-picker-heading``/``toolkit-detail-*-tab``
-        gaps): the category tab buttons carry no testid and this case
-        never clicks one — a role-based smoke count against the
-        confirmed-live tab labels satisfies the case's own step-6
-        observable ("category filter tabs are displayed") without needing
-        per-tab handles. Encapsulated here rather than a raw locator in
-        the test file (``.claude/rules/ui-tests.md`` § Use Page Objects).
+        """Return how many category filter tabs are currently rendered on the type-picker.
 
         Args:
             timeout: Maximum wait time in milliseconds for the first tab
                 to appear before concluding there are none.
         """
+        tabs = self.page.locator(self.CATEGORY_TAB)
         try:
-            self.page.get_by_role(
-                "button", name=self.CATEGORY_TAB_NAMES[0]
-            ).wait_for(state="visible", timeout=timeout)
+            tabs.first.wait_for(state="visible", timeout=timeout)
         except Exception:
             return 0
-        return sum(
-            1
-            for name in self.CATEGORY_TAB_NAMES
-            if self.page.get_by_role("button", name=name).count() > 0
-        )
+        return tabs.count()
 
     @action("Hover the Bucket field's info icon")
     def hover_bucket_info_icon(self, timeout: int = 5000) -> None:
@@ -226,12 +231,11 @@ class ToolkitCreationPage(BasePage):
     def get_bucket_info_tooltip_text(self, timeout: int = 5000) -> str:
         """Return the currently-open info tooltip's text, whitespace-normalized.
 
-        Reads via the ARIA ``[role="tooltip"]`` landmark (MUI ``Tooltip``'s
-        portaled popper content) rather than a testid — adding one to MUI
-        Tooltip's ephemeral popper content is out of scope for this case
-        (:attr:`bucket_info_icon`, the interactive trigger element, already
-        carries the required testid; this method reads its RESULT). Same
-        sanctioned non-testid class as :meth:`count_category_tabs`.
+        Reads via :attr:`bucket_info_tooltip_content` (the compliant
+        testid on the popper's content wrapper, added ELITEA-1866 PR #670
+        review round 1 — see that attribute's docstring for the
+        caller-scoped threading rationale), not the ambient
+        ``[role="tooltip"]`` landmark.
 
         Collapses internal whitespace/newlines to single spaces before
         returning — the live tooltip renders its bullet list with line
@@ -244,9 +248,8 @@ class ToolkitCreationPage(BasePage):
             timeout: Maximum wait time in milliseconds for the tooltip to
                 become visible.
         """
-        tooltip = self.page.get_by_role("tooltip")
-        tooltip.wait_for(state="visible", timeout=timeout)
-        raw_text = tooltip.text_content() or ""
+        self.bucket_info_tooltip_content.wait_for(state="visible", timeout=timeout)
+        raw_text = self.bucket_info_tooltip_content.text_content() or ""
         return " ".join(raw_text.split())
 
     def get_type_card(self, type_key: str):
