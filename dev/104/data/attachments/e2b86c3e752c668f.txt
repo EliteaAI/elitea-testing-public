@@ -1,0 +1,1 @@
+Warning: Failed to cleanup agent 534: 502 Server Error: Bad Gateway for url: https://dev.elitea.ai/api/v2/elitea_core/application/prompt_lib/576/534 — headers: {'Date': 'Mon, 20 Jul 2026 12:01:07 GMT', 'Content-Length': '11'} — body: Bad Gateway
