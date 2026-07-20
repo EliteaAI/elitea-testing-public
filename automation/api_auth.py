@@ -332,9 +332,23 @@ def get_playwright_storage_state(
     auth = KeycloakAPIAuth(base_url, username, password)
     auth.login()
 
+    # Include localStorage with project ID - the frontend reads this to construct
+    # API URLs. Without it, toolkit list calls are made without project_id → 404.
+    # Key names from EliteaUI/src/common/constants.js
+    project_id = settings.elitea_project_id
+    origin = base_url.rstrip("/")
+
     return {
         "cookies": auth.get_playwright_cookies(),
-        "origins": []  # localStorage/sessionStorage not needed
+        "origins": [
+            {
+                "origin": origin,
+                "localStorage": [
+                    {"name": "elitea_ui.project.id", "value": str(project_id)},
+                    {"name": "elitea_ui.project.name", "value": "Private"},
+                ],
+            }
+        ],
     }
 
 
