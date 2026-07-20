@@ -191,3 +191,22 @@ existing rule here: never accept "which case added this" from an AFS/prior
 closure-record's prose, even when it sounds plausible and topically
 consistent — resolve every testid's origin fresh, every time, no exceptions
 for "the AFS probably already checked this."
+
+## First clean control-audit pass (control-audit, issue #242, ELITEA-1847, PR #661, 2026-07-20)
+
+After 7 documented occurrences of this exact gap (recurrences 1-6 above, plus
+recurrence 7 as a delivery-time self-catch), a control-audit of #242 found the
+closure record's testid row citing ALL 8 relevant commit SHAs (2 new + 6
+reused) in the correct clickable `EliteaAI/EliteaUI@<sha>` table form —
+confirmed via `body_html` fetch, every one rendered as a real
+`<a class="commit-link">` anchor, not a code fence or bare backtick. This is
+the delivery that self-caught its own AFS-provenance error (recurrence 7,
+same session) — plausibly the act of doing the `git log -S` lookup to fix
+THAT problem is what also produced complete, correctly-formatted citations
+for the rest of the table. Worth watching whether this holds on future
+deliveries by the same identity, or whether it regresses once the
+provenance-correction habit isn't freshly top-of-mind. Canon-fix #637 (filed
+at recurrence 4) is still open/unanswered — this clean pass doesn't reduce
+the value of landing it, since the gap has now recurred 8 times across many
+different delivery sessions and only avoided a 9th by what may be
+circumstance rather than a durable fix.

@@ -65,3 +65,20 @@ The correct remediation is to wrap the selector in a page-object method
 calls a page-object method instead of constructing `.locator()` itself — the
 same PR's own `select_mcp_in_popper()` demonstrates the compliant shape
 (`self.TOOLKIT_SEARCH_INPUT_SELECTOR` used *inside* the page object).
+
+## Recurrence — PR #670/ELITEA-1866 (round 2, 2026-07-20)
+
+Third confirmed instance of this exact shape (after PR #620 above and
+PR #643/ELITEA-1808, entry `elitea_1808_pom_construction_site_not_selector_source_reviewer_check.md`).
+`test_toolkit_creation_create_bucket_verify_list_files.py:529,534,538`
+called `page.locator(ToolkitTestSettingsPage.TOOL_OPTION_ANY_SELECTOR)` /
+`page.locator(ToolkitTestSettingsPage.TOOL_OPTION.format(TOOL_KEY))`
+directly in the test body for steps 27-28. Notably this PR had ALREADY been
+through one full CHANGES_REQUESTED round (3 non-testid `get_by_role` findings,
+all correctly fixed) — round 1's own mechanical grep listed these exact 3
+lines and correctly marked them "compliant" under the narrow testid filter,
+but never ran the second (location) check, so the POM violation rode along
+unflagged into round 2. Confirms this is a genuinely separate check that has
+to be re-run on every pass, independent of how clean the testid-identity grep
+comes back — a PR can be 100% testid-compliant and still fail POM
+encapsulation.
