@@ -84,6 +84,33 @@ class ChatPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # Project selector (ELITEA-2095)
+    # ------------------------------------------------------------------
+    # The role=combobox trigger showing "Project: {name}" in the sidebar.
+    # Realized as ``project-selector-trigger-combobox`` on the actual
+    # interactive node: SidebarProjectSelect.jsx wires a base
+    # data-testid="project-selector-trigger" onto its shared ProjectSelect ->
+    # SingleSelect component, which auto-suffixes "-combobox" onto the
+    # role=combobox node via SelectDisplayProps (SingleSelect.jsx's existing,
+    # pre-established convention — declared improvisation, see PR description
+    # for ELITEA-2095: no sanctioned shape for a bare, non-suffixed trigger
+    # testid on this shared component).
+    project_selector_trigger = LocatorDescriptor(
+        testid="project-selector-trigger-combobox",
+        description=(
+            "Sidebar project selector combobox trigger. Click opens the "
+            "project dropdown; options resolve via the dynamic "
+            "SELECT_OPTION template (same shared SingleSelectMenuItem family "
+            "as AgentDetailPage.FORK_PROJECT_OPTION)."
+        ),
+    )
+
+    # Project-selector dropdown options — same shared select-option-{value}
+    # family (SingleSelectMenuItem.jsx) as AgentDetailPage.FORK_PROJECT_OPTION
+    # — reuse the pattern, don't invent a new one.
+    SELECT_OPTION = '[data-testid="select-option-{}"]'
+
+    # ------------------------------------------------------------------
     # Model selector
     # ------------------------------------------------------------------
 
@@ -122,6 +149,16 @@ class ChatPage(BasePage):
             "Token usage display inside Context Budget panel. "
             "Shows text like '22 / 64 000 tokens'."
         ),
+    )
+
+    context_budget_messages_count = LocatorDescriptor(
+        testid="context-budget-messages-count",
+        description="Messages counter value inside the Context Budget panel (e.g. '4').",
+    )
+
+    context_budget_summaries_count = LocatorDescriptor(
+        testid="context-budget-summaries-count",
+        description="Summaries counter value inside the Context Budget panel (e.g. '0').",
     )
 
     edit_context_button = LocatorDescriptor(
@@ -200,7 +237,7 @@ class ChatPage(BasePage):
     # and embedded chat.
 
     messages_list = LocatorDescriptor(
-        testid="chat-messages-list",
+        testid="chat-message-list",
         fallback=lambda page: page.locator('main'),
         description="Main messages list container"
     )
@@ -209,6 +246,16 @@ class ChatPage(BasePage):
         testid="chat-message-item",
         fallback=lambda page: page.locator('main ul.MuiList-root > li.MuiListItem-root'),
         description="Individual message items (user + AI)"
+    )
+
+    # The actual overflow-y:scroll SimpleBar content-wrapper wrapping
+    # chat-message-list (confirmed live: sits 2 DOM levels above the
+    # chat-message-list <ul>). Use to assert genuine scrollability
+    # (scrollHeight > clientHeight) and to drive a real scroll interaction —
+    # a CSS-overflow check alone doesn't prove a user can actually scroll.
+    chat_messages_scroll_container = LocatorDescriptor(
+        testid="chat-messages-scroll-container",
+        description="Scrollable messages region (SimpleBar content-wrapper).",
     )
 
     # ------------------------------------------------------------------
@@ -279,6 +326,41 @@ class ChatPage(BasePage):
     # through the parent row selector, not this button's own testid).
     PARTICIPANT_REMOVE_BUTTON = '[data-testid="chat-participant-remove-button"]'
 
+    # ------------------------------------------------------------------
+    # Users participant type (ELITEA-2095) — independent of the Agent/
+    # Pipeline/Toolkit/MCP participant work above (different participant
+    # type: "Users", the conversation's own members). The collapsed
+    # "Users in this conversation" badge reuses the EXISTING
+    # PARTICIPANTS_BADGE template (.format("users")) — no new template
+    # needed there; is_participants_badge_visible(section="users") /
+    # open_participants_popover(section="users") already work as-is.
+    # ------------------------------------------------------------------
+
+    participants_users_avatar = LocatorDescriptor(
+        testid="chat-participants-users-avatar",
+        description=(
+            "Avatar in the expanded PARTICIPANTS panel's USERS section, "
+            "showing the participant's initials/name (e.g. 'TB')."
+        ),
+    )
+
+    # Conversation date-group heading container ("today"/"this_week"/
+    # "older") — scopes BOTH the group's header text AND that group's own
+    # conversation items (DateGroup.jsx renders header + Collapse'd items
+    # in one outer element). The reliable way to assert "conversation X is
+    # under Today specifically" — replaces the raw ``:has(h6) > button``
+    # CSS in get_conversation_list_items() (tracked tech debt,
+    # role-overrides.md) for Today-scoping.
+    CONVERSATION_GROUP_HEADER = '[data-testid="chat-conversation-group-header-{}"]'
+
+    # Individual conversation list item — dynamic per conversation id.
+    CONVERSATION_ITEM = '[data-testid="chat-conversation-item-{}"]'
+
+    # Prefix-match selector enumerating every conversation item regardless of
+    # id — same pattern as MENTION_SKILL_ITEM_PREFIX above. Used to find "any
+    # OTHER conversation" to navigate to.
+    CONVERSATION_ITEM_PREFIX = '[data-testid^="chat-conversation-item-"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
         
@@ -330,7 +412,7 @@ class ChatPage(BasePage):
 
         self.wait_for_page_load()
         logger.info(f"Navigated to chat, page loaded (actual URL: {self.page.url})")
-        
+
     def wait_for_page_load(self, timeout: int = 30000):
         """Wait for chat page to fully load.
 
@@ -382,6 +464,45 @@ class ChatPage(BasePage):
                 _time.sleep(0.2)
             logger.info("Chat page loaded after spinner wait")
         
+    @action("Switch project")
+    def switch_project(self, project_id: str, timeout: int = 10000):
+        """Switch the active project via the sidebar project selector.
+
+        Opens the ``project_selector_trigger`` combobox and clicks the
+        option matching *project_id*, resolved via the dynamic
+        ``SELECT_OPTION`` template — the same shared SingleSelectMenuItem
+        pattern already precedented in ``agent_detail_page.py``'s
+        ``select_fork_target_project()`` / ``FORK_PROJECT_OPTION`` (different
+        UI surface, same underlying DOM component).
+
+        Args:
+            project_id: Numeric id of the target project (string or
+                int-like).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Switching active project to id=%s", project_id)
+        self.project_selector_trigger.click()
+        option = self.page.locator(self.SELECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Switched to project id=%s", project_id)
+
+    def get_selected_project_text(self) -> str:
+        """Return the visible text of the sidebar project selector trigger.
+
+        Reads ``project_selector_trigger``'s own text (e.g. "Project:
+        Elitea Testing Team") — a testid-only handle. There is no separate
+        testid'd element exposing the raw numeric project id in the
+        sidebar (only the combobox's display text), so callers verifying a
+        project switch assert against the project NAME here and, where a
+        numeric id must be confirmed, cross-check via the API (e.g.
+        ``ConversationAPI.get_conversation()``'s ``project_id`` field)
+        rather than reaching for a raw, non-testid DOM handle.
+        """
+        text = self.project_selector_trigger.text_content() or ""
+        return text.strip()
+
     @action("Send message")
     def send_message(self, text: str, use_enter: bool = False):
         """Send a message in the chat.
@@ -438,13 +559,45 @@ class ChatPage(BasePage):
         
     def get_message_count(self) -> int:
         """Get the count of messages in the chat history.
-        
+
         Returns:
             Number of messages displayed
         """
         count = self.messages_container.count()
         logger.info(f"Message count: {count}")
         return count
+
+    def get_messages_scroll_metrics(self) -> dict:
+        """Return scrollHeight/clientHeight/scrollTop for the messages scroll container."""
+        return self.chat_messages_scroll_container.evaluate(
+            "el => ({scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, "
+            "scrollTop: el.scrollTop})"
+        )
+
+    def is_messages_scrollable(self) -> bool:
+        """Return True if the messages region genuinely overflows (scrollHeight > clientHeight)."""
+        metrics = self.get_messages_scroll_metrics()
+        return metrics["scrollHeight"] > metrics["clientHeight"]
+
+    def scroll_messages_container(self, delta_y: int = 200) -> tuple[int, int]:
+        """Perform a real scroll on the messages container; return (scrollTop_before, scrollTop_after).
+
+        A CSS ``overflow-y: scroll`` container with content that happens to
+        fit exactly would pass a height-only check without ever proving the
+        user can actually scroll — this drives an actual wheel interaction
+        and reads ``scrollTop`` before/after so the caller can assert it
+        changed.
+
+        Args:
+            delta_y: Vertical scroll delta in pixels (positive = scroll down).
+        """
+        before = self.chat_messages_scroll_container.evaluate("el => el.scrollTop")
+        self.chat_messages_scroll_container.hover()
+        self.page.mouse.wheel(0, delta_y)
+        self.page.wait_for_timeout(300)
+        after = self.chat_messages_scroll_container.evaluate("el => el.scrollTop")
+        logger.info("Scrolled messages container: scrollTop %s -> %s", before, after)
+        return before, after
         
     @staticmethod
     def _extract_message_body(message_locator) -> str:
@@ -1133,6 +1286,117 @@ class ChatPage(BasePage):
         deeper or have aria-label attributes).
         """
         return self.page.locator(':has(h6) > button')
+
+    def is_conversation_group_visible(self, group: str = "today", timeout: int = 5000) -> bool:
+        """Return True if the date-group container for *group* is visible.
+
+        LOCATOR: ``CONVERSATION_GROUP_HEADER`` (``chat-conversation-group-
+        header-{group}``, added ELITEA-2095) — a stable testid replacing a
+        raw ``<h6>``-text lookup. The container renders whenever the group
+        has at least one conversation and is expanded by default
+        (``DEFAULT_EXPANDED_GROUP`` in EliteaUI); it is NOT scoped to the
+        collapsed/expanded animation state itself — callers wanting to
+        assert "expanded" do so via ``is_conversation_in_group()`` finding a
+        real item underneath, per the project's state-via-data-attribute
+        policy (there is no separate collapsed/expanded testid).
+
+        Args:
+            group: Date-group key — "today" (default), "this_week", or
+                "older".
+            timeout: Maximum wait time in milliseconds.
+        """
+        container = self.page.locator(self.CONVERSATION_GROUP_HEADER.format(group))
+        try:
+            container.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def is_conversation_in_group(
+        self, conversation_id: str | int, group: str = "today", timeout: int = 5000,
+    ) -> bool:
+        """Return True if *conversation_id* renders inside date-group *group* specifically.
+
+        Scopes the dynamic ``CONVERSATION_ITEM`` testid WITHIN the dynamic
+        ``CONVERSATION_GROUP_HEADER`` container (DateGroup.jsx renders the
+        header row and its own Collapse'd conversation items in one outer
+        element) — this is what actually proves "conversation X is under
+        Today", not merely that both render somewhere on the page. Replaces
+        the raw ``:has(h6) > button`` CSS in ``get_conversation_list_items()``
+        (tracked tech debt, role-overrides.md) for Today-scoping.
+
+        Args:
+            conversation_id: Numeric conversation id.
+            group: Date-group key — "today" (default), "this_week", or
+                "older".
+            timeout: Maximum wait time in milliseconds.
+        """
+        group_container = self.page.locator(self.CONVERSATION_GROUP_HEADER.format(group))
+        item = group_container.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        try:
+            item.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @action("Select conversation in date-group")
+    def click_conversation_in_group(
+        self, conversation_id: str | int, group: str = "today", timeout: int = 5000,
+    ):
+        """Click the conversation item scoped within date-group *group*.
+
+        Args:
+            conversation_id: Numeric conversation id.
+            group: Date-group key — "today" (default), "this_week", or
+                "older".
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking conversation %s in group %r", conversation_id, group)
+        group_container = self.page.locator(self.CONVERSATION_GROUP_HEADER.format(group))
+        item = group_container.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        item.wait_for(state="visible", timeout=timeout)
+        item.click(force=True)
+        self.wait_for_network(timeout=timeout)
+
+    @action("Select any other conversation")
+    def click_first_other_conversation(self, exclude_id: str | int, timeout: int = 5000):
+        """Click the first sidebar conversation item OTHER than *exclude_id*.
+
+        Used to force a genuine navigation away from the currently-open
+        conversation: the bare "/chat" route auto-redirects back to the
+        last-viewed conversation (SPA "resume" behavior), so navigating to
+        it does not reliably leave a specific conversation — clicking a
+        DIFFERENT real conversation does (ELITEA-2095 case step 2).
+
+        Args:
+            exclude_id: Conversation id to skip.
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            AssertionError: If no other conversation item is found.
+        """
+        items = self.page.locator(self.CONVERSATION_ITEM_PREFIX)
+        items.first.wait_for(state="visible", timeout=timeout)
+        exclude_testid = f"chat-conversation-item-{exclude_id}"
+        for i in range(items.count()):
+            item = items.nth(i)
+            target_testid = item.get_attribute("data-testid")
+            if target_testid != exclude_testid:
+                logger.info("Clicking other conversation: %s", target_testid)
+                item.click(force=True)
+                # A deterministic wait on the URL, not wait_for_network(): the
+                # resulting client-side route change may involve no new
+                # network request (conversation data already cached), so
+                # networkidle can report "settled" before the SPA's router
+                # has actually pushed the new URL — confirmed live, this was
+                # a real flake source (ELITEA-2095).
+                target_id = target_testid.removeprefix("chat-conversation-item-")
+                self.wait_for_conversation_url(target_id, timeout=timeout)
+                return
+        raise AssertionError(
+            f"No other conversation item found besides {exclude_testid!r} "
+            "to navigate away to"
+        )
 
     def get_conversation_names(self, timeout: int = 5000) -> list[str]:
         """Return the names of all conversations visible in the sidebar list.
@@ -1994,6 +2258,24 @@ class ChatPage(BasePage):
                 f"Cannot parse max tokens from Context Budget text: {text!r}"
             ) from exc
 
+    def get_context_budget_messages_count(self) -> str:
+        """Return the Messages counter text from the Context Budget panel (e.g. "4").
+
+        Uses the dedicated ``context-budget-messages-count`` testid rather
+        than regex-parsing the whole panel's ``textContent``.
+        """
+        text = self.context_budget_messages_count.first.text_content() or ""
+        return text.strip()
+
+    def get_context_budget_summaries_count(self) -> str:
+        """Return the Summaries counter text from the Context Budget panel (e.g. "0").
+
+        Uses the dedicated ``context-budget-summaries-count`` testid rather
+        than regex-parsing the whole panel's ``textContent``.
+        """
+        text = self.context_budget_summaries_count.first.text_content() or ""
+        return text.strip()
+
     def open_add_teammate_dialog(self, timeout: int = 5000) -> tuple[bool, str]:
         """Open the 'Invite Users' dialog via the plus menu.
 
@@ -2280,6 +2562,19 @@ class ChatPage(BasePage):
             return True
         except Exception:
             return False
+
+    def get_participants_user_avatar_text(self, timeout: int = 5000) -> str:
+        """Return the initials/text on the expanded PARTICIPANTS panel's USERS avatar.
+
+        Must be called after ``expand_participants_panel()``. Used to read
+        WHICH participant is shown (e.g. "TB"), not merely that a USERS
+        section is present — case step 8 asks for "the correct participant".
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.participants_users_avatar.first.wait_for(state="visible", timeout=timeout)
+        return (self.participants_users_avatar.first.text_content() or "").strip()
 
     def open_participants_popover(self, timeout: int = 10000, section: str = "agents"):
         """Click the participants badge for *section* to open the participants popper.

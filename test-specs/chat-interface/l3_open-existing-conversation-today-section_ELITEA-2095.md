@@ -59,8 +59,22 @@ duplicating it.
   by `ELITEA-1893` and `ELITEA-2094` AFS explorations); `ConversationAPI(project_id="471")`.
 
 ### generate-per-test (in test setup, cleaned up in its own teardown)
-- Fresh conversation via `ConversationAPI(project_id="471").create_conversation(name)` (empty,
-  no messages — the API has no message-injection endpoint).
+- **AMENDED (implementer Phase 2, confirmed live 4/4 attempts) — do NOT create the seed
+  conversation via `ConversationAPI(...).create_conversation(name)`.** Sending the first UI
+  message to a conversation that exists server-side with ZERO messages (whether opened via
+  direct `/chat/{id}` navigation or via a sidebar-list click) does not append the message to
+  that conversation — it silently creates a BRAND-NEW conversation instead (auto-titled from
+  the message text) and leaves the API-created one orphaned and permanently empty. This is a
+  confirmed product defect, filed as
+  [EliteaAI/elitea-testing-public#691](https://github.com/EliteaAI/elitea-testing-public/issues/691)
+  (root-caused to `ChatBox.jsx`'s `!activeConversation?.uuid` gate not being populated for a
+  freshly-loaded, zero-message conversation). **Implemented instead**: seed the conversation via
+  the UI's own `+Chat` flow (`ChatPage.click_create_conversation()`), matching the already-proven
+  pattern in `test_create_conversation_via_ui_button` / `test_context_budget_reflects_profile_max_tokens`
+  — the conversation id and (auto-generated) name are captured from the URL/API *after* the first
+  send succeeds, not assigned in advance. Case coverage is unaffected: the case exercises the same
+  8 elements (Today section, scroll, input, model, Context Budget, PARTICIPANTS) regardless of how
+  the seed conversation came into existence.
 - **Real message history, generated via UI** (required for a genuine step-4 scroll assertion —
   CSS `overflow` alone doesn't prove scrollability without content that overflows): send **two**
   message exchanges via `chat.send_message(...)` + `chat.wait_for_ai_response(...)`, e.g.
@@ -199,6 +213,60 @@ Locator policy: **testid-only** (`.agents/testing.md` § Locator policy,
 | Context Budget "Messages:" counter row | **NO TESTID** | needs-adding | `testid needed: context-budget-messages-count`. Lives inside the already-testid'd `context-budget-panel` container but has no distinct testid of its own; confirmed live text `"Messages: 4"` is two separate DOM nodes (label + value) with no testid on either. |
 | Context Budget "Summaries:" counter row | **NO TESTID** | needs-adding | `testid needed: context-budget-summaries-count`. Same shape as the Messages row; confirmed live text `"Summaries: 0"`. |
 
+## Implementer Amendment (Phase 2 exploration, ELITEA-2095)
+
+All 8 flagged testid gaps were added to `EliteaAI/EliteaUI` on `automation/testids`
+(commit `8a3627ef`) and confirmed live before writing the spec. Two technique-level
+notes (scope of the case's assertions is unchanged — see the reverse-masking guard
+in § Preconditions for why Team/471 remains load-bearing):
+
+- **`project-selector-trigger` — declared improvisation.** The shared
+  `SingleSelect` component (`EliteaUI src/[fsd]/shared/ui/select/SingleSelect.jsx`)
+  has a pre-established convention: a base `data-testid` prop lands on the `Select`
+  root, and `SelectDisplayProps` auto-suffixes `-combobox` onto the actual
+  interactive `role="combobox"` node. No sanctioned shape existed for a bare,
+  non-suffixed trigger testid on this shared component, so `SidebarProjectSelect.jsx`
+  wires `data-testid="project-selector-trigger"` at the `ProjectSelect` call site
+  and the implementer's `ChatPage.project_selector_trigger` field targets the
+  realized `project-selector-trigger-combobox` — reusing the existing convention
+  rather than inventing a new prop path. Confirmed live: clicking it opens the
+  project dropdown correctly.
+- **Step 1's "471 in the id textbox" verify clause** — implemented via the
+  project-selector's own display text (`ChatPage.get_selected_project_text()`
+  asserting `"Elitea Testing Team" in text`) instead of the separate hidden/
+  readonly `<input>` sibling the AFS's Verify line mentions. That textbox was
+  never listed as a testid gap in this table (only 8 gaps were flagged and
+  added), and per the testid-only locator policy a raw, non-testid handle
+  cannot be added for it without exceeding the dispatch's scope. The
+  project-name text assertion fully proves the switch succeeded (it names the
+  target project unambiguously) and is itself backed by a real testid
+  (`project_selector_trigger`), so no case-level assertion strength is lost.
+- **`chat-conversation-group-header-{group}`** is placed on `DateGroup.jsx`'s
+  OUTER wrapping `Box` (which renders both the header row AND that group's own
+  `Collapse`'d conversation items in one component instance), not narrowly on
+  just the clickable header row — this is what makes DOM-containment-based
+  Today-scoping (`ChatPage.is_conversation_in_group()`) actually work, per the
+  AFS's own stated intent ("the ONLY reliable way to scope conversations under
+  Today specifically").
+
+### Product defects found during implementation (2, both filed — see § Known Defects Found)
+
+- **#691 — orphaned empty conversation on first send.** Invalidated the AFS's
+  originally-specified Test Data approach (create via `ConversationAPI.create_
+  conversation()`, then message via UI). Worked around by seeding via the UI's
+  own `+Chat` flow instead (see § Test Data "AMENDED" note above).
+- **#692 — stale `active-conversation` flag blocks re-click.** A conversation
+  created via `+Chat` and then navigated away from (Step 2) cannot be re-clicked
+  from the sidebar for the rest of the session — `ConversationItem.jsx`'s
+  `if (!isActive) onSelectConversation(...)` guard silently no-ops the click
+  because `isActive` never clears for that specific conversation object.
+  Worked around with a `page.reload()` immediately after Step 2's
+  navigate-to-a-different-conversation click (confirmed live: reloading while
+  ON the different conversation's URL forces a full state re-derivation that
+  correctly clears the stale flag; a same-URL reload of the seeded conversation
+  does NOT fix it). This reload is test-side plumbing, not a case step — it
+  does not appear as its own `allure.step`.
+
 ## Network Behavior
 - No case-relevant network calls beyond standard conversation load
   (`GET .../conversation/prompt_lib/{project}/{id}?messages_limit=...`) and the WebSocket used for
@@ -221,10 +289,20 @@ Locator policy: **testid-only** (`.agents/testing.md` § Locator policy,
   regression if seen in an unrelated exploratory session.
 
 ## Known Defects Found During Exploration
-None found. All gaps identified during this run are **testid asks** (implementer work per
-`.agents/testing.md` § Locator policy — "missing testid alone ⇒ add it", not a defect) or
-**already-documented, unrelated environment artifacts** (the project-471 secrets 403, cited above
-with its origin). No new product defect was observed against this case's actual objective.
+None found (analyst pass). All gaps identified during the analyst's run are **testid asks**
+(implementer work per `.agents/testing.md` § Locator policy — "missing testid alone ⇒ add it",
+not a defect) or **already-documented, unrelated environment artifacts** (the project-471 secrets
+403, cited above with its origin). No new product defect was observed against this case's actual
+objective during analysis.
+
+**Implementer pass (Phase 2/3) — 2 found**, both filed and both worked around without changing the
+case's assertions (see § Implementer Amendment above for full detail):
+- [EliteaAI/elitea-testing-public#691](https://github.com/EliteaAI/elitea-testing-public/issues/691)
+  — sending the first UI message to an API-created (zero-message) conversation silently creates a
+  brand-new conversation instead of using the existing one.
+- [EliteaAI/elitea-testing-public#692](https://github.com/EliteaAI/elitea-testing-public/issues/692)
+  — a `+Chat`-created conversation stays permanently marked "active" after navigating away, making
+  it unclickable to re-select (worked around with a `page.reload()`).
 
 ## Blocked Steps
 None. All 8 case steps were executed and confirmed live end-to-end (in the Team project — see
