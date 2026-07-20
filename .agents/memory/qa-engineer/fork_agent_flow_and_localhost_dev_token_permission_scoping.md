@@ -75,3 +75,22 @@ untested `Bugs & Features` (406) / `Elitea Development` (25).
 Known leftover from this session: forked agent id 146 ("Test Agent",
 version 151) still lives, undeleted, in project 471 — needs an
 admin/elevated credential to clean up; not a product defect.
+
+## Addendum (2026-07-20, ELITEA-2095 session) — conversation DELETE is NOT scoped the same as agent DELETE in 471
+
+The dev-token identity's missing permission in project 471 is specific to
+**agents** (`models.applications.application.delete`). **Conversation
+delete is a different permission scope and DOES work in 471** — confirmed
+live via network trace: creating a throwaway conversation
+(`POST .../conversations/prompt_lib/471` → 201) and deleting it via the
+sidebar context-menu → Delete → confirm produced
+`DELETE .../conversation/prompt_lib/471/{id}` → **204 No Content**, no 403,
+conversation gone from the list on the next folder refetch. So the general
+rule ("verify the specific permission you need before picking a
+cross-project fixture, don't assume parity across entity types") still
+stands, but **471 is confirmed safe for conversation-entity test data +
+cleanup specifically** — don't over-apply the agent-delete caution to
+conversations. Useful when a case needs project 471 (or another non-default
+project) as its Team/non-Private fixture for reasons unrelated to agents
+(e.g. the Private-project PARTICIPANTS-panel owner-badge suppression noted
+in the `ELITEA-2094`/`ELITEA-2095` sessions).
