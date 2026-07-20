@@ -182,6 +182,18 @@ class ArtifactsPage(BasePage):
         description="Download selected files button (enabled after selecting files)",
     )
 
+    download_files_tooltip = LocatorDescriptor(
+        testid="artifacts-download-files-tooltip",
+        description="'Download files' Tooltip's wrapping <Box component=\"span\"> "
+        "(ELITEA-1841 — new testid, implementer Phase-2 amendment). A DIFFERENT DOM "
+        "node from :attr:`download_files_button` — that testid resolves to the INNER "
+        "<button>, while MUI's Tooltip clones its static aria-label onto this "
+        "WRAPPING span one level up (confirmed live: the inner button carries no "
+        "aria-label of its own). ArtifactTableToolbar.jsx is page-local/single-"
+        "consumer (not shared), so the testid is hardcoded directly in JSX — no "
+        "caller-prop threading needed, unlike :attr:`select_all_checkbox` below.",
+    )
+
     # ------------------------------------------------------------------
     # Main-panel breadcrumb header (ELITEA-1824)
     # ------------------------------------------------------------------
@@ -349,6 +361,20 @@ class ArtifactsPage(BasePage):
     # at ArtifactTable.jsx's call site, per the AFS's shared-component
     # testid ruling).
     ARTIFACT_FILE_CHECKBOX = '[data-testid="artifacts-file-checkbox-{}"]'
+
+    select_all_checkbox = LocatorDescriptor(
+        testid="artifacts-select-all-checkbox",
+        description="Table-header 'Select all' checkbox (ELITEA-1841 — new testid, "
+        "implementer). GridTableHeader.jsx is a shared component (7 consumers) — "
+        "threaded via a new caller-supplied `selectAllCheckboxTestId` prop, wired "
+        "ONLY at ArtifactTable.jsx's <GridTableHeader ...> call site, same "
+        "shared-component-prop shape ELITEA-1840 already established for "
+        ":attr:`ARTIFACT_FILE_CHECKBOX`'s per-row `checkboxTestId`. Same "
+        "'testid lands on the MUI wrapping <span>, not the nested <input>' "
+        "shape as the per-row checkboxes — read state via the `class` attribute "
+        "(:meth:`is_select_all_checkbox_checked` / "
+        ":meth:`is_select_all_checkbox_indeterminate`), not `is_checked()`.",
+    )
 
     zip_download_progress_title = LocatorDescriptor(
         testid="artifacts-zip-download-progress-title",
@@ -1436,6 +1462,88 @@ class ArtifactsPage(BasePage):
         states = {name: self.is_file_checkbox_checked(name, timeout=timeout) for name in names}
         logger.info("Checkbox states: %s", states)
         return states
+
+    # ------------------------------------------------------------------
+    # Header "Select all" checkbox (ELITEA-1841)
+    # ------------------------------------------------------------------
+
+    @action("Click header 'Select all' checkbox")
+    def click_select_all_checkbox(self, timeout: int = 10000) -> None:
+        """Click the table-header 'Select all' checkbox.
+
+        Checks/unchecks every currently visible row as a side effect of a
+        SINGLE click (``ArtifactTable.jsx``'s ``handleSelectAll``) — a
+        different code path from :meth:`select_file_checkbox`'s per-row
+        ``onChange`` (ELITEA-1841).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.select_all_checkbox.wait_for(state="visible", timeout=timeout)
+        self.select_all_checkbox.click()
+        logger.info("Clicked header 'Select all' checkbox")
+
+    def is_select_all_checkbox_checked(self, timeout: int = 10000) -> bool:
+        """Return whether the header 'Select all' checkbox is fully checked.
+
+        Same "read the `Mui-checked` CSS class off the testid-anchored MUI
+        wrapping `<span>`" technique already established by
+        :meth:`is_file_checkbox_checked` (ELITEA-1840) — the testid lands on
+        the wrapper, not the nested ``<input>``, so ``Locator.is_checked()``
+        is not usable here either.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if the header checkbox currently carries ``Mui-checked``.
+        """
+        self.select_all_checkbox.wait_for(state="visible", timeout=timeout)
+        class_attr = self.select_all_checkbox.get_attribute("class") or ""
+        return "Mui-checked" in class_attr
+
+    def is_select_all_checkbox_indeterminate(self, timeout: int = 10000) -> bool:
+        """Return whether the header 'Select all' checkbox is in the indeterminate state.
+
+        Reads the ``MuiCheckbox-indeterminate`` CSS class off the same
+        testid-anchored locator as :meth:`is_select_all_checkbox_checked` —
+        confirmed live (ELITEA-1841 AFS, via an exploratory partial-deselect)
+        that MUI adds this class only for a PARTIAL selection, distinct from
+        both the fully-checked and fully-unchecked states — a real 3-state
+        signal, not a cosmetic no-op.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if the header checkbox currently carries
+            ``MuiCheckbox-indeterminate``.
+        """
+        self.select_all_checkbox.wait_for(state="visible", timeout=timeout)
+        class_attr = self.select_all_checkbox.get_attribute("class") or ""
+        return "MuiCheckbox-indeterminate" in class_attr
+
+    def get_download_button_tooltip_text(self, timeout: int = 10000) -> str:
+        """Return the toolbar 'Download files' button's tooltip text.
+
+        Reads the STATIC ``aria-label`` MUI's Tooltip clones onto
+        :attr:`download_files_tooltip`'s wrapping element (ELITEA-1841) — a
+        DIFFERENT DOM node from :attr:`download_files_button` (that testid
+        resolves to the inner ``<button>``, which carries no aria-label of
+        its own; confirmed live). Same no-hover-required technique already
+        established by :meth:`get_delete_button_tooltip_text`. Unlike the
+        delete button's tooltip (which varies with selection completeness),
+        this text is invariant — always ``"Download files"`` regardless of
+        partial vs. full selection (ELITEA-1841 case step 7).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The tooltip text, e.g. ``"Download files"``.
+        """
+        self.download_files_tooltip.wait_for(state="visible", timeout=timeout)
+        return self.download_files_tooltip.get_attribute("aria-label") or ""
 
     # ------------------------------------------------------------------
     # Bulk delete flow (ELITEA-1847)
