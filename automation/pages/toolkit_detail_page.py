@@ -19,6 +19,7 @@ import re
 from playwright.sync_api import Page, expect
 
 from .base_page import BasePage
+from .locator_descriptor import LocatorDescriptor
 
 logger = logging.getLogger("elitea.pages.toolkit_detail")
 
@@ -35,8 +36,52 @@ class ToolkitDetailPage(BasePage):
     URL: /toolkits/all/{id}
     """
 
+    # Page header showing the toolkit's own name (EditToolkit.jsx) — this
+    # page's own identity element, added ELITEA-1866. NOT test-panel
+    # specific (that's :class:`ToolkitTestSettingsPage`), which is why it
+    # lives here rather than there (AFS § Overlap check).
+    toolkit_title = LocatorDescriptor(
+        testid="toolkit-detail-title",
+        description="Toolkit-name header on the detail/config page "
+        "(EditToolkit.jsx) — existing testid, already on "
+        "automation/testids before this case",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
+
+    def get_toolkit_title(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the toolkit-detail page header's toolkit-name text.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the header to
+                become visible.
+        """
+        self.toolkit_title.wait_for(state="visible", timeout=timeout)
+        return self.toolkit_title.text_content() or ""
+
+    def count_config_tabs(self, timeout: int = 5000) -> int:
+        """Return the number of ``[role="tab"]`` elements on the Configuration/Indexes tab strip.
+
+        SANCTIONED non-testid exception (ELITEA-1866 dispatch brief): both
+        the Configuration and Indexes tabs are icon-only with no visible
+        text, and both currently lack a testid (``toolkit-detail-
+        configuration-tab``/``-indexes-tab`` are flagged OPTIONAL in the
+        AFS — this role-count smoke check already satisfies the case's own
+        step-24 observable, "Configuration and Indexes tabs are shown",
+        without needing per-tab handles). Same carve-out class as
+        ``ToolkitCreationPage.count_category_tabs``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first tab
+                to appear before concluding there are none.
+        """
+        tabs = self.page.get_by_role("tab")
+        try:
+            tabs.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return 0
+        return tabs.count()
 
     def navigate_to_toolkit(self, toolkit_id: int) -> None:
         """Navigate to toolkit detail page and wait for load.

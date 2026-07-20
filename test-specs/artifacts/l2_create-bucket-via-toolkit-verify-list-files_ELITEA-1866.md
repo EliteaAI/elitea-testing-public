@@ -656,3 +656,45 @@ None. All 39 case steps executed and verified end-to-end against the live system
   from the "generate a random suffix" pattern every sibling artifact AFS uses for its OWN test
   data — do not "fix" it by randomizing `my-artifact-toolkit`/`new-bucket`, since the case text
   explicitly specifies these exact literal values as Test Data.
+
+## Implementer Amendments (Phase 2/4 — ELITEA-1866 implementer pass)
+
+Per the workflow skill's amend-in-PR rule — technique-level corrections discovered while
+implementing, not scope changes. All five confirmed live against `http://localhost:5173`.
+
+1. **`toolkit-detail-title` needs a polling wait, not a bare visibility check.** Immediately
+   after Save navigates to `/toolkits/all/{id}`, the header briefly renders a generic "Edit
+   Toolkit" placeholder before the toolkit's own data finishes loading — a bare
+   `wait_for(state="visible")` + single `text_content()` read races this and intermittently
+   reads the placeholder. Use `expect(toolkit_title_locator).to_have_text(name, timeout=...)`
+   (auto-retrying) instead.
+2. **Bucket-tooltip text needs whitespace normalization.** The AFS's § Concrete Handles
+   transcription joins the bullet list with spaces; the live DOM's `textContent` uses `\n`
+   between the intro sentence, "The bucket name must:", and each `•` bullet. Both represent the
+   same content — collapse internal whitespace (`" ".join(text.split())`) before comparing, not
+   a defect, a `textContent()`-vs-accessibility-tree formatting artifact.
+3. **The TEST SETTINGS panel's center message list REPLACES its content, it does not
+   append.** Confirmed live: the pre-run welcome message and the post-RUN-TOOL result both
+   render as the SOLE child of the message-list container (`data-testid="chat-message-list"` —
+   an EXISTING, generic, already-on-`automation/testids` testid reused by every chat surface in
+   the app; no new testid needed here). A count-based "wait for N+1 messages" strategy (the
+   pattern `ChatPage.wait_for_ai_response` uses) never resolves for this panel — the
+   implementation instead polls on the ✅/❌ result prefix appearing via
+   `expect(...).to_contain_text(re.compile(...))`.
+4. **`create_artifact_toolkit()` lives on `ToolkitAPI`, not `ArtifactAPI`** (`automation/api/
+   client.py:1634`, inside the `ToolkitAPI` class alongside `list_all_toolkits()`/
+   `delete_toolkit()`) — this AFS's § Automation Hints mislabels its owning class. Behavior as
+   described is otherwise accurate; only the class name needs correcting for future reference.
+5. **Four locators are non-testid by deliberate, dispatch-sanctioned exception**, all
+   encapsulated in page-object methods (never inline in the test file): `count_category_tabs()`
+   (step 6, `get_by_role("button", name=...)` × the 12 confirmed labels), `count_config_tabs()`
+   (step 24, `get_by_role("tab")`), and `get_bucket_info_tooltip_text()` (step 16,
+   `get_by_role("tooltip")` — the tooltip's TRIGGER icon is fully testid'd per
+   `toolkit-field-bucket-info-icon`; only reading the ephemeral, portaled MUI popper CONTENT
+   uses role-based access, since threading a testid through the shared
+   `TooltipMarkdownContent.jsx` markdown renderer would require wrapping it in a new DOM element
+   — out of scope, high blast-radius for a component reused across every tooltip in the app).
+   The first two match this AFS's own "OPTIONAL — satisfied by URL/role-count checks" carve-out
+   for `toolkit-wizard-type-picker-heading`/`toolkit-detail-configuration-tab`/`-indexes-tab`;
+   the third is the implementer's own judgment call under the same reasoning, flagged here for
+   the reviewer's visibility rather than left silent.
