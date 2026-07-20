@@ -370,7 +370,7 @@ class TestArtifactDeleteSubfolderCheckbox:
     EXPECTED_CONFIRM_MESSAGE = "Are you sure to delete the selected files?"
     EXPECTED_SUCCESS_TOAST = "The selected files have been successfully deleted."
 
-    @pytest.mark.p2
+    @pytest.mark.p1
     @allure.title(
         "Selecting 2 individual files via checkbox (partial selection) drives "
         "the header checkbox indeterminate and deletes only those files"
