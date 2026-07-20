@@ -1,1 +1,0 @@
-WARNING  elitea.automation.fixtures.data:data_fixtures.py:154 Failed to delete pipeline 132: 502 Server Error: Bad Gateway for url: https://dev.elitea.ai/api/v2/elitea_core/application/prompt_lib/574/132 — headers: {'Date': 'Fri, 17 Jul 2026 15:22:57 GMT', 'Content-Length': '11'} — body: Bad Gateway
