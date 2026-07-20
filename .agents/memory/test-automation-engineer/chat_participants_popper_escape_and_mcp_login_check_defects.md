@@ -1,6 +1,6 @@
 ---
 name: Chat participants popper Escape gap, MCP login-check false-positive, agent+pipeline state bug
-description: chat-participants-popper doesn't close on Escape (ClickAway only) — use a raw mouse click outside it, not message_input.click() (can be disabled); remoteMcpLoggedOut flags ALL no-auth MCPs as misconfigured (#687); Agent+Pipeline coexisting can crash Send / break picker exclusion via wrong version_id (#684 generalized) (from ELITEA-2094, PR #688)
+description: chat-participants-popper doesn't close on Escape (ClickAway only) — use a raw mouse click outside it, not message_input.click() (can be disabled); remoteMcpLoggedOut flags ALL no-auth MCPs as misconfigured (#687); Agent+Pipeline coexisting can crash Send via wrong version_id (#684) — the picker-exclusion symptom below was RECLASSIFIED to its own issue, #689, correlated but not confirmed-same-mechanism (see UPDATE at bottom) (from ELITEA-2094, PR #688)
 type: feedback
 ---
 
@@ -84,3 +84,22 @@ test — matches `.agents/testing.md`'s "identical mechanism" merge-gate require
 
 Full AFS: `test-specs/chat-interface/l2_add-agent-pipeline-toolkit-mcp-participants-panel_ELITEA-2094.md`.
 Test: `automation/tests/ui/chat/test_chat_participants_panel.py`. PR #688.
+
+## UPDATE (PR #688 fix-only pass, review round): picker-exclusion symptom split into its own issue, #689
+
+A fresh reviewer session caught that bucketing the picker-exclusion symptom (item 3's
+second paragraph above) under #684 overstated the confidence of the root-cause link:
+#684's own 2026-07-20T17:03 comment explicitly says that symptom is "Not yet root-caused
+to a specific line" — correlated with the same Agent+Pipeline trigger condition, but NOT
+confirmed to share #684's precisely-diagnosed version_id-mixup mechanism (a completely
+different code path — `useFilteredEntityItems.js` vs `ChatBox.jsx`'s `onSelectVersion`).
+Filed as [EliteaAI/elitea-testing-public#689](https://github.com/EliteaAI/elitea-testing-public/issues/689),
+cross-linked to #684 both ways. **Lesson for future correlation-based defect bucketing**:
+"same trigger condition" is not "same root cause" — check the linked issue's OWN comments
+for a root-cause confidence caveat before citing it as the mechanism for a second symptom,
+even one discovered in the same session as the first. Also fixed this session: Step 9's
+`assert conv_id` hard failure now runs a runtime signature check (console + pageerror +
+network listeners) instead of asserting the #684 link on faith — see
+`console_vs_pageerror_for_uncaught_exceptions.md` for the mechanics — and
+`get_participant_section_icon_markup` no longer chains `badge.locator("svg").first`
+(now a dedicated `chat-participants-badge-icon-{section}` testid).
