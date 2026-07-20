@@ -1,0 +1,308 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Mon Jul 20 08:10:22 UTC 2026","Mon Jul 20 08:10:33 UTC 2026","11056","tests.ui.agents","test_agent_management","TestAgentActions","","","test_edit_agent_instructions","Edit an agent's Instructions field and verify the change persists
+        after a full-navigation page reload (ELITEA-1872).
+
+        Uses a dedicated, disposable agent created via
+        ``AgentAPI.create_agent_full()`` (not the shared ``agent_id``
+        fixture) because the fixture's plain ``create_agent()`` call
+        currently 400s against the DEV backend
+        (https://github.com/EliteaAI/elitea-testing-public/issues/524) —
+        same workaround as ``test_agent_remove_variable.py`` (ELITEA-1884).
+
+        Known defect #538 (isolated, non-blocking): typing into the
+        Instructions field triggers a React ""Maximum update depth exceeded""
+        console warning (confirmed live: fires on the typing step only, not
+        on navigate or save; does not block the Save request or persistence).
+        The console side-channel check is deferred to the end of the test
+        (after the case's own persistence assertions have run and proven the
+        feature under test has no defect) so this pre-existing, isolated
+        warning doesn't mask the Steps 1-5 verification — same scoping
+        precedent as ``test_credential_required_fields_validation.py``.
+        "
+"passed","Mon Jul 20 08:07:09 UTC 2026","Mon Jul 20 08:07:14 UTC 2026","5592","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_model_selector_opens_menu","TC-CHAT-010, TC-CHAT-020: Model selector shows current model and opens menu."
+"passed","Mon Jul 20 08:06:23 UTC 2026","Mon Jul 20 08:06:32 UTC 2026","9093","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_visible_and_updates","Character counter appears when typing and updates in real-time.
+        TC-1685
+        Acceptance Criteria #1 (extended to Conversation Starters).
+
+        Note: Counter only appears after typing, not initially.
+        "
+"passed","Mon Jul 20 08:11:34 UTC 2026","Mon Jul 20 08:12:09 UTC 2026","35365","tests.ui.agents","test_agent_save_as_version_preserves_skills","TestAgentSaveAsVersionPreservesSkills","","","test_agent_save_as_version_preserves_skills","Create a Skill + Agent (both via UI), attach the Skill, Save As
+        Version, and verify the Skill is still attached under the new
+        version — confirmed both via the UI and a fresh API response."
+"passed","Mon Jul 20 08:11:00 UTC 2026","Mon Jul 20 08:11:10 UTC 2026","10791","tests.ui.pipelines","test_pipeline_management","TestDeletePipeline","","","test_delete_pipeline_via_ui_menu","Create a pipeline, delete via the UI three-dot menu, and verify removal."
+"passed","Mon Jul 20 08:12:11 UTC 2026","Mon Jul 20 08:14:20 UTC 2026","129518","tests.ui.agents","test_agent_with_github_toolkit","TestAddToolkitToAgent","","","test_add_toolkit_to_agent","Add a GitHub toolkit to an existing agent via the UI, then chat."
+"passed","Mon Jul 20 08:04:23 UTC 2026","Mon Jul 20 08:05:15 UTC 2026","52935","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_selection_from_chat","TC1: Voice Selection via TTS Controls in Chat.
+        TC-1918, TC-1915
+        "
+"skipped","Mon Jul 20 08:13:51 UTC 2026","Mon Jul 20 08:13:51 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[bitbucket]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Mon Jul 20 08:09:14 UTC 2026","Mon Jul 20 08:09:18 UTC 2026","4048","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_agent_information_section","Information section should display Agent ID and Version ID."
+"skipped","Mon Jul 20 08:12:36 UTC 2026","Mon Jul 20 08:12:36 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[bitbucket]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Mon Jul 20 08:10:43 UTC 2026","Mon Jul 20 08:10:49 UTC 2026","5285","tests.ui.pipelines","test_pipeline_management","TestEditPipeline","","","test_pipeline_has_configuration_and_history_tabs","Pipeline detail page shows configuration panel and history button."
+"broken","Mon Jul 20 08:16:40 UTC 2026","Mon Jul 20 08:19:45 UTC 2026","184766","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[minimal_prompt]","Create image from text prompt and verify image appears in response."
+"passed","Mon Jul 20 08:04:51 UTC 2026","Mon Jul 20 08:04:57 UTC 2026","6298","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2: Counter turns red when 0 characters remain.
+        "
+"broken","Mon Jul 20 08:12:29 UTC 2026","Mon Jul 20 08:12:53 UTC 2026","24068","tests.ui.chat","test_conversation_management","TestConversationActions","","","test_rename_conversation_via_ui","TC-CONV-006 UI: Rename a conversation through the three-dot menu."
+"passed","Mon Jul 20 08:11:36 UTC 2026","Mon Jul 20 08:11:41 UTC 2026","5597","tests.ui.chat","test_conversation_management","TestCreateConversation","","","test_new_conversation_default_settings","TC-CONV-002: New conversation has default settings."
+"passed","Mon Jul 20 08:05:48 UTC 2026","Mon Jul 20 08:06:04 UTC 2026","15796","tests.ui.pipelines","test_pipeline_advanced","TestMultiNodeTopology","","","test_three_node_chain","PIPE-030: Build a three-node chain: LLM → Code → END."
+"passed","Mon Jul 20 08:12:18 UTC 2026","Mon Jul 20 08:12:28 UTC 2026","10174","tests.ui.chat","test_conversation_management","TestConversationNavigation","","","test_send_message_persists_conversation","After sending a message, the conversation stays in the sidebar list."
+"passed","Mon Jul 20 08:11:16 UTC 2026","Mon Jul 20 08:11:24 UTC 2026","7246","tests.ui.pipelines","test_pipeline_management","TestSearchPipeline","","","test_search_pipeline_no_results","Searching for a non-existent pipeline should show no results."
+"passed","Mon Jul 20 08:07:46 UTC 2026","Mon Jul 20 08:07:52 UTC 2026","5841","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_add_participant_via_hash_search","TC-CHAT-018: Add participant via # search and select option.
+
+        The hash search feature detects '#' via keydown events, so we must
+        use press_sequentially() instead of fill() to trigger it.
+        "
+"passed","Mon Jul 20 08:11:12 UTC 2026","Mon Jul 20 08:11:16 UTC 2026","3655","tests.ui.pipelines","test_pipeline_management","TestSearchPipeline","","","test_search_pipeline_by_name","Search for a pipeline by name on the dashboard."
+"passed","Mon Jul 20 08:04:24 UTC 2026","Mon Jul 20 08:04:33 UTC 2026","9148","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_yaml_view_toggle","PIPE-019: Switch to YAML view and verify the editor is visible."
+"passed","Mon Jul 20 08:08:48 UTC 2026","Mon Jul 20 08:08:52 UTC 2026","3782","tests.ui.agents","test_agent_management","TestCreateAgent","","","test_create_agent_via_api_visible_in_ui","Create an agent via API fixture and verify it shows in the UI list."
+"passed","Mon Jul 20 08:08:35 UTC 2026","Mon Jul 20 08:08:54 UTC 2026","18917","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_handle_message_send_failure","TC-CHAT-024: Handle message send failure gracefully."
+"broken","Mon Jul 20 08:10:06 UTC 2026","Mon Jul 20 08:11:11 UTC 2026","65508","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[32k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
+
+        Parameterized to verify:
+        - P1 (10,000 tokens): Standard value propagates correctly
+        - P2 (32,000 tokens): Updated value propagates (not cached)
+
+        Cleanup: deletes the created conversation via API.
+        "
+"passed","Mon Jul 20 08:13:23 UTC 2026","Mon Jul 20 08:13:38 UTC 2026","15161","tests.ui.chat","test_conversation_management","TestConversationActions","","","test_multiple_conversations_listed","Multiple conversations appear in the sidebar list."
+"passed","Mon Jul 20 08:09:59 UTC 2026","Mon Jul 20 08:10:12 UTC 2026","12690","tests.ui.agents","test_agent_management","TestAgentActions","","","test_edit_agent_name","Edit an agent's name and verify the change persists."
+"broken","Mon Jul 20 08:06:18 UTC 2026","Mon Jul 20 08:06:38 UTC 2026","19993","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_sync","TC3: Settings Synchronization from Personalization to Chat.
+        TC-1916
+        Personalization settings are baseline defaults that apply to Chat.
+        Chat changes are temporary/session-only and do NOT sync back to Personalization.
+        "
+"passed","Mon Jul 20 08:11:34 UTC 2026","Mon Jul 20 08:11:45 UTC 2026","10416","tests.ui.pipelines","test_pipeline_nodes","TestAddNode","","","test_add_human_in_the_loop_node_and_connect_to_end","PIPE-031: Add a HITL node and connect it to END."
+"passed","Mon Jul 20 08:08:12 UTC 2026","Mon Jul 20 08:08:19 UTC 2026","7024","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_multiple_conversation_starters_have_counters","Each conversation starter field has its own counter.
+        TC-1684
+        "
+"skipped","Mon Jul 20 08:10:48 UTC 2026","Mon Jul 20 08:10:48 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[gitlab]","Create a credential through the UI form for any toolkit type."
+"passed","Mon Jul 20 08:04:35 UTC 2026","Mon Jul 20 08:04:42 UTC 2026","6955","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_yaml_content_reflects_pipeline","PIPE-020: YAML content should reflect the pipeline structure."
+"passed","Mon Jul 20 08:09:52 UTC 2026","Mon Jul 20 08:09:54 UTC 2026","2512","tests.ui.pipelines","test_pipeline_management","TestPipelineDashboard","","","test_pipeline_created_via_api_visible_in_dashboard","Pipeline created via API fixture should appear in the dashboard."
+"failed","Mon Jul 20 08:07:56 UTC 2026","Mon Jul 20 08:08:21 UTC 2026","24832","tests.ui.toolkits","test_github_toolkit","TestChatWithGitHubToolkit","","","test_chat_with_github_toolkit","Add GitHub toolkit to chat, send a message, verify execution."
+"passed","Mon Jul 20 08:06:06 UTC 2026","Mon Jul 20 08:06:26 UTC 2026","20607","tests.ui.pipelines","test_pipeline_advanced","TestMultiNodeTopology","","","test_save_multi_node_pipeline","PIPE-030b: Build a multi-node pipeline, save, and verify persistence."
+"passed","Mon Jul 20 08:05:40 UTC 2026","Mon Jul 20 08:05:49 UTC 2026","9587","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_send_text_message","TC-CHAT-003, TC-CHAT-004: Send message and verify history."
+"broken","Mon Jul 20 08:08:06 UTC 2026","Mon Jul 20 08:09:16 UTC 2026","70242","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantHistory","","","test_history_restore_and_continue","User can restore a previous session and continue messaging.
+
+        Covers: 6.1.1, 6.2.1, 6.2.3
+        "
+"passed","Mon Jul 20 08:04:49 UTC 2026","Mon Jul 20 08:05:16 UTC 2026","27330","tests.ui.toolkits","test_github_toolkit","TestCreateGitHubToolkit","","","test_create_github_toolkit","Create a GitHub toolkit through the UI form."
+"passed","Mon Jul 20 08:10:28 UTC 2026","Mon Jul 20 08:10:39 UTC 2026","10936","tests.ui.pipelines","test_pipeline_management","TestEditPipeline","","","test_edit_pipeline_description","Edit a pipeline's description and verify the change persists."
+"passed","Mon Jul 20 08:11:59 UTC 2026","Mon Jul 20 08:12:17 UTC 2026","18097","tests.ui.chat","test_conversation_management","TestConversationNavigation","","","test_navigate_between_conversations","Navigate from one conversation to another via the sidebar list."
+"broken","Mon Jul 20 08:05:40 UTC 2026","Mon Jul 20 08:06:55 UTC 2026","74454","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantMessaging","","","test_send_message_and_receive_response","User can send a message and receive AI response.
+
+        Covers: 3.2.1-3.2.7, 3.2.9
+        "
+"passed","Mon Jul 20 08:08:16 UTC 2026","Mon Jul 20 08:08:20 UTC 2026","4102","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_navigate_to_agents_from_sidebar","TC-CHAT-022: Navigate to Agents from sidebar."
+"passed","Mon Jul 20 08:04:44 UTC 2026","Mon Jul 20 08:08:17 UTC 2026","213903","tests.ui.artifacts","test_artifacts_multi_file","TestArtifactMultiFileDownload","","","Agent creates files at root and in subfolder — all visible and accessible","Agent creates files at root and under a sub-path — all visible and accessible.
+
+        ELITEA-1327 regression: when an agent creates N files in a single tool call,
+        all N files must be downloadable via the UI.  Before the fix, only the last
+        file written would be persisted; all earlier files were silently lost.
+        "
+"passed","Mon Jul 20 08:11:23 UTC 2026","Mon Jul 20 08:11:33 UTC 2026","10267","tests.ui.agents","test_agent_save_as_version","TestAgentSaveAsVersion","","","test_save_as_version_creates_named_version_visible_in_dropdown","Editing Instructions and clicking Save As Version creates a named
+        version that appears (and is active) in the VERSION dropdown."
+"passed","Mon Jul 20 08:04:56 UTC 2026","Mon Jul 20 08:05:06 UTC 2026","9883","tests.ui.pipelines","test_pipeline_advanced","TestDiscardChanges","","","test_discard_reverts_name_change","PIPE-022: Edit name, click Discard, and verify original name restored."
+"passed","Mon Jul 20 08:11:44 UTC 2026","Mon Jul 20 08:11:57 UTC 2026","13133","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[confluence]","Create a toolkit through the UI form for any toolkit type."
+"passed","Mon Jul 20 08:05:40 UTC 2026","Mon Jul 20 08:06:19 UTC 2026","39139","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning message.
+        TC-1686
+
+        Tests both collapsed mode and fullscreen mode.
+        "
+"passed","Mon Jul 20 08:09:10 UTC 2026","Mon Jul 20 08:09:14 UTC 2026","3241","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_agent_instructions_field","Instructions field should be visible and editable."
+"passed","Mon Jul 20 08:11:19 UTC 2026","Mon Jul 20 08:11:26 UTC 2026","7309","tests.ui.chat","test_conversation_management","TestCreateConversation","","","test_create_conversation_via_ui_button","TC-CONV-001 UI: Create a conversation by clicking the UI button."
+"passed","Mon Jul 20 08:10:13 UTC 2026","Mon Jul 20 08:10:21 UTC 2026","8495","tests.ui.agents","test_agent_management","TestAgentActions","","","test_edit_agent_description","Edit an agent's description and verify the change persists."
+"passed","Mon Jul 20 08:13:41 UTC 2026","Mon Jul 20 08:13:42 UTC 2026","1008","tests.ui.chat","test_conversation_management","TestConversationIsolation","","","test_fixture_cleanup_cycle","Verify that creating and deleting conversations via the API works."
+"passed","Mon Jul 20 08:06:48 UTC 2026","Mon Jul 20 08:07:32 UTC 2026","43597","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+        "
+"passed","Mon Jul 20 08:08:52 UTC 2026","Mon Jul 20 08:09:04 UTC 2026","11809","tests.ui.agents","test_agent_management","TestCreateAgent","","","test_create_agent_required_fields_validation","Save button should be disabled when required fields are empty."
+"passed","Mon Jul 20 08:06:01 UTC 2026","Mon Jul 20 08:06:07 UTC 2026","6583","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_cannot_send_empty_message","TC-CHAT-007: Cannot send empty message."
+"passed","Mon Jul 20 08:04:16 UTC 2026","Mon Jul 20 08:04:27 UTC 2026","10803","tests.ui.agents","test_agent_back_navigation","","","","test_back_button_from_agent_detail_returns_to_intact_agents_list","Back button on agent detail page returns to Agents dashboard with
+    the list intact (ELITEA-1869).
+
+    Uses the first pre-existing agent card on the dashboard — read-only,
+    no test data created or cleaned up.
+    "
+"broken","Mon Jul 20 08:06:40 UTC 2026","Mon Jul 20 08:06:59 UTC 2026","19494","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_preview_personalization","TC4: Voice Personalization Controls in Settings Page.
+        TC-1914
+        "
+"passed","Mon Jul 20 08:13:38 UTC 2026","Mon Jul 20 08:13:41 UTC 2026","2972","tests.ui.chat","test_conversation_management","TestConversationIsolation","","","test_fixture_creates_fresh_conversation","Verify the conversation_id fixture produces a valid conversation."
+"failed","Mon Jul 20 08:04:29 UTC 2026","Mon Jul 20 08:05:21 UTC 2026","52218","tests.ui.chat","test_agent_with_toolkit_chat","TestAgentWithToolkitInChat","","","test_agent_with_toolkit_executes_in_chat","Create agent with toolkit, add agent as participant in chat, verify toolkit executes.
+
+        The toolkit is attached to the agent (not the conversation directly).
+        This tests the agent-owns-toolkit execution path in real chat (/chat).
+        "
+"passed","Mon Jul 20 08:05:16 UTC 2026","Mon Jul 20 08:06:17 UTC 2026","61801","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_speed_and_volume_controls","TC2: Speed and Volume Slider Adjustments.
+        TC-1917
+        "
+"passed","Mon Jul 20 08:11:25 UTC 2026","Mon Jul 20 08:11:32 UTC 2026","6066","tests.ui.pipelines","test_pipeline_management","TestPipelineIsolation","","","test_fixture_creates_fresh_pipeline","Verify the pipeline_id fixture produces a valid pipeline."
+"broken","Mon Jul 20 08:06:55 UTC 2026","Mon Jul 20 08:08:05 UTC 2026","70107","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantNewSession","","","test_new_chat_creates_fresh_session","New Chat button starts a fresh support session.
+
+        Covers: 3.5.1, 3.5.2
+        "
+"failed","Mon Jul 20 08:07:32 UTC 2026","Mon Jul 20 08:07:40 UTC 2026","7870","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_internal_tools_panel_shows_all_tools","TC-CHAT-012: Internal tools panel displays all available tools."
+"passed","Mon Jul 20 08:10:11 UTC 2026","Mon Jul 20 08:10:16 UTC 2026","4436","tests.ui.pipelines","test_pipeline_management","TestCreatePipeline","","","test_create_pipeline_required_fields_validation","Save button should be disabled when required fields are empty."
+"passed","Mon Jul 20 08:11:28 UTC 2026","Mon Jul 20 08:11:42 UTC 2026","14823","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[jira]","Create a toolkit through the UI form for any toolkit type."
+"passed","Mon Jul 20 08:08:48 UTC 2026","Mon Jul 20 08:09:05 UTC 2026","17115","tests.ui.pipelines","test_pipeline_execution","TestPipelineChatMessages","","","test_user_message_visible","PIPE-017: User message appears in chat alongside AI response."
+"passed","Mon Jul 20 08:04:18 UTC 2026","Mon Jul 20 08:04:28 UTC 2026","9972","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_launcher_visible_and_opens_widget","Launcher is visible and opens Support Assistant widget.
+
+        Covers: 2.1.1, 2.2.1, 2.2.2
+        "
+"passed","Mon Jul 20 08:05:54 UTC 2026","Mon Jul 20 08:05:59 UTC 2026","5584","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_shift_enter_adds_new_line","TC-CHAT-006: Shift+Enter adds new line instead of sending."
+"passed","Mon Jul 20 08:09:17 UTC 2026","Mon Jul 20 08:09:24 UTC 2026","7494","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantViewModes","","","test_expand_collapse_fullview","Widget can expand to full view and collapse back.
+
+        Covers: 2.3.1, 2.3.2, 2.3.3
+        "
+"passed","Mon Jul 20 08:13:08 UTC 2026","Mon Jul 20 08:13:22 UTC 2026","14503","tests.ui.chat","test_conversation_management","TestConversationActions","","","test_delete_conversation_cancel","TC-CONV-007b: Cancel the delete confirmation dialog."
+"passed","Mon Jul 20 08:09:55 UTC 2026","Mon Jul 20 08:09:58 UTC 2026","3911","tests.ui.pipelines","test_pipeline_management","TestPipelineDashboard","","","test_view_toggle_table_and_card","Dashboard should support switching between table and card views."
+"passed","Mon Jul 20 08:05:20 UTC 2026","Mon Jul 20 08:05:27 UTC 2026","6280","tests.ui.pipelines","test_pipeline_advanced","TestActionsMenu","","","test_three_dot_menu_lists_items","PIPE-028: The three-dot menu should contain expected items."
+"passed","Mon Jul 20 08:13:17 UTC 2026","Mon Jul 20 08:13:47 UTC 2026","30584","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[jira]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Mon Jul 20 08:09:59 UTC 2026","Mon Jul 20 08:10:11 UTC 2026","12082","tests.ui.pipelines","test_pipeline_management","TestCreatePipeline","","","test_create_pipeline_via_ui","PIPE-002: Create a pipeline through the UI form and verify it appears."
+"passed","Mon Jul 20 08:11:32 UTC 2026","Mon Jul 20 08:11:34 UTC 2026","2209","tests.ui.pipelines","test_pipeline_management","TestPipelineIsolation","","","test_fixture_cleanup_cycle","Verify that creating and deleting pipelines via the API works."
+"passed","Mon Jul 20 08:14:23 UTC 2026","Mon Jul 20 08:14:36 UTC 2026","13371","tests.ui.agents","test_agent_with_github_toolkit","TestRemoveToolkitFromAgent","","","test_remove_toolkit_from_agent","Add a toolkit, then remove it, and verify it's gone."
+"passed","Mon Jul 20 08:07:01 UTC 2026","Mon Jul 20 08:07:38 UTC 2026","36803","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_not_visible_by_default","TC5: Voice settings are NOT displayed in Chat by default.
+
+        Regression test for bug #5235: Read-out control was inappropriately
+        visible in default Chat window state.
+
+        Expected:
+            Voice settings controls should only appear when Read-out and
+            Voice mode features are explicitly activated.
+
+        Related:
+            - Bug: https://github.com/EliteaAI/elitea_issues/issues/5235
+        "
+"passed","Mon Jul 20 08:10:43 UTC 2026","Mon Jul 20 08:10:56 UTC 2026","12824","tests.ui.agents","test_agent_management","TestAgentActions","","","test_delete_agent_via_ui_menu","Create an agent, delete via the UI three-dot menu, and verify removal."
+"passed","Mon Jul 20 08:05:26 UTC 2026","Mon Jul 20 08:05:36 UTC 2026","10561","tests.ui.chat","test_chat_interface","TestPageLoadAndRendering","","","test_chat_page_loads_with_functional_input","TC-CHAT-001, TC-CHAT-002: Chat page loads with functional message input."
+"passed","Mon Jul 20 08:05:20 UTC 2026","Mon Jul 20 08:05:59 UTC 2026","39397","tests.ui.toolkits","test_github_toolkit","TestGitHubToolkitTestSettings","","","test_github_toolkit_test_settings","Select 'List branches in repo' from Test Settings and run it."
+"passed","Mon Jul 20 08:04:27 UTC 2026","Mon Jul 20 08:04:32 UTC 2026","5243","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAIGenerationFailureRetry","","","test_generation_failure_shows_error_and_allows_retry","Generation failure surfaces an error, preserves the prompt, and a
+        retry (via the same Generate button) succeeds once the service
+        recovers."
+"passed","Mon Jul 20 08:11:10 UTC 2026","Mon Jul 20 08:11:26 UTC 2026","15781","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[github]","Create a toolkit through the UI form for any toolkit type."
+"passed","Mon Jul 20 08:04:33 UTC 2026","Mon Jul 20 08:04:38 UTC 2026","5639","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAISuggestedResources","","","test_generated_draft_includes_suggested_resources_section","Submitting a description implying resource use surfaces a
+        Suggested Resources section in the review form: relevant
+        Toolkit/Agent/Pipeline/MCP suggestions are shown (each with a name,
+        and a description when the underlying resource has one), categories
+        with no suggestions render no section at all, and no suggestion is
+        pre-selected."
+"skipped","Mon Jul 20 08:12:36 UTC 2026","Mon Jul 20 08:12:36 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[gitlab]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Mon Jul 20 08:06:12 UTC 2026","Mon Jul 20 08:06:40 UTC 2026","28197","tests.ui.chat","test_chat_interface","TestMessageActions","","","test_copy_message_to_clipboard","TC-CHAT-008: Copy message to clipboard."
+"broken","Mon Jul 20 08:08:22 UTC 2026","Mon Jul 20 08:08:33 UTC 2026","11468","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_search_conversations_dialog","TC-CHAT-023: Search conversations."
+"failed","Mon Jul 20 08:12:53 UTC 2026","Mon Jul 20 08:13:07 UTC 2026","13750","tests.ui.chat","test_conversation_management","TestConversationActions","","","test_delete_conversation_with_confirmation","TC-CONV-007: Delete conversation via UI and verify removal."
+"passed","Mon Jul 20 08:09:47 UTC 2026","Mon Jul 20 08:09:51 UTC 2026","4139","tests.ui.pipelines","test_pipeline_management","TestPipelineDashboard","","","test_pipeline_dashboard_loads","PIPE-001: Dashboard loads with header and search input."
+"passed","Mon Jul 20 08:04:10 UTC 2026","Mon Jul 20 08:04:16 UTC 2026","5310","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_page_loads","The home page should load without errors."
+"passed","Mon Jul 20 08:08:23 UTC 2026","Mon Jul 20 08:08:53 UTC 2026","29913","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestToolkitCredentialIndicators","","","test_toolkit_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Toolkit."
+"passed","Mon Jul 20 08:04:39 UTC 2026","Mon Jul 20 08:04:49 UTC 2026","10181","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_visible_and_updates_realtime","Character counter appears when typing and updates in real-time.
+        TC-1688, TC-1685
+        Acceptance Criteria #1: Real-time character counter visible.
+        "
+"failed","Mon Jul 20 08:12:57 UTC 2026","Mon Jul 20 08:13:13 UTC 2026","16586","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[github]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Mon Jul 20 08:07:34 UTC 2026","Mon Jul 20 08:08:10 UTC 2026","36399","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning.
+        TC-1686
+        "
+"passed","Mon Jul 20 08:06:28 UTC 2026","Mon Jul 20 08:07:06 UTC 2026","38094","tests.ui.pipelines","test_pipeline_execution","TestExecutePipeline","","","test_pipeline_response_is_meaningful","PIPE-011, PIPE-012: Execute a simple pipeline and verify meaningful response."
+"passed","Mon Jul 20 08:08:05 UTC 2026","Mon Jul 20 08:08:47 UTC 2026","42430","tests.ui.pipelines","test_pipeline_execution","TestPipelineExecutionEdgeCases","","","test_navigate_away_and_reexecute","PIPE-016: Navigate away from the pipeline and return to re-execute."
+"skipped","Mon Jul 20 08:07:54 UTC 2026","Mon Jul 20 08:08:04 UTC 2026","10071","tests.ui.chat","test_chat_interface","TestContextAndSettings","","","test_edit_context_settings","TC-CHAT-019: Edit context settings."
+"passed","Mon Jul 20 08:14:38 UTC 2026","Mon Jul 20 08:15:00 UTC 2026","22775","tests.ui.agents","test_agent_with_github_toolkit","TestChatWithAgentToolkit","","","test_agent_chat_with_github_toolkit","Add toolkit to agent, chat via /chat, verify toolkit execution."
+"passed","Mon Jul 20 08:06:34 UTC 2026","Mon Jul 20 08:06:44 UTC 2026","10734","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2.
+        "
+"passed","Mon Jul 20 08:04:16 UTC 2026","Mon Jul 20 08:04:23 UTC 2026","7261","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_main_content_visible","The main content area should render after navigation."
+"passed","Mon Jul 20 08:04:43 UTC 2026","Mon Jul 20 08:04:55 UTC 2026","12138","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_flow_yaml_round_trip","PIPE-021: Toggle Flow → YAML → Flow preserves the canvas."
+"passed","Mon Jul 20 08:09:54 UTC 2026","Mon Jul 20 08:09:58 UTC 2026","3977","tests.ui.agents","test_agent_management","TestAgentList","","","test_view_toggle_table_and_card","Dashboard should support switching between table and card views."
+"passed","Mon Jul 20 08:04:59 UTC 2026","Mon Jul 20 08:05:37 UTC 2026","38430","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+
+        Acceptance Criteria #1 & #3: Counter visible in Full Screen mode,
+        warning displays at limit.
+        "
+"skipped","Mon Jul 20 08:13:50 UTC 2026","Mon Jul 20 08:13:50 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[gitlab]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Mon Jul 20 08:09:24 UTC 2026","Mon Jul 20 08:09:34 UTC 2026","10196","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_internal_tools_enum_usage","Verify internal tools can be toggled using the enum-based API.
+    
+        Note: This is a smoke test for the toggle_tool() API accepting enum values.
+        Full state verification (checking if checkbox actually changed) is not
+        performed due to MUI DOM complexity making is_tool_enabled() unreliable.
+        See test_internal_tools_enable_disable (skipped) for details.
+        "
+"passed","Mon Jul 20 08:10:33 UTC 2026","Mon Jul 20 08:10:42 UTC 2026","8833","tests.ui.agents","test_agent_management","TestAgentActions","","","test_delete_agent_via_api","Create an agent, delete via API, and verify it's gone from the UI."
+"passed","Mon Jul 20 08:13:53 UTC 2026","Mon Jul 20 08:14:13 UTC 2026","20453","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[confluence]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Mon Jul 20 08:07:47 UTC 2026","Mon Jul 20 08:08:03 UTC 2026","15989","tests.ui.pipelines","test_pipeline_execution","TestPipelineExecutionEdgeCases","","","test_empty_pipeline_execution","PIPE-015: Executing a pipeline with no nodes (only END)."
+"passed","Mon Jul 20 08:11:27 UTC 2026","Mon Jul 20 08:11:34 UTC 2026","6958","tests.ui.chat","test_conversation_management","TestCreateConversation","","","test_create_conversation_via_api","TC-CONV-001, TC-CONV-003: Create conversation and verify it appears in UI."
+"passed","Mon Jul 20 08:11:42 UTC 2026","Mon Jul 20 08:11:55 UTC 2026","13133","tests.ui.chat","test_conversation_management","TestConversationList","","","test_click_conversation_to_open","TC-CONV-004: Click conversation to open it."
+"passed","Mon Jul 20 08:05:31 UTC 2026","Mon Jul 20 08:05:43 UTC 2026","12397","tests.ui.pipelines","test_pipeline_advanced","TestActionsMenu","","","test_export_pipeline_if_available","PIPE-029: Export pipeline via menu (skips if not available)."
+"passed","Mon Jul 20 08:12:18 UTC 2026","Mon Jul 20 08:12:35 UTC 2026","17142","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[jira]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Mon Jul 20 08:10:56 UTC 2026","Mon Jul 20 08:11:23 UTC 2026","26104","tests.ui.agents","test_agent_remove_variable","TestAgentRemoveVariable","","","test_remove_variable_and_verify_removal_persists","Removing a {{variable}} reference from Instructions removes its
+        Variables row immediately (client-side, before Save), and the
+        removal persists after Save + a full-navigation reload, while other
+        variables remain intact."
+"broken","Mon Jul 20 08:08:55 UTC 2026","Mon Jul 20 08:09:58 UTC 2026","62919","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[10k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
+
+        Parameterized to verify:
+        - P1 (10,000 tokens): Standard value propagates correctly
+        - P2 (32,000 tokens): Updated value propagates (not cached)
+
+        Cleanup: deletes the created conversation via API.
+        "
+"skipped","Mon Jul 20 08:10:49 UTC 2026","Mon Jul 20 08:10:49 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[bitbucket]","Create a credential through the UI form for any toolkit type."
+"passed","Mon Jul 20 08:13:43 UTC 2026","Mon Jul 20 08:16:40 UTC 2026","176962","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[detailed_description]","Create image from text prompt and verify image appears in response."
+"passed","Mon Jul 20 08:10:08 UTC 2026","Mon Jul 20 08:10:25 UTC 2026","17652","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[github]","Create a credential through the UI form for any toolkit type."
+"passed","Mon Jul 20 08:10:39 UTC 2026","Mon Jul 20 08:10:43 UTC 2026","3400","tests.ui.pipelines","test_pipeline_management","TestEditPipeline","","","test_pipeline_detail_page_loads","Navigate to a pipeline's detail page and verify form fields match."
+"passed","Mon Jul 20 08:09:36 UTC 2026","Mon Jul 20 08:09:39 UTC 2026","3224","tests.ui.agents","test_agent_management","TestAgentList","","","test_agents_dashboard_loads","Agents dashboard loads with functional header and search."
+"failed","Mon Jul 20 08:07:15 UTC 2026","Mon Jul 20 08:07:30 UTC 2026","14464","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_attach_files_button_sends_file_with_message","TC-CHAT-011: Attach file and send message with attachment."
+"passed","Mon Jul 20 08:05:07 UTC 2026","Mon Jul 20 08:05:19 UTC 2026","12972","tests.ui.pipelines","test_pipeline_advanced","TestMakeEntrypoint","","","test_make_node_entrypoint","PIPE-024: Set a node as entrypoint via the three-dot menu."
+"passed","Mon Jul 20 08:09:44 UTC 2026","Mon Jul 20 08:09:54 UTC 2026","9230","tests.ui.agents","test_agent_management","TestAgentList","","","test_agent_search_no_results","Searching for a non-existent agent should show no results."
+"passed","Mon Jul 20 08:09:19 UTC 2026","Mon Jul 20 08:09:23 UTC 2026","4074","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_agent_toolkits_section_visible","Toolkits section should be visible with tool switches."
+"passed","Mon Jul 20 08:11:59 UTC 2026","Mon Jul 20 08:12:16 UTC 2026","17156","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[github]","Run a tool via the Test Settings panel on the toolkit detail page."
+"skipped","Mon Jul 20 08:11:43 UTC 2026","Mon Jul 20 08:11:43 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[gitlab]","Create a toolkit through the UI form for any toolkit type."
+"passed","Mon Jul 20 08:07:41 UTC 2026","Mon Jul 20 08:07:46 UTC 2026","4571","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_hash_search_participants","TC-CHAT-017: Use # to search participants."
+"passed","Mon Jul 20 08:09:07 UTC 2026","Mon Jul 20 08:09:45 UTC 2026","37793","tests.ui.pipelines","test_pipeline_execution","TestPipelineChatMessages","","","test_multiple_executions_accumulate","PIPE-014, PIPE-018: Multiple sequential executions accumulate messages."
+"passed","Mon Jul 20 08:10:49 UTC 2026","Mon Jul 20 08:11:09 UTC 2026","20067","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[confluence]","Create a credential through the UI form for any toolkit type."
+"passed","Mon Jul 20 08:09:20 UTC 2026","Mon Jul 20 08:10:05 UTC 2026","45262","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestAgentCredentialIndicators","","","test_agent_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Agent."
+"passed","Mon Jul 20 08:09:04 UTC 2026","Mon Jul 20 08:09:10 UTC 2026","5431","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_agent_detail_page_loads","Navigate to an agent's detail page and verify form fields are populated."
+"passed","Mon Jul 20 08:09:40 UTC 2026","Mon Jul 20 08:09:43 UTC 2026","3875","tests.ui.agents","test_agent_management","TestAgentList","","","test_agent_search","Search for an agent by name on the dashboard."
+"passed","Mon Jul 20 08:10:26 UTC 2026","Mon Jul 20 08:10:47 UTC 2026","21448","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[jira]","Create a credential through the UI form for any toolkit type."
+"passed","Mon Jul 20 08:12:37 UTC 2026","Mon Jul 20 08:12:55 UTC 2026","17077","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[confluence]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Mon Jul 20 08:08:20 UTC 2026","Mon Jul 20 08:08:25 UTC 2026","5257","tests.ui.agents","test_agent_create_button_navigation","","","","test_create_button_navigates_to_create_agent_page","Sidebar create-agent button navigates to an empty Create Agent form
+    with Save disabled by default (ELITEA-1870).
+
+    Read-only: no agent is created, edited, or deleted.
+    "
+"passed","Mon Jul 20 08:04:33 UTC 2026","Mon Jul 20 08:04:47 UTC 2026","14062","tests.ui.toolkits","test_github_toolkit","TestCreateGitHubCredential","","","test_create_github_credential","Create a GitHub credential through the UI form."
+"skipped","Mon Jul 20 08:11:43 UTC 2026","Mon Jul 20 08:11:43 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[bitbucket]","Create a toolkit through the UI form for any toolkit type."
+"passed","Mon Jul 20 08:09:25 UTC 2026","Mon Jul 20 08:09:31 UTC 2026","5857","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantAttachments","","","test_attach_button_present_and_opens_picker","Attach button opens file picker dialog.
+
+        Covers: 7.1.1, 7.1.2
+        "
+"broken","Mon Jul 20 08:06:43 UTC 2026","Mon Jul 20 08:07:06 UTC 2026","22948","tests.ui.chat","test_chat_interface","TestMessageActions","","","test_delete_message","TC-CHAT-009: Delete message."
+"passed","Mon Jul 20 08:11:56 UTC 2026","Mon Jul 20 08:11:59 UTC 2026","2673","tests.ui.chat","test_conversation_management","TestConversationList","","","test_search_conversations_button","TC-CONV-005: Search conversations button opens search panel."
+"passed","Mon Jul 20 08:08:25 UTC 2026","Mon Jul 20 08:08:47 UTC 2026","21941","tests.ui.agents","test_agent_management","TestCreateAgent","","","test_create_agent_via_ui","Create an agent through the UI form and verify it appears in the list."
+"passed","Mon Jul 20 08:08:06 UTC 2026","Mon Jul 20 08:08:13 UTC 2026","7692","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_open_close_sidebar","TC-CHAT-021: Open/close sidebar drawer."
+"passed","Mon Jul 20 08:10:16 UTC 2026","Mon Jul 20 08:10:27 UTC 2026","10921","tests.ui.pipelines","test_pipeline_management","TestEditPipeline","","","test_edit_pipeline_name","Edit a pipeline's name and verify the change persists."
+"broken","Mon Jul 20 08:15:01 UTC 2026","Mon Jul 20 08:15:18 UTC 2026","17066","tests.ui.agents","test_mcp_attach_via_tools_section","TestMcpAttachViaToolsSection","","","test_mcp_attach_via_tools_section","Attach an existing Remote MCP to an agent, verify persistence
+        across reload, then remove it and verify removal persists too.
+
+        Steps (AFS test-specs/agents/l3_mcp-attach-via-tools-section_ELITEA-1950.md):
+        1. Navigate to the agent detail page.
+        2. Verify the Tools section is expanded.
+        3. Verify the Toolkit/MCP add buttons are visible (live-accurate
+           equivalent of the case's ""tool type tabs"" — see module docstring).
+        4. Click ""+ MCP""; the shared popper opens with search + menu items.
+        5. Select the target MCP by name.
+        6. Verify the MCP appears as a card in the Tools section.
+        7. Verify the attach auto-saves (PATCH .../tool/prompt_lib/... -> 201;
+           no separate agent-level Save step exists for this flow).
+        8. Reload; verify the MCP is still attached.
+        9. Remove the MCP; confirm the ""Remove MCP?"" dialog; verify it's gone,
+           including after a fresh reload.
+        "
+"passed","Mon Jul 20 08:10:49 UTC 2026","Mon Jul 20 08:10:59 UTC 2026","9638","tests.ui.pipelines","test_pipeline_management","TestDeletePipeline","","","test_delete_pipeline_via_api","Create a pipeline, delete via API, and verify it's gone from the UI."
+"passed","Mon Jul 20 08:08:53 UTC 2026","Mon Jul 20 08:09:19 UTC 2026","25830","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestPipelineCredentialIndicators","","","test_pipeline_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Pipeline."
+"passed","Mon Jul 20 08:07:07 UTC 2026","Mon Jul 20 08:07:46 UTC 2026","38889","tests.ui.pipelines","test_pipeline_execution","TestExecutePipeline","","","test_message_count_starts_at_zero_and_grows","PIPE-013: Fresh pipeline starts at zero messages and count grows with each send."
+"broken","Mon Jul 20 08:04:28 UTC 2026","Mon Jul 20 08:05:39 UTC 2026","71007","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_widget_state_persists_after_close_reopen","Conversation state persists when closing and reopening widget.
+
+        Covers: 2.2.3
+        "

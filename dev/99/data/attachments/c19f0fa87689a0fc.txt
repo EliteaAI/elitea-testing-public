@@ -1,0 +1,6 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Delete message — Locator.click: Element is not visible
+Call log:
+  - waiting for get_by_test_id("chat-message-item").last.locator("button").last
+    - locator resolved to <button tabindex="0" type="button" aria-expanded="true" aria-controls="panel-content" class="MuiButtonBase-root MuiAccordionSummary-root Mui-expanded MuiAccordionSummary-gutters css-1kxqbwm">…</button>
+  - attempting click action
+    - scrolling into view if needed
