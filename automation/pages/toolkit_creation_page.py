@@ -24,6 +24,7 @@ no case touches them there yet).
 """
 
 import logging
+import re
 
 from playwright.sync_api import Page
 
@@ -81,6 +82,64 @@ class ToolkitCreationPage(BasePage):
     # mechanism every schema-driven toolkit field uses.
     TOOLKIT_FIELD_INPUT = '[data-testid="toolkit-field-{}-input"]'
 
+    # Dynamic testid template — a schema-driven CHECKBOX field's actual
+    # `<input>` element (e.g. "available_by_mcp"), keyed the same way as
+    # :attr:`TOOLKIT_FIELD_INPUT` — same `ToolBaseProperty.jsx` mechanism,
+    # checkbox variant. Use THIS ("-checkbox-field") for `.is_checked()`
+    # reads, never the sibling "-checkbox" testid, which lands on the
+    # outer wrapper `<span>`, not the real `<input>` (same "wrapper vs.
+    # actual input" gotcha ELITEA-1824 already documented for a different
+    # field). NEW to ELITEA-1866 (the MCP-availability checkbox) — no new
+    # template family needed, same shape as ``mcp_form_page.py``'s static
+    # per-field "-checkbox-field" testids, templated here since the
+    # Artifact form's fields are schema-driven rather than fixed.
+    TOOLKIT_FIELD_CHECKBOX_INPUT = '[data-testid="toolkit-field-{}-checkbox-field"]'
+
+    # Dynamic testid template — one MUI Chip per available tool in the
+    # CONFIGURATION form's TOOLS section (ToolActionsItems.jsx), keyed by
+    # the tool's schema key (e.g. "list_files"). Genuinely fresh surface
+    # for ELITEA-1866 (the sibling ELITEA-1868 case never reaches the
+    # Save-path form's TOOLS section). Same shape as
+    # ``mcp_form_page.py``'s ``TOOL_CHIP_PREFIX`` — this page object's own
+    # copy since it has no shared base with that one (own-copy precedent
+    # already established by :attr:`TOOLKIT_FIELD_INPUT`'s siblings).
+    # State (checkmarked/selected) is a SEPARATE ``data-selected``
+    # attribute per ``.agents/testing.md`` § Locator policy's
+    # testid=identity / data-*=state ruling — never a state-toggled testid.
+    TOOL_CHIP_PREFIX = '[data-testid^="toolkit-tool-chip-"]'
+
+    # Info (i) icon next to the "Bucket *" field's label. Testid added for
+    # ELITEA-1866 (a caller-supplied `testId` prop threaded through the
+    # shared InfoTooltip.jsx chain, wired only at the Bucket field's call
+    # site in ToolBaseProperty.jsx) — the shared component's ambient
+    # `data-info-tooltip` boolean attribute is NOT unique (matches 3
+    # elements on this form: Pgvector Configuration, Embedding Model, and
+    # Bucket each have one).
+    bucket_info_icon = LocatorDescriptor(
+        testid="toolkit-field-bucket-info-icon",
+        description="Info (i) icon next to the Bucket field — hover reveals "
+        "the bucket-naming-rules tooltip (KNOWN CLARIFICATION #669: the "
+        "case text says 'click', the live product only wires hover/focus)",
+    )
+
+    # Bucket-field info tooltip's POPPER CONTENT (not the trigger icon
+    # above). Testid added ELITEA-1866 PR #670 review round 1
+    # (`EliteaAI/EliteaUI` `automation/testids` commit 0b61e8a2): a new
+    # opt-in `contentTestId` prop threaded through the shared InfoTooltip
+    # chain (ToolBaseProperty -> StyledInputEnhancer -> InputBase ->
+    # InfoLabelWithTooltip -> InfoTooltip), wired ONLY at the Bucket
+    # field's call site — the other two InfoTooltip instances on this same
+    # form (Pgvector Configuration, Embedding Model) do not pass the prop
+    # and remain unaffected (confirmed live: still only 3
+    # `data-info-tooltip` icons total, only this one carries the content
+    # testid).
+    bucket_info_tooltip_content = LocatorDescriptor(
+        testid="toolkit-field-bucket-info-tooltip-content",
+        description="Bucket-field info tooltip's popper CONTENT wrapper — "
+        "read the naming-rules text from here, not from the ambient "
+        "[role='tooltip'] landmark",
+    )
+
     save_button = LocatorDescriptor(
         testid="toolkit-form-save-button",
         description="Save button — shared across toolkit/MCP/application creation",
@@ -125,6 +184,73 @@ class ToolkitCreationPage(BasePage):
         self.type_search_input.press_sequentially(term, delay=20)
         self.page.wait_for_timeout(500)  # client-side filter render settle
         logger.info("Searched toolkit types for %r", term)
+
+    # Confirmed live (ELITEA-1866 implementer Phase 2 exploration): 12
+    # category tabs render as buttons on the type-picker, via the SHARED
+    # ``GroupedCategory.jsx``/``Filter.CategoryFilter`` component (also used
+    # by the Credential type-picker — confirmed by source read, PR #670
+    # review round 1). Generic testid added ELITEA-1866 PR #670 review
+    # round 1 (`EliteaAI/EliteaUI` `automation/testids` commit 0b61e8a2) —
+    # a single shared value reused across every rendered chip, same reuse
+    # pattern as the existing shared ``entity-card`` testid, since this
+    # case's own step-6 observable is only "tabs are present" (count >= 1),
+    # never per-tab identification.
+    CATEGORY_TAB = '[data-testid="category-filter-tab"]'
+
+    def count_category_tabs(self, timeout: int = 5000) -> int:
+        """Return how many category filter tabs are currently rendered on the type-picker.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first tab
+                to appear before concluding there are none.
+        """
+        tabs = self.page.locator(self.CATEGORY_TAB)
+        try:
+            tabs.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return 0
+        return tabs.count()
+
+    @action("Hover the Bucket field's info icon")
+    def hover_bucket_info_icon(self, timeout: int = 5000) -> None:
+        """Hover (NOT click) the Bucket field's info icon to reveal its tooltip.
+
+        KNOWN CLARIFICATION #669 — the case text says "click"; the live
+        product's ``InfoTooltip.jsx`` has no ``onClick`` handler wired,
+        only MUI ``Tooltip``'s default hover/focus trigger (confirmed via
+        source read, ELITEA-1866 analyst pass).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the icon to
+                become visible before hovering.
+        """
+        self.bucket_info_icon.wait_for(state="visible", timeout=timeout)
+        self.bucket_info_icon.hover()
+        logger.info("Hovered the Bucket field's info icon")
+
+    def get_bucket_info_tooltip_text(self, timeout: int = 5000) -> str:
+        """Return the currently-open info tooltip's text, whitespace-normalized.
+
+        Reads via :attr:`bucket_info_tooltip_content` (the compliant
+        testid on the popper's content wrapper, added ELITEA-1866 PR #670
+        review round 1 — see that attribute's docstring for the
+        caller-scoped threading rationale), not the ambient
+        ``[role="tooltip"]`` landmark.
+
+        Collapses internal whitespace/newlines to single spaces before
+        returning — the live tooltip renders its bullet list with line
+        breaks the case's own documented text doesn't use; this is a pure
+        rendering-whitespace artifact, not a content difference (confirmed
+        live, ELITEA-1866 implementer Phase 2 exploration: the normalized
+        text matches the case's documented wording exactly).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the tooltip to
+                become visible.
+        """
+        self.bucket_info_tooltip_content.wait_for(state="visible", timeout=timeout)
+        raw_text = self.bucket_info_tooltip_content.text_content() or ""
+        return " ".join(raw_text.split())
 
     def get_type_card(self, type_key: str):
         """Return the Locator for a specific toolkit-type card, by schema key.
@@ -233,6 +359,59 @@ class ToolkitCreationPage(BasePage):
         """
         return self.page.locator(self.TOOLKIT_FIELD_INPUT.format(field_key)).input_value()
 
+    def get_checkbox_field_locator(self, field_key: str):
+        """Return the Locator for a dynamic schema-driven checkbox field's real `<input>`.
+
+        Thin wrapper around :attr:`TOOLKIT_FIELD_CHECKBOX_INPUT` — same
+        rationale as :meth:`get_field_locator`.
+
+        Args:
+            field_key: The field's schema property key (e.g.
+                ``"available_by_mcp"``).
+        """
+        return self.page.locator(self.TOOLKIT_FIELD_CHECKBOX_INPUT.format(field_key))
+
+    def is_checkbox_field_checked(self, field_key: str, timeout: int = 5000) -> bool:
+        """Return whether a dynamic schema-driven checkbox field is currently checked.
+
+        Args:
+            field_key: The field's schema property key (e.g.
+                ``"available_by_mcp"``).
+            timeout: Maximum wait time in milliseconds for the field to
+                become visible before reading its state.
+        """
+        field = self.get_checkbox_field_locator(field_key)
+        field.wait_for(state="visible", timeout=timeout)
+        return field.is_checked()
+
+    def count_tool_chips(self, timeout: int = 5000) -> int:
+        """Return the number of currently-visible TOOLS-section tool chips.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first chip
+                to appear before concluding there are none.
+        """
+        chips = self.page.locator(self.TOOL_CHIP_PREFIX)
+        try:
+            chips.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return 0
+        return chips.count()
+
+    def all_tool_chips_selected(self) -> bool:
+        """Return whether EVERY currently-rendered tool chip carries ``data-selected="true"``.
+
+        Checks the attribute on every chip individually — a chip present
+        but ``data-selected="false"`` would silently pass a naive
+        count-only check while still failing the "with checkmarks"
+        observable this exists to verify.
+        """
+        chips = self.page.locator(self.TOOL_CHIP_PREFIX)
+        count = chips.count()
+        return count > 0 and all(
+            chips.nth(i).get_attribute("data-selected") == "true" for i in range(count)
+        )
+
     def is_save_enabled(self, timeout: int = 5000) -> bool:
         """Return whether the Save button is currently visible and enabled.
 
@@ -250,6 +429,40 @@ class ToolkitCreationPage(BasePage):
         """
         self.cancel_button.wait_for(state="visible", timeout=timeout)
         return self.cancel_button.is_enabled()
+
+    @action("Save toolkit creation and capture the new toolkit ID")
+    def save_creation(self, timeout: int = 15000) -> int:
+        """Click Save, wait for the post-save detail-page URL, and return the new toolkit's ID.
+
+        Added for ELITEA-1866 — the Save (persist) path, distinct from
+        :meth:`cancel_creation`'s Cancel path this page object already
+        modelled for the sibling ELITEA-1868 case. Waits for the URL to
+        match ``**/toolkits/all/*`` and parses the numeric ID segment out
+        of it — needed both by callers asserting the navigation (case
+        steps 20/21/23) and by test teardown, which needs the ID for
+        ``ToolkitAPI.delete_toolkit(toolkit_id)``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the post-save URL.
+
+        Returns:
+            The new toolkit's numeric ID, parsed from ``/toolkits/all/{id}``.
+
+        Raises:
+            ValueError: If the post-save URL doesn't contain a numeric
+                toolkit ID (unexpected navigation target).
+        """
+        self.save_button.click()
+        self.page.wait_for_url("**/toolkits/all/*", timeout=timeout)
+        match = re.search(r"/toolkits/all/(\d+)", self.page.url)
+        if not match:
+            raise ValueError(
+                f"Could not parse a numeric toolkit ID from the post-save "
+                f"URL: {self.page.url!r}"
+            )
+        toolkit_id = int(match.group(1))
+        logger.info("Toolkit saved — new toolkit ID %d (url=%s)", toolkit_id, self.page.url)
+        return toolkit_id
 
     # ------------------------------------------------------------------
     # Cancel flow

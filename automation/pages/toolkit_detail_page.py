@@ -19,6 +19,7 @@ import re
 from playwright.sync_api import Page, expect
 
 from .base_page import BasePage
+from .locator_descriptor import LocatorDescriptor
 
 logger = logging.getLogger("elitea.pages.toolkit_detail")
 
@@ -35,8 +36,69 @@ class ToolkitDetailPage(BasePage):
     URL: /toolkits/all/{id}
     """
 
+    # Page header showing the toolkit's own name (EditToolkit.jsx) — this
+    # page's own identity element, added ELITEA-1866. NOT test-panel
+    # specific (that's :class:`ToolkitTestSettingsPage`), which is why it
+    # lives here rather than there (AFS § Overlap check).
+    toolkit_title = LocatorDescriptor(
+        testid="toolkit-detail-title",
+        description="Toolkit-name header on the detail/config page "
+        "(EditToolkit.jsx) — existing testid, already on "
+        "automation/testids before this case",
+    )
+
+    # Configuration/Indexes tabs on the detail view's top tab strip
+    # (EditToolkit.jsx). Both are icon-only with no visible text, so a
+    # role-based `[role="tab"]` locator can't disambiguate them from each
+    # other or from the page's own top-level tab — testids added ELITEA-1866
+    # PR #670 review round 1 (`EliteaAI/EliteaUI` `automation/testids`
+    # commit 0b61e8a2, via the `tabProps` mechanism already used for the
+    # Indexes tab's `data-tour` attribute).
+    configuration_tab = LocatorDescriptor(
+        testid="toolkit-detail-configuration-tab",
+        description="Configuration tab (icon-only, default-selected) on "
+        "the detail view's top tab strip",
+    )
+
+    indexes_tab = LocatorDescriptor(
+        testid="toolkit-detail-indexes-tab",
+        description="Indexes tab (icon-only; disabled until Pgvector/"
+        "Embedding Model are configured) on the detail view's top tab "
+        "strip",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
+
+    def get_toolkit_title(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the toolkit-detail page header's toolkit-name text.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the header to
+                become visible.
+        """
+        self.toolkit_title.wait_for(state="visible", timeout=timeout)
+        return self.toolkit_title.text_content() or ""
+
+    def count_config_tabs(self, timeout: int = 5000) -> int:
+        """Return how many of the Configuration/Indexes tabs are present.
+
+        A compliant testid presence/count check against
+        :attr:`configuration_tab`/:attr:`indexes_tab` — NOT a role-based
+        ``[role="tab"]`` count (the page also renders other ``role="tab"``
+        elements — see AFS § step 24 note re: an unexplained third tab
+        element — so counting by role alone risks over-counting).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the
+                Configuration tab (rendered first, default-selected) to
+                appear before concluding neither tab is present.
+        """
+        try:
+            self.configuration_tab.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return 0
+        return self.configuration_tab.count() + self.indexes_tab.count()
 
     def navigate_to_toolkit(self, toolkit_id: int) -> None:
         """Navigate to toolkit detail page and wait for load.
