@@ -68,6 +68,15 @@ class ChatPage(BasePage):
         description="Sidebar toggle button"
     )
 
+    create_conversation_button = LocatorDescriptor(
+        testid="sidebar-create-button",
+        description=(
+            "+Chat / +Conversation button in the top sidebar nav. Disabled while "
+            "a new blank conversation is open and unsent; re-enables immediately "
+            "on Send. (ELITEA-2090)"
+        ),
+    )
+
     search_conversations_input = LocatorDescriptor(
         testid="conversation-search-input",
         fallback=lambda page: page.locator('input[placeholder="Search conversations..."]'),
