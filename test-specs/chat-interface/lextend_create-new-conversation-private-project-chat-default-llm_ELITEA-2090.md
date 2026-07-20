@@ -55,6 +55,24 @@ resolves). **Confirmed live this run it does NOT assert**:
   so the gap assertion below deliberately re-uses the covering test's own send action
   in-place rather than asserting a claim about the Enter-key path I did not test.
 
+> **IMPLEMENTER AMENDMENT (Phase 2, ELITEA-2090 PR)**: the Enter-key path does NOT
+> produce identical timing to the click-Send path this analysis pass verified. A bare
+> synchronous `chat.create_conversation_button.is_enabled()` read placed immediately
+> after `chat.send_message(test_msg, use_enter=True)` returns failed 1/1 on first local
+> run — JUnit capture showed the Locator's frame URL was still bare `/chat` (greeting
+> screen still on-screen) at the moment of the read, i.e. the SPA had not yet navigated
+> to `/chat/{id}`. This is a race, not a product defect: the button genuinely does
+> re-enable on Send (confirmed — see § Gap assertions GA3), just not synchronously
+> within the same tick as the Enter keypress, because `send_message(use_enter=True)`
+> returns as soon as the key is dispatched, before the async navigation completes.
+> **Fix shipped in the PR**: `expect(chat.create_conversation_button).to_be_enabled(timeout=NAVIGATION_TIMEOUT)`
+> (Playwright's polling web-first assertion) in place of the raw `assert ... .is_enabled()`
+> — same strength of claim (still fails loudly, and well within `NAVIGATION_TIMEOUT`,
+> if the button were actually gated on naming/generation), just tolerant of the SPA's
+> real async navigation. Re-ran 3× consecutively green after the fix. No AFS scope
+> change — GA3's claim ("re-enables on Send, not gated on generation") is unchanged;
+> only the wait mechanism used to observe it changed.
+
 **`automation/tests/ui/chat/test_conversation_management.py::TestCreateConversation::
 test_new_conversation_default_settings`** (lines 180–191, covers ELITEA-0569) — navigates to
 an **already-existing** conversation via the `conversation_id` fixture (not the +Chat
@@ -231,13 +249,18 @@ about states the covering test already passes through, not a new trailing scenar
                 initial_count = chat.get_message_count()
                 chat.send_message(test_msg, use_enter=True)
 
-                # GA3 — +Chat button re-enabled immediately on Send, NOT gated on
-                # naming/generation completion. Confirmed live this run: re-enablement
-                # happens right as the URL updates to /chat/{id}, well before the
-                # "Naming" placeholder resolves or the LLM finishes responding.
-                assert chat.create_conversation_button.is_enabled(), (
-                    "sidebar-create-button should re-enable as soon as Send is clicked"
-                )
+                # GA3 — +Chat button re-enables on Send, NOT gated on naming/generation
+                # completion. Confirmed live (AFS exploration) that re-enablement happens
+                # right as the SPA navigates to /chat/{id}, well before the "Naming"
+                # placeholder resolves or the LLM finishes responding — but that
+                # navigation is itself async, so a bare synchronous `.is_enabled()` read
+                # right after firing the Enter key races the SPA (confirmed live this
+                # run: first read landed while the URL was still bare "/chat", greeting
+                # screen still shown). `expect(...).to_be_enabled()` polls instead of
+                # reading once, giving the SPA time to complete that navigation while
+                # still failing loudly — and well within NAVIGATION_TIMEOUT — if the
+                # button stayed gated on generation/naming instead.
+                expect(chat.create_conversation_button).to_be_enabled(timeout=NAVIGATION_TIMEOUT)
 
                 chat.wait_for_input_ready()
                 chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
