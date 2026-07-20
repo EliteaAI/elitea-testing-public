@@ -143,6 +143,35 @@ class ToolkitTestSettingsPage(BasePage):
         option.click()
         logger.info("Selected tool '%s' in Test Settings panel", tool_key)
 
+    def get_tool_options(self):
+        """Return the Locator matching every currently-rendered Tool-dropdown option.
+
+        Thin wrapper around :attr:`TOOL_OPTION_ANY_SELECTOR` so callers
+        (tests) never construct the dynamic-testid locator inline
+        themselves — locators stay behind the page-object boundary
+        (``.claude/rules/page-objects.md``). Callers assert on the
+        returned Locator directly (e.g. ``expect(...).to_have_count(...)``)
+        rather than a pre-computed int, so Playwright's auto-retry
+        semantics apply right after the dropdown opens (mirrors
+        :meth:`ToolkitCreationPage.get_type_card`'s Locator-returning
+        style, not the int-returning ``count_*`` helpers).
+        """
+        return self.page.locator(self.TOOL_OPTION_ANY_SELECTOR)
+
+    def get_tool_option(self, tool_key: str):
+        """Return the Locator for a specific Tool-dropdown option, by schema key.
+
+        Thin wrapper around :attr:`TOOL_OPTION` so callers (tests) never
+        construct the dynamic-testid locator inline themselves — locators
+        stay behind the page-object boundary
+        (``.claude/rules/page-objects.md``). Mirrors
+        :meth:`get_param_field` / ``ToolkitCreationPage.get_type_card``.
+
+        Args:
+            tool_key: The tool's schema key (e.g. ``"list_files"``).
+        """
+        return self.page.locator(self.TOOL_OPTION.format(tool_key))
+
     def get_param_field(self, field_key: str):
         """Return the Locator for a tool-parameter field, by its schema key.
 

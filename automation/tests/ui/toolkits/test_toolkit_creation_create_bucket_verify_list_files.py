@@ -526,16 +526,16 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 f"Step 27 — Verify the tool list shows all "
                 f"{EXPECTED_TOOL_COUNT} tools including 'List files'"
             ):
-                options = page.locator(ToolkitTestSettingsPage.TOOL_OPTION_ANY_SELECTOR)
+                options = test_settings.get_tool_options()
                 expect(options).to_have_count(
                     EXPECTED_TOOL_COUNT, timeout=UI_ELEMENT_TIMEOUT,
                 )
                 expect(
-                    page.locator(ToolkitTestSettingsPage.TOOL_OPTION.format(TOOL_KEY))
+                    test_settings.get_tool_option(TOOL_KEY)
                 ).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
             with allure.step("Step 28 — Select 'List files' from the Tool dropdown"):
-                page.locator(ToolkitTestSettingsPage.TOOL_OPTION.format(TOOL_KEY)).click()
+                test_settings.get_tool_option(TOOL_KEY).click()
                 expect(test_settings.tool_select).to_contain_text(
                     "List files", timeout=UI_ELEMENT_TIMEOUT,
                 )
