@@ -349,3 +349,221 @@ class TestArtifactDeleteSubfolderCheckbox:
                 "Unexpected console errors during the subfolder-delete flow: "
                 f"{[m.text for m in console_errors]}"
             )
+
+    FOLDER_KEEP_1 = "a1"
+    FOLDER_KEEP_2 = "folder-a"
+    FILE_DELETE_1 = "sample - Copy.md"
+    FILE_DELETE_2 = "sample.md"
+
+    A1_FILE1_KEY = f"{FOLDER_KEEP_1}/file1.txt"
+    FOLDER_A_PLACEHOLDER_KEY = f"{FOLDER_KEEP_2}/placeholder.txt"
+
+    A1_FILE1_CONTENT = b"ELITEA-1846 a1 file1 content\n"
+    FOLDER_A_PLACEHOLDER_CONTENT = b"ELITEA-1846 folder-a placeholder\n"
+    SAMPLE_MD_CONTENT = b"# ELITEA-1846 sample.md\n"
+    SAMPLE_MD_COPY_CONTENT = b"# ELITEA-1846 sample - Copy.md\n"
+
+    # Live-confirmed text, same shared-component CLARIFICATIONs ELITEA-1847
+    # already documents (#659 confirm message, #660 success toast) —
+    # re-confirmed live this run to apply identically to this case's own
+    # 2-file selection flow.
+    EXPECTED_CONFIRM_MESSAGE = "Are you sure to delete the selected files?"
+    EXPECTED_SUCCESS_TOAST = "The selected files have been successfully deleted."
+
+    @pytest.mark.p1
+    @allure.title(
+        "Selecting 2 individual files via checkbox (partial selection) drives "
+        "the header checkbox indeterminate and deletes only those files"
+    )
+    @allure.severity(allure.severity_level.NORMAL)
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/artifacts/"
+        "ELITEA-1846_delete-flow-multiple-files-partial-selection.md",
+        "onetest-ai Test Case link",
+    )
+    def test_delete_multiple_files_partial_selection(self, page, artifact_api, artifact_bucket):
+        """Checking 2 file checkboxes (partial selection) drives the header
+        'select all' checkbox into the INDETERMINATE state, leaves sibling
+        folder checkboxes unchecked, and deleting via the toolbar removes
+        only the 2 selected files — subfolders completely unaffected.
+
+        Own fresh `artifact_bucket` instance (function-scoped fixture) —
+        deliberately NOT sharing state with `test_delete_subfolder_via_checkbox`
+        above, since that test's own core assertion (a1 gets deleted) directly
+        conflicts with this test's own precondition (a1 must survive).
+        """
+        bucket_name = artifact_bucket["name"]
+
+        console_errors = []
+        page.on(
+            "console",
+            lambda msg: console_errors.append(msg) if msg.type == "error" else None,
+        )
+
+        artifact_api.upload_file(bucket_name, self.A1_FILE1_KEY, self.A1_FILE1_CONTENT)
+        artifact_api.upload_file(bucket_name, self.FOLDER_A_PLACEHOLDER_KEY, self.FOLDER_A_PLACEHOLDER_CONTENT)
+        artifact_api.upload_file(bucket_name, self.FILE_DELETE_2, self.SAMPLE_MD_CONTENT)
+        artifact_api.upload_file(bucket_name, self.FILE_DELETE_1, self.SAMPLE_MD_COPY_CONTENT)
+
+        artifacts_page = ArtifactsPage(page)
+
+        with allure.step(
+            "Step 1 — Navigate to the bucket; verify all 4 top-level items "
+            "(a1, folder-a, sample - Copy.md, sample.md) are listed"
+        ):
+            artifacts_page.navigate_to_bucket(bucket_name, timeout=NAVIGATION_TIMEOUT)
+            artifacts_page.wait_for_file_count(4, timeout=NAVIGATION_TIMEOUT)
+            file_names = set(artifacts_page.get_file_names(timeout=UI_ELEMENT_TIMEOUT))
+            assert file_names == {
+                self.FOLDER_KEEP_1, self.FOLDER_KEEP_2, self.FILE_DELETE_1, self.FILE_DELETE_2,
+            }, f"Expected all 4 seeded top-level items, got {file_names}"
+            assert artifacts_page.get_total_file_count_from_pagination() == 4
+
+        with allure.step(
+            "Step 2 — Click the checkbox for 'sample - Copy.md'; verify it "
+            "becomes checked"
+        ):
+            artifacts_page.select_file_checkbox(self.FILE_DELETE_1, timeout=UI_ELEMENT_TIMEOUT)
+            assert artifacts_page.is_file_checkbox_checked(self.FILE_DELETE_1)
+
+        with allure.step(
+            "Step 3 — Click the checkbox for 'sample.md'; verify it becomes checked"
+        ):
+            artifacts_page.select_file_checkbox(self.FILE_DELETE_2, timeout=UI_ELEMENT_TIMEOUT)
+            assert artifacts_page.is_file_checkbox_checked(self.FILE_DELETE_2)
+
+        with allure.step(
+            "Step 4 — Verify subfolders 'a1' and 'folder-a' remain unchecked "
+            "(query every visible row independently)"
+        ):
+            states = artifacts_page.get_checkbox_states(timeout=UI_ELEMENT_TIMEOUT)
+            assert states == {
+                self.FOLDER_KEEP_1: False,
+                self.FOLDER_KEEP_2: False,
+                self.FILE_DELETE_1: True,
+                self.FILE_DELETE_2: True,
+            }, f"Unexpected checkbox states: {states}"
+
+        with allure.step(
+            "Step 5 — Verify the header 'select all' checkbox shows the "
+            "INDETERMINATE state (2 of 4 rows selected — neither fully "
+            "checked nor fully unchecked)"
+        ):
+            assert artifacts_page.is_select_all_checkbox_indeterminate(
+                timeout=UI_ELEMENT_TIMEOUT
+            ), "Header checkbox should be indeterminate with a partial selection"
+            assert not artifacts_page.is_select_all_checkbox_checked(
+                timeout=UI_ELEMENT_TIMEOUT
+            ), "Header checkbox should NOT be fully checked with a partial selection"
+
+        with allure.step(
+            "Step 6 — Verify the toolbar delete icon's tooltip reads "
+            "'Delete selected files' (2 of 4 rows selected, not all)"
+        ):
+            tooltip_text = artifacts_page.get_delete_button_tooltip_text(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
+            assert tooltip_text == "Delete selected files", (
+                f"Expected tooltip 'Delete selected files', got {tooltip_text!r}"
+            )
+
+        with allure.step(
+            "Step 7 — Click the toolbar delete icon; verify the delete-"
+            "confirmation modal opens"
+        ):
+            artifacts_page.click_delete_files_button(timeout=UI_ELEMENT_TIMEOUT)
+            expect(artifacts_page.delete_confirm_dialog).to_be_visible(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
+
+        with allure.step(
+            "Step 8 — Verify the modal's heading is 'Delete confirmation' and "
+            "its message is the LIVE text 'Are you sure to delete the "
+            "selected files?' (CLARIFICATION #659, already filed by "
+            "ELITEA-1847 for this shared component; reverse-masking guard: "
+            "assert the product's live contract, not the stale case wording)"
+        ):
+            dialog_text = artifacts_page.delete_confirm_dialog.text_content() or ""
+            assert "Delete confirmation" in dialog_text
+            message_text = artifacts_page.get_delete_confirm_message_text(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
+            assert message_text == self.EXPECTED_CONFIRM_MESSAGE, (
+                f"Expected live confirm message {self.EXPECTED_CONFIRM_MESSAGE!r}, "
+                f"got {message_text!r}"
+            )
+
+        with allure.step(
+            "Step 9 — Click 'Delete'; verify exactly one DELETE request "
+            "fires whose fname[] params are the 2 literal selected file "
+            "keys (not a folder-expanded list)"
+        ):
+            response = artifacts_page.confirm_delete(timeout=DELETE_RESPONSE_TIMEOUT)
+            assert response.status == 200
+            query = parse_qs(urlsplit(response.url).query)
+            fname_values = set(query.get("fname[]", []))
+            assert fname_values == {self.FILE_DELETE_1, self.FILE_DELETE_2}, (
+                f"Expected DELETE fname[] params to be exactly "
+                f"{{{self.FILE_DELETE_1!r}, {self.FILE_DELETE_2!r}}}, got {fname_values}"
+            )
+
+        with allure.step("Step 10 — Verify the modal closes"):
+            expect(artifacts_page.delete_confirm_dialog).not_to_be_visible(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
+
+        with allure.step(
+            "Step 11 — Verify the success toast shows the LIVE text 'The "
+            "selected files have been successfully deleted.' "
+            "(CLARIFICATION #660, already filed by ELITEA-1847 for this "
+            "shared component)"
+        ):
+            expect(artifacts_page.success_toast_message).to_have_text(
+                self.EXPECTED_SUCCESS_TOAST, timeout=UI_ELEMENT_TIMEOUT
+            )
+
+        with allure.step(
+            "Step 12 — Verify 'sample - Copy.md' and 'sample.md' are no "
+            "longer listed; only a1/folder-a remain"
+        ):
+            artifacts_page.wait_for_file_count(2, timeout=UI_ELEMENT_TIMEOUT)
+            file_names_after = set(artifacts_page.get_file_names(timeout=UI_ELEMENT_TIMEOUT))
+            assert file_names_after == {self.FOLDER_KEEP_1, self.FOLDER_KEEP_2}, (
+                f"Expected only a1/folder-a to remain, got {file_names_after}"
+            )
+
+        with allure.step(
+            "Step 13 — Verify 'sample - Copy.md' and 'sample.md' are no "
+            "longer shown in the left-panel tree"
+        ):
+            assert not artifacts_page.is_tree_item_visible(
+                self.FILE_DELETE_1, timeout=UI_ELEMENT_TIMEOUT
+            )
+            assert not artifacts_page.is_tree_item_visible(
+                self.FILE_DELETE_2, timeout=UI_ELEMENT_TIMEOUT
+            )
+
+        with allure.step(
+            "Step 14 — Verify, via an INDEPENDENT ground truth beyond the "
+            "DOM, that a1/folder-a and their own underlying files are "
+            "completely unaffected"
+        ):
+            remaining_keys = set(artifact_api.list_bucket_files(bucket_name))
+            assert remaining_keys == {
+                self.A1_FILE1_KEY, self.FOLDER_A_PLACEHOLDER_KEY,
+            }, f"Expected exactly the 2 surviving keys, got {remaining_keys}"
+
+        with allure.step(
+            "Step 15 — Verify pagination updates to '1 - 2 of 2'"
+        ):
+            assert artifacts_page.get_total_file_count_from_pagination() == 2
+
+        with allure.step(
+            "Side-channel check — no console errors across the whole "
+            "multi-file partial-selection delete flow"
+        ):
+            assert not console_errors, (
+                "Unexpected console errors during the multi-file delete flow: "
+                f"{[m.text for m in console_errors]}"
+            )
