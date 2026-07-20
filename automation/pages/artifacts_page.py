@@ -260,6 +260,19 @@ class ArtifactsPage(BasePage):
         "client-side duplicate detection against the bucket's already-fetched listing",
     )
 
+    # ELITEA-1835: separate description Typography (distinct DOM node from
+    # upload_path_input above) — reads a GENERIC, bucket-name-free string at
+    # bucket root and only interpolates the bucket name once a subfolder is
+    # active (UploadPathDialog.jsx's descriptionMessage useMemo). No adjacent
+    # read-only adornment pollutes this element's own text_content() the way
+    # upload_path_input's does, so no "normalized" companion method is needed.
+    upload_path_description_text = LocatorDescriptor(
+        testid="artifacts-upload-path-description-text",
+        description="'Upload files to ...' dialog's description line, above the "
+        "Path field — a separate element from upload_path_input; text content "
+        "varies by whether a subfolder (currentPrefix) is active",
+    )
+
     # ------------------------------------------------------------------
     # "Resolve duplicates" dialog (ELITEA-1832)
     # ------------------------------------------------------------------
@@ -1696,6 +1709,29 @@ class ArtifactsPage(BasePage):
             ``"{bucket_name}/a1"``.
         """
         return self.get_upload_path_normalized_prefix() + self.get_upload_path_typed_value()
+
+    def get_upload_path_description_text(self, timeout: int = 10000) -> str:
+        """Return the upload dialog's description line text (ELITEA-1835).
+
+        Mirrors :meth:`get_upload_path_normalized_prefix`'s shape but reads a
+        DIFFERENT, simpler element: :attr:`upload_path_description_text` (a
+        plain ``<Typography>``) has no adjacent read-only adornment polluting
+        its ``text_content()`` the way the Path field's wrapper does, so no
+        label-stripping is needed here — the raw stripped text IS the full
+        description string.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the element to be
+                visible before reading its text.
+
+        Returns:
+            The description line's stripped text content — a GENERIC,
+            bucket-name-free string at bucket root, or a bucket-naming
+            string once a subfolder is the active upload target (see
+            ``UploadPathDialog.jsx``'s ``descriptionMessage``).
+        """
+        self.upload_path_description_text.wait_for(state="visible", timeout=timeout)
+        return (self.upload_path_description_text.text_content() or "").strip()
 
     @action("Confirm upload (triggers client-side duplicate detection)")
     def click_upload_path_upload_button(self) -> None:

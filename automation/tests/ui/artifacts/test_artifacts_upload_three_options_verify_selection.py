@@ -28,6 +28,25 @@ Two CLARIFICATIONs (case-text drift, not defects — reverse-masking guard):
   active node — deterministic sequencing used below (click, check the a1
   tree item's visibility, click again if not yet expanded).
 
+One more CLARIFICATION, added by the ELITEA-1835 extension below:
+- #674: the upload-dialog's separate description line (a different DOM
+  node from the Path field) reads a GENERIC, bucket-name-free string when
+  the bucket root (not a subfolder) is the active upload target — it only
+  interpolates the bucket name once a subfolder is selected. ELITEA-1835's
+  own case-text step 11 implies the bucket name always appears there; it
+  does not, by design (``UploadPathDialog.jsx``'s ``descriptionMessage``).
+
+ELITEA-1835 extension (Gap Insertions A/B, inside the EXISTING #649
+recovery block above — two small insertions, not a new appended flow):
+after re-selecting the bucket at root (the recovery sequence's own
+``click_bucket_row`` call) and BEFORE re-opening the bucket-menu, assert
+the bucket carries ``data-selected="true"`` and the breadcrumb shows the
+bucket root only (no folder crumbs) — the case's own steps 2-3, asserted
+at the case's own literal point in the sequence rather than only later
+(post-upload). Then, alongside the existing Path-prefix assertion, assert
+the upload dialog's description-text line (case step 11) reads the
+LIVE-CORRECT generic string (CLARIFICATION #674 above).
+
 Test flow:
 1. Seed a fresh, empty bucket via the ``artifact_bucket`` fixture.
 2-3. Select the bucket; verify the empty state (center "Upload files"
@@ -53,6 +72,8 @@ Test flow:
    the folder param, the breadcrumb reverts, sample.md is visible at root.
 
 AFS: test-specs/artifacts/l2_upload-three-options-verify-selection_ELITEA-1824.md
+     test-specs/artifacts/lextend_upload-flow-file-uploaded-to-bucket-root_ELITEA-1835.md
+     (ELITEA-1835 extend-existing — Gap Insertions A/B only, see above)
 
 Markers:
     - ui: requires browser
@@ -187,6 +208,17 @@ class TestArtifactsUploadThreeOptionsVerifySelection:
         "ELITEA-1827_upload-flow-nested-subfolder-non-existing.md",
         "onetest-ai Test Case link (ELITEA-1827 extension)",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/artifacts/"
+        "ELITEA-1835_upload-flow-file-uploaded-to-bucket-root.md",
+        "onetest-ai Test Case link (ELITEA-1835 extension)",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/elitea-testing-public/issues/674",
+        "CLARIFICATION #674 — upload-dialog description text is generic "
+        "(bucket-name-free) at bucket root, case text implies otherwise",
+    )
     def test_upload_via_three_options_and_verify_selection(
         self, page, artifact_bucket, tmp_path,
     ):
@@ -196,6 +228,15 @@ class TestArtifactsUploadThreeOptionsVerifySelection:
         ``expect.soft()``-asserted against the case's documented CORRECT
         expected value (bucket root) — confirmed live to fail today — then
         worked around so steps 24-37 still verify a clean end state.
+
+        ELITEA-1835 extension (Gap Insertions A/B, inside the existing #649
+        recovery block): asserts the bucket is selected + the breadcrumb
+        shows root ONLY immediately after re-selecting the bucket and BEFORE
+        opening the bucket-menu (the case's own literal step ordering), and
+        asserts the upload dialog's separate description-text line reads the
+        LIVE-CORRECT generic (bucket-name-free) string at bucket root —
+        CLARIFICATION #674, reverse-masking guard: the case's own step 11
+        text implies the bucket name appears there; it does not, by design.
         """
         bucket_name = artifact_bucket["name"]
 
@@ -439,6 +480,27 @@ class TestArtifactsUploadThreeOptionsVerifySelection:
         ):
             artifacts_page.close_upload_path_dialog(timeout=UI_ELEMENT_TIMEOUT)
             artifacts_page.click_bucket_row(bucket_name, timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step(
+                "ELITEA-1835 Steps 2-3 — verify the bucket is selected and "
+                "the breadcrumb shows root ONLY, immediately after "
+                "re-selecting it and BEFORE opening the bucket-menu (the "
+                "case's own literal ordering) — not just after the whole "
+                "recovery upload completes (which the existing assertions "
+                "below already do, later)"
+            ):
+                assert artifacts_page.is_bucket_selected(bucket_name, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Bucket '{bucket_name}' should carry data-selected=\"true\" "
+                    "immediately after re-selecting its own root row"
+                )
+                assert artifacts_page.get_breadcrumb_bucket_text(timeout=UI_ELEMENT_TIMEOUT) == bucket_name, (
+                    f"Breadcrumb bucket label should read '{bucket_name}' at root"
+                )
+                assert artifacts_page.get_breadcrumb_folder_names() == [], (
+                    "Breadcrumb should show no folder crumbs immediately after "
+                    "re-selecting the bucket root, before opening the bucket-menu"
+                )
+
             artifacts_page.open_bucket_menu(bucket_name, timeout=UI_ELEMENT_TIMEOUT)
             artifacts_page.click_bucket_menu_upload_files_item(
                 [str(md_path)], timeout=NAVIGATION_TIMEOUT,
@@ -452,6 +514,27 @@ class TestArtifactsUploadThreeOptionsVerifySelection:
                 f"technique as the AFS's own Known Defects isolation pass), "
                 f"got: {path_text!r}"
             )
+
+            with allure.step(
+                "ELITEA-1835 Step 11 — the modal's separate description "
+                "line does NOT name the bucket at root (CLARIFICATION "
+                "#674): it reads a GENERIC string when currentPrefix is "
+                "empty, only naming the bucket when a subfolder IS "
+                "selected. Assert the LIVE-CORRECT text, not the case's "
+                "own literal ('bucket-1/') expectation — per the "
+                "reverse-masking guard"
+            ):
+                description_text = artifacts_page.get_upload_path_description_text()
+                assert description_text == (
+                    "Files will be uploaded to the selected bucket. Optionally, "
+                    'enter a folder path to organize your files. Use "/" to '
+                    "create nested folder(s)."
+                ), (
+                    "Upload-dialog description should show the GENERIC "
+                    "bucket-name-free text at bucket root (CLARIFICATION #674 — "
+                    f"case text implies the bucket name appears here), got: "
+                    f"{description_text!r}"
+                )
 
         with allure.step(
             "Step 33 — Click Upload; verify the PUT lands at the bucket ROOT "
