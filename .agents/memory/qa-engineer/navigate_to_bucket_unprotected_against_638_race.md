@@ -66,3 +66,41 @@ approval per the gh-identity-blocks-self-approval entry). Recommended: port the
 retry guard to `navigate_to_bucket()`, link the failure to #638 explicitly, and
 correct the AFS's Implementer Amendments §3 + the Known Defects Found section
 (currently "None") before merge.
+
+## Resolution (round 2, fresh re-review session)
+
+Implementer ported the exact retry-on-URL-param-loss guard from
+`navigate_to_bucket_folder()` onto `navigate_to_bucket()` (new `_retry: bool = True`
+kwarg, one bounded recursive retry, `AssertionError` if still wrong after the
+retry) and corrected the AFS's Implementer Amendments (added item 4, a factual
+correction of item 3's misdiagnosis — diffed commit-to-commit, confirmed no
+scope creep).
+
+Independently re-verified in a fresh round-2 session (own worktree, no memory
+of round 1 carried in except this entry as prior context):
+- **Source-level root-cause confirmation** (new this round — round 1 only had
+  the symptom screenshot): read `EliteaUI/src/pages/Artifacts/Artifacts.jsx:616-624`
+  directly — `setSearchParams({})` really does fire when
+  `selectedProjectId !== queryParams.projectId`, stripping the `bucket` URL
+  param exactly as the fix's docstring claims. Worth doing even when a fix
+  "looks like" a proven pattern-port — confirms the docstring's causal claim
+  isn't just narrative.
+- **5/5 clean-process re-runs** of the new test (`HEADLESS=true pytest ... -p
+  no:cacheprovider`, own process each) — 0 flakes, directly refuting the prior
+  40% failure rate.
+- **Additive-only verified two ways**: `git diff | grep '^-[^-]'` on
+  `artifacts_page.py` showed only the import line and the signature line
+  changed (both backward-compatible); confirmed no existing caller passes a
+  3rd positional arg that would collide with the new `_retry` kwarg.
+  `DeleteEntityButton.jsx`'s new `testId` prop also confirmed additive across
+  all 8 of its call sites (7 don't pass it → `data-testid={undefined}` → React
+  omits the attribute).
+- **Shared-caller spot-check** (2 of the 4 pre-existing callers, self-run):
+  `test_artifacts_upload_duplicate_cancel.py` clean PASS;
+  `test_artifacts_upload_three_options_verify_selection.py` failed on exactly
+  the pre-existing sanctioned `#649` AssertionError text, nothing new.
+
+Verdict flipped to **APPROVED**. Takeaway for next time: a "port the identical
+already-proven guard" fix is still worth re-deriving the root cause against
+live source, not just trusting the docstring's restatement of it — cheap
+(one file read) and it's the difference between "plausible" and "confirmed."
