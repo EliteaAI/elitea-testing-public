@@ -234,6 +234,15 @@ without step wrapping is `CHANGES_REQUESTED` at review.
 
 ## Unconfirmed
 
-- Known-flaky test list — none documented yet; record here as they surface.
+- Known-flaky test list — first entry (2026-07-20, ELITEA-1835/#260 merge-gate run):
+  `ArtifactsPage`'s shared `click_bucket_row` action (`@action("Navigate to bucket")`,
+  `artifacts_page.py:457`) timed out once in 5 consecutive live-gate invocations of
+  `test_upload_via_three_options_and_verify_selection` (a raw `Locator.wait_for`
+  `TimeoutError`, allure status `broken`, not an assertion failure — that run also
+  took ~87s vs a ~70s baseline, consistent with a transient dev-backend/listing lag
+  rather than a code defect). Not reproduced in the other 4 runs (1 before, 3 after,
+  all showing the deterministic sanctioned-RED `#649` signature instead). Not yet
+  confirmed as a recurring pattern — record further occurrences here if it repeats;
+  escalate to a fix-only implementer dispatch only once a pattern is established.
 - API-test conventions are thinner than UI (`.claude/rules/api-tests.md` exists —
   follow it; flag gaps to the lead).
