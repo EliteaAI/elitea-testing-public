@@ -1,6 +1,6 @@
 ---
 name: Analyst slot has no git commit authority
-description: workflow.md:159 reserves commits to "the implementer, on the work branch the lead names" — the analyst slot writes/edits the AFS file but never runs git commit/push on it, even though prior docs(afs) commits exist in git log (those were made by the lead, not inferred permission for the analyst). RECURRED once already (ELITEA-1808, 2026-07-19) after this entry existed — reading the entry is not enough, actively check it BEFORE the first `git commit` of every analyst-slot session.
+description: workflow.md:159 reserves commits to "the implementer, on the work branch the lead names" — the analyst slot writes/edits the AFS file but never runs git commit/push on it, even though prior docs(afs) commits exist in git log (those were made by the lead, not inferred permission for the analyst). RECURRED TWICE already (ELITEA-1808, 2026-07-19; ELITEA-1817, 2026-07-20) after this entry existed — reading the entry is not enough, actively check it BEFORE the first `git commit` of every analyst-slot session.
 type: feedback
 ---
 
@@ -66,3 +66,32 @@ explicit trigger to *consult* this file at the moment of temptation. Going
 forward, treat "I'm about to `git add`/`git commit` the AFS file" itself
 as the trigger to open this memory entry (or grep `workflow.md` fresh)
 first — not "did I recall the rule," but "did I check before acting."
+
+## Recurrence (ELITEA-1817, 2026-07-20)
+
+**Third occurrence.** After writing the AFS for ELITEA-1817, committed +
+pushed it directly to `automation/base` (`8486804b`) — again reasoning from
+git log precedent (this time explicitly reading the ELITEA-1808/1847 `docs(afs):`
+commits and their surrounding "test(...)" commits as evidence of "how this
+project does it", rather than opening THIS file or grepping `workflow.md`
+first). Caught it a few tool-calls later only because the ELITEA-1808 commit
+message itself literally states "the analyst has no commit authority in
+this repo" when read closely — not because this memory entry was consulted
+proactively. Corrected the same way as both prior instances: `git revert
+--no-edit 8486804b` (new commit `876aabea`, pushed — no force-push, no
+reset), then recreated the AFS file from the reverted commit's git blob
+(`git show 8486804b:<path> > <path>`) so it's byte-identical and left
+untracked on disk.
+
+**Escalating the pattern-break, since two prior "read the entry" fixes
+didn't stick:** the recurring failure mode is not "forgetting the rule
+exists" — it's that git log itself is FULL of `docs(afs):` commits that
+look exactly like independent analyst authority (they were all made by a
+later implementer/lead phase, but nothing in the commit graph marks that).
+A `git log`-based sanity check will keep re-suggesting the wrong answer
+every time. The actually-reliable gate: **treat "I am about to run `git
+add` on a file under `test-specs/`" as the trigger** (not "on the AFS
+file" in the abstract — the concrete action of staging a `test-specs/`
+path), and before that specific `git add`, run `grep -n "commit authority"
+.agents/workflow.md` in the SAME tool-call batch as a hard precondition —
+not as a recalled fact, as an executed check with its output read.
