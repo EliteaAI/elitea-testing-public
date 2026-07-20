@@ -771,6 +771,52 @@ def mcp_toolkit_with_tools(toolkit_api: ToolkitAPI, request):
         logger.warning("Failed to delete MCP toolkit %s: %s", toolkit["id"], exc)
 
 
+# Deliberately-unreachable URL used to reproduce the "Server is disconnected!"
+# misconfigured-MCP state deterministically (ELITEA-2094) — see
+# ``mcp_toolkit_misconfigured`` below. Reserved-for-documentation TEST-NET
+# range (RFC 5737, 192.0.2.0/24) on a port nothing listens on: resolves at
+# the TCP layer (no DNS failure noise) but always refuses/times out.
+_MCP_UNREACHABLE_URL = "http://192.0.2.1:1/mcp"
+
+
+@pytest.fixture
+def mcp_toolkit_misconfigured(toolkit_api: ToolkitAPI, request):
+    """Create a Remote MCP toolkit pointed at an unreachable URL (empty tool list).
+
+    Reproduces the "Server is disconnected! Reconnect it to use. Log in."
+    misconfigured state confirmed live against the project-471 "asd (mcp)"
+    fixture during ELITEA-2094 analysis — independent of that shared,
+    project-471-specific, unowned-by-this-suite fixture (which could be
+    fixed/deleted/renamed by another tester at any time). Sibling of
+    ``mcp_toolkit_with_tools`` (the healthy counterpart); unlike that
+    fixture this one deliberately skips ``sync_mcp_tools`` (which would
+    fail/timeout against an unreachable URL) and creates the toolkit with
+    ``tools=[]`` directly, per the AFS's own recommended fix (§ Test Data).
+
+    Yields:
+        dict: ``{"id": int, "name": str}``
+    """
+    name = f"autotest_mcp_bad_{request.node.name}"[:32]
+    toolkit = toolkit_api.create_remote_mcp_toolkit(
+        name=name,
+        description=f"Auto-created misconfigured MCP for test {request.node.name}",
+        url=_MCP_UNREACHABLE_URL,
+        tools=[],
+    )
+    logger.info(
+        "Created misconfigured MCP toolkit %s (%s) for %s",
+        toolkit["id"], name, request.node.name,
+    )
+
+    yield {"id": toolkit["id"], "name": name}
+
+    try:
+        toolkit_api.delete_toolkit(toolkit["id"])
+        logger.info("Deleted misconfigured MCP toolkit %s", toolkit["id"])
+    except Exception as exc:
+        logger.warning("Failed to delete misconfigured MCP toolkit %s: %s", toolkit["id"], exc)
+
+
 @pytest.fixture
 def mcp_pipeline_with_toolkits(
     mcp_toolkit_with_tools: dict, toolkit_api: ToolkitAPI, pipeline_api: PipelineAPI, request

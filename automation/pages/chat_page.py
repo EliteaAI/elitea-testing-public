@@ -274,10 +274,47 @@ class ChatPage(BasePage):
     # "application_4687_399" for an agent participant.
     PARTICIPANT_ROW = '[data-testid="chat-participant-row-{}"]'
 
+    # Prefix-match selector enumerating every HEALTHY participant row inside
+    # an opened popper. Confirmed live + by reading ``ParticipantItem.jsx``
+    # (ELITEA-2094): this testid is emitted ONLY on the "normal" (non-
+    # misconfigured) render branch — a participant with
+    # ``hasMisconfigurationErrors``/``mcpIsDisconnected``/etc. renders via a
+    # different branch with NO ``chat-participant-row-*`` testid at all. Safe
+    # to use for row-count assertions on healthy participants (e.g. dup-
+    # prevention checks); do not rely on it to count or scope a KNOWN-
+    # misconfigured participant's row.
+    PARTICIPANT_ROW_PREFIX = '[data-testid^="chat-participant-row-"]'
+
     # Hover-reveal "Remove <entityType>" icon button — static, scoped via
     # the row's dynamic testid (multiple simultaneous rows disambiguate
     # through the parent row selector, not this button's own testid).
     PARTICIPANT_REMOVE_BUTTON = '[data-testid="chat-participant-remove-button"]'
+
+    # ------------------------------------------------------------------
+    # Plus-menu entity pickers (ELITEA-2094 testid rework) — Agents/
+    # Pipelines/Toolkits/MCPs. Section key here is the PLUS-MENU key
+    # ("agents", "pipelines", "toolkits", "mcps" — all PLURAL, including
+    # "mcps"), added to EliteaUI on ``automation/testids`` during this
+    # case (commit 73595e8d). This is a DIFFERENT naming space from
+    # ``PARTICIPANTS_BADGE``'s section key, which uses singular "mcp" for
+    # the MCP badge — do not conflate the two when formatting.
+    # ------------------------------------------------------------------
+
+    # Top-level plus-menu item that opens a given entity section's submenu.
+    PLUS_MENU_ENTITY_MENUITEM = '[data-testid="{}-menuitem"]'
+
+    # Per-section search input inside the opened submenu. Lands on the
+    # native <input> (MUI's lowercase ``inputProps={{'data-testid': ...}}``,
+    # NOT the TextField's own ``data-testid`` which resolves to the
+    # wrapper <div> — confirmed live before the testid was added).
+    PLUS_MENU_SEARCH_INPUT = '[data-testid="{}-search-input"]'
+
+    # Prefix-match selector enumerating every entity row in a section's
+    # submenu, regardless of the specific entity — row testid is
+    # ``{section}-menu-item-{item.key}`` where ``item.key`` is EliteaUI's
+    # own stable key (e.g. "agent-399-4687"); automation filters by name
+    # text within this prefix rather than guessing the numeric id.
+    PLUS_MENU_ENTITY_ITEM_PREFIX = '[data-testid^="{}-menu-item-"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -2151,6 +2188,141 @@ class ChatPage(BasePage):
 
         logger.info("Toolkit '%s' added as chat participant", toolkit_name)
 
+    def _ensure_plus_menu_closed(self, timeout: int = 2000) -> None:
+        """Best-effort: force the plus-menu popper closed if a prior action left it open.
+
+        Root cause (confirmed live during ELITEA-2094 implementation, reading
+        ``PlusChatButton.jsx``'s ``handleToggle``/``handleItemClick``):
+        selecting an agent/pipeline row calls the submenu's ``onClose()``
+        internally (closing the whole plus menu), but TOGGLING a toolkit/MCP
+        row does NOT — ``handleToggle`` only calls ``item.onToggle()``, never
+        ``onClose()``. So after ``add_toolkit_participant``/
+        ``add_mcp_participant`` toggles a row, the plus-menu popper stays
+        open. The NEXT ``add_*_participant`` call's own "click plus_menu_button
+        to open" would then TOGGLE it CLOSED instead (since it was already
+        open), and the submenu it expects never appears — a real interaction
+        bug in chaining add-participant calls, not a product defect (single-
+        add existing tests never chain calls, so it was never hit before).
+        Called at the start of ``add_pipeline_participant``/
+        ``add_mcp_participant`` so they're robust regardless of what ran
+        immediately before them. Clicking the message input (always present,
+        outside the plus-menu popper's DOM) triggers MUI's
+        ``ClickAwayListener`` and closes it if it was open; a no-op if it
+        was already closed.
+        """
+        try:
+            self.message_input.click(timeout=timeout)
+            self.page.wait_for_timeout(200)  # Popper close animation
+        except Exception:
+            logger.debug("_ensure_plus_menu_closed: message input not clickable — continuing")
+
+    @action("Add pipeline participant")
+    def add_pipeline_participant(self, pipeline_name_prefix: str, timeout: int = 10000):
+        """Add a pipeline as a chat participant via the plus menu → Pipelines flow.
+
+        Opens the plus menu, clicks "Pipelines", searches for pipelines whose name
+        starts with *pipeline_name_prefix*, selects the first result, and waits
+        for the pipeline to be added. Pipeline rows are click-to-select (like
+        agents), not toggle/switch rows (like toolkits/MCPs) — sibling of
+        ``add_agent_participant``, added for ELITEA-2094.
+
+        LOCATORS (testid-only, added to EliteaUI on ``automation/testids`` for
+        this case, commit 73595e8d): ``pipelines-menuitem`` (submenu trigger),
+        ``pipelines-search-input`` (search field), ``pipelines-menu-item-{key}``
+        (per-row, prefix-matched and filtered by name text).
+
+        Args:
+            pipeline_name_prefix: Search prefix (e.g. "autotest_")
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Adding pipeline participant with prefix '%s'", pipeline_name_prefix)
+        self._ensure_plus_menu_closed()
+
+        # Step 1: Open plus menu
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click(force=True)
+        self.page.wait_for_timeout(300)  # Menu animation
+
+        # Step 2: Click "Pipelines" menuitem
+        pipelines_menu = self.page.locator(self.PLUS_MENU_ENTITY_MENUITEM.format("pipelines"))
+        pipelines_menu.wait_for(state="visible", timeout=timeout)
+        pipelines_menu.click()
+        self.page.wait_for_timeout(300)  # Submenu animation
+
+        # Step 3: Search for pipeline in the search input
+        search_input = self.page.locator(self.PLUS_MENU_SEARCH_INPUT.format("pipelines"))
+        search_input.wait_for(state="visible", timeout=timeout)
+        search_input.click()
+        search_input.press_sequentially(pipeline_name_prefix, delay=50)
+        self.page.wait_for_timeout(500)  # Search debounce
+
+        # Step 4: Select the pipeline from results
+        pipeline_item = self.page.locator(
+            self.PLUS_MENU_ENTITY_ITEM_PREFIX.format("pipelines")
+        ).filter(has_text=pipeline_name_prefix).first
+        pipeline_item.wait_for(state="visible", timeout=timeout)
+        pipeline_item.click()
+
+        # Wait for the API write to complete
+        self.wait_for_network(timeout=timeout)
+
+        logger.info("Pipeline added as chat participant")
+
+    @action("Add MCP participant")
+    def add_mcp_participant(self, mcp_name_prefix: str, timeout: int = 10000):
+        """Add an MCP as a chat participant via the plus menu → MCPs flow.
+
+        Opens the plus menu, clicks "MCPs", searches for MCPs whose name starts
+        with *mcp_name_prefix*, and clicks the first matching row to toggle it
+        on. MCP rows are toggle/switch rows (like toolkits, NOT click-to-select
+        like agents/pipelines) — clicking the row toggles the switch as a side
+        effect of the row's own click handler, same confirmed behavior as
+        ``add_toolkit_participant``. Sibling method added for ELITEA-2094.
+
+        LOCATORS (testid-only, added to EliteaUI on ``automation/testids`` for
+        this case, commit 73595e8d): ``mcps-menuitem`` (submenu trigger),
+        ``mcps-search-input`` (search field), ``mcps-menu-item-{key}`` (per-row).
+        NOTE the plus-menu section key is plural "mcps" — a DIFFERENT naming
+        space from ``PARTICIPANTS_BADGE``'s singular "mcp" badge section key
+        (see class-level comment above ``PLUS_MENU_ENTITY_MENUITEM``).
+
+        Args:
+            mcp_name_prefix: Search prefix (e.g. "autotest_")
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Adding MCP participant with prefix '%s'", mcp_name_prefix)
+        self._ensure_plus_menu_closed()
+
+        # Step 1: Open plus menu
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click(force=True)
+        self.page.wait_for_timeout(300)  # Menu animation
+
+        # Step 2: Click "MCPs" menuitem
+        mcps_menu = self.page.locator(self.PLUS_MENU_ENTITY_MENUITEM.format("mcps"))
+        mcps_menu.wait_for(state="visible", timeout=timeout)
+        mcps_menu.click()
+        self.page.wait_for_timeout(300)  # Submenu animation
+
+        # Step 3: Search for MCP in the search input
+        search_input = self.page.locator(self.PLUS_MENU_SEARCH_INPUT.format("mcps"))
+        search_input.wait_for(state="visible", timeout=timeout)
+        search_input.click()
+        search_input.press_sequentially(mcp_name_prefix, delay=50)
+        self.page.wait_for_timeout(500)  # Search debounce
+
+        # Step 4: Toggle the MCP row from results
+        mcp_item = self.page.locator(
+            self.PLUS_MENU_ENTITY_ITEM_PREFIX.format("mcps")
+        ).filter(has_text=mcp_name_prefix).first
+        mcp_item.wait_for(state="visible", timeout=timeout)
+        mcp_item.click()
+
+        # Wait for the API write to complete
+        self.wait_for_network(timeout=timeout)
+
+        logger.info("MCP added as chat participant")
+
     def is_agent_participant_in_composer(self, agent_name: str, timeout: int = 10000) -> bool:
         """Return True if *agent_name* is shown as the active agent in the composer.
 
@@ -2256,6 +2428,233 @@ class ChatPage(BasePage):
     # Participant removal + "Mention skill" popper inspection (ELITEA-1793)
     # ------------------------------------------------------------------
 
+    def any_participants_badge_visible(self, timeout: int = 1000) -> bool:
+        """Return True if ANY participants badge (any section) exists in the DOM.
+
+        Used for the blank-conversation precondition (ELITEA-2094 case step 1):
+        confirmed live that the right-sidebar PARTICIPANTS area is not rendered
+        with a "0" state — it's simply absent until the first participant is
+        added, matching the same absent-not-zero pattern already documented in
+        ``is_participants_badge_visible``. Checks the prefix-matched
+        ``[data-testid^="chat-participants-badge-"]`` selector rather than one
+        specific section, since NO section badge should exist pre-first-add.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        badge = self.page.locator('[data-testid^="chat-participants-badge-"]')
+        try:
+            badge.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_participant_section_icon_markup(self, section: str = "agents", timeout: int = 3000) -> str:
+        """Return the inner SVG markup of *section*'s collapsed-badge entity icon.
+
+        Used for the distinct-icon check (ELITEA-2094 case step 7): each
+        section renders a different wrapped ``.svg?react`` component
+        (``AgentSvg``/``FlowSvg``/``ToolSvg``/``MCPSvg`` in
+        ``CollapsedPerticapantsList.jsx``) inside the badge's IconButton, with
+        no other SVG present unless the section is misconfigured (the warning-
+        triangle overlay renders as a sibling, not inside this icon — confirmed
+        by reading the EliteaUI source, ``sectionHasError`` gates a *sibling*
+        ``Box``, not the icon itself). ``innerHTML`` (path/shape geometry)
+        rather than ``outerHTML`` (which could coincidentally share sizing/
+        class attributes across sections) is compared across sections by the
+        caller to assert distinctness.
+
+        Args:
+            section: Entity section — "agents", "pipelines", "toolkits", or "mcp".
+            timeout: Maximum wait time in milliseconds.
+        """
+        badge = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
+        icon_svg = badge.locator("svg").first
+        icon_svg.wait_for(state="visible", timeout=timeout)
+        return icon_svg.evaluate("el => el.innerHTML")
+
+    def is_entity_excluded_from_picker(
+        self, section: str, entity_name: str, timeout: int = 10000,
+    ) -> bool:
+        """Return True if *entity_name* is NOT listed in *section*'s plus-menu picker.
+
+        Opens the plus menu, opens *section*'s submenu, searches for
+        *entity_name*, and returns whether zero matching rows are found.
+        Used for the stronger duplicate-prevention signal (ELITEA-2094 case
+        step 8 Axis-2 addition): re-opening a picker for an already-added
+        entity should show ZERO rows for it, not just "no duplicate row" in
+        the participants popper — confirmed live that the UI actively excludes
+        already-added entities from the picker (``useFilteredEntityItems.js``
+        filters out existing participants before the search filter even runs).
+        Closes the plus menu (Escape) before returning, leaving the composer
+        in its pre-call state.
+
+        Args:
+            section: Plus-menu section key — "agents", "pipelines",
+                "toolkits", or "mcps" (plural — see PLUS_MENU_* class-level
+                comment; this is the plus-menu naming space, not the
+                participants-badge one).
+            entity_name: Name (or unique substring) to search for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Checking picker exclusion: section=%r entity_name=%r", section, entity_name)
+        # Defensive, matching add_pipeline_participant/add_mcp_participant:
+        # a prior action elsewhere in a chained Step 8 sequence (multiple
+        # open/close cycles on the SEPARATE participants popper) could in
+        # principle leave the plus-menu popper's own toggle state
+        # unsynchronized with what this method assumes. Cheap and harmless
+        # when already closed (see its own docstring).
+        self._ensure_plus_menu_closed()
+
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click(force=True)
+        self.page.wait_for_timeout(300)  # Menu animation
+
+        section_menu = self.page.locator(self.PLUS_MENU_ENTITY_MENUITEM.format(section))
+        section_menu.wait_for(state="visible", timeout=timeout)
+        section_menu.click()
+        self.page.wait_for_timeout(300)  # Submenu animation
+
+        search_input = self.page.locator(self.PLUS_MENU_SEARCH_INPUT.format(section))
+        search_input.wait_for(state="visible", timeout=timeout)
+        search_input.click()
+        search_input.press_sequentially(entity_name, delay=50)
+        self.page.wait_for_timeout(500)  # Search debounce
+
+        matching_rows = self.page.locator(
+            self.PLUS_MENU_ENTITY_ITEM_PREFIX.format(section)
+        ).filter(has_text=entity_name)
+
+        # Condition-based poll (NOT a fixed sleep): confirmed live (ELITEA-2094
+        # implementation) that useFilteredEntityItems' already-added exclusion
+        # is a pure, synchronous computation over the CURRENT participants
+        # array — but that array itself can lag a beat behind the UI action
+        # that added the participant when this check runs immediately after a
+        # dense sequence of popper open/close cycles (Step 8). Poll up to
+        # *timeout* instead of trusting a single post-debounce read.
+        deadline = time.monotonic() + (timeout / 1000)
+        row_count = matching_rows.count()
+        while row_count > 0 and time.monotonic() < deadline:
+            self.page.wait_for_timeout(250)
+            row_count = matching_rows.count()
+
+        self.page.keyboard.press("Escape")
+        self.page.wait_for_timeout(300)  # Menu close animation
+
+        excluded = row_count == 0
+        logger.info(
+            "Picker exclusion check: section=%r entity_name=%r row_count=%d excluded=%s",
+            section, entity_name, row_count, excluded,
+        )
+        return excluded
+
+    def get_picker_matching_rows_locator(self, section: str, entity_name: str, timeout: int = 10000):
+        """Open *section*'s plus-menu picker, search *entity_name*, and return the matching-rows Locator.
+
+        Sibling of ``is_entity_excluded_from_picker`` (which returns a
+        materialized ``bool``) — this returns the ``Locator`` itself so
+        callers can build a Playwright Locator-assertion
+        (``expect()``/``expect.soft()``) directly, e.g. to soft-assert
+        around a known product defect (ELITEA-2094, known defect
+        EliteaAI/elitea-testing-public#684 — confirmed live this is the same
+        participant-state fragility as that issue's main finding: the
+        already-added-entity exclusion filter, which works correctly with
+        an Agent participant alone, intermittently fails once a Pipeline
+        participant also coexists). Leaves the picker OPEN on return —
+        callers close it with ``close_picker_menu()``.
+
+        Args:
+            section: Plus-menu section key — "agents", "pipelines",
+                "toolkits", or "mcps" (plural — see PLUS_MENU_* class-level
+                comment).
+            entity_name: Name (or unique substring) to search for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening picker for locator: section=%r entity_name=%r", section, entity_name)
+        self._ensure_plus_menu_closed()
+
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click(force=True)
+        self.page.wait_for_timeout(300)  # Menu animation
+
+        section_menu = self.page.locator(self.PLUS_MENU_ENTITY_MENUITEM.format(section))
+        section_menu.wait_for(state="visible", timeout=timeout)
+        section_menu.click()
+        self.page.wait_for_timeout(300)  # Submenu animation
+
+        search_input = self.page.locator(self.PLUS_MENU_SEARCH_INPUT.format(section))
+        search_input.wait_for(state="visible", timeout=timeout)
+        search_input.click()
+        search_input.press_sequentially(entity_name, delay=50)
+        self.page.wait_for_timeout(500)  # Search debounce
+
+        return self.page.locator(
+            self.PLUS_MENU_ENTITY_ITEM_PREFIX.format(section)
+        ).filter(has_text=entity_name)
+
+    def close_picker_menu(self, timeout: int = 2000) -> None:
+        """Close the plus-menu picker via Escape.
+
+        Unlike the participants popper (see ``close_participants_popover``'s
+        docstring — Escape does NOT close it), the plus-menu picker DOES
+        respond to Escape (confirmed live, and matches
+        ``is_entity_excluded_from_picker``'s pre-existing, already-working
+        use of the same technique) — these are different MUI components
+        with different close mechanisms.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the close
+                animation.
+        """
+        self.page.keyboard.press("Escape")
+        self.page.wait_for_timeout(300)  # Menu close animation
+
+    def get_participant_popper_row_count(self, section: str = "agents", timeout: int = 10000) -> int:
+        """Open *section*'s participants popper and return its healthy-row count.
+
+        Used for the case's own step-8 duplicate check ("every badge's popper
+        showed exactly one row for the one entity added to it"). Counts rows
+        via ``PARTICIPANT_ROW_PREFIX`` — reliable for healthy participants
+        only (see that constant's docstring for the misconfigured-branch
+        caveat). Leaves the popper open on return; callers close it
+        (``page.keyboard.press("Escape")``) when done.
+
+        Args:
+            section: Participants-badge section — "agents", "pipelines",
+                "toolkits", or "mcp" (singular).
+            timeout: Maximum wait time in milliseconds.
+        """
+        popper = self.open_participants_popover(section=section, timeout=timeout)
+        rows = popper.locator(self.PARTICIPANT_ROW_PREFIX)
+        count = rows.count()
+        logger.info("Participants popper section=%r row_count=%d", section, count)
+        return count
+
+    def get_participant_popper_rows_locator(self, section: str = "agents", timeout: int = 10000):
+        """Open *section*'s participants popper and return the healthy-row Locator itself.
+
+        Sibling of ``get_participant_popper_row_count`` — returns the
+        ``Locator`` rather than a materialized ``int`` count, so callers can
+        build a Playwright Locator-assertion (``expect()``/``expect.soft()``)
+        directly against it. Added for ELITEA-2094 to soft-assert the
+        duplicate-count expectation on a participant known to render via the
+        misconfigured branch (``PARTICIPANT_ROW_PREFIX``'s own docstring:
+        that testid is emitted ONLY on the healthy branch — see known defect
+        EliteaAI/elitea-testing-public#687, a healthy remote MCP toolkit is
+        currently always falsely flagged as misconfigured, so its row reads
+        0 via this selector even though exactly one entity was added).
+        Leaves the popper open on return; callers close it
+        (``page.keyboard.press("Escape")``) when done — same contract as
+        ``get_participant_popper_row_count``.
+
+        Args:
+            section: Participants-badge section — "agents", "pipelines",
+                "toolkits", or "mcp" (singular).
+            timeout: Maximum wait time in milliseconds.
+        """
+        popper = self.open_participants_popover(section=section, timeout=timeout)
+        return popper.locator(self.PARTICIPANT_ROW_PREFIX)
+
     def is_participants_badge_visible(self, timeout: int = 3000, section: str = "agents") -> bool:
         """Return True if the participants badge for *section* exists in the DOM.
 
@@ -2307,6 +2706,105 @@ class ChatPage(BasePage):
 
         self.participants_popper.wait_for(state="visible", timeout=timeout)
         return self.participants_popper
+
+    def close_participants_popover(self, timeout: int = 5000) -> None:
+        """Close the open participants popper and wait for it to FULLY unmount.
+
+        Required before opening a DIFFERENT section's popper in a tight loop
+        (e.g. ELITEA-2094 Step 8's agents/pipelines/toolkits/mcp duplicate-
+        check). ``chat-participants-popper`` is NOT scoped per-section — the
+        same testid is shared by all 4 sections' Poppers — so leaving the
+        previous one open (or mid-close) while opening the next leaves TWO
+        elements matching the testid simultaneously, a Playwright
+        strict-mode violation on the very next ``open_participants_popover``
+        call.
+
+        MECHANISM: confirmed live (ELITEA-2094 implementation) that
+        ``page.keyboard.press("Escape")`` does **not** close this popper at
+        all — ``CollapsedParticipantsDropdown.jsx`` wires only a
+        ``ClickAwayListener`` (click-outside), no Escape/keydown handler
+        (unlike a MUI ``Modal``-backed component). A prior version of this
+        method used Escape + a fixed ``page.wait_for_timeout(200)``, which
+        silently left the popper open — the actual root cause of the
+        strict-mode violation (not just a slow transition, as first
+        suspected). A second prior version clicked ``message_input``
+        (mirroring ``_ensure_plus_menu_closed``'s working technique for the
+        plus-menu popper) — but that composer textarea is legitimately
+        ``disabled`` while a just-added/just-switched participant's
+        version/tools are still resolving, which this same test's Step 8
+        loop runs straight into, so a plain ``.click()`` on it can itself
+        time out ("element is not enabled"). A raw, coordinate-based mouse
+        click needs no target element's enabled/visible state at all — it
+        only needs to land OUTSIDE the popper's DOM subtree for
+        ``ClickAwayListener`` to fire, which any point in the upper-left of
+        the main content column satisfies (poppers anchor to their badge in
+        the top-RIGHT sidebar; the composer sits at the BOTTOM). This is a
+        raw input primitive, not a UI-element locator — same category as
+        ``page.keyboard.press(...)`` above, not subject to the testid-only
+        locator policy (`.agents/testing.md` § Locator policy, which
+        governs *locating elements*, not synthetic dismiss gestures).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the close
+                transition to fully complete.
+        """
+        viewport = self.page.viewport_size or {"width": 1280, "height": 720}
+        self.page.mouse.click(viewport["width"] * 0.3, viewport["height"] * 0.2)
+        self.participants_popper.wait_for(state="hidden", timeout=timeout)
+
+    def is_participant_section_misconfigured(self, section: str = "agents", timeout: int = 3000) -> bool:
+        """Return True if the *section* participants badge shows the misconfiguration warning.
+
+        LOCATOR: reads the ``aria-label`` on ``chat-participants-badge-{section}``
+        — the same badge ``is_participants_badge_visible``/``open_participants_popover``
+        use. Confirmed live during ELITEA-2094 exploration that a healthy badge's
+        aria-label is ``"{Section} in this conversation"`` while a badge covering
+        at least one misconfigured entity (e.g. a disconnected MCP toolkit)
+        instead renders ``aria-label="Misconfiguration error in {section}"`` with
+        an orange/yellow warning-triangle SVG overlay — and that this aria-label
+        lands directly on the SAME element as the badge testid (verified via
+        ``element.getAttribute('aria-label')`` before relying on it — unlike the
+        wrapper-span gotcha documented in the
+        ``mui_tooltip_aria_label_wrapper_differs_from_click_target_testid`` memory,
+        this Tooltip clones its title onto the testid'd node itself, not a
+        separate wrapping element).
+
+        Args:
+            section: Entity section — "agents", "pipelines", "toolkits", or
+                "mcp" (singular — the participants-badge testid uses "mcp", NOT
+                the plus-menu's "mcps"; see PLUS_MENU_* class-level comment).
+            timeout: Maximum wait time in milliseconds.
+        """
+        badge = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
+        badge.first.wait_for(state="visible", timeout=timeout)
+        aria_label = badge.first.get_attribute("aria-label") or ""
+        is_misconfigured = "misconfiguration" in aria_label.lower()
+        logger.info(
+            "Participants badge section=%r aria-label=%r misconfigured=%s",
+            section, aria_label, is_misconfigured,
+        )
+        return is_misconfigured
+
+    def get_participants_badge_locator(self, section: str = "agents"):
+        """Return the raw Locator for *section*'s participants badge.
+
+        Sibling getter to ``is_participants_badge_visible``/
+        ``is_participant_section_misconfigured`` (both return ``bool``) —
+        this returns the ``Locator`` itself for callers that need a
+        Playwright Locator-assertion (``expect()``/``expect.soft()``)
+        directly, e.g. to soft-assert around a known product defect without
+        duplicating ``PARTICIPANTS_BADGE`` selector construction in a test
+        file. Added for ELITEA-2094 (known defect
+        EliteaAI/elitea-testing-public#687 — a healthy remote MCP toolkit
+        is currently always falsely flagged as misconfigured; Step 5 soft-
+        asserts against it via this locator).
+
+        Args:
+            section: Entity section — "agents", "pipelines", "toolkits", or
+                "mcp" (singular — same naming space as
+                ``is_participant_section_misconfigured``).
+        """
+        return self.page.locator(self.PARTICIPANTS_BADGE.format(section))
 
     @action("Remove agent participant from chat")
     def remove_agent_participant(self, agent_id: int, timeout: int = 10000):

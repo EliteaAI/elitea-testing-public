@@ -51,6 +51,7 @@ from fixtures.data_fixtures import (
     invalid_github_credential,
     github_toolkit_with_invalid_credential,
     mcp_toolkit_with_tools,
+    mcp_toolkit_misconfigured,
     mcp_pipeline_with_toolkits,
 )
 from fixtures.cleanup_fixtures import (
