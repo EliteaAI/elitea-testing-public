@@ -2568,11 +2568,11 @@ class ChatPage(BasePage):
         callers can build a Playwright Locator-assertion
         (``expect()``/``expect.soft()``) directly, e.g. to soft-assert
         around a known product defect (ELITEA-2094, known defect
-        EliteaAI/elitea-testing-public#684 — confirmed live this is the same
-        participant-state fragility as that issue's main finding: the
-        already-added-entity exclusion filter, which works correctly with
-        an Agent participant alone, intermittently fails once a Pipeline
-        participant also coexists). Leaves the picker OPEN on return —
+        EliteaAI/elitea-testing-public#689 — correlated with #684's
+        Agent+Pipeline trigger condition, not confirmed to share #684's
+        root cause: the already-added-entity exclusion filter, which works
+        correctly with an Agent participant alone, intermittently fails once
+        a Pipeline participant also coexists). Leaves the picker OPEN on return —
         callers close it with ``close_picker_menu()``.
 
         Args:
