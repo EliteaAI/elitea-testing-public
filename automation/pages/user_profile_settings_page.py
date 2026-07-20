@@ -276,7 +276,7 @@ class UserProfileSettingsPage(BasePage):
 
     def navigate_to_personalization(self) -> None:
         """Navigate to the Personalization settings page and wait until ready."""
-        self.navigate("/settings/personalization")
+        self.navigate("/settings/preferences")
         self.wait_for_personalization_load()
         logger.info("Navigated to Personalization settings page")
 

@@ -119,7 +119,10 @@ class Dialog:
     def get_title(dialog: Locator) -> str:
         """Extract the dialog title text.
 
-        Looks for the MUI ``#alert-dialog-title`` element.
+        Tries multiple selectors:
+        1. MUI ``#alert-dialog-title`` element
+        2. Heading element inside dialog (h1-h6)
+        3. First text node in dialog header
 
         Args:
             dialog: Locator of the dialog element.
@@ -127,9 +130,20 @@ class Dialog:
         Returns:
             Title text, or empty string if not found.
         """
+        # Try #alert-dialog-title first (older MUI pattern)
         title = dialog.locator("#alert-dialog-title")
         if title.count() > 0:
             return title.text_content().strip()
+
+        # Try heading element (newer pattern: heading contains title + close button)
+        heading = dialog.locator("h1, h2, h3, h4, h5, h6").first
+        if heading.count() > 0:
+            # Get first child text (skip close button)
+            first_child = heading.locator("> *").first
+            if first_child.count() > 0:
+                return first_child.text_content().strip()
+            return heading.text_content().strip()
+
         return ""
 
     @staticmethod
