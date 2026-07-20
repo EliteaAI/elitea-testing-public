@@ -1,3 +1,0 @@
-WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
-WARNING  elitea.pages.agent_detail:agent_detail_page.py:894 Embedded chat response did not stabilize within timeout
-WARNING  elitea.automation.fixtures.data:data_fixtures.py:321 Failed to delete artifact bucket 'autotest-test-agent-creates-files-at-roo-660980': 404 Client Error: Not Found for url: https://dev.elitea.ai/api/v2/artifacts/buckets/default/573/p--573.autotest-test-agent-creates-files-at-roo-660980 — headers: {'Content-Length': '136', 'Content-Type': 'application/json', 'Date': 'Fri, 17 Jul 2026 07:37:39 GMT', 'Vary': 'Cookie'} — body: {'message': 'The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.'}
