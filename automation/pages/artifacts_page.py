@@ -123,12 +123,35 @@ class ArtifactsPage(BasePage):
     # Handles table); now templated with the bucket's own name.
     BUCKET_MENU_BUTTON = '[data-testid="bucket-menu-{}-menu-button"]'
 
+    # Dynamic testid template — the bucket-row dot-menu's WHOLE dropdown
+    # container (ELITEA-1817). Same templated-`id` provenance as
+    # BUCKET_MENU_BUTTON above (DotMenu.jsx's
+    # `<Menu data-testid={id ? `${id}-menu` : undefined}>`). Used to read
+    # the full 4-item dropdown text in one shot — "Rename"/"Pin to top"
+    # have no per-item testid (out of scope, see :attr:`bucket_menu_delete_menuitem`
+    # below), so the whole-container text read is this page object's
+    # established alternative (same pattern as :meth:`get_file_row_text`).
+    BUCKET_MENU_CONTAINER = '[data-testid="bucket-menu-{}-menu"]'
+
     bucket_menu_upload_files_menuitem = LocatorDescriptor(
         testid="bucket-menu-upload-files-menuitem",
         description="'Upload files' item inside a bucket row's dot-menu dropdown "
         "(ELITEA-1808) — testid is static (not bucket-parameterized): the menu "
         "item's key ('bucket-menu-upload-files') is fixed regardless of which "
         "bucket's menu is currently open",
+    )
+
+    bucket_menu_delete_menuitem = LocatorDescriptor(
+        testid="bucket-menu-delete-menuitem",
+        description="'Delete' item inside a bucket row's dot-menu dropdown "
+        "(ELITEA-1817) — testid added live to BucketItem.jsx's menuItems array "
+        "(a `key: 'bucket-menu-delete'` field, same mechanism as the sibling "
+        "'bucket-menu-upload-files' key) and pushed to automation/testids "
+        "(EliteaAI/EliteaUI@457f5f44). Static (not bucket-parameterized), same "
+        "shape as :attr:`bucket_menu_upload_files_menuitem`. Clicking it opens "
+        "the shared DeleteEntityModal (:attr:`delete_confirm_dialog`) — the "
+        "SAME component ELITEA-1847 already testid'd for the file/folder "
+        "bulk-delete flow, reused here from the bucket dot-menu entry point.",
     )
 
     # Dynamic testid template — left-panel tree node for a file/folder, keyed
@@ -787,6 +810,29 @@ class ArtifactsPage(BasePage):
         self.bucket_name_input.type(name)
         logger.info("Filled bucket name field with '%s'", name)
 
+    def is_bucket_name_invalid(self, timeout: int = 5000) -> bool:
+        """Return whether the Name field is currently flagged invalid (ELITEA-1817).
+
+        Reads the ``aria-invalid`` attribute of the already testid-anchored
+        :attr:`bucket_name_input` — confirmed live: MUI/formik renders NO
+        helper-text DOM element at all when ``formik.errors.name`` is
+        falsy, so there is nothing to assert "invisible", only the input's
+        own validity state. Same "read an attribute of an existing
+        testid-anchored locator" shape already established by
+        :meth:`is_bucket_selected`/:meth:`is_tree_item_selected` — no new
+        testid needed.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the field itself
+                to be visible before reading its attribute.
+
+        Returns:
+            True if ``aria-invalid="true"``, False otherwise (including
+            ``"false"`` or the attribute being absent).
+        """
+        self.bucket_name_input.wait_for(state="visible", timeout=timeout)
+        return self.bucket_name_input.get_attribute("aria-invalid") == "true"
+
     @action("Click bucket Save button")
     def click_bucket_save_button(self, timeout: int = 15000):
         """Click Save on the 'New Bucket' form and return the creation response.
@@ -842,6 +888,30 @@ class ArtifactsPage(BasePage):
             state="visible", timeout=timeout
         )
         logger.info("Bucket '%s' visible in the bucket list", bucket_name)
+
+    def wait_for_bucket_removed_from_list(
+        self, bucket_name: str, timeout: int = 15000
+    ) -> None:
+        """Wait for a bucket to disappear from the left-panel bucket list (ELITEA-1817).
+
+        Symmetric counterpart to :meth:`wait_for_bucket_in_list` — the same
+        "list mid-refetch" race that method's docstring documents for a
+        bucket's *appearance* plausibly applies to its *removal* too (both
+        are driven by the same post-mutation list refetch). Uses
+        Playwright's own auto-retrying ``expect(...).to_have_count(0)`` on
+        the bucket's own dynamic :attr:`BUCKET_ROW` testid, the same
+        auto-retrying idiom :meth:`wait_for_file_count` already established
+        in this page object — never a bare, single-instant
+        :meth:`count_bucket_rows` read right after a delete-confirm click.
+
+        Args:
+            bucket_name: Exact name of the bucket expected to be gone.
+            timeout: Maximum wait time in milliseconds.
+        """
+        expect(self.page.locator(self.BUCKET_ROW.format(bucket_name))).to_have_count(
+            0, timeout=timeout
+        )
+        logger.info("Bucket '%s' no longer in the bucket list", bucket_name)
 
     def is_bucket_selected(self, bucket_name: str, timeout: int = 10000) -> bool:
         """Return whether *bucket_name*'s left-panel row is the selected one.
@@ -936,6 +1006,57 @@ class ArtifactsPage(BasePage):
 
         self.bucket_menu_upload_files_menuitem.wait_for(state="visible", timeout=timeout)
         logger.info("Actions dot-menu open for bucket '%s'", bucket_name)
+
+    def get_bucket_menu_items_text(self, bucket_name: str, timeout: int = 10000) -> str:
+        """Return the open bucket-menu dropdown's FULL text content (ELITEA-1817).
+
+        Call :meth:`open_bucket_menu` first. Reads the whole testid'd
+        dropdown container (:attr:`BUCKET_MENU_CONTAINER`) rather than
+        per-item testids — "Rename"/"Pin to top" carry no ``key`` field in
+        ``BucketItem.jsx``'s ``menuItems`` array (confirmed live), so this
+        is the compliant way to verify all 4 items' presence/label/order
+        without a raw selector chained off a testid'd parent. Same "read
+        the whole testid'd container's text" pattern already established
+        by :meth:`get_file_row_text`.
+
+        Args:
+            bucket_name: Exact name of the bucket whose (already-open) menu
+                to read.
+            timeout: Maximum wait time in milliseconds for the container to
+                be visible.
+
+        Returns:
+            The dropdown's full stripped text content, e.g.
+            ``"Upload filesRenamePin to topDelete"``.
+        """
+        container = self.page.locator(self.BUCKET_MENU_CONTAINER.format(bucket_name))
+        container.wait_for(state="visible", timeout=timeout)
+        text = (container.text_content() or "").strip()
+        logger.info("Bucket-menu items text for '%s': %r", bucket_name, text)
+        return text
+
+    @action("Click bucket-menu 'Delete' item")
+    def click_bucket_menu_delete_item(self, timeout: int = 10000) -> None:
+        """Click the open bucket-menu's 'Delete' item, to open the confirm modal.
+
+        Call :meth:`open_bucket_menu` first — same "caller opens, this
+        clicks" division of responsibility as
+        :meth:`click_bucket_menu_upload_files_item` (that method's own
+        docstring: "Call open_bucket_menu first"; it does not re-open the
+        menu itself). Not re-invoking :meth:`open_bucket_menu` here matters
+        for this case specifically: Test Step 10 reads the dropdown's full
+        text (:meth:`get_bucket_menu_items_text`) while the SAME open menu
+        from Test Step 9 is still showing — re-clicking the hover-gated
+        trigger a second time would risk toggling the already-open menu
+        closed instead of clicking Delete.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the
+                delete-confirmation modal to become visible after the click.
+        """
+        self.bucket_menu_delete_menuitem.click()
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Clicked 'Delete' in the open bucket-menu")
 
     @action("Select files via bucket-menu 'Upload files'")
     def click_bucket_menu_upload_files_item(
@@ -1379,6 +1500,34 @@ class ArtifactsPage(BasePage):
         """
         with self.page.expect_response(
             lambda r: "artifacts/artifacts" in r.url and r.request.method == "DELETE",
+            timeout=timeout,
+        ) as response_info:
+            self.delete_confirm_button.click()
+        return response_info.value
+
+    @action("Confirm delete bucket (delete-confirmation modal)")
+    def confirm_delete_bucket(self, timeout: int = 15000):
+        """Click 'Delete' in the confirmation modal and return the bucket-DELETE response.
+
+        Sibling to :meth:`confirm_delete` (ELITEA-1847) — that method's
+        response-wait is scoped to ``"artifacts/artifacts" in r.url``, the
+        FILE/FOLDER delete endpoint, which never fires for a bucket-level
+        delete (confirmed live, ELITEA-1817): the bucket dot-menu's
+        "Delete" reuses the identical shared ``DeleteEntityModal`` root, but
+        drives ``DELETE .../artifacts/buckets/default/{project_id}?name=...``
+        instead — a QUERY-PARAMETER shape, notably different from
+        ``ArtifactAPI.delete_bucket()``'s path-segment shape. Same
+        ``expect_response`` idiom as :meth:`confirm_delete`, different URL
+        substring; reuses :attr:`delete_confirm_button` as-is.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the response.
+
+        Returns:
+            Playwright ``Response`` object for the matching bucket DELETE.
+        """
+        with self.page.expect_response(
+            lambda r: "artifacts/buckets" in r.url and r.request.method == "DELETE",
             timeout=timeout,
         ) as response_info:
             self.delete_confirm_button.click()
