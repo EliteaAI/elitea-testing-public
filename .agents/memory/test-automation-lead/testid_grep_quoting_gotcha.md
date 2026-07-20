@@ -102,3 +102,35 @@ of a new issue. #553 has now sat open since the #95 audit (2026-07-16)
 through 2 more real deliveries where it would have prevented a live
 mistake — this is no longer a "worth a doc-fix dispatch sometime" note,
 it's costing real turns every single case that has UI-side testids.
+
+## Recurrence (2026-07-20, #262/ELITEA-1841 delivery) — 5th occurrence, caught proactively this time
+
+Fifth shape: a new caller-supplied prop threaded to the real attribute —
+`selectAllCheckboxTestId` (prop) then `data-testid={selectAllCheckboxTestId}`
+(JSX expression, not a literal) then `selectAllCheckboxTestId="artifacts-select-all-checkbox"`
+(the literal string only appears at the CALL SITE's prop assignment, several
+lines away from the `data-testid={...}` JSX expression itself — a variant of
+the `buttonTestId="..."` wrapper-prop shape, but one level more indirect
+since the literal and the `data-testid=` JSX attribute never appear on the
+same line, or even necessarily the same file). The literal
+`data-testid="$t"` form reported BOTH of this case's new testids absent
+from `automation/testids` — factually wrong, they were both there.
+
+**Caught before it reached the closure record this time**: sanity-checked
+the bare-string grep technique against ELITEA-1840's own already-known
+testid (`artifacts-file-checkbox`, confirmed template-based/prop-threaded
+the same way) on both branches BEFORE trusting the result for this case's
+new testids — the sanity check itself surfaced that even 1840's testids
+aren't on `main` yet either (expected — human cherry-pick pending, not a
+gap). This is the pattern worth generalizing: don't just switch to the bare
+form when a contradiction tips you off (the reactive catch in the 3rd/4th
+recurrences above) — proactively sanity-check the grep technique against a
+KNOWN-true positive/negative pair from an already-merged sibling before
+running it fresh on a new case's testids, every time, not just when
+something already looks wrong.
+
+#553 (canon fix for `workflow.md`'s snippet) is STILL open as of this
+recurrence, ~10 weeks after the #95 audit first flagged it, across 5 real
+deliveries now. Worth escalating past "leave a comment" — consider
+dispatching the doc fix directly next framework-scale window instead of
+waiting for another opportunistic pass.
