@@ -1,8 +1,49 @@
 ---
 name: Toolkit TEST SETTINGS panel — shared-tooltip testid threading, replace-in-place chat, detail-title race
-description: ELITEA-1866 — how to thread a caller-scoped testid through a 4-component shared MUI tooltip chain, why the TEST SETTINGS panel's result message list needs a content-poll not a count-poll, and the toolkit-detail-title load race
+description: ELITEA-1866 — how to thread a caller-scoped testid through a 4-component shared MUI tooltip chain (including a SECOND prop for the tooltip's popper CONTENT, not just the trigger), why the TEST SETTINGS panel's result message list needs a content-poll not a count-poll, and the toolkit-detail-title load race. RESOLVED (PR #670 review round 1): the "sanctioned non-testid exception" framing below was wrong for all 3 of its examples — every one got a real testid instead. See RESOLUTION section.
 type: feedback
 ---
+
+## RESOLUTION (PR #670 review round 1 fix) — the "sanctioned exception" framing below was wrong
+
+A fresh-session reviewer rejected all 3 items in the "Sanctioned non-testid
+exceptions" section below as real testid gaps, not genuine exceptions —
+correctly: only 1 of 5 grouped AFS rows (the type-picker heading) actually
+carried an explicit `(optional)` qualifier; "high blast-radius" described
+COST, not IMPOSSIBILITY, which is the actual bar for `.agents/role-
+overrides.md`'s non-testid exception. All 3 were closed with real testids
+in the round-1 fix, and closing them was cheap in every case:
+
+1. **Configuration/Indexes tabs**: `EditToolkit.jsx` already had a
+   `tabProps: { 'data-tour': ... }` mechanism for the Indexes tab (used to
+   stamp a tour-target attribute). Adding `'data-testid': '...'` to that
+   SAME object (plus one for Configuration) was a 2-line change — the
+   "icon-only, no visible text" framing below was never actually a
+   blocker; the tab config object accepts arbitrary extra DOM props
+   already, nothing about icon-only-ness prevented a testid.
+2. **Tooltip popper CONTENT**: the "would require wrapping
+   `TooltipMarkdownContent.jsx` in a new DOM element, high blast-radius"
+   reasoning below assumed the wrap had to happen INSIDE the shared
+   markdown renderer. It doesn't — `InfoTooltip.jsx` (one layer up) already
+   computes `titleContent` as a local JSX variable before handing it to
+   `<Tooltip title={titleContent}>`; wrapping THAT variable in
+   `<Box data-testid={contentTestId}>` (opt-in, only when a NEW
+   `contentTestId` prop is passed) touches zero lines of
+   `TooltipMarkdownContent.jsx` and has zero effect on any caller that
+   doesn't pass the prop. The "blast radius" was imagined at the wrong
+   layer.
+3. **Category filter tabs**: `CategoryFilter.jsx`'s `Chip` render loop was
+   a single missing `data-testid="category-filter-tab"` line — no
+   threading needed at all, since (unlike the Bucket tooltip) this
+   observable never needs per-tab identification, only presence/count, so
+   a bare hardcoded generic value (same shape as `entity-card`) sufficed.
+
+**Lesson: "no testid exists yet" is not the same as "adding one is hard."**
+Before writing a `get_by_role(...)` workaround and calling it a sanctioned
+exception, actually attempt the `add-data-testid` addition first — in all
+3 cases here the real fix took less code than the workaround it replaced.
+Reserve the exception path for genuinely unplaceable cases (third-party
+widgets, elements outside `EliteaUI/src`), not "I didn't try."
 
 ## Threading a testid through a deep shared-component chain (InfoTooltip)
 
@@ -33,18 +74,20 @@ live via `data-testid`'s absence on the other 2 info icons on the same
 form (Pgvector Configuration, Embedding Model) after the change — only the
 Bucket field's icon carries it.
 
-**When NOT to thread further**: reading the tooltip's rendered CONTENT
-(not the trigger icon) would require the SAME treatment one layer deeper,
-into `TooltipMarkdownContent.jsx` — but that component wraps
-`react-markdown`'s `<Markdown>` with NO wrapping element today; adding a
-testid there means introducing a NEW wrapping DOM node, which risks
-breaking every tooltip's layout/CSS across the whole app (a component that
-generic is used far beyond this one case). Judged out of scope / too high
-blast-radius for a single case; used a sanctioned `get_by_role("tooltip")`
-read instead (see below), encapsulated in a page-object method, with the
-tradeoff documented explicitly in the AFS/PR rather than silently done.
+**WRONG at the time this was written — see RESOLUTION section at the top.**
+The actual fix needed only a SECOND opt-in prop (`contentTestId`) on
+`InfoTooltip.jsx` itself, one layer above `TooltipMarkdownContent.jsx`,
+never touching that shared markdown renderer at all. Kept below as a
+record of the reasoning that turned out to be wrong — re-read the
+RESOLUTION section before repeating it.
 
 ## Sanctioned non-testid exceptions — a recognizable, bounded class
+
+**SUPERSEDED — see RESOLUTION section at the top. None of the 3 examples
+below turned out to be genuine exceptions; all 3 got real testids in PR
+#670's round-1 fix, each cheaper than the workaround.** Kept for the
+record, not as current guidance — do not cite this section to justify a
+new `get_by_role(...)` workaround without first attempting `add-data-testid`.
 
 Three flavors of "genuinely no testid, and adding one is out of proportion
 to the case" all resolved the same way — a `get_by_role(...)` (or role +
