@@ -32,3 +32,20 @@ PR body cites more than one.
 Caveat: this only works when the archive hasn't been pruned/rotated and the case's
 test method name is unique enough to grep cleanly — for a very generic test name,
 narrow with `-l` then inspect classname, not just the bare method name.
+
+**Multiple-candidate-clusters refinement (#260/PR#675, 2026-07-20):** a shared
+covering test extended by several cases over time (ELITEA-1824→1827→1835, one test
+method) accumulates MANY archived runs across the whole day/week — `grep -l` can
+return 15+ files spanning several unrelated deliveries' own gates, not just this
+one's. Two techniques resolved the ambiguity: (1) derive the local-tz offset
+independently rather than assuming it — a memory-landing commit made *immediately
+after* this delivery's own merge has a `git log --format=%aI` author-date in local
+time; diffing it against the PR's `mergedAt` (UTC) gives the exact offset (here,
+`09:49:49+03:00` vs `06:49:13Z` ⇒ +03:00, confirmed to the minute); (2) once the
+offset is known, narrow to the archive-timestamp window immediately preceding the
+converted local merge time, then match the SPECIFIC failure-signature sequence
+(not just "some #649 failures somewhere") — this case's closure record documented
+an out-of-order anomaly (run 2 of 5 was a different, unrelated Timeout signature,
+not the sanctioned #649 one) and that exact signature-position fingerprint,
+combined with 3 duration matches to within ~0.1s, uniquely identified the right
+5-file cluster out of ~17 same-test-name candidates that day.
