@@ -202,7 +202,7 @@ plus a pristine re-verification pass in a fresh conversation for the pipeline de
 | Step 5: Add MCP via toggle | MCP in MCPS section | Test Step 5 | `chat-participants-badge-mcp` (singular) aria-label + count — **automation must seed a healthy MCP for this step's own assertion to hold as case-written**; the live-available MCP fixture is itself broken | asserted (badge presence) / soft-asserted (no-misconfiguration) — **see § Implementer Phase 2 finding: healthy MCP false-positive misconfiguration (#687)**: badge presence still asserted hard; the "no warning shown" portion is a real product defect (deterministic, filed), soft-asserted per no-masking policy rather than hard-failed |
 | Step 6: All four sections visible in PARTICIPANTS | 4 sections displayed | Test Step 6 | four `chat-participants-badge-{section}` elements present simultaneously | asserted *(shape clarification: 4 independent badges/poppers, not 1 combined panel — reverse-masking guard, not a defect)* |
 | Step 7: Distinct icons per type | Icons distinct | Test Step 7 | screenshot comparison of the four badge SVGs (no shared/duplicate icon across sections) | asserted |
-| Step 8: No duplicate entries | No dupes | Test Step 8 | popper row-count = 1 per added entity; **additionally** already-added entity absent from re-opened picker | row-count: asserted (hard) for agents/pipelines/toolkits; soft-asserted for "mcp" — see § Implementer Phase 2 finding (#687): the misconfigured-branch row renders with no `chat-participant-row-*` testid, so the row-count reads 0 for a reason unrelated to duplication. Picker-exclusion guarantee (Axis 2, "agents"): also soft-asserted — see § Implementer Phase 5 finding: a SECOND symptom of #684's participant-state fragility (confirmed live: works correctly with an Agent-only participant; intermittently fails once a Pipeline participant also coexists) |
+| Step 8: No duplicate entries | No dupes | Test Step 8 | popper row-count = 1 per added entity; **additionally** already-added entity absent from re-opened picker | row-count: asserted (hard) for agents/pipelines/toolkits; soft-asserted for "mcp" — see § Implementer Phase 2 finding (#687): the misconfigured-branch row renders with no `chat-participant-row-*` testid, so the row-count reads 0 for a reason unrelated to duplication. Picker-exclusion guarantee (Axis 2, "agents"): also soft-asserted — see § Implementer Phase 5 finding **(amended 2026-07-20, PR #688 fix-only pass — see § AFS Amendments below)**: correlated with #684's Agent+Pipeline trigger condition (confirmed live: works correctly with an Agent-only participant; intermittently fails once a Pipeline participant also coexists) but NOT confirmed to share #684's root-caused mechanism — filed as its own issue, [#689](https://github.com/EliteaAI/elitea-testing-public/issues/689), cross-linked to #684 as "possibly same underlying instability, mechanism not yet confirmed shared" |
 | Step 9: Type "Hi" and Send | Conversation created, owner badge added | Test Step 9 | URL becomes `/chat/{id}`; conversation appears in sidebar "Today" group | **BLOCKING defect (#684, see finding below)** — asserted as a natural hard failure, not soft-asserted: Send can crash the client-side navigation once both an Agent and a Pipeline participant are present (required by steps 2-3), independent of pipeline health — a race condition, ~1/5 of full-flow runs in this implementation's sample, not every run. Was `asserted` before this discovery; downgraded here — see § Implementer Phase 5 finding: Agent+Pipeline Send crash |
 | Step 9 (owner-badge sub-case) | New `chat-participants-badge` for owner, aria-label `"Users in this conversation"`, count `"1"` | — | confirmed live in project 471 (non-private); **confirmed live this run NOT renderable in project 399** — `showUsersSection = !isPrivateProject` in `CollapsedPerticapantsList.jsx` unconditionally omits the whole Users badge block for the account's own Private project, regardless of participants seeded | `blocked` — see § Implementer Phase 2 finding: private-project owner-badge gap. **Also now unreachable regardless, per #684 above (Step 9 itself never completes).** |
 | Step 10: All participants remain listed | All badges persist post-send | Test Step 10 | all 4 entity badges (agents/pipelines/toolkits/mcp) present, unchanged counts, after send | `blocked` (transitively, via #684) — the code asserts this correctly and will pass once #684 is fixed, but Step 9's crash currently prevents this test from ever reaching Step 10 |
@@ -591,6 +591,26 @@ its strict form (not just the closed-set variant). This is the CURRENT determini
 it does not preclude the Send-crash symptom of #684 (also confirmed real, also linked, but not
 observed in this specific final 3-run set — see the Coverage Map Step 9 row and the dedicated
 finding above for that symptom's own evidence).
+
+## AFS Amendment (2026-07-20, PR #688 fix-only pass — reviewer finding #2)
+
+A fresh reviewer session on PR #688 flagged that the "second symptom" paragraph above (and the
+Coverage Map's Step 8 row) bucketed the picker-exclusion failure under #684 on **correlation**
+(both symptoms occur only when Agent+Pipeline coexist), not a **confirmed shared root cause** —
+#684's own 2026-07-20T17:03 comment explicitly says the picker-exclusion symptom is "Not yet
+root-caused to a specific line," whereas #684's Send-crash symptom (the version_id mixup) IS
+precisely diagnosed. The merge gate's closed-set variant requires every bucketed member to
+independently satisfy single-cause-tied-to-an-open-defect, not merely "correlated with a defect
+that does."
+
+**Resolution**: filed the picker-exclusion symptom as its own issue,
+[#689](https://github.com/EliteaAI/elitea-testing-public/issues/689), cross-linked to #684 as
+"possibly the same underlying participant-state instability, mechanism not yet confirmed
+shared." #684 stays scoped to the Send-crash symptom it actually root-caused. The test's Step 8
+`expect.soft()` comment, its `@allure.issue(...)` decorator, and the `KNOWN_DEFECT_*` constant
+now point at #689 for this specific check. This is a documentation/attribution correction only —
+no change to what Step 8 asserts or how it's asserted (still `expect.soft()` on
+`get_picker_matching_rows_locator("agents", ...)`).
 
 ## Automation Hints
 - Framework: Playwright + pytest (confirmed from `.agents/testing.md`).

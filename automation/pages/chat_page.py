@@ -264,6 +264,16 @@ class ChatPage(BasePage):
     # (see .agents/role-overrides.md's canon-gap protocol).
     PARTICIPANTS_BADGE_BUTTON = '[data-testid="chat-participants-badge-button"]'
 
+    # The badge's entity-type icon SVG (Agent/Pipeline/Toolkit/MCP) — dynamic
+    # per entity section, same key space as ``PARTICIPANTS_BADGE``. Added
+    # this session (reviewer finding #3, PR #688 fix-only pass) to replace
+    # ``get_participant_section_icon_markup``'s prior ``badge.locator("svg")``
+    # raw CSS tag selector chained off the badge Locator — the named
+    # anti-pattern in `.claude/rules/page-objects.md` (cf. PR #22/ELITEA-1737
+    # precedent: give the sub-element its own testid instead of chaining a
+    # raw selector off an existing field).
+    PARTICIPANTS_BADGE_ICON = '[data-testid="chat-participants-badge-icon-{}"]'
+
     participants_popper = LocatorDescriptor(
         testid="chat-participants-popper",
         description="'Agents'/'Pipelines'/etc. participants popper container (Popper/Grow Paper)"
@@ -2455,21 +2465,23 @@ class ChatPage(BasePage):
         Used for the distinct-icon check (ELITEA-2094 case step 7): each
         section renders a different wrapped ``.svg?react`` component
         (``AgentSvg``/``FlowSvg``/``ToolSvg``/``MCPSvg`` in
-        ``CollapsedPerticapantsList.jsx``) inside the badge's IconButton, with
-        no other SVG present unless the section is misconfigured (the warning-
-        triangle overlay renders as a sibling, not inside this icon — confirmed
-        by reading the EliteaUI source, ``sectionHasError`` gates a *sibling*
-        ``Box``, not the icon itself). ``innerHTML`` (path/shape geometry)
-        rather than ``outerHTML`` (which could coincidentally share sizing/
-        class attributes across sections) is compared across sections by the
-        caller to assert distinctness.
+        ``CollapsedPerticapantsList.jsx``) inside the badge's IconButton.
+        Located via its own ``chat-participants-badge-icon-{section}`` testid
+        (added this session — see ``PARTICIPANTS_BADGE_ICON``), not a raw
+        ``svg`` tag selector chained off the badge Locator: the warning-
+        triangle overlay for a misconfigured section renders as a *sibling*
+        Box, not inside this icon (confirmed by reading the EliteaUI source,
+        ``sectionHasError`` gates the sibling, not the icon itself), so the
+        testid stays unambiguous regardless of section health. ``innerHTML``
+        (path/shape geometry) rather than ``outerHTML`` (which could
+        coincidentally share sizing/class attributes across sections) is
+        compared across sections by the caller to assert distinctness.
 
         Args:
             section: Entity section — "agents", "pipelines", "toolkits", or "mcp".
             timeout: Maximum wait time in milliseconds.
         """
-        badge = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
-        icon_svg = badge.locator("svg").first
+        icon_svg = self.page.locator(self.PARTICIPANTS_BADGE_ICON.format(section))
         icon_svg.wait_for(state="visible", timeout=timeout)
         return icon_svg.evaluate("el => el.innerHTML")
 

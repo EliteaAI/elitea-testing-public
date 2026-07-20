@@ -71,6 +71,14 @@ pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p1, pytest.mark.regr
 
 KNOWN_DEFECT_PIPELINE_CRASH = "github.com/EliteaAI/elitea-testing-public/issues/684"
 KNOWN_DEFECT_MCP_FALSE_POSITIVE = "github.com/EliteaAI/elitea-testing-public/issues/687"
+# Filed separately from #684 (reviewer finding #2, PR #688 fix-only pass):
+# #684's own 2026-07-20T17:03 comment says the picker-exclusion symptom below
+# is "Not yet root-caused to a specific line" — correlated with #684's
+# Agent+Pipeline trigger condition, but NOT confirmed to share #684's
+# precisely-diagnosed version_id-mixup mechanism. #689 is cross-linked to
+# #684 as "possibly the same underlying instability, mechanism not yet
+# confirmed shared."
+KNOWN_DEFECT_PICKER_EXCLUSION = "github.com/EliteaAI/elitea-testing-public/issues/689"
 
 UI_ELEMENT_TIMEOUT = 5000
 NAVIGATION_TIMEOUT = 10000
@@ -94,6 +102,11 @@ class TestChatParticipantsPanel:
     )
     @allure.issue(KNOWN_DEFECT_PIPELINE_CRASH, "Known defect — Agent+Pipeline participants crash Send (blocking)")
     @allure.issue(KNOWN_DEFECT_MCP_FALSE_POSITIVE, "Known defect — healthy MCP falsely shows misconfiguration warning")
+    @allure.issue(
+        KNOWN_DEFECT_PICKER_EXCLUSION,
+        "Known defect — already-added agent picker-exclusion filter intermittently fails "
+        "once a Pipeline participant also coexists (correlated with #684, not confirmed shared root cause)",
+    )
     @pytest.mark.p1
     def test_add_agent_pipeline_toolkit_mcp_participants_and_verify_panel(
         self,
@@ -256,9 +269,14 @@ class TestChatParticipantsPanel:
 
                 # Stronger duplicate-prevention signal (Axis 2 addition): the
                 # already-added agent should be excluded from its own picker.
-                # Known defect: EliteaAI/elitea-testing-public#684 — confirmed
-                # live this is the SAME participant-state fragility as #684's
-                # main finding, a further symptom, not a separate root cause:
+                # Known defect: EliteaAI/elitea-testing-public#689 (filed
+                # separately from #684 — reviewer finding #2, PR #688
+                # fix-only pass; cross-linked to #684 as "possibly same
+                # underlying instability, mechanism not yet confirmed
+                # shared" — #684's own 2026-07-20T17:03 comment says THIS
+                # symptom is "Not yet root-caused to a specific line", unlike
+                # #684's own precisely-diagnosed version_id-mixup crash, so it
+                # does not qualify as sharing #684's confirmed mechanism):
                 # isolated live (agent participant only, no pipeline/toolkit/
                 # mcp) the exclusion filter works correctly every time; once a
                 # Pipeline participant also coexists (required by Step 3), it
@@ -274,7 +292,7 @@ class TestChatParticipantsPanel:
                 )
                 expect.soft(
                     agent_picker_matches,
-                    "Known defect: EliteaAI/elitea-testing-public#684 — already-added "
+                    "Known defect: EliteaAI/elitea-testing-public#689 — already-added "
                     "agent should be excluded from the Agents picker when re-opened",
                 ).to_have_count(0, timeout=ENTITY_SEARCH_TIMEOUT)
                 chat.close_picker_menu()
@@ -318,11 +336,73 @@ class TestChatParticipantsPanel:
                 # cleanup below may occasionally no-op, leaking one "New Chat"
                 # conversation in project 399 per occurrence — see the AFS's
                 # Implementer Phase 5 finding for why no workaround was added.
+                #
+                # Runtime verification (reviewer finding #1, PR #688 fix-only
+                # pass): the assertions below have exactly ONE documented
+                # cause today (#684's version_id mixup above), but that alone
+                # is not proof a GIVEN failure instance IS that cause — any
+                # other navigation failure would raise an identical-looking
+                # `to_have_url`/`conv_id` AssertionError and get silently read
+                # as "the known #684 defect" by anyone triaging CI. Capture
+                # console/pageerror/network signals before Send so a failure
+                # can be checked against #684's actual signature (a 400 on
+                # .../version/prompt_lib/... and/or the unguarded
+                # `icon_meta` TypeError) instead of being taken on faith.
+                # NOTE: `page.on("console", ...)` alone — the idiom used
+                # elsewhere in this repo (e.g.
+                # test_agent_create_button_navigation.py,
+                # test_mcp_search_by_name.py) — is NOT sufficient here:
+                # empirically verified live (this fix) that an UNCAUGHT
+                # exception like #684's `icon_meta` TypeError never reaches
+                # the "console" event, only `page.on("pageerror", ...)`
+                # does. Both are wired: "console" for the repo's established
+                # side-channel idiom (catches any console.error the app
+                # itself logs), "pageerror" because it's the event that
+                # actually catches this specific crash.
+                console_errors: list[str] = []
+                page_errors: list[str] = []
+                page.on(
+                    "console",
+                    lambda msg: console_errors.append(msg.text) if msg.type == "error" else None,
+                )
+                page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+                version_detail_requests = chat.capture_requests_matching(
+                    "version/prompt_lib", method="GET"
+                )
+
                 chat.send_message("Hi", use_enter=True)
-                expect(page).to_have_url(re.compile(r"/chat/\d+"), timeout=NAVIGATION_TIMEOUT)
-                match = re.search(r"/chat/(\d+)", page.url)
-                conv_id = match.group(1) if match else None
-                assert conv_id, "Conversation ID should be resolvable from the URL after Send"
+                try:
+                    expect(page).to_have_url(re.compile(r"/chat/\d+"), timeout=NAVIGATION_TIMEOUT)
+                    match = re.search(r"/chat/(\d+)", page.url)
+                    conv_id = match.group(1) if match else None
+                    assert conv_id, "Conversation ID should be resolvable from the URL after Send"
+                except AssertionError as exc:
+                    # Navigation to /chat/{id} failed. Before this gets read
+                    # as "the known #684 defect", verify the captured signals
+                    # actually match #684's documented signature — a
+                    # non-matching failure is a NEW bug, not #684, and must
+                    # surface as one.
+                    matches_684_network = any(
+                        req["status"] == 400 for req in version_detail_requests
+                    )
+                    matches_684_typeerror = any("icon_meta" in err for err in page_errors)
+                    if matches_684_network or matches_684_typeerror:
+                        signature_note = (
+                            "MATCHES known #684 signature "
+                            f"(network_400={matches_684_network}, "
+                            f"icon_meta_typeerror={matches_684_typeerror})"
+                        )
+                    else:
+                        signature_note = (
+                            "does NOT match known #684's signature (no 400 on "
+                            "version/prompt_lib/... and no icon_meta TypeError "
+                            "captured) — investigate as a NEW failure, not #684"
+                        )
+                    raise AssertionError(
+                        f"{exc}\n\nSignature check: {signature_note}. "
+                        f"console_errors={console_errors!r} page_errors={page_errors!r} "
+                        f"version_detail_requests={version_detail_requests!r}"
+                    ) from exc
 
                 chat.wait_for_naming_label_to_resolve()
                 chat.wait_for_conversations_to_load(timeout=UI_ELEMENT_TIMEOUT)
