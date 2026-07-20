@@ -167,3 +167,27 @@ from the real dependency set — a second, independent risk stacked on top of
 the missing-link format violation, both fixed by the same discipline (always
 run `git log -S"<testid>" origin/main..origin/automation/testids -- src/`
 per testid, never reconstruct the source-case list from memory).
+
+## Recurrence 7 (delivery-time catch, issue #242, ELITEA-1847, PR #661, 2026-07-20) — same "phantom source case" sub-shape, caught at AFS-authoring time instead of a later audit
+
+The AFS itself (not a closure record) attributed two reused testids
+(`delete-confirm-dialog`, `delete-confirm-button`) to "ELITEA-1824's AFS
+(declared, not yet driven)". Running my own `git log -S"<testid>"` per testid
+before writing the closure record (this file's own standing discipline) showed
+both actually trace to `EliteaAI/EliteaUI@c1fdd234` — ELITEA-1947's "MCP/toolkit
+delete-confirm flow" commit, dated 2 days AFTER ELITEA-1824 merged. The AFS's
+author had reused a plausible, topically-adjacent case ID from memory instead
+of resolving the actual commit — same root mechanism as Recurrence 6's
+"ELITEA-1809 phantom dependency", just one level upstream (the AFS itself,
+not a closure record copying the AFS).
+
+**Did not block or send back for rework** — the AFS's `main:no` /
+`testids-only` classification was still correct, so the promotability
+determination itself was unaffected; only the "which case first added it"
+narrative was wrong, and it's a documentation-only attribution inside a
+`test-specs/` artifact. Corrected it directly in the closure record with the
+verified SHA and a note, rather than reopening the merged PR. Reinforces the
+existing rule here: never accept "which case added this" from an AFS/prior
+closure-record's prose, even when it sounds plausible and topically
+consistent — resolve every testid's origin fresh, every time, no exceptions
+for "the AFS probably already checked this."
