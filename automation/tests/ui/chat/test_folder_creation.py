@@ -26,19 +26,38 @@ already derives a testid from ``item.key``, confirmed via
 No product defects were found — all 7 case steps matched the live product
 exactly, including the literal empty-state wording "No conversations added".
 
-Fix-only round 2 (reviewer CHANGES_REQUESTED — Coverage Map over-claim):
-the original Step 3 block asserted the new-folder input's default value and
-focus, but never proved the entry actually renders ABOVE pre-existing
-content ("at the top of the folder/conversation list" per both the case's
-own step-3 text and the AFS), despite the Coverage Map marking that row
-`asserted`. Fixed by seeding a real conversation via the ``conversation_id``
-fixture (guaranteeing a "Today" date-group heading is present — the shared
-dev project's ambient conversations are NOT guaranteed by any fixture, so
-relying on them un-seeded would make the check non-deterministic) and
-comparing bounding boxes: the new-folder input's bottom edge must sit above
-the "Today" heading's top edge. See ``ChatPage.get_conversation_group_
-header()`` (new, additive) and the AFS's "AFS amended (fix-only round 2)"
-section.
+Fix-only round 2 (reviewer CHANGES_REQUESTED — Coverage Map over-claim,
+SUPERSEDED by round 3 below): the original Step 3 block asserted the
+new-folder input's default value and focus, but never proved the entry
+actually renders ABOVE pre-existing content. Round 2 fixed this by seeding a
+conversation (via the ``conversation_id`` fixture) and comparing the new
+entry's position against the "Today" date-group heading.
+
+Fix-only round 3 (reviewer CHANGES_REQUESTED — round 2's fix didn't close
+the gap): round 2's folder-vs-conversation-heading comparison only proved
+that the Folders section renders above the Conversations section — a
+DOM/layout fact that's unconditionally true (``Conversations.jsx`` always
+mounts the Folders container before the Conversations container, regardless
+of folder count or order) and would stay green even if a regression made
+new folders get APPENDED to the bottom of the folder list instead of
+PREPENDED to the top, because the test only ever had 0 pre-existing folders
+to compare against (cleanup runs after every test). Fixed by seeding one
+real BASELINE folder — via the exact header-icon + confirm-default-name
+flow the case itself exercises — before Step 3 runs, so there is a genuine
+sibling folder in the list, then asserting the new editor renders ABOVE
+*that folder's own row*: folder-vs-folder, not folder-vs-conversation-
+heading. Manually verified live before writing this fix: creating a first
+folder, then triggering the create-folder flow a second time, lands the new
+input's bounding box (``y=71,height=24`` → bottom 95) above the baseline
+folder row's box (``y=106``) — the same shape of proof the reviewer used
+(``chat-folder-item-6`` at ``y=56`` above ``chat-folder-item-5`` at
+``y=97``) to confirm the product correctly prepends. The round-2 seeded
+conversation / ``get_conversation_group_header()`` comparison is dropped —
+superseded, not needed alongside the stronger check, and dropping it halves
+the seeded state this test now carries. ``ChatPage.get_conversation_group_
+header()`` itself is left in place (additive, harmless, may be useful to a
+future test) even though this test no longer calls it. Both folders (the
+baseline and the case's own) are deleted in the ``finally`` block.
 """
 
 import logging
@@ -86,7 +105,7 @@ class TestChatFolderCreation:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2
-    def test_create_folder_via_chats_header_icon(self, page, conversation_id):
+    def test_create_folder_via_chats_header_icon(self, page):
         """Create a folder via the CHATS header icon, confirm with the
         default name, and verify its collapsed + expanded rendering.
 
@@ -96,8 +115,9 @@ class TestChatFolderCreation:
         2. Verify the folder-creation icon is visible, positioned before
            the search button.
         3. Click it; verify a new, focused, editable "New folder" entry
-           appears at the top of the list, ABOVE the "Today" date-group
-           heading (positional bounding-box check — fix-only round 2).
+           appears at the top of the folder list, ABOVE a real sibling
+           BASELINE folder's own row (folder-vs-folder positional
+           bounding-box check — fix-only round 3; see module docstring).
         4. Verify the confirm (checkmark) and cancel (X) icons are visible.
         5. Click confirm without changing the name; verify the underlying
            POST resolves 201 with the expected response shape, and the
@@ -107,17 +127,16 @@ class TestChatFolderCreation:
         7. Expand the folder; verify data-expanded flips to "true" and the
            "No conversations added" empty state is shown.
 
-        Args:
-            conversation_id: (fixture, unused directly) seeds one fresh
-                conversation via the API before this test runs and deletes
-                it afterward, regardless of pass/fail. Its only purpose
-                here is to guarantee a "Today" date-group heading exists
-                in the sidebar so Step 3's positional check has real,
-                deterministic content to compare against (see module
-                docstring's "Fix-only round 2" note).
+        A baseline folder is seeded (same header-icon + confirm-default-name
+        flow the case itself exercises) between Step 2 and Step 3 — not a
+        numbered case step, purely an Axis-2 addition so Step 3's position
+        check has a real sibling folder to compare against. Both the
+        baseline and the case's own folder are deleted in the ``finally``
+        block.
         """
         chat = ChatPage(page)
         folder_id = None
+        baseline_folder_id = None
 
         # Registered before Setup so console errors from every step are
         # captured (side-channel discipline — silent errors are the worst
@@ -163,10 +182,43 @@ class TestChatFolderCreation:
                     f"search_box={search_box}"
                 )
 
+            # --- Setup: seed one baseline folder (not a numbered case step) ---
+            # Round-3 review finding: comparing the new-folder entry against
+            # the "Today" conversation date-group heading (round 2's fix)
+            # only proves the Folders section renders above the
+            # Conversations section — a DOM/layout fact that's
+            # unconditionally true regardless of folder order, so it would
+            # stay green even if a regression appended new folders to the
+            # BOTTOM of the folder list instead of prepending them to the
+            # top. Seeding a real sibling folder here, via the exact flow
+            # the case itself exercises, gives Step 3 something genuine to
+            # compare position against.
+            chat.click_create_folder_button(timeout=UI_ELEMENT_TIMEOUT)
+            with page.expect_response(
+                lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "POST",
+                timeout=NAVIGATION_TIMEOUT,
+            ) as baseline_response_info:
+                chat.folder_name_confirm_button.click()
+            baseline_response = baseline_response_info.value
+            assert baseline_response.status == 201, (
+                "Baseline folder POST should resolve 201, got "
+                f"{baseline_response.status} for {baseline_response.url}"
+            )
+            baseline_folder_id = baseline_response.json().get("id")
+            assert baseline_folder_id is not None, (
+                "Baseline folder response should include a real 'id', got: "
+                f"{baseline_response.json()!r}"
+            )
+            chat.folder_name_input.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+            chat.get_folder_item(baseline_folder_id).wait_for(
+                state="visible", timeout=UI_ELEMENT_TIMEOUT
+            )
+            logger.info("Seeded baseline folder %s", baseline_folder_id)
+
             with allure.step(
                 "Step 3 — Click the folder-creation icon; verify a new, "
-                "focused, editable 'New folder' entry appears at the top "
-                "of the list"
+                "focused, editable 'New folder' entry appears ABOVE the "
+                "baseline folder (folder-vs-folder position check)"
             ):
                 chat.click_create_folder_button(timeout=UI_ELEMENT_TIMEOUT)
                 assert chat.folder_name_input.input_value() == DEFAULT_FOLDER_NAME, (
@@ -175,28 +227,26 @@ class TestChatFolderCreation:
                 )
                 expect(chat.folder_name_input).to_be_focused(timeout=UI_ELEMENT_TIMEOUT)
 
-                # Positional check (round-2 review finding): the case's own
-                # step-3 text and the AFS both say the new entry appears
-                # "at the top of the list ... above any existing date-group
-                # headings" — a real DOM/bounding-box comparison, not just
-                # "first child of an otherwise-empty container". The
-                # `conversation_id` fixture seeded a fresh conversation
-                # before this test ran, guaranteeing the "Today" heading
-                # renders here.
-                today_header = chat.get_conversation_group_header("today")
-                today_header.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                # Positional check (round-3 review finding): compare against
+                # the BASELINE FOLDER's own row, not a conversation
+                # date-group heading. This is the comparison that actually
+                # distinguishes "prepended to the top" from "appended to
+                # the bottom", since both folders live in the same list —
+                # the conversation-heading comparison couldn't, because
+                # Folders always renders above Conversations regardless of
+                # folder order.
                 input_box = chat.folder_name_input.bounding_box()
-                today_box = today_header.first.bounding_box()
-                assert input_box is not None and today_box is not None, (
-                    "Both the new-folder input and the 'Today' date-group "
-                    "heading should have a resolvable bounding box — "
-                    f"input_box={input_box}, today_box={today_box}"
+                baseline_box = chat.get_folder_item(baseline_folder_id).bounding_box()
+                assert input_box is not None and baseline_box is not None, (
+                    "Both the new-folder input and the baseline folder row "
+                    "should have a resolvable bounding box — "
+                    f"input_box={input_box}, baseline_box={baseline_box}"
                 )
-                assert input_box["y"] + input_box["height"] <= today_box["y"], (
-                    "New folder entry should render ABOVE the 'Today' "
-                    "date-group heading (i.e. at the top of the "
-                    f"folder/conversation list) — input_box={input_box}, "
-                    f"today_header_box={today_box}"
+                assert input_box["y"] + input_box["height"] <= baseline_box["y"], (
+                    "New folder entry should render ABOVE the baseline "
+                    f"folder (id={baseline_folder_id}) — i.e. prepended to "
+                    "the top of the folder list, not appended below it — "
+                    f"input_box={input_box}, baseline_folder_box={baseline_box}"
                 )
 
             with allure.step(
@@ -215,6 +265,9 @@ class TestChatFolderCreation:
                 "verify the POST resolves 201 with the expected response "
                 "shape, and the folder editor closes"
             ):
+                # This is the CASE's OWN folder (the second one created in
+                # this run) — distinct from `baseline_folder_id` seeded
+                # above for Step 3's position check.
                 with page.expect_response(
                     lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "POST",
                     timeout=NAVIGATION_TIMEOUT,
@@ -294,16 +347,31 @@ class TestChatFolderCreation:
                 )
 
         finally:
-            # Every run creates a real folder in the shared project — cleanup
-            # is mandatory, not optional (AFS § Cleanup). No FolderAPI client
-            # exists yet (only ConversationAPI et al. — AFS § Automation
-            # Hints recommends adding one), so cleanup goes through the UI
-            # Delete flow, which is fully testid-covered end to end. Wrapped
-            # in try/except per .claude/rules/ui-tests.md § Test Data
-            # Lifecycle — cleanup must not mask the real test result.
+            # Every run creates TWO real folders in the shared project — the
+            # baseline (seeded above for Step 3's position check) and the
+            # case's own (created by the actual flow under test) — cleanup
+            # of BOTH is mandatory, not optional (AFS § Cleanup, round-3
+            # amendment). No FolderAPI client exists yet (only
+            # ConversationAPI et al. — AFS § Automation Hints recommends
+            # adding one), so cleanup goes through the UI Delete flow, which
+            # is fully testid-covered end to end. Each delete is
+            # independently wrapped in try/except per
+            # .claude/rules/ui-tests.md § Test Data Lifecycle — cleanup must
+            # not mask the real test result, and one folder's delete
+            # failure must not prevent attempting the other's.
             if folder_id:
                 try:
                     chat.delete_folder_via_menu(folder_id, timeout=UI_ELEMENT_TIMEOUT)
                     logger.info("Cleaned up folder %s", folder_id)
                 except Exception as exc:
                     logger.warning("Failed to delete folder %s: %s", folder_id, exc)
+            if baseline_folder_id:
+                try:
+                    chat.delete_folder_via_menu(baseline_folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                    logger.info("Cleaned up baseline folder %s", baseline_folder_id)
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to delete baseline folder %s: %s",
+                        baseline_folder_id,
+                        exc,
+                    )
