@@ -1,4 +1,0 @@
-WARNING  elitea.pages.chat:chat_page.py:552 Timeout waiting for Copy button. Current message text: Quick sandbox test…
-ERROR    elitea.steps:actions.py:49 Step failed: Delete message — Locator.click: Timeout 10000ms exceeded.
-Call log:
-  - waiting for locator("[role=\"dialog\"]").first.locator("button:has-text(\"Confirm\")")
