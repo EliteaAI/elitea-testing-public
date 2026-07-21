@@ -135,13 +135,28 @@ class TestOpenConversationFromTodaySection:
         # already-documented project-471 secrets 403 (AFS § Network
         # Behavior) is filtered so it can't mask a genuinely NEW error on
         # the same project.
+        #
+        # `page.on("console", ...)` alone is NOT sufficient — established
+        # the same day on the sibling ELITEA-2094 PR (#688): an UNCAUGHT
+        # JS exception never reaches the "console" event, only
+        # `page.on("pageerror", ...)` does. Both are wired here for the
+        # same reason: "console" for the repo's established side-channel
+        # idiom, "pageerror" so a genuine uncaught exception anywhere in
+        # this flow isn't silently missed. The known project-471 secrets
+        # 403 is a console/network log, not a pageerror, so it needs no
+        # filtering on the pageerror side.
         console_messages = []
+        page_errors: list[str] = []
 
         def _on_console(msg):
             if msg.type == "error" and not _is_known_project_471_secrets_403(msg):
                 console_messages.append(msg)
 
+        def _on_pageerror(exc):
+            page_errors.append(str(exc))
+
         page.on("console", _on_console)
+        page.on("pageerror", _on_pageerror)
 
         try:
             with allure.step(
@@ -209,6 +224,16 @@ class TestOpenConversationFromTodaySection:
             chat.wait_for_input_ready(timeout=NAVIGATION_TIMEOUT)
             chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
             chat.wait_for_message_content_stable(timeout=AI_RESPONSE_TIMEOUT)
+            # Same race as documented below for the second send:
+            # wait_for_message_content_stable() is a text-heuristic and the
+            # app's own internal streaming/nav-blocking flag can trail it
+            # briefly — confirmed live (PR #693 review round 2): the SECOND
+            # send_message()'s fill()/type call can time out on a
+            # still-disabled input while the first AI response is still
+            # finishing. wait_for_generation_complete() is the authoritative
+            # "safe to send again" signal, so it's applied here too, not
+            # just before Step 2.
+            chat.wait_for_generation_complete(timeout=AI_RESPONSE_TIMEOUT)
 
             match = re.search(r"/chat/(\d+)", page.url)
             assert match, (
@@ -337,12 +362,21 @@ class TestOpenConversationFromTodaySection:
                     f"Context Budget tokens text should match 'N / M tokens', got: {tokens_text!r}"
                 )
 
+                # The counters update asynchronously shortly after the panel
+                # becomes visible — a one-shot read can race ahead of that
+                # update (confirmed live: PR #693 review round 2 reproduced
+                # a failure reading '0' where the failure screenshot,
+                # captured moments later, already showed '4' rendered).
+                # Wait for the expected value first, mirroring the
+                # wait_for_message_count() + get_message_count() pattern.
+                chat.wait_for_context_budget_messages_count("4", timeout=UI_ELEMENT_TIMEOUT)
                 messages_count = chat.get_context_budget_messages_count()
                 assert messages_count == "4", (
                     "Context Budget Messages counter should read '4' (matching "
                     f"the 4 seeded messages), got: {messages_count!r}"
                 )
 
+                chat.wait_for_context_budget_summaries_count("0", timeout=UI_ELEMENT_TIMEOUT)
                 summaries_count = chat.get_context_budget_summaries_count()
                 assert summaries_count == "0", (
                     "Context Budget Summaries counter should read '0' (no "
@@ -385,14 +419,20 @@ class TestOpenConversationFromTodaySection:
                 )
 
             with allure.step(
-                "Side-channel check — no unexpected console errors across the full flow"
+                "Side-channel check — no unexpected console errors or "
+                "uncaught exceptions across the full flow"
             ):
                 # Known artifact: the project-471 secrets 403 is filtered by
                 # _is_known_project_471_secrets_403() above (already
                 # documented, unrelated — see AFS § Network Behavior). Any
-                # OTHER console error still fails this check for real.
-                assert not console_messages, (
-                    f"Unexpected console errors: {[m.text for m in console_messages]}"
+                # OTHER console error, or any uncaught JS exception
+                # (pageerror — console alone would miss it, see the
+                # listener registration comment above), still fails this
+                # check for real.
+                assert not console_messages and not page_errors, (
+                    f"Unexpected side-channel errors: "
+                    f"console={[m.text for m in console_messages]!r} "
+                    f"page_errors={page_errors!r}"
                 )
 
         finally:

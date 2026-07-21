@@ -386,3 +386,48 @@ exist in project 471. Chose seeding over documenting a `reuse-existing` precondi
 fixture in this suite actually guarantees a second conversation persists in project 471 (every
 other test cleans up its own) — recording it as `reuse-existing` would have documented a
 precondition that isn't reliably true, which is worse than the minimal, self-cleaning seed.
+
+## AFS Amendment (2026-07-21, PR #693 round-2 fix-only pass — reviewer findings A, B, and the
+pageerror gap)
+
+A fresh reviewer session on PR #693 independently re-ran the merged spec live 5 times (not just
+trusting the prior Run Report) and found 2/5 runs RED — two distinct, reproducible race
+conditions in this PR's own new code, plus a non-blocking gap. All three addressed in the same
+fix-only commit:
+
+**Finding A (Critical) — `get_context_budget_messages_count()` / `get_context_budget_summaries_count()`
+raced an async DOM update.** Both getters did a one-shot `.text_content()` read with no poll;
+`wait_for_context_budget_panel()` only waits for the panel *heading* to appear, not for the
+Messages/Summaries rows to reflect the correct value. Reproduced live: an assertion failure
+reading `'0'` where the failure screenshot, captured moments later, already showed `Messages: 4`
+rendered — the read raced ahead of an async update shortly after the panel appears.
+**Resolution**: added `wait_for_context_budget_messages_count(expected, timeout)` /
+`wait_for_context_budget_summaries_count(expected, timeout)` to `ChatPage`, using a
+`.filter(has_text=...)` + `.wait_for(state="visible")` locator wait — the same idiom as the
+existing `wait_for_message_count()` / `wait_for_context_budget_panel()` methods, not a new
+poll-loop invention. The test now calls the wait method before each getter, mirroring the
+established `wait_for_message_count()` + `get_message_count()` pattern used at Step 5.
+
+**Finding B (Critical) — missing `wait_for_generation_complete()` between the first and second
+message sends.** The test already applies `wait_for_generation_complete()` before Step 2 (with an
+inline comment documenting exactly why `wait_for_message_content_stable()` alone isn't
+authoritative — the app's internal streaming/nav-blocking flag can trail the text heuristic
+briefly), but the identical race existed between the *first* message's response and the *second*
+`send_message()` call, where no such guard was applied. Reproduced live: `send_message()`'s
+`fill()` timing out because the input was still disabled. **Resolution**: added the same
+`chat.wait_for_generation_complete(timeout=AI_RESPONSE_TIMEOUT)` call after the first message's
+`wait_for_message_content_stable()`, before the second message is sent.
+
+**Secondary (Important, non-blocking) — console-only side-channel missed uncaught JS exceptions.**
+Per the same-day precedent on the sibling ELITEA-2094 PR (#688): `page.on("console", ...)` alone
+does not catch uncaught exceptions, only `page.on("pageerror", ...)` does. **Resolution**: added a
+`page.on("pageerror", _on_pageerror)` listener alongside the existing console listener, appending
+to a `page_errors` list included in the same "Side-channel check" assertion
+(`not console_messages and not page_errors`). The known project-471 secrets 403 is a
+console/network log, not a pageerror, so no additional filtering was needed on the pageerror side.
+
+Verified: 5 fresh consecutive `pytest` invocations of the same node id, headless,
+`-p no:cacheprovider`, all GREEN post-fix (plus a 6th confirmatory run with `--log-cli-level=INFO`
+confirming both seeded conversations' cleanup fired). No `chat_page.py` method body was modified —
+only two brand-new methods added (their only caller is this test, so no shared-caller regression
+risk) — and the test-file diff is purely additive per the usual self-check.

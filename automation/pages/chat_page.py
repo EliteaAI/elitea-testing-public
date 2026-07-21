@@ -2263,18 +2263,76 @@ class ChatPage(BasePage):
 
         Uses the dedicated ``context-budget-messages-count`` testid rather
         than regex-parsing the whole panel's ``textContent``.
+
+        This is a one-shot read — the counter updates asynchronously shortly
+        after the panel becomes visible, so call
+        ``wait_for_context_budget_messages_count()`` first when a specific
+        value is expected (mirrors the ``wait_for_message_count()`` +
+        ``get_message_count()`` pattern used elsewhere in this class).
         """
         text = self.context_budget_messages_count.first.text_content() or ""
         return text.strip()
+
+    def wait_for_context_budget_messages_count(self, expected: str, timeout: int = 10000) -> None:
+        """Wait until the Context Budget Messages counter reads *expected*.
+
+        The counter updates asynchronously shortly after the Context Budget
+        panel/heading becomes visible — a one-shot read immediately after
+        ``wait_for_context_budget_panel()`` can observe a stale value (e.g.
+        "0") before the real count renders (confirmed live: PR #693 review
+        round 2 reproduced a failure reading '0' where the failure
+        screenshot, captured moments later, already showed the correct
+        value rendered). Call this before ``get_context_budget_messages_count()``
+        whenever a specific value is expected.
+
+        Args:
+            expected: Expected counter text (e.g. "4").
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            TimeoutError: If the counter does not reach *expected* within *timeout*.
+        """
+        logger.info("Waiting for Context Budget Messages counter to read %r", expected)
+        target = self.context_budget_messages_count.filter(
+            has_text=re.compile(rf"^\s*{re.escape(expected)}\s*$")
+        )
+        target.first.wait_for(state="visible", timeout=timeout)
+        logger.info("Context Budget Messages counter reached %r", expected)
 
     def get_context_budget_summaries_count(self) -> str:
         """Return the Summaries counter text from the Context Budget panel (e.g. "0").
 
         Uses the dedicated ``context-budget-summaries-count`` testid rather
         than regex-parsing the whole panel's ``textContent``.
+
+        This is a one-shot read — see
+        ``get_context_budget_messages_count()`` docstring for why
+        ``wait_for_context_budget_summaries_count()`` should be called first
+        when a specific value is expected.
         """
         text = self.context_budget_summaries_count.first.text_content() or ""
         return text.strip()
+
+    def wait_for_context_budget_summaries_count(self, expected: str, timeout: int = 10000) -> None:
+        """Wait until the Context Budget Summaries counter reads *expected*.
+
+        See ``wait_for_context_budget_messages_count()`` for why this poll
+        is needed — the same async-update race applies to the Summaries
+        counter.
+
+        Args:
+            expected: Expected counter text (e.g. "0").
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            TimeoutError: If the counter does not reach *expected* within *timeout*.
+        """
+        logger.info("Waiting for Context Budget Summaries counter to read %r", expected)
+        target = self.context_budget_summaries_count.filter(
+            has_text=re.compile(rf"^\s*{re.escape(expected)}\s*$")
+        )
+        target.first.wait_for(state="visible", timeout=timeout)
+        logger.info("Context Budget Summaries counter reached %r", expected)
 
     def open_add_teammate_dialog(self, timeout: int = 5000) -> tuple[bool, str]:
         """Open the 'Invite Users' dialog via the plus menu.
