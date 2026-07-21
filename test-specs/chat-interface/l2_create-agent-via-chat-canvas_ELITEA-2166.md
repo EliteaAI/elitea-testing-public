@@ -1,0 +1,139 @@
+# Test Case: Chat – Private Project – Create New Conversation and Add Agent via Create New Agent Canvas
+
+## Metadata
+- **TMS ID**: ELITEA-2166
+- **Linked Story**: none (case `requirements: []`)
+- **Priority**: l2 (case priority: high)
+- **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids`, DEV backend; project "Private" — the account's own personal project, observed live as `projectId=399`, matches `${ELITEA_PROJECT_ID}` in `.env.test` — don't hardcode, read the same way `conversation_api`/`ChatPage` already do)
+- **User set**: `${TEST_USER}` — on localhost, `auth_state`/`VITE_DEV_TOKEN` skips explicit Keycloak login (dev-token user renders as "Test Bot"/"TB")
+- **Analyst**: qa-engineer (agent)
+- **Status**: **ready-for-automation** — case executed end-to-end live (all 10 steps observed against the real app), one CONFIRMED product defect found at step 10 (filed, see § Known Defects), one CLARIFICATION (case-text sequencing drift) found at step 8 (filed, see § Known Defects). Per the reverse-masking guard and the merge-gate's Sanctioned-RED exception (`.agents/testing.md` § Merge gate), the case is still `ready-for-automation`: the defect is isolated to one assertion (the agent-response-content check), soft-assertable with the linked defect, and does not prevent writing/merging the rest of this flow's automation. New page-object surface is required — no existing `ChatPage` method drives the "+ Create New Agent" in-chat canvas (confirmed: `grep` for "Create New Agent" / `create_new_agent` in `chat_page.py` returns nothing before this AFS).
+
+## Preconditions
+- User is logged in to the Elitea platform (`${TEST_USER}` / dev-auth on localhost).
+- User is in a **Private** project. This is NOT ambient at test start — `${TEST_USER}`'s default/last-active project on a fresh session was observed live as "Elitea Testing Team" (`471`, a Team project), so automation must explicitly switch to Private (`399`) via `ChatPage.switch_project()` (existing method, ELITEA-2095) before proceeding — do not assume Private is already selected.
+
+## Test Data
+
+### reuse-existing
+- `${TEST_USER}` — see `.agents/profile.md` § Roles & sample users.
+- Private project — the account's own personal project, `${ELITEA_PROJECT_ID}` (`.env.test`, value `399`). `ConversationAPI`/`ChatPage.switch_project("399")`.
+
+### generate-per-test (created in test setup/steps, cleaned up in its own teardown)
+- **New conversation** — created via the UI's own `+ Chat` flow (`ChatPage.click_create_conversation()`, existing method), matching the case's own step 1 action (not API-created — the case's whole point is the UI creation flow). The conversation gets its id/name (auto-titled "HI Chat" from the first sent message) only after step 10's send succeeds.
+- **New agent "echo"** — created via the in-chat canvas per the case's literal Test Data table: Name `echo`, Description `test agent`, Instructions `echo every user input`. **Collision risk**: no pre-existing agent literally named "echo" was found in the Private project's Agents-submenu search during this session (confirmed live — the ~40-item list enumerated during step 2 contained none), but if this test runs repeatedly without cleanup, "echo" agents will stack up. Cleanup (below) deletes the created agent by its captured id; if the suite ever needs parallel-safe runs, consider suffixing the name (e.g. `echo-{uuid4()[:8]}`) — the case's literal fixed string is kept here since a first implementation doesn't yet need it.
+- **Test message**: `hi` (case's literal Test Data value).
+
+## Test Steps
+
+1. Switch to the Private project (`ChatPage.switch_project("399")`), then click **+ Chat** (`ChatPage.click_create_conversation()`).
+   - **Verify**: a new, blank conversation opens (greeting text visible, e.g. "Hello, Test! What can I do for you today?"; no message history). Open the composer's `+` menu (`plus-menu-button`) and verify **no** "Invite Users" item is present (source-grounded: `PlusChatButton.jsx`'s `{!isPrivateProject && <MenuItem>Invite Users</MenuItem>}` guard — Private project unconditionally hides it). PARTICIPANTS: nothing is rendered at all for a brand-new, zero-participant, unsaved conversation — there is no participants badge/panel to assert "empty" against; treat "no participants element present" as the passing observation (matches ELITEA-2095's documented pattern: Context Budget / participants widgets only appear once the conversation has real content).
+2. Click the `+` menu button, click **Agents**, click **+ Create New Agent**.
+   - **Verify**: the "Create New Agent" canvas panel opens on the right, heading text = "Create New Agent".
+3. Verify the canvas shows all 5 sections: GENERAL (containing Name*, Description*, Tags), INSTRUCTIONS, WELCOME MESSAGE, CHAT STARTERS (case's "CHAT STARTERS" vs live "Chat starters" is casing only, not a content mismatch — no clarification needed), ADVANCED.
+   - **Verify**: all 5 accordion section headers are visible; GENERAL's content shows Name, Description, and Tags fields.
+4. Verify the Save button is disabled while Name/Description are empty.
+   - **Verify**: Save button (and Discard) are both disabled immediately after the canvas opens.
+5. Fill Name = `echo`, Description = `test agent`, Instructions = `echo every user input`.
+   - **Verify**: each field's `input_value()`/text matches what was typed.
+6. Verify the Save button becomes enabled.
+   - **Verify**: Save button `is_enabled()` is `True` once both mandatory fields (Name, Description) are non-empty.
+7. Click Save.
+   - **Verify**: `POST /api/v2/elitea_core/applications/prompt_lib/{project_id}` resolves `201 Created`. The canvas transitions to the saved-agent view: heading text becomes `echo`, a subtitle below it reads `base` (the initial version name).
+8. Verify the PARTICIPANTS panel shows `echo` under an "AGENTS" heading (open via `chat-participants-badge-button` if not already expanded).
+   - **Verify**: the participants popper's AGENTS section lists exactly one row with the text `echo`. **Do NOT assert the composer's `chat-switch-participant-button` text here** — while this agent's own canvas/editor panel is still open, the composer shows a single **"Editing…"** status label instead of the agent name (see CLARIFICATION #709 — the case's literal step 8 wording implies `echo | base` is visible at this point, but live it only renders after step 9 closes the canvas).
+9. Click the canvas's X (close) button.
+   - **Verify**: the canvas panel is gone; the conversation view is shown (message input + history visible). **Now** verify the composer shows the two-chip `echo` / `base` display: `chat-switch-participant-button` text contains `echo`, and the adjacent version-selector button (`agent-version-selector-trigger`) text contains `base`. This is where the case's step-8 assertion is actually satisfiable live (see CLARIFICATION #709).
+10. Type `hi` in the message input and click Send.
+    - **Verify**: the user's `hi` message appears immediately in the message list. **Known defect (see § Known Defects, issue #708)**: on the FIRST message sent to this just-created agent, the agent's reply row is created but its body stays **empty** indefinitely (observed 5+ minutes, confirmed empty even after a hard page reload / fresh server fetch) while Socket.IO connectivity degrades (502/503, CORS-blocked fallback polling). A retry (sending a second message to the same agent) DID receive a normal reply ~5s later. Automate this step with `expect.soft()` on "reply body is non-empty within a bounded wait (e.g. 30s)", linking `# Known defect: #708` — do not hard-fail the whole test on this known, isolated, already-filed defect (merge-gate Sanctioned-RED exception, `.agents/testing.md` § Merge gate). Assert no *new* console errors up to and including the send action itself (the Socket.IO 502/503/CORS errors that appear *while waiting* for the (currently broken) response are themselves part of the known-defect signature, not a separate assertion target).
+
+## Expected Results
+- Steps 1–9 all pass cleanly as specced above (with the step-8/9 sequencing correction per CLARIFICATION #709).
+- Step 10's "message sent, no client-side errors on send" passes; "agent responds with real content" is a soft-assert pending the fix for issue #708.
+
+## Coverage Map
+
+### Axis 1 — Case coverage
+
+| Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
+|---|---|---|---|---|
+| Precondition: user logged in | — | Setup | `auth_state` fixture | asserted |
+| Precondition: user is in a Private project | — | Setup | `ChatPage.switch_project("399")` + `get_selected_project_text()` | asserted *(not ambient — explicit switch required, see § Preconditions)* |
+| 1 Navigate to Chats in Private project, click + Chat → new conversation opens; PARTICIPANTS panel empty; 'Invite Users' NOT in + menu | new conversation opens, no Invite Users, empty participants | step 1 | `step 1`: blank-conversation greeting visible; `+` menu item enumeration (5 items, no "Invite Users"); no participants element present | asserted |
+| 2 Click + icon, click Agents, click '+ Create New Agent' → Canvas panel opens showing Create New Agent form | canvas opens | step 2 | `step 2`: canvas heading "Create New Agent" visible | asserted |
+| 3 Verify canvas sections: GENERAL (Name*, Description*, Tags), INSTRUCTIONS, WELCOME MESSAGE, CHAT STARTERS, ADVANCED → All sections visible | 5 sections visible | step 3 | `step 3`: all 5 accordion headers visible | asserted |
+| 4 Verify Save button disabled when mandatory fields empty → Save button greyed out | Save disabled | step 4 | `step 4`: `is_enabled()` False pre-fill | asserted |
+| 5 Fill Name 'echo', Description 'test agent', INSTRUCTIONS 'echo every user input' → Fields filled | fields filled | step 5 | `step 5`: `input_value()` per field | asserted |
+| 6 Verify Save button becomes active → Save button enabled | Save enabled | step 6 | `step 6`: `is_enabled()` True post-fill | asserted |
+| 7 Click Save → Canvas transitions to saved agent view showing 'echo' and 'base' version | saved-agent view shown | step 7 | `step 7`: `POST .../applications/...` 201 + heading/subtitle text | asserted |
+| 8 Verify message input bar shows 'echo | base' and PARTICIPANTS shows 'echo' under AGENTS → Agent is listed | composer + participants show agent | steps 8–9 (decomposed) | `step 8`: PARTICIPANTS popper shows `echo` under AGENTS (asserted AS WRITTEN, while canvas still open); `step 9`: composer `echo | base` display (asserted AFTER canvas close, not at step 8) | asserted *(decomposed; sequencing corrected — CLARIFICATION #709, case-text drift, not a defect)* |
+| 9 Click X to close canvas → Canvas closes; conversation view shown | canvas closes, conversation view shown | step 9 | `step 9`: canvas gone, message input + history visible | asserted |
+| 10 Type 'hi' and click Send → Message sent; agent responds; no errors | message sent, agent responds, no errors | step 10 | `step 10`: user message visible (asserted); agent reply non-empty (soft-asserted, KNOWN DEFECT #708); no new console errors on send itself (asserted) | asserted *(reply-content sub-assertion is `clarification`/known-defect via soft-assert, per merge-gate Sanctioned-RED exception — not a bare omission)* |
+| Expected Final State: "New agent created via canvas and responds to messages" | — | steps 7, 10 | agent created (step 7 201); response currently fails per #708 | asserted *(step 7 asserted; the "responds" half is the soft-asserted known defect)* |
+| Pass/Fail: "All steps complete without errors... Agent not created or agent does not respond" is a FAIL condition | — | step 10 | soft-assert + linked defect, not a hard fail (Sanctioned-RED exception) | asserted *(clarification: literal case Pass/Fail wording would call this a FAIL; automation treats it as sanctioned-RED per project policy rather than blocking the whole spec — implementer/lead call already precedented in `.agents/testing.md` § Merge gate)* |
+
+Disposition key: `asserted` / `already-covered` / `clarification` / `blocked` / `out-of-scope`.
+
+### Axis 2 — Analyst additions
+
+- `step 1` asserts the **live source-grounded reason** "Invite Users" is absent (`PlusChatButton.jsx`'s `!isPrivateProject` guard) rather than just observing its absence — *added: rules out "hidden due to permissions" or another unrelated cause as a false-positive pass.*
+- `step 7` asserts the underlying `POST .../applications/prompt_lib/{project_id}` network call resolves `201 Created` — *added: matches the project's pattern of confirming creation via the API, not just a DOM transition, and rules out the case's own documented "watch item" (bug #524, agent-creation 400 on default LLM settings) recurring — confirmed NOT hit here (clean 201).*
+- `step 10` performs a **retry probe** (send a second message to the same agent after the first one fails to respond) as a diagnostic, not a masking workaround — *added: this is what precisely localized issue #708 to "first message only" rather than leaving it as a vague intermittent-response report. This diagnostic step is NOT part of the automated test's own pass path — it's exploration-only evidence recorded in the defect ticket, and must NOT be copied into the automated test as a silent retry (that would mask the defect).*
+- Console/network side-channel checked after every step — *added: standard side-channel discipline; confirmed clean (only the pre-existing, unrelated project-471 `secrets` 403 noise) through step 9; step 10 is where genuinely NEW errors (502/503 Socket.IO, CORS-blocked fallback to `dev.elitea.ai`) appear — these are part of the known-defect's own signature, not a separate finding.*
+
+## Cleanup
+1. Delete the created agent (`application` entity, id captured at step 7 — e.g. via `AgentAPI.delete_agent(id)` if it exists, or the UI's Agents-list delete action) — DO NOT rely on conversation deletion to cascade-delete the agent (they are independent entities).
+2. Delete the created conversation via `conversation_api.delete_conversation(id)` (id captured after step 10's send, from the URL / API).
+3. Standard `try/finally` per `.claude/rules/ui-tests.md` § Test Data Lifecycle.
+
+## Concrete Handles (discovered during exploration)
+
+Locator policy on this project is **testid-only** — no role/label/text fallback ladder (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`). Provenance verified via `cd EliteaUI && git fetch origin` (this session) then `git grep` on both `origin/main` and `origin/automation/testids`.
+
+| Element | Testid handle | Provenance | Notes |
+|---|---|---|---|
+| Project selector trigger | `project-selector-trigger-combobox` | on-`automation/testids` only (awaiting human promotion to main) | Existing `ChatPage.project_selector_trigger` (ELITEA-2095). |
+| Project dropdown option (dynamic) | `[data-testid="select-option-{}"]` (`ChatPage.SELECT_OPTION`) | on-main ✓ | Existing. |
+| `+ Chat` / create-conversation button | `sidebar-create-button` | on-main ✓ | Existing `ChatPage.create_conversation_button`. |
+| Composer `+` (plus) menu button | `plus-menu-button` | on-main ✓ | Existing `ChatPage.plus_menu_button`. |
+| `+` menu → "Agents" menuitem | `agents-menuitem` | on-`automation/testids` only (awaiting human promotion to main) | **New page-object field needed** (`ChatPage` currently only has `internal_tools_menuitem`). On `main`, `PlusChatButton.jsx` wires this item's testid via `key === SUBMENU_KEYS.INTERNAL_TOOLS ? 'internal-tools-menuitem' : undefined` (a state/branch-conditional expression on a hardcoded key, not the item's own state — Agents/Pipelines/Toolkits/MCPs items get `undefined` on `main`); `automation/testids` already fixes this with a per-item `testId` field (`agents-menuitem`, `pipelines-menuitem`, `toolkits-menuitem`, `mcps-menuitem`) — a straightforward promotion, not new work. |
+| `+` menu → Agents submenu → "+ Create New Agent" item | **NO TESTID** | needs-adding | `testid needed: agents-create-new-button` — or thread a `${sectionKey}-create-new-button` dynamic template through `PlusChatSubmenu.jsx` (the component already receives `sectionKey` and uses it for the analogous `${sectionKey}-search-input` pattern on its search field — the `showCreateNew` `MenuItem` block has zero `data-testid` on both `main` and `automation/testids`). Currently only resolvable via `getByRole('menuitem', {name: 'Create New Agent'})` — not testid-only compliant; blocks writing the automated click without this addition. |
+| Canvas: GENERAL/INSTRUCTIONS/WELCOME MESSAGE/CHAT STARTERS/ADVANCED section headers (5×, step 3) | **NO TESTID** | needs-adding | `testid needed: agent-canvas-section-{key}` (dynamic; key ∈ `general`, `instructions`, `welcome-message`, `chat-starters`, `advanced`). `BasicAccordion.jsx` (the shared component ALL 5 sections render through) already supports a per-item `testId` prop wired straight to `data-testid={testId}` on `StyledAccordionSummary` (confirmed by reading its source) — none of the 5 call sites (`CreateAgentForm.jsx`'s "General" item, `InstructionsInput.jsx`'s "Instructions" item, and the Welcome message / Chat starters / Advanced equivalents) currently pass it. Low-risk, mechanical addition — the plumbing already exists. |
+| Name field | `agent-name-input` | on-main ✓ | Same testid as standalone `/agents/create`'s `AgentFormPage.name_input` — different form component (`CreateAgentForm.jsx` vs the standalone page) rendering the SAME underlying `Input.StyledInputEnhancer`, confirmed identical testid. |
+| Description field | `agent-description-input` | on-main ✓ | Same as `AgentFormPage.description_input`. |
+| Instructions field | `agent-instructions-input` | on-main ✓ | Same as `AgentFormPage.instructions_input`. |
+| Welcome message field | `agent-welcome-message-input` | on-main ✓ | Same as `AgentFormPage.welcome_message_input` — not exercised by this case (no welcome message filled), listed for completeness. |
+| Canvas Save button (create-mode) | **NO TESTID** | needs-adding | `testid needed: agent-save-button` (reuse the EXACT existing name, don't invent a new one). `BaseEditor`'s `saveButton` slot renders exactly ONE of `CreateApplicationSaveButton.jsx` (create-mode — THIS case, confirmed ZERO testid/props threading on both `main` and `automation/testids`) or `SaveApplicationButton.jsx` (edit-mode, already carries `agent-save-button` per `AgentFormPage.save_button`) — never both simultaneously, so wiring the identical testid onto `CreateApplicationSaveButton.jsx` lets one `LocatorDescriptor` field serve both modes. Currently only resolvable via `getByRole('button', {name: 'Save'})` — blocks compliant automation of steps 4/6/7 without this addition. |
+| Canvas Discard button | **NO TESTID** | needs-adding | Not clicked in this case's happy path (stays disabled throughout) — flagged for completeness only; `testid needed: agent-discard-button` if a future case exercises it. |
+| Canvas X (close) button | **NO TESTID** | needs-adding | `testid needed: agent-canvas-close-button`. `EditorHeader.jsx`'s close `IconButton` carries zero testid at any level on either branch (`grep -c testid` on the whole file = 0). Currently only resolvable via a Playwright-generated CSS-class selector (`.MuiBox-root.css-jqms8z > .MuiButtonBase-root`) — not usable in compliant automation; blocks step 9 without this addition. |
+| Canvas title post-save (agent name, e.g. "echo") | **NO TESTID** | needs-adding | `testid needed: agent-canvas-title`. `EditorHeader.jsx`'s `title` `Typography` has no testid. |
+| Canvas subtitle post-save (version name, e.g. "base") | **NO TESTID** | needs-adding | `testid needed: agent-canvas-subtitle`. Same component's `subtitle` `Typography`. |
+| Composer active-participant button (shows agent name) | `chat-switch-participant-button` | on-main ✓ | Existing `ChatPage.switch_participant_button` (ELITEA-1736). Shows literal text **"Editing…"** instead of the agent name while that agent's own canvas is open (step 8) — see CLARIFICATION #709; shows the real agent name once the canvas is closed (step 9). |
+| Composer version-selector button (shows version name) | `agent-version-selector-trigger` | on-main ✓ | Confirmed via `ApplicationVersionSelect.jsx`. NOT yet a `ChatPage` field — new page-object surface (no existing method reads this in a chat-composer context; `agent_detail_page.py` has an analogous but page-scoped usage). |
+| Participants badge trigger (collapsed icon) | `chat-participants-badge-button` | on-main ✓ | Existing `ChatPage.PARTICIPANTS_BADGE_BUTTON`. |
+| Participants popper container | `chat-participants-popper` | on-main ✓ | Existing `ChatPage.participants_popper`. No distinct per-row testid for the agent's name inside the popper — assert via text match within the popper, matching the existing `is_agent_participant_in_composer()`-style pattern already in `chat_page.py`. |
+| Message input | `chat-message-input` | on-main ✓ | Existing `ChatPage.message_input`. |
+| Send button | `chat-send-button` | on-main ✓ | Existing `ChatPage.send_button`. |
+| Message list item / body (user + agent) | `chat-message-item` (+ `_extract_message_body()`) | on-main ✓ | Existing `ChatPage.messages_container` / `_extract_message_body()`. For step 10, assert body length > 0 within a bounded wait — do NOT assert mere element presence, since the defect scenario (#708) is exactly "element present, body empty". |
+
+## Network Behavior
+- `POST /api/v2/elitea_core/applications/prompt_lib/{project_id}` → `201 Created` on Save (step 7) — confirms the agent-creation watch item (#524, temperature+reasoning_effort conflict on default LLM settings) is NOT hit here; response is clean.
+- `PATCH /api/v2/elitea_core/entity_settings/prompt_lib/{project_id}/{conversation_id}`, `PUT /api/v2/elitea_core/conversation/prompt_lib/{project_id}/{conversation_id}`, `POST /api/v2/elitea_core/participants/prompt_lib/{project_id}/{conversation_id}` → all `200 OK` — fire when the first message triggers conversation creation + the `echo` agent's attachment as a participant (step 10's setup half).
+- `POST /api/v2/elitea_core/select_conversation/prompt_lib/{project_id}/{conversation_id}` → `200 OK` — marks the new conversation selected.
+- **Known-defect signature (issue #708, step 10)**: during the (currently indefinite) wait for the agent's reply, repeated Socket.IO failures were observed: `GET /socket.io/...` → `502 Bad Gateway` / `503 Service Unavailable`, followed by cross-origin fallback attempts directly to `https://dev.elitea.ai/socket.io/...` that fail with `Access to XMLHttpRequest ... blocked by CORS policy` / `net::ERR_FAILED` / `xhr poll error`. Noted for the eventual root-cause pass on #708, not asserted as the cause (may be a symptom of the stuck request rather than an independent issue).
+
+## Known Defects Found During Exploration
+
+- **[MAJOR] Issue #708** — First message sent to a freshly-created (via the in-chat "+ Create New Agent" canvas) agent participant gets no response: the reply row is created but its body stays empty indefinitely (5+ minutes observed, confirmed empty even after a hard page reload / fresh server fetch — ruling out a pure client-side display glitch), while the browser's Socket.IO connection degrades (502/503, CORS-blocked fallback polling to `dev.elitea.ai`). A retry (second message, same agent/conversation) DID receive a normal reply ~5s later ("Thought for 5 secs"), localizing the defect to the FIRST message specifically. Filed: https://github.com/EliteaAI/elitea-testing-public/issues/708. Automate via `expect.soft()` + `# Known defect: #708` on step 10's reply-content assertion (Sanctioned-RED exception, `.agents/testing.md` § Merge gate) — do not mask by silently retrying inside the test.
+- **[INFO/CLARIFICATION] Issue #709** — Case step 8's "message input bar shows 'echo | base'" is only true AFTER step 9 closes the canvas; while the just-created agent's own canvas/editor panel is still open, the composer correctly shows an "Editing…" status label instead (intentional UX, source-grounded in `AgentEditorPanel.jsx`). Filed: https://github.com/EliteaAI/elitea-testing-public/issues/709. This AFS's step 8/9 split (see § Test Steps) asserts the corrected, live sequencing rather than the case's literal step order (reverse-masking guard).
+
+## Blocked Steps
+None. All 10 case steps were executed and observed end-to-end live; step 10's negative outcome is a captured, filed defect (#708), not a blocker to writing this AFS.
+
+## Automation Hints
+- Framework: Playwright + pytest, testid-only `LocatorDescriptor` (`.agents/testing.md`).
+- Page object: this case needs a **new** page-object surface — no existing method drives the in-chat "+ Create New Agent" canvas. Recommend a new `AgentCanvasPage` (or extend `ChatPage` with a nested-canvas section, following the existing `ChatPage`/`AgentFormPage` split) once the `needs-adding` testids above land — `AgentFormPage`'s field-fill methods (`fill_form`, `update_text_field`) can likely be reused/mirrored since the underlying `Input.StyledInputEnhancer` fields share the exact same testids (`agent-name-input` / `agent-description-input` / `agent-instructions-input`).
+- The `+ Create New Agent` click, canvas Save click, and canvas X-close click are the three actions that are CURRENTLY BLOCKED from compliant (testid-only) automation until their respective `needs-adding` rows above are filled — flag to the lead/implementer as required `add-data-testid` work before this AFS can be implemented, not optional polish.
+- Step 10's soft-assert + known-defect pattern: mirror the existing soft-assert idiom already used elsewhere in this suite (e.g. `ELITEA-2114`'s `BUG #694` handling) — `expect.soft(reply_body, "Known defect: #708").not_to_be_empty()` (or the project's equivalent soft-assert helper), not a bare `assert`.
+- Wait strategy for step 10: do NOT use a fixed sleep for the (currently broken) reply wait — use a bounded `wait_for` (e.g. 30s) on `_extract_message_body()` returning non-empty text, then soft-assert the result. `wait_for_generation_complete()` (existing method) is NOT reliable here since the "Speaking mode" button transition this defect's symptom cluster affects — confirm during implementation whether it also hangs, and prefer the message-body-based wait if so.
+- The retry-probe used during this analysis (send a second message after the first fails) is exploration evidence for issue #708, not a step to replicate inside the automated test itself.
