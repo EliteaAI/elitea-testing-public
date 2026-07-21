@@ -83,3 +83,32 @@ surface element:
    REAL element's ancestor chain and add a fresh, correctly-scoped testid —
    declare the improvisation (role-overrides.md's canon-gap protocol)
    rather than silently reusing the wrong name.
+
+## Addendum (docs-only fix round, PR #710, orchestrator's own diff check): declaring an improvisation is NOT the same as amending the AFS
+
+Both gaps above (`chat-version-selector-trigger`, `invite-users-menuitem`)
+were correctly declared as improvisations — in the commit message, in the
+PR description, and in the test file's own module docstring. All three
+said the right thing. But the AFS itself (`test-specs/chat-interface/
+l2_create-agent-via-chat-canvas_ELITEA-2166.md`) was never touched —
+`git log --all -- <that path>` showed only the original analyst commit.
+The Concrete Handles table still named the wrong testid/component for the
+version selector and had no row at all for `invite-users-menuitem`. The
+orchestrator caught this on its own diff check, not a reviewer round.
+
+The mistake: treating "I explained this in three other places" as
+equivalent to "I amended the one place (the AFS) that's the durable,
+re-readable contract per the Phase 2 amend-in-PR rule." A commit message
+and a PR description are read once, at review time, then archived; the
+AFS is what the NEXT implementer/reviewer opens when this spec is touched
+again. If it still says the wrong thing, the next reader inherits the
+mistake with none of the context that corrected it.
+
+**Fix habit going forward:** the moment a Run Report or PR description is
+about to declare an improvisation/canon-gap, treat that as the trigger to
+open the AFS file itself in the SAME commit (or immediately after) and
+correct the specific row/step/bullet that named the old handle — not just
+narrate the fix elsewhere. A quick self-check before calling a round done:
+`grep <old-handle-name> test-specs/**/*.md` should return nothing (or only
+the amendment's own "corrected from X" historical note), the same way
+`git diff <file> | grep '^-[^-]'` is the self-check for additive-only.
