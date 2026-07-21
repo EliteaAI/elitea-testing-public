@@ -210,3 +210,42 @@ at recurrence 4) is still open/unanswered — this clean pass doesn't reduce
 the value of landing it, since the gap has now recurred 8 times across many
 different delivery sessions and only avoided a 9th by what may be
 circumstance rather than a durable fix.
+
+## Recurrence 8, and a WORSE sub-shape (control-audit only, issue #317, ELITEA-2114, PR #696, 2026-07-21)
+
+The clean pass on #242 didn't hold — 9th occurrence, one day later, and a new
+sub-shape worse than any of the first 8. The closure record's testid table
+listed the 9 testids + `data-active` state attr this PR's own EliteaUI commit
+(`20567b81`) added — correctly formatted, correctly verified fresh. But the
+merged test (`test_conversation_deletion_flow.py`) ALSO asserts against 3
+OTHER testids the page object exposes (`delete_confirm_dialog`,
+`delete_confirm_message`, `delete_confirm_button` — confirmed via grep of the
+test file, all 3 genuinely exercised, not dead code) that the closure record
+**never mentions at all** — not in the table, not in prose, not even an
+uncited reused-testid row. Traced to `EliteaAI/EliteaUI@c1fdd234` (ELITEA-1947)
+and `@a661d92d` (ELITEA-1847) in under 2 minutes once flagged.
+
+**Why this is worse than recurrences 1-8**: every prior occurrence at least
+*named* the reused testid(s) in prose ("reuses N pre-existing testids from
+case X") — the gap was always "cited without a SHA," never "omitted
+entirely." This is the first occurrence where the promotability table's row
+*count* itself doesn't match the test's real testid dependency count, so a
+human reading the closure record would have no signal that anything is
+missing at all — not even a case-ID prose reference to chase down.
+
+**New mechanical check going forward**: don't just verify every testid the
+closure record LISTS has a SHA. Independently re-derive the full dependency
+set from the test's own source first — grep the test file for every distinct
+`chat.<field>`/`page.<field>` LocatorDescriptor reference it makes — and
+count-check that against the closure record's table row count (crediting
+declared "reused, see X" rows). A cardinality mismatch is the fast tell that
+something was dropped, before doing the SHA-by-SHA trace. The AFS's own
+§ Concrete Handles table can correctly explain WHY a testid is reused
+(shared component, not new) without the closure record ever surfacing it —
+the AFS being right doesn't mean the closure record inherited that
+completeness.
+
+9 occurrences now, canon-fix #637 (filed recurrence 4, 2026-07-19) still
+open/unanswered two days later. The "hard mechanical gate" self-threshold
+was already crossed at recurrence 5; this session recommends treating #637
+as overdue rather than proposing it again.
