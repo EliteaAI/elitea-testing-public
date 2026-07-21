@@ -1465,6 +1465,22 @@ class ChatPage(BasePage):
         except Exception:
             return False
 
+    def get_conversation_group_header(self, group: str = "today"):
+        """Return the Locator for a date-group heading container.
+
+        Same handle as ``is_conversation_group_visible`` (``CONVERSATION_
+        GROUP_HEADER``), but returns the raw Locator instead of a bool —
+        needed by callers that compare its ``bounding_box()`` against
+        another element (e.g. ELITEA-2132's "new folder entry renders
+        ABOVE the 'Today' heading" positional check), not just whether it
+        exists.
+
+        Args:
+            group: Date-group key — "today" (default), "this_week", or
+                "older".
+        """
+        return self.page.locator(self.CONVERSATION_GROUP_HEADER.format(group))
+
     def is_conversation_in_group(
         self, conversation_id: str | int, group: str = "today", timeout: int = 5000,
     ) -> bool:

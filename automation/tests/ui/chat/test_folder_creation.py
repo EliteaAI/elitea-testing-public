@@ -25,6 +25,20 @@ already derives a testid from ``item.key``, confirmed via
 
 No product defects were found — all 7 case steps matched the live product
 exactly, including the literal empty-state wording "No conversations added".
+
+Fix-only round 2 (reviewer CHANGES_REQUESTED — Coverage Map over-claim):
+the original Step 3 block asserted the new-folder input's default value and
+focus, but never proved the entry actually renders ABOVE pre-existing
+content ("at the top of the folder/conversation list" per both the case's
+own step-3 text and the AFS), despite the Coverage Map marking that row
+`asserted`. Fixed by seeding a real conversation via the ``conversation_id``
+fixture (guaranteeing a "Today" date-group heading is present — the shared
+dev project's ambient conversations are NOT guaranteed by any fixture, so
+relying on them un-seeded would make the check non-deterministic) and
+comparing bounding boxes: the new-folder input's bottom edge must sit above
+the "Today" heading's top edge. See ``ChatPage.get_conversation_group_
+header()`` (new, additive) and the AFS's "AFS amended (fix-only round 2)"
+section.
 """
 
 import logging
@@ -72,7 +86,7 @@ class TestChatFolderCreation:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2
-    def test_create_folder_via_chats_header_icon(self, page):
+    def test_create_folder_via_chats_header_icon(self, page, conversation_id):
         """Create a folder via the CHATS header icon, confirm with the
         default name, and verify its collapsed + expanded rendering.
 
@@ -82,7 +96,8 @@ class TestChatFolderCreation:
         2. Verify the folder-creation icon is visible, positioned before
            the search button.
         3. Click it; verify a new, focused, editable "New folder" entry
-           appears at the top of the list.
+           appears at the top of the list, ABOVE the "Today" date-group
+           heading (positional bounding-box check — fix-only round 2).
         4. Verify the confirm (checkmark) and cancel (X) icons are visible.
         5. Click confirm without changing the name; verify the underlying
            POST resolves 201 with the expected response shape, and the
@@ -91,6 +106,15 @@ class TestChatFolderCreation:
            the name reads "New folder".
         7. Expand the folder; verify data-expanded flips to "true" and the
            "No conversations added" empty state is shown.
+
+        Args:
+            conversation_id: (fixture, unused directly) seeds one fresh
+                conversation via the API before this test runs and deletes
+                it afterward, regardless of pass/fail. Its only purpose
+                here is to guarantee a "Today" date-group heading exists
+                in the sidebar so Step 3's positional check has real,
+                deterministic content to compare against (see module
+                docstring's "Fix-only round 2" note).
         """
         chat = ChatPage(page)
         folder_id = None
@@ -150,6 +174,30 @@ class TestChatFolderCreation:
                     f"default name {DEFAULT_FOLDER_NAME!r}"
                 )
                 expect(chat.folder_name_input).to_be_focused(timeout=UI_ELEMENT_TIMEOUT)
+
+                # Positional check (round-2 review finding): the case's own
+                # step-3 text and the AFS both say the new entry appears
+                # "at the top of the list ... above any existing date-group
+                # headings" — a real DOM/bounding-box comparison, not just
+                # "first child of an otherwise-empty container". The
+                # `conversation_id` fixture seeded a fresh conversation
+                # before this test ran, guaranteeing the "Today" heading
+                # renders here.
+                today_header = chat.get_conversation_group_header("today")
+                today_header.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                input_box = chat.folder_name_input.bounding_box()
+                today_box = today_header.first.bounding_box()
+                assert input_box is not None and today_box is not None, (
+                    "Both the new-folder input and the 'Today' date-group "
+                    "heading should have a resolvable bounding box — "
+                    f"input_box={input_box}, today_box={today_box}"
+                )
+                assert input_box["y"] + input_box["height"] <= today_box["y"], (
+                    "New folder entry should render ABOVE the 'Today' "
+                    "date-group heading (i.e. at the top of the "
+                    f"folder/conversation list) — input_box={input_box}, "
+                    f"today_header_box={today_box}"
+                )
 
             with allure.step(
                 "Step 4 — Verify the confirm (checkmark) and cancel (X) "
