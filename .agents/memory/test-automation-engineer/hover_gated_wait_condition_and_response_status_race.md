@@ -82,3 +82,31 @@ polling, no `page.expect_response()` nesting, zero race. Rule of thumb:
 on (or the count is small/fixed); defer-the-read on the existing capture
 list when the test already condition-waits on something the network calls
 must have finished before (from ELITEA-1826, PR pending).
+
+## Addendum — a third confirmed instance: trace the frontend source to find WHERE to even register the capture
+
+ELITEA-2114 round-2 fix (PR #696): needed a positive `status == 200` check on
+`capture_requests_matching()` for a conversation-content GET, to prove a
+panel-refresh assertion wasn't vacuous. The naive registration point
+("wrap it around the nearest preceding wait/action") would have been WRONG
+in a new way this pattern hadn't hit before: reading
+`useDeleteConversation.js`/`useSelectConversation.js` (EliteaUI source)
+showed the GET resolves and is fully gone **before** the app even changes
+`page.url` (`onSelectConversation` awaits
+`Promise.all([getConversationDetail(...), selectConversation(...)])`
+BEFORE calling `changeUrlByConversation(...)`) — i.e. before the very wait
+(`wait_for_conversation_url_change()`) an earlier step in the SAME test
+already uses as its completion signal. A capture started anywhere at or
+after that URL-change wait would already have missed the event entirely
+(not a status:None race — a `page.expect_response()` registered there would
+hang to timeout, and a `capture_requests_matching()` list would just never
+gain the entry). Fix: register the capture BEFORE Setup (mirrors this
+file's own established early-`page.on("console", ...)` idiom), then defer
+the READ to a later step per the addendum above — combining both fixes
+(early registration + deferred read), since the response fires early but
+the safe-to-read point is still later. Confirms the defer-the-read pattern
+generalizes across step boundaries within one test, and that the WHEN
+question ("where does this response actually fire, relative to the wait
+I'd naturally reach for") requires checking the frontend source, not
+guessing from the AFS's endpoint list alone (from ELITEA-2114, PR #696
+round-2 fix-only pass).

@@ -54,3 +54,32 @@ without me ending my turn to "check later."
   forever blindly; escalate to a fresh foreground `Agent()` dispatch (per
   `sendmessage_resume_fragile_in_factory_mode.md`) if growth stays flat
   well past the task's expected duration.
+
+## Simpler alternative found later (#317, ELITEA-2114, PR #696, round-3 review)
+
+A reviewer subagent (dispatched foreground) itself spawned a background
+sub-agent for deep EliteaUI source-tracing and returned to me mid-review
+with "waiting on the background agent's report... will report once it
+lands" — the same "assume someone else is watching" trap, one level
+removed (the reviewer, not me, started the background work). Before
+reaching for the transcript-JSONL technique above, I tried
+`TaskOutput(task_id: <agentId-from-the-Agent-tool-result>, block: true,
+timeout: 600000)` directly on the reviewer's own agentId — no
+`SendMessage` resume needed first in this case (the reviewer's *own*
+foreground turn had already ended after launching its child; the parent
+`Agent()` call had returned). `TaskOutput` blocked correctly, and on the
+first call returned `<retrieval_status>timeout</retrieval_status>` +
+`status: running` (worth knowing: a mid-poll `TaskOutput` timeout can dump
+a raw JSONL fragment into the tool result, same shape as this entry's
+transcript file — that's expected, not an error). Calling it a second time
+with the same `block: true` returned `<retrieval_status>success</retrieval_status>`
++ `status: completed` + the reviewer's full final APPROVED verdict, cleanly
+parsed — no manual `wc -l`/`tail`/JSON-parsing needed.
+
+**Preference order going forward:** try `TaskOutput(task_id, block: true,
+timeout: <up to 600000>)` on the relevant agentId FIRST — it's a single
+tool call, blocks correctly, and returns the parsed final result on
+success. Fall back to the manual transcript-JSONL polling loop above only
+if `TaskOutput` itself errors on the task_id (e.g. the id format it wants
+doesn't resolve) or you need to watch intermediate progress rather than
+just the terminal result.
