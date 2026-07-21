@@ -1,9 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Open Build with AI modal — Locator.click: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("generate-agent-open-button")
-ERROR    elitea.steps:actions.py:49 Step failed: Open Build with AI modal — Locator.click: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("generate-agent-open-button")
-ERROR    elitea.steps:actions.py:49 Step failed: Open Build with AI modal — Locator.click: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("generate-agent-open-button")

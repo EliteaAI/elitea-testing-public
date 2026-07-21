@@ -1,0 +1,57 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Tue Jul 21 08:00:11 UTC 2026","Tue Jul 21 08:00:15 UTC 2026","3826","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_internal_tools_panel_shows_all_tools","TC-CHAT-012: Internal tools panel displays all available tools."
+"passed","Tue Jul 21 08:00:54 UTC 2026","Tue Jul 21 08:01:12 UTC 2026","18408","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_handle_message_send_failure","TC-CHAT-024: Handle message send failure gracefully."
+"passed","Tue Jul 21 08:01:55 UTC 2026","Tue Jul 21 08:01:59 UTC 2026","3435","tests.ui.chat","test_conversation_management","TestConversationList","","","test_search_conversations_button","TC-CONV-005: Search conversations button opens search panel."
+"passed","Tue Jul 21 08:00:20 UTC 2026","Tue Jul 21 08:00:24 UTC 2026","4001","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_add_participant_via_hash_search","TC-CHAT-018: Add participant via # search and select option.
+
+        The hash search feature detects '#' via keydown events, so we must
+        use press_sequentially() instead of fill() to trigger it.
+        "
+"passed","Tue Jul 21 08:03:03 UTC 2026","Tue Jul 21 08:03:18 UTC 2026","14689","tests.ui.chat","test_conversation_management","TestConversationActions","","","test_delete_conversation_cancel","TC-CONV-007b: Cancel the delete confirmation dialog."
+"passed","Tue Jul 21 07:59:12 UTC 2026","Tue Jul 21 07:59:20 UTC 2026","7244","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_shift_enter_adds_new_line","TC-CHAT-006: Shift+Enter adds new line instead of sending."
+"passed","Tue Jul 21 08:01:59 UTC 2026","Tue Jul 21 08:02:14 UTC 2026","14768","tests.ui.chat","test_conversation_management","TestConversationNavigation","","","test_navigate_between_conversations","Navigate from one conversation to another via the sidebar list."
+"passed","Tue Jul 21 08:01:36 UTC 2026","Tue Jul 21 08:01:39 UTC 2026","3406","tests.ui.chat","test_conversation_management","TestCreateConversation","","","test_new_conversation_default_settings","TC-CONV-002: New conversation has default settings."
+"passed","Tue Jul 21 08:01:41 UTC 2026","Tue Jul 21 08:01:55 UTC 2026","13837","tests.ui.chat","test_conversation_management","TestConversationList","","","test_click_conversation_to_open","TC-CONV-004: Click conversation to open it."
+"passed","Tue Jul 21 07:59:25 UTC 2026","Tue Jul 21 07:59:33 UTC 2026","8875","tests.ui.chat","test_chat_interface","TestMessageActions","","","test_copy_message_to_clipboard","TC-CHAT-008: Copy message to clipboard."
+"passed","Tue Jul 21 08:03:38 UTC 2026","Tue Jul 21 08:06:33 UTC 2026","175633","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[detailed_description]","Create image from text prompt and verify image appears in response."
+"passed","Tue Jul 21 08:01:32 UTC 2026","Tue Jul 21 08:01:35 UTC 2026","3813","tests.ui.chat","test_conversation_management","TestCreateConversation","","","test_create_conversation_via_api","TC-CONV-001, TC-CONV-003: Create conversation and verify it appears in UI."
+"passed","Tue Jul 21 08:03:37 UTC 2026","Tue Jul 21 08:03:37 UTC 2026","557","tests.ui.chat","test_conversation_management","TestConversationIsolation","","","test_fixture_cleanup_cycle","Verify that creating and deleting conversations via the API works."
+"skipped","Tue Jul 21 08:01:14 UTC 2026","Tue Jul 21 08:01:14 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[32k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
+
+        Parameterized to verify:
+        - P1 (10,000 tokens): Standard value propagates correctly
+        - P2 (32,000 tokens): Updated value propagates (not cached)
+
+        Cleanup: deletes the created conversation via API.
+        "
+"passed","Tue Jul 21 07:59:54 UTC 2026","Tue Jul 21 07:59:57 UTC 2026","3306","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_model_selector_opens_menu","TC-CHAT-010, TC-CHAT-020: Model selector shows current model and opens menu."
+"passed","Tue Jul 21 08:02:24 UTC 2026","Tue Jul 21 08:02:42 UTC 2026","18678","tests.ui.chat","test_conversation_management","TestConversationActions","","","test_rename_conversation_via_ui","TC-CONV-006 UI: Rename a conversation through the three-dot menu."
+"passed","Tue Jul 21 07:59:20 UTC 2026","Tue Jul 21 07:59:24 UTC 2026","3461","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_cannot_send_empty_message","TC-CHAT-007: Cannot send empty message."
+"skipped","Tue Jul 21 07:59:34 UTC 2026","Tue Jul 21 07:59:52 UTC 2026","17662","tests.ui.chat","test_chat_interface","TestMessageActions","","","test_delete_message","TC-CHAT-009: Delete message."
+"passed","Tue Jul 21 07:59:58 UTC 2026","Tue Jul 21 08:00:10 UTC 2026","12122","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_attach_files_button_sends_file_with_message","TC-CHAT-011: Attach file and send message with attachment."
+"passed","Tue Jul 21 08:00:50 UTC 2026","Tue Jul 21 08:00:53 UTC 2026","3353","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_search_conversations_dialog","TC-CHAT-023: Search conversations."
+"passed","Tue Jul 21 08:03:33 UTC 2026","Tue Jul 21 08:03:37 UTC 2026","3391","tests.ui.chat","test_conversation_management","TestConversationIsolation","","","test_fixture_creates_fresh_conversation","Verify the conversation_id fixture produces a valid conversation."
+"passed","Tue Jul 21 08:03:18 UTC 2026","Tue Jul 21 08:03:33 UTC 2026","14280","tests.ui.chat","test_conversation_management","TestConversationActions","","","test_multiple_conversations_listed","Multiple conversations appear in the sidebar list."
+"passed","Tue Jul 21 08:01:14 UTC 2026","Tue Jul 21 08:01:31 UTC 2026","16972","tests.ui.chat","test_conversation_management","TestCreateConversation","","","test_create_conversation_via_ui_button","TC-CONV-001 UI: Create a conversation by clicking the UI button."
+"passed","Tue Jul 21 07:59:01 UTC 2026","Tue Jul 21 07:59:04 UTC 2026","3420","tests.ui.chat","test_chat_interface","TestPageLoadAndRendering","","","test_chat_page_loads_with_functional_input","TC-CHAT-001, TC-CHAT-002: Chat page loads with functional message input."
+"passed","Tue Jul 21 07:58:11 UTC 2026","Tue Jul 21 07:58:59 UTC 2026","48044","tests.ui.chat","test_agent_with_toolkit_chat","TestAgentWithToolkitInChat","","","test_agent_with_toolkit_executes_in_chat","Create agent with toolkit, add agent as participant in chat, verify toolkit executes.
+
+        The toolkit is attached to the agent (not the conversation directly).
+        This tests the agent-owns-toolkit execution path in real chat (/chat).
+        "
+"passed","Tue Jul 21 07:59:05 UTC 2026","Tue Jul 21 07:59:12 UTC 2026","6883","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_send_text_message","TC-CHAT-003, TC-CHAT-004: Send message and verify history."
+"passed","Tue Jul 21 08:02:43 UTC 2026","Tue Jul 21 08:03:03 UTC 2026","20297","tests.ui.chat","test_conversation_management","TestConversationActions","","","test_delete_conversation_with_confirmation","TC-CONV-007: Delete conversation via UI and verify removal."
+"skipped","Tue Jul 21 08:00:25 UTC 2026","Tue Jul 21 08:00:39 UTC 2026","14452","tests.ui.chat","test_chat_interface","TestContextAndSettings","","","test_edit_context_settings","TC-CHAT-019: Edit context settings."
+"skipped","Tue Jul 21 08:01:14 UTC 2026","Tue Jul 21 08:01:14 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[10k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
+
+        Parameterized to verify:
+        - P1 (10,000 tokens): Standard value propagates correctly
+        - P2 (32,000 tokens): Updated value propagates (not cached)
+
+        Cleanup: deletes the created conversation via API.
+        "
+"passed","Tue Jul 21 08:06:34 UTC 2026","Tue Jul 21 08:08:50 UTC 2026","135898","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[minimal_prompt]","Create image from text prompt and verify image appears in response."
+"passed","Tue Jul 21 08:00:15 UTC 2026","Tue Jul 21 08:00:19 UTC 2026","3876","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_hash_search_participants","TC-CHAT-017: Use # to search participants."
+"passed","Tue Jul 21 08:00:46 UTC 2026","Tue Jul 21 08:00:49 UTC 2026","3255","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_navigate_to_agents_from_sidebar","TC-CHAT-022: Navigate to Agents from sidebar."
+"passed","Tue Jul 21 08:00:41 UTC 2026","Tue Jul 21 08:00:45 UTC 2026","4526","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_open_close_sidebar","TC-CHAT-021: Open/close sidebar drawer."
+"passed","Tue Jul 21 08:02:15 UTC 2026","Tue Jul 21 08:02:23 UTC 2026","8660","tests.ui.chat","test_conversation_management","TestConversationNavigation","","","test_send_message_persists_conversation","After sending a message, the conversation stays in the sidebar list."
