@@ -37,6 +37,22 @@ Three-dot menu delete flow for Toolkits/MCP detail pages (`ToolkitsControls.jsx`
    (`MuiFormControl-root`), not the real `<input>`. Click + `press_sequentially()`/
    `type()` on the wrapper DOES work (browser click-delegation focuses the inner
    input; verified `input.value` after), but `.input_value()` on it will throw.
+
+   **UPDATE (2026-07-21, ELITEA-2114, live-reverified on `automation/testids`):**
+   this has been partially fixed since — `delete-confirm-dialog` (outer container),
+   `delete-confirm-message` (body `<Typography>`), and `delete-confirm-button`
+   (the red confirm button) now all carry real testids. **Cancel still has none**
+   (`DeleteEntityModal.jsx`'s `actionsNode` renders `Button.BaseBtn` for Cancel
+   with no `data-testid` prop passed at all — unlike the confirm button, this
+   isn't even an `OneClickButton`-forwarding problem, the call site just never
+   wired one). The dialog TITLE also still has no testid, and separately: its
+   `<h2>` carries a STALE `id="variables-dialog-title"` that doesn't match the
+   `Dialog`'s own `aria-labelledby="alert-dialog-title"` — see the new
+   `basemodal_aria_labelledby_id_mismatch_and_conversation_menu_gaps.md` entry
+   for the full a11y/automation blast radius (filed as bug #694, EliteaUI
+   commit `459c1f8a`, 2026-06-22 regression). Re-verify testid presence before
+   trusting either version of this note on a future case — this file clearly
+   drifts as the product evolves.
 4. **`Button.OneClickButton` (used for `DeleteEntityModal`'s own Delete/confirm
    action, since it renders a custom `actionsNode` that bypasses `BaseModal`'s
    built-in `confirmButtonTestId` prop entirely) destructures only `{ disabled,
