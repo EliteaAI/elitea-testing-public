@@ -110,7 +110,9 @@ class TestConversationDeletionFlow:
         11. Verify no new console errors and the next conversation is
             auto-selected (URL moves off conv_target, data-active reflects
             the new conversation).
-        12. Verify the main chat panel no longer shows conv_target content.
+        12. Verify the main chat panel genuinely refreshed to the
+            auto-selected conversation's content (via the network fetch
+            that loads it), not stale conv_target content.
         """
         chat = ChatPage(page)
         conv_target_id = None
@@ -128,6 +130,20 @@ class TestConversationDeletionFlow:
                 console_messages.append(msg)
 
         page.on("console", _on_console)
+
+        # Registered before Setup for the same reason as the console
+        # listener above: the conversation-content-fetch GET that Step 12
+        # needs (AFS § Network Behavior — "fetches the auto-selected next
+        # conversation's content") fires as part of the auto-select flow
+        # ``useDeleteConversation.js``'s ``onDeleteConversation`` kicks off
+        # right after Step 9's DELETE resolves — this response arrives and
+        # resolves BEFORE Step 11's URL-change wait even completes, so a
+        # listener started inside Step 12 itself would already be too late
+        # to see it. Reuses ``BasePage.capture_requests_matching()``
+        # (Round-2 review fix — see Step 12 below).
+        conversation_detail_requests = chat.capture_requests_matching(
+            url_substring="/conversation/prompt_lib/", method="GET",
+        )
 
         try:
             with allure.step(
@@ -308,17 +324,47 @@ class TestConversationDeletionFlow:
                 )
 
             with allure.step(
-                "Step 12 — Verify the main chat panel no longer shows "
-                "conv_target content"
+                "Step 12 — Verify the main chat panel genuinely refreshed "
+                "to show the auto-selected conversation's content, not "
+                "stale conv_target content"
             ):
                 # conv_target and conv_sibling are both API-created with
                 # zero messages (AFS § Automation Hints — creating test
                 # data via a real chat-send is unnecessarily slow/costly),
-                # so there is no conv_target-distinguishing message text to
-                # check for absence. The assertable structural fact is that
-                # the panel now reflects an empty, freshly-loaded
-                # conversation (the newly-active one) rather than any
-                # lingering conv_target state.
+                # so a plain get_message_count() == 0 check alone can't
+                # distinguish "panel correctly refreshed to the
+                # auto-selected conversation" from "panel is stuck on
+                # stale conv_target content" — both read as empty (Round-2
+                # review finding). The content-based discriminator: the
+                # network request that fetches the auto-selected
+                # conversation's content (AFS § Network Behavior —
+                # ``GET .../conversation/prompt_lib/{project_id}/{next_id}
+                # ?messages_limit=10&sort_order=desc``, captured live via
+                # the listener registered before Setup, since it fires
+                # during Step 9's flow, well before this point) must have
+                # actually been made for `next_id` specifically and
+                # resolved 200 — proving a genuine refetch of the correct
+                # conversation happened, not a lingering, un-refreshed
+                # conv_target view.
+                next_id_requests = [
+                    r for r in conversation_detail_requests
+                    if re.search(
+                        rf"/conversation/prompt_lib/[^/]+/{re.escape(next_id)}\?",
+                        r["url"],
+                    )
+                ]
+                assert next_id_requests, (
+                    f"Expected a conversation-content GET for the "
+                    f"auto-selected conversation {next_id}, captured none. "
+                    f"Seen requests: {[r['url'] for r in conversation_detail_requests]!r}"
+                )
+                detail_request = next_id_requests[-1]
+                assert detail_request["status"] == 200, (
+                    f"Conversation-content fetch for {next_id} should "
+                    f"resolve 200, got {detail_request['status']} for "
+                    f"{detail_request['url']}"
+                )
+
                 assert chat.get_message_count() == 0, (
                     "Main chat panel should show an empty message list for "
                     "the newly-active (also empty) conversation, not any "

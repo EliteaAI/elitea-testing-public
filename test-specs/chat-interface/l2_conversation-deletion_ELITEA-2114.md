@@ -80,7 +80,7 @@ No existing AFS covers this case (`test-specs/chat-interface/` had only ELITEA-2
 | 9 Click Delete | modal closes | step 9 | `step 9`: dialog hidden + `DELETE` 204 | asserted *(duplicates part of already-merged `test_delete_conversation_with_confirmation`; kept for the same continuous-flow reason)* |
 | 10 Conversation no longer in left panel | removed | step 10 | `step 10`: item count 0 | asserted |
 | 11 No error message; next conversation highlighted | no errors, next selected | step 11 | `step 11`: console check + URL routes to next id | asserted *(no compliant sidebar-highlight testid exists yet — asserted via URL + main panel instead; see § Concrete Handles gap)* |
-| 12 Main chat panel doesn't show deleted conversation | deleted content gone | step 12 | `step 12`: message-list content check | asserted |
+| 12 Main chat panel doesn't show deleted conversation | deleted content gone | step 12 | `step 12`: conversation-content-fetch network check (id-scoped, 200) + message-list content check | asserted *(CLARIFICATION-3, implementer round-2 review fix — see below: message-list-content-only was vacuous since both test conversations are zero-message by design)* |
 | Expected Final State (prose): "conversation deleted after confirmation; Cancel preserves it; panel refreshes correctly" | — | steps 7, 9–12 | covered by the rows above | asserted |
 | Pass/Fail: "All steps complete without errors" | — | step 11 | console-check | asserted |
 
@@ -91,6 +91,7 @@ Disposition key: `asserted` / `already-covered` / `clarification` / `blocked` / 
 - `step 8` asserts the dialog re-opens cleanly (no stale backdrop/portal residue) after a prior Cancel — *added: MUI modals are known to leave stale-mounted artifacts in this codebase (see `mui-patterns.md` overlay gotchas); the case's own "hover → reopen menu → Delete again" step implies this should be clean, so it's worth a positive check rather than assuming it.*
 - `step 9` asserts the underlying `DELETE .../conversation/prompt_lib/{project_id}/{id}` network call resolves `204` — *added: matches the existing tests' pattern of confirming deletion via the API, not just the DOM, and is what actually proves the deletion is real rather than a client-side-only list splice.*
 - `step 11` explicitly asserts no *new* console errors — *added: standard side-channel discipline (silent errors are the worst bugs); the pre-existing unrelated `secrets/secrets/default` 403 noise present on every page load in this environment must be excluded from the "new errors" check, not treated as a failure.*
+- `step 12` asserts the `GET .../conversation/prompt_lib/{project_id}/{next_id}?messages_limit=10&sort_order=desc` network request (§ Network Behavior) was made and resolved `200` — *added, CLARIFICATION-3 (implementer, round-2 review fix): `conv_target` and `conv_sibling` are both zero-message by design (§ Automation Hints), so the message-list-content check alone can't distinguish "panel correctly refreshed to `conv_sibling`" from "panel is stuck on stale `conv_target` content" — both read as an empty message list. The network check proves a genuine refetch of the auto-selected conversation's content actually happened, which the DOM-only check could not.*
 - (nothing else added beyond the case.)
 
 ## Cleanup
