@@ -49,3 +49,12 @@ an out-of-order anomaly (run 2 of 5 was a different, unrelated Timeout signature
 not the sanctioned #649 one) and that exact signature-position fingerprint,
 combined with 3 duration matches to within ~0.1s, uniquely identified the right
 5-file cluster out of ~17 same-test-name candidates that day.
+
+**Third clean confirmation (#317/PR#696, control-audit 2026-07-21):** single-case,
+no ambiguity — `junit_20260721_070037/070110/070138.xml` matched the closure
+record's pasted `24.70s/23.41s/23.67s` to `24.695/23.408/23.671`, 0 failures each,
+same classname+method, timestamps 07:00:12→07:01:39 local (+03:00) landing ~16s
+before the 07:01:55 local `mergedAt`. Routine enough now (3rd straight clean use)
+that this should be a default move on every control-audit's item 5, not an
+occasional nice-to-have — it's cheap and it catches exactly the kind of
+post-hoc-narrated-gate that item 5 exists to prevent.

@@ -44,3 +44,37 @@ case that's strictly clearer-cut than the one still open.
   touches one. Orphan shape, solo-FAIL, sibling (`toolkit-detail-save-button`)
   in the same PR was correctly wired and used — the FAIL is per-testid, not
   per-PR, don't let one compliant sibling launder an orphan one.
+
+### Wired-but-uninvoked (#511's shape) — case history, building toward a ruling
+
+- Issue #60/#511 (ELITEA-1922, PR #292/EliteaUI#554): `toolkit-form-view-toggle`
+  wired into `McpFormPage.switch_to_form_view()`, method never called by the
+  test. Original case that opened the still-unanswered canon question.
+- Issue #298 (ELITEA-2095, PR #693, control-audited 2026-07-21): `chat-participants-
+  badge-users` wired into the pre-existing generic `is_participants_badge_visible(
+  section=...)`/`open_participants_popover(section=...)` (parameterized, reused by
+  sibling cases with other `section` values), but `section="users"` is never called
+  anywhere in `test_open_conversation_today_section.py`. Second real-delivery
+  instance of the exact shape — and this time the closure record **proactively
+  disclosed it** rather than it being caught cold by audit. Did not file a
+  duplicate question; flagged as a second occurrence in the #298 verdict comment
+  instead, per the practice below. Judged the rest of #298's delivery clean (PASS).
+- Both instances are self-disclosed/wired into reused, parameterized page-object
+  scaffolding — not silent, not orphaned. The "no carve-out" recommendation on
+  #511 is still just a recommendation, not a human ruling; #511/#277 are both
+  now multiple days old and unanswered — worth prioritizing given they're
+  recurring in real deliveries, not just a theoretical edge case anymore.
+- Issue #317 (ELITEA-2114, PR #696, control-audited 2026-07-21, one day after
+  #298): `chat-conversation-menu-make-public-menuitem` /
+  `chat-conversation-menu-share-menuitem` — 2 of 7 NEW menu-item testids this
+  same PR added, wired into the real (also new, same-PR) `get_conversation_menu_item()`/
+  `CONVERSATION_MENU_ITEM` mechanism, but never invoked with those two keys
+  anywhere in the diff (only `rename/move-to/playback/pin/delete` are exercised).
+  Distinct from #298's shape in one way — here the generic method AND the
+  uninvoked testids were born in the same PR, not a pre-existing method reused
+  from elsewhere — but the AFS's own § Concrete Handles table self-disclosed it
+  ("only 5 of 7 render for a Private-project conversation"), so still cleanly
+  wired-but-uninvoked, not orphan. Third real-delivery instance in 2 days. Did
+  not file a duplicate question; flagged in the #317 verdict comment. #511 is
+  now 6 days unanswered with 3 real occurrences piled up behind it — the
+  strongest case yet for prioritizing a human ruling.
