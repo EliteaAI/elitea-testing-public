@@ -1,0 +1,128 @@
+# Test Case: Chat – Folder Creation via CHATS Header Icon
+
+## Metadata
+- **TMS ID**: ELITEA-2132
+- **Linked Story**: none (case `requirements: []`)
+- **Priority**: l3 (case frontmatter: `priority: medium`)
+- **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids`, DEV backend; project "Elitea Testing Team", observed live as `projectId=471` — treat as `${ELITEA_PROJECT_ID}`, don't hardcode)
+- **User set**: `${TEST_USER}` — on localhost, `auth_state`/`VITE_DEV_TOKEN` skips explicit Keycloak login
+- **Analyst**: qa-engineer (agent)
+- **Status**: ready-for-automation
+
+No existing AFS or automated test covers folder creation — `test-specs/chat-interface/` had only ELITEA-2114 (conversation deletion) and ELITEA-2095 (open conversation) before this file, and `automation/tests/ui/chat/test_conversation_management.py`'s own module docstring states P2 folders/sharing are explicitly skipped (`TC-CONV-001 through TC-CONV-007 (P0/P1 only; P2 folders/sharing skipped)`). This case, and the whole "Folders" feature area (`EliteaUI src/[fsd]/features/chat/conversation-list/ui/folders/`), had **zero `data-testid` attributes anywhere** before this analyst pass — every interactive element (header create-folder button, inline name input, confirm/cancel icons, folder row, folder icon, expand arrow, empty-state text) was reachable only via unstable emotion/MUI-generated CSS hashes (`css-vmh4fb`, `css-m1sk8u`, …) or, in the header button's case, a legacy `get_by_label("Create folder")` call already present in `chat_page.py::click_create_folder()` (pre-dates the testid-only policy). Given the testid-only locator policy has no fallback rung, 8 testids were added directly during this pass (mirroring the ELITEA-2114 precedent of analyst-added testids) rather than deferring the whole case as blocked — see § Concrete Handles. All 7 case steps were executed live end-to-end, twice (once to validate the raw UI, once again after the testids landed, using only the new testids) — no product defects found.
+
+## Preconditions
+- User is logged in (`${TEST_USER}` / dev-auth on localhost).
+- User is on the Chats section (`${BASE_URL}/chat` or any `/chat/{id}` route — the CHATS panel with its header icons renders on every chat route, not just the bare `/chat` index).
+
+## Test Data
+
+### reuse-existing
+- `${TEST_USER}` — see `.agents/profile.md` § Roles & sample users.
+- Active project — whatever `${TEST_USER}`'s default/last-selected project is (observed live as "Elitea Testing Team", id 471, same project used by the sibling ELITEA-2114/ELITEA-2095 AFSes). No project switch is required — folder creation is project-scoped but not otherwise dependent on which project is active.
+
+### generate-per-test (created by the test step itself, cleaned up in its own teardown)
+- The folder created by clicking the header icon and confirming with the default name ("New folder"). This is the case's own observable under test — there is no separate "seed" step; the folder IS the test data, and every run must delete it afterward (see § Cleanup) so repeated runs don't accumulate junk folders in the shared project.
+
+## Test Steps
+
+1. Navigate to `${BASE_URL}/chat`.
+   - **Verify**: the CHATS panel is displayed (`Chats` heading visible in the left panel).
+2. Verify the CHATS panel header shows a folder-creation icon immediately to the left of the search icon.
+   - **Verify**: `chat-create-folder-button` is visible, positioned before (DOM-order and visually) the existing search button (`ChatPage`'s pre-existing search-button handle — see § Concrete Handles).
+3. Click `chat-create-folder-button`.
+   - **Verify**: a new entry appears at the **top** of the folder/conversation list (above any existing date-group headings, e.g. "This Week"), in editable mode, with the default name **"New folder"** pre-filled and focused in `chat-folder-name-input`.
+4. Verify a checkmark and an X (cancel) icon are displayed next to the input field.
+   - **Verify**: `chat-folder-name-confirm-button` and `chat-folder-name-cancel-button` are both visible, positioned immediately after `chat-folder-name-input`.
+5. Click `chat-folder-name-confirm-button` without changing the default name.
+   - **Verify**: `POST /api/v2/elitea_core/folder/prompt_lib/{project_id}` resolves `201 Created`, response body `{"name": "New folder", "meta": {}, "id": <folder_id>, "owner_id": <owner_id>, "position": <position>}` (live-observed: `{"name": "New folder", "meta": {}, "id": 1, "owner_id": 659, "position": 1000000}` on first run in this project). The editor closes and `chat-folder-item-{folder_id}` appears in the list with `data-expanded="false"`.
+6. Verify the folder displays a folder icon and an expand arrow.
+   - **Verify**: within `chat-folder-item-{folder_id}`, both `chat-folder-icon` and `chat-folder-expand-icon` are visible, and the folder name text reads "New folder".
+7. Click the folder row to expand it, and verify the empty state.
+   - **Verify**: `chat-folder-item-{folder_id}`'s `data-expanded` attribute flips to `"true"`; `chat-folder-empty-state` (scoped inside `chat-folder-item-{folder_id}`) is visible with text **"No conversations added"** (live-verified exact string — the case's own wording, `'No conversations added'`, matches the live product exactly; no reverse-masking needed here).
+
+## Expected Results
+- The CHATS header shows a folder-creation icon next to the search icon at all times (independent of whether any folder exists yet).
+- Clicking it inserts an inline, editable "New folder" entry at the top of the list with checkmark/cancel affordances.
+- Confirming with the default name creates a real folder server-side (`POST … → 201`) and renders it as a collapsed accordion item with a folder icon, expand arrow, and the name "New folder".
+- Expanding the newly created folder shows the "No conversations added" empty state (no conversations were ever added to it).
+- No new console errors beyond the pre-existing, unrelated project-471 `secrets/secrets/default` `403` (see § Network Behavior).
+
+## Coverage Map
+
+### Axis 1 — Case coverage
+
+| Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
+|---|---|---|---|---|
+| Precondition: user logged in, on Chats section | — | Setup | `auth_state` fixture / navigate to `/chat` | asserted |
+| 1 Navigate to the Chats section | Chats section is displayed | AFS step 1 | step 1: "Chats" heading visible | asserted |
+| 2 Verify CHATS panel header displays a folder icon next to the search icon | Folder icon visible | AFS step 2 | step 2: `chat-create-folder-button` visible, positioned before the search button | asserted |
+| 3 Click the folder icon | New folder entry appears at top of folder list in editable mode with default name e.g. 'New folder' | AFS step 3 | step 3: entry at top of list, `chat-folder-name-input` value = "New folder", focused | asserted |
+| 4 Verify checkmark and X icons are displayed next to the input field | Both icons visible | AFS step 4 | step 4: `chat-folder-name-confirm-button` + `chat-folder-name-cancel-button` visible | asserted |
+| 5 Click the checkmark icon without changing the default name | Folder created with default name; appears in folder list | AFS step 5 | step 5: `POST .../folder/prompt_lib/{project_id}` → `201`; `chat-folder-item-{id}` appears | asserted |
+| 6 Verify the folder displays a folder icon and expand arrow | Folder visible in panel | AFS step 6 | step 6: `chat-folder-icon` + `chat-folder-expand-icon` both present as descendants of `chat-folder-item-{id}` | asserted |
+| 7 Verify the folder shows empty state when expanded | Folder is empty or shows 'No conversations added' | AFS step 7 | step 7: `data-expanded="true"` + `chat-folder-empty-state` text "No conversations added" | asserted |
+| Expected Final State (prose): "Folder created with default name and is empty" | — | steps 5–7 | covered by the rows above | asserted |
+| Pass/Fail: "All steps complete without errors" | — | all steps | console-check after every interaction (Axis 2) | asserted |
+
+Disposition key: `asserted` / `already-covered` / `clarification` / `blocked` / `out-of-scope`. All rows `asserted` — every case element was executable and confirmed live, twice (raw-UI pass and testid-verified pass), with no blockers.
+
+### Axis 2 — Analyst additions
+
+- Step 2 asserts the folder-creation icon's **position relative to the search icon**, not just its bare presence — *added: the case's own wording ("next to the search icon") implies a positional relationship, and both DOM order and visual layout were live-confirmed to satisfy it (folder icon renders immediately before/left-of the search icon in both the expanded and collapsed sidebar states).*
+- Step 3 asserts the input is **focused** (not just visible) after clicking the create-folder button — *added: confirmed live (`textbox [active]` in the accessibility snapshot) — a non-focused input would still visually match the case's screenshot-level description but wouldn't match real user experience (type-immediately-after-click).*
+- Step 5 asserts the underlying `POST .../folder/prompt_lib/{project_id}` network call resolves `201` with the expected response shape — *added: matches the sibling AFSes' pattern (ELITEA-2114 asserts the `DELETE` conversation call) of confirming server-side reality, not just a client-side list splice.*
+- Step 6/7 assert via the new `data-expanded` attribute (not a screenshot-only visual check) — *added: gives automation a deterministic signal for expand/collapse state, per the project's `data-*`-for-state convention (EliteaUI PR #581 ruling) — the alternative (asserting `StyledAccordionSummary`'s native `aria-expanded`) was considered and is functionally equivalent, but `data-expanded` on the same element that carries the testid keeps the assertion single-handle.*
+- Console/network side-channel checked after every interaction (folder-icon click, confirm click, expand click, delete) — *added: standard side-channel discipline; confirmed clean throughout except the pre-existing project-471 secrets 403 (see § Network Behavior) — see also § Automation Hints for a synthetic-input false-positive that was ruled out during this pass, not a real finding.*
+- (nothing else added beyond the case.)
+
+## Cleanup
+1. Delete the created folder via the UI Delete flow (three-dot menu on `chat-folder-item-{id}`, scoped `conversation-menu-menu-button` → "Delete" menu item → `delete-confirm-button`) — live-verified this session: `DELETE /api/v2/elitea_core/folder/prompt_lib/{project_id}/{folder_id}` → `204 No Content`, folder removed from DOM and from the next `GET .../folder/prompt_lib/{project_id}?grouped=true` response.
+2. **No `FolderAPI` client exists yet in `automation/api/client.py`** (only `ConversationAPI` — see § Automation Hints for the recommended addition). Until one exists, cleanup MUST go through the UI Delete flow above (fully testid-covered, zero raw selectors needed) rather than being skipped — every run of this test creates one real, undeleted-by-default folder in the shared project `${ELITEA_PROJECT_ID}`, so cleanup is mandatory, not optional, per Hard Rule 10's guidance for state-mutating cases.
+3. Standard `try/finally` per `.claude/rules/ui-tests.md` § Test Data Lifecycle — delete must run even if a later assertion fails.
+
+## Concrete Handles (discovered during exploration)
+
+Locator policy on this project is **testid-only** — no role/label/text
+fallback ladder (`.agents/testing.md` § Locator policy,
+`.agents/role-overrides.md`). Before this pass, every element below except
+the delete-dialog handles had **zero** testid coverage; 8 were added directly
+to `EliteaAI/EliteaUI` `automation/testids` (commit `6fceb3e2`, pushed) during
+this analyst session, live-verified via Vite HMR both immediately after
+adding them and again after the commit/push. State (expanded) is exposed via
+a `data-*` attribute alongside the stable testid, not a state-dependent
+testid name, per the project's naming convention ruling.
+
+| Element | Testid handle | Provenance | Notes |
+|---|---|---|---|
+| CHATS header "Create folder" button | `[data-testid="chat-create-folder-button"]` | on-`automation/testids` ✓ (confirmed live, both render branches) | **ADDED this implementation.** `Conversations.jsx` renders this button in TWO mutually-exclusive JSX branches (expanded-sidebar ~L555, collapsed-sidebar ~L631) depending on the `collapsed` prop — both branches got the same testid since only one is ever mounted at a time. Legacy pre-existing `chat_page.py::click_create_folder()` used `page.get_by_label("Create folder")` (works via the MUI `Tooltip` `title` prop, not a testid) — leave as tracked tech debt; new automation should use the testid instead. |
+| Search button (pre-existing, for step-2 positional check) | existing `ChatPage` handle (search icon, `aria-label="Search chats"` observed live) | **needs-adding** — no testid found on this button either; out of scope for this case's testid budget (case doesn't interact with it, only needs it as a positional anchor) | Live-verified DOM order: `chat-create-folder-button` renders immediately before the search button in both sidebar states. If a future case needs to click Search, its testid must be added then. |
+| Folder-name inline input (create AND rename) | `[data-testid="chat-folder-name-input"]` | on-`automation/testids` ✓ (confirmed live — lands on the real `<input>`, not a wrapper) | **ADDED this implementation.** Added via `inputProps={{ 'data-testid': 'chat-folder-name-input' }}` on `Input.StyledInputEnhancer` in `FolderItem.jsx` — routes through MUI's `slotProps.htmlInput` channel, confirmed to land on the native `<input>` (verified `tagName === 'INPUT'`, not a `MuiFormControl`/`MuiInputBase` wrapper div). Shared between "create new folder" and "rename existing folder" flows (both render the same editor); only one folder can be in edit mode at a time in this UI, so no scoping needed. |
+| Folder-name confirm (checkmark) button | `[data-testid="chat-folder-name-confirm-button"]` | on-`automation/testids` ✓ (confirmed live) | **ADDED this implementation.** The underlying element is a plain `<div onClick=…>` (`FolderItem.jsx`'s `checkButton` `Box`) with **no ARIA role, no `tabindex`, no accessible name** even before this testid was added — mouse-only, not keyboard-reachable. Worth flagging as a standing a11y gap (not filed as a defect — out of this case's objective, which is functional not accessibility). |
+| Folder-name cancel (X) button | `[data-testid="chat-folder-name-cancel-button"]` | on-`automation/testids` ✓ (confirmed live) | **ADDED this implementation.** Same a11y note as the confirm button — plain `<div onClick=…>`, no role/tabindex. Not exercised by this case's steps (case doesn't test cancel) but added alongside the confirm button since both come from the same editor markup. |
+| Folder item row (whole accordion, dynamic per folder) | `[data-testid="chat-folder-item-{folder_id}"]`, plus `data-expanded="true"/"false"` on the same element | on-`automation/testids` ✓ (confirmed live: `data-expanded` flips `false`→`true` on click) | **ADDED this implementation.** Required threading a new `folderId` prop from `FolderItem.jsx` → `FolderAccordion.jsx` (`FolderAccordion` had no way to know which folder it was rendering before this). Placed on the **outer** `StyledAccordion` (not just the summary row) so it scopes BOTH the header (icon/name/expand-arrow/dot-menu) AND the body (empty-state / conversation list) as descendants — mirrors `chat-conversation-item-{id}`'s scope model. `folder.id` is a real backend id by the time this element renders (the temporary `isNew` placeholder folder is swapped for `result.data` from the `201` response before `FolderItem` re-renders in view mode — confirmed by reading `useCreateFolder.hooks.js`). |
+| Folder dot-menu button (3-dot, Rename/Pin/Delete) | `[data-testid="conversation-menu-menu-button"]`, **must be scoped inside `chat-folder-item-{folder_id}`** | on-`automation/testids` ✓ (pre-existing — same shared `DotMenu` component/testid as conversation items) | **NOT globally unique** — same non-unique-testid gap already documented in the ELITEA-2114 AFS for conversation items (`DotMenu id="conversation-menu"` is a static, repeated id). Confirmed live this session: `page.locator('[data-testid="chat-folder-item-3"] [data-testid="conversation-menu-menu-button"]')` resolves to exactly one element when scoped. Menu items themselves (`Rename` / `Pin on top` / `Delete`) currently carry **no testids** — matched by role+name (`getByRole('menuitem', { name: 'Delete' })`) in this exploration; out of this case's testid budget since the case doesn't require selecting a specific menu item. |
+| Folder icon (inside the row) | `[data-testid="chat-folder-icon"]`, **non-unique — scope inside `chat-folder-item-{folder_id}`** | on-`automation/testids` ✓ (confirmed live) | **ADDED this implementation.** `FolderIcon` (`src/components/Icons/FolderIcon.jsx`) is a shared icon component reused across unrelated features (DataTable, EntityIcon, ConfigurationSelect, ArtifactTable) — per the "shared components never hardcode a feature testid" ruling, the testid was added at the **call site** in `FolderAccordion.jsx`, not inside `FolderIcon.jsx` itself. Will repeat once per folder if multiple folders render simultaneously — always scope via the parent `chat-folder-item-{id}`. |
+| Expand-arrow icon (inside the row) | `[data-testid="chat-folder-expand-icon"]`, **non-unique — scope inside `chat-folder-item-{folder_id}`** | on-`automation/testids` ✓ (confirmed live) | **ADDED this implementation.** `StyledExpandMoreIcon` (`src/[fsd]/shared/ui/accordion/`) is shared across 4 other accordion usages in the codebase — same reasoning as the folder icon: testid added at the `FolderAccordion.jsx` call site via the `expandIcon` prop, not inside the shared component. |
+| Empty-state text ("No conversations added") | `[data-testid="chat-folder-empty-state"]`, **non-unique across simultaneously-rendered empty folders — scope inside `chat-folder-item-{folder_id}`** | on-`automation/testids` ✓ (confirmed live, text exactly matches case wording) | **ADDED this implementation.** `FolderAccordionItem.jsx` has a single call site (only consumed by `Folders.jsx`/`FolderItem.jsx`), so hardcoding the testid directly in that component (rather than threading a prop) is consistent with the project's "feature-scoped, single-consumer component" carve-out. Rendered in the DOM even while the folder is collapsed (MUI `Collapse` keeps content mounted, height-animates it) — automation should gate on `data-expanded="true"` before asserting *visibility*, though the text is present in the DOM either way. |
+| Delete confirmation dialog / message / button | `[data-testid="delete-confirm-dialog"]` / `[data-testid="delete-confirm-message"]` / `[data-testid="delete-confirm-button"]` | on-`automation/testids` ✓ (pre-existing, confirmed live for folders too) | **Already-covered, not new.** The same generic `BaseModal`/`DeleteEntityModal` delete-confirmation testids documented in the ELITEA-2114 AFS (for conversations) are reused verbatim for folder deletion — live-verified dialog text: `"Are you sure to delete the New folder folder? It can't be restored."` (matches `FolderItem.jsx`'s `menuItems` `entityName`/`inlineExtraContent` config: `"{name}" + " folder? It can't be restored."`). No new testid work needed for cleanup. |
+
+## Network Behavior
+- `POST /api/v2/elitea_core/folder/prompt_lib/{project_id}` → `201 Created` on confirm (step 5). Response: `{"name": "New folder", "meta": {}, "id": <int>, "owner_id": <int>, "position": <int>}`.
+- `GET /api/v2/elitea_core/folder/prompt_lib/{project_id}?sort_by=updated_at&sort_order=desc&grouped=true` → `200` — refetches the folder list after both create and delete; also fires once on initial page load.
+- `DELETE /api/v2/elitea_core/folder/prompt_lib/{project_id}/{folder_id}` → `204 No Content` on cleanup delete (live-verified: `DELETE .../folder/prompt_lib/471/3 => [204] No Content`).
+- **Pre-existing, already-documented, unrelated artifact** (not filed, recurs exactly as described in the ELITEA-2114/ELITEA-2095/ELITEA-1893 AFSes): project `471` surfaces a `403 Forbidden` on `GET /api/v2/secrets/secrets/default/471` on every page load and again after some mutations, regardless of any action taken. Confirmed live again this run (2 occurrences across the session). Do not chase it, do not gate this case's assertions on its absence.
+
+## Known Defects Found During Exploration
+None found. All 7 case steps executed live end-to-end, twice, and matched the case's expected results exactly (including the literal empty-state wording "No conversations added" — no case-text drift, no reverse-masking needed). The complete absence of pre-existing testids in this feature area is **implementer/testid work**, not a product defect, per `.agents/testing.md` § Locator policy ("missing testid alone ⇒ add it") — and it was resolved directly in this pass (see § Concrete Handles) rather than left as a blocker.
+
+## Blocked Steps
+None. All 7 case steps were executable and confirmed live.
+
+## Automation Hints
+- Framework: Playwright + pytest, testid-only `LocatorDescriptor` (`.agents/testing.md`).
+- Page object: extend `automation/pages/chat_page.py`. It already has a legacy `click_create_folder()` (uses `get_by_label`, pre-dates the testid policy — leave in place as tracked tech debt for now, or migrate its body to the new `chat-create-folder-button` testid in the same PR that adds this case's test, implementer's call). New methods needed: `create_folder(name: str = None)` (click create button, optionally overwrite the default name, click confirm), `expand_folder(folder_id)`, `get_folder_empty_state_text(folder_id)`, `delete_folder_via_menu(folder_id)` (scoped dot-menu open → Delete menuitem → `delete-confirm-button`, mirroring the existing `delete_conversation_via_menu` pattern one level up in the same file).
+- **No `FolderAPI` client exists yet** in `automation/api/client.py` (only `ConversationAPI`, `AgentAPI`, etc. — see class list around line 216). Recommend adding a small `FolderAPI` class mirroring `ConversationAPI`'s exact shape (cookie-based auth, `_raise_for_status`, no `Content-Type` on GET/DELETE) with `create_folder(name)`, `list_folders()`, `delete_folder(folder_id)`, `rename_folder(folder_id, name)` against the endpoints confirmed live in § Network Behavior — this would let a future test seed/clean up folders without going through the UI at all (matching the `conversation_api` fixture's fast, non-UI pattern). Until that exists, this case's own cleanup must go through the UI Delete flow (see § Cleanup) — fully testid-covered, no raw selectors needed either way.
+- **Synthetic-input false positive, ruled out — not filed.** While exploring the folder dot-menu, a `page.evaluate(() => el.click())` (bypassing hover, a JS-evaluated click rather than a real pointer event) triggered a React/MUI dev-mode console error: `Warning: Failed %s type: %s%s prop MUI: The 'anchorEl' prop provided to the component is invalid. The anchor element should be part of the document layout.` Re-tested twice with genuine Playwright `hover()` + `click()` (the pattern real automation uses) immediately after — the warning did **not** reproduce either time, and the menu opened correctly both times. Per the Synthetic Input Hygiene guard, this is self-inflicted session state from the non-native click, not a product defect — documented here so a future debugger doesn't mistake a similarly-triggered warning for a regression, but not filed as a bug.
+- Testid provenance: all 8 new testids are pushed to `origin/automation/testids` (commit `6fceb3e2`) as of this session — the dev server on `localhost:5173` already serves them. A human still needs to cherry-pick this commit to `EliteaAI/EliteaUI` `main` per the current (2026-07-16) promotion policy before it's permanent; until then it lives only on the shared integration branch, same as every other pending testid.
+- Minor a11y observation (not a defect, not blocking): the confirm/cancel icons in the folder-name editor are plain `<div onClick>` elements with no ARIA role and no `tabindex` — mouse-only, not keyboard-operable. Out of scope for this functional case; noted for whoever eventually does an accessibility pass on the chat sidebar.
