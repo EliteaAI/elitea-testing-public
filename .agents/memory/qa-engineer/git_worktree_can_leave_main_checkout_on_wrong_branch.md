@@ -1,6 +1,6 @@
 ---
 name: git worktree add/remove can leave the main checkout on the wrong branch
-description: In this shared multi-session repo, using `git worktree add <path> <remote-branch> --detach` (then `remove --force`) to independently run a PR branch's tests coincided with the MAIN checkout's HEAD ending up on that PR's local branch instead of automation/base — always verify `git branch --show-current` on the main checkout after any worktree operation, and restore it explicitly if wrong
+description: In this shared multi-session repo, using `git worktree add <path> <remote-branch>` (then `remove --force`) to independently run a PR branch's tests coincides with the MAIN checkout's HEAD ending up on that PR's local branch instead of its actual starting branch — CONFIRMED TWICE now (PR #608/ELITEA-1799, PR #693/ELITEA-2095). Always verify `git branch --show-current` on the main checkout after any worktree operation, and restore it explicitly if wrong — this is now a known recurring hazard, not a one-off.
 type: feedback
 ---
 
@@ -34,3 +34,18 @@ switches fine as long as there's no conflict — verified via `git status
 --short` before and after, contents were identical — so a stray branch switch
 by itself doesn't lose work, but leaving the shared checkout on the wrong
 branch for the next session is its own hazard worth avoiding.
+
+**Second confirmed occurrence (PR #693/ELITEA-2095 round-3 review, same
+session pattern: `git worktree add ../review-pr693 pr-693-review` →
+independent test reruns → `git worktree remove --force`).** Session started
+on `tests/ELITEA-2094-chat-new-conversation-participants` per the initial
+gitStatus context; after the worktree round-trip, the main checkout's
+`git branch --show-current` came back as
+`tests/ELITEA-2095-open-conversation-today-section` (the branch used inside
+the worktree). Restored via explicit `git checkout
+tests/ELITEA-2094-chat-new-conversation-participants`; the 80 untracked
+screenshot files from other tickets were unaffected. Two independent
+recurrences across two different sessions now confirm this is a real,
+reproducible hazard of this specific shared multi-agent repo layout (many
+concurrent worktrees/branches), not a coincidence — treat the "verify +
+restore" practical rule below as mandatory, not optional.
