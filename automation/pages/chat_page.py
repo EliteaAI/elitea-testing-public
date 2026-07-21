@@ -187,6 +187,68 @@ class ChatPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # "+" menu -> Agents submenu -> "+ Create New Agent" (ELITEA-2166)
+    # ------------------------------------------------------------------
+
+    agents_menuitem = LocatorDescriptor(
+        testid="agents-menuitem",
+        description=(
+            "'Agents' menuitem inside the plus-menu dropdown. HOVER (not "
+            "click) reveals the Agents submenu — PlusChatButton.jsx wires "
+            "submenu reveal via onMouseEnter, same mechanism as "
+            "internal_tools_menuitem above."
+        ),
+    )
+
+    agents_create_new_button = LocatorDescriptor(
+        testid="agents-create-new-button",
+        description=(
+            "'+ Create New Agent' item inside the Agents submenu. "
+            "ELITEA-2166 add-data-testid addition to PlusChatSubmenu.jsx's "
+            "showCreateNew MenuItem, templated ${sectionKey}-create-new-button "
+            "(sectionKey='agents' for this submenu)."
+        ),
+    )
+
+    invite_users_menuitem = LocatorDescriptor(
+        testid="invite-users-menuitem",
+        description=(
+            "'Invite Users' menuitem inside the plus-menu dropdown. Only "
+            "rendered for Team projects (PlusChatButton.jsx's "
+            "!isPrivateProject guard) — absent entirely (not merely "
+            "disabled) for Private projects. ELITEA-2166 add-data-testid "
+            "addition — the item previously carried no testid at all, "
+            "which blocked a testid-only 'is absent for Private projects' "
+            "assertion."
+        ),
+    )
+
+    # Suffix-match template counting every top-level plus-menu item
+    # currently rendered — same convention as CONVERSATION_MENU_ITEM_PREFIX
+    # below. Safe to query page-wide: MUI Poppers in this codebase unmount
+    # their contents while closed, so only whichever menu is actually open
+    # contributes matches.
+    PLUS_MENU_ITEM_SUFFIX = '[data-testid$="-menuitem"]'
+
+    # ------------------------------------------------------------------
+    # Composer version-selector trigger (ELITEA-2166)
+    # ------------------------------------------------------------------
+    # NOT the same element as AgentDetailPage's "agent-version-selector-
+    # trigger" (a different component, ApplicationVersionSelect.jsx,
+    # rendered on the agent detail page's own tab bar) — this is the
+    # composer's OWN version button, rendered by VersionSelector.jsx
+    # (chat/ui/chat-input), which carried no testid until this case.
+    # Declared improvisation (canon gap): see PR description.
+    chat_version_selector_trigger = LocatorDescriptor(
+        testid="chat-version-selector-trigger",
+        description=(
+            "Composer's version-selector button, shown once an agent/"
+            "pipeline participant with versions is active (e.g. text "
+            "'base')."
+        ),
+    )
+
+    # ------------------------------------------------------------------
     # Message actions
     # ------------------------------------------------------------------
 
@@ -1276,6 +1338,41 @@ class ChatPage(BasePage):
         agents_btn = self.page.get_by_role("button", name="Agents", exact=True)
         agents_btn.wait_for(state="visible", timeout=5000)
         agents_btn.click()
+
+    # ------------------------------------------------------------------
+    # "+ Create New Agent" canvas entry point (ELITEA-2166)
+    # ------------------------------------------------------------------
+
+    def get_open_plus_menu_item_count(self) -> int:
+        """Return how many top-level plus-menu items are currently rendered.
+
+        Scoped by the shared ``-menuitem`` testid suffix (``PLUS_MENU_ITEM_SUFFIX``);
+        safe page-wide since MUI Poppers in this codebase unmount their
+        contents while closed — same precedent as
+        ``get_open_conversation_menu_item_count()`` below.
+        """
+        return self.page.locator(self.PLUS_MENU_ITEM_SUFFIX).count()
+
+    @action("Open Create New Agent canvas")
+    def open_create_new_agent_canvas(self, timeout: int = 10000):
+        """Open the in-chat 'Create New Agent' canvas.
+
+        Flow: click plus_menu_button -> HOVER agents_menuitem (reveals the
+        Agents submenu via onMouseEnter, not onClick — same mechanism as
+        ``open_internal_tools_menu()``'s Internal Tools hover) -> click
+        agents_create_new_button.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Create New Agent canvas via plus menu")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.agents_menuitem.wait_for(state="visible", timeout=timeout)
+        self.agents_menuitem.hover()
+        self.agents_create_new_button.wait_for(state="visible", timeout=timeout)
+        self.agents_create_new_button.click()
+        logger.info("Create New Agent canvas opened")
 
     # ------------------------------------------------------------------
     # Conversation management helpers
