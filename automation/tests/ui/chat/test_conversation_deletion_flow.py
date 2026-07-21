@@ -205,8 +205,13 @@ class TestConversationDeletionFlow:
                 expect(chat.delete_confirm_dialog).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
                 # Fresh, correct handle (ELITEA-2114) — does NOT depend on
                 # the broken #alert-dialog-title wiring (BUG #694,
-                # isolated/out of scope here).
-                expect(chat.delete_confirm_title).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                # isolated/out of scope here). Text checked (not just
+                # visibility) to match the AFS's Concrete Handles table
+                # (live-verified "Delete confirmation") — same pattern as
+                # the step-5 body-text assertion below.
+                expect(chat.delete_confirm_title).to_have_text(
+                    "Delete confirmation", timeout=UI_ELEMENT_TIMEOUT
+                )
 
             with allure.step("Step 5 — Verify the dialog body text"):
                 expected_message = f"Are you sure to delete the {target_name} chat? It can't be restored."
