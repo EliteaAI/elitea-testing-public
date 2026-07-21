@@ -28,7 +28,6 @@ exactly, including the literal empty-state wording "No conversations added".
 """
 
 import logging
-import time
 
 import allure
 import pytest

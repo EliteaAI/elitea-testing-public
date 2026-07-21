@@ -3344,13 +3344,25 @@ class ChatPage(BasePage):
         DotMenu component as conversation items), scoped inside the folder's
         own row so it resolves to exactly one element.
 
+        Hovers ``FOLDER_ICON``, NOT the outer ``FOLDER_ITEM`` row, to reveal
+        the dot-menu. ``FolderAccordion.jsx`` only flips its ``#Menu``
+        visibility on hover of the fixed ~49px header sub-box
+        (``summaryContainer``), not the whole accordion. A bare
+        ``item.hover()`` targets the row's geometric center, which is safe
+        while collapsed but lands inside the (now-visible) body once the
+        folder is expanded -- the dot-menu never appears and
+        ``menu_button.wait_for`` times out. ``FOLDER_ICON`` lives inside
+        ``summaryContainer`` itself and is rendered in both expand states,
+        so hovering it reliably lands within the header regardless of
+        whether the folder is collapsed or expanded.
+
         Args:
             folder_id: Numeric folder id.
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Deleting folder %s via 3-dot menu", folder_id)
         item = self.get_folder_item(folder_id)
-        item.hover()
+        item.locator(self.FOLDER_ICON).hover()
         menu_button = item.locator(self.CONVERSATION_MENU_BUTTON)
         menu_button.wait_for(state="visible", timeout=timeout)
         menu_button.click(force=True)
