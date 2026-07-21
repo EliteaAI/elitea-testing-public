@@ -361,6 +361,73 @@ class ChatPage(BasePage):
     # OTHER conversation" to navigate to.
     CONVERSATION_ITEM_PREFIX = '[data-testid^="chat-conversation-item-"]'
 
+    # ------------------------------------------------------------------
+    # Conversation context menu (three-dot) + delete-confirmation dialog
+    # (ELITEA-2114)
+    # ------------------------------------------------------------------
+
+    # The 3-dot menu button's testid ("conversation-menu-menu-button") is
+    # NOT globally unique — ConversationItem.jsx passes the same static
+    # id="conversation-menu" to every DotMenu instance, so an unscoped
+    # query resolves to N elements once N conversations are on screen
+    # (confirmed live: "strict mode violation ... resolved to 2 elements").
+    # Always resolve it scoped inside a CONVERSATION_ITEM container — see
+    # get_conversation_menu_button().
+    CONVERSATION_MENU_BUTTON = '[data-testid="conversation-menu-menu-button"]'
+
+    # Context-menu item template — {} is one of CONVERSATION_MENU_ITEM_KEYS.
+    # Only the currently-open conversation's own MUI Menu is mounted in the
+    # DOM (menus unmount their content while closed), so — unlike the menu
+    # button above — this does not need per-conversation scoping.
+    CONVERSATION_MENU_ITEM = '[data-testid="chat-conversation-menu-{}-menuitem"]'
+
+    # Prefix-match selector enumerating every menu item currently rendered
+    # (i.e. belonging to whichever conversation's menu is open) — used to
+    # assert the total item count, catching unexpected extra/missing items.
+    CONVERSATION_MENU_ITEM_PREFIX = '[data-testid^="chat-conversation-menu-"][data-testid$="-menuitem"]'
+
+    # The 7 stable menu-item keys wired in ConversationItem.jsx's menuItems
+    # array. "pin" covers both the "Pin on top" and "Unpin" labels — one
+    # stable testid, state carried by the label text (not a second testid),
+    # per the testid=identity/state=data-* ruling.
+    CONVERSATION_MENU_ITEM_KEYS = (
+        "rename", "move-to", "playback", "make-public", "share", "pin", "delete",
+    )
+
+    # Delete-confirmation dialog (DeleteEntityModal.jsx, rendered via the
+    # shared BaseModal.jsx). Same testids as artifacts_page.py /
+    # mcp_form_page.py's own delete_confirm_* fields — this is a shared
+    # component reused across pages, each page object declares its own
+    # LocatorDescriptor for it (existing repo precedent).
+    delete_confirm_dialog = LocatorDescriptor(
+        testid="delete-confirm-dialog",
+        description="Delete-confirmation modal container (shared DeleteEntityModal).",
+    )
+
+    delete_confirm_title = LocatorDescriptor(
+        testid="delete-confirm-title",
+        description=(
+            "Delete-confirmation modal title (BaseModal.jsx DialogTitle "
+            "wrapper, ELITEA-2114). A fresh, correct handle — does NOT "
+            "depend on the broken id=\"alert-dialog-title\" wiring (BUG #694)."
+        ),
+    )
+
+    delete_confirm_message = LocatorDescriptor(
+        testid="delete-confirm-message",
+        description="Delete-confirmation modal body text.",
+    )
+
+    delete_confirm_cancel_button = LocatorDescriptor(
+        testid="delete-confirm-cancel-button",
+        description="Cancel button inside the delete-confirmation modal (ELITEA-2114).",
+    )
+
+    delete_confirm_button = LocatorDescriptor(
+        testid="delete-confirm-button",
+        description="Delete (confirm) button inside the delete-confirmation modal.",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
         
@@ -1806,6 +1873,121 @@ class ChatPage(BasePage):
         """
         logger.info("Clicking Delete menu item")
         self.page.locator('[role="menuitem"]:has-text("Delete")').click()
+
+    # ------------------------------------------------------------------
+    # Conversation context menu by id + delete-confirmation (ELITEA-2114)
+    # ------------------------------------------------------------------
+    # Distinct from open_conversation_menu()/click_delete_menu_item() above
+    # (name-based targeting, raw #conversation-menu-action id + role-text
+    # selectors — tracked tech debt, ELITEA-2114 Concrete Handles). These
+    # target by conversation id and use the real per-item testids.
+
+    def hover_conversation_item(self, conversation_id: str | int, timeout: int = 5000):
+        """Hover *conversation_id*'s sidebar item to reveal its 3-dot menu button.
+
+        The button is present in the DOM at all times but CSS
+        ``display:none`` until hover (ConversationItem.jsx's ``menuWrapper``
+        style) — this only hovers; it does not click.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        item.wait_for(state="visible", timeout=timeout)
+        item.hover()
+
+    def get_conversation_menu_button(self, conversation_id: str | int):
+        """Return the item-scoped 3-dot menu button Locator for *conversation_id*.
+
+        Returns a Locator (not a bool) so the caller can assert visibility
+        transitions with ``expect()`` — same precedent as
+        ``get_conversation_list_items()``.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        return item.locator(self.CONVERSATION_MENU_BUTTON)
+
+    @action("Open conversation context menu")
+    def open_conversation_context_menu(self, conversation_id: str | int, timeout: int = 5000):
+        """Hover *conversation_id*'s sidebar item and click its scoped 3-dot menu button."""
+        logger.info("Opening context menu for conversation %s", conversation_id)
+        self.hover_conversation_item(conversation_id, timeout=timeout)
+        menu_button = self.get_conversation_menu_button(conversation_id)
+        menu_button.wait_for(state="visible", timeout=timeout)
+        menu_button.click(force=True)
+
+    def get_conversation_menu_item(self, item_key: str):
+        """Return the Locator for a context-menu item by its stable key.
+
+        *item_key* must be one of ``CONVERSATION_MENU_ITEM_KEYS``. Assumes
+        the conversation's context menu is already open (see
+        ``open_conversation_context_menu()``).
+        """
+        return self.page.locator(self.CONVERSATION_MENU_ITEM.format(item_key))
+
+    def get_open_conversation_menu_item_count(self) -> int:
+        """Return how many context-menu items are currently rendered.
+
+        Scoped to whichever conversation's menu is open (menus unmount
+        their items while closed, so this can't pick up a stale menu).
+        """
+        return self.page.locator(self.CONVERSATION_MENU_ITEM_PREFIX).count()
+
+    @action("Click conversation context-menu item")
+    def click_conversation_menu_item(self, item_key: str, timeout: int = 5000):
+        """Click a context-menu item (e.g. ``"delete"``) by its stable key.
+
+        See ``CONVERSATION_MENU_ITEM_KEYS``. Distinct from the pre-existing
+        ``click_delete_menu_item()`` (raw ``:has-text("Delete")`` pattern,
+        tracked tech debt) — this resolves the real per-item testid.
+        """
+        logger.info("Clicking conversation menu item: %s", item_key)
+        item = self.get_conversation_menu_item(item_key)
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+
+    def is_conversation_active(self, conversation_id: str | int, timeout: int = 5000) -> bool:
+        """Return True if *conversation_id*'s sidebar item carries ``data-active="true"``.
+
+        Mirrors the project's state-via-data-attribute pattern
+        (``data-expanded`` et al.) — a stable replacement for a CSS-class
+        or URL-only proxy for "this row is the highlighted/active
+        conversation" (ELITEA-2114).
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        item.wait_for(state="visible", timeout=timeout)
+        return item.get_attribute("data-active") == "true"
+
+    def wait_for_conversation_url_change(self, exclude_id: str | int, timeout: int = 10000):
+        """Wait until the URL points at ``/chat/{some_id}`` where ``some_id != exclude_id``.
+
+        Used after the ACTIVE conversation is deleted and the app
+        auto-selects a replacement: the replacement's id isn't
+        deterministic when other conversations exist in the project
+        (ELITEA-2114 Automation Hints), so this asserts "moved to SOME
+        other conversation" rather than a specific id.
+        """
+        exclude_str = str(exclude_id)
+        logger.info("Waiting for URL to move away from conversation %s", exclude_str)
+        self.page.wait_for_url(
+            lambda url: bool(re.search(r"/chat/(\d+)", url)) and f"/chat/{exclude_str}" not in url,
+            timeout=timeout,
+        )
+
+    @action("Confirm delete conversation")
+    def confirm_delete_conversation(self, conversation_id: str | int, timeout: int = 10000):
+        """Click the delete-confirm button and return the DELETE response.
+
+        Waits for the network response so callers can assert its status
+        code (e.g. 204) — proves the deletion is real, not just a
+        client-side list splice (ELITEA-2114 Axis 2 addition).
+        """
+        with self.page.expect_response(
+            lambda r: (
+                r.request.method == "DELETE"
+                and "/conversation/prompt_lib/" in r.url
+                and str(conversation_id) in r.url
+            ),
+            timeout=timeout,
+        ) as resp_info:
+            self.delete_confirm_button.click()
+        return resp_info.value
 
     # ------------------------------------------------------------------
     # Internal Tools / Image Creation
