@@ -111,6 +111,49 @@ presence-based visualization — it corrupts the metric from the other side.
 Coverage density (N testids / M components) is NOT a target; honest
 presence ≈ tested is.
 
+**"Referenced" = called on the test's actual code path (canon ruling #511,
+2026-07-22).** A testid wired into a page-object method or `LocatorDescriptor`
+field is NOT "referenced" unless the test invokes that method on its executed
+path. There is **no carve-out** for "reusable page-object scaffolding,"
+"parameterized method with other callers," or "plausible future case" — those
+are exactly the soft justifications the checklist was written to reject. If a
+sibling testid ends up in the same JSX array literal you're editing, add ONLY
+the one your test calls; leave the rest to the case that actually exercises
+them.
+
+**Absence assertions count as references (canon ruling #511 extension,
+2026-07-22).** A testid used only in `expect(locator).to_have_count(0)` /
+`expect(locator).not_to_be_visible()` on the test's executed code path IS
+referenced. Negative assertions are first-class — the mechanical grep for
+`.locator(`/`get_by_*` catches them the same as positive ones.
+
+**Same-element conditional pairs — `data-testid={cond ? A : B}` on a single
+JSX node (canon ruling #277, 2026-07-22).** When disambiguation forces two
+mutually-exclusive branches on the same element (e.g. `isOverflow ?
+'entity-card-tag-overflow' : 'entity-card-tag-chip'`), the compliant shapes
+are exactly two:
+  1. **Only the used branch is named**, the other is `undefined`:
+     `data-testid={isOverflow ? undefined : 'entity-card-tag-chip'}`. No
+     orphan testid — the used branch's locator is still collision-safe (the
+     other branch has no attribute to match). Preferred default.
+  2. **Both branches are named AND both are referenced** by locators on the
+     test's executed code path — the untested branch via an absence assertion
+     (`to_have_count(0)`/`not_to_be_visible()`) on the elements the test
+     exercises. This turns "the pair disambiguates cleanly" from a
+     documented assumption into a test-enforced invariant, catching any
+     future regression that drops the disambiguating prop.
+
+Documentation-only carve-outs (naming the pair for self-documentation, then
+explaining in a docstring/AFS PROVENANCE row) are **not compliant** — docs
+don't execute, so an orphan testid still inflates the presence-based coverage
+metric. Same reasoning as #511: no soft justifications.
+
+(Note: the state-switched testid anti-pattern of §"Testid = stable identity"
+below is a distinct case — a testid's VALUE flipping on the same rendered
+element as state changes. #277 covers the different case of two
+mutually-exclusive JSX renders through one component. The §-below rule still
+outlaws state-value-switched testids on the same live element.)
+
 - **Testid-only via `LocatorDescriptor`** (`automation/pages/locator_descriptor.py`):
   `LocatorDescriptor(testid="agent-form-save-button")`. Never populate `fallback=`
   (dead code) or `locator=` (kept in the API for legacy only — forbidden in new
@@ -161,9 +204,27 @@ presence ≈ tested is.
   picks it up live; a human promotes to `main`, no agent PR). Naming `{section}-{element}-{type}`,
   e.g. `agent-form-save-button` vs `pipeline-form-save-button` — verify uniqueness
   before adding.
-- **Stop+flag rule:** ONLY if a testid genuinely can't be placed (element outside
-  `EliteaUI/src`, third-party widget like ReactFlow's `rf__wrapper`), surface to
-  the lead — don't ship brittle CSS.
+- **Stop+flag rule — sanctioned exceptions (#579, approved 2026-07-22):** ONLY if a
+  testid genuinely can't be placed, a **scoped raw handle** is allowed:
+  1. **Third-party widget subtrees** — element outside `EliteaUI/src` (e.g. ReactFlow's
+     `rf__wrapper`) where no testid can be placed on the library's internal nodes.
+  2. **Third-party editor library internal render nodes** — per-line/per-node elements
+     inside an editor widget (CodeMirror, Monaco, ProseMirror, etc.) whose DOM is
+     library-internal, not app JSX. Examples: CodeMirror's per-line `<div>` nodes
+     (`automation/pages/mcp_form_page.py:121` — `fill_raw_json_line()` uses
+     `self.raw_json_editor_content.get_by_text(...)` scoped inside the
+     `toolkit-raw-json-editor-content` testid parent to locate which line to edit).
+  
+  **Discipline (mandatory for both exceptions):**
+  - The parent container MUST have a real app testid (a `LocatorDescriptor(testid=...)`
+    class field).
+  - The raw handle MUST be scoped to that testid parent
+    (`self.testid_parent.locator(...)` / `.get_by_text(...)` chained off it), never a
+    free-floating page-level handle.
+  - Declare the exception explicitly in the method's docstring: which node, why a
+    testid cannot be placed, and the "do not extend it to any handle that COULD carry
+    a testid" boundary.
+  - Anything outside these two shapes escalates to the lead — don't ship brittle CSS.
 - **Existing raw handles in `automation/pages/` are tracked tech debt**
   (issues #25/#42, ~350 call sites), not precedent. Never cite neighbors to
   justify a new raw handle.

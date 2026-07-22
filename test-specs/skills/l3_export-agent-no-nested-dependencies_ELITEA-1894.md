@@ -148,8 +148,10 @@ down within the run).
    - **Verify** (`description`): `description: Agent for ELITEA-1894 export
      no-nested-dependency check.` present.
    - **Verify** (model settings): `model: eu.anthropic.claude-sonnet-4-5-20250929-v1:0`,
-     `temperature: 0.6`, `max_tokens: -1`, `agent_type: agent`, `step_limit: 25`
-     all present.
+     `max_tokens: -1`, `agent_type: agent`, `step_limit: 25` all present.
+     **Note**: `temperature` is intentionally NOT required — reasoning models reject
+     temperature when extended thinking is enabled (see EliteaAI/elitea_issues#5821,
+     #577), so the product no longer includes it in exports for reasoning-capable models.
    - **Verify** (instructions body): the markdown body below the frontmatter's
      closing `---` contains the full instructions text verbatim, confirmed by
      finding the literal marker substring `ELITEA_1894_INSTR_MARKER`.
@@ -157,13 +159,13 @@ down within the run).
      — confirms the "no nested dependencies" precondition is reflected in the
      export shape itself (distinct from ELITEA-1794's frontmatter, which
      always has a populated `skills:` list).
-   - Full captured frontmatter (this run):
+   - Full captured frontmatter (this run, 2026-07-15 — note: `temperature` no longer
+     exported as of platform change to reasoning models):
      ```yaml
      ---
      name: el1894-nodep
      description: Agent for ELITEA-1894 export no-nested-dependency check.
      model: eu.anthropic.claude-sonnet-4-5-20250929-v1:0
-     temperature: 0.6
      max_tokens: -1
      agent_type: agent
      step_limit: 25
@@ -225,7 +227,7 @@ down within the run).
 - Triggering `Export` from the agent-actions overflow menu (`VERSION` group)
   downloads a file with a `.md`-suffixed name (`{agent-name}.agent.md`).
 - The downloaded file's content is a YAML frontmatter block (`name`,
-  `description`, `model`, `temperature`, `max_tokens`, `agent_type`,
+  `description`, `model`, `max_tokens`, `agent_type`,
   `step_limit`, `toolkits[]`) followed by the Agent's own instructions as the
   markdown body — with **no** `skills:` key present (no nested Skill
   dependencies).
@@ -245,7 +247,7 @@ down within the run).
 | Step 2: Select the version to export from the version dropdown | Desired version selected | Test Step 4 | Default `base` version already selected for a freshly created single-version agent; presence/functionality of the selected version confirmed via `AgentDetailPage.get_version_id()` (`copy-version-id` testid) asserting a non-empty version id before export, per AFS judgment call (a) | asserted (partial — see Blocked Steps: multi-version selection interaction itself not exercised) |
 | Step 3: Click the three-dot menu → Export | Export action triggered | Test Step 5 | `agent-actions-menu-button` → `agent-actions-export-menuitem` clicked; download event fired; network call → `200 OK` | asserted |
 | Step 4: Verify a .md file is downloaded automatically | File download initiated | Test Steps 5–6 | Playwright MCP download event confirmed; filename `el1894-nodep.agent.md` resolves as `.md` | asserted |
-| Step 5: Open the file and verify YAML frontmatter (name, description, model settings, instructions body) | All required fields present | Test Step 7 | Raw file read directly; `name`, `description`, `model`, `temperature`, `max_tokens`, `agent_type`, `step_limit` all present in frontmatter; instructions text (with marker) present in body | asserted |
+| Step 5: Open the file and verify YAML frontmatter (name, description, model settings, instructions body) | All required fields present | Test Step 7 | Raw file read directly; `name`, `description`, `model`, `max_tokens`, `agent_type`, `step_limit` all present in frontmatter; instructions text (with marker) present in body. Note: `temperature` no longer exported for reasoning models (#577) | asserted |
 | Step 6: Verify the file does NOT contain toolkit API keys or auth credentials | No secrets present | Test Step 8 | Grepped raw file bytes for the literal token value (0 matches) and credential-shaped substrings (0 matches); confirmed only a non-secret `elitea_title` reference is present | asserted — this is the case's core security claim and the strongest evidence gathered (byte-level grep against the actual live secret value, not a heuristic) |
 
 ### Axis 2 — Observables asserted beyond the case

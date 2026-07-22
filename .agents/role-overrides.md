@@ -23,8 +23,12 @@ metric*. Every raw handle silently shrinks measured coverage.
 - Element lacks a testid? That is **work to do, not a reason to rung down**: the
   implementer adds one via `add-data-testid` (dual-target flow). The escalation
   test is OR, not AND: *missing testid alone* ⇒ add it. Only "testid genuinely
-  cannot be placed" (outside `EliteaUI/src`, third-party widget) escalates to the
-  lead.
+  cannot be placed" escalates — **sanctioned exceptions (#579):** third-party widget
+  subtrees (outside `EliteaUI/src`, e.g. ReactFlow's `rf__wrapper`) OR third-party
+  editor library internal render nodes (CodeMirror/Monaco/ProseMirror per-line divs).
+  Both require: (1) parent has a real testid, (2) raw handle scoped to that parent,
+  (3) explicit docstring declaration. See `.agents/testing.md` § Locator policy for
+  full discipline.
 - **The scope is exactly the elements the case's test touches — NEVER blanket-add**
   (team ruling 2026-07-14): testids on elements no test uses are front-end noise
   AND corrupt the coverage metric — the "highlight what has a testid" visualization
@@ -32,6 +36,14 @@ metric*. Every raw handle silently shrinks measured coverage.
   to untouched elements = `CHANGES_REQUESTED`. (Optional testid PROPS on shared
   components are fine — they render nothing unless a caller opts in — but each new
   prop is a component-API change the UI team reviews as a pattern.)
+  **"Touches" = the test actually invokes the page-object method that uses the
+  testid, on the case's executed code path (canon ruling #511, 2026-07-22).** A
+  `LocatorDescriptor` field wired into a real method that this test never calls
+  is NOT "touched" — no carve-out for reusable scaffolding, parameterized methods
+  used by sibling cases with other args, or "plausible future use." Sibling
+  testids in the same JSX array literal: add ONLY the one this test calls, leave
+  the rest to the case that exercises them. (#277 — structural locator-
+  disambiguation pairs — is a distinct axis, tracked separately.)
 - **Fresh ground truth (hard rule).** Any verification against `origin/*` refs —
   promotability greps, "does this testid exist on main", branch-state checks —
   is preceded by `git fetch origin` in that repo, in the same command block. A
@@ -79,6 +91,42 @@ Then, and only then:
   the TMS case gets fixed; optionally note a UX-discoverability concern as
   its own observation. Filing it as `bug` creates false red and wastes a
   repro cycle (#44 is the cautionary example).
+
+## Every role — 4xx/5xx from the UI: cross-check the OpenAPI contract before verdict
+
+A repro that surfaces a `4xx`/`5xx` (network tab, console) is **not** classified
+as backend-vs-UI from the status code alone. Consult the OpenAPI spec before
+declaring "backend bug" or "UI bug" — the same status can be either, depending
+on the endpoint's declared parameter contract.
+
+The `pylon_main` `shared` plugin hosts:
+- `GET /shared/openapi/?all=true` — raw OpenAPI JSON (`?plugins=a,b` filters)
+- `GET /swagger/?all=true` — Swagger UI
+
+Same base URL as the app under test (localhost dev-proxy or the deployed env).
+
+**Procedure when a UI action produces a 4xx/5xx:**
+1. Note the endpoint + full query/body from Playwright MCP's network capture.
+2. Fetch `/shared/openapi/?all=true` and locate that endpoint's parameter list.
+3. Classify:
+   - **Documented + params match declared required set** → response is
+     expected-per-contract. The bug (if any) lives in the UI: wrong endpoint,
+     wrong viewMode, missing query param, silent fallback to a public endpoint
+     for an authenticated user, no redirect for bare deep links.
+   - **Documented + params satisfy the spec** but backend still returns 4xx/5xx
+     → backend bug. Quote the spec row.
+   - **Undocumented endpoint (spec silent)** → say so explicitly; classify by
+     the response body's error text plus the calling code (grep
+     `../EliteaUI/src` for the endpoint string, read the RTK-Query slice). The
+     `public_application` vs `application` split in `applications.js` is the
+     canonical example — bare `/pipelines/all/{id}` without `?viewMode=owner`
+     silently hits the public endpoint, which returns 400 for owner-only
+     resources; the backend is correct, the UI defaults wrong.
+
+**Verdict must quote either the spec parameter row or the calling-code line** —
+"the API returned 400" is not a classification, it's an observation. (Origin:
+canonical question #512, 2026-07-22 — the first-pass verdict missed the
+public/private endpoint split because it stopped at the status code.)
 
 ## Every role — screenshot evidence ATTACHES, never local paths
 
@@ -190,9 +238,25 @@ lookup), never replace it.
   reviewer discipline, not a tracker-artifact gate.)
 - **Testid-convention check on any EliteaUI JSX in the case's diff** (PR #581
   ruling, `.agents/testing.md` § Locator policy): a state-conditional testid
-  (`data-testid={cond ? … : …}` / `… : undefined`), a feature-scoped testid
-  hardcoded in a shared component (`src/components/`, `src/[fsd]/shared/`), or a
-  `dataTestId`-style prop name is `CHANGES_REQUESTED`.
+  whose VALUE flips as component state changes on the SAME live element
+  (`data-testid={isExpanded ? A : B}` on an element that expands in place), a
+  feature-scoped testid hardcoded in a shared component (`src/components/`,
+  `src/[fsd]/shared/`), or a `dataTestId`-style prop name is `CHANGES_REQUESTED`.
+- **Same-element conditional pair check (canon ruling #277, 2026-07-22).** A
+  `data-testid={cond ? A : B}` on a single JSX node where `cond` is a per-mount
+  prop discriminating two mutually-exclusive JSX renders (e.g. `isOverflow` on
+  `CardTagSectionItem` — the same component renders EITHER a real tag chip OR
+  a "+N" overflow badge, never one that becomes the other) is distinct from
+  the PR #581 anti-pattern and MAY be compliant. Exactly two shapes pass:
+  (a) only the used branch is named, the other is `undefined`; OR (b) both
+  branches are named AND both are referenced by locators on the test's
+  executed code path — the untested branch via an absence assertion
+  (`to_have_count(0)`/`not_to_be_visible()`) on the elements the test
+  exercises. A documentation-only justification (docstring / AFS PROVENANCE
+  row explaining why the untested branch exists) is NOT compliant on its own
+  — `CHANGES_REQUESTED`. Absence assertions are caught by the existing
+  mechanical grep (they use `.locator(`/`get_by_*` the same as positive
+  assertions), so no new grep is needed.
 - **Declared improvisations** (see § Every role): verify the reasoning and say so
   explicitly in the verdict; if sound, APPROVED + recommend the canon addition —
   do not block solely for the gap the canon itself left.
