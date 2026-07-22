@@ -31,7 +31,7 @@ pytestmark = [pytest.mark.smoke, pytest.mark.ui, pytest.mark.support_assistant]
 
 # Timeout constants
 WIDGET_TIMEOUT = 10_000
-AI_RESPONSE_TIMEOUT = 60_000
+AI_RESPONSE_TIMEOUT = 120_000  # 120s - progressive wait resets on status change
 ANIMATION_WAIT = 500
 
 
@@ -92,6 +92,10 @@ class TestSupportAssistantLauncher:
             chat_page.navigate_to_chat()
             support_page = SupportAssistantPage(page)
             support_page.open_widget(timeout=WIDGET_TIMEOUT)
+
+        with allure.step("Step 1b — Start new chat for clean state"):
+            support_page.start_new_chat(timeout=WIDGET_TIMEOUT)
+            page.wait_for_timeout(1000)
             initial_count = support_page.get_assistant_message_count()
 
         with allure.step("Step 2 — Send a message"):

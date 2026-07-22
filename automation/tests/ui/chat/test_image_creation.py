@@ -75,7 +75,7 @@ class TestImageCreation:
 
         with allure.step("Step 5 — Wait for AI response with image"):
             chat.wait_for_input_ready()
-            chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
+            chat.wait_for_ai_response(initial_count=initial_count, timeout=IMAGE_GENERATION_TIMEOUT)
             chat.wait_for_image_in_response(timeout=IMAGE_GENERATION_TIMEOUT)
 
         with allure.step("Step 6 — Verify image appears in response"):

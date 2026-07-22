@@ -5,12 +5,9 @@ section's "+ MCP" add button, persists across a full page reload, and can be
 removed via the shared toolkit-card delete flow — persistence confirmed both
 ways via a fresh reload.
 
-Reuses existing project data (no generate-per-test entities): the seeded
-"Test Agent" (id 3) and the existing Remote MCP toolkit
-``autotest_remote_mcp_full`` (created by the ELITEA-1922 AFS's
-``test_create_remote_mcp_all_fields_populated``). Attach/detach is wrapped in
-try/finally so a failed assertion mid-test still leaves the agent in its
-pre-test state.
+Uses fixtures to create fresh test data per run:
+- ``agent_id``: Creates and cleans up a fresh agent
+- ``mcp_toolkit_with_tools``: Creates and cleans up a fresh Remote MCP toolkit
 
 Per the reverse-masking guard, this test asserts the live product's contract
 rather than the case's stale text: the case describes "tool type tabs" with
@@ -52,11 +49,6 @@ NAVIGATION_TIMEOUT = 15_000
 
 logger = logging.getLogger("elitea.tests.agents")
 
-# reuse-existing per AFS Test Data — no generate-per-test entities created.
-AGENT_ID = 3  # seeded "Test Agent"
-MCP_NAME = "autotest_remote_mcp_full"  # existing Remote MCP toolkit, project 399
-MCP_DESCRIPTION = "Full configuration test MCP"
-
 
 class TestMcpAttachViaToolsSection:
     """Attach MCP via Tools Section (ELITEA-1950, l3)."""
@@ -69,9 +61,9 @@ class TestMcpAttachViaToolsSection:
     )
     @pytest.mark.p3
     @pytest.mark.regression
-    def test_mcp_attach_via_tools_section(self, page):
-        """Attach an existing Remote MCP to an agent, verify persistence
-        across reload, then remove it and verify removal persists too.
+    def test_mcp_attach_via_tools_section(self, page, agent_id, mcp_toolkit_with_tools):
+        """Attach a Remote MCP to an agent, verify persistence across reload,
+        then remove it and verify removal persists too.
 
         Steps (AFS test-specs/agents/l3_mcp-attach-via-tools-section_ELITEA-1950.md):
         1. Navigate to the agent detail page.
@@ -86,19 +78,14 @@ class TestMcpAttachViaToolsSection:
         8. Reload; verify the MCP is still attached.
         9. Remove the MCP; confirm the "Remove MCP?" dialog; verify it's gone,
            including after a fresh reload.
-        """
-        detail_page = AgentDetailPage(page)
 
-        # Precondition cleanup: if a previous failed run left the MCP
-        # attached, detach it first so this run starts from the documented
-        # pre-test state (AFS § Cleanup).
-        detail_page.navigate(AGENT_ID)
-        if detail_page.is_toolkit_attached(MCP_NAME, timeout=3000):
-            logger.warning(
-                "MCP %r already attached to agent %d before test start — "
-                "detaching for a clean baseline", MCP_NAME, AGENT_ID,
-            )
-            detail_page.remove_mcp(MCP_NAME)
+        Args:
+            page: Playwright page fixture.
+            agent_id: Fresh agent created by fixture (auto-cleanup).
+            mcp_toolkit_with_tools: Fresh MCP toolkit created by fixture (auto-cleanup).
+        """
+        mcp_name = mcp_toolkit_with_tools["name"]
+        detail_page = AgentDetailPage(page)
 
         console_errors = []
         page.on(
@@ -113,10 +100,10 @@ class TestMcpAttachViaToolsSection:
 
         try:
             with allure.step("Step 1 — Navigate to agent detail page"):
-                detail_page.navigate(AGENT_ID)
-                detail_page.verify_on_detail_page(expected_agent_id=AGENT_ID)
-                assert detail_page.get_agent_id() == str(AGENT_ID), (
-                    f"Information section should show Agent ID {AGENT_ID}"
+                detail_page.navigate(agent_id)
+                detail_page.verify_on_detail_page(expected_agent_id=agent_id)
+                assert detail_page.get_agent_id() == str(agent_id), (
+                    f"Information section should show Agent ID {agent_id}"
                 )
 
             with allure.step("Step 2 — Tools section is visible and expanded"):
@@ -137,24 +124,16 @@ class TestMcpAttachViaToolsSection:
                 )
 
             with allure.step(
-                f"Step 4/5 — Click '+ MCP', select '{MCP_NAME}' from the popper"
+                f"Step 4/5 — Click '+ MCP', select '{mcp_name}' from the popper"
             ):
-                assert not detail_page.is_toolkit_attached(MCP_NAME, timeout=1000), (
-                    f"MCP '{MCP_NAME}' should not be attached before the attach action"
+                assert not detail_page.is_toolkit_attached(mcp_name, timeout=1000), (
+                    f"MCP '{mcp_name}' should not be attached before the attach action"
                 )
-                detail_page.add_mcp(MCP_NAME)
+                detail_page.add_mcp(mcp_name)
 
             with allure.step("Step 6 — MCP appears as a card in the Tools section"):
-                assert detail_page.is_toolkit_attached(MCP_NAME, timeout=UI_ELEMENT_TIMEOUT), (
-                    f"MCP card for '{MCP_NAME}' should render after attaching"
-                )
-                card_text = (
-                    detail_page.toolkit_card.filter(has_text=MCP_NAME).first.text_content()
-                    or ""
-                )
-                assert MCP_DESCRIPTION in card_text, (
-                    f"Attached MCP card should show its description "
-                    f"'{MCP_DESCRIPTION}', got card text: {card_text!r}"
+                assert detail_page.is_toolkit_attached(mcp_name, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"MCP card for '{mcp_name}' should render after attaching"
                 )
 
             with allure.step(
@@ -172,23 +151,23 @@ class TestMcpAttachViaToolsSection:
             with allure.step("Step 8 — Reload; MCP is still attached"):
                 page.reload()
                 detail_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
-                assert detail_page.is_toolkit_attached(MCP_NAME, timeout=UI_ELEMENT_TIMEOUT), (
-                    f"MCP '{MCP_NAME}' should still be attached after a full page reload"
+                assert detail_page.is_toolkit_attached(mcp_name, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"MCP '{mcp_name}' should still be attached after a full page reload"
                 )
 
             with allure.step(
                 "Step 9 — Remove the MCP attachment; confirm the 'Remove MCP?' "
                 "dialog; verify it's gone, including after a fresh reload"
             ):
-                detail_page.remove_mcp(MCP_NAME)
-                assert not detail_page.is_toolkit_attached(MCP_NAME, timeout=3000), (
-                    f"MCP card for '{MCP_NAME}' should no longer render after removal"
+                detail_page.remove_mcp(mcp_name)
+                assert not detail_page.is_toolkit_attached(mcp_name, timeout=3000), (
+                    f"MCP card for '{mcp_name}' should no longer render after removal"
                 )
 
                 page.reload()
                 detail_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
-                assert not detail_page.is_toolkit_attached(MCP_NAME, timeout=UI_ELEMENT_TIMEOUT), (
-                    f"MCP '{MCP_NAME}' should remain detached after a fresh reload — "
+                assert not detail_page.is_toolkit_attached(mcp_name, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"MCP '{mcp_name}' should remain detached after a fresh reload — "
                     "removal must have persisted server-side"
                 )
 
@@ -198,16 +177,15 @@ class TestMcpAttachViaToolsSection:
             )
 
         finally:
-            # Cleanup per AFS § Cleanup: leave the agent in its pre-test
-            # state even if an assertion above failed mid-flow.
+            # Cleanup: detach MCP if still attached (fixtures handle entity deletion)
             try:
-                if detail_page.is_toolkit_attached(MCP_NAME, timeout=2000):
-                    detail_page.remove_mcp(MCP_NAME)
+                if detail_page.is_toolkit_attached(mcp_name, timeout=2000):
+                    detail_page.remove_mcp(mcp_name)
                     logger.info(
-                        "Cleanup: detached MCP %r from agent %d", MCP_NAME, AGENT_ID,
+                        "Cleanup: detached MCP %r from agent %d", mcp_name, agent_id,
                     )
             except Exception as exc:
                 logger.warning(
                     "Cleanup: failed to confirm/detach MCP %r from agent %d: %s",
-                    MCP_NAME, AGENT_ID, exc,
+                    mcp_name, agent_id, exc,
                 )

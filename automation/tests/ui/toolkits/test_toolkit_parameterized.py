@@ -532,8 +532,8 @@ class TestChatWithToolkit:
             chat.wait_for_input_ready()
 
         with allure.step("Step 4 — Wait for AI response"):
-            chat.wait_for_message_content_stable(
-                stable_duration_ms=3000,
+            chat.wait_for_ai_response(
+                initial_count=initial_count,
                 timeout=TOOLKIT_EXECUTION_TIMEOUT,
             )
 
