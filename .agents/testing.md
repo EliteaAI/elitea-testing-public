@@ -119,9 +119,40 @@ path. There is **no carve-out** for "reusable page-object scaffolding,"
 are exactly the soft justifications the checklist was written to reject. If a
 sibling testid ends up in the same JSX array literal you're editing, add ONLY
 the one your test calls; leave the rest to the case that actually exercises
-them. (Structural locator-disambiguation pairs — where a sibling testid must
-exist to make the used testid's locator unambiguous — are a distinct axis,
-unresolved and tracked separately in #277.)
+them.
+
+**Absence assertions count as references (canon ruling #511 extension,
+2026-07-22).** A testid used only in `expect(locator).to_have_count(0)` /
+`expect(locator).not_to_be_visible()` on the test's executed code path IS
+referenced. Negative assertions are first-class — the mechanical grep for
+`.locator(`/`get_by_*` catches them the same as positive ones.
+
+**Same-element conditional pairs — `data-testid={cond ? A : B}` on a single
+JSX node (canon ruling #277, 2026-07-22).** When disambiguation forces two
+mutually-exclusive branches on the same element (e.g. `isOverflow ?
+'entity-card-tag-overflow' : 'entity-card-tag-chip'`), the compliant shapes
+are exactly two:
+  1. **Only the used branch is named**, the other is `undefined`:
+     `data-testid={isOverflow ? undefined : 'entity-card-tag-chip'}`. No
+     orphan testid — the used branch's locator is still collision-safe (the
+     other branch has no attribute to match). Preferred default.
+  2. **Both branches are named AND both are referenced** by locators on the
+     test's executed code path — the untested branch via an absence assertion
+     (`to_have_count(0)`/`not_to_be_visible()`) on the elements the test
+     exercises. This turns "the pair disambiguates cleanly" from a
+     documented assumption into a test-enforced invariant, catching any
+     future regression that drops the disambiguating prop.
+
+Documentation-only carve-outs (naming the pair for self-documentation, then
+explaining in a docstring/AFS PROVENANCE row) are **not compliant** — docs
+don't execute, so an orphan testid still inflates the presence-based coverage
+metric. Same reasoning as #511: no soft justifications.
+
+(Note: the state-switched testid anti-pattern of §"Testid = stable identity"
+below is a distinct case — a testid's VALUE flipping on the same rendered
+element as state changes. #277 covers the different case of two
+mutually-exclusive JSX renders through one component. The §-below rule still
+outlaws state-value-switched testids on the same live element.)
 
 - **Testid-only via `LocatorDescriptor`** (`automation/pages/locator_descriptor.py`):
   `LocatorDescriptor(testid="agent-form-save-button")`. Never populate `fallback=`
