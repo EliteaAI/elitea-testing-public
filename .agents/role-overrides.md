@@ -32,6 +32,14 @@ metric*. Every raw handle silently shrinks measured coverage.
   to untouched elements = `CHANGES_REQUESTED`. (Optional testid PROPS on shared
   components are fine — they render nothing unless a caller opts in — but each new
   prop is a component-API change the UI team reviews as a pattern.)
+  **"Touches" = the test actually invokes the page-object method that uses the
+  testid, on the case's executed code path (canon ruling #511, 2026-07-22).** A
+  `LocatorDescriptor` field wired into a real method that this test never calls
+  is NOT "touched" — no carve-out for reusable scaffolding, parameterized methods
+  used by sibling cases with other args, or "plausible future use." Sibling
+  testids in the same JSX array literal: add ONLY the one this test calls, leave
+  the rest to the case that exercises them. (#277 — structural locator-
+  disambiguation pairs — is a distinct axis, tracked separately.)
 - **Fresh ground truth (hard rule).** Any verification against `origin/*` refs —
   promotability greps, "does this testid exist on main", branch-state checks —
   is preceded by `git fetch origin` in that repo, in the same command block. A

@@ -64,6 +64,11 @@ case that's strictly clearer-cut than the one still open.
   #511 is still just a recommendation, not a human ruling; #511/#277 are both
   now multiple days old and unanswered — worth prioritizing given they're
   recurring in real deliveries, not just a theoretical edge case anymore.
+  **RESOLVED 2026-07-22:** Aliaksandr ruled option 1 on #511 (no carve-out).
+  Wired-but-uninvoked is now a plain solo-FAIL, same bar as orphan. See
+  [[canon_ruling_511_referenced_means_on_test_code_path]] for the full
+  ruling and the tuned instructions. #277 (structural locator-disambiguation
+  pair) is still open — do NOT extend this ruling to that shape.
 - Issue #317 (ELITEA-2114, PR #696, control-audited 2026-07-21, one day after
   #298): `chat-conversation-menu-make-public-menuitem` /
   `chat-conversation-menu-share-menuitem` — 2 of 7 NEW menu-item testids this
