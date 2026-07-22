@@ -245,8 +245,11 @@ class TestExportAgentNoNestedDependencies:
                 assert frontmatter.get("description") == agent_description, (
                     "Exported frontmatter description should match the Agent"
                 )
+                # Note: "temperature" is intentionally NOT required — reasoning
+                # models reject temperature (see EliteaAI/elitea_issues#5821),
+                # so the product no longer includes it in exports.
                 for required_key in (
-                    "model", "temperature", "max_tokens", "agent_type", "step_limit",
+                    "model", "max_tokens", "agent_type", "step_limit",
                 ):
                     assert required_key in frontmatter, (
                         f"Exported frontmatter should contain '{required_key}', "
