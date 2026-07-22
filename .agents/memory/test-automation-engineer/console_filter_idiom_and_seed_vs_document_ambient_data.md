@@ -1,6 +1,6 @@
 ---
 name: Console-error filter idiom, and seed-vs-document for an undocumented ambient-data dependency
-description: The established page.on("console", ...) + known-artifact-filter-function + Side-channel-check-step idiom this repo uses to automate an AFS's "no console errors" claim; and the judgement call for an undocumented ambient test-data dependency (seed a throwaway vs document reuse-existing) when no fixture actually guarantees the ambient state.
+description: The established page.on("console", ...) + known-artifact-filter-function + Side-channel-check-step idiom this repo uses to automate an AFS's "no console errors" claim; and the judgement call for an undocumented ambient test-data dependency (seed a throwaway vs document reuse-existing) when no fixture actually guarantees the ambient state — now confirmed TWICE (ELITEA-2095, ELITEA-2132), i.e. established team convention, not a one-off call.
 type: feedback
 ---
 
@@ -72,3 +72,52 @@ clickable. Defect #691 (sending the FIRST UI message to a zero-message
 conversation silently creates a new one instead) does NOT apply, because no
 message is ever sent to this throwaway — it exists purely to be clicked.
 Cleaned up in the same `finally` block as the primary seeded conversation.
+
+## Confirmed a second time — ELITEA-2132 (PR #698) fix-only round 2
+
+Same judgment call, independent occurrence: step 3's positional check ("new
+folder entry renders above the 'Today' date-group heading") needed a
+guaranteed date-group heading to compare against. Live investigation (a
+throwaway pytest script hitting `localhost:5173`, per the dispatch's explicit
+"check live before assuming untestable" instruction) confirmed the shared
+project DOES have real ambient content (3 pre-existing conversations under
+"Today") — so the naive move would have been "document it as `reuse-existing`
+and assert against it directly." Went with seed-a-throwaway instead, same
+reasoning as above: nothing in this suite guarantees that ambient state
+survives future runs. This time the seed was even cheaper — the pre-existing
+`conversation_id` **fixture** (function-scoped, auto-create-and-delete,
+already used by several other chat tests) covered it exactly, no manual
+`conversation_api.create_conversation()`/`finally`-block bookkeeping needed
+at all; just add `conversation_id` as a test parameter. **Two confirmed
+instances now = treat "seed via the cheapest available fixture, don't lean on
+undocumented ambient shared-project state" as house style for this suite**,
+not a case-by-case judgment call to re-derive each time.
+
+### Related, smaller lesson from the same round: bool-returning helper vs Locator-returning accessor
+
+`ChatPage.is_conversation_group_visible(group)` (from ELITEA-2095) already
+existed and wraps the exact same `CONVERSATION_GROUP_HEADER` testid template
+this fix needed — but it returns `bool`, and the new caller needed the
+Locator itself for a `bounding_box()` comparison. Rather than change
+`is_conversation_group_visible`'s return type (would break existing
+bool-callers) or reach into the page object's internals from the test
+(`chat.page.locator(chat.CONVERSATION_GROUP_HEADER.format(...))` — no other
+test in this suite calls `.page.locator()` directly, that would have been a
+new anti-pattern), added a small sibling method,
+`get_conversation_group_header(group)`, that returns the Locator and shares
+the same handle. General pattern worth reusing: when an existing page-object
+method's return type doesn't fit a new caller's need, add a same-name-family
+sibling accessor rather than widening/changing the existing method's
+contract.
+
+### Sanity-checking a new assertion isn't tautological — cheap, worth doing on every "add a missing assertion" fix
+
+Before counting the fix as done, temporarily inverted the new comparison
+(`>=` an impossible offset instead of the real `<=`), reran the test once,
+confirmed a real `AssertionError` fired with the expected box values in the
+message, then reverted to the correct form. Costs one extra `pytest`
+invocation; directly proves the added assertion can actually fail (i.e. it's
+wired to something real, not silently short-circuited by a bad boolean or an
+always-true guard) — the exact class of bug the review findings in this file
+exist to catch in the first place, so it's worth catching in your own new
+code before shipping it.

@@ -427,6 +427,92 @@ class ChatPage(BasePage):
         description="Delete (confirm) button inside the delete-confirmation modal.",
     )
 
+    # ------------------------------------------------------------------
+    # Chat folders — creation via CHATS header icon (ELITEA-2132)
+    # ------------------------------------------------------------------
+    # All handles below carry testids added directly to EliteaUI during the
+    # analyst pass for this case (commit 6fceb3e2 on automation/testids) —
+    # the whole "Folders" feature area had zero data-testid coverage before
+    # this. Reuses CONVERSATION_MENU_BUTTON (the shared, non-unique DotMenu
+    # button testid, scoped inside FOLDER_ITEM) for the folder dot-menu —
+    # FolderAccordion.jsx wires the same DotMenu id="conversation-menu" as
+    # ConversationItem.jsx.
+
+    conversations_panel_heading = LocatorDescriptor(
+        testid="chat-conversations-heading",
+        description=(
+            "'Chats' heading in the CHATS panel header (Conversations.jsx). "
+            "ADDED this implementation — used as step-1 proof the CHATS "
+            "panel itself is displayed."
+        ),
+    )
+
+    create_folder_button = LocatorDescriptor(
+        testid="chat-create-folder-button",
+        description=(
+            "CHATS panel header 'Create folder' icon, positioned immediately "
+            "before the search button. Conversations.jsx renders this in two "
+            "mutually-exclusive branches (expanded/collapsed sidebar) with "
+            "the same testid — only one branch is ever mounted at a time."
+        ),
+    )
+
+    search_conversations_button = LocatorDescriptor(
+        testid="conversation-search-button",
+        description=(
+            "Search-conversations icon button (ConversationSearchButton.jsx) "
+            "— pre-existing testid (not added this implementation), used as "
+            "the positional anchor for the folder-creation icon's step-2 "
+            "'immediately before the search icon' check. Distinct from "
+            "search_conversations_input, which is the search text field."
+        ),
+    )
+
+    folder_name_input = LocatorDescriptor(
+        testid="chat-folder-name-input",
+        description=(
+            "Inline folder-name editor input (FolderItem.jsx) — shared "
+            "between the create-new-folder and rename-existing-folder "
+            "flows. Only one folder can be in edit mode at a time, so no "
+            "scoping is needed."
+        ),
+    )
+
+    folder_name_confirm_button = LocatorDescriptor(
+        testid="chat-folder-name-confirm-button",
+        description="Checkmark (confirm) icon next to the folder-name editor input.",
+    )
+
+    folder_name_cancel_button = LocatorDescriptor(
+        testid="chat-folder-name-cancel-button",
+        description="X (cancel) icon next to the folder-name editor input.",
+    )
+
+    # Folder item row (whole accordion) — dynamic per folder id. Carries
+    # data-expanded="true"/"false" on the SAME element (testid = stable
+    # identity, state via data-* attribute — PR #581 ruling), scoping BOTH
+    # the header (icon/name/expand-arrow/dot-menu) AND the body (empty
+    # state / conversation list) as descendants.
+    FOLDER_ITEM = '[data-testid="chat-folder-item-{}"]'
+
+    # Scoped sub-selectors — non-unique across simultaneously-rendered
+    # folders, ALWAYS resolved via .locator() on a FOLDER_ITEM-scoped
+    # element, never at page level.
+    FOLDER_ICON = '[data-testid="chat-folder-icon"]'
+    FOLDER_EXPAND_ICON = '[data-testid="chat-folder-expand-icon"]'
+    FOLDER_EMPTY_STATE = '[data-testid="chat-folder-empty-state"]'
+
+    # Folder dot-menu "Delete" item — ADDED this implementation
+    # (FolderItem.jsx's menuItems had no `key`, so DotMenu/BasicMenuItem
+    # never emitted a data-testid for them; ConversationItem.jsx's sibling
+    # items already follow this exact key -> "{key}-menuitem" convention —
+    # mirrored here as a one-line addition, EliteaUI
+    # src/[fsd]/features/chat/conversation-list/ui/folders/FolderItem.jsx).
+    # Only "delete" was keyed — Rename/Pin are untouched by this case's own
+    # test, per the team's testid-scope ruling (testids go only on elements
+    # a test actually touches).
+    FOLDER_MENU_DELETE_ITEM = '[data-testid="chat-folder-menu-delete-menuitem"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
         
@@ -1435,6 +1521,22 @@ class ChatPage(BasePage):
             return True
         except Exception:
             return False
+
+    def get_conversation_group_header(self, group: str = "today"):
+        """Return the Locator for a date-group heading container.
+
+        Same handle as ``is_conversation_group_visible`` (``CONVERSATION_
+        GROUP_HEADER``), but returns the raw Locator instead of a bool —
+        needed by callers that compare its ``bounding_box()`` against
+        another element (e.g. ELITEA-2132's "new folder entry renders
+        ABOVE the 'Today' heading" positional check), not just whether it
+        exists.
+
+        Args:
+            group: Date-group key — "today" (default), "this_week", or
+                "older".
+        """
+        return self.page.locator(self.CONVERSATION_GROUP_HEADER.format(group))
 
     def is_conversation_in_group(
         self, conversation_id: str | int, group: str = "today", timeout: int = 5000,
@@ -3241,3 +3343,109 @@ class ChatPage(BasePage):
             self.click_read_out(message_index=message_index, timeout=timeout)
             self.wait_for_tts_controls(timeout=timeout)
         return self.open_voice_settings_from_tts(timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # Chat folder methods (ELITEA-2132)
+    # ------------------------------------------------------------------
+
+    @action("Open folder-name editor")
+    def click_create_folder_button(self, timeout: int = 5000):
+        """Click the CHATS header 'Create folder' icon (testid-based).
+
+        Distinct from the legacy ``click_create_folder()`` (``get_by_label``,
+        pre-dates the testid policy — left in place as tracked tech debt).
+        New automation should use this method. Waits for the inline
+        folder-name editor input to become visible before returning.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking chat-create-folder-button")
+        self.create_folder_button.wait_for(state="visible", timeout=timeout)
+        self.create_folder_button.click()
+        self.folder_name_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Folder-name editor opened")
+
+    def get_folder_item(self, folder_id: str | int):
+        """Return the Locator for a folder's whole accordion row (id-scoped).
+
+        Args:
+            folder_id: Numeric folder id (as returned by the create-folder
+                response, or read back from the DOM).
+        """
+        return self.page.locator(self.FOLDER_ITEM.format(folder_id))
+
+    def is_folder_expanded(self, folder_id: str | int) -> bool:
+        """Return True if *folder_id*'s row carries ``data-expanded="true"``."""
+        value = self.get_folder_item(folder_id).get_attribute("data-expanded")
+        return value == "true"
+
+    @action("Expand folder")
+    def expand_folder(self, folder_id: str | int, timeout: int = 5000):
+        """Click a folder row to expand it; waits for ``data-expanded`` to flip.
+
+        Args:
+            folder_id: Numeric folder id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Expanding folder %s", folder_id)
+        self.get_folder_item(folder_id).click()
+        expanded_item = self.page.locator(
+            f'{self.FOLDER_ITEM.format(folder_id)}[data-expanded="true"]'
+        )
+        expanded_item.wait_for(state="visible", timeout=timeout)
+        logger.info("Folder %s expanded", folder_id)
+
+    def get_folder_empty_state_text(self, folder_id: str | int) -> str:
+        """Return the empty-state text scoped inside *folder_id*'s row.
+
+        Args:
+            folder_id: Numeric folder id.
+        """
+        item = self.get_folder_item(folder_id)
+        return item.locator(self.FOLDER_EMPTY_STATE).text_content() or ""
+
+    @action("Delete folder via menu")
+    def delete_folder_via_menu(self, folder_id: str | int, timeout: int = 5000):
+        """Delete a folder via its scoped 3-dot menu -> Delete -> confirm dialog.
+
+        Mirrors the id-scoped delete flow used for conversations
+        (``open_conversation_context_menu`` / ``click_conversation_menu_item``),
+        but folder menu items currently carry a testid ONLY on "Delete"
+        (``FOLDER_MENU_DELETE_ITEM`` — added this implementation; Rename/Pin
+        are untouched, out of this case's testid scope). Reuses the shared,
+        non-unique ``CONVERSATION_MENU_BUTTON`` testid (same underlying
+        DotMenu component as conversation items), scoped inside the folder's
+        own row so it resolves to exactly one element.
+
+        Hovers ``FOLDER_ICON``, NOT the outer ``FOLDER_ITEM`` row, to reveal
+        the dot-menu. ``FolderAccordion.jsx`` only flips its ``#Menu``
+        visibility on hover of the fixed ~49px header sub-box
+        (``summaryContainer``), not the whole accordion. A bare
+        ``item.hover()`` targets the row's geometric center, which is safe
+        while collapsed but lands inside the (now-visible) body once the
+        folder is expanded -- the dot-menu never appears and
+        ``menu_button.wait_for`` times out. ``FOLDER_ICON`` lives inside
+        ``summaryContainer`` itself and is rendered in both expand states,
+        so hovering it reliably lands within the header regardless of
+        whether the folder is collapsed or expanded.
+
+        Args:
+            folder_id: Numeric folder id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Deleting folder %s via 3-dot menu", folder_id)
+        item = self.get_folder_item(folder_id)
+        item.locator(self.FOLDER_ICON).hover()
+        menu_button = item.locator(self.CONVERSATION_MENU_BUTTON)
+        menu_button.wait_for(state="visible", timeout=timeout)
+        menu_button.click(force=True)
+
+        delete_item = self.page.locator(self.FOLDER_MENU_DELETE_ITEM)
+        delete_item.wait_for(state="visible", timeout=timeout)
+        delete_item.click()
+
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+        self.delete_confirm_button.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Folder %s deleted via menu", folder_id)

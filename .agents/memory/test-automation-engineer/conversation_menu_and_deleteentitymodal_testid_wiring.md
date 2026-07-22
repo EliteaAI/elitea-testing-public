@@ -1,6 +1,6 @@
 ---
-name: Conversation-menu and DeleteEntityModal testid wiring (ELITEA-2114)
-description: Where the 7 conversation-context-menu-item testids and the BaseModal/DeleteEntityModal title+cancel testids actually live, plus the project-context menu-item-count trap — needed by any future case touching ConversationItem.jsx's DotMenu or the shared delete-confirmation dialog.
+name: Conversation-menu and DeleteEntityModal testid wiring (ELITEA-2114, ELITEA-2132)
+description: Where the 7 conversation-context-menu-item testids and the BaseModal/DeleteEntityModal title+cancel testids actually live, plus the project-context menu-item-count trap and the DotMenu key->testid mechanism generalizing to OTHER DotMenu callers (e.g. FolderItem.jsx) — needed by any future case touching ConversationItem.jsx/FolderItem.jsx's DotMenu or the shared delete-confirmation dialog.
 type: feedback
 ---
 
@@ -74,3 +74,34 @@ assertions, drive the change live (playwright-cli against the local dev
 server, HMR picks up JSX edits instantly) BEFORE committing. Caught the
 menu-item-count drift above at zero cost this way, rather than discovering
 it as a test failure during Phase 4 Execute.
+
+## The `item.key` -> testid mechanism generalizes to every DotMenu caller (ELITEA-2132)
+
+The ELITEA-2114 finding above ("`DotMenu.jsx` needed zero changes — the gap
+was ConversationItem.jsx's `menuItems` never setting `key`") is not a
+ConversationItem-specific fact — it's a property of the shared `DotMenu`/
+`BasicMenuItem` component itself (`testId: item.key` -> `data-testid=
+"${item.key}-menuitem"`), so it applies to EVERY caller. `FolderAccordion.jsx`
+wires `<DotMenu id="conversation-menu">{menuItems}</DotMenu>` with
+`menuItems` supplied by `FolderItem.jsx` — same shared component, same
+mechanism, but `FolderItem.jsx`'s own `menuItems` array (Rename/Pin on top/
+Delete) had no `key` field either. One-line fix, identical shape: add
+`key: 'chat-folder-menu-delete'` to the Delete item only (scope discipline —
+this case's test only clicks Delete, for cleanup). **When you meet a new
+`<DotMenu>` consumer with un-testid'd menu items, check for a missing `key`
+field before assuming a testid needs inventing from scratch — the rendering
+plumbing is almost certainly already there.**
+
+## Watch for "out of budget" claims contradicted by the AFS's own later sections
+
+The ELITEA-2132 analyst pass characterized the folder Delete menu item as
+"out of this case's testid budget since the case doesn't require selecting a
+specific menu item" — but that same AFS's own § Cleanup requires clicking
+Delete to tear down every run's created folder. An element a test's
+cleanup touches IS in scope under the testid-only policy (`.agents/
+role-overrides.md`: "missing testid alone ⇒ add it," scope = elements the
+test actually touches — cleanup counts). When absorbing an AFS, cross-check
+"out of budget" / "not needed" claims in the Concrete Handles table against
+§ Cleanup and § Automation Hints, not just the numbered case steps — a
+Phase-1 read that only walks the Coverage Map can miss this class of
+self-contradiction.
