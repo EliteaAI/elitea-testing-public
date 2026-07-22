@@ -249,9 +249,48 @@ a toggle-button-group config), it is tempting to sprinkle testids across every
 sibling while you're in there — **don't**. Add only the one testid the caller
 named; leave the rest to the case that exercises them. Blanket-adding sibling
 testids inflates the presence-based coverage metric and is `CHANGES_REQUESTED`
-at review. (Structural locator-disambiguation pairs — where a sibling testid
-must exist to make the used testid's locator unambiguous — are a distinct
-question tracked in #277; don't invoke that as a general carve-out.)
+at review.
+
+### Same-element conditional pairs (canon ruling #277, 2026-07-22)
+
+Sometimes a shared component renders two semantically different things through
+the same JSX node — e.g. `CardTagSectionItem` renders both real tag chips AND
+the "+N more" overflow badge, and both go through the same root `<Box>`. An
+unconditional `data-testid` on that node would attach to every render and make
+the used testid's locator match both — a real collision.
+
+The fix is a prop-driven conditional on the SAME element. There are two
+compliant shapes, and only two:
+
+1. **Preferred — name only the used branch, leave the other `undefined`:**
+   ```jsx
+   data-testid={isOverflow ? undefined : 'entity-card-tag-chip'}
+   ```
+   The used branch's locator is still collision-safe (the overflow render has
+   no `data-testid` attribute to match), and there is no orphan testid to
+   pollute the presence-based coverage metric. Reach for this by default.
+
+2. **Both branches named — only if the caller's test asserts the untested
+   branch's absence** on the elements it exercises:
+   ```jsx
+   data-testid={isOverflow ? 'entity-card-tag-overflow' : 'entity-card-tag-chip'}
+   ```
+   ```python
+   # in the test / page-object method the test invokes:
+   expect(card.locator(SkillsListPage.CARD_TAG_OVERFLOW)).to_have_count(0)
+   ```
+   The absence assertion turns "the pair disambiguates cleanly" from a
+   documented assumption into a test-enforced invariant. Both testids are now
+   referenced by locators on the executed code path, so both pull their
+   weight in the coverage metric.
+
+**Not compliant:** naming both branches and explaining the untested one only
+in prose (docstring, AFS PROVENANCE row, PR description). Docs don't execute
+— an orphan testid still inflates coverage. Same reasoning as #511: no soft
+justifications, no documentation-only carve-outs.
+
+The reviewer's mechanical grep (`.locator(`/`get_by_*` on the diff) already
+catches absence assertions the same as positive ones — no new grep needed.
 
 ## Checklist
 
@@ -259,6 +298,9 @@ Before completing:
 - [ ] All requested elements have testids added (or documented why not)
 - [ ] **Scope: only elements the caller's test actually invokes** — no
       "while I'm here" sibling adds in the same JSX array literal (canon #511)
+- [ ] **Same-element conditional pair (`data-testid={cond ? A : B}`):** either
+      the untested branch is `undefined`, OR the caller's test asserts the
+      untested branch's absence on the elements it exercises (canon #277)
 - [ ] Naming convention followed: `{section}-{element}-{type}`
 - [ ] No duplicate testids introduced
 - [ ] Edits committed on `automation/testids` and **pushed** (plain FF, never `--force`) — terminal step

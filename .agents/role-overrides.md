@@ -234,9 +234,25 @@ lookup), never replace it.
   reviewer discipline, not a tracker-artifact gate.)
 - **Testid-convention check on any EliteaUI JSX in the case's diff** (PR #581
   ruling, `.agents/testing.md` § Locator policy): a state-conditional testid
-  (`data-testid={cond ? … : …}` / `… : undefined`), a feature-scoped testid
-  hardcoded in a shared component (`src/components/`, `src/[fsd]/shared/`), or a
-  `dataTestId`-style prop name is `CHANGES_REQUESTED`.
+  whose VALUE flips as component state changes on the SAME live element
+  (`data-testid={isExpanded ? A : B}` on an element that expands in place), a
+  feature-scoped testid hardcoded in a shared component (`src/components/`,
+  `src/[fsd]/shared/`), or a `dataTestId`-style prop name is `CHANGES_REQUESTED`.
+- **Same-element conditional pair check (canon ruling #277, 2026-07-22).** A
+  `data-testid={cond ? A : B}` on a single JSX node where `cond` is a per-mount
+  prop discriminating two mutually-exclusive JSX renders (e.g. `isOverflow` on
+  `CardTagSectionItem` — the same component renders EITHER a real tag chip OR
+  a "+N" overflow badge, never one that becomes the other) is distinct from
+  the PR #581 anti-pattern and MAY be compliant. Exactly two shapes pass:
+  (a) only the used branch is named, the other is `undefined`; OR (b) both
+  branches are named AND both are referenced by locators on the test's
+  executed code path — the untested branch via an absence assertion
+  (`to_have_count(0)`/`not_to_be_visible()`) on the elements the test
+  exercises. A documentation-only justification (docstring / AFS PROVENANCE
+  row explaining why the untested branch exists) is NOT compliant on its own
+  — `CHANGES_REQUESTED`. Absence assertions are caught by the existing
+  mechanical grep (they use `.locator(`/`get_by_*` the same as positive
+  assertions), so no new grep is needed.
 - **Declared improvisations** (see § Every role): verify the reasoning and say so
   explicitly in the verdict; if sound, APPROVED + recommend the canon addition —
   do not block solely for the gap the canon itself left.

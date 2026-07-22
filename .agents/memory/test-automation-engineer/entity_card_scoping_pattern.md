@@ -40,7 +40,32 @@ Any test needing to scope a query to "this specific card" (agents list,
 pipelines list, toolkit list — all render through the same `Card.jsx`)
 should reach for `entity-card` + `.filter(has=...)` rather than inventing
 another xpath-ancestor or CSS-class workaround. If a future card-adjacent
-element needs its own testid, follow the `isOverflow`-prop pattern: add a
-boolean/variant prop that drives which testid string renders, rather than
-sharing one testid (or no testid) across visually-similar-but-semantically-
-different elements.
+element needs its own testid, add a boolean/variant prop that drives which
+testid string renders, rather than sharing one testid (or no testid)
+across visually-similar-but-semantically-different elements.
+
+**Update — same-element conditional pairs (canon ruling #277, 2026-07-22).**
+The specific `isOverflow ? 'entity-card-tag-overflow' : 'entity-card-tag-chip'`
+shape ELITEA-1740 shipped is NOT the preferred default going forward. When
+your test only exercises one branch of the pair, the compliant shapes are:
+
+1. **Preferred:** name only the used branch, leave the other `undefined`:
+   `data-testid={isOverflow ? undefined : 'entity-card-tag-chip'}`. The used
+   branch's locator is still collision-safe (the overflow render has no
+   attribute to match), and no orphan testid inflates the presence-based
+   coverage metric.
+2. **Both branches named** — only if your caller's test asserts the untested
+   branch's absence on the elements it exercises
+   (`expect(card.locator(OVERFLOW)).to_have_count(0)`). This turns the
+   disambiguation into a test-enforced invariant.
+
+Documentation-only justification (docstring / AFS PROVENANCE row) is NOT
+compliant on its own — docs don't execute. See `.agents/testing.md`
+§ Locator policy and `.claude/skills/add-data-testid/SKILL.md` § Scope
+discipline for the full ruling.
+
+ELITEA-1740's shipped shape (both branches named, no absence assertion) is
+grandfathered but should be cleaned up either by amending EliteaUI#544 to
+`undefined` on the overflow branch, or by adding a one-line absence
+assertion in `SkillsListPage.get_card_tags()`. Don't repeat the shape in
+new cases.
