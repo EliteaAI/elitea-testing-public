@@ -111,6 +111,18 @@ presence-based visualization — it corrupts the metric from the other side.
 Coverage density (N testids / M components) is NOT a target; honest
 presence ≈ tested is.
 
+**"Referenced" = called on the test's actual code path (canon ruling #511,
+2026-07-22).** A testid wired into a page-object method or `LocatorDescriptor`
+field is NOT "referenced" unless the test invokes that method on its executed
+path. There is **no carve-out** for "reusable page-object scaffolding,"
+"parameterized method with other callers," or "plausible future case" — those
+are exactly the soft justifications the checklist was written to reject. If a
+sibling testid ends up in the same JSX array literal you're editing, add ONLY
+the one your test calls; leave the rest to the case that actually exercises
+them. (Structural locator-disambiguation pairs — where a sibling testid must
+exist to make the used testid's locator unambiguous — are a distinct axis,
+unresolved and tracked separately in #277.)
+
 - **Testid-only via `LocatorDescriptor`** (`automation/pages/locator_descriptor.py`):
   `LocatorDescriptor(testid="agent-form-save-button")`. Never populate `fallback=`
   (dead code) or `locator=` (kept in the API for legacy only — forbidden in new

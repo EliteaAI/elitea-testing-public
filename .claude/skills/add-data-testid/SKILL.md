@@ -238,10 +238,27 @@ cherry-picks these commits to `EliteaAI/EliteaUI` `main` when they choose.
 
 ---
 
+## Scope discipline (canon ruling #511, 2026-07-22)
+
+Add ONLY the testids the caller's test actually invokes on its executed code
+path. **A testid wired into a page-object method that this test never calls is
+NOT "referenced"** — no carve-out for reusable scaffolding, parameterized
+methods used by sibling cases with other args, or "plausible future use." When
+you touch a JSX array literal (a `<Select>` options list, a menu-items array,
+a toggle-button-group config), it is tempting to sprinkle testids across every
+sibling while you're in there — **don't**. Add only the one testid the caller
+named; leave the rest to the case that exercises them. Blanket-adding sibling
+testids inflates the presence-based coverage metric and is `CHANGES_REQUESTED`
+at review. (Structural locator-disambiguation pairs — where a sibling testid
+must exist to make the used testid's locator unambiguous — are a distinct
+question tracked in #277; don't invoke that as a general carve-out.)
+
 ## Checklist
 
 Before completing:
 - [ ] All requested elements have testids added (or documented why not)
+- [ ] **Scope: only elements the caller's test actually invokes** — no
+      "while I'm here" sibling adds in the same JSX array literal (canon #511)
 - [ ] Naming convention followed: `{section}-{element}-{type}`
 - [ ] No duplicate testids introduced
 - [ ] Edits committed on `automation/testids` and **pushed** (plain FF, never `--force`) — terminal step
