@@ -204,9 +204,27 @@ outlaws state-value-switched testids on the same live element.)
   picks it up live; a human promotes to `main`, no agent PR). Naming `{section}-{element}-{type}`,
   e.g. `agent-form-save-button` vs `pipeline-form-save-button` — verify uniqueness
   before adding.
-- **Stop+flag rule:** ONLY if a testid genuinely can't be placed (element outside
-  `EliteaUI/src`, third-party widget like ReactFlow's `rf__wrapper`), surface to
-  the lead — don't ship brittle CSS.
+- **Stop+flag rule — sanctioned exceptions (#579, approved 2026-07-22):** ONLY if a
+  testid genuinely can't be placed, a **scoped raw handle** is allowed:
+  1. **Third-party widget subtrees** — element outside `EliteaUI/src` (e.g. ReactFlow's
+     `rf__wrapper`) where no testid can be placed on the library's internal nodes.
+  2. **Third-party editor library internal render nodes** — per-line/per-node elements
+     inside an editor widget (CodeMirror, Monaco, ProseMirror, etc.) whose DOM is
+     library-internal, not app JSX. Examples: CodeMirror's per-line `<div>` nodes
+     (`automation/pages/mcp_form_page.py:121` — `fill_raw_json_line()` uses
+     `self.raw_json_editor_content.get_by_text(...)` scoped inside the
+     `toolkit-raw-json-editor-content` testid parent to locate which line to edit).
+  
+  **Discipline (mandatory for both exceptions):**
+  - The parent container MUST have a real app testid (a `LocatorDescriptor(testid=...)`
+    class field).
+  - The raw handle MUST be scoped to that testid parent
+    (`self.testid_parent.locator(...)` / `.get_by_text(...)` chained off it), never a
+    free-floating page-level handle.
+  - Declare the exception explicitly in the method's docstring: which node, why a
+    testid cannot be placed, and the "do not extend it to any handle that COULD carry
+    a testid" boundary.
+  - Anything outside these two shapes escalates to the lead — don't ship brittle CSS.
 - **Existing raw handles in `automation/pages/` are tracked tech debt**
   (issues #25/#42, ~350 call sites), not precedent. Never cite neighbors to
   justify a new raw handle.

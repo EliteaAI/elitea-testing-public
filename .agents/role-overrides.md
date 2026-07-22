@@ -23,8 +23,12 @@ metric*. Every raw handle silently shrinks measured coverage.
 - Element lacks a testid? That is **work to do, not a reason to rung down**: the
   implementer adds one via `add-data-testid` (dual-target flow). The escalation
   test is OR, not AND: *missing testid alone* ⇒ add it. Only "testid genuinely
-  cannot be placed" (outside `EliteaUI/src`, third-party widget) escalates to the
-  lead.
+  cannot be placed" escalates — **sanctioned exceptions (#579):** third-party widget
+  subtrees (outside `EliteaUI/src`, e.g. ReactFlow's `rf__wrapper`) OR third-party
+  editor library internal render nodes (CodeMirror/Monaco/ProseMirror per-line divs).
+  Both require: (1) parent has a real testid, (2) raw handle scoped to that parent,
+  (3) explicit docstring declaration. See `.agents/testing.md` § Locator policy for
+  full discipline.
 - **The scope is exactly the elements the case's test touches — NEVER blanket-add**
   (team ruling 2026-07-14): testids on elements no test uses are front-end noise
   AND corrupt the coverage metric — the "highlight what has a testid" visualization
