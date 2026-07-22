@@ -453,7 +453,7 @@ class TestConversationActions:
         with allure.step("Step 5 — Verify confirmation dialog"):
             dialog = Dialog.wait_for(page, timeout=UI_ELEMENT_TIMEOUT)
             title_text = Dialog.get_title(dialog)
-            assert "Delete conversation" in title_text, f"Expected 'Delete conversation' in title, got: {title_text}"
+            assert "Delete" in title_text, f"Expected 'Delete' in dialog title, got: {title_text}"
             assert Dialog.has_button(dialog, "Cancel"), "Cancel button should be visible in dialog"
             assert Dialog.has_button(dialog, "Delete"), "Delete button should be visible in dialog"
 

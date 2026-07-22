@@ -220,51 +220,98 @@ class SupportAssistantPage(BasePage):
         send_btn.click()
         logger.info("Message sent")
 
-    def wait_for_response(self, initial_count: int = 0, timeout: int = 30000):
-        """Wait for the assistant to respond to a message.
+    def wait_for_response(self, initial_count: int = 0, timeout: int = 120000):
+        """Wait for the assistant to respond to a message with progressive timeout.
 
-        Waits for a new assistant message to appear in the conversation.
-        Detects completion by watching for a new "Copy to clipboard" button
-        (appears when the message is fully rendered) OR for the active spinner
-        (.elitea-assistant-status-chip--active) to disappear after a new
-        assistant message wrapper is present.
+        Uses a progressive wait strategy: the timeout resets each time the status
+        changes (e.g., "sending" -> "thinking" -> "receiving text"). This handles
+        slow AI responses where processing takes time but progress is being made.
+
+        Completion is detected by:
+        1. A new "Copy to clipboard" button (message fully rendered)
+        2. A new assistant message wrapper with no active spinner
 
         Args:
-            initial_count: Number of "Copy to clipboard" buttons before sending
-            timeout: Maximum wait time in milliseconds
+            initial_count: Number of assistant messages before sending
+            timeout: Maximum time (ms) to wait WITHOUT status change (default 120s)
         """
-        logger.info("Waiting for assistant response (initial_count=%d)...", initial_count)
+        logger.info("Waiting for assistant response (initial_count=%d, timeout=%dms)...", initial_count, timeout)
 
-        # Wait for a new assistant message (identified by Copy to clipboard button
-        # or by assistant message wrapper with no active spinner).
-        # The Copy to clipboard button appears only when the full response is rendered.
-        # The active spinner (.elitea-assistant-status-chip--active) is present while
-        # the assistant is still processing.
-        self.page.wait_for_function(
-            f"""(expectedCount) => {{
-                // Look for copy buttons — primary signal (message fully done)
-                const copyButtons = document.querySelectorAll('button[aria-label="Copy to clipboard"]');
-                if (copyButtons.length > expectedCount) return true;
+        deadline = time.time() + timeout / 1000
+        last_status = None
+        last_status_change = time.time()
+        poll_interval = 0.5  # seconds
 
-                // Fallback: a new assistant message wrapper exists AND no active spinner
-                const assistantWrappers = document.querySelectorAll(
-                    '.elitea-assistant-message-wrapper--assistant'
-                );
-                if (assistantWrappers.length > expectedCount) {{
-                    // Make sure none have an active spinner (still processing)
-                    const activeSpinner = document.querySelector(
-                        '.elitea-assistant-status-chip--active'
+        while time.time() < deadline:
+            # Check if response is complete
+            is_complete = self.page.evaluate(
+                """(expectedCount) => {
+                    // Primary signal: new copy button means message fully done
+                    const copyButtons = document.querySelectorAll('button[aria-label="Copy to clipboard"]');
+                    if (copyButtons.length > expectedCount) return { done: true };
+
+                    // Secondary: new assistant wrapper with no active spinner
+                    const assistantWrappers = document.querySelectorAll(
+                        '.elitea-assistant-message-wrapper--assistant'
                     );
-                    if (!activeSpinner) return true;
-                }}
-                return false;
-            }}""",
-            arg=initial_count,
-            timeout=timeout
+                    if (assistantWrappers.length > expectedCount) {
+                        const activeSpinner = document.querySelector(
+                            '.elitea-assistant-status-chip--active'
+                        );
+                        if (!activeSpinner) return { done: true };
+                    }
+
+                    // Get current status text for progress tracking
+                    // Status chip shows: "Sending...", "Thinking...", "Receiving text...", etc.
+                    const statusChip = document.querySelector('.elitea-assistant-status-chip');
+                    const statusText = statusChip ? statusChip.textContent.trim() : '';
+
+                    // Also track message content length as progress indicator
+                    const lastWrapper = assistantWrappers[assistantWrappers.length - 1];
+                    const contentLength = lastWrapper ? (lastWrapper.textContent || '').length : 0;
+
+                    return {
+                        done: false,
+                        status: statusText,
+                        wrapperCount: assistantWrappers.length,
+                        contentLength: contentLength
+                    };
+                }""",
+                initial_count
+            )
+
+            if is_complete.get("done"):
+                logger.info("Assistant response complete")
+                self.page.wait_for_timeout(1000)  # Stabilize
+                return
+
+            # Build current state signature for change detection
+            current_status = f"{is_complete.get('status', '')}|{is_complete.get('wrapperCount', 0)}|{is_complete.get('contentLength', 0)}"
+
+            if current_status != last_status:
+                # Progress detected - reset the deadline
+                logger.info(
+                    "Status change: %s -> %s (resetting timeout)",
+                    last_status or "(none)", current_status
+                )
+                last_status = current_status
+                last_status_change = time.time()
+                deadline = time.time() + timeout / 1000
+
+            # Check if we've been stuck without progress for too long
+            time_since_change = time.time() - last_status_change
+            if time_since_change > timeout / 1000:
+                raise TimeoutError(
+                    f"Support Assistant response timed out after {timeout}ms without status change. "
+                    f"Last status: {last_status}"
+                )
+
+            self.page.wait_for_timeout(int(poll_interval * 1000))
+
+        raise TimeoutError(
+            f"Support Assistant response timed out after {timeout}ms. "
+            f"Last status: {last_status}"
         )
-        # Additional wait for content to stabilize
-        self.page.wait_for_timeout(1000)
-        logger.info("Assistant response complete")
 
     def get_message_count(self) -> int:
         """Get the count of message blocks in the conversation.

@@ -587,8 +587,8 @@ class TestChatWithGitHubToolkit:
         # ------------------------------------------------------------------
         with allure.step("Step 5 — Wait for AI response with toolkit execution"):
             logger.info("Waiting for AI to complete toolkit execution...")
-            chat.wait_for_message_content_stable(
-                stable_duration_ms=3000,
+            chat.wait_for_ai_response(
+                initial_count=initial_count,
                 timeout=TOOLKIT_EXECUTION_TIMEOUT
             )
 

@@ -174,9 +174,8 @@ class ChatPage(BasePage):
     )
 
     internal_tools_menuitem = LocatorDescriptor(
-        testid="internal-tools-menuitem",
-        fallback=lambda page: page.get_by_role("menuitem", name="Internal Tools"),
-        description="Internal Tools menuitem inside plus menu dropdown"
+        locator='[role="menuitem"]:has-text("Modules")',
+        description="Modules menuitem inside plus menu dropdown (formerly Internal Tools)"
     )
 
     # Legacy locator - kept for backward compatibility but no longer works
@@ -814,32 +813,78 @@ class ChatPage(BasePage):
         logger.info(f"Last message: {text[:50]}...")
         return text
         
-    def wait_for_ai_response(self, initial_count: int = 0, timeout: int = 10000):
-        """Wait for the AI to respond after sending a message.
+    def wait_for_ai_response(self, initial_count: int = 0, timeout: int = 60000):
+        """Wait for the AI to fully respond after sending a message.
+
+        Waits for a new AI message to appear AND for its Copy button to become
+        visible, which indicates the response is fully rendered (not still
+        streaming). This is more reliable than checking text stability because
+        it doesn't depend on specific transient message strings.
 
         After the user sends a message, the conversation grows by at least 2:
         the user's own message at index ``initial_count``, and the AI's response
-        at index ``initial_count + 1``. This method waits for that AI response
-        element to appear in the DOM before returning.
+        at index ``initial_count + 1``.
 
         Args:
             initial_count: Number of messages present *before* the user sent
                            the message (captured via ``get_message_count()``).
-            timeout: Maximum wait time in milliseconds.
+            timeout: Maximum wait time in milliseconds (default 60s for toolkit
+                     execution which may involve external API calls).
         """
         logger.info(
-            "Waiting for AI response (initial_count=%d, timeout=%dms)...",
+            "Waiting for AI response with Copy button (initial_count=%d, timeout=%dms)...",
             initial_count,
             timeout,
         )
         # User's message lands at nth(initial_count).
         # AI's response lands at nth(initial_count + 1).
         ai_response_index = initial_count + 1
-        self.messages_container.nth(ai_response_index).wait_for(
-            state="visible", timeout=timeout,
-        )
-        self.wait_for_network(timeout=5000)
+        ai_message = self.messages_container.nth(ai_response_index)
+
+        # Step 1: Wait for the AI message element to appear
+        ai_message.wait_for(state="visible", timeout=timeout)
         logger.info("AI response element appeared at index %d", ai_response_index)
+
+        # Step 2: Wait for the Copy button within that message to appear
+        # The Copy button only renders when the message is fully generated
+        copy_button = ai_message.locator('button[aria-label="Copy to clipboard"]')
+        deadline = time.monotonic() + timeout / 1000.0
+        poll_interval = 0.5
+        copy_button_seen = False
+
+        while time.monotonic() < deadline:
+            try:
+                if copy_button.count() > 0 and copy_button.first.is_visible():
+                    if not copy_button_seen:
+                        logger.info("Copy button visible, verifying content...")
+                        copy_button_seen = True
+                    # Step 3: Verify message body has non-transient content
+                    # The Copy button can appear before actual content renders
+                    current_text = self._extract_message_body(ai_message)
+                    if current_text and not self._is_transient_message(current_text):
+                        logger.info("AI response complete — content verified: %s...", current_text[:50])
+                        self.wait_for_network(timeout=5000)
+                        return
+                    logger.debug("Copy button visible but content still transient: %s", current_text[:50] if current_text else "(empty)")
+            except Exception:
+                pass  # Element temporarily detached during re-render
+            time.sleep(poll_interval)
+
+        # Timeout reached - log what we have for debugging
+        try:
+            current_text = self._extract_message_body(ai_message)
+            logger.warning(
+                "Timeout waiting for AI response. Copy button seen: %s, Current text: %s",
+                copy_button_seen,
+                current_text[:200] if current_text else "(empty)"
+            )
+        except Exception:
+            pass
+
+        raise TimeoutError(
+            f"AI response did not complete within {timeout}ms — "
+            f"Copy button {'appeared but content was transient' if copy_button_seen else 'never appeared'}"
+        )
 
     # Transient messages that indicate generation is still in progress
     TRANSIENT_MESSAGES = frozenset([
@@ -862,10 +907,21 @@ class ChatPage(BasePage):
         Without this, the nbsp variant silently fails the membership check
         and ``wait_for_message_content_stable`` treats the placeholder as
         real, stable content — a false-stable race, not a real defect.
+
+        Also detects dynamic status patterns like "Thought for X seconds"
+        and "Packing its tools" which are streaming status indicators.
         """
         normalized = text.replace("\xa0", " ").lower().strip()
-        return normalized.rstrip(".…") in self.TRANSIENT_MESSAGES or \
-               normalized in self.TRANSIENT_MESSAGES
+        # Check exact matches against TRANSIENT_MESSAGES
+        if normalized.rstrip(".…") in self.TRANSIENT_MESSAGES or \
+           normalized in self.TRANSIENT_MESSAGES:
+            return True
+        # Check dynamic patterns (streaming status indicators)
+        if normalized.startswith("thought for "):
+            return True
+        if "packing" in normalized and "tool" in normalized:
+            return True
+        return False
 
     def wait_for_message_content_stable(
         self, stable_duration_ms: int = 2000, timeout: int = 30000
@@ -1314,14 +1370,15 @@ class ChatPage(BasePage):
     def wait_for_search_dialog(self, timeout: int = 5000):
         """Wait for search conversations input to appear.
 
-        In v2.0.3+, clicking "Search conversations" button opens an inline
-        search textbox (not a modal dialog).
+        Clicking "Search chats" button opens an inline search textbox
+        (not a modal dialog). Placeholder is "Search conversations...".
 
         Returns the search input locator.
         """
         search_input = self.page.locator(
             'input[placeholder*="Search conversations"], '
-            '[role="dialog"] input[placeholder*="Search"]'
+            'input[placeholder*="Search chats"], '
+            '[role="searchbox"]'
         )
         search_input.first.wait_for(state="visible", timeout=timeout)
         return search_input
@@ -1343,13 +1400,13 @@ class ChatPage(BasePage):
         return error.count() > 0 and error.first.is_visible()
 
     def open_search_conversations(self):
-        """Open search conversations via the Search conversations button.
+        """Open search conversations via the Search chats button.
 
-        In v2.0.3+, Ctrl+K keyboard shortcut is no longer supported.
-        Uses the "Search conversations" button in the conversations panel header.
+        Uses the "Search chats" button in the conversations panel header.
+        This reveals an inline search textbox (not a dialog).
         """
         logger.info("Opening search conversations via button")
-        search_btn = self.page.get_by_role("button", name="Search conversations")
+        search_btn = self.page.get_by_role("button", name="Search chats")
         search_btn.wait_for(state="visible", timeout=5000)
         search_btn.click()
         
@@ -1804,9 +1861,9 @@ class ChatPage(BasePage):
     def rename_conversation_via_menu(
         self, new_name: str, conv_name: str = None, timeout: int = 5000,
     ):
-        """Rename a conversation using the three-dot → Edit flow.
+        """Rename a conversation using the three-dot → Rename flow.
 
-        Opens the context menu, clicks *Edit*, clears the inline input,
+        Opens the context menu, clicks *Rename*, clears the inline input,
         types *new_name*, and presses Enter to confirm.
 
         Args:
@@ -1817,13 +1874,15 @@ class ChatPage(BasePage):
         logger.info("Renaming conversation to '%s'", new_name)
         self.open_conversation_menu(conv_name, timeout=timeout)
 
-        # Click "Edit" menu item
-        self.page.locator('[role="menuitem"]:has-text("Edit")').click()
+        # Click "Rename" menu item (was "Edit" in older versions)
+        self.page.locator('[role="menuitem"]:has-text("Rename")').click()
         self.page.wait_for_timeout(500)
 
-        # Find the inline rename input (MUI Input)
+        # Find the inline rename input (MUI Input or textbox)
         rename_input = self.page.locator(
-            "input.MuiInputBase-input.MuiInput-input"
+            "input.MuiInputBase-input.MuiInput-input, "
+            '[class*="conversation"] input, '
+            'input[type="text"]'
         ).first
         rename_input.wait_for(state="visible", timeout=timeout)
         rename_input.clear()
@@ -2096,20 +2155,19 @@ class ChatPage(BasePage):
     # ------------------------------------------------------------------
 
     def open_internal_tools_menu(self, timeout: int = 5000):
-        """Open the internal tools panel via plus menu → Internal Tools.
+        """Open the Modules panel via plus menu → Modules.
 
-        In v2.0.3+, internal tools are accessed through the plus menu dropdown.
-        Clicks plus menu, then "Internal Tools" menuitem to reveal the tools
+        Clicks plus menu, then "Modules" menuitem to reveal the tools
         panel with toggles for Image creation, Data Analysis, Planner, etc.
 
         Args:
             timeout: Maximum wait time in milliseconds
 
         Raises:
-            FeatureNotAvailableError: If the plus menu or Internal Tools menuitem
+            FeatureNotAvailableError: If the plus menu or Modules menuitem
                 is not visible
         """
-        logger.info("Opening internal tools menu via plus menu")
+        logger.info("Opening modules menu via plus menu")
 
         # Step 1: Open plus menu
         if not self.plus_menu_button.is_visible():
@@ -2121,7 +2179,7 @@ class ChatPage(BasePage):
         self.plus_menu_button.click()
         self.page.wait_for_timeout(300)  # Menu animation
 
-        # Step 2: Hover "Internal Tools" menuitem to reveal submenu
+        # Step 2: Hover "Modules" menuitem to reveal submenu
         # The submenu is triggered by onMouseEnter, not onClick
         self.internal_tools_menuitem.wait_for(state="visible", timeout=timeout)
         self.internal_tools_menuitem.hover()
@@ -2130,7 +2188,7 @@ class ChatPage(BasePage):
         self.page.locator('[role="switch"]').first.wait_for(
             state="visible", timeout=timeout
         )
-        logger.info("Internal tools menu opened")
+        logger.info("Modules menu opened")
 
     def get_visible_switch_count(self) -> int:
         """Count visible toggle switches in internal tools panel.

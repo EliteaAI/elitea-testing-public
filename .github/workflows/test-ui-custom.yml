@@ -261,6 +261,9 @@ on:
       CONFLUENCE_SPACE:
         required: false
 
+env:
+  MAX_PARALLEL_USERS: 9  # Number of available test user credentials (1-9)
+
 jobs:
   prepare:
     name: Prepare test matrix
@@ -287,47 +290,83 @@ jobs:
             echo "name=$ENV_NAME" >> $GITHUB_OUTPUT
           fi
 
+      # Checkout only when suite=all to discover available suites from filesystem
+      - name: Checkout for suite discovery
+        if: inputs.suite == 'all' && inputs.custom_suites == ''
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          sparse-checkout: automation/tests/ui
+          sparse-checkout-cone-mode: false
+
       - name: Build test matrix
         id: build
         run: |
-          # All available suites with their fixed user indices
-          # agents=1, admin=2, artifacts=3, chat=4, pipelines=5,
-          # skills=6, smoke=7, support_assistant=8, toolkits=9, voice=10
-          ALL_SUITES="agents,artifacts,chat,pipelines,smoke,support_assistant,toolkits,voice"
+          MAX_USERS=${{ env.MAX_PARALLEL_USERS }}
 
-          # Determine selected suites
+          # Determine suite list
           if [ -n "${{ inputs.custom_suites }}" ]; then
-            SELECTED="${{ inputs.custom_suites }}"
+            # Custom list provided - use as-is (no checkout needed)
+            SUITES="${{ inputs.custom_suites }}"
+            echo "Using custom suites: $SUITES"
           elif [ "${{ inputs.suite }}" = "all" ]; then
-            SELECTED="$ALL_SUITES"
+            # Discover from filesystem (checkout happened above)
+            SUITES=$(ls -d automation/tests/ui/*/ 2>/dev/null \
+              | xargs -n1 basename \
+              | grep -v -E '^(__pycache__|__init__)' \
+              | sort \
+              | tr '\n' ',' \
+              | sed 's/,$//')
+            echo "Discovered suites from filesystem: $SUITES"
           else
-            SELECTED="${{ inputs.suite }}"
+            # Single suite selected (no checkout needed)
+            SUITES="${{ inputs.suite }}"
+            echo "Using single suite: $SUITES"
           fi
 
-          echo "Selected suites: $SELECTED"
+          if [ -z "$SUITES" ]; then
+            echo "::error::No test suites found"
+            exit 1
+          fi
 
-          # Build JSON matrix with suite name and user index
-          # Use jq for reliable JSON generation, compact output for GITHUB_OUTPUT
-          JSON=$(echo "$SELECTED" | tr ',' '\n' | while read -r s; do
-            s=$(echo "$s" | xargs)  # trim whitespace
-            if [ -z "$s" ]; then continue; fi
+          # Convert to array
+          IFS=',' read -ra SUITE_ARRAY <<< "$SUITES"
+          SUITE_COUNT=${#SUITE_ARRAY[@]}
+          echo "Total suites: $SUITE_COUNT"
 
-            # Get 1-based index from ALL_SUITES list
-            IDX=$(echo "$ALL_SUITES" | tr ',' '\n' | grep -n "^${s}$" | cut -d: -f1)
-
-            if [ -z "$IDX" ]; then
-              echo "::warning::Unknown suite '$s', using user index 1" >&2
-              IDX=1
+          # Distribute suites across users (round-robin, max MAX_USERS jobs)
+          # Each user_idx gets suites: idx, idx+MAX_USERS, idx+2*MAX_USERS, ...
+          # This ensures max MAX_USERS parallel jobs, each with unique credentials
+          declare -A USER_SUITES
+          for i in "${!SUITE_ARRAY[@]}"; do
+            suite="${SUITE_ARRAY[$i]}"
+            user_idx=$(( (i % MAX_USERS) + 1 ))
+            if [ -z "${USER_SUITES[$user_idx]}" ]; then
+              USER_SUITES[$user_idx]="$suite"
+            else
+              USER_SUITES[$user_idx]="${USER_SUITES[$user_idx]},$suite"
             fi
+          done
 
-            echo "{\"suite\":\"$s\",\"user_idx\":\"$IDX\"}"
-          done | jq -sc '.')
+          # Build JSON matrix: one entry per user with their assigned suites
+          JSON="["
+          FIRST=true
+          for user_idx in $(echo "${!USER_SUITES[@]}" | tr ' ' '\n' | sort -n); do
+            suites="${USER_SUITES[$user_idx]}"
+            if [ "$FIRST" = true ]; then
+              FIRST=false
+            else
+              JSON="$JSON,"
+            fi
+            JSON="$JSON{\"user_idx\":\"$user_idx\",\"suites\":\"$suites\"}"
+          done
+          JSON="$JSON]"
 
           echo "Matrix JSON: $JSON"
           echo "matrix={\"include\":$JSON}" >> $GITHUB_OUTPUT
 
   test:
-    name: ${{ inputs.environment }} - ${{ matrix.suite }}
+    name: ${{ inputs.environment }} - ${{ matrix.suites }}
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -424,9 +463,14 @@ jobs:
         run: |
           PYTEST_CMD="pytest"
 
-          # Each matrix job runs a single suite
-          SUITE="${{ matrix.suite }}"
-          TEST_PATHS="tests/ui/$SUITE/"
+          # Each matrix job may run one or more suites (comma-separated)
+          # Suites are run sequentially within the same job/session
+          SUITES="${{ matrix.suites }}"
+          TEST_PATHS=""
+          IFS=',' read -ra SUITE_ARRAY <<< "$SUITES"
+          for suite in "${SUITE_ARRAY[@]}"; do
+            TEST_PATHS="$TEST_PATHS tests/ui/$suite/"
+          done
 
           PYTEST_CMD="$PYTEST_CMD $TEST_PATHS"
 
@@ -437,7 +481,7 @@ jobs:
 
           PYTEST_CMD="$PYTEST_CMD -v --tb=short"
 
-          echo "Running suite '$SUITE' with user index ${{ matrix.user_idx }}"
+          echo "Running suites '$SUITES' with user index ${{ matrix.user_idx }}"
           echo "Running: $PYTEST_CMD"
           eval $PYTEST_CMD
 
@@ -445,8 +489,8 @@ jobs:
         if: always()
         working-directory: automation
         run: |
-          echo "## Test Results - ${{ steps.env.outputs.name }} - ${{ matrix.suite }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Suite:** ${{ matrix.suite }} (user index: ${{ matrix.user_idx }})" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Results - ${{ steps.env.outputs.name }} - ${{ matrix.suites }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Suites:** ${{ matrix.suites }} (user index: ${{ matrix.user_idx }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ -f "reports/junit.xml" ]; then
@@ -494,7 +538,7 @@ jobs:
         id: upload-results
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ steps.env.outputs.name }}-${{ matrix.suite }}-${{ github.run_number }}
+          name: test-results-${{ steps.env.outputs.name }}-user${{ matrix.user_idx }}-${{ github.run_number }}
           path: |
             automation/reports/report.html
             automation/reports/junit.xml
@@ -506,7 +550,7 @@ jobs:
         id: upload-allure-results
         uses: actions/upload-artifact@v4
         with:
-          name: allure-results-${{ steps.env.outputs.name }}-${{ matrix.suite }}-${{ github.run_number }}
+          name: allure-results-${{ steps.env.outputs.name }}-user${{ matrix.user_idx }}-${{ github.run_number }}
           path: automation/reports/allure-results/
           retention-days: 14
           if-no-files-found: ignore
@@ -516,7 +560,7 @@ jobs:
         id: upload-allure-report
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report-${{ steps.env.outputs.name }}-${{ matrix.suite }}-${{ github.run_number }}
+          name: allure-report-${{ steps.env.outputs.name }}-user${{ matrix.user_idx }}-${{ github.run_number }}
           path: automation/reports/allure-report/
           retention-days: 14
           if-no-files-found: ignore
@@ -533,7 +577,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-traces-${{ steps.env.outputs.name }}-${{ matrix.suite }}-${{ github.run_number }}
+          name: playwright-traces-${{ steps.env.outputs.name }}-user${{ matrix.user_idx }}-${{ github.run_number }}
           path: automation/reports/traces/*.zip
           retention-days: 7
           if-no-files-found: ignore

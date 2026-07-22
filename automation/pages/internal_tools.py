@@ -11,8 +11,8 @@ from typing import List
 class ChatInternalTool(str, Enum):
     """Internal tools available in the Chat interface.
 
-    These tools appear in the internal tools panel accessed via the plus menu
-    → "Internal Tools" in the chat input area.
+    These tools appear in the Modules panel accessed via the plus menu
+    → "Modules" in the chat input area.
 
     Each value represents the exact display text in the UI.
     """
@@ -23,20 +23,20 @@ class ChatInternalTool(str, Enum):
     # Data analysis and visualization
     DATA_ANALYSIS = "Data Analysis"
 
-    # Elitea MCP Tools integration
-    ELITEA_MCP_TOOLS = "Elitea MCP Tools"
+    # Agents & Pipeline Builder (replaces Elitea MCP Tools)
+    AGENTS_PIPELINE_BUILDER = "Agents & Pipeline Builder"
 
     # Task planning and breakdown
     PLANNER = "Planner"
 
     # Python code execution environment
-    PYTHON_SANDBOX = "Python sandbox"
+    PYTHON_SANDBOX = "Python Sandbox"
 
     # Multi-agent collaboration mode
     SWARM_MODE = "Swarm Mode"
 
     # Automatic tool selection based on context
-    SMART_TOOLS = "Smart Tools Selection"
+    SMART_TOOLS = "Smart Tool Selection"
 
 
 # Canonical list of all Chat internal tools (for validation)

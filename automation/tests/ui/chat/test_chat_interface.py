@@ -178,7 +178,6 @@ class TestMessageActions:
 
         with allure.step("Step 3 — Wait for streaming to complete"):
             chat.wait_for_network(timeout=AI_RESPONSE_TIMEOUT)
-            chat.wait_for_message_content_stable(stable_duration_ms=3000, timeout=AI_RESPONSE_TIMEOUT)
             chat.dismiss_banner_if_present()
 
         with allure.step("Step 4 — Get AI response text"):
@@ -216,7 +215,6 @@ class TestMessageActions:
 
         with allure.step("Step 3 — Wait for streaming to finish"):
             chat.wait_for_network(timeout=AI_RESPONSE_TIMEOUT)
-            chat.wait_for_message_content_stable(stable_duration_ms=2000, timeout=AI_RESPONSE_TIMEOUT)
 
         with allure.step("Step 4 — Count messages before deletion"):
             initial_message_count = chat.get_message_count()
@@ -348,7 +346,6 @@ class TestConversationUIElements:
         with allure.step("Step 5 — Wait for AI response"):
             chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
             chat.wait_for_network(timeout=AI_RESPONSE_TIMEOUT)
-            chat.wait_for_message_content_stable(stable_duration_ms=3000, timeout=AI_RESPONSE_TIMEOUT)
 
         with allure.step("Step 6 — Verify message count increased"):
             final_count = chat.get_message_count()
