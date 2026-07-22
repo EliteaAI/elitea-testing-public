@@ -88,6 +88,42 @@ Then, and only then:
   its own observation. Filing it as `bug` creates false red and wastes a
   repro cycle (#44 is the cautionary example).
 
+## Every role — 4xx/5xx from the UI: cross-check the OpenAPI contract before verdict
+
+A repro that surfaces a `4xx`/`5xx` (network tab, console) is **not** classified
+as backend-vs-UI from the status code alone. Consult the OpenAPI spec before
+declaring "backend bug" or "UI bug" — the same status can be either, depending
+on the endpoint's declared parameter contract.
+
+The `pylon_main` `shared` plugin hosts:
+- `GET /shared/openapi/?all=true` — raw OpenAPI JSON (`?plugins=a,b` filters)
+- `GET /swagger/?all=true` — Swagger UI
+
+Same base URL as the app under test (localhost dev-proxy or the deployed env).
+
+**Procedure when a UI action produces a 4xx/5xx:**
+1. Note the endpoint + full query/body from Playwright MCP's network capture.
+2. Fetch `/shared/openapi/?all=true` and locate that endpoint's parameter list.
+3. Classify:
+   - **Documented + params match declared required set** → response is
+     expected-per-contract. The bug (if any) lives in the UI: wrong endpoint,
+     wrong viewMode, missing query param, silent fallback to a public endpoint
+     for an authenticated user, no redirect for bare deep links.
+   - **Documented + params satisfy the spec** but backend still returns 4xx/5xx
+     → backend bug. Quote the spec row.
+   - **Undocumented endpoint (spec silent)** → say so explicitly; classify by
+     the response body's error text plus the calling code (grep
+     `../EliteaUI/src` for the endpoint string, read the RTK-Query slice). The
+     `public_application` vs `application` split in `applications.js` is the
+     canonical example — bare `/pipelines/all/{id}` without `?viewMode=owner`
+     silently hits the public endpoint, which returns 400 for owner-only
+     resources; the backend is correct, the UI defaults wrong.
+
+**Verdict must quote either the spec parameter row or the calling-code line** —
+"the API returned 400" is not a classification, it's an observation. (Origin:
+canonical question #512, 2026-07-22 — the first-pass verdict missed the
+public/private endpoint split because it stopped at the status code.)
+
 ## Every role — screenshot evidence ATTACHES, never local paths
 
 **The rule is positive, not a blocklist: ANY local path OR bare `.png` filename
