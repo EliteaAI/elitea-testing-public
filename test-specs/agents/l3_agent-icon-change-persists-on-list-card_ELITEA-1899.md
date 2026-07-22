@@ -72,19 +72,19 @@
      `[data-testid="agent-form-icon-button"] img` src updated to the newly selected icon's URL
      (e.g. `https://dev.elitea.ai/app/default_entity_icons/image_1.png`) with no page reload, no
      delay beyond the `PUT` round-trip (~1.2s observed).
-5. Click Save
-   - **Verify** (per case): Save completes successfully
-   - **OBSERVED — CLARIFICATION, not a defect (reverse-masking guard)**: the icon change is
-     **already persisted server-side** by the `PUT .../upload_icon/...` call triggered on
-     selection (step 3) — the main form's "Save" button remains **disabled** after an icon-only
-     change (no other field was modified), because the icon field is not part of the
-     formik-tracked draft; it is its own independent, immediately-committed mutation. There is no
-     separate "click Save to persist the icon" action to perform in the live product — the case
-     text describes an outcome (persistence) via a mechanism (clicking Save) that doesn't match
-     how this feature is actually implemented. The **outcome** the case cares about (persistence)
-     is still fully verified in steps 6–7 below. Filed as a CLARIFICATION on the tracker (see
-     Known Defects Found) rather than asserting a literal Save click, per this project's
-     reverse-masking guard (`test-case-analysis` skill).
+5. Verify the Save button remains disabled (icon change persists independently)
+   - **Verify**: the main form's "Save" button remains **disabled** after the icon-only change
+   - **OBSERVED**: confirmed via DOM inspection — `[data-testid="agent-form-save-button"]` has
+     `disabled` attribute = true. The icon change is **already persisted server-side** by the
+     `PUT .../upload_icon/...` call triggered on selection (step 3) — the main form's "Save"
+     button remains **disabled** after an icon-only change (no other field was modified), because
+     the icon field is not part of the formik-tracked draft; it is its own independent,
+     immediately-committed mutation. There is no separate "click Save to persist the icon" action.
+     The **outcome** the case cares about (persistence) is fully verified in steps 4 & 6–7.
+   - **TMS CASE UPDATE (#566, resolved 2026-07-22)**: The original TMS case step 5 said "Click
+     Save → Save completes successfully" — updated to reflect actual product behavior (Save button
+     disabled, icon persists via immediate PUT). This is NOT a product defect — the immediate
+     auto-persist UX is correct and superior to requiring an extra Save click.
 6. Navigate to the Agents dashboard
    - **Verify**: Agents dashboard loads
    - **OBSERVED**: navigated to `${BASE_URL}/agents/all` (card list view, the default view
@@ -116,7 +116,7 @@
 | Step 2: Click agent icon → icon picker opens | dialog opens | AFS step 2 | step 2 | covered — dialog confirmed via `agent-icon-picker-dialog` testid; automation quirk (double-click/hover-first) documented, not a defect |
 | Step 3: Select a different icon | new icon selected | AFS step 3 | step 3 | covered — `PUT .../upload_icon/.../{versionId}` → 200, `{"updated": true}` |
 | Step 4: New icon shown in header immediately | header updates | AFS step 4 | step 4 | covered — DOM `img.src` verified immediately post-selection, no reload |
-| Step 5: Click Save → Save completes successfully | save succeeds | AFS step 5 | step 5 | **CLARIFICATION, not covered as literally worded** — no separate Save action exists for icon changes (already persisted via the picker's own PUT call); implementer should NOT assert on the main Save button for icon persistence — assert on the PUT response / DOM update instead. Filed as tracker CLARIFICATION, see Known Defects. |
+| Step 5: Verify Save button remains disabled (icon persists independently) | Save button disabled | AFS step 5 | step 5 | covered — Save button confirmed disabled via `[data-testid="agent-form-save-button"]` `disabled` attribute check; icon already persisted via step 3's PUT call. TMS case updated (#566, 2026-07-22) to remove "Click Save" and verify disabled state instead. |
 | Step 6: Navigate to Agents dashboard | dashboard loads | AFS step 6 | step 6 | covered |
 | Step 7: Agent card shows newly selected icon | icon persists on card | AFS step 7 | step 7 | covered — DOM `img.src` on `entity-card-icon` matched header value exactly |
 | Objective: icon change persists after save, shown immediately + on list card | as above | AFS steps 3–4, 7 | steps 3,4,7 | covered (via auto-persist mechanism, not literal Save click) |
@@ -198,17 +198,14 @@ entity_card_icon = LocatorDescriptor(testid="entity-card-icon")
 
 - **No product defect found.** The flow works end-to-end exactly as the case's *intent*
   describes (icon changes, shows immediately, persists on the list card).
-- **CLARIFICATION filed (case-text drift, not a bug — reverse-masking guard applied):** the
-  case's step 5 ("Click Save") does not correspond to any real action in the live product for
-  this specific field — icon changes commit immediately via their own `PUT` call, independent of
-  the form's Save/Discard state. Filed as a tracker issue labelled `question` per this project's
-  protocol (options considered: (a) update the TMS case text to remove/reword step 5, (b) leave
-  the case as-is and have the automated test simply not perform a literal "click Save" action for
-  this step, recommending (b) since forcing a Save click would either no-op harmlessly or, if the
-  Save button happens to be enabled from an unrelated pending edit, would trigger an unrelated
-  save that isn't part of this case's intent). Filed:
-  [EliteaAI/elitea-testing-public#566](https://github.com/EliteaAI/elitea-testing-public/issues/566)
-  ("Found while working #103").
+- **TMS CASE UPDATED (#566, resolved 2026-07-22):** The original TMS case step 5 ("Click Save →
+  Save completes successfully") did not correspond to any real action in the live product for this
+  specific field — icon changes commit immediately via their own `PUT` call, independent of the
+  form's Save/Discard state. The TMS case has been **updated** to reflect actual product behavior:
+  step 5 now says "Verify the Save button remains disabled (icon change persists independently)"
+  with verification of the disabled button state + explanation that icon persists via the immediate
+  PUT from step 3. This is NOT a product defect — the immediate auto-persist UX is correct and
+  superior to requiring an extra Save click. Issue #566 closed as resolved.
 - **Automation-relevant UI interaction quirk (not filed as a bug — documented here and in
   Automation Hints instead, since it doesn't affect real users):** the icon avatar requires two
   clicks (or a `hover()` before the click) to open the picker via scripted automation, because the
