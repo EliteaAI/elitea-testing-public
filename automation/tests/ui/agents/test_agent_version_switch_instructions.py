@@ -97,11 +97,22 @@ class TestAgentVersionSwitchInstructions:
             agent_id = agent["id"]
 
         detail_page = AgentDetailPage(page)
-        console_errors = []
+        # Dual console+pageerror listener (repo default for any new "no
+        # console errors/warnings" side-channel check — a console-only
+        # listener misses uncaught JS exceptions, confirmed twice on
+        # ELITEA-2094/#688 and ELITEA-2095/#693 R2). The AFS's own Expected
+        # Results wording is "no console errors OR WARNINGS" — the predicate
+        # matches both types, not just "error" (console_listener_error_only_
+        # predicate_gap lesson).
+        console_issues = []
+        page_errors: list[str] = []
         page.on(
             "console",
-            lambda msg: console_errors.append(msg.text) if msg.type == "error" else None,
+            lambda msg: console_issues.append(msg)
+            if msg.type in ("error", "warning")
+            else None,
         )
+        page.on("pageerror", lambda exc: page_errors.append(str(exc)))
 
         try:
             with allure.step(
@@ -228,10 +239,15 @@ class TestAgentVersionSwitchInstructions:
                     "'base' content, byte-for-byte"
                 )
 
-            with allure.step("Verify no console errors occurred across the whole flow"):
-                assert not console_errors, (
-                    f"Expected no console errors during version switching, "
-                    f"got: {console_errors!r}"
+            with allure.step(
+                "Verify no console errors/warnings or uncaught JS exceptions "
+                "occurred across the whole flow"
+            ):
+                assert not console_issues and not page_errors, (
+                    "Expected no console errors/warnings and no uncaught JS "
+                    f"exceptions during version switching, got console: "
+                    f"{[m.text for m in console_issues]!r}, page errors: "
+                    f"{page_errors!r}"
                 )
         finally:
             with allure.step(
