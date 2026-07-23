@@ -1,7 +1,7 @@
 ---
 name: scout
 description: Use when an unfamiliar codebase needs to be onboarded — generating CLAUDE.md, AGENTS.md, `.agents/` content docs, and per-role memory briefings from exploration so the rest of the team can hit the ground running. Kit — maps repositories, surfaces patterns, flags risks.
-model: sonnet
+model: opus
 color: white
 group: core
 required: true
