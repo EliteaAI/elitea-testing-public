@@ -129,7 +129,9 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 ### Status reporting
 - **TMS execution back-write**: yes — post-merge, orchestrator edits the case file in
   `onetest-ai-tm-Elitea`: `execution_type: automated`, `status: ready`,
-  `automation_test_id: <dotted test path>` (see `.agents/test-automation.yaml`)
+  `automation_test_id: <dotted tests.-rooted path>` — NOT the `.py::` node-id form and NOT
+  `automation.`-prefixed; both fail CI correlation (see `.agents/test-automation.yaml`
+  § backwrite_on_done)
 - **Comment PR link on the originating issue**: yes — work-log comments
   (🔧 started / 📝 update / 🚫 blocked / ✅ done) + PR link on the tracking card
 - **Board tracking**: assign self, move to `In Progress` when starting; `Blocked` +

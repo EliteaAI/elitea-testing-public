@@ -50,9 +50,35 @@ backwrite_on_done:
   # Post-merge, orchestrator's job — edit the case file in cases_repo:
   execution_type: automated
   status: ready
-  automation_test_id: dotted pytest path — DOTTED, not the file-path node-id form, e.g.
-    tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_toolkits_section_visible
-    # (2026-07-14 audit: 4 of 11 back-writes used node-id paths — wrong; fix on sight)
+  # automation_test_id — the CI CORRELATION KEY (ground truth, not style). onetest-tms
+  # correlate_results matches it ⇄ the JUnit `code_ref`, which _junit.py builds as
+  # `classname + "." + name`. _correlate.norm() only does strip + "::"→":" + drop-spaces
+  # + lowercase — it does NOT turn "/"→"." or strip ".py". pytest runs from cwd=automation/
+  # and there is NO automation/__init__.py, so the JUnit classname is rooted at `tests`.
+  # ⇒ the ONE form that correlates is dotted + tests-rooted (call it "Form C"):
+  automation_test_id: tests.<pkg.path>.<module>.<Class>.<method>   # e.g.
+    # tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_toolkits_section_visible
+    # (unclassed test → tests.<...>.<module>.<func>, i.e. drop the <Class> segment)
+    #
+    # BOTH other forms fail correlation SILENTLY (🟥 gap in automation_coverage, never a match):
+    #   ✗ node-id:            automation/tests/ui/x/test_y.py::TestY::test_z   (has / .py ::)
+    #   ✗ automation- prefix: automation.tests.ui.x.test_y.TestY.test_z       (extra pkg root)
+    #   ✓ correct (Form C):   tests.ui.x.test_y.TestY.test_z
+    # History: the 2026-07-14 audit caught node-id drift (4/11); ELITEA-1794 / issue #598
+    # (2026-07-23, verified against the onetest-tms engine) caught the automation.-prefix
+    # drift too and settled Form C as canon. Fix EITHER wrong form on sight.
+    #
+    # Derive mechanically from the node-id you ran — or read it straight from
+    # reports/junit.xml (classname + "." + name):
+    #   automation/tests/ui/x/test_y.py::TestY::test_z
+    #   → drop "automation/", drop ".py", "/"→".", "::"→"."  ⇒  tests.ui.x.test_y.TestY.test_z
+    # Self-check before committing the back-write (run from automation/):
+    #   t="tests.ui.x.test_y.TestY.test_z"
+    #   grep -qi "classname=\"${t%.*}\".*name=\"${t##*.}\"" reports/junit.xml && echo MATCH || echo NO-MATCH
+    #
+    # ⚠ index.json is NOT auto-rebuilt (build-index CI is a stub). After editing case files,
+    #   rebuild it (build_index MCP verb, or the packaged scripts/_index.py) or correlate_results
+    #   reads the stale ref and still reports a gap.
   automation_pr: URL of the merged automation/base PR (observed practice, now policy)
 
 reporting:

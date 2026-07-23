@@ -104,9 +104,17 @@ for critical-path fast tests).
 
 ## Coverage tagging (TMS traceability)
 
-The `automation_test_id` back-written to the TMS case is the **dotted pytest path**,
-e.g. `tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_toolkits_section_visible`.
-One case ↔ one test id; extensions append to the covering test's docstring/markers.
+The `automation_test_id` back-written to the TMS case is the **CI correlation key** —
+onetest-tms `correlate_results` matches it against the JUnit `code_ref` (`classname + "." +
+name`). It must be the **dotted, `tests.`-rooted** form:
+`tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_toolkits_section_visible`
+— no `automation.` prefix, no `.py`, no `::` (pytest runs from `automation/`, which has no
+`__init__.py`, so `tests` is the import root). **Both** the file-path node-id form
+(`automation/…​.py::Class::method`) **and** the `automation.`-prefixed dotted form fail
+correlation silently — they surface as 🟥 gaps in `automation_coverage`, never a match.
+The mechanical derivation, a self-check one-liner, and the "rebuild `index.json`" caveat live
+in `.agents/test-automation.yaml` § `backwrite_on_done` (canon set by ELITEA-1794 / issue #598,
+2026-07-23). One case ↔ one test id; extensions append to the covering test's docstring/markers.
 
 ## Locator policy (AUTHORITATIVE — overrides any skill's example ladder)
 
