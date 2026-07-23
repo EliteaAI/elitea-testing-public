@@ -97,12 +97,12 @@ Capture the new issue number + URL for Step 4.
 1. Add to board #9: `env -u GITHUB_TOKEN gh project item-add 9 --owner EliteaAI --url <new-issue-url>`
 2. Comment on the originating `elitea-testing-public` issue (identity-prefixed):
    > **APPLICATION BUG CONFIRMED** — filed as EliteaAI/elitea_issues#N _<title>_
-3. Move the originating card → **`ReportedBug`** (the renamed Reproduce column).
+3. Move the originating card → **`ReportedBugs`** (the renamed Reproduce column).
 
 **Duplicate (`duplicate:<N>`):**
 - Comment on the originating issue (identity-prefixed):
   > **APPLICATION BUG CONFIRMED** — already tracked: EliteaAI/elitea_issues#N _<title>_
-- Move the originating card → `ReportedBug`.
+- Move the originating card → `ReportedBugs`.
 
 > Cross-repo references render as links only in the full `owner/repo#N` /
 > `owner/repo@sha` form written as PLAIN TEXT (never in backticks). Same-repo refs
