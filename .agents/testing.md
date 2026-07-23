@@ -60,6 +60,23 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
     (real bug, not staleness), or a defect not in the enumerated, linked set.
     Record which set-members actually fired across the 3 gate runs in the
     closure record — don't just write "sanctioned RED".
+  - **Analysis-time entry (2026-07-23, #557/ELITEA-1965):** the exception
+    applies whether the defect is discovered during **automation** or during
+    **analysis itself** — the (a)/(b)/(c) criteria above don't restrict *when*
+    the defect surfaces. When the analyst finds a defect that independently
+    satisfies deterministic + single-cause + linked-to-open-defect, they SHOULD
+    classify the AFS `ready-for-automation` (not `defect-found`) with a
+    Classification-note declared improvisation citing this bullet, and direct
+    the implementer to write the affected assertion(s) as the *correct*
+    expected behavior with `expect.soft()` + `# Known defect: #N`. This
+    preserves coverage of the passing steps and flips green when the product
+    fix ships. `defect-found` remains the correct status only when the defect
+    **blocks further exploration** (prevents reaching later steps) — i.e. when
+    pausing is genuinely necessary, not merely one isolable step at the tail.
+    Note: `spec-format.md`'s `defect-found` definition ("automation paused
+    until fix") lives in `.claude/skills/test-case-analysis/references/` and
+    is the project-agnostic default; this bullet is the project-specific
+    override per `role-overrides.md` § Declared-improvisation protocol.
 - Gate runs use a clean process each time: `cd automation && HEADLESS=true
   ../.venv/bin/pytest <node-id> -v -p no:cacheprovider` (×3).
 
