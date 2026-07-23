@@ -1,0 +1,104 @@
+{
+  "_comment": "Path->area map for EliteaUI runtime coverage. Substring match, FIRST match wins (insertion order) - specific paths before generic ones; 'shared' must stay LAST. Regenerated from the real EliteaUI src tree (branch automation/testids, 2026-07-22).",
+  "agents": [
+    "src/[fsd]/features/agent/",
+    "src/[fsd]/features/agent-hub/",
+    "src/[fsd]/features/apps/",
+    "src/[fsd]/pages/agent-hub/",
+    "src/[fsd]/pages/apps/",
+    "src/pages/Applications/",
+    "src/hooks/application/"
+  ],
+  "chat": [
+    "src/[fsd]/features/chat/",
+    "src/pages/NewChat/",
+    "src/components/Chat/",
+    "src/ComponentsLib/Chat/",
+    "src/hooks/chat/"
+  ],
+  "skills": [
+    "src/[fsd]/features/skill/",
+    "src/[fsd]/features/skill-hub/",
+    "src/[fsd]/pages/skills/"
+  ],
+  "toolkits": [
+    "src/[fsd]/features/toolkits/",
+    "src/pages/Toolkits/",
+    "src/hooks/toolkit/"
+  ],
+  "pipelines": [
+    "src/[fsd]/features/pipelines/",
+    "src/pages/Pipelines/",
+    "src/hooks/pipeline/"
+  ],
+  "credentials": [
+    "src/[fsd]/features/credentials/",
+    "src/pages/Credentials/",
+    "src/hooks/credentials/"
+  ],
+  "artifacts": [
+    "src/[fsd]/features/artifacts/",
+    "src/pages/Artifacts/"
+  ],
+  "settings": [
+    "src/[fsd]/features/settings/",
+    "src/[fsd]/pages/settings/",
+    "src/[fsd]/pages/user-settings/"
+  ],
+  "mcp": [
+    "src/[fsd]/features/mcp/",
+    "src/[fsd]/pages/mcp/"
+  ],
+  "resources": [
+    "src/[fsd]/pages/resources/",
+    "src/[fsd]/pages/indexes/"
+  ],
+  "analytics": [
+    "src/[fsd]/features/analytics/"
+  ],
+  "notifications": [
+    "src/pages/NotificationCenter/",
+    "src/[fsd]/entities/notifications/"
+  ],
+  "onboarding": [
+    "src/pages/Onboarding/",
+    "src/[fsd]/features/onboarding/",
+    "src/[fsd]/features/interactive-tours/"
+  ],
+  "auth": [
+    "src/[fsd]/features/auth/",
+    "src/[fsd]/pages/auth/"
+  ],
+  "catalog": [
+    "src/[fsd]/pages/elitea-catalog/"
+  ],
+  "shared": [
+    "src/[fsd]/features/maintenance/",
+    "src/[fsd]/features/project/",
+    "src/[fsd]/features/openapi/",
+    "src/[fsd]/features/sharepoint/",
+    "src/[fsd]/shared/",
+    "src/[fsd]/entities/",
+    "src/[fsd]/widgets/",
+    "src/[fsd]/app/",
+    "src/api/",
+    "src/components/",
+    "src/ComponentsLib/",
+    "src/common/",
+    "src/contexts/",
+    "src/hooks/",
+    "src/services/",
+    "src/slices/",
+    "src/utils/",
+    "src/theme/",
+    "src/styles/",
+    "src/routes.js",
+    "src/pages/Common/",
+    "src/pages/",
+    "src/darkPalette.js",
+    "src/lightPalette.js",
+    "src/utils.js",
+    "src/MainTheme.js",
+    "src/GA.js"
+  ]
+}
