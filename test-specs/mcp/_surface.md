@@ -8,6 +8,11 @@ AFS, never on a case branch.
 
 First digest for this surface (written during ELITEA-1937 analysis,
 2026-07-23/24, project `Private`/399, local `http://localhost:5173`).
+Extended during ELITEA-1934 analysis (2026-07-24, same environment) with the
+create-form + Tools-section + toast + connection-status findings below —
+those sections cover `/mcps/create`/`/mcps/create/mcp` in addition to the
+`/mcps/all/{id}` detail page this digest started with; kept as one file since
+`McpFormPage` covers both routes with the same class.
 
 ## Fast fixture setup — API, not UI creation
 
@@ -98,3 +103,134 @@ surface. Porting those 5 items (2 locators + `fill_test_param()`,
 `McpFormPage` is the implementer's job for ELITEA-1937 — **zero new
 `add-data-testid` work required**, every testid above already exists on
 `automation/testids` (some already on `main`).
+
+---
+
+## Create-form flow (`/mcps/create` → `/mcps/create/mcp`) — ELITEA-1934 addition
+
+`McpFormPage` covers create AND detail with the same class (shared
+`ToolBaseProperty.jsx` schema-driven field renderer, per ELITEA-1922). Core
+create-form handles, all existing/on-main, no gap:
+
+| Purpose | Testid |
+|---|---|
+| Remote MCP type-selector card | `toolkit-type-card-mcp` |
+| Toolkit Name input | `toolkit-form-name-input` |
+| Url input | `toolkit-field-url-input` |
+| Save button (create form) | `toolkit-form-save-button` |
+
+- **Toolkit Name truncates silently at 32 chars** (`MAX_NAME_LENGTH`,
+  `EliteaUI/src/common/constants.js`) — generated names must stay under this
+  (e.g. `f"autotest_x_{uuid4().hex[:8]}"`, not a full 32-char uuid suffix).
+- **Save button enable rule is dirty-based, not completeness-based** — flips
+  enabled the instant ANY field is touched (ELITEA-1921 finding,
+  CLARIFICATION #633). Only assert the pristine (disabled) and
+  both-required-filled (enabled) states.
+- Save never validates URL reachability — an unreachable/invalid URL still
+  saves successfully (`201`) and round-trips unchanged onto the detail page;
+  validation only happens at Load-Tools/sync time, not save time (confirmed
+  live, ELITEA-1934).
+- `VITE_DEV_TOKEN` auto-auth works even on a **brand-new, never-before-used
+  Chrome profile** — not tied to any pre-existing cookie/localStorage state.
+
+## Tools section (Configuration accordion, "TOOLS" sub-heading) — added ELITEA-1933
+
+| Purpose | Testid |
+|---|---|
+| Tools empty-state message | `toolkit-tools-empty-state` — exact text `No tools to display for now. To get tools from MCP press button "Load Tools"` (curly quotes live) |
+| "Load Tools" button | `toolkit-load-tools-button` — label flips to `"Loading..."` in flight, reverts to `"Load Tools"` once the sync response resolves, confirmed on BOTH the success path and the failure path (ELITEA-1934) |
+| Discovered tool pill (dynamic) | `toolkit-tool-chip-{tool_name}` (`McpFormPage.TOOL_CHIP`), state via `data-selected` attribute |
+
+`click_load_tools(project_id)` waits on the real `POST
+.../mcp_sync_tools/prompt_lib/{project}?await_response=true` response and
+returns its parsed JSON body — **reusable as-is for BOTH the success path
+(ELITEA-1933: `result.tools` populated) and the failure path (ELITEA-1934:
+`result.success === false`, `result.error` set)**. HTTP status is **always
+`200`** in both cases — failure is communicated inside the body, never via a
+4xx/5xx. Don't write a second click/wait method for a "failure" variant;
+assert on the returned dict differently instead.
+
+**Failure fixture** (new, ELITEA-1934): `https://nonexistent.invalid/mcp` —
+the `.invalid` TLD is IANA-reserved for exactly this purpose, so DNS-
+resolution failure is deterministic (no network mocking needed, confirmed
+2/2 identical across two independent attempts). Exact server response:
+`{"result": {"success": false, "error": "Failed to sync MCP tools: DNS
+resolution failed. Please check the server hostname in the URL.",
+"server_url": "<url>"}}`.
+
+## Error/success toast — `[data-testid="toast-message"]` (existing, SHARED)
+
+`EliteaUI/src/components/Toast.jsx:66` — a generic `Box` inside the MUI
+`Alert`, already used by `artifacts_page.py`, `skills_list_page.py`, and
+`skill_detail_page.py` (each declares its OWN named `LocatorDescriptor`
+field pointing at this same testid string — follow that per-page-object-
+field convention). **Not previously noted for this surface** — the
+ELITEA-1933 AFS only warned "don't assert on the success toast, it
+auto-dismisses" but never looked for a stable handle; it exists.
+Auto-hide durations (`TOAST_DURATION_DEFAULTS`,
+`EliteaUI/src/common/constants.js`): `success`/`info` 3000ms, `warning`
+7000ms, `error` **10000ms** — error toasts give a much wider assertion
+window, no realistic race risk asserting right after the triggering network
+call resolves.
+
+## Connection status widget — GAP, needs `add-data-testid`
+
+`EliteaUI/src/[fsd]/features/mcp/ui/McpAuthStatus.jsx` (lines 128–152) — the
+globe-icon + "Not Connected"/"Connected!" text + Login/Logout button strip
+near the Form/Raw Json toggle. **Zero testids anywhere in this widget**
+(confirmed via a 6-level DOM ancestor walk, ELITEA-1934). Ordinary
+feature-scoped app component (structurally similar siblings exist
+independently in `openapi`/`sharepoint` feature folders as separate files,
+not the same shared React instance, so a feature-scoped testid here is
+fine). Recommended shape (not yet added by any case as of 2026-07-24):
+
+| Purpose | Recommended testid |
+|---|---|
+| Status container (text + icon) | `toolkit-connection-status`, state via `data-connected="true"/"false"` (mirrors the existing `data-selected` pattern on tool chips) |
+| Login/Logout button | `toolkit-connection-auth-button` |
+
+Only flips to Connected on a **successful** sync
+(`McpAuthHelpers.setConnectionVerified(...)` fires only in the hook's
+success branch, `useGetRemoteMcpTools.hooks.js:110-119`) — a failed sync
+leaves it exactly as it was before the attempt (confirmed: stays "Not
+Connected" across 2 independent failed attempts in the same session).
+
+## Raw Json editor gotcha (CodeMirror virtualization)
+
+`McpFormPage.get_raw_json()` reads `.text_content()` in one call — silently
+**truncates on any payload beyond ~30 rendered lines** (CodeMirror only
+keeps a viewport-sized window of `.cm-line` nodes in the DOM). For a small
+payload (no `available_mcp_tools`, or ≤1 tool), `get_raw_json()` is fine.
+For 2+ discovered tools' full schemas, use **`get_raw_json_full()`** instead
+(scrolls the real scrollable ancestor in steps, aggregates `.cm-line` text
+by stable `offsetTop`, double-`rAF` condition-waits between scroll steps —
+see its docstring). Added as a NEW method rather than modifying
+`get_raw_json()` in place, per the additive-only-on-shared-caller-files
+rule — 3 existing specs call the small-payload version unmodified.
+
+## Known pre-existing console noise on this surface (not this feature's bugs)
+
+- `#291` — React `key`-prop + `<p>`-in-`<p>` dev-mode warnings on
+  `/mcps/create`. Fires on every navigation to the create form.
+- `#549` — MUI Tabs invalid-value console error on `/mcps/all/{id}` detail
+  pages. Intermittent (did not reproduce in the ELITEA-1934 session; did in
+  ELITEA-1929's).
+
+Both already tracked — don't re-file; exclude from any "no new console
+errors" assertion on this surface.
+
+## Analyst tooling note — browser-lane isolation
+
+The batch's assigned CDP-port-based "isolated" browser lane is only as
+isolated as whatever actually holds that port at session start — **verify
+via `list-targets` (single target, expected URL) before trusting any
+observation**, and don't assume a port number in a dispatch prompt guarantees
+exclusivity in practice. If a page-info/screenshot ever shows unexpected
+content mid-flow with no navigation issued by your own session, that's a
+signal of lane contamination (a leftover or concurrently-driven Chrome
+instance), not a product bug — abandon it and relaunch a fresh, uniquely
+ported + uniquely profiled instance (`chrome --remote-debugging-port=<N>
+--user-data-dir=<fresh scratch dir>`) rather than debugging further on a
+compromised instance. (First observed ELITEA-1934, 2026-07-24 — port 9223
+had a pre-existing, mid-navigation Chrome instance that was clobbered by an
+apparent concurrent process partway through that session.)
