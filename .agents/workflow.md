@@ -33,6 +33,7 @@ runs that branch, so no test and no agent is ever blocked on review latency.
 |---|---|---|
 | elitea-testing-public | `automation/base` (cut from `main`) | small PRs into it, one per test/feature area; **never PR `main` directly** |
 | EliteaAI/EliteaUI | `automation/testids` (integration) | **never PR it into `main`, and (since 2026-07-16) never open per-case `main` PRs at all.** Testid commits are born ON it, committed + pushed, and stop there. A human cherry-picks them to `main`. |
+| EliteaAI/elitea_assistant | `automation/testids` (integration) | Connected repo (Support Assistant). Same rule as EliteaUI — testids born on it, committed + pushed, human promotes to its `main`. See § Connected repos. |
 
 - There is **no CI on `automation/base`** — the green local run before PR is the
   only verification. You are the CI.
@@ -44,6 +45,28 @@ runs that branch, so no test and no agent is ever blocked on review latency.
   `.agents/_reverted/`.)*
 - Commit style (sampled from history): conventional-ish — `test: (5199) Add guardrails
   live-reload UI tests`, `refactor: use default gpt-5.2 model`, `docs(afs): amend selectors…`.
+
+### Connected repos — testids in the Support Assistant (2026-07-23, #705)
+
+Some UI ships from **separate repos we own** but consume as packages — today the **Support
+Assistant** (`@eliteaai/elitea-assistant`, source in the `../elitea_assistant` sibling). We add
+testids there the SAME way as EliteaUI (§ Testid flow below), one repo outward:
+
+- **Same dual-target model:** the assistant has its own permanent `automation/testids`
+  integration branch (mirror of EliteaUI's; created 2026-07-23). Testids are born on it,
+  committed + pushed; sync from its `main` by **merge only — never rebase/force**.
+  *(Access: **push, no admin** on `EliteaAI/elitea_assistant`.)*
+- **Local dev sees the source live** via a LOCAL-ONLY `EliteaUI/vite.config.js` alias +
+  `VITE_ASSISTANT_LOCAL=1` (git-`skip-worktree`'d; full recipe in the parent `SETUP.md` § 6), so
+  `add-data-testid` edits in `../elitea_assistant/src/**/*.tsx` HMR live on localhost:5173.
+- **One extra promotion hop vs EliteaUI:** a testid on the assistant's `main` reaches a
+  *deployed* env only after EliteaUI bumps the `@eliteaai/elitea-assistant` git-dependency to the
+  new assistant commit. Local tests go green immediately (via the alias); the closure record must
+  note the deployed-env promotion as pending that bump (owner = human).
+- **Locator policy is unchanged:** the assistant's own JSX gets real testids
+  (`.agents/testing.md` § Locator policy — connected-first-party-repo bullet). #579's
+  scoped-raw-handle exception still applies to the assistant's OWN third-party internals
+  (its mermaid / react-markdown output), exactly as it does inside EliteaUI.
 
 ### Testid flow — commit + push `automation/testids`, then stop
 

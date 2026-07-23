@@ -1,6 +1,6 @@
 ---
 name: sync-base-branches
-description: Brings the two long-lived automation branches up to date with their mains — automation/base with elitea-testing-public main, and EliteaAI/EliteaUI's automation/testids integration branch with its main. Both by merge; neither is ever rebased or force-pushed. Use before starting a new test, after a promotion, or when a test fails against unexpectedly-changed UI.
+description: Brings the long-lived automation branches up to date with their mains — automation/base (elitea-testing-public), plus the automation/testids integration branches on EliteaAI/EliteaUI and EliteaAI/elitea_assistant (Support Assistant, connected repo). All by merge; none ever rebased or force-pushed. Use before starting a new test, after a promotion, or when a test fails against unexpectedly-changed UI.
 allowed-tools:
   - Bash
   - Read
@@ -8,15 +8,16 @@ allowed-tools:
 
 # Sync Base Branches
 
-Two long-lived branches drift from their mains. This brings both current. Run it **before starting a
+The long-lived automation branches drift from their mains. This brings them current. Run it **before starting a
 new test**, **after a batch promotion**, or when a test fails against UI that looks unexpectedly changed.
 
 | Branch | Repo | Base it tracks | Strategy |
 |---|---|---|---|
 | `automation/base` | `EliteaAI/elitea-testing-public` | `origin/main` | **merge** |
 | `automation/testids` | `EliteaAI/EliteaUI` (no fork) | `origin/main` | **merge** |
+| `automation/testids` | `EliteaAI/elitea_assistant` (Support Assistant, connected repo) | `origin/main` | **merge** |
 
-**Both are merged. Neither is ever rebased or force-pushed.**
+**All are merged. None is ever rebased or force-pushed.**
 
 Both are shared, published branches that other people and other agents build on. Rebasing either would
 rewrite published history and break open PRs and teammates' clones. `automation/testids` additionally
@@ -34,11 +35,12 @@ WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
 cd "$WORKSPACE"
 # Both repos must be FULL clones. A shallow clone has no merge base: rebase misbehaves
 # and rev-list reports nonsense ahead/behind counts.
-for d in elitea-testing-public EliteaUI; do
+for d in elitea-testing-public EliteaUI elitea_assistant; do
   test -f "$d/.git/shallow" && echo "SHALLOW: $d — run: git -C $d fetch --unshallow origin"
 done
 git -C elitea-testing-public status --porcelain
 git -C EliteaUI status --porcelain
+git -C elitea_assistant status --porcelain 2>/dev/null   # connected repo (skip if not cloned)
 ```
 
 ### Step 0 — Land the working tree before syncing
@@ -212,6 +214,35 @@ discover elements by snapshotting the **live DOM**, which after a sync already c
 testids, so a covered element never reaches the skill. But if you sync mid-task, re-snapshot — an
 element that lacked a testid ten minutes ago may have one now.
 
+## Part 3 — Support Assistant (connected repo): merge `origin/main` into `automation/testids`
+
+`EliteaAI/elitea_assistant` (the Support Assistant, `@eliteaai/elitea-assistant`) is a **connected
+first-party repo** with its own permanent `automation/testids` integration branch — a mirror of
+EliteaUI's (see `.agents/workflow.md` § Connected repos). Same rule: **merge only, never rebase,
+never force-push** (shared org branch; push, no admin).
+
+```bash
+WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
+cd "$WORKSPACE/elitea_assistant"
+git fetch origin
+git checkout automation/testids
+
+# additive-testid check, same as Part 2 — any non-testid line is a red flag (report, don't merge over):
+git diff origin/main...automation/testids | grep -E '^[+-]' | grep -v '^[+-][+-]' | grep -vc 'data-testid'
+
+git merge origin/main
+git push origin automation/testids     # plain FF push. NEVER --force.
+```
+
+Conflicts + the testid-divergence rule are identical to Part 2. There is **no draft-PR machinery**
+here — the assistant promotes via a human cherry-pick to its `main` plus an EliteaUI git-dep bump, not
+per-case PRs. The local dev server serves this source through the `EliteaUI/vite.config.js` alias, so
+after the merge **restart EliteaUI's dev server** (Part 2's restart) to pick up the merged assistant
+code. If `package.json` / `package-lock.json` changed → `(cd "$WORKSPACE/elitea_assistant" && npm install)`.
+
+> Skip this Part if `elitea_assistant` isn't cloned or its `automation/testids` doesn't exist yet —
+> it's only needed once the connected-repo testid flow is in use.
+
 ## Verify before you report
 
 Branch counts alone are not verification — they prove git moved, not that anything still works. You
@@ -221,9 +252,10 @@ pulled in real framework changes and real UI changes; run the smoke suite agains
 # WORKSPACE = parent folder holding the three sibling clones (no env var needed)
 WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
 
-# 1. Both branches level with their bases (left = behind, must be 0; right = our commits, fine)
+# 1. Each branch level with its base (left = behind, must be 0; right = our commits, fine)
 git -C "$WORKSPACE/elitea-testing-public" rev-list --left-right --count origin/main...automation/base
 git -C "$WORKSPACE/EliteaUI"              rev-list --left-right --count origin/main...automation/testids
+git -C "$WORKSPACE/elitea_assistant"      rev-list --left-right --count origin/main...automation/testids 2>/dev/null || echo "  (elitea_assistant not set up — skipped)"
 
 # 2. The UI still serves (dev server restarted after the merge)
 curl -s -o /dev/null -w "localhost:5173 -> %{http_code}\n" http://localhost:5173
@@ -238,9 +270,10 @@ a green sync with a broken UI is the failure mode this catches.
 
 ## Do not
 
-- Rebase or force-push `automation/base` or `automation/testids`. Ever. Both are shared branches;
-  `--force` has no legitimate use on either. (Force-pushing a short-lived `testids/<case>` branch to
-  resolve a PR conflict is fine — that is a different branch.)
+- Rebase or force-push `automation/base` or `automation/testids` (on EliteaUI **or**
+  elitea_assistant). Ever. All are shared branches; `--force` has no legitimate use on any.
+  (Force-pushing a short-lived `testids/<case>` branch to resolve a PR conflict is fine — that is a
+  different branch.)
 - Cut a `testids/<case>` review branch FROM `automation/testids`. Testid commits are born ON the
   integration branch (that's the norm — the dev server serves it), but the review branch is built on
   fresh `origin/main` and receives them by cherry-pick — that is what keeps each review PR a clean
