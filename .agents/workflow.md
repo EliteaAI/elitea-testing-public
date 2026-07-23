@@ -191,9 +191,27 @@ the output gets PASTED into the record:
 cd ../EliteaUI && git fetch origin      # fresh ground truth — NON-OPTIONAL
 for t in <every testid the case's diff uses>; do
   printf "%-32s main:%-3s testids:%s\n" "$t" \
-    "$(git grep -q "data-testid=\"$t\"" origin/main -- src/ && echo YES || echo no)" \
-    "$(git grep -q "data-testid=\"$t\"" origin/automation/testids -- src/ && echo YES || echo no)"
+    "$(git grep -- "$t" origin/main -- src/ 2>/dev/null | grep -qE "(data-testid|testid.*=.*$t)" && echo YES || echo no)" \
+    "$(git grep -- "$t" origin/automation/testids -- src/ 2>/dev/null | grep -qE "(data-testid|testid.*=.*$t)" && echo YES || echo no)"
 done
+```
+
+**Note on the two-stage grep pattern (updated 2026-07-23, resolves #553):** 
+
+Stage 1 (`git grep -- "$t"`) uses bare-substring matching to catch testids wired via:
+- Direct attribute: `data-testid="agent-name-input"`
+- Object literal: `'data-testid': 'agent-name-input'`
+- Prop indirection: `buttonTestId="agent-name-input"` → `data-testid={buttonTestId}`
+
+Stage 2 (`grep -E "(data-testid|testid.*=.*$t)"`) filters to lines containing actual testid usage, removing:
+- Comments: `// TODO: add agent-name-input testid`
+- Unrelated mentions in docs/strings
+
+The literal `data-testid="$t"` form (used before 2026-07-23) missed prop indirection and object-literal syntax, producing false negatives on 5+ deliveries (#73, #95, #166, #175, #262). 
+
+**Caveat:** Bare-substring can still produce false positives (prefix collisions like `agent-form` matching `agent-form-save-button`, or variable names). When in doubt, verify manually by running the non-quiet version:
+```bash
+git grep -- "$t" origin/main -- src/ | grep -E "(data-testid|testid.*=.*$t)"
 ```
 
 The UI team also adds testids in parallel (EL-5400, EL-5634, …). Only testids present
