@@ -60,6 +60,12 @@ backwrite_on_done:
     # tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_toolkits_section_visible
     # (unclassed test → tests.<...>.<module>.<func>, i.e. drop the <Class> segment)
     #
+    # The field is a YAML LIST of 1..N such refs (a bare scalar = a 1-item list, which
+    # _index.py coerces to [value]). A case may list several tests (e.g. ELITEA-1050 lists 3);
+    # correlate_results links the case if ANY listed ref matches, and one test may cover several
+    # cases (same ref under multiple case ids). Non-pytest surfaces (Xray cases under
+    # tests/alita-sdk/) use a runner-native key (e.g. XR04), NOT this pytest shape.
+    #
     # BOTH other forms fail correlation SILENTLY (🟥 gap in automation_coverage, never a match):
     #   ✗ node-id:            automation/tests/ui/x/test_y.py::TestY::test_z   (has / .py ::)
     #   ✗ automation- prefix: automation.tests.ui.x.test_y.TestY.test_z       (extra pkg root)

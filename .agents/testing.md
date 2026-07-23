@@ -114,7 +114,11 @@ name`). It must be the **dotted, `tests.`-rooted** form:
 correlation silently — they surface as 🟥 gaps in `automation_coverage`, never a match.
 The mechanical derivation, a self-check one-liner, and the "rebuild `index.json`" caveat live
 in `.agents/test-automation.yaml` § `backwrite_on_done` (canon set by ELITEA-1794 / issue #598,
-2026-07-23). One case ↔ one test id; extensions append to the covering test's docstring/markers.
+2026-07-23). The field is a **list of 1..N** such refs — a bare scalar is a 1-item list, and a
+case may list several (e.g. ELITEA-1050 lists 3); `correlate_results` links the case if **any**
+listed ref matches. One test may also cover several cases (the same ref under multiple case ids).
+Non-pytest surfaces (e.g. Xray cases under `tests/alita-sdk/`) carry a runner-native key like
+`XR04`, not a pytest path — Form C is specifically the pytest `code_ref` shape.
 
 ## Locator policy (AUTHORITATIVE — overrides any skill's example ladder)
 
