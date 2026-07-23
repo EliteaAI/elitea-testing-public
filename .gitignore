@@ -71,3 +71,4 @@ coverage/node_modules/
 coverage/package-lock.json
 docs/coverage-priority-60
 *_backup_*
+/*.png
