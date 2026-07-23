@@ -64,3 +64,8 @@ factory/*
 
 # Reversible process-change notes (local-only; how to restore a suspended policy)
 .agents/_reverted/
+# Runtime execution coverage artifacts (coverage trial — docs/coveragetrial.md)
+coverage/.v8/
+coverage/report/
+coverage/node_modules/
+coverage/package-lock.json
