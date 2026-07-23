@@ -232,7 +232,9 @@ outlaws state-value-switched testids on the same live element.)
   via the `add-data-testid` skill (commit **and push `automation/testids`** — Vite HMR
   picks it up live; a human promotes to `main`, no agent PR). Naming `{section}-{element}-{type}`,
   e.g. `agent-form-save-button` vs `pipeline-form-save-button` — verify uniqueness
-  before adding.
+  before adding. *(If the target lives in a **connected first-party repo** — e.g. the Support
+  Assistant — add the testid in THAT repo's source instead; see the connected-first-party-repo
+  bullet below.)*
 - **Stop+flag rule — sanctioned exceptions (#579, approved 2026-07-22):** ONLY if a
   testid genuinely can't be placed, a **scoped raw handle** is allowed:
   1. **Third-party widget subtrees** — element outside `EliteaUI/src` (e.g. ReactFlow's
@@ -254,6 +256,18 @@ outlaws state-value-switched testids on the same live element.)
     testid cannot be placed, and the "do not extend it to any handle that COULD carry
     a testid" boundary.
   - Anything outside these two shapes escalates to the lead — don't ship brittle CSS.
+- **Connected first-party repos are NOT the third-party exception (2026-07-23, #705).**
+  A component we OWN but that ships from a separate repo (today: the Support Assistant,
+  `@eliteaai/elitea-assistant`, source in the `../elitea_assistant` sibling) is testid-able —
+  we control its source, so a missing testid there is *work to do in that repo*, NOT a #579
+  "testid can't be placed" waiver. Add it in the connected repo's own `src/` with the same
+  `add-data-testid` discipline + naming, on ITS `automation/testids` integration branch
+  (`.agents/workflow.md` § Connected repos has the local-source wiring + the extra promotion
+  hop). This **supersedes the #110 framing** that logged the Support Assistant as a third-party
+  scope exception — a mislabel (it's `@eliteaai/…`, our repo). Support-assistant tests still on
+  fallback locators are grandfathered tech debt to migrate, not precedent. #579 still governs the
+  connected repo's OWN third-party internals (its mermaid / react-markdown output), exactly as
+  inside EliteaUI.
 - **Existing raw handles in `automation/pages/` are tracked tech debt**
   (issues #25/#42, ~350 call sites), not precedent. Never cite neighbors to
   justify a new raw handle.
