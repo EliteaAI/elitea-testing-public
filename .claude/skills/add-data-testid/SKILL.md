@@ -15,7 +15,8 @@ allowed-tools:
 
 # Add data-testid Skill
 
-Adds `data-testid` attributes to EliteaUI components for robust test automation locators.
+Adds `data-testid` attributes to EliteaUI (and connected first-party repos — e.g. the Support
+Assistant) components for robust test automation locators.
 
 **Input:** $ARGUMENTS — list of elements from Stage 2 snapshot (e.g., "Save button in agent form, Name input field")
 
@@ -52,6 +53,25 @@ Adds `data-testid` attributes to EliteaUI components for robust test automation 
    section in the name is the CALLER's, not the shared component's first consumer.
 3. **Testid props are named `testId` / `<part>TestId`** (`closeButtonTestId`) —
    never `dataTestId` / `<part>DataTestId`; the `data` prefix is redundant.
+
+## Connected repos (Support Assistant, and future ones)
+
+Some elements render from a **connected first-party repo** we own but consume as a package —
+today the **Support Assistant** (`@eliteaai/elitea-assistant`, source in the `../elitea_assistant`
+sibling; files are `.tsx`). They are **not** in `../EliteaUI/src` (grep returns nothing), but they
+are still testid-able — you edit the connected repo's OWN source, one repo outward. This is NOT the
+#579 third-party stop+flag exception (`.agents/testing.md`) — we own the source.
+
+Everything below works identically, with two substitutions:
+- **Search / edit** `../elitea_assistant/src/**/*.tsx` instead of `../EliteaUI/src/**/*.jsx`
+  (`data-testid` syntax is identical in TSX). Local dev serves this source live via the
+  `EliteaUI/vite.config.js` alias (parent `SETUP.md` § 6), so HMR still shows your edit instantly.
+- **Commit + push** on the connected repo's OWN `automation/testids` branch (`cd ../elitea_assistant`)
+  — same terminal step. Extra promotion hop: a human cherry-picks it to the assistant's `main`, then
+  EliteaUI bumps the git-dep — see `.agents/workflow.md` § Connected repos.
+
+Same naming, same scope discipline (#511 / #277), same testid-only policy. #579 still applies to the
+connected repo's OWN third-party internals (its mermaid / react-markdown output).
 
 ## Process
 
@@ -112,7 +132,8 @@ Edit(
 ```
 
 **CRITICAL:** 
-- Only edit files in `EliteaUI/src/` directory
+- Only edit files in `EliteaUI/src/` — or, for a connected repo's element, its own `src/`
+  (e.g. `../elitea_assistant/src`); **never** `node_modules` or a built `dist/`
 - Verify the element is unique before editing (check for duplicates)
 - If element appears in multiple places, add context to testid (e.g., `agent-form-save-button` vs `pipeline-form-save-button`)
 
@@ -161,11 +182,13 @@ Branch: automation/testids (commit born + pushed here; human cherry-picks to mai
 ### Element Not Found
 If the element cannot be located in EliteaUI source:
 1. Report which element couldn't be found (search terms tried, dirs covered)
-2. **STOP+FLAG for that element — never emit a fallback/role/text locator**
+2. **Check the connected repos** before flagging — a Support-Assistant element lives in
+   `../elitea_assistant/src` (`.tsx`), not `../EliteaUI/src` (see § Connected repos)
+3. **STOP+FLAG for that element — never emit a fallback/role/text locator**
    (testid-only policy: `.agents/testing.md` § Locator policy). The lead
    decides: deeper source hunt, UI-team question, or stop+flag exception
-   (third-party widget)
-3. Continue with the other elements
+   (genuine third-party widget internals)
+4. Continue with the other elements
 
 ### Duplicate Elements
 If same text appears multiple times:
