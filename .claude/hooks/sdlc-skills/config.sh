@@ -7,7 +7,13 @@
 # shelf) the docs are inlined into additionalContext in THIS order until the ~10KB
 # cap, then the rest become a read-list. Order is irrelevant for every other agent
 # (they get all docs from the shelf). Put the most task-critical doc first.
-: "${SDLC_SHARED_DOCS:=testing profile workflow conventions role-overrides team-comms}"
+
+# Sentinel, not empty: shared_doc_names() in lib.sh reads this via ${VAR:-default},
+# which falls back to its own hardcoded default whenever VAR is unset OR "" —
+# so an empty value here is silently ignored and the 6 docs come back anyway.
+# "__none__" matches no real .agents/*.md file, so every consumer (collect_shared_context,
+# refresh_shared_instructions, list_shared_files) loops once, finds no file, no-ops.
+: "${SDLC_SHARED_DOCS:=__none__}"
 
 # Role memory files injected from .agents/memory/<role>/ (space-separated).
 # SOUL.md is the persona — injected only under Copilot (Claude/Codex get it via @-import).

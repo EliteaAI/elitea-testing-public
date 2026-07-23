@@ -72,9 +72,22 @@ cd ../EliteaUI && npm run dev                                    # → http://lo
 
 ## Team & Way of Work
 
-Seeded config in `.agents/`: `profile.md` (systems, PR policy, credentials map),
-`workflow.md` (the two-branch dance), `testing.md` (framework detail),
-`test-automation.yaml` (TMS intake/back-write policy), `team-comms.md` (roster).
+Seeded config in `.agents/`, imported below so every session and every dispatched
+subagent gets it in full (uncapped — see `.claude/hooks/sdlc-skills/config.sh` for
+why this replaced the hook's inline delivery): system design (`architecture.md`),
+coding standards (`conventions.md`), systems/PR policy/credentials map
+(`profile.md`), per-role locator/testid overrides (`role-overrides.md`), roster
+(`team-comms.md`), TMS intake/back-write policy (`test-automation.yaml`),
+framework detail (`testing.md`), the two-branch dance (`workflow.md`).
+
+@.agents/architecture.md
+@.agents/conventions.md
+@.agents/profile.md
+@.agents/role-overrides.md
+@.agents/team-comms.md
+@.agents/test-automation.yaml
+@.agents/testing.md
+@.agents/workflow.md
 
 ## Full Reference
 
