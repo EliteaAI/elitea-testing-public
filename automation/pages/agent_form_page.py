@@ -615,7 +615,9 @@ class AgentFormPage(BasePage):
             cm_content = self.page.locator(
                 '[role="dialog"] .cm-content[contenteditable="true"]'
             )
-        return cm_content.text_content() or ""
+        # Use inner_text() instead of text_content() for more reliable extraction
+        # from CodeMirror's contenteditable div - text_content() can miss chars
+        return cm_content.inner_text() or ""
 
     # ------------------------------------------------------------------
     # Conversation Starter methods
@@ -794,4 +796,6 @@ class AgentFormPage(BasePage):
             cm_content = self.page.locator(
                 '[role="dialog"] .cm-content[contenteditable="true"]'
             )
-        return cm_content.text_content() or ""
+        # Use inner_text() instead of text_content() for more reliable extraction
+        # from CodeMirror's contenteditable div - text_content() can miss chars
+        return cm_content.inner_text() or ""

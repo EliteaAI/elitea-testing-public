@@ -6,14 +6,6 @@ same count), rather than redirecting to Chat or another page.
 
 Spec: test-specs/agents/l1_agent-detail-back-navigation-returns-to-agents-list_ELITEA-1869.md
 
-Uses a pre-existing agent from the project's Agents list (read-only) instead
-of the ``agent_id`` fixture: that fixture unconditionally calls
-``AgentAPI.create_agent()``, which currently 400s against the DEV backend
-(open defect https://github.com/EliteaAI/elitea-testing-public/issues/524 —
-temperature/reasoning_effort conflict). This case's precondition only
-requires an *existing* agent, so the first card on the dashboard is reused
-instead — no agent is created, edited, or deleted; nothing to clean up.
-
 Markers:
     - ui: requires browser
     - agents: agent-related tests
@@ -36,12 +28,11 @@ NAVIGATION_TIMEOUT = 15000
 
 @pytest.mark.p0
 @pytest.mark.regression
-def test_back_button_from_agent_detail_returns_to_intact_agents_list(page):
+def test_back_button_from_agent_detail_returns_to_intact_agents_list(page, agent_id):
     """Back button on agent detail page returns to Agents dashboard with
     the list intact (ELITEA-1869).
 
-    Uses the first pre-existing agent card on the dashboard — read-only,
-    no test data created or cleaned up.
+    Uses agent_id fixture to ensure at least one agent exists.
     """
     agent = AgentPage(page)
     list_page = AgentsListPage(page)

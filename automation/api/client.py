@@ -1652,7 +1652,7 @@ class ToolkitAPI:
                 "embedding_model": "text-embedding-3-small",
                 "bucket": bucket_name,
                 "selected_tools": [
-                    "index_data", "list_collections", "search_index",
+                    "index_data", "list_indexes", "search_index",
                     "stepback_search_index", "stepback_summary_index", "remove_index",
                     "list_files", "create_file", "read_file", "get_file_metadata",
                     "delete_file", "append_data", "create_new_bucket",

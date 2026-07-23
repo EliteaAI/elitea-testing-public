@@ -271,12 +271,12 @@ class TestSkillExportImport:
             console_messages = detail_page.capture_console_errors()
             try:
                 form_page.set_description(edited_description)
-            form_page.wait_for_form_validation()
-            assert form_page.is_save_enabled(), (
-                "Save should be enabled after editing the description"
-            )
+                form_page.wait_for_form_validation()
+                assert form_page.is_save_enabled(), (
+                    "Save should be enabled after editing the description"
+                )
 
-            form_page.save_and_wait_for_navigation(timeout=FORM_SAVE_TIMEOUT)
+                form_page.save_and_wait_for_navigation(timeout=FORM_SAVE_TIMEOUT)
 
                 assert not form_page.is_save_enabled(), (
                     "Save should return to disabled after a clean save (dirty flag cleared)"
