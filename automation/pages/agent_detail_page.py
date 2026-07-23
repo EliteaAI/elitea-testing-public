@@ -135,6 +135,19 @@ class AgentDetailPage(AgentFormPage):
     # presence within a *specific* message item rather than page-wide.
     CHAT_READ_OUT_BUTTON_SELECTOR = '[data-testid="chat-read-out-button"]'
     SKILL_TEST_LAST_RESPONSE_SELECTOR = '[data-testid="skill-test-last-response"]'
+    # Run History panel row (ELITEA-1877) — dynamic testid keyed by the
+    # conversation id (RunHistoryListItem.jsx's `item.id`), added via
+    # add-data-testid (EliteaAI/EliteaUI@8d25a19c on `automation/testids`).
+    # State ("is this the selected row") is the SEPARATE `data-selected`
+    # attribute on the same element (`.agents/testing.md` § Locator policy —
+    # testid is stable identity, state via data-* attribute), never a second
+    # state-suffixed testid — same shape as artifacts_page.py's
+    # `is_bucket_selected()` / BUCKET_ROW. Prefix-match variant (the
+    # conversation id isn't known ahead of time — same "keyed by a value not
+    # known in advance" shape as SKILL_CARD_ANY_SELECTOR below): callers
+    # select by ordinal position (the panel lists runs newest-first), not by
+    # id, so only the ANY form is referenced.
+    RUN_HISTORY_ITEM_ANY_SELECTOR = '[data-testid^="run-history-item-"]'
     # Dynamic (runtime-parameterized) testid templates — see
     # .claude/rules/page-objects.md "Dynamic testids" for the naming pattern.
     SKILL_CARD_SELECTOR = '[data-testid="skill-card-{}"]'
@@ -178,6 +191,18 @@ class AgentDetailPage(AgentFormPage):
     chat_artifact_file_card = LocatorDescriptor(testid="chat-artifact-file-card")
     chat_clear_button = LocatorDescriptor(testid="chat-clear-button")
     skill_test_last_response = LocatorDescriptor(testid="skill-test-last-response")
+
+    # --- Run History panel (ELITEA-1877) ---
+    # `pipeline-history-tab` is a pre-existing, shared testid on
+    # ViewRunHistoryButton.jsx (also used by Pipeline/Toolkit/MCP "history"
+    # entry points) — reused as-is per AFS PROVENANCE (on-main, no gap); the
+    # value is a Pipelines-context leftover but functionally correct here.
+    # `AgentDetailPage` didn't have a field for it yet, hence the new field.
+    run_history_button = LocatorDescriptor(testid="pipeline-history-tab")
+    # Panel heading — added via add-data-testid for this case
+    # (EliteaAI/EliteaUI@1a684045); confirms the panel actually rendered
+    # (RunHistoryContainer.jsx), not just that the toggle click registered.
+    run_history_panel_heading = LocatorDescriptor(testid="run-history-panel-heading")
 
     # --- LLM model selector (embedded chat panel, ELITEA-1881) ---
     # `model-selector-button`/`model-selector-name` are static testids on
@@ -2616,6 +2641,149 @@ class AgentDetailPage(AgentFormPage):
         except Exception:
             logger.warning("Sensitive Action Authorization panel did NOT appear within %dms", timeout)
             return False
+
+    # ------------------------------------------------------------------
+    # Run History panel (ELITEA-1877)
+    # ------------------------------------------------------------------
+    #
+    # `ConfigurationTab.jsx` renders `RunHistoryContainer` XOR
+    # `ConfigurationRightContent` — never both — so this panel REPLACES the
+    # embedded chat/config area rather than living alongside it. Its own
+    # chat pane (`RunHistoryChat.jsx`) reuses the SAME `chat-message-list` /
+    # `chat-message-item` testids as the live embedded chat (confirmed
+    # during ELITEA-1877 analysis — one mount at a time, no locator gap),
+    # so `_embedded_chat_messages()` / `get_chat_message_count()` above work
+    # unchanged while this panel is open.
+
+    @action("Open run history panel")
+    def open_run_history_panel(self, timeout: int = 10000):
+        """Click "View run history" and wait for the panel + its list data
+        to render.
+
+        LOCATOR: ``run_history_button`` (``pipeline-history-tab`` testid,
+        pre-existing/shared — see field docstring). Wraps the click in
+        ``page.expect_response`` for the run-history LIST endpoint
+        (``getRunHistoryList`` — PLURAL ``/elitea_core/conversations/prompt_lib/``,
+        distinct from the singular ``conversation`` details endpoint
+        :meth:`click_run_history_item` waits on) — a bare wait on
+        ``run_history_panel_heading`` alone proved insufficient during
+        ELITEA-1877 implementation: the heading renders immediately (static
+        markup), independent of the list's own async fetch, so a caller
+        reading row count right after the heading appears can race an
+        empty, not-yet-loaded list (observed live: 0 rows on first attempt).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Run History panel")
+        self.run_history_button.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/elitea_core/conversations/prompt_lib/" in r.url
+            and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            self.run_history_button.click()
+        self.run_history_panel_heading.wait_for(state="visible", timeout=timeout)
+        logger.info("Run History panel opened")
+
+    def get_run_history_items(self) -> Locator:
+        """Return a locator matching every row in the open Run History list.
+
+        LOCATOR: ``RUN_HISTORY_ITEM_ANY_SELECTOR`` — the prefix-match
+        variant of the dynamic ``run-history-item-{conversation_id}``
+        testid (same "keyed by a value not known in advance" shape as
+        ``SKILL_CARD_ANY_SELECTOR`` / ``MODEL_SELECTOR_OPTION_ANY_SELECTOR``
+        above). The conversation id isn't known ahead of time, but ordinal
+        position is sufficient here: the panel lists runs newest-first
+        (confirmed live during ELITEA-1877 analysis), so callers select
+        "the older, non-active run" via ``.nth(1)`` rather than by id.
+        """
+        return self.page.locator(self.RUN_HISTORY_ITEM_ANY_SELECTOR)
+
+    def get_run_history_item_count(self, timeout: int = 10000) -> int:
+        """Return the number of rows currently listed in the open Run History panel.
+
+        Waits for the first row to become visible before counting — the
+        list's own React re-render can trail the LIST response
+        :meth:`open_run_history_panel` already blocks on by a tick, so a
+        bare, un-waited ``.count()`` can still observe a not-yet-rendered
+        list. A genuinely empty list (0 rows) still returns 0 after the
+        wait times out.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first row.
+        """
+        items = self.get_run_history_items()
+        try:
+            items.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return 0
+        return items.count()
+
+    @action("Click Run History row")
+    def click_run_history_item(self, index: int, timeout: int = 10000) -> None:
+        """Click the Run History row at *index* (0 = newest-first row).
+
+        Wraps the click in ``page.expect_response`` for the conversation
+        DETAILS endpoint (``getRunHistoryDetails`` —
+        ``/elitea_core/conversation/prompt_lib/{project}/{conversation}``,
+        singular ``conversation`` — distinct from the PLURAL
+        ``conversations`` list endpoint the panel's own open already fired),
+        the same "block on the real network round trip" idiom already used
+        elsewhere in this page object (e.g. the Save-PUT wait in
+        ``test_agent_llm_selector_anthropic_models.py``), so the caller
+        never races the chat pane's re-render against a fixed sleep.
+
+        Args:
+            index: Ordinal position of the row to click (0-based).
+            timeout: Maximum wait time in milliseconds.
+        """
+        item = self.get_run_history_items().nth(index)
+        item.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/elitea_core/conversation/prompt_lib/" in r.url
+            and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            item.click()
+        self.page.wait_for_timeout(300)
+        logger.info("Clicked Run History row at index %d", index)
+
+    def is_run_history_item_selected(self, index: int, timeout: int = 10000) -> bool:
+        """Return whether the Run History row at *index* carries ``data-selected="true"``.
+
+        Reads the ``data-selected`` state attribute (ELITEA-1877) on the
+        already testid-anchored row — the same "read an attribute of an
+        existing testid-anchored locator" shape established by
+        ``ArtifactsPage.is_bucket_selected()`` (state lives in a ``data-*``
+        attribute on a stable testid, never a second state-suffixed testid
+        — ``.agents/testing.md`` § Locator policy).
+
+        Args:
+            index: Ordinal position of the row to check (0-based).
+            timeout: Maximum wait time in milliseconds for the row to be visible.
+        """
+        item = self.get_run_history_items().nth(index)
+        item.wait_for(state="visible", timeout=timeout)
+        return item.get_attribute("data-selected") == "true"
+
+    def get_all_chat_messages_text(self) -> str:
+        """Return the concatenated text of every message item currently
+        rendered in the chat pane (the live embedded chat OR, while the Run
+        History panel is open, its own chat pane — both mount the SAME
+        ``chat-message-list``/``chat-message-item`` testids, one at a time;
+        see the module note above this section).
+
+        Used to assert on the CONTENT of a run's conversation (both the
+        user message and the AI reply), not just message presence.
+
+        Returns:
+            All message items' text, concatenated with newlines. Empty
+            string if no messages are present.
+        """
+        messages = self._embedded_chat_messages()
+        count = messages.count()
+        return "\n".join(messages.nth(i).text_content() or "" for i in range(count))
 
     # ------------------------------------------------------------------
     # Actions menu (three-dot menu)
