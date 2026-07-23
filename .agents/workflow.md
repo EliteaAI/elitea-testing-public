@@ -195,6 +195,22 @@ never hardcode.
 Interactive session → the human in the room authorizes work; factory mode → work only
 the one issue the dispatch names.
 
+### Blocked on an app bug (cross-repo park)
+
+When an automation case is blocked by a **confirmed application bug** filed in
+`EliteaAI/elitea_issues` (via the `file-app-bug` skill), park the automation card the
+same way as any blocker — with two cross-repo specifics:
+
+- **Label** the parked card `blocked:app-bug` (distinct from a same-repo `Waiting on #N`).
+- **Waiting-on line uses the full cross-repo form:** `Waiting on EliteaAI/elitea_issues#N`
+  (plain text, never bare `#N` — bare resolves against THIS repo). This is what the
+  tracking loop reads.
+- **Unblock is not automatic and not human-only-gated by an agent.** The draft
+  `track-app-issues` loop (`factory/loops/EXAMPLE-track-app-issues.*`, staged) polls
+  `elitea_issues#N`; when it closes as `completed`, it strips `blocked:app-bug`, moves
+  the card back to `Todo`, and comments "ready to resume" — a human re-approves.
+  `Approved`/`Done` stay human-only.
+
 ### Closure record — the last comment on every automation issue
 
 The work-log comments posted during a run (Started → AFS ready → PR opened → review →
