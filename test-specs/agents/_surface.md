@@ -118,6 +118,49 @@ for both types. ELITEA-1880's case text ("Reasoning slider ... for standard
 models") is testing the reasoning-capable-model path specifically — pick a
 model with the "Supports reasoning" chip (e.g. `GPT-5.4`) to exercise it.
 
+## VERSION dropdown / version switching (ELITEA-1890 exploration, 2026-07-23)
+
+All handles here are already **on `main`** (fresh `git fetch origin` confirmed
+this run) — no testid work needed for any case that only reads/switches
+versions and Instructions content.
+
+| Purpose | Testid | Page-object field / method |
+|---|---|---|
+| VERSION dropdown trigger | `agent-version-selector-trigger` | `AgentDetailPage.version_selector_trigger` / `get_version_selector_value()` |
+| Version option (dynamic) | `version-option-{name}` | `AgentDetailPage.VERSION_OPTION.format(name)` |
+| Version ID readout | `copy-version-id` | `AgentDetailPage.copy_version_id_button` / `get_version_id()` |
+| Instructions field | `agent-instructions-input` | `AgentFormPage.instructions_input` / `get_instructions()` |
+
+- **Bare `/agents/all/{id}?viewMode=owner` (no version segment) always loads
+  the `"base"` version**, regardless of which version was last active/created
+  — confirmed live: right after creating and landing on a brand-new named
+  version, a fresh navigate to the bare URL returned to `"base"`. Useful for
+  deterministically starting a version-switch test from a known version.
+- **Switching versions via the dropdown updates the Instructions field
+  immediately and correctly, in both directions** — confirmed live
+  (ELITEA-1890): base ⇄ named version, Instructions content matched each
+  version's own saved text byte-for-byte every time, URL/VERSION-trigger/
+  `copy-version-id` all converged in one shot (no #614-style staleness hit
+  this run). **Still use `AgentDetailPage.select_version_by_name()`** (not a
+  raw dropdown click) in automated tests — it already encodes the
+  bounded-retry/reload convergence check for the rarer #614 staleness case;
+  reimplementing the click directly forfeits that hardening for free.
+- **Tooling quirk (analyst tooling, NOT a product defect):** `browser-verify`'s
+  `cdp.mjs` `clear` command and a synthetic `Ctrl+A`/`Backspace` `press`
+  sequence **do not reliably clear a MUI multiline `<textarea>`** in headless
+  mode — confirmed live: neither removed any characters from
+  `agent-instructions-input` despite reporting success / a real native
+  selection being set first (`el.setSelectionRange(0, len)` via `evaluate`,
+  then `press Backspace` — length unchanged). Per-character `type` (append)
+  DOES work reliably through the same tool. Workaround used this run: build
+  the "distinct second version" text by **appending** to the existing content
+  rather than clearing+retyping (matches ELITEA-1888's own case-text pattern
+  of appending a word). This is specific to `cdp.mjs`'s synthetic
+  non-printable-key dispatch — Playwright's own `press_sequentially()` /
+  `.clear()` (used throughout the real pytest suite, e.g.
+  `test_agent_save_as_version.py`) are unaffected; this is not something the
+  implementer needs to work around.
+
 ## `verify_tabs_visible()` — dead code, not this surface's real mechanism
 
 `AgentDetailPage.verify_tabs_visible()` (`agent_detail_page.py:473-479`)
