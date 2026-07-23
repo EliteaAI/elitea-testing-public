@@ -7,7 +7,7 @@ message input, participants, and chat settings.
 import logging
 import re
 import time
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor
 from components.mui import Dialog, Popper
@@ -2773,6 +2773,269 @@ class ChatPage(BasePage):
         target.first.wait_for(state="visible", timeout=timeout)
         logger.info("Context Budget Summaries counter reached %r", expected)
 
+    # ------------------------------------------------------------------
+    # "Add users" modal (ELITEA-2167) — search/select/chip/Add/Cancel/Close
+    # picker reached via the plus menu -> "Invite Users" (Team projects
+    # only). Distinct from ``open_add_teammate_dialog()`` immediately below,
+    # which only detects that SOME picker/dialog opened (raw role-based
+    # handles, pre-existing tech debt) — these methods drive the actual
+    # picker via the testid-compliant handles added for this case
+    # (AddNewUserModal.jsx / AutoCompleteDropDown.jsx / UserSearchSelect.jsx
+    # on ``automation/testids``).
+    # ------------------------------------------------------------------
+
+    add_users_dialog = LocatorDescriptor(
+        testid="add-users-dialog",
+        description="'Add users' modal container (AddNewUserModal.jsx via the shared BaseModal).",
+    )
+
+    add_users_close_button = LocatorDescriptor(
+        testid="add-users-close-button",
+        description="X (Close) button in the 'Add users' modal header.",
+    )
+
+    add_users_search_input = LocatorDescriptor(
+        testid="add-users-search-input",
+        description="'Search users...' combobox inside the 'Add users' modal.",
+    )
+
+    add_users_cancel_button = LocatorDescriptor(
+        testid="add-users-cancel-button",
+        description="Cancel button in the 'Add users' modal — discards the pending selection.",
+    )
+
+    add_users_confirm_button = LocatorDescriptor(
+        testid="add-users-confirm-button",
+        description=(
+            "Add (confirm) button in the 'Add users' modal — disabled "
+            "until at least one user is selected."
+        ),
+    )
+
+    # Dynamic per-user option row / selected chip — the user id isn't known
+    # ahead of a search, so these are PREFIX-match templates (same
+    # convention as CONVERSATION_ITEM_PREFIX / MENTION_SKILL_ITEM_PREFIX
+    # above), disambiguated by name via ``.filter(has_text=...)`` — the same
+    # idiom already used by ``wait_for_context_budget_summaries_count()``.
+    ADD_USERS_OPTION_PREFIX = '[data-testid^="add-users-option-"]'
+    ADD_USERS_CHIP_PREFIX = '[data-testid^="add-users-chip-"]'
+
+    @action("Open Add users modal")
+    def open_add_users_modal(self, timeout: int = 10000):
+        """Open the 'Add users' modal via the plus menu -> 'Invite Users'.
+
+        Only available in Team projects — ``invite_users_menuitem`` is
+        absent entirely (not merely disabled) for Private projects.
+        """
+        logger.info("Opening 'Add users' modal via plus menu -> Invite Users")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.invite_users_menuitem.wait_for(state="visible", timeout=timeout)
+        self.invite_users_menuitem.click()
+        self.add_users_dialog.wait_for(state="visible", timeout=timeout)
+
+    @action("Search and select a user in the Add users modal")
+    def search_and_select_add_user(self, query: str, name: str, timeout: int = 10000):
+        """Type *query* into the search field and select the option matching *name*.
+
+        Selection filters the already-fetched user list client-side (no
+        network call — see AFS § Network Behavior), so the only real wait
+        is React re-rendering the option list, not a server round trip —
+        waited for via the option's own visibility, never a fixed sleep.
+
+        Resolves the specific option via ``ADD_USERS_OPTION_PREFIX`` (the
+        option's own testid is keyed by user id, which is unknown ahead of
+        a search) filtered by *name* — the same testid-anchored-locator +
+        ``.filter(has_text=...)`` idiom used elsewhere in this class
+        (``wait_for_context_budget_summaries_count``), not a raw text
+        selector standing alone.
+
+        Args:
+            query: Search substring (e.g. "sa").
+            name: Exact visible name of the option to select (e.g.
+                "Hrach Sargsyan") — case's own examples are not always the
+                alphabetically-first match, so position alone can't be
+                relied on.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Searching Add users modal for %r, selecting %r", query, name)
+        self.add_users_search_input.click()
+        self.add_users_search_input.press_sequentially(query, delay=50)
+        option = self.page.locator(self.ADD_USERS_OPTION_PREFIX).filter(has_text=name)
+        option.first.wait_for(state="visible", timeout=timeout)
+        option.first.click()
+
+    def get_add_users_chip_names(self) -> list[str]:
+        """Return the visible names on every currently selected chip in the
+        (still-open) 'Add users' modal."""
+        chips = self.page.locator(self.ADD_USERS_CHIP_PREFIX)
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
+    def is_add_users_option_present(self, name: str, timeout: int = 3000) -> bool:
+        """Return True if an option matching *name* is currently rendered in
+        the (already-searched, still-open) 'Add users' results dropdown.
+
+        Used to confirm ``excludedUserIds`` correctly drops already-added
+        participants from subsequent searches (AFS Axis 2 addition, step 7)
+        — a short default timeout since this is an absence-capable check,
+        not a "wait for it to eventually appear" one.
+        """
+        option = self.page.locator(self.ADD_USERS_OPTION_PREFIX).filter(has_text=name)
+        try:
+            option.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def is_add_users_confirm_enabled(self) -> bool:
+        """Return True if the 'Add users' modal's Add button is enabled."""
+        return self.add_users_confirm_button.is_enabled()
+
+    def dismiss_add_users_dropdown(self):
+        """Close the still-open MUI Autocomplete results popper WITHOUT
+        closing the 'Add users' dialog itself (native Escape).
+
+        MUST be called before clicking Cancel/Add/Close after a selection —
+        the popper genuinely covers those buttons and intercepts pointer
+        events otherwise (confirmed live, AFS § Automation Hints). Do not
+        reach for ``force=True`` — the popper's z-order makes a forced
+        click land on an unpredictable element.
+        """
+        self.page.keyboard.press("Escape")
+
+    @action("Confirm Add users selection")
+    def click_add_users_confirm(self, timeout: int = 5000):
+        """Dismiss any open results dropdown, then click Add."""
+        self.dismiss_add_users_dropdown()
+        self.add_users_confirm_button.wait_for(state="visible", timeout=timeout)
+        self.add_users_confirm_button.click()
+
+    @action("Cancel Add users modal")
+    def click_add_users_cancel(self, timeout: int = 5000):
+        """Dismiss any open results dropdown, then click Cancel (discards selection)."""
+        self.dismiss_add_users_dropdown()
+        self.add_users_cancel_button.wait_for(state="visible", timeout=timeout)
+        self.add_users_cancel_button.click()
+
+    @action("Close Add users modal via X")
+    def click_add_users_close(self, timeout: int = 5000):
+        """Dismiss any open results dropdown, then click the X (Close) button (discards selection)."""
+        self.dismiss_add_users_dropdown()
+        self.add_users_close_button.wait_for(state="visible", timeout=timeout)
+        self.add_users_close_button.click()
+
+    # Selector-string form of PARTICIPANTS_BADGE/PARTICIPANTS_BADGE_BUTTON,
+    # for use inside in-page JS (``document.querySelector``) — the count
+    # itself is CSS generated content (see the two methods below), which
+    # only ``window.getComputedStyle`` can read, so this pairing has to
+    # cross into ``page.evaluate``/``page.wait_for_function`` rather than
+    # a plain Locator call.
+    _PARTICIPANTS_BADGE_BUTTON_SELECTOR = (
+        '[data-testid="chat-participants-badge-{}"] [data-testid="chat-participants-badge-button"]'
+    )
+
+    def get_participants_badge_count(self, section: str = "users", timeout: int = 5000) -> str:
+        """Return the visible count on the collapsed participants badge for
+        *section* (e.g. "2" after two invited users are Added, ELITEA-2167).
+
+        The count is rendered as CSS generated content
+        (``::after { content: "<n>" }`` — ``CollapsedPerticapantsList.jsx``'s
+        ``collapsedTriggerButton`` style), never as real DOM text — confirmed
+        live: ``text_content()``/``innerHTML`` on the button return no digits
+        at all, only ``window.getComputedStyle(el, '::after').content`` does.
+        A DOM-text read (``text_content()``, ``get_by_text``, ``has_text=``)
+        can never observe this value, hence the computed-style read below.
+        """
+        badge_container = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
+        badge_button = badge_container.locator(self.PARTICIPANTS_BADGE_BUTTON)
+        badge_button.first.wait_for(state="visible", timeout=timeout)
+        raw = badge_button.first.evaluate("el => window.getComputedStyle(el, '::after').content")
+        return raw.strip('"')
+
+    def wait_for_participants_badge_count(
+        self, expected: str, section: str = "users", timeout: int = 10000,
+    ):
+        """Wait until the collapsed participants badge for *section*'s CSS
+        generated-content count reads *expected*.
+
+        Same CSS-generated-content fact as ``get_participants_badge_count()``
+        above: the number lives in ``::after``'s computed style, not DOM
+        text, so a ``Locator.filter(has_text=...)``/``wait_for()`` pair (which
+        only ever inspects DOM text) can never match it — it silently times
+        out watching a value that was never going to appear (confirmed via a
+        live repro this session: the same click flow that visibly renders
+        "2" on screen still times out on the old ``text_content()``-based
+        wait). ``page.wait_for_function`` is Playwright's own
+        condition-based polling primitive (the framework-native equivalent of
+        ``wait_for_selector`` for a computed-style condition, not a fixed
+        sleep) — it re-queries the DOM/computed style each poll until the
+        predicate is true or *timeout* elapses.
+        """
+        badge_container = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
+        badge_button = badge_container.locator(self.PARTICIPANTS_BADGE_BUTTON)
+        badge_button.first.wait_for(state="attached", timeout=timeout)
+        selector = self._PARTICIPANTS_BADGE_BUTTON_SELECTOR.format(section)
+        self.page.wait_for_function(
+            """
+            ([selector, expected]) => {
+                const el = document.querySelector(selector);
+                if (!el) return false;
+                const content = window.getComputedStyle(el, '::after').content;
+                return content === `"${expected}"`;
+            }
+            """,
+            arg=[selector, expected],
+            timeout=timeout,
+        )
+
+    # Multi-person icon wrapper on a conversation's sidebar row (ELITEA-2167)
+    # — ALWAYS rendered (single- and multi-owner conversations alike); state
+    # (has an icon or not) is carried by its own ``data-has-icon`` attribute
+    # per the testid=identity/state=data-* ruling, never by the wrapper's
+    # mere presence/absence.
+    CONVERSATION_MULTI_USER_ICON = '[data-testid="conversation-multi-user-icon"]'
+
+    def wait_for_conversation_multi_user_icon(
+        self, conversation_id: str | int, expected_has_icon: bool, timeout: int = 10000,
+    ):
+        """Assert *conversation_id*'s sidebar item's multi-person icon wrapper
+        settles to ``data-has-icon="true"``/``"false"`` per *expected_has_icon*.
+
+        Scopes ``CONVERSATION_MULTI_USER_ICON`` within the conversation's own
+        ``CONVERSATION_ITEM`` container, then waits on its ``data-has-icon``
+        attribute — confirmed live against a negative control (an empty
+        wrapper, ``data-has-icon="false"``, on a single-owner conversation vs.
+        a populated one, ``data-has-icon="true"``, once 2+ users are
+        participants).
+
+        Uses ``expect().to_have_attribute()`` (Playwright's own auto-retrying,
+        condition-based assertion) rather than a one-shot read — confirmed
+        live this session: the attribute genuinely settles asynchronously
+        right after a conversation is freshly created (a one-shot read
+        straight after DOM attachment can catch a transient pre-update
+        "false" that flips to "true" moments later once the sidebar's
+        participant count propagates from the just-completed send). The
+        negative-control wrapper is also legitimately CSS-hidden while
+        ``data-has-icon="false"`` (confirmed via the Playwright call log
+        resolving to a hidden element throughout) — ``to_have_attribute``
+        doesn't require visibility, only DOM presence, so it's correct for
+        both the hidden/false and the visible/true cases.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        icon_wrapper = item.locator(self.CONVERSATION_MULTI_USER_ICON)
+        expect(icon_wrapper).to_have_attribute(
+            "data-has-icon", "true" if expected_has_icon else "false", timeout=timeout,
+        )
+
+    new_conversation_greeting = LocatorDescriptor(
+        testid="chat-new-conversation-greeting",
+        description=(
+            "Blank-conversation greeting section ('Hello, {user}! What can "
+            "I do for you today?') — visible only for a brand-new, unsent "
+            "conversation (ELITEA-2167)."
+        ),
+    )
+
     def open_add_teammate_dialog(self, timeout: int = 5000) -> tuple[bool, str]:
         """Open the 'Invite Users' dialog via the plus menu.
 
@@ -3099,6 +3362,11 @@ class ChatPage(BasePage):
 
         self.participants_popper.wait_for(state="visible", timeout=timeout)
         return self.participants_popper
+
+    def dismiss_participants_popover(self):
+        """Press Escape to dismiss an open participants popper (ELITEA-2167) —
+        same idiom as ``dismiss_mention_popper()``."""
+        self.page.keyboard.press("Escape")
 
     @action("Remove agent participant from chat")
     def remove_agent_participant(self, agent_id: int, timeout: int = 10000):
