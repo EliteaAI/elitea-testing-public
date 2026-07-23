@@ -112,3 +112,36 @@ narrate the fix elsewhere. A quick self-check before calling a round done:
 `grep <old-handle-name> test-specs/**/*.md` should return nothing (or only
 the amendment's own "corrected from X" historical note), the same way
 `git diff <file> | grep '^-[^-]'` is the self-check for additive-only.
+
+## Addendum (ELITEA-2167 fix-only round, PR #988, reviewer Finding 3): the SAME string can be real on `main` — for a DIFFERENT component
+
+A second variant of this exact lesson, this time hitting the `on-main ✓`
+PROVENANCE column instead of a "does the DOM resolve" check. The AFS/test
+docstring claimed `chat-participants-badge-button` /
+`chat-participants-popper` were `on-main ✓`, reused as-is from an existing
+`ChatPage` field. **The string genuinely IS on `main`** — `git grep` finds
+it — so a shallow "does this testid exist on main" check passes. But it's
+on `main` in `CollapsedPerticapantsList.jsx` /
+`CollapsedParticipantsDropdown.jsx` (the Agents-participants flavor), a
+DIFFERENT component from the one this test's `section="users"` flow
+actually renders through: `UsersParticipantDropdown/index.jsx`. That
+component's copy of the same two testid strings only exists on
+`automation/testids` (added via a dedicated commit,
+EliteaAI/EliteaUI@7ecc041d) — `main` has never seen it.
+
+This is the identical failure mode as the original lesson above
+("the testid string exists somewhere ≠ it exists for the component you're
+testing"), just discovered through promotability/provenance verification
+(`git grep <string> origin/main -- src/`) rather than through a live DOM
+`document.querySelector`. **The fix is the same discipline, restated for
+this check specifically**: when a Concrete Handles row says "reused as-is,
+on-main ✓" for a testid whose NAME happens to already exist elsewhere in
+the codebase, `git grep -n "<testid-string>" origin/main -- src/` and
+confirm the MATCHING FILE is the actual component this test's code path
+renders — not just that the grep returns a hit. A hit in the wrong file is
+a false positive that produces a false "already promotable" claim in the
+closure record (the exact class of error `.agents/workflow.md`'s closure-
+record verification exists to catch). Caught this round by a fresh
+reviewer session re-deriving provenance from scratch rather than trusting
+the original implementer's claim — the same "verify importers/owners, not
+just string existence" muscle, applied one level up the stack.
