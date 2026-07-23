@@ -122,6 +122,18 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **Link originating case**: yes — body names the TMS case ID and "Found while working #<task>"
 - **Never mask**: no `test.fail()`/skip/weakened asserts; isolated defect →
   `expect.soft()` with ticket linked; blocking defect → natural fail + `blocked`
+- **Two trackers, two purposes** — do not conflate:
+  - *This repo's `bug` issues* (`EliteaAI/elitea-testing-public`) — the lightweight,
+    localhost, filed-during-analysis defect notes above. **Unchanged — stays light;
+    analysis is not distracted by DEV verification.**
+  - *Application-bug tracker* `EliteaAI/elitea_issues` — the externally-visible tracker
+    the dev team reads. A defect reaches it only after DEV verification + an explicit ask.
+- **Escalation path (know it exists; act only on an explicit ask).** A confirmed bug
+  (DEV-verified via the `reproduce-elitea-bug` skill, verdict `repro:confirmed`) is
+  escalated to `elitea_issues` via the `file-app-bug` skill — **ONLY on an explicit
+  user request.** Agents NEVER file to `elitea_issues` on their own initiative: surface
+  the confirmed bug and the escalation option, and wait. The *procedure* lives in those
+  two on-demand skills (not here) so automation-analysis sessions never load it.
 
 ### Test case storage
 - **Source of truth**: tms (onetest markdown files in `onetest-ai-tm-Elitea`)
