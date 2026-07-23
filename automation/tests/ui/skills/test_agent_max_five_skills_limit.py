@@ -107,6 +107,8 @@ class TestAgentMaxFiveSkillsLimit:
         """
         skill_ids = []
         agent_id = None
+        attach_requests = None  # CapturedRequests, needs stop() in finally
+        console_messages = None  # CapturedConsoleMessages, needs stop() in finally
 
         try:
             with allure.step("Step 1 — Create 5 Skills via UI"):
@@ -199,18 +201,8 @@ class TestAgentMaxFiveSkillsLimit:
                     "skill/prompt_lib", method="PATCH"
                 )
                 # Console-error capture across the attach flow, the blocked
-                # 6th-attach attempt, and the reload — mirrors the
-                # established pattern in test_skill_tag_filter.py /
-                # test_skill_export_import.py (page.on("console", ...),
-                # collect type == "error", assert empty). No shared helper
-                # exists yet for this pattern (checked: only those two
-                # inline occurrences), so it's reused inline here rather
-                # than inventing a new abstraction for a single caller.
-                console_messages = []
-                page.on(
-                    "console",
-                    lambda msg: console_messages.append(msg) if msg.type == "error" else None,
-                )
+                # 6th-attach attempt, and the reload.
+                console_messages = detail_page.capture_console_errors()
                 for idx, name in enumerate(SKILL_NAMES, start=1):
                     detail_page.attach_skill(name, timeout=UI_ELEMENT_TIMEOUT)
                     counter = detail_page.get_skills_counter_text()
@@ -319,6 +311,12 @@ class TestAgentMaxFiveSkillsLimit:
                 )
 
         finally:
+            # Stop listeners to prevent resource leaks that cause test hangs.
+            if attach_requests is not None:
+                attach_requests.stop()
+            if console_messages is not None:
+                console_messages.stop()
+
             # Cleanup per AFS: delete the agent first (teardown hygiene —
             # remove the thing with attached-state dependencies first), then
             # the 5 created skills, tolerating individual failures (mirrors

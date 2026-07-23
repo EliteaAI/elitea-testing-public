@@ -105,6 +105,8 @@ class TestRemoveAttachedSkillFromAgent:
         skill_a_id = None
         skill_b_id = None
         agent_id = None
+        console_messages = None  # CapturedConsoleMessages, needs stop() in finally
+        detach_requests = None  # CapturedRequests, needs stop() in finally
 
         try:
             with allure.step("Step 1 — Create Skill A and Skill B via UI"):
@@ -148,13 +150,8 @@ class TestRemoveAttachedSkillFromAgent:
                 "Agent exists with >=2 Skills attached)"
             ):
                 # Console-error capture across the remainder of the flow
-                # (attach, remove, reload, standalone-navigation) — mirrors
-                # the inline pattern in test_agent_max_five_skills_limit.py.
-                console_messages = []
-                page.on(
-                    "console",
-                    lambda msg: console_messages.append(msg) if msg.type == "error" else None,
-                )
+                # (attach, remove, reload, standalone-navigation).
+                console_messages = detail_page.capture_console_errors()
                 # Capture skill-detach PATCH requests specifically, so Step 5
                 # can assert on real network traffic (200, contrast with
                 # attach's 201) rather than only UI state.
@@ -304,6 +301,12 @@ class TestRemoveAttachedSkillFromAgent:
                 )
 
         finally:
+            # Stop listeners to prevent resource leaks that cause test hangs.
+            if console_messages is not None:
+                console_messages.stop()
+            if detach_requests is not None:
+                detach_requests.stop()
+
             # Cleanup per AFS: delete the agent first (teardown hygiene —
             # remove the thing with attached-state dependencies first), then
             # both skills, tolerating individual failures (mirrors

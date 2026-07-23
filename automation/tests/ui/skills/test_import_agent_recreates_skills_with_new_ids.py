@@ -125,6 +125,7 @@ class TestImportAgentRecreatesSkillsWithNewIds:
         imported_skill_id = None
         imported_agent_id = None
         download_path = None
+        console_messages = None  # CapturedConsoleMessages, needs stop() in finally
 
         try:
             with allure.step(
@@ -400,11 +401,7 @@ class TestImportAgentRecreatesSkillsWithNewIds:
             ):
                 detail_page.navigate(imported_agent_id)
 
-                console_messages = []
-                page.on(
-                    "console",
-                    lambda msg: console_messages.append(msg) if msg.type == "error" else None,
-                )
+                console_messages = detail_page.capture_console_errors()
 
                 edited_description = source_agent_description + " (edited)"
                 detail_page.update_description(edited_description)
@@ -426,6 +423,10 @@ class TestImportAgentRecreatesSkillsWithNewIds:
                 )
 
         finally:
+            # Stop listeners to prevent resource leaks that cause test hangs.
+            if console_messages is not None:
+                console_messages.stop()
+
             # Cleanup per AFS: delete both Agents first (attached-state
             # dependencies), then both Skills, tolerating individual
             # failures (mirrors ELITEA-1794/1735/1737/1738/1739/1789/1792's

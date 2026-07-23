@@ -47,6 +47,37 @@ class CapturedRequests(list):
             self._on_response = None
 
 
+class CapturedConsoleMessages(list):
+    """List subclass that holds captured console messages with cleanup support.
+
+    Returned by :meth:`BasePage.capture_console_errors`. Behaves like a
+    normal list but has a :meth:`stop` method to remove the event listener.
+
+    Call :meth:`stop` when done capturing to prevent resource leaks.
+    """
+
+    _page: Page | None = None
+    _on_console = None
+    _stopped: bool = False
+
+    def stop(self) -> None:
+        """Remove the console event listener.
+
+        Safe to call multiple times; subsequent calls are no-ops.
+        """
+        if self._stopped or self._page is None:
+            return
+        try:
+            self._page.remove_listener("console", self._on_console)
+            logger.debug("Stopped capturing console messages (removed listener)")
+        except Exception as exc:
+            logger.warning("Failed to remove console listener: %s", exc)
+        finally:
+            self._stopped = True
+            self._page = None
+            self._on_console = None
+
+
 class BasePage:
     """Base class for all Elitea page objects.
 
@@ -223,6 +254,44 @@ class BasePage:
         logger.debug(
             "Started capturing requests matching %r (method=%s)", url_substring, method
         )
+        return captured
+
+    def capture_console_errors(self) -> "CapturedConsoleMessages":
+        """Start capturing console error messages.
+
+        Attaches a ``page.on("console", ...)`` listener and returns a
+        ``CapturedConsoleMessages`` object (list-like) that is populated live
+        as error messages are logged to the console.
+
+        **Important:** Call ``.stop()`` when done capturing to remove the event
+        listener and prevent resource leaks. Failing to call ``.stop()`` can
+        cause test hangs in subsequent tests.
+
+        Returns:
+            A ``CapturedConsoleMessages`` object (behaves like a list of
+            console message objects). Read it any time to see captured errors;
+            call ``.stop()`` when done to remove the listener.
+
+        Example::
+
+            console_errors = page_obj.capture_console_errors()
+            # ... perform actions that might log errors ...
+            assert not console_errors, f"Unexpected console errors: {console_errors}"
+            console_errors.stop()  # Clean up listener
+        """
+        captured = CapturedConsoleMessages()
+
+        def _on_console(msg):
+            if msg.type == "error":
+                captured.append(msg)
+
+        self.page.on("console", _on_console)
+
+        # Store references so stop() can remove them
+        captured._page = self.page
+        captured._on_console = _on_console
+
+        logger.debug("Started capturing console errors")
         return captured
 
     def get_clipboard_text(self) -> str:
