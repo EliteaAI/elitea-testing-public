@@ -78,9 +78,16 @@ def testids_in(window):
     return {t for t in ids if KEBAB.match(t)}
 
 
-def ui_files(ui_dir):
-    return [f for f in glob.glob(os.path.join(ui_dir, '**', '*.*'), recursive=True)
-            if f.endswith(('.jsx', '.tsx'))]
+def ui_files(ui_dirs):
+    # ui_dirs: a single dir (str) or several (list) — e.g. ../EliteaUI/src plus connected repos
+    # like ../elitea_assistant/src (Support Assistant). Union their .jsx/.tsx files.
+    if isinstance(ui_dirs, str):
+        ui_dirs = [ui_dirs]
+    files = []
+    for d in ui_dirs:
+        files += [f for f in glob.glob(os.path.join(d, '**', '*.*'), recursive=True)
+                  if f.endswith(('.jsx', '.tsx'))]
+    return files
 
 
 def extract_ui(ui_dir):
@@ -195,7 +202,7 @@ def build_report(ui_dir, auto_dir):
     L = []
     w = L.append
     w(f"# UI test-automation coverage — testid map\n")
-    w(f"_Generated {today}. UI: `{ui_dir}` · Automation: `{auto_dir}`. "
+    w(f"_Generated {today}. UI: `{', '.join(ui_dir) if isinstance(ui_dir, list) else ui_dir}` · Automation: `{auto_dir}`. "
       f"Method: static testid cross-reference — measures interaction **breadth**, not flow/branch execution._\n")
     w("## Summary\n")
     w("| Metric | Value |")
@@ -261,7 +268,8 @@ def build_report(ui_dir, auto_dir):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--ui', required=True, help='UI src dir (e.g. ../EliteaUI/src)')
+    ap.add_argument('--ui', required=True, nargs='+',
+                    help='UI src dir(s) — e.g. ../EliteaUI/src ../elitea_assistant/src (connected repos)')
     ap.add_argument('--auto', required=True, help='automation repo root (with pages/ and tests/)')
     ap.add_argument('--out', help='write markdown report here (else stdout)')
     a = ap.parse_args()

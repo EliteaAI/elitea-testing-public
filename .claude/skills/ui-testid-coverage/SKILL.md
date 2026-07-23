@@ -14,13 +14,15 @@ execution (that needs runtime JS coverage — see REFERENCE.md § Runtime).
 
 ```bash
 python3 {skill}/scripts/testid_coverage.py \
-  --ui ../EliteaUI/src --auto automation \
+  --ui ../EliteaUI/src ../elitea_assistant/src --auto automation \
   --out ../docs/ui-testid-coverage-$(date +%F).md   # omit --out to print
 ```
 
-Point `--ui` at the UI source root (the branch that is the **superset** of testids — for
-Elitea that is EliteaUI on `automation/testids`) and `--auto` at the automation repo root
-(must contain `pages/` and `tests/`). Reads `REPORT_DATE` env to stamp a fixed date.
+Point `--ui` at the UI source root(s) — the branch(es) that are the **superset** of testids. For
+Elitea that is EliteaUI on `automation/testids` **plus any connected first-party repos** whose
+components render in the app (e.g. `../elitea_assistant/src`, the Support Assistant — see
+`.agents/workflow.md` § Connected repos); pass several dirs to `--ui`. `--auto` is the automation
+repo root (must contain `pages/` and `tests/`). Reads `REPORT_DATE` env to stamp a fixed date.
 
 ## What it reports
 
