@@ -1,0 +1,6 @@
+{
+  "name": "elitea-coverage",
+  "private": true,
+  "type": "module",
+  "devDependencies": { "monocart-coverage-reports": "^2" }
+}
