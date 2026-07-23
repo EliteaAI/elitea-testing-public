@@ -42,6 +42,7 @@ UI-only.
 | `EliteaAI/elitea-testing-public` | admin | this repo — tests, tracker, board |
 | `EliteaAI/onetest-ai-tm-Elitea` | admin | TMS — cases, runs, defects |
 | `EliteaAI/EliteaUI` | **push, no admin** | UI — testid work directly on `automation/testids`; `main` owned by the UI team |
+| `EliteaAI/elitea_assistant` | **push (pending grant; READ until then)** | Support Assistant (connected repo, `@eliteaai/elitea-assistant`) — testids in ITS source on its own `automation/testids` (branch created once push lands); consumed by EliteaUI as a git-dep. See `.agents/workflow.md` § Connected repos. |
 | ~~`bermudas/EliteaUI`~~ (fork) | RETIRED 2026-07-13 | no longer part of the workflow — never push to it |
 
 ### Roles & sample users
