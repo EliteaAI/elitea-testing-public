@@ -120,6 +120,7 @@ class TestExportAgentWithAttachedSkills:
         skill_id = None
         agent_id = None
         download_path = None
+        console_messages = None  # CapturedConsoleMessages, needs stop() in finally
 
         try:
             with allure.step(
@@ -157,11 +158,7 @@ class TestExportAgentWithAttachedSkills:
                 "Step 3 — Attach the Skill to the Agent (precondition: "
                 "Agent exists with >=1 Skill attached)"
             ):
-                console_messages = []
-                page.on(
-                    "console",
-                    lambda msg: console_messages.append(msg) if msg.type == "error" else None,
-                )
+                console_messages = detail_page.capture_console_errors()
 
                 detail_page.attach_skill(skill_name, timeout=UI_ELEMENT_TIMEOUT)
                 assert "1/" in detail_page.get_skills_counter_text(), (
@@ -269,6 +266,10 @@ class TestExportAgentWithAttachedSkills:
                 )
 
         finally:
+            # Stop listeners to prevent resource leaks that cause test hangs.
+            if console_messages is not None:
+                console_messages.stop()
+
             # Cleanup per AFS: delete the agent first (teardown hygiene —
             # remove the thing with attached-state dependencies first), then
             # the skill, tolerating individual failures (mirrors

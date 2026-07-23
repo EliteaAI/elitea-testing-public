@@ -116,6 +116,7 @@ class TestExportAgentNoNestedDependencies:
 
         agent_id = None
         download_path = None
+        console_messages = None  # CapturedConsoleMessages, needs stop() in finally
 
         try:
             with allure.step("Step 1 — Create an Agent via UI"):
@@ -146,11 +147,7 @@ class TestExportAgentNoNestedDependencies:
                 "Agent (case precondition: agent with no nested Skill/"
                 "Agent dependencies but with an external toolkit attached)"
             ):
-                console_messages = []
-                page.on(
-                    "console",
-                    lambda msg: console_messages.append(msg) if msg.type == "error" else None,
-                )
+                console_messages = detail_page.capture_console_errors()
 
                 detail_page.add_toolkit(github_toolkit["name"], timeout=UI_ELEMENT_TIMEOUT)
                 assert detail_page.is_toolkit_attached(
@@ -316,6 +313,10 @@ class TestExportAgentNoNestedDependencies:
                     )
 
         finally:
+            # Stop listeners to prevent resource leaks that cause test hangs.
+            if console_messages is not None:
+                console_messages.stop()
+
             # Cleanup per AFS: delete the agent (has the attached-toolkit
             # dependency); the toolkit/credential are cleaned up by their
             # own fixtures' teardown (github_toolkit -> github_credential).
