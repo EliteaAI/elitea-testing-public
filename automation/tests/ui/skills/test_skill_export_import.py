@@ -268,10 +268,9 @@ class TestSkillExportImport:
         with allure.step("Step 10 — Edit description and save; verify clean save, no console errors"):
             edited_description = skill_description + " (edited)"
 
-            console_messages = []
-            page.on("console", lambda msg: console_messages.append(msg) if msg.type == "error" else None)
-
-            form_page.set_description(edited_description)
+            console_messages = detail_page.capture_console_errors()
+            try:
+                form_page.set_description(edited_description)
             form_page.wait_for_form_validation()
             assert form_page.is_save_enabled(), (
                 "Save should be enabled after editing the description"
@@ -279,15 +278,17 @@ class TestSkillExportImport:
 
             form_page.save_and_wait_for_navigation(timeout=FORM_SAVE_TIMEOUT)
 
-            assert not form_page.is_save_enabled(), (
-                "Save should return to disabled after a clean save (dirty flag cleared)"
-            )
-            assert detail_page.get_description() == edited_description, (
-                "Description should persist the edit after save"
-            )
-            assert not console_messages, (
-                f"Expected no new console errors during final Save, got: {console_messages}"
-            )
+                assert not form_page.is_save_enabled(), (
+                    "Save should return to disabled after a clean save (dirty flag cleared)"
+                )
+                assert detail_page.get_description() == edited_description, (
+                    "Description should persist the edit after save"
+                )
+                assert not console_messages, (
+                    f"Expected no new console errors during final Save, got: {console_messages}"
+                )
+            finally:
+                console_messages.stop()
 
 
 class TestSkillExportImportNonBaseVersion:
@@ -535,23 +536,24 @@ class TestSkillExportImportNonBaseVersion:
         with allure.step("Step 8 — Edit description and save; verify clean save, no console errors"):
             edited_description = skill_description + " (edited)"
 
-            console_messages = []
-            page.on("console", lambda msg: console_messages.append(msg) if msg.type == "error" else None)
+            console_messages = detail_page.capture_console_errors()
+            try:
+                form_page.set_description(edited_description)
+                form_page.wait_for_form_validation()
+                assert form_page.is_save_enabled(), (
+                    "Save should be enabled after editing the description"
+                )
 
-            form_page.set_description(edited_description)
-            form_page.wait_for_form_validation()
-            assert form_page.is_save_enabled(), (
-                "Save should be enabled after editing the description"
-            )
+                form_page.save_and_wait_for_navigation(timeout=FORM_SAVE_TIMEOUT)
 
-            form_page.save_and_wait_for_navigation(timeout=FORM_SAVE_TIMEOUT)
-
-            assert not form_page.is_save_enabled(), (
-                "Save should return to disabled after a clean save (dirty flag cleared)"
-            )
-            assert detail_page.get_description() == edited_description, (
-                "Description should persist the edit after save"
-            )
-            assert not console_messages, (
-                f"Expected no new console errors during final Save, got: {console_messages}"
-            )
+                assert not form_page.is_save_enabled(), (
+                    "Save should return to disabled after a clean save (dirty flag cleared)"
+                )
+                assert detail_page.get_description() == edited_description, (
+                    "Description should persist the edit after save"
+                )
+                assert not console_messages, (
+                    f"Expected no new console errors during final Save, got: {console_messages}"
+                )
+            finally:
+                console_messages.stop()

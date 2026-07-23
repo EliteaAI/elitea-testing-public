@@ -87,6 +87,7 @@ class TestSkillTagFilter:
         # from the autocomplete dropdown — AFS Known Defects #2) so a
         # real regression isn't masked by an expected, harmless warning.
         console_messages = []
+        _console_listener = None  # Store reference for cleanup
 
         def _is_known_sx_svg_warning(msg) -> bool:
             text = msg.text
@@ -96,12 +97,12 @@ class TestSkillTagFilter:
                 and "svg" in text.lower()
             )
 
-        page.on(
-            "console",
-            lambda msg: console_messages.append(msg)
-            if msg.type == "error" and not _is_known_sx_svg_warning(msg)
-            else None,
-        )
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_sx_svg_warning(msg):
+                console_messages.append(msg)
+
+        _console_listener = _on_console
+        page.on("console", _on_console)
 
         # ------------------------------------------------------------------
         # Step 1 — Capture baseline; create 3 skills with tags; verify visible
@@ -280,3 +281,10 @@ class TestSkillTagFilter:
                 "Expected no console errors during tag creation/filtering, got: "
                 f"{[m.text for m in console_messages]}"
             )
+
+        # Clean up the console listener to prevent resource leaks
+        if _console_listener is not None:
+            try:
+                page.remove_listener("console", _console_listener)
+            except Exception:
+                pass
