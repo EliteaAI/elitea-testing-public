@@ -112,6 +112,27 @@ do not compare it across campaigns.
 - Nonzero branches in a "foreign" area is usually REAL (agent pages embed chat
   components and toolkit hooks) — the app's areas aren't islands.
 
+## HTML report legend (`coverage/report/index.html`)
+
+Header, per metric: **% chip** (green good / yellow middling / red poor), then
+three boxes: **green = covered, red = uncovered, plain = total**; the ⊙ crosshair
+jumps to the next uncovered range. **Top Hits** pills (`x1.77K`) = the file's
+most-executed ranges with their V8 call counts.
+
+In the code view:
+
+| Marker | Meaning |
+|---|---|
+| Gutter bar 🟩 / 🟥 / 🟨 | Line executed / never executed / **partially** (e.g. declaration ran, body didn't) |
+| Pink text background | Exact byte ranges that never ran |
+| Green `x82` pill | Execution count — that function ran 82 times |
+| Red `E` badge | "else path uncovered" — this `if`'s else side never taken |
+| Far-left pastel strip | Minimap of the whole file's coverage |
+
+Classic pattern worth recognizing: component renders thousands of times (huge Top
+Hits) while its validator/handler bodies sit solid pink — the screen was *visited*
+but its logic never *exercised*. That gap is what this tool exists to expose.
+
 ## Facts & mechanics
 
 | Thing | Value |
@@ -120,7 +141,9 @@ do not compare it across campaigns.
 | Fragments | ~25 MB per test in `coverage/.v8/` (gitignored) — see Cleanup section |
 | Merging | Union: fragments from any number of runs/shards combine, no double-count |
 | Failed tests | Still emit coverage (capture is in fixture teardown) — they count what ran before dying |
+| Skipped tests | Contribute **zero** — an always-skipping test shows up as coverage it doesn't add |
 | Retries (`--reruns`) | Extra fragments, harmless (union) |
+| Full-campaign cost | ~180 UI tests ≈ 2h10m runtime, ~4.7 GB fragments, ~1 min report generation |
 | Browser | Must be Chromium (it is — see `fixtures/session_fixtures.py`) |
 
 How it works, one paragraph: the `page` fixture in `automation/conftest.py` (the
@@ -154,6 +177,23 @@ Why no auto-cleanup — two deliberate reasons:
    or the area map costs a 1-minute `node coverage/report.mjs` against existing
    fragments — deleting them early makes the same answer cost the full test
    runtime again. Keep them until you're done slicing the campaign's data.
+
+## Baseline — 2026-07-22, full available UI suite (~180 tests, localhost)
+
+Reference point for future campaigns (branch view, full-codebase denominator):
+
+| | branch % | | branch % |
+|---|---:|---|---:|
+| credentials | 47% | skills | 29% |
+| artifacts | 39% | pipelines | 23% |
+| shared | 39% | mcp | 19% |
+| toolkits | 38% | auth / onboarding | 5–10% |
+| chat | 35% | **settings** (1,696 br) | **3%** |
+| agents | 34% | **resources / analytics / notifications / catalog** | **0%** |
+
+**OVERALL: 32.7% of 40,338 branches** (52.6% of statements). Excluded from the
+campaign: 3 admin tests (they mutate shared DEV-backend guardrail config).
+The 0% rows are areas with no tests at all — the ranked test-writing backlog.
 
 ## Maintenance
 
