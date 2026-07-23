@@ -116,6 +116,7 @@ class TestTildeMentionListsOnlyAttachedSkills:
         skill_b_id = None
         skill_c_id = None
         agent_id = None
+        skills_requests = None  # CapturedRequests object, needs stop() in finally
 
         try:
             with allure.step(
@@ -328,6 +329,11 @@ class TestTildeMentionListsOnlyAttachedSkills:
                 )
 
         finally:
+            # Stop the request-capture listener to prevent resource leaks that
+            # can cause test hangs in subsequent tests.
+            if skills_requests is not None:
+                skills_requests.stop()
+
             # Cleanup per AFS: delete the agent first (teardown hygiene —
             # remove the thing with attached-state dependencies first), then
             # the created skills, tolerating individual failures (mirrors
