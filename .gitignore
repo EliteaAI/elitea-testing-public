@@ -69,3 +69,4 @@ coverage/.v8/
 coverage/report/
 coverage/node_modules/
 coverage/package-lock.json
+docs/coverage-priority-60
