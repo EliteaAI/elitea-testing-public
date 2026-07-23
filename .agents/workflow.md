@@ -255,12 +255,45 @@ of the gap:
 
 **Status:** merged to `automation/base` · testids on `automation/testids` · ⚠️ NOT yet on `main` (awaiting human cherry-pick) → not deployable-env-promotable yet.
 
-Since there's no longer a testid PR, the record points at the **commits** the human
-will cherry-pick. List every testid commit's SHA (get them from the fetch block above):
+**Testid commit SHAs — MANDATORY, regardless of promotability status.** The Testids
+row must cite WHERE each testid was introduced (the originating commit SHA), whether
+or not there's a pending cherry-pick action. This is the traceability anchor — six
+months from now, "all pre-existing" tells you nothing; the SHA tells you where it
+came from.
+
+**Case A — testids NOT yet on `main` (awaiting human cherry-pick):**
+List every testid commit's SHA this case added to `automation/testids`:
 
 ```bash
 # the case's testid commits on the integration branch, newest first
 git -C ../EliteaUI log origin/main..origin/automation/testids --oneline -- src/ | grep -i "<CASE-ID>"
+```
+
+**Case B — testids ALREADY fully on `main` (all pre-existing, nothing to cherry-pick):**
+You still owe the SHA citations. Trace each testid to its originating commit on `main`:
+
+```bash
+# for each testid the merged test uses, find where it was introduced
+cd ../EliteaUI
+for t in <testid-1> <testid-2> ...; do
+  sha=$(git log -1 --format=%h -S"data-testid=\"$t\"" origin/main -- src/)
+  printf "%-32s EliteaAI/EliteaUI@%s\n" "$t" "$sha"
+done
+```
+
+Paste the output into the Testids row. Format: `EliteaAI/EliteaUI@<sha>` for each
+distinct originating commit (group testids by SHA if multiple came from the same commit).
+
+**Worked examples:**
+
+*Case A (3 new testids, not yet on main):*
+```markdown
+| Testids | EliteaAI/EliteaUI@a1b2c3d + EliteaAI/EliteaUI@e4f5g6h on `automation/testids` | ✅ pushed — dev server serves them; **human cherry-picks to `main`** |
+```
+
+*Case B (14 pre-existing testids, all already on main):*
+```markdown
+| Testids | All pre-existing — EliteaAI/EliteaUI@f9a1c8b7 (agent-name-input, model-selector-name, agents-page-header) + EliteaAI/EliteaUI@2d98830a (agents-import-button, agent-import-confirm-button) + EliteaAI/EliteaUI@9cb837f4 (entity-card-name) + EliteaAI/EliteaUI@76c60fed (agent-information-section) + 7 others | ✅ all on `main` — promotable |
 ```
 
 > **Cross-repo links** (whenever you reference `EliteaAI/EliteaUI`): write the full
