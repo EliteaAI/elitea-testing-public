@@ -3314,7 +3314,8 @@ class ChatPage(BasePage):
         Args:
             timeout: Maximum wait time in milliseconds.
             section: Entity section — "agents" (default), "pipelines",
-                "toolkits", or "mcp". This case only ever exercises "agents".
+                "toolkits", "mcp", or "users" (ELITEA-2167 exercises
+                "users" for the Team-project Invite Users flow).
         """
         badge = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
         try:
@@ -3353,7 +3354,8 @@ class ChatPage(BasePage):
         Args:
             timeout: Maximum wait time in milliseconds.
             section: Entity section — "agents" (default), "pipelines",
-                "toolkits", or "mcp". This case only ever exercises "agents".
+                "toolkits", "mcp", or "users" (ELITEA-2167 exercises
+                "users" for the Team-project Invite Users flow).
         """
         badge_container = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
         badge_button = badge_container.locator(self.PARTICIPANTS_BADGE_BUTTON)

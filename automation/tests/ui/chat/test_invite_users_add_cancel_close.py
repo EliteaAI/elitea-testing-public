@@ -19,10 +19,19 @@ match the case's own "ad" partial-search pattern).
 New page-object surface (this implementation): ``ChatPage`` gained a
 dedicated "Add users" modal surface (``open_add_users_modal`` /
 ``search_and_select_add_user`` / chip + option readers / Add / Cancel / X
-close), 8 new testids on ``AddNewUserModal.jsx`` /
+close). Two testid commits landed on EliteaUI's ``automation/testids``
+(see PR description): 8 testids on ``AddNewUserModal.jsx`` /
 ``AutoCompleteDropDown.jsx`` / ``ConversationItem.jsx`` /
-``NewConversationView.jsx`` (all committed on EliteaUI's
-``automation/testids`` — see PR description), and a testid-only
+``NewConversationView.jsx`` via EliteaAI/EliteaUI@dfc0d695, plus the
+``chat-participants-badge-button``/``chat-participants-popper`` pair on
+``UsersParticipantDropdown/index.jsx`` — the component this test's
+``section="users"`` participants trigger/popover actually renders through —
+via EliteaAI/EliteaUI@7ecc041d. The latter pair is on ``automation/testids``
+ONLY, not on ``main``: the same testid strings pre-exist on ``main`` only in
+the unrelated Agents-participants component (``CollapsedPerticapantsList.jsx``
+/ ``CollapsedParticipantsDropdown.jsx``), which this test does not drive —
+see the AFS § Concrete Handles PROVENANCE column (amended, this pass) for
+the verified fresh-fetch ``git grep`` evidence. Also added: a testid-only
 ``data-has-icon`` state attribute on the conversation multi-person icon
 wrapper (never a state-conditional testid, per the testid=identity/
 state=data-* ruling).
@@ -52,6 +61,7 @@ import re
 
 import allure
 import pytest
+from api import ConversationAPI
 from pages.chat_page import ChatPage
 
 logger = logging.getLogger("elitea.tests.chat")
@@ -199,7 +209,7 @@ class TestInviteUsersAddCancelClose:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p1
-    def test_invite_users_add_persists_cancel_and_close_discard(self, page):
+    def test_invite_users_add_persists_cancel_and_close_discard(self, page, _browser_cookies):
         """Add users modal: Add persists selections, Cancel/X discard them.
 
         Steps (AFS
@@ -222,6 +232,17 @@ class TestInviteUsersAddCancelClose:
             icon, confirmed against a single-owner negative control.
         """
         chat = ChatPage(page)
+        # Same technique as test_open_conversation_today_section.py (ELITEA-2095)
+        # Step 10 — a DOM-only "count went 2->3" read would not catch the
+        # THIRD participant being anything other than the actual owner,
+        # which is what AFS step 9's Expected Result + Coverage Map row
+        # commit to ("popover shows owner + both invited users"). Cross-
+        # checked via the API rather than hardcoding the dev-token user's
+        # display name, since that's environment data, not a compile-time
+        # constant (AFS metadata notes it renders as "Test Bot"/"TB" here).
+        team_conversation_api = ConversationAPI(
+            browser_cookies=_browser_cookies, project_id=TEAM_PROJECT_ID,
+        )
         conv_id: int | None = None
         control_conv_id: int | None = None
 
@@ -455,6 +476,47 @@ class TestInviteUsersAddCancelClose:
                 assert USER_1_NAME in popper_text and USER_2_NAME in popper_text, (
                     f"Popover should still list both invited users after Send, got: {popper_text!r}"
                 )
+                # The badge going 2->3 only proves a THIRD participant exists,
+                # not that it's the owner — AFS step 9 Expected Result +
+                # Coverage Map row commit to "popover shows owner + both
+                # invited users". Cross-verify via the API (same technique
+                # as test_open_conversation_today_section.py Step 10,
+                # ELITEA-2095) rather than trusting a hardcoded display
+                # name.
+                #
+                # Unlike ELITEA-2095's single-owner conversation, THIS
+                # conversation has THREE "user"-entity participants (owner +
+                # both invited users — invited users are real platform
+                # users too, so they carry ``entity_name == "user"`` just
+                # like the owner does). Confirmed live this session: a bare
+                # ``next(p for p in participants if entity_name == "user")``
+                # non-deterministically grabbed an INVITED user's entry
+                # instead of the owner's (`entity_meta={'id': 7}` — Levon
+                # Dadayan — vs the real `author_id=659`), because dict/list
+                # ordering from the API is not owner-first. The filter must
+                # match the owner's `entity_meta.id` directly, not merely
+                # the "user" entity type.
+                conv_data = team_conversation_api.get_conversation(conv_id)
+                owner_id = conv_data.get("author_id")
+                owner_participant = next(
+                    (
+                        p for p in conv_data.get("participants", [])
+                        if p.get("entity_name") == "user" and p.get("entity_meta", {}).get("id") == owner_id
+                    ),
+                    None,
+                )
+                assert owner_participant is not None, (
+                    "Conversation API response should include a 'user' "
+                    f"participant entry matching the owner (author_id={owner_id}), "
+                    f"got participants: {conv_data.get('participants', [])!r}"
+                )
+                owner_name = owner_participant.get("meta", {}).get("user_name", "")
+                assert owner_name, "Expected a non-empty owner display name from the API"
+                assert owner_name in popper_text, (
+                    f"Popover should include the owner {owner_name!r} in "
+                    "PARTICIPANTS USERS alongside the two invited users "
+                    f"after Send, got: {popper_text!r}"
+                )
                 chat.dismiss_participants_popover()
 
             with allure.step(
@@ -476,10 +538,18 @@ class TestInviteUsersAddCancelClose:
                 # participants badge/popover already showed 3 users. Same
                 # staleness CLASS (not the same field) as the already-
                 # documented EliteaAI/elitea-testing-public#692 "stuck
-                # active" sidebar defect, and the same established fix in
-                # this suite (test_open_conversation_today_section.py Step
-                # 2): a reload forces a full client-state re-derivation,
-                # re-fetching the conversation list with current data.
+                # active" sidebar defect.
+                # Known defect: #989 — filed distinctly (not #692 — a
+                # different field, same caching-not-live-updating class).
+                # Reload stays the established fix in this suite
+                # (test_open_conversation_today_section.py Step 2): it forces
+                # a full client-state re-derivation, re-fetching the
+                # conversation list with current data. The icon assertion
+                # below stays a HARD assert (`expect().to_have_attribute()`
+                # inside `wait_for_conversation_multi_user_icon` — see
+                # chat_page.py) — the reload is a workaround for the known
+                # defect's staleness window, not a mask of the assertion
+                # itself.
                 page.reload(wait_until="domcontentloaded")
                 chat.wait_for_page_load()
                 chat.wait_for_conversations_to_load(timeout=UI_ELEMENT_TIMEOUT)
