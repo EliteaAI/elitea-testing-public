@@ -80,3 +80,40 @@ retention-value-input`, etc.) — prefer this over a plain `data-testid` prop on
 `<FormInput>`/`<TextField>` itself, which lands on the `MuiFormControl-root`
 wrapper and then needs an extra scoped `.locator("input")` sub-selector to
 call `.input_value()`. The `inputProps` route needs zero extra scoping.
+
+**Addendum (fix round r1, PR #1015, 3 reviewer findings, all confirmed then fixed):**
+
+1. **A "free" auto-derived testid sibling (`${testid}-combobox` from
+   `SingleSelect.jsx`'s own wiring) still needs its own PAGE-OBJECT field
+   used by the test, or it's an orphan.** Declared a `trigger_select_combobox`
+   `LocatorDescriptor` for the free `-combobox` suffix but never called it
+   anywhere — `git grep -n "trigger_select_combobox"` across the WHOLE repo
+   (not just the diff) showed exactly one hit, the declaration itself.
+   "Free" (no separate JSX edit needed) does not exempt a field from the
+   touches-rule; deleted it, no JSX change needed on the way out either since
+   nothing was added on the way in.
+
+2. **A Coverage Map "zero failed network requests" claim needs a REAL
+   assertion, not just an honest live-observation note carried over from
+   analysis.** Had `console_errors` checked once (end of Step 6) and zero
+   network-failure assertion anywhere — reviewer caught both. Fix: reused
+   the pre-existing `BasePage.capture_requests_matching(url_substring)`
+   helper (already used elsewhere, e.g. `test_mcp_attach_via_tools_section.py`)
+   scoped to `/pipeline_trigger/` — the ONE endpoint this flow's steps
+   depend on — started live from Step 1, asserted (with `console_errors`
+   too) in ONE full-flow check after the LAST step, not per-step. Scoping to
+   the flow's own endpoint (not every response on the page) avoids false
+   positives on unrelated asset/tracking noise — matters for a check that's
+   supposed to be a reliable gate, not just an observation.
+
+3. **A source-verified declared-improvisation docstring in the CODE does
+   NOT substitute for actually amending the AFS document.** `apply_webhook_
+   settings()`'s own docstring already correctly said the trigger PUT isn't
+   awaited before `onClose()` — but the AFS's own Automation Hints section
+   still said the opposite (stale, uncorrected). A reviewer reads the AFS as
+   source of truth; a correct code comment elsewhere doesn't fix a wrong
+   claim in the spec file itself. Confirmed the code's claim against
+   `PipelineWebhookModal.jsx:161-164` directly (source, not memory) before
+   amending the AFS prose to match — general rule: when two artifacts
+   (code comment vs AFS) disagree, verify against the actual source file,
+   don't just trust whichever one sounds more confident.
