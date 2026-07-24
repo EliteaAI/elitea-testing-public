@@ -13,6 +13,7 @@ Fixtures:
 - agent_id: Fresh agent per test
 - pipeline_id: Fresh empty pipeline per test
 - pipeline_with_llm_id: Fresh executable pipeline with LLM node
+- pipeline_with_llm_code_end_id: Fresh pipeline LLM 1 -> Code 1 -> END (3 nodes, 2 edges)
 - github_credential: GitHub API credential (skipped if GITHUB_TOKEN unset)
 - github_toolkit: GitHub toolkit attached to a fresh credential
 - github_relevant_agents: GitHub-relevant Agent pair (selected/not_selected)
@@ -200,6 +201,67 @@ def pipeline_with_llm_id(pipeline_api: PipelineAPI, request):
         logger.info("Deleted LLM pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete LLM pipeline %s: %s", pid, exc)
+
+
+@pytest.fixture
+def pipeline_with_llm_code_end_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with LLM 1 -> Code 1 -> END (3 nodes, 2 edges).
+
+    Used by ELITEA-2018 (Pipeline Canvas — Delete Node) to exercise deleting
+    a MIDDLE node (``Code 1``) and verify the upstream node's transition
+    auto-rewires to the deleted node's own downstream target.
+
+    Mirrors ``pipeline_with_llm_id``'s pattern but calls
+    ``PipelineAPI.create_pipeline_with_nodes()`` with an explicit node list
+    instead of ``create_pipeline_with_llm_node()``.
+
+    Yields the numeric pipeline ID so tests can navigate to
+    ``/pipelines/all/{pipeline_id}`` or use it with the API.
+
+    Args:
+        pipeline_api: PipelineAPI client (from api_fixtures)
+        request: Pytest request object (provides test metadata)
+
+    Yields:
+        int: Numeric pipeline ID
+    """
+    name = f"autotest_{request.node.name}"[:32]  # Truncate to 32 chars
+    description = f"Auto-created LLM->Code->END pipeline for test {request.node.name}"
+    nodes = [
+        {
+            "id": "LLM 1",
+            "type": "llm",
+            "input": [],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": ""},
+                "task": {"type": "fixed", "value": ""},
+            },
+            "output": [],
+            "structured_output": False,
+            "transition": "Code 1",
+        },
+        {
+            "id": "Code 1",
+            "type": "code",
+            "input": [],
+            "output": [],
+            "source_code": "print('hi')",
+            "transition": "END",
+        },
+    ]
+    pipeline = pipeline_api.create_pipeline_with_nodes(name, description, "LLM 1", nodes)
+    pid = pipeline["id"]
+    logger.info("Created LLM->Code->END pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    # Cleanup: delete pipeline even if test fails
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted LLM->Code->END pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete LLM->Code->END pipeline %s: %s", pid, exc)
 
 
 @pytest.fixture
