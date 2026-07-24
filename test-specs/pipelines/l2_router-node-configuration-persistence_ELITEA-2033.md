@@ -181,14 +181,20 @@
   silent no-op — MUI's Select suppresses `onChange` because the clicked
   option's value already matches the Select's current `value` prop (the
   display fallback) — so `default_output: END` is NOT persisted into the
-  YAML and its canvas edge does not survive a reload. This is the one real
-  reverse-masking-guard-relevant nuance in this case, and it is a confirmed,
-  filed, isolated defect — not a pass.
+  YAML. **The canvas edge itself is NOT a reliable signal of this** (source-
+  verified, `parsePipeline.helpers.js`'s `handleRouterNode`): the parser
+  synthesizes an edge with the IDENTICAL id (`{id}default_output---END`)
+  whether `default_output` is genuinely `"END"` or empty/falsy, so the edge
+  renders after every reload regardless of whether this defect is present
+  or fixed — see Known Defects Found for the exact source lines. This is
+  the one real reverse-masking-guard-relevant nuance in this case, and it
+  is a confirmed, filed, isolated defect — not a pass.
 - Save completes with no console error; a hard reload re-shows the
   Condition, Routes, and Input fields exactly as saved, and the 2 Routes
   canvas edges persist identically across the reload. The Default-output
-  edge does NOT persist across the reload (see the confirmed defect above)
-  — only 2 of the 3 canvas edges survive.
+  edge ALSO renders after the reload, but (see above) this is not proof of
+  persistence either way — only the YAML `default_output` key discriminates
+  the confirmed defect.
 
 ## Coverage Map
 
@@ -202,9 +208,9 @@
 | 3 Enter Jinja condition | Condition field accepts template | step 3 | step 3: `textarea.value` read-back, exact match | asserted |
 | 4 Add route values approve/reject | both route values added | step 4 | step 4: chips rendered for both selections, `select-option-{id}` testid confirmed | **CLARIFICATION** — "route values" are existing node ids selected from a combobox, not free-typed strings; case text's phrasing ("add route values") could be misread as a text-entry action. Asserted as the live product behaves. |
 | 5 Set Input to `input` | Input set to `input` variable | step 5 | step 5: chip `input` rendered | asserted |
-| 6 Set Default output to END | Default output set to END | step 6 | step 6: display-default pre-check (no edge yet) + the explicit selection is performed; persistence proof deferred to the test's final Known-defect step (YAML `default_output` + canvas edge, post-Save/post-reload) | **CLARIFICATION + CONFIRMED DEFECT** (`EliteaAI/elitea-testing-public#1036`) — the field VISUALLY shows END with zero interaction (JS display fallback); the case's instruction to "set" it is performed as a real interaction, but on a FRESHLY-ADDED node this specific click is a silent no-op (MUI's Select suppresses `onChange` because the current `value` prop already equals "END") — `default_output` is NOT persisted and its edge does not survive a reload. Asserted as the correct expected behavior via a deferred, isolated Known-defect check (sanctioned-RED exception, `.agents/testing.md` § Merge gate), not worked around. |
+| 6 Set Default output to END | Default output set to END | step 6 | step 6: display-default pre-check (no edge yet) + the explicit selection is performed; persistence proof deferred to the test's final Known-defect step (YAML `default_output` + canvas edge, post-Save/post-reload) | **CLARIFICATION + CONFIRMED DEFECT** (`EliteaAI/elitea-testing-public#1036`) — the field VISUALLY shows END with zero interaction (JS display fallback); the case's instruction to "set" it is performed as a real interaction, but on a FRESHLY-ADDED node this specific click is a silent no-op (MUI's Select suppresses `onChange` because the current `value` prop already equals "END") — `default_output` is NOT persisted; its canvas edge is NOT a reliable signal either way (parser synthesizes the identically-testid'd edge whether `default_output` is empty or "END" — see Known Defects Found). Asserted as the correct expected behavior via a deferred, isolated Known-defect check (sanctioned-RED exception, `.agents/testing.md` § Merge gate), not worked around. |
 | 7 Save pipeline | saves without errors | step 7 | step 7: zero console errors | asserted |
-| 8 Reload — verify Condition/Routes/Input/Default output persist | all fields restored | step 8 | step 8: Flow-view field read-back + YAML corroboration post-reload for Condition/Routes/Input (3 of the 4 fields); Default output's read-back is deferred to the test's final Known-defect step (see row 6 / Known Defects) — NOT asserted in this step's own block | Condition/Routes/Input asserted; Default output is a **CONFIRMED DEFECT** (`EliteaAI/elitea-testing-public#1036`) — deferred, not asserted here |
+| 8 Reload — verify Condition/Routes/Input/Default output persist | all fields restored | step 8 | step 8: Flow-view field read-back for Condition/Routes/Input, PLUS independent YAML corroboration for Condition/Routes only (2 of the 4 fields — the shipped YAML block asserts `"condition:"` and the `approve`/`reject` route ids; it does not reference `input` anywhere); Input's persistence is verified via the Flow-view chip only, not cross-checked against YAML. Default output's read-back is deferred to the test's final Known-defect step (see row 6 / Known Defects) — NOT asserted in this step's own block | Condition/Routes/Input asserted (Condition/Routes with Flow-view + YAML corroboration; Input with Flow-view only); Default output is a **CONFIRMED DEFECT** (`EliteaAI/elitea-testing-public#1036`) — deferred, not asserted here |
 | 9 Verify canvas edges from Router to target nodes matching routes | edges connect Router to approve/reject targets | step 9 | step 9: `edge_exists()` for both Routes edges, asserted ONCE after the Step-8 reload (post-save, post-reload) — satisfies the case's own step 9, which follows step 8 in sequence. No separate pre-save Routes-edge check exists in the shipped test (only the Default-output edge gets an explicit pre-check, at Step 6 — see that row); the AFS's own live-exploration narrative (Test Steps, step 9 body) checked both pre- and post-reload during analysis, but that is analyst methodology, not a claim about what the automated test asserts | asserted |
 | Expected Final State: Router fully configured, all persisting after save+reload, canvas edges reflect routes | — | steps 3–9 | steps 3–9 | Condition/Routes/Input + their 2 Routes edges: asserted. Default output + its edge: **CONFIRMED DEFECT** (`EliteaAI/elitea-testing-public#1036`) — does NOT reach "fully configured, persisting" on a freshly-added node; see Known Defects |
 | Pass/Fail: all steps complete without errors; all fields persist; edges match | — | all steps | all steps | asserted for Condition/Routes/Input/Save/Routes-edges; Default-output persistence + its edge are a **CONFIRMED, filed, isolated defect** (`EliteaAI/elitea-testing-public#1036`) — a deferred Known-defect check per the sanctioned-RED exception, not a pass |
@@ -293,9 +299,17 @@ display already shows END). The two are not equivalent:
   independent reads (immediate, after an extra 1.5s settle, and the actual
   Save PUT payload + a direct API refetch): all show `default_output: ''`
   even though the display continues to show "END" and a canvas edge
-  (`rf__edge-xy-edge__{id}default_output---END`) is drawn — that edge is a
-  client-side-only `flowEdges` artifact, not backed by any real
-  `default_output` value, and does not survive a reload.
+  (`rf__edge-xy-edge__{id}default_output---END`) is drawn. **This edge is
+  NOT proof of persistence — it survives a reload regardless of the
+  defect** (source-verified, `parsePipeline.helpers.js`'s
+  `handleRouterNode`, ~lines 190-210): the parser's `else` branch for a
+  falsy/empty `default_output` synthesizes an edge with the IDENTICAL id
+  (`${id}default_output---END`, target `PipelineNodeTypes.End`) as its
+  truthy branch produces for a genuinely-persisted `"END"` value — so the
+  edge renders identically whether `default_output` is empty or `"END"`.
+  The YAML `default_output` key is therefore the ONLY assertion in this
+  case that actually discriminates the defect; an edge-existence check
+  alone would pass vacuously in both the broken and the fixed state.
 - Root cause (source-confirmed): `RouterNode.jsx` displays
   `yamlNode?.default_output || 'END'` as a fallback for the freshly-
   initialized empty value; MUI's `SelectInput.js` (`handleItemClick`) only
@@ -346,16 +360,23 @@ before and after the reload.
 - **Reverse-masking-guard-relevant nuance (see Step 6 / Axis 1)**: do NOT
   skip the Default-output interaction just because the field visually shows
   "END" on a freshly-added node — that is a display-only fallback. The test
-  MUST perform an explicit select-"END" interaction and then assert BOTH
-  the YAML `default_output: END` key AND the
-  `rf__edge-xy-edge__{id}default_output---END` canvas edge; asserting only
-  the visual display value would pass vacuously even if the underlying
-  persistence/edge-creation logic were broken — **and it currently IS
-  broken**: `EliteaAI/elitea-testing-public#1036` (confirmed during
-  implementation) — the explicit selection on a freshly-added node is a
-  silent no-op, so both the YAML-key and canvas-edge assertions above are a
+  MUST perform an explicit select-"END" interaction and assert the YAML
+  `default_output: END` key; asserting only the visual display value would
+  pass vacuously even if the underlying persistence logic were broken —
+  **and it currently IS broken**: `EliteaAI/elitea-testing-public#1036`
+  (confirmed during implementation) — the explicit selection on a
+  freshly-added node is a silent no-op, so the YAML-key assertion is a
   deferred, isolated Known-defect check (sanctioned-RED exception) rather
-  than a pass, until the product fix ships.
+  than a pass, until the product fix ships. **The canvas edge assertion
+  does NOT discriminate this defect** (added during the R2 fix round,
+  source-verified via `parsePipeline.helpers.js`'s `handleRouterNode`): the
+  parser synthesizes an identically-testid'd edge
+  (`{id}default_output---END`) whether `default_output` is empty or
+  `"END"`, so `rf__edge-xy-edge__{id}default_output---END` renders after
+  every reload regardless of whether #1036 is present or fixed. Keep the
+  edge assertion (it still exercises a real testid on the case's executed
+  path) but do not treat it as defect proof — only the YAML key
+  discriminates the actual defect.
 - **`edge_exists()` usage — call WITHOUT `handle_suffix` for BOTH Router
   edge kinds.** The existing `PipelineDetailPage.edge_exists(source_id,
   target_id, handle_suffix=None)` helper's `handle_suffix`-aware branch

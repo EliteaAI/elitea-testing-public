@@ -10,8 +10,9 @@ menu get a type-prefixed default name like "Printer 1", not the case's
 literal test data; see the AFS's Axis 2 addition), configures its Condition
 (Jinja template), Routes (both targets), and Input entirely through the
 node's inline panel, saves, and verifies every field AND the Routes canvas
-edges persist through a real hard reload — corroborated by both the
-Flow-view fields and the YAML view independently.
+edges persist through a real hard reload: Condition/Routes are corroborated
+by both the Flow-view fields and the YAML view independently; Input is
+verified via its Flow-view chip alone (not cross-checked against YAML).
 
 Known defect #1036 (isolated, non-blocking to Steps 1-5/7/9's Routes checks):
 selecting "END" in the Router node's Default output field is a silent no-op
@@ -60,7 +61,6 @@ _INPUT_STATE_VAR = "input"
     "https://github.com/EliteaAI/elitea-testing-public/issues/1036",
     "Known defect #1036 — Default output 'END' selection no-ops on a fresh node",
 )
-@pytest.mark.p2
 def test_router_node_configuration_persistence(page, pipeline_with_route_targets_id):
     """Configure a Router node's panel fields end-to-end; verify persistence."""
     pipeline_id = pipeline_with_route_targets_id
@@ -68,6 +68,7 @@ def test_router_node_configuration_persistence(page, pipeline_with_route_targets
 
     console_errors = []
     page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+    soft_failures: list[str] = []
 
     with allure.step('Step 1 — Create a pipeline and add a Router node via "Add node" → "Router"'):
         # "Create a pipeline" is satisfied by the pipeline_with_route_targets_id
@@ -196,24 +197,50 @@ def test_router_node_configuration_persistence(page, pipeline_with_route_targets
         # defect #538 side-channel) so the unaffected assertions above
         # (Condition/Routes/Input persistence, Save, Routes edges) still run
         # and prove correctness on every execution, regardless of this
-        # known, isolated, already-filed defect.
-        assert "default_output: END" in yaml_content_after_reload, (
-            "Known defect #1036: Default output should show 'END' in the reloaded YAML — "
-            "selecting the already-displayed 'END' option on a freshly-added Router node's "
-            "Default output select is a silent no-op (MUI's Select suppresses onChange "
-            "because its `value` prop already equals 'END' via RouterNode.jsx's display-only "
-            "fallback), so `default_output` is never actually persisted. Confirmed via the "
-            "Save PUT payload and a direct API refetch both showing default_output: '' "
-            "immediately after the same selection this test just performed."
-        )
-        assert pipeline_page.get_router_default_output() == "END", (
-            "Default output should display 'END' after reload (this assertion alone would "
-            "pass vacuously even with the defect present — the display always falls back "
-            "to 'END' for an empty value; see the YAML assertion above for the real proof)"
-        )
-        assert pipeline_page.edge_exists(router_id, "END"), (
-            "Known defect #1036: the Default-output edge should persist on canvas after "
-            "reload — it does not, because the app's own YAML→canvas parser "
-            "(parsePipeline.helpers.js) only draws this edge when default_output is truthy, "
-            "and it is never actually persisted (see the YAML assertion above)"
+        # known, isolated, already-filed defect. Each of the 3 checks below
+        # is collected independently via the pytest-native soft_failures/
+        # pytest.fail() idiom (mirrors test_fork_agent_to_different_project.py
+        # and the sanctioned-RED "closed-set" convention, .agents/testing.md
+        # § Merge gate) rather than three plain asserts — a plain assert on
+        # the first check alone would short-circuit the block and leave the
+        # other two never actually executed on any given run.
+        if "default_output: END" not in yaml_content_after_reload:
+            soft_failures.append(
+                "Known defect #1036: Default output should show 'END' in the reloaded YAML — "
+                "selecting the already-displayed 'END' option on a freshly-added Router node's "
+                "Default output select is a silent no-op (MUI's Select suppresses onChange "
+                "because its `value` prop already equals 'END' via RouterNode.jsx's display-only "
+                "fallback), so `default_output` is never actually persisted. Confirmed via the "
+                "Save PUT payload and a direct API refetch both showing default_output: '' "
+                "immediately after the same selection this test just performed."
+            )
+        if pipeline_page.get_router_default_output() != "END":
+            soft_failures.append(
+                "Default output should display 'END' after reload (this assertion alone would "
+                "pass vacuously even with the defect present — the display always falls back "
+                "to 'END' for an empty value; see the YAML assertion above for the real proof)"
+            )
+        if not pipeline_page.edge_exists(router_id, "END"):
+            soft_failures.append(
+                "Known defect #1036: the Default-output edge should exist on canvas after "
+                "reload — it does not."
+            )
+        # NOT a discriminating check for #1036 (source-verified,
+        # parsePipeline.helpers.js's handleRouterNode, lines ~190-210): when
+        # `default_output` is falsy the parser's `else` branch still
+        # synthesizes an edge with the IDENTICAL id/testid shape
+        # (`{id}default_output---END`) as the truthy branch produces for a
+        # genuinely-persisted "END" — so this edge_exists() check passes
+        # whether or not #1036 has shipped a fix, exactly like the display
+        # assertion above. Kept (not removed) because it still exercises a
+        # real testid on the case's own executed code path; the YAML
+        # assertion above remains the only assertion in this block that
+        # actually discriminates the defect.
+
+    if soft_failures:
+        pytest.fail(
+            "Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1036 "
+            "(Default output 'END' selection no-ops on a freshly-added Router node — Steps "
+            "1-5/7/9's Condition/Routes/Input/Save/Routes-edges checks above passed cleanly):\n"
+            + "\n".join(soft_failures)
         )
