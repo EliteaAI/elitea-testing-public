@@ -54,6 +54,31 @@ class AgentCanvasPage(BasePage):
         ),
     )
 
+    # Suite-wide generic success/error snackbar (ELITEA-2089) — same shared
+    # mount point already used by artifacts_page.py/skill_detail_page.py/
+    # skills_list_page.py under their own field names (one `data-testid` per
+    # file, per .agents/testing.md § Locator policy). Confirmed live here to
+    # also cover the agent-edit-save toast ("The agent has been updated").
+    save_success_toast = LocatorDescriptor(
+        testid="toast-message",
+        description="Success/error snackbar shown after Save (e.g. 'The agent has been updated').",
+    )
+
+    # Declared improvisation (ELITEA-2089, canon gap — AFS did not flag this
+    # testid as missing): AgentEditor.jsx never supplied BaseEditor/
+    # EditorHeader's optional `discardButtonTestId` prop, so the canvas's
+    # Discard button had 0 data-testid matches (confirmed live) — a DIFFERENT,
+    # unrelated gap from AgentFormPage.discard_button's own "discard-button"
+    # testid (which resolves on OTHER pages, not this canvas, and per
+    # test_agent_save_as_version.py's prior finding isn't even wired up on
+    # the standalone Agent detail page either). Added `agent-canvas-discard-
+    # button`, mirroring ToolkitEditor.jsx's existing `discardButtonTestId`
+    # pattern for its own canvas.
+    discard_button = LocatorDescriptor(
+        testid="agent-canvas-discard-button",
+        description="Discard-changes button on the agent canvas header (disabled until the form is dirtied).",
+    )
+
     # Accordion section headers — dynamic per key. Templated class-level
     # constant per .agents/testing.md's dynamic-testid convention (never an
     # inline f-string in a method body).

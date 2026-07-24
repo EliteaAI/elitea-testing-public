@@ -247,6 +247,21 @@ class ChatPage(BasePage):
         ),
     )
 
+    # Composer's 3rd ButtonGroup button (AgentEditorPanel.jsx) — icon-only
+    # normally, shows the literal text "Editing…"/"Viewing…" while that same
+    # participant's own canvas (create OR edit mode) is open (ELITEA-2089).
+    # Testid stays constant across both content states — same
+    # testid=identity/cosmetic-content pattern already established by
+    # switch_participant_button/chat_version_selector_trigger above.
+    agent_settings_menu_button = LocatorDescriptor(
+        testid="chat-agent-settings-menu-button",
+        description=(
+            "Composer's 3rd ButtonGroup button — reads 'Editing…'/'Viewing…' "
+            "while the active participant's own canvas is open, otherwise a "
+            "settings icon."
+        ),
+    )
+
     # ------------------------------------------------------------------
     # Message actions
     # ------------------------------------------------------------------
@@ -386,6 +401,37 @@ class ChatPage(BasePage):
     # the row's dynamic testid (multiple simultaneous rows disambiguate
     # through the parent row selector, not this button's own testid).
     PARTICIPANT_REMOVE_BUTTON = '[data-testid="chat-participant-remove-button"]'
+
+    # Hover-reveal "Edit <entityType>" (pencil) icon button — same scoping
+    # discipline as PARTICIPANT_REMOVE_BUTTON above (ELITEA-2089). One
+    # testid covers both of the button's visual states (pencil icon when
+    # the user has edit permission, gear/settings icon when not — cosmetic,
+    # not identity, per the testid=identity/state=data-* ruling).
+    PARTICIPANT_EDIT_BUTTON = '[data-testid="chat-participant-edit-button"]'
+
+    # ------------------------------------------------------------------
+    # Expanded PARTICIPANTS panel (ELITEA-2098 testids, first wired into
+    # this page object by ELITEA-2089) — distinct from the collapsed
+    # badge's small popper above (``participants_popper``/``PARTICIPANT_ROW``
+    # are reused inside BOTH surfaces: same row testid renders identically
+    # whether resolved inside ``participants_popper`` or ``participants_panel``).
+    # ------------------------------------------------------------------
+
+    participants_panel = LocatorDescriptor(
+        testid="chat-participants-panel",
+        description=(
+            "The real 'Participants' panel container (title 'Participants', "
+            "collapse/expand toggle) — distinct from the collapsed badge's "
+            "small popper. Always rendered; carries a 'data-expanded' state "
+            "attribute (testid=identity/state=data-* ruling) instead of "
+            "mounting/unmounting."
+        ),
+    )
+
+    participants_panel_toggle_button = LocatorDescriptor(
+        testid="chat-participants-panel-toggle-button",
+        description="Collapse/expand IconButton for the PARTICIPANTS panel.",
+    )
 
     # ------------------------------------------------------------------
     # Users participant type (ELITEA-2095) — independent of the Agent/
@@ -3369,6 +3415,94 @@ class ChatPage(BasePage):
         """Press Escape to dismiss an open participants popper (ELITEA-2167) —
         same idiom as ``dismiss_mention_popper()``."""
         self.page.keyboard.press("Escape")
+
+    def is_participants_panel_open(self, timeout: int = 3000) -> bool:
+        """Return True if the (ELITEA-2098) PARTICIPANTS panel reports
+        ``data-expanded="true"``.
+
+        Distinct from the legacy text-based ``is_participants_panel_expanded()``
+        above — resolves via the ``chat-participants-panel`` testid + its
+        ``data-expanded`` state attribute (testid=identity/state=data-*
+        ruling, ``.agents/testing.md`` § Locator policy) instead of a raw
+        ``get_by_text("Participants")`` lookup.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            self.participants_panel.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        return self.participants_panel.first.get_attribute("data-expanded") == "true"
+
+    @action("Open PARTICIPANTS panel")
+    def open_participants_panel(self, timeout: int = 5000):
+        """Expand the (ELITEA-2098) PARTICIPANTS panel via its toggle
+        button, if not already expanded.
+
+        First case to wire ``chat-participants-panel``/
+        ``chat-participants-panel-toggle-button`` into a page-object method
+        (ELITEA-2089) — the testids existed on ``automation/testids`` since
+        ELITEA-2098 but no merged test had consumed them yet; every prior
+        caller used the legacy text-based ``expand_participants_panel()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        if self.is_participants_panel_open(timeout=timeout):
+            logger.info("PARTICIPANTS panel already expanded")
+            return
+        self.participants_panel_toggle_button.wait_for(state="visible", timeout=timeout)
+        self.participants_panel_toggle_button.click()
+        self.page.wait_for_timeout(300)  # expand animation
+        logger.info("PARTICIPANTS panel expanded")
+
+    def get_agent_participant_row(self, agent_id: int, timeout: int = 5000):
+        """Return the Locator for the AGENT participant row identified by
+        *agent_id*, scoped inside the expanded PARTICIPANTS panel (ELITEA-2089)
+        — as opposed to the collapsed badge's small popper (compare
+        ``open_participants_popover()`` above, which scopes the SAME
+        ``PARTICIPANT_ROW`` template inside ``participants_popper`` instead;
+        both surfaces render the identical row testid).
+
+        Expands the PARTICIPANTS panel first (``open_participants_panel()``)
+        so the row is actually present in the DOM.
+
+        Args:
+            agent_id: Numeric ID of the participant agent.
+            timeout: Maximum wait time in milliseconds for the panel to open.
+        """
+        self.open_participants_panel(timeout=timeout)
+        unique_id = f"application_{agent_id}_{settings.elitea_project_id}"
+        return self.participants_panel.locator(self.PARTICIPANT_ROW.format(unique_id))
+
+    @action("Edit agent participant from chat")
+    def edit_agent_participant(self, agent_id: int, timeout: int = 10000):
+        """Click the pencil "Edit agent" icon for the participant identified
+        by *agent_id*, opening its canvas in edit mode (ELITEA-2089).
+
+        Resolves the participant row via ``get_agent_participant_row()``,
+        hovers it to reveal the row's hover-only action icons, then clicks
+        the pencil "Edit agent" icon button (``chat-participant-edit-button``
+        — added via ``add-data-testid``, mirroring the sibling
+        ``chat-participant-remove-button`` used by
+        ``remove_agent_participant()`` below).
+
+        Args:
+            agent_id: Numeric ID of the participant agent to edit.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Editing agent participant id=%s from chat", agent_id)
+        row = self.get_agent_participant_row(agent_id, timeout=timeout)
+        row.wait_for(state="visible", timeout=timeout)
+        row.scroll_into_view_if_needed()
+        row.hover()
+        self.page.wait_for_timeout(300)  # hover-reveal CSS transition
+
+        edit_btn = row.locator(self.PARTICIPANT_EDIT_BUTTON)
+        edit_btn.wait_for(state="visible", timeout=timeout)
+        edit_btn.click(force=True)
+        logger.info("Clicked Edit agent for participant id=%s", agent_id)
 
     @action("Remove agent participant from chat")
     def remove_agent_participant(self, agent_id: int, timeout: int = 10000):
