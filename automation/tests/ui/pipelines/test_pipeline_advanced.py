@@ -32,11 +32,39 @@ Usage:
     pytest test_pipeline_advanced.py -v -k "yaml"
 """
 
-import pytest
-from tests.ui.pipelines.helpers import _navigate_to_detail, _navigate_to_canvas
+import logging
+
 import allure
+import pytest
+
+from tests.ui.pipelines.helpers import _navigate_to_canvas, _navigate_to_detail
 
 pytestmark = [pytest.mark.ui, pytest.mark.pipelines]
+
+logger = logging.getLogger(__name__)
+
+# ELITEA-2028: two-node pipeline (LLM 1 + Code 1, both -> END) used to test
+# editing a node's `transition:` value directly in the YAML editor. Kept as a
+# module-level constant (not a shared fixture) since this exact topology is
+# only needed by test_yaml_edit_transition_syncs_flow_view_and_enables_save
+# (AFS § Test Data: generate-per-test).
+_YAML_EDIT_PIPELINE_NODES = [
+    {
+        "id": "LLM 1", "type": "llm", "input": [],
+        "input_mapping": {
+            "chat_history": {"type": "fixed", "value": []},
+            "system": {"type": "fixed", "value": ""},
+            "task": {"type": "fixed", "value": ""},
+        },
+        "output": [], "structured_output": False,
+        "transition": "END",
+    },
+    {
+        "id": "Code 1", "type": "code", "input": [], "output": [],
+        "source_code": "",
+        "transition": "END",
+    },
+]
 
 
 def _add_llm_node_and_connect(pipelines) -> str:
@@ -142,6 +170,151 @@ class TestYamlEditor:
             pipelines.wait_for_canvas()
             final_count = pipelines.get_node_count()
             assert final_count == initial_count, f"Round-trip should preserve node count: expected {initial_count}, got {final_count}"
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/pipelines/ELITEA-2028_pipeline-yaml-to-flow-sync.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    def test_yaml_edit_transition_syncs_flow_view_and_enables_save(self, page, pipeline_api, request):
+        """ELITEA-2028: Editing a transition in YAML updates the Flow-view edge and enables Save.
+
+        Uses a dedicated 2-node pipeline (LLM 1 + Code 1, both -> END) instead
+        of the shared `pipeline_id`/`pipeline_with_llm_id` fixtures — this
+        exact topology is only needed here (AFS § Test Data: generate-per-test).
+        """
+        name = f"autotest_{request.node.name}"[:32]
+        description = f"Auto-created for test {request.node.name}"
+        pipeline = pipeline_api.create_pipeline_with_nodes(
+            name, description, entry_point="LLM 1", nodes=_YAML_EDIT_PIPELINE_NODES
+        )
+        pid = pipeline["id"]
+
+        try:
+            # Not a case step — setup normalization per AFS § Test Data gotcha:
+            # a pipeline created via the API has an EMPTY persisted visual-layout
+            # record (`pipeline_settings: {"nodes": [], "edges": []}`). The first
+            # Flow-view render auto-computes real canvas positions that differ
+            # from that empty array, and the diff alone flips Save/Discard to
+            # enabled with zero content edit. One explicit Save here persists
+            # the auto-computed layout, so Step 1's "Save starts disabled"
+            # baseline is real, not vacuous (confirmed live at ELITEA-2028
+            # analyst + implementer exploration).
+            setup_page = _navigate_to_detail(page, pid)
+            setup_page.wait_for_canvas()
+            setup_page.click_save(timeout=FORM_SAVE_TIMEOUT)
+            page.reload()
+            setup_page.wait_for_network()
+            setup_page.wait_for_detail_page_load()
+            setup_page.dismiss_banner_if_present()
+
+            # Console listener installed after setup/reload noise settles, so
+            # it only captures errors during the case's own steps below (AFS
+            # step 7 / Expected Results: zero console errors across the flow).
+            console_errors = []
+            page.on(
+                "console",
+                lambda msg: console_errors.append(msg) if msg.type == "error" else None,
+            )
+
+            with allure.step(
+                "Step 1 — Navigate to the fixture pipeline; verify Save/Discard baseline is disabled"
+            ):
+                pipelines = _navigate_to_detail(page, pid)
+                assert not pipelines.is_save_enabled(), (
+                    "Save should read disabled on a freshly-normalized pipeline "
+                    "(baseline check — otherwise Step 6's 'becomes enabled' "
+                    "assertion would be vacuous)"
+                )
+                assert not pipelines.is_discard_enabled(), (
+                    "Discard should read disabled on a freshly-normalized pipeline"
+                )
+
+            with allure.step(
+                "Step 2 — Switch to Yaml view; verify content and that Save stays disabled"
+            ):
+                pipelines.switch_to_yaml_view()
+                assert pipelines.is_yaml_view_active(), (
+                    "YAML editor should be visible after switching to YAML view"
+                )
+                yaml_content = pipelines.get_yaml_content()
+                assert "entry_point: LLM 1" in yaml_content, (
+                    f"YAML should declare the entry point, got: {yaml_content[:300]}"
+                )
+                assert "- id: LLM 1" in yaml_content and "- id: Code 1" in yaml_content, (
+                    f"YAML should declare both node id blocks, got: {yaml_content[:300]}"
+                )
+                assert yaml_content.count("transition: END") == 2, (
+                    "Both nodes should still transition to END before the edit, "
+                    f"got {yaml_content.count('transition: END')} occurrence(s)"
+                )
+                assert not pipelines.is_save_enabled(), (
+                    "Switching to YAML view alone (no edit yet) must not enable Save"
+                )
+
+            with allure.step(
+                "Step 3 — Edit Code 1's transition from END to LLM 1 directly in the YAML editor"
+            ):
+                pipelines.edit_node_transition_in_yaml("Code 1", "LLM 1")
+                updated_yaml = pipelines.get_yaml_content()
+                assert "transition: LLM 1" in updated_yaml, (
+                    f"Code 1's transition should now read 'transition: LLM 1', "
+                    f"got: {updated_yaml[:300]}"
+                )
+                assert updated_yaml.count("transition: END") == 1, (
+                    "Only Code 1's transition should have changed — LLM 1's own "
+                    f"'transition: END' should be untouched, got "
+                    f"{updated_yaml.count('transition: END')} remaining occurrence(s)"
+                )
+
+            with allure.step("Step 4 — Switch back to Flow view"):
+                pipelines.switch_to_flow_view()
+                assert pipelines.is_flow_view_active(), (
+                    "Flow canvas should be visible after switching back from YAML view"
+                )
+
+            with allure.step(
+                "Step 5 — Verify canvas reflects the updated edge; stale edge is gone; "
+                "untouched edge unaffected"
+            ):
+                assert pipelines.edge_exists("Code 1", "LLM 1"), (
+                    "Canvas should show an edge from Code 1 to LLM 1 after the YAML edit"
+                )
+                # The END node's edge-endpoint id is the literal "EliteAPipelineEnd",
+                # not "END" (ELITEA-2018 digest) — check both forms so a stale edge
+                # isn't missed by a false-negative substring match on the plain
+                # "END" alias.
+                assert not pipelines.edge_exists("Code 1", "END"), (
+                    "Stale edge Code 1 -> END should be gone, not merely superseded"
+                )
+                assert not pipelines.edge_exists("Code 1", "EliteAPipelineEnd"), (
+                    "Stale edge Code 1 -> END (EliteAPipelineEnd alias) should be gone"
+                )
+                assert pipelines.edge_exists("LLM 1", "EliteAPipelineEnd"), (
+                    "LLM 1's own untouched edge to END should still be present — "
+                    "the edit should be scoped to Code 1 only"
+                )
+
+            with allure.step("Step 6 — Verify Save (and Discard) button becomes enabled"):
+                assert pipelines.is_save_enabled(), (
+                    "Save should be enabled after the YAML content edit"
+                )
+                assert pipelines.is_discard_enabled(), (
+                    "Discard should be enabled alongside Save — same dirty-state mechanism"
+                )
+
+            with allure.step("Step 7 — Verify zero error-level console messages across the flow"):
+                assert not console_errors, (
+                    f"Unexpected console error(s) during the YAML-edit/Flow-sync flow: "
+                    f"{[m.text for m in console_errors]}"
+                )
+        finally:
+            # Not a case step — teardown for the pipeline seeded above (AFS § Cleanup).
+            try:
+                pipeline_api.delete_pipeline(pid)
+            except Exception:
+                logger.warning("Failed to delete seeded pipeline id=%s during cleanup", pid, exc_info=True)
 
 
 # ===========================================================================
