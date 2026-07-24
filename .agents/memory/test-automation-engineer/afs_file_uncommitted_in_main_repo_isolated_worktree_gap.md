@@ -28,3 +28,12 @@ copy before escalating. And flag it upstream: AFS files should be
 committed by the analyst slot as part of its own deliverable, not left as
 loose uncommitted files, or every downstream isolated-worktree implementer
 re-hits this same gap.
+
+**Recurrence count, 2026-07-24:** hit again on GAP-020 (own fix commit
+`469b2424`, "commit AFS to branch history") and a third time on GAP-073's
+fix round (commit `01662d79`) — all three cov60-campaign, local-file-backed
+gap-cluster cases (no onetest TMS entry). Pattern is now 3-for-3 on this
+case family, not a one-off. Worth raising to the orchestrator as a process
+fix (analyst slot commits the AFS to its own branch/PR before handoff, or
+the campaign's board tooling copies it in automatically) rather than every
+implementer independently rediscovering and re-patching it per case.
