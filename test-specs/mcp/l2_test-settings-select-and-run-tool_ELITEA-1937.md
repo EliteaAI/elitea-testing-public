@@ -110,7 +110,13 @@ not inherit from `ToolkitTestSettingsPage` — see Automation Hints.
      agent Save-As-Version / model-selector entries).
 4. Verify the "Tool" label and combobox dropdown are present.
    - **Verify**: `toolkit-test-tool-select` (the `LocatorDescriptor` already on
-     `McpFormPage`) is visible. The adjacent "Tool" text label carries no
+     `McpFormPage`) is enabled. **Amended (fix round R2, implementer):** the
+     AFS previously said "is visible" here, but the shipped test has always
+     asserted `to_be_enabled()` for this step, not visibility — the dropdown's
+     visibility was already confirmed two steps earlier at step 2 (same
+     locator, no intervening navigation/state change), so this step's own
+     testid-backed signal is that the control is interactive (enabled), not a
+     redundant re-check of presence. The adjacent "Tool" text label carries no
      testid and is not independently asserted (incidental static copy next to
      the already-testid'd control, not a separately "touched" element).
 5. Click the Tool combobox dropdown.
@@ -190,7 +196,7 @@ not inherit from `ToolkitTestSettingsPage` — see Automation Hints.
 | 1 Open a Remote MCP detail page with discovered tools | detail page loads | step 1 | step 1 | asserted |
 | 2 Verify Test Settings panel visible | panel displayed | step 2 | step 2 | asserted |
 | 3 Verify LLM model selector shows a default model | default model shown | step 3 | step 3 | asserted — non-empty text only, case's example model name is illustrative not literal |
-| 4 Verify Tool label + combobox present | dropdown visible | step 4 | step 4 | asserted |
+| 4 Verify Tool label + combobox present | dropdown enabled (visibility already proven at step 2) | step 4 | step 4 | asserted — `to_be_enabled()`, not a redundant visibility re-check (amended fix round R2) |
 | 5 Click the Tool combobox dropdown | dropdown opens | step 5 | step 5 | asserted |
 | 6 Verify dropdown lists all available tools | all MCP tools listed | step 6 | step 6 | asserted — exactly 3, matching fixture |
 | 7 Select a tool | tool selected in dropdown | step 7 | step 7 | asserted |
@@ -340,6 +346,25 @@ code or behavior change (`test_mcp_test_settings_run_tool.py:130` already
 asserts substring containment; `:153` already uses unanchored `re.search`) —
 pure Coverage Map text sync so the table matches the prose it's supposed to
 summarize. Re-ran green locally to confirm (see Run Report in the PR).
+
+## Fix Round R2 — AFS amendment (2026-07-24, implementer)
+
+Reviewer finding [Important]: R1 fixed the identical AFS-vs-code drift class
+for steps 2/5/8/10 but missed **step 4** — the AFS text and its Coverage Map
+cell said the step verifies the dropdown **is visible**, while the shipped
+test (`test_mcp_test_settings_run_tool.py:98-99`, unchanged since the original
+PR) has always asserted `expect(form.test_tool_select).to_be_enabled(...)`, a
+different check. Fixed in this fix round — step 4's text and Coverage Map row
+now describe the enabled-state check the code actually performs, and note that
+the same locator's visibility was already proven two steps earlier at step 2
+with no intervening navigation/state change (confirmed live, this session),
+so asserting `to_be_enabled()` at step 4 is a distinct, meaningful check
+(control is interactive, not merely present) rather than a redundant repeat of
+step 2. No test code or behavior change — pure AFS text/Coverage-Map sync,
+same reverse-masking-guard treatment R1 applied to steps 2/5/8/10 (the live
+product + shipped code are ground truth; the AFS prose is corrected to match,
+not the other way around). Re-ran green locally to confirm (see Run Report in
+the PR).
 
 ## Automation Hints
 

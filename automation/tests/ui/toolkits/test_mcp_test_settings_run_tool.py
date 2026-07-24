@@ -136,9 +136,7 @@ def test_mcp_test_settings_select_and_run_tool(page, toolkit_api: ToolkitAPI):
             )
 
         with allure.step('Step 9 — Type a test query in the tool parameters and click "RUN TOOL"'):
-            assert form.run_tool_button.is_disabled(), (
-                "RUN TOOL should be disabled before the required parameter is filled"
-            )
+            expect(form.run_tool_button).to_be_disabled(timeout=UI_ELEMENT_TIMEOUT)
             form.fill_test_param(TEST_PARAM_KEY, TEST_PARAM_VALUE)
             expect(form.run_tool_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
             form.run_tool()
