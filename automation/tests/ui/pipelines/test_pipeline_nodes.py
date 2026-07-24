@@ -102,7 +102,7 @@ class TestEdgeCreation:
         "ELITEA-2031_pipeline-edge-creation-between-nodes.md",
         "onetest-ai Test Case link",
     )
-    @pytest.mark.p2
+    @pytest.mark.p1
     @pytest.mark.regression
     def test_edge_creation_between_llm_and_printer_nodes(
         self, page, pipeline_with_llm_and_printer_id
@@ -171,15 +171,42 @@ class TestEdgeCreation:
 
             pipelines.switch_to_yaml_view()
             yaml_content = pipelines.get_yaml_content()
-            llm_block = re.search(
-                r"-\s*id:\s*LLM 1\b(.*?)(?=\n-\s*id:|\Z)", yaml_content, re.DOTALL
+            # get_yaml_content() falls back to a single newline-less string
+            # whenever the "pipeline-yaml-lines" testid has zero live DOM
+            # matches — confirmed via `git grep -- "pipeline-yaml-lines"` on
+            # both EliteaUI origin/main and origin/automation/testids (0 hits
+            # on both, re-verified this fix round): the testid doesn't exist,
+            # and LocatorDescriptor.__get__ never falls through to the CSS
+            # `fallback=` once `testid=` is set (priority testid > locator >
+            # fallback, `locator_descriptor.py`), so `yaml_lines.count()` is
+            # always 0 here and `get_yaml_content()` always returns
+            # `yaml_editor.text_content()` — the whole editor's text with no
+            # `\n` between CodeMirror lines. A lookahead anchored on
+            # `\n-\s*id:` can therefore never fire, so the previous regex's
+            # capture ran to end-of-string (past LLM 1's own block, into
+            # Printer 1's) rather than stopping at the node boundary — it
+            # only passed here because Printer 1 never transitions to a node
+            # named "Printer 1". Scope directly to the FIRST `transition:`
+            # value that follows `id: LLM 1` (LLM 1 is defined before
+            # Printer 1 in the fixture's node list, so this unambiguously
+            # belongs to LLM 1) and bound the capture at the next `- id:` or
+            # end of string — correct whether or not newlines are present,
+            # so it stays correct if get_yaml_content()'s newline-loss is
+            # ever fixed (a separate, cross-cutting concern affecting every
+            # other consumer — flagged to the orchestrator, not fixed here
+            # per the additive-only/shared-caller discipline).
+            llm_transition = re.search(
+                r"id:\s*LLM 1\b.*?transition:\s*(.+?)(?=\s*-\s*id:|\Z)",
+                yaml_content,
+                re.DOTALL,
             )
-            assert llm_block, (
-                f"'LLM 1' node block not found in YAML view, got: {yaml_content}"
+            assert llm_transition, (
+                f"'LLM 1' node's transition field not found in YAML view, "
+                f"got: {yaml_content}"
             )
-            assert "transition: Printer 1" in llm_block.group(1), (
+            assert llm_transition.group(1).strip() == "Printer 1", (
                 f"'LLM 1' node's transition should read 'Printer 1' after the drag, "
-                f"got node block: {llm_block.group(1)!r}"
+                f"got: {llm_transition.group(1)!r}"
             )
             pipelines.switch_to_flow_view()
 
