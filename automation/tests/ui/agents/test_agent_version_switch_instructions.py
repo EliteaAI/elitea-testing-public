@@ -80,7 +80,7 @@ class TestAgentVersionSwitchInstructions:
     correctly, in both directions (ELITEA-1890, lcritical/p0)."""
 
     @allure.issue(
-        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1890_switching-versions-updates-instructions-field.md",
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1890_switching-between-versions-updates-form-fields-correctly.md",
         "onetest-ai Test Case link",
     )
     @pytest.mark.p0
@@ -238,6 +238,26 @@ class TestAgentVersionSwitchInstructions:
                     "Instructions field should return to the exact original "
                     "'base' content, byte-for-byte"
                 )
+
+                # Re-open the VERSION dropdown and cross-check the
+                # Mui-selected/active state on both options AFTER switching
+                # back — mirrors the pre-switch-#1 check above (~lines
+                # 177-188) and the pre-switch-back check (~lines 215-221).
+                # Without this, only 3 of the AFS's 4 Axis-2 checkpoints
+                # (before switch #1, after switch #1, before switch #2) were
+                # verified; a coincidental-Instructions-text match after
+                # switch #2 would false-positive if the dropdown's active
+                # state silently failed to flip back to 'base'.
+                detail_page.open_version_selector()
+                assert detail_page.is_version_option_active("base"), (
+                    "'base' should be the active/selected option after "
+                    "switching back"
+                )
+                assert not detail_page.is_version_option_active(SECOND_VERSION_NAME), (
+                    f"{SECOND_VERSION_NAME!r} should NOT be active after "
+                    "switching back to 'base'"
+                )
+                detail_page.close_versions_menu()
 
             with allure.step(
                 "Verify no console errors/warnings or uncaught JS exceptions "
