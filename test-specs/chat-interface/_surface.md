@@ -269,13 +269,22 @@ sibling "Create New Agent" canvas (ELITEA-2166).
 - **Create-mode action button reads "Create", not "Save"** — this canvas's
   save-slot renders ONE of two DIFFERENT components depending on
   `isCreating`: `CreateToolkitButton.jsx` (create mode, text hardcoded
-  `"Create"`, ZERO testid/props) or `SaveToolkitButton.jsx` (edit mode —
-  i.e. AFTER a successful create, text `"Save"`). A case that says 'click
-  Save' while the toolkit doesn't exist yet is describing the button's
-  POST-click label, not its actual label at click-time — clarification
-  `#1011`. The label flip itself (`"Create"` → `"Save"`) is a reliable,
-  cheap, independent confirmation that a create actually persisted, usable
-  alongside/instead of racing the ~3s-lived success toast.
+  `"Create"`) or `SaveToolkitButton.jsx` (edit mode — i.e. AFTER a
+  successful create, text `"Save"`). **Correction 2026-07-24 (ELITEA-2085
+  redispatch)**: `CreateToolkitButton.jsx` actually DOES carry a testid
+  (`toolkit-form-create-button`, confirmed by source read — used by
+  `ToolkitCanvasPage.create_button`); the "ZERO testid/props" this bullet
+  originally claimed for it was wrong and unverified. `SaveToolkitButton.jsx`
+  is the one that genuinely had zero testid — see the dedicated correction
+  bullet under the MCP-canvas section below for the fix
+  (`toolkit-canvas-save-button`, `EliteaAI/EliteaUI@45d64064`) and why it
+  belongs on `ToolkitCanvasPage`. A case that says 'click Save' while the
+  toolkit doesn't exist yet is describing the button's POST-click label, not
+  its actual label at click-time — clarification `#1011`. The label flip
+  itself (`"Create"` → `"Save"`) is a reliable, cheap, independent
+  confirmation that a create actually persisted, usable alongside/instead of
+  racing the ~3s-lived success toast — now assertable by testid
+  (`ToolkitCanvasPage.save_button`), not just by visible text.
 - **`ToolkitEditor.jsx`'s own `<BaseEditor>` call passes NONE of
   `titleTestId`/`subtitleTestId`/`closeButtonTestId`** — confirmed via
   source read (zero occurrences in the file) AND live DOM query (0 testid
@@ -691,9 +700,18 @@ page** (`toolkit-type-card-mcp`, `mcp-type-picker-local-empty-state`,
 do not redeclare them on a new page object. **Do not reuse
 `McpFormPage.save_button`** though — the in-chat canvas's action button is a
 DIFFERENT testid, `toolkit-form-create-button` (`CreateToolkitButton.jsx`,
-create-mode only; flips to `SaveToolkitButton.jsx`/no-new-testid-needed once
-persisted — the standalone page's `toolkit-form-save-button` belongs only to
-that page, never to this canvas).
+create-mode only; flips to `SaveToolkitButton.jsx` once persisted — the
+standalone page's `toolkit-form-save-button` belongs only to that page, never
+to this canvas). **CORRECTION 2026-07-24 (ELITEA-2085 redispatch):** the
+original pass's "no-new-testid-needed" claim about `SaveToolkitButton.jsx`
+was WRONG and was never actually live-verified — that component had ZERO
+`data-testid` at all (`Button.BaseBtn` with no testid prop, confirmed by
+source read). It silently blocked the implementer's own step-8 assertion
+when the test was finally run. Fixed this session — see the dedicated
+correction bullet below for the full finding, the new testid, and
+page-object-placement guidance (it belongs on `ToolkitCanvasPage`, not
+`McpFormPage` — `ToolkitCanvasPage` had since landed on `automation/base`,
+`c5d2a48d`/PR #1019, unnoticed by the in-flight MCP implementation).
 
 - **The "Remote"/"Local" split is section headers, not tabs** — same finding
   ELITEA-1921 already made for the standalone page, re-confirmed here for the
@@ -739,6 +757,48 @@ that page, never to this canvas).
   FUTURE case touching a participant in ANY attention state (misconfigured
   agent, blocked toolkit, gone-published-agent, …) can now use the same three
   testids — this was a structural gap, not MCP-specific.
+- **CORRECTION + NEW GAP CLOSED (2026-07-24, ELITEA-2085 redispatch)** —
+  `SaveToolkitButton.jsx` (`src/pages/Toolkits/SaveToolkitButton.jsx`, the
+  post-create edit-mode action button rendered by `ToolkitEditor.jsx`'s
+  `saveButton` slot for BOTH Toolkit and MCP in-chat creation — the ONLY
+  caller anywhere in the tree, confirmed via `grep -rn "SaveToolkitButton"
+  src/`) had **ZERO `data-testid`** before this session — the original
+  ELITEA-2085 analysis pass asserted it was safe/needed-nothing without ever
+  actually running a test against it live, and that untested assumption
+  shipped into the AFS. Only discovered when the implementer's own
+  (uncommitted) test hit `get_by_test_id("toolkit-form-save-button")` timing
+  out at step 8, despite a "Save" button visibly present in the DOM/aria
+  snapshot. Root-caused via source read (`Button.BaseBtn` in
+  `SaveToolkitButton.jsx` carries no testid prop at all — completely
+  different component from the standalone page's own Save button,
+  `CreateToolkitToolTabBar.jsx:189`, which DOES have `toolkit-form-save-button`).
+  **Fixed**: added `data-testid="toolkit-canvas-save-button"` (new name,
+  deliberately NOT `toolkit-form-save-button` — that string is already
+  claimed by the unrelated standalone-page component and reusing it would
+  create a same-testid-two-components collision), `EliteaAI/EliteaUI@45d64064`
+  on `automation/testids`. Live-reverified end-to-end via isolated CDP
+  (port 9241, fresh MCP fixture `spotcheck_877757`/id `1809`): testid
+  resolves, text `"Save"`, `disabled === true` (pristine/non-dirty state,
+  matches `SaveToolkitButton`'s own `shouldDisableSave = isSaving ||
+  !isFormDirty` logic — correct, not a bug), `toolkit-form-create-button`
+  count 0 (unmounted, confirming the flip). Toolkit cleaned up via API
+  (`DELETE .../tool/prompt_lib/{project}/1809` → `204`).
+  **Page-object placement — do NOT add this to `McpFormPage`**: since
+  `SaveToolkitButton` is canvas chrome shared by both Toolkit and MCP
+  creation (not MCP-form-specific), and `ToolkitCanvasPage`
+  (`automation/pages/toolkit_canvas_page.py`) — the shared canvas-chrome
+  class the ELITEA-2082/2083/2080 cluster proposed — **has since landed on
+  `automation/base`** (`c5d2a48d`, PR #1019, merged), the new
+  `save_button` field belongs there, alongside its existing
+  `title`/`close_button`/`create_button`/`discard_button`/
+  `success_toast_message` fields (`create_button` and `success_toast_message`
+  already use `toolkit-form-create-button`/`toast-message` — the SAME two
+  testids an in-flight, not-yet-committed ELITEA-2085 implementation
+  attempt had independently re-declared on a forked `McpCanvasPage` +
+  `McpFormPage`, unaware `ToolkitCanvasPage` already existed by the time
+  that attempt started. That duplication needs consolidating onto
+  `ToolkitCanvasPage` before merge — one testid, one file
+  (`.agents/testing.md` § Locator policy).
 - **MCP participant `entity_name` is `"toolkit"`, not `"mcp"`** — same finding
   the ELITEA-2082 cluster already made for plain Toolkit participants,
   reconfirmed here: `getChatParticipantUniqueId()` yields
