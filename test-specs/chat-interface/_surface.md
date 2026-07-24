@@ -582,7 +582,10 @@ names below, not re-derive or re-propose them:
 
 - **`pipeline-save-button`** (create-mode Save) — LANDED, confirmed live.
 - **`pipeline-canvas-close-button`** — LANDED, confirmed via source read of
-  `PipelineEditor.jsx`'s `<BaseEditor closeButtonTestId="pipeline-canvas-close-button" …>`.
+  `PipelineEditor.jsx`'s `<BaseEditor closeButtonTestId="pipeline-canvas-close-button" …>`;
+  **now also confirmed LIVE** (ELITEA-2079 redispatch spot-check, 2026-07-24 —
+  resolved via `document.querySelector` immediately after opening the canvas,
+  before this row had ever been live-clicked by any prior pass).
 - **`pipeline-canvas-configuration-tab`** / **`pipeline-canvas-flow-editor-tab`** —
   LANDED, confirmed live.
 - **`pipeline-add-node-menu-item-{type}`** — LANDED (ELITEA-2030's work), but
