@@ -50,9 +50,8 @@ state:
 ```
 (confirmed live via the Yaml-view tab). This avoids needing any STATE-drawer
 testids for cases whose actual assertions live elsewhere (e.g. GAP-007's
-f-string autocomplete). A future case that specifically exercises the STATE
-drawer's own CRUD/toggle behavior is a separate coverage-gap scope and should
-request its own testids then.
+f-string autocomplete). **Update (ELITEA-2042, 2026-07-24): the STATE drawer's
+own CRUD behavior is now fully explored — see the dedicated section below.**
 
 ## Duplicate DOM id on every "Type" select — use testid, never the id
 
@@ -994,3 +993,222 @@ before concluding it's missing — this is the same class of gotcha
 `workflow.md`'s "two-stage grep pattern" note already covers for prop
 indirection, just one layer more indirect (multi-fragment template, not a
 single forwarded prop).
+
+## Router node — Condition/Routes/Input/Default-output, and ReactFlow edge-testid format (ELITEA-2033, 2026-07-24)
+
+**Config is always inline/expanded, same as every other node type.** Fresh
+`Router` node (`RouterNode.jsx`) shows Condition (Jinja textarea), Routes
+(multi-select combobox), Input (single-select combobox), Default output
+(single-select dropdown) immediately — zero click-to-open. Zero
+`data-testid` anywhere in the node today; full wiring points (all four
+fields have a trivial existing extension point, no shared-component
+internals changes needed) are in
+`test-specs/pipelines/l2_router-node-configuration-persistence_ELITEA-2033.md`'s
+Concrete Handles table — read that AFS first before adding testids here.
+
+**Routes/Default-output options are OTHER EXISTING NODE IDS, not free
+text.** `useNodeOptions(nodeFilter, addEndNode)` (shared hook, also used by
+HITL's route selects) maps `(yamlJsonObject.nodes || []).filter(nodeFilter)`
+to `{label: node.id, value: node.id}` and optionally appends
+`{label:'END', value:'END'}`. A case whose test data reads "Routes: approve,
+reject" needs those as REAL node ids already present in the pipeline (e.g.
+via `PipelineAPI.create_pipeline_with_nodes()` with literal `id: "approve"`/
+`id: "reject"` — confirmed live that arbitrary non-type-prefixed ids are
+accepted with no validation error), not typed strings in a text field.
+
+**Default output's visual default ("END") is a DISPLAY-ONLY fallback,
+distinct from the persisted value — same family as HITL's REJECT default
+(ELITEA-2014), but with a sharper consequence here.** `default_output_node =
+yamlNode?.default_output || 'END'` makes the field SHOW "END" the instant a
+Router node is added, with zero interaction. But a freshly-added,
+never-touched node's YAML has **no `default_output` key at all**, and **no
+canvas edge** renders to END until the field is explicitly (re-)selected —
+confirmed via a before/after YAML diff. Any case asserting "Default output
+is END" must perform the explicit select-interaction and assert BOTH the
+YAML key and the edge, not just the visual display (which would pass
+vacuously even if persistence were broken).
+
+**Edge-testid format has a genuine per-edge-kind quirk that breaks a naive
+`edge_exists(..., handle_suffix=...)` call.** ReactFlow's rendered edge
+testid is `rf__edge-xy-edge__{edge.id}` where `edge.id` is app-constructed
+(`EDGE_PREFIX = 'xy-edge__'`, `flowEditor.constants.js`):
+- **Routes edges** (from the shared Routes multi-select): `edge.id =
+  ${id}---${value}` — e.g. `rf__edge-xy-edge__Router 1---Printer 1`.
+  **Triple-dash, NO handle suffix embedded** even though the underlying
+  `sourceHandle` state value IS the shared `routerNode_routes` string for
+  every route.
+- **Default-output edge**: `edge.id = ${id}default_output---${value}` — e.g.
+  `rf__edge-xy-edge__Router 1default_output---END`. Handle name embedded
+  directly before the triple-dash.
+
+`PipelineDetailPage.edge_exists(source_id, target_id, handle_suffix=None)`
+builds its handle-aware prefix as `f"...{source_id}{handle_suffix}-
+{target_id}"` (SINGLE dash before target) when `handle_suffix` is given —
+this does NOT match either Router edge kind's actual triple-dash format.
+**Call `edge_exists(router_id, target_id)` WITHOUT `handle_suffix` for
+BOTH Router edge kinds** — the fallback branch (`expected_prefix =
+f"...{source_id}"` + `f"-{target_id}" in testid` substring check) correctly
+matches both, confirmed live. This is a usage gotcha specific to Router's
+edge-id shape (the helper was originally designed against HITL's
+single-dash format), not a bug in the helper itemself.
+
+**Synthetic-vs-real-click hygiene (transient anomaly, did NOT survive the
+pristine-repro gate — not filed as a defect).** One interaction sequence
+that probed with a synthetic `page.evaluate("el => el.click()")`
+immediately followed by a real click on the SAME Default-output combobox
+produced `default_output: ''` (empty string) instead of `'END'`, with no
+edge created. Re-tested with a single clean real-click-only sequence
+(open → click "END") and it worked correctly, twice. Do not mix synthetic
+JS-click probes with real Playwright clicks on the same MUI `Select`
+trigger within one interaction — use one clean path per select.
+
+**Native id gotchas — same root-cause family as `#1006`/`#1009`, not
+re-filed.** Router's Input select shares the literal native id
+`simple-select-Input` with the LLM/MCP node's own Input select (cross-node-
+type collision); Default output's native id is `simple-select-undefined`
+(worse variant: `RouterNode.jsx` passes `labelNode={<Chip.HeadingChip
+label="Default output" />}` instead of a plain `label` string, so
+`SingleSelect.jsx`'s `id={id || 'simple-select-' + label}` default coerces
+the missing `label` to the literal string `"undefined"`). Never locate by
+either — testid-only once added.
+
+**Existing suite coverage check:** `tests/api/export_import/
+test_export_import_pipelines.py` has its own `_router_node()` helper, but
+it only exercises API-level export/import YAML round-tripping of an
+already-constructed Router node — it never touches the Flow-editor UI
+panel fields this case configures. `tests/ui/pipelines/
+test_pipeline_advanced.py`'s docstring claims Router-node-addition coverage
+was "consolidated into `test_pipeline_nodes.py`" — confirmed this is STALE
+documentation: `test_pipeline_nodes.py` contains exactly one test (HITL→END
+connect-via-drag) and zero mentions of Router at all. **No existing merged
+spec covers the Router node's panel-driven Condition/Routes/Input/Default-
+output configuration** — `ready-for-automation`, not `already-covered`/
+`extend-existing`.
+
+**Renaming a UI-added node is a fragile detour for pre-seeding named route
+targets — use the API instead.** `edit_node_name()`'s double-click-to-rename
+flow works (confirmed on other cases), but nodes added via the "+" menu get
+TYPE-prefixed default names (`Printer 1`, `Printer 2`, …), and a
+transient/HMR-session artifact was observed where a node added just before
+this session's dev-server picked up an unrelated concurrent `add-data-testid`
+commit (`pipeline-node-title-label`, ELITEA-2018) rendered its name-label
+WITHOUT that testid (stale Fast-Refresh instance) while a later-added
+sibling node had it correctly — not a reproducible product defect (would
+need a fresh page load to isolate cleanly, out of scope here), but a good
+reason to prefer `PipelineAPI.create_pipeline_with_nodes()` with literal
+target ids over a UI rename dance when a case's test data names specific
+route targets.
+
+## STATE drawer — full CRUD confirmed live, comprehensive testid gap (ELITEA-2042, 2026-07-24)
+
+Supersedes the GAP-007 stub above (which only confirmed the drawer's zero-
+testid status at a glance). This session drove the drawer's own add/type-
+select/save/persist/combobox-availability flow end-to-end, plus a delete, and
+read every component's source (`src/[fsd]/features/pipelines/flow-editor/ui/
+state/*.jsx`) for exact wiring points.
+
+**Toolbar toggle → drawer, structure.** The "State" toolbar button (plain
+text "State", sibling to the already-testid'd `pipeline-flow-view`/
+`pipeline-yaml-view`/`pipeline-add-node-button`) has **no `data-testid`, no
+`aria-label`**. It opens a `position: absolute; right: 0` drawer
+(`StateDrawer.jsx`) with a "STATE" heading, a close (X) `IconButton` (no
+testid, no aria-label), and a `StateVariableList`. **Zero testids anywhere in
+this entire feature** — confirmed via source read of all 9 component files
+(`StateDrawer`, `StateVariableList`, `StateVariableItem`,
+`StateVariableItemActions`, `StateTypeSelector`, `StateVariableIconButton`,
+`StateVariableDefaultValue`, `StateVariableTextField`; `StateVariableTable`/
+`RunStateDialog` are a different, unrelated feature — the Run-history state
+viewer, not this drawer).
+
+**Default vars (`input`/`messages`) are structurally un-renameable/
+undeletable, not just policy-blocked.** They render as static `<p>` text
+(never an `<input>` — `StateVariableItem.jsx`'s `handleStartEdit` is gated
+`!isDefault`) with only a `MuiSwitch` toggle; `StateVariableItemActions.jsx`'s
+`showToggle` branch returns EARLY for default rows, skipping the type-
+selector/default-value/delete controls entirely — there is no click target
+that could rename or delete them. Custom rows are the mirror image: type-
+selector + default-value + delete controls, but NO toggle (`showToggle =
+!isCreateMode && isDefault`).
+
+**Add-variable flow, confirmed live end-to-end:** click "+ Context"
+(`StateVariableList.jsx:205-217`, plain `Button`, no testid) → a NEW
+`StateVariableItem` mounts in `Create` mode: autofocused `TextField
+placeholder="name"` + a **disabled** type-selector icon + an "Add default
+value (optional)" icon + a delete/cancel icon. Type a name, then **commit via
+`Enter`** (confirmed reliable, twice) — this fires the `TextField`'s
+`onBlur`, which calls `onAddState(name, 'str')`; on success the row becomes a
+committed list entry and the type-selector button's `disabled` state clears.
+**Sequencing gotcha**: the type-selector is `disabled` (confirmed via
+`element.disabled === true` AND `aria-label=""` vs. the enabled state's real
+`aria-label="Select data type"`) until the name is committed —
+`StateVariableItemActions.jsx`'s `disableTypeSelector={isCreateMode ||
+!editable}`. Clicking it before committing the name is a silent no-op; always
+commit first.
+
+**Type selector — real accessible name today, but not disambiguating across
+multiple custom vars.** `button[aria-label="Select data type"]`
+(`StateVariableIconButton.jsx`'s `Tooltip title`) opens a plain MUI `Menu`
+with exactly 4 `role="menuitem"` entries in order: **String** (Abc icon,
+`Mui-selected` by default), **Number** (`#`), **List**, **Json** (`{}`) —
+confirmed live, screenshot evidence this session. The aria-label is shared
+across every row (not unique once >1 custom var exists) — fine for a
+single-custom-var case, needs a testid for disambiguation otherwise.
+
+**Delete confirmed working correctly, scoped to the row.** Added a throwaway
+`tabtest_var`, then clicked its own delete `IconButton`
+(`StateVariableItemActions.jsx:64-77`, no testid) — it alone disappeared from
+the list; `input`/`messages`/the other custom var were unaffected. Confirms
+the per-row scoping is correct at the DOM level, not just in source.
+
+**Persistence — exact YAML shape confirmed, survives a fresh-profile hard
+reload.** Saving a pipeline with one custom var `custom_output` (String,
+default value) produces:
+```yaml
+state:
+  custom_output:
+    type: str
+    value: ''
+  input:
+    type: str
+  messages:
+    type: list
+```
+Re-confirmed after killing the browser entirely and re-navigating in a
+brand-new, isolated Chrome profile (not just a same-session reload) — this
+rules out "looks persisted because the client never forgot it" as a false
+positive. Zero `error`-level console messages at every checkpoint
+(`get-console --level error` → 0 hits, checked 3 times across the whole
+flow).
+
+**Custom vars join the Input/Output combobox option set immediately.**
+Confirmed live on a freshly-added LLM node: opening its Input select
+(`#simple-select-Input`, native id, exploration-only — the testid gap for
+this trigger is already fully specced in ELITEA-2004's AFS, don't re-derive)
+listed `select-option-input`, `select-option-messages`,
+`select-option-custom_output` — same for Output. Zero new work needed for
+the option items themselves (existing `select-option-{value}` shared
+mechanism); only the select TRIGGER testid gap (LLM/MCP/Toolkit node-level,
+already tracked elsewhere) is outstanding.
+
+**Tooling-only observation, explicitly NOT filed as a defect (pristine-repro
+gate).** One exploration attempt — in a browser session already carrying
+several prior interactions — saw a `Tab` keypress (instead of `Enter`) appear
+to discard an uncommitted new-variable row AND close the entire drawer. A
+clean immediate retry (fresh profile, straight open→+Context→type→`Tab`, no
+prior interactions) did NOT reproduce this: `Tab` committed the row exactly
+like `Enter`, source-consistent (both only trigger the same `onBlur`). Ruled
+out as self-inflicted session state per the `playwright-testing`/
+`browser-verify` skills' Synthetic Input Hygiene guidance — not filed.
+Recommendation: automate via `Enter` to commit (matches the case's own
+"Enter variable name" wording, confirmed reliable every time); don't build a
+test around `Tab`-commit until/unless it's independently reproduced.
+
+**Comprehensive testid wiring points** (all trivial, feature-local, except
+one 2-caller shared-component change) are in
+`test-specs/pipelines/l2_state-panel-default-and-custom-variables_ELITEA-2042.md`'s
+Concrete Handles table — read that AFS first before adding testids to this
+feature; it has exact file:line references for every control (drawer
+container, close button, add-context button, name field, type-selector +
+menu items, delete button, default-value button, and the one shared
+`StateVariableIconButton` component that needs a new `testId` prop threaded
+through its 2 call sites).
