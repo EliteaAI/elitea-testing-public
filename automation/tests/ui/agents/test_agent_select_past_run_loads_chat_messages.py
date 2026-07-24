@@ -117,7 +117,9 @@ class TestAgentSelectPastRunLoadsChatMessages:
         with allure.step(
             "Step 5 — Verify the chat panel shows Run 1's own message and AI reply"
         ):
-            history_text = detail_page.get_all_chat_messages_text()
+            history_text = detail_page.get_all_chat_messages_text(
+                expected_text=RUN_1_MESSAGE, timeout=UI_ELEMENT_TIMEOUT
+            )
             assert RUN_1_MESSAGE in history_text, (
                 f"Chat panel should display Run 1's message ({RUN_1_MESSAGE!r}) "
                 f"after selecting its history entry, got: {history_text!r}"

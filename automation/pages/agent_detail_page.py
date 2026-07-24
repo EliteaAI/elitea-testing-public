@@ -2766,15 +2766,33 @@ class AgentDetailPage(AgentFormPage):
         attribute on a stable testid, never a second state-suffixed testid
         — ``.agents/testing.md`` § Locator policy).
 
+        Uses Playwright's auto-retrying ``expect(...).to_have_attribute()``
+        (same idiom as :meth:`click_run_history_item`) rather than a
+        one-shot ``get_attribute()`` read, which can catch a transient
+        pre-update ``false`` that flips to ``true`` moments later
+        (``chat_page.py`` documents this exact one-shot-read gap around its
+        own icon-wrapper wait). The retry uses a SHORT internal settle
+        timeout, decoupled from *timeout* (which still governs the row's
+        visibility wait): the ``data-selected`` flip is a synchronous React
+        commit, not a network round trip, so it resolves in well under a
+        second when the row genuinely is selected — a caller checking a
+        row that is genuinely NOT selected only pays that short settle
+        timeout, not the full *timeout*, before this returns ``False``.
+
         Args:
             index: Ordinal position of the row to check (0-based).
             timeout: Maximum wait time in milliseconds for the row to be visible.
         """
         item = self.get_run_history_items().nth(index)
         item.wait_for(state="visible", timeout=timeout)
-        return item.get_attribute("data-selected") == "true"
+        settle_timeout = min(timeout, 2000)
+        try:
+            expect(item).to_have_attribute("data-selected", "true", timeout=settle_timeout)
+            return True
+        except AssertionError:
+            return False
 
-    def get_all_chat_messages_text(self) -> str:
+    def get_all_chat_messages_text(self, expected_text: str | None = None, timeout: int = 10000) -> str:
         """Return the concatenated text of every message item currently
         rendered in the chat pane (the live embedded chat OR, while the Run
         History panel is open, its own chat pane — both mount the SAME
@@ -2784,10 +2802,27 @@ class AgentDetailPage(AgentFormPage):
         Used to assert on the CONTENT of a run's conversation (both the
         user message and the AI reply), not just message presence.
 
+        Args:
+            expected_text: If given, blocks on Playwright's auto-retrying
+                ``expect(...).to_contain_text()`` against ``chat_message_list``
+                before reading — the chat pane's own React re-render is a
+                separate commit from the conversation-details network response
+                :meth:`click_run_history_item` already waits on (that response
+                landing is not proof the client has re-rendered), so a caller
+                reading immediately after the click can otherwise race a
+                not-yet-updated pane. Same "response isn't proof of render"
+                class already fixed for the run-history LIST endpoint in
+                :meth:`get_run_history_item_count` / ``open_run_history_panel``.
+                Omit when the caller has already established the content is
+                present some other way (or the exact text isn't known).
+            timeout: Maximum wait time in milliseconds for *expected_text*.
+
         Returns:
             All message items' text, concatenated with newlines. Empty
             string if no messages are present.
         """
+        if expected_text is not None:
+            expect(self.chat_message_list).to_contain_text(expected_text, timeout=timeout)
         messages = self._embedded_chat_messages()
         count = messages.count()
         return "\n".join(messages.nth(i).text_content() or "" for i in range(count))
