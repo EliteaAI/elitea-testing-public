@@ -783,3 +783,84 @@ floating-label rendering artifact); the field's actual `.value` correctly
 holds exactly one string. Assert on the `agent-conversation-starter-input`
 element's `.value`, never on raw `innerText` occurrence counts, for this
 field.
+
+## Save/Discard dirty-tracking — a normalizing Save is required after ANY API-crafted pipeline (ELITEA-2028, 2026-07-24)
+
+**Every existing pipeline-creation API helper produces a "phantom dirty"
+pipeline on first UI touch.** `PipelineAPI.create_pipeline_with_nodes()`,
+`create_pipeline_with_llm_node()`, and a raw crafted payload all set
+`pipeline_settings: {"nodes": [], "edges": []}` (empty visual-layout data).
+The FIRST time the Flow (or Yaml) view renders for such a pipeline, the
+client auto-computes real canvas positions that differ from the stored empty
+array — and that diff ALONE flips Save/Discard from disabled to enabled,
+with **zero actual content edit**. Confirmed via a controlled A/B:
+
+- Raw-API pipeline, never touched via UI: Save/Discard **enabled** on the
+  very first navigate; switching Flow→Yaml→Flow with no edits made no
+  difference (already enabled either way) — this reproduces on
+  `create_pipeline_with_nodes()`/`create_pipeline_with_llm_node()` too, since
+  they share the identical empty-`pipeline_settings` shape.
+- Same pipeline shape, but with ONE extra step — add nodes via the UI's own
+  "+" button, then click **Save** once, then hard-reload: Save/Discard
+  **disabled** on the next fresh navigate, and switching Flow⇄Yaml repeatedly
+  with no edits correctly stayed disabled. Only a REAL content edit flipped
+  it to enabled.
+
+**Implication for any case that asserts a Save/Discard baseline** (started
+disabled, becomes enabled after edit X): after creating the pipeline via any
+API helper, perform ONE explicit `click_save()` / `save_and_wait_for_update()`
+BEFORE the test's real steps begin, and assert `is_save_enabled() == False`
+right after, as the test's own baseline check — otherwise "becomes enabled
+after edit X" passes vacuously (it was already enabled beforehand for an
+unrelated reason). **Not filed as a product defect** — the layout diff is a
+real, if surprising, uncommitted change, and it only manifests via the
+API-creation path, not the normal "create via UI" user flow.
+
+## YAML editor — `pipeline-yaml-lines` testid is DEAD (0 live DOM matches, ELITEA-2028, 2026-07-24)
+
+`PipelineDetailPage.yaml_lines` (testid `pipeline-yaml-lines`, used by
+`get_yaml_content()` to preserve line breaks) matches **zero** elements live
+— confirmed via `document.querySelectorAll('[data-testid="pipeline-yaml-lines"]').length
+=== 0` on a rendered, populated Yaml view, and via `git grep` finding no
+source anywhere (neither `main` nor `automation/testids`) that wires this
+string onto CodeMirror's `.cm-line` nodes. `YamlCodeEditor.jsx` calls
+`Field.CodeMirrorEditor` with no per-line testid prop at all — only
+`contentTestId` (a single-node mechanism) exists on that shared component
+today. **Not currently a blocker**: `get_yaml_content()` already silently
+falls back to `yaml_editor.text_content()` whenever `yaml_lines.count() ==
+0` (i.e. every time), so whole-YAML reads still work, just without
+preserved line breaks — this is why the existing merged
+`test_yaml_content_reflects_pipeline` test has never surfaced this (it only
+checks substring presence in the concatenated text).
+
+**For editing a specific line** (e.g. changing one node's `transition:`
+value without touching others), do NOT rely on `self.yaml_lines` — use the
+declared #579 improvisation instead, mirroring `mcp_form_page.py::
+fill_raw_json_line()` exactly: scope `get_by_text(current_line_text,
+exact=True)` inside the already-testid'd `yaml_editor` container, click →
+`Home` → `Shift+End` → one `keyboard.type(new_line_text)` call. Confirmed
+live end-to-end (ELITEA-2028): `Home`+`Shift+End` selects from the first
+non-whitespace character to end-of-line (leading indentation is NOT
+included in the selection — the replacement text should be just the
+line's logical content, e.g. `"transition: LLM 1"`, not
+`"    transition: LLM 1"`). **Multiple lines can share identical text**
+(e.g. two different nodes both `"transition: END"`) — disambiguate via
+`.last`/`.nth(k)` or by locating the node's own `"- id: {node_id}"` line
+first and then the next `"transition:"` line after it, never assume
+`get_by_text(...)` alone is unique.
+
+## Testid provenance — two view-toggle testids are FALSE NEGATIVES under literal `git grep` (ELITEA-2028, 2026-07-24)
+
+`pipeline-yaml-view` and `pipeline-flow-view` (the Yaml/Flow toggle buttons)
+both read as "not found on main" under a literal-string `git grep`, even
+though they work live and are used by already-merged tests. Root cause:
+`src/components/GroupedButton.jsx:57` builds the testid at RUNTIME via a
+template — `` data-testid={item.testid || `pipeline-${item.value}-view`} ``
+— so the literal string `"pipeline-yaml-view"` never appears anywhere in
+source; it's assembled from `"pipeline-"` + a variable + `"-view"`. When a
+provenance grep comes back empty for a testid you've confirmed working
+live, check whether the constructing component builds it from a template
+before concluding it's missing — this is the same class of gotcha
+`workflow.md`'s "two-stage grep pattern" note already covers for prop
+indirection, just one layer more indirect (multi-fragment template, not a
+single forwarded prop).
