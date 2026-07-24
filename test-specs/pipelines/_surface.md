@@ -489,13 +489,36 @@ in the same pass as the Toolkit-node broadening:**
   (any node type) reproduces the identical id collision. Needs a new
   `typeTestIdPrefix`-style prop, mirroring `valueTestIdPrefix`'s existing shape.
 
-**`CommonInterruptSettings.jsx` (Interrupt before/after, Structured output) has
-zero testid support for ANY node type** — unlike everything else in
+**UPDATE (ELITEA-2004 review fix pass R1, 2026-07-24) — `CommonInterruptSettings.jsx`
+now HAS testid support, added directly inside the shared component (not
+per-caller), exactly as this entry recommended below.** The claim in the
+paragraph immediately below ("zero testid support for ANY node type") is now
+STALE — corrected here rather than left to mislead the next reader. Three
+GENERIC testids landed via `EliteaAI/EliteaUI@1289e746` (on `automation/testids`
+only, confirmed live — NOT yet on `main`): `pipeline-node-interrupt-before-switch`,
+`pipeline-node-interrupt-after-switch`, `pipeline-node-structured-output-switch`.
+Deliberately node-type-agnostic (not LLM-scoped) since the component is shared
+across 8+ node types (LLM/MCP/Code/Agent/Subgraph/Decision/deprecated Loop+Tool)
+— per `.agents/testing.md` § Locator policy, a shared component gets a generic
+testid, not a caller-threaded `testId` prop, when no per-caller disambiguation
+is actually needed. First consumer/asserter: `ELITEA-2004`'s
+`test_pipeline_llm_node_configure_system_task_chat_history.py` (fix-round R1,
+commit `58a7be27`) — Case Step 3's "Interrupt before/after"/"Structured output"
+section-presence checks. Full AFS detail:
+`test-specs/pipelines/l2_configure-llm-node-system-task-chat-history_ELITEA-2004.md`
+§ Concrete Handles → "Review fix pass R1 additions".
+
+<details><summary>Original entry (now partially superseded by the update above — kept for history)</summary>
+
+`CommonInterruptSettings.jsx` (Interrupt before/after, Structured output) has
+zero testid support for ANY node type — unlike everything else in
 `BaseToolNode.jsx`, it isn't even `isMcpNode`-gated; it's simply never been
 given a `data-testid` prop at all. Since it's already universally shared,
 recommend adding GENERIC testids directly inside the component (not threaded
 per-caller) — no test has asserted these fields yet for any node type, so this
 is genuinely new ground, not a broadened gate.
+
+</details>
 
 **Multi-select gotcha — Input/Output tool-agnostic state-variable selects
 accept MULTIPLE values (chips), confirmed live.** Clicking an option in the
