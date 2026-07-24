@@ -186,6 +186,31 @@ class PipelineDetailPage(PipelineFormPage):
     # testid-keyed, not a raw role/CSS selector.
     SELECT_OPTION_PREFIX = '[data-testid^="select-option-"]'
 
+    # Router node inline config fields (ELITEA-2033). Testid-only, added via
+    # add-data-testid — RouterNode.jsx only renders these on router-type
+    # nodes. Page-wide (not scoped to a specific node container): correct as
+    # long as a test only has a single Router node on canvas (same
+    # convention as the MCP/LLM/HITL node fields above).
+    router_node_condition_input = LocatorDescriptor(
+        testid="pipeline-router-node-condition-input",
+        description="Router node's Condition Jinja-template textarea"
+    )
+
+    router_node_routes_select = LocatorDescriptor(
+        testid="pipeline-router-node-routes-select",
+        description="Router node's Routes multi-select (other node ids + END)"
+    )
+
+    router_node_input_select = LocatorDescriptor(
+        testid="pipeline-router-node-input-select",
+        description="Router node's Input state-variable multi-select"
+    )
+
+    router_node_default_output_select = LocatorDescriptor(
+        testid="pipeline-router-node-default-output-select",
+        description="Router node's Default output single-select"
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -1029,6 +1054,119 @@ class PipelineDetailPage(PipelineFormPage):
             return False
         text = (heading.text_content() or "").strip()
         return text == f"Input mapping (required {required_count})"
+
+    # ------------------------------------------------------------------
+    # Router node inline config (ELITEA-2033)
+    # ------------------------------------------------------------------
+
+    def set_router_condition(self, jinja_text: str, timeout: int = 5000) -> None:
+        """Type *jinja_text* into the Router node's Condition textarea.
+
+        A plain native ``<textarea name="condition">`` (not CodeMirror), so
+        ordinary press_sequentially() is sufficient — no autocomplete-popper
+        gotchas apply here (ELITEA-2033 AFS Automation Hints).
+
+        Args:
+            jinja_text: The Jinja condition template to type verbatim.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        field = self.router_node_condition_input
+        field.wait_for(state="visible", timeout=timeout)
+        field.click(timeout=timeout)
+        field.press_sequentially(jinja_text, delay=10)
+
+    def get_router_condition(self, timeout: int = 5000) -> str:
+        """Read the Router node's Condition textarea's current value."""
+        self.router_node_condition_input.wait_for(state="visible", timeout=timeout)
+        return self.router_node_condition_input.input_value()
+
+    def select_router_routes(self, node_ids: list[str], timeout: int = 5000) -> None:
+        """Open the Router node's Routes multi-select and choose each of *node_ids*.
+
+        Routes is a multi-select (RouteSelect.jsx passes multiple + showBorder)
+        that stays open between selections — confirmed live (ELITEA-2033 AFS
+        Test Steps 4 / Axis 2), so every target id is clicked in one
+        open/close cycle rather than reopening the menu per selection.
+
+        Args:
+            node_ids: Target node ids to select (matches
+                ``select-option-{node_id}``), e.g. ``["approve", "reject"]``.
+            timeout: Maximum wait time for the dropdown / options.
+        """
+        self.router_node_routes_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+        for node_id in node_ids:
+            self.page.locator(self.SELECT_OPTION.format(node_id)).click(timeout=timeout)
+        self.page.keyboard.press("Escape")
+        self.page.wait_for_timeout(300)
+
+    def get_router_routes(self, timeout: int = 5000) -> str:
+        """Read the Router node's Routes select's rendered chip text.
+
+        Returns the concatenated text of every selected-route chip (e.g.
+        ``"approvereject"`` for two chips with no separator) — sufficient to
+        assert membership (``"approve" in text`` / ``"reject" in text"``)
+        without needing a per-chip sub-selector.
+        """
+        self.router_node_routes_select.wait_for(state="visible", timeout=timeout)
+        text = (self.router_node_routes_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_router_input(self, value: str, timeout: int = 5000) -> None:
+        """Open the Router node's Input select and choose *value*.
+
+        Input is also a multi-select (InputSelect.jsx passes multiple) — an
+        explicit Escape close is required afterwards or the leftover MUI
+        popover/backdrop intercepts the next click (same gotcha documented
+        for the LLM node's Input/Output selects, ELITEA-2004).
+
+        Args:
+            value: The state variable name (matches ``select-option-{value}``).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self.router_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+        self.page.locator(self.SELECT_OPTION.format(value)).click(timeout=timeout)
+        self.page.keyboard.press("Escape")
+        self.page.wait_for_timeout(300)
+
+    def get_router_input(self, timeout: int = 5000) -> str:
+        """Read the Router node's Input select's rendered chip text."""
+        self.router_node_input_select.wait_for(state="visible", timeout=timeout)
+        text = (self.router_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_router_default_output(self, node_id: str, timeout: int = 5000) -> None:
+        """Open the Router node's Default output select and choose *node_id*.
+
+        Default output is a single-select (no ``multiple`` prop on this
+        ``SingleSelect`` call) — selecting an option auto-closes the menu,
+        no explicit Escape needed.
+
+        Args:
+            node_id: Target node id, or ``"END"`` (matches
+                ``select-option-{node_id}``).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self.router_node_default_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+        self.page.locator(self.SELECT_OPTION.format(node_id)).click(timeout=timeout)
+
+    def get_router_default_output(self, timeout: int = 5000) -> str:
+        """Read the Router node's Default output select's current display text.
+
+        NOTE (reverse-masking-guard-relevant, ELITEA-2033 AFS Step 6): a
+        freshly-added Router node already DISPLAYS "END" here with zero
+        interaction (RouterNode.jsx's client-side ``default_output || 'END'``
+        fallback) — this display value alone does NOT prove
+        ``default_output: END`` was persisted or that the canvas edge was
+        drawn. Callers must corroborate with the YAML view
+        (``get_yaml_content()``) and/or ``edge_exists()``, never rely on this
+        getter alone to assert persistence.
+        """
+        self.router_node_default_output_select.wait_for(state="visible", timeout=timeout)
+        text = (self.router_node_default_output_select.text_content() or "").replace("​", "")
+        return text.strip()
 
     # ------------------------------------------------------------------
     # TOOLS section — MCP attach (ELITEA-1955)

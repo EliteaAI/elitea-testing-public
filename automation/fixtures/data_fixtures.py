@@ -13,6 +13,7 @@ Fixtures:
 - agent_id: Fresh agent per test
 - pipeline_id: Fresh empty pipeline per test
 - pipeline_with_llm_id: Fresh executable pipeline with LLM node
+- pipeline_with_route_targets_id: Fresh pipeline with two Printer targets named "approve"/"reject"
 - github_credential: GitHub API credential (skipped if GITHUB_TOKEN unset)
 - github_toolkit: GitHub toolkit attached to a fresh credential
 - github_relevant_agents: GitHub-relevant Agent pair (selected/not_selected)
@@ -200,6 +201,59 @@ def pipeline_with_llm_id(pipeline_api: PipelineAPI, request):
         logger.info("Deleted LLM pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete LLM pipeline %s: %s", pid, exc)
+
+
+@pytest.fixture
+def pipeline_with_route_targets_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with two Printer target nodes named "approve"/"reject".
+
+    Seeds ELITEA-2033's precondition (a Router node's precondition needs two
+    other existing node ids to route to) via
+    ``PipelineAPI.create_pipeline_with_nodes()`` with the target ids specified
+    directly — this sidesteps a fragile UI-rename detour (nodes added via the
+    "Add node" menu get a type-prefixed default name like "Printer 1", not the
+    case's literal "approve"/"reject" test data; see the ELITEA-2033 AFS Axis 2
+    addition). Confirmed live: arbitrary (non-type-prefixed) node ids are
+    accepted by the API/YAML layer without validation error.
+
+    Yields the numeric pipeline ID so tests can add a Router node on top of
+    these two pre-seeded targets.
+
+    Args:
+        pipeline_api: PipelineAPI client (from api_fixtures)
+        request: Pytest request object (provides test metadata)
+
+    Yields:
+        int: Numeric pipeline ID
+    """
+    name = f"autotest_{request.node.name}"[:32]  # Truncate to 32 chars
+    description = f"Auto-created Router-target pipeline for test {request.node.name}"
+    nodes = [
+        {
+            "id": "approve",
+            "type": "printer",
+            "input_mapping": {"printer": {"type": "fixed", "value": "Approved"}},
+            "transition": "END",
+        },
+        {
+            "id": "reject",
+            "type": "printer",
+            "input_mapping": {"printer": {"type": "fixed", "value": "Rejected"}},
+            "transition": "END",
+        },
+    ]
+    pipeline = pipeline_api.create_pipeline_with_nodes(name, description, entry_point="approve", nodes=nodes)
+    pid = pipeline["id"]
+    logger.info("Created Router-target pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    # Cleanup: delete pipeline even if test fails
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted Router-target pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete Router-target pipeline %s: %s", pid, exc)
 
 
 @pytest.fixture

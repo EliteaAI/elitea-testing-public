@@ -43,6 +43,7 @@ from fixtures.data_fixtures import (
     agent_id,
     pipeline_id,
     pipeline_with_llm_id,
+    pipeline_with_route_targets_id,
     github_credential,
     github_toolkit,
     github_relevant_agents,
@@ -229,6 +230,7 @@ def attach_screenshot(page: Page, name: str, description: str = "") -> Path:
 # - agent_id: Fresh agent per test
 # - pipeline_id: Fresh empty pipeline per test
 # - pipeline_with_llm_id: Fresh executable pipeline with LLM node
+# - pipeline_with_route_targets_id: Fresh pipeline with two Printer targets named "approve"/"reject"
 
 # ===========================================================================
 # Onboarding fixtures (imported from fixtures/onboarding_fixtures.py)
