@@ -679,28 +679,41 @@ template string — present on `origin/automation/testids`, absent on
 `origin/main`) — pending human promotion, same as the rest of ELITEA-2004's
 work.
 
-**Three genuine gaps, all trivial wiring, none needing shared-component
-edits:**
-- HITL's own **Input select** (top of panel) has **zero testid** — worse than
-  the ordinary duplicate-id case: its native id is the LITERAL STRING
-  `simple-select-[object Object]`, because `HITLNode.jsx:196-201` passes a
-  JSX element (`<FlowEditorSettings.LabelWithTooltip .../>`) as the `label`
-  prop, and `SingleSelect.jsx`'s `id={id || 'simple-select-' + label}` default
-  coerces it to `"[object Object]"` via string concatenation. Wiring point:
-  `FlowEditorSelect.InputSelect` already supports `dataTestId` (same
-  mechanism as `pipeline-llm-node-input-select` on the LLM node) — add
-  `dataTestId="pipeline-hitl-node-input-select"` at the `HITLNode.jsx:194`
-  call site.
-- The 3 **ROUTER MAPPING Route selects** (APPROVE/EDIT/REJECT) share the
-  literal duplicate id `simple-select-Route` (same root-cause family as
-  `#1006`/`#1009`, not re-filed) and have **zero testid**. Wiring point:
-  `HITLNode.jsx:238`, inside the `HITL_ACTIONS.map(action => ...)` loop —
-  needs a DYNAMIC per-action testid, recommend
-  `pipeline-hitl-node-router-{action}-select` (`{action}` = `action.value`,
-  already available at the call site).
-- The **EDIT STATE KEY Value select** has native id `simple-select-Value`
-  (same root-cause family, not re-filed) and **zero testid**. Wiring point:
-  `HITLNode.jsx:263` — recommend `pipeline-hitl-node-edit-state-key-select`.
+**Three gaps identified at first analysis — since ADDED by the implementer,
+now on `automation/testids` only (2026-07-24 redispatch, re-confirmed via a
+fresh `git fetch origin` + `git grep` AND a real pytest rerun — `1 passed in
+27.21s`; NOT yet on `main`, `EliteaAI/EliteaUI@4ccf24ac` "add HITL node
+testids (ELITEA-2014)"):**
+- HITL's own **Input select** (top of panel) — native id was the LITERAL
+  STRING `simple-select-[object Object]` (worse than the ordinary
+  duplicate-id case: `HITLNode.jsx:196-201` passes a JSX element as the
+  `label` prop, and `SingleSelect.jsx`'s `id={id || 'simple-select-' + label}`
+  default coerces it to `"[object Object]"` via string concatenation). Now
+  carries `dataTestId="pipeline-hitl-node-input-select"` via
+  `FlowEditorSelect.InputSelect` at `HITLNode.jsx:204`.
+- The 3 **ROUTER MAPPING Route selects** (APPROVE/EDIT/REJECT) — previously
+  shared the literal duplicate id `simple-select-Route` (same root-cause
+  family as `#1006`/`#1009`, not re-filed). Now carry a DYNAMIC per-action
+  testid at `HITLNode.jsx:253`:
+  `` data-testid={`pipeline-hitl-node-router-${action.value}-select`} ``
+  (inside the `HITL_ACTIONS.map(action => ...)` loop) — exactly the shape
+  originally recommended.
+- The **EDIT STATE KEY Value select** — previously native id
+  `simple-select-Value` (same root-cause family, not re-filed). Now carries
+  `data-testid="pipeline-hitl-node-edit-state-key-select"` at
+  `HITLNode.jsx:275`.
+
+**Case status (2026-07-24 redispatch):** fully implemented — PR
+`EliteaAI/elitea-testing-public#1026`, OPEN against `automation/base`,
+locator-compliant (mechanical grep: zero raw handles, all class-level
+`[data-testid=` template constants), independently re-run green twice
+(implementer's own 26.57s + this redispatch's 27.21s). A board bounce
+(`implementing` → `parked` "R2 cap exceeded" → `analysis`) most likely fired
+against an earlier in-progress state before two documented implementer
+debugging rounds landed (a `multiple=True` MUI-select Backdrop leak;
+`edge_exists()`'s stale `handle_suffix` format assumption — see the
+implementer's own MEMORY.md for both). Correct next action is a reviewer
+dispatch against PR #1026, not another analyst/implementer round.
 
 **Not already-covered by the merged PIPE-031** (`test_pipeline_nodes.py::
 test_add_human_in_the_loop_node_and_connect_to_end`) — that spec only adds a
