@@ -620,6 +620,19 @@ transition-rewire sequence is 100% client-side; only the pipeline's own
 Save button fires a network request (`PUT .../application/prompt_lib/...`,
 `201`) that persists it.
 
+**Canvas-timing gotcha, confirmed during implementation (fix round R1):**
+the underlying YAML/`transition` model updates INSTANTLY on delete (assert
+this via `switch_to_yaml_view()` / `get_yaml_content()` right after the
+confirm click), but **ReactFlow's own rendered `edges` array does not
+recompute until a Flow/YAML view remount or a full page reload** — so the
+NEW auto-rewired live canvas edge (e.g. `LLM 1 → END` after deleting
+`Code 1`) will NOT yet be visible/queryable via `edge_exists()` immediately
+after the delete+confirm click, only after Save + reload. Any case on this
+surface asserting "the rewired edge now exists" must split the assertion:
+YAML-model check right after delete, live-canvas-edge check only after a
+reload. Asserting the live edge too early is not a defect, just a premature
+read of a `ReactFlow` internal that hasn't re-rendered yet.
+
 **Ambient console warning, not a delete-node regression.** `[React Flow]:
 It looks like you've created a new nodeTypes or edgeTypes object...` fires
 repeatedly (level: `warning`, not `error`) on canvas re-renders throughout
