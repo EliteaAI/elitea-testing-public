@@ -132,3 +132,89 @@ Per-character `press()` calls produced the correct result every time.
 Zero `error`-level console messages across the full GAP-007 session
 (popper open/filter/navigate/insert/dismiss, both defect reproductions,
 modal open/close cycles).
+
+## LLM node — Input/Output selects and default STATE vars (ELITEA-2004, 2026-07-24)
+
+Confirmed live: **`input` and `messages` are available in the Input/Output
+comboboxes on ANY pipeline, even with NO explicit top-level `state:` block in
+its YAML at all.** A pipeline created purely by clicking the canvas UI (no
+custom state vars ever added via the STATE drawer or an API `state:` PUT) still
+listed exactly these two options, each carrying the existing
+`select-option-{value}` testid (`select-option-input`, `select-option-messages`
+— same shared family already used everywhere else). These are implicit
+built-ins (the user's message / the running conversation), not something a case
+needs to seed — only CUSTOM additional vars need the `state:` YAML block (per
+GAP-007's finding above).
+
+`LLMNode.jsx` renders `<FlowEditorSelect.InputSelect id={id} label="Input" .../>`
+and `<FlowEditorSelect.OutputSelect id={id} label="Output" .../>` — the SAME
+shared components `BaseToolNode.jsx` uses for MCP nodes' Input/Output selects,
+which already receive a `dataTestId` prop there
+(`dataTestId={isMcpNode ? 'pipeline-mcp-node-input-select' : undefined}`,
+`InputSelect.jsx`/`OutputSelect.jsx` line ~9 destructure + forward it straight
+to the shared `Select.SingleSelect`'s `data-testid`). `LLMNode.jsx`'s own call
+sites are simply missing this prop today (confirmed zero `data-testid` inside
+an LLM node's DOM except ReactFlow's own `node-menu-menu-button`) — trivial
+fix: `dataTestId="pipeline-llm-node-input-select"` /
+`"pipeline-llm-node-output-select"`, no ternary needed since `LLMNode.jsx` is
+already LLM-specific. Same mechanism yields a `-combobox` suffix testid
+(carries `aria-expanded`) for free, exactly like
+`pipeline-mcp-node-toolkit-select-combobox`.
+
+Native id today (exploration-only, NOT policy-compliant, and NOT
+multi-node-safe): `#simple-select-Input` / `#simple-select-Output` /
+`#simple-select-Toolkits` (all label-derived, same root cause as the
+duplicate `#simple-select-Type` bug `#1006` below).
+
+## SYSTEM/TASK/CHAT HISTORY Value-field wiring point (ELITEA-2004, 2026-07-24)
+
+Confirmed via source read (`SimpleLLMInputItem.jsx`'s `NodeFieldInput.
+commonProps`, `id: `${variable}-value``) AND live DOM read: the three inline
+Value fields render as real `<textarea>` elements with dev-only ids
+`#system-value` / `#task-value` / `#chat_history-value` — directly editable
+inline, no modal needed (the AI-Assistant fullscreen-icon/modal is an
+OPTIONAL enhancement on top, only for `system`/`task`/`code`/`printer`/
+`user_message` fields when Type is Fixed/F-String; Chat History never gets it).
+**Zero `data-testid` on any of the three today.**
+
+Wiring point (source-confirmed, no shared-component edits needed): add
+`inputProps: {'data-testid': `pipeline-llm-node-${variableName}-value-input`}`
+to `NodeFieldInput.commonProps` (`SimpleLLMInputItem.jsx` line ~48). This
+flows through either branch (`AIAssistantInput`'s `...leftProps` spread, or
+directly `Input.StyledInputEnhancer`) into `InputBase.jsx`'s
+`slotProps={{ htmlInput: inputProps }}` (line ~267), which MUI applies
+straight onto the native `<textarea>` — a first-class, already-supported
+`InputBase` prop, confirmed by reading the full prop-flow chain.
+
+## Duplicate `#simple-select-Type` id — re-confirmed live (ELITEA-2004, 2026-07-24)
+
+Re-confirmed the `#1006` bug this session on a fresh single-LLM-node canvas:
+`document.querySelectorAll('#simple-select-Type').length === 3` (System/Task/
+Chat History). Still not fixed, still non-blocking, still routes around via
+testid (once added) rather than the native id — see the Type-select wiring
+point documented above (GAP-007 section) for the exact `add-data-testid` fix.
+
+## Save/reload persistence — YAML view is a strong second verification source
+
+For any case asserting "config persists after Save + reload", read BOTH the
+Flow-view inline fields AND the `Yaml` tab (`pipeline-yaml-editor`/
+`pipeline-yaml-lines`, pre-existing testids, `PipelineDetailPage.
+get_yaml_content()` already implemented) — confirmed live this session that
+both sources agree exactly after a hard reload (`input_mapping.system/task/
+chat_history.type`/`.value`, top-level `input:`/`output:` arrays). This is
+the SAME pattern the merged `test_yaml_content_reflects_pipeline` test
+already uses; prefer it over scraping Input/Output multi-select chip text
+(chips carry no testid at all — `SingleSelect.jsx`'s `renderMultipleValue`,
+bare MUI `<Chip>`).
+
+## Tooling gotcha cross-reference
+
+`browser-verify`/`cdp.mjs`'s `--clear` flag and a synthetic Ctrl+A+Backspace do
+NOT reliably clear these MUI multiline textareas (analyst-tooling-only, not a
+product defect — full writeup:
+`.agents/memory/qa-engineer/browser_verify_cdp_clear_backspace_does_not_clear_mui_textarea.md`).
+Workaround used this session: a native-setter + `dispatchEvent(new
+Event('input', {bubbles:true}))` via `evaluate()` to force-set the value
+directly, confirmed to correctly trigger React's controlled-input `onChange`
+(the app's own dirty-state indicator reacted correctly). Does not affect the
+real Playwright/pytest suite (`fill()`/`press_sequentially()` are unaffected).
