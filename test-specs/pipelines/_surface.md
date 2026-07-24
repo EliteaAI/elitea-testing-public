@@ -508,3 +508,88 @@ combobox interactions can silently select the WRONG combobox's option list
 (this session's own mistake: reusing an Input-select popper's option ref
 after intending to open Output) — always re-snapshot between opening one
 combobox and the next, never reuse a ref across them.
+
+## HITL node — Input/USER MESSAGE/ROUTER MAPPING/EDIT STATE KEY (ELITEA-2014, 2026-07-24)
+
+**Config is always inline/expanded, same as every other node type** — no
+click-to-open, no accordion-click needed even for the "Router mapping"
+sub-section (confirmed expanded by default on a freshly-added node).
+
+**Two real execution-order dependencies, both source-confirmed, neither a
+defect** — get these backwards and the target field is simply disabled
+(`aria-disabled="true"`), not broken:
+1. The top-level **Input** select is disabled until **USER MESSAGE Type** is
+   set to **F-String** (`HITLNode.jsx:58`,
+   `isInputSelectDisabledByMessageType = userMessageType !== 'fstring'`) — a
+   tooltip on the Input label states this explicitly. Configure USER MESSAGE
+   Type before Input, not after (case ELITEA-2014's own step numbering has
+   this backwards).
+2. The **ROUTER MAPPING → EDIT** Route select is disabled until **EDIT STATE
+   KEY** has a non-empty value (`HITLNode.jsx:244-248`). Configure EDIT STATE
+   KEY before the EDIT route, not after (same backwards-numbering pattern in
+   ELITEA-2014's case text).
+
+**REJECT defaults to `END` out of the box** — confirmed live via a
+pre-interaction DOM read (`aria-disabled=null`, displayed text already
+`"END"`) AND via the YAML view showing `routes: {reject: END}` on a
+freshly-added HITL node with zero prior edits. No click is strictly required
+to satisfy this part of a case asking for "REJECT → END".
+
+**EDIT's route options deliberately EXCLUDE `END`** (source-confirmed,
+`HITLNode.jsx:49-52`, `editRouteOptions` filters out
+`FlowEditorConstants.PipelineNodeTypes.End`) — APPROVE and REJECT both offer
+every node INCLUDING END; EDIT never does. This is correct product behavior
+(an Edit route must lead somewhere that continues the flow), not a bug —
+don't file it, don't expect END in EDIT's option list.
+
+**Same shared `SimpleLLMInputItem` component as the LLM node's System/Task/
+Chat History fields — testid prefix hardcoded to `pipeline-llm-node-`
+regardless of caller.** `HITLNode.jsx:208` renders its USER MESSAGE field via
+`FlowEditorSettings.SimpleLLMInputItem` with `variableName="user_message"` —
+the SAME component `SimpleLLMInputs.jsx` uses for the LLM node. Because the
+testid template (`pipeline-llm-node-${variableName}-type-select` /
+`-value-input`) lives INSIDE the shared component rather than being passed by
+the caller, the HITL node's USER MESSAGE fields get testids literally named
+`pipeline-llm-node-user_message-type-select` / `-value-input` — misleading
+(HITL is not an LLM node) but still unique and usable (scoped inside
+`rf__node-HITL 1`). Filed `EliteaAI/elitea-testing-public#1017` (MINOR,
+non-blocking). These two testids exist on `automation/testids` only
+(confirmed via a fresh `git fetch origin` + `git grep -F` for the literal
+template string — present on `origin/automation/testids`, absent on
+`origin/main`) — pending human promotion, same as the rest of ELITEA-2004's
+work.
+
+**Three genuine gaps, all trivial wiring, none needing shared-component
+edits:**
+- HITL's own **Input select** (top of panel) has **zero testid** — worse than
+  the ordinary duplicate-id case: its native id is the LITERAL STRING
+  `simple-select-[object Object]`, because `HITLNode.jsx:196-201` passes a
+  JSX element (`<FlowEditorSettings.LabelWithTooltip .../>`) as the `label`
+  prop, and `SingleSelect.jsx`'s `id={id || 'simple-select-' + label}` default
+  coerces it to `"[object Object]"` via string concatenation. Wiring point:
+  `FlowEditorSelect.InputSelect` already supports `dataTestId` (same
+  mechanism as `pipeline-llm-node-input-select` on the LLM node) — add
+  `dataTestId="pipeline-hitl-node-input-select"` at the `HITLNode.jsx:194`
+  call site.
+- The 3 **ROUTER MAPPING Route selects** (APPROVE/EDIT/REJECT) share the
+  literal duplicate id `simple-select-Route` (same root-cause family as
+  `#1006`/`#1009`, not re-filed) and have **zero testid**. Wiring point:
+  `HITLNode.jsx:238`, inside the `HITL_ACTIONS.map(action => ...)` loop —
+  needs a DYNAMIC per-action testid, recommend
+  `pipeline-hitl-node-router-{action}-select` (`{action}` = `action.value`,
+  already available at the call site).
+- The **EDIT STATE KEY Value select** has native id `simple-select-Value`
+  (same root-cause family, not re-filed) and **zero testid**. Wiring point:
+  `HITLNode.jsx:263` — recommend `pipeline-hitl-node-edit-state-key-select`.
+
+**Not already-covered by the merged PIPE-031** (`test_pipeline_nodes.py::
+test_add_human_in_the_loop_node_and_connect_to_end`) — that spec only adds a
+HITL node and drags a canvas edge from its approve handle to END
+(`connect_nodes(..., source_handle="approve")`); it has zero USER MESSAGE,
+EDIT STATE KEY, or EDIT-route coverage, and reaches `routes.approve` through
+ReactFlow's `onConnect` rather than the panel's Route-select `onValueChange`.
+A case exercising the panel fields is a distinct code path, not a duplicate.
+
+Full Concrete Handles table (exact line numbers, all field wiring points) is
+in `test-specs/pipelines/l2_hitl-node-config-router-mapping_ELITEA-2014.md` —
+read that AFS first if implementing this case.
