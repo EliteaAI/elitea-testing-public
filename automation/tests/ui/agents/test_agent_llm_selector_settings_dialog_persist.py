@@ -51,11 +51,16 @@ SAVE_RESPONSE_TIMEOUT = 15_000
 
 # A "Supports reasoning" model, distinct from the agent's creation-time
 # default — its display name as rendered in the model-selector dropdown
-# (confirmed live during AFS analysis). The case's own Test Data table names
-# GPT-5.4 as its example but lists GPT-5.2 as an equally valid substitute for
-# the "Supports reasoning" requirement; GPT-5.2 also doubles as
-# settings.default_model_name, kept cheap for cost efficiency in tests.
-TARGET_MODEL_DISPLAY_NAME = "GPT-5.2"
+# (confirmed live during AFS analysis; this is the AFS's own primary
+# exploration target). Fix round R1: must NOT equal settings.default_model_name
+# ("gpt-5.2" -> displays "GPT-5.2", confirmed via test_import_agent_valid_md_file.py's
+# EXPECTED_MODEL_DISPLAY_NAME) since _build_dedicated_agent_payload() below creates
+# the test agent with settings.default_model_name as its initial model — reusing
+# that same display name as the "target to switch to" made Steps 3/4/9's
+# model-changed/persisted assertions vacuous (old == new, always true). GPT-5.4
+# is a distinct reasoning-capable model, confirmed live in the AFS (dynamic
+# testid `model-selector-option-gpt-5.4`).
+TARGET_MODEL_DISPLAY_NAME = "GPT-5.4"
 
 
 def _build_dedicated_agent_payload(name: str) -> dict:
@@ -150,6 +155,16 @@ class TestAgentLlmSelectorSettingsDialogPersist:
                 initial_model_name = detail_page.get_selected_model_name()
                 assert initial_model_name, (
                     "A model name should be selected on the closed model selector"
+                )
+                # Defensive guard (fix round R1): the dedicated agent is created with
+                # settings.default_model_name as its initial model. If TARGET_MODEL_DISPLAY_NAME
+                # ever collided with it again, Steps 3/4/9's "model changed and persisted"
+                # assertions would pass vacuously (old == new) without exercising an actual
+                # switch. Fail loudly here instead of shipping a silent no-op test.
+                assert TARGET_MODEL_DISPLAY_NAME != initial_model_name, (
+                    f"Test-data error: target model {TARGET_MODEL_DISPLAY_NAME!r} must differ "
+                    f"from the agent's initial model {initial_model_name!r}, or the "
+                    "model-switch/persistence assertions below would be vacuous"
                 )
 
             with allure.step(
