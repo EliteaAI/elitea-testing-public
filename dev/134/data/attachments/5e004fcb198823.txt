@@ -1,0 +1,10 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Switch project — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("project-selector-trigger-combobox")
+ERROR    elitea.steps:actions.py:49 Step failed: Switch project — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("project-selector-trigger-combobox")
+ERROR    elitea.steps:actions.py:49 Step failed: Switch project — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("project-selector-trigger-combobox")
+WARNING  elitea.automation.fixtures.cleanup:cleanup_fixtures.py:127 Session cleanup: Found 1 leaked credentials, deleting all...

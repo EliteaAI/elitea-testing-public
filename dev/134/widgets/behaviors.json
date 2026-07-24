@@ -1,1 +1,1 @@
-{"total":0,"items":[]}
+{"total":218,"items":[{"uid":"14a0351321926c6f2756ea700f80b4c8","name":"Toolkits","statistic":{"failed":1,"broken":1,"skipped":0,"passed":0,"unknown":0,"total":2}},{"uid":"c3a8e400286345f74c2d2affb287d776","name":"Artifacts","statistic":{"failed":0,"broken":8,"skipped":0,"passed":1,"unknown":0,"total":9}},{"uid":"bd05d431eda755be83ae09f3c2ec9564","name":"Chat","statistic":{"failed":0,"broken":1,"skipped":0,"passed":0,"unknown":0,"total":1}}]}

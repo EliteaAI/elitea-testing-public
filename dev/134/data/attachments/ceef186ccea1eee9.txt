@@ -1,0 +1,7 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Open agent picker — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("agent-add-agent-button") to be visible
+
+ERROR    elitea.steps:actions.py:49 Step failed: Attach agent — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("agent-add-agent-button") to be visible

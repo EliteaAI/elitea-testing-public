@@ -1,0 +1,8 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Select file checkbox — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("[data-testid=\"artifacts-file-checkbox-a1\"]") to be visible
+WARNING  elitea.automation.fixtures.data:data_fixtures.py:553 Failed to delete artifact bucket 'autotest-test-delete-subfolder-via-check-120874': 404 Client Error: Not Found for url: https://dev.elitea.ai/api/v2/artifacts/buckets/default/577/p--577.autotest-test-delete-subfolder-via-check-120874 — headers: {'Content-Length': '136', 'Content-Type': 'application/json', 'Date': 'Fri, 24 Jul 2026 11:39:07 GMT', 'Vary': 'Cookie'} — body: {'message': 'The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.'}
+ERROR    elitea.steps:actions.py:49 Step failed: Select file checkbox — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("[data-testid=\"artifacts-file-checkbox-a1\"]") to be visible
+WARNING  elitea.automation.fixtures.data:data_fixtures.py:553 Failed to delete artifact bucket 'autotest-test-delete-subfolder-via-check-153819': 404 Client Error: Not Found for url: https://dev.elitea.ai/api/v2/artifacts/buckets/default/577/p--577.autotest-test-delete-subfolder-via-check-153819 — headers: {'Content-Length': '136', 'Content-Type': 'application/json', 'Date': 'Fri, 24 Jul 2026 11:39:36 GMT', 'Vary': 'Cookie'} — body: {'message': 'The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.'}
