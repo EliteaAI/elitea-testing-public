@@ -718,6 +718,30 @@ class TestSkillImportRejectionAndCrossProjectImport:
         # ------------------------------------------------------------------
         with allure.step("Step 5 — Confirm import; verify dialog closes and success toast appears"):
             list_page.confirm_cross_project_import(timeout=NAVIGATION_TIMEOUT)
+
+            # Register the newly created Project B skill with the cleanup
+            # fixture IMMEDIATELY — confirm_cross_project_import() already
+            # waits for the server-confirmed success toast internally, so the
+            # skill exists in Project B (400) the instant this call returns.
+            # Registering here — rather than in Step 7, where the id was
+            # previously first discovered — closes the window in which a
+            # failure in the rest of Step 5 or in Step 6 would leave this
+            # skill orphaned in the shared 'UI Testing' project: the
+            # fixture's teardown is a no-op while holder["id"] is still None
+            # (see cleanup_project_b_skill's docstring). Only the explicit
+            # delete stays deferred to Step 7.
+            project_b_skill_api = cleanup_project_b_skill["api"]
+            rows_after_import = project_b_skill_api.list_skills(limit=500).get("rows", [])
+            newly_imported_skill = next(
+                (s for s in rows_after_import if s.get("name") == skill_name), None
+            )
+            assert newly_imported_skill is not None, (
+                f"Imported skill {skill_name!r} should be present in Project B "
+                f"(id={GAP061_TARGET_PROJECT_ID}, 'UI Testing') immediately after "
+                f"the cross-project import confirms"
+            )
+            cleanup_project_b_skill["id"] = newly_imported_skill["id"]
+
             assert not list_page.import_preview_dialog.is_visible(), (
                 "Import preview dialog should be closed after confirming a cross-project import"
             )
@@ -749,6 +773,14 @@ class TestSkillImportRejectionAndCrossProjectImport:
         # Step 7 — Switch to Project B, confirm presence, then delete
         # ------------------------------------------------------------------
         with allure.step("Step 7 — Confirm the imported skill is present in Project B, then delete it"):
+            # cleanup_project_b_skill["id"] was already registered right
+            # after Step 5's import confirmed (see above) — this is the
+            # case's own "confirm present" assertion (AFS step 7), re-derived
+            # via a fresh list read rather than reused from a local variable,
+            # so it independently proves the skill is still there before
+            # deletion. Re-assigning cleanup_project_b_skill["id"] here is a
+            # harmless, idempotent re-confirmation (same id), not the first
+            # registration point.
             project_b_skill_api = cleanup_project_b_skill["api"]
             rows = project_b_skill_api.list_skills(limit=500).get("rows", [])
             imported_skill = next((s for s in rows if s.get("name") == skill_name), None)
@@ -757,9 +789,6 @@ class TestSkillImportRejectionAndCrossProjectImport:
                 f"(id={GAP061_TARGET_PROJECT_ID}, 'UI Testing') after the cross-project import"
             )
             imported_skill_id = imported_skill["id"]
-            # Register with the cleanup fixture BEFORE deleting, so a failure in
-            # the delete call itself (or the assertions below) still leaves a
-            # safety-net teardown delete in place.
             cleanup_project_b_skill["id"] = imported_skill_id
 
             project_b_skill_api.delete_skill(imported_skill_id)
