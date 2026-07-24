@@ -155,37 +155,43 @@ Extended 2026-07-24 (analyst run, batch `cov60`). `AgentCard.jsx` click opens
 `actions.setSelectedAgentInfo` and navigates to `/chat?create=1`, landing on
 `NewConversationView.jsx` with the agent pre-selected.
 
-### Zero testids on this whole path (confirmed live, 2026-07-24)
+### Testids on this whole path — LANDED 2026-07-24 (was "zero testids", now do NOT re-run `add-data-testid`)
 
-- **`AgentCard.jsx`** (`Card` root) — no `data-testid`, only
-  `data-tour={ELITEA_CATALOG_TOUR_TARGET_IDS.entityCard}`. `application.id` is
-  available for a dynamic testid. Recommend `catalog-agent-card-{}` (template,
-  suffix = `application.id`).
-- **`AgentModal.jsx`** — the `Dialog` itself has no testid (only
-  `aria-labelledby`/`aria-describedby`). Recommend `catalog-agent-detail-modal`.
-- **`AgentConversationStarters.jsx`** — both the section header (`Typography`,
+**Update (2026-07-24, ELITEA-2092 analyst redispatch Pass 2):** all 6 rows
+below landed in ONE commit, `EliteaAI/EliteaUI@ae7d2703` ("test: [EL-0000]
+add data-testid for Agent Hub modal + Start Chat (ELITEA-2092)"), on
+`automation/testids` only (not yet on `main` — awaiting human cherry-pick).
+Fresh `git fetch origin` + `git grep` confirmed byte-for-byte match to every
+recommendation below, and a live spot-check (isolated CDP,
+`http://localhost:5173`) confirmed all 6 resolve and behave correctly
+end-to-end (modal opens, starters text/empty-state render, Start Chat
+navigates cleanly with the documented pre-click wait avoiding `#1043`'s
+race). **Any future case touching this path should use these testids
+directly — the gap this section originally described is closed.**
+
+- **`AgentCard.jsx`** (`Card` root) — `data-testid="catalog-agent-card-{application.id}"`
+  (was: no `data-testid`, only `data-tour={ELITEA_CATALOG_TOUR_TARGET_IDS.entityCard}`).
+- **`AgentModal.jsx`** — `data-testid="catalog-agent-detail-modal"` on the
+  `Dialog` (was: only `aria-labelledby`/`aria-describedby`).
+- **`AgentConversationStarters.jsx`** — `data-testid="catalog-agent-modal-starters-header"`
+  / `data-testid="catalog-agent-modal-starters-empty"` (section header,
   literal text **"CHAT STARTERS"**, NOT "CONVERSATION STARTERS" — case-text
-  drift, filed `#1042`) and the empty-state message (`"No predefined
-  conversation starters – just type your request to begin."`, note EN dash not
-  EM dash) have no testid. Recommend `catalog-agent-modal-starters-header` /
-  `catalog-agent-modal-starters-empty`.
-- **"Start Chat" button** (`AgentModal.jsx` `DialogActions`) — literal text is
+  drift, filed `#1042`; empty-state message `"No predefined conversation
+  starters – just type your request to begin."`, note EN dash not EM dash).
+- **"Start Chat" button** (`AgentModal.jsx` `DialogActions`) —
+  `data-testid="catalog-agent-modal-start-chat-button"`. Literal text is
   **"Start Chat"**, NOT "Start conversation" (case-text drift, same `#1042`).
-  Only carries `data-tour={ELITEA_CATALOG_TOUR_TARGET_IDS.primaryActionButton}`,
-  no testid. Recommend `catalog-agent-modal-start-chat-button`.
 - **Sidebar "Catalog" entry point** (`AgentHubButton.jsx`, bottom of sidebar,
-  above Support Bot) — the case's "Agent HUB" nav item. Visible label is
-  "Catalog" (route `RouteDefinitions.EliteaCatalog` = `/elitea-catalog`); only
-  carries `data-tour={SIDEBAR_TOUR_TARGET_IDS.agentHub}`, no testid. Recommend
-  `sidebar-agent-hub-button`. Confirmed live: clicking it from `/chat` lands on
-  `/elitea-catalog` (no query string — `?tab=agents` is the default per
-  `EliteaCatalog.jsx`'s own fallback, so a bare `/elitea-catalog` already shows
-  the Agents tab).
+  above Support Bot) — `data-testid="sidebar-agent-hub-button"` — the case's
+  "Agent HUB" nav item. Visible label is "Catalog" (route
+  `RouteDefinitions.EliteaCatalog` = `/elitea-catalog`). Confirmed live:
+  clicking it from `/chat` lands on `/elitea-catalog` (no query string —
+  `?tab=agents` is the default per `EliteaCatalog.jsx`'s own fallback, so a
+  bare `/elitea-catalog` already shows the Agents tab).
 - **Composer's "×"/clear-participant button** (`AgentEditorPanel.jsx`,
   `chat-input` feature — NOT part of this hubs module, but directly downstream
-  of Start Chat) — `IconButton aria-label="switch to model"`, no testid.
-  Recommend `chat-clear-participant-button` (section `chat`, matches sibling
-  `chat-switch-participant-button` naming).
+  of Start Chat) — `data-testid="chat-clear-participant-button"` (`IconButton
+  aria-label="switch to model"`).
 
 ### Chat handoff — ALREADY has testids (reuse, don't re-add)
 
@@ -198,6 +204,15 @@ e.g. `"v2.1"` — matches ELITEA-2092's own example exactly, no drift there),
 user+AI pair; AI item shows `"Thought for N secs"` + model name +
 reply text), `chat-new-conversation-greeting`, `chat-conversation-item-{id}`,
 `chat-conversation-group-header-today`.
+
+**Viewport gotcha (confirmed 2026-07-24, redispatch spot-check):**
+`chat-switch-participant-button`/`chat-version-selector-trigger` collapse to
+icon-only (empty `innerText`, `aria-label` only) below roughly 1000px
+viewport width — a responsive layout change, not a defect. At the suite's
+actual test viewport (1366×768, `automation/conftest.py`) both render full
+text as documented above. If manually spot-checking with a narrow/mobile
+browser-verify viewport, don't mistake the icon-only collapse for a broken
+testid.
 
 **Naming placeholder (ELITEA-2092 step 7) — real, transient, has a testid:**
 `conversation-naming-spinner` (`ConversationItem.jsx:365`, on BOTH `main` and
