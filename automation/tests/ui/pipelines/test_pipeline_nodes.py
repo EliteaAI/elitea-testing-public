@@ -136,9 +136,14 @@ class TestEdgeCreation:
             pipelines.zoom_in()
             pipelines.fit_view()
 
+            # get_node_count() counts every .react-flow__node in the DOM,
+            # including END (matches the merged test_save_multi_node_pipeline
+            # precedent: 1 custom node + END == 2) — confirmed live via
+            # get_node_ids() == ['END', 'LLM 1', 'Printer 1'] on this exact
+            # fixture (AFS amended per this implementer-exploration finding).
             node_count = pipelines.get_node_count()
-            assert node_count == 2, (
-                f"Expected 2 nodes (LLM 1 + Printer 1), got {node_count}"
+            assert node_count == 3, (
+                f"Expected 3 nodes (LLM 1 + Printer 1 + END), got {node_count}"
             )
             assert pipelines.edge_exists("LLM 1", _END_NODE_ID), (
                 "Baseline: 'LLM 1' should start wired to END"
