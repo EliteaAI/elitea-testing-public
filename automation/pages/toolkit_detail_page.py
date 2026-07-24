@@ -16,7 +16,7 @@ Enhancement #5114: Added support for credential status indicators:
 import logging
 import re
 
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -467,3 +467,128 @@ class ToolkitDetailPage(BasePage):
         warning_locator = self._get_credential_error_locator()
         expect(warning_locator.first).not_to_be_visible(timeout=timeout)
         logger.info("Status indicator is no longer visible")
+
+    # ------------------------------------------------------------------
+    # Configuration credential-select (ToolBaseProperty.jsx -> CredentialsSelect.jsx)
+    #
+    # ELITEA-1976 — testid wiring: ToolBaseProperty.jsx's `type === 'configuration'`
+    # branch passes `testId={`toolkit-field-${k}-select`}` to <CredentialsSelect>,
+    # which threads it to the combobox (+ "-combobox" display suffix, same shared
+    # mechanism `toolkit-test-tool-select`/`-combobox` already uses), the CREATE
+    # section's two options (`-create-private`/`-create-project`), and the Saved-
+    # credentials Refresh button (`-refresh-button`). Generic across every
+    # credential-bearing toolkit type keyed off the schema field name `k` (e.g.
+    # "gitlab_configuration", "github_configuration", "jira_configuration") — a
+    # dynamic class-constant template per .agents/testing.md § Locator policy.
+    # This case only exercises "gitlab_configuration"; other field keys are for
+    # whichever future case exercises them (role-overrides.md § "touches" rule).
+    # ------------------------------------------------------------------
+    CONFIGURATION_SELECT = '[data-testid="toolkit-field-{}-select"]'
+    CONFIGURATION_SELECT_COMBOBOX = '[data-testid="toolkit-field-{}-select-combobox"]'
+    # Both the "CREATE" and "Saved ... Credentials" group headers share this
+    # SAME testid (SingleSelect.jsx's ListSubheader — generic across every
+    # grouped-option Select). Disambiguate by position: CREATE always renders
+    # first (Object.entries(menuData) insertion order — CredentialsSelect.jsx's
+    # menuData `useMemo` always pushes "Create" before "Saved ... Credentials").
+    CONFIGURATION_SELECT_GROUP_HEADER = '[data-testid="toolkit-field-{}-select-group-header"]'
+    CONFIGURATION_SELECT_CREATE_PRIVATE = '[data-testid="toolkit-field-{}-select-create-private"]'
+    CONFIGURATION_SELECT_CREATE_PROJECT = '[data-testid="toolkit-field-{}-select-create-project"]'
+    CONFIGURATION_SELECT_REFRESH_BUTTON = '[data-testid="toolkit-field-{}-select-refresh-button"]'
+    # Saved-credential option row — SingleSelectMenuItem.jsx's PRE-EXISTING
+    # `data-testid={option.testId ?? `select-option-${option.value}`}` fallback
+    # already produces this (zero JSX change needed); value shape mirrors
+    # CredentialsSelect.jsx's savedRowToSelectValue():
+    # JSON.stringify({kind: "saved", elitea_title, private}).
+    CONFIGURATION_SAVED_CREDENTIAL_OPTION = (
+        '[data-testid=\'select-option-{{"kind":"saved","elitea_title":"{}","private":{}}}\']'
+    )
+
+    def configuration_select(self, field_key: str) -> Locator:
+        """Return the Configuration credential-select combobox for *field_key*.
+
+        Args:
+            field_key: The toolkit's configuration schema field name (e.g.
+                ``"gitlab_configuration"``).
+        """
+        return self.page.locator(self.CONFIGURATION_SELECT.format(field_key))
+
+    def open_configuration_dropdown(self, field_key: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the Configuration select for *field_key* to open its dropdown."""
+        select = self.configuration_select(field_key)
+        select.wait_for(state="visible", timeout=timeout)
+        select.click()
+        logger.info("Opened Configuration dropdown for field_key=%s", field_key)
+
+    def configuration_group_headers(self, field_key: str) -> Locator:
+        """Return both group headers ("CREATE" + "Saved ... Credentials") for *field_key*.
+
+        Both share one testid; index by position — CREATE is index 0 (see
+        class-level comment on :data:`CONFIGURATION_SELECT_GROUP_HEADER`).
+        """
+        return self.page.locator(self.CONFIGURATION_SELECT_GROUP_HEADER.format(field_key))
+
+    def get_configuration_display_text(self, field_key: str, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the Configuration select's currently displayed value text.
+
+        Reads the "-combobox" suffixed display element (``SelectDisplayProps``
+        target — the same shared mechanism ``toolkit-test-tool-select``/
+        ``-combobox`` already uses), not the outer select root.
+        """
+        combobox = self.page.locator(self.CONFIGURATION_SELECT_COMBOBOX.format(field_key))
+        combobox.wait_for(state="visible", timeout=timeout)
+        return combobox.text_content() or ""
+
+    def configuration_create_private_option(self, field_key: str) -> Locator:
+        """Return the CREATE section's 'New private ... credentials' option."""
+        return self.page.locator(self.CONFIGURATION_SELECT_CREATE_PRIVATE.format(field_key))
+
+    def configuration_create_project_option(self, field_key: str) -> Locator:
+        """Return the CREATE section's 'New project ... credentials' option."""
+        return self.page.locator(self.CONFIGURATION_SELECT_CREATE_PROJECT.format(field_key))
+
+    def click_create_private_credential(self, field_key: str, timeout: int = UI_ELEMENT_TIMEOUT) -> Page:
+        """Click 'New private ... credentials' and return the new tab.
+
+        Opens in a real new browser tab (``window.open(..., '_blank', ...)``)
+        — the credential-create form for this toolkit's configuration type,
+        pre-selected, under the acting user's PERSONAL project context.
+
+        Returns:
+            The new tab's :class:`~playwright.sync_api.Page`, already waited
+            for ``domcontentloaded``.
+        """
+        option = self.configuration_create_private_option(field_key)
+        option.wait_for(state="visible", timeout=timeout)
+        with self.page.context.expect_page() as new_page_info:
+            option.click()
+        new_page = new_page_info.value
+        new_page.wait_for_load_state("domcontentloaded")
+        logger.info("Clicked 'New private credentials' for field_key=%s — new tab: %s", field_key, new_page.url)
+        return new_page
+
+    def configuration_refresh_button(self, field_key: str) -> Locator:
+        """Return the Refresh button next to the 'Saved ... Credentials' header."""
+        return self.page.locator(self.CONFIGURATION_SELECT_REFRESH_BUTTON.format(field_key))
+
+    def click_configuration_refresh(self, field_key: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the Configuration select's Refresh button and wait for the network."""
+        button = self.configuration_refresh_button(field_key)
+        button.wait_for(state="visible", timeout=timeout)
+        button.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Clicked Configuration refresh for field_key=%s", field_key)
+
+    def saved_credential_option(self, elitea_title: str, private: bool) -> Locator:
+        """Return the Saved-credentials list row for *elitea_title*/*private*."""
+        return self.page.locator(
+            self.CONFIGURATION_SAVED_CREDENTIAL_OPTION.format(elitea_title, str(bool(private)).lower())
+        )
+
+    def select_saved_credential(
+        self, elitea_title: str, private: bool, timeout: int = UI_ELEMENT_TIMEOUT
+    ) -> None:
+        """Click the Saved-credentials row matching *elitea_title*/*private*."""
+        option = self.saved_credential_option(elitea_title, private)
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        logger.info("Selected saved credential elitea_title=%s private=%s", elitea_title, private)
