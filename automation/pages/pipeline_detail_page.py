@@ -67,6 +67,15 @@ class PipelineDetailPage(PipelineFormPage):
         description="ReactFlow canvas wrapper"
     )
 
+    # Add Node menu trigger (ELITEA-2030). aria-expanded on this same element
+    # already toggles true/false in sync with the menu's open/closed state
+    # (confirmed live) — reused for both open- and closed-state waits/checks,
+    # no separate locator needed for the menu portal itself.
+    add_node_button = LocatorDescriptor(
+        testid="pipeline-add-node-button",
+        description="Canvas '+ Add node' trigger button (opens the node-type menu)"
+    )
+
     yaml_editor = LocatorDescriptor(
         testid="pipeline-yaml-editor",
         fallback=lambda page: page.locator("div.cm-editor div.cm-content"),
@@ -185,6 +194,26 @@ class PipelineDetailPage(PipelineFormPage):
     # family (`select-option-{value}`), no value known up front. Still
     # testid-keyed, not a raw role/CSS selector.
     SELECT_OPTION_PREFIX = '[data-testid^="select-option-"]'
+
+    # Add Node menu items (ELITEA-2030) — one per node type, dynamic testid
+    # templated on the internal type slug (AddNodeMenu.jsx's `item.type`:
+    # agent, code, custom, decision, hitl, llm, mcp, printer, router,
+    # state_modifier, toolkit — a closed, source-derived set of 11).
+    ADD_NODE_MENU_ITEM = '[data-testid="pipeline-add-node-menu-item-{}"]'
+
+    # Prefix-match variant of ADD_NODE_MENU_ITEM (same family as
+    # SELECT_OPTION/SELECT_OPTION_PREFIX above) — used only to bound the
+    # currently-open menu's own footprint for the click-outside dismissal
+    # geometry, not to enumerate/assert individual items (Step 3's label
+    # read loops over the 11 known slugs individually, per AFS Concrete
+    # Handles).
+    ADD_NODE_MENU_ITEM_PREFIX = '[data-testid^="pipeline-add-node-menu-item-"]'
+
+    # ReactFlow node container — library-level testid convention
+    # (`@xyflow/react`), not app JSX (`grep -rn "rf__node" src/` = 0 hits in
+    # EliteaUI). Present on every node regardless of type; used here to read
+    # a node's own rendered text without needing per-field testids inside it.
+    RF_NODE = '[data-testid="rf__node-{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -617,6 +646,137 @@ class PipelineDetailPage(PipelineFormPage):
         node_id = node.get_attribute("data-id") or ""
         logger.info("Node '%s' visible on canvas (id=%s)", node_type, node_id)
         return node_id
+
+    # ------------------------------------------------------------------
+    # Add Node menu (ELITEA-2030)
+    # ------------------------------------------------------------------
+    # Additive sibling to add_node() below: add_node() opens the menu AND
+    # selects an item in one call, which doesn't let a caller read the
+    # menu's own contents (all 11 labels) before choosing one. These
+    # methods split "open" / "read" / "select" / "dismiss" so a test can
+    # inspect the open menu first. add_node() is left byte-identical
+    # (page-objects.md shared-caller rule — 6+ existing call sites).
+
+    def open_add_node_menu(self, timeout: int = 5000) -> None:
+        """Click the Add Node trigger button and wait for the menu to open.
+
+        Waits on ``add_node_button``'s own ``aria-expanded`` attribute
+        flipping to ``"true"`` — confirmed live to toggle in sync with the
+        menu's open/closed state, so no separate locator for the menu
+        portal is needed.
+        """
+        from playwright.sync_api import expect
+
+        self.add_node_button.click(timeout=timeout)
+        expect(self.add_node_button).to_have_attribute(
+            "aria-expanded", "true", timeout=timeout
+        )
+
+    def is_add_node_menu_open(self) -> bool:
+        """Return whether the Add Node menu is currently open.
+
+        Reads ``aria-expanded`` off the trigger button rather than probing
+        for the menu portal directly (same rationale as
+        :meth:`open_add_node_menu`).
+        """
+        return self.add_node_button.get_attribute("aria-expanded") == "true"
+
+    def get_add_node_menu_item_label(self, type_slug: str, timeout: int = 5000) -> str:
+        """Read a single Add Node menu item's visible label text.
+
+        Args:
+            type_slug: Internal node-type slug (e.g. ``"llm"``, ``"hitl"``,
+                ``"state_modifier"``) — the menu must already be open.
+            timeout: Maximum wait time for the item to be visible.
+
+        Returns:
+            The menu item's trimmed text content (e.g. ``"LLM"``,
+            ``"Human-in-the-loop"``).
+        """
+        item = self.page.locator(self.ADD_NODE_MENU_ITEM.format(type_slug))
+        item.wait_for(state="visible", timeout=timeout)
+        return (item.text_content() or "").strip()
+
+    def click_add_node_menu_item(self, type_slug: str, timeout: int = 5000) -> None:
+        """Click an open Add Node menu item by its internal type slug.
+
+        Waits for the menu to close afterward (``aria-expanded`` flips back
+        to unset/false), mirroring the menu's real close-on-select behavior.
+
+        Args:
+            type_slug: Internal node-type slug (e.g. ``"llm"``).
+            timeout: Maximum wait time for the item to be clickable / the
+                menu to close.
+        """
+        from playwright.sync_api import expect
+
+        item = self.page.locator(self.ADD_NODE_MENU_ITEM.format(type_slug))
+        item.wait_for(state="visible", timeout=timeout)
+        item.click(timeout=timeout)
+        expect(self.add_node_button).not_to_have_attribute(
+            "aria-expanded", "true", timeout=timeout
+        )
+
+    def close_add_node_menu_via_escape(self, timeout: int = 5000) -> None:
+        """Close the open Add Node menu by pressing Escape, adding no node."""
+        from playwright.sync_api import expect
+
+        self.page.keyboard.press("Escape")
+        expect(self.add_node_button).not_to_have_attribute(
+            "aria-expanded", "true", timeout=timeout
+        )
+
+    def dismiss_add_node_menu_by_click_outside(self, timeout: int = 5000) -> None:
+        """Dismiss the open Add Node menu by clicking genuinely outside its
+        popup panel, adding no node.
+
+        A naive click at the invisible MUI backdrop's own bounding-box
+        CENTER can land back on a foreground menu item instead of the true
+        backdrop — the backdrop's box is the full viewport, but the
+        visually smaller popup Paper is painted on top of it at that same
+        position (confirmed live during ELITEA-2030 analysis: this
+        self-confounded the first exploration attempt and added a node
+        instead of dismissing). To avoid it, this computes an explicit
+        point below the union bounding box of the currently-rendered menu
+        items, within the canvas wrapper's own box, and dispatches a raw
+        coordinate click via ``page.mouse`` — bypassing any locator-based
+        actionability check that could re-target a foreground element.
+
+        Args:
+            timeout: Maximum wait time for the menu to close afterward.
+        """
+        from playwright.sync_api import expect
+
+        items = self.page.locator(self.ADD_NODE_MENU_ITEM_PREFIX)
+        item_count = items.count()
+        boxes = [items.nth(i).bounding_box() for i in range(item_count)]
+        boxes = [b for b in boxes if b]
+        menu_bottom = max(b["y"] + b["height"] for b in boxes) if boxes else 0
+
+        canvas_box = self.canvas_wrapper.bounding_box()
+        x = canvas_box["x"] + canvas_box["width"] / 2
+        y = max(menu_bottom + 40, canvas_box["y"] + canvas_box["height"] * 0.75)
+        y = min(y, canvas_box["y"] + canvas_box["height"] - 10)
+
+        self.page.mouse.click(x, y)
+        expect(self.add_node_button).not_to_have_attribute(
+            "aria-expanded", "true", timeout=timeout
+        )
+
+    def get_node_rendered_text(self, node_id: str, timeout: int = 5000) -> str:
+        """Read a canvas node's full rendered text via its ``rf__node-{id}``
+        testid (the ``@xyflow/react`` library convention — see ``RF_NODE``).
+
+        Args:
+            node_id: The node's ``data-id`` (e.g. ``"LLM 1"``).
+            timeout: Maximum wait time for the node container to be visible.
+
+        Returns:
+            The node container's trimmed text content.
+        """
+        node = self.page.locator(self.RF_NODE.format(node_id))
+        node.wait_for(state="visible", timeout=timeout)
+        return (node.text_content() or "").strip()
 
     def delete_node(self, node_id: str, timeout: int = 5000):
         """Delete a node from the canvas via its three-dot header menu.
