@@ -36,7 +36,6 @@ pytestmark = [pytest.mark.ui, pytest.mark.settings]
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)
 # ---------------------------------------------------------------------------
-UI_ELEMENT_TIMEOUT = 10_000     # toggle buttons, palette repaint
 NAVIGATION_TIMEOUT = 15_000     # SPA route change + full-navigation reload
 
 # Palette signal (per AFS § Concrete Handles — counter-intuitive, read before
