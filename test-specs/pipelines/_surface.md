@@ -301,6 +301,86 @@ given the one-command-per-call shell workflow). Does not affect the real
 Playwright/pytest suite (`page.on('console')`/`page.on('response')` listeners
 run inside one long-lived context for the whole test).
 
+## Entry Point node — Schedule settings modal internals (ELITEA-2007, 2026-07-24)
+
+**`pipeline-trigger-select` landed on `automation/testids` mid-batch** — as of
+this session it's confirmed present (added by the ELITEA-2006 implementer's
+in-flight PR; observed live via Vite HMR). Reuse it, don't re-add. Its sibling
+"Edit webhook settings" icon (`pipeline-trigger-webhook-edit-button`) also
+landed; the analogous "Edit schedule" icon (`TriggerTypeSelector.jsx:312-320`,
+`aria-label="Edit schedule"`, mounted only when `currentTriggerType ===
+TRIGGER_TYPES.schedule`) is a separate, still-open gap — `testid needed:
+pipeline-trigger-schedule-edit-button`.
+
+**`PipelineScheduleModal.jsx` — zero app testids, but the Default-mode
+period/day/hour/minute selects need ZERO `add-data-testid` work at all.** They
+render via the third-party `react-js-cron` npm package (`^5.2.0`, the `<Cron>`
+component), which ships its OWN stable, semantic testids baked into the
+library: `select-period` ("Every"), `custom-select-week-days` ("on", only
+present when period=`week`), `custom-select-hours`, `custom-select-minutes`.
+These are as reliable as an app-owned testid (stable across the app's own
+commits, only changes if the npm package version bumps) — treat them as
+`on-main ✓ (third-party npm dependency)` provenance, not a #579 raw-handle
+exception (no scoping/docstring discipline needed — they're proper
+`data-testid` attributes, just library-owned rather than app-owned).
+
+**Everything else in this modal is a genuine gap** (same shape as the sibling
+Webhook modal, ELITEA-2005/2006's already-specced names below): modal root
+(`Modal.BaseModal`, no `dataTestId` passed → `pipeline-schedule-modal`), close
+button (`closeButtonTestId` unused → `pipeline-schedule-modal-close-button`),
+the dynamic summary `Typography` (`cronState.message` →
+`pipeline-schedule-modal-summary-text`), the Default/Advanced mode radio
+(`Checkbox.RadioButtonGroup`, no `testId` passed →
+`pipeline-schedule-mode-radio` → per-item `-default`/`-advanced`), the
+Advanced-mode cron text input (`FormInput`, plain prop →
+`pipeline-schedule-modal-cron-input`), and the custom Cancel/Apply buttons
+(custom `actions` render prop bypasses `BaseModal`'s built-in
+`cancelButtonTestId`/`confirmButtonTestId` — same reason as the Webhook modal
+— → `pipeline-schedule-cancel-button` / `pipeline-schedule-apply-button`).
+
+**`RadioButtonGroup.jsx`'s `testId` prop is STILL `automation/testids`-only,
+not on `main`** as of this session (re-confirmed via a fresh
+`git diff origin/main origin/automation/testids -- RadioButtonGroup.jsx`) —
+same caveat ELITEA-2005/2006 already flagged for the Webhook Type radio; not a
+blocker, just note the shared-dependency promotion gap in any closure record
+that uses it.
+
+**Default-mode hour/minute selects are ant-design MULTI-selects — the default
+value is ADDED to, not replaced.** Clicking `09` on the hour select (default
+`00`) produces `00,09`, not `09` — a second click on `00` is required to
+deselect it. Leaving >1 value on either field while the other is narrow
+triggers a real, correct validation message ("Frequency cannot be less than
+every hour") — not a bug. **Scoping gotcha this surfaced**: antd `Select`
+dropdown option-lists stay mounted (class-hidden) after closing rather than
+unmounting, so a blind cross-page `.ant-select-item-option` text-match can hit
+a STALE, already-closed list instead of the one that's actually open — always
+scope to `.ant-select-dropdown:not(.ant-select-dropdown-hidden)` (or the
+Playwright-equivalent "is this specific combobox `aria-expanded`" check)
+before clicking an option.
+
+**Escape closes the WHOLE Schedule modal, not a nested dropdown** — confirmed
+live; pressing Escape while a period/hour/minute dropdown was open discarded
+the entire modal (reverting the Trigger select to its pre-open value, since
+Apply had not been clicked). Never use Escape as a "close this dropdown"
+action inside this modal.
+
+**Summary text omits the day-qualifier clause for the `day` period** — reads
+plain `At HH:MM` (e.g. `At 09:30`), not `At HH:MM, every day`. The `week`
+period's default DOES carry a qualifier (`At 00:00, only on Saturday`) since it
+needs one to disambiguate. A TMS case asserting the literal string
+`"At 09:30, every day"` is asserting stale text — CLARIFICATION filed:
+`EliteaAI/elitea-testing-public#1013`.
+
+**Advanced↔Default round-trip preserves values exactly** — switching to
+Advanced shows the exact cron string matching the Default-mode state (e.g.
+`30 9 * * *` for day/09:30), and switching back to Default restores the
+identical dropdown values, confirmed live (no silent reset to the package's
+own default cron).
+
+**Already-filed `#694` (`BaseModal` `aria-labelledby`/id mismatch) reproduces
+in this modal too** — same `BaseModal`-wide defect, not schedule-specific, not
+re-filed.
+
 ## Entry Point node — all 3 Trigger types + Schedule modal + cross-node-type (ELITEA-2005, 2026-07-24)
 
 Sibling findings to the ELITEA-2006 section above (same `TriggerTypeSelector.jsx`/
