@@ -242,8 +242,28 @@ this claim.
 
 Creating a new credential in the spawned tab does not push into the
 already-open dropdown in the original tab — you must close the tab, return,
-reopen the dropdown (it fully closes on tab-switch), and click the explicit
-Refresh button. Confirmed live (2 dropdown-open cycles needed).
+and click the explicit Refresh button.
+
+**CORRECTION (2026-07-24, redispatch — ELITEA-1976, filed
+EliteaAI/elitea-testing-public#1047): the dropdown does NOT close on
+tab-switch.** The line above ("reopen the dropdown, it fully closes on
+tab-switch") was WRONG — carried unverified from the case text into the
+first AFS pass, and it caused a real implementer-blocking `TimeoutError`
+(re-clicking the Configuration select trigger targets an element now
+covered by the still-open menu's own `.MuiPopover-paper`). Live-confirmed
+via CDP DOM inspection across both tabs simultaneously: the Select's
+`.MuiPopover-root` stays mounted and open the entire time — clicking a
+CREATE-action option (`variant: 'action'`) sets
+`SingleSelect.jsx`'s `skipNextCloseRef.current = true` before firing
+`onActivate()`, which makes the immediately-following `handleMenuClose` a
+no-op — `setMenuOpen(false)` is never reached. **This is deliberate and
+shared**, not specific to credentials: `ToolkitSelect.jsx` and
+`LlmModelSelect.jsx` reuse the exact same `variant: 'action'` mechanism for
+their own in-place "Refresh" menu items, where staying open is clearly the
+intended UX. **Only ONE dropdown-open is ever needed** — click it once
+before the CREATE option, then interact with the Refresh button and the
+Saved-credentials rows directly in that SAME still-open menu after
+returning from the new tab. Never re-click the trigger a second time.
 
 ## Additional testid provenance (fresh `git fetch origin` in `../EliteaUI`, 2026-07-24)
 
@@ -255,19 +275,36 @@ SELECT itself and its menu rows (not previously traced):
 |---|---|---|
 | The Configuration select's own combobox (`Select.SingleSelect`'s `data-testid` prop + `SelectDisplayProps` `-combobox` mechanism) | `data-testid` prop plumbing exists, but the `SelectDisplayProps` line specifically is testids-only | ✓ |
 | `SingleSelectMenuItem.jsx`'s `option.testId ?? select-option-${value}` fallback (covers ALL non-action menu rows, e.g. Saved-credential rows) | ✓ (file identical on both branches) | ✓ |
-| `SingleSelect.jsx`'s `variant === 'action'` MenuItem (the CREATE-section rows, "New private/project … credentials") | **no testid on EITHER branch** — genuine unaddressed gap | **no testid on EITHER branch** |
+| `SingleSelect.jsx`'s `variant === 'action'` MenuItem (the CREATE-section rows, "New private/project … credentials") | ~~no testid on EITHER branch~~ **STALE — see correction below** | ✓ **added this pass** |
+| `SingleSelect.jsx`'s grouped-header `ListSubheader` (`${dataTestId}-group-header`) | no | ✓ **added this pass** |
 
 **Takeaway:** the Configuration-select combobox itself and the whole
 `toolkit-field-${k}-*` dynamic family are testids-only (awaiting human
 promotion) — expected, not a new gap, consistent with this digest's existing
-table above. The CREATE-section action rows are a genuine gap on BOTH
-branches — needs `add-data-testid` in `SingleSelect.jsx` +
-`CredentialsSelect.jsx` (see ELITEA-1976 AFS Concrete Handles for the exact
-two-part fix: thread a `testId` prop through `CredentialsSelect` →
-`optionGroups` → `SingleSelect`'s action-variant `<MenuItem
-data-testid={option.testId ?? ...}>`). Saved-credential rows already have a
-working, on-main fallback testid via `SingleSelectMenuItem.jsx` — no code
-change needed, just compute the JSON-shaped value
+table above.
+
+**CORRECTION (2026-07-24, redispatch — fresh `git fetch origin` +
+`git grep` re-verification, both against `origin/main` AND
+`origin/automation/testids`): the row above claiming "no testid on EITHER
+branch" for the CREATE-section action rows is now STALE.** Gap closed
+mid-pass by the first implementer dispatch, commit
+`EliteaAI/EliteaUI@1fef03f5` ("add data-testid for toolkit credential
+select") on `automation/testids` — confirmed via `git grep -n --
+"-create-private" origin/automation/testids -- src/` (a bare-substring
+match on the literal source text is required here since the FULL testid
+string is only assembled at runtime via `${testId}-create-private`
+template interpolation; searching for the fully-expanded
+`toolkit-field-...-select-create-private` string finds nothing in source,
+even though it's exactly what renders in the live DOM — confirmed live via
+CDP, count 1). Also confirmed present: `SingleSelect.jsx`'s action-variant
+`<MenuItem data-testid={option.testId ?? ...}>` (line ~416) and the
+grouped-header `ListSubheader`'s `data-testid={${dataTestId}-group-header}`
+(line ~378) — both `automation/testids` only, zero hits on `main`. **Needs
+human cherry-pick to `main`** for deployed-env promotability; local
+`localhost:5173` already serves all of it live (dev server runs
+`automation/testids`). Saved-credential rows already have a working,
+on-main fallback testid via `SingleSelectMenuItem.jsx` — no code change
+needed, just compute the JSON-shaped value
 (`select-option-{"kind":"saved","elitea_title":"<title>","private":<bool>}`).
 
 ## Dynamic testid naming convention for this surface
