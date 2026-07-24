@@ -15,7 +15,7 @@ import re
 import time
 
 from components.mui import Dialog, Popper
-from playwright.sync_api import Locator, Page
+from playwright.sync_api import Locator, Page, expect
 
 from .locator_descriptor import LocatorDescriptor
 from .pipeline_form_page import PipelineFormPage
@@ -264,10 +264,6 @@ class PipelineDetailPage(PipelineFormPage):
         description='"Edit schedule" icon button next to the Trigger select, '
                      "rendered only once trigger=schedule (sibling of "
                      "trigger_webhook_edit_button)"
-    )
-    schedule_modal_close_button = LocatorDescriptor(
-        testid="pipeline-schedule-modal-close-button",
-        description="Schedule settings modal Close (X) button"
     )
     schedule_mode_radio_default = LocatorDescriptor(
         testid="pipeline-schedule-mode-radio-default",
@@ -1651,8 +1647,6 @@ class PipelineDetailPage(PipelineFormPage):
             value: Two-digit target value, e.g. "09".
             timeout: Maximum wait time in milliseconds.
         """
-        from playwright.sync_api import expect
-
         dropdown = self._open_cron_field_dropdown(trigger, field_type, timeout)
         value_row = dropdown.locator(".ant-select-item-option").filter(
             has_text=re.compile(rf"^{re.escape(value)}$")
