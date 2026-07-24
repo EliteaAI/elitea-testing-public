@@ -1,6 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to MCP type picker — Locator.wait_for: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("toolkit-type-card-mcp") to be visible
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to MCP type picker — Locator.wait_for: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("toolkit-type-card-mcp") to be visible

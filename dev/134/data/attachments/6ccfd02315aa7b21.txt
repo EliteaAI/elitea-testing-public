@@ -1,3 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Select Remote MCP type — Locator.click: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("toolkit-type-card-mcp")

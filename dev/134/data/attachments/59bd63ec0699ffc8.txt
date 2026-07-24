@@ -1,9 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Switch project — Locator.click: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("project-selector-trigger-combobox")
-ERROR    elitea.steps:actions.py:49 Step failed: Switch project — Locator.click: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("project-selector-trigger-combobox")
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to chat — Locator.wait_for: Timeout 15000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("chat-message-input") to be visible
