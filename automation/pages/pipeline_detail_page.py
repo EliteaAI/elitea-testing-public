@@ -207,6 +207,56 @@ class PipelineDetailPage(PipelineFormPage):
         description="LLM node's tool-agnostic Output state-variable select"
     )
 
+    # Same mechanism as `mcp_node_toolkit_select`/`_combobox` above:
+    # SingleSelect.jsx always wires `SelectDisplayProps={{'data-testid':
+    # `${dataTestId}-combobox`}}` alongside the outer `data-testid`, so this
+    # combobox testid already exists on `automation/testids` for free (no
+    # additional add-data-testid work) — confirmed via source read
+    # (InputSelect.jsx/OutputSelect.jsx both forward `dataTestId` straight
+    # into `Select.SingleSelect`). Used to replace the fixed
+    # `page.wait_for_timeout(300)` after Escape (review fix pass,
+    # ELITEA-2004) with a condition-based `aria-expanded` wait, mirroring
+    # `close_mcp_node_toolkit_select`.
+    llm_node_input_select_combobox = LocatorDescriptor(
+        testid="pipeline-llm-node-input-select-combobox",
+        description="LLM node's Input select — inner combobox div carrying aria-expanded"
+    )
+    llm_node_output_select_combobox = LocatorDescriptor(
+        testid="pipeline-llm-node-output-select-combobox",
+        description="LLM node's Output select — inner combobox div carrying aria-expanded"
+    )
+
+    # Entry-point node's Trigger select (TriggerTypeSelector.jsx) — shared
+    # across every node type that can be the entry point; already added to
+    # EliteaUI for ELITEA-2005/2006 (on `automation/testids`, not yet on
+    # `main`). Reused here (not re-added) for ELITEA-2004 review fix pass,
+    # case Step 3's "Trigger" section-presence check.
+    pipeline_trigger_select = LocatorDescriptor(
+        testid="pipeline-trigger-select",
+        description="Entry-point node's Trigger type select (Chat Message/Schedule/Webhook)"
+    )
+
+    # CommonInterruptSettings.jsx — shared across every node type (LLM, MCP,
+    # Code, Agent, Subgraph, Decision, …), so the testid is intentionally
+    # GENERIC (not LLM-scoped) per .agents/testing.md § Locator policy
+    # "shared components never hardcode feature-scoped testids". Added via
+    # add-data-testid for ELITEA-2004 review fix pass (case Step 3's
+    # "Interrupt before/after" and "Structured output" section-presence
+    # checks — EliteaAI/EliteaUI@1289e746 on `automation/testids`, not yet
+    # on `main`).
+    node_interrupt_before_switch = LocatorDescriptor(
+        testid="pipeline-node-interrupt-before-switch",
+        description="Node card's 'Interrupt before' toggle (CommonInterruptSettings.jsx)"
+    )
+    node_interrupt_after_switch = LocatorDescriptor(
+        testid="pipeline-node-interrupt-after-switch",
+        description="Node card's 'Interrupt after' toggle (CommonInterruptSettings.jsx)"
+    )
+    node_structured_output_switch = LocatorDescriptor(
+        testid="pipeline-node-structured-output-switch",
+        description="Node card's 'Structured output' toggle (CommonInterruptSettings.jsx)"
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -1162,32 +1212,44 @@ class PipelineDetailPage(PipelineFormPage):
         open to allow further selections). An explicit Escape close is
         required here, or the still-open popover intercepts the next click
         (confirmed live — a subsequent Output-select click timed out with
-        "subtree intercepts pointer events" until this was added).
+        "subtree intercepts pointer events" until this was added). Waits on
+        ``llm_node_input_select_combobox``'s ``aria-expanded`` flipping back
+        to ``"false"`` (condition-based — mirrors
+        ``close_mcp_node_toolkit_select``), not a fixed sleep.
 
         Args:
             value: The state variable's value (matches ``select-option-{value}``).
             timeout: Maximum wait time for the dropdown / option.
         """
+        from playwright.sync_api import expect
+
         self.open_llm_node_input_select(timeout=timeout)
         self.page.locator(self.SELECT_OPTION.format(value)).click(timeout=timeout)
         self.page.keyboard.press("Escape")
-        self.page.wait_for_timeout(300)
+        expect(self.llm_node_input_select_combobox).to_have_attribute(
+            "aria-expanded", "false", timeout=timeout
+        )
 
     def select_llm_node_output(self, value: str, timeout: int = 5000) -> None:
         """Open the LLM node's Output dropdown, select *value*, and close it.
 
         Output is also a ``multiple`` MUI select (``OutputSelect.jsx``) — see
         :meth:`select_llm_node_input` docstring for why the explicit Escape
-        close is required.
+        close is required and why the wait is condition-based
+        (``aria-expanded`` on ``llm_node_output_select_combobox``).
 
         Args:
             value: The state variable's value (matches ``select-option-{value}``).
             timeout: Maximum wait time for the dropdown / option.
         """
+        from playwright.sync_api import expect
+
         self.open_llm_node_output_select(timeout=timeout)
         self.page.locator(self.SELECT_OPTION.format(value)).click(timeout=timeout)
         self.page.keyboard.press("Escape")
-        self.page.wait_for_timeout(300)
+        expect(self.llm_node_output_select_combobox).to_have_attribute(
+            "aria-expanded", "false", timeout=timeout
+        )
 
     # ------------------------------------------------------------------
     # TOOLS section — MCP attach (ELITEA-1955)

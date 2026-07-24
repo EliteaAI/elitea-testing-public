@@ -194,16 +194,17 @@ configuration + persistence) already works correctly end-to-end.
 |---|---|---|---|---|
 | 1 Create pipeline + add LLM node via Add node → LLM | LLM node appears on canvas | step 1 | step 1: `.react-flow__node-llm` / `rf__node-{id}` visible | asserted — infrastructure already proven by merged specs (`test_pipeline_advanced.py`), reused not re-derived |
 | 2 Click LLM node to open configuration panel | Panel opens on the right | step 2 | step 2 | **CLARIFICATION** — live product has no click-to-open action; config is always rendered inline/expanded on the node card itself (identical finding + resolution as ELITEA-1954's AFS Coverage Map). Not a defect: the observable ("panel/fields visible") is still true and asserted. No separate ticket filed — following the ELITEA-1954 precedent of resolving this directly in the Coverage Map rather than filing a repeat ticket for the same, already-documented UI simplification. |
-| 3 Panel shows Trigger/SYSTEM/TASK/CHAT HISTORY/Input/Output/Toolkits/Interrupt before/after/Structured output | All sections present | step 3 | step 3: all section labels confirmed rendered | asserted |
+| 3 Panel shows Trigger/SYSTEM/TASK/CHAT HISTORY/Input/Output/Toolkits/Interrupt before/after/Structured output | All sections present | step 3 | step 3: `get_llm_node_type`×3 (SYSTEM/TASK/CHAT HISTORY) + `llm_node_input_select`/`llm_node_output_select` visible + `pipeline_trigger_select`/`toolkits_section`/`node_interrupt_before_switch`/`node_interrupt_after_switch`/`node_structured_output_switch` visible — all 9 named sections now individually asserted (review fix pass R1, ELITEA-2004; previously only 5/9 had real assertions behind the "asserted" claim) | asserted |
 | 4 SYSTEM: Type=Fixed, Value="You are a helpful assistant" | Section accepts value | step 4 | step 4: `#system-value` read-back | asserted |
 | 5 TASK: Type=F-String, Value="User Input: {input}" | Section accepts f-string value | step 5 | step 5: `#task-value` read-back | asserted |
-| 6 CHAT HISTORY: Type=Fixed, Value="[]" | Section accepts value | step 6 | step 6: `#chat_history-value` read-back + YAML `value: []` (real list, not string) | asserted |
+| 6 CHAT HISTORY: Type=Fixed, Value="[]" | Section accepts value | step 6 | step 6: `get_llm_node_value("chat_history")` read-back; the YAML `value: []` (real list, not string) half of this claim is asserted in the Step 7/8-verification and Step 10 YAML blocks (pre-save AND post-reload — review fix pass R1, ELITEA-2004; previously only the DOM read-back was asserted, never the YAML-view corroboration this row itself claims) | asserted |
 | 7 Input combobox includes "input" | "input" variable added | step 7 | step 7: chip rendered + `select-option-input` | asserted |
 | 8 Output combobox includes desired output variable(s) | Output variables set | step 8 | step 8: chip rendered (`messages`) + `select-option-messages` | asserted |
-| 9 Save pipeline | Saves without errors | step 9 | step 9: Discard button disables, zero console/network errors | asserted |
+| 9 Save pipeline | Saves without errors | step 9 | step 9: Discard button disables, zero console errors so far, zero failed (4xx/5xx) network requests so far | asserted |
 | 10 Reload — verify SYSTEM/TASK/CHAT HISTORY types+values persisted | All values/types restored | step 10 | step 10: all 3 fields + Input + Output read back exactly, corroborated by YAML view | asserted |
 | Expected Final State: full config persists after reload | — | steps 4–10 | steps 4–10 | asserted |
 | Pass/Fail: all steps complete without errors; all fields persist after reload | — | all steps | all steps | asserted — no product defect found, confirmed via a genuine live change→Save→reload→revert→Save→reload round trip, not just a static read |
+| Expected Results: "zero error-level console messages and zero failed (4xx/5xx) network requests across the entire configure→save→reload cycle" | — | whole-cycle check (post-Step 10) | `console_errors`/`network_activity` (`BasePage.capture_console_errors`/`capture_requests_matching("")`) registered before Step 1, asserted at Step 9 AND again in a dedicated whole-cycle step after the Step 10 reload — both listeners survive `page.goto()`/reload since they're attached to the same `Page` object (review fix pass R1, ELITEA-2004; previously console_errors was a manually-registered list asserted only once, BEFORE the Step 10 reload, and no network assertion existed at all) | asserted |
 
 ### Axis 2 — Analyst additions
 
@@ -257,6 +258,20 @@ configuration + persistence) already works correctly end-to-end.
 | Input/Output selected-value chip (e.g. "input ⊗") | **NO `data-testid`** — bare MUI `<Chip>` (`SingleSelect.jsx`'s `renderMultipleValue`, confirmed via source read). NOT required for this case: reading the currently-selected Input/Output values is fully satisfiable via the YAML view (`get_yaml_content()`, already an existing `PipelineDetailPage` method with existing testids `pipeline-yaml-editor`/`pipeline-yaml-lines`) instead of scraping chip text — this is the SAME pattern the existing merged `test_yaml_content_reflects_pipeline` test already uses. Flag to `add-data-testid` only if a future case needs to remove/read an individual chip directly rather than via YAML. | out-of-scope for this case (touches rule — not interacted with directly; YAML view suffices) |
 | YAML view content (alternate persistence-verification path) | `pipeline-yaml-editor` / `pipeline-yaml-lines` (`PipelineDetailPage.yaml_editor` / `.yaml_lines`, already `LocatorDescriptor` fields) + `get_yaml_content()` (already an existing method) | on-main ✓ — pre-existing page-object surface, zero new work |
 | Discard button (dirty-state indicator, used as a Save-succeeded signal) | **NO `data-testid`** — plain `getByRole('button', {name: 'Discard'})` works today (text-based, matches existing `PipelineDetailPage.configuration_tab`/`history_tab` style raw-fallback precedent, tracked tech debt per `.agents/testing.md`, not to be repeated for NEW code). **Flag to `add-data-testid`** only if the implementer chooses to assert on this button directly rather than solely on the reload-based persistence check (which needs no such handle) — not strictly required by this case's own Pass/Fail criteria. | needs-adding (optional — implementer's call) |
+
+### Review fix pass R1 additions (ELITEA-2004) — new/reused handles
+
+Added to close the reviewer's Step-3 coverage gap (Finding 1) and the fixed-sleep
+finding (Finding 4). All follow the same testid-only discipline as the rows above.
+
+| Element | Recommended Locator | Provenance / Notes |
+|---|---|---|
+| Trigger select (entry-point node only) | `[data-testid="pipeline-trigger-select"]` | on-automation/testids ✓ (not yet on `main`) — added for ELITEA-2005/2006, **reused here, not re-added**; `TriggerTypeSelector.jsx` renders on any node where `isEntrypoint` is true, and `pipeline_with_llm_id`'s LLM node is the pipeline's `entry_point` |
+| "Interrupt before" toggle | `[data-testid="pipeline-node-interrupt-before-switch"]` | needs-adding → **added this round**, EliteaAI/EliteaUI@1289e746 on `automation/testids` (not yet on `main`). Deliberately GENERIC (not LLM-scoped): `CommonInterruptSettings.jsx` is a shared component rendered by 8+ node types (LLM/MCP/Code/Agent/Subgraph/Decision/deprecated Loop+Tool) — per `.agents/testing.md` § Locator policy "shared components never hardcode feature-scoped testids", a caller-supplied prop would have meant threading `testId` through every call site for no disambiguation benefit this test needs (only one LLM node on canvas) |
+| "Interrupt after" toggle | `[data-testid="pipeline-node-interrupt-after-switch"]` | needs-adding → **added this round**, same commit/rationale as above |
+| "Structured output" toggle | `[data-testid="pipeline-node-structured-output-switch"]` | needs-adding → **added this round**, same commit/rationale as above |
+| Input select — inner combobox div (carries `aria-expanded`) | `[data-testid="pipeline-llm-node-input-select-combobox"]` | on-automation/testids ✓ — **already existed for free**, not newly added: `SingleSelect.jsx` unconditionally wires `SelectDisplayProps={{'data-testid': `${dataTestId}-combobox`}}` alongside the outer `data-testid` (confirmed via source read), so this landed in the SAME commit (16efb4cb) that added `pipeline-llm-node-input-select` itself — only the page-object `LocatorDescriptor` + the condition-based wait using it are new this round |
+| Output select — inner combobox div | `[data-testid="pipeline-llm-node-output-select-combobox"]` | on-automation/testids ✓ — same as above |
 
 ## Network Behavior
 
@@ -365,3 +380,52 @@ round trip (steps 9–10) rather than only reading pre-existing residual state.
   case's own Step 9 relies on the Discard button as the save-completion
   signal. One-line fix, no behavior change; benefits every existing caller of
   `PipelineFormPage.discard_button`/`AgentFormPage.discard_button`.
+
+## Implementer Notes — review fix pass R1 (ELITEA-2004)
+
+Four reviewer findings addressed, all in the test file + page object (no case
+re-scoping — the AFS's own Coverage Map/Concrete Handles rows already claimed
+this coverage; this round made the code match the claim):
+
+1. **Step 3 under-coverage (Important).** Coverage Map row 3 claimed all 9
+   sections ("Trigger, SYSTEM, TASK, CHAT HISTORY, Input, Output, Toolkits,
+   Interrupt before/after, Structured output") were asserted, but only 5 had
+   real assertions. Added assertions for the remaining 4 handles (Trigger,
+   Toolkits — both reused existing testids; Interrupt before/after +
+   Structured output — 3 new testids added via `add-data-testid` to the
+   shared `CommonInterruptSettings.jsx`, generic-named per the shared-
+   component locator rule). See § Concrete Handles → "Review fix pass R1
+   additions" above.
+2. **CHAT HISTORY YAML-list proof missing (Important).** Coverage Map row 6
+   claimed the YAML-view `value: []` (real list, not string) corroboration
+   was asserted — it wasn't, anywhere. Added both a positive check
+   (`"value: []" in yaml`) and a negative check (rules out the quoted-string
+   fallback `SimpleLLMInputItem.jsx`'s `onInput` silently produces on
+   `JSON.parse` failure) at both the pre-save and post-reload YAML reads.
+3. **Whole-cycle side-channel gaps (Important).** (a) No network-response
+   assertion existed anywhere despite the AFS Expected Results explicitly
+   claiming "zero failed (4xx/5xx) network requests across the entire
+   cycle" — added a whole-page `capture_requests_matching("")` (empty
+   substring matches every request) asserted at Step 9 and again after the
+   Step 10 reload. (b) `console_errors` was only asserted once, BEFORE the
+   Step 10 reload, so errors introduced by the reload itself were captured
+   but never checked — switched from a manual `page.on("console", ...)` to
+   the existing `BasePage.capture_console_errors()` helper (reuse before
+   create) and added a second assertion after the reload, mirroring the
+   established multi-checkpoint pattern in
+   `test_agent_max_five_skills_limit.py`. Both listeners are stopped in a
+   `finally` block per that same precedent.
+4. **Fixed sleeps in new page-object code (Nit/Important).**
+   `select_llm_node_input`/`select_llm_node_output`'s post-Escape
+   `page.wait_for_timeout(300)` replaced with a condition-based wait on the
+   Input/Output select's `-combobox` testid's `aria-expanded` attribute
+   flipping to `"false"` — mirrors the existing
+   `close_mcp_node_toolkit_select` pattern exactly. The `-combobox` testid
+   needed no new `add-data-testid` work: `SingleSelect.jsx` always wires it
+   alongside the outer testid, so it already existed on `automation/testids`
+   from the original ELITEA-2004 commit (16efb4cb) — only the
+   `LocatorDescriptor` + the wait itself are new.
+
+Both methods (`select_llm_node_input`/`select_llm_node_output`) have zero
+other callers in the suite (`grep -rl` confirmed), so modifying their bodies
+directly is not subject to the shared-caller additive-only protocol.
