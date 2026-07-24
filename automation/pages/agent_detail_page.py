@@ -195,6 +195,33 @@ class AgentDetailPage(AgentFormPage):
     model_selector_name = LocatorDescriptor(testid="model-selector-name")
     MODEL_SELECTOR_OPTION_ANY_SELECTOR = '[data-testid^="model-selector-option-"]'
 
+    # --- Model settings dialog (ELITEA-1880 testid-only rework — added via
+    # add-data-testid to LLMModelSelector.jsx/LLMSettingsDialog.jsx/
+    # ReasoningSlider.jsx/DiscreteSlider.jsx/MaxTokensSection.jsx; see EliteaUI
+    # automation/testids commit d364790b). `model_settings_button` is a
+    # GENERIC testid (shared LLMModelSelector widget, not agent-page-specific
+    # — same naming rationale as model_selector_button above). The dialog
+    # shows a Reasoning slider (Low/Medium/High) for reasoning-capable models
+    # or a Creativity slider for non-reasoning models (see
+    # test-specs/agents/_surface.md) — only the Reasoning branch carries a
+    # testid so far, since it's the only branch any case has exercised so far
+    # (canon ruling #511 scope discipline: the sibling CreativitySlider.jsx
+    # is untouched).
+    model_settings_button = LocatorDescriptor(testid="model-settings-button")
+    model_settings_dialog = LocatorDescriptor(testid="model-settings-dialog")
+    model_settings_dialog_close_button = LocatorDescriptor(
+        testid="model-settings-dialog-close-button"
+    )
+    model_settings_reasoning_slider = LocatorDescriptor(
+        testid="model-settings-reasoning-slider"
+    )
+    # Dynamic (runtime-parameterized) testid template for the Max Completion
+    # Tokens radio options — RadioButtonGroup.jsx's shared
+    # `${testId}-${value.toLowerCase()...}` mechanism, keyed by mode ("auto"/
+    # "custom"), mirroring MODEL_SELECTOR_OPTION_ANY_SELECTOR's class-constant
+    # pattern above.
+    MODEL_SETTINGS_MAX_TOKENS_MODE = '[data-testid="model-settings-max-tokens-mode-{}"]'
+
     # --- Skills section (agent-skills attach/mention flow, ELITEA-1735) ---
     agent_add_skill_button = LocatorDescriptor(testid="agent-add-skill-button")
     # Tooltip wrapper span for the add-skill button (ELITEA-1790 testid-only
@@ -2377,6 +2404,79 @@ class AgentDetailPage(AgentFormPage):
         option.first.wait_for(state="visible", timeout=timeout)
         option.first.click()
         logger.info("LLM model '%s' selected", display_name)
+
+    @action("Open LLM model settings dialog")
+    def open_model_settings(self, timeout: int = 5000):
+        """Click the Settings (gear) icon to open the Model settings dialog.
+
+        LOCATOR: ``model-settings-button`` testid — the gear button in the
+        embedded chat panel's model-selector ``ButtonGroup``, immediately to
+        the right of ``model_selector_name``.
+
+        Args:
+            timeout: Maximum wait for the dialog to become visible.
+        """
+        logger.info("Opening model settings dialog")
+        self.model_settings_button.click()
+        self.model_settings_dialog.wait_for(state="visible", timeout=timeout)
+
+    def is_settings_dialog_open(self) -> bool:
+        """Return True if the Model settings dialog is currently visible.
+
+        LOCATOR: ``model-settings-dialog`` testid.
+        """
+        return self.model_settings_dialog.is_visible()
+
+    def is_reasoning_slider_visible(self, timeout: int = 5000) -> bool:
+        """Return True if the Reasoning slider section (Low/Medium/High) is
+        visible in the open Model settings dialog.
+
+        Only renders for reasoning-capable models — a non-reasoning model
+        (e.g. "GPT-5 mini") shows a Creativity slider instead (see
+        test-specs/agents/_surface.md), which carries no testid yet since no
+        case has exercised that branch.
+
+        LOCATOR: ``model-settings-reasoning-slider`` testid.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            self.model_settings_reasoning_slider.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def is_max_tokens_mode_visible(self, mode: str, timeout: int = 5000) -> bool:
+        """Return True if the Max Completion Tokens radio option for *mode*
+        is visible in the open Model settings dialog.
+
+        LOCATOR: ``MODEL_SETTINGS_MAX_TOKENS_MODE`` dynamic testid template.
+
+        Args:
+            mode: "auto" (rendered with the "Default" label) or "custom".
+            timeout: Maximum wait time in milliseconds.
+        """
+        option = self.page.locator(self.MODEL_SETTINGS_MAX_TOKENS_MODE.format(mode))
+        try:
+            option.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @action("Close model settings dialog")
+    def close_settings_dialog(self, timeout: int = 5000):
+        """Close the Model settings dialog via its header Close (X) button,
+        without applying any changes made inside it.
+
+        LOCATOR: ``model-settings-dialog-close-button`` testid.
+
+        Args:
+            timeout: Maximum wait for the dialog to become hidden.
+        """
+        logger.info("Closing model settings dialog")
+        self.model_settings_dialog_close_button.click()
+        self.model_settings_dialog.wait_for(state="hidden", timeout=timeout)
 
     @action("Clear embedded chat")
     def clear_embedded_chat(self, timeout: int = 10000):
