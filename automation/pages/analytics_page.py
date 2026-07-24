@@ -25,6 +25,15 @@ from .locator_descriptor import LocatorDescriptor
 
 logger = logging.getLogger("elitea.pages.analytics")
 
+# The "Last 30d" preset (and any KPI/leaderboard re-render that depends on
+# it — the drill-down into user detail, and Back returning to Overview) is a
+# real backend aggregation query over a wider window than the default, not a
+# static UI wait. Confirmed live (screenshot evidence) that this can still be
+# spinning past 15s under concurrent load — 30s matches this codebase's other
+# backend-bound waits (e.g. BasePage's networkidle timeout=30000), not an
+# arbitrary bump.
+ANALYTICS_QUERY_TIMEOUT = 30_000
+
 
 class AnalyticsPage(BasePage):
     """Page object for ``/settings/analytics``.
@@ -104,7 +113,7 @@ class AnalyticsPage(BasePage):
     def select_last_30d(self) -> None:
         """Click the 'Last 30d' date-range preset (widens the leaderboard window)."""
         self.date_preset_30d_button.click()
-        self.overview_kpi_team.wait_for(state="visible", timeout=15000)
+        self.overview_kpi_team.wait_for(state="visible", timeout=ANALYTICS_QUERY_TIMEOUT)
 
     def get_leaderboard_row_count(self) -> int:
         """Return how many leaderboard rows are currently rendered."""
@@ -118,7 +127,7 @@ class AnalyticsPage(BasePage):
     def click_first_leaderboard_row(self) -> None:
         """Click the first 'Top 5 AI Adopters' row — drills into that user's detail."""
         self.overview_leaderboard_row.first.click()
-        self.user_detail_title.wait_for(state="visible", timeout=15000)
+        self.user_detail_title.wait_for(state="visible", timeout=ANALYTICS_QUERY_TIMEOUT)
 
     def user_detail_title_text(self) -> str:
         """Return the user-detail view's title text (the user's email)."""
@@ -140,7 +149,7 @@ class AnalyticsPage(BasePage):
     def click_user_detail_back(self) -> None:
         """Click the user-detail view's Back arrow — returns to the Overview tab."""
         self.user_detail_back_button.click()
-        self.overview_kpi_team.wait_for(state="visible", timeout=15000)
+        self.overview_kpi_team.wait_for(state="visible", timeout=ANALYTICS_QUERY_TIMEOUT)
 
     def is_users_list_showing(self) -> bool:
         """Return True if the native Users-list (title + search) is present.

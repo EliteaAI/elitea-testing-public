@@ -19,7 +19,7 @@ Markers:
 
 import allure
 import pytest
-from pages.analytics_page import AnalyticsPage
+from pages.analytics_page import ANALYTICS_QUERY_TIMEOUT, AnalyticsPage
 from pages.catalog_page import CatalogPage
 from pages.notification_quick_panel_page import NotificationQuickPanelPage
 from pages.user_profile_settings_page import UserProfileSettingsPage
@@ -116,7 +116,7 @@ def test_analytics_overview_leaderboard_drill_to_user_detail_and_back(page):
     with allure.step("Step 1 — Navigate to Analytics, select Last 30d, wait for the leaderboard"):
         analytics_page.navigate_to_analytics()
         analytics_page.select_last_30d()
-        expect(analytics_page.overview_leaderboard_row.first).to_be_visible(timeout=15000)
+        expect(analytics_page.overview_leaderboard_row.first).to_be_visible(timeout=ANALYTICS_QUERY_TIMEOUT)
 
     with allure.step("Step 2 — Capture the first leaderboard row's email"):
         first_row_text = analytics_page.first_leaderboard_email()
@@ -133,8 +133,8 @@ def test_analytics_overview_leaderboard_drill_to_user_detail_and_back(page):
 
     with allure.step("Step 5 — Click Back; Overview KPI row + leaderboard render again"):
         analytics_page.click_user_detail_back()
-        expect(analytics_page.overview_kpi_team).to_be_visible(timeout=15000)
-        expect(analytics_page.overview_leaderboard_row.first).to_be_visible(timeout=15000)
+        expect(analytics_page.overview_kpi_team).to_be_visible(timeout=ANALYTICS_QUERY_TIMEOUT)
+        expect(analytics_page.overview_leaderboard_row.first).to_be_visible(timeout=ANALYTICS_QUERY_TIMEOUT)
 
 
 @pytest.mark.notifications
