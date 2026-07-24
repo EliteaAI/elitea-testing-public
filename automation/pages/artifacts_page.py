@@ -519,7 +519,17 @@ class ArtifactsPage(BasePage):
         "ELITEA-1851. Same disabled condition/live-confirmed behavior as "
         ":attr:`file_editor_save_button`. Clicking while enabled opens a "
         "separate, also-un-testid'd confirmation dialog — out of this "
-        "case's scope (visibility-only here, never clicked).",
+        "case's scope (visibility-only here, never clicked). DECLARED "
+        "IMPROVISATION (canon-gap, .agents/role-overrides.md § "
+        "Declared-improvisation protocol): the rendered data-testid value "
+        "and this selector are fully policy-compliant, but the EliteaUI "
+        "call site (PreviewHeader.jsx, EliteaAI/EliteaUI@2764045b) wires it "
+        "via the shared Button.DiscardButton component's pre-existing "
+        "'dataTestId' prop (data-prefixed — the shared component destructures "
+        "{dataTestId, modalDataTestId, confirmButtonDataTestId} and has "
+        "~14 call sites app-wide) because refactoring that shared prop name "
+        "is out of scope for this single-case PR. See the AFS's Concrete "
+        "Handles row for this element for the full declaration.",
     )
 
     file_preview_overflow_menu_button = LocatorDescriptor(
