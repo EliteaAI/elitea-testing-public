@@ -3417,6 +3417,73 @@ class ChatPage(BasePage):
         self.page.mouse.move(0, 0)
         logger.info("Agent participant id=%s removed from chat", agent_id)
 
+    # ------------------------------------------------------------------
+    # Users-type participant removal (ELITEA-2170) — same PARTICIPANT_ROW /
+    # PARTICIPANT_REMOVE_BUTTON mechanism as remove_agent_participant()
+    # above, decomposed into per-step methods (rather than one opaque
+    # call) so the removal flow's own hover/click/confirm-dialog states
+    # can each be asserted individually, matching this case's own
+    # Coverage Map (steps 2-4 verify intermediate UI state, not just the
+    # end result).
+    # ------------------------------------------------------------------
+
+    def get_user_participant_row(self, user_id: int, timeout: int = 10000):
+        """Return the Locator for a Users-type participant's row inside the
+        already-open participants popper (``open_participants_popover(section="users")``).
+
+        Scoped via the dynamic ``chat-participant-row-{uniqueId}`` testid —
+        added to ``UserMenu.jsx`` this implementation (ELITEA-2170), a
+        one-line mirror of ``ExpandedParticipants/ParticipantItem.jsx``'s
+        already-shipped agent/pipeline/toolkit/mcp row testid. ``uniqueId``
+        = ``getChatParticipantUniqueId(participant)``, which for a
+        Users-type participant resolves to ``user_{entity_meta.id}_``
+        (trailing empty segment) — **not** ``user_{id}_{project_id}`` as
+        the AFS's source-reading assumed: confirmed live this session that
+        a "user"-entity participant's ``entity_meta`` carries only ``id``,
+        never ``project_id`` (``ParticipantDetailsContext.jsx``'s own
+        detail-fetch guard explicitly excludes
+        ``ChatParticipantType.Users`` from its ``project_id``-required
+        check — the same fact this timeout surfaced). Same family already
+        consumed by :meth:`remove_agent_participant`'s
+        ``application_{agent_id}_{project_id}`` (agent/pipeline/toolkit
+        participants DO carry ``project_id``, so that one differs from
+        this by design, not by a shared bug).
+
+        Args:
+            user_id: Target user's numeric platform id (``entity_meta.id``
+                — resolve via ``ConversationAPI.get_conversation()``'s
+                ``participants`` list, matching on ``meta.user_name``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        unique_id = f"user_{user_id}_"
+        row = self.participants_popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+        row.wait_for(state="visible", timeout=timeout)
+        return row
+
+    @action("Reveal user participant's remove button via hover")
+    def get_user_participant_remove_button(self, user_id: int, timeout: int = 10000):
+        """Hover the target user's row to reveal its hover-only 'Remove
+        user' icon button and return its Locator, scoped under the row
+        (``chat-participant-remove-button``, disambiguated via the row
+        container — this case's own AFS-specced testid-collision fix,
+        since the button testid alone is identical on every row).
+
+        Same hover-reveal CSS-transition wait as
+        :meth:`remove_agent_participant`.
+
+        Args:
+            user_id: Target user's numeric platform id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        row = self.get_user_participant_row(user_id, timeout=timeout)
+        row.scroll_into_view_if_needed()
+        row.hover()
+        self.page.wait_for_timeout(300)  # hover-reveal CSS transition (matches remove_agent_participant)
+
+        remove_btn = row.locator(self.PARTICIPANT_REMOVE_BUTTON)
+        remove_btn.wait_for(state="visible", timeout=timeout)
+        return remove_btn
+
     @action("Open Mention skill popper")
     def open_mention_skill_popper(self, timeout: int = 10000):
         """Clear the message input and type "~" to open the "Mention skill" popper.
