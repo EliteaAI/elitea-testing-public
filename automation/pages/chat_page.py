@@ -625,6 +625,36 @@ class ChatPage(BasePage):
     # a test actually touches).
     FOLDER_MENU_DELETE_ITEM = '[data-testid="chat-folder-menu-delete-menuitem"]'
 
+    # ------------------------------------------------------------------
+    # Active-participant clear button (ELITEA-2092)
+    # ------------------------------------------------------------------
+    # Distinct from switch_participant_button above (which OPENS the
+    # participant-search popper) — this is the adjacent "x" IconButton that
+    # clears the active agent/pipeline participant back to a plain model
+    # chat. Its current accessible name is "switch to model" (aria-label);
+    # documented here for reference only — the locator itself is testid-only.
+
+    chat_clear_participant_button = LocatorDescriptor(
+        testid="chat-clear-participant-button",
+        description=(
+            "'x' button next to the active-participant chip that clears "
+            "the agent/pipeline participant (aria-label 'switch to model')."
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # Conversation auto-naming transient placeholder (ELITEA-2092)
+    # ------------------------------------------------------------------
+
+    conversation_naming_spinner = LocatorDescriptor(
+        testid="conversation-naming-spinner",
+        description=(
+            "Transient spinner + 'Naming…' placeholder shown on a new "
+            "conversation's sidebar entry immediately after the first "
+            "Send, until the backend resolves an auto-generated title."
+        ),
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
         
@@ -1706,6 +1736,26 @@ class ChatPage(BasePage):
         """
         return self.page.locator(self.CONVERSATION_GROUP_HEADER.format(group))
 
+    def get_conversation_item_text(self, conversation_id: str | int, timeout: int = 5000) -> str:
+        """Return the visible text of a specific conversation item by id.
+
+        Uses the existing ``CONVERSATION_ITEM`` template — a targeted
+        alternative to ``get_conversation_link_titles()``'s positional
+        top-N scan (which reads the raw, pre-policy ``:has(h6) > button``
+        selector via ``get_conversation_list_items()`` and can resolve the
+        wrong element) for callers that already know the exact conversation
+        id to check — e.g. verifying an auto-generated title resolved for a
+        specific just-created conversation (ELITEA-2092).
+
+        Args:
+            conversation_id: Numeric conversation id.
+            timeout: Maximum wait time in milliseconds for the item to
+                appear before reading its text.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id)).first
+        item.wait_for(state="visible", timeout=timeout)
+        return (item.text_content() or "").strip()
+
     def is_conversation_in_group(
         self, conversation_id: str | int, group: str = "today", timeout: int = 5000,
     ) -> bool:
@@ -2139,6 +2189,29 @@ class ChatPage(BasePage):
                 logger.info("Naming label resolved")
             except Exception as e:
                 logger.info(f"Naming label did not resolve within timeout: {e}")
+
+    def wait_for_conversation_naming_spinner(self, timeout: int = 5000):
+        """Wait for the 'Naming…' spinner (``conversation_naming_spinner``)
+        to appear on the sidebar's newest conversation entry.
+
+        Testid-anchored complement to ``wait_for_naming_label_to_resolve()``
+        (raw-text based, pre-existing) — added for ELITEA-2092, which
+        asserts the spinner's own present-then-resolved transition rather
+        than matching a literal "Naming" text string.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.conversation_naming_spinner.wait_for(state="visible", timeout=timeout)
+
+    def wait_for_conversation_naming_spinner_to_resolve(self, timeout: int = 10000):
+        """Wait for the 'Naming…' spinner (``conversation_naming_spinner``)
+        to disappear, indicating the auto-generated title has resolved.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.conversation_naming_spinner.wait_for(state="hidden", timeout=timeout)
 
     def get_conversation_link_count(self) -> int:
         """Get count of conversation items in the sidebar list.
