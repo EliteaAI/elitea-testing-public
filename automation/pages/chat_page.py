@@ -314,6 +314,18 @@ class ChatPage(BasePage):
         description="Read out (speaker) button on AI messages to start TTS"
     )
 
+    # Voice play/stop icon state (GAP-018): the button's own icon SVG has no
+    # separate app testid, so this is a scoped sub-selector reaching one level
+    # inside the testid'd button (.agents/testing.md § Locator policy —
+    # "Scoped sub-selectors: UPPER_CASE class constants containing
+    # `[data-testid="…"]` only"). The icon shape never changes structurally —
+    # only which of the two vector paths (play.svg / stop_record.svg) renders —
+    # so the path `d` attribute is a stable, deterministic identity signal.
+    VOICE_PLAY_STOP_ICON_PATH = '[data-testid="chat-voice-play-stop-button"] path'
+    # Path-data prefixes from EliteaUI/src/assets/play.svg and stop_record.svg.
+    _PLAY_ICON_PATH_PREFIX = "M13 8C13.0003"
+    _STOP_ICON_PATH_PREFIX = "M12 4.72727"
+
     # ------------------------------------------------------------------
     # Messages
     # ------------------------------------------------------------------
@@ -3910,6 +3922,66 @@ class ChatPage(BasePage):
             self.click_read_out(message_index=message_index, timeout=timeout)
             self.wait_for_tts_controls(timeout=timeout)
         return self.open_voice_settings_from_tts(timeout=timeout)
+
+    @action("Click voice play/stop button")
+    def click_play_stop_button(self, timeout: int = 5000):
+        """Click the voice mini-player's Play/Stop toggle button (GAP-018).
+
+        Toggles TTS playback: starts audio when idle (Play state), stops
+        audio when active (Stop state). Note: clicking ``chat-read-out-button``
+        alone does NOT start playback — it only stages the text and reveals
+        the mini-player in the idle/Play state; playback begins only once
+        this button is clicked.
+        """
+        self.voice_play_stop_button.wait_for(state="visible", timeout=timeout)
+        self.voice_play_stop_button.click()
+        # Icon swap is a synchronous React state update, not a network
+        # round-trip — a short settle avoids reading mid-render DOM.
+        self.page.wait_for_timeout(300)
+
+    def is_play_stop_showing_stop_icon(self, timeout: int = 5000) -> bool:
+        """Return whether chat-voice-play-stop-button currently renders the
+        Stop icon (``isPlaying`` true) rather than the Play icon.
+
+        Reads the SVG ``<path d="...">`` inside the button and compares it
+        against the known Play/Stop icon path data — the icon shape is the
+        stable, testid-scoped signal for ``isPlaying``. The button's own
+        tooltip text ("Start speaking" / "Stop speaking") is intentionally
+        NOT asserted here: no testid-compliant handle exists for MUI's
+        tooltip popper content (it renders outside the component tree only
+        while hover-open), so asserting it would require a non-testid
+        locator forbidden by this project's locator policy. The icon-path
+        check plus ``is_voice_settings_button_disabled()`` (below) together
+        cover the full ``isPlaying`` state surface the case cares about.
+        """
+        icon = self.page.locator(self.VOICE_PLAY_STOP_ICON_PATH)
+        icon.wait_for(state="attached", timeout=timeout)
+        path_data = icon.get_attribute("d") or ""
+        if path_data.startswith(self._STOP_ICON_PATH_PREFIX):
+            return True
+        if path_data.startswith(self._PLAY_ICON_PATH_PREFIX):
+            return False
+        raise AssertionError(f"Unrecognized play/stop icon path data: {path_data!r}")
+
+    def is_voice_settings_button_disabled(self) -> bool:
+        """Return whether chat-voice-settings-button is disabled.
+
+        Mirrors ``isPlaying`` directly (``disabled={isPlaying}`` in
+        VoiceControlButton.jsx) via the button's native ``disabled`` state —
+        no locator beyond the existing class-level field is needed.
+        """
+        return self.voice_settings_button.is_disabled()
+
+    def get_read_out_buttons_disabled_states(self) -> list[bool]:
+        """Return the disabled state of EVERY rendered chat-read-out-button.
+
+        Each AI answer with speakable text renders its own Read-out button;
+        the disable condition (``!!speakingMessageId``) is unconditional on
+        ALL of them while any message is speaking — including the
+        currently-speaking answer's own button, not just the "other" ones —
+        so callers must assert against the full list, never a single index.
+        """
+        return [btn.is_disabled() for btn in self.read_out_button.all()]
 
     # ------------------------------------------------------------------
     # Chat folder methods (ELITEA-2132)

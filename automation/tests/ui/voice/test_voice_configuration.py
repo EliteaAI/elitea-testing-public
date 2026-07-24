@@ -28,6 +28,7 @@ import logging
 import re
 
 import pytest
+from playwright.sync_api import expect
 from pages.chat_page import ChatPage
 from pages.user_profile_settings_page import UserProfileSettingsPage
 from components.voice_settings import VoiceSettingsDialog
@@ -515,6 +516,164 @@ class TestVoiceConfiguration:
                     "Voice Mini Player should NOT be visible in Chat by default. "
                     "Voice features must be explicitly activated by user."
                 )
+
+        finally:
+            if conv_id:
+                try:
+                    conversation_api.delete_conversation(int(conv_id))
+                except Exception as e:
+                    logger.warning("Failed to delete conversation %s: %s", conv_id, e)
+
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_play_stop_toggle_and_disabled_controls(self, page, conversation_api):
+        """GAP-018: Voice mini-player Play/Stop toggle + controls disabled
+        during read-out playback.
+
+        Coverage-gap campaign case (cov60) — no onetest TMS case and no
+        numbered tracker issue exist for the case itself, only the local
+        board ledger. Coverage target: VoiceControlButton.jsx's
+        isPlaying-driven icon/disabled branches, ApplicationAnswer.jsx's
+        `!!speakingMessageId` read-out disable branch (unconditional on ALL
+        rendered read-out buttons, not just "other" answers), and
+        useReadAloud's mini-player mount-on-read-out / unmount-on-stop
+        behavior (it unmounts entirely rather than resetting in place).
+
+        Tooltip TEXT ("Start speaking"/"Stop speaking") is intentionally not
+        asserted — see ChatPage.is_play_stop_showing_stop_icon() docstring;
+        the icon-path + settings-disabled-state checks together cover the
+        full `isPlaying` state surface without a non-testid locator.
+
+        Spec: test-specs/chat-interface/l3_voice-mini-player-play-stop-toggle-and-disabled-controls_GAP-018.md
+        Source: .agents/automation-board/batches/cov60/cases/GAP-018/source.md
+        """
+        conv_id = None
+        console_errors = []
+        page.on(
+            "console",
+            lambda msg: console_errors.append(msg) if msg.type == "error" else None,
+        )
+        try:
+            with allure.step(
+                "Step 1 — Send two prompts (short, then long) so 2 AI answers with "
+                "speakable text render; both read-out buttons present and enabled"
+            ):
+                chat = ChatPage(page)
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+                chat.click_create_new_conversation(timeout=NAVIGATION_TIMEOUT)
+                conv_id = capture_conversation_id(page)
+
+                initial_count = chat.get_message_count()
+                chat.send_message("Say hello in one sentence.", use_enter=True)
+                chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
+                chat.wait_for_generation_complete(timeout=AI_RESPONSE_TIMEOUT)
+
+                if not conv_id:
+                    conv_id = capture_conversation_id(page)
+
+                # Longer prompt for the answer that will actually be played — a
+                # short answer's TTS can finish in well under 1s, racing past the
+                # "Stop" state window before it's ever observed (AFS Test Data).
+                initial_count = chat.get_message_count()
+                chat.send_message(
+                    "Write a 6 to 8 sentence paragraph describing a peaceful "
+                    "morning by a lake.",
+                    use_enter=True,
+                )
+                chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
+                chat.wait_for_generation_complete(timeout=AI_RESPONSE_TIMEOUT)
+
+                read_out_states = chat.get_read_out_buttons_disabled_states()
+                assert len(read_out_states) == 2, (
+                    f"Expected 2 read-out buttons (one per AI answer), got {len(read_out_states)}"
+                )
+                assert read_out_states == [False, False], (
+                    f"Both read-out buttons should be enabled before any playback, got {read_out_states}"
+                )
+
+            with allure.step(
+                "Step 2 — Click the most recent (longer) answer's read-out; "
+                "mini-player appears in idle/Play state (playback not yet started)"
+            ):
+                chat.click_read_out(message_index=-1, timeout=TTS_TIMEOUT)
+                chat.wait_for_tts_controls(timeout=TTS_TIMEOUT)
+
+                expect(chat.voice_mini_player).to_have_count(1, timeout=UI_ELEMENT_TIMEOUT)
+                chat.voice_play_stop_button.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                chat.voice_settings_button.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                assert not chat.is_play_stop_showing_stop_icon(timeout=UI_ELEMENT_TIMEOUT), (
+                    "Clicking Read-out alone must only stage playback (Play/idle icon) — "
+                    "audio starts only once the play/stop button itself is clicked"
+                )
+
+            with allure.step(
+                "Step 3 — Click play/stop (currently Play) to start playback; "
+                "it now renders the Stop icon"
+            ):
+                chat.click_play_stop_button(timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.is_play_stop_showing_stop_icon(timeout=UI_ELEMENT_TIMEOUT), (
+                    "Play/stop button should render the Stop icon while audio is playing"
+                )
+
+            with allure.step("Step 4 — While playing, chat-voice-settings-button is disabled"):
+                assert chat.is_voice_settings_button_disabled(), (
+                    "Voice settings button should be disabled while isPlaying is true"
+                )
+
+            with allure.step(
+                "Step 5 — While playing, EVERY chat-read-out-button is disabled "
+                "(not just the other answer's)"
+            ):
+                read_out_states = chat.get_read_out_buttons_disabled_states()
+                assert read_out_states == [True, True], (
+                    f"All read-out buttons should be disabled while a message is speaking, "
+                    f"got {read_out_states} (the disable condition is unconditional on "
+                    "!!speakingMessageId, including the currently-speaking answer's own button)"
+                )
+
+            with allure.step(
+                "Step 6 — Click play/stop (currently Stop) to stop playback; "
+                "the mini-player fully unmounts"
+            ):
+                chat.click_play_stop_button(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.voice_mini_player).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step("Step 7 — After stopping, every chat-read-out-button is enabled again"):
+                read_out_states = chat.get_read_out_buttons_disabled_states()
+                assert read_out_states == [False, False], (
+                    f"All read-out buttons should be re-enabled once playback stops, got {read_out_states}"
+                )
+                # chat-voice-settings-button is not present to re-check — the
+                # mini-player unmounted entirely in Step 6; expected, not a gap.
+
+            with allure.step(
+                "Step 8 — Round-trip the toggle a second time: mini-player reappears, "
+                "Stop→Play round-trips cleanly again"
+            ):
+                chat.click_read_out(message_index=-1, timeout=TTS_TIMEOUT)
+                chat.wait_for_tts_controls(timeout=TTS_TIMEOUT)
+                expect(chat.voice_mini_player).to_have_count(1, timeout=UI_ELEMENT_TIMEOUT)
+
+                chat.click_play_stop_button(timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.is_play_stop_showing_stop_icon(timeout=UI_ELEMENT_TIMEOUT), (
+                    "Second round-trip: play/stop button should show the Stop icon again "
+                    "after re-starting playback"
+                )
+
+                chat.click_play_stop_button(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.voice_mini_player).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
+
+                read_out_states = chat.get_read_out_buttons_disabled_states()
+                assert read_out_states == [False, False], (
+                    f"After the second stop, all read-out buttons should be enabled again, "
+                    f"got {read_out_states}"
+                )
+
+            unexpected_errors = [m.text for m in console_errors]
+            assert not unexpected_errors, (
+                f"Expected zero console errors across the play/stop toggle flow, got: {unexpected_errors}"
+            )
 
         finally:
             if conv_id:
