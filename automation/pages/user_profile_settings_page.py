@@ -624,12 +624,25 @@ class UserProfileSettingsPage(BasePage):
         repaint; GAP-020 Precondition/step-5 finding). Callers that need a
         guaranteed flip should check :meth:`is_theme_selected` first.
 
+        Waits for ``document.body``'s computed background color to actually
+        change before returning — the real repaint signal, not a fixed
+        settle sleep. Skipped for the documented already-selected no-op
+        (nothing repaints, so waiting for a change there would just spin
+        out the full timeout).
+
         Args:
             mode: 'dark' or 'light'.
         """
         logger.info("Clicking theme toggle: %s", mode)
+        already_selected = self.is_theme_selected(mode)
+        before_color = self.get_body_background_color()
         self._theme_toggle(mode).click()
-        self.page.wait_for_timeout(300)  # pure client-side repaint, no network
+        if not already_selected:
+            self.page.wait_for_function(
+                "(before) => getComputedStyle(document.body).backgroundColor !== before",
+                arg=before_color,
+                timeout=5000,
+            )
 
     def is_theme_selected(self, mode: str) -> bool:
         """Return True if the *mode* toggle button is currently selected.

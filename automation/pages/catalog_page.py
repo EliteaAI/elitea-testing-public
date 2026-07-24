@@ -45,18 +45,14 @@ class CatalogPage(BasePage):
     CATALOG_CATEGORY_GRID = '[data-testid="catalog-category-grid-{}"]'
     CATALOG_CATEGORY_SHOW_MORE_BUTTON = '[data-testid="catalog-category-show-more-button-{}"]'
 
-    # Declared improvisation (.agents/role-overrides.md § Declared-improvisation
-    # protocol): AgentCard.jsx has no per-card testid, and GAP-054's own
-    # Concrete Handles table sanctions ":scope > *" child-count as the
-    # correct, minimal-footprint mechanism ("confirmed via live count",
-    # not "needs-adding") — adding a per-card testid would be an
-    # untouched-element addition beyond this case's scope, since no
-    # assertion targets individual card identity, only the grid's
-    # cardinality. Kept as an UPPER_CASE class constant (not inlined in a
-    # method body) so it stays greppable, matching the letter of the
-    # class-level-constant discipline even though it is not itself a
-    # `[data-testid=` selector.
-    CATALOG_GRID_CHILD = ":scope > *"
+    # Per-card testid on AgentCard.jsx (`data-testid={`catalog-agent-card-${application.id}`}`,
+    # EliteaAI/EliteaUI@ae7d2703 on automation/testids). Only the card's identity varies
+    # per render (application.id) — the count-check this page performs (Show more/less
+    # card cardinality) doesn't need a specific id, so a prefix-match selector enumerates
+    # every rendered card regardless of which application it is, same established
+    # `[data-testid^="…"]` pattern as `agent_detail_page.py`'s SKILL_CARD_ANY_SELECTOR /
+    # `artifacts_page.py`'s BUCKET_ROW_ANY_SELECTOR.
+    CATALOG_AGENT_CARD_ANY_SELECTOR = '[data-testid^="catalog-agent-card-"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -92,12 +88,14 @@ class CatalogPage(BasePage):
         return self.page.locator(self.CATALOG_CATEGORY_SHOW_MORE_BUTTON.format(slug))
 
     def category_cards(self, category_name: str):
-        """Return the Locator for every direct child (card) of *category_name*'s grid.
+        """Return the Locator for every rendered agent card in *category_name*'s grid.
 
-        See ``CATALOG_GRID_CHILD`` docstring for why this is a structural
-        child-count selector rather than a per-card testid.
+        Scoped to the category's testid'd grid container, then prefix-matched on
+        each card's own ``catalog-agent-card-{application.id}`` testid (see
+        ``CATALOG_AGENT_CARD_ANY_SELECTOR``) — this page only asserts card
+        *cardinality* (Show more/less), never a specific card's identity.
         """
-        return self.category_grid(category_name).locator(self.CATALOG_GRID_CHILD)
+        return self.category_grid(category_name).locator(self.CATALOG_AGENT_CARD_ANY_SELECTOR)
 
     def get_category_card_count(self, category_name: str) -> int:
         """Return the number of cards currently rendered in *category_name*'s grid."""

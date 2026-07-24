@@ -17,6 +17,8 @@ Scope strategy:
 import logging
 
 import pytest
+from playwright.sync_api import Browser
+
 from api import (
     AgentAPI,
     APIClient,
@@ -29,7 +31,6 @@ from api import (
     ToolkitAPI,
 )
 from config import settings
-from playwright.sync_api import Browser
 
 logger = logging.getLogger("elitea.automation.fixtures.api")
 

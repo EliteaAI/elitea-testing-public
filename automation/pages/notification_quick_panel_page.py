@@ -49,6 +49,10 @@ class NotificationQuickPanelPage(BasePage):
     # (read/unread) is a `data-*` attribute on the SAME element, per
     # .agents/testing.md "testid = stable identity, state via attribute".
     NOTIFICATION_ITEM_ROW_BY_SEEN = '[data-testid="notification-item-row"][data-seen="{}"]'
+    # Same testid, unfiltered by state — used to confirm the panel actually
+    # finished rendering rows (any seen-state) before returning from
+    # open_quick_panel(), rather than a blind paint-settle sleep.
+    NOTIFICATION_ITEM_ROW_ANY_SELECTOR = '[data-testid="notification-item-row"]'
 
     mark_toggle_button = LocatorDescriptor(
         testid="notification-item-mark-toggle-button",
@@ -79,7 +83,13 @@ class NotificationQuickPanelPage(BasePage):
 
         with self.page.expect_response(_is_list_response, timeout=timeout):
             self.bell_button.click()
-        self.page.wait_for_timeout(200)  # allow React to paint after the response resolves
+        # Panel content is a direct render of the just-resolved response's data —
+        # wait for the first row to actually be in the DOM before returning,
+        # rather than a blind paint-settle sleep. (Every current caller opens
+        # the panel against a seeded-unread fixture, so a row is guaranteed;
+        # a future zero-row caller would get an honest timeout here rather
+        # than silently racing ahead of the render.)
+        self.page.locator(self.NOTIFICATION_ITEM_ROW_ANY_SELECTOR).first.wait_for(state="attached", timeout=timeout)
         logger.info("Notification quick panel opened")
 
     def unread_rows(self):
@@ -92,9 +102,15 @@ class NotificationQuickPanelPage(BasePage):
 
     @action("Hover first unread notification row")
     def hover_first_unread_row(self) -> None:
-        """Hover the first unread row — reveals its per-row mark-toggle button."""
+        """Hover the first unread row — reveals its per-row mark-toggle button.
+
+        Waits for the toggle to actually mount (it only enters the DOM once
+        ``isHovered`` flips — see class docstring) instead of a blind sleep;
+        the caller's own ``expect(mark_toggle_button).to_be_visible()`` then
+        re-verifies the identical condition and resolves immediately.
+        """
         self.unread_rows().first.hover()
-        self.page.wait_for_timeout(100)
+        self.mark_toggle_button.first.wait_for(state="visible", timeout=5000)
 
     def is_mark_toggle_visible(self) -> bool:
         """Return True if a per-row mark-toggle button is currently rendered anywhere on the page.
@@ -111,15 +127,30 @@ class NotificationQuickPanelPage(BasePage):
 
     @action("Click notification mark-toggle")
     def click_mark_toggle(self) -> None:
-        """Click the currently-visible per-row mark-toggle button."""
-        self.mark_toggle_button.first.click()
-        self.page.wait_for_timeout(300)
+        """Click the currently-visible per-row mark-toggle button.
+
+        Waits for the bulk mark-seen mutation (``PUT
+        .../notifications/notifications/prompt_lib/{project}`` — the SAME base
+        URL as the panel's list GET and bulk-delete, disambiguated by request
+        method) to resolve before returning, mirroring ``open_quick_panel()``'s
+        ``expect_response`` pattern for its sibling GET a few lines above,
+        rather than a blind post-click settle sleep.
+        """
+
+        def _is_mark_seen_response(response) -> bool:
+            return "/notifications/notifications/prompt_lib/" in response.url and response.request.method == "PUT"
+
+        with self.page.expect_response(_is_mark_seen_response, timeout=10000):
+            self.mark_toggle_button.first.click()
 
     def move_pointer_away(self) -> None:
         """Move the mouse off any row (triggers ``handleMouseLeave`` on the hovered row).
 
         A plain cursor move, not a locator interaction — used to prove the
         toggle unmounts once its row is no longer hovered (GAP-077 step 7).
+        Waits for the toggle to actually leave the DOM instead of a blind
+        sleep; the caller's own ``expect(mark_toggle_button).to_have_count(0)``
+        then re-verifies the identical condition and resolves immediately.
         """
         self.page.mouse.move(0, 0)
-        self.page.wait_for_timeout(100)
+        self.mark_toggle_button.first.wait_for(state="detached", timeout=5000)
