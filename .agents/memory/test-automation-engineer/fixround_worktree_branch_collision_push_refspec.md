@@ -92,3 +92,32 @@ genuinely needs a force-update; the lease's expected-old-value makes it
 safe (fails loudly instead of clobbering if someone else pushed in the
 meantime, rather than trusting the pre-push fetch alone). Verify
 `gh pr view <N> --json mergeable` flips to `MERGEABLE` after the push.
+
+**Simpler variant when the colliding worktree is genuinely stale, not just
+idle (ELITEA-2007 fix round, PR #1038): remove it instead of branching
+around it.** If the sibling worktree holding the PR's branch belongs to a
+PRIOR implementer dispatch that already finished (its own commits are
+already pushed — check `git log --oneline <worktree-path-branch>` shows
+nothing your dispatch needs to preserve) and `git worktree list` shows it
+**unlocked** (no `locked` suffix), you don't need the `fixround/`-branch
+dance at all:
+
+```bash
+git worktree remove ../<stale-worktree-name>     # from YOUR OWN worktree —
+                                                  # this is a plumbing op, not
+                                                  # a cd into the other worktree,
+                                                  # so the isolation sandbox allows it
+git fetch origin tests/<CASE-ID>-<slug>
+git checkout tests/<CASE-ID>-<slug>              # now free, normal checkout
+```
+
+Then work exactly as if you'd been handed the branch directly — plain
+`git push origin tests/<CASE-ID>-<slug>` at the end, no refspec gymnastics,
+no force. This is strictly simpler than the branch-and-refspec-push pattern
+above and should be tried FIRST; fall back to the `fixround/`-branch dance
+only if the worktree is locked, or its own uncommitted changes look like
+they matter (check `git status --short` there — you can read another
+worktree's status via `git -C <path> status --short` even under the
+isolation sandbox, since that's a read, not a cd). Don't reflexively assume
+a same-branch collision means "branch around it" — check whether the
+colliding worktree is simply done and removable first.
