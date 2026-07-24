@@ -49,3 +49,16 @@ documented CI high-priority run — a real gap that a green test run alone
 can never surface. See the companion entry in
 `.agents/memory/qa-engineer/priority_marker_drift_afs_vs_pytest_mark.md`
 for the reviewer-side version of this same lesson.
+
+## Second confirmed instance (ELITEA-1978, implementer redispatch verification, 2026-07-24)
+
+Same drift, different origin path: a redispatch onto an ALREADY-COMPLETE
+branch/PR (#1008, `test_credential_duplicate_mismatch_validation.py`) — the
+test used `p2`, but the case's TMS frontmatter priority is `high` and every
+other credentials-area test with critical/high priority in the suite uses
+`p1` (only the one medium-priority sibling uses `p2`). This time it was
+caught by the IMPLEMENTER (not a reviewer) during a redispatch ground-truth
+pass, by running exactly this entry's own preflight check even though the
+branch already had a PR open — i.e. "the PR already exists and looks done"
+is not a reason to skip this check; run it as part of the redispatch
+verification too, not only at first handoff.
