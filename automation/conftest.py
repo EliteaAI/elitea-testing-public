@@ -63,6 +63,7 @@ from fixtures.cleanup_fixtures import (
     cleanup_autotest_agents_at_end,
     cleanup_all_conversations_at_end,
 )
+from fixtures.onboarding_fixtures import fresh_user_route
 
 # ---------------------------------------------------------------------------
 # Configuration constants (sourced from settings — backed by .env.test)
@@ -228,6 +229,12 @@ def attach_screenshot(page: Page, name: str, description: str = "") -> Path:
 # - agent_id: Fresh agent per test
 # - pipeline_id: Fresh empty pipeline per test
 # - pipeline_with_llm_id: Fresh executable pipeline with LLM node
+
+# ===========================================================================
+# Onboarding fixtures (imported from fixtures/onboarding_fixtures.py)
+# ===========================================================================
+# - fresh_user_route: simulates a never-onboarded user via social/author/
+#   route interception (cov60 foundation — ELITEA-2232)
 
 # ===========================================================================
 # Cleanup fixtures (imported from fixtures/cleanup_fixtures.py)
