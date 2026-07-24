@@ -19,7 +19,17 @@ import logging
 import pytest
 from playwright.sync_api import Browser
 
-from api import APIClient, AgentAPI, ArtifactAPI, ConversationAPI, CredentialAPI, PipelineAPI, SkillAPI, ToolkitAPI
+from api import (
+    AgentAPI,
+    APIClient,
+    ArtifactAPI,
+    ConversationAPI,
+    CredentialAPI,
+    NotificationAPI,
+    PipelineAPI,
+    SkillAPI,
+    ToolkitAPI,
+)
 from config import settings
 
 logger = logging.getLogger("elitea.automation.fixtures.api")
@@ -243,6 +253,24 @@ def artifact_api(_browser_cookies):
     yield api
     api.close()
     logger.debug("Closed ArtifactAPI client")
+
+
+@pytest.fixture
+def notification_api(_browser_cookies):
+    """Function-scoped NotificationAPI client for notification seed/cleanup (GAP-077).
+
+    Uses cookie-based authentication. Function-scoped since each test that
+    seeds an unread row mutates and restores shared, live backend state and
+    should not share a session across tests.
+
+    Yields:
+        NotificationAPI: Authenticated notification API client
+    """
+    api = NotificationAPI(browser_cookies=_browser_cookies)
+    logger.debug("Created function-scoped NotificationAPI client")
+    yield api
+    api.close()
+    logger.debug("Closed NotificationAPI client")
 
 
 @pytest.fixture(scope="session")

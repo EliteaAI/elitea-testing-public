@@ -34,6 +34,7 @@ from fixtures.api_fixtures import (
     agent_api,
     artifact_api,
     credential_api,
+    notification_api,
     skill_api,
     toolkit_api,
     pipeline_api,
@@ -43,6 +44,7 @@ from fixtures.data_fixtures import (
     agent_id,
     pipeline_id,
     pipeline_with_llm_id,
+    pipeline_with_llm_code_end_id,
     github_credential,
     github_toolkit,
     github_relevant_agents,
@@ -55,6 +57,7 @@ from fixtures.data_fixtures import (
     github_toolkit_with_invalid_credential,
     mcp_toolkit_with_tools,
     mcp_pipeline_with_toolkits,
+    notification_unread_id,
 )
 from fixtures.cleanup_fixtures import (
     cleanup_autotest_pipelines_at_end,
@@ -229,6 +232,7 @@ def attach_screenshot(page: Page, name: str, description: str = "") -> Path:
 # - agent_id: Fresh agent per test
 # - pipeline_id: Fresh empty pipeline per test
 # - pipeline_with_llm_id: Fresh executable pipeline with LLM node
+# - pipeline_with_llm_code_end_id: Fresh pipeline LLM 1 -> Code 1 -> END (ELITEA-2018)
 
 # ===========================================================================
 # Onboarding fixtures (imported from fixtures/onboarding_fixtures.py)

@@ -45,3 +45,14 @@ instruction, and review ran against the raw local diff. So a fix-round
 dispatch saying "update the PR" can actually mean "open it for the first
 time" — check with `gh pr list --json headRefName` (or by branch name)
 before assuming one exists to push to.
+
+**CONFIRMED a second time (ELITEA-1976 fix round, 2026-07-24, worktree
+`wf_e44028a9-dec-112` vs the stale `wf_e44028a9-dec-58`).** Identical shape:
+non-"locked" prior-round worktree still held the branch, `git worktree
+remove` from my own worktree freed it, checkout picked up all 3 prior
+commits cleanly. This time a PR (#1049) already existed (pushed by the
+prior round), so "update the PR" meant literally push + `gh pr edit
+--body-file` — the two outcomes ("PR doesn't exist yet" vs "PR exists,
+push a new commit") are BOTH live possibilities for a fix-round dispatch;
+check `gh pr list --json headRefName,number,url` first, don't assume
+either.
