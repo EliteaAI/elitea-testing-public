@@ -783,29 +783,33 @@ on-main ✓ **except** `agent-canvas-section-advanced` and
 `agent-step-limit-input`, which are on `automation/testids` only (awaiting
 human promotion to `main`).
 
-### Two genuine testid gaps (both need `add-data-testid`)
+### Two former testid gaps — RESOLVED 2026-07-24 (`EliteaAI/EliteaUI@7709ad97`)
+
+Both landed on `automation/testids` (awaiting human promotion to `main`) during
+an ELITEA-2021 redispatch, after a fix-round left them wired live in the shared
+`../EliteaUI` working tree but uncommitted (isolated implementer worktrees
+structurally can't commit to a sibling repo — the analyst-slot testid-commit
+authority per `.agents/workflow.md` closed the gap instead). Live-functional-
+confirmed on the running dev server (typed a tag + Enter → chip rendered;
+typed into Editor Notes → value held).
 
 - **Tags combobox** (`ApplicationEditForm.jsx`/`CreateAgentForm.jsx` →
-  `TagEditor.jsx` → `AutoCompleteDropDown.jsx`): the underlying component
-  already supports `inputTestId`/`chipTestId`/`getOptionTestId` props (proven
-  working elsewhere — Skills' own `CreateSkillForm.jsx` wires
-  `skill-tags-input`/`skill-tag-chip`/`skill-tag-option-{name}` via these
-  exact props) but the Agent/Pipeline caller wires **none of them**. Confirmed
-  live: the Tags `<input id="tags">` has no testid/aria-label, and the
-  committed-tag `.MuiChip-root` has no testid either.
+  `TagEditor.jsx` → `AutoCompleteDropDown.jsx`): now wires `inputTestId`/
+  `chipTestId`/`getOptionTestId` (mirrors Skills' own `CreateSkillForm.jsx`
+  `skill-tags-input`/`skill-tag-chip`/`skill-tag-option-{name}` pattern one
+  prefix over) → `agent-tags-input` (wrapper, `data-testid`),
+  `agent-tags-input-field` (real `<input>`), `agent-tag-chip` (committed
+  chip), dynamic `agent-tag-option-{name}` (suggestion option — **source/
+  commit-confirmed only, not yet live-functionally exercised** — no case has
+  opened the suggestion dropdown itself, only the type-new-tag+Enter path).
 - **Editor Notes section** (`ApplicationEditorNotes.jsx`, detail-page only):
-  zero testids anywhere in the file — no accordion `testId:` (unlike its
-  sibling `ApplicationAdvanceSettings`'s `agent-canvas-section-advanced`), no
-  input testid on the Notes textarea (MUI auto-generated id only, e.g.
-  `:r3n:`).
+  now has `agent-editor-notes-section` (accordion `testId:`, mirrors sibling
+  `agent-canvas-section-advanced`) and `agent-editor-notes-input` (Notes
+  textarea, via `inputProps` `data-testid`).
 
-Both are used identically by Agent AND Pipeline forms (same shared
-components) — see the ELITEA-2021 AFS's Concrete Handles section for the
-full declared-improvisation naming proposal (`agent-tags-input`/
-`agent-tags-input-field`/`agent-tag-chip`/`agent-tag-option-{}`,
-`agent-editor-notes-section`/`agent-editor-notes-input`) and its reasoning
-(matching the file's own already-established `agent-` prefix convention for
-internal consistency, rather than a fresh generic name).
+Both used identically by Agent AND Pipeline forms (same shared components).
+Full detail + the original declared-improvisation naming rationale: the
+ELITEA-2021 AFS's Concrete Handles section and its Redispatch confirmations.
 
 ### Step limit: non-obvious default + a clearing gotcha
 
