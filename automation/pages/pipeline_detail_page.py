@@ -729,6 +729,93 @@ class PipelineDetailPage(PipelineFormPage):
 
         return self.yaml_editor.text_content() or ""
 
+    # Scoped inside the testid-anchored ``yaml_editor`` parent — CodeMirror's
+    # per-line ``div.cm-line`` render nodes are library-internal, not app
+    # JSX (declared #579 improvisation, same shape as
+    # ``McpFormPage.fill_raw_json_line``'s ``RAW_JSON_EDITOR_SELECTOR``
+    # pattern). ``yaml_lines`` above cannot be used for this: it is a DEAD
+    # locator (0 live DOM matches on either branch, confirmed at ELITEA-2028
+    # implementer exploration — no source wires ``pipeline-yaml-lines`` onto
+    # CodeMirror's line nodes today).
+    YAML_EDITOR_LINE_SELECTOR = "div.cm-line"
+
+    def edit_node_transition_in_yaml(self, node_id: str, new_target: str, timeout: int = 5000) -> None:
+        """Edit one node's ``transition:`` line directly in the YAML editor.
+
+        DECLARED IMPROVISATION (same shape as
+        :meth:`McpFormPage.fill_raw_json_line`, #579-approved 2026-07-16):
+        CodeMirror's per-line ``div.cm-line`` nodes are library-internal
+        render nodes, not app JSX — no testid can be placed on an
+        individual line. The scoped raw handle
+        (``YAML_EDITOR_LINE_SELECTOR``) is chained off the already
+        testid-anchored ``yaml_editor`` parent, never free-floating.
+
+        Multiple nodes can share an identical ``transition: END`` line, so
+        a bare text match is ambiguous (confirmed live at ELITEA-2028
+        implementer exploration — every node here starts as ``transition:
+        END``). This method disambiguates by node-block context: it finds
+        the ``- id: {node_id}`` line first, then edits the NEXT
+        ``transition:`` line that follows it — i.e. the transition
+        belonging to that specific node, not just the first occurrence in
+        the document.
+
+        Args:
+            node_id: The node's YAML ``id`` (e.g. ``"Code 1"``).
+            new_target: The new transition target (e.g. ``"LLM 1"``).
+            timeout: Maximum wait time in milliseconds for the editor to
+                be visible before reading its lines.
+
+        Raises:
+            ValueError: If the node's id block, or a ``transition:`` line
+                following it, cannot be found in the YAML editor.
+        """
+        self.yaml_editor.wait_for(state="visible", timeout=timeout)
+        lines = self.yaml_editor.locator(self.YAML_EDITOR_LINE_SELECTOR)
+        line_count = lines.count()
+
+        anchor_text = f"- id: {node_id}"
+        anchor_index = None
+        for i in range(line_count):
+            if anchor_text in (lines.nth(i).text_content() or ""):
+                anchor_index = i
+                break
+        if anchor_index is None:
+            raise ValueError(f"Node id block {anchor_text!r} not found in YAML editor")
+
+        target_index = None
+        for i in range(anchor_index + 1, line_count):
+            text = (lines.nth(i).text_content() or "").strip()
+            if text.startswith("transition:"):
+                target_index = i
+                break
+        if target_index is None:
+            raise ValueError(f"No 'transition:' line found after {anchor_text!r} in YAML editor")
+
+        target_line = lines.nth(target_index)
+        target_line.click()
+        self.page.keyboard.press("Home")
+        self.page.keyboard.press("Shift+End")
+        self.page.keyboard.type(f"transition: {new_target}")
+
+        # The editor's onChange is debounced 30ms before the edit reaches
+        # Redux (`useCodeMirror.hooks.js::onInputHandler`), and the Flow view
+        # only re-derives its nodes/edges from that Redux `yamlCode` at the
+        # moment the Flow/Yaml toggle is clicked (`EditorPanel.jsx::
+        # onSelectChatMode` reads `yamlCode` from the closure current at
+        # click-time) — switching view immediately after typing can race
+        # ahead of the debounce (confirmed live at ELITEA-2028 implementer
+        # exploration: switching too fast left the Flow view showing the
+        # PRE-edit edges). Poll the Save button's own enabled state — which
+        # the app derives from this same `yamlCode` diff
+        # (`useIsPipelineYamlCodeDirty.js`) — as the condition-based signal
+        # that the edit has actually landed in Redux before returning.
+        save_button_handle = self.save_button.element_handle()
+        self.page.wait_for_function(
+            "(el) => el && !el.disabled",
+            arg=save_button_handle,
+            timeout=timeout,
+        )
+
     # ------------------------------------------------------------------
     # ReactFlow canvas — node management
     # ------------------------------------------------------------------
