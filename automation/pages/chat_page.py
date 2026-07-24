@@ -4,9 +4,12 @@ Provides locators and methods for interacting with chat conversations,
 message input, participants, and chat settings.
 """
 
+import base64
 import logging
 import re
 import time
+from pathlib import Path
+
 from playwright.sync_api import Page, expect
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor
@@ -57,6 +60,71 @@ class ChatPage(BasePage):
         fallback=lambda page: page.get_by_role("button", name="attach files"),
         description="Attach files button"
     )
+
+    # ------------------------------------------------------------------
+    # Plus-menu "Attach Files" control + attached-file chips (ELITEA-2091)
+    # ------------------------------------------------------------------
+    # Distinct from attach_files_button/attach_file() above (legacy testid
+    # "chat-attach-button", pre-policy fallback= — tracked tech debt, not
+    # touched here). These are the testids landed for this case
+    # (EliteaAI/EliteaUI@a842cfb0, AttachmentButton.jsx/FileList.jsx):
+    # "Attach Files" is a separate <button> rendered ABOVE the plus-menu's
+    # <ul role="menu"> (not a "-menuitem"), so it's not covered by
+    # PLUS_MENU_ITEM_SUFFIX below.
+
+    chat_attach_files_button = LocatorDescriptor(
+        testid="chat-attach-files-button",
+        description=(
+            "Visible 'Attach Files' IconButton inside the plus-menu popper. "
+            "Clicking it calls fileInputRef.current.click() on the hidden "
+            "chat_attach_files_input — the resulting native OS file picker is "
+            "out of Playwright's control surface, so tests attach files via "
+            "set_input_files() directly on chat_attach_files_input instead "
+            "of driving this button (AFS ELITEA-2091 Automation Hints)."
+        ),
+    )
+
+    chat_attach_files_input = LocatorDescriptor(
+        testid="chat-attach-files-input",
+        description=(
+            "Hidden, always-mounted <input type='file' multiple> for the "
+            "picker-attach path. set_input_files() here is the stable "
+            "attach mechanism — no CDP detached-input risk (unlike a "
+            "dynamically-created input)."
+        ),
+    )
+
+    chat_attach_files_counter = LocatorDescriptor(
+        testid="chat-attach-files-counter",
+        description="'N left' remaining-attachment-slots counter, e.g. '10 left'.",
+    )
+
+    # Repeated testid — one per attached-file chip above the composer
+    # (FileList.jsx), same pattern as messages_container's repeated
+    # "chat-message-item".
+    attachment_item = LocatorDescriptor(
+        testid="chat-attachment-item",
+        description="Attached-file chip (repeated, one per visible attachment).",
+    )
+
+    # Repeated testid — sibling "x" remove icon inside each attachment_item chip.
+    attachment_remove_button = LocatorDescriptor(
+        testid="chat-attachment-remove-button",
+        description="Remove ('x') icon inside an attachment_item chip (repeated).",
+    )
+
+    # "+N" overflow button — only rendered when attachments exceed the
+    # visible-chip capacity for the current composer width.
+    attachment_overflow_button = LocatorDescriptor(
+        testid="chat-attachment-overflow-button",
+        description="'+N' button revealing the hidden-attachments popover, when present.",
+    )
+
+    # Overflow popover's per-file menu item + its own remove icon — only
+    # mounted while the overflow popover (opened via attachment_overflow_button)
+    # is open, same MUI-unmounts-while-closed precedent as CONVERSATION_MENU_ITEM.
+    ATTACHMENT_OVERFLOW_ITEM = '[data-testid="chat-attachment-overflow-item"]'
+    ATTACHMENT_OVERFLOW_REMOVE_BUTTON = '[data-testid="chat-attachment-overflow-remove-button"]'
 
     # ------------------------------------------------------------------
     # Sidebar / drawer
@@ -119,6 +187,16 @@ class ChatPage(BasePage):
         fallback=lambda page: page.locator('[class*="model"], button:has-text("GPT"), button:has-text("Claude")'),
         description="Model selector dropdown button"
     )
+
+    # Dynamic per-option testid (LLMModelsMenu.jsx) — {} is the model's
+    # stable internal id (item.name in source; display label is a SEPARATE
+    # item.display_name field, unstable/drifts across environments — see
+    # AFS ELITEA-2091 Automation Hints). Also carries a same-element
+    # data-selected="true"/"false" state attribute (EliteaAI/EliteaUI@a842cfb0,
+    # testid=identity/state=data-* ruling) replacing the unstable Mui-selected
+    # CSS class as the "which option is active" signal.
+    MODEL_SELECTOR_OPTION = '[data-testid="model-selector-option-{}"]'
+    MODEL_SELECTOR_OPTION_PREFIX = '[data-testid^="model-selector-option-"]'
 
     # ------------------------------------------------------------------
     # Chat actions
@@ -244,6 +322,26 @@ class ChatPage(BasePage):
             "showCreateNew MenuItem, templated ${sectionKey}-create-new-button "
             "(sectionKey='toolkits' for this submenu), same mechanism as "
             "agents_create_new_button above."
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # "Pipelines" / "MCPs" plus-menu items (ELITEA-2091) — testids already
+    # existed in EliteaUI (PlusChatButton.jsx's EXPANDABLE_ITEMS, confirmed
+    # on-main) but had no ChatPage field yet, unlike their toolkits/agents
+    # siblings above.
+    # ------------------------------------------------------------------
+
+    pipelines_menuitem = LocatorDescriptor(
+        testid="pipelines-menuitem",
+        description="'Pipelines' menuitem inside the plus-menu dropdown.",
+    )
+
+    mcps_menuitem = LocatorDescriptor(
+        testid="mcps-menuitem",
+        description=(
+            "'MCPs' menuitem inside the plus-menu dropdown. Conditionally "
+            "rendered (isMcpVisible in PlusChatButton.jsx)."
         ),
     )
 
@@ -767,6 +865,61 @@ class ChatPage(BasePage):
         text = self.project_selector_trigger.text_content() or ""
         return text.strip()
 
+    def wait_for_selected_project_stable(
+        self,
+        expected_substring: str,
+        timeout: int = 8000,
+        poll_interval: float = 0.3,
+        required_stable_reads: int = 3,
+    ):
+        """Poll the sidebar project label until it contains *expected_substring*
+        for *required_stable_reads* consecutive reads.
+
+        Confirmed live (ELITEA-2091 implementation): immediately after
+        ``switch_project()`` returns (its own ``wait_for_network()`` already
+        satisfied), the app fires a STAGGERED batch of ``project_info``
+        enrichment requests for the sidebar's project list; if the next
+        action (e.g. creating a conversation) fires before this batch fully
+        settles, the app silently reverts the selected project back to the
+        user's personal/private project. A single extra ``wait_for_network()``
+        call is NOT sufficient (it can return between individual staggered
+        requests); this polls the actual rendered state instead of guessing
+        a fixed delay. Reproduces only at automation speed — a human
+        clicking through would not hit this window — so this is a test-side
+        settle wait, not a filed product defect.
+
+        Args:
+            expected_substring: Substring the project label should stabilise on
+                (e.g. "Elitea Testing Team").
+            timeout: Maximum total wait time in milliseconds.
+            poll_interval: Seconds between reads.
+            required_stable_reads: Consecutive matching reads required before
+                considering the label settled.
+
+        Raises:
+            AssertionError: If the label never stabilises within *timeout*.
+        """
+        deadline = time.monotonic() + timeout / 1000.0
+        stable_reads = 0
+        last_seen = None
+        while time.monotonic() < deadline:
+            last_seen = self.get_selected_project_text()
+            if expected_substring in last_seen:
+                stable_reads += 1
+                if stable_reads >= required_stable_reads:
+                    logger.info(
+                        "Project label stable on %r after %d consecutive reads",
+                        expected_substring, stable_reads,
+                    )
+                    return
+            else:
+                stable_reads = 0
+            time.sleep(poll_interval)
+        raise AssertionError(
+            f"Project label never stabilised on {expected_substring!r} within "
+            f"{timeout}ms — last seen: {last_seen!r}"
+        )
+
     @action("Send message")
     def send_message(self, text: str, use_enter: bool = False):
         """Send a message in the chat.
@@ -1267,7 +1420,98 @@ class ChatPage(BasePage):
         file_chooser = self.open_file_chooser(timeout=timeout)
         file_chooser.set_files(file_path)
         self.wait_for_network(timeout=timeout)
-        
+
+    # ------------------------------------------------------------------
+    # Plus-menu "Attach Files" picker + drag-and-drop (ELITEA-2091)
+    # ------------------------------------------------------------------
+    # Distinct from open_file_chooser()/attach_file() above (legacy
+    # attach_files_button, single-file OS-file-chooser flow). These target
+    # the plus-menu's landed testids and the case's multi-file + drag-drop
+    # requirements.
+
+    def get_attachment_item_names(self, timeout: int = 5000) -> list[str]:
+        """Return the display names of every currently VISIBLE attachment chip.
+
+        Does not include names hidden behind the "+N" overflow popover — see
+        ``get_all_attached_file_names()`` for the combined view.
+        """
+        items = self.attachment_item
+        try:
+            items.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return []
+        return [items.nth(i).text_content() or "" for i in range(items.count())]
+
+    @action("Open attachment overflow popover")
+    def open_attachment_overflow_popover(self, timeout: int = 5000):
+        """Click the '+N' overflow button to reveal the hidden-attachments popover."""
+        self.attachment_overflow_button.click()
+        self.page.locator(self.ATTACHMENT_OVERFLOW_ITEM).first.wait_for(
+            state="visible", timeout=timeout,
+        )
+
+    def get_attachment_overflow_item_names(self, timeout: int = 5000) -> list[str]:
+        """Return the display names listed in the (already-open) overflow popover."""
+        items = self.page.locator(self.ATTACHMENT_OVERFLOW_ITEM)
+        items.first.wait_for(state="visible", timeout=timeout)
+        return [items.nth(i).text_content() or "" for i in range(items.count())]
+
+    def get_all_attached_file_names(self, timeout: int = 5000) -> list[str]:
+        """Return every attached file's display name — visible chips plus any
+        names hidden behind the "+N" overflow popover, when one is rendered.
+
+        The visible/hidden split depends on the composer's current width
+        (``FileList.jsx``'s ``maxItemsToShow`` layout math), so this doesn't
+        assume a specific split — it transparently opens the overflow
+        popover only if one is actually present, closing it again after
+        reading so it doesn't leak open state to the caller.
+        """
+        names = self.get_attachment_item_names(timeout=timeout)
+        if self.attachment_overflow_button.count() > 0 and self.attachment_overflow_button.first.is_visible():
+            self.open_attachment_overflow_popover(timeout=timeout)
+            names += self.get_attachment_overflow_item_names(timeout=timeout)
+            self.page.keyboard.press("Escape")
+            self.page.wait_for_timeout(300)
+        return names
+
+    @action("Drag and drop a file onto the composer")
+    def drop_file_onto_composer(self, file_path: str, timeout: int = 10000):
+        """Simulate an OS drag-and-drop file attach via a synthetic DataTransfer.
+
+        Real OS-level drag-and-drop can't be driven by Playwright, so this
+        builds an in-page ``File`` from *file_path*'s bytes and dispatches
+        ONE continuous ``dragenter -> dragover -> drop`` gesture — sharing a
+        single ``DataTransfer`` — at the message input, an existing testid'd
+        descendant of the real ``onDrop``-wired container; native event
+        bubbling carries it up to the actual handler (confirmed live during
+        AFS ELITEA-2091 exploration via a capture-phase diagnostic listener).
+        Per the Synthetic Input Hygiene discipline: exactly one gesture, one
+        DataTransfer, no extra diagnostic listeners added here.
+        """
+        file_bytes = Path(file_path).read_bytes()
+        b64 = base64.b64encode(file_bytes).decode("ascii")
+        file_name = Path(file_path).name
+        logger.info("Dropping file onto composer: %s", file_name)
+        self.message_input.evaluate(
+            """(element, {bufferData, fileName}) => {
+                const byteCharacters = atob(bufferData);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const file = new File([byteArray], fileName, { type: 'text/plain' });
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                const opts = { bubbles: true, cancelable: true, dataTransfer: dt };
+                element.dispatchEvent(new DragEvent('dragenter', opts));
+                element.dispatchEvent(new DragEvent('dragover', opts));
+                element.dispatchEvent(new DragEvent('drop', opts));
+            }""",
+            {"bufferData": b64, "fileName": file_name},
+        )
+        self.wait_for_network(timeout=timeout)
+
     @action("Copy message")
     def copy_message(self, message_index: int = -1):
         """Copy a message to clipboard.
@@ -1545,6 +1789,18 @@ class ChatPage(BasePage):
         ``get_open_conversation_menu_item_count()`` below.
         """
         return self.page.locator(self.PLUS_MENU_ITEM_SUFFIX).count()
+
+    def get_plus_menu_menuitem_testids(self, timeout: int = 5000) -> list[str]:
+        """Return the plus-menu's ``-menuitem`` entries' testids, in DOM order.
+
+        Excludes the separate "Attach Files" button (``chat_attach_files_button``),
+        which carries no ``-menuitem`` suffix (AFS ELITEA-2091 Concrete Handles —
+        it's a sibling rendered ABOVE the ``<ul role="menu">``, not one of its
+        items). Assumes the plus menu is already open.
+        """
+        items = self.page.locator(self.PLUS_MENU_ITEM_SUFFIX)
+        items.first.wait_for(state="visible", timeout=timeout)
+        return [items.nth(i).get_attribute("data-testid") for i in range(items.count())]
 
     @action("Open Create New Agent canvas")
     def open_create_new_agent_canvas(self, timeout: int = 10000):
@@ -2283,6 +2539,18 @@ class ChatPage(BasePage):
         item.wait_for(state="visible", timeout=timeout)
         return item.get_attribute("data-active") == "true"
 
+    def get_conversation_item_text(self, conversation_id: str | int, timeout: int = 5000) -> str:
+        """Return *conversation_id*'s sidebar item's own text content.
+
+        Testid-scoped (``CONVERSATION_ITEM``), unlike the legacy
+        ``get_conversation_list_items()``'s ``:has(h6) > button`` CSS — used
+        to read a SPECIFIC conversation's resolved title (e.g. confirming it
+        moved past the "Naming" placeholder, AFS ELITEA-2091 step 10).
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        item.wait_for(state="visible", timeout=timeout)
+        return item.text_content() or ""
+
     def wait_for_conversation_url_change(self, exclude_id: str | int, timeout: int = 10000):
         """Wait until the URL points at ``/chat/{some_id}`` where ``some_id != exclude_id``.
 
@@ -2473,6 +2741,66 @@ class ChatPage(BasePage):
         # Wait for menu to close and selection to apply
         self.page.wait_for_timeout(500)
         logger.info(f"Model '{model_name}' selected")
+
+    # ------------------------------------------------------------------
+    # Testid-based model-selector option access (ELITEA-2091)
+    # ------------------------------------------------------------------
+    # Distinct from select_model() above (existing caller: test_image_creation.py,
+    # a raw role/text-based locator — left untouched, additive-only). These use
+    # the landed MODEL_SELECTOR_OPTION testid template + data-selected state
+    # attribute instead, keyed by the model's stable internal id (not its
+    # environment-drifting display name).
+
+    @action("Open model selector dropdown")
+    def open_model_selector(self, timeout: int = 5000):
+        """Click the model selector button and wait for its options to render."""
+        self.model_selector.first.click()
+        self.page.locator(self.MODEL_SELECTOR_OPTION_PREFIX).first.wait_for(
+            state="visible", timeout=timeout,
+        )
+
+    def close_model_selector(self, timeout: int = 3000):
+        """Close the model selector dropdown (Escape)."""
+        self.page.keyboard.press("Escape")
+        self.page.wait_for_timeout(300)
+
+    def get_model_option_ids(self, timeout: int = 5000) -> list[str]:
+        """Return every rendered model option's internal id, in DOM order.
+
+        The id is the ``MODEL_SELECTOR_OPTION`` template's parameter
+        (``item.name`` in ``LLMModelsMenu.jsx`` source — a stable internal
+        identifier despite the field's name, distinct from the drifting
+        ``item.display_name`` shown on the button). Assumes the dropdown is
+        already open (see ``open_model_selector()``).
+        """
+        options = self.page.locator(self.MODEL_SELECTOR_OPTION_PREFIX)
+        options.first.wait_for(state="visible", timeout=timeout)
+        ids = []
+        for i in range(options.count()):
+            testid = options.nth(i).get_attribute("data-testid") or ""
+            ids.append(testid.removeprefix("model-selector-option-"))
+        return ids
+
+    def is_model_option_selected(self, model_id: str, timeout: int = 5000) -> bool:
+        """Return True if the option for *model_id* carries ``data-selected="true"``.
+
+        Assumes the dropdown is already open.
+        """
+        option = self.page.locator(self.MODEL_SELECTOR_OPTION.format(model_id))
+        option.wait_for(state="visible", timeout=timeout)
+        return option.get_attribute("data-selected") == "true"
+
+    @action("Select model option by id")
+    def click_model_option(self, model_id: str, timeout: int = 5000):
+        """Click a specific model option by its internal id.
+
+        Assumes the dropdown is already open. The click closes the dropdown
+        (LLMModelsMenu.jsx's ``onClose`` fires in the same click handler).
+        """
+        option = self.page.locator(self.MODEL_SELECTOR_OPTION.format(model_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.page.wait_for_timeout(500)
 
     def get_images_in_last_message(self) -> int:
         """Get count of generated images in the last message.

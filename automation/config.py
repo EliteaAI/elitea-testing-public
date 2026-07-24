@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     elitea_api_base: str = ""
     elitea_api_token: str = ""
     elitea_project_id: int = 0
+    # Team (non-private) project id — needed for cases that require Team-project-only
+    # UI (e.g. the "+" menu's "Invite Users" item, ELITEA-2091). Distinct from
+    # elitea_project_id (the default Private project most tests run against).
+    elitea_team_project_id: int = 0
     # URL prefix for the React app routes.  On deployed environments (DEV/STAGE/NEXT)
     # the React Router has basename="/app", so all routes are under /app.
     # On localhost the Vite dev server has no basename, so the prefix is empty.

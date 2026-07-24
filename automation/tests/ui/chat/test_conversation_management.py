@@ -29,6 +29,7 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from pages.chat_page import ChatPage
 from components.mui import Dialog
 from conftest import attach_screenshot
+from config import settings
 import allure
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,11 @@ pytestmark = [pytest.mark.ui]
 AI_RESPONSE_TIMEOUT = 30000
 UI_ELEMENT_TIMEOUT = 5000
 NAVIGATION_TIMEOUT = 10000
+# A multi-file-attachment prompt involves the model reading each attachment
+# (AFS ELITEA-2091 observed a "read_multiple_files" tool call + ~20s "Thought
+# for" reasoning before any response text) — heavier than a plain-text
+# round-trip, so it gets its own, longer budget rather than AI_RESPONSE_TIMEOUT.
+ATTACHMENT_AI_RESPONSE_TIMEOUT = 60000
 
 
 # ---------------------------------------------------------------------------
@@ -235,6 +241,207 @@ class TestCreateConversation:
         with allure.step("Step 2 — Verify default model is selected"):
             model_text = chat.get_selected_model()
             assert model_text, "A default model should be displayed in the selector"
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/"
+        "ELITEA-2091_create-new-conversation-from-team-project-with-file-attachments-and-changing-llm.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p1
+    @pytest.mark.chat
+    @pytest.mark.regression
+    def test_create_conversation_team_project_attachments_and_llm_switch(self, page, tmp_path):
+        """ELITEA-2091: Create a conversation in a Team project with picker + drag-drop
+        file attachments and a non-default LLM; verify the conversation is auto-named.
+        """
+        if not settings.elitea_team_project_id:
+            pytest.skip(
+                "ELITEA_TEAM_PROJECT_ID not configured — skipping Team-project conversation case"
+            )
+
+        team_project_id = str(settings.elitea_team_project_id)
+        message_text = "Please review the attached documents"
+        chat = ChatPage(page)
+        conv_id = None
+
+        try:
+            with allure.step("Step 1 — Navigate to the Team project, go to Chats, and click +Chat"):
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+                chat.switch_project(team_project_id)
+                assert "Elitea Testing Team" in chat.get_selected_project_text(), (
+                    f"Sidebar project selector should show the Team project, got: "
+                    f"{chat.get_selected_project_text()!r}"
+                )
+                # switch_project()'s own network-idle wait isn't sufficient here: the app
+                # fires a staggered project-info enrichment batch right after a project
+                # switch, and creating a conversation before that batch settles silently
+                # reverts the selection back to the personal/private project (confirmed
+                # live — reproducible at automation speed, not at human interaction speed).
+                # Poll the rendered label instead of guessing a fixed delay.
+                chat.wait_for_selected_project_stable("Elitea Testing Team", timeout=NAVIGATION_TIMEOUT)
+                chat.click_create_conversation(timeout=NAVIGATION_TIMEOUT)
+                assert "Elitea Testing Team" in chat.get_selected_project_text(), (
+                    f"Project should still show the Team project after creating the "
+                    f"conversation, got: {chat.get_selected_project_text()!r}"
+                )
+                expect(chat.new_conversation_greeting).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step("Step 2 — Click the + button; verify the dropdown's exact contents"):
+                chat.plus_menu_button.click()
+                expect(chat.chat_attach_files_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.chat_attach_files_counter).to_have_text("10 left", timeout=UI_ELEMENT_TIMEOUT)
+                menuitem_testids = chat.get_plus_menu_menuitem_testids(timeout=UI_ELEMENT_TIMEOUT)
+                assert menuitem_testids == [
+                    "internal-tools-menuitem",
+                    "agents-menuitem",
+                    "pipelines-menuitem",
+                    "toolkits-menuitem",
+                    "mcps-menuitem",
+                    "invite-users-menuitem",
+                ], f"Unexpected plus-menu item order/contents: {menuitem_testids}"
+
+            with allure.step(
+                "Step 3 — Click \"Attach Files\" (the native OS file picker it triggers is out of "
+                "Playwright's control surface — files are selected directly via set_input_files() "
+                "on the hidden, always-mounted input, per AFS ELITEA-2091 Automation Hints)"
+            ):
+                picker_files = []
+                for i in range(3):
+                    picker_file = tmp_path / f"elitea_2091_picker_{i}.txt"
+                    picker_file.write_text(f"ELITEA-2091 picker attachment #{i}")
+                    picker_files.append(picker_file)
+
+            with allure.step("Step 4 — Select 3 files one at a time; verify listed + counter decrements"):
+                for file_path, expected_left in zip(picker_files, [9, 8, 7]):
+                    chat.chat_attach_files_input.set_input_files(str(file_path))
+                    expect(chat.chat_attach_files_counter).to_have_text(
+                        f"{expected_left} left", timeout=UI_ELEMENT_TIMEOUT,
+                    )
+                attached_names = chat.get_all_attached_file_names(timeout=UI_ELEMENT_TIMEOUT)
+                for file_path in picker_files:
+                    assert file_path.name in attached_names, (
+                        f"{file_path.name} should be listed among attached files: {attached_names}"
+                    )
+
+            with allure.step(
+                "Step 5 — Drag and drop a different file; verify it appears identically to the "
+                "picker-attached files"
+            ):
+                drop_file = tmp_path / "elitea_2091_dropped.txt"
+                drop_file.write_text("ELITEA-2091 drag-and-drop attachment")
+                chat.drop_file_onto_composer(str(drop_file), timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.chat_attach_files_counter).to_have_text("6 left", timeout=UI_ELEMENT_TIMEOUT)
+                all_names = chat.get_all_attached_file_names(timeout=UI_ELEMENT_TIMEOUT)
+                assert drop_file.name in all_names, (
+                    f"Dropped file should be listed among attached files: {all_names}"
+                )
+                for file_path in picker_files:
+                    assert file_path.name in all_names, (
+                        f"Picker-attached {file_path.name} should still be listed alongside the "
+                        f"dropped file (same FileList component/testids for both origins): {all_names}"
+                    )
+
+            with allure.step("Step 6 — Click the LLM model selector"):
+                previous_model_text = chat.get_selected_model()
+                chat.open_model_selector(timeout=UI_ELEMENT_TIMEOUT)
+                option_ids = chat.get_model_option_ids(timeout=UI_ELEMENT_TIMEOUT)
+                assert len(option_ids) >= 2, (
+                    f"Need at least 2 selectable models to prove an LLM switch, found: {option_ids}"
+                )
+
+            with allure.step("Step 7 — Select a different LLM; verify it's shown as selected"):
+                target_model_id = next(
+                    m for m in option_ids
+                    if not chat.is_model_option_selected(m, timeout=UI_ELEMENT_TIMEOUT)
+                )
+                chat.click_model_option(target_model_id, timeout=UI_ELEMENT_TIMEOUT)
+                new_model_text = chat.get_selected_model()
+                assert new_model_text != previous_model_text, (
+                    f"Model selector text should change after switching models: still {new_model_text!r}"
+                )
+
+                # Re-open to verify the data-selected attribute (the "checkmark" signal,
+                # EliteaAI/EliteaUI@a842cfb0) moved to the newly-picked option, and only there.
+                chat.open_model_selector(timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.is_model_option_selected(target_model_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Option {target_model_id!r} should carry data-selected=true after being picked"
+                )
+                still_selected = [
+                    m for m in chat.get_model_option_ids(timeout=UI_ELEMENT_TIMEOUT)
+                    if m != target_model_id and chat.is_model_option_selected(m, timeout=UI_ELEMENT_TIMEOUT)
+                ]
+                assert not still_selected, (
+                    f"Only {target_model_id!r} should carry data-selected=true, also found: {still_selected}"
+                )
+                chat.close_model_selector(timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step("Step 8 — Type the message in the input field"):
+                chat.message_input.fill(message_text)
+                assert chat.message_input.input_value() == message_text, (
+                    "Message input should contain the typed text before sending"
+                )
+
+            with allure.step(
+                "Step 9 — Click Send; verify the message + all attachments appear in the thread"
+            ):
+                initial_count = chat.get_message_count()
+                chat.send_button.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                # A coordinate-based click(force=True) can land on a residual MUI overlay
+                # left by the overflow popover opened in Step 5's get_all_attached_file_names()
+                # (mui-patterns.md's documented "click intercepted by overlay" case) — call
+                # the button's own click() directly instead, bypassing paint-order entirely.
+                chat.send_button.evaluate("el => el.click()")
+                chat.wait_for_input_ready()
+                chat.wait_for_ai_response(initial_count=initial_count, timeout=ATTACHMENT_AI_RESPONSE_TIMEOUT)
+
+                sent_message_text = chat.messages_container.nth(initial_count).text_content() or ""
+                assert message_text in sent_message_text, (
+                    f"Sent message should include the typed text: {sent_message_text!r}"
+                )
+                all_attached_names = [f.name for f in picker_files] + [drop_file.name]
+                for name in all_attached_names:
+                    assert name in sent_message_text, (
+                        f"Sent message should list attached file {name!r}: {sent_message_text!r}"
+                    )
+
+            with allure.step(
+                "Step 10 — Verify the conversation appears under Today with a resolved auto-generated title"
+            ):
+                match = re.search(r"/chat/(\d+)", page.url)
+                assert match, (
+                    f"Expected the SPA to navigate to /chat/{{id}} after Send, got URL: {page.url}"
+                )
+                conv_id = match.group(1)
+
+                assert chat.is_conversation_in_group(conv_id, group="today", timeout=NAVIGATION_TIMEOUT), (
+                    f"Conversation {conv_id} should appear under the 'Today' group"
+                )
+                chat.wait_for_naming_label_to_resolve()
+                resolved_title = chat.get_conversation_item_text(conv_id, timeout=NAVIGATION_TIMEOUT)
+                assert "Naming" not in resolved_title, (
+                    f"Conversation title should have resolved past the 'Naming' placeholder, "
+                    f"got: {resolved_title!r}"
+                )
+                assert resolved_title.strip(), "Resolved conversation title should not be empty"
+        finally:
+            # Cleanup (not a case step — no allure.step needed): mirrors ELITEA-2114's own
+            # id-based delete flow (open_conversation_context_menu -> "delete" menuitem ->
+            # confirm_delete_conversation), which already operates in whatever project is
+            # currently active in the browser — no cross-project API scoping needed.
+            if conv_id:
+                try:
+                    chat.open_conversation_context_menu(conv_id, timeout=UI_ELEMENT_TIMEOUT)
+                    chat.click_conversation_menu_item("delete", timeout=UI_ELEMENT_TIMEOUT)
+                    expect(chat.delete_confirm_dialog).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                    delete_response = chat.confirm_delete_conversation(conv_id, timeout=NAVIGATION_TIMEOUT)
+                    if delete_response.status not in (200, 204):
+                        logger.warning(
+                            "Cleanup DELETE for conversation %s returned %s",
+                            conv_id, delete_response.status,
+                        )
+                except Exception as exc:
+                    logger.warning("Cleanup failed for conversation %s: %s", conv_id, exc)
 
 
 class TestConversationList:
