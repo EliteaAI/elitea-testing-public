@@ -668,3 +668,95 @@ that page, never to this canvas).
   `key`-prop warning, `ToolkitTypeSelector.jsx`/`CategorySection.jsx`) fires on
   this canvas's type-picker too, same as the standalone page and the plain
   Toolkit canvas — exclude from any "no new console errors" assertion here.
+
+## In-chat "Edit table" content-canvas (ELITEA-2086 — full findings)
+
+A **completely different canvas component** from every other canvas
+documented above (Agent/Toolkit/MCP/Pipeline entity-creation canvases all
+compose `AgentEditor.jsx`/`ToolkitEditor.jsx` in the same right-side slot).
+This one is `CanvasEditor.jsx` + `CanvasEditHeader.jsx`
+(`src/pages/NewChat/`) — it edits MESSAGE CONTENT (a code block, an
+AI-generated markdown table, a mermaid diagram, or the whole AI response),
+opened via a per-content-type pencil/edit icon rendered directly in the
+message bubble (`MarkdownTableBlock.jsx` for tables, `CodeBlock.jsx` for code
+blocks — same toolbar pattern, both call the same `onEdit` prop up to
+`CanvasEditor`). **Zero testids exist anywhere in this whole component
+tree** — confirmed via full-file reads of `MarkdownTableBlock.jsx`,
+`CanvasEditHeader.jsx`, `CanvasEditor.jsx`, `MarkdownTableEditor.jsx`,
+`SplitButton.jsx`, and the sibling `CodeBlock.jsx` — not tracked tech debt,
+genuinely virgin ground, first case to touch it.
+
+- **The canvas header (`CanvasEditHeader.jsx`) is SHARED across 4 content
+  modes** and its title text changes accordingly: `"Edit response"` (whole
+  AI message, `isBlock: false`), `"Edit code"` (generic code block),
+  `"Edit table"` (markdown table — this case), `"Edit diagram"` (mermaid).
+  Name any testid on this header GENERICALLY (`canvas-edit-header-title`,
+  not `table-canvas-title`) — a future case touching another mode reuses the
+  SAME testid, only the asserted text differs.
+- **Opening the canvas is NOT a navigation** — confirmed live, the URL
+  (`/chat/{id}?name=...`) is byte-identical before and after clicking the
+  edit icon. It's a pure client-side state change (`selectedCodeBlockInfo`
+  passed down from the message-list component); wait on the canvas header
+  text becoming visible, not on any URL/network event.
+- **The original message's content swaps to an `EditingPlaceholder`
+  ("Table editing...") while its canvas is open** (`isBlockEditing` gate in
+  `MarkdownTableBlock.jsx`, keyed by `canvasId`/`blockId` via
+  `useCheckIsBlockEditing` from `CodeBlock.jsx`) — confirmed live. Useful
+  regression guard: the message area shouldn't show a duplicate/stale table
+  while the canvas edits it.
+- **MUI X DataGrid virtualizes off-screen rows** (`MarkdownTableEditor.jsx`)
+  — even though the pagination footer reads "1–10 of 10", only ~9
+  `.MuiDataGrid-row` elements exist in the DOM at any one scroll position.
+  Never assert an exact rendered-row-element count as the logical row count;
+  read the pagination footer text instead.
+- **Pagination footer text uses an EN DASH, not a hyphen**: MUI's
+  `MuiTablePagination-displayedRows` renders `"1–10 of 10"` (U+2013) — a
+  literal ASCII-hyphen `"1-10 of 10"` string match will NEVER succeed. Same
+  trap for any other MUI `TablePagination` instance in the app, not just
+  this canvas.
+- **`.MuiDataGrid-columnHeader button` double-counts** — each column header
+  renders TWO buttons: the app's own custom sort `IconButton`
+  (`ColumnHeader` component in `MarkdownTableEditor.jsx`, wraps
+  `SortUpwardIcon`, parent class `MuiBox-root`) AND MUI's own native
+  `.MuiDataGrid-menuIcon` column-menu button (hover-reveal, but still present
+  in the DOM / matched by `offsetParent !== null`). A broad
+  `.MuiDataGrid-columnHeader button` selector returns 2× the real sort-icon
+  count (10 vs. the actual 5 data columns, this run). Scope tightly to the
+  app-owned sort button only once it has a testid
+  (`canvas-table-column-sort-button`, needs-adding).
+- **Row-selection checkboxes are `@mui/x-data-grid`-internal, not app JSX**
+  (`GRID_CHECKBOX_SELECTION_COL_DEF`, imported straight from the library) —
+  same reasoning shape as `#579`'s "third-party widget subtree" exception
+  (ReactFlow's `rf__wrapper` is the canon's own worked example) even though
+  the canon doesn't explicitly name `@mui/x-data-grid`. Declared as a
+  scoped-raw-handle improvisation in ELITEA-2086's AFS, chained off the
+  REAL `canvas-table-editor` testid parent — never a free-floating handle.
+  Same reasoning would apply to the pagination footer's internal DOM, but
+  that assertion doesn't need a selector at all (see next bullet).
+- **Prefer a single `.inner_text()` content read over chained selectors for
+  MUI-internal text** (pagination footer, "Rows per page:" label): call
+  `.inner_text()` directly on the real `canvas-table-editor` testid field
+  and assert substrings on the returned string — no `.locator()`/
+  `.get_by_text()` chaining, so the raw-handle question doesn't even arise.
+- **LLM table-generation content is non-deterministic** — column
+  names/count and exact company data vary run-to-run (this run: `Rank`,
+  `Company`, `Headquarters`, `Primary Business Areas`, `Notable
+  Products/Services` — 5 data columns, 10 rows). Automate against
+  structural properties (pagination-derived row count, an any-of match on a
+  short known-values list) rather than a hardcoded column/value set — a
+  case's own "such as"/"e.g." wording in its expected results is usually the
+  tell that the author already knew this.
+- **`SplitButton.jsx` (shared component, `src/components/`) has TWO call
+  sites for "Download as xlsx"**: the message-toolbar copy
+  (`MarkdownTableBlock.jsx`, pre-edit) and the canvas copy
+  (`MarkdownTableEditor.jsx`, this case's step 11). No testid/prop exists on
+  either yet — needs a `testId` prop threaded per call site
+  (`canvas-table-download-button` for the canvas one this case touches;
+  leave the message-toolbar one for whichever future case touches THAT
+  button, per the scope-only-what-you-touch rule).
+- **No network call fires when the canvas opens** — confirmed via
+  `get-network --status error` and a full request list, both empty on the
+  edit-icon click. Table generation itself is the ordinary WebSocket
+  chat-predict path (`.agents/testing.md`'s standard ~2s+ wait), not a
+  dedicated "generate table" endpoint — the table is just markdown that
+  happens to parse into a grid.
