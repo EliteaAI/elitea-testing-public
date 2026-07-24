@@ -899,3 +899,49 @@ def mcp_pipeline_with_toolkits(
         logger.info("Deleted MCP pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete MCP pipeline %s: %s", pid, exc)
+
+
+# ---------------------------------------------------------------------------
+# Notification fixtures for GAP-077
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def notification_unread_id(notification_api):
+    """Seed a deterministic UNREAD notification row via direct API PUT.
+
+    The quick panel's own query (``only_new: true``) makes "whatever happens
+    to be unread right now" an unreliable, shared/mutable precondition —
+    GAP-077 confirmed live that a single test run can zero out ALL unread
+    notifications via an incidental "Mark all as read" click, which would
+    starve any concurrent test needing an unread row. This fixture instead:
+
+    1. Reads an existing notification (any) via the unfiltered list GET.
+    2. Records its original ``is_seen`` value.
+    3. Forces it to unread (``is_seen: false``) for the test.
+    4. Restores the original value in teardown.
+
+    Never drives the UI's "Mark all as read" bulk action against shared
+    live data (GAP-077 Automation Hints).
+
+    Yields:
+        int: the seeded notification's id.
+    """
+    data = notification_api.list_notifications()
+    rows = data.get("rows", [])
+    assert rows, "No notifications exist for this project — cannot seed an unread row"
+
+    target = rows[0]
+    notification_id = target["id"]
+    original_is_seen = target["is_seen"]
+
+    notification_api.mark_seen([notification_id], is_seen=False)
+    logger.info("Seeded unread notification id=%s (was is_seen=%s)", notification_id, original_is_seen)
+
+    yield notification_id
+
+    try:
+        notification_api.mark_seen([notification_id], is_seen=original_is_seen)
+        logger.info("Restored notification id=%s to is_seen=%s", notification_id, original_is_seen)
+    except Exception as exc:
+        logger.warning("Failed to restore notification %s during teardown: %s", notification_id, exc)

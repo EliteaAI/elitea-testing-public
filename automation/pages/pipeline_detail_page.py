@@ -13,10 +13,12 @@ URL: /pipelines/all/{id}
 import logging
 import re
 import time
-from playwright.sync_api import Page, Locator
-from .pipeline_form_page import PipelineFormPage
-from .locator_descriptor import LocatorDescriptor
+
 from components.mui import Dialog, Popper
+from playwright.sync_api import Locator, Page
+
+from .locator_descriptor import LocatorDescriptor
+from .pipeline_form_page import PipelineFormPage
 
 logger = logging.getLogger("elitea.pages.pipeline_detail")
 
@@ -137,6 +139,139 @@ class PipelineDetailPage(PipelineFormPage):
             "BaseToolNode.jsx — added via add-data-testid for ELITEA-1954 "
             "review fix pass; case steps 4 and 6)"
         )
+    )
+
+    # Entry-point node — Trigger select & Webhook settings modal (ELITEA-2006).
+    # Rendered inline on whichever node card IS the pipeline's entry point
+    # (NodeCard.jsx: `isEntrypoint && <TriggerTypeSelector>`) — page-wide (not
+    # scoped to a specific node container), same convention as the MCP node
+    # fields above: correct as long as a test only has a single entry-point
+    # node on canvas.
+    trigger_select = LocatorDescriptor(
+        testid="pipeline-trigger-select",
+        description="Entry-point node's Trigger select (Chat Message/Schedule/Webhook)"
+    )
+
+    trigger_webhook_edit_button = LocatorDescriptor(
+        testid="pipeline-trigger-webhook-edit-button",
+        description='"Edit webhook settings" link-icon button next to the Trigger '
+                     "select, rendered only once trigger=webhook"
+    )
+
+    webhook_modal = LocatorDescriptor(
+        testid="pipeline-webhook-modal",
+        description="Webhook settings modal (dialog root)"
+    )
+
+    webhook_type_radio_github = LocatorDescriptor(
+        testid="pipeline-webhook-type-radio-github",
+        description="Webhook Type radio — GitHub option"
+    )
+    webhook_type_radio_gitlab = LocatorDescriptor(
+        testid="pipeline-webhook-type-radio-gitlab",
+        description="Webhook Type radio — GitLab option"
+    )
+    webhook_type_radio_custom = LocatorDescriptor(
+        testid="pipeline-webhook-type-radio-custom",
+        description="Webhook Type radio — Custom option"
+    )
+
+    # AFS Concrete Handles gap fill (implementer Phase 2 — case steps 3/4/5
+    # explicitly require verifying description text presence/content, but the
+    # AFS table didn't carry a handle for it): added via add-data-testid
+    # alongside the rest of this modal's testids, same call site edit.
+    webhook_type_description = LocatorDescriptor(
+        testid="pipeline-webhook-type-description",
+        description="Webhook Type description text (changes per selected type)"
+    )
+    webhook_payload_format_description = LocatorDescriptor(
+        testid="pipeline-webhook-payload-format-description",
+        description="Payload Format description (static text)"
+    )
+    webhook_secret_helper_text = LocatorDescriptor(
+        testid="pipeline-webhook-secret-helper-text",
+        description="Secret Value helper text (e.g. 'Enter this secret in your "
+                     "GitHub webhook configuration under Secret')"
+    )
+
+    webhook_url_input = LocatorDescriptor(
+        testid="pipeline-webhook-url-input",
+        description="Webhook URL read-only field — testid wired via MUI's own "
+                     "inputProps mechanism, lands directly on the native <input> "
+                     "(established codebase pattern, e.g. agent-instructions-input)"
+    )
+    webhook_url_copy_button = LocatorDescriptor(
+        testid="pipeline-webhook-url-copy-button",
+        description="Webhook URL copy button"
+    )
+    webhook_secret_input = LocatorDescriptor(
+        testid="pipeline-webhook-secret-input",
+        description="Secret Value masked field — same inputProps testid wiring as "
+                     "webhook_url_input, lands on the native <input>"
+    )
+    webhook_secret_toggle_visibility_button = LocatorDescriptor(
+        testid="pipeline-webhook-secret-toggle-visibility-button",
+        description="Secret Value eye (show/hide) button"
+    )
+    webhook_secret_copy_button = LocatorDescriptor(
+        testid="pipeline-webhook-secret-copy-button",
+        description="Secret Value copy button"
+    )
+    webhook_secret_regenerate_button = LocatorDescriptor(
+        testid="pipeline-webhook-secret-regenerate-button",
+        description="Secret Value regenerate (refresh) button — stages a pending secret "
+                     "client-side until Apply is clicked"
+    )
+    webhook_example_request = LocatorDescriptor(
+        testid="pipeline-webhook-example-request",
+        description="Example Request code block"
+    )
+    webhook_example_copy_button = LocatorDescriptor(
+        testid="pipeline-webhook-example-copy-button",
+        description="Example Request copy button"
+    )
+    webhook_cancel_button = LocatorDescriptor(
+        testid="pipeline-webhook-cancel-button",
+        description="Webhook settings modal Cancel button"
+    )
+    webhook_apply_button = LocatorDescriptor(
+        testid="pipeline-webhook-apply-button",
+        description="Webhook settings modal Apply button"
+    )
+
+    # Entry-point node — Schedule settings modal (ELITEA-2005). Sibling of the
+    # Webhook settings modal above, added via the same add-data-testid pass
+    # (PipelineScheduleModal.jsx — Modal.BaseModal `data-testid` prop, same
+    # mechanism as pipeline-webhook-modal).
+    schedule_modal = LocatorDescriptor(
+        testid="pipeline-schedule-modal",
+        description="Schedule settings modal (dialog root)"
+    )
+    schedule_modal_summary_text = LocatorDescriptor(
+        testid="pipeline-schedule-modal-summary-text",
+        description='Schedule modal cron summary text (e.g. "At 00:00, only on Saturday")'
+    )
+    schedule_apply_button = LocatorDescriptor(
+        testid="pipeline-schedule-apply-button",
+        description="Schedule settings modal Apply button"
+    )
+
+    # Success toast (app-wide generic component, reused across features —
+    # see skill_detail_page.SkillDetailPage.version_toast_message /
+    # artifacts_page.ArtifactsPage.success_toast_message). Fires for all 3
+    # trigger-mutation flows (source-confirmed TriggerTypeSelector.jsx):
+    # 'Webhook configured successfully', 'Schedule configured successfully',
+    # 'Trigger updated to Chat Message'. In every flow `toastSuccess(...)` is
+    # called synchronously right after the SAME awaited `updateTrigger(...)`
+    # mutation this page object already waits on (`expect_response` in
+    # select_trigger_type / apply_webhook_settings / apply_schedule_settings)
+    # — only the SEPARATE displayed-trigger-text cache refetch lags (see the
+    # Automation Hints on those methods); the toast itself is not subject to
+    # that lag.
+    trigger_toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide Toast component's message container, reused here "
+                     "for the entry-point Trigger 'configured'/'updated' toasts"
     )
 
     # TOOLS section (ELITEA-1955). ApplicationTools.jsx / ToolMenu.jsx is a
@@ -1199,6 +1334,244 @@ class PipelineDetailPage(PipelineFormPage):
             return False
         text = (heading.text_content() or "").strip()
         return text == f"Input mapping (required {required_count})"
+
+    # ------------------------------------------------------------------
+    # Entry-point node — Trigger select & Webhook settings modal (ELITEA-2006)
+    # ------------------------------------------------------------------
+
+    # Maps the Webhook Type radio's value to its LocatorDescriptor field —
+    # avoids a dynamic-testid template for a fixed 3-value set (matches the
+    # 3 values TriggerTypeSelector.jsx / PipelineWebhookModal.jsx render).
+    _WEBHOOK_TYPE_RADIOS = {
+        "github": "webhook_type_radio_github",
+        "gitlab": "webhook_type_radio_gitlab",
+        "custom": "webhook_type_radio_custom",
+    }
+
+    def select_trigger_type(self, value: str, timeout: int = 10000) -> dict | None:
+        """Open the entry-point node's Trigger select and choose *value*.
+
+        Selecting ``"webhook"`` or ``"chat_message"`` fires a `PUT
+        .../pipeline_trigger/.../trigger` immediately — this waits on that
+        response, not a fixed sleep (`.claude/rules/ui-tests.md` § Wait
+        Patterns). Selecting ``"webhook"`` additionally opens the Webhook
+        settings modal as a product side-effect once the response resolves
+        (source-confirmed `handleTriggerTypeChange`'s awaited `updateTrigger`
+        call, `TriggerTypeSelector.jsx`) — callers wait on ``webhook_modal``
+        separately after this returns.
+
+        Selecting ``"schedule"`` is DIFFERENT (ELITEA-2005, source-confirmed):
+        `handleTriggerTypeChange` only calls `setIsScheduleModalOpen(true)` —
+        a synchronous local-state update, no awaited mutation — so no PUT
+        fires until the Schedule modal's own Apply is clicked. This method
+        returns ``None`` for ``"schedule"`` rather than waiting on a response
+        that will never arrive; callers wait on ``schedule_modal`` separately.
+
+        Args:
+            value: One of ``"chat_message"``, ``"schedule"``, ``"webhook"``.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the trigger-update PUT response, or ``None``
+            when *value* is ``"schedule"`` (no auto-save on selection).
+        """
+        self.trigger_select.click(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(value))
+        option.wait_for(state="visible", timeout=timeout)
+
+        if value == "schedule":
+            option.click(timeout=timeout)
+            return None
+
+        with self.page.expect_response(
+            lambda r: "/pipeline_trigger/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as response_info:
+            option.click(timeout=timeout)
+
+        return response_info.value.json()
+
+    def get_trigger_type_value(self, timeout: int = 5000) -> str:
+        """Read the Trigger select's currently-displayed value text.
+
+        Args:
+            timeout: Maximum wait time for the select to be visible.
+        """
+        self.trigger_select.wait_for(state="visible", timeout=timeout)
+        return (self.trigger_select.text_content() or "").strip()
+
+    def open_webhook_settings(self, timeout: int = 10000) -> None:
+        """Click the "Edit webhook settings" icon and wait for the modal to load.
+
+        Only visible once ``trigger == "webhook"`` (source-confirmed
+        `currentTriggerType === TRIGGER_TYPES.webhook` gate,
+        `TriggerTypeSelector.jsx`) — call :meth:`select_trigger_type` with
+        ``"webhook"`` first if the trigger isn't already webhook.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.trigger_webhook_edit_button.click(timeout=timeout)
+        self.wait_for_webhook_settings_loaded(timeout=timeout)
+
+    def wait_for_webhook_settings_loaded(self, timeout: int = 10000) -> None:
+        """Wait for the Webhook settings modal AND its data-dependent fields.
+
+        The URL/Secret sections (`PipelineWebhookModal.jsx`: `{webhookUrl &&
+        (...)}` / `{secretValue && (...)}`) render only once `triggerData` is
+        populated. `triggerData` comes from the SAME RTK-Query tag a
+        trigger-mutating PUT invalidates, whose re-fetch can resolve slightly
+        AFTER the PUT response itself — so the modal can become visible
+        before its fields do. Waits on the Webhook URL field specifically
+        (present whenever `webhook_url` is populated) rather than a fixed
+        sleep.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.webhook_modal.wait_for(state="visible", timeout=timeout)
+        self.webhook_url_input.wait_for(state="visible", timeout=timeout)
+
+    def select_webhook_type(self, webhook_type: str, timeout: int = 5000) -> None:
+        """Click the Webhook Type radio matching *webhook_type* in the open modal.
+
+        Pure client-side `useMemo` derivation of the URL/description/example
+        request off ``selectedWebhookType`` — no network wait needed
+        (source-confirmed `PipelineWebhookModal.jsx`).
+
+        Args:
+            webhook_type: One of ``"github"``, ``"gitlab"``, ``"custom"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        radio = getattr(self, self._WEBHOOK_TYPE_RADIOS[webhook_type])
+        radio.click(timeout=timeout)
+
+    def get_selected_webhook_type(self) -> str | None:
+        """Return which Webhook Type radio is currently checked, or None.
+
+        The testid lands on the MUI ``FormControlLabel`` wrapping the native
+        ``<input type="radio">`` (not the input itself) — same
+        already-verified pattern as
+        ``CredentialCreatePage.auth_radio``: Playwright's ``is_checked()``
+        resolves correctly through the associated ``<label>`` wrapper.
+        """
+        for webhook_type, attr_name in self._WEBHOOK_TYPE_RADIOS.items():
+            if getattr(self, attr_name).is_checked():
+                return webhook_type
+        return None
+
+    def get_webhook_url(self, timeout: int = 5000) -> str:
+        """Read the Webhook URL field's current value.
+
+        Args:
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self.webhook_url_input.wait_for(state="visible", timeout=timeout)
+        return self.webhook_url_input.input_value()
+
+    def reveal_webhook_secret(self, timeout: int = 5000) -> None:
+        """Click the Secret Value eye (show/hide) toggle button.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.webhook_secret_toggle_visibility_button.click(timeout=timeout)
+
+    def get_webhook_secret(self, timeout: int = 5000) -> str:
+        """Read the Secret Value field's current value (masked or revealed).
+
+        Args:
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self.webhook_secret_input.wait_for(state="visible", timeout=timeout)
+        return self.webhook_secret_input.input_value()
+
+    def apply_webhook_settings(self, timeout: int = 10000) -> dict:
+        """Click Apply in the Webhook settings modal; wait for the trigger PUT.
+
+        Waits on the actual `PUT .../pipeline_trigger/.../trigger` network
+        response rather than the modal merely closing.
+        `PipelineWebhookModal.applyChanges` calls `onSubmit(...)` (a Promise,
+        NOT awaited) and then `onClose()` synchronously — the modal-hidden
+        state can be reached before the mutation actually resolves, so a
+        wait keyed only on visibility would race the real persistence
+        (declared improvisation departing from this case's own AFS
+        Automation Hints, which assumed the mutation was awaited before
+        close — source-verified during implementation that it is not;
+        `role-overrides.md` § Declared-improvisation protocol).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the trigger-update PUT response.
+        """
+        with self.page.expect_response(
+            lambda r: "/pipeline_trigger/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as response_info:
+            self.webhook_apply_button.click(timeout=timeout)
+        self.webhook_modal.wait_for(state="hidden", timeout=timeout)
+        return response_info.value.json()
+
+    def cancel_webhook_settings(self, timeout: int = 10000) -> None:
+        """Click Cancel in the Webhook settings modal; wait for it to close.
+
+        Discards any in-modal changes without persisting — `onClose()` is a
+        pure local state update (no network call), so waiting on the modal
+        becoming hidden is sufficient here (unlike :meth:`apply_webhook_settings`).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.webhook_cancel_button.click(timeout=timeout)
+        self.webhook_modal.wait_for(state="hidden", timeout=timeout)
+
+    def wait_for_schedule_settings_loaded(self, timeout: int = 10000) -> None:
+        """Wait for the Schedule settings modal to be visible.
+
+        Unlike the Webhook modal, the Schedule modal's content is pure local
+        component state (`cronExpression`/`cronType`, defaulted from the
+        `cron` prop) — nothing here waits on a network refetch, so waiting
+        on the modal root is sufficient.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.schedule_modal.wait_for(state="visible", timeout=timeout)
+
+    def get_schedule_summary_text(self, timeout: int = 5000) -> str:
+        """Read the Schedule modal's cron summary text (e.g. "At 00:00, only on Saturday").
+
+        Args:
+            timeout: Maximum wait time for the element to be visible.
+        """
+        self.schedule_modal_summary_text.wait_for(state="visible", timeout=timeout)
+        return (self.schedule_modal_summary_text.text_content() or "").strip()
+
+    def apply_schedule_settings(self, timeout: int = 10000) -> dict:
+        """Click Apply in the Schedule settings modal; wait for the trigger PUT.
+
+        `PipelineScheduleModal.applyChanges` calls `onSubmit(cronExpression)`
+        (a Promise, NOT awaited) then `onClose()` synchronously — same
+        close-before-mutation-resolves shape already confirmed for the
+        Webhook modal's Apply (see :meth:`apply_webhook_settings`), so this
+        waits on the actual `PUT .../pipeline_trigger/.../trigger` response
+        rather than the modal merely closing.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the trigger-update PUT response.
+        """
+        with self.page.expect_response(
+            lambda r: "/pipeline_trigger/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as response_info:
+            self.schedule_apply_button.click(timeout=timeout)
+        self.schedule_modal.wait_for(state="hidden", timeout=timeout)
+        return response_info.value.json()
 
     # ------------------------------------------------------------------
     # TOOLS section — MCP attach (ELITEA-1955)

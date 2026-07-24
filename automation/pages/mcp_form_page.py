@@ -223,6 +223,38 @@ class McpFormPage(BasePage):
         "clarification filed as issue #595, see ELITEA-1933 AFS)",
     )
 
+    # ------------------------------------------------------------------
+    # Load Tools sync-error toast + connection status widget — added
+    # ELITEA-1934. `toast-message` is the app-wide shared Toast testid (same
+    # pattern as skill_detail_page.version_toast_message /
+    # skills_list_page.import_success_toast_message /
+    # artifacts_page.success_toast_message — each page object declares its
+    # OWN named field rather than cross-importing another page object's).
+    # `toolkit-connection-status`/`toolkit-connection-auth-button` are NEW
+    # testids added via add-data-testid for this case (McpAuthStatus.jsx —
+    # the widget had zero testids before, confirmed via the AFS's 6-level
+    # DOM ancestor walk).
+    # ------------------------------------------------------------------
+    sync_error_toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide Toast component's message container (reused for "
+        "the 'Failed to sync MCP tools: ...' error toast on a failed Load Tools)",
+    )
+    connection_status = LocatorDescriptor(
+        testid="toolkit-connection-status",
+        description="MCP connection status widget (globe icon + 'Connected!'/'Not "
+        "Connected' text + Login/Logout button) — carries a `data-connected` "
+        "true/false state attribute (state-via-data-attribute, per "
+        ".agents/testing.md § Locator policy); text_content() includes the "
+        "auth button's own label concatenated with no separator, so prefer "
+        ":meth:`is_mcp_connected` for the boolean check and "
+        ":meth:`get_connection_auth_button_label` for the button's own text",
+    )
+    connection_auth_button = LocatorDescriptor(
+        testid="toolkit-connection-auth-button",
+        description="Login/Logout button inside the connection status widget",
+    )
+
     # Dynamic (runtime-parameterized) testid — one MUI Chip per discovered tool.
     # Class-level template constant per .agents/testing.md § Locator policy;
     # never an inline f-string get_by_test_id in a method body.
@@ -245,11 +277,59 @@ class McpFormPage(BasePage):
     # args_schema properties differ per MCP tool, so no fixed testid exists.
     TEST_PARAM_FIELD = '[data-testid="toolkit-test-param-{}"]'
 
+    # Test Settings text-type parameter field's nested <input> — the
+    # TEST_PARAM_FIELD testid above sits on the wrapper <Box>
+    # (CommonStringField.jsx), not the <input> itself (confirmed live,
+    # ELITEA-1937 AFS § Concrete Handles). Same "[data-testid=...] <descendant>"
+    # scoped-constant shape as ToolkitTestSettingsPage.RESULT_MESSAGE_ITEM /
+    # this page's own RESULT_MESSAGE_ITEM below — never chained off the
+    # TEST_PARAM_FIELD Locator inside a method body (`.agents/testing.md` §
+    # Locator policy forbids a raw selector chained off an existing field).
+    TEST_PARAM_TEXT_INPUT = '[data-testid="toolkit-test-param-{}"] input[type="text"]'
+
     # Raw Json editor's own testid, fed into page.evaluate() JS (a raw DOM
     # query string, not a Playwright locator) by get_raw_json_full() — same
     # "class-level selector constant consumed by evaluate()" shape as
     # DETAIL_TITLE_SELECTOR above.
     RAW_JSON_EDITOR_SELECTOR = '[data-testid="toolkit-raw-json-editor-content"]'
+
+    # ------------------------------------------------------------------
+    # Test Settings panel — model selector, RUN TOOL, result message
+    # (ELITEA-1937). Same shared TestToolSettings.jsx/ChatMessageList.jsx
+    # components ToolkitTestSettingsPage already covers for the sibling
+    # /toolkits/all/{id} page (ELITEA-1866) — ported here (not inherited;
+    # page-object rule is one class per page/route, no cross-entity
+    # inheritance between unrelated pages, AFS § Overlap check).
+    # ------------------------------------------------------------------
+    model_selector_button = LocatorDescriptor(
+        testid="model-selector-button",
+        description="Test Settings panel's model selector trigger — shared "
+        "LLMModelSelector.jsx widget, already on main (ELITEA-1866)",
+    )
+    model_selector_name = LocatorDescriptor(
+        testid="model-selector-name",
+        description="Currently-selected model's display name inside the "
+        "model selector — model-specific text; assert non-empty only, "
+        "never the exact model name",
+    )
+    run_tool_button = LocatorDescriptor(
+        testid="toolkit-test-run-tool-button",
+        description="'RUN TOOL' button (TestToolSettings.jsx) — disabled "
+        "until all required schema fields are filled",
+    )
+    result_message_list = LocatorDescriptor(
+        testid="chat-message-list",
+        description="Center panel's message list (ChatMessageList.jsx, "
+        "shared chat component reused by every chat surface in the app) — "
+        "this page renders exactly one instance, backing both the pre-run "
+        "welcome message and the post-RUN-TOOL result (content REPLACES in "
+        "place, never appends — confirmed live, ELITEA-1937 AFS)",
+    )
+
+    # Scoped sub-selector for the individual message item(s) inside the
+    # testid'd message-list container — identical shape to
+    # ToolkitTestSettingsPage.RESULT_MESSAGE_ITEM (same shared component).
+    RESULT_MESSAGE_ITEM = '[data-testid="chat-message-list"] li.MuiListItem-root'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -1004,6 +1084,39 @@ class McpFormPage(BasePage):
         option = self.page.locator(self.SELECT_OPTION.format(tool_name))
         option.click(timeout=UI_ELEMENT_TIMEOUT)
 
+    # Prefix (any-tool) variant of SELECT_OPTION — matches every currently-
+    # rendered Test Settings dropdown option regardless of tool key. Same
+    # `[data-testid^="…"]` prefix-count pattern already used by
+    # ToolkitTestSettingsPage.TOOL_OPTION_ANY_SELECTOR (ELITEA-1866) and this
+    # page's own TOOL_CHIP_PREFIX — used to prove the Test Settings dropdown
+    # lists every discovered tool (ELITEA-1937 AFS step 6) as its own
+    # step, separate from :meth:`select_test_tool`'s combined open+select.
+    SELECT_OPTION_ANY_SELECTOR = '[data-testid^="select-option-"]'
+
+    def get_test_tool_options(self):
+        """Return the Locator matching every currently-rendered Test Settings Tool-dropdown option.
+
+        Thin wrapper around :attr:`SELECT_OPTION_ANY_SELECTOR` so callers
+        (tests) never construct the dynamic-testid locator inline
+        themselves — locators stay behind the page-object boundary
+        (``.claude/rules/page-objects.md``). Mirrors
+        :meth:`ToolkitTestSettingsPage.get_tool_options` (same testid
+        family, different page).
+        """
+        return self.page.locator(self.SELECT_OPTION_ANY_SELECTOR)
+
+    def get_test_tool_option(self, tool_name: str):
+        """Return the Locator for a specific Test Settings Tool-dropdown option, by tool name.
+
+        Thin wrapper around :attr:`SELECT_OPTION` so callers never
+        construct the dynamic-testid locator inline themselves. Mirrors
+        :meth:`ToolkitTestSettingsPage.get_tool_option` — use this (after
+        the dropdown is already open, e.g. via :attr:`test_tool_select`
+        ``.click()``) instead of :meth:`select_test_tool` when the case
+        wants the open/select actions as two distinct steps.
+        """
+        return self.page.locator(self.SELECT_OPTION.format(tool_name))
+
     def is_test_param_field_visible(self, field_key: str, timeout: int = UI_ELEMENT_TIMEOUT) -> bool:
         """Wait for and return whether the Test Settings panel's *field_key* parameter field is visible.
 
@@ -1014,3 +1127,111 @@ class McpFormPage(BasePage):
         field = self.page.locator(self.TEST_PARAM_FIELD.format(field_key))
         field.wait_for(state="visible", timeout=timeout)
         return field.is_visible()
+
+    # ------------------------------------------------------------------
+    # Connection status widget — added ELITEA-1934
+    # ------------------------------------------------------------------
+
+    def is_mcp_connected(self) -> bool:
+        """Return whether the connection status widget reports 'Connected!' (data-connected="true").
+
+        Reads the ``data-connected`` state attribute (UI-team ruling — testid is
+        stable identity, state lives in a separate ``data-*`` attribute, never
+        baked into the testid itself — same pattern as
+        :meth:`is_tool_chip_selected`), not the "Connected!"/"Not Connected"
+        text (which the widget's own testid captures concatenated with the
+        auth button's label, e.g. ``"Not ConnectedLogin"``, confirmed live).
+        """
+        return self.connection_status.get_attribute("data-connected") == "true"
+
+    def get_connection_auth_button_label(self) -> str:
+        """Return the connection status widget's Login/Logout button label.
+
+        ``"Login"`` when disconnected, ``"Logout"`` when connected — located via
+        its own ``toolkit-connection-auth-button`` testid rather than parsed out
+        of the wider widget's concatenated text content.
+        """
+        return self.connection_auth_button.text_content() or ""
+
+    @action("Fill a Test Settings parameter field")
+    def fill_test_param(self, field_key: str, value: str) -> None:
+        """Fill the Test Settings panel's *field_key* parameter text input.
+
+        *field_key* is the JSON-schema property name (e.g. ``"repoName"``)
+        rendered after :meth:`select_test_tool`. Uses
+        :attr:`TEST_PARAM_TEXT_INPUT` (a scoped
+        ``[data-testid=...] input[type="text"]`` constant, same shape as
+        :attr:`RESULT_MESSAGE_ITEM`) rather than chaining a raw selector off
+        the :attr:`TEST_PARAM_FIELD`-templated wrapper Locator — the testid
+        sits on the wrapper ``<Box>`` (``CommonStringField.jsx``), not the
+        ``<input>`` itself (confirmed live, ELITEA-1937 AFS § Concrete
+        Handles). Reuses :meth:`_fill_text_input` for the MUI
+        React-onChange-safe fill sequence (`.claude/rules/mui-patterns.md`).
+        """
+        text_input = self.page.locator(self.TEST_PARAM_TEXT_INPUT.format(field_key))
+        self._fill_text_input(text_input, value)
+
+    @action("Run the selected tool")
+    def run_tool(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click RUN TOOL.
+
+        Mirrors :meth:`ToolkitTestSettingsPage.run_tool` (identical shared
+        ``TestToolSettings.jsx`` component, ELITEA-1866). The button stays
+        disabled until all required schema fields are filled — confirmed
+        live it enables instantly on a non-empty value, no debounce.
+        """
+        self.run_tool_button.wait_for(state="visible", timeout=timeout)
+        self.run_tool_button.click()
+
+    def get_result_message_count(self) -> int:
+        """Return the number of items currently rendered in the result/welcome message list.
+
+        Thin wrapper around :attr:`RESULT_MESSAGE_ITEM` so callers never
+        construct the scoped locator inline. Used to confirm the
+        REPLACES-in-place behavior (ELITEA-1937 AFS Axis 2 / Network
+        Behavior) — this count stays exactly 1 both before and after RUN
+        TOOL; a regression that appended instead of replaced would show 2.
+        """
+        return self.page.locator(self.RESULT_MESSAGE_ITEM).count()
+
+    def get_welcome_message_text(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the center panel's current message-list text.
+
+        Before any tool has run, this is the static welcome message
+        ("Welcome! Select a tool from the Test Settings panel and click
+        'RUN TOOL' to see the results here.") — the same
+        :attr:`result_message_list` container :meth:`wait_for_tool_result`
+        reads after a run (content REPLACES in place, not appended —
+        confirmed live, message count stays at 1 both before and after RUN
+        TOOL). Mirrors :meth:`ToolkitTestSettingsPage.get_welcome_message_text`
+        (identical shared component).
+        """
+        self.result_message_list.wait_for(state="visible", timeout=timeout)
+        return self.result_message_list.text_content() or ""
+
+    @action("Wait for the tool-run result to appear")
+    def wait_for_tool_result(self, timeout: int = 15000) -> str:
+        """Wait for the post-RUN-TOOL result to render and return its text.
+
+        AI/tool responses arrive over WebSocket a few seconds after RUN TOOL
+        is clicked (ELITEA-1937 AFS § Network Behavior) — polls on the
+        result's success/error prefix (``✅``/``❌``) appearing in the
+        message list, never a fixed sleep (`.agents/testing.md` §
+        no-sleeps rule).
+
+        The container REPLACES its content in place rather than appending
+        (confirmed live twice across separate fixture toolkits — message
+        count stays 1 before and after RUN TOOL), so this polls on content
+        via Playwright's auto-retrying ``expect(...).to_contain_text()``
+        instead of a message-count delta. Mirrors
+        :meth:`ToolkitTestSettingsPage.wait_for_tool_result` exactly
+        (identical shared component).
+
+        Returns:
+            The result message's raw text content (e.g. containing
+            ``"✅ read_wiki_structure (N.NNNs)"`` followed by real tool
+            output).
+        """
+        result_locator = self.page.locator(self.RESULT_MESSAGE_ITEM).last
+        expect(result_locator).to_contain_text(re.compile(r"[✅❌]"), timeout=timeout)
+        return result_locator.text_content() or ""
