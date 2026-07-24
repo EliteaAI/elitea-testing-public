@@ -50,9 +50,8 @@ state:
 ```
 (confirmed live via the Yaml-view tab). This avoids needing any STATE-drawer
 testids for cases whose actual assertions live elsewhere (e.g. GAP-007's
-f-string autocomplete). A future case that specifically exercises the STATE
-drawer's own CRUD/toggle behavior is a separate coverage-gap scope and should
-request its own testids then.
+f-string autocomplete). **Update (ELITEA-2042, 2026-07-24): the STATE drawer's
+own CRUD behavior is now fully explored — see the dedicated section below.**
 
 ## Duplicate DOM id on every "Type" select — use testid, never the id
 
@@ -289,6 +288,18 @@ Full wiring points (exact line numbers, proposed names) are in
 Concrete Handles table — don't re-derive, read that AFS first if implementing
 this case.
 
+**Status update (2026-07-24, redispatch ground-truth check): all of the above
+is now DONE, not just planned.** ELITEA-2006's implementer added all 15
+`PipelineWebhookModal` testids (the ones enumerated above + 3 fix-round
+gap-fills: `pipeline-webhook-type-description`,
+`pipeline-webhook-payload-format-description`,
+`pipeline-webhook-secret-helper-text`) — confirmed present on
+`automation/testids` via a fresh `git fetch origin` + `git grep`
+(none yet on `main`). A future case touching this modal should REUSE these,
+not re-run `add-data-testid` against it — check the AFS's Concrete Handles
+table for the full list before assuming any element here still lacks a
+testid.
+
 **Tooling caveat (analyst-only, not a product issue):** `browser-verify`'s
 `cdp.mjs` CLI spawns a fresh Node process per shell command — its
 `consoleMessages`/`networkRequests` capture arrays are module-level and RESET
@@ -490,13 +501,36 @@ in the same pass as the Toolkit-node broadening:**
   (any node type) reproduces the identical id collision. Needs a new
   `typeTestIdPrefix`-style prop, mirroring `valueTestIdPrefix`'s existing shape.
 
-**`CommonInterruptSettings.jsx` (Interrupt before/after, Structured output) has
-zero testid support for ANY node type** — unlike everything else in
+**UPDATE (ELITEA-2004 review fix pass R1, 2026-07-24) — `CommonInterruptSettings.jsx`
+now HAS testid support, added directly inside the shared component (not
+per-caller), exactly as this entry recommended below.** The claim in the
+paragraph immediately below ("zero testid support for ANY node type") is now
+STALE — corrected here rather than left to mislead the next reader. Three
+GENERIC testids landed via `EliteaAI/EliteaUI@1289e746` (on `automation/testids`
+only, confirmed live — NOT yet on `main`): `pipeline-node-interrupt-before-switch`,
+`pipeline-node-interrupt-after-switch`, `pipeline-node-structured-output-switch`.
+Deliberately node-type-agnostic (not LLM-scoped) since the component is shared
+across 8+ node types (LLM/MCP/Code/Agent/Subgraph/Decision/deprecated Loop+Tool)
+— per `.agents/testing.md` § Locator policy, a shared component gets a generic
+testid, not a caller-threaded `testId` prop, when no per-caller disambiguation
+is actually needed. First consumer/asserter: `ELITEA-2004`'s
+`test_pipeline_llm_node_configure_system_task_chat_history.py` (fix-round R1,
+commit `58a7be27`) — Case Step 3's "Interrupt before/after"/"Structured output"
+section-presence checks. Full AFS detail:
+`test-specs/pipelines/l2_configure-llm-node-system-task-chat-history_ELITEA-2004.md`
+§ Concrete Handles → "Review fix pass R1 additions".
+
+<details><summary>Original entry (now partially superseded by the update above — kept for history)</summary>
+
+`CommonInterruptSettings.jsx` (Interrupt before/after, Structured output) has
+zero testid support for ANY node type — unlike everything else in
 `BaseToolNode.jsx`, it isn't even `isMcpNode`-gated; it's simply never been
 given a `data-testid` prop at all. Since it's already universally shared,
 recommend adding GENERIC testids directly inside the component (not threaded
 per-caller) — no test has asserted these fields yet for any node type, so this
 is genuinely new ground, not a broadened gate.
+
+</details>
 
 **Multi-select gotcha — Input/Output tool-agnostic state-variable selects
 accept MULTIPLE values (chips), confirmed live.** Clicking an option in the
@@ -586,6 +620,19 @@ transition-rewire sequence is 100% client-side; only the pipeline's own
 Save button fires a network request (`PUT .../application/prompt_lib/...`,
 `201`) that persists it.
 
+**Canvas-timing gotcha, confirmed during implementation (fix round R1):**
+the underlying YAML/`transition` model updates INSTANTLY on delete (assert
+this via `switch_to_yaml_view()` / `get_yaml_content()` right after the
+confirm click), but **ReactFlow's own rendered `edges` array does not
+recompute until a Flow/YAML view remount or a full page reload** — so the
+NEW auto-rewired live canvas edge (e.g. `LLM 1 → END` after deleting
+`Code 1`) will NOT yet be visible/queryable via `edge_exists()` immediately
+after the delete+confirm click, only after Save + reload. Any case on this
+surface asserting "the rewired edge now exists" must split the assertion:
+YAML-model check right after delete, live-canvas-edge check only after a
+reload. Asserting the live edge too early is not a defect, just a premature
+read of a `ReactFlow` internal that hasn't re-rendered yet.
+
 **Ambient console warning, not a delete-node regression.** `[React Flow]:
 It looks like you've created a new nodeTypes or edgeTypes object...` fires
 repeatedly (level: `warning`, not `error`) on canvas re-renders throughout
@@ -645,28 +692,41 @@ template string — present on `origin/automation/testids`, absent on
 `origin/main`) — pending human promotion, same as the rest of ELITEA-2004's
 work.
 
-**Three genuine gaps, all trivial wiring, none needing shared-component
-edits:**
-- HITL's own **Input select** (top of panel) has **zero testid** — worse than
-  the ordinary duplicate-id case: its native id is the LITERAL STRING
-  `simple-select-[object Object]`, because `HITLNode.jsx:196-201` passes a
-  JSX element (`<FlowEditorSettings.LabelWithTooltip .../>`) as the `label`
-  prop, and `SingleSelect.jsx`'s `id={id || 'simple-select-' + label}` default
-  coerces it to `"[object Object]"` via string concatenation. Wiring point:
-  `FlowEditorSelect.InputSelect` already supports `dataTestId` (same
-  mechanism as `pipeline-llm-node-input-select` on the LLM node) — add
-  `dataTestId="pipeline-hitl-node-input-select"` at the `HITLNode.jsx:194`
-  call site.
-- The 3 **ROUTER MAPPING Route selects** (APPROVE/EDIT/REJECT) share the
-  literal duplicate id `simple-select-Route` (same root-cause family as
-  `#1006`/`#1009`, not re-filed) and have **zero testid**. Wiring point:
-  `HITLNode.jsx:238`, inside the `HITL_ACTIONS.map(action => ...)` loop —
-  needs a DYNAMIC per-action testid, recommend
-  `pipeline-hitl-node-router-{action}-select` (`{action}` = `action.value`,
-  already available at the call site).
-- The **EDIT STATE KEY Value select** has native id `simple-select-Value`
-  (same root-cause family, not re-filed) and **zero testid**. Wiring point:
-  `HITLNode.jsx:263` — recommend `pipeline-hitl-node-edit-state-key-select`.
+**Three gaps identified at first analysis — since ADDED by the implementer,
+now on `automation/testids` only (2026-07-24 redispatch, re-confirmed via a
+fresh `git fetch origin` + `git grep` AND a real pytest rerun — `1 passed in
+27.21s`; NOT yet on `main`, `EliteaAI/EliteaUI@4ccf24ac` "add HITL node
+testids (ELITEA-2014)"):**
+- HITL's own **Input select** (top of panel) — native id was the LITERAL
+  STRING `simple-select-[object Object]` (worse than the ordinary
+  duplicate-id case: `HITLNode.jsx:196-201` passes a JSX element as the
+  `label` prop, and `SingleSelect.jsx`'s `id={id || 'simple-select-' + label}`
+  default coerces it to `"[object Object]"` via string concatenation). Now
+  carries `dataTestId="pipeline-hitl-node-input-select"` via
+  `FlowEditorSelect.InputSelect` at `HITLNode.jsx:204`.
+- The 3 **ROUTER MAPPING Route selects** (APPROVE/EDIT/REJECT) — previously
+  shared the literal duplicate id `simple-select-Route` (same root-cause
+  family as `#1006`/`#1009`, not re-filed). Now carry a DYNAMIC per-action
+  testid at `HITLNode.jsx:253`:
+  `` data-testid={`pipeline-hitl-node-router-${action.value}-select`} ``
+  (inside the `HITL_ACTIONS.map(action => ...)` loop) — exactly the shape
+  originally recommended.
+- The **EDIT STATE KEY Value select** — previously native id
+  `simple-select-Value` (same root-cause family, not re-filed). Now carries
+  `data-testid="pipeline-hitl-node-edit-state-key-select"` at
+  `HITLNode.jsx:275`.
+
+**Case status (2026-07-24 redispatch):** fully implemented — PR
+`EliteaAI/elitea-testing-public#1026`, OPEN against `automation/base`,
+locator-compliant (mechanical grep: zero raw handles, all class-level
+`[data-testid=` template constants), independently re-run green twice
+(implementer's own 26.57s + this redispatch's 27.21s). A board bounce
+(`implementing` → `parked` "R2 cap exceeded" → `analysis`) most likely fired
+against an earlier in-progress state before two documented implementer
+debugging rounds landed (a `multiple=True` MUI-select Backdrop leak;
+`edge_exists()`'s stale `handle_suffix` format assumption — see the
+implementer's own MEMORY.md for both). Correct next action is a reviewer
+dispatch against PR #1026, not another analyst/implementer round.
 
 **Not already-covered by the merged PIPE-031** (`test_pipeline_nodes.py::
 test_add_human_in_the_loop_node_and_connect_to_end`) — that spec only adds a
@@ -723,29 +783,33 @@ on-main ✓ **except** `agent-canvas-section-advanced` and
 `agent-step-limit-input`, which are on `automation/testids` only (awaiting
 human promotion to `main`).
 
-### Two genuine testid gaps (both need `add-data-testid`)
+### Two former testid gaps — RESOLVED 2026-07-24 (`EliteaAI/EliteaUI@7709ad97`)
+
+Both landed on `automation/testids` (awaiting human promotion to `main`) during
+an ELITEA-2021 redispatch, after a fix-round left them wired live in the shared
+`../EliteaUI` working tree but uncommitted (isolated implementer worktrees
+structurally can't commit to a sibling repo — the analyst-slot testid-commit
+authority per `.agents/workflow.md` closed the gap instead). Live-functional-
+confirmed on the running dev server (typed a tag + Enter → chip rendered;
+typed into Editor Notes → value held).
 
 - **Tags combobox** (`ApplicationEditForm.jsx`/`CreateAgentForm.jsx` →
-  `TagEditor.jsx` → `AutoCompleteDropDown.jsx`): the underlying component
-  already supports `inputTestId`/`chipTestId`/`getOptionTestId` props (proven
-  working elsewhere — Skills' own `CreateSkillForm.jsx` wires
-  `skill-tags-input`/`skill-tag-chip`/`skill-tag-option-{name}` via these
-  exact props) but the Agent/Pipeline caller wires **none of them**. Confirmed
-  live: the Tags `<input id="tags">` has no testid/aria-label, and the
-  committed-tag `.MuiChip-root` has no testid either.
+  `TagEditor.jsx` → `AutoCompleteDropDown.jsx`): now wires `inputTestId`/
+  `chipTestId`/`getOptionTestId` (mirrors Skills' own `CreateSkillForm.jsx`
+  `skill-tags-input`/`skill-tag-chip`/`skill-tag-option-{name}` pattern one
+  prefix over) → `agent-tags-input` (wrapper, `data-testid`),
+  `agent-tags-input-field` (real `<input>`), `agent-tag-chip` (committed
+  chip), dynamic `agent-tag-option-{name}` (suggestion option — **source/
+  commit-confirmed only, not yet live-functionally exercised** — no case has
+  opened the suggestion dropdown itself, only the type-new-tag+Enter path).
 - **Editor Notes section** (`ApplicationEditorNotes.jsx`, detail-page only):
-  zero testids anywhere in the file — no accordion `testId:` (unlike its
-  sibling `ApplicationAdvanceSettings`'s `agent-canvas-section-advanced`), no
-  input testid on the Notes textarea (MUI auto-generated id only, e.g.
-  `:r3n:`).
+  now has `agent-editor-notes-section` (accordion `testId:`, mirrors sibling
+  `agent-canvas-section-advanced`) and `agent-editor-notes-input` (Notes
+  textarea, via `inputProps` `data-testid`).
 
-Both are used identically by Agent AND Pipeline forms (same shared
-components) — see the ELITEA-2021 AFS's Concrete Handles section for the
-full declared-improvisation naming proposal (`agent-tags-input`/
-`agent-tags-input-field`/`agent-tag-chip`/`agent-tag-option-{}`,
-`agent-editor-notes-section`/`agent-editor-notes-input`) and its reasoning
-(matching the file's own already-established `agent-` prefix convention for
-internal consistency, rather than a fresh generic name).
+Both used identically by Agent AND Pipeline forms (same shared components).
+Full detail + the original declared-improvisation naming rationale: the
+ELITEA-2021 AFS's Concrete Handles section and its Redispatch confirmations.
 
 ### Step limit: non-obvious default + a clearing gotcha
 
@@ -783,3 +847,587 @@ floating-label rendering artifact); the field's actual `.value` correctly
 holds exactly one string. Assert on the `agent-conversation-starter-input`
 element's `.value`, never on raw `innerText` occurrence counts, for this
 field.
+
+## "Add node" menu — exhaustive 11-type enumeration, zero testids (ELITEA-2030, 2026-07-24)
+
+**The menu's node-type list is source-derived, not a fixed hardcoded array —
+confirmed to be exactly 11 entries by tracing the filter, not just by
+counting DOM nodes once.** `AddNodeMenu.jsx`'s `getVisibleNodeTypes()`
+(`src/pages/Pipelines/Components/AddNodeMenu.jsx:23-28`) takes
+`Object.keys(FlowEditorConstants.PipelineNodeTypes)` (20 KEYS: Tool, Agent,
+Pipeline, Function, LLM, Decision, Condition, Loop, LoopFromTool, Router,
+StateModifier, Toolkit, Mcp, Code, Printer, Hitl, Custom, Ghost, End, Default)
+and filters out `DeprecatedConstants.DeprecatedOrInvisibleNode` — which is
+built from `DeprecatedNodes` (Function, Condition, Pipeline, Loop,
+LoopFromTool, Tool — all deprecated per `deprecated.constants.js:39-46`) plus
+End, Ghost, Default (internal/structural, never user-addable). What survives:
+**Agent, Code, Custom, Decision, Human-in-the-loop (Hitl), LLM, MCP, Printer,
+Router, State modifier, Toolkit — exactly 11**, alphabetically sorted by
+display label (`menuItems.sort((a,b) => a.label.toLowerCase()
+.localeCompare(b.label.toLowerCase()))`, line 45), then split into two
+`<Menu>` columns via `slice(0,6)`/`slice(6)` (left: Agent, Code, Custom,
+Decision, Human-in-the-loop, LLM; right: MCP, Printer, Router, State
+modifier, Toolkit). Confirmed live: `document.querySelectorAll('[role=menuitem]').length
+=== 11`, texts exactly `["Agent","Code","Custom","Decision",
+"Human-in-the-loop","LLM","MCP","Printer","Router","State modifier","Toolkit"]`
+in that DOM order (both columns render sequentially in the DOM, left first).
+
+**Zero `data-testid` anywhere in this component** — the trigger `IconButton`
+(`AddNodeMenu.jsx:75-90`) has only a native `id="pipeline-add-node-menu-action"`
++ `aria-label="Add node"` (already-working `aria-expanded` toggle, reusable
+as a state read once the button itself has a testid); the `<Menu
+id="pipeline-add-node-menu">` root (line 91) has only a native id too; each
+`<MenuItem>` in both column loops (lines 115-134, 137-156) has `key={item.type}`
+(a React key, not a DOM attribute) and otherwise nothing. `item.type` is
+already the exact internal enum slug needed for a dynamic testid family
+(`agent`, `code`, `custom`, `decision`, `hitl`, `llm`, `mcp`, `printer`,
+`router`, `state_modifier`, `toolkit`) — trivial one-line `data-testid`
+additions on the `IconButton` + both `MenuItem` loops, zero shared-component
+edits (this whole file is feature-local, not `src/components/shared`).
+Confirmed via `git diff origin/main origin/automation/testids -- <file>` =
+empty — no other in-flight case in this batch has touched this file.
+Full wiring points + recommended testid names are in
+`test-specs/pipelines/l2_add-node-menu-lists-types-adds-node-and-dismisses_ELITEA-2030.md`'s
+Concrete Handles table — read that AFS first before adding testids here.
+
+**Selecting a type adds the node with its config panel already open — no
+separate expand step, consistent with every other node type already
+documented above.** Confirmed live for LLM: the instant the node appears
+(`rf__node-{id}` present, e.g. `rf__node-LLM 2`), its own text content
+already contains "System"/"Task"/"Chat history" (the field-group labels) —
+readable off the node's existing `rf__node-{id}` testid without needing any
+per-field testid, for a case that only needs to prove the panel is *open*
+(not edit its fields).
+
+**Tooling gotcha — clicking a full-viewport invisible backdrop by its own
+selector-computed bounding-box CENTER can silently land on a foreground popup
+item instead of "outside."** MUI's `Menu`/`Popover` backdrop
+(`.MuiBackdrop-root.MuiBackdrop-invisible`) is a real, clickable, full-viewport
+div — but a naive `clickElement(".MuiBackdrop-root")`-style helper that
+computes "the element's own bounding-box center" as the click coordinate will
+compute the VIEWPORT'S center, which is frequently exactly where the smaller
+popup `Paper` is anchored (painted on top of the backdrop at that same
+screen position). The click's real hit-target at that pixel is the
+foreground popup content, not the backdrop underneath it — confirmed this
+session: this exact mistake closed the Add-node menu AND simultaneously
+added an "Agent" node, because the backdrop's naive center coincided with
+the "Agent" `MenuItem`. Verified via `document.elementFromPoint(x, y)` that
+a point genuinely outside the popup `Paper`'s own `getBoundingClientRect()`
+correctly resolves to the true backdrop and produces a clean dismiss (no
+node added). **For any future case testing "click outside to dismiss a
+popup/menu/dialog": pick a coordinate confirmed outside the popup's own
+rect (or just prefer Escape when the case allows either), never a
+selector-center click on the backdrop element itself.**
+
+Full test steps + Concrete Handles table:
+`test-specs/pipelines/l2_add-node-menu-lists-types-adds-node-and-dismisses_ELITEA-2030.md`.
+
+## Save/Discard dirty-tracking — a normalizing Save is required after ANY API-crafted pipeline (ELITEA-2028, 2026-07-24)
+
+**Every existing pipeline-creation API helper produces a "phantom dirty"
+pipeline on first UI touch.** `PipelineAPI.create_pipeline_with_nodes()`,
+`create_pipeline_with_llm_node()`, and a raw crafted payload all set
+`pipeline_settings: {"nodes": [], "edges": []}` (empty visual-layout data).
+The FIRST time the Flow (or Yaml) view renders for such a pipeline, the
+client auto-computes real canvas positions that differ from the stored empty
+array — and that diff ALONE flips Save/Discard from disabled to enabled,
+with **zero actual content edit**. Confirmed via a controlled A/B:
+
+- Raw-API pipeline, never touched via UI: Save/Discard **enabled** on the
+  very first navigate; switching Flow→Yaml→Flow with no edits made no
+  difference (already enabled either way) — this reproduces on
+  `create_pipeline_with_nodes()`/`create_pipeline_with_llm_node()` too, since
+  they share the identical empty-`pipeline_settings` shape.
+- Same pipeline shape, but with ONE extra step — add nodes via the UI's own
+  "+" button, then click **Save** once, then hard-reload: Save/Discard
+  **disabled** on the next fresh navigate, and switching Flow⇄Yaml repeatedly
+  with no edits correctly stayed disabled. Only a REAL content edit flipped
+  it to enabled.
+
+**Implication for any case that asserts a Save/Discard baseline** (started
+disabled, becomes enabled after edit X): after creating the pipeline via any
+API helper, perform ONE explicit `click_save()` / `save_and_wait_for_update()`
+BEFORE the test's real steps begin, and assert `is_save_enabled() == False`
+right after, as the test's own baseline check — otherwise "becomes enabled
+after edit X" passes vacuously (it was already enabled beforehand for an
+unrelated reason). **Not filed as a product defect** — the layout diff is a
+real, if surprising, uncommitted change, and it only manifests via the
+API-creation path, not the normal "create via UI" user flow.
+
+## YAML editor — `pipeline-yaml-lines` testid is DEAD (0 live DOM matches, ELITEA-2028, 2026-07-24)
+
+`PipelineDetailPage.yaml_lines` (testid `pipeline-yaml-lines`, used by
+`get_yaml_content()` to preserve line breaks) matches **zero** elements live
+— confirmed via `document.querySelectorAll('[data-testid="pipeline-yaml-lines"]').length
+=== 0` on a rendered, populated Yaml view, and via `git grep` finding no
+source anywhere (neither `main` nor `automation/testids`) that wires this
+string onto CodeMirror's `.cm-line` nodes. `YamlCodeEditor.jsx` calls
+`Field.CodeMirrorEditor` with no per-line testid prop at all — only
+`contentTestId` (a single-node mechanism) exists on that shared component
+today. **Not currently a blocker**: `get_yaml_content()` already silently
+falls back to `yaml_editor.text_content()` whenever `yaml_lines.count() ==
+0` (i.e. every time), so whole-YAML reads still work, just without
+preserved line breaks — this is why the existing merged
+`test_yaml_content_reflects_pipeline` test has never surfaced this (it only
+checks substring presence in the concatenated text).
+
+**For editing a specific line** (e.g. changing one node's `transition:`
+value without touching others), do NOT rely on `self.yaml_lines` — use the
+declared #579 improvisation instead, mirroring `mcp_form_page.py::
+fill_raw_json_line()` exactly: scope `get_by_text(current_line_text,
+exact=True)` inside the already-testid'd `yaml_editor` container, click →
+`Home` → `Shift+End` → one `keyboard.type(new_line_text)` call. Confirmed
+live end-to-end (ELITEA-2028): `Home`+`Shift+End` selects from the first
+non-whitespace character to end-of-line (leading indentation is NOT
+included in the selection — the replacement text should be just the
+line's logical content, e.g. `"transition: LLM 1"`, not
+`"    transition: LLM 1"`). **Multiple lines can share identical text**
+(e.g. two different nodes both `"transition: END"`) — disambiguate via
+`.last`/`.nth(k)` or by locating the node's own `"- id: {node_id}"` line
+first and then the next `"transition:"` line after it, never assume
+`get_by_text(...)` alone is unique.
+
+## Ordinary nodes (LLM/Printer/Code/…) have NO in-panel "transition/routes" field — only HITL/Router do (ELITEA-2031, 2026-07-24)
+
+**Confirmed by source AND live DOM enumeration: `LLMNode.jsx` and
+`PrinterNode.jsx` render zero Transition/Route field anywhere** — the LLM
+node's panel is exactly SYSTEM/TASK/CHAT HISTORY/Input/Output/Toolkits/
+Interrupt-before/after/Structured-output, nothing else. A visible "Route"/
+"Routes" **select** genuinely exists in the product (`RouteSelect.jsx`), but
+only on **HITL** (Router mapping, ELITEA-2014) and **Router** node types —
+NOT on ordinary flow-through nodes (LLM, Printer, Code, MCP, Toolkit, Agent).
+Any case whose text implies "locate the transition/routes field in the
+[LLM/Printer/etc.] node panel" is describing a UI element that doesn't exist
+for that node type — this is case-text drift, not a defect (filed
+`EliteaAI/elitea-testing-public#1031` for ELITEA-2031's instance).
+
+**The real, correct mechanism for an ordinary node's transition is one of
+two things, both confirmed live:**
+1. **Canvas drag-connect** — drag from the source node's bottom/source
+   handle to the target node's top/target handle (existing
+   `PipelineDetailPage.connect_nodes(source_id, target_id)`). Client-side
+   only, no network call; immediately updates BOTH the canvas edge AND the
+   underlying YAML `transition:` value (confirmed via the Yaml-view tab
+   re-read right after the drag).
+2. **Direct YAML editing** — see the ELITEA-2028 section above (`transition:`
+   line edit via the declared #579 CodeMirror-line pattern).
+
+**Edge-testid shape CHANGES between drag-time and post-reload** — a load-
+bearing gotcha for any test asserting `edge_exists()` at both points.
+Confirmed live end-to-end (LLM 1 → Printer 1):
+- **Immediately after the drag** (before Save): `rf__edge-xy-edge__LLM
+  1source-Printer 1target` — the user-dragged shape
+  (`{source}{handle}-{target}{handle}`, matching `edge_exists()`'s existing
+  docstring).
+- **After Save + hard reload**: the SAME logical edge now reads
+  `rf__edge-xy-edge__LLM 1---Printer 1` — the YAML/transition-derived triple-
+  dash shape (per the ELITEA-2018 digest section above), since post-reload
+  ALL edges are re-parsed from the YAML `entry_point`/`transition` graph
+  regardless of how they were originally created.
+- **`edge_exists()`'s existing matching (`testid.startswith(expected_prefix)
+  and f"-{target_id}" in testid`) already covers BOTH shapes transparently**
+  — confirmed live, no page-object change needed. A test asserting the same
+  edge both immediately-after-drag and after-reload can reuse the identical
+  `edge_exists(source, target)` call across both points without caring which
+  underlying testid shape is currently rendered.
+
+**Deleting/replacing a node's transition correctly removes the OLD edge, not
+just adds the new one** — confirmed live (LLM 1's `END` edge disappeared the
+instant the drag to Printer 1 landed; `Printer 1`'s own untouched `END` edge
+was unaffected) — same "old edge gone, not merely superseded" behavior
+ELITEA-2028 already confirmed for the YAML-edit path, now also confirmed for
+the canvas-drag path.
+
+Full Concrete Handles + Coverage Map are in
+`test-specs/pipelines/l2_pipeline-edge-creation-between-nodes_ELITEA-2031.md`
+— read that AFS first if implementing this case; it needs zero new testids
+and zero new page-object code (every method it uses is already merged).
+
+## Testid provenance — two view-toggle testids are FALSE NEGATIVES under literal `git grep` (ELITEA-2028, 2026-07-24)
+
+`pipeline-yaml-view` and `pipeline-flow-view` (the Yaml/Flow toggle buttons)
+both read as "not found on main" under a literal-string `git grep`, even
+though they work live and are used by already-merged tests. Root cause:
+`src/components/GroupedButton.jsx:57` builds the testid at RUNTIME via a
+template — `` data-testid={item.testid || `pipeline-${item.value}-view`} ``
+— so the literal string `"pipeline-yaml-view"` never appears anywhere in
+source; it's assembled from `"pipeline-"` + a variable + `"-view"`. When a
+provenance grep comes back empty for a testid you've confirmed working
+live, check whether the constructing component builds it from a template
+before concluding it's missing — this is the same class of gotcha
+`workflow.md`'s "two-stage grep pattern" note already covers for prop
+indirection, just one layer more indirect (multi-fragment template, not a
+single forwarded prop).
+
+## YAML-editor keystroke → Flow-view sync has a real 30ms Redux debounce race (ELITEA-2028 implementer exploration, 2026-07-24)
+
+**Editing pipeline YAML via keyboard and immediately switching to Flow view can
+show the PRE-edit edges — a genuine client-side timing race, not a flaky
+test.** Confirmed during implementation of the `edit_node_transition_in_yaml()`
+method (added for this case): the first automated run failed at the Flow-view
+edge assertion (`edge_exists("Code 1", "LLM 1")` → `False`) even though the
+immediately-preceding `get_yaml_content()` re-read already showed the edited
+`transition: LLM 1` line.
+
+**Root cause (traced in `../EliteaUI/src`):**
+- `src/[fsd]/shared/lib/hooks/useCodeMirror.hooks.js::onInputHandler` debounces
+  `notifyChange` (→ `setYamlCode` → Redux `state.pipeline.yamlCode`) by
+  **30ms** after the last keystroke via `setTimeout`.
+- `src/pages/Pipelines/Components/EditorPanel.jsx::onSelectChatMode` (the
+  Flow/Yaml toggle's own handler) reads `yamlCode` from a `useCallback`
+  closure current only as of the LAST RENDER before the click, and only calls
+  `onParseCodeToJson(yamlCode)` (which recomputes the Flow-view node/edge
+  layout) when switching TO Flow mode.
+- If the toggle click fires before the 30ms debounce flushes AND before React
+  re-renders with the updated closure, the Flow view re-parses the STALE
+  (pre-edit) YAML string. A raw DOM read of the editor's text
+  (`get_yaml_content()`) is unaffected — it reads the CodeMirror DOM directly,
+  which updates every keystroke, independent of the debounced Redux dispatch.
+  That's why the YAML-content assertion passed while the Flow-view assertion
+  failed on the identical run.
+
+**Fix — a condition-based wait, not a network wait (this surface's edits are
+100% client-side; see the ELITEA-2028 AFS's Network Behavior section for the
+full "no network call, but a client-side race exists" distinction):**
+`PipelineDetailPage.edit_node_transition_in_yaml()` polls the Save button's own
+`disabled` attribute (`page.wait_for_function("(el) => el && !el.disabled",
+arg=self.save_button.element_handle())`) after the `keyboard.type(...)` call,
+before returning. The Save button's enabled state is driven by the SAME Redux
+`yamlCode`-vs-initial diff (`useIsPipelineYamlCodeDirty.js`), so polling it is a
+real app-visible signal that the edit has landed — not a blind sleep, and
+robust to the debounce window being longer/shorter than any fixed guess.
+
+**Takeaway for any future case that edits pipeline YAML then immediately reads
+view-derived state (Flow-view canvas, or anything else keyed off parsed
+`yamlCode`):** never switch views / read derived state in the same "breath" as
+a keyboard edit to this CodeMirror instance — wait on an app-visible signal
+driven by the same Redux slice first (Save-button state is the cheapest one
+already exposed via an existing page-object method). Full root-cause writeup:
+`.agents/memory/test-automation-engineer/pipeline_yaml_editor_onchange_debounce_races_flow_view_toggle.md`.
+
+## Router node — Condition/Routes/Input/Default-output, and ReactFlow edge-testid format (ELITEA-2033, 2026-07-24)
+
+**Config is always inline/expanded, same as every other node type.** Fresh
+`Router` node (`RouterNode.jsx`) shows Condition (Jinja textarea), Routes
+(multi-select combobox), Input (single-select combobox), Default output
+(single-select dropdown) immediately — zero click-to-open. Zero
+`data-testid` anywhere in the node today; full wiring points (all four
+fields have a trivial existing extension point, no shared-component
+internals changes needed) are in
+`test-specs/pipelines/l2_router-node-configuration-persistence_ELITEA-2033.md`'s
+Concrete Handles table — read that AFS first before adding testids here.
+
+**Routes/Default-output options are OTHER EXISTING NODE IDS, not free
+text.** `useNodeOptions(nodeFilter, addEndNode)` (shared hook, also used by
+HITL's route selects) maps `(yamlJsonObject.nodes || []).filter(nodeFilter)`
+to `{label: node.id, value: node.id}` and optionally appends
+`{label:'END', value:'END'}`. A case whose test data reads "Routes: approve,
+reject" needs those as REAL node ids already present in the pipeline (e.g.
+via `PipelineAPI.create_pipeline_with_nodes()` with literal `id: "approve"`/
+`id: "reject"` — confirmed live that arbitrary non-type-prefixed ids are
+accepted with no validation error), not typed strings in a text field.
+
+**Default output's visual default ("END") is a DISPLAY-ONLY fallback,
+distinct from the persisted value — same family as HITL's REJECT default
+(ELITEA-2014), but with a sharper consequence here.** `default_output_node =
+yamlNode?.default_output || 'END'` makes the field SHOW "END" the instant a
+Router node is added, with zero interaction. But a freshly-added,
+never-touched node's YAML has **no `default_output` key at all**, and **no
+canvas edge** renders to END until the field is explicitly (re-)selected —
+confirmed via a before/after YAML diff. Any case asserting "Default output
+is END" must perform the explicit select-interaction and assert BOTH the
+YAML key and the edge, not just the visual display (which would pass
+vacuously even if persistence were broken).
+
+**Edge-testid format has a genuine per-edge-kind quirk that breaks a naive
+`edge_exists(..., handle_suffix=...)` call.** ReactFlow's rendered edge
+testid is `rf__edge-xy-edge__{edge.id}` where `edge.id` is app-constructed
+(`EDGE_PREFIX = 'xy-edge__'`, `flowEditor.constants.js`):
+- **Routes edges** (from the shared Routes multi-select): `edge.id =
+  ${id}---${value}` — e.g. `rf__edge-xy-edge__Router 1---Printer 1`.
+  **Triple-dash, NO handle suffix embedded** even though the underlying
+  `sourceHandle` state value IS the shared `routerNode_routes` string for
+  every route.
+- **Default-output edge**: `edge.id = ${id}default_output---${value}` — e.g.
+  `rf__edge-xy-edge__Router 1default_output---END`. Handle name embedded
+  directly before the triple-dash.
+
+`PipelineDetailPage.edge_exists(source_id, target_id, handle_suffix=None)`
+builds its handle-aware prefix as `f"...{source_id}{handle_suffix}-
+{target_id}"` (SINGLE dash before target) when `handle_suffix` is given —
+this does NOT match either Router edge kind's actual triple-dash format.
+**Call `edge_exists(router_id, target_id)` WITHOUT `handle_suffix` for
+BOTH Router edge kinds** — the fallback branch (`expected_prefix =
+f"...{source_id}"` + `f"-{target_id}" in testid` substring check) correctly
+matches both, confirmed live. This is a usage gotcha specific to Router's
+edge-id shape (the helper was originally designed against HITL's
+single-dash format), not a bug in the helper itemself.
+
+**Synthetic-vs-real-click hygiene (transient anomaly, did NOT survive the
+pristine-repro gate — not filed as a defect).** One interaction sequence
+that probed with a synthetic `page.evaluate("el => el.click()")`
+immediately followed by a real click on the SAME Default-output combobox
+produced `default_output: ''` (empty string) instead of `'END'`, with no
+edge created. Re-tested with a single clean real-click-only sequence
+(open → click "END") and it worked correctly, twice. Do not mix synthetic
+JS-click probes with real Playwright clicks on the same MUI `Select`
+trigger within one interaction — use one clean path per select.
+
+**Native id gotchas — same root-cause family as `#1006`/`#1009`, not
+re-filed.** Router's Input select shares the literal native id
+`simple-select-Input` with the LLM/MCP node's own Input select (cross-node-
+type collision); Default output's native id is `simple-select-undefined`
+(worse variant: `RouterNode.jsx` passes `labelNode={<Chip.HeadingChip
+label="Default output" />}` instead of a plain `label` string, so
+`SingleSelect.jsx`'s `id={id || 'simple-select-' + label}` default coerces
+the missing `label` to the literal string `"undefined"`). Never locate by
+either — testid-only once added.
+
+**Existing suite coverage check:** `tests/api/export_import/
+test_export_import_pipelines.py` has its own `_router_node()` helper, but
+it only exercises API-level export/import YAML round-tripping of an
+already-constructed Router node — it never touches the Flow-editor UI
+panel fields this case configures. `tests/ui/pipelines/
+test_pipeline_advanced.py`'s docstring claims Router-node-addition coverage
+was "consolidated into `test_pipeline_nodes.py`" — confirmed this is STALE
+documentation: `test_pipeline_nodes.py` contains exactly one test (HITL→END
+connect-via-drag) and zero mentions of Router at all. **No existing merged
+spec covers the Router node's panel-driven Condition/Routes/Input/Default-
+output configuration** — `ready-for-automation`, not `already-covered`/
+`extend-existing`.
+
+**Renaming a UI-added node is a fragile detour for pre-seeding named route
+targets — use the API instead.** `edit_node_name()`'s double-click-to-rename
+flow works (confirmed on other cases), but nodes added via the "+" menu get
+TYPE-prefixed default names (`Printer 1`, `Printer 2`, …), and a
+transient/HMR-session artifact was observed where a node added just before
+this session's dev-server picked up an unrelated concurrent `add-data-testid`
+commit (`pipeline-node-title-label`, ELITEA-2018) rendered its name-label
+WITHOUT that testid (stale Fast-Refresh instance) while a later-added
+sibling node had it correctly — not a reproducible product defect (would
+need a fresh page load to isolate cleanly, out of scope here), but a good
+reason to prefer `PipelineAPI.create_pipeline_with_nodes()` with literal
+target ids over a UI rename dance when a case's test data names specific
+route targets.
+
+## STATE drawer — full CRUD confirmed live, comprehensive testid gap (ELITEA-2042, 2026-07-24)
+
+Supersedes the GAP-007 stub above (which only confirmed the drawer's zero-
+testid status at a glance). This session drove the drawer's own add/type-
+select/save/persist/combobox-availability flow end-to-end, plus a delete, and
+read every component's source (`src/[fsd]/features/pipelines/flow-editor/ui/
+state/*.jsx`) for exact wiring points.
+
+**Toolbar toggle → drawer, structure.** The "State" toolbar button (plain
+text "State", sibling to the already-testid'd `pipeline-flow-view`/
+`pipeline-yaml-view`/`pipeline-add-node-button`) has **no `data-testid`, no
+`aria-label`**. It opens a `position: absolute; right: 0` drawer
+(`StateDrawer.jsx`) with a "STATE" heading, a close (X) `IconButton` (no
+testid, no aria-label), and a `StateVariableList`. **Zero testids anywhere in
+this entire feature** — confirmed via source read of all 9 component files
+(`StateDrawer`, `StateVariableList`, `StateVariableItem`,
+`StateVariableItemActions`, `StateTypeSelector`, `StateVariableIconButton`,
+`StateVariableDefaultValue`, `StateVariableTextField`; `StateVariableTable`/
+`RunStateDialog` are a different, unrelated feature — the Run-history state
+viewer, not this drawer).
+
+**Default vars (`input`/`messages`) are structurally un-renameable/
+undeletable, not just policy-blocked.** They render as static `<p>` text
+(never an `<input>` — `StateVariableItem.jsx`'s `handleStartEdit` is gated
+`!isDefault`) with only a `MuiSwitch` toggle; `StateVariableItemActions.jsx`'s
+`showToggle` branch returns EARLY for default rows, skipping the type-
+selector/default-value/delete controls entirely — there is no click target
+that could rename or delete them. Custom rows are the mirror image: type-
+selector + default-value + delete controls, but NO toggle (`showToggle =
+!isCreateMode && isDefault`).
+
+**Add-variable flow, confirmed live end-to-end:** click "+ Context"
+(`StateVariableList.jsx:205-217`, plain `Button`, no testid) → a NEW
+`StateVariableItem` mounts in `Create` mode: autofocused `TextField
+placeholder="name"` + a **disabled** type-selector icon + an "Add default
+value (optional)" icon + a delete/cancel icon. Type a name, then **commit via
+`Enter`** (confirmed reliable, twice) — this fires the `TextField`'s
+`onBlur`, which calls `onAddState(name, 'str')`; on success the row becomes a
+committed list entry and the type-selector button's `disabled` state clears.
+**Sequencing gotcha**: the type-selector is `disabled` (confirmed via
+`element.disabled === true` AND `aria-label=""` vs. the enabled state's real
+`aria-label="Select data type"`) until the name is committed —
+`StateVariableItemActions.jsx`'s `disableTypeSelector={isCreateMode ||
+!editable}`. Clicking it before committing the name is a silent no-op; always
+commit first.
+
+**Type selector — real accessible name today, but not disambiguating across
+multiple custom vars.** `button[aria-label="Select data type"]`
+(`StateVariableIconButton.jsx`'s `Tooltip title`) opens a plain MUI `Menu`
+with exactly 4 `role="menuitem"` entries in order: **String** (Abc icon,
+`Mui-selected` by default), **Number** (`#`), **List**, **Json** (`{}`) —
+confirmed live, screenshot evidence this session. The aria-label is shared
+across every row (not unique once >1 custom var exists) — fine for a
+single-custom-var case, needs a testid for disambiguation otherwise.
+
+**Delete confirmed working correctly, scoped to the row.** Added a throwaway
+`tabtest_var`, then clicked its own delete `IconButton`
+(`StateVariableItemActions.jsx:64-77`, no testid) — it alone disappeared from
+the list; `input`/`messages`/the other custom var were unaffected. Confirms
+the per-row scoping is correct at the DOM level, not just in source.
+
+**Persistence — exact YAML shape confirmed, survives a fresh-profile hard
+reload.** Saving a pipeline with one custom var `custom_output` (String,
+default value) produces:
+```yaml
+state:
+  custom_output:
+    type: str
+    value: ''
+  input:
+    type: str
+  messages:
+    type: list
+```
+Re-confirmed after killing the browser entirely and re-navigating in a
+brand-new, isolated Chrome profile (not just a same-session reload) — this
+rules out "looks persisted because the client never forgot it" as a false
+positive. Zero `error`-level console messages at every checkpoint
+(`get-console --level error` → 0 hits, checked 3 times across the whole
+flow).
+
+**Custom vars join the Input/Output combobox option set immediately.**
+Confirmed live on a freshly-added LLM node: opening its Input select
+(`#simple-select-Input`, native id, exploration-only — the testid gap for
+this trigger is already fully specced in ELITEA-2004's AFS, don't re-derive)
+listed `select-option-input`, `select-option-messages`,
+`select-option-custom_output` — same for Output. Zero new work needed for
+the option items themselves (existing `select-option-{value}` shared
+mechanism); only the select TRIGGER testid gap (LLM/MCP/Toolkit node-level,
+already tracked elsewhere) is outstanding.
+
+**Tooling-only observation, explicitly NOT filed as a defect (pristine-repro
+gate).** One exploration attempt — in a browser session already carrying
+several prior interactions — saw a `Tab` keypress (instead of `Enter`) appear
+to discard an uncommitted new-variable row AND close the entire drawer. A
+clean immediate retry (fresh profile, straight open→+Context→type→`Tab`, no
+prior interactions) did NOT reproduce this: `Tab` committed the row exactly
+like `Enter`, source-consistent (both only trigger the same `onBlur`). Ruled
+out as self-inflicted session state per the `playwright-testing`/
+`browser-verify` skills' Synthetic Input Hygiene guidance — not filed.
+Recommendation: automate via `Enter` to commit (matches the case's own
+"Enter variable name" wording, confirmed reliable every time); don't build a
+test around `Tab`-commit until/unless it's independently reproduced.
+
+**Comprehensive testid wiring points** (all trivial, feature-local, except
+one 2-caller shared-component change) are in
+`test-specs/pipelines/l2_state-panel-default-and-custom-variables_ELITEA-2042.md`'s
+Concrete Handles table — read that AFS first before adding testids to this
+feature; it has exact file:line references for every control (drawer
+container, close button, add-context button, name field, type-selector +
+menu items, delete button, default-value button, and the one shared
+`StateVariableIconButton` component that needs a new `testId` prop threaded
+through its 2 call sites).
+
+## Decision node — Input/Description/DECISION OUTPUTS, chip-based output mechanism (ELITEA-2034, 2026-07-24)
+
+**Config is always inline/expanded, same as every other node type.** Fresh
+`Decision` node (`NormalDecisionNode.jsx`, the NEW-style `type: decision` —
+"Add node" → "Decision" always creates this, never the legacy
+`decision:`-nested shape `LegacyDecisionNode.jsx` handles) shows, top to
+bottom: **Input** (multi-select combobox), **Description** (plain
+`<textarea>`, no AI-Assistant modal complexity needed for classification-
+prompt text), **Decision outputs** (heading + chip container, empty on a
+fresh node), **Interrupt before/after** switches. Zero click-to-open. **Zero
+`data-testid` anywhere on Input/Description/the outputs container/the chips
+today** — full wiring points (all four are trivial one-line additions at
+existing call sites, `NormalDecisionNode.jsx:107/112`,
+`DecisionNodeShared.jsx:19/36` — zero shared-component internals need
+touching) are in
+`test-specs/pipelines/l2_decision-node-config-input-description-outputs_ELITEA-2034.md`'s
+Concrete Handles table — read that AFS first before adding testids here.
+
+**DECISION OUTPUTS chips are populated by canvas drag-connect, NOT free
+text — there is no "add chip" input anywhere on the panel.** Confirmed by
+full source read: `DecisionOutputs`/`DecisionNodeShared.jsx` only ever
+`.map()`s over the existing `decisionOutput` array rendering a delete-only
+chip per entry — no add affordance exists in that component at all. The
+REAL mechanism is dragging from the Decision node's own **`nodes`** source
+handle (bottom-left of its two bottom handles, generic-fallback label
+"Output" — see next paragraph) to an ALREADY-EXISTING target node;
+`connectionOperations.helpers.js`'s `handleFromDecisionNodeConnection`
+appends `connection.target` to the node's `nodes[]` array on a successful
+drop, confirmed live for 3 sequential connects to 3 pre-named target nodes.
+The three case-cited output names (e.g. `bug_responder`) must exist as REAL
+canvas node `id`s *before* attempting the connects — same "seed via API
+with literal target ids" pattern this digest's Router-node section (above)
+already recommends for Routes/Default-output targets.
+
+**The two bottom handles' labels are ordinary `CustomHandle` behavior, not
+Decision-specific strings.** `id="nodes"` renders **"Output"** purely because
+`NormalDecisionNode.jsx` passes no explicit `label` prop for it — falls
+through to `CustomHandle.jsx`'s generic `finalLabel = label || (type ===
+'source' ? 'Output' : 'Input')` fallback (the SAME fallback every other
+unlabeled source handle on this canvas would hit). `id="default_output"`
+renders **"Default output"** via an explicit `label="Default output"` prop.
+Don't assert "Output" as if it were bespoke to Decision — key any assertion
+off the stable `data-handleid`, not the rendered word.
+
+**Input select lists custom state vars immediately, same as every other
+node type** (confirmed live, no surprises): opening the Decision node's
+Input combobox (`#simple-select-Input`, native id — same cross-node-type
+duplicate-id family as `#1006`/`#1009`, not re-filed) listed
+`select-option-input`, `select-option-messages`, plus whatever custom
+`state:` vars the pipeline defines (`select-option-normalized_issue`,
+`select-option-metadata_json` this session) — same shared
+`select-option-{value}` mechanism the ELITEA-2042 section above already
+documents joining Input/Output selects immediately after a custom var is
+added.
+
+**Persistence — exact YAML shape confirmed, survives a real Save + hard
+reload.** A Decision node with 2 Input vars + a Description string + 3
+DECISION OUTPUTS produces:
+```yaml
+- id: Decision 1
+  type: decision
+  nodes:
+    - bug_responder
+    - feature_responder
+    - question_responder
+  default_output: ''
+  description: 'Classify this input into one category: ...'
+  input:
+    - normalized_issue
+    - metadata_json
+```
+Re-confirmed byte-for-byte via both the Flow-view canvas fields and the YAML
+tab, before and after a hard page reload. Zero `error`-level console
+messages across the entire session (add node → configure → connect ×3 →
+Save → reload → re-verify).
+
+**Edge-testid shape drift is the SAME pattern already documented for
+ELITEA-2018/2031 (ordinary nodes) — re-confirmed here for Decision's `nodes`
+handle specifically.** Immediately after each drag:
+`rf__edge-xy-edge__Decision {n}nodes-{target_id}target`. After Save + hard
+reload: `rf__edge-xy-edge__Decision {n}---{target_id}` (triple-dash,
+YAML-derived). The EXISTING `edge_exists(source, target,
+handle_suffix="nodes")` call — unmodified — transparently matches BOTH
+shapes (its `testid.startswith(expected_prefix) and f"-{target_id}" in
+testid` check), confirmed live for all 3 connections. `connect_nodes(decision_id,
+target_id, source_handle="nodes")` also needs zero changes — its existing
+`data-handleid$="_{suffix}"` / `data-handleid="{suffix}"` lookup (originally
+proven for HITL's approve/reject/edit handles, ELITEA-2014) finds the
+Decision node's `data-handleid="nodes"` handle correctly as-is.
+
+**Analyst-tooling-only note (not a product issue):** this session's headless
+CDP/`playwright-cli` exploration needed a wide viewport (≥1900px) and a
+rightward canvas pan to keep newly-added nodes clear of the LEFT
+General-config panel and the RIGHT embedded-chat panel — both sit in normal
+(non-overlay, `position: static`) document flow and will intercept clicks on
+a node positioned underneath them (confirmed via `elementFromPoint`
+mismatches landing on `agent-tags-input-field`/`chat-messages-scroll-
+container`/a left-sidebar icon depending on exactly where the node happened
+to render). A typical desktop-viewport Playwright test run shouldn't hit
+this, but if a node-field click ever reports landing on one of those
+elements instead of the intended target, pan/zoom first
+(`fit_view()`/`zoom_in()`, already implemented) before retrying.
+
+Full Concrete Handles table (exact line numbers, all four new-testid
+wiring points, provenance-checked against a fresh `git fetch origin`) is in
+`test-specs/pipelines/l2_decision-node-config-input-description-outputs_ELITEA-2034.md`
+— read that AFS first if implementing this case.
