@@ -165,6 +165,17 @@ class AgentFormPage(BasePage):
         description="Save as new version button"
     )
 
+    # --- Advanced settings section (Step limit) — GAP-003, testid-only ---
+    advanced_section_header = LocatorDescriptor(
+        testid="agent-canvas-section-advanced",
+        description="Advanced accordion section header — aria-expanded reflects open/closed state"
+    )
+
+    step_limit_input = LocatorDescriptor(
+        testid="agent-step-limit-input",
+        description="Step limit input field inside the Advanced accordion"
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -799,3 +810,91 @@ class AgentFormPage(BasePage):
         # Use inner_text() instead of text_content() for more reliable extraction
         # from CodeMirror's contenteditable div - text_content() can miss chars
         return cm_content.inner_text() or ""
+
+    # ------------------------------------------------------------------
+    # Advanced settings (Step limit) methods — GAP-003
+    # ------------------------------------------------------------------
+
+    def is_advanced_section_expanded(self) -> bool:
+        """Check whether the Advanced accordion is expanded.
+
+        ``BasicAccordion`` renders with ``defaultExpanded={true}`` and no
+        ``expanded``/``onChange`` override from ``ApplicationConfigurationForm``,
+        so this reads ``True`` on load with zero clicks.
+        """
+        return self.advanced_section_header.get_attribute("aria-expanded") == "true"
+
+    def get_step_limit(self) -> str:
+        """Read the current value of the Step limit field."""
+        return self.step_limit_input.input_value()
+
+    def is_step_limit_invalid(self) -> bool:
+        """Check the Step limit field's ``aria-invalid`` attribute."""
+        return self.step_limit_input.get_attribute("aria-invalid") == "true"
+
+    @action("Type into Step limit field")
+    def type_step_limit(self, text: str, delay: int = 80):
+        """Type into the Step limit field one keystroke at a time.
+
+        Uses real key events (``press_sequentially``) so
+        ``isValidKeyInput``'s keydown gate (``ApplicationAdvanceSettings.jsx``)
+        fires per character — required to exercise both the digit-accept and
+        the non-numeric-reject branches. Never use ``fill()`` here: it
+        bypasses ``onKeyDown`` entirely and would silently skip the
+        reject-on-keydown behaviour this method exists to exercise.
+
+        Args:
+            text: Characters to type (call once per keystroke to observe the
+                field after each individual key, or once with a full valid
+                value like "25").
+            delay: Delay between keystrokes in milliseconds.
+        """
+        self.step_limit_input.click()
+        self.step_limit_input.press_sequentially(text, delay=delay)
+
+    @action("Clear Step limit field")
+    def clear_step_limit(self):
+        """Select-all + Delete to empty the Step limit field.
+
+        Uses real key events (Ctrl/Cmd+A then Delete) rather than
+        ``fill("")``, keeping the same React-controlled-input path as
+        ``type_step_limit``.
+        """
+        self.step_limit_input.click()
+        self.step_limit_input.press("ControlOrMeta+a")
+        self.step_limit_input.press("Delete")
+        self.page.wait_for_timeout(200)
+
+    @action("Paste into Step limit field")
+    def paste_step_limit(self, value: str):
+        """Simulate a real OS-level clipboard paste into the Step limit field.
+
+        ``isValidKeyInput``'s keydown gate blocks any single keystroke that
+        would push the value over ``MAX_STEP_LIMIT``, so per-character typing
+        can never reach the ``>MAX`` clamp branch of ``isValidStepLimit`` —
+        the field just stops accepting digits at "999" and refuses the rest
+        at the keydown layer. This sets the input's value via the native
+        ``HTMLInputElement`` prototype's value setter (bypassing React's
+        controlled-value interception), then dispatches a real ``input``
+        event — the same DOM path a genuine browser paste produces (paste ->
+        browser inserts the full text -> single ``input`` event -> React
+        ``onChange`` fires). One continuous, correct gesture, per the
+        `playwright-testing` skill's Synthetic Input Hygiene guidance — not a
+        substitute for `fill()`, which also bypasses `onKeyDown` but per
+        `.claude/rules/mui-patterns.md` may not reliably fire React's
+        controlled-component `onChange` either.
+
+        Args:
+            value: The full string to "paste" (e.g. "1500", "-5").
+        """
+        self.step_limit_input.evaluate(
+            """(el, value) => {
+                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                    window.HTMLInputElement.prototype, 'value'
+                ).set;
+                nativeInputValueSetter.call(el, value);
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+            }""",
+            value,
+        )
+        self.page.wait_for_timeout(300)
