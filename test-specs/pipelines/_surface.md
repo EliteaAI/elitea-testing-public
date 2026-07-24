@@ -923,6 +923,62 @@ line's logical content, e.g. `"transition: LLM 1"`, not
 first and then the next `"transition:"` line after it, never assume
 `get_by_text(...)` alone is unique.
 
+## Ordinary nodes (LLM/Printer/Code/…) have NO in-panel "transition/routes" field — only HITL/Router do (ELITEA-2031, 2026-07-24)
+
+**Confirmed by source AND live DOM enumeration: `LLMNode.jsx` and
+`PrinterNode.jsx` render zero Transition/Route field anywhere** — the LLM
+node's panel is exactly SYSTEM/TASK/CHAT HISTORY/Input/Output/Toolkits/
+Interrupt-before/after/Structured-output, nothing else. A visible "Route"/
+"Routes" **select** genuinely exists in the product (`RouteSelect.jsx`), but
+only on **HITL** (Router mapping, ELITEA-2014) and **Router** node types —
+NOT on ordinary flow-through nodes (LLM, Printer, Code, MCP, Toolkit, Agent).
+Any case whose text implies "locate the transition/routes field in the
+[LLM/Printer/etc.] node panel" is describing a UI element that doesn't exist
+for that node type — this is case-text drift, not a defect (filed
+`EliteaAI/elitea-testing-public#1031` for ELITEA-2031's instance).
+
+**The real, correct mechanism for an ordinary node's transition is one of
+two things, both confirmed live:**
+1. **Canvas drag-connect** — drag from the source node's bottom/source
+   handle to the target node's top/target handle (existing
+   `PipelineDetailPage.connect_nodes(source_id, target_id)`). Client-side
+   only, no network call; immediately updates BOTH the canvas edge AND the
+   underlying YAML `transition:` value (confirmed via the Yaml-view tab
+   re-read right after the drag).
+2. **Direct YAML editing** — see the ELITEA-2028 section above (`transition:`
+   line edit via the declared #579 CodeMirror-line pattern).
+
+**Edge-testid shape CHANGES between drag-time and post-reload** — a load-
+bearing gotcha for any test asserting `edge_exists()` at both points.
+Confirmed live end-to-end (LLM 1 → Printer 1):
+- **Immediately after the drag** (before Save): `rf__edge-xy-edge__LLM
+  1source-Printer 1target` — the user-dragged shape
+  (`{source}{handle}-{target}{handle}`, matching `edge_exists()`'s existing
+  docstring).
+- **After Save + hard reload**: the SAME logical edge now reads
+  `rf__edge-xy-edge__LLM 1---Printer 1` — the YAML/transition-derived triple-
+  dash shape (per the ELITEA-2018 digest section above), since post-reload
+  ALL edges are re-parsed from the YAML `entry_point`/`transition` graph
+  regardless of how they were originally created.
+- **`edge_exists()`'s existing matching (`testid.startswith(expected_prefix)
+  and f"-{target_id}" in testid`) already covers BOTH shapes transparently**
+  — confirmed live, no page-object change needed. A test asserting the same
+  edge both immediately-after-drag and after-reload can reuse the identical
+  `edge_exists(source, target)` call across both points without caring which
+  underlying testid shape is currently rendered.
+
+**Deleting/replacing a node's transition correctly removes the OLD edge, not
+just adds the new one** — confirmed live (LLM 1's `END` edge disappeared the
+instant the drag to Printer 1 landed; `Printer 1`'s own untouched `END` edge
+was unaffected) — same "old edge gone, not merely superseded" behavior
+ELITEA-2028 already confirmed for the YAML-edit path, now also confirmed for
+the canvas-drag path.
+
+Full Concrete Handles + Coverage Map are in
+`test-specs/pipelines/l2_pipeline-edge-creation-between-nodes_ELITEA-2031.md`
+— read that AFS first if implementing this case; it needs zero new testids
+and zero new page-object code (every method it uses is already merged).
+
 ## Testid provenance — two view-toggle testids are FALSE NEGATIVES under literal `git grep` (ELITEA-2028, 2026-07-24)
 
 `pipeline-yaml-view` and `pipeline-flow-view` (the Yaml/Flow toggle buttons)
