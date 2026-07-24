@@ -247,6 +247,31 @@ class ChatPage(BasePage):
         ),
     )
 
+    # ------------------------------------------------------------------
+    # "+" menu -> Pipelines submenu -> "+ Create New Pipeline" (ELITEA-2078)
+    # ------------------------------------------------------------------
+
+    pipelines_menuitem = LocatorDescriptor(
+        testid="pipelines-menuitem",
+        description=(
+            "'Pipelines' menuitem inside the plus-menu dropdown. HOVER "
+            "(not click) reveals the Pipelines submenu — "
+            "PlusChatButton.jsx's PLUS_MENU_ITEMS array wires the same "
+            "onMouseEnter mechanism as agents_menuitem above."
+        ),
+    )
+
+    pipelines_create_new_button = LocatorDescriptor(
+        testid="pipelines-create-new-button",
+        description=(
+            "'+ Create New Pipeline' item inside the Pipelines submenu — "
+            "PlusChatSubmenu.jsx's shared showCreateNew MenuItem, "
+            "templated ${sectionKey}-create-new-button "
+            "(sectionKey='pipelines' for this submenu; same mechanism as "
+            "agents_create_new_button above)."
+        ),
+    )
+
     # Suffix-match template counting every top-level plus-menu item
     # currently rendered — same convention as CONVERSATION_MENU_ITEM_PREFIX
     # below. Safe to query page-wide: MUI Poppers in this codebase unmount
@@ -471,6 +496,20 @@ class ChatPage(BasePage):
     # id — same pattern as MENTION_SKILL_ITEM_PREFIX above. Used to find "any
     # OTHER conversation" to navigate to.
     CONVERSATION_ITEM_PREFIX = '[data-testid^="chat-conversation-item-"]'
+
+    # Transient "Naming" placeholder spinner shown on a conversation-list item
+    # while its auto-generated title is pending (ConversationItem.jsx,
+    # ELITEA-2092). Testid-based replacement for the legacy raw
+    # ``text="Naming"`` locator used by wait_for_naming_label_to_resolve()
+    # above — added alongside it (additive), not in place of it.
+    conversation_naming_spinner = LocatorDescriptor(
+        testid="conversation-naming-spinner",
+        description=(
+            "'Naming' placeholder (spinner + literal text 'Naming', no "
+            "ellipsis) shown on a conversation-list item while its "
+            "auto-generated title is pending."
+        ),
+    )
 
     # ------------------------------------------------------------------
     # Conversation context menu (three-dot) + delete-confirmation dialog
@@ -1588,6 +1627,27 @@ class ChatPage(BasePage):
         self.toolkits_create_new_button.click()
         logger.info("Create New Toolkit canvas opened")
 
+    @action("Open Create New Pipeline canvas")
+    def open_create_new_pipeline_canvas(self, timeout: int = 10000):
+        """Open the in-chat 'Create New Pipeline' canvas.
+
+        Flow: click plus_menu_button -> HOVER pipelines_menuitem (reveals
+        the Pipelines submenu via onMouseEnter, same mechanism as
+        ``open_create_new_agent_canvas()``'s Agents hover) -> click
+        pipelines_create_new_button.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Create New Pipeline canvas via plus menu")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.pipelines_menuitem.wait_for(state="visible", timeout=timeout)
+        self.pipelines_menuitem.hover()
+        self.pipelines_create_new_button.wait_for(state="visible", timeout=timeout)
+        self.pipelines_create_new_button.click()
+        logger.info("Create New Pipeline canvas opened")
+
     # ------------------------------------------------------------------
     # Conversation management helpers
     # ------------------------------------------------------------------
@@ -2139,6 +2199,32 @@ class ChatPage(BasePage):
                 logger.info("Naming label resolved")
             except Exception as e:
                 logger.info(f"Naming label did not resolve within timeout: {e}")
+
+    def wait_for_conversation_naming_resolved(self, timeout: int = 10000):
+        """Wait for the testid'd 'Naming' spinner to disappear from the DOM.
+
+        Testid-based counterpart to ``wait_for_naming_label_to_resolve()``
+        (which uses a legacy raw ``text="Naming"`` locator) — added
+        alongside it rather than modifying it (additive-only).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Waiting for conversation-naming-spinner to disappear")
+        try:
+            self.conversation_naming_spinner.wait_for(state="hidden", timeout=timeout)
+            logger.info("conversation-naming-spinner resolved")
+        except Exception as e:
+            logger.info(f"conversation-naming-spinner did not resolve within timeout: {e}")
+
+    def get_chat_version_selector_text(self) -> str:
+        """Return the visible text of the composer's version-selector trigger.
+
+        Shown once an agent/pipeline participant with versions is active
+        (e.g. "v2.1").
+        """
+        text = self.chat_version_selector_trigger.text_content() or ""
+        return text.strip()
 
     def get_conversation_link_count(self) -> int:
         """Get count of conversation items in the sidebar list.

@@ -180,6 +180,32 @@ class PipelineDetailPage(PipelineFormPage):
     # present and reliable per ELITEA-1954 AFS Concrete Handles.
     SELECT_OPTION = '[data-testid="select-option-{}"]'
 
+    # "+ Add node" button (AddNodeMenu.jsx) — testid-only handle, additive
+    # sibling to the pre-existing ``add_node()`` method below (ELITEA-2078).
+    # ``add_node()`` is left unmodified per .claude/rules/page-objects.md's
+    # shared-caller rule (3 merged callers already rely on its raw role/
+    # CSS selectors unchanged); this field + ``add_node_via_testid()``
+    # (bottom of class) are the new, testid-only path.
+    add_node_button = LocatorDescriptor(
+        testid="pipeline-add-node-button",
+        description="'+ Add node' button in the top-right of the Flow editor canvas header.",
+    )
+
+    # Dynamic (runtime-parameterized) testid — one per node type in the
+    # Add-node menu (AddNodeMenu.jsx: `pipeline-add-node-menu-item-{item.
+    # type}`). Class-level template constant per .agents/testing.md §
+    # Locator policy, formatted with the node's internal type key (e.g.
+    # "llm"), never an inline f-string.
+    ADD_NODE_MENU_ITEM = '[data-testid="pipeline-add-node-menu-item-{}"]'
+
+    # Prefix-match variant enumerating every Add-node menu item currently
+    # rendered, regardless of node type — same pattern as
+    # MENTION_SKILL_ITEM_PREFIX / CONVERSATION_MENU_ITEM_PREFIX elsewhere
+    # in this file/codebase. AddNodeMenu.jsx wires the identical testid on
+    # BOTH its left- and right-column MenuItem maps (confirmed via source
+    # read), so a page-wide prefix match enumerates all 11 node types.
+    ADD_NODE_MENU_ITEM_PREFIX = '[data-testid^="pipeline-add-node-menu-item-"]'
+
     # Prefix-match variant of SELECT_OPTION for enumerating every option
     # currently rendered in an open Toolkit/Tool listbox — same testid
     # family (`select-option-{value}`), no value known up front. Still
@@ -574,6 +600,64 @@ class PipelineDetailPage(PipelineFormPage):
         self.page.wait_for_timeout(1000)
         logger.info("Added node: %s", node_type)
 
+    def open_add_node_menu(self, timeout: int = 5000):
+        """Click the testid-only '+ Add node' button to open its menu (ELITEA-2078).
+
+        Additive sibling to :meth:`add_node` — that method has 3 merged
+        callers relying on its raw role/CSS selectors
+        (``button.MuiIconButton-colorPrimary`` + ``get_by_role("menuitem",
+        name=...)``) unchanged, so it is left untouched
+        (.claude/rules/page-objects.md shared-caller rule). This method
+        and its siblings below use the newer testid-only handles
+        confirmed live for the in-chat pipeline canvas
+        (``pipeline-add-node-button`` / dynamic
+        ``pipeline-add-node-menu-item-{type}``) — identical component
+        (``AddNodeMenu.jsx``) on both the standalone Pipeline Detail page
+        and the in-chat canvas.
+
+        Args:
+            timeout: Maximum wait time for the button to be visible.
+        """
+        logger.info("Opening Add-node menu via testid button")
+        self.add_node_button.wait_for(state="visible", timeout=timeout)
+        self.add_node_button.click()
+        self.page.locator(self.ADD_NODE_MENU_ITEM_PREFIX).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def get_add_node_menu_item_count(self) -> int:
+        """Return how many Add-node menu items are currently rendered."""
+        return self.page.locator(self.ADD_NODE_MENU_ITEM_PREFIX).count()
+
+    def get_add_node_menu_item_texts(self) -> list[str]:
+        """Return the visible text of every rendered Add-node menu item, in DOM order."""
+        items = self.page.locator(self.ADD_NODE_MENU_ITEM_PREFIX)
+        return [(items.nth(i).text_content() or "").strip() for i in range(items.count())]
+
+    def click_add_node_menu_item(self, node_type_key: str, timeout: int = 5000):
+        """Click a specific Add-node menu item (assumes the menu is already open).
+
+        Args:
+            node_type_key: The node type's internal ``item.type`` key (e.g.
+                ``"llm"``), NOT the display label ("LLM").
+            timeout: Maximum wait time for the item to be visible.
+        """
+        menu_item = self.page.locator(self.ADD_NODE_MENU_ITEM.format(node_type_key))
+        menu_item.wait_for(state="visible", timeout=timeout)
+        menu_item.click()
+
+    def add_node_via_testid(self, node_type_key: str, timeout: int = 5000):
+        """Open the testid-only Add-node menu and click *node_type_key* in one call.
+
+        Args:
+            node_type_key: The node type's internal ``item.type`` key (e.g. ``"llm"``).
+            timeout: Maximum wait time for the menu/item to appear.
+        """
+        logger.info("Adding node via testid menu: %s", node_type_key)
+        self.open_add_node_menu(timeout=timeout)
+        self.click_add_node_menu_item(node_type_key, timeout=timeout)
+        logger.info("Added node via testid menu: %s", node_type_key)
+
     def get_node_count(self) -> int:
         """Return the number of nodes on the canvas.
 
@@ -581,6 +665,45 @@ class PipelineDetailPage(PipelineFormPage):
             Count of .react-flow__node elements.
         """
         return self.page.locator(".react-flow__node").count()
+
+    # Dynamic (runtime-parameterized) testid — ReactFlow's own per-node
+    # convention (`rf__node-{id}`), not app JSX — confirmed on `origin/
+    # main`, zero app source touches it (same exemption as
+    # canvas_wrapper's `rf__wrapper` above). Class-level template
+    # constant per .agents/testing.md § Locator policy.
+    RF_NODE = '[data-testid="rf__node-{}"]'
+
+    def get_rf_node_locator(self, node_id: str) -> Locator:
+        """Return the Locator for a specific ReactFlow node via its ``rf__node-{id}`` testid.
+
+        A targeted, single-node handle for "wait until this exact node is
+        gone" assertions (e.g. ``expect(...).to_have_count(0)``) — distinct
+        from :meth:`get_node_count`/:meth:`get_node_ids`, which inspect the
+        whole canvas via the ``.react-flow__node`` CSS class rather than
+        returning a Locator for one specific node (ELITEA-2078).
+
+        Args:
+            node_id: The node's ``data-id`` value (e.g. ``"LLM 1"``).
+        """
+        return self.page.locator(self.RF_NODE.format(node_id))
+
+    def node_has_icon(self, node_id: str) -> bool:
+        """Return True if the node identified by *node_id* renders an ``<svg>`` icon.
+
+        Args:
+            node_id: The node's ``data-id`` value.
+        """
+        node = self.page.locator(f'[data-id="{node_id}"]')
+        return node.locator("svg").count() > 0
+
+    def get_node_handle_count(self, node_id: str) -> int:
+        """Return the count of ReactFlow connection-port handles on a node.
+
+        Args:
+            node_id: The node's ``data-id`` value.
+        """
+        node = self.page.locator(f'[data-id="{node_id}"]')
+        return node.locator(".react-flow__handle").count()
 
     def get_node_ids(self) -> list[str]:
         """Return the data-id values of all nodes on the canvas.
