@@ -138,11 +138,26 @@ class TestArtifactsSortFileListByColumnHeaders:
         """
         bucket_name = artifact_bucket["name"]
 
-        console_errors = []
-        page.on(
-            "console",
-            lambda msg: console_errors.append(msg) if msg.type == "error" else None,
-        )
+        # `page.on("console", ...)` alone misses uncaught JS exceptions —
+        # only `page.on("pageerror", ...)` sees those. This is a TWICE-
+        # confirmed gap in this repo (ELITEA-2094/PR#688, independently
+        # rediscovered ELITEA-2095/PR#693 round 2 — see
+        # .agents/memory/test-automation-engineer/
+        # two_wait_idioms_coexist_and_dual_listener_now_established_twice.md);
+        # both listeners are wired here from the start rather than as an
+        # afterthought fix.
+        console_messages = []
+        page_errors: list[str] = []
+
+        def _on_console(msg):
+            if msg.type == "error":
+                console_messages.append(msg)
+
+        def _on_pageerror(exc):
+            page_errors.append(str(exc))
+
+        page.on("console", _on_console)
+        page.on("pageerror", _on_pageerror)
 
         # ------------------------------------------------------------------
         # Precondition — seed 3 files that differ by name, type, and size,
@@ -308,10 +323,11 @@ class TestArtifactsSortFileListByColumnHeaders:
             )
 
         with allure.step(
-            "Side-channel check — no console errors across the whole "
-            "sort + delete flow"
+            "Side-channel check — no console errors or uncaught "
+            "exceptions across the whole sort + delete flow"
         ):
-            assert not console_errors, (
-                "Unexpected console errors during the column-header sort "
-                f"flow: {[m.text for m in console_errors]}"
+            assert not console_messages and not page_errors, (
+                "Unexpected side-channel errors during the column-header "
+                f"sort flow: console={[m.text for m in console_messages]!r} "
+                f"page_errors={page_errors!r}"
             )

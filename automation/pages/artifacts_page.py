@@ -16,6 +16,7 @@ Actions:
 """
 
 import logging
+import time
 import urllib.parse
 from playwright.sync_api import Page, Download, expect
 
@@ -454,8 +455,9 @@ class ArtifactsPage(BasePage):
     )
 
     @action("Click a file-table sortable column header")
-    def click_column_header(self, header) -> None:
-        """Click a sortable column-header cell to (re)sort the file table.
+    def click_column_header(self, header, timeout: int = 10_000) -> None:
+        """Click a sortable column-header cell to (re)sort the file table,
+        then wait for the resulting re-sort to actually settle.
 
         Pass one of the four ``*_column_header`` `LocatorDescriptor` fields
         (:attr:`name_column_header` / :attr:`type_column_header` /
@@ -464,15 +466,70 @@ class ArtifactsPage(BasePage):
         Sort-header clicks are pure client-side re-sorts — ``useTableSort`` /
         ``sortData`` operate on the already-fetched ``rows`` array in memory
         (confirmed live, GAP-035 AFS: clicking any header fires zero network
-        requests). Callers assert the resulting order via
-        :meth:`get_file_names`, not a network wait.
+        requests) — so there's no network condition to anchor a wait on.
+        Instead this polls :meth:`get_file_names` until two consecutive
+        reads agree that the order has stopped changing (see
+        :meth:`_wait_for_file_order_stable`) before returning, so callers can
+        assert the resulting order via :meth:`get_file_names` immediately
+        after this call without racing the re-render. A bare
+        ``_file_rows().first.wait_for(state="visible")`` (what
+        :meth:`get_file_names` already does internally) is NOT sufficient on
+        its own here: the row WRAPPER elements exist before and after the
+        click — only their order/content changes — so that wait passes
+        trivially without ever waiting out the actual re-sort.
 
         Args:
             header: The column-header ``Locator`` to click (one of the four
                 fields above).
+            timeout: Maximum total wait in milliseconds for the resulting
+                re-sort to settle.
         """
         header.click()
+        self._wait_for_file_order_stable(timeout=timeout)
         logger.info("Clicked file-table column header")
+
+    def _wait_for_file_order_stable(
+        self,
+        timeout: int = 10_000,
+        poll_interval: float = 0.1,
+        stable_duration: float = 0.3,
+    ) -> None:
+        """Poll :meth:`get_file_names` until the row order stops changing.
+
+        A purely client-side re-sort commits within one React render pass,
+        but reading immediately after the triggering click can still sample
+        mid-transition (the row order/content updates, but not necessarily
+        before the very next read). This polls at ``poll_interval`` and
+        requires ``stable_duration`` seconds of an unchanged read before
+        considering the reorder settled — the same stability-poll idiom
+        ``chat_page.py``'s ``wait_for_message_content_stable()`` uses for an
+        async condition that isn't expressible as a single Playwright
+        locator wait (comparing successive reads is Python-side logic a
+        pure locator `.wait_for()` can't express).
+
+        Args:
+            timeout: Maximum total wait in milliseconds.
+            poll_interval: Seconds between reads.
+            stable_duration: Seconds the read must stay unchanged to count
+                as settled.
+        """
+        deadline = time.monotonic() + timeout / 1000.0
+        last_names = self.get_file_names(timeout=timeout)
+        stable_since = time.monotonic()
+
+        while time.monotonic() < deadline:
+            time.sleep(poll_interval)
+            current_names = self.get_file_names(timeout=timeout)
+            if current_names != last_names:
+                last_names = current_names
+                stable_since = time.monotonic()
+            elif time.monotonic() - stable_since >= stable_duration:
+                return
+
+        logger.warning(
+            "Timed out waiting for file-table order to stabilise after a "
+            "column-header click (last read: %s)", last_names,
+        )
 
     # ------------------------------------------------------------------
     # Bulk delete flow (ELITEA-1847)
