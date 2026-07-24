@@ -509,6 +509,92 @@ combobox interactions can silently select the WRONG combobox's option list
 after intending to open Output) — always re-snapshot between opening one
 combobox and the next, never reuse a ref across them.
 
+## Node delete — menu + keyboard, edge-id quirks, focus gotcha (ELITEA-2018, 2026-07-24)
+
+**Both activation paths work and reach the identical confirmation dialog.**
+Three-dot menu (`node-menu-menu-button`, shared/non-unique across nodes —
+scope inside the node's own `rf__node-{id}` container) → "Delete" menu item
+(no testid today, `NodeCardHeader.jsx` `menuItems` `useMemo` ~lines 208-253,
+3 mutually-exclusive branches all missing `key:` on their `{label:'Delete'}`
+object — `DotMenu.jsx`'s existing `testId: item.key` → `${testId}-menuitem`
+mechanism means a one-line `key: 'pipeline-node-delete'` fix on all 3, zero
+shared-component edits). Selecting the node then pressing the OS **Delete**
+key also opens the same dialog (`useDeleteItems.hooks.js`,
+`useKeyPress(['Delete'], {target:null})` from `@xyflow/react` — reacts to
+ReactFlow's own `.selected` node state, not a bespoke listener).
+
+**Focus gotcha (cost a full debugging pass — read before writing a
+keyboard-delete test).** A chat-message `<textarea>` has default page-load
+focus. Clicking a node's card at its bounding-box CENTER (Playwright/CDP
+default click point) often lands on an INNER field (a Type/Input Select)
+instead of the node's own container — this both risks opening an unrelated
+dropdown AND leaves `document.activeElement` on that inner field or the
+still-focused textarea, silently swallowing a subsequent Delete keypress
+before ReactFlow's global listener ever sees it (confirmed: zero effect,
+no dialog). The fix: click the node's TITLE/NAME LABEL specifically
+(`NodeCardHeader.jsx:280-286`, bare `<Typography>{inputtedName}</Typography>`,
+no testid today — `testid needed: pipeline-node-title-label`, generic/shared
+naming since `NodeCardHeader` is common to every node type). Confirmed live:
+only after clicking THIS specific element did `document.activeElement`
+become the node's own `[data-testid="rf__node-{id}"]` div (`tabindex="0"`),
+and only then did Delete correctly open the dialog.
+
+**Delete-confirmation dialog is the shared `DeleteEntityModal.jsx`
+(`role="dialog"`), rendered from `FlowEditor.jsx:614` via
+`useDeleteItems.hooks.js`'s `showDeleteConfirmDlg`/`onConfirmDelete`/
+`onCancelDelete` — NOT via `DotMenu`'s own per-item `onConfirm`/`entityName`
+mechanism** (the "Delete" menu item here is a plain `onClick: handleDelete`,
+no `entityName` — a DIFFERENT, node-deletion-specific confirmation flow than
+DotMenu's generic delete-dialog wiring used elsewhere). Its 4 field-level
+testids (`delete-confirm-title`, `delete-confirm-message`,
+`delete-confirm-cancel-button`, `delete-confirm-button`) are confirmed
+**on-automation/testids only — NOT yet on `main`** (verified via
+`git grep` against both `origin/main` and `origin/automation/testids`,
+2026-07-24). The dialog ROOT itself does NOT carry its own
+`data-testid="delete-confirm-dialog"` on the actual `[role="dialog"]`
+element live, despite `DeleteEntityModal.jsx` passing it to
+`Modal.BaseModal` → `<Dialog data-testid={dataTestId}>` — MUI's `Dialog`
+applies it to an ancestor wrapper, not the inner `Paper` carrying
+`role="dialog"`. Use `get_by_role("dialog")` to scope (only one dialog is
+ever open at a time in this flow) plus the 4 field-level testids directly.
+
+**Edge-id quirk — auto-derived (YAML/transition) edges use a DIFFERENT id
+shape than user-dragged connections, and END's edge-endpoint id is NOT
+`"END"`.** For a pipeline whose edges come from the YAML `entry_point`/
+`transition` graph on load (as opposed to a user manually dragging a
+connection, which is what the existing `edge_exists()` docstring's
+`{source}{handle}-{target}{handle}` format documents), the actual testid
+is `rf__edge-xy-edge__{source}---{target}` (triple-dash separator, no
+handle suffix) — confirmed live: `rf__edge-xy-edge__LLM 1---Code 1`,
+`rf__edge-xy-edge__Code 1---EliteAPipelineEnd`. **The END node's own
+edge-endpoint id is the literal string `EliteAPipelineEnd`**, distinct from
+its `data-id`/node-testid (`rf__node-END`) — confirmed by direct string
+check: `"-END" not in "rf__edge-xy-edge__Code 1---EliteAPipelineEnd"`. The
+existing `edge_exists()` page-object method's loose `.startswith()`+`in`
+matching happens to still work for non-END targets by coincidence, but
+**`edge_exists(source, "END")` returns a false negative** — call it with
+`edge_exists(source, "EliteAPipelineEnd")` instead, or fix the method to
+alias `"END"` internally (recommended, since every future case asserting
+"connects to END" on a YAML-derived pipeline will hit this identical trap).
+
+**Deleting a middle node auto-rewires the upstream node's `transition` to
+the deleted node's own downstream target** — confirmed live and via YAML:
+deleting `Code 1` (whose own `transition: END`) flipped `LLM 1.transition`
+from `Code 1` to `END` directly, client-side, BEFORE any Save click. The
+entire select → menu/keyboard → confirm → node-and-edge-removal →
+transition-rewire sequence is 100% client-side; only the pipeline's own
+Save button fires a network request (`PUT .../application/prompt_lib/...`,
+`201`) that persists it.
+
+**Ambient console warning, not a delete-node regression.** `[React Flow]:
+It looks like you've created a new nodeTypes or edgeTypes object...` fires
+repeatedly (level: `warning`, not `error`) on canvas re-renders throughout
+this whole surface (confirmed both during and unrelated to delete-node
+actions) — a pre-existing dev-mode ReactFlow message from un-memoized
+`nodeTypes`/`edgeTypes` props somewhere upstream. Don't file it as a
+regression for any case on this surface; filter console checks to
+`level == "error"`.
+
 ## HITL node — Input/USER MESSAGE/ROUTER MAPPING/EDIT STATE KEY (ELITEA-2014, 2026-07-24)
 
 **Config is always inline/expanded, same as every other node type** — no
@@ -593,3 +679,107 @@ A case exercising the panel fields is a distinct code path, not a duplicate.
 Full Concrete Handles table (exact line numbers, all field wiring points) is
 in `test-specs/pipelines/l2_hitl-node-config-router-mapping_ELITEA-2014.md` —
 read that AFS first if implementing this case.
+
+## Create-Pipeline form vs Detail-page form are DIFFERENT components (ELITEA-2021, 2026-07-24)
+
+**The `/pipelines/create` form and the `/pipelines/all/{id}` detail-page form
+are not the same component with different props — they're genuinely
+different JSX trees**, confirmed by full-page-text dump (zero occurrences of
+"Tools"/"Editor Notes"/"Information" pre-save) and by source:
+
+- **Create** (`CreatePipeline.jsx` → `CreateAgentForm.jsx`,
+  `src/[fsd]/features/agent/ui/agent-details/configurations/form/CreateAgentForm.jsx`,
+  shared with Agent create via `entityType` prop) renders only: General
+  (Name/Description/Tags) → Instructions (hidden for pipeline) → Variables →
+  Welcome message → Chat starters → Advanced (Step limit). **No Tools
+  section, no Editor Notes, no Information section exist on this form at
+  all** — not collapsed, not lazy, genuinely absent from the JSX.
+- **Detail/edit** (`PipelineConfigurationForm.jsx`, reached only after the
+  first Save assigns the pipeline an id) additionally renders:
+  `ApplicationTools` (Tools section — toolkit/MCP/agent/pipeline attach),
+  `ApplicationEditorNotes` (Editor Notes), `ApplicationInformation`
+  (Pipeline ID / Version ID / Trigger / embedded chat preview).
+
+**Any case whose steps interleave toolkit-attach or editor-notes with
+create-time fields (Name/Description/Tags/Welcome/Starters/Step-limit)
+cannot be executed in the case's literal order** — this is case-text drift
+(written against the steady-state detail-page layout), not a defect: the
+split is a deliberate, working design (an entity needs an id before it can
+own toolkit associations). Re-sequence: create-time fields → Save → detail-
+page-only fields → Save again → reload. Full worked example:
+`test-specs/pipelines/l2_create-pipeline-full-details_ELITEA-2021.md`.
+
+### Confirmed testids on the Create-Pipeline form (live DOM enumeration)
+
+All of: `agent-name-input`, `agent-description-input`, `agent-save-button`,
+`agent-canvas-section-general`, `agent-form-icon-button`,
+`agent-canvas-section-welcome-message`, `agent-welcome-message-input`,
+`agent-conversation-starters-section`, `agent-canvas-section-chat-starters`,
+`agent-conversation-starter-add` (+ `agent-conversation-starter-input` once a
+starter row exists), `agent-canvas-section-advanced`, `agent-step-limit-input`.
+
+**Provenance (verified `git fetch origin` + `git grep`, 2026-07-24):** all
+on-main ✓ **except** `agent-canvas-section-advanced` and
+`agent-step-limit-input`, which are on `automation/testids` only (awaiting
+human promotion to `main`).
+
+### Two genuine testid gaps (both need `add-data-testid`)
+
+- **Tags combobox** (`ApplicationEditForm.jsx`/`CreateAgentForm.jsx` →
+  `TagEditor.jsx` → `AutoCompleteDropDown.jsx`): the underlying component
+  already supports `inputTestId`/`chipTestId`/`getOptionTestId` props (proven
+  working elsewhere — Skills' own `CreateSkillForm.jsx` wires
+  `skill-tags-input`/`skill-tag-chip`/`skill-tag-option-{name}` via these
+  exact props) but the Agent/Pipeline caller wires **none of them**. Confirmed
+  live: the Tags `<input id="tags">` has no testid/aria-label, and the
+  committed-tag `.MuiChip-root` has no testid either.
+- **Editor Notes section** (`ApplicationEditorNotes.jsx`, detail-page only):
+  zero testids anywhere in the file — no accordion `testId:` (unlike its
+  sibling `ApplicationAdvanceSettings`'s `agent-canvas-section-advanced`), no
+  input testid on the Notes textarea (MUI auto-generated id only, e.g.
+  `:r3n:`).
+
+Both are used identically by Agent AND Pipeline forms (same shared
+components) — see the ELITEA-2021 AFS's Concrete Handles section for the
+full declared-improvisation naming proposal (`agent-tags-input`/
+`agent-tags-input-field`/`agent-tag-chip`/`agent-tag-option-{}`,
+`agent-editor-notes-section`/`agent-editor-notes-input`) and its reasoning
+(matching the file's own already-established `agent-` prefix convention for
+internal consistency, rather than a fresh generic name).
+
+### Step limit: non-obvious default + a clearing gotcha
+
+The Step-limit field defaults to `25` (not empty) on a **fresh create form**.
+Its `onKeyDown` handler enforces `MAX_STEP_LIMIT` char-by-char as you type, so
+a clear that doesn't properly fire the controlled `onChange` (e.g. a raw
+synthetic select-all+Backspace key-event pair, as opposed to a real
+Playwright `.clear()`) leaves the stale `25` in place — typing `50` over it
+then produces a corrupted-looking `255` (then blocks at `2550`, over
+`MAX_STEP_LIMIT`) instead of a clean `50`. Always use Playwright's native
+`.clear()`, never a manual two-keystroke simulation.
+
+### Toolkit attach: shared-project churn, not a product defect
+
+Attaching a toolkit via "+ Toolkit" → `toolkit-menu-item` popper selection
+uses the exact same `PATCH .../tool/prompt_lib/{project}/{toolkit_id}` → 201
+mechanism ELITEA-2010 already proved reliable end-to-end (attach → save →
+reload, verified via both Flow-view and YAML). In a project whose only
+available toolkits are OTHER parallel batch sessions' ephemeral
+create/delete-churned artifact toolkits, an attach attempt can transiently
+fail with a toast "No such toolkit with id {n}" (stale toolkit reference,
+already deleted by a concurrent session) — confirmed non-reproducible against
+a fresh attempt seconds later (a *different* transient toolkit attached
+successfully first try). **Always use a dedicated fixture toolkit**
+(`automation/fixtures/data_fixtures.py:495`'s `artifact_toolkit`, exactly as
+ELITEA-2010 already established) for any case that needs a stable toolkit —
+never rely on "whatever exists in the shared project" for assertions that
+must be deterministic.
+
+### Chat-starter label rendering quirk (cosmetic, not a bug)
+
+`document.body.innerText` shows the Chat-starters field's label text
+("Starter") **twice** once a starter row exists — confirmed cosmetic (a MUI
+floating-label rendering artifact); the field's actual `.value` correctly
+holds exactly one string. Assert on the `agent-conversation-starter-input`
+element's `.value`, never on raw `innerText` occurrence counts, for this
+field.
