@@ -1,2 +1,0 @@
-WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
-ERROR    elitea.api:client.py:1479 Failed to create toolkit: status=403 body={"ok": false, "error": "Toolkit type 'github' is not available in this deployment"}
