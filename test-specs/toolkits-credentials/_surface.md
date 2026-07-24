@@ -1,0 +1,137 @@
+# Surface digest: Credentials (create form + list) — `/credentials/*`
+
+Confirmed handles/waits/quirks from live exploration. This is a cache for
+same-surface analysts and the implementer — it does NOT replace live
+execution; verify handles as you use them, and update this file (create or
+edit) after your own run. Lives on the base branch — commit alongside your
+AFS, never on a case branch.
+
+First digest for this surface, written during ELITEA-1978 analysis
+(2026-07-24, project `Private`/399, local `http://localhost:5173`). Six
+prior AFS on this feature (ELITEA-1962/1963/1965/1971/1972/1974/1975)
+already document individual confirmed testids; this digest's main new
+contribution is mapping the **dynamic-testid COMPOSITION CHAINS** (source
+file:line, hop by hop) — none of those prior AFS traced the chain past the
+call site, which is why a bare-substring `git grep` for the full rendered
+testid string finds nothing in `EliteaUI/src` (see gotcha below).
+
+## Gotcha: dynamic testids don't grep as bare substrings
+
+Every credential-form testid is a **template composition**, sometimes
+across 2-3 files/hops. A closure-record-style
+`git grep -- "toolkit-field-label-input"` returns **zero hits** on
+`automation/testids` even though the testid is live and confirmed working —
+because the literal string never appears in source; only the template
+pattern does. **Verify dynamic testids by grepping the TEMPLATE pattern**
+(e.g. `` toolkit-field-${k}-input ``), not the resolved string, and trace
+every hop before declaring "not found."
+
+Confirmed composition chains (all hops present on `automation/testids` /
+local working tree as of `043ea101`; NONE present on `origin/main` yet —
+i.e. every credential-form testid below is awaiting human cherry-pick):
+
+| Rendered testid (example) | Hop 1 | Hop 2 | Hop 3 |
+|---|---|---|---|
+| `toolkit-type-card-github` | `CategoryItemCard.jsx:14` — `` `toolkit-type-card-${itemKey}` `` | — | — |
+| `toolkit-field-label-input` / `toolkit-field-elitea_title-input` / `toolkit-field-base_url-input` / `toolkit-field-username-input` (plain text fields) | `ToolBaseProperty.jsx:615` — `` `toolkit-field-${k}-input` `` (generic fallback render path) | — | — |
+| `toolkit-field-auth-radio-token` (auth method radio, per-option) | `ToolSection.jsx:291` — `` `toolkit-field-${sectionKey}-radio` `` (base testId passed to the group) | `RadioButtonGroup.jsx:37` — `` `${testId}-${String(item.value).toLowerCase().replace(/\s+/g,'-')}` `` (per-option suffix, on the `FormControlLabel`, NOT the native `<input>`) | — |
+| `toolkit-field-access_token-input-field` / `toolkit-field-api_key-input-field` (secret/password-toggle fields) | `ToolBaseProperty.jsx:340` — `` `toolkit-field-${k}-input` `` (passed as `testId` prop into `SecretManagementInput`) | `SecretManagementInput.jsx:62` — passes `inputProps={{'data-testid': testId}}` through unchanged to `SecretField` | `SecretField.jsx:77` — `` nativeInputTestId = `${inputProps['data-testid']}-field` `` — the `-field` suffix lands on the TextField's **native `<input>`** (`inputProps` prop, distinct from the caller's own `inputProps` which lands on the TextField root) |
+
+Playwright's `is_checked()` / `.click()` on the radio still resolve
+correctly through the `FormControlLabel` wrapper (testid is on the label,
+not the input) — confirmed live, no extra unwrap needed by callers (same
+note ELITEA-1975's AFS already made for this element).
+
+## Create-form field-required indicators — visual asterisk is a reliable signal, but incomplete
+
+Every field genuinely in the credential type's static `schema.required`
+renders its label with a trailing `*` (confirmed: "Display Name", "ID",
+"Base Url" all show `* *` in `document.body.innerText` on the GitHub
+create form). **This asterisk is driven by the SAME static `schema.required`
+list `validateRequiredFields()` reads** — so it's a reliable proxy for "will
+this field's emptiness gate Save", but it does NOT cover auth-method-
+conditional fields (Access Token when Token auth is selected, Username/
+Password when Password auth is selected, App private key when that auth is
+selected) — none of those carry an asterisk regardless of which auth method
+is currently selected, and Save never gates on them either. See Known
+Defects below — this is a live, filed, confirmed gap
+([#1004](https://github.com/EliteaAI/elitea-testing-public/issues/1004)),
+not a documentation nuance.
+
+## Known defects on this surface
+
+- **[#526](https://github.com/EliteaAI/elitea-testing-public/issues/526)**
+  — clearing Display Name (`label`) after filling it does not re-disable
+  Save, unlike every statically-required field. Root cause:
+  `validateRequiredFields()` excludes `label` from its check entirely
+  (never in any type's `schema.required`).
+- **[#1004](https://github.com/EliteaAI/elitea-testing-public/issues/1004)**
+  — selecting "Token" auth (GitHub type) and leaving the resulting "Access
+  Token" field empty: no asterisk appears, Save never disables, AND the
+  backend independently accepts the empty value (`POST` returns 200,
+  persisted record shows `"data": {"access_token": ""}, "status_ok":
+  false`). Same root helper (`validateRequiredFields()` only reads the
+  static `schema.required` array) but a DIFFERENT field/scenario
+  (auth-conditional, not universally-excluded) — filed separately per this
+  repo's strict-per-bug policy. Live-confirmed this is NOT cosmetic-only:
+  the backend also persists the broken credential, so it's a functional
+  gap, not just a missing UI indicator. Not yet verified whether the same
+  gap applies to the Password/App private key auth methods' own required
+  fields (`username`/`password`/`app_private_key`) — same code path, so
+  suspected but not independently reproduced this session; a good target
+  for whoever picks up #1004's fix to check as a regression net.
+- **Pre-existing console noise, NOT this feature's bugs** (already
+  tracked, exclude from any "no new console errors" assertion on this
+  surface): `#291` (React key-prop / `<p>`-in-`<p>` dev warnings on the
+  type-selector grid), `#518` (`CredentialsList.jsx` double-`onRefetch()`
+  crash on `/credentials/all` navigation, ~60-75% reproduction — already
+  functionally worked around at the page-object layer via
+  `credentials_list_recovery.py`), `#554` (`toolkitTypes` RTK-Query 404
+  race on repeated create-credential navigations).
+
+## Duplicate-name error — surfaces via the generic `apiError` banner, no testid (GAP)
+
+Attempting to create a credential with a Display Name that already exists
+(`elitea_title` collision) rejects the `POST` and surfaces the backend's
+literal message (`Credential with ID '<name>' already exists`) via
+`CredentialTabBar.jsx`'s `doSave()` → `setApiError(buildErrorMessage(...))`
+path → rendered in `CredentialForm.jsx:352-359` as a bare
+`<Typography>{apiError}</Typography>` with **no `data-testid` at all**
+(confirmed live: `el.getAttribute('data-testid') === null`). This is a
+genuine, not-yet-filled gap — recommended shape
+`credential-form-api-error-message`, placed on the SHARED
+`CredentialFormFieldsMixin` (both Create and Edit flows render through the
+same `CredentialForm.jsx`, passing `apiError`/`setApiError` down from their
+respective parent pages).
+
+`doSave()`'s error-routing logic (`CredentialsTabBar.jsx`) has TWO branches
+worth knowing before writing a test against any credential-API-error case:
+- If `result.error?.data?.field === 'elitea_title'`, `onEnableEditTitle()`
+  fires (re-enables the disabled ID field for editing) — did NOT fire for
+  the duplicate-name error in this session (ID field stayed disabled),
+  meaning the backend's error shape for THIS message doesn't set
+  `field: 'elitea_title'`.
+- `CredentialErrorHelpers.extractInformationFromCredentialError()` then
+  tries to map the message onto a schema property key (by substring match
+  against each property's title/description/key) — for the duplicate-name
+  message this produces zero matches (no schema property is titled/keyed
+  "ID" or "Credential"), so it falls through to the generic `apiError`
+  banner rather than a per-field validation message.
+
+## Zero-credential-project auto-redirect — precondition already covered by prior AFS, still true
+
+`CredentialsList.jsx` auto-redirects `/credentials/all` straight to the
+create form when the project has ZERO credentials (ELITEA-1963's AFS
+documents this, motivating `CredentialCreatePage.navigate_to_type()`'s
+direct-URL entry point over the old card-click flow). Confirmed still true
+this session; not re-tested independently since the shared DEV project
+(`Private`/399) already has ≥1 credential at all times in practice.
+
+## Cleanup discipline — this is a SHARED DEV project
+
+Project `399` ("Private") is shared across concurrent analyst/implementer
+sessions — any credential created during exploration MUST be deleted via
+the API before the session ends (`DELETE
+/configurations/configuration/{project_id}/{id}` → `204`), confirmed
+working this session for 2 credentials. Don't leave `autotest_*` credential
+litter for the next analyst to trip over.
