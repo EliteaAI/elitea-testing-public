@@ -572,6 +572,101 @@ section already documented for the standalone `/pipelines/create` vs
   this session (briefly misread `chat-participants-badge-pipelines` as
   entirely-missing before catching it).
 
+## In-chat Pipeline canvas — Discard mechanism + testid landings since ELITEA-2079 (ELITEA-2078, 2026-07-24)
+
+Extended 2026-07-24 (batch `cov60`). This session re-verified the ELITEA-2079
+section above and found several of ITS `needs-adding` gaps have already
+**landed live** on `automation/testids` (the ELITEA-2079 implementer's
+in-flight work) — future cases on this surface should use the ACTUAL landed
+names below, not re-derive or re-propose them:
+
+- **`pipeline-save-button`** (create-mode Save) — LANDED, confirmed live.
+- **`pipeline-canvas-close-button`** — LANDED, confirmed via source read of
+  `PipelineEditor.jsx`'s `<BaseEditor closeButtonTestId="pipeline-canvas-close-button" …>`.
+- **`pipeline-canvas-configuration-tab`** / **`pipeline-canvas-flow-editor-tab`** —
+  LANDED, confirmed live.
+- **`pipeline-add-node-menu-item-{type}`** — LANDED (ELITEA-2030's work), but
+  under a DIFFERENT name than ELITEA-2079's own AFS proposed
+  (`pipeline-add-node-type-{type}`) — confirmed live via DOM query
+  (`item.type` = e.g. `llm`, `hitl`, `mcp`, …). **Use the landed name**,
+  `AddNodeMenu.jsx:119/142` (`` data-testid={`pipeline-add-node-menu-item-${item.type}`} ``,
+  template — false-negative under literal `git grep`, confirmed via source
+  read instead, on-`automation/testids` only as of this session).
+
+**Still NOT landed** (confirmed via source read of `PipelineEditor.jsx`'s
+`<BaseEditor>` call on `origin/automation/testids` HEAD `d879a966…`):
+`titleTestId`, `subtitleTestId`, `discardButtonTestId` — none of these three
+are wired yet, only `closeButtonTestId` is. ELITEA-2078 is the first case in
+this batch to touch the Discard button, so it owns adding
+`discardButtonTestId`/`discardModalTestId`/`discardConfirmButtonTestId`
+(mirroring `agent-canvas-discard-button`/`toolkit-canvas-discard-button`) —
+`title`/`subtitle` remain untouched-by-any-case gaps, per scope discipline.
+
+**Canvas-header Discard mechanism — fully traced source-to-DOM, confirmed
+live twice on independent pipeline instances.** `PipelineEditor.jsx` wires
+`onDiscard={handleDiscard}` into `<BaseEditor>`, which forwards it through
+`EditorHeader.jsx` to the shared `DiscardButton.jsx`. The button's `disabled`
+prop is `!isFormDirty && !isYamlCodeDirty` (`useIsPipelineYamlCodeDirty()` —
+tracks the pipeline's YAML/graph state via Redux, independent of Formik) —
+so the SAME canvas-header Discard button governs BOTH create-time form-field
+edits AND Flow-editor graph edits (adding/removing/reconfiguring a node).
+Confirmed live: button is `disabled: true` immediately after the Setup
+Save (clean baseline), flips to `disabled: false` the instant an LLM node is
+added via "+ Add node" (zero form fields touched), and returns to
+`disabled: true` after a successful Discard-confirm.
+
+Clicking it opens `DiscardButton.jsx`'s own built-in confirm dialog (generic
+`Modal.BaseModal`, NOT the `DeleteEntityModal.jsx` used by node-delete —
+different component, same "Warning" styling): title **"Warning"**, body
+**"Are you sure you want to discard changes?"**, buttons **"Cancel"** /
+**"Discard"** (exact text, `ModalConstants.WARNING_MESSAGES.DISCARD_CHANGES`
+/ `WARNING_BUTTONS.DISCARD` — same shared strings the Toolkit canvas's
+Discard dialog already uses, confirmed byte-identical). Confirming calls
+`useDiscardApplicationChanges`'s `discardApplicationChanges` = Formik
+`resetForm()` + the passed `handleDiscard` (`dispatch(actions.resetPipeline())`
++ `dispatch(editorActions.resetPipelineEditor())`) — **100% client-side, zero
+network request**, confirmed via source read (no API call anywhere in
+`handleDiscard`'s body) — matches the identical "no network call on Discard"
+finding already established live for the Toolkit canvas (ELITEA-2080 section
+above) and for node-delete (`test-specs/pipelines/_surface.md`, ELITEA-2018).
+
+**Zero testids anywhere on this Discard button + its dialog + its 2 buttons**
+— confirmed via full live DOM enumeration both before-add (disabled) and
+after-confirm (dialog gone) states, on two independent pipeline ids (`5856`,
+`5860`). `testid needed: pipeline-canvas-discard-button` /
+`pipeline-canvas-discard-confirm-dialog` / `pipeline-canvas-discard-confirm-button`
+— trivial threading, zero shared-component edits (`EditorHeader.jsx`/
+`DiscardButton.jsx` already accept all three as props, same mechanism
+Agent/Toolkit already use).
+
+**Untested interaction with the `DeleteEntityModal.jsx` MUI-ancestor-testid
+quirk** (`test-specs/pipelines/_surface.md` § "Node delete" — MUI's `Dialog`
+sometimes applies `data-testid` to an ancestor wrapper, not the inner `Paper`
+carrying `role="dialog"`): this Discard dialog uses the SIMPLER
+`Modal.BaseModal` component, not `DeleteEntityModal.jsx` — untested whether
+the same ancestor-vs-inner-Paper quirk applies here once `discardModalTestId`
+is wired. Flag for the implementer to verify empirically; `get_by_role("dialog")`
+is the documented-safe fallback either way (only one dialog is ever open at a
+time in this flow).
+
+**LLM node structure, confirmed live (case ELITEA-2078's own step 7
+assertion):** a freshly-added `rf__node-{id}` contains a real `<svg>` icon, a
+`.MuiTypography-root` label matching the node's display name (e.g. `"LLM 1"`),
+and exactly 2 `.react-flow__handle` connection-port elements (ReactFlow's own
+convention, zero app-source touches). Since a single-node pipeline's one node
+always auto-becomes the entry point (`test-specs/pipelines/_surface.md` §
+"Entry Point node"), its config panel additionally shows a `Trigger` field —
+expected, not specific to this case.
+
+**A pipeline saved via create-mode Save with ZERO real nodes ever added shows
+EMPTY `Yaml`-tab content, not a stub `nodes: [END]` YAML** — confirmed live
+twice. Consistent with `PipelineEditor.jsx`'s own source comment ("empty
+string is valid - will create just an END node"): the visible `End` node is a
+client-side rendering default for empty/absent `instructions`, not a
+persisted YAML entity. Not a defect — a future case asserting on YAML content
+in this exact state (saved, zero nodes ever added) should expect empty
+content.
+
 ## In-chat "New MCP" canvas (ELITEA-2085 — full findings)
 
 Extended 2026-07-24 (batch `cov60`). The `+` menu's **MCPs** submenu
@@ -760,3 +855,63 @@ genuinely virgin ground, first case to touch it.
   chat-predict path (`.agents/testing.md`'s standard ~2s+ wait), not a
   dedicated "generate table" endpoint — the table is just markdown that
   happens to parse into a grid.
+
+## In-chat "Build with AI" (Agent) — ELITEA-2073 full findings
+
+- **The Build-with-AI modal is the SAME shared component/testids** whether
+  opened from the standalone `/agents/create` page (merged
+  `test_agent_build_with_ai.py`, ELITEA-1907/1909/1911/1915) OR from the
+  in-chat "Create New Agent" canvas (`AgentEditor.jsx` →
+  `CreateAgentForm.jsx` → `GenerateAgentButton` — same component tree,
+  `entityType !== 'pipeline'` is the only gate). Every `generate-agent-*`
+  testid (`generate-agent-open-button`, `-modal`, `-prompt-input`,
+  `-cancel-button`, `-submit-button`, `-loading-indicator`,
+  `-back-button`, `-approve-button`) is already **on-main ✓** and resolves
+  identically in both contexts — confirmed live. `GenerateAgentModalPage`
+  is reusable as-is in the chat-canvas context; no new testid work needed
+  for the modal itself.
+- **"Create Agent" performs a REAL backend save even from the chat
+  canvas** — don't assume it's a local-only draft populate.
+  `GenerateAgentModal.jsx`'s `handleApprove` always calls the real
+  `POST .../applications/prompt_lib/{project_id}` (same endpoint/contract
+  the standalone-page merged suite already asserts `201` on); only the
+  POST-creation side effect differs via `onAgentCreated` — standalone page
+  navigates to `/agents/all/{id}`, chat canvas instead populates the LOCAL
+  Formik view of the ALREADY-SAVED entity in place (confirmed live via a
+  follow-up `GET .../applications/...?name=...` query — the entity is
+  immediately queryable) and auto-attaches it as a conversation participant
+  (visible under PARTICIPANTS → AGENTS). This is why the canvas's Save
+  button reads `disabled === true` immediately after — there's nothing left
+  to save.
+- **Cancel resets the modal's local state completely** — reopening after a
+  Cancel shows an EMPTY prompt textarea (confirmed live), and zero
+  `generate_application_draft` network requests fire between typing and
+  Cancel (confirmed via full network-log inspection — the strongest
+  available proof of "no generation took place").
+- **A previously-undocumented testid**: `chat-agent-settings-menu-button`
+  (on `automation/testids` only, `AgentEditorPanel.jsx:281`) — a single
+  stable testid whose CONTENT (not value) toggles between a settings-gear
+  icon and "Editing…"/"Viewing…" text, based on
+  `isActiveParticipantBeingEdited`/`canEdit`. This is DIFFERENT from
+  ELITEA-2166's CLARIFICATION #709 finding (`chat-switch-participant-button`
+  itself shows "Editing…" as a placeholder in the MANUAL-fill flow, because
+  no real agent exists pre-Save there) — in the Build-with-AI flow the real
+  agent already exists, so `chat-switch-participant-button` shows the REAL
+  name/version AND this separate badge shows "Editing…" simultaneously.
+  Don't conflate the two patterns; check which flow (manual-fill vs.
+  Build-with-AI) a future case is testing before reusing either assertion.
+- **Review-form fields (`GenerateAgentReviewForm.jsx`: Name/Description/
+  Instructions/Welcome Message/Conversation Starters) still have ZERO
+  testids** on either branch (re-confirmed this session, `git grep -i
+  "testId\|data-testid"` → no hits) — a pre-existing gap first flagged by
+  ELITEA-1915's AFS as out-of-scope there. Still not blocking for
+  content-only assertions (read the modal's aggregate `.text_content()`),
+  but a future case that EDITS review-form fields before approving will
+  need `add-data-testid` here.
+- **[INFO] Issue #1050** — React "does not recognize the `disableUnderline`
+  prop" console warning fires whenever `GenerateAgentReviewForm.jsx`'s Name
+  field renders, traced to the shared `InputBase.jsx` unconditionally
+  forwarding `disableUnderline` regardless of `variant` (only valid for the
+  `standard` MUI variant, not `outlined`). Cosmetic/dev-mode-only, no
+  functional impact — likely reproducible on ANY `Input.InputBase` caller
+  using the outlined variant, not just this form.
