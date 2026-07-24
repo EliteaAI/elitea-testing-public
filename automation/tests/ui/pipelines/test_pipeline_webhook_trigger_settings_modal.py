@@ -43,6 +43,12 @@ def test_webhook_trigger_settings_modal(page, pipeline_with_llm_id):
 
     with allure.step("Step 1 — Navigate to the fresh pipeline; verify single entry-point node with a Trigger field"):
         pipeline_page = _navigate_to_canvas(page, pipeline_with_llm_id)
+        # Capture every /pipeline_trigger/ request+response from here on — the
+        # ONE endpoint this whole flow's steps 2-7 depend on (AFS § Network
+        # Behavior) — so the final check below covers the ENTIRE flow
+        # (including Step 7's reload/modal-reopen), not just a single
+        # mid-flow snapshot.
+        trigger_requests = pipeline_page.capture_requests_matching("/pipeline_trigger/")
         pipeline_page.wait_for_node_on_canvas("llm", timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_entrypoint_node_id() == "LLM 1", (
             "Pipeline should be ready with 'LLM 1' as the single entry-point node"
@@ -141,9 +147,6 @@ def test_webhook_trigger_settings_modal(page, pipeline_with_llm_id):
         assert pipeline_page.trigger_webhook_edit_button.is_visible(), (
             "Edit-webhook icon button should appear next to the Trigger select once trigger=webhook"
         )
-        assert not console_errors, (
-            f"Configuring the webhook trigger should not introduce console errors: {console_errors}"
-        )
 
     with allure.step("Step 7 — Save the pipeline; reload; verify the Webhook trigger and webhook_type=custom persist"):
         # Declared improvisation (role-overrides.md § Declared-improvisation
@@ -200,3 +203,19 @@ def test_webhook_trigger_settings_modal(page, pipeline_with_llm_id):
             "Trigger/webhook configuration must NOT be persisted in the pipeline's own YAML "
             f"instructions field, got:\n{yaml_content_lower[:500]}"
         )
+
+    # Full-flow checks (AFS Pass/Fail criteria — "all steps complete without
+    # errors"): both listeners have been live since Step 1, so these cover
+    # the ENTIRE flow, including Step 7's reload/modal-reopen/YAML-view
+    # actions that ran after the old single mid-flow console check.
+    failed_trigger_requests = [r for r in trigger_requests if r["status"] is not None and r["status"] >= 400]
+    assert not failed_trigger_requests, (
+        "No /pipeline_trigger/ request should fail across the whole webhook trigger flow, got: "
+        f"{failed_trigger_requests}"
+    )
+    trigger_requests.stop()
+
+    assert not console_errors, (
+        "Configuring/reloading/persisting the webhook trigger should not introduce console errors "
+        f"across the whole flow, got: {[m.text for m in console_errors]}"
+    )

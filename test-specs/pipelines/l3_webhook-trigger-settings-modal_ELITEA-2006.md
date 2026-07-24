@@ -239,6 +239,9 @@ run immediately before this table; every handle below was grepped against BOTH
 | Cancel button | **NO `data-testid` today.** `PipelineWebhookModal.jsx` uses a custom `actions={...}` render prop rather than `BaseModal`'s own `onConfirm`/`cancelButtonTestId` mechanism, so `BaseModal`'s existing testid props do NOT apply here — the `<Button variant="elitea" color="secondary" onClick={onClose}>Cancel</Button>` (~line 342) needs its OWN direct `data-testid="pipeline-webhook-cancel-button"` prop. **Flag to `add-data-testid`**. | needs-adding |
 | Apply button | **NO `data-testid` today.** Same pattern — `<Button ... onClick={applyChanges} disabled={isLoading}>Apply</Button>` (~line 350) needs `data-testid="pipeline-webhook-apply-button"`. **Flag to `add-data-testid`**. | needs-adding |
 | YAML view (used to confirm trigger config is NOT stored there — a negative-control check, not a locator this case's own assertions depend on) | `pipeline-yaml-editor` / `pipeline-yaml-lines` (`PipelineDetailPage.yaml_editor` / `.yaml_lines`, already `LocatorDescriptor` fields) + `get_yaml_content()` (already an existing method) | on-main ✓ — pre-existing page-object surface, zero new work; used only to VERIFY trigger state is absent from YAML, per Axis 2 |
+| Webhook Type description text (updates per selected type — case steps 3/4/5 require verifying its presence/content) | `data-testid="pipeline-webhook-type-description"` | needs-adding — **AFS gap-fill, added by implementer** (docs(afs) amendment): this table omitted a handle for a description text this case's own steps 3/4/5 already required verifying; closed via the same `add-data-testid` call site edit as the rest of this modal, no separate exploration needed |
+| Payload Format description (static text — case step 3 requires verifying its presence/content) | `data-testid="pipeline-webhook-payload-format-description"` | needs-adding — **AFS gap-fill, added by implementer** (docs(afs) amendment), same rationale as the row above |
+| Secret Value helper text (e.g. "Enter this secret in your GitHub webhook configuration under 'Secret'" — case step 3 requires verifying its presence) | `data-testid="pipeline-webhook-secret-helper-text"` | needs-adding — **AFS gap-fill, added by implementer** (docs(afs) amendment), same rationale as the two rows above |
 
 ## Network Behavior
 
@@ -322,13 +325,17 @@ flag.
   a stronger assertion).
 - Wait strategy: after clicking a Webhook Type radio, no network wait is
   needed for the URL/description update (pure client-side `useMemo` derivation
-  off `selectedWebhookType`); after clicking Apply, wait for the success toast
-  (`toastSuccess` text) or for the modal to actually close before asserting
-  the Trigger select's new label — the `updateTrigger` mutation is awaited
-  before `onClose()` fires (source-confirmed `applyChanges`'s `onSubmit(...)`
-  → `onClose()` sequencing in `TriggerTypeSelector.jsx`'s
-  `handleWebhookSubmit`), so waiting on modal-closed is sufficient, no fixed
-  sleep needed.
+  off `selectedWebhookType`); after clicking Apply, do NOT wait on the modal
+  merely closing — **implementer-corrected (docs(afs) amendment, this AFS's
+  own claim below was wrong):** `PipelineWebhookModal.applyChanges` calls
+  `onSubmit(...)` (a Promise, NOT awaited) and then `onClose()`
+  synchronously (source-verified `PipelineWebhookModal.jsx:161-164` during
+  implementation), so the modal can report hidden before the trigger PUT
+  actually resolves — a modal-hidden-only wait races the real persistence.
+  The correct wait is on the actual `PUT .../pipeline_trigger/.../trigger`
+  network response itself (`page.expect_response`), which is what
+  `apply_webhook_settings()` does (`pipeline_detail_page.py:1300`). No fixed
+  sleep needed either way.
 - Recommended setup: `pipeline_with_llm_id` fixture (see Test Data) — already
   provisions a connected LLM entry-point node, saving a full node-add round
   trip while still exercising this case's own Trigger/webhook-configuration

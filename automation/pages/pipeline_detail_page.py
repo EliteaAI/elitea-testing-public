@@ -152,14 +152,6 @@ class PipelineDetailPage(PipelineFormPage):
         description="Entry-point node's Trigger select (Chat Message/Schedule/Webhook)"
     )
 
-    # SingleSelect.jsx derives `${data-testid}-combobox` automatically via its
-    # own SelectDisplayProps wiring (same mechanism as mcp_node_toolkit_select
-    # / mcp_node_toolkit_select_combobox above) — carries aria-expanded.
-    trigger_select_combobox = LocatorDescriptor(
-        testid="pipeline-trigger-select-combobox",
-        description="Trigger select — inner combobox div carrying aria-expanded"
-    )
-
     trigger_webhook_edit_button = LocatorDescriptor(
         testid="pipeline-trigger-webhook-edit-button",
         description='"Edit webhook settings" link-icon button next to the Trigger '
