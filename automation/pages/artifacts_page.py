@@ -411,6 +411,70 @@ class ArtifactsPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # File-table sortable column headers (GAP-035)
+    # ------------------------------------------------------------------
+
+    name_column_header = LocatorDescriptor(
+        testid="artifacts-column-header-name",
+        description="Sortable 'Name' column header cell (GAP-035 — new testid, "
+        "implementer). Threaded via `GridTableHeader.jsx`'s existing (but "
+        "previously unused at this call site) `columnTestIdPrefix` prop — "
+        "already proven in production by the MCP table (`DataTable.jsx:446`) — "
+        "wired ONLY at `ArtifactTable.jsx`'s own `<GridTableHeader ...>` call "
+        "site as `columnTestIdPrefix=\"artifacts\"`. The SAME Box element also "
+        "carries the active/inactive `opacity` style (`styles.headerCell`) — "
+        "assert active state via Playwright's own auto-retrying "
+        "`expect(header).to_have_css(\"opacity\", \"1\")`, not a one-shot read "
+        "(the cell has `transition: opacity 0.2s ease`, so a raw evaluate() "
+        "immediately after the click can sample it mid-transition).",
+    )
+
+    type_column_header = LocatorDescriptor(
+        testid="artifacts-column-header-fileType",
+        description="Sortable 'Type' column header cell (GAP-035). The testid "
+        "interpolates the column's `field` name verbatim — 'Type' is backed by "
+        "the camelCase field `fileType`, NOT `type`.",
+    )
+
+    size_column_header = LocatorDescriptor(
+        testid="artifacts-column-header-size",
+        description="Sortable 'Size' column header cell (GAP-035) — sorts by "
+        "`SortComparators.fileSize` (numeric byte size), not the displayed "
+        "size text.",
+    )
+
+    last_update_column_header = LocatorDescriptor(
+        testid="artifacts-column-header-modified",
+        description="Sortable 'Last update' column header cell (GAP-035). The "
+        "testid interpolates the column's `field` name verbatim — 'Last "
+        "update' is backed by the field `modified`, NOT "
+        "`lastUpdate`/`last-update`. Also the table's DEFAULT active sort "
+        "column (`useTableSort({defaultField: 'modified', defaultDirection: "
+        "'desc'})`) — active/bold on initial load with no click needed.",
+    )
+
+    @action("Click a file-table sortable column header")
+    def click_column_header(self, header) -> None:
+        """Click a sortable column-header cell to (re)sort the file table.
+
+        Pass one of the four ``*_column_header`` `LocatorDescriptor` fields
+        (:attr:`name_column_header` / :attr:`type_column_header` /
+        :attr:`size_column_header` / :attr:`last_update_column_header`).
+
+        Sort-header clicks are pure client-side re-sorts — ``useTableSort`` /
+        ``sortData`` operate on the already-fetched ``rows`` array in memory
+        (confirmed live, GAP-035 AFS: clicking any header fires zero network
+        requests). Callers assert the resulting order via
+        :meth:`get_file_names`, not a network wait.
+
+        Args:
+            header: The column-header ``Locator`` to click (one of the four
+                fields above).
+        """
+        header.click()
+        logger.info("Clicked file-table column header")
+
+    # ------------------------------------------------------------------
     # Bulk delete flow (ELITEA-1847)
     # ------------------------------------------------------------------
 
