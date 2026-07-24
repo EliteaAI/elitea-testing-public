@@ -74,11 +74,6 @@ class PipelineFormPage(BasePage):
         description="A committed tag chip in the Tags combobox"
     )
 
-    # Dynamic (runtime-parameterized) testid — one per committed tag option
-    # in the dropdown. Class-level template constant per .agents/testing.md
-    # § Locator policy, formatted with test-generated data only at the call site.
-    TAG_OPTION = '[data-testid="agent-tag-option-{}"]'
-
     # Welcome message / Chat starters / Step limit — same shared components
     # as AgentFormPage/AgentDetailPage (CreateAgentForm.jsx composes them
     # identically for entityType="pipeline"), same testids. Ported here
