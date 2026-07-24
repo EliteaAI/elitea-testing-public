@@ -1431,3 +1431,16 @@ Full Concrete Handles table (exact line numbers, all four new-testid
 wiring points, provenance-checked against a fresh `git fetch origin`) is in
 `test-specs/pipelines/l2_decision-node-config-input-description-outputs_ELITEA-2034.md`
 — read that AFS first if implementing this case.
+
+## `get_node_count()` counts the implicit END node too (ELITEA-2031, 2026-07-24)
+
+**`PipelineDetailPage.get_node_count()` counts every `.react-flow__node` in the
+DOM, including the always-present `END` node** — confirmed live via
+`get_node_ids()` returning `['END', 'LLM 1', 'Printer 1']` on a fresh 2-custom-
+node fixture, and consistent with the already-merged `test_save_multi_node_pipeline`
+precedent (1 custom node + `END` == 2 counted nodes). A case asserting "N nodes
+on canvas" for N custom nodes must expect `get_node_count() == N + 1`, not `N` —
+don't assume the helper excludes the implicit END node just because it isn't
+one of the case's own named nodes. (Caught during ELITEA-2031's implementer pass
+as an in-flight AFS correction; recorded here so the next case touching node
+counts doesn't have to rediscover it.)
