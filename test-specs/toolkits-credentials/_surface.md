@@ -259,3 +259,98 @@ change needed, just compute the JSON-shaped value
 one `ToolBaseProperty.jsx` call-site edit (pass `testId={`toolkit-field-${k}-select`}`)
 covers every toolkit type through the shared component, no per-type
 special-casing.
+
+---
+
+# Surface digest addendum: Toolkit detail/edit page — Save gate + credential-warning modal (GAP-068)
+
+Written during GAP-068 analysis (2026-07-24). Covers `/toolkits/all/{id}`
+(`ToolkitDetailPage`/`EditToolkit.jsx`/`ToolkitsTabBar.jsx`) and the
+credential-swap-confirmation feature
+(`src/[fsd]/entities/credential-warning/`).
+
+## Project permission map (this identity, confirmed live 2026-07-24)
+
+| Project id | Name | Type | Create rights (this identity) |
+|---|---|---|---|
+| 399 | Private | personal | full (own project) |
+| 1 | (public) | public | n/a — `VITE_PUBLIC_PROJECT_ID=1` |
+| 400 | UI Testing | team (`isTeam=true`) | **full** — `configurations.configuration.create` + `models.applications.tools.create` both present. Use this project for any case needing team-project write access. |
+| 471 | Elitea Testing Team | team | **viewer-only** — confirmed 403 on both permissions above (already documented in this file's ELITEA-1976 addendum) |
+| 406 | Bugs & Features | team | **viewer-only** — 403 on `configurations.configuration.create` |
+| 25 | Elitea Development | team | **viewer-only** — 403 on `configurations.configuration.create` |
+
+**Takeaway: project `400` ("UI Testing") is the correct team-project fixture
+target for this identity** — it was empty (0 toolkits, 1 unrelated credential)
+before this run and is the only non-personal project confirmed writable.
+Don't default to 471 just because earlier AFS explored it read-only.
+
+## Toolkit edit page — Save is gated by a LIVE backend connectivity check, not just form validity
+
+`ToolkitForm.jsx` fires `useValidateToolkitQuery({toolkitId, projectId}, {skip:
+!editToolDetail?.id || !selectedProjectId || !isEditing})` on every EDIT-mode
+load (creation mode has no `id` yet ⇒ **always skipped**). Its endpoint —
+`GET /elitea_core/toolkit_validator/prompt_lib/{project}/{toolkitId}` — attempts
+a REAL connection using the toolkit's PERSISTED credential and returns `400`
+with a `settings_errors[].msg` (`__connection_errors__` blob) on failure,
+regardless of the credential type's own `check_connection_supported` schema
+metadata (confirmed `false` for `gitlab`, check still ran). This `isError` feeds
+`serverToolErrors` → `hasErrors` → `EditToolkit.jsx`'s `hasValidationErrors` →
+`ToolkitsTabBar.jsx`'s `shouldDisableSave` — **`toolkit-detail-save-button` stays
+disabled for the toolkit's entire life until its persisted credential
+authenticates**, independent of anything else in the form (confirmed: editing
+Description alone does NOT clear it; swapping the in-form credential dropdown to
+a DIFFERENT saved credential does NOT clear it either, because the query is
+keyed only on `toolkitId` — it reflects the OLD persisted credential until an
+actual save round-trip happens, which itself can't happen while Save is
+disabled — a real chicken-and-egg the automation needs a genuinely-valid
+credential to break).
+
+**No credential-bearing toolkit type can pass this check in the current DEV
+deployment** — see [elitea-testing-public#1032](https://github.com/EliteaAI/elitea-testing-public/issues/1032)
+for the full breakdown (GitHub blocked by #999, Jira missing `JIRA_BASE_URL`,
+GitLab/Bitbucket have zero token test data). **Any future case needing an
+ENABLED Save on an edit-mode credentialed toolkit is blocked by this same root
+cause** — check #1032's status before re-deriving this from scratch.
+
+`toolkit-form-save-button` (the CREATE-mode Save/Create button — a DIFFERENT
+testid from `toolkit-detail-save-button`) is NOT subject to this gate at all
+(query skipped in creation mode) — confirmed live: created a GitLab toolkit
+with a deliberately-invalid credential pre-selected, Save stayed enabled
+throughout, toolkit persisted successfully. Re-entering edit mode on that same
+toolkit immediately showed the gate active (`toolkit-detail-save-button.disabled
+=== true`) — the create→edit transition is exactly where this behavior flips.
+
+## Credential-warning modal (`useCredentialWarning` / `CredentialWarningModal.jsx`) — zero testids, feature otherwise fully legible
+
+Source fully read (`src/[fsd]/entities/credential-warning/`): `checkBeforeSave`
+gates on `!isCreating && isTeamProject && hasCredentialConfigChanged(...)` —
+guard fires ONLY on Save-click (confirmed live: swapping the credential
+dropdown selection alone never shows "Credential Configuration Change" text
+anywhere on the page). `hasCredentialConfigChanged`/`revertCredentialFields`
+(`credentialWarning.helpers.js`) are pure functions diffing
+`settings[key].elitea_title`/`.private` between Formik's current `values` and
+`initialValues` — no hidden async branching.
+
+**Confirmed missing on BOTH `main` and `automation/testids`** (fresh
+`git fetch origin` this session): `CredentialWarningModal.jsx` renders its
+`BaseModal` + two `Button.BaseBtn`s with **zero `data-testid` props at all** —
+needs `add-data-testid` for `credential-warning-modal` /
+`credential-warning-confirm-button` / `credential-warning-discard-button`
+regardless of which toolkit type eventually unblocks live verification.
+
+**Second call site, not yet explored**: `src/pages/NewChat/ToolkitEditor.jsx`
+also wires `useCredentialWarning` (an agent/pipeline-attached toolkit editor,
+distinct from the standalone `/toolkits/all/{id}` page this addendum covers) —
+its own `editToolDetail`/`originalDetails`/`revertCredentialsRef` plumbing has
+NOT been verified live; don't assume it behaves identically without checking.
+
+## Credential-select dropdown — the case-text's "needs a new testid" claim was wrong; reuse the existing dynamic pattern
+
+GAP-068's own case text proposed adding a new generic `credential-select-dropdown`
+testid. **Don't** — the per-type dynamic testid documented earlier in this file
+(`toolkit-field-${k}-select` / `-select-combobox`, e.g.
+`toolkit-field-gitlab_configuration-select-combobox`) already covers this
+exact element and is confirmed live on `automation/testids` (not yet on `main`).
+Adding a second, differently-named testid on the same element would be
+redundant and would corrupt the coverage metric (two testids, one element).
