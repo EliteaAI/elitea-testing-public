@@ -307,10 +307,12 @@ class GuardrailsAdminPage(BasePage):
         self._expand_sensitive_section(timeout)
 
         # Check if toolkit block already exists by looking for its header
-        sensitive_section = self.page.locator('text="Sensitive Action Tools"').first.locator('xpath=ancestor::div[3]')
-        toolkit_headers = sensitive_section.locator(f'text="{toolkit_name.lower()}"')
+        # Use specific p element with exact text match to avoid false positives
+        toolkit_label = self.page.locator(f'p.MuiTypography-root:text-is("{toolkit_name.lower()}")')
+        toolkit_exists = toolkit_label.count() > 0 and toolkit_label.first.is_visible()
+        logger.info("Toolkit block '%s' exists check: %s", toolkit_name, toolkit_exists)
 
-        if toolkit_headers.count() == 0:
+        if not toolkit_exists:
             # Toolkit block doesn't exist, create it
             logger.info("Creating sensitive toolkit block for: %s", toolkit_name)
 
@@ -318,19 +320,61 @@ class GuardrailsAdminPage(BasePage):
             add_input = self.page.locator('input[placeholder*="Add toolkit name"]').last
             add_input.wait_for(state="visible", timeout=timeout)
             add_input.click()
-            add_input.fill(toolkit_name)
-            self.page.wait_for_timeout(500)
+            # Use press_sequentially to trigger MUI Autocomplete filtering
+            add_input.press_sequentially(toolkit_name, delay=50)
+            self.page.wait_for_timeout(1000)  # Wait for autocomplete to filter
+
+            # Debug: log all visible options
+            all_options = self.page.locator('[role="option"]')
+            option_count = all_options.count()
+            logger.info("Found %d dropdown options after typing '%s'", option_count, toolkit_name)
+            for i in range(min(option_count, 5)):
+                try:
+                    opt_text = all_options.nth(i).text_content()
+                    logger.info("  Option %d: %s", i, opt_text)
+                except Exception:
+                    pass
 
             # Wait for dropdown options to appear and click the matching option
-            # MUI Autocomplete uses role="option" for dropdown items
-            dropdown_option = self.page.locator(f'[role="option"]:has-text("{toolkit_name}")').first
+            # MUI Autocomplete uses role="option" or li elements for dropdown items
+            # Use case-insensitive matching since toolkit names may vary in case
+            dropdown_option = self.page.locator(f'[role="option"]:has-text("{toolkit_name}"), li[role="option"]:has-text("{toolkit_name}"), .MuiAutocomplete-option:has-text("{toolkit_name}")').first
+            option_clicked = False
             try:
                 dropdown_option.wait_for(state="visible", timeout=3000)
                 dropdown_option.click()
+                option_clicked = True
                 self.page.wait_for_timeout(500)
-            except Exception:
-                # Fallback: press Enter if no dropdown option found
-                logger.warning("No dropdown option found for %s, pressing Enter", toolkit_name)
+            except Exception as e:
+                logger.warning("No dropdown option found for %s with has-text: %s", toolkit_name, e)
+
+            if not option_clicked:
+                # Try case-insensitive text match
+                try:
+                    ci_option = self.page.locator(f'[role="option"]').filter(has_text=toolkit_name).first
+                    ci_option.wait_for(state="visible", timeout=2000)
+                    ci_option.click()
+                    option_clicked = True
+                    self.page.wait_for_timeout(500)
+                except Exception:
+                    logger.warning("Case-insensitive option search also failed for %s", toolkit_name)
+
+            if not option_clicked:
+                # Try listbox item
+                try:
+                    listbox_item = self.page.locator(f'[role="listbox"] [role="option"]').first
+                    listbox_item.wait_for(state="visible", timeout=2000)
+                    listbox_item.click()
+                    option_clicked = True
+                    self.page.wait_for_timeout(500)
+                except Exception:
+                    logger.warning("Listbox option click failed for %s", toolkit_name)
+
+            if not option_clicked:
+                # Last resort: ArrowDown to select first option, then Enter
+                logger.warning("Trying ArrowDown + Enter for %s", toolkit_name)
+                add_input.press("ArrowDown")
+                self.page.wait_for_timeout(200)
                 add_input.press("Enter")
                 self.page.wait_for_timeout(500)
 
