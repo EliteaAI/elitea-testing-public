@@ -5,7 +5,17 @@ Re-exports the base client for convenient imports::
     from api import APIClient
 """
 
-from api.client import APIClient, AgentAPI, ArtifactAPI, ConversationAPI, CredentialAPI, PipelineAPI, SkillAPI, ToolkitAPI
+from api.client import (
+    AgentAPI,
+    APIClient,
+    ArtifactAPI,
+    ConversationAPI,
+    CredentialAPI,
+    NotificationAPI,
+    PipelineAPI,
+    SkillAPI,
+    ToolkitAPI,
+)
 
 __all__ = [
     "APIClient",
@@ -13,6 +23,7 @@ __all__ = [
     "ArtifactAPI",
     "ConversationAPI",
     "CredentialAPI",
+    "NotificationAPI",
     "PipelineAPI",
     "SkillAPI",
     "ToolkitAPI",
