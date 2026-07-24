@@ -194,9 +194,9 @@ not inherit from `ToolkitTestSettingsPage` — see Automation Hints.
 | 5 Click the Tool combobox dropdown | dropdown opens | step 5 | step 5 | asserted |
 | 6 Verify dropdown lists all available tools | all MCP tools listed | step 6 | step 6 | asserted — exactly 3, matching fixture |
 | 7 Select a tool | tool selected in dropdown | step 7 | step 7 | asserted |
-| 8 Verify welcome message in chat area | welcome message shown | step 8 | step 8 | asserted — exact text match confirmed live |
+| 8 Verify welcome message in chat area | welcome message shown | step 8 | step 8 | asserted — substring containment, not exact-equality (message-list container prepends sender/timestamp header metadata — **amended fix round R1**) |
 | 9 Type a test query and click RUN TOOL | tool execution triggered | step 9 | step 9 | asserted — RUN TOOL enable-on-fill + click |
-| 10 Verify response appears in chat area from the selected tool | tool response displayed | step 10 | step 10 | asserted — ✅-prefixed real content, content-poll not count-poll |
+| 10 Verify response appears in chat area from the selected tool | tool response displayed | step 10 | step 10 | asserted — ✅ success pattern found via unanchored `re.search`, not a string-start prefix match (same header-metadata-prepended reason as step 8 — **amended fix round R1**), content-poll not count-poll |
 | Expected Final State: selected tool executes successfully, response visible in chat | — | step 10 | step 10 | asserted |
 | Pass/Fail criteria: all steps complete without errors; tool runs and response appears | — | all steps | all steps | asserted — zero console errors either exploration run (one pre-existing, unrelated, already-documented MUI Tooltip-on-disabled-button warning, see Known Defects) |
 
@@ -330,6 +330,16 @@ No scope change — all three corrections were already true of the live product
 and already reflected in the shipped test code; this fix round brings the AFS
 prose in line with that confirmed reality (the reverse-masking guard: the case
 text/AFS is the hypothesis, the live product is ground truth).
+
+**Addendum (2026-07-24, implementer, same fix round R1 continuation):** the
+above three amendments corrected the step-text prose for steps 2/5/8/10 but
+left the Coverage Map (Axis 1) table cells for steps 8 and 10 unsynced — those
+rows still read "exact text match confirmed live" (step 8) and "✅-prefixed"
+(step 10), contradicting the just-amended prose two paragraphs above. No test
+code or behavior change (`test_mcp_test_settings_run_tool.py:130` already
+asserts substring containment; `:153` already uses unanchored `re.search`) —
+pure Coverage Map text sync so the table matches the prose it's supposed to
+summarize. Re-ran green locally to confirm (see Run Report in the PR).
 
 ## Automation Hints
 
