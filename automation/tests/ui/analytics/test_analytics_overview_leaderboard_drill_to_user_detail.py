@@ -20,8 +20,14 @@ for this case (see AFS Axis 2).
 
 Sibling of the standing foundation smoke check in
 ``automation/tests/ui/smoke/test_foundation_cov60_surfaces_smoke.py``
-(``test_analytics_overview_leaderboard_drill_to_user_detail_and_back``) —
-that file is NOT a substitute for this dedicated, AFS-traced spec; both stay.
+(``test_analytics_overview_leaderboard_drill_to_user_detail_and_back``), which
+exercises the near-identical flow. Fix-round review (PR #1061) flagged this
+overlap as a possible Rule-6 dedup miss — this spec predates that file's own
+docstring claim that it "is NOT a substitute," and the two were never
+reconciled by an independent extend-existing determination. Recorded as an
+open dedup question for analyst reconsideration (AFS Axis 2) rather than
+resolved unilaterally here, per the implementer contract's re-scoping
+boundary — both specs are left intact and green pending that call.
 
 Spec: test-specs/analytics/l3_overview-leaderboard-drill-to-user-detail-and-back_GAP-073.md
 GAP-073 is a coverage-gap ledger case (board `cov60`) — no onetest TMS entry;
@@ -101,6 +107,17 @@ def test_overview_leaderboard_row_drills_to_user_detail_and_back(page):
         "and all six user KPI cards are visible"
     ):
         detail_title = analytics_page.user_detail_title_text()
+        # Guard the substring check below with an explicit truthiness assert
+        # first: an empty/unpopulated title (rendering race, or a regression
+        # that mounts the title node before `data.user_email` resolves) would
+        # otherwise make `"" in captured_row_text` pass vacuously in Python,
+        # silently swallowing the exact defect this step exists to catch
+        # (fix-round finding, PR #1061).
+        assert detail_title, (
+            "User-detail title should be non-empty after the drill-down — "
+            "an empty title would make the substring check below pass "
+            "vacuously regardless of which user's row was clicked"
+        )
         assert detail_title in captured_row_text, (
             "User-detail title should match the leaderboard row that was "
             f"clicked. Title: {detail_title!r}, captured row text: "
