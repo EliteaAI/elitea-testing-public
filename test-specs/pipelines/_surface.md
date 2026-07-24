@@ -784,6 +784,80 @@ holds exactly one string. Assert on the `agent-conversation-starter-input`
 element's `.value`, never on raw `innerText` occurrence counts, for this
 field.
 
+## "Add node" menu — exhaustive 11-type enumeration, zero testids (ELITEA-2030, 2026-07-24)
+
+**The menu's node-type list is source-derived, not a fixed hardcoded array —
+confirmed to be exactly 11 entries by tracing the filter, not just by
+counting DOM nodes once.** `AddNodeMenu.jsx`'s `getVisibleNodeTypes()`
+(`src/pages/Pipelines/Components/AddNodeMenu.jsx:23-28`) takes
+`Object.keys(FlowEditorConstants.PipelineNodeTypes)` (20 KEYS: Tool, Agent,
+Pipeline, Function, LLM, Decision, Condition, Loop, LoopFromTool, Router,
+StateModifier, Toolkit, Mcp, Code, Printer, Hitl, Custom, Ghost, End, Default)
+and filters out `DeprecatedConstants.DeprecatedOrInvisibleNode` — which is
+built from `DeprecatedNodes` (Function, Condition, Pipeline, Loop,
+LoopFromTool, Tool — all deprecated per `deprecated.constants.js:39-46`) plus
+End, Ghost, Default (internal/structural, never user-addable). What survives:
+**Agent, Code, Custom, Decision, Human-in-the-loop (Hitl), LLM, MCP, Printer,
+Router, State modifier, Toolkit — exactly 11**, alphabetically sorted by
+display label (`menuItems.sort((a,b) => a.label.toLowerCase()
+.localeCompare(b.label.toLowerCase()))`, line 45), then split into two
+`<Menu>` columns via `slice(0,6)`/`slice(6)` (left: Agent, Code, Custom,
+Decision, Human-in-the-loop, LLM; right: MCP, Printer, Router, State
+modifier, Toolkit). Confirmed live: `document.querySelectorAll('[role=menuitem]').length
+=== 11`, texts exactly `["Agent","Code","Custom","Decision",
+"Human-in-the-loop","LLM","MCP","Printer","Router","State modifier","Toolkit"]`
+in that DOM order (both columns render sequentially in the DOM, left first).
+
+**Zero `data-testid` anywhere in this component** — the trigger `IconButton`
+(`AddNodeMenu.jsx:75-90`) has only a native `id="pipeline-add-node-menu-action"`
++ `aria-label="Add node"` (already-working `aria-expanded` toggle, reusable
+as a state read once the button itself has a testid); the `<Menu
+id="pipeline-add-node-menu">` root (line 91) has only a native id too; each
+`<MenuItem>` in both column loops (lines 115-134, 137-156) has `key={item.type}`
+(a React key, not a DOM attribute) and otherwise nothing. `item.type` is
+already the exact internal enum slug needed for a dynamic testid family
+(`agent`, `code`, `custom`, `decision`, `hitl`, `llm`, `mcp`, `printer`,
+`router`, `state_modifier`, `toolkit`) — trivial one-line `data-testid`
+additions on the `IconButton` + both `MenuItem` loops, zero shared-component
+edits (this whole file is feature-local, not `src/components/shared`).
+Confirmed via `git diff origin/main origin/automation/testids -- <file>` =
+empty — no other in-flight case in this batch has touched this file.
+Full wiring points + recommended testid names are in
+`test-specs/pipelines/l2_add-node-menu-lists-types-adds-node-and-dismisses_ELITEA-2030.md`'s
+Concrete Handles table — read that AFS first before adding testids here.
+
+**Selecting a type adds the node with its config panel already open — no
+separate expand step, consistent with every other node type already
+documented above.** Confirmed live for LLM: the instant the node appears
+(`rf__node-{id}` present, e.g. `rf__node-LLM 2`), its own text content
+already contains "System"/"Task"/"Chat history" (the field-group labels) —
+readable off the node's existing `rf__node-{id}` testid without needing any
+per-field testid, for a case that only needs to prove the panel is *open*
+(not edit its fields).
+
+**Tooling gotcha — clicking a full-viewport invisible backdrop by its own
+selector-computed bounding-box CENTER can silently land on a foreground popup
+item instead of "outside."** MUI's `Menu`/`Popover` backdrop
+(`.MuiBackdrop-root.MuiBackdrop-invisible`) is a real, clickable, full-viewport
+div — but a naive `clickElement(".MuiBackdrop-root")`-style helper that
+computes "the element's own bounding-box center" as the click coordinate will
+compute the VIEWPORT'S center, which is frequently exactly where the smaller
+popup `Paper` is anchored (painted on top of the backdrop at that same
+screen position). The click's real hit-target at that pixel is the
+foreground popup content, not the backdrop underneath it — confirmed this
+session: this exact mistake closed the Add-node menu AND simultaneously
+added an "Agent" node, because the backdrop's naive center coincided with
+the "Agent" `MenuItem`. Verified via `document.elementFromPoint(x, y)` that
+a point genuinely outside the popup `Paper`'s own `getBoundingClientRect()`
+correctly resolves to the true backdrop and produces a clean dismiss (no
+node added). **For any future case testing "click outside to dismiss a
+popup/menu/dialog": pick a coordinate confirmed outside the popup's own
+rect (or just prefer Escape when the case allows either), never a
+selector-center click on the backdrop element itself.**
+
+Full test steps + Concrete Handles table:
+`test-specs/pipelines/l2_add-node-menu-lists-types-adds-node-and-dismisses_ELITEA-2030.md`.
+
 ## Save/Discard dirty-tracking — a normalizing Save is required after ANY API-crafted pipeline (ELITEA-2028, 2026-07-24)
 
 **Every existing pipeline-creation API helper produces a "phantom dirty"
