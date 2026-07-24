@@ -47,7 +47,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.p1, pytest.mark.regression]
 
 SAVE_RESPONSE_TIMEOUT = 15_000
 
@@ -114,7 +114,7 @@ class TestCredentialDuplicateMismatchValidation:
         "onetest-ai Test Case link",
     )
     @allure.issue("https://github.com/EliteaAI/elitea-testing-public/issues/1004", "Known defect #1004")
-    @pytest.mark.p2
+    @pytest.mark.p1
     def test_credential_duplicate_mismatch_validation(self, page, credential_api):
         """Duplicate Display Name is rejected with the exact backend error
         message and no duplicate record is created; empty required fields
