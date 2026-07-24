@@ -96,7 +96,7 @@ def test_mcp_test_settings_select_and_run_tool(page, toolkit_api: ToolkitAPI):
             )
 
         with allure.step('Step 4 — Verify the "Tool" label and combobox dropdown are present'):
-            assert form.test_tool_select.is_enabled(), "Tool dropdown should be present and enabled"
+            expect(form.test_tool_select).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step("Step 5 — Click the Tool combobox dropdown"):
             # `test_tool_select`'s testid resolves to the MUI wrapper <div>, which

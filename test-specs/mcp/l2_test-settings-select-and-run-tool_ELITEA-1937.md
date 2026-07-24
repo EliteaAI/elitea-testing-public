@@ -93,10 +93,14 @@ not inherit from `ToolkitTestSettingsPage` — see Automation Hints.
    - **Verify**: detail page loads; page title contains the toolkit name
      (`get_detail_heading_text()`); URL is `${BASE_URL}/mcps/all/{id}`.
 2. Verify the right-side "Test Settings" panel is visible.
-   - **Verify**: the panel's static "Test Settings" heading and the Tool
-     dropdown (`toolkit-test-tool-select` testid) are both visible — confirmed
-     live, renders immediately on page load (no Load Tools click needed since
-     tools were seeded via API).
+   - **Verify**: the Tool dropdown (`toolkit-test-tool-select` testid) is
+     visible — confirmed live, renders immediately on page load (no Load
+     Tools click needed since tools were seeded via API). The panel's static
+     "Test Settings" heading is a bare `<Typography>` with no testid
+     (`TestToolSettings.jsx:125`, confirmed via `../EliteaUI/src`) and is not
+     independently asserted — the dropdown's visibility is the panel's
+     testid-backed presence signal (implementer amendment, fix round R1:
+     the AFS previously claimed both were asserted; only the dropdown is).
 3. Verify the LLM model selector shows a default model.
    - **Verify**: `model-selector-name` testid's text is non-empty. Confirmed
      live: `"Anthropic Claude 4.5 Sonnet"` this session — **assert non-empty
@@ -110,8 +114,14 @@ not inherit from `ToolkitTestSettingsPage` — see Automation Hints.
      testid and is not independently asserted (incidental static copy next to
      the already-testid'd control, not a separately "touched" element).
 5. Click the Tool combobox dropdown.
-   - **Verify**: dropdown opens (`aria-expanded` on the combobox flips to
-     `true`; a `listbox` with a search box and options becomes visible).
+   - **Verify**: dropdown opens. **Amended (fix round R1, implementer):** the
+     `test_tool_select` testid resolves to the MUI wrapper `<div>`, which
+     carries **no `aria-expanded` attribute — confirmed live, it reads
+     `null`**, so that signal does not exist on this element and cannot be
+     asserted. The actual testid-backed open signal used is a known option
+     (`get_test_tool_option(TOOL_NAME)`) becoming visible — the same handle
+     steps 6/7 use — rather than an `aria-expanded` flip or a generic
+     `listbox`/search-box role check.
 6. Verify the dropdown lists all available tools for this MCP.
    - **Verify**: exactly 3 options render, matching the fixture's 3 tools —
      `select-option-ask_question`, `select-option-read_wiki_contents`,
@@ -124,11 +134,19 @@ not inherit from `ToolkitTestSettingsPage` — see Automation Hints.
      required field, `repoName` (`toolkit-test-param-repoName`, plain text
      input).
 8. Verify the welcome message in the chat area.
-   - **Verify**: `chat-message-list`'s text is exactly `"Welcome! Select a
+   - **Verify**: `chat-message-list`'s text **contains** `"Welcome! Select a
      tool from the Test Settings panel and click 'RUN TOOL' to see the
      results here."` — confirmed live, still showing at this point (tool
      SELECTION alone does not clear/replace it; only clicking RUN TOOL does —
-     see step 10).
+     see step 10). **Amended (fix round R1, implementer):** not an exact-
+     equality match — the message-list CONTAINER's `text_content()` prepends
+     sender/timestamp header metadata (confirmed live: `"Elitealess than a
+     minute ago..."` precedes the welcome text; per
+     `.claude/rules/mui-patterns.md` § Extracting Message Text), so the
+     assertion is substring containment (`EXPECTED_WELCOME_MESSAGE in
+     welcome_text`) — same reason `ToolkitTestSettingsPage`'s own consuming
+     test (`test_toolkit_creation_create_bucket_verify_list_files.py`)
+     asserts containment, not equality, for the identical shared component.
 9. Type a test query in the tool parameters and click "RUN TOOL".
    - **Verify**: filling `repoName` with `"facebook/react"` enables the
      previously-disabled RUN TOOL button (`toolkit-test-run-tool-button`) —
@@ -136,14 +154,20 @@ not inherit from `ToolkitTestSettingsPage` — see Automation Hints.
      no debounce. Click it.
 10. Verify the response appears in the chat area from the selected tool.
     - **Verify**: `chat-message-list`'s content is **replaced in place** (not
-      appended — message count stays 1) with a result starting `"✅
+      appended — message count stays 1) with a result **containing** `"✅
       read_wiki_structure (N.NNNs)"` followed by real tool output (confirmed
       live: `"Available pages for facebook/react:"` + a real nested wiki
       table-of-contents list, 8 top-level sections). Poll for the ✅/❌ prefix
       via `expect(...).to_contain_text(re.compile(r"[✅❌]"))`, never a fixed
       sleep or a message-count delta (the count never changes) — matches
       `ToolkitTestSettingsPage.wait_for_tool_result()`'s existing pattern
-      exactly.
+      exactly. **Amended (fix round R1, implementer):** not literally
+      "starting with" the ✅ prefix — the message-list container prepends the
+      same sender/timestamp header metadata step 8 documents (confirmed
+      live: `"...Thought for 1 secautotest_1937_...: "` precedes the actual
+      `"✅ tool_name (N.NNNs)"` result), so the assertion searches for the
+      pattern (`re.search(rf"✅ {re.escape(TOOL_NAME)} \(\d", result_text)`)
+      rather than anchoring at the string start.
 
 ## Expected Results
 - The Test Settings panel renders with a default model, a working Tool
@@ -274,6 +298,38 @@ Expected Final State completed against the live local environment, twice
 
 None. All case steps were executed to completion against the live local
 environment.
+
+## Fix Round R1 — AFS amendments (2026-07-24, implementer)
+
+Reviewer finding [Important]: the implementation (`test_mcp_test_settings_run_tool.py`)
+diverges from three AFS claims that were confirmed wrong live during Phase 2
+Explore, but the AFS text wasn't updated to match in the original PR. Fixed in
+this fix round — three amendments folded into the step text above (step 2,
+step 5, step 8, step 10), each marked "Amended (fix round R1, implementer)":
+
+1. **Step 5** — AFS claimed `aria-expanded` flips to `true` on dropdown open.
+   Confirmed live: `test_tool_select`'s testid resolves to the MUI wrapper
+   `<div>`, which has no `aria-expanded` attribute at all (reads `null`). The
+   implementation (and now the AFS) uses a known option becoming visible as
+   the open signal instead.
+2. **Step 8** — AFS claimed the welcome message text is *exactly* the case
+   string. Confirmed live: the message-list container's `text_content()`
+   prepends sender/timestamp header metadata, so the implementation (and now
+   the AFS) asserts substring containment, not equality.
+3. **Step 10** — AFS claimed the result text *starts with* the ✅ prefix.
+   Confirmed live: the same header-metadata prepending applies here too, so
+   the implementation (and now the AFS) uses an unanchored `re.search` for
+   the ✅/❌ pattern, not a "starts with" check.
+
+Also folded in the reviewer's [Nit]: **step 2** overstated that the panel's
+static "Test Settings" heading is independently verified — it has no testid
+(confirmed via `../EliteaUI/src`) and the implementation only asserts the Tool
+dropdown's visibility; the AFS now says so explicitly.
+
+No scope change — all three corrections were already true of the live product
+and already reflected in the shipped test code; this fix round brings the AFS
+prose in line with that confirmed reality (the reverse-masking guard: the case
+text/AFS is the hypothesis, the live product is ground truth).
 
 ## Automation Hints
 
