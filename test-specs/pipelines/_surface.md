@@ -300,3 +300,72 @@ inside the literal same `node cdp.mjs` process invocation (rare in practice
 given the one-command-per-call shell workflow). Does not affect the real
 Playwright/pytest suite (`page.on('console')`/`page.on('response')` listeners
 run inside one long-lived context for the whole test).
+
+## Entry Point node — all 3 Trigger types + Schedule modal + cross-node-type (ELITEA-2005, 2026-07-24)
+
+Sibling findings to the ELITEA-2006 section above (same `TriggerTypeSelector.jsx`/
+`NodeCard.jsx` surface) — read that section first for the Webhook-modal-specific
+detail and the `pipeline-trigger-select` naming (reused here verbatim, confirmed
+independently to the same name by this session too).
+
+**Schedule modal — NOT previously documented here.** `PipelineScheduleModal.jsx`
+defaults to "At 00:00, only on Saturday" (`Default` radio checked, `Every [week]
+on [SAT] at [00]:[00]`, cron `0 0 * * 6`). Unlike Webhook, selecting "Schedule"
+from the Trigger select does **NOT** auto-save before the modal opens — the
+Trigger select still shows its PREVIOUS value behind the just-opened Schedule
+modal, and only the modal's own Apply click persists `type=schedule` (confirmed
+live, source-consistent with `handleTriggerTypeChange`'s `schedule` branch only
+calling `setIsScheduleModalOpen(true)`, no `updateTrigger` call, unlike the
+`webhook` branch). Zero testids anywhere in this modal either — same
+`Modal.BaseModal`/custom-`actions`-button shape as `PipelineWebhookModal.jsx`,
+same fix shape: `dataTestId` on the `Modal.BaseModal` call (~line 46, recommend
+`pipeline-schedule-modal`), a bare `data-testid` on the summary
+`<Typography>{cronState.message}</Typography>` (~line 54-59, recommend
+`pipeline-schedule-modal-summary-text`), and a bare `data-testid` on the
+same-file custom Apply `<Button>` (~line 116-124, recommend
+`pipeline-schedule-apply-button`, matching the `-apply-button` suffix style
+already used for `pipeline-webhook-apply-button`, not
+`-modal-apply-button`).
+
+**Toast-vs-display-update lag — confirmed asymmetric across all 3 types.**
+The success toast (`"Webhook/Schedule configured successfully"`, `"Trigger
+updated to Chat Message"`) fires BEFORE the Trigger select's own displayed text
+updates, by roughly 1-2s, for the **Schedule Apply** and **direct
+Chat-Message-reselect** flows (RTK-query cache-invalidation + refetch
+round-trip) — confirmed by re-reading the select's text a couple of seconds
+after the toast appeared and seeing it flip only then. The **Webhook** flow did
+NOT show this lag in this session (likely because its own auto-save + refetch
+already completed earlier, before Apply was even clicked — see the ELITEA-2006
+section above). Automation implication: never assert the Trigger select's text
+on the same tick as an Apply/select click for ANY of the 3 types — poll/retry
+(Playwright's `expect(...).to_have_text(...)` handles this natively). Not a
+product defect — final state was correct every time, only the visual-update
+timing varies.
+
+**Trigger UI works identically on a non-LLM entry-point node type.** Promoted a
+`Code` node to entry point via the existing `make_node_entrypoint()` (three-dot
+menu → "Make entrypoint") on a 2-real-node pipeline: the PREVIOUS entry-point
+node's own Trigger field disappeared the instant it stopped being the entry
+point (`NodeCard.jsx:42`'s `isEntrypoint &&` gate re-evaluated correctly), and
+the `Code` node showed the identical Trigger field + all 3 options
+(`select-option-chat_message`/`-schedule`/`-webhook`). No node-type-specific
+gating found anywhere in `TriggerTypeSelector.jsx` beyond the already-documented
+HITL/Printer/interrupts restriction (unrelated to node TYPE, related to node
+CONTENT — see that case's own AFS Preconditions).
+
+**Node-graph changes (add node / change entry point) need the pipeline's own
+"Save" click — separate from the Trigger dropdown's own dedicated auto-save.**
+Making a node the entry point and navigating away without clicking pipeline
+Save silently discards that change (confirmed live this session — had to redo
+the "Code node as entrypoint" step after an unrelated browser-instance restart
+mid-session lost the unsaved state). Same as any other node-graph edit
+(add/delete/rename) — not specific to the Trigger feature, not a defect. The
+Trigger *value* itself persists via its own separate endpoint regardless of
+whether pipeline Save is ever clicked (see ELITEA-2006 section's Network
+Behavior) — the two persistence mechanisms are fully independent.
+
+Full Concrete Handles table (exact line numbers, all 3 trigger types, both
+modals, cross-referenced against ELITEA-2006's already-specced names) is in
+`test-specs/pipelines/l3_entry-point-node-trigger-types_ELITEA-2005.md` — read
+that AFS first if implementing either this case or ELITEA-2006, since the two
+share several testids and should NOT be wired twice under different names.
