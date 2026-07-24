@@ -274,10 +274,15 @@ class TestCredentialDuplicateMismatchValidation:
                 # live (buggy) behavior as correct, per
                 # .agents/testing.md's Merge gate "Analysis-time entry".
                 # (The case's own "no asterisk on the label" observation is
-                # the same underlying defect and not independently asserted
-                # here — no stable testid exists for the label text itself,
-                # and the AFS's own Concrete Handles table does not request
-                # one; the Save-gating behavior below is the functionally
+                # the SAME underlying defect — source-traced to the same
+                # `required` boolean that gates Save — and is a DECLARED,
+                # justified gap, not independently asserted here: no
+                # sanctioned shape exists to place a testid on the asterisk
+                # (it's a literal character in a JSX label STRING, not its
+                # own DOM node, inside SecretField.jsx — a component shared
+                # by every secret/token field app-wide). See AFS "Row 6
+                # disposition note" for the full narrowing rationale; the
+                # Save-gating behavior below is the asserted, functionally
                 # decisive signal for this defect.)
                 expect.soft(create_page.save_button).to_be_disabled()
 

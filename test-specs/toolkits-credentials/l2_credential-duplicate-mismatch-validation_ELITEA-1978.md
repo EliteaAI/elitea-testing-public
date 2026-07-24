@@ -221,8 +221,35 @@
 | 3 Click Save | error "Credential with ID '...' already exists" shown | step 6 | step 6: `document.body.innerText` contains the literal message | asserted |
 | 4 Verify duplicate error/warning visible (or save prevented) | error visible to user | step 6 | step 6 (same observation as case element 3 — case's steps 3-4 describe the same single event from two angles) | asserted *(decomposed: same AFS step covers both)* |
 | 5 Attempt to save with empty required fields (e.g. Client Id or Token) | Save disabled or validation triggers | steps 7-9 | step 7: baseline (all empty) correctly disables Save; steps 8-9: the case's own named example (Token) does NOT disable Save | **step 7 asserted; steps 8-9 FAILED — defect, see Known Defects #1** |
-| 6 Verify required-field validation indicators appear, Save disabled | indicators shown, Save not allowed | step 8 | step 8: no asterisk appears next to "Access Token"; Save stays enabled | **FAILED — defect, see Known Defects #1** |
+| 6 Verify required-field validation indicators appear, Save disabled | indicators shown, Save not allowed | step 8 | step 8: Save stays enabled (`expect.soft(create_page.save_button).to_be_disabled()`) — the visual "no asterisk next to Access Token" half of this row is a **declared, narrowed gap** (see note below the table), not independently asserted | **FAILED — defect, see Known Defects #1 (Save-gating half); asterisk-indicator half NARROWED, declared gap, see note** |
 | Expected Final State: duplicate names prevented; empty required fields block saving | — | steps 1-9 | steps 1-9 jointly | **partially asserted — duplicate-detection (steps 1-6) fully correct; empty-required-field blocking (steps 7-9) correct only for statically-required fields, not for the auth-conditional Access Token field named by the case's own example** |
+
+**Row 6 disposition note (fix-round correction, reviewer finding on PR #1008,
+2026-07-24) — declared, justified gap, per `.agents/role-overrides.md` §
+Declared-improvisation protocol:** the case's Row 6 names two co-located
+observables at Step 8 — (i) Save stays enabled, (ii) no asterisk renders next
+to "Access Token." Both are driven by the exact same `required` boolean
+(source-traced: `ToolBaseProperty.jsx` passes `required={required}` into
+`SecretManagementInput`/`SecretField.jsx`, which appends `' *'` to the label
+STRING only when `required` is true — the same prop `validateRequiredFields()`
+reads to gate Save; there is no independent code path for the asterisk). (i)
+is asserted directly via the existing `save_button` testid. (ii) is **not**
+independently asserted: the asterisk is a literal character concatenated into
+a JSX string/label prop (`SecretField.jsx:264-267,280`), never its own DOM
+node — no sanctioned shape exists to give it a testid without restructuring
+`SecretField.jsx`, a component shared by every secret/token field across the
+whole app (API keys, passwords, etc.), for a single diagnostic assertion.
+Given the AFS's own Concrete Handles table already declined to request a
+testid for this indicator (see the API-error-banner row's sibling entries —
+no row exists for the label asterisk at all), and the underlying defect
+signature is unchanged whichever half is asserted (same `required=false`
+root cause, same filed ticket #1004), this AFS narrows Row 6 to the
+Save-gating half as the implemented, asserted disposition, and records the
+asterisk half as a declared, justified gap rather than an unasserted claim.
+**No application code changed to accommodate this** — this is a documentation/
+scope correction, not a masking of the underlying defect (both the Save-
+disabled and Save-enabled outcomes remain live-contract, deterministic,
+soft-asserted, and `#1004`-linked either way).
 
 ### Axis 2 — Analyst additions
 
