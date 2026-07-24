@@ -239,6 +239,23 @@ class PipelineDetailPage(PipelineFormPage):
         description="Webhook settings modal Apply button"
     )
 
+    # Entry-point node — Schedule settings modal (ELITEA-2005). Sibling of the
+    # Webhook settings modal above, added via the same add-data-testid pass
+    # (PipelineScheduleModal.jsx — Modal.BaseModal `data-testid` prop, same
+    # mechanism as pipeline-webhook-modal).
+    schedule_modal = LocatorDescriptor(
+        testid="pipeline-schedule-modal",
+        description="Schedule settings modal (dialog root)"
+    )
+    schedule_modal_summary_text = LocatorDescriptor(
+        testid="pipeline-schedule-modal-summary-text",
+        description='Schedule modal cron summary text (e.g. "At 00:00, only on Saturday")'
+    )
+    schedule_apply_button = LocatorDescriptor(
+        testid="pipeline-schedule-apply-button",
+        description="Schedule settings modal Apply button"
+    )
+
     # TOOLS section (ELITEA-1955). ApplicationTools.jsx / ToolMenu.jsx is a
     # shared component reused by both Agent and Pipeline detail forms
     # (confirmed via PipelineConfigurationForm.jsx import) — same testids as
@@ -1143,10 +1160,10 @@ class PipelineDetailPage(PipelineFormPage):
         "custom": "webhook_type_radio_custom",
     }
 
-    def select_trigger_type(self, value: str, timeout: int = 10000) -> dict:
+    def select_trigger_type(self, value: str, timeout: int = 10000) -> dict | None:
         """Open the entry-point node's Trigger select and choose *value*.
 
-        Selecting any non-default trigger type fires a `PUT
+        Selecting ``"webhook"`` or ``"chat_message"`` fires a `PUT
         .../pipeline_trigger/.../trigger` immediately — this waits on that
         response, not a fixed sleep (`.claude/rules/ui-tests.md` § Wait
         Patterns). Selecting ``"webhook"`` additionally opens the Webhook
@@ -1155,16 +1172,28 @@ class PipelineDetailPage(PipelineFormPage):
         call, `TriggerTypeSelector.jsx`) — callers wait on ``webhook_modal``
         separately after this returns.
 
+        Selecting ``"schedule"`` is DIFFERENT (ELITEA-2005, source-confirmed):
+        `handleTriggerTypeChange` only calls `setIsScheduleModalOpen(true)` —
+        a synchronous local-state update, no awaited mutation — so no PUT
+        fires until the Schedule modal's own Apply is clicked. This method
+        returns ``None`` for ``"schedule"`` rather than waiting on a response
+        that will never arrive; callers wait on ``schedule_modal`` separately.
+
         Args:
             value: One of ``"chat_message"``, ``"schedule"``, ``"webhook"``.
             timeout: Maximum wait time in milliseconds.
 
         Returns:
-            Parsed JSON body of the trigger-update PUT response.
+            Parsed JSON body of the trigger-update PUT response, or ``None``
+            when *value* is ``"schedule"`` (no auto-save on selection).
         """
         self.trigger_select.click(timeout=timeout)
         option = self.page.locator(self.SELECT_OPTION.format(value))
         option.wait_for(state="visible", timeout=timeout)
+
+        if value == "schedule":
+            option.click(timeout=timeout)
+            return None
 
         with self.page.expect_response(
             lambda r: "/pipeline_trigger/" in r.url and r.request.method == "PUT",
@@ -1309,6 +1338,52 @@ class PipelineDetailPage(PipelineFormPage):
         """
         self.webhook_cancel_button.click(timeout=timeout)
         self.webhook_modal.wait_for(state="hidden", timeout=timeout)
+
+    def wait_for_schedule_settings_loaded(self, timeout: int = 10000) -> None:
+        """Wait for the Schedule settings modal to be visible.
+
+        Unlike the Webhook modal, the Schedule modal's content is pure local
+        component state (`cronExpression`/`cronType`, defaulted from the
+        `cron` prop) — nothing here waits on a network refetch, so waiting
+        on the modal root is sufficient.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.schedule_modal.wait_for(state="visible", timeout=timeout)
+
+    def get_schedule_summary_text(self, timeout: int = 5000) -> str:
+        """Read the Schedule modal's cron summary text (e.g. "At 00:00, only on Saturday").
+
+        Args:
+            timeout: Maximum wait time for the element to be visible.
+        """
+        self.schedule_modal_summary_text.wait_for(state="visible", timeout=timeout)
+        return (self.schedule_modal_summary_text.text_content() or "").strip()
+
+    def apply_schedule_settings(self, timeout: int = 10000) -> dict:
+        """Click Apply in the Schedule settings modal; wait for the trigger PUT.
+
+        `PipelineScheduleModal.applyChanges` calls `onSubmit(cronExpression)`
+        (a Promise, NOT awaited) then `onClose()` synchronously — same
+        close-before-mutation-resolves shape already confirmed for the
+        Webhook modal's Apply (see :meth:`apply_webhook_settings`), so this
+        waits on the actual `PUT .../pipeline_trigger/.../trigger` response
+        rather than the modal merely closing.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the trigger-update PUT response.
+        """
+        with self.page.expect_response(
+            lambda r: "/pipeline_trigger/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as response_info:
+            self.schedule_apply_button.click(timeout=timeout)
+        self.schedule_modal.wait_for(state="hidden", timeout=timeout)
+        return response_info.value.json()
 
     # ------------------------------------------------------------------
     # TOOLS section — MCP attach (ELITEA-1955)
