@@ -321,6 +321,57 @@ class PipelineDetailPage(PipelineFormPage):
     # testid-keyed, not a raw role/CSS selector.
     SELECT_OPTION_PREFIX = '[data-testid^="select-option-"]'
 
+    # ------------------------------------------------------------------
+    # Node select/menu/delete locators (ELITEA-2018)
+    # ------------------------------------------------------------------
+
+    # Node container — `@xyflow/react`'s own library-level testid
+    # convention (not app JSX), same family as `canvas_wrapper`
+    # (`rf__wrapper`) above. Dynamic (runtime-parameterized) testid — class-
+    # level template constant per .agents/testing.md § Locator policy.
+    NODE_CONTAINER = '[data-testid="rf__node-{}"]'
+
+    # Edge prefix match — same `@xyflow/react` library-level testid family
+    # as NODE_CONTAINER, used to enumerate every edge currently on the
+    # canvas (testid-based; deliberately NOT the raw `.react-flow__edge`
+    # CSS class the pre-existing `edge_exists`/`get_edge_count` use).
+    EDGE_PREFIX_SELECTOR = '[data-testid^="rf__edge-xy-edge__"]'
+
+    # Node title/name label — added via add-data-testid (ELITEA-2018,
+    # NodeCardHeader.jsx). Shared/non-unique across every node on the
+    # canvas (same disambiguation-by-container-scoping pattern as
+    # `node-menu-menu-button` below). Clicking it both selects the node
+    # (ReactFlow's own `.selected` class) AND moves real DOM focus onto the
+    # node's own `[tabindex="0"]` container — required for the keyboard-
+    # Delete path, see `select_node()`.
+    NODE_TITLE_LABEL_SELECTOR = '[data-testid="pipeline-node-title-label"]'
+
+    # Node's three-dot menu button — pre-existing app testid
+    # (`DotMenu.jsx`/`NodeCardHeader.jsx`), shared/non-unique across every
+    # node (confirmed live: 2 identical hits on a 2-menu-having-node
+    # canvas) — container-scoping via NODE_CONTAINER is required.
+    NODE_MENU_BUTTON_SELECTOR = '[data-testid="node-menu-menu-button"]'
+
+    # "Delete" menu item — added via add-data-testid (ELITEA-2018,
+    # NodeCardHeader.jsx `menuItems` — `key: 'pipeline-node-delete'` on all
+    # 3 mutually-exclusive branches; `DotMenu.jsx` already renders per-item
+    # testids as `{key}-menuitem`, so this is the only JSX change needed).
+    # Only one node's menu (and therefore this item) is ever open at a
+    # time, so a page-wide match is unambiguous.
+    NODE_DELETE_MENUITEM_SELECTOR = '[data-testid="pipeline-node-delete-menuitem"]'
+
+    # Delete-confirmation dialog's field-level testids (pre-existing,
+    # `DeleteEntityModal.jsx`). The dialog ROOT does NOT itself carry a
+    # testid usable to scope `[role="dialog"]` (MUI applies
+    # `delete-confirm-dialog` to an ancestor wrapper, not the inner Paper
+    # that carries `role="dialog"` — confirmed live, ELITEA-2018 AFS
+    # Concrete Handles) — use the existing `Dialog.wait_for()` helper
+    # (components/mui.py, already imported above) to find the visible
+    # dialog, then these testids to read/act on its fields.
+    DELETE_CONFIRM_TITLE_SELECTOR = '[data-testid="delete-confirm-title"]'
+    DELETE_CONFIRM_MESSAGE_SELECTOR = '[data-testid="delete-confirm-message"]'
+    DELETE_CONFIRM_BUTTON_SELECTOR = '[data-testid="delete-confirm-button"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -645,14 +696,38 @@ class PipelineDetailPage(PipelineFormPage):
         newlines, so we use yaml_lines descriptor to extract each line
         and join with newlines.
 
+        ELITEA-2018: the app-added `pipeline-yaml-lines` testid tagging on
+        each `.cm-line` can lag behind CodeMirror's own render pass right
+        after a Flow-view state change (observed: 0 tagged lines even after
+        an explicit `wait_for`, while CodeMirror's native `.cm-line` divs
+        already hold the real, correctly-rendered content). When the
+        testid-tagged count is 0, this now falls back to CodeMirror's own
+        `.cm-line` nodes — a scoped raw handle inside the already-testid'd
+        `yaml_editor` parent, sanctioned per the #579 third-party-editor-
+        internals exception (`.agents/testing.md` § Locator policy) — before
+        giving up to the single-blob `text_content()` branch, which (for
+        THIS editor) concatenates the line-number gutter digits and
+        fold-toggle glyphs into the string with no newlines, producing
+        unparseable YAML. Purely additive: existing callers, which already
+        only ever observed `line_count > 0` via the testid path, see no
+        behavior change.
+
         Returns:
             The text content of the YAML editor with preserved line breaks.
         """
         self.yaml_editor.wait_for(state="visible", timeout=5000)
         line_count = self.yaml_lines.count()
-        if line_count == 0:
-            return self.yaml_editor.text_content() or ""
-        return "\n".join(self.yaml_lines.nth(i).text_content() or "" for i in range(line_count))
+        if line_count > 0:
+            return "\n".join(self.yaml_lines.nth(i).text_content() or "" for i in range(line_count))
+
+        # Sanctioned scoped-raw-handle exception (#579): CodeMirror's own
+        # per-line divs, scoped inside the `yaml_editor` testid parent.
+        native_lines = self.yaml_editor.locator(".cm-line")
+        native_count = native_lines.count()
+        if native_count > 0:
+            return "\n".join(native_lines.nth(i).text_content() or "" for i in range(native_count))
+
+        return self.yaml_editor.text_content() or ""
 
     # ------------------------------------------------------------------
     # ReactFlow canvas — node management
@@ -753,44 +828,139 @@ class PipelineDetailPage(PipelineFormPage):
         logger.info("Node '%s' visible on canvas (id=%s)", node_type, node_id)
         return node_id
 
+    def select_node(self, node_id: str, timeout: int = 5000) -> None:
+        """Select AND DOM-focus a node by clicking its title/name label.
+
+        Clicking the node's own title/name label (`pipeline-node-title-label`)
+        — rather than the card's bounding-box center, which can land on an
+        inner MUI Select/Input field — is what reliably (a) gives the node
+        ReactFlow's `selected` CSS class and (b) moves real DOM focus onto
+        the node's own `[tabindex="0"]` container. (b) matters for the
+        keyboard-Delete path: the app's global Delete-key listener
+        (`useDeleteItems.hooks.js`) only reacts while a node itself holds
+        `document.activeElement` — a click landing on an inner field instead
+        focuses that field and silently no-ops the Delete key (ELITEA-2018
+        AFS Automation Hints).
+
+        Args:
+            node_id: The node's data-id (e.g. "Code 1").
+            timeout: Maximum wait time for the title label to be visible.
+        """
+        title_label = self.page.locator(self.NODE_CONTAINER.format(node_id)).locator(
+            self.NODE_TITLE_LABEL_SELECTOR
+        )
+        title_label.wait_for(state="visible", timeout=timeout)
+        title_label.click()
+
+    def is_node_selected(self, node_id: str) -> bool:
+        """Return True if *node_id*'s container carries ReactFlow's `selected` class.
+
+        Args:
+            node_id: The node's data-id.
+        """
+        classes = self.page.locator(self.NODE_CONTAINER.format(node_id)).get_attribute("class") or ""
+        return "selected" in classes.split()
+
+    def any_edge_touches_node(self, node_id: str) -> bool:
+        """Return True if any edge's testid references *node_id* as source or target.
+
+        A coarser check than :meth:`edge_exists` (which needs a specific
+        source/target pair) — scans every edge testid for a substring match
+        on *node_id*, so it catches removal of ALL of a deleted node's
+        edges regardless of how many it had (ELITEA-2018 AFS step 4).
+
+        Args:
+            node_id: The node's data-id.
+        """
+        edges = self.page.locator(self.EDGE_PREFIX_SELECTOR)
+        for i in range(edges.count()):
+            testid = edges.nth(i).get_attribute("data-testid") or ""
+            if node_id in testid:
+                return True
+        return False
+
+    def open_node_menu(self, node_id: str, timeout: int = 5000) -> None:
+        """Open a node's own three-dot menu.
+
+        Scoped inside the node's `rf__node-{id}` container —
+        `node-menu-menu-button` is shared/non-unique across every node on
+        the canvas (confirmed live: 2 identical hits on a 2-menu-having-
+        node canvas), so container-scoping is required to target a
+        SPECIFIC node's menu. Does not itself wait for the menu popup to
+        render — `click_delete_in_node_menu()`'s own wait on the testid-
+        keyed `pipeline-node-delete-menuitem` is the "menu is open" signal,
+        so no additional (non-testid, role-based) menu-popup wait is
+        needed here.
+
+        Args:
+            node_id: The node's data-id.
+            timeout: Maximum wait time for the button to be clickable.
+        """
+        node = self.page.locator(self.NODE_CONTAINER.format(node_id))
+        node.locator(self.NODE_MENU_BUTTON_SELECTOR).click(timeout=timeout)
+
+    def click_delete_in_node_menu(self, timeout: int = 5000) -> Locator:
+        """Click "Delete" in an already-open node menu; return the confirmation dialog.
+
+        Args:
+            timeout: Maximum wait time for the menu item / dialog.
+
+        Returns:
+            The visible `[role="dialog"]` confirmation-dialog Locator (see
+            `Dialog.wait_for` — the dialog root carries no testid of its
+            own, ELITEA-2018 AFS Concrete Handles).
+        """
+        delete_item = self.page.locator(self.NODE_DELETE_MENUITEM_SELECTOR)
+        delete_item.wait_for(state="visible", timeout=timeout)
+        delete_item.click()
+        return Dialog.wait_for(self.page, timeout=timeout)
+
+    def confirm_node_delete(self, dialog: Locator, timeout: int = 5000) -> None:
+        """Click Delete in an already-open node-delete confirmation dialog.
+
+        Waits for the dialog to close rather than a fixed sleep. Source-confirmed
+        (`useDeleteItems.hooks.js` `onConfirmDelete`): the node/edge/YAML state
+        removal (`onDelete(...)`) and the dialog close (`setShowDeleteConfirmDlg
+        (false)`) are both `setState` calls fired synchronously in the same
+        click handler, so React batches them into one re-render — once the
+        dialog has visually closed, the canvas's node list has already updated
+        in that same commit too.
+
+        Args:
+            dialog: The dialog Locator returned by `click_delete_in_node_menu`
+                (or by `Dialog.wait_for` after a keyboard-Delete trigger).
+            timeout: Maximum wait time for the dialog to close.
+        """
+        dialog.locator(self.DELETE_CONFIRM_BUTTON_SELECTOR).click()
+        dialog.wait_for(state="hidden", timeout=timeout)
+
     def delete_node(self, node_id: str, timeout: int = 5000):
         """Delete a node from the canvas via its three-dot header menu.
 
-        Each node has two header icon buttons (no aria-labels). The
-        second one (the three-dot ⋮ icon) opens a menu containing
-        a Delete item. Clicking Delete shows a confirmation dialog
-        with Cancel / Delete buttons.
+        Opens the node's own three-dot menu (`node-menu-menu-button`,
+        scoped inside its `rf__node-{id}` container), clicks "Delete"
+        (`pipeline-node-delete-menuitem`), and confirms the "Delete
+        confirmation" dialog via its own `delete-confirm-button` testid.
+
+        ELITEA-2018: rewritten to use the confirmed testid-scoped locators
+        instead of the prior positional `evaluate()`-based click on the
+        2nd `button.MuiIconButton-colorTertiary` + text-based
+        `Dialog.click_button` — this method had zero merged callers before
+        this case (`grep -rn "delete_node\\b" automation/tests/` = 0 hits),
+        so rewriting it in place carries no shared-caller regression risk.
+        Callers needing to assert on the dialog's content mid-flow (e.g.
+        the confirmation title/message) should use `open_node_menu()` +
+        `click_delete_in_node_menu()` + `confirm_node_delete()` directly
+        instead of this all-in-one convenience wrapper.
 
         Args:
             node_id: The data-id of the node to delete.
             timeout: Maximum wait time for menu / dialog to appear.
         """
         logger.info("Deleting node: %s", node_id)
-
-        # Click the three-dot button (second MuiIconButton-colorTertiary)
-        # via JS to avoid pointer interception from overlapping nodes.
-        self.page.evaluate(
-            """(nodeId) => {
-                const node = document.querySelector(`[data-id="${nodeId}"]`);
-                const btns = node.querySelectorAll(
-                    'button.MuiIconButton-colorTertiary'
-                );
-                if (btns[1]) btns[1].click();
-            }""",
-            node_id,
-        )
-        self.page.wait_for_timeout(300)
-
-        # Click "Delete" in the menu
-        delete_item = self.page.get_by_role("menuitem", name="Delete")
-        delete_item.wait_for(state="visible", timeout=timeout)
-        delete_item.click()
-        self.page.wait_for_timeout(300)
-
-        # Confirm the "Are you sure to delete this node?" dialog
-        dialog = Dialog.wait_for(self.page, timeout=timeout)
-        Dialog.click_button(dialog, "Delete")
-        self.page.wait_for_timeout(500)
+        self.open_node_menu(node_id, timeout=timeout)
+        dialog = self.click_delete_in_node_menu(timeout=timeout)
+        self.confirm_node_delete(dialog)
         logger.info("Deleted node: %s", node_id)
 
     def make_node_entrypoint(self, node_id: str, timeout: int = 5000):
@@ -1682,6 +1852,19 @@ class PipelineDetailPage(PipelineFormPage):
             - LLM 1 -> Code 1: rf__edge-xy-edge__LLM 1source-Code 1target
             - HITL 1 reject -> END: rf__edge-xy-edge__HITL 1reject-ENDtarget
 
+        ELITEA-2018 additive extension: an edge auto-derived from a
+        pipeline's YAML `transition:`/`entry_point` graph (as opposed to a
+        user-dragged connection, which is what the id shape above was
+        written for) assigns the END node's edge-endpoint id as the
+        literal string `EliteAPipelineEnd`, not `END` — e.g.
+        `rf__edge-xy-edge__Code 1---EliteAPipelineEnd`. A plain
+        `target_id="END"` call then finds nothing for such edges. When the
+        check above finds no match AND the caller asked for `target_id ==
+        "END"`, this method now retries once with the aliased id. Existing
+        callers passing `"END"` for a drag-created connection (whose id
+        already matches on the first pass) are unaffected — this is a
+        pure fallback, never a replacement of the original match.
+
         Args:
             source_id: data-id of the source node.
             target_id: data-id of the target node.
@@ -1691,6 +1874,14 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             True if the edge exists in the DOM.
         """
+        if self._edge_matches(source_id, target_id, handle_suffix):
+            return True
+        if target_id == "END":
+            return self._edge_matches(source_id, "EliteAPipelineEnd", handle_suffix)
+        return False
+
+    def _edge_matches(self, source_id: str, target_id: str, handle_suffix: str | None) -> bool:
+        """Single-pass edge-testid match — see `edge_exists` for the public API."""
         edges = self.page.locator('.react-flow__edge')
         edge_count = edges.count()
         logger.debug("Looking for edge: %s -> %s (total edges: %d)", source_id, target_id, edge_count)
