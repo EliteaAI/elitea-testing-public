@@ -331,6 +331,16 @@ class TestCreatePrivateCredentialFromToolkitDropdown:
                 "open from step 4/6 (the Select never closes after a CREATE-action "
                 "click); the pre-refresh Saved list is stale"
             ):
+                headers_still_open = toolkit_page.configuration_group_headers(FIELD_KEY)
+                assert headers_still_open.count() == 2, (
+                    "Configuration dropdown should still be open/rendered (CREATE + "
+                    f"Saved group headers), got {headers_still_open.count()}"
+                )
+                assert headers_still_open.first.is_visible(), (
+                    "First group header should be visible — the menu is still open, "
+                    "not merely present in the DOM"
+                )
+
                 pre_refresh_option = toolkit_page.saved_credential_option(display_name, private=True)
                 assert pre_refresh_option.count() == 0, (
                     "New credential should NOT appear before an explicit Refresh"
@@ -432,3 +442,13 @@ class TestCreatePrivateCredentialFromToolkitDropdown:
                     logger.info("Deleted credential id=%s", credential_id)
                 except Exception as exc:
                     logger.warning("Failed to delete credential %s: %s", credential_id, exc)
+
+            # Close the manually-constructed, project-scoped API sessions —
+            # they're built ad hoc here (not via the shared `credential_api`/
+            # `toolkit_api` fixtures) precisely because this case needs THREE
+            # distinct project scopings, so no fixture teardown closes them.
+            for api_client in (team_toolkit_api, team_credential_api, personal_credential_api):
+                try:
+                    api_client.close()
+                except Exception as exc:
+                    logger.warning("Failed to close API client %s: %s", api_client, exc)
