@@ -919,6 +919,38 @@ genuinely virgin ground, first case to touch it.
   dedicated "generate table" endpoint — the table is just markdown that
   happens to parse into a grid.
 
+**AFS redispatch addendum (2026-07-24)** — the original ELITEA-2086 AFS this
+digest section was written for was never actually committed to disk (analyst
+has no commit authority over `test-specs/` case files, only this digest —
+see `analyst_slot_has_no_git_commit_authority.md`; the prior session's
+dispatch worktree has since been reused for unrelated work). A redispatch
+reconstructed the AFS fresh at
+`test-specs/chat-interface/l3_edit-generated-table-in-canvas-mode-verify-editor-display_ELITEA-2086.md`,
+confirming every claim above live a second time (2/2 reproducible on an
+independent open→close→reopen cycle) and surfacing one genuinely NEW finding
+this section didn't previously record:
+
+- **Reproducible (2/2) console `error`, not just a warning, fires on EVERY
+  canvas mount**: `MUI X: useResizeContainer - The parent DOM element of the
+  Data Grid has an empty height ... The grid displays with a height of 0px`
+  (link: `https://mui.com/r/x-data-grid-no-dimensions`). Despite the error
+  text, the grid does NOT actually render at 0px — all rows/columns/
+  pagination confirmed correct a frame later, both times. Root cause is a
+  first-paint layout race: `useResizeContainer` measures the parent
+  container's height before the canvas's own flex layout (which includes a
+  resizable divider) has completed its layout pass. Non-blocking (filed
+  [EliteaAI/elitea-testing-public#1054](https://github.com/EliteaAI/elitea-testing-public/issues/1054),
+  MINOR) — any future case on this canvas asserting "zero console errors"
+  must explicitly exclude this one known line, same established pattern as
+  the `#291` React key-prop warning already excluded on the sibling
+  Toolkit-canvas type-picker.
+- **Grid cells render the LLM's raw markdown source literally** (e.g.
+  `**Apple**`, asterisks included), confirmed via `textContent` on a
+  `[data-field="Company"]` cell — distinct from the read-only message-bubble
+  table, which DOES render the bold. Not a defect (the grid is the editable
+  *data* view), but a future case asserting exact cell text against the GRID
+  specifically needs to expect the raw markdown form, not the rendered one.
+
 ## In-chat "Build with AI" (Agent) — ELITEA-2073 full findings
 
 - **The Build-with-AI modal is the SAME shared component/testids** whether
