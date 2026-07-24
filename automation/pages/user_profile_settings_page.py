@@ -6,9 +6,12 @@ Handles the /user-settings/profile page, specifically:
 And the /settings/personalization page:
 - Voice Personalization section (voice, speed, volume, preview)
 
+And the /settings/preferences page:
+- Theme toggle (Dark/Light), persisted to localStorage['mode'] (GAP-020)
+
 Changes on these pages autosave — there is no explicit Save button.
 
-URL: /user-settings/profile, /settings/personalization
+URL: /user-settings/profile, /settings/personalization, /settings/preferences
 """
 
 import logging
@@ -79,6 +82,23 @@ class UserProfileSettingsPage(BasePage):
             "Numeric input for Preserve Recent Messages. "
             "Located as the second textbox inside the Default Context Management section."
         ),
+    )
+
+    # ------------------------------------------------------------------
+    # Preferences — Theme toggle (GAP-020)
+    # Testid = stable identity; state (selected/not) is read via the
+    # native ARIA aria-pressed attribute MUI sets on ToggleButton, per
+    # .agents/testing.md "testid = stable identity, state via attribute".
+    # ------------------------------------------------------------------
+
+    preferences_theme_dark_toggle = LocatorDescriptor(
+        testid="preferences-theme-dark-toggle",
+        description="'Dark' theme toggle button on /settings/preferences",
+    )
+
+    preferences_theme_light_toggle = LocatorDescriptor(
+        testid="preferences-theme-light-toggle",
+        description="'Light' theme toggle button on /settings/preferences",
     )
 
     # ------------------------------------------------------------------
@@ -571,3 +591,90 @@ class UserProfileSettingsPage(BasePage):
             "speed": self.get_speed_value(),
             "volume": self.get_volume_value(),
         }
+
+    # ------------------------------------------------------------------
+    # Preferences — Theme toggle (GAP-020)
+    # ------------------------------------------------------------------
+
+    def navigate_to_preferences(self) -> None:
+        """Navigate to /settings/preferences and wait for the Theme section.
+
+        The General accordion (containing the Theme toggle) is expanded by
+        default (``defaultExpanded``) — no click needed.
+        """
+        self.navigate("/settings/preferences")
+        self.preferences_theme_dark_toggle.wait_for(state="visible", timeout=15000)
+        logger.info("Navigated to Preferences settings page")
+
+    def _theme_toggle(self, mode: str):
+        """Return the toggle Locator for *mode* ('dark' or 'light')."""
+        mode = mode.lower()
+        if mode == "dark":
+            return self.preferences_theme_dark_toggle
+        if mode == "light":
+            return self.preferences_theme_light_toggle
+        raise ValueError(f"Unknown theme mode: {mode!r} (expected 'dark' or 'light')")
+
+    @action("Click theme toggle")
+    def click_theme_toggle(self, mode: str) -> None:
+        """Click the Dark or Light theme toggle button.
+
+        MUI's ToggleButtonGroup is exclusive — clicking the ALREADY-active
+        button is a confirmed no-op (no dispatch, no localStorage write, no
+        repaint; GAP-020 Precondition/step-5 finding). Callers that need a
+        guaranteed flip should check :meth:`is_theme_selected` first.
+
+        Args:
+            mode: 'dark' or 'light'.
+        """
+        logger.info("Clicking theme toggle: %s", mode)
+        self._theme_toggle(mode).click()
+        self.page.wait_for_timeout(300)  # pure client-side repaint, no network
+
+    def is_theme_selected(self, mode: str) -> bool:
+        """Return True if the *mode* toggle button is currently selected.
+
+        Reads the native ``aria-pressed`` attribute MUI sets on the
+        underlying ToggleButton (testid = stable identity, state via
+        attribute — no separate '-selected' testid).
+
+        Args:
+            mode: 'dark' or 'light'.
+        """
+        pressed = self._theme_toggle(mode).get_attribute("aria-pressed")
+        return pressed == "true"
+
+    def get_theme_mode_from_storage(self) -> str | None:
+        """Return ``localStorage.getItem('mode')`` ('dark' | 'light' | None).
+
+        None means the key is absent (app then defaults to Dark at runtime;
+        it is NOT pre-seeded as the literal string 'dark' — GAP-020
+        Precondition finding).
+        """
+        return self.page.evaluate("() => localStorage.getItem('mode')")
+
+    def set_theme_mode_in_storage(self, value: str | None) -> None:
+        """Restore ``localStorage['mode']`` to *value* (or remove the key).
+
+        Used in test cleanup to put storage back exactly as found —
+        writing the literal string 'dark' when the key started absent
+        would leave storage in a state a fresh user never has.
+
+        Args:
+            value: 'dark', 'light', or None to remove the key entirely.
+        """
+        if value is None:
+            self.page.evaluate("() => localStorage.removeItem('mode')")
+        else:
+            self.page.evaluate("(v) => localStorage.setItem('mode', v)", value)
+
+    def get_body_background_color(self) -> str:
+        """Return ``getComputedStyle(document.body).backgroundColor``.
+
+        Dark mode explicitly sets an override (``rgb(14, 19, 29)``); Light
+        mode removes the override entirely, reading back as the browser
+        default ``rgba(0, 0, 0, 0)`` (transparent) — assert the
+        dark/transparent TRANSITION, never a literal "light" color
+        (GAP-020 palette-assertion finding).
+        """
+        return self.page.evaluate("() => getComputedStyle(document.body).backgroundColor")
