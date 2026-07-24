@@ -62,7 +62,8 @@ with the embedded chat view (`ConfigurationTab.jsx`:
 | Purpose | Testid | Status |
 |---|---|---|
 | "View run history" button (clock icon) | `pipeline-history-tab` | **on-main ✓** (pre-existing). Misleadingly named (leftover from the Pipelines call site) — shared by `ViewRunHistoryButton.jsx`, reused identically by Agent/Pipeline/Toolkit/MCP. Not a new finding; out of scope to rename per-case. |
-| Run History list row (click to select a run) | — | **needs-adding** (`RunHistoryListItem.jsx:141-144`, the outer clickable `Box`). Grepped the entire `entities/run-history/` tree — zero `data-testid` anywhere. Suggested: dynamic `run-history-item-{conversationId}` (generic name — shared component, not agent-specific) + `data-selected="true"/"false"` state attribute (per `.agents/testing.md` state-via-data-attribute policy). |
+| Run History panel heading (`<Typography>Run History</Typography>`) | `run-history-panel-heading` | **on-automation/testids only** (`EliteaAI/EliteaUI@1a684045`, awaiting human cherry-pick to `main`) — added during ELITEA-1877 implementation; static, one heading per panel. `AgentDetailPage.run_history_panel_heading` field / `open_run_history_panel()`. |
+| Run History list row (click to select a run) | `run-history-item-{id}` | **on-automation/testids only** (`EliteaAI/EliteaUI@8d25a19c`, awaiting human cherry-pick to `main`) — `RunHistoryListItem.jsx:141-144`'s outer clickable `Box`, dynamic by conversation id, generic name (shared component, not agent-specific) + `data-selected="true"/"false"` state attribute (per `.agents/testing.md` state-via-data-attribute policy). `AgentDetailPage.RUN_HISTORY_ITEM_ANY_SELECTOR` template / `click_run_history_item()` / `is_run_history_item_selected()`. **Gap closed** — superseded the prior `needs-adding` entry. |
 | Run History chat pane (shows selected run's messages) | `chat-message-list` / `chat-message-item` | **on-main ✓, no gap** — `RunHistoryChat.jsx` reuses the same shared `ChatMessageList` component as the live embedded chat; since the two views are mutually exclusive, the existing `chat_message_list` field/`_embedded_chat_messages()` helper work unchanged while the panel is open. |
 | Run History panel close ("X") button | — | needs-adding IF a case ever tests closing the panel; not needed for ELITEA-1877. Aria-label is `"clear the chat"` (copy-paste bug, see above) — don't rely on it. |
 | Sort headers (Date/Version/Duration) | — | needs-adding IF a case ever tests sorting; not needed for ELITEA-1877. |
@@ -78,6 +79,31 @@ false-alarm caused by an ambiguous raw CSS selector during exploration
 (`.css-1o16zsr` is shared by both unselected rows — MUI-emotion hashes
 identical computed `sx` to the same class; **never use this as a locator**,
 it's exactly the kind of handle the testid-only policy exists to prevent).
+
+**List-fetch race — the panel heading is NOT proof the row list has loaded
+(implementer finding, confirmed live, re-verified by analyst re-run
+2026-07-24).** Opening the panel fires the LIST query
+(`RunHistoryApi.useLazyGetRunHistoryListQuery`,
+`GET /elitea_core/conversations/prompt_lib/{project_id}`) asynchronously;
+`run_history_panel_heading` is static markup that renders immediately,
+independent of that query's resolution. Reading row count right after the
+heading becomes visible races the fetch — observed once: 0 rows / skeleton
+placeholders. **`open_run_history_panel()` must wait on the LIST response**
+(`page.expect_response` matching the conversations-list endpoint) before
+returning, and `get_run_history_item_count()` should additionally wait for
+the first row's visibility before counting — never wait on the heading
+alone. Durable pattern, also logged to
+`.agents/memory/test-automation-engineer/` (curated entry:
+`elitea_1877_run_history_list_fetch_race_and_heading_is_not_proof_of_data.md`).
+
+**Re-verification (analyst re-dispatch, 2026-07-24):** the full implemented
+test (`tests/ui/agents/test_agent_select_past_run_loads_chat_messages.py`,
+branch `tests/ELITEA-1877-select-past-run-loads-chat-messages`) was re-run
+live end-to-end against `localhost:5173` — **1 passed in 136.44s**, zero
+flakiness. AFS, page-object additions, and both testids above (already on
+`automation/testids`, awaiting human cherry-pick to `main`) are confirmed
+current and accurate; no changes needed to either the AFS or the surface
+digest beyond recording the two testids' provenance here.
 
 ## LLM model selector + Settings dialog (embedded chat panel, `LLMModelSelector.jsx` widget)
 
