@@ -78,3 +78,69 @@ independently verified (paste the git diff/gh output, don't just say
 next actor — usually the orchestrator's hardening gate + merge, not another
 implementer or reviewer dispatch, unless your own verification uncovered a
 real gap the existing artifacts don't cover.
+
+## Addendum (ELITEA-1890, PR #997, 4th implementer-slot dispatch for this
+same case, 2026-07-24) — the case had ALREADY reached reviewer-APPROVED, and
+`mergeable: CONFLICTING` is not automatically a real blocker
+
+This instance is one rung further than the ELITEA-1877 original: board
+`case.md` History showed the FULL cycle already completed — `implementing` →
+`ready-for-review` → `approved-static` (00:46:19Z, static review APPROVED,
+matching qa-engineer's own fresh-session reviewer-slot log for this exact
+PR/fix-round) — then bounced back to `analysis` → `ready-for-automation` →
+`implementing` (this dispatch) with **zero recorded reason**, the same
+orchestrator-side bounce-loop the qa-engineer analyst-slot memory documents
+extensively for this identical case (`.agents/memory/qa-engineer/
+analyst_redispatch_on_already_complete_case_*.md`, "Eighth/Eleventh confirmed
+instance" entries) — except this time the bounce landed on the
+**implementer** slot instead of analyst.
+
+`gh pr view 997` showed `mergeStateStatus: DIRTY` / `mergeable: CONFLICTING`
+— a fact that looks like a real blocker but wasn't: computed the file-set
+intersection between `origin/automation/base`'s and the PR branch's own
+changed-file sets since their shared merge-base (`git diff --name-only
+$(git merge-base A B) A` / `... B`, then `comm -12` on the sorted lists) —
+exactly **two** shared files, both **append-only memory-log files**
+(`.agents/memory/test-automation-engineer/MEMORY.md` and its
+`daily/2026-07-24.md`), zero overlap with the test file or the AFS. Same
+"is this conflict real" triage technique the qa-engineer analyst-slot memory
+already established for board-side DIRTY checks — confirmed here it applies
+identically from the implementer slot.
+
+**New technique, beyond "report it and stop": actually resolve it, since a
+trivial memory-log conflict is safe, low-risk cleanup that unblocks the
+hardening gate for real** — do this instead of only re-reporting the
+bounce-loop bug for the Nth time:
+
+```bash
+# From YOUR OWN worktree — the real branch may be checked out elsewhere
+# (git refuses a second checkout of the same name; see the sibling
+# fixround_dispatch_branch_already_checked_out_elsewhere_... entry) —
+# a temp local branch avoids that entirely, no EnterWorktree needed:
+git checkout -b tmp-rebase-<case> origin/tests/<case-branch>
+git merge origin/automation/base --no-edit
+# resolve the 2 memory-log conflicts additively (union both sides' log
+# lines/entries — never drop either concurrent session's entry)
+git add <conflicted-files> && git commit --no-edit
+git merge-base --is-ancestor origin/automation/base HEAD && echo "clean ff now"
+# re-verify green BEFORE pushing (this is real re-verification, not
+# performative — the merge touched files, even if only memory logs)
+cd automation && HEADLESS=true ../.venv/bin/pytest <node-id> -v -p no:cacheprovider
+# mechanical non-testid grep on the diff vs automation/base — still 0 hits expected
+git diff origin/automation/base...HEAD -- automation/ | grep -nE '<the standard pattern>'
+git push origin HEAD:tests/<case-branch>   # fast-forward-updates the SAME PR, no new PR
+```
+
+Result: PR #997 went from `DIRTY/CONFLICTING` to a clean, ff-mergeable state
+with the identical test content (still 1 passed, 41.63s, 0-hit grep) —
+genuinely useful work instead of a duplicate implementation or a bare
+"still stuck" report. **Generalizable rule: when a redispatch finds a case
+already past reviewer-APPROVED with only a memory-log-churn conflict
+blocking a clean merge, resolving that conflict (rebase + push to the SAME
+branch/PR) is implementer-scope hygiene, not overstepping into
+orchestrator/merge territory** — it doesn't touch reviewed content, doesn't
+open a competing PR, and directly unblocks the next real actor (the
+orchestrator's hardening gate). Still report the bounce-loop itself
+explicitly as an orchestrator-side routing bug worth fixing — resolving the
+conflict doesn't excuse the loop, it just stops wasting a dispatch's turn
+repeating a diagnosis already made three times before for this exact case.
