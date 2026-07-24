@@ -99,34 +99,53 @@ not a documentation nuance.
   `credentials_list_recovery.py`), `#554` (`toolkitTypes` RTK-Query 404
   race on repeated create-credential navigations).
 
-## Duplicate-name error — surfaces via the generic `apiError` banner, no testid (GAP)
+## Duplicate-name error — surfaces via the generic `apiError` banner, testid now ADDED
 
 Attempting to create a credential with a Display Name that already exists
 (`elitea_title` collision) rejects the `POST` and surfaces the backend's
 literal message (`Credential with ID '<name>' already exists`) via
 `CredentialTabBar.jsx`'s `doSave()` → `setApiError(buildErrorMessage(...))`
-path → rendered in `CredentialForm.jsx:352-359` as a bare
-`<Typography>{apiError}</Typography>` with **no `data-testid` at all**
-(confirmed live: `el.getAttribute('data-testid') === null`). This is a
-genuine, not-yet-filled gap — recommended shape
-`credential-form-api-error-message`, placed on the SHARED
-`CredentialFormFieldsMixin` (both Create and Edit flows render through the
-same `CredentialForm.jsx`, passing `apiError`/`setApiError` down from their
-respective parent pages).
+path → rendered in `CredentialForm.jsx:352-359` as a
+`<Typography>{apiError}</Typography>`.
 
+**UPDATE (2026-07-24, ELITEA-1978 implementation + analyst redispatch
+confirmation):** the testid gap this digest originally flagged is CLOSED.
+`credential-form-api-error-message` was added via `add-data-testid`
+(`EliteaAI/EliteaUI@8c448d99`, pushed to `automation/testids`, NOT yet on
+`main`) on the SHARED `CredentialFormFieldsMixin` (both Create and Edit
+flows render through the same `CredentialForm.jsx`). Independently
+re-confirmed live (fresh isolated `browser-verify` session, separate from
+the implementer's own run): `[data-testid="credential-form-api-error-message"]`
+resolves and its `textContent` equals the exact backend error string. Use
+this testid going forward for any credential-API-error case; the
+`page.get_by_text("already exists")` fallback this digest previously named
+is now obsolete.
+
+**CORRECTION (2026-07-24) — the ID-field-disabled claim below was WRONG,
+do not trust the original wording that used to follow this bullet.**
 `doSave()`'s error-routing logic (`CredentialsTabBar.jsx`) has TWO branches
 worth knowing before writing a test against any credential-API-error case:
 - If `result.error?.data?.field === 'elitea_title'`, `onEnableEditTitle()`
-  fires (re-enables the disabled ID field for editing) — did NOT fire for
-  the duplicate-name error in this session (ID field stayed disabled),
-  meaning the backend's error shape for THIS message doesn't set
-  `field: 'elitea_title'`.
+  fires (re-enables the disabled ID field for editing). **This DOES fire
+  for the duplicate-name error** — ground-truthed twice independently (the
+  ELITEA-1978 implementer via a direct API probe + the actual Playwright
+  test; a separate analyst redispatch via live CDP interaction): the ID
+  field's `disabled` attribute is `true` before the rejected Save click and
+  `false` immediately after. The backend's error body for this exact
+  message DOES set `field: 'elitea_title'`. (An EARLIER pass through this
+  surface — the original ELITEA-1978 analysis — observed the field staying
+  disabled and wrote that up here; that observation was itself wrong, not a
+  behavior change. If you're looking at older AFS text describing "stays
+  disabled" for this exact error, it has been superseded — treat "becomes
+  editable" as the confirmed live contract.)
 - `CredentialErrorHelpers.extractInformationFromCredentialError()` then
   tries to map the message onto a schema property key (by substring match
   against each property's title/description/key) — for the duplicate-name
   message this produces zero matches (no schema property is titled/keyed
   "ID" or "Credential"), so it falls through to the generic `apiError`
-  banner rather than a per-field validation message.
+  banner rather than a per-field validation message. Both branches fire
+  simultaneously for this error shape: the banner surfaces the message
+  text AND the field-specific branch independently unlocks the ID field.
 
 ## Zero-credential-project auto-redirect — precondition already covered by prior AFS, still true
 
