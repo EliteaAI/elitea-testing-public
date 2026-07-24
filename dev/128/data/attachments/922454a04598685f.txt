@@ -1,2 +1,0 @@
-WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
-WARNING  elitea.pages.agent_detail:agent_detail_page.py:1921 Embedded chat response did not stabilize within timeout
