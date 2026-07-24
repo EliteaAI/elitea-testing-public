@@ -1,5 +1,0 @@
-WARNING  elitea.pages.agent_detail:agent_detail_page.py:2666 Embedded chat response did not stabilize within timeout
-WARNING  elitea.pages.agent_detail:agent_detail_page.py:2666 Embedded chat response did not stabilize within timeout
-ERROR    elitea.steps:actions.py:49 Step failed: Remove blocked tool — Locator.wait_for: Timeout 5000ms exceeded.
-Call log:
-  - waiting for locator(".MuiChip-root:has-text(\"get_ISSUE\")").first to be visible

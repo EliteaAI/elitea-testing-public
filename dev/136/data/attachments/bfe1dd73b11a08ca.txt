@@ -1,1 +1,0 @@
-WARNING  elitea.tests.skills:test_ghost_skill_after_agent_removed.py:222 Known defect #51 reproduced: 'elitea-1793-ghost-skill' still listed in 'Mention skill' popper after its agent was removed

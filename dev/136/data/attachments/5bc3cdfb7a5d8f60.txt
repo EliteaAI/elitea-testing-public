@@ -1,6 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Search toolkit types — Locator.click: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("toolkit-wizard-type-search-input")
-ERROR    elitea.steps:actions.py:49 Step failed: Search toolkit types — Locator.click: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("toolkit-wizard-type-search-input")
