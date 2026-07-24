@@ -78,11 +78,21 @@ class ToolkitsListPage(BasePage):
     # ------------------------------------------------------------------
 
     @action("Navigate to toolkits list")
-    def navigate(self):
-        """Navigate to the Toolkits dashboard and wait until ready."""
-        super().navigate("/toolkits/all")
+    def navigate(self, project_id: int | str | None = None):
+        """Navigate to the Toolkits dashboard and wait until ready.
+
+        Args:
+            project_id: Optional numeric project id. When given, navigates
+                via the URL-prefixed form (``/{project_id}/toolkits/all``) —
+                live-confirmed (ELITEA-1976 AFS Preconditions) to switch the
+                active project (``localStorage['elitea_ui.project.id']``)
+                before landing on the Toolkits list. Omit (default) to keep
+                the current active project, matching all pre-existing callers.
+        """
+        path = f"/{project_id}/toolkits/all" if project_id is not None else "/toolkits/all"
+        super().navigate(path)
         self.wait_for_page_load()
-        logger.info("Navigated to toolkits dashboard and page loaded")
+        logger.info("Navigated to toolkits dashboard (project_id=%s) and page loaded", project_id)
 
     def wait_for_page_load(self, timeout: int = 15000):
         """Wait for the toolkits dashboard to load.
