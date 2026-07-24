@@ -223,6 +223,38 @@ class McpFormPage(BasePage):
         "clarification filed as issue #595, see ELITEA-1933 AFS)",
     )
 
+    # ------------------------------------------------------------------
+    # Load Tools sync-error toast + connection status widget — added
+    # ELITEA-1934. `toast-message` is the app-wide shared Toast testid (same
+    # pattern as skill_detail_page.version_toast_message /
+    # skills_list_page.import_success_toast_message /
+    # artifacts_page.success_toast_message — each page object declares its
+    # OWN named field rather than cross-importing another page object's).
+    # `toolkit-connection-status`/`toolkit-connection-auth-button` are NEW
+    # testids added via add-data-testid for this case (McpAuthStatus.jsx —
+    # the widget had zero testids before, confirmed via the AFS's 6-level
+    # DOM ancestor walk).
+    # ------------------------------------------------------------------
+    sync_error_toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide Toast component's message container (reused for "
+        "the 'Failed to sync MCP tools: ...' error toast on a failed Load Tools)",
+    )
+    connection_status = LocatorDescriptor(
+        testid="toolkit-connection-status",
+        description="MCP connection status widget (globe icon + 'Connected!'/'Not "
+        "Connected' text + Login/Logout button) — carries a `data-connected` "
+        "true/false state attribute (state-via-data-attribute, per "
+        ".agents/testing.md § Locator policy); text_content() includes the "
+        "auth button's own label concatenated with no separator, so prefer "
+        ":meth:`is_mcp_connected` for the boolean check and "
+        ":meth:`get_connection_auth_button_label` for the button's own text",
+    )
+    connection_auth_button = LocatorDescriptor(
+        testid="toolkit-connection-auth-button",
+        description="Login/Logout button inside the connection status widget",
+    )
+
     # Dynamic (runtime-parameterized) testid — one MUI Chip per discovered tool.
     # Class-level template constant per .agents/testing.md § Locator policy;
     # never an inline f-string get_by_test_id in a method body.
@@ -1095,6 +1127,31 @@ class McpFormPage(BasePage):
         field = self.page.locator(self.TEST_PARAM_FIELD.format(field_key))
         field.wait_for(state="visible", timeout=timeout)
         return field.is_visible()
+
+    # ------------------------------------------------------------------
+    # Connection status widget — added ELITEA-1934
+    # ------------------------------------------------------------------
+
+    def is_mcp_connected(self) -> bool:
+        """Return whether the connection status widget reports 'Connected!' (data-connected="true").
+
+        Reads the ``data-connected`` state attribute (UI-team ruling — testid is
+        stable identity, state lives in a separate ``data-*`` attribute, never
+        baked into the testid itself — same pattern as
+        :meth:`is_tool_chip_selected`), not the "Connected!"/"Not Connected"
+        text (which the widget's own testid captures concatenated with the
+        auth button's label, e.g. ``"Not ConnectedLogin"``, confirmed live).
+        """
+        return self.connection_status.get_attribute("data-connected") == "true"
+
+    def get_connection_auth_button_label(self) -> str:
+        """Return the connection status widget's Login/Logout button label.
+
+        ``"Login"`` when disconnected, ``"Logout"`` when connected — located via
+        its own ``toolkit-connection-auth-button`` testid rather than parsed out
+        of the wider widget's concatenated text content.
+        """
+        return self.connection_auth_button.text_content() or ""
 
     @action("Fill a Test Settings parameter field")
     def fill_test_param(self, field_key: str, value: str) -> None:
