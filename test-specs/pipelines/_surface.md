@@ -1106,6 +1106,52 @@ Full Concrete Handles + Coverage Map are in
 — read that AFS first if implementing this case; it needs zero new testids
 and zero new page-object code (every method it uses is already merged).
 
+## YAML-editor keystroke → Flow-view sync has a real 30ms Redux debounce race (ELITEA-2028 implementer exploration, 2026-07-24)
+
+**Editing pipeline YAML via keyboard and immediately switching to Flow view can
+show the PRE-edit edges — a genuine client-side timing race, not a flaky
+test.** Confirmed during implementation of the `edit_node_transition_in_yaml()`
+method (added for this case): the first automated run failed at the Flow-view
+edge assertion (`edge_exists("Code 1", "LLM 1")` → `False`) even though the
+immediately-preceding `get_yaml_content()` re-read already showed the edited
+`transition: LLM 1` line.
+
+**Root cause (traced in `../EliteaUI/src`):**
+- `src/[fsd]/shared/lib/hooks/useCodeMirror.hooks.js::onInputHandler` debounces
+  `notifyChange` (→ `setYamlCode` → Redux `state.pipeline.yamlCode`) by
+  **30ms** after the last keystroke via `setTimeout`.
+- `src/pages/Pipelines/Components/EditorPanel.jsx::onSelectChatMode` (the
+  Flow/Yaml toggle's own handler) reads `yamlCode` from a `useCallback`
+  closure current only as of the LAST RENDER before the click, and only calls
+  `onParseCodeToJson(yamlCode)` (which recomputes the Flow-view node/edge
+  layout) when switching TO Flow mode.
+- If the toggle click fires before the 30ms debounce flushes AND before React
+  re-renders with the updated closure, the Flow view re-parses the STALE
+  (pre-edit) YAML string. A raw DOM read of the editor's text
+  (`get_yaml_content()`) is unaffected — it reads the CodeMirror DOM directly,
+  which updates every keystroke, independent of the debounced Redux dispatch.
+  That's why the YAML-content assertion passed while the Flow-view assertion
+  failed on the identical run.
+
+**Fix — a condition-based wait, not a network wait (this surface's edits are
+100% client-side; see the ELITEA-2028 AFS's Network Behavior section for the
+full "no network call, but a client-side race exists" distinction):**
+`PipelineDetailPage.edit_node_transition_in_yaml()` polls the Save button's own
+`disabled` attribute (`page.wait_for_function("(el) => el && !el.disabled",
+arg=self.save_button.element_handle())`) after the `keyboard.type(...)` call,
+before returning. The Save button's enabled state is driven by the SAME Redux
+`yamlCode`-vs-initial diff (`useIsPipelineYamlCodeDirty.js`), so polling it is a
+real app-visible signal that the edit has landed — not a blind sleep, and
+robust to the debounce window being longer/shorter than any fixed guess.
+
+**Takeaway for any future case that edits pipeline YAML then immediately reads
+view-derived state (Flow-view canvas, or anything else keyed off parsed
+`yamlCode`):** never switch views / read derived state in the same "breath" as
+a keyboard edit to this CodeMirror instance — wait on an app-visible signal
+driven by the same Redux slice first (Save-button state is the cheapest one
+already exposed via an existing page-object method). Full root-cause writeup:
+`.agents/memory/test-automation-engineer/pipeline_yaml_editor_onchange_debounce_races_flow_view_toggle.md`.
+
 ## Testid provenance — two view-toggle testids are FALSE NEGATIVES under literal `git grep` (ELITEA-2028, 2026-07-24)
 
 `pipeline-yaml-view` and `pipeline-flow-view` (the Yaml/Flow toggle buttons)
