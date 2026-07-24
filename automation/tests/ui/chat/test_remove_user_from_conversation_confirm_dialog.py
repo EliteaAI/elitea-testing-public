@@ -149,7 +149,7 @@ class TestRemoveUserFromConversationConfirmDialog:
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2170_chat-team-project-remove-user-from-conversation-via-confirm-dialog.md",
         "onetest-ai Test Case link",
     )
-    @pytest.mark.p2
+    @pytest.mark.p1
     def test_remove_user_from_conversation_via_confirm_dialog(self, page, _browser_cookies):
         """Remove a Team-project participant via the USERS popper + confirm dialog.
 
