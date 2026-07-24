@@ -141,6 +141,139 @@ class PipelineDetailPage(PipelineFormPage):
         )
     )
 
+    # Entry-point node — Trigger select & Webhook settings modal (ELITEA-2006).
+    # Rendered inline on whichever node card IS the pipeline's entry point
+    # (NodeCard.jsx: `isEntrypoint && <TriggerTypeSelector>`) — page-wide (not
+    # scoped to a specific node container), same convention as the MCP node
+    # fields above: correct as long as a test only has a single entry-point
+    # node on canvas.
+    trigger_select = LocatorDescriptor(
+        testid="pipeline-trigger-select",
+        description="Entry-point node's Trigger select (Chat Message/Schedule/Webhook)"
+    )
+
+    trigger_webhook_edit_button = LocatorDescriptor(
+        testid="pipeline-trigger-webhook-edit-button",
+        description='"Edit webhook settings" link-icon button next to the Trigger '
+                     "select, rendered only once trigger=webhook"
+    )
+
+    webhook_modal = LocatorDescriptor(
+        testid="pipeline-webhook-modal",
+        description="Webhook settings modal (dialog root)"
+    )
+
+    webhook_type_radio_github = LocatorDescriptor(
+        testid="pipeline-webhook-type-radio-github",
+        description="Webhook Type radio — GitHub option"
+    )
+    webhook_type_radio_gitlab = LocatorDescriptor(
+        testid="pipeline-webhook-type-radio-gitlab",
+        description="Webhook Type radio — GitLab option"
+    )
+    webhook_type_radio_custom = LocatorDescriptor(
+        testid="pipeline-webhook-type-radio-custom",
+        description="Webhook Type radio — Custom option"
+    )
+
+    # AFS Concrete Handles gap fill (implementer Phase 2 — case steps 3/4/5
+    # explicitly require verifying description text presence/content, but the
+    # AFS table didn't carry a handle for it): added via add-data-testid
+    # alongside the rest of this modal's testids, same call site edit.
+    webhook_type_description = LocatorDescriptor(
+        testid="pipeline-webhook-type-description",
+        description="Webhook Type description text (changes per selected type)"
+    )
+    webhook_payload_format_description = LocatorDescriptor(
+        testid="pipeline-webhook-payload-format-description",
+        description="Payload Format description (static text)"
+    )
+    webhook_secret_helper_text = LocatorDescriptor(
+        testid="pipeline-webhook-secret-helper-text",
+        description="Secret Value helper text (e.g. 'Enter this secret in your "
+                     "GitHub webhook configuration under Secret')"
+    )
+
+    webhook_url_input = LocatorDescriptor(
+        testid="pipeline-webhook-url-input",
+        description="Webhook URL read-only field — testid wired via MUI's own "
+                     "inputProps mechanism, lands directly on the native <input> "
+                     "(established codebase pattern, e.g. agent-instructions-input)"
+    )
+    webhook_url_copy_button = LocatorDescriptor(
+        testid="pipeline-webhook-url-copy-button",
+        description="Webhook URL copy button"
+    )
+    webhook_secret_input = LocatorDescriptor(
+        testid="pipeline-webhook-secret-input",
+        description="Secret Value masked field — same inputProps testid wiring as "
+                     "webhook_url_input, lands on the native <input>"
+    )
+    webhook_secret_toggle_visibility_button = LocatorDescriptor(
+        testid="pipeline-webhook-secret-toggle-visibility-button",
+        description="Secret Value eye (show/hide) button"
+    )
+    webhook_secret_copy_button = LocatorDescriptor(
+        testid="pipeline-webhook-secret-copy-button",
+        description="Secret Value copy button"
+    )
+    webhook_secret_regenerate_button = LocatorDescriptor(
+        testid="pipeline-webhook-secret-regenerate-button",
+        description="Secret Value regenerate (refresh) button — stages a pending secret "
+                     "client-side until Apply is clicked"
+    )
+    webhook_example_request = LocatorDescriptor(
+        testid="pipeline-webhook-example-request",
+        description="Example Request code block"
+    )
+    webhook_example_copy_button = LocatorDescriptor(
+        testid="pipeline-webhook-example-copy-button",
+        description="Example Request copy button"
+    )
+    webhook_cancel_button = LocatorDescriptor(
+        testid="pipeline-webhook-cancel-button",
+        description="Webhook settings modal Cancel button"
+    )
+    webhook_apply_button = LocatorDescriptor(
+        testid="pipeline-webhook-apply-button",
+        description="Webhook settings modal Apply button"
+    )
+
+    # Entry-point node — Schedule settings modal (ELITEA-2005). Sibling of the
+    # Webhook settings modal above, added via the same add-data-testid pass
+    # (PipelineScheduleModal.jsx — Modal.BaseModal `data-testid` prop, same
+    # mechanism as pipeline-webhook-modal).
+    schedule_modal = LocatorDescriptor(
+        testid="pipeline-schedule-modal",
+        description="Schedule settings modal (dialog root)"
+    )
+    schedule_modal_summary_text = LocatorDescriptor(
+        testid="pipeline-schedule-modal-summary-text",
+        description='Schedule modal cron summary text (e.g. "At 00:00, only on Saturday")'
+    )
+    schedule_apply_button = LocatorDescriptor(
+        testid="pipeline-schedule-apply-button",
+        description="Schedule settings modal Apply button"
+    )
+
+    # Success toast (app-wide generic component, reused across features —
+    # see skill_detail_page.SkillDetailPage.version_toast_message /
+    # artifacts_page.ArtifactsPage.success_toast_message). Fires for all 3
+    # trigger-mutation flows (source-confirmed TriggerTypeSelector.jsx):
+    # 'Webhook configured successfully', 'Schedule configured successfully',
+    # 'Trigger updated to Chat Message'. In every flow `toastSuccess(...)` is
+    # called synchronously right after the SAME awaited `updateTrigger(...)`
+    # mutation this page object already waits on (`expect_response` in
+    # select_trigger_type / apply_webhook_settings / apply_schedule_settings)
+    # — only the SEPARATE displayed-trigger-text cache refetch lags (see the
+    # Automation Hints on those methods); the toast itself is not subject to
+    # that lag.
+    trigger_toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide Toast component's message container, reused here "
+                     "for the entry-point Trigger 'configured'/'updated' toasts"
+    )
+
     # TOOLS section (ELITEA-1955). ApplicationTools.jsx / ToolMenu.jsx is a
     # shared component reused by both Agent and Pipeline detail forms
     # (confirmed via PipelineConfigurationForm.jsx import) — same testids as
@@ -187,6 +320,57 @@ class PipelineDetailPage(PipelineFormPage):
     # family (`select-option-{value}`), no value known up front. Still
     # testid-keyed, not a raw role/CSS selector.
     SELECT_OPTION_PREFIX = '[data-testid^="select-option-"]'
+
+    # ------------------------------------------------------------------
+    # Node select/menu/delete locators (ELITEA-2018)
+    # ------------------------------------------------------------------
+
+    # Node container — `@xyflow/react`'s own library-level testid
+    # convention (not app JSX), same family as `canvas_wrapper`
+    # (`rf__wrapper`) above. Dynamic (runtime-parameterized) testid — class-
+    # level template constant per .agents/testing.md § Locator policy.
+    NODE_CONTAINER = '[data-testid="rf__node-{}"]'
+
+    # Edge prefix match — same `@xyflow/react` library-level testid family
+    # as NODE_CONTAINER, used to enumerate every edge currently on the
+    # canvas (testid-based; deliberately NOT the raw `.react-flow__edge`
+    # CSS class the pre-existing `edge_exists`/`get_edge_count` use).
+    EDGE_PREFIX_SELECTOR = '[data-testid^="rf__edge-xy-edge__"]'
+
+    # Node title/name label — added via add-data-testid (ELITEA-2018,
+    # NodeCardHeader.jsx). Shared/non-unique across every node on the
+    # canvas (same disambiguation-by-container-scoping pattern as
+    # `node-menu-menu-button` below). Clicking it both selects the node
+    # (ReactFlow's own `.selected` class) AND moves real DOM focus onto the
+    # node's own `[tabindex="0"]` container — required for the keyboard-
+    # Delete path, see `select_node()`.
+    NODE_TITLE_LABEL_SELECTOR = '[data-testid="pipeline-node-title-label"]'
+
+    # Node's three-dot menu button — pre-existing app testid
+    # (`DotMenu.jsx`/`NodeCardHeader.jsx`), shared/non-unique across every
+    # node (confirmed live: 2 identical hits on a 2-menu-having-node
+    # canvas) — container-scoping via NODE_CONTAINER is required.
+    NODE_MENU_BUTTON_SELECTOR = '[data-testid="node-menu-menu-button"]'
+
+    # "Delete" menu item — added via add-data-testid (ELITEA-2018,
+    # NodeCardHeader.jsx `menuItems` — `key: 'pipeline-node-delete'` on all
+    # 3 mutually-exclusive branches; `DotMenu.jsx` already renders per-item
+    # testids as `{key}-menuitem`, so this is the only JSX change needed).
+    # Only one node's menu (and therefore this item) is ever open at a
+    # time, so a page-wide match is unambiguous.
+    NODE_DELETE_MENUITEM_SELECTOR = '[data-testid="pipeline-node-delete-menuitem"]'
+
+    # Delete-confirmation dialog's field-level testids (pre-existing,
+    # `DeleteEntityModal.jsx`). The dialog ROOT does NOT itself carry a
+    # testid usable to scope `[role="dialog"]` (MUI applies
+    # `delete-confirm-dialog` to an ancestor wrapper, not the inner Paper
+    # that carries `role="dialog"` — confirmed live, ELITEA-2018 AFS
+    # Concrete Handles) — use the existing `Dialog.wait_for()` helper
+    # (components/mui.py, already imported above) to find the visible
+    # dialog, then these testids to read/act on its fields.
+    DELETE_CONFIRM_TITLE_SELECTOR = '[data-testid="delete-confirm-title"]'
+    DELETE_CONFIRM_MESSAGE_SELECTOR = '[data-testid="delete-confirm-message"]'
+    DELETE_CONFIRM_BUTTON_SELECTOR = '[data-testid="delete-confirm-button"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -512,14 +696,38 @@ class PipelineDetailPage(PipelineFormPage):
         newlines, so we use yaml_lines descriptor to extract each line
         and join with newlines.
 
+        ELITEA-2018: the app-added `pipeline-yaml-lines` testid tagging on
+        each `.cm-line` can lag behind CodeMirror's own render pass right
+        after a Flow-view state change (observed: 0 tagged lines even after
+        an explicit `wait_for`, while CodeMirror's native `.cm-line` divs
+        already hold the real, correctly-rendered content). When the
+        testid-tagged count is 0, this now falls back to CodeMirror's own
+        `.cm-line` nodes — a scoped raw handle inside the already-testid'd
+        `yaml_editor` parent, sanctioned per the #579 third-party-editor-
+        internals exception (`.agents/testing.md` § Locator policy) — before
+        giving up to the single-blob `text_content()` branch, which (for
+        THIS editor) concatenates the line-number gutter digits and
+        fold-toggle glyphs into the string with no newlines, producing
+        unparseable YAML. Purely additive: existing callers, which already
+        only ever observed `line_count > 0` via the testid path, see no
+        behavior change.
+
         Returns:
             The text content of the YAML editor with preserved line breaks.
         """
         self.yaml_editor.wait_for(state="visible", timeout=5000)
         line_count = self.yaml_lines.count()
-        if line_count == 0:
-            return self.yaml_editor.text_content() or ""
-        return "\n".join(self.yaml_lines.nth(i).text_content() or "" for i in range(line_count))
+        if line_count > 0:
+            return "\n".join(self.yaml_lines.nth(i).text_content() or "" for i in range(line_count))
+
+        # Sanctioned scoped-raw-handle exception (#579): CodeMirror's own
+        # per-line divs, scoped inside the `yaml_editor` testid parent.
+        native_lines = self.yaml_editor.locator(".cm-line")
+        native_count = native_lines.count()
+        if native_count > 0:
+            return "\n".join(native_lines.nth(i).text_content() or "" for i in range(native_count))
+
+        return self.yaml_editor.text_content() or ""
 
     # Scoped inside the testid-anchored ``yaml_editor`` parent — CodeMirror's
     # per-line ``div.cm-line`` render nodes are library-internal, not app
@@ -707,44 +915,139 @@ class PipelineDetailPage(PipelineFormPage):
         logger.info("Node '%s' visible on canvas (id=%s)", node_type, node_id)
         return node_id
 
+    def select_node(self, node_id: str, timeout: int = 5000) -> None:
+        """Select AND DOM-focus a node by clicking its title/name label.
+
+        Clicking the node's own title/name label (`pipeline-node-title-label`)
+        — rather than the card's bounding-box center, which can land on an
+        inner MUI Select/Input field — is what reliably (a) gives the node
+        ReactFlow's `selected` CSS class and (b) moves real DOM focus onto
+        the node's own `[tabindex="0"]` container. (b) matters for the
+        keyboard-Delete path: the app's global Delete-key listener
+        (`useDeleteItems.hooks.js`) only reacts while a node itself holds
+        `document.activeElement` — a click landing on an inner field instead
+        focuses that field and silently no-ops the Delete key (ELITEA-2018
+        AFS Automation Hints).
+
+        Args:
+            node_id: The node's data-id (e.g. "Code 1").
+            timeout: Maximum wait time for the title label to be visible.
+        """
+        title_label = self.page.locator(self.NODE_CONTAINER.format(node_id)).locator(
+            self.NODE_TITLE_LABEL_SELECTOR
+        )
+        title_label.wait_for(state="visible", timeout=timeout)
+        title_label.click()
+
+    def is_node_selected(self, node_id: str) -> bool:
+        """Return True if *node_id*'s container carries ReactFlow's `selected` class.
+
+        Args:
+            node_id: The node's data-id.
+        """
+        classes = self.page.locator(self.NODE_CONTAINER.format(node_id)).get_attribute("class") or ""
+        return "selected" in classes.split()
+
+    def any_edge_touches_node(self, node_id: str) -> bool:
+        """Return True if any edge's testid references *node_id* as source or target.
+
+        A coarser check than :meth:`edge_exists` (which needs a specific
+        source/target pair) — scans every edge testid for a substring match
+        on *node_id*, so it catches removal of ALL of a deleted node's
+        edges regardless of how many it had (ELITEA-2018 AFS step 4).
+
+        Args:
+            node_id: The node's data-id.
+        """
+        edges = self.page.locator(self.EDGE_PREFIX_SELECTOR)
+        for i in range(edges.count()):
+            testid = edges.nth(i).get_attribute("data-testid") or ""
+            if node_id in testid:
+                return True
+        return False
+
+    def open_node_menu(self, node_id: str, timeout: int = 5000) -> None:
+        """Open a node's own three-dot menu.
+
+        Scoped inside the node's `rf__node-{id}` container —
+        `node-menu-menu-button` is shared/non-unique across every node on
+        the canvas (confirmed live: 2 identical hits on a 2-menu-having-
+        node canvas), so container-scoping is required to target a
+        SPECIFIC node's menu. Does not itself wait for the menu popup to
+        render — `click_delete_in_node_menu()`'s own wait on the testid-
+        keyed `pipeline-node-delete-menuitem` is the "menu is open" signal,
+        so no additional (non-testid, role-based) menu-popup wait is
+        needed here.
+
+        Args:
+            node_id: The node's data-id.
+            timeout: Maximum wait time for the button to be clickable.
+        """
+        node = self.page.locator(self.NODE_CONTAINER.format(node_id))
+        node.locator(self.NODE_MENU_BUTTON_SELECTOR).click(timeout=timeout)
+
+    def click_delete_in_node_menu(self, timeout: int = 5000) -> Locator:
+        """Click "Delete" in an already-open node menu; return the confirmation dialog.
+
+        Args:
+            timeout: Maximum wait time for the menu item / dialog.
+
+        Returns:
+            The visible `[role="dialog"]` confirmation-dialog Locator (see
+            `Dialog.wait_for` — the dialog root carries no testid of its
+            own, ELITEA-2018 AFS Concrete Handles).
+        """
+        delete_item = self.page.locator(self.NODE_DELETE_MENUITEM_SELECTOR)
+        delete_item.wait_for(state="visible", timeout=timeout)
+        delete_item.click()
+        return Dialog.wait_for(self.page, timeout=timeout)
+
+    def confirm_node_delete(self, dialog: Locator, timeout: int = 5000) -> None:
+        """Click Delete in an already-open node-delete confirmation dialog.
+
+        Waits for the dialog to close rather than a fixed sleep. Source-confirmed
+        (`useDeleteItems.hooks.js` `onConfirmDelete`): the node/edge/YAML state
+        removal (`onDelete(...)`) and the dialog close (`setShowDeleteConfirmDlg
+        (false)`) are both `setState` calls fired synchronously in the same
+        click handler, so React batches them into one re-render — once the
+        dialog has visually closed, the canvas's node list has already updated
+        in that same commit too.
+
+        Args:
+            dialog: The dialog Locator returned by `click_delete_in_node_menu`
+                (or by `Dialog.wait_for` after a keyboard-Delete trigger).
+            timeout: Maximum wait time for the dialog to close.
+        """
+        dialog.locator(self.DELETE_CONFIRM_BUTTON_SELECTOR).click()
+        dialog.wait_for(state="hidden", timeout=timeout)
+
     def delete_node(self, node_id: str, timeout: int = 5000):
         """Delete a node from the canvas via its three-dot header menu.
 
-        Each node has two header icon buttons (no aria-labels). The
-        second one (the three-dot ⋮ icon) opens a menu containing
-        a Delete item. Clicking Delete shows a confirmation dialog
-        with Cancel / Delete buttons.
+        Opens the node's own three-dot menu (`node-menu-menu-button`,
+        scoped inside its `rf__node-{id}` container), clicks "Delete"
+        (`pipeline-node-delete-menuitem`), and confirms the "Delete
+        confirmation" dialog via its own `delete-confirm-button` testid.
+
+        ELITEA-2018: rewritten to use the confirmed testid-scoped locators
+        instead of the prior positional `evaluate()`-based click on the
+        2nd `button.MuiIconButton-colorTertiary` + text-based
+        `Dialog.click_button` — this method had zero merged callers before
+        this case (`grep -rn "delete_node\\b" automation/tests/` = 0 hits),
+        so rewriting it in place carries no shared-caller regression risk.
+        Callers needing to assert on the dialog's content mid-flow (e.g.
+        the confirmation title/message) should use `open_node_menu()` +
+        `click_delete_in_node_menu()` + `confirm_node_delete()` directly
+        instead of this all-in-one convenience wrapper.
 
         Args:
             node_id: The data-id of the node to delete.
             timeout: Maximum wait time for menu / dialog to appear.
         """
         logger.info("Deleting node: %s", node_id)
-
-        # Click the three-dot button (second MuiIconButton-colorTertiary)
-        # via JS to avoid pointer interception from overlapping nodes.
-        self.page.evaluate(
-            """(nodeId) => {
-                const node = document.querySelector(`[data-id="${nodeId}"]`);
-                const btns = node.querySelectorAll(
-                    'button.MuiIconButton-colorTertiary'
-                );
-                if (btns[1]) btns[1].click();
-            }""",
-            node_id,
-        )
-        self.page.wait_for_timeout(300)
-
-        # Click "Delete" in the menu
-        delete_item = self.page.get_by_role("menuitem", name="Delete")
-        delete_item.wait_for(state="visible", timeout=timeout)
-        delete_item.click()
-        self.page.wait_for_timeout(300)
-
-        # Confirm the "Are you sure to delete this node?" dialog
-        dialog = Dialog.wait_for(self.page, timeout=timeout)
-        Dialog.click_button(dialog, "Delete")
-        self.page.wait_for_timeout(500)
+        self.open_node_menu(node_id, timeout=timeout)
+        dialog = self.click_delete_in_node_menu(timeout=timeout)
+        self.confirm_node_delete(dialog)
         logger.info("Deleted node: %s", node_id)
 
     def make_node_entrypoint(self, node_id: str, timeout: int = 5000):
@@ -1120,6 +1423,244 @@ class PipelineDetailPage(PipelineFormPage):
         return text == f"Input mapping (required {required_count})"
 
     # ------------------------------------------------------------------
+    # Entry-point node — Trigger select & Webhook settings modal (ELITEA-2006)
+    # ------------------------------------------------------------------
+
+    # Maps the Webhook Type radio's value to its LocatorDescriptor field —
+    # avoids a dynamic-testid template for a fixed 3-value set (matches the
+    # 3 values TriggerTypeSelector.jsx / PipelineWebhookModal.jsx render).
+    _WEBHOOK_TYPE_RADIOS = {
+        "github": "webhook_type_radio_github",
+        "gitlab": "webhook_type_radio_gitlab",
+        "custom": "webhook_type_radio_custom",
+    }
+
+    def select_trigger_type(self, value: str, timeout: int = 10000) -> dict | None:
+        """Open the entry-point node's Trigger select and choose *value*.
+
+        Selecting ``"webhook"`` or ``"chat_message"`` fires a `PUT
+        .../pipeline_trigger/.../trigger` immediately — this waits on that
+        response, not a fixed sleep (`.claude/rules/ui-tests.md` § Wait
+        Patterns). Selecting ``"webhook"`` additionally opens the Webhook
+        settings modal as a product side-effect once the response resolves
+        (source-confirmed `handleTriggerTypeChange`'s awaited `updateTrigger`
+        call, `TriggerTypeSelector.jsx`) — callers wait on ``webhook_modal``
+        separately after this returns.
+
+        Selecting ``"schedule"`` is DIFFERENT (ELITEA-2005, source-confirmed):
+        `handleTriggerTypeChange` only calls `setIsScheduleModalOpen(true)` —
+        a synchronous local-state update, no awaited mutation — so no PUT
+        fires until the Schedule modal's own Apply is clicked. This method
+        returns ``None`` for ``"schedule"`` rather than waiting on a response
+        that will never arrive; callers wait on ``schedule_modal`` separately.
+
+        Args:
+            value: One of ``"chat_message"``, ``"schedule"``, ``"webhook"``.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the trigger-update PUT response, or ``None``
+            when *value* is ``"schedule"`` (no auto-save on selection).
+        """
+        self.trigger_select.click(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(value))
+        option.wait_for(state="visible", timeout=timeout)
+
+        if value == "schedule":
+            option.click(timeout=timeout)
+            return None
+
+        with self.page.expect_response(
+            lambda r: "/pipeline_trigger/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as response_info:
+            option.click(timeout=timeout)
+
+        return response_info.value.json()
+
+    def get_trigger_type_value(self, timeout: int = 5000) -> str:
+        """Read the Trigger select's currently-displayed value text.
+
+        Args:
+            timeout: Maximum wait time for the select to be visible.
+        """
+        self.trigger_select.wait_for(state="visible", timeout=timeout)
+        return (self.trigger_select.text_content() or "").strip()
+
+    def open_webhook_settings(self, timeout: int = 10000) -> None:
+        """Click the "Edit webhook settings" icon and wait for the modal to load.
+
+        Only visible once ``trigger == "webhook"`` (source-confirmed
+        `currentTriggerType === TRIGGER_TYPES.webhook` gate,
+        `TriggerTypeSelector.jsx`) — call :meth:`select_trigger_type` with
+        ``"webhook"`` first if the trigger isn't already webhook.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.trigger_webhook_edit_button.click(timeout=timeout)
+        self.wait_for_webhook_settings_loaded(timeout=timeout)
+
+    def wait_for_webhook_settings_loaded(self, timeout: int = 10000) -> None:
+        """Wait for the Webhook settings modal AND its data-dependent fields.
+
+        The URL/Secret sections (`PipelineWebhookModal.jsx`: `{webhookUrl &&
+        (...)}` / `{secretValue && (...)}`) render only once `triggerData` is
+        populated. `triggerData` comes from the SAME RTK-Query tag a
+        trigger-mutating PUT invalidates, whose re-fetch can resolve slightly
+        AFTER the PUT response itself — so the modal can become visible
+        before its fields do. Waits on the Webhook URL field specifically
+        (present whenever `webhook_url` is populated) rather than a fixed
+        sleep.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.webhook_modal.wait_for(state="visible", timeout=timeout)
+        self.webhook_url_input.wait_for(state="visible", timeout=timeout)
+
+    def select_webhook_type(self, webhook_type: str, timeout: int = 5000) -> None:
+        """Click the Webhook Type radio matching *webhook_type* in the open modal.
+
+        Pure client-side `useMemo` derivation of the URL/description/example
+        request off ``selectedWebhookType`` — no network wait needed
+        (source-confirmed `PipelineWebhookModal.jsx`).
+
+        Args:
+            webhook_type: One of ``"github"``, ``"gitlab"``, ``"custom"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        radio = getattr(self, self._WEBHOOK_TYPE_RADIOS[webhook_type])
+        radio.click(timeout=timeout)
+
+    def get_selected_webhook_type(self) -> str | None:
+        """Return which Webhook Type radio is currently checked, or None.
+
+        The testid lands on the MUI ``FormControlLabel`` wrapping the native
+        ``<input type="radio">`` (not the input itself) — same
+        already-verified pattern as
+        ``CredentialCreatePage.auth_radio``: Playwright's ``is_checked()``
+        resolves correctly through the associated ``<label>`` wrapper.
+        """
+        for webhook_type, attr_name in self._WEBHOOK_TYPE_RADIOS.items():
+            if getattr(self, attr_name).is_checked():
+                return webhook_type
+        return None
+
+    def get_webhook_url(self, timeout: int = 5000) -> str:
+        """Read the Webhook URL field's current value.
+
+        Args:
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self.webhook_url_input.wait_for(state="visible", timeout=timeout)
+        return self.webhook_url_input.input_value()
+
+    def reveal_webhook_secret(self, timeout: int = 5000) -> None:
+        """Click the Secret Value eye (show/hide) toggle button.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.webhook_secret_toggle_visibility_button.click(timeout=timeout)
+
+    def get_webhook_secret(self, timeout: int = 5000) -> str:
+        """Read the Secret Value field's current value (masked or revealed).
+
+        Args:
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self.webhook_secret_input.wait_for(state="visible", timeout=timeout)
+        return self.webhook_secret_input.input_value()
+
+    def apply_webhook_settings(self, timeout: int = 10000) -> dict:
+        """Click Apply in the Webhook settings modal; wait for the trigger PUT.
+
+        Waits on the actual `PUT .../pipeline_trigger/.../trigger` network
+        response rather than the modal merely closing.
+        `PipelineWebhookModal.applyChanges` calls `onSubmit(...)` (a Promise,
+        NOT awaited) and then `onClose()` synchronously — the modal-hidden
+        state can be reached before the mutation actually resolves, so a
+        wait keyed only on visibility would race the real persistence
+        (declared improvisation departing from this case's own AFS
+        Automation Hints, which assumed the mutation was awaited before
+        close — source-verified during implementation that it is not;
+        `role-overrides.md` § Declared-improvisation protocol).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the trigger-update PUT response.
+        """
+        with self.page.expect_response(
+            lambda r: "/pipeline_trigger/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as response_info:
+            self.webhook_apply_button.click(timeout=timeout)
+        self.webhook_modal.wait_for(state="hidden", timeout=timeout)
+        return response_info.value.json()
+
+    def cancel_webhook_settings(self, timeout: int = 10000) -> None:
+        """Click Cancel in the Webhook settings modal; wait for it to close.
+
+        Discards any in-modal changes without persisting — `onClose()` is a
+        pure local state update (no network call), so waiting on the modal
+        becoming hidden is sufficient here (unlike :meth:`apply_webhook_settings`).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.webhook_cancel_button.click(timeout=timeout)
+        self.webhook_modal.wait_for(state="hidden", timeout=timeout)
+
+    def wait_for_schedule_settings_loaded(self, timeout: int = 10000) -> None:
+        """Wait for the Schedule settings modal to be visible.
+
+        Unlike the Webhook modal, the Schedule modal's content is pure local
+        component state (`cronExpression`/`cronType`, defaulted from the
+        `cron` prop) — nothing here waits on a network refetch, so waiting
+        on the modal root is sufficient.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.schedule_modal.wait_for(state="visible", timeout=timeout)
+
+    def get_schedule_summary_text(self, timeout: int = 5000) -> str:
+        """Read the Schedule modal's cron summary text (e.g. "At 00:00, only on Saturday").
+
+        Args:
+            timeout: Maximum wait time for the element to be visible.
+        """
+        self.schedule_modal_summary_text.wait_for(state="visible", timeout=timeout)
+        return (self.schedule_modal_summary_text.text_content() or "").strip()
+
+    def apply_schedule_settings(self, timeout: int = 10000) -> dict:
+        """Click Apply in the Schedule settings modal; wait for the trigger PUT.
+
+        `PipelineScheduleModal.applyChanges` calls `onSubmit(cronExpression)`
+        (a Promise, NOT awaited) then `onClose()` synchronously — same
+        close-before-mutation-resolves shape already confirmed for the
+        Webhook modal's Apply (see :meth:`apply_webhook_settings`), so this
+        waits on the actual `PUT .../pipeline_trigger/.../trigger` response
+        rather than the modal merely closing.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the trigger-update PUT response.
+        """
+        with self.page.expect_response(
+            lambda r: "/pipeline_trigger/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as response_info:
+            self.schedule_apply_button.click(timeout=timeout)
+        self.schedule_modal.wait_for(state="hidden", timeout=timeout)
+        return response_info.value.json()
+
+    # ------------------------------------------------------------------
     # TOOLS section — MCP attach (ELITEA-1955)
     # ------------------------------------------------------------------
 
@@ -1398,6 +1939,19 @@ class PipelineDetailPage(PipelineFormPage):
             - LLM 1 -> Code 1: rf__edge-xy-edge__LLM 1source-Code 1target
             - HITL 1 reject -> END: rf__edge-xy-edge__HITL 1reject-ENDtarget
 
+        ELITEA-2018 additive extension: an edge auto-derived from a
+        pipeline's YAML `transition:`/`entry_point` graph (as opposed to a
+        user-dragged connection, which is what the id shape above was
+        written for) assigns the END node's edge-endpoint id as the
+        literal string `EliteAPipelineEnd`, not `END` — e.g.
+        `rf__edge-xy-edge__Code 1---EliteAPipelineEnd`. A plain
+        `target_id="END"` call then finds nothing for such edges. When the
+        check above finds no match AND the caller asked for `target_id ==
+        "END"`, this method now retries once with the aliased id. Existing
+        callers passing `"END"` for a drag-created connection (whose id
+        already matches on the first pass) are unaffected — this is a
+        pure fallback, never a replacement of the original match.
+
         Args:
             source_id: data-id of the source node.
             target_id: data-id of the target node.
@@ -1407,6 +1961,14 @@ class PipelineDetailPage(PipelineFormPage):
         Returns:
             True if the edge exists in the DOM.
         """
+        if self._edge_matches(source_id, target_id, handle_suffix):
+            return True
+        if target_id == "END":
+            return self._edge_matches(source_id, "EliteAPipelineEnd", handle_suffix)
+        return False
+
+    def _edge_matches(self, source_id: str, target_id: str, handle_suffix: str | None) -> bool:
+        """Single-pass edge-testid match — see `edge_exists` for the public API."""
         edges = self.page.locator('.react-flow__edge')
         edge_count = edges.count()
         logger.debug("Looking for edge: %s -> %s (total edges: %d)", source_id, target_id, edge_count)

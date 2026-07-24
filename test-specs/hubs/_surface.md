@@ -147,3 +147,111 @@ before assuming it's still true.
 `EliteaCatalog` keeps a separate `agentQuery`/`skillQuery` local state per
 tab (not URL-synced) — switching tabs does not preserve the other tab's
 search text, and reloading the page clears both (session-only, in-memory).
+
+## Agent detail modal → Start Chat → chat handoff (ELITEA-2092 — full findings)
+
+Extended 2026-07-24 (analyst run, batch `cov60`). `AgentCard.jsx` click opens
+`AgentModal.jsx` (a MUI `Dialog`); its "Start Chat" button dispatches
+`actions.setSelectedAgentInfo` and navigates to `/chat?create=1`, landing on
+`NewConversationView.jsx` with the agent pre-selected.
+
+### Testids on this whole path — LANDED 2026-07-24 (was "zero testids", now do NOT re-run `add-data-testid`)
+
+**Update (2026-07-24, ELITEA-2092 analyst redispatch Pass 2):** all 6 rows
+below landed in ONE commit, `EliteaAI/EliteaUI@ae7d2703` ("test: [EL-0000]
+add data-testid for Agent Hub modal + Start Chat (ELITEA-2092)"), on
+`automation/testids` only (not yet on `main` — awaiting human cherry-pick).
+Fresh `git fetch origin` + `git grep` confirmed byte-for-byte match to every
+recommendation below, and a live spot-check (isolated CDP,
+`http://localhost:5173`) confirmed all 6 resolve and behave correctly
+end-to-end (modal opens, starters text/empty-state render, Start Chat
+navigates cleanly with the documented pre-click wait avoiding `#1043`'s
+race). **Any future case touching this path should use these testids
+directly — the gap this section originally described is closed.**
+
+- **`AgentCard.jsx`** (`Card` root) — `data-testid="catalog-agent-card-{application.id}"`
+  (was: no `data-testid`, only `data-tour={ELITEA_CATALOG_TOUR_TARGET_IDS.entityCard}`).
+- **`AgentModal.jsx`** — `data-testid="catalog-agent-detail-modal"` on the
+  `Dialog` (was: only `aria-labelledby`/`aria-describedby`).
+- **`AgentConversationStarters.jsx`** — `data-testid="catalog-agent-modal-starters-header"`
+  / `data-testid="catalog-agent-modal-starters-empty"` (section header,
+  literal text **"CHAT STARTERS"**, NOT "CONVERSATION STARTERS" — case-text
+  drift, filed `#1042`; empty-state message `"No predefined conversation
+  starters – just type your request to begin."`, note EN dash not EM dash).
+- **"Start Chat" button** (`AgentModal.jsx` `DialogActions`) —
+  `data-testid="catalog-agent-modal-start-chat-button"`. Literal text is
+  **"Start Chat"**, NOT "Start conversation" (case-text drift, same `#1042`).
+- **Sidebar "Catalog" entry point** (`AgentHubButton.jsx`, bottom of sidebar,
+  above Support Bot) — `data-testid="sidebar-agent-hub-button"` — the case's
+  "Agent HUB" nav item. Visible label is "Catalog" (route
+  `RouteDefinitions.EliteaCatalog` = `/elitea-catalog`). Confirmed live:
+  clicking it from `/chat` lands on `/elitea-catalog` (no query string —
+  `?tab=agents` is the default per `EliteaCatalog.jsx`'s own fallback, so a
+  bare `/elitea-catalog` already shows the Agents tab).
+- **Composer's "×"/clear-participant button** (`AgentEditorPanel.jsx`,
+  `chat-input` feature — NOT part of this hubs module, but directly downstream
+  of Start Chat) — `data-testid="chat-clear-participant-button"` (`IconButton
+  aria-label="switch to model"`).
+
+### Chat handoff — ALREADY has testids (reuse, don't re-add)
+
+Confirmed live end-to-end (`Business Analyst` agent, no conversation starters):
+after "Start Chat" → `/chat?create=1`, the following EXISTING `chat_page.py`
+handles work as-is: `chat-switch-participant-button` (text = agent name,
+"Business Analyst"), `chat-version-selector-trigger` (text = version name,
+e.g. `"v2.1"` — matches ELITEA-2092's own example exactly, no drift there),
+`chat-message-input`, `chat-send-button`, `chat-message-item` (2 per
+user+AI pair; AI item shows `"Thought for N secs"` + model name +
+reply text), `chat-new-conversation-greeting`, `chat-conversation-item-{id}`,
+`chat-conversation-group-header-today`.
+
+**Viewport gotcha (confirmed 2026-07-24, redispatch spot-check):**
+`chat-switch-participant-button`/`chat-version-selector-trigger` collapse to
+icon-only (empty `innerText`, `aria-label` only) below roughly 1000px
+viewport width — a responsive layout change, not a defect. At the suite's
+actual test viewport (1366×768, `automation/conftest.py`) both render full
+text as documented above. If manually spot-checking with a narrow/mobile
+browser-verify viewport, don't mistake the icon-only collapse for a broken
+testid.
+
+**Naming placeholder (ELITEA-2092 step 7) — real, transient, has a testid:**
+`conversation-naming-spinner` (`ConversationItem.jsx:365`, on BOTH `main` and
+`automation/testids`) renders a `CircularProgress` + literal text `"Naming"`
+(no ellipsis in the DOM) while `isNamingPending` is true. Confirmed live: the
+spinner is present in the DOM **immediately** after clicking Send, and
+resolves within ~1.5s (dev backend) to the auto-generated title inside the
+SAME `chat-conversation-item-{id}` element — no polling loop needed beyond a
+normal `wait_for` on the spinner's `to_have_count(0)` or a text-content
+condition wait on the conversation-item testid.
+
+### KNOWN DEFECT (filed `#1043`, confirmed live 2×/3 fresh navigations) — "Start Chat" can crash before its own data has loaded
+
+`AgentModal.jsx`'s `onStartConversation` reads `agentDetails.version_details.*`
+unconditionally; `agentDetails` is `useState(null)` until the modal's own
+`getPublicApplicationDetail` fetch resolves. The button is NOT disabled/gated
+on `isFetching` while this is in flight, and the modal's visible content
+(name/description) is already fully populated from the synchronously-available
+`agent` prop — so the modal LOOKS ready before `agentDetails` actually is.
+Clicking "Start Chat" in that window throws an uncaught `TypeError` (console:
+`Uncaught` at `AgentModal.jsx` ~line 124) and silently no-ops: no navigation,
+no conversation created, no user-visible error. Reproduced 2/3 fresh-navigation
+fast-click attempts; a ~1s natural delay before clicking avoided it every time
+in this digest's own trials.
+**Automation implication — every case that clicks "Start Chat" from this
+modal must wait for the agent-details fetch to settle before clicking** (e.g.
+`wait_for_response` matching `public_applications/prompt_lib/`, or wait for a
+stable post-load DOM signal) or the automated test inherits the same
+intermittent race. Affects ELITEA-2092 and siblings ELITEA-2356/2357/2358/
+2359/2360/2361/2362/2368/2369 (all exercise the same modal/button).
+
+### No page object yet for this chat-handoff path either
+
+`CatalogPage` (recommended above, § No page object / testids yet) should own
+`AgentCard`/`AgentModal`/starters/Start-Chat locators. The chat-side handles
+(`chat-switch-participant-button` etc.) already live on `ChatPage`
+(`automation/pages/chat_page.py`) — a case spanning both (open Agent HUB →
+Start Chat → send message) composes `CatalogPage` + `ChatPage`, same pattern
+as other cross-page flows in this suite. No existing test file/dir covers the
+Agent HUB entry point; recommend a new `automation/tests/ui/agent_hub/`
+directory (matches the `module: agent-hub` tag most batch `cov60` siblings
+carry) rather than folding into `tests/ui/chat/`.

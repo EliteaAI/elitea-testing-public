@@ -132,6 +132,94 @@ execution — verify each handle live as you use it.
   Team") for any case that needs a real participant to render — same precondition ELITEA-2095/2094
   already established, re-confirmed live by ELITEA-2098.
 
+## File attachments, drag-and-drop, and model-selector checkmark (ELITEA-2091 — full findings)
+
+Extended 2026-07-24. The "+" menu's **"Attach Files"** row is NOT a `role="menuitem"` `<li>`
+like its six siblings (Modules/Agents/Pipelines/Toolkits/MCPs/Invite Users) — it's a separate
+`<button aria-label="attach files">` (component: `AttachmentButton.jsx`,
+`src/[fsd]/features/chat/ui/chat-button/`) rendered ABOVE the `<ul role="menu">`, and it carries
+**ZERO `data-testid` anywhere** — confirmed via full-file source read on both `main` and
+`automation/testids`. This is a genuine gap, not a naming drift: the existing page object's
+`ChatPage.attach_files_button` field claims `testid="chat-attach-button"`, but that string does
+not exist in source at all (`git grep` on both refs: zero hits) — the field has always been
+aspirational/stale, which is why the one existing test touching attachments
+(`test_attach_files_button_sends_file_with_message`) bypasses the page object with a raw
+`aria-label` locator instead.
+
+- **TWO simultaneous `AttachmentButton` instances render while the "+" menu is open**, both
+  testid-less, both wired to the SAME `onAttachFiles` callback (so end-user-visible RESULT is
+  consistent regardless of which one processes a file):
+  1. An ALWAYS-MOUNTED, invisible instance (`sx={styles.hiddenAttachment}` in
+     `PlusChatButton.jsx:316`) — holds the `ref` (`attachmentButtonRef`) that drag-and-drop
+     routes through (`NewChatInput.jsx`'s `onDrop` calls `attachmentButtonRef.current.onDrop()`).
+  2. The VISIBLE, `showLabel` instance inside the open `.MuiPopper-root`
+     (`PlusChatButton.jsx:353`) — this is what step-by-step "click Attach Files" user flows
+     actually click; it has NO `ref` at all.
+  Each instance mounts its OWN hidden `<input type="file">` with its own dynamically-generated
+  `id` — **the id is NOT stable across re-renders**: `id = 'file-upload-input' + new
+  Date().getTime()` is a default-parameter expression re-evaluated on every render when no `id`
+  prop is passed, so attaching one file changes BOTH instances' ids on the very next render
+  (confirmed live: `...366936`/`...366937` → `...539442`/`...539448` after a single attach).
+  Any locator strategy that captures this id once and reuses it across multiple attach actions
+  will silently break after the first attach.
+- **Recommended fix (implementer work, not yet done)**: add a `testId` prop (+ `inputTestId`) to
+  `AttachmentButton.jsx`, wired as `data-testid={testId}` on the `IconButton` and
+  `data-testid={inputTestId}` on the input; pass `testId="chat-attach-files-button"` +
+  `inputTestId="chat-attach-files-input"` ONLY at the visible (`showLabel`) call site — leave the
+  always-hidden instance untouched (no case exercises it as a direct target; drag-and-drop
+  doesn't need it testid'd, see below). Counter text ("N left", inside the `showLabel` block
+  only — no collision risk): `chat-attach-files-counter`.
+- **Attached-file chips have no testid either.** `FileList.jsx` (`src/components/Chat/`) — used
+  only by chat surfaces (`UserInput.jsx`, `PlaybackToolBar.jsx`), so chat-scoped naming is fine
+  despite the `src/components/` location. Recommend a REPEATED `chat-attachment-item` testid
+  (same pattern as `chat-message-item`) per visible chip, `chat-attachment-remove-button` scoped
+  to its "X", `chat-attachment-overflow-button` for the "+N" overflow trigger
+  (`aria-label="Show more files"`, currently testid-less), and `chat-attachment-overflow-item` /
+  `chat-attachment-overflow-remove-button` for the overflow popover's own per-file rows. The
+  overflow surface is NOT optional to test — any case attaching more than ~2-3 files (default
+  viewport) needs it to verify every filename actually rendered.
+- **Counter mechanics (confirmed live, linear)**: `remainingAttachments = limits.MAX_ATTACHMENTS
+  (10, from `common/constants.js`'s `ATTACHMENT_LIMITS`) - attachments.length` — confirmed at
+  three points this run (10→9→8 across 2 file attaches). Cap-boundary (10th/11th file, toast
+  warning) confirmed only via source citation, not independently pushed to live.
+- **Drag-and-drop routes through the HIDDEN instance, not the visible button** — see above. The
+  actual DOM drop-zone is an untestid'd `<Box onDrop=...>` in `UserInput.jsx` (~line 396), but
+  its DOM descendant `[data-testid="chat-input"]` (the MUI `TextField` root, `UserInput.jsx:420`,
+  on-`main`) works as a drop target via ordinary native event bubbling — confirmed live via a
+  capture-phase diagnostic listener showing the real handler's `preventDefault()` fired on both
+  `dragover` and `drop`. **No new drop-zone testid is needed.** A synthetic `DataTransfer` + ONE
+  continuous `dragenter→dragover→drop` gesture (Synthetic Input Hygiene discipline) reliably
+  attaches the file, producing a chip structurally identical to a picker-attached one (same
+  `FileList` component, no origin distinction in the DOM).
+  - **Self-inflicted-artifact trap (tooling note, not a product finding)**: adding EXTRA
+    `document`-level event listeners between successive drop dispatches (done here purely for
+    diagnostics) can produce a duplicate attachment from a SINGLE drop (observed once: the app's
+    own silent same-name-rename-on-duplicate kicked in, producing two entries from one file). A
+    clean, uninstrumented single dispatch immediately afterward produced exactly one new
+    attachment with no duplicate — confirms the extra listeners were the cause, not the app.
+    Never add extra document-level listeners inside an actual automated test's drag-drop step.
+- **Model selector's "selected" checkmark has no stable signal.** `LLMModelsMenu.jsx:48`'s
+  existing `data-testid={\`model-selector-option-${item.name}\`}` template IS on `main` — but
+  `aria-selected` is `null` on every option, and the only visible "this one's selected" signal is
+  an `Mui-selected` CSS class (hashed, unstable) + a trailing checkmark SVG with no discriminating
+  attribute. Recommend a `data-selected="true"/"false"` attribute alongside the existing testid
+  (state via `data-*`, not a second testid, per the testid=identity/state=data-* ruling) —
+  `automation/pages/chat_page.py`'s existing `select_model()` method also doesn't use this
+  template at all yet (uses a `:has-text()` locator instead) — worth switching while touching
+  this area, since model DISPLAY NAMES drift across environments/deploys but the template's
+  `item.name` key is the stable internal model id.
+- **`conversation-menu-menu-button` / `chat-conversation-menu-*-menuitem` are prop-indirected,
+  NOT literal strings — a naive full-string `git grep` finds ZERO hits for either on ANY ref**,
+  which looks like "needs-adding" but is a false negative. Both compose via a shared
+  `DotMenu.jsx` component: `data-testid={id ? \`${id}-menu-button\` : undefined}` (line 346, fed
+  `id="conversation-menu"` from `ConversationItem.jsx`) and `data-testid={testId ? \`${testId}-
+  menuitem\` : undefined}` (line 57, fed `testId: item.key` per menu entry, e.g. `item.key =
+  'chat-conversation-menu-delete'`). **Always grep the BASE identifier fed into the template
+  (`"conversation-menu"`, `"chat-conversation-menu-delete"`), never the fully-composed final
+  string**, when checking provenance for anything rendered through `DotMenu`. Confirmed present
+  on BOTH `main` and `automation/testids` (same file/line) for the conversation 3-dot menu and
+  its Delete item specifically.
+
 ## Network / timing
 
 - Model-TTS playback is **Socket.IO-driven** (`tts_start`/`tts_audio_chunk`/
@@ -181,13 +269,22 @@ sibling "Create New Agent" canvas (ELITEA-2166).
 - **Create-mode action button reads "Create", not "Save"** — this canvas's
   save-slot renders ONE of two DIFFERENT components depending on
   `isCreating`: `CreateToolkitButton.jsx` (create mode, text hardcoded
-  `"Create"`, ZERO testid/props) or `SaveToolkitButton.jsx` (edit mode —
-  i.e. AFTER a successful create, text `"Save"`). A case that says 'click
-  Save' while the toolkit doesn't exist yet is describing the button's
-  POST-click label, not its actual label at click-time — clarification
-  `#1011`. The label flip itself (`"Create"` → `"Save"`) is a reliable,
-  cheap, independent confirmation that a create actually persisted, usable
-  alongside/instead of racing the ~3s-lived success toast.
+  `"Create"`) or `SaveToolkitButton.jsx` (edit mode — i.e. AFTER a
+  successful create, text `"Save"`). **Correction 2026-07-24 (ELITEA-2085
+  redispatch)**: `CreateToolkitButton.jsx` actually DOES carry a testid
+  (`toolkit-form-create-button`, confirmed by source read — used by
+  `ToolkitCanvasPage.create_button`); the "ZERO testid/props" this bullet
+  originally claimed for it was wrong and unverified. `SaveToolkitButton.jsx`
+  is the one that genuinely had zero testid — see the dedicated correction
+  bullet under the MCP-canvas section below for the fix
+  (`toolkit-canvas-save-button`, `EliteaAI/EliteaUI@45d64064`) and why it
+  belongs on `ToolkitCanvasPage`. A case that says 'click Save' while the
+  toolkit doesn't exist yet is describing the button's POST-click label, not
+  its actual label at click-time — clarification `#1011`. The label flip
+  itself (`"Create"` → `"Save"`) is a reliable, cheap, independent
+  confirmation that a create actually persisted, usable alongside/instead of
+  racing the ~3s-lived success toast — now assertable by testid
+  (`ToolkitCanvasPage.save_button`), not just by visible text.
 - **`ToolkitEditor.jsx`'s own `<BaseEditor>` call passes NONE of
   `titleTestId`/`subtitleTestId`/`closeButtonTestId`** — confirmed via
   source read (zero occurrences in the file) AND live DOM query (0 testid
@@ -384,3 +481,532 @@ from both `ParticipantItem.jsx` (expanded panel, agent/pipeline/toolkit/mcp rows
   Workaround used: launch Chrome directly with a private, session-specific
   `--user-data-dir` (bypassing the shared script entirely) rather than trusting the
   script's `--port` flag to guarantee isolation.
+
+## In-chat "Create New Pipeline" canvas (ELITEA-2079 — full findings)
+
+Extended 2026-07-24 (batch `cov60`). The `+` menu's Pipelines → "+ Create New
+Pipeline" flow opens `PipelineEditor.jsx` (`src/pages/NewChat/PipelineEditor.jsx`)
+in the SAME right-side canvas slot `AgentEditor`/`ToolkitEditor` use — same
+`useMutuallyExclusiveEditors.js` state machine already documented above for the
+Toolkit canvas. Unlike Toolkit, Pipeline's canvas has a real **mode split**:
+create-mode renders only the reused `CreateAgentForm` fields (`entityType="pipeline"`)
+plus a "Save the pipeline to access the flow editor." placeholder where the Flow
+Editor tab would go; only AFTER the first Save (which assigns the pipeline an id
+and flips `isCreateMode` false) do the "Configuration"/"Flow editor" tabs — and the
+real Flow/Yaml/Add-node/State toolbar — render at all. This is the exact same
+create-vs-detail-form split `test-specs/pipelines/_surface.md`'s ELITEA-2021
+section already documented for the standalone `/pipelines/create` vs
+`/pipelines/all/{id}` pages — same root component (`CreateAgentForm`), same
+"case text interleaves create-time and detail-only fields" trap.
+
+- **`+` menu → Pipelines submenu handles** (all confirmed live): `pipelines-menuitem`
+  (top-level item, `automation/testids`-only — the whole `PLUS_MENU_ITEMS` array
+  with all 5 `*-menuitem` testids, one commit, none yet on `main`),
+  `pipelines-create-new-button` (template `${sectionKey}-create-new-button` in the
+  SHARED `PlusChatSubmenu.jsx`, `sectionKey='pipelines'` wired at
+  `PlusChatButton.jsx:296` — same mechanism as `agents-create-new-button`/
+  `toolkits-create-new-button`, `automation/testids`-only), `pipelines-search-input`
+  (same shared component, searches the SUBMENU's existing-pipeline list). **The
+  submenu's pick-list excludes pipelines already added as a participant to the
+  CURRENT conversation** — confirmed live (a just-added pipeline vanished from its
+  own submenu's search results in that same conversation, but reappeared
+  immediately when searched from a brand-new conversation) — don't mistake this
+  for a broken create/search flow if a just-created entity seems to "disappear."
+- **The embedded `EditorPanel` (Flow/Yaml/State toolbar, Add-node menu, ReactFlow
+  canvas) is the EXACT SAME component the standalone Pipeline Detail page uses** —
+  confirmed live, zero behavioral differences: `pipeline-flow-view`/
+  `pipeline-yaml-view`/`pipeline-add-node-button`/`rf__wrapper`/`rf__node-{id}`/
+  `pipeline-yaml-editor` all work identically inside the chat canvas. Every
+  finding already recorded in `test-specs/pipelines/_surface.md` (LLM node fields,
+  YAML sync, node delete, Add-node menu's 11 types, etc.) applies here unchanged —
+  read that digest first, don't re-derive.
+- **Canvas chrome (title/subtitle/close/discard/tabs) is a confirmed, mirror-the-
+  sibling gap — same shape already fixed for Agent (ELITEA-2166) and Toolkit
+  (ELITEA-2082/2083/2080), just not yet done for Pipeline.** `PipelineEditor.jsx`'s
+  own `<BaseEditor>` call passes NONE of `titleTestId`/`subtitleTestId`/
+  `closeButtonTestId`/`discardButtonTestId` (confirmed via source read — zero
+  occurrences in the file), despite `BaseEditor.jsx` already supporting all four as
+  plain optional props. The canvas's X (close) button also has NO usable
+  `aria-label` (confirmed live, same "Live trap" already documented above for
+  Toolkit — a bounding-box-position heuristic was needed this session, not a
+  durable locator). `testid needed: pipeline-canvas-close-button` (this case's own
+  scope — title/subtitle/discard are untouched by ELITEA-2079's steps, leave those
+  to whichever future case actually asserts on them, per the "touches = executed
+  code path" scope ruling).
+- **The "Configuration"/"Flow editor" tabs are feature-local to `PipelineEditor.jsx`
+  itself (plain MUI `<Tab>`s, not a shared component)** — zero `data-testid` today;
+  `testid needed: pipeline-canvas-configuration-tab` / `pipeline-canvas-flow-editor-tab`,
+  a direct one-line addition on each `<Tab>`, no threading needed.
+- **The create-mode Save button has NO testid either — a distinct gap from the
+  edit-mode one.** `CreateApplicationSaveButton.jsx` forwards `...buttonProps` (same
+  mechanism `AgentEditor.jsx` already uses to wire `agent-save-button`), but
+  `PipelineEditor.jsx`'s own call site passes nothing. `testid needed:
+  pipeline-save-button` for this one specifically — do NOT reuse `agent-save-button`
+  here (that name is reserved for Agent's own create-mode button per ELITEA-2166's
+  declared exclusion).
+- **The EDIT-mode Save button (`SaveApplicationButton.jsx`) hardcodes
+  `data-testid="agent-save-button"` directly in the shared component itself** —
+  confirmed via source read, shared by Agent AND Pipeline (AND
+  `ApplicationTabBar.jsx`/`ToolkitsTabBarPlaceholder.jsx`/`usePin.hooks.js`).
+  Functional but misleadingly named for a Pipeline — filed `#1040` (MINOR, not
+  blocking). **Automation should reuse `agent-save-button` as-is for a Pipeline's
+  edit-mode Save click** — it works, and fixing the mislabel is a cross-cutting
+  shared-component change out of scope for any single case.
+- **PARTICIPANTS-panel Pipelines section is fully pre-existing, zero new work
+  needed.** `chat-participants-badge-pipelines` (template
+  `` `chat-participants-badge-${entity.section}` `` in `CollapsedPerticapantsList.jsx`,
+  confirmed on-main ✓) + the existing generic
+  `ChatPage.open_participants_popover(section="pipelines")` method already handle
+  this end-to-end — confirmed live, popper text reads "Pipelines" (title case) +
+  the pipeline's name + version.
+- **CONFIRMED PRODUCT DEFECT (`#1039`, MAJOR): a bare LLM node (added via
+  "+ Add Node → LLM" with zero further configuration) used as a chat participant
+  does not respond — 400 `messages.0: user messages must have non-empty content`,
+  reproduced 2/2.** Critically, the IDENTICAL bare-LLM-node YAML (via
+  `PipelineAPI.create_pipeline_with_llm_node()`) DOES produce a real response
+  through the standalone Pipeline Detail page's own embedded chat (confirmed by
+  re-running the merged `test_pipeline_execution.py::test_pipeline_response_is_meaningful`
+  live — it passes). This narrows the defect to the **chat-participant invocation
+  path specifically** — any future case sending a message through a freshly-added,
+  unconfigured LLM-node pipeline AS A CHAT PARTICIPANT should expect this same
+  failure and soft-assert it against `#1039`, not re-discover/re-file it.
+- **Tooling gotcha (analyst-only): a shell loop that builds a `git show <ref>:<path>`
+  argument containing the literal `[fsd]` path segment inside a variable-interpolated
+  double-quoted string can silently mis-glob and return "not found" even though the
+  content is genuinely present** — confirmed by re-running the identical `git show`
+  with the path written as a single-quoted literal (no variable expansion touching
+  the brackets), which found the content correctly both times. If a provenance grep
+  against a `src/[fsd]/...` path comes back suspiciously empty, retry with the path
+  hardcoded/quoted directly before concluding "needs-adding" — this cost real time
+  this session (briefly misread `chat-participants-badge-pipelines` as
+  entirely-missing before catching it).
+
+## In-chat Pipeline canvas — Discard mechanism + testid landings since ELITEA-2079 (ELITEA-2078, 2026-07-24)
+
+Extended 2026-07-24 (batch `cov60`). This session re-verified the ELITEA-2079
+section above and found several of ITS `needs-adding` gaps have already
+**landed live** on `automation/testids` (the ELITEA-2079 implementer's
+in-flight work) — future cases on this surface should use the ACTUAL landed
+names below, not re-derive or re-propose them:
+
+- **`pipeline-save-button`** (create-mode Save) — LANDED, confirmed live.
+- **`pipeline-canvas-close-button`** — LANDED, confirmed via source read of
+  `PipelineEditor.jsx`'s `<BaseEditor closeButtonTestId="pipeline-canvas-close-button" …>`;
+  **now also confirmed LIVE** (ELITEA-2079 redispatch spot-check, 2026-07-24 —
+  resolved via `document.querySelector` immediately after opening the canvas,
+  before this row had ever been live-clicked by any prior pass).
+- **`pipeline-canvas-configuration-tab`** / **`pipeline-canvas-flow-editor-tab`** —
+  LANDED, confirmed live.
+- **`pipeline-add-node-menu-item-{type}`** — LANDED (ELITEA-2030's work), but
+  under a DIFFERENT name than ELITEA-2079's own AFS proposed
+  (`pipeline-add-node-type-{type}`) — confirmed live via DOM query
+  (`item.type` = e.g. `llm`, `hitl`, `mcp`, …). **Use the landed name**,
+  `AddNodeMenu.jsx:119/142` (`` data-testid={`pipeline-add-node-menu-item-${item.type}`} ``,
+  template — false-negative under literal `git grep`, confirmed via source
+  read instead, on-`automation/testids` only as of this session).
+
+**Still NOT landed** (confirmed via source read of `PipelineEditor.jsx`'s
+`<BaseEditor>` call on `origin/automation/testids` HEAD `d879a966…`):
+`titleTestId`, `subtitleTestId`, `discardButtonTestId` — none of these three
+are wired yet, only `closeButtonTestId` is. ELITEA-2078 is the first case in
+this batch to touch the Discard button, so it owns adding
+`discardButtonTestId`/`discardModalTestId`/`discardConfirmButtonTestId`
+(mirroring `agent-canvas-discard-button`/`toolkit-canvas-discard-button`) —
+`title`/`subtitle` remain untouched-by-any-case gaps, per scope discipline.
+
+**Canvas-header Discard mechanism — fully traced source-to-DOM, confirmed
+live twice on independent pipeline instances.** `PipelineEditor.jsx` wires
+`onDiscard={handleDiscard}` into `<BaseEditor>`, which forwards it through
+`EditorHeader.jsx` to the shared `DiscardButton.jsx`. The button's `disabled`
+prop is `!isFormDirty && !isYamlCodeDirty` (`useIsPipelineYamlCodeDirty()` —
+tracks the pipeline's YAML/graph state via Redux, independent of Formik) —
+so the SAME canvas-header Discard button governs BOTH create-time form-field
+edits AND Flow-editor graph edits (adding/removing/reconfiguring a node).
+Confirmed live: button is `disabled: true` immediately after the Setup
+Save (clean baseline), flips to `disabled: false` the instant an LLM node is
+added via "+ Add node" (zero form fields touched), and returns to
+`disabled: true` after a successful Discard-confirm.
+
+Clicking it opens `DiscardButton.jsx`'s own built-in confirm dialog (generic
+`Modal.BaseModal`, NOT the `DeleteEntityModal.jsx` used by node-delete —
+different component, same "Warning" styling): title **"Warning"**, body
+**"Are you sure you want to discard changes?"**, buttons **"Cancel"** /
+**"Discard"** (exact text, `ModalConstants.WARNING_MESSAGES.DISCARD_CHANGES`
+/ `WARNING_BUTTONS.DISCARD` — same shared strings the Toolkit canvas's
+Discard dialog already uses, confirmed byte-identical). Confirming calls
+`useDiscardApplicationChanges`'s `discardApplicationChanges` = Formik
+`resetForm()` + the passed `handleDiscard` (`dispatch(actions.resetPipeline())`
++ `dispatch(editorActions.resetPipelineEditor())`) — **100% client-side, zero
+network request**, confirmed via source read (no API call anywhere in
+`handleDiscard`'s body) — matches the identical "no network call on Discard"
+finding already established live for the Toolkit canvas (ELITEA-2080 section
+above) and for node-delete (`test-specs/pipelines/_surface.md`, ELITEA-2018).
+
+**Zero testids anywhere on this Discard button + its dialog + its 2 buttons**
+— confirmed via full live DOM enumeration both before-add (disabled) and
+after-confirm (dialog gone) states, on two independent pipeline ids (`5856`,
+`5860`). `testid needed: pipeline-canvas-discard-button` /
+`pipeline-canvas-discard-confirm-dialog` / `pipeline-canvas-discard-confirm-button`
+— trivial threading, zero shared-component edits (`EditorHeader.jsx`/
+`DiscardButton.jsx` already accept all three as props, same mechanism
+Agent/Toolkit already use).
+
+**Untested interaction with the `DeleteEntityModal.jsx` MUI-ancestor-testid
+quirk** (`test-specs/pipelines/_surface.md` § "Node delete" — MUI's `Dialog`
+sometimes applies `data-testid` to an ancestor wrapper, not the inner `Paper`
+carrying `role="dialog"`): this Discard dialog uses the SIMPLER
+`Modal.BaseModal` component, not `DeleteEntityModal.jsx` — untested whether
+the same ancestor-vs-inner-Paper quirk applies here once `discardModalTestId`
+is wired. Flag for the implementer to verify empirically; `get_by_role("dialog")`
+is the documented-safe fallback either way (only one dialog is ever open at a
+time in this flow).
+
+**LLM node structure, confirmed live (case ELITEA-2078's own step 7
+assertion):** a freshly-added `rf__node-{id}` contains a real `<svg>` icon, a
+`.MuiTypography-root` label matching the node's display name (e.g. `"LLM 1"`),
+and exactly 2 `.react-flow__handle` connection-port elements (ReactFlow's own
+convention, zero app-source touches). Since a single-node pipeline's one node
+always auto-becomes the entry point (`test-specs/pipelines/_surface.md` §
+"Entry Point node"), its config panel additionally shows a `Trigger` field —
+expected, not specific to this case.
+
+**A pipeline saved via create-mode Save with ZERO real nodes ever added shows
+EMPTY `Yaml`-tab content, not a stub `nodes: [END]` YAML** — confirmed live
+twice. Consistent with `PipelineEditor.jsx`'s own source comment ("empty
+string is valid - will create just an END node"): the visible `End` node is a
+client-side rendering default for empty/absent `instructions`, not a
+persisted YAML entity. Not a defect — a future case asserting on YAML content
+in this exact state (saved, zero nodes ever added) should expect empty
+content.
+
+## In-chat "New MCP" canvas (ELITEA-2085 — full findings)
+
+Extended 2026-07-24 (batch `cov60`). The `+` menu's **MCPs** submenu
+(`mcps-menuitem`, sectionKey `'mcps'` — a DISTINCT top-level submenu from
+**Toolkits**, not a filter within it; `PlusChatButton.jsx`'s
+`SUBMENU_KEYS.MCPS = 'mcps'`, gated by `useIsMcpVisible()`) → "Create New MCP"
+(`mcps-create-new-button`) opens the **SAME** `ToolkitEditor.jsx` canvas the
+ELITEA-2082/2083/2080 cluster already documented for plain Toolkit creation —
+just with `isMCP=true` threaded all the way down
+(`handleCreateMCP` → `onCreateToolkit(true)` →
+`onShowToolkitEditorCreator(isMCP)` → `editingToolkit={isCreating:true, isMCP:true}`).
+Confirmed live: canvas title reads `"New MCP"` before a type is picked, `"New
+Remote MCP"` after — vs. plain Toolkit's `"New Toolkit"`/`"New {Type} Toolkit"`.
+Every CONFIGURATION-form testid is **identical to the standalone `/mcps/create`
+page** (`toolkit-type-card-mcp`, `mcp-type-picker-local-empty-state`,
+`toolkit-form-name-input`, `toolkit-field-url-input`,
+`toolkit-field-client_secret-input-field`, …) — `automation/pages/mcp_form_page.py`
+(`McpFormPage`) composes onto this canvas AS-IS for every CONFIGURATION field;
+do not redeclare them on a new page object. **Do not reuse
+`McpFormPage.save_button`** though — the in-chat canvas's action button is a
+DIFFERENT testid, `toolkit-form-create-button` (`CreateToolkitButton.jsx`,
+create-mode only; flips to `SaveToolkitButton.jsx` once persisted — the
+standalone page's `toolkit-form-save-button` belongs only to that page, never
+to this canvas). **CORRECTION 2026-07-24 (ELITEA-2085 redispatch):** the
+original pass's "no-new-testid-needed" claim about `SaveToolkitButton.jsx`
+was WRONG and was never actually live-verified — that component had ZERO
+`data-testid` at all (`Button.BaseBtn` with no testid prop, confirmed by
+source read). It silently blocked the implementer's own step-8 assertion
+when the test was finally run. Fixed this session — see the dedicated
+correction bullet below for the full finding, the new testid, and
+page-object-placement guidance (it belongs on `ToolkitCanvasPage`, not
+`McpFormPage` — `ToolkitCanvasPage` had since landed on `automation/base`,
+`c5d2a48d`/PR #1019, unnoticed by the in-flight MCP implementation).
+
+- **The "Remote"/"Local" split is section headers, not tabs** — same finding
+  ELITEA-1921 already made for the standalone page, re-confirmed here for the
+  in-chat canvas. A case that says "click the Remote tab" is describing the
+  section heading text, not a separate clickable element; one click on
+  `toolkit-type-card-mcp` satisfies the whole intent.
+- **Connection-status widget (`McpAuthStatus.jsx`) renders inside this canvas
+  immediately after a successful create — no reload needed.** Two testids,
+  BOTH already present on `automation/testids` as of this session (no
+  `add-data-testid` work needed for them): `toolkit-connection-status`
+  (container, `data-connected="true"/"false"` state attribute, text "Not
+  Connected"/"Connected!") and `toolkit-connection-auth-button` (the
+  Login/Logout button inside it). A freshly-created Remote MCP with a Client
+  Secret configured starts `data-connected="false"`, text "Not Connected",
+  button "Login" — matches the `remoteMcpLoggedOut` participant-warning state
+  below, not `mcpIsDisconnected` (see next bullet).
+- **Two distinct "MCP is broken" states exist in `ParticipantWarning.jsx`, gated
+  by different flags, with different message text** — do not conflate them:
+  - `mcpIsDisconnected` → `"The {name} mcp server is disconnected. Reconnect it
+    to use."` (no "Log in." link).
+  - `remoteMcpLoggedOut` → `"Server is disconnected!  Reconnect it to use. "` +
+    a `McpLogInLink` rendering `"Log in."` — **this is the state a
+    freshly-created Remote MCP with a Client Secret actually renders**,
+    confirmed live twice (ids `1789`, `1790`). Note the JSX source has a
+    literal DOUBLE space after "disconnected!" that survives verbatim into
+    `textContent` — assert with whitespace normalization
+    (`" ".join(text.split())`), not an exact `==` against a single-spaced
+    literal.
+- **Disconnected/warning-state participant rows had ZERO testids before this
+  session — now fixed.** `ParticipantItem.jsx` renders participants through
+  TWO mutually-exclusive branches: a "normal" branch (has
+  `chat-participant-row-{uniqueId}` + reachable via `ParticipantActions`'
+  edit/remove buttons) and an "attention/warning" branch
+  (`StyledTipsContainer`, entered whenever `mcpIsDisconnected` /
+  `remoteMcpLoggedOut` / `someToolsAreUnavailable` / `isVersionUnavailable` /
+  `isPublishedAgentGone` / misconfiguration-errors is true) which previously
+  had NO testid anywhere — not the row, not the warning icon, not the warning
+  message. Added `chat-participant-row-{uniqueId}` (same existing template,
+  just threaded onto the other branch), `chat-participant-warning-icon`, and
+  `chat-participant-warning-message` this session —
+  `EliteaAI/EliteaUI@6b5aa80d` on `automation/testids`, re-verified live via
+  HMR against a second fixture (id `1790`) before this digest was written. Any
+  FUTURE case touching a participant in ANY attention state (misconfigured
+  agent, blocked toolkit, gone-published-agent, …) can now use the same three
+  testids — this was a structural gap, not MCP-specific.
+- **CORRECTION + NEW GAP CLOSED (2026-07-24, ELITEA-2085 redispatch)** —
+  `SaveToolkitButton.jsx` (`src/pages/Toolkits/SaveToolkitButton.jsx`, the
+  post-create edit-mode action button rendered by `ToolkitEditor.jsx`'s
+  `saveButton` slot for BOTH Toolkit and MCP in-chat creation — the ONLY
+  caller anywhere in the tree, confirmed via `grep -rn "SaveToolkitButton"
+  src/`) had **ZERO `data-testid`** before this session — the original
+  ELITEA-2085 analysis pass asserted it was safe/needed-nothing without ever
+  actually running a test against it live, and that untested assumption
+  shipped into the AFS. Only discovered when the implementer's own
+  (uncommitted) test hit `get_by_test_id("toolkit-form-save-button")` timing
+  out at step 8, despite a "Save" button visibly present in the DOM/aria
+  snapshot. Root-caused via source read (`Button.BaseBtn` in
+  `SaveToolkitButton.jsx` carries no testid prop at all — completely
+  different component from the standalone page's own Save button,
+  `CreateToolkitToolTabBar.jsx:189`, which DOES have `toolkit-form-save-button`).
+  **Fixed**: added `data-testid="toolkit-canvas-save-button"` (new name,
+  deliberately NOT `toolkit-form-save-button` — that string is already
+  claimed by the unrelated standalone-page component and reusing it would
+  create a same-testid-two-components collision), `EliteaAI/EliteaUI@45d64064`
+  on `automation/testids`. Live-reverified end-to-end via isolated CDP
+  (port 9241, fresh MCP fixture `spotcheck_877757`/id `1809`): testid
+  resolves, text `"Save"`, `disabled === true` (pristine/non-dirty state,
+  matches `SaveToolkitButton`'s own `shouldDisableSave = isSaving ||
+  !isFormDirty` logic — correct, not a bug), `toolkit-form-create-button`
+  count 0 (unmounted, confirming the flip). Toolkit cleaned up via API
+  (`DELETE .../tool/prompt_lib/{project}/1809` → `204`).
+  **Page-object placement — do NOT add this to `McpFormPage`**: since
+  `SaveToolkitButton` is canvas chrome shared by both Toolkit and MCP
+  creation (not MCP-form-specific), and `ToolkitCanvasPage`
+  (`automation/pages/toolkit_canvas_page.py`) — the shared canvas-chrome
+  class the ELITEA-2082/2083/2080 cluster proposed — **has since landed on
+  `automation/base`** (`c5d2a48d`, PR #1019, merged), the new
+  `save_button` field belongs there, alongside its existing
+  `title`/`close_button`/`create_button`/`discard_button`/
+  `success_toast_message` fields (`create_button` and `success_toast_message`
+  already use `toolkit-form-create-button`/`toast-message` — the SAME two
+  testids an in-flight, not-yet-committed ELITEA-2085 implementation
+  attempt had independently re-declared on a forked `McpCanvasPage` +
+  `McpFormPage`, unaware `ToolkitCanvasPage` already existed by the time
+  that attempt started. That duplication needs consolidating onto
+  `ToolkitCanvasPage` before merge — one testid, one file
+  (`.agents/testing.md` § Locator policy).
+- **MCP participant `entity_name` is `"toolkit"`, not `"mcp"`** — same finding
+  the ELITEA-2082 cluster already made for plain Toolkit participants,
+  reconfirmed here: `getChatParticipantUniqueId()` yields
+  `toolkit_{mcp_id}_{project_id}` for an MCP row (`meta.mcp === true`
+  distinguishes it for icon/rendering purposes only, not at the
+  `entity_name`/uniqueId level).
+- **Provenance-tooling gotcha (process note, not a product finding):** the
+  standard two-stage grep
+  (`git grep -- "$t" <ref> -- src/ | grep -E "(data-testid|testid.*=.*$t)"`)
+  under-reports for TWO reasons hit this session: (1) object-literal
+  `testId: 'foo'` props (camelCase, colon not `=`) don't match the stage-2
+  filter even case-insensitively — e.g. `mcps-menuitem`'s entry in
+  `PlusChatButton.jsx`'s `EXPANDABLE_ITEMS` array; (2) every
+  `toolkit-field-{k}-*`/`toolkit-type-card-{key}`/`{sectionKey}-*` handle is a
+  template literal — the RENDERED string never appears verbatim in source, only
+  the template does. Grep the template (`` `toolkit-field-${k}-input` ``), not
+  the rendered value, for any dynamic testid; a bare "no matches" on the
+  rendered string is not evidence of absence.
+- **Toolkit-create endpoint is shared, chat-canvas and standalone page alike**:
+  `POST /elitea_core/tools/prompt_lib/{project_id}` → `201` (confirmed via
+  source read of `api/toolkits.js`'s `useToolkitCreateMutation` — same mutation
+  regardless of entry point). No MCP-specific or chat-specific create endpoint
+  exists.
+- **Console noise, already tracked, NOT this flow's bug**: `#291` (React
+  `key`-prop warning, `ToolkitTypeSelector.jsx`/`CategorySection.jsx`) fires on
+  this canvas's type-picker too, same as the standalone page and the plain
+  Toolkit canvas — exclude from any "no new console errors" assertion here.
+
+## In-chat "Edit table" content-canvas (ELITEA-2086 — full findings)
+
+A **completely different canvas component** from every other canvas
+documented above (Agent/Toolkit/MCP/Pipeline entity-creation canvases all
+compose `AgentEditor.jsx`/`ToolkitEditor.jsx` in the same right-side slot).
+This one is `CanvasEditor.jsx` + `CanvasEditHeader.jsx`
+(`src/pages/NewChat/`) — it edits MESSAGE CONTENT (a code block, an
+AI-generated markdown table, a mermaid diagram, or the whole AI response),
+opened via a per-content-type pencil/edit icon rendered directly in the
+message bubble (`MarkdownTableBlock.jsx` for tables, `CodeBlock.jsx` for code
+blocks — same toolbar pattern, both call the same `onEdit` prop up to
+`CanvasEditor`). **Zero testids exist anywhere in this whole component
+tree** — confirmed via full-file reads of `MarkdownTableBlock.jsx`,
+`CanvasEditHeader.jsx`, `CanvasEditor.jsx`, `MarkdownTableEditor.jsx`,
+`SplitButton.jsx`, and the sibling `CodeBlock.jsx` — not tracked tech debt,
+genuinely virgin ground, first case to touch it.
+
+- **The canvas header (`CanvasEditHeader.jsx`) is SHARED across 4 content
+  modes** and its title text changes accordingly: `"Edit response"` (whole
+  AI message, `isBlock: false`), `"Edit code"` (generic code block),
+  `"Edit table"` (markdown table — this case), `"Edit diagram"` (mermaid).
+  Name any testid on this header GENERICALLY (`canvas-edit-header-title`,
+  not `table-canvas-title`) — a future case touching another mode reuses the
+  SAME testid, only the asserted text differs.
+- **Opening the canvas is NOT a navigation** — confirmed live, the URL
+  (`/chat/{id}?name=...`) is byte-identical before and after clicking the
+  edit icon. It's a pure client-side state change (`selectedCodeBlockInfo`
+  passed down from the message-list component); wait on the canvas header
+  text becoming visible, not on any URL/network event.
+- **The original message's content swaps to an `EditingPlaceholder`
+  ("Table editing...") while its canvas is open** (`isBlockEditing` gate in
+  `MarkdownTableBlock.jsx`, keyed by `canvasId`/`blockId` via
+  `useCheckIsBlockEditing` from `CodeBlock.jsx`) — confirmed live. Useful
+  regression guard: the message area shouldn't show a duplicate/stale table
+  while the canvas edits it.
+- **MUI X DataGrid virtualizes off-screen rows** (`MarkdownTableEditor.jsx`)
+  — even though the pagination footer reads "1–10 of 10", only ~9
+  `.MuiDataGrid-row` elements exist in the DOM at any one scroll position.
+  Never assert an exact rendered-row-element count as the logical row count;
+  read the pagination footer text instead.
+- **Pagination footer text uses an EN DASH, not a hyphen**: MUI's
+  `MuiTablePagination-displayedRows` renders `"1–10 of 10"` (U+2013) — a
+  literal ASCII-hyphen `"1-10 of 10"` string match will NEVER succeed. Same
+  trap for any other MUI `TablePagination` instance in the app, not just
+  this canvas.
+- **`.MuiDataGrid-columnHeader button` double-counts** — each column header
+  renders TWO buttons: the app's own custom sort `IconButton`
+  (`ColumnHeader` component in `MarkdownTableEditor.jsx`, wraps
+  `SortUpwardIcon`, parent class `MuiBox-root`) AND MUI's own native
+  `.MuiDataGrid-menuIcon` column-menu button (hover-reveal, but still present
+  in the DOM / matched by `offsetParent !== null`). A broad
+  `.MuiDataGrid-columnHeader button` selector returns 2× the real sort-icon
+  count (10 vs. the actual 5 data columns, this run). Scope tightly to the
+  app-owned sort button only once it has a testid
+  (`canvas-table-column-sort-button`, needs-adding).
+- **Row-selection checkboxes are `@mui/x-data-grid`-internal, not app JSX**
+  (`GRID_CHECKBOX_SELECTION_COL_DEF`, imported straight from the library) —
+  same reasoning shape as `#579`'s "third-party widget subtree" exception
+  (ReactFlow's `rf__wrapper` is the canon's own worked example) even though
+  the canon doesn't explicitly name `@mui/x-data-grid`. Declared as a
+  scoped-raw-handle improvisation in ELITEA-2086's AFS, chained off the
+  REAL `canvas-table-editor` testid parent — never a free-floating handle.
+  Same reasoning would apply to the pagination footer's internal DOM, but
+  that assertion doesn't need a selector at all (see next bullet).
+- **Prefer a single `.inner_text()` content read over chained selectors for
+  MUI-internal text** (pagination footer, "Rows per page:" label): call
+  `.inner_text()` directly on the real `canvas-table-editor` testid field
+  and assert substrings on the returned string — no `.locator()`/
+  `.get_by_text()` chaining, so the raw-handle question doesn't even arise.
+- **LLM table-generation content is non-deterministic** — column
+  names/count and exact company data vary run-to-run (this run: `Rank`,
+  `Company`, `Headquarters`, `Primary Business Areas`, `Notable
+  Products/Services` — 5 data columns, 10 rows). Automate against
+  structural properties (pagination-derived row count, an any-of match on a
+  short known-values list) rather than a hardcoded column/value set — a
+  case's own "such as"/"e.g." wording in its expected results is usually the
+  tell that the author already knew this.
+- **`SplitButton.jsx` (shared component, `src/components/`) has TWO call
+  sites for "Download as xlsx"**: the message-toolbar copy
+  (`MarkdownTableBlock.jsx`, pre-edit) and the canvas copy
+  (`MarkdownTableEditor.jsx`, this case's step 11). No testid/prop exists on
+  either yet — needs a `testId` prop threaded per call site
+  (`canvas-table-download-button` for the canvas one this case touches;
+  leave the message-toolbar one for whichever future case touches THAT
+  button, per the scope-only-what-you-touch rule).
+- **No network call fires when the canvas opens** — confirmed via
+  `get-network --status error` and a full request list, both empty on the
+  edit-icon click. Table generation itself is the ordinary WebSocket
+  chat-predict path (`.agents/testing.md`'s standard ~2s+ wait), not a
+  dedicated "generate table" endpoint — the table is just markdown that
+  happens to parse into a grid.
+
+**AFS redispatch addendum (2026-07-24)** — the original ELITEA-2086 AFS this
+digest section was written for was never actually committed to disk (analyst
+has no commit authority over `test-specs/` case files, only this digest —
+see `analyst_slot_has_no_git_commit_authority.md`; the prior session's
+dispatch worktree has since been reused for unrelated work). A redispatch
+reconstructed the AFS fresh at
+`test-specs/chat-interface/l3_edit-generated-table-in-canvas-mode-verify-editor-display_ELITEA-2086.md`,
+confirming every claim above live a second time (2/2 reproducible on an
+independent open→close→reopen cycle) and surfacing one genuinely NEW finding
+this section didn't previously record:
+
+- **Reproducible (2/2) console `error`, not just a warning, fires on EVERY
+  canvas mount**: `MUI X: useResizeContainer - The parent DOM element of the
+  Data Grid has an empty height ... The grid displays with a height of 0px`
+  (link: `https://mui.com/r/x-data-grid-no-dimensions`). Despite the error
+  text, the grid does NOT actually render at 0px — all rows/columns/
+  pagination confirmed correct a frame later, both times. Root cause is a
+  first-paint layout race: `useResizeContainer` measures the parent
+  container's height before the canvas's own flex layout (which includes a
+  resizable divider) has completed its layout pass. Non-blocking (filed
+  [EliteaAI/elitea-testing-public#1054](https://github.com/EliteaAI/elitea-testing-public/issues/1054),
+  MINOR) — any future case on this canvas asserting "zero console errors"
+  must explicitly exclude this one known line, same established pattern as
+  the `#291` React key-prop warning already excluded on the sibling
+  Toolkit-canvas type-picker.
+- **Grid cells render the LLM's raw markdown source literally** (e.g.
+  `**Apple**`, asterisks included), confirmed via `textContent` on a
+  `[data-field="Company"]` cell — distinct from the read-only message-bubble
+  table, which DOES render the bold. Not a defect (the grid is the editable
+  *data* view), but a future case asserting exact cell text against the GRID
+  specifically needs to expect the raw markdown form, not the rendered one.
+
+## In-chat "Build with AI" (Agent) — ELITEA-2073 full findings
+
+- **The Build-with-AI modal is the SAME shared component/testids** whether
+  opened from the standalone `/agents/create` page (merged
+  `test_agent_build_with_ai.py`, ELITEA-1907/1909/1911/1915) OR from the
+  in-chat "Create New Agent" canvas (`AgentEditor.jsx` →
+  `CreateAgentForm.jsx` → `GenerateAgentButton` — same component tree,
+  `entityType !== 'pipeline'` is the only gate). Every `generate-agent-*`
+  testid (`generate-agent-open-button`, `-modal`, `-prompt-input`,
+  `-cancel-button`, `-submit-button`, `-loading-indicator`,
+  `-back-button`, `-approve-button`) is already **on-main ✓** and resolves
+  identically in both contexts — confirmed live. `GenerateAgentModalPage`
+  is reusable as-is in the chat-canvas context; no new testid work needed
+  for the modal itself.
+- **"Create Agent" performs a REAL backend save even from the chat
+  canvas** — don't assume it's a local-only draft populate.
+  `GenerateAgentModal.jsx`'s `handleApprove` always calls the real
+  `POST .../applications/prompt_lib/{project_id}` (same endpoint/contract
+  the standalone-page merged suite already asserts `201` on); only the
+  POST-creation side effect differs via `onAgentCreated` — standalone page
+  navigates to `/agents/all/{id}`, chat canvas instead populates the LOCAL
+  Formik view of the ALREADY-SAVED entity in place (confirmed live via a
+  follow-up `GET .../applications/...?name=...` query — the entity is
+  immediately queryable) and auto-attaches it as a conversation participant
+  (visible under PARTICIPANTS → AGENTS). This is why the canvas's Save
+  button reads `disabled === true` immediately after — there's nothing left
+  to save.
+- **Cancel resets the modal's local state completely** — reopening after a
+  Cancel shows an EMPTY prompt textarea (confirmed live), and zero
+  `generate_application_draft` network requests fire between typing and
+  Cancel (confirmed via full network-log inspection — the strongest
+  available proof of "no generation took place").
+- **A previously-undocumented testid**: `chat-agent-settings-menu-button`
+  (on `automation/testids` only, `AgentEditorPanel.jsx:281`) — a single
+  stable testid whose CONTENT (not value) toggles between a settings-gear
+  icon and "Editing…"/"Viewing…" text, based on
+  `isActiveParticipantBeingEdited`/`canEdit`. This is DIFFERENT from
+  ELITEA-2166's CLARIFICATION #709 finding (`chat-switch-participant-button`
+  itself shows "Editing…" as a placeholder in the MANUAL-fill flow, because
+  no real agent exists pre-Save there) — in the Build-with-AI flow the real
+  agent already exists, so `chat-switch-participant-button` shows the REAL
+  name/version AND this separate badge shows "Editing…" simultaneously.
+  Don't conflate the two patterns; check which flow (manual-fill vs.
+  Build-with-AI) a future case is testing before reusing either assertion.
+- **Review-form fields (`GenerateAgentReviewForm.jsx`: Name/Description/
+  Instructions/Welcome Message/Conversation Starters) still have ZERO
+  testids** on either branch (re-confirmed this session, `git grep -i
+  "testId\|data-testid"` → no hits) — a pre-existing gap first flagged by
+  ELITEA-1915's AFS as out-of-scope there. Still not blocking for
+  content-only assertions (read the modal's aggregate `.text_content()`),
+  but a future case that EDITS review-form fields before approving will
+  need `add-data-testid` here.
+- **[INFO] Issue #1050** — React "does not recognize the `disableUnderline`
+  prop" console warning fires whenever `GenerateAgentReviewForm.jsx`'s Name
+  field renders, traced to the shared `InputBase.jsx` unconditionally
+  forwarding `disableUnderline` regardless of `variant` (only valid for the
+  `standard` MUI variant, not `outlined`). Cosmetic/dev-mode-only, no
+  functional impact — likely reproducible on ANY `Input.InputBase` caller
+  using the outlined variant, not just this form.
