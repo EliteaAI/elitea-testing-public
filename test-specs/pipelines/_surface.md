@@ -449,3 +449,62 @@ modals, cross-referenced against ELITEA-2006's already-specced names) is in
 `test-specs/pipelines/l3_entry-point-node-trigger-types_ELITEA-2005.md` — read
 that AFS first if implementing either this case or ELITEA-2006, since the two
 share several testids and should NOT be wired twice under different names.
+
+## Toolkit node — zero testids today, same shared component as the MCP node (ELITEA-2010, 2026-07-24)
+
+**`BaseToolNode.jsx` renders BOTH the MCP node (already testid'd, ELITEA-1954)
+and the Toolkit node (this case) — but every testid prop is explicitly gated
+to `isMcpNode` only** (`const isMcpNode = nodeType ===
+FlowEditorConstants.PipelineNodeTypes.Mcp;`, line 37, with a code comment
+stating the exclusion of other node types is intentional). Confirmed live via
+full DOM enumeration inside `[data-id="Toolkit 1"]`: **zero** app testids on
+Toolkit/Tool/Input/Output/Input-mapping/Interrupt/Structured-output — only
+`node-menu-menu-button` and (incidentally, because this session's pipeline had
+only one real node so it auto-became the entry point) `pipeline-trigger-select`/
+`-combobox`. Full wiring points (exact line numbers, recommended names) are in
+`test-specs/pipelines/l2_pipeline-toolkit-node-configuration-persistence_ELITEA-2010.md`'s
+Concrete Handles table — read that AFS first before touching this component,
+since a Toolkit-node testid pass and any future MCP-node rework will collide
+on the same file.
+
+**`rf__node-{id}` is free for every node type — ReactFlow's own convention,
+not app code.** Confirmed live: a fresh Toolkit node got `data-testid="rf__node-Toolkit 1"`
+with zero EliteaUI source touching that string anywhere (`grep -rn "rf__node"
+src/` returns no hits) — it's `@xyflow/react`'s own built-in behavior, keyed by
+the node's `id` prop. Don't flag this as a gap for any node type; it already
+works.
+
+**Two sub-gaps exist even within the already-testid'd MCP node — worth fixing
+in the same pass as the Toolkit-node broadening:**
+- `InputMapping.jsx`'s "Input mapping (optional N)" accordion heading has
+  **no testid mechanism at all**, unlike its "required N" sibling
+  (`requiredHeadingTestId` prop exists and is wired; no `optionalHeadingTestId`
+  equivalent exists yet, for ANY node type). Needs a new prop, not a broadened
+  gate.
+- Each Input-mapping row's own "Type" select (`InputMappingItem.jsx` ~line
+  318-327) has **no testid prop threaded at all** — unlike the sibling "Value"
+  field 15 lines below it, which already has `dataTestId`. It also shares the
+  literal duplicate `id="simple-select-Type"` already filed as
+  `EliteaAI/elitea-testing-public#1006` for the LLM node's System/Task/Chat-History
+  fields — confirmed this session that EVERY Input-mapping row's Type select
+  (any node type) reproduces the identical id collision. Needs a new
+  `typeTestIdPrefix`-style prop, mirroring `valueTestIdPrefix`'s existing shape.
+
+**`CommonInterruptSettings.jsx` (Interrupt before/after, Structured output) has
+zero testid support for ANY node type** — unlike everything else in
+`BaseToolNode.jsx`, it isn't even `isMcpNode`-gated; it's simply never been
+given a `data-testid` prop at all. Since it's already universally shared,
+recommend adding GENERIC testids directly inside the component (not threaded
+per-caller) — no test has asserted these fields yet for any node type, so this
+is genuinely new ground, not a broadened gate.
+
+**Multi-select gotcha — Input/Output tool-agnostic state-variable selects
+accept MULTIPLE values (chips), confirmed live.** Clicking an option in the
+popper ADDS it rather than replacing the current selection; clicking an
+already-selected option in the (re-opened) popper toggles it back off.
+Clicking the combobox's own displayed chip does NOT remove it (tried this
+session — no-op). A stale snapshot ref reused across two different
+combobox interactions can silently select the WRONG combobox's option list
+(this session's own mistake: reusing an Input-select popper's option ref
+after intending to open Output) — always re-snapshot between opening one
+combobox and the next, never reuse a ref across them.
