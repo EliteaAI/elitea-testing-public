@@ -110,19 +110,6 @@ class ToolkitCanvasPage(BasePage):
         self.create_button.click()
         logger.info("Clicked toolkit canvas create button")
 
-    @action("Discard toolkit canvas changes (two-click confirm flow)")
-    def discard(self, timeout: int = 10000):
-        """Click Discard, wait for the confirm dialog, then click Discard again.
-
-        Two-click sequence, same shape as ``ToolkitCreationPage.cancel_creation()``:
-        the canvas's own Discard button always opens a "Warning" dialog first.
-        """
-        self.discard_button.wait_for(state="visible", timeout=timeout)
-        self.discard_button.click()
-        self.discard_confirm_dialog.wait_for(state="visible", timeout=timeout)
-        self.discard_confirm_button.click()
-        logger.info("Confirmed Discard via the Warning dialog's Discard button")
-
     def is_discard_enabled(self, timeout: int = 5000) -> bool:
         """Return whether the Discard button is currently visible and enabled."""
         self.discard_button.wait_for(state="visible", timeout=timeout)

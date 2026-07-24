@@ -421,14 +421,17 @@ class TestCreateToolkitFromConversation:
             with allure.step(
                 "Step 8 — Click the canvas's X (close) button; verify the "
                 "canvas is gone, the composer is shown again, and the "
-                "collapsed TOOLKITS badge appears"
+                "collapsed TOOLKITS badge count reads '1' (AFS ELITEA-2083 "
+                "Axis-2: an earlier, cheaper confirmation that the "
+                "participant was actually attached, independent of the "
+                "later expanded-panel assertion)"
             ):
                 toolkit_canvas.close(timeout=UI_ELEMENT_TIMEOUT)
                 expect(toolkit_canvas.title).to_be_hidden(timeout=UI_ELEMENT_TIMEOUT)
                 expect(chat.message_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-                assert chat.is_participants_badge_visible(
-                    timeout=UI_ELEMENT_TIMEOUT, section="toolkits"
-                ), "Collapsed TOOLKITS participants badge should appear after the toolkit is added"
+                chat.wait_for_participants_badge_count(
+                    "1", section="toolkits", timeout=UI_ELEMENT_TIMEOUT
+                )
 
             with allure.step("Step 9 — Expand the PARTICIPANTS panel"):
                 chat.expand_participants_panel_via_toggle(timeout=UI_ELEMENT_TIMEOUT)
