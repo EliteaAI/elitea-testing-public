@@ -35,6 +35,11 @@ class SkillsListPage(BasePage):
         description="Import skill button in the page toolbar"
     )
 
+    import_preview_dialog = LocatorDescriptor(
+        testid="skill-import-preview-dialog",
+        description="Import parameters preview dialog"
+    )
+
     import_preview_name = LocatorDescriptor(
         testid="skill-import-preview-name",
         description="Import parameters dialog — previewed skill name"
@@ -58,6 +63,32 @@ class SkillsListPage(BasePage):
     import_success_toast_message = LocatorDescriptor(
         testid="toast-message",
         description="App-wide Toast component's message container"
+    )
+
+    import_error_toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description=(
+            "App-wide Toast component's message container (same shared "
+            "`toast-message` testid as import_success_toast_message — own "
+            "named field per the established convention, GAP-061), used "
+            "for the wrong-extension rejection toast."
+        )
+    )
+
+    import_project_select = LocatorDescriptor(
+        testid="skill-import-project-select-combobox",
+        description=(
+            "Import parameters dialog's PROJECT selector combobox trigger "
+            "(GAP-061). `data-testid=\"skill-import-project-select\"` on "
+            "the `<ProjectSelect>` element flows through to this "
+            "`-combobox`-suffixed testid on the actual clickable node — "
+            "same SingleSelect convention as ChatPage.project_selector_trigger."
+        )
+    )
+
+    import_confirm_button = LocatorDescriptor(
+        testid="skill-import-confirm-button",
+        description="Import parameters dialog's Import (confirm) button (GAP-061)"
     )
 
     search_input = LocatorDescriptor(
@@ -116,6 +147,16 @@ class SkillsListPage(BasePage):
     # Scoped sub-selector — a skill card's own (non-overflow) tag chip.
     # See ``get_card_tags()``.
     CARD_TAG_CHIP = '[data-testid="entity-card-tag-chip"]'
+
+    # Dynamic (runtime-parameterized) testid template — the Import dialog's
+    # PROJECT selector dropdown option (GAP-061). Same shared
+    # `select-option-{value}` SingleSelectMenuItem family as
+    # ChatPage.SELECT_OPTION / PipelineDetailPage.SELECT_OPTION — this is
+    # the import dialog's own copy of that pattern, per this codebase's
+    # established per-page-object convention (each caller of the shared
+    # option family names its own constant rather than importing another
+    # page object). See ``select_import_target_project()``.
+    IMPORT_PROJECT_OPTION = '[data-testid="select-option-{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -525,6 +566,55 @@ class SkillsListPage(BasePage):
         dialog.get_by_text("Import parameters").wait_for(state="visible", timeout=timeout)
         logger.info("Import parameters dialog visible")
 
+    @action("Attempt to import an invalid (non-.md) file")
+    def attempt_import_invalid_file(self, file_path: str, timeout: int = 10000):
+        """Attempt to import a file with a non-``.md`` extension; expect rejection.
+
+        Clicks the toolbar Import button and selects *file_path* via the
+        native file chooser, then waits for the error toast to become
+        visible — INSTEAD of waiting for the "Import parameters" preview
+        dialog like :meth:`import_skill` does. The wrong-extension rejection
+        (``!file.name.endsWith('.md')``) happens entirely client-side before
+        the dialog ever renders (GAP-061 AFS — confirmed live), so reusing
+        :meth:`import_skill` here would wait uselessly on a dialog that
+        never appears.
+
+        Args:
+            file_path: Absolute path to the non-``.md`` file to upload.
+            timeout: Maximum wait time in milliseconds for the error toast.
+        """
+        logger.info("Attempting to import invalid (non-.md) file: %s", file_path)
+        with self.page.expect_file_chooser() as fc_info:
+            self.import_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(file_path)
+
+        self.import_error_toast_message.wait_for(state="visible", timeout=timeout)
+        logger.info("Error toast visible after rejecting non-.md file")
+
+    @action("Select import target project")
+    def select_import_target_project(self, project_id: str, timeout: int = 10000):
+        """Change the Import dialog's PROJECT selector to *project_id*.
+
+        Opens the dialog's ``import_project_select`` combobox and clicks
+        the option matching *project_id*, resolved via the
+        :attr:`IMPORT_PROJECT_OPTION` template — the same shared
+        SingleSelectMenuItem family used by ``ChatPage.switch_project`` /
+        ``AgentDetailPage.select_fork_target_project``, scoped here to the
+        import dialog's own copy of the picker (GAP-061).
+
+        Args:
+            project_id: Numeric id of the target project (string or
+                int-like).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting import target project id=%s", project_id)
+        self.import_project_select.click()
+        option = self.page.locator(self.IMPORT_PROJECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        logger.info("Import target project selected: id=%s", project_id)
+
     @action("Expand import preview details")
     def expand_import_preview_details(self, timeout: int = 10000):
         """Expand the "Show details" section of the Import parameters dialog.
@@ -550,12 +640,33 @@ class SkillsListPage(BasePage):
     def confirm_import(self, timeout: int = 15000):
         """Click the "Import parameters" dialog's Import (confirm) button.
 
-        Scoped to the dialog because the toolbar Import button and the
-        dialog's confirm button share the same accessible name ("Import").
+        Waits for the app to navigate into the newly-imported skill's
+        detail page — correct for a **same-project** import (the only kind
+        this method supports). For an import into a **different** target
+        project, no navigation occurs; use
+        :meth:`confirm_cross_project_import` instead (GAP-061).
         """
         logger.info("Confirming import")
-        dialog = self.page.get_by_role("dialog")
-        dialog.get_by_role("button", name="Import").click()
+        self.import_confirm_button.click()
         self.page.wait_for_url("**/skills/all/**", timeout=timeout)
         self.wait_for_network(timeout=5000)
         logger.info("Import confirmed — URL: %s", self.page.url)
+
+    @action("Confirm cross-project import in dialog")
+    def confirm_cross_project_import(self, timeout: int = 15000):
+        """Click the Import dialog's confirm button for a cross-project import.
+
+        Unlike :meth:`confirm_import`, does NOT wait for a URL change —
+        importing into a project other than the current one skips
+        navigation entirely (``importProjectId !== projectId`` branch in
+        ``useSkillImport.hooks.js``, GAP-061 AFS). Waits for the dialog to
+        close and the success toast to appear instead.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Confirming cross-project import")
+        self.import_confirm_button.click()
+        self.import_preview_dialog.wait_for(state="hidden", timeout=timeout)
+        self.import_success_toast_message.wait_for(state="visible", timeout=timeout)
+        logger.info("Cross-project import confirmed — dialog closed, no navigation expected")

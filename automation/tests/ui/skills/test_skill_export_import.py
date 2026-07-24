@@ -1,6 +1,6 @@
 """Skill export/import UI tests.
 
-Covers two export/import round trips:
+Covers three import-related scenarios:
 - ELITEA-1737: create a skill, export its base version as a ``.md`` file,
   import that file as a new skill, verify the imported skill's fields
   match the source exactly.
@@ -8,9 +8,14 @@ Covers two export/import round trips:
   export *that* version, import it, and verify the imported skill lands
   on a `base` version (not `ver_1`) whose fields match the exported
   version's content.
+- GAP-061: importing a non-``.md`` file is rejected with a toast and never
+  opens the preview; importing a valid ``.md`` fixture into a **different**
+  target project completes without navigating away from the current
+  Skills list.
 
 ELITEA-1737 — see test-specs/skills/l3_import_skill_base_version_ELITEA-1737.md
 ELITEA-1738 — see test-specs/skills/l3_import-skill-non-base-version_ELITEA-1738.md
+GAP-061 — see test-specs/skills/l4_reject-non-md-file-and-cross-project-import-skips-navigation_GAP-061.md
 """
 
 import logging
@@ -22,6 +27,7 @@ import pytest
 import allure
 import yaml
 
+from api import SkillAPI
 from pages.skills_list_page import SkillsListPage
 from pages.skill_form_page import SkillFormPage
 from pages.skill_detail_page import SkillDetailPage
@@ -32,6 +38,10 @@ UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
 FORM_SAVE_TIMEOUT = 15_000
 IMPORT_TIMEOUT = 15_000
+
+# GAP-061 — import target project (confirmed live, see AFS Test Data):
+# `UI Testing`, safe for both import destination and its own cleanup.
+GAP061_TARGET_PROJECT_ID = "400"
 
 logger = logging.getLogger("elitea.tests.skills")
 
@@ -57,6 +67,42 @@ def cleanup_skill_ids(skill_api):
             logger.info("Cleanup: deleted skill id=%s", skill_id)
         except Exception as exc:
             logger.warning("Cleanup failed for skill id=%s (non-fatal): %s", skill_id, exc)
+
+
+@pytest.fixture
+def cleanup_project_b_skill(_browser_cookies):
+    """Track a skill created in GAP-061's target project (400, "UI Testing")
+    and delete it via a project-scoped ``SkillAPI`` at teardown.
+
+    GAP-061's cross-project import creates a skill in project 400, not the
+    default project (399/"Private") the session-scoped ``skill_api`` fixture
+    is pinned to — deleting via that fixture would silently 404 (or worse,
+    target the wrong skill) since it always addresses project 399. This
+    constructs its own project-400-scoped ``SkillAPI``, mirroring
+    :func:`cleanup_skill_ids` above but for the cross-project case.
+
+    The test itself performs the delete as its own case step (GAP-061 step
+    7); ``holder["id"]`` is reset to ``None`` once that delete succeeds, so
+    this fixture's teardown is a no-op on the happy path and only acts as a
+    safety net if an assertion fails before the in-test delete runs.
+
+    Yields:
+        dict: ``{"api": SkillAPI, "id": int | None}`` — set ``holder["id"]``
+        to the skill id to clean up; the test clears it back to ``None``
+        after its own successful delete.
+    """
+    holder = {"api": SkillAPI(browser_cookies=_browser_cookies, project_id=GAP061_TARGET_PROJECT_ID), "id": None}
+    yield holder
+    if holder["id"] is not None:
+        try:
+            holder["api"].delete_skill(holder["id"])
+            logger.info("Cleanup: deleted project-%s skill id=%s", GAP061_TARGET_PROJECT_ID, holder["id"])
+        except Exception as exc:
+            logger.warning(
+                "Cleanup failed for project-%s skill id=%s (non-fatal): %s",
+                GAP061_TARGET_PROJECT_ID, holder["id"], exc,
+            )
+    holder["api"].close()
 
 
 class TestSkillExportImport:
@@ -557,3 +603,169 @@ class TestSkillExportImportNonBaseVersion:
                 )
             finally:
                 console_messages.stop()
+
+
+class TestSkillImportRejectionAndCrossProjectImport:
+    """Reject a non-.md import and import a valid .md into a different project (GAP-061).
+
+    Distinct from the round-trip tests above: no source skill is created —
+    a static fixture file is imported directly — and this exercises the
+    dialog's PROJECT selector plus the "no navigation on cross-project
+    import" branch, the inverse of what ELITEA-1737/1738 assert.
+    """
+
+    @allure.issue("GAP-061", "onetest-ai Test Case link")
+    @pytest.mark.p3
+    @pytest.mark.regression
+    def test_reject_non_md_file_and_cross_project_import_skips_navigation(
+        self, page, tmp_path, cleanup_project_b_skill
+    ):
+        """Reject a non-.md import, then import a valid .md into a different project.
+
+        Steps (see AFS for full detail):
+        1. With Project A (Private/399) selected, attempt to import a
+           non-.md file; verify the exact rejection toast and that the
+           preview dialog never opens.
+        2. Import a valid .md fixture; verify the preview dialog opens.
+        3. Verify the preview's name and hardcoded Type/Version subtitle.
+        4. Change the dialog's PROJECT selector to Project B (UI Testing/400).
+        5. Confirm the import; verify the dialog closes and a success toast
+           appears.
+        6. Verify the app stays on Project A's Skills list (no navigation
+           into the imported skill).
+        7. Switch to Project B, confirm the imported skill is present, then
+           delete it.
+        """
+        unique_suffix = uuid.uuid4().hex[:8]
+        skill_name = f"gap061-skill-{unique_suffix}"
+        skill_description = (
+            "Automation fixture skill for GAP-061 cross-project import verification."
+        )
+        skill_instructions = (
+            "You are a test skill created for GAP-061 cross-project import "
+            "verification. Always respond with the single word CONFIRMED."
+        )
+
+        invalid_file = tmp_path / "notes.txt"
+        invalid_file.write_text("This is not a skill file.\n", encoding="utf-8")
+
+        valid_file = tmp_path / "gap061-skill.md"
+        valid_file.write_text(
+            "---\n"
+            f"name: {skill_name}\n"
+            f"description: {skill_description}\n"
+            "tags:\n"
+            "  - regression\n"
+            "---\n"
+            f"{skill_instructions}\n",
+            encoding="utf-8",
+        )
+
+        list_page = SkillsListPage(page)
+
+        # ------------------------------------------------------------------
+        # Step 1 — Reject a non-.md file: exact toast, no preview dialog
+        # ------------------------------------------------------------------
+        with allure.step("Step 1 — Attempt to import a non-.md file; verify rejection"):
+            list_page.navigate()
+            list_page.attempt_import_invalid_file(str(invalid_file), timeout=UI_ELEMENT_TIMEOUT)
+            error_toast = list_page.import_error_toast_message
+            assert error_toast.text_content() == "Only .md files can be imported.", (
+                f"Expected the exact wrong-extension toast, got: {error_toast.text_content()!r}"
+            )
+            assert not list_page.import_preview_dialog.is_visible(), (
+                "Import preview dialog should never open for a rejected non-.md file"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 2 — Import a valid .md fixture; verify the preview dialog opens
+        # ------------------------------------------------------------------
+        with allure.step("Step 2 — Import a valid .md fixture; verify preview dialog opens"):
+            list_page.import_skill(str(valid_file), timeout=IMPORT_TIMEOUT)
+            assert list_page.import_preview_dialog.is_visible(), (
+                "Import preview dialog should open for a valid .md fixture"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 3 — Verify preview name and hardcoded Type/Version subtitle
+        # ------------------------------------------------------------------
+        with allure.step("Step 3 — Verify preview name and Type/Version subtitle"):
+            preview_name_text = list_page.import_preview_name.text_content()
+            preview_type_version_text = list_page.import_preview_type_version.text_content()
+            assert preview_name_text == skill_name, (
+                f"Import dialog should preview the fixture's name: expected "
+                f"{skill_name!r}, got {preview_name_text!r}"
+            )
+            assert preview_type_version_text == "Type: Skill | Version: base", (
+                "Import dialog should show the hardcoded 'Type: Skill | Version: base' "
+                f"subtitle (imported skills are always created as base, regardless of "
+                f"the fixture's own content), got: {preview_type_version_text!r}"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 4 — Change the PROJECT selector to Project B (UI Testing/400)
+        # ------------------------------------------------------------------
+        with allure.step("Step 4 — Change the dialog's PROJECT selector to Project B"):
+            list_page.select_import_target_project(GAP061_TARGET_PROJECT_ID, timeout=UI_ELEMENT_TIMEOUT)
+            selected_project_text = list_page.import_project_select.text_content() or ""
+            assert "UI Testing" in selected_project_text, (
+                f"Import dialog's PROJECT selector should show 'UI Testing' after "
+                f"selection, got: {selected_project_text!r}"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 5 — Confirm the import; verify dialog closes + success toast
+        # ------------------------------------------------------------------
+        with allure.step("Step 5 — Confirm import; verify dialog closes and success toast appears"):
+            list_page.confirm_cross_project_import(timeout=NAVIGATION_TIMEOUT)
+            assert not list_page.import_preview_dialog.is_visible(), (
+                "Import preview dialog should be closed after confirming a cross-project import"
+            )
+            success_toast_text = list_page.import_success_toast_message.text_content()
+            assert success_toast_text == "Skill imported successfully.", (
+                f"Expected 'Skill imported successfully.' toast after cross-project "
+                f"import, got: {success_toast_text!r}"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 6 — Verify the app stayed on Project A's Skills list (no navigation)
+        # ------------------------------------------------------------------
+        with allure.step("Step 6 — Verify no navigation into the imported skill"):
+            current_url = list_page.page.url
+            current_title = list_page.page.title()
+            assert current_url.rstrip("/").endswith("/skills/all"), (
+                f"App should stay on the Skills list after a cross-project import "
+                f"(no navigation into the imported skill), got URL: {current_url!r}"
+            )
+            assert current_title == "Skills: all - Private", (
+                f"Page title should remain on Project A's Skills list, got: {current_title!r}"
+            )
+            assert not list_page.skill_exists_in_list(skill_name), (
+                "The imported skill was created in Project B and should NOT appear "
+                "in Project A's current Skills list"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 7 — Switch to Project B, confirm presence, then delete
+        # ------------------------------------------------------------------
+        with allure.step("Step 7 — Confirm the imported skill is present in Project B, then delete it"):
+            project_b_skill_api = cleanup_project_b_skill["api"]
+            rows = project_b_skill_api.list_skills(limit=500).get("rows", [])
+            imported_skill = next((s for s in rows if s.get("name") == skill_name), None)
+            assert imported_skill is not None, (
+                f"Imported skill {skill_name!r} should be present in Project B "
+                f"(id={GAP061_TARGET_PROJECT_ID}, 'UI Testing') after the cross-project import"
+            )
+            imported_skill_id = imported_skill["id"]
+            # Register with the cleanup fixture BEFORE deleting, so a failure in
+            # the delete call itself (or the assertions below) still leaves a
+            # safety-net teardown delete in place.
+            cleanup_project_b_skill["id"] = imported_skill_id
+
+            project_b_skill_api.delete_skill(imported_skill_id)
+
+            remaining = project_b_skill_api.list_skills(limit=500).get("rows", [])
+            assert not any(s.get("id") == imported_skill_id for s in remaining), (
+                f"Skill id={imported_skill_id} should be gone from Project B after deletion"
+            )
+            cleanup_project_b_skill["id"] = None  # already deleted — teardown becomes a no-op
