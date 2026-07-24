@@ -222,6 +222,31 @@ class ChatPage(BasePage):
         ),
     )
 
+    # ------------------------------------------------------------------
+    # "+" menu -> Toolkits submenu -> "+ Create New Toolkit" (ELITEA-2082/2083/2080)
+    # ------------------------------------------------------------------
+
+    toolkits_menuitem = LocatorDescriptor(
+        testid="toolkits-menuitem",
+        description=(
+            "'Toolkits' menuitem inside the plus-menu dropdown. HOVER (not "
+            "click) reveals the Toolkits submenu — same onMouseEnter "
+            "mechanism as agents_menuitem above. Pre-existing on "
+            "automation/testids (PlusChatButton.jsx's EXPANDABLE_ITEMS)."
+        ),
+    )
+
+    toolkits_create_new_button = LocatorDescriptor(
+        testid="toolkits-create-new-button",
+        description=(
+            "'+ Create New Toolkit' item inside the Toolkits submenu. "
+            "Pre-existing on automation/testids — PlusChatSubmenu.jsx's "
+            "showCreateNew MenuItem, templated ${sectionKey}-create-new-button "
+            "(sectionKey='toolkits' for this submenu), same mechanism as "
+            "agents_create_new_button above."
+        ),
+    )
+
     # Suffix-match template counting every top-level plus-menu item
     # currently rendered — same convention as CONVERSATION_MENU_ITEM_PREFIX
     # below. Safe to query page-wide: MUI Poppers in this codebase unmount
@@ -375,6 +400,31 @@ class ChatPage(BasePage):
     participants_popper = LocatorDescriptor(
         testid="chat-participants-popper",
         description="'Agents'/'Pipelines'/etc. participants popper container (Popper/Grow Paper)"
+    )
+
+    # ------------------------------------------------------------------
+    # Expanded PARTICIPANTS panel (ELITEA-2098 testids; distinct from the
+    # collapsed badge's popper above — Participants.jsx, not
+    # UsersParticipantDropdown/index.jsx). Do not confuse the two: this is
+    # the actual "Participants" side panel with its own collapse/expand
+    # toggle, used by ELITEA-2083 to reach the TOOLKITS section.
+    # ------------------------------------------------------------------
+
+    chat_participants_panel = LocatorDescriptor(
+        testid="chat-participants-panel",
+        description=(
+            "PARTICIPANTS panel container. Carries a data-expanded state "
+            "attribute ('true'/'false') — testid=identity, state=data-* "
+            "per .agents/testing.md § Locator policy."
+        ),
+    )
+
+    chat_participants_panel_toggle_button = LocatorDescriptor(
+        testid="chat-participants-panel-toggle-button",
+        description=(
+            "Collapse/expand IconButton for the PARTICIPANTS panel — one "
+            "stable testid regardless of which chevron icon renders."
+        ),
     )
 
     # Dynamic per-participant row inside the participants popper —
@@ -1516,6 +1566,27 @@ class ChatPage(BasePage):
         self.agents_create_new_button.wait_for(state="visible", timeout=timeout)
         self.agents_create_new_button.click()
         logger.info("Create New Agent canvas opened")
+
+    @action("Open Create New Toolkit canvas")
+    def open_create_new_toolkit_canvas(self, timeout: int = 10000):
+        """Open the in-chat 'Create New Toolkit' canvas (ELITEA-2082/2083/2080).
+
+        Flow: click plus_menu_button -> HOVER toolkits_menuitem (reveals the
+        Toolkits submenu via onMouseEnter, same mechanism as
+        ``open_create_new_agent_canvas()``'s Agents hover) -> click
+        toolkits_create_new_button.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Create New Toolkit canvas via plus menu")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.toolkits_menuitem.wait_for(state="visible", timeout=timeout)
+        self.toolkits_menuitem.hover()
+        self.toolkits_create_new_button.wait_for(state="visible", timeout=timeout)
+        self.toolkits_create_new_button.click()
+        logger.info("Create New Toolkit canvas opened")
 
     # ------------------------------------------------------------------
     # Conversation management helpers
@@ -3416,6 +3487,135 @@ class ChatPage(BasePage):
         # memory) — reset before any subsequent hover-reveal check.
         self.page.mouse.move(0, 0)
         logger.info("Agent participant id=%s removed from chat", agent_id)
+
+    # ------------------------------------------------------------------
+    # Users-type participant removal (ELITEA-2170) — same PARTICIPANT_ROW /
+    # PARTICIPANT_REMOVE_BUTTON mechanism as remove_agent_participant()
+    # above, decomposed into per-step methods (rather than one opaque
+    # call) so the removal flow's own hover/click/confirm-dialog states
+    # can each be asserted individually, matching this case's own
+    # Coverage Map (steps 2-4 verify intermediate UI state, not just the
+    # end result).
+    # ------------------------------------------------------------------
+
+    def get_user_participant_row(self, user_id: int, timeout: int = 10000):
+        """Return the Locator for a Users-type participant's row inside the
+        already-open participants popper (``open_participants_popover(section="users")``).
+
+        Scoped via the dynamic ``chat-participant-row-{uniqueId}`` testid —
+        added to ``UserMenu.jsx`` this implementation (ELITEA-2170), a
+        one-line mirror of ``ExpandedParticipants/ParticipantItem.jsx``'s
+        already-shipped agent/pipeline/toolkit/mcp row testid. ``uniqueId``
+        = ``getChatParticipantUniqueId(participant)``, which for a
+        Users-type participant resolves to ``user_{entity_meta.id}_``
+        (trailing empty segment) — **not** ``user_{id}_{project_id}`` as
+        the AFS's source-reading assumed: confirmed live this session that
+        a "user"-entity participant's ``entity_meta`` carries only ``id``,
+        never ``project_id`` (``ParticipantDetailsContext.jsx``'s own
+        detail-fetch guard explicitly excludes
+        ``ChatParticipantType.Users`` from its ``project_id``-required
+        check — the same fact this timeout surfaced). Same family already
+        consumed by :meth:`remove_agent_participant`'s
+        ``application_{agent_id}_{project_id}`` (agent/pipeline/toolkit
+        participants DO carry ``project_id``, so that one differs from
+        this by design, not by a shared bug).
+
+        Args:
+            user_id: Target user's numeric platform id (``entity_meta.id``
+                — resolve via ``ConversationAPI.get_conversation()``'s
+                ``participants`` list, matching on ``meta.user_name``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        unique_id = f"user_{user_id}_"
+        row = self.participants_popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+        row.wait_for(state="visible", timeout=timeout)
+        return row
+
+    @action("Reveal user participant's remove button via hover")
+    def get_user_participant_remove_button(self, user_id: int, timeout: int = 10000):
+        """Hover the target user's row to reveal its hover-only 'Remove
+        user' icon button and return its Locator, scoped under the row
+        (``chat-participant-remove-button``, disambiguated via the row
+        container — this case's own AFS-specced testid-collision fix,
+        since the button testid alone is identical on every row).
+
+        Same hover-reveal CSS-transition wait as
+        :meth:`remove_agent_participant`.
+
+        Args:
+            user_id: Target user's numeric platform id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        row = self.get_user_participant_row(user_id, timeout=timeout)
+        row.scroll_into_view_if_needed()
+        row.hover()
+        self.page.wait_for_timeout(300)  # hover-reveal CSS transition (matches remove_agent_participant)
+
+        remove_btn = row.locator(self.PARTICIPANT_REMOVE_BUTTON)
+        remove_btn.wait_for(state="visible", timeout=timeout)
+        return remove_btn
+
+    # ------------------------------------------------------------------
+    # Expanded PARTICIPANTS panel helpers (ELITEA-2098 testids — distinct
+    # from the collapsed badge's popper above; see field docstrings).
+    # ------------------------------------------------------------------
+
+    def is_participants_panel_expanded_via_testid(self, timeout: int = 5000) -> bool:
+        """Return whether the PARTICIPANTS panel's data-expanded attribute reads "true".
+
+        Testid-only replacement for the legacy ``is_participants_panel_expanded()``
+        (raw ``get_by_text("Participants")`` check, tracked tech debt, left
+        untouched) — reads ``chat-participants-panel``'s ``data-expanded``
+        state attribute instead.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the panel container
+                to attach before reading its attribute.
+        """
+        self.chat_participants_panel.wait_for(state="attached", timeout=timeout)
+        return self.chat_participants_panel.get_attribute("data-expanded") == "true"
+
+    @action("Expand PARTICIPANTS panel via toggle button")
+    def expand_participants_panel_via_toggle(self, timeout: int = 10000):
+        """Click ``chat_participants_panel_toggle_button`` to expand the
+        PARTICIPANTS panel, skipping the click if already expanded.
+
+        Testid-only replacement for the legacy ``expand_participants_panel()``
+        (JS-evaluate button-hunting, tracked tech debt, left untouched).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        if self.is_participants_panel_expanded_via_testid(timeout=timeout):
+            logger.info("PARTICIPANTS panel already expanded")
+            return
+        self.chat_participants_panel_toggle_button.wait_for(state="visible", timeout=timeout)
+        self.chat_participants_panel_toggle_button.click()
+        expect(self.chat_participants_panel).to_have_attribute(
+            "data-expanded", "true", timeout=timeout
+        )
+        logger.info("PARTICIPANTS panel expanded via toggle button")
+
+    def get_toolkit_participant_row(self, toolkit_id: int, project_id: str | None = None):
+        """Return the Locator for a toolkit's row inside the expanded PARTICIPANTS panel.
+
+        Uses the SAME dynamic ``chat-participant-row-{uniqueId}`` composition
+        already established by :attr:`PARTICIPANT_ROW` for agent participants
+        (``getChatParticipantUniqueId()`` in EliteaUI) — the toolkit-flavored
+        ``entity_name`` literal is ``"toolkit"`` (singular), confirmed live
+        e.g. ``chat-participant-row-toolkit_1755_399``. Scoped under
+        :attr:`chat_participants_panel` (the expanded panel), not the
+        collapsed badge's popper — a different DOM subtree.
+
+        Args:
+            toolkit_id: Numeric id of the toolkit participant (from its
+                creation response).
+            project_id: Project id segment; defaults to
+                ``settings.elitea_project_id``.
+        """
+        pid = project_id if project_id is not None else str(settings.elitea_project_id)
+        unique_id = f"toolkit_{toolkit_id}_{pid}"
+        return self.chat_participants_panel.locator(self.PARTICIPANT_ROW.format(unique_id))
 
     @action("Open Mention skill popper")
     def open_mention_skill_popper(self, timeout: int = 10000):

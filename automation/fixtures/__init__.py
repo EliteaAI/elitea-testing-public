@@ -7,6 +7,8 @@ Fixtures are organized by responsibility (Single Responsibility Principle):
 - data_fixtures: Test data factories — conversation_id, agent_id, github_toolkit, etc.
                  (function scope). All entity creation/teardown belongs here.
 - cleanup_fixtures: Bulk cleanup hooks and teardown logic (session scope, autouse)
+- onboarding_fixtures: fresh_user_route — simulates a never-onboarded user via
+                       social/author/ route interception (function scope)
 
 ## Rule: No fixtures in test files
 
