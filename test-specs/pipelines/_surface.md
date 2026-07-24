@@ -1212,3 +1212,111 @@ container, close button, add-context button, name field, type-selector +
 menu items, delete button, default-value button, and the one shared
 `StateVariableIconButton` component that needs a new `testId` prop threaded
 through its 2 call sites).
+
+## Decision node — Input/Description/DECISION OUTPUTS, chip-based output mechanism (ELITEA-2034, 2026-07-24)
+
+**Config is always inline/expanded, same as every other node type.** Fresh
+`Decision` node (`NormalDecisionNode.jsx`, the NEW-style `type: decision` —
+"Add node" → "Decision" always creates this, never the legacy
+`decision:`-nested shape `LegacyDecisionNode.jsx` handles) shows, top to
+bottom: **Input** (multi-select combobox), **Description** (plain
+`<textarea>`, no AI-Assistant modal complexity needed for classification-
+prompt text), **Decision outputs** (heading + chip container, empty on a
+fresh node), **Interrupt before/after** switches. Zero click-to-open. **Zero
+`data-testid` anywhere on Input/Description/the outputs container/the chips
+today** — full wiring points (all four are trivial one-line additions at
+existing call sites, `NormalDecisionNode.jsx:107/112`,
+`DecisionNodeShared.jsx:19/36` — zero shared-component internals need
+touching) are in
+`test-specs/pipelines/l2_decision-node-config-input-description-outputs_ELITEA-2034.md`'s
+Concrete Handles table — read that AFS first before adding testids here.
+
+**DECISION OUTPUTS chips are populated by canvas drag-connect, NOT free
+text — there is no "add chip" input anywhere on the panel.** Confirmed by
+full source read: `DecisionOutputs`/`DecisionNodeShared.jsx` only ever
+`.map()`s over the existing `decisionOutput` array rendering a delete-only
+chip per entry — no add affordance exists in that component at all. The
+REAL mechanism is dragging from the Decision node's own **`nodes`** source
+handle (bottom-left of its two bottom handles, generic-fallback label
+"Output" — see next paragraph) to an ALREADY-EXISTING target node;
+`connectionOperations.helpers.js`'s `handleFromDecisionNodeConnection`
+appends `connection.target` to the node's `nodes[]` array on a successful
+drop, confirmed live for 3 sequential connects to 3 pre-named target nodes.
+The three case-cited output names (e.g. `bug_responder`) must exist as REAL
+canvas node `id`s *before* attempting the connects — same "seed via API
+with literal target ids" pattern this digest's Router-node section (above)
+already recommends for Routes/Default-output targets.
+
+**The two bottom handles' labels are ordinary `CustomHandle` behavior, not
+Decision-specific strings.** `id="nodes"` renders **"Output"** purely because
+`NormalDecisionNode.jsx` passes no explicit `label` prop for it — falls
+through to `CustomHandle.jsx`'s generic `finalLabel = label || (type ===
+'source' ? 'Output' : 'Input')` fallback (the SAME fallback every other
+unlabeled source handle on this canvas would hit). `id="default_output"`
+renders **"Default output"** via an explicit `label="Default output"` prop.
+Don't assert "Output" as if it were bespoke to Decision — key any assertion
+off the stable `data-handleid`, not the rendered word.
+
+**Input select lists custom state vars immediately, same as every other
+node type** (confirmed live, no surprises): opening the Decision node's
+Input combobox (`#simple-select-Input`, native id — same cross-node-type
+duplicate-id family as `#1006`/`#1009`, not re-filed) listed
+`select-option-input`, `select-option-messages`, plus whatever custom
+`state:` vars the pipeline defines (`select-option-normalized_issue`,
+`select-option-metadata_json` this session) — same shared
+`select-option-{value}` mechanism the ELITEA-2042 section above already
+documents joining Input/Output selects immediately after a custom var is
+added.
+
+**Persistence — exact YAML shape confirmed, survives a real Save + hard
+reload.** A Decision node with 2 Input vars + a Description string + 3
+DECISION OUTPUTS produces:
+```yaml
+- id: Decision 1
+  type: decision
+  nodes:
+    - bug_responder
+    - feature_responder
+    - question_responder
+  default_output: ''
+  description: 'Classify this input into one category: ...'
+  input:
+    - normalized_issue
+    - metadata_json
+```
+Re-confirmed byte-for-byte via both the Flow-view canvas fields and the YAML
+tab, before and after a hard page reload. Zero `error`-level console
+messages across the entire session (add node → configure → connect ×3 →
+Save → reload → re-verify).
+
+**Edge-testid shape drift is the SAME pattern already documented for
+ELITEA-2018/2031 (ordinary nodes) — re-confirmed here for Decision's `nodes`
+handle specifically.** Immediately after each drag:
+`rf__edge-xy-edge__Decision {n}nodes-{target_id}target`. After Save + hard
+reload: `rf__edge-xy-edge__Decision {n}---{target_id}` (triple-dash,
+YAML-derived). The EXISTING `edge_exists(source, target,
+handle_suffix="nodes")` call — unmodified — transparently matches BOTH
+shapes (its `testid.startswith(expected_prefix) and f"-{target_id}" in
+testid` check), confirmed live for all 3 connections. `connect_nodes(decision_id,
+target_id, source_handle="nodes")` also needs zero changes — its existing
+`data-handleid$="_{suffix}"` / `data-handleid="{suffix}"` lookup (originally
+proven for HITL's approve/reject/edit handles, ELITEA-2014) finds the
+Decision node's `data-handleid="nodes"` handle correctly as-is.
+
+**Analyst-tooling-only note (not a product issue):** this session's headless
+CDP/`playwright-cli` exploration needed a wide viewport (≥1900px) and a
+rightward canvas pan to keep newly-added nodes clear of the LEFT
+General-config panel and the RIGHT embedded-chat panel — both sit in normal
+(non-overlay, `position: static`) document flow and will intercept clicks on
+a node positioned underneath them (confirmed via `elementFromPoint`
+mismatches landing on `agent-tags-input-field`/`chat-messages-scroll-
+container`/a left-sidebar icon depending on exactly where the node happened
+to render). A typical desktop-viewport Playwright test run shouldn't hit
+this, but if a node-field click ever reports landing on one of those
+elements instead of the intended target, pan/zoom first
+(`fit_view()`/`zoom_in()`, already implemented) before retrying.
+
+Full Concrete Handles table (exact line numbers, all four new-testid
+wiring points, provenance-checked against a fresh `git fetch origin`) is in
+`test-specs/pipelines/l2_decision-node-config-input-description-outputs_ELITEA-2034.md`
+— read that AFS first if implementing this case.
