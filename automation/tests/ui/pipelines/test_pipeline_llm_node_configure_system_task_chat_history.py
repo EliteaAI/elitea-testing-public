@@ -15,6 +15,7 @@ not just up to Save).
 """
 
 import logging
+import re
 
 import allure
 import pytest
@@ -40,6 +41,36 @@ def _failed_requests(captured) -> list:
     excluded here (not a failure, just still in flight).
     """
     return [r for r in captured if r["status"] is not None and r["status"] >= 400]
+
+
+def _yaml_node_field(yaml_text: str, field_name: str) -> str:
+    """Extract a pipeline-node YAML field's raw value text (stripped).
+
+    Terminates the capture at the next lowercase_snake_case YAML key or a
+    newline, whichever comes first — the SAME technique
+    ``PipelineDetailPage.get_entrypoint_node_id()`` already relies on for its
+    ``entry_point:`` field, because ``get_yaml_content()`` falls back to a
+    single concatenated string (no line breaks at all) whenever the
+    ``pipeline-yaml-lines`` testid selector matches 0 elements — confirmed
+    live (2026-07-24): the YAML view genuinely renders with no separators
+    between CodeMirror lines in this environment, so a plain
+    ``.split("\\n")`` is not reliable and ``yaml.safe_load()`` would fail to
+    parse the squashed text. Reused here as a standalone helper (not
+    duplicated regex logic — same technique) because
+    ``get_entrypoint_node_id`` only ever extracts ``entry_point``, not an
+    arbitrary node field.
+
+    Review fix (ELITEA-2004): replaces a bare ``"input" in yaml_text``
+    substring check, which is vacuous — the TASK f-string placeholder
+    ``{input}`` (``_TASK_VALUE``) already guarantees the literal substring
+    'input' appears in the YAML regardless of whether the Input select
+    actually wrote anything, so a regression that leaves ``input: []``
+    empty would go undetected. This extracts ONLY the ``input:`` node
+    field's own value so the caller can assert its actual structural
+    content (e.g. ``"- input"``, not empty ``"[]"``).
+    """
+    match = re.search(rf"\b{re.escape(field_name)}:\s*(.+?)(?=\s*[a-z_]+:|\n|$)", yaml_text, re.DOTALL)
+    return match.group(1).strip() if match else ""
 
 
 @allure.issue(
@@ -157,7 +188,20 @@ def test_configure_llm_node_system_task_chat_history(page, pipeline_with_llm_id)
             pipeline_page.switch_to_yaml_view()
             yaml_before_save = pipeline_page.get_yaml_content()
             pipeline_page.switch_to_flow_view()
-            assert "input" in yaml_before_save, "YAML should show 'input' as an Input variable"
+            # Structural check (review fix, ELITEA-2004) — see _yaml_node_field's
+            # docstring. A bare "input" in yaml_before_save is vacuous: the TASK
+            # f-string placeholder "{input}" (_TASK_VALUE) already guarantees the
+            # literal substring appears regardless of whether the Input select
+            # actually wrote anything to the node's `input:` field (the fixture
+            # pre-seeds `input: []`, empty). Extracting the field's own value and
+            # asserting its real content proves select_llm_node_input() actually
+            # added "input" to the Input list.
+            input_field_before_save = _yaml_node_field(yaml_before_save, "input")
+            assert input_field_before_save == "- input", (
+                "Input field should round-trip as a YAML list containing exactly "
+                "the selected 'input' variable, got field text: "
+                f"{input_field_before_save!r} — full YAML:\n{yaml_before_save}"
+            )
             assert "messages" in yaml_before_save, "YAML should show 'messages' as an Output variable"
             # AFS Coverage Map row 6 / Test Data note: SimpleLLMInputItem.jsx's
             # onInput JSON.parses the CHAT HISTORY field when
@@ -223,7 +267,14 @@ def test_configure_llm_node_system_task_chat_history(page, pipeline_with_llm_id)
             assert "User Input: {input}" in yaml_after_reload, (
                 "YAML view should independently corroborate the persisted TASK value"
             )
-            assert "input" in yaml_after_reload, "YAML view should show 'input' still mapped after reload"
+            # Same structural check as pre-save (see _yaml_node_field's docstring) —
+            # a bare "input" in yaml_after_reload is equally vacuous here.
+            input_field_after_reload = _yaml_node_field(yaml_after_reload, "input")
+            assert input_field_after_reload == "- input", (
+                "Input field should still round-trip as a YAML list containing "
+                f"exactly 'input' after reload, got field text: {input_field_after_reload!r} "
+                f"— full YAML:\n{yaml_after_reload}"
+            )
             assert "messages" in yaml_after_reload, (
                 "YAML view should show 'messages' still mapped after reload"
             )

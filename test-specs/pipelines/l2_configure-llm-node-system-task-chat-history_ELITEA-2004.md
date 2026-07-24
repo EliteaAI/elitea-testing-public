@@ -198,8 +198,8 @@ configuration + persistence) already works correctly end-to-end.
 | 4 SYSTEM: Type=Fixed, Value="You are a helpful assistant" | Section accepts value | step 4 | step 4: `#system-value` read-back | asserted |
 | 5 TASK: Type=F-String, Value="User Input: {input}" | Section accepts f-string value | step 5 | step 5: `#task-value` read-back | asserted |
 | 6 CHAT HISTORY: Type=Fixed, Value="[]" | Section accepts value | step 6 | step 6: `get_llm_node_value("chat_history")` read-back; the YAML `value: []` (real list, not string) half of this claim is asserted in the Step 7/8-verification and Step 10 YAML blocks (pre-save AND post-reload — review fix pass R1, ELITEA-2004; previously only the DOM read-back was asserted, never the YAML-view corroboration this row itself claims) | asserted |
-| 7 Input combobox includes "input" | "input" variable added | step 7 | step 7: chip rendered + `select-option-input` | asserted |
-| 8 Output combobox includes desired output variable(s) | Output variables set | step 8 | step 8: chip rendered (`messages`) + `select-option-messages` | asserted |
+| 7 Input combobox includes "input" | "input" variable added | step 7 | step 7/8-verification: `_yaml_node_field()` structural check proves the node's `input:` field round-trips as a real YAML list containing exactly `input` (not the empty pre-seeded `[]`) — review fix pass R2, ELITEA-2004; previously a bare `"input" in yaml_before_save`/`yaml_after_reload` substring check, which this row's OWN "chip rendered + `select-option-input`" claim never matched anyway — chip-rendering and `select-option-input` visibility are still NOT asserted (out of scope per this row's Concrete Handles note; the YAML view suffices) | asserted |
+| 8 Output combobox includes desired output variable(s) | Output variables set | step 8 | step 8: `"messages" in yaml_before_save`/`yaml_after_reload` substring check (sound as-is — no other fixture value contains "messages", so no collision risk, unlike row 7's "input" pre-fix) — chip-rendering and `select-option-messages` visibility are likewise NOT asserted, same YAML-view-suffices scope (row wording corrected in review fix pass R2, ELITEA-2004 to match what the code has always actually done) | asserted |
 | 9 Save pipeline | Saves without errors | step 9 | step 9: Discard button disables, zero console errors so far, zero failed (4xx/5xx) network requests so far | asserted |
 | 10 Reload — verify SYSTEM/TASK/CHAT HISTORY types+values persisted | All values/types restored | step 10 | step 10: all 3 fields + Input + Output read back exactly, corroborated by YAML view | asserted |
 | Expected Final State: full config persists after reload | — | steps 4–10 | steps 4–10 | asserted |
@@ -429,3 +429,51 @@ this coverage; this round made the code match the claim):
 Both methods (`select_llm_node_input`/`select_llm_node_output`) have zero
 other callers in the suite (`grep -rl` confirmed), so modifying their bodies
 directly is not subject to the shared-caller additive-only protocol.
+
+## Implementer Notes — review fix pass R2 (ELITEA-2004)
+
+One reviewer finding addressed, in the test file only (no page-object change):
+
+1. **Step 7 "input" verification vacuous (Important).** The Step 7/8-
+   verification and Step 10 checks asserted `"input" in yaml_before_save`/
+   `yaml_after_reload` — a bare substring match. This is vacuous: Step 5's
+   TASK value (`_TASK_VALUE = "User Input: {input}"`) already guarantees the
+   literal substring `input` appears in the SAME YAML dump via the f-string
+   placeholder, independently proven by the test's own
+   `"User Input: {input}" in yaml_after_reload` assertion. The fixture
+   (`PipelineAPI.create_pipeline_with_llm_node`) pre-seeds `input: []`
+   (empty), so a silent regression in `select_llm_node_input` that fails to
+   actually add "input" to the node's Input list would NOT have been caught
+   — the assertion passed regardless.
+
+   Fix: a new `_yaml_node_field(yaml_text, field_name)` helper extracts the
+   `input:` node field's own value text (terminated at the next
+   lowercase_snake_case YAML key or a newline — the same technique
+   `PipelineDetailPage.get_entrypoint_node_id()` already uses for
+   `entry_point:`, reused rather than duplicated), and both call sites now
+   assert `input_field == "- input"` — a structural check that only passes
+   when the Input select genuinely wrote a real one-item YAML list.
+
+   `yaml.safe_load()` was considered first (per the reviewer's suggested
+   fix) but does not work here: a live pytest run with the raw
+   `get_yaml_content()` output captured to disk (2026-07-24) confirmed it
+   falls back to a single concatenated string with NO line breaks at all in
+   this environment (`pipeline-yaml-lines` testid selector matches 0
+   elements — the exact quirk `get_entrypoint_node_id()`'s own docstring
+   already documents), so `yaml.safe_load()` would fail to parse the
+   squashed text. The regex approach was verified robust to BOTH the
+   squashed form (the live-captured one) and a properly newline-separated
+   form (hand-constructed) in isolation before committing it to the test.
+
+   Verified the fix actually catches the regression class the finding
+   named: temporarily skipped the `select_llm_node_input()` call (simulating
+   the exact regression), re-ran, and confirmed the NEW assertion fails with
+   `got field text: '[]'` — proving it is not vacuous. Reverted the
+   simulated regression before the real (passing) run.
+
+   Coverage Map rows 7 and 8 also corrected in this pass (same finding
+   named this as AFS/implementation drift): both previously claimed
+   "chip rendered + `select-option-*`" as the assertion mechanism, which the
+   code has never actually done (out of scope per the Concrete Handles
+   note — the YAML view suffices) — row text now matches what the code
+   asserts.
