@@ -13,7 +13,7 @@ import logging
 import re
 import time
 from urllib.parse import urlparse
-from playwright.sync_api import Page, Locator, Download
+from playwright.sync_api import Page, Locator, Download, expect
 
 from .base_page import BasePage
 from .agent_form_page import AgentFormPage
@@ -2731,8 +2731,15 @@ class AgentDetailPage(AgentFormPage):
         ``conversations`` list endpoint the panel's own open already fired),
         the same "block on the real network round trip" idiom already used
         elsewhere in this page object (e.g. the Save-PUT wait in
-        ``test_agent_llm_selector_anthropic_models.py``), so the caller
-        never races the chat pane's re-render against a fixed sleep.
+        ``test_agent_llm_selector_anthropic_models.py``). The network
+        response landing does not itself prove the client has re-rendered
+        (the ``data-selected`` swap and the chat pane update both happen in
+        a later React commit), so the click additionally uses Playwright's
+        own auto-retrying ``expect(...).to_have_attribute()`` (same idiom as
+        ``chat_page.py``'s icon-wrapper wait) to poll for the clicked row's
+        own ``data-selected="true"`` transition — a real, framework-native
+        condition wait, never a fixed ``wait_for_timeout`` guess at render
+        timing (`.agents/testing.md` — no sleeps).
 
         Args:
             index: Ordinal position of the row to click (0-based).
@@ -2746,7 +2753,7 @@ class AgentDetailPage(AgentFormPage):
             timeout=timeout,
         ):
             item.click()
-        self.page.wait_for_timeout(300)
+        expect(item).to_have_attribute("data-selected", "true", timeout=timeout)
         logger.info("Clicked Run History row at index %d", index)
 
     def is_run_history_item_selected(self, index: int, timeout: int = 10000) -> bool:
