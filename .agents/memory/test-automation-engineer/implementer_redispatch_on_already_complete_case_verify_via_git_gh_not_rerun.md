@@ -144,3 +144,52 @@ orchestrator's hardening gate). Still report the bounce-loop itself
 explicitly as an orchestrator-side routing bug worth fixing — resolving the
 conflict doesn't excuse the loop, it just stops wasting a dispatch's turn
 repeating a diagnosis already made three times before for this exact case.
+
+## 2nd addendum (ELITEA-1890, PR #997, 5th+ implementer-slot dispatch,
+2026-07-24, worktree `wf_e44028a9-dec-26`) — the SAME bounce recurred within
+~1.5h of the 4th dispatch's explicit escalation, and the temp-branch NAME
+itself can collide
+
+Board `case.md` History: the 4th dispatch's `blocked` entry (06:17:41Z) had
+already written an explicit escalation ("route straight to the hardening
+gate + merge — do not re-dispatch analyst or implementer for this case
+again"). The board nonetheless recorded `analysis` (07:51:38Z) →
+`ready-for-automation` (07:54:44Z) → `implementing` (07:54:48Z, this
+dispatch) — the identical bounce, a 5th time, ignoring the escalation text
+that was sitting right there in the History. This is no longer "a pattern
+worth watching" — it's a confirmed, durable orchestrator/board state-machine
+defect that a written escalation in the case's own history does not stop.
+
+Repeated the exact resolve-don't-just-report recipe above, with one new
+wrinkle: **the temp branch NAME can itself already be in use.** By this
+dispatch, THREE local worktrees existed for this one case
+(`tests/ELITEA-1890-version-switch-instructions` checked out in
+`wf_e44028a9-dec-28`, `fixround/ELITEA-1890-review-r1` in `wf_e44028a9-dec-38`,
+and the PREVIOUS dispatch's own temp branch `tmp-rebase-1890` still parked in
+`wf_e44028a9-dec-29`, never cleaned up). `git checkout -b tmp-rebase-1890 ...`
+would have collided with that third one. Fix: just pick a distinguishing
+suffix (`tmp-rebase-1890-v2`) — don't assume the exact temp-branch name from
+a memory-documented recipe is free; `git worktree list | grep <case-id>`
+first to see what's already parked.
+
+Verification chain this time (all fresh, all re-checked rather than trusted):
+coverage cross-check re-confirmed clean (no gap), `gh pr view 997` still
+`DIRTY`/`CONFLICTING` (automation/base had moved further again — PR #1048's
+foundation pass + its own fix round, per the `automation_base_moves_mid_task_*`
+entry), file-set intersection re-confirmed zero real overlap (only the same
+2 append-only memory-log files), rebase produced exactly 1 real conflict
+(the daily log, this time requiring a **dedup** resolution — both diverged
+sides had each independently re-appended the same two earlier entries rather
+than a clean disjoint union), re-ran the test green (44.05s), 0-hit
+mechanical grep, pushed as a fast-forward to the same PR, `gh pr view 997`
+confirmed `CLEAN`/`MERGEABLE` again. Posted a PR comment documenting the
+whole chain (searched for a per-case tracking GitHub issue first — none
+exists for this cov60-campaign case, so no separate issue comment was owed
+per `.agents/profile.md` § Status reporting; the PR comment IS the record).
+
+**Generalization:** a recurring case that has already escalated once with
+explicit "stop re-dispatching" text, and escalates identically again, is
+itself the signal to stop treating each recurrence as a fresh diagnosis —
+verify + resolve efficiently (the recipe above, now proven 2× for this case)
+and let the ESCALATION section of the Run Report carry the weight, rather
+than spending a full session re-deriving what's already been found.
