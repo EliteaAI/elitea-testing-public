@@ -141,3 +141,115 @@ execution — verify each handle live as you use it.
   works identically whether driven via Playwright MCP or a fresh CDP
   (`browser-verify`) session with no storage state at all; no login flow to
   navigate around for chat cases.
+
+## In-chat "New Toolkit" canvas (ELITEA-2082/2083/2080 — full findings)
+
+Extended 2026-07-24 (cluster analysis, batch `cov60`). The `+` menu's
+Toolkits → "+ Create New Toolkit" flow opens `ToolkitEditor.jsx`
+(`src/pages/NewChat/ToolkitEditor.jsx`) in the SAME right-side canvas slot
+`AgentEditor`/`PipelineEditor` use (`useMutuallyExclusiveEditors.js` /
+`useEditToolkit.js` own the create/edit-mode state machine). It renders the
+SAME shared `ToolkitTypeSelector.jsx` + `ToolkitForm`/`ToolBaseProperty.jsx`
+components the standalone `/toolkits/create` wizard uses — every
+`ToolkitCreationPage` field (`type_search_input`, `TOOLKIT_TYPE_CARD`,
+`name_input`, `TOOLKIT_FIELD_INPUT`) works AS-IS in this context, confirmed
+live. Don't redeclare them on a new page object — compose
+`ToolkitCreationPage(page)` alongside a small canvas-chrome-only page
+object, exactly the pattern `AgentCanvasPage` already established for the
+sibling "Create New Agent" canvas (ELITEA-2166).
+
+- **`+` menu → Toolkits submenu handles** (all confirmed live, provenance
+  `automation/testids`-only — awaiting human promotion to `main`):
+  `toolkits-menuitem` (hover reveals submenu, same `onMouseEnter` mechanism
+  as `agents-menuitem`), `toolkits-create-new-button` (template
+  `${sectionKey}-create-new-button` in `PlusChatSubmenu.jsx`,
+  `sectionKey='toolkits'`), `toolkits-search-input` (template
+  `${sectionKey}-search-input`, same component — searches the SUBMENU's
+  existing-toolkit list, NOT the type-picker below; don't confuse the two).
+- **Type-picker search is a plain substring match against each card's own
+  label — GOTCHA for "Artifact" specifically**: the Storage-category plain
+  toolkit type is labeled exactly `"Artifact"` (singular); a SEPARATE,
+  unrelated MCP-category entry is labeled `"Elitea Artifacts"` (plural,
+  different entity). Searching `"Artifacts"` (plural) matches ONLY the MCP
+  card (`toolkit-type-card-mcp_Elitea Artifacts`) — the plain
+  `toolkit-type-card-artifact` card does NOT match, because "Artifacts"
+  (9 chars) isn't a substring of the label "Artifact" (8 chars). Search
+  `"Artifact"` (no trailing s) to reach both, distinguishing by the exact
+  testid. Filed as case-text-drift clarification `#1010` (reverse-masking —
+  live search behavior is correct/consistent, a case that literally says
+  "type Artifacts" will silently filter out the plain Artifact card).
+- **Create-mode action button reads "Create", not "Save"** — this canvas's
+  save-slot renders ONE of two DIFFERENT components depending on
+  `isCreating`: `CreateToolkitButton.jsx` (create mode, text hardcoded
+  `"Create"`, ZERO testid/props) or `SaveToolkitButton.jsx` (edit mode —
+  i.e. AFTER a successful create, text `"Save"`). A case that says 'click
+  Save' while the toolkit doesn't exist yet is describing the button's
+  POST-click label, not its actual label at click-time — clarification
+  `#1011`. The label flip itself (`"Create"` → `"Save"`) is a reliable,
+  cheap, independent confirmation that a create actually persisted, usable
+  alongside/instead of racing the ~3s-lived success toast.
+- **`ToolkitEditor.jsx`'s own `<BaseEditor>` call passes NONE of
+  `titleTestId`/`subtitleTestId`/`closeButtonTestId`** — confirmed via
+  source read (zero occurrences in the file) AND live DOM query (0 testid
+  matches on the canvas title, the X/close button, or anywhere in the
+  Discard-button + its confirm-dialog subtree). This is a straight gap, not
+  a design choice: `AgentEditor.jsx` ALREADY passes the sibling
+  `agent-canvas-title`/`agent-canvas-subtitle`/`agent-canvas-close-button`
+  props to the exact same `BaseEditor` — mirror that shape 1:1 for Toolkit
+  (`toolkit-canvas-title`/`toolkit-canvas-close-button`; subtitle unused by
+  any case so far, skip it per scope discipline until a case needs it).
+- **Live trap: the canvas's X (close) button has NO usable `aria-label`
+  either.** A DIFFERENT, unrelated icon elsewhere on the same page ALSO
+  carries `aria-label="close"` (not this canvas) — a selector built on that
+  attribute silently clicks the wrong element with no error. DOM-position
+  disambiguation was needed this session (confirmed live: the correct
+  button sits at a distinct `(x,y)` in the header row, distinguishable from
+  every other page-wide button by its bounding box) — but position is not a
+  durable locator; this is exactly what the `needs-adding`
+  `toolkit-canvas-close-button` testid fixes.
+- **Discard button + its confirm dialog: zero testids anywhere, but the
+  FIX is a pure threading gap, not new capability.** `EditorHeader.jsx`'s
+  `<Button.DiscardButton onDiscard={...} />` call (shared by every editor:
+  Agent/Pipeline/Toolkit/Artifact) never passes the THREE testid props
+  `DiscardButton.jsx` itself ALREADY natively supports
+  (`dataTestId`/`modalDataTestId`/`confirmButtonDataTestId` — these thread
+  straight through to the button, the warning `Modal.BaseModal`, and its
+  confirm button respectively). Confirming via Discard shows a "Warning"
+  dialog, body text `"Are you sure you want to discard changes?"`
+  (`ModalConstants.WARNING_MESSAGES.DISCARD_CHANGES`), confirm button text
+  `"Discard"` (`WARNING_BUTTONS.DISCARD`) — exact, stable, hardcoded
+  strings if a text-based interim assertion is ever needed, but the
+  compliant fix is threading `toolkit-canvas-discard-button` /
+  `toolkit-canvas-discard-confirm-dialog` /
+  `toolkit-canvas-discard-confirm-button` through ONLY the Toolkit call
+  site (this shared component's OTHER editors get nothing added — no case
+  anywhere yet exercises Agent/Pipeline/Artifact's own Discard flow).
+- **Discard resets ALL THE WAY back to the type-picker step**, not just a
+  blanked config form — confirmed live (typed Name/Bucket → Discard →
+  confirm → canvas shows "Choose the toolkit type" again, search field
+  empty, Discard/Create both disabled). Formik `resetForm()` +
+  `editToolDetail`/`formikInitialValues` local-state reset together produce
+  this; no network call fires on Discard (confirmed via network capture —
+  entirely client-side).
+- **Toolkit participant row testid, once created**: same
+  `chat-participant-row-{entity_name}_{id}_{project_id}` composition
+  documented above for Agents — entity_name literal for a toolkit
+  participant is `"toolkit"` (singular; confirmed live e.g.
+  `chat-participant-row-toolkit_1755_399`), giving
+  `chat-participant-row-toolkit_{id}_{project_id}`. The PARTICIPANTS
+  panel's "TOOLKITS" section accordion header itself
+  (`ParticipantsAccordion.jsx`) accepts NO testid prop at all currently —
+  the row's own presence is the pragmatic proxy for "the TOOLKITS section
+  rendered" (`ParticipantSection` only renders when its group is
+  non-empty), until a `chat-participants-section-{key}` testid is added.
+- **Toolkit-create endpoint**: `POST /elitea_core/tools/prompt_lib/{project_id}`
+  → `201 Created` on success (mirrors the existing
+  `test_toolkit_creation_create_bucket_verify_list_files.py` network-capture
+  idiom — filter by URL containing `/tools/prompt_lib/`). Toolkit-delete
+  (cleanup): `DELETE /elitea_core/tool/prompt_lib/{project_id}/{toolkit_id}`
+  → `204` (note: singular `tool`, not `tools`, for delete — confirmed live).
+- **Console noise, already tracked, NOT this flow's bug**: the React
+  key-prop warning at `ToolkitTypeSelector.jsx`/`CategorySection.jsx`/
+  `GroupedCategory.jsx` (`#291`) fires on every visit to "Choose the
+  toolkit type" — exclude from any "no new console errors" assertion on
+  this surface.
