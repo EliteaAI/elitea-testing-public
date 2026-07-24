@@ -288,6 +288,18 @@ Full wiring points (exact line numbers, proposed names) are in
 Concrete Handles table — don't re-derive, read that AFS first if implementing
 this case.
 
+**Status update (2026-07-24, redispatch ground-truth check): all of the above
+is now DONE, not just planned.** ELITEA-2006's implementer added all 15
+`PipelineWebhookModal` testids (the ones enumerated above + 3 fix-round
+gap-fills: `pipeline-webhook-type-description`,
+`pipeline-webhook-payload-format-description`,
+`pipeline-webhook-secret-helper-text`) — confirmed present on
+`automation/testids` via a fresh `git fetch origin` + `git grep`
+(none yet on `main`). A future case touching this modal should REUSE these,
+not re-run `add-data-testid` against it — check the AFS's Concrete Handles
+table for the full list before assuming any element here still lacks a
+testid.
+
 **Tooling caveat (analyst-only, not a product issue):** `browser-verify`'s
 `cdp.mjs` CLI spawns a fresh Node process per shell command — its
 `consoleMessages`/`networkRequests` capture arrays are module-level and RESET
