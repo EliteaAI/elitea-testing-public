@@ -56,3 +56,39 @@ the MAIN checkout's `.venv/bin/python3.13` (not this worktree's own copy) —
 that's fine and expected as long as the main checkout's venv still exists at
 that path; no action needed, just don't be surprised the interpreter path in
 `pytest -v`'s banner points at the main checkout, not the worktree.
+
+**Variant: the fix-round finding is "your PR's base branch moved" (stacked
+surface-train PRs), not just "the branch name collides" (ELITEA-2005 fix
+round, PR #1022, one level up the stack from the ELITEA-2006 case above).**
+When a PR is deliberately built on ANOTHER case's branch instead of
+`automation/base` (a "surface train" — reuses the base case's page-object
+methods/testids), and that base branch gets its own fix round after your PR
+was cut, your PR's `mergeable` flips to `CONFLICTING` even though your OWN
+diff never touched the conflicting region. Confirm this mechanically before
+touching anything: `gh pr view <N> --json baseRefName,mergeable`, then
+`git diff origin/<old-base-tip>...origin/<your-branch>` — if that diff never
+touches the region the base's fix round changed, it's a clean rebase, not a
+rewrite. Same branch-collision constraint applies (the head branch is
+probably checked out in a sibling worktree too), so combine both patterns:
+
+```bash
+git fetch origin
+git checkout -b fixround/<CASE-ID>-review-r1 origin/tests/<CASE-ID>-<slug>
+git rebase --onto origin/tests/<BASE-CASE-ID>-<slug> <old-merge-base-sha>
+# resolve conflicts (memory/index-style append-only files are the likely
+# hits — resolve additively, keep every entry from both sides) —
+# `git merge-base <old-branch> <base-branch>` finds <old-merge-base-sha>
+# ... git rebase --continue ...
+
+git fetch origin tests/<CASE-ID>-<slug>   # re-confirm remote hasn't moved
+git push origin fixround/<CASE-ID>-review-r1:tests/<CASE-ID>-<slug> \
+  --force-with-lease="tests/<CASE-ID>-<slug>:<old-remote-tip-sha>"
+```
+
+**`--force-with-lease` (scoped to the exact old tip), not a bare `--force`,
+and not a bare `git push`** — a rebase rewrites the branch's commit SHA
+(unlike the pure-append case above, which fast-forwards), so the remote
+genuinely needs a force-update; the lease's expected-old-value makes it
+safe (fails loudly instead of clobbering if someone else pushed in the
+meantime, rather than trusting the pre-push fetch alone). Verify
+`gh pr view <N> --json mergeable` flips to `MERGEABLE` after the push.
