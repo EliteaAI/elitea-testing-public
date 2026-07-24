@@ -307,6 +307,37 @@ class ArtifactsPage(BasePage):
         "the ENTIRE upload operation, including any non-duplicate files in the batch",
     )
 
+    # ELITEA-1828: the dialog's explanatory message + the three remaining
+    # action buttons (Cancel already existed from ELITEA-1832 above).
+    resolve_duplicates_message = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-message",
+        description="'Resolve duplicates' dialog — the message explaining why the "
+        "dialog appeared and what the user should do (dynamic singular/plural "
+        "wording depending on duplicate count; ELITEA-1828 only exercises the "
+        "singular, one-duplicate case)",
+    )
+
+    resolve_duplicates_skip_button = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-skip-button",
+        description="'Skip' button inside the 'Resolve duplicates' dialog — skips "
+        "the duplicate file, keeps uploading any non-duplicate files in the batch "
+        "(ELITEA-1828 only asserts presence; no case yet exercises clicking it)",
+    )
+
+    resolve_duplicates_replace_button = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-replace-button",
+        description="'Replace' button inside the 'Resolve duplicates' dialog — "
+        "overwrites the existing file (ELITEA-1828 only asserts presence; no case "
+        "yet exercises clicking it)",
+    )
+
+    resolve_duplicates_keep_both_button = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-keep-both-button",
+        description="'Keep both' button inside the 'Resolve duplicates' dialog — "
+        "uploads the file alongside the existing one under a modified name "
+        "(ELITEA-1828 only asserts presence; no case yet exercises clicking it)",
+    )
+
     # ------------------------------------------------------------------
     # Success toast (app-wide generic component, reused across features —
     # see skills_list_page.SkillsListPage.import_success_toast_message)
@@ -1902,6 +1933,17 @@ class ArtifactsPage(BasePage):
         names = [(rows.nth(i).text_content() or "").strip() for i in range(count)]
         logger.info("Duplicate filenames listed: %s", names)
         return names
+
+    def get_resolve_duplicates_message_text(self) -> str:
+        """Return the 'Resolve duplicates' dialog's explanatory message text.
+
+        Dynamic label — reads "This file already exist**s**..." for exactly one
+        duplicate, "N file**s** already exist..." for more than one (see
+        DuplicateDialogContent.jsx). ELITEA-1828 only exercises the singular case.
+        """
+        text = self.resolve_duplicates_message.text_content() or ""
+        logger.info("'Resolve duplicates' dialog message: %s", text)
+        return text.strip()
 
     @action("Cancel duplicate resolution (aborts entire upload)")
     def click_resolve_duplicates_cancel_button(self) -> None:
