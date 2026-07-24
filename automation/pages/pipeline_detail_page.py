@@ -139,6 +139,62 @@ class PipelineDetailPage(PipelineFormPage):
         )
     )
 
+    # HITL node inline config fields (ELITEA-2014). Testid-only, added via
+    # add-data-testid — HITLNode.jsx only renders these on hitl-type nodes.
+    # Page-wide (not scoped to a specific node container): correct as long
+    # as a test only has a single HITL node on canvas (same convention as
+    # the MCP node fields above).
+    hitl_node_input_select = LocatorDescriptor(
+        testid="pipeline-hitl-node-input-select",
+        description="HITL node's Input select (top of panel, gated on USER MESSAGE Type=F-String)"
+    )
+
+    # SingleSelect.jsx auto-derives a "-combobox" suffix testid for the
+    # inner role="combobox" div that carries the dynamic aria-disabled
+    # state (same mechanism as mcp_node_toolkit_select_combobox above) —
+    # needed to read the Input select's disabled state (HITLNode.jsx:58,
+    # isInputSelectDisabledByMessageType — ELITEA-2014 AFS Coverage Map row 3).
+    hitl_node_input_select_combobox = LocatorDescriptor(
+        testid="pipeline-hitl-node-input-select-combobox",
+        description="HITL node's Input select — inner combobox div carrying aria-disabled"
+    )
+
+    # USER MESSAGE fields render via the SAME shared SimpleLLMInputItem
+    # component the LLM node's System/Task/Chat History fields use
+    # (HITLNode.jsx:208, variableName="user_message") — the testid prefix
+    # is hardcoded `pipeline-llm-node-` INSIDE that shared component
+    # regardless of caller, so these carry the LLM-node prefix even on a
+    # HITL node. Non-blocking naming defect:
+    # EliteaAI/elitea-testing-public#1017 (ELITEA-2014 AFS § Concrete
+    # Handles / Known Defects). Testids exist on `automation/testids` only
+    # (pending human promotion to `main`, same as the rest of ELITEA-2004's
+    # work).
+    hitl_node_user_message_type_select = LocatorDescriptor(
+        testid="pipeline-llm-node-user_message-type-select",
+        description="HITL node's USER MESSAGE Type select (mis-scoped testid — see #1017)"
+    )
+
+    hitl_node_user_message_value_input = LocatorDescriptor(
+        testid="pipeline-llm-node-user_message-value-input",
+        description="HITL node's USER MESSAGE Value textarea (mis-scoped testid — see #1017)"
+    )
+
+    hitl_node_edit_state_key_select = LocatorDescriptor(
+        testid="pipeline-hitl-node-edit-state-key-select",
+        description="HITL node's EDIT STATE KEY Value select"
+    )
+
+    # Dynamic (runtime-parameterized) testid — one ROUTER MAPPING Route
+    # select per action (approve/edit/reject). Class-level template
+    # constant per .agents/testing.md § Locator policy, formatted with
+    # test-generated data only at the call site.
+    HITL_NODE_ROUTER_SELECT = '[data-testid="pipeline-hitl-node-router-{}-select"]'
+
+    # "-combobox" variant of the above (see hitl_node_input_select_combobox)
+    # — needed to read the EDIT route select's disabled state
+    # (HITLNode.jsx:244-248, gated on EDIT STATE KEY being non-empty).
+    HITL_NODE_ROUTER_SELECT_COMBOBOX = '[data-testid="pipeline-hitl-node-router-{}-select-combobox"]'
+
     # TOOLS section (ELITEA-1955). ApplicationTools.jsx / ToolMenu.jsx is a
     # shared component reused by both Agent and Pipeline detail forms
     # (confirmed via PipelineConfigurationForm.jsx import) — same testids as
@@ -1031,6 +1087,203 @@ class PipelineDetailPage(PipelineFormPage):
         return text == f"Input mapping (required {required_count})"
 
     # ------------------------------------------------------------------
+    # HITL node inline config (ELITEA-2014)
+    # ------------------------------------------------------------------
+
+    def is_hitl_input_select_disabled(self, timeout: int = 5000) -> bool:
+        """Check whether the HITL node's Input select is currently disabled.
+
+        Disabled until USER MESSAGE Type is set to F-String
+        (HITLNode.jsx:58 — isInputSelectDisabledByMessageType).
+
+        Args:
+            timeout: Maximum wait time for the combobox element to be visible.
+
+        Returns:
+            True if aria-disabled="true"; False when the attribute is
+            absent (confirmed live: enabled state renders no attribute at
+            all, ELITEA-2014 AFS Test Steps 3/5).
+        """
+        self.hitl_node_input_select_combobox.wait_for(state="visible", timeout=timeout)
+        return self.hitl_node_input_select_combobox.get_attribute("aria-disabled") == "true"
+
+    def select_hitl_input(self, value: str, timeout: int = 5000) -> None:
+        """Open the HITL node's Input select and choose *value*.
+
+        Requires USER MESSAGE Type to already be F-String — otherwise the
+        select stays disabled (see is_hitl_input_select_disabled). The
+        Input select is a multi-select (InputSelect.jsx passes
+        multiple=True) — SingleSelect.jsx's handleChange only auto-closes
+        the dropdown when NOT effectiveMultiple, so selecting an option
+        here leaves the MUI Modal/backdrop open; an explicit Escape is
+        required afterwards or the leftover backdrop intercepts the next
+        click elsewhere on the page (confirmed live during this case's
+        implementation — a raw click-timeout on the next select, caused by
+        `<div class="MuiBackdrop-root ...">` intercepting pointer events).
+
+        Args:
+            value: The state variable name (matches select-option-{value}).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        from playwright.sync_api import expect
+
+        self.hitl_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+        self.page.locator(self.SELECT_OPTION.format(value)).click(timeout=timeout)
+        self.page.keyboard.press("Escape")
+        expect(self.hitl_node_input_select_combobox).to_have_attribute(
+            "aria-expanded", "false", timeout=timeout
+        )
+
+    def get_hitl_input_values(self, timeout: int = 5000) -> str:
+        """Read the HITL node's Input select chip text (e.g. 'input').
+
+        Args:
+            timeout: Maximum wait time for the select to be visible.
+
+        Returns:
+            The rendered chip text, stripped of MUI's zero-width-space
+            empty-state marker (same gotcha as get_mcp_node_toolkit_value).
+        """
+        self.hitl_node_input_select.wait_for(state="visible", timeout=timeout)
+        text = (self.hitl_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_hitl_user_message_type(self, type_value: str, timeout: int = 5000) -> None:
+        """Open the HITL node's USER MESSAGE Type select and choose *type_value*.
+
+        Args:
+            type_value: One of "fixed" / "fstring" / "variable" (matches
+                select-option-{type_value}).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self.hitl_node_user_message_type_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+        self.page.locator(self.SELECT_OPTION.format(type_value)).click(timeout=timeout)
+
+    def get_hitl_user_message_type(self, timeout: int = 5000) -> str:
+        """Read the HITL node's USER MESSAGE Type select's current display text."""
+        self.hitl_node_user_message_type_select.wait_for(state="visible", timeout=timeout)
+        text = (self.hitl_node_user_message_type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def type_hitl_user_message_value(self, prefix_text: str, state_var: str, timeout: int = 5000) -> None:
+        """Type *prefix_text* then an f-string token for *state_var* into the
+        HITL node's USER MESSAGE Value field.
+
+        Types character-by-character via press_sequentially (never a bulk
+        fill()) per .claude/rules/mui-patterns.md and the ELITEA-2014 AFS's
+        own typing-simulation note, then opens the shared
+        FStringAutocompletePopper by typing "{", filters it to *state_var*,
+        and commits the token via Enter — source-confirmed
+        (useFStringAutocomplete.hooks.js: Enter selects the top filtered
+        option, calls event.preventDefault(), and getFStringAutocompleteInsertion
+        appends the closing brace since none was auto-inserted on this
+        plain-textarea path, so no stray newline or malformed token lands
+        in the field). The popper's own option list carries zero testids
+        (app-internal generic MenuItems, confirmed via the
+        ELITEA-2014/GAP-007 digest) — Enter is therefore the only
+        testid-policy-compliant way to select an option; no locator is
+        used for the popper itself.
+
+        Requires USER MESSAGE Type to already be F-String (see
+        select_hitl_user_message_type) — otherwise this field renders as a
+        plain select, not this textarea.
+
+        Args:
+            prefix_text: Literal text typed before the f-string token.
+            state_var: State variable name to insert as `{state_var}`.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        field = self.hitl_node_user_message_value_input
+        field.wait_for(state="visible", timeout=timeout)
+        field.click(timeout=timeout)
+        field.press_sequentially(prefix_text, delay=20)
+        field.press_sequentially("{", delay=20)
+        field.press_sequentially(state_var, delay=20)
+        field.press("Enter")
+
+    def get_hitl_user_message_value(self, timeout: int = 5000) -> str:
+        """Read the HITL node's USER MESSAGE Value field's current text."""
+        self.hitl_node_user_message_value_input.wait_for(state="visible", timeout=timeout)
+        return self.hitl_node_user_message_value_input.input_value()
+
+    def is_hitl_router_route_visible(self, action: str, timeout: int = 5000) -> bool:
+        """Check whether the ROUTER MAPPING Route select for *action* is visible.
+
+        Args:
+            action: One of "approve" / "edit" / "reject".
+            timeout: Maximum wait time for the element to appear.
+        """
+        route_select = self.page.locator(self.HITL_NODE_ROUTER_SELECT.format(action))
+        try:
+            route_select.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def open_hitl_router_route_select(self, action: str, timeout: int = 5000) -> None:
+        """Open the ROUTER MAPPING Route select for *action* without selecting.
+
+        Args:
+            action: One of "approve" / "edit" / "reject".
+            timeout: Maximum wait time for the dropdown to open.
+        """
+        route_select = self.page.locator(self.HITL_NODE_ROUTER_SELECT.format(action))
+        route_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_hitl_router_route(self, action: str, target_node_id: str, timeout: int = 5000) -> None:
+        """Open the ROUTER MAPPING Route select for *action* and choose *target_node_id*.
+
+        The EDIT action's select stays disabled until EDIT STATE KEY has a
+        value (see is_hitl_edit_route_select_disabled /
+        select_hitl_edit_state_key) — HITLNode.jsx:244-248.
+
+        Args:
+            action: One of "approve" / "edit" / "reject".
+            target_node_id: The target node's data-id (matches
+                select-option-{target_node_id}), or "END".
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self.open_hitl_router_route_select(action, timeout=timeout)
+        self.page.locator(self.SELECT_OPTION.format(target_node_id)).click(timeout=timeout)
+
+    def get_hitl_router_route(self, action: str, timeout: int = 5000) -> str:
+        """Read the current display text of the ROUTER MAPPING Route select for *action*."""
+        route_select = self.page.locator(self.HITL_NODE_ROUTER_SELECT.format(action))
+        route_select.wait_for(state="visible", timeout=timeout)
+        text = (route_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def is_hitl_edit_route_select_disabled(self, timeout: int = 5000) -> bool:
+        """Check whether the ROUTER MAPPING EDIT Route select is currently disabled.
+
+        Disabled until EDIT STATE KEY has a non-empty value
+        (HITLNode.jsx:244-248).
+        """
+        combobox = self.page.locator(self.HITL_NODE_ROUTER_SELECT_COMBOBOX.format("edit"))
+        combobox.wait_for(state="visible", timeout=timeout)
+        return combobox.get_attribute("aria-disabled") == "true"
+
+    def select_hitl_edit_state_key(self, value: str, timeout: int = 5000) -> None:
+        """Open the HITL node's EDIT STATE KEY Value select and choose *value*.
+
+        Args:
+            value: The state variable name (matches select-option-{value}).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self.hitl_node_edit_state_key_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+        self.page.locator(self.SELECT_OPTION.format(value)).click(timeout=timeout)
+
+    def get_hitl_edit_state_key(self, timeout: int = 5000) -> str:
+        """Read the HITL node's EDIT STATE KEY Value select's current display text."""
+        self.hitl_node_edit_state_key_select.wait_for(state="visible", timeout=timeout)
+        text = (self.hitl_node_edit_state_key_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    # ------------------------------------------------------------------
     # TOOLS section — MCP attach (ELITEA-1955)
     # ------------------------------------------------------------------
 
@@ -1301,13 +1554,20 @@ class PipelineDetailPage(PipelineFormPage):
     def edge_exists(self, source_id: str, target_id: str, handle_suffix: str | None = None) -> bool:
         """Check whether an edge from *source_id* to *target_id* exists.
 
-        ReactFlow edge data-testid format (observed):
-            rf__edge-xy-edge__{source_node_id}{source_handle}-{target_node_id}{target_handle}
+        ReactFlow edge data-testid format (re-confirmed live, ELITEA-2014 —
+        the earlier "{handle}-{target}target" template below the
+        handle_suffix branch was never actually exercised: neither
+        test_pipeline_advanced.py nor PIPE-031
+        (test_pipeline_nodes.py::test_add_human_in_the_loop_node_and_connect_to_end)
+        pass handle_suffix, so this is a same-PR fix to a previously-dead
+        code path, not a change to any proven behavior):
+            rf__edge-xy-edge__{source_node_id}{source_handle}---{target_node_id}
 
-        Examples:
-            - LLM 1 -> END: rf__edge-xy-edge__LLM 1source-ENDtarget
-            - LLM 1 -> Code 1: rf__edge-xy-edge__LLM 1source-Code 1target
-            - HITL 1 reject -> END: rf__edge-xy-edge__HITL 1reject-ENDtarget
+        Examples (re-confirmed live via a fresh HITL-node canvas):
+            - LLM 1 -> END (API/fixture-created): rf__edge-xy-edge__LLM 1---EliteAPipelineEnd
+            - HITL 1 approve -> LLM 1: rf__edge-xy-edge__HITL 1approve---LLM 1
+            - HITL 1 edit -> LLM 1: rf__edge-xy-edge__HITL 1edit---LLM 1
+            - HITL 1 reject -> END (default, no click needed): rf__edge-xy-edge__HITL 1reject---END
 
         Args:
             source_id: data-id of the source node.
@@ -1327,10 +1587,11 @@ class PipelineDetailPage(PipelineFormPage):
             testid = edges.nth(i).get_attribute('data-testid') or ""
             all_testids.append(testid)
 
-            # Pattern: rf__edge-xy-edge__{source_id}{handle}-{target_id}target
-            # Handle is 'source' for regular nodes, or 'approve'/'reject'/etc for HITL
+            # Pattern: rf__edge-xy-edge__{source_id}{handle}---{target_id}
+            # Handle is empty for regular nodes' single output, or
+            # 'approve'/'edit'/'reject' for HITL's per-action handles.
             if handle_suffix:
-                expected_prefix = f"rf__edge-xy-edge__{source_id}{handle_suffix}-{target_id}"
+                expected_prefix = f"rf__edge-xy-edge__{source_id}{handle_suffix}---{target_id}"
             else:
                 expected_prefix = f"rf__edge-xy-edge__{source_id}"
 
