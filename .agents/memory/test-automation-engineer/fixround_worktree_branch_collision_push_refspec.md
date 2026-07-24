@@ -92,3 +92,22 @@ genuinely needs a force-update; the lease's expected-old-value makes it
 safe (fails loudly instead of clobbering if someone else pushed in the
 meantime, rather than trusting the pre-push fetch alone). Verify
 `gh pr view <N> --json mergeable` flips to `MERGEABLE` after the push.
+
+**Confirmed RECURRING on the SAME PR (ELITEA-2005, PR #1022, fix round
+r2): a stacked surface-train PR can flip `CONFLICTING` again on a LATER
+fix round even after a previous round already rebased it clean**, if the
+base branch itself gets yet another unrelated commit in between (here:
+ELITEA-2006's own separate redispatch fixing its own memory-log conflict).
+Check `gh pr view <N> --json mergeable` at the START of every redispatch on
+a stacked-base PR — don't assume a prior round's rebase still holds just
+because it held last time. The fix is identical (`git rebase --onto
+<current-base-tip> <old-merge-base>`), just re-run against whatever the
+base tip is NOW, not the tip from the last time you resolved this.
+
+**Union-merge nuance when the SAME curated-memory line appears on both
+sides with an appended addendum** (not just two different lines at the
+same anchor): if HEAD's version of a line is an exact TEXT PREFIX of the
+incoming version (incoming = HEAD's text + " **Variant/Addendum:** ..."),
+keep only the longer (incoming) one — it's a strict superset, so keeping
+both would just duplicate the shared prefix. Only keep both sides when
+neither is a prefix of the other.
