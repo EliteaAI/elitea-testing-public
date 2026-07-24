@@ -321,13 +321,36 @@ class GuardrailsAdminPage(BasePage):
             add_input.fill(toolkit_name)
             self.page.wait_for_timeout(500)
 
-            # Press Enter to select from dropdown
-            add_input.press("Enter")
-            self.page.wait_for_timeout(500)
+            # Wait for dropdown options to appear and click the matching option
+            # MUI Autocomplete uses role="option" for dropdown items
+            dropdown_option = self.page.locator(f'[role="option"]:has-text("{toolkit_name}")').first
+            try:
+                dropdown_option.wait_for(state="visible", timeout=3000)
+                dropdown_option.click()
+                self.page.wait_for_timeout(500)
+            except Exception:
+                # Fallback: press Enter if no dropdown option found
+                logger.warning("No dropdown option found for %s, pressing Enter", toolkit_name)
+                add_input.press("Enter")
+                self.page.wait_for_timeout(500)
 
-            # Click "+ Add" button
+            # Click "+ Add" button (should now be enabled)
             add_btn = self.page.locator('button:has-text("Add")').last
             add_btn.wait_for(state="visible", timeout=timeout)
+            # Wait for button to be enabled (poll until not disabled)
+            try:
+                self.page.wait_for_function(
+                    """() => {
+                        const buttons = document.querySelectorAll('button');
+                        for (const b of buttons) {
+                            if (b.textContent.includes('Add') && !b.disabled) return true;
+                        }
+                        return false;
+                    }""",
+                    timeout=5000
+                )
+            except Exception:
+                logger.warning("Add button did not become enabled within timeout")
             add_btn.click()
             self.page.wait_for_timeout(500)
 

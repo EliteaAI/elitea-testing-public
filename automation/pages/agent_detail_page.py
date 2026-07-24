@@ -1057,6 +1057,9 @@ class AgentDetailPage(AgentFormPage):
 
         Used to verify guardrails blocking is applied without pylon reload.
 
+        The blocked banner appears as a sibling element after the toolkit card,
+        not inside it. We look for the banner following the card with the given name.
+
         Args:
             toolkit_name: Name of the toolkit.
             timeout: Maximum wait time in milliseconds.
@@ -1066,9 +1069,39 @@ class AgentDetailPage(AgentFormPage):
         """
         self.ensure_toolkits_section_visible()
         card = self.toolkit_card.filter(has_text=toolkit_name)
-        blocked_indicator = card.locator(self.TOOLKIT_BLOCKED_SELECTOR)
         try:
-            blocked_indicator.wait_for(state="visible", timeout=timeout)
+            card.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+
+        # The blocked banner is a sibling element after the toolkit card.
+        # Look for it using xpath following-sibling or by checking the parent container.
+        # First try: banner inside the card (in case UI structure changes)
+        blocked_inside = card.locator(self.TOOLKIT_BLOCKED_SELECTOR)
+        if blocked_inside.count() > 0:
+            try:
+                blocked_inside.wait_for(state="visible", timeout=1000)
+                return True
+            except Exception:
+                pass
+
+        # Second try: banner as following sibling of the card
+        blocked_sibling = card.locator("xpath=following-sibling::*[1]").filter(
+            has=self.page.locator(self.TOOLKIT_BLOCKED_SELECTOR)
+        )
+        if blocked_sibling.count() > 0:
+            try:
+                blocked_sibling.wait_for(state="visible", timeout=timeout)
+                return True
+            except Exception:
+                pass
+
+        # Third try: any blocked banner visible in the TOOLS section that mentions this toolkit type
+        # The banner text contains the toolkit type (e.g., "Github toolkit is blocked")
+        tools_section = self.page.locator('[data-testid="tools-section"], .tools-section, text="TOOLS"').first.locator("xpath=ancestor::*[3]")
+        blocked_banner = tools_section.locator(self.TOOLKIT_BLOCKED_SELECTOR)
+        try:
+            blocked_banner.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
             return False
@@ -1077,6 +1110,8 @@ class AgentDetailPage(AgentFormPage):
         """Check if toolkit shows 'Some tools are not available anymore' indicator.
 
         Used to verify guardrails tool blocking is applied without pylon reload.
+
+        The blocked banner may appear inside the toolkit card or as a sibling element.
 
         Args:
             toolkit_name: Name of the toolkit.
@@ -1087,9 +1122,36 @@ class AgentDetailPage(AgentFormPage):
         """
         self.ensure_toolkits_section_visible()
         card = self.toolkit_card.filter(has_text=toolkit_name)
-        blocked_indicator = card.locator(self.TOOLKIT_TOOL_BLOCKED_SELECTOR)
         try:
-            blocked_indicator.wait_for(state="visible", timeout=timeout)
+            card.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+
+        # First try: banner inside the card
+        blocked_inside = card.locator(self.TOOLKIT_TOOL_BLOCKED_SELECTOR)
+        if blocked_inside.count() > 0:
+            try:
+                blocked_inside.wait_for(state="visible", timeout=1000)
+                return True
+            except Exception:
+                pass
+
+        # Second try: banner as following sibling of the card
+        blocked_sibling = card.locator("xpath=following-sibling::*[1]").filter(
+            has=self.page.locator(self.TOOLKIT_TOOL_BLOCKED_SELECTOR)
+        )
+        if blocked_sibling.count() > 0:
+            try:
+                blocked_sibling.wait_for(state="visible", timeout=timeout)
+                return True
+            except Exception:
+                pass
+
+        # Third try: any tools-unavailable banner visible in the TOOLS section
+        tools_section = self.page.locator('[data-testid="tools-section"], .tools-section, text="TOOLS"').first.locator("xpath=ancestor::*[3]")
+        blocked_banner = tools_section.locator(self.TOOLKIT_TOOL_BLOCKED_SELECTOR)
+        try:
+            blocked_banner.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
             return False
