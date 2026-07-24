@@ -78,3 +78,50 @@ independently verified (paste the git diff/gh output, don't just say
 next actor — usually the orchestrator's hardening gate + merge, not another
 implementer or reviewer dispatch, unless your own verification uncovered a
 real gap the existing artifacts don't cover.
+
+## It recurred — check `mergeable`, and don't just report a second time (2026-07-24, third pass)
+
+The exact same case triggered a THIRD implementer-slot redispatch after this
+entry was first filed (board `case.md` History shows a sixth `implementing`
+transition), and the AFS's own "Redispatch confirmations" section
+independently documents the analyst slot hitting the identical
+`approved-static → analysis` bounce **twice** with zero reason recorded
+either time. Lesson: **don't trust `gh pr view`'s `mergeable` flag at face
+value — probe it**, and **don't just re-file the same clean verification a
+second time** — escalate once a redispatch loop has already been reported
+once and recurs.
+
+**New check to add to the three above: `mergeable` state.** The second pass
+of this entry never checked it; the third pass found `mergeStateStatus:
+DIRTY` / `mergeable: CONFLICTING` purely from `automation/base` having moved
+54 commits since the branch's merge-base. Don't treat that as a real
+blocker (or worse, a reason to reimplement) without probing it first:
+
+```bash
+git checkout -B _conflict-probe-<case> origin/<pr-branch>
+git merge origin/automation/base --no-commit --no-ff
+# inspect which files actually conflict, then EITHER:
+git merge --abort && git branch -D _conflict-probe-<case>   # if outside your touched files → trivial, just report it
+# OR, if trivial (e.g. two append-only memory-log files, no test/page-object
+# hits), finish it for real: resolve additively, re-run the test fresh
+# (informative here — you're about to push a merge commit, unlike a
+# redundant re-run of unchanged code), then push the merge as a clean
+# fast-forward onto the EXISTING PR branch name (no force). This mirrors
+# the ELITEA-1880/PR #1002 precedent in the same session — same worktree,
+# same recipe, same day.
+```
+
+If the conflicting files are outside the PR's actual test/page-object diff,
+it's mechanically trivial and worth just fixing (a few minutes) rather than
+leaving the PR stuck on DIRTY for the next redispatch to hit again.
+
+**Escalate the loop itself once it's a second occurrence.** A single
+verification-only report evidently did not stop this case from being
+redispatched a third time. When you find the SAME case has already been
+verified-and-reported-clean once before (check the daily log / prior
+curated entries), that's no longer a "just verify and report" situation —
+return `needs-escalation` (not `ready-for-review`), naming: the case's
+approved-static→analysis bounce count, the implementer-slot redispatch
+count, and that the fix is an orchestrator/board-state-machine
+investigation, not another IC dispatch. Re-reporting the identical clean
+verdict a second time just feeds the loop instead of breaking it.
