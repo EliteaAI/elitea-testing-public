@@ -1,0 +1,57 @@
+WARNING  elitea.pages.agent_detail:agent_detail_page.py:1983 Embedded chat response did not stabilize within timeout
+WARNING  elitea.pages.guardrails_admin:guardrails_admin_page.py:369 Add button did not become enabled within timeout
+ERROR    elitea.steps:actions.py:49 Step failed: Add sensitive tool — Locator.click: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator("button:has-text(\"Add\")").last
+    - locator resolved to <button disabled tabindex="-1" type="button" class="MuiButtonBase-root Mui-disabled MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-1lno195">…</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+      - waiting 100ms
+    29 × waiting for element to be visible, enabled and stable
+       - element is not enabled
+     - retrying click action
+       - waiting 500ms
+WARNING  elitea.pages.agent_detail:agent_detail_page.py:1983 Embedded chat response did not stabilize within timeout
+WARNING  elitea.pages.guardrails_admin:guardrails_admin_page.py:369 Add button did not become enabled within timeout
+ERROR    elitea.steps:actions.py:49 Step failed: Add sensitive tool — Locator.click: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator("button:has-text(\"Add\")").last
+    - locator resolved to <button disabled tabindex="-1" type="button" class="MuiButtonBase-root Mui-disabled MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-1lno195">…</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+      - waiting 100ms
+    29 × waiting for element to be visible, enabled and stable
+       - element is not enabled
+     - retrying click action
+       - waiting 500ms
+WARNING  elitea.pages.agent_detail:agent_detail_page.py:1983 Embedded chat response did not stabilize within timeout
+WARNING  elitea.pages.guardrails_admin:guardrails_admin_page.py:369 Add button did not become enabled within timeout
+ERROR    elitea.steps:actions.py:49 Step failed: Add sensitive tool — Locator.click: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator("button:has-text(\"Add\")").last
+    - locator resolved to <button disabled tabindex="-1" type="button" class="MuiButtonBase-root Mui-disabled MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-1lno195">…</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+      - waiting 100ms
+    29 × waiting for element to be visible, enabled and stable
+       - element is not enabled
+     - retrying click action
+       - waiting 500ms
