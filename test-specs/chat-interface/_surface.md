@@ -321,3 +321,66 @@ as-is.**
   PARALLEL (xdist) execution of both specs at once. Neither AFS resolves this by
   suffixing the name (deferred to implementer/lead, consistent with ELITEA-2166's
   own note) — flag again if a THIRD case ever wants a fixture agent named "echo".
+
+## Removing a "Users" participant via the collapsed badge popper (ELITEA-2170 — full findings)
+
+Extended 2026-07-24. This is a DIFFERENT sub-surface from ELITEA-2089's expanded-panel
+pencil-icon edit flow above — same popper mechanism (`chat-participants-badge-users` →
+`chat-participants-badge-button` → `chat-participants-popper`), but the USERS section's
+own row renderer (`UsersParticipantDropdown/UserMenu.jsx`) is a THIRD component, distinct
+from both `ParticipantItem.jsx` (expanded panel, agent/pipeline/toolkit/mcp rows) and
+`UserParticipantItem.jsx` (expanded panel's inline avatar-group display).
+
+- **Which sub-component renders the USERS trigger is layout-branched, traced to source
+  (`Participants.jsx`):** `showCollapsedParticipants = collapsed && !isSmallWindow`. At
+  Playwright's default viewport (~1280×720, not "small window") with a FRESH browser
+  context (no persisted panel-collapse state), the collapsed icon-rail form
+  (`CollapsedPerticapantsList.jsx`) renders by default — this IS what
+  `chat-participants-badge-users`/`open_participants_popover(section="users")` already
+  targets, confirmed live. A narrower viewport or a persisted-expanded panel state
+  instead renders `ExpandedParticipantsList.jsx`'s own un-wrapped trigger (same
+  `chat-participants-badge-button`/`chat-participants-popper` testids, different DOM
+  parent, NOT reachable via the `chat-participants-badge-users` container) — a risk to
+  flag, not yet hit in practice at the project's standard automation viewport.
+- **`UserMenu.jsx`'s per-user row has NO container testid — genuine, confirmed-live
+  collision.** Each row's `DeleteParticipantButton` (imported from the SAME
+  `ParticipantActions/DeleteParticipantButton.jsx` file ELITEA-2089 already covers)
+  hardcodes `data-testid="chat-participant-remove-button"` — but since `UserMenu.jsx`'s
+  row `<Box>` wrapper carries no testid of its own, this button testid resolves to **N
+  elements simultaneously** whenever N users are listed (confirmed live via
+  `query-all`: 3 participants → 3 identical-testid buttons, positionally distinguishable
+  only by DOM order/`rect`, not by any stable handle). Same for the row's `UserAvatar` —
+  `UserAvatar.jsx` (`src/components/UserAvatar.jsx`) already ACCEPTS + wires a `testId`
+  prop straight onto `data-testid`, but `UserMenu.jsx`'s call site doesn't pass one (pure
+  prop-threading gap, same shape as ELITEA-2082's toolkit-canvas-title finding).
+- **The fix is a one-line, zero-new-constants mirror of an already-shipped sibling
+  pattern**: `ExpandedParticipants/ParticipantItem.jsx:256` already does
+  `data-testid={`chat-participant-row-${getChatParticipantUniqueId(participant)}`}` for
+  the OTHER participant types. Applying the identical line to `UserMenu.jsx`'s row
+  `<Box>` (uniqueId = `user_{entity_meta.id}_{project_id}`, since
+  `ChatParticipantType.Users === 'user'`, confirmed in `common/constants.js:971`) reuses
+  the EXISTING `ChatPage.PARTICIPANT_ROW` template + `PARTICIPANT_REMOVE_BUTTON`
+  constant — no new page-object fields, just a new `remove_user_participant(user_id,
+  project_id)` method mirroring the existing `remove_agent_participant()`
+  (`chat_page.py:3374`) verbatim in structure.
+- **Confirm-dialog wording (shared `DeleteEntityModal`, entity-type `'user'`):** title
+  `"Remove user?"`, tooltip `"Remove user"`, body **`"Are you sure to remove the {name}
+  user from chat?"`** (word is "chat", never "conversation" — filed as case-text-drift
+  clarification #1020 when a case's literal text said "conversation"). `{name}` resolves
+  via `getParticipantName()` → `participant.meta.user_name` for Users-type participants.
+- **Removal is genuinely server-persisted**, confirmed via a full page reload after
+  clicking Remove: participants-badge count and popper contents both survive the reload
+  at the decremented count — not merely an optimistic client-side splice.
+- **Self-removal is not blocked at the UI-affordance level**: the current user's own row
+  ("Test Bot") renders the identical (also-unscoped) remove button — no special-casing
+  observed. Untested by any case so far; would need the same row-scoping fix above.
+- **Browser-lane contamination trap (tooling note, not a product finding):** the shared
+  `.claude/skills/browser-verify/scripts/chrome-launcher.sh` hardcodes a GLOBAL
+  `CHROME_USER_DATA=/tmp/chrome-cdp-profile` + `CHROME_PID_FILE=/tmp/chrome-cdp-verify.pid`
+  regardless of the `--port`/`CDP_PORT` argument — two concurrent sessions each launching
+  "their own isolated instance" via this script can end up sharing the SAME Chrome
+  process/profile/tab (observed live this session: a mid-flow tab got silently
+  hijacked into an unrelated Pipeline-create flow from another concurrent analyst).
+  Workaround used: launch Chrome directly with a private, session-specific
+  `--user-data-dir` (bypassing the shared script entirely) rather than trusting the
+  script's `--port` flag to guarantee isolation.
