@@ -132,6 +132,94 @@ execution — verify each handle live as you use it.
   Team") for any case that needs a real participant to render — same precondition ELITEA-2095/2094
   already established, re-confirmed live by ELITEA-2098.
 
+## File attachments, drag-and-drop, and model-selector checkmark (ELITEA-2091 — full findings)
+
+Extended 2026-07-24. The "+" menu's **"Attach Files"** row is NOT a `role="menuitem"` `<li>`
+like its six siblings (Modules/Agents/Pipelines/Toolkits/MCPs/Invite Users) — it's a separate
+`<button aria-label="attach files">` (component: `AttachmentButton.jsx`,
+`src/[fsd]/features/chat/ui/chat-button/`) rendered ABOVE the `<ul role="menu">`, and it carries
+**ZERO `data-testid` anywhere** — confirmed via full-file source read on both `main` and
+`automation/testids`. This is a genuine gap, not a naming drift: the existing page object's
+`ChatPage.attach_files_button` field claims `testid="chat-attach-button"`, but that string does
+not exist in source at all (`git grep` on both refs: zero hits) — the field has always been
+aspirational/stale, which is why the one existing test touching attachments
+(`test_attach_files_button_sends_file_with_message`) bypasses the page object with a raw
+`aria-label` locator instead.
+
+- **TWO simultaneous `AttachmentButton` instances render while the "+" menu is open**, both
+  testid-less, both wired to the SAME `onAttachFiles` callback (so end-user-visible RESULT is
+  consistent regardless of which one processes a file):
+  1. An ALWAYS-MOUNTED, invisible instance (`sx={styles.hiddenAttachment}` in
+     `PlusChatButton.jsx:316`) — holds the `ref` (`attachmentButtonRef`) that drag-and-drop
+     routes through (`NewChatInput.jsx`'s `onDrop` calls `attachmentButtonRef.current.onDrop()`).
+  2. The VISIBLE, `showLabel` instance inside the open `.MuiPopper-root`
+     (`PlusChatButton.jsx:353`) — this is what step-by-step "click Attach Files" user flows
+     actually click; it has NO `ref` at all.
+  Each instance mounts its OWN hidden `<input type="file">` with its own dynamically-generated
+  `id` — **the id is NOT stable across re-renders**: `id = 'file-upload-input' + new
+  Date().getTime()` is a default-parameter expression re-evaluated on every render when no `id`
+  prop is passed, so attaching one file changes BOTH instances' ids on the very next render
+  (confirmed live: `...366936`/`...366937` → `...539442`/`...539448` after a single attach).
+  Any locator strategy that captures this id once and reuses it across multiple attach actions
+  will silently break after the first attach.
+- **Recommended fix (implementer work, not yet done)**: add a `testId` prop (+ `inputTestId`) to
+  `AttachmentButton.jsx`, wired as `data-testid={testId}` on the `IconButton` and
+  `data-testid={inputTestId}` on the input; pass `testId="chat-attach-files-button"` +
+  `inputTestId="chat-attach-files-input"` ONLY at the visible (`showLabel`) call site — leave the
+  always-hidden instance untouched (no case exercises it as a direct target; drag-and-drop
+  doesn't need it testid'd, see below). Counter text ("N left", inside the `showLabel` block
+  only — no collision risk): `chat-attach-files-counter`.
+- **Attached-file chips have no testid either.** `FileList.jsx` (`src/components/Chat/`) — used
+  only by chat surfaces (`UserInput.jsx`, `PlaybackToolBar.jsx`), so chat-scoped naming is fine
+  despite the `src/components/` location. Recommend a REPEATED `chat-attachment-item` testid
+  (same pattern as `chat-message-item`) per visible chip, `chat-attachment-remove-button` scoped
+  to its "X", `chat-attachment-overflow-button` for the "+N" overflow trigger
+  (`aria-label="Show more files"`, currently testid-less), and `chat-attachment-overflow-item` /
+  `chat-attachment-overflow-remove-button` for the overflow popover's own per-file rows. The
+  overflow surface is NOT optional to test — any case attaching more than ~2-3 files (default
+  viewport) needs it to verify every filename actually rendered.
+- **Counter mechanics (confirmed live, linear)**: `remainingAttachments = limits.MAX_ATTACHMENTS
+  (10, from `common/constants.js`'s `ATTACHMENT_LIMITS`) - attachments.length` — confirmed at
+  three points this run (10→9→8 across 2 file attaches). Cap-boundary (10th/11th file, toast
+  warning) confirmed only via source citation, not independently pushed to live.
+- **Drag-and-drop routes through the HIDDEN instance, not the visible button** — see above. The
+  actual DOM drop-zone is an untestid'd `<Box onDrop=...>` in `UserInput.jsx` (~line 396), but
+  its DOM descendant `[data-testid="chat-input"]` (the MUI `TextField` root, `UserInput.jsx:420`,
+  on-`main`) works as a drop target via ordinary native event bubbling — confirmed live via a
+  capture-phase diagnostic listener showing the real handler's `preventDefault()` fired on both
+  `dragover` and `drop`. **No new drop-zone testid is needed.** A synthetic `DataTransfer` + ONE
+  continuous `dragenter→dragover→drop` gesture (Synthetic Input Hygiene discipline) reliably
+  attaches the file, producing a chip structurally identical to a picker-attached one (same
+  `FileList` component, no origin distinction in the DOM).
+  - **Self-inflicted-artifact trap (tooling note, not a product finding)**: adding EXTRA
+    `document`-level event listeners between successive drop dispatches (done here purely for
+    diagnostics) can produce a duplicate attachment from a SINGLE drop (observed once: the app's
+    own silent same-name-rename-on-duplicate kicked in, producing two entries from one file). A
+    clean, uninstrumented single dispatch immediately afterward produced exactly one new
+    attachment with no duplicate — confirms the extra listeners were the cause, not the app.
+    Never add extra document-level listeners inside an actual automated test's drag-drop step.
+- **Model selector's "selected" checkmark has no stable signal.** `LLMModelsMenu.jsx:48`'s
+  existing `data-testid={\`model-selector-option-${item.name}\`}` template IS on `main` — but
+  `aria-selected` is `null` on every option, and the only visible "this one's selected" signal is
+  an `Mui-selected` CSS class (hashed, unstable) + a trailing checkmark SVG with no discriminating
+  attribute. Recommend a `data-selected="true"/"false"` attribute alongside the existing testid
+  (state via `data-*`, not a second testid, per the testid=identity/state=data-* ruling) —
+  `automation/pages/chat_page.py`'s existing `select_model()` method also doesn't use this
+  template at all yet (uses a `:has-text()` locator instead) — worth switching while touching
+  this area, since model DISPLAY NAMES drift across environments/deploys but the template's
+  `item.name` key is the stable internal model id.
+- **`conversation-menu-menu-button` / `chat-conversation-menu-*-menuitem` are prop-indirected,
+  NOT literal strings — a naive full-string `git grep` finds ZERO hits for either on ANY ref**,
+  which looks like "needs-adding" but is a false negative. Both compose via a shared
+  `DotMenu.jsx` component: `data-testid={id ? \`${id}-menu-button\` : undefined}` (line 346, fed
+  `id="conversation-menu"` from `ConversationItem.jsx`) and `data-testid={testId ? \`${testId}-
+  menuitem\` : undefined}` (line 57, fed `testId: item.key` per menu entry, e.g. `item.key =
+  'chat-conversation-menu-delete'`). **Always grep the BASE identifier fed into the template
+  (`"conversation-menu"`, `"chat-conversation-menu-delete"`), never the fully-composed final
+  string**, when checking provenance for anything rendered through `DotMenu`. Confirmed present
+  on BOTH `main` and `automation/testids` (same file/line) for the conversation 3-dot menu and
+  its Delete item specifically.
+
 ## Network / timing
 
 - Model-TTS playback is **Socket.IO-driven** (`tts_start`/`tts_audio_chunk`/
