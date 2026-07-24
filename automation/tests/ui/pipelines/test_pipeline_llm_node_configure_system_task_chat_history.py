@@ -16,11 +16,10 @@ not just up to Save).
 
 import logging
 
-import pytest
 import allure
-
-from pages.pipeline_detail_page import PipelineDetailPage
+import pytest
 from config import settings
+from pages.pipeline_detail_page import PipelineDetailPage
 
 logger = logging.getLogger(__name__)
 

@@ -13,10 +13,12 @@ URL: /pipelines/all/{id}
 import logging
 import re
 import time
-from playwright.sync_api import Page, Locator
-from .pipeline_form_page import PipelineFormPage
-from .locator_descriptor import LocatorDescriptor
+
 from components.mui import Dialog, Popper
+from playwright.sync_api import Locator, Page
+
+from .locator_descriptor import LocatorDescriptor
+from .pipeline_form_page import PipelineFormPage
 
 logger = logging.getLogger("elitea.pages.pipeline_detail")
 
