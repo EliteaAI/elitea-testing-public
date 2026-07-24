@@ -1800,3 +1800,87 @@ class ToolkitAPI:
     def close(self):
         """Close the underlying HTTP session."""
         self._session.close()
+
+
+class NotificationAPI:
+    """Manage notifications via the Elitea API (GAP-077).
+
+    Uses Keycloak session cookies (from browser auth state) like
+    :class:`ConversationAPI`. This is the same endpoint the quick-panel's
+    hover-toggle and the Notification Center's bulk checkbox toggle both
+    call, and the cleanest deterministic way to seed an unread row without
+    depending on shared, mutable ambient notification data.
+
+    Args:
+        browser_cookies: List of cookie dicts from ``BrowserContext.cookies()``.
+        base_url: API root (defaults to ``ELITEA_API_BASE`` env var).
+        project_id: Project identifier (defaults to ``ELITEA_PROJECT_ID``).
+    """
+
+    def __init__(
+        self,
+        browser_cookies: list[dict],
+        base_url: Optional[str] = None,
+        project_id: Optional[str] = None,
+    ):
+        self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
+        self.project_id = project_id or str(settings.elitea_project_id)
+
+        self._session = _create_retry_session()
+        for c in browser_cookies:
+            self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
+
+        logger.debug("NotificationAPI initialised — base_url=%s", self.base_url)
+
+    def _notifications_url(self) -> str:
+        return f"{self.base_url}/notifications/notifications/prompt_lib/{self.project_id}"
+
+    def list_notifications(
+        self, limit: int = 20, offset: int = 0, sort_by: str = "created_at", sort_order: str = "desc"
+    ) -> dict:
+        """Return ``{"total": int, "rows": [...]}`` for this project.
+
+        Deliberately omits the ``only_new`` query param — confirmed live
+        (GAP-077) that ``only_new=false`` behaves identically to
+        ``only_new=true`` on this backend (both exclude seen notifications);
+        only OMITTING the param entirely returns the full seen+unseen set,
+        which is what a fixture needs to pick any existing row to seed.
+
+        Defaults to newest-first (``created_at``/``desc``) so a fixture
+        picking ``rows[0]`` seeds a row recent enough to fall inside the
+        quick panel's own ``page_size=5`` unseen-first window — an
+        arbitrary/oldest row would not reliably show up there.
+
+        Raises ``requests.HTTPError`` on non-2xx status.
+        """
+        url = self._notifications_url()
+        logger.debug("LIST notifications %s", url)
+        resp = self._session.get(
+            url,
+            params={"limit": limit, "offset": offset, "sort_by": sort_by, "sort_order": sort_order},
+        )
+        _raise_for_status(resp)
+        return resp.json()
+
+    def mark_seen(self, notification_ids: list[int], is_seen: bool) -> None:
+        """Bulk-set ``is_seen`` for *notification_ids* (single id is a 1-item list).
+
+        Same endpoint/body the UI's per-row hover-toggle and the
+        Notification Center's bulk checkbox toggle both use:
+        ``PUT .../prompt_lib/{project_id}`` with
+        ``{"ids": [...], "is_seen": bool}``.
+        """
+        url = self._notifications_url()
+        logger.debug("MARK notifications %s ids=%s is_seen=%s", url, notification_ids, is_seen)
+        resp = self._session.put(
+            url,
+            json={"ids": notification_ids, "is_seen": is_seen},
+            headers={"Content-Type": "application/json"},
+        )
+        _raise_for_status(resp)
+
+    def close(self):
+        """Close the underlying HTTP session."""
+        self._session.close()
