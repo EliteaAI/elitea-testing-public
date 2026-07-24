@@ -2,9 +2,10 @@
 
 Handle cache for analysts/implementers working the Artifacts area
 (`test-specs/artifacts/`). Confirmed via live exploration, most recently during
-ELITEA-1851 (2026-07-24, file preview/edit canvas) and ELITEA-1828 (2026-07-23).
-Not a substitute for execution — verify each handle live as you use it; update
-this file after your own run rather than trusting it blindly.
+GAP-035 (2026-07-24, file-table column-header sort) and ELITEA-1851 (2026-07-24,
+file preview/edit canvas), ELITEA-1828 (2026-07-23). Not a substitute for
+execution — verify each handle live as you use it; update this file after your
+own run rather than trusting it blindly.
 
 ## Navigation & bucket list (left panel)
 
@@ -85,6 +86,24 @@ documented below for the upload-flow cases — confirmed again for ELITEA-1851
 (zero matches for `bucket-1` across 363+ existing buckets). Seed via
 `artifact_bucket` fixture + `ArtifactAPI.upload_file()`, don't hardcode the
 case's literal name/size.
+
+## File table sort (column headers) — GAP-035, 2026-07-24
+
+`ArtifactTable.jsx` renders its file-table header via the shared
+`GridTableHeader.jsx` (`@/[fsd]/entities/grid-table/ui`) + `useTableSort`/
+`SortComparators` (`@/[fsd]/entities/grid-table/lib`). Confirmed live, all four
+sortable columns (Name, Type, Size, Last update) toggle asc→desc→asc correctly
+per `useTableSort.hooks.js`'s `handleSort` (new field ⇒ always starts
+ascending; same field ⇒ toggles; a third click on the same field wraps back to
+ascending, not a 3-state cycle).
+
+| Handle | testid | Notes |
+|---|---|---|
+| Name/Type/Size/Last-update header cells | none yet — **needs-adding**: `artifacts-column-header-{name,fileType,size,modified}` | `GridTableHeader.jsx` already destructures + wires a generic `columnTestIdPrefix` prop (confirmed on `automation/testids`, absent on `main` entirely) — **already in production use** by the MCP table (`DataTable.jsx:446`, `columnTestIdPrefix={isMCPs ? 'mcp-table' : undefined}`). The ONLY missing piece is one line at `ArtifactTable.jsx`'s own `<GridTableHeader>` call site: `columnTestIdPrefix="artifacts"`. Field names are `fileType` (not `type`) and `modified` (not `lastUpdate`) — the testid literally interpolates `column.field`. Wiring it also testids the non-sortable `Actions` column (`artifacts-column-header-actions`) as an inherent, all-or-nothing side effect — not a new scope violation, same as the MCP table's own usage. |
+| Active-header state | no new selector — read `opacity` (computed style) on the header-cell testid element itself | `styles.headerCell(isActive, ...)` sets `opacity: isActive ? 1 : 0.7` on the SAME Box that gets the testid once wired. Do NOT chain a raw selector off it to reach the `SortArrows` icon for direction/rotation — the icon is an app asset (not third-party), so no `#579` exception applies; row-order already proves asc/desc, the icon rotation doesn't need its own assertion. |
+| Sort click → network | none — pure client-side re-sort | Confirmed live: clicking any sortable header fires **zero** new network requests; `sortData`/`useTableSort` operate on the already-fetched in-memory `rows`. Wait on DOM row-order change, not any network condition. |
+| S3 `lastModified` precision | n/a (backend fact, not a DOM handle) | Confirmed via direct API probe (`GET {elitea_root}/artifacts/s3/{bucket}?project_id=399&format=json` against an unrelated 270-file bucket): ISO-8601 timestamps always have `.000` milliseconds — real **whole-second** resolution. Any test seeding 2+ files whose relative "Last update" order matters MUST space uploads across a second boundary (poll `ArtifactAPI.get_file_metadata()` or a justified `sleep(1.1)`) — back-to-back API uploads in the same second produce a backend-ambiguous tie that falls back to S3 listing order, not real chronological order. |
+| Size comparator is numeric, not lexical | n/a | `SortComparators.fileSize` (`sortComparators.js:2-28`) parses the formatted size string back into raw bytes before comparing. Proven live (not just by reading source): ascending order for `49 B`/`26.1 KB`/`155.7 KB` matched byte count, which DISAGREES with the lexical string order of those same labels (`"155.7 KB" < "26.1 KB" < "49 B"` alphabetically) — a good concrete counter-example to cite instead of asserting "not lexical" from source alone. |
 
 ## Quirks / gotchas
 
