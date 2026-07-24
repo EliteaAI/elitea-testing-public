@@ -780,15 +780,24 @@ class PipelineDetailPage(PipelineFormPage):
         delete_item.click()
         return Dialog.wait_for(self.page, timeout=timeout)
 
-    def confirm_node_delete(self, dialog: Locator) -> None:
+    def confirm_node_delete(self, dialog: Locator, timeout: int = 5000) -> None:
         """Click Delete in an already-open node-delete confirmation dialog.
+
+        Waits for the dialog to close rather than a fixed sleep. Source-confirmed
+        (`useDeleteItems.hooks.js` `onConfirmDelete`): the node/edge/YAML state
+        removal (`onDelete(...)`) and the dialog close (`setShowDeleteConfirmDlg
+        (false)`) are both `setState` calls fired synchronously in the same
+        click handler, so React batches them into one re-render — once the
+        dialog has visually closed, the canvas's node list has already updated
+        in that same commit too.
 
         Args:
             dialog: The dialog Locator returned by `click_delete_in_node_menu`
                 (or by `Dialog.wait_for` after a keyboard-Delete trigger).
+            timeout: Maximum wait time for the dialog to close.
         """
         dialog.locator(self.DELETE_CONFIRM_BUTTON_SELECTOR).click()
-        self.page.wait_for_timeout(300)
+        dialog.wait_for(state="hidden", timeout=timeout)
 
     def delete_node(self, node_id: str, timeout: int = 5000):
         """Delete a node from the canvas via its three-dot header menu.

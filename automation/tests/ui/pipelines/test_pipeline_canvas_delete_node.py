@@ -212,9 +212,15 @@ class TestDeleteNode:
         with allure.step("Step 3 — Press Delete key; verify the identical confirmation dialog appears"):
             page.keyboard.press("Delete")
             dialog = Dialog.wait_for(page, timeout=UI_ELEMENT_TIMEOUT)
+            title_text = (dialog.locator(pipelines.DELETE_CONFIRM_TITLE_SELECTOR).text_content() or "").strip()
             message_text = (
                 dialog.locator(pipelines.DELETE_CONFIRM_MESSAGE_SELECTOR).text_content() or ""
             ).strip()
+            assert title_text == "Delete confirmation", (
+                f"Keyboard-triggered dialog title should read 'Delete confirmation', got {title_text!r} — "
+                "confirms this alternate trigger reaches the identical dialog as the menu path, not just a "
+                "similarly-worded one"
+            )
             assert "Code 1" in message_text, (
                 f"Keyboard-triggered dialog should name the node 'Code 1', got {message_text!r} — "
                 "confirms this alternate trigger reaches the same deletion flow as the menu path"
