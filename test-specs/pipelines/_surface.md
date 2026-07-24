@@ -218,3 +218,85 @@ Event('input', {bubbles:true}))` via `evaluate()` to force-set the value
 directly, confirmed to correctly trigger React's controlled-input `onChange`
 (the app's own dirty-state indicator reacted correctly). Does not affect the
 real Playwright/pytest suite (`fill()`/`press_sequentially()` are unaffected).
+
+## Entry Point node — Trigger select & Webhook settings modal (ELITEA-2006, 2026-07-24)
+
+**A fresh pipeline has NO entry-point node at all** — only an `End` node. Adding
+ANY node via "Add node" (LLM used here) makes it the `entry_point`
+(`entry_point: LLM 1` in YAML) the instant it's added — no separate
+"make entrypoint" step for a single-node pipeline (`make_node_entrypoint()` is
+for re-designating a DIFFERENT node in a multi-node pipeline). The Trigger
+field (`Chat Message` / `Schedule` / `Webhook`) only renders on whichever node
+IS the entry point (`NodeCard.jsx:42`, `isEntrypoint && <TriggerTypeSelector>`).
+`pipeline_with_llm_id` fixture (`create_pipeline_with_llm_node`) already
+produces byte-identical entry-point YAML — use it, skip manual node-adding.
+
+**Trigger select — duplicate native id, route around via testid.** The Trigger
+`SingleSelect` passes no `label` prop, so its native id is the literal
+`id="simple-select-undefined"` — confirmed LIVE to collide with the sidebar's
+"Project: Private" switcher (`document.querySelectorAll('#simple-select-undefined').length
+=== 2`; clicking by this id landed on the PROJECT SWITCHER, not the Trigger
+select). Filed `EliteaAI/elitea-testing-public#1009` (MINOR, distinct from the
+already-filed `#1006` — different id, broader cross-feature collision).
+**Never locate by this id** — use `[data-testid^="rf__node-"] [role="combobox"]`
+scoped to the entry-point node's own testid container to click the closed
+select, then `[data-testid="select-option-{chat_message|schedule|webhook}"]`
+for the option (existing shared `SELECT_OPTION` family, confirmed working).
+
+**Selecting "Webhook" fires a PUT immediately, before the modal even opens** —
+`updateTrigger` (`PUT .../pipeline_trigger/prompt_lib/{projectId}/pipeline/{versionId}/trigger`)
+generates the secret server-side first, THEN `PipelineWebhookModal` opens. The
+Trigger select's own displayed label does NOT flip to "Webhook" until Apply is
+clicked inside the modal — this is correct product behavior (source-confirmed
+sequencing), not a defect; don't assert the label change at step-2 time.
+
+**Trigger/webhook config is NOT in the pipeline's YAML at all** — it's a
+separate server-side entity (`GET`/`PUT
+.../pipeline_trigger/prompt_lib/{project_id}/pipeline/{version_id}/trigger`,
+`applications.js:857-876`). Confirmed live: after configuring + saving +
+reloading, the `Yaml` tab still showed ONLY `entry_point`/`nodes` — zero
+`trigger`/`webhook` keys anywhere. **A persistence check for this feature must
+re-open the Trigger select or the webhook modal after reload — grepping the
+YAML view (the pattern the LLM-node-fields digest section above recommends for
+THOSE fields) will never see trigger state.**
+
+**`PipelineWebhookModal` (Webhook settings dialog) has ZERO `data-testid`
+anywhere** — confirmed via full dialog enumeration
+(`[...dialog.querySelectorAll('[data-testid]')]` returned only MUI's own icon
+component names like `ContentCopyIcon`, never a real app testid). Every
+element — Webhook Type radios, URL field+copy, Secret field+eye+copy+refresh,
+Example Request block+copy, Cancel/Apply — needs `add-data-testid`. ALL have a
+trivial existing extension point, zero shared-component internals need
+touching:
+- `Checkbox.RadioButtonGroup` already supports `testId` → `${testId}-${value}`
+  per item (`RadioButtonGroup.jsx:36-38`) — just pass `testId=` at the
+  `PipelineWebhookModal.jsx` call site.
+- `Modal.BaseModal` already supports `data-testid`/`titleTestId`/
+  `closeButtonTestId` (`BaseModal.jsx:32-38`) — BUT `PipelineWebhookModal.jsx`
+  uses a custom `actions={...}` render prop instead of `onConfirm`, so
+  `cancelButtonTestId`/`confirmButtonTestId` do NOT apply to its Cancel/Apply
+  buttons — those need their OWN direct `data-testid` prop (same-file native
+  `<Button>` elements, trivial).
+- The URL/Secret fields (`FormInput`, a thin `TextField` wrapper) accept
+  `data-testid` as a plain forwarded prop (lands on the `MuiFormControl-root`,
+  standard MUI unrecognized-prop forwarding) — sufficient to scope a nested
+  `input` locator.
+- Every icon button (copy ×3, eye, refresh) is a plain same-file `IconButton`
+  — direct `data-testid` prop, no threading.
+
+Full wiring points (exact line numbers, proposed names) are in
+`test-specs/pipelines/l3_webhook-trigger-settings-modal_ELITEA-2006.md`'s
+Concrete Handles table — don't re-derive, read that AFS first if implementing
+this case.
+
+**Tooling caveat (analyst-only, not a product issue):** `browser-verify`'s
+`cdp.mjs` CLI spawns a fresh Node process per shell command — its
+`consoleMessages`/`networkRequests` capture arrays are module-level and RESET
+every invocation. A `get-console`/`get-network` call issued as a separate shell
+command from the triggering action only sees a ~500ms freshly-opened window,
+not real session history. Treat "zero errors" reads from THIS tool as
+spot-checks, not exhaustive guarantees, unless the action and the read happen
+inside the literal same `node cdp.mjs` process invocation (rare in practice
+given the one-command-per-call shell workflow). Does not affect the real
+Playwright/pytest suite (`page.on('console')`/`page.on('response')` listeners
+run inside one long-lived context for the whole test).
