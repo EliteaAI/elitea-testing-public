@@ -837,3 +837,62 @@ def mcp_pipeline_with_toolkits(
         logger.info("Deleted MCP pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete MCP pipeline %s: %s", pid, exc)
+
+
+@pytest.fixture
+def pipeline_with_llm_and_printer_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with an LLM node and a Printer node, both -> END.
+
+    Satisfies the ELITEA-2031 precondition: exactly 2 ordinary (non-HITL/
+    non-Router) nodes, each independently transitioning to END, so the test
+    can drag-connect ``LLM 1 -> Printer 1`` and assert the old ``LLM 1 -> END``
+    edge is replaced while ``Printer 1 -> END`` stays untouched.
+
+    Built via the existing ``PipelineAPI.create_pipeline_with_nodes()`` — no
+    new API-client method needed (AFS § Test Data).
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_{request.node.name}"[:32]  # API enforces 32-char max
+    description = f"Auto-created LLM+Printer pipeline for test {request.node.name}"
+    nodes = [
+        {
+            "id": "LLM 1",
+            "type": "llm",
+            "input": [],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": ""},
+                "task": {"type": "fixed", "value": ""},
+            },
+            "output": [],
+            "structured_output": False,
+            "transition": "END",
+        },
+        {
+            "id": "Printer 1",
+            "type": "printer",
+            "input": [],
+            "output": [],
+            "final_message": "",
+            "transition": "END",
+        },
+    ]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=description,
+        entry_point="LLM 1",
+        nodes=nodes,
+    )
+    pid = pipeline["id"]
+    logger.info("Created LLM+Printer pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    # Cleanup: delete pipeline even if test fails
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted LLM+Printer pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete LLM+Printer pipeline %s: %s", pid, exc)
