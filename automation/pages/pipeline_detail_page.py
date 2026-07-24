@@ -256,6 +256,87 @@ class PipelineDetailPage(PipelineFormPage):
         description="Schedule settings modal Apply button"
     )
 
+    # Entry-point node — Schedule settings modal internals (ELITEA-2007).
+    # Sibling gap-fill on top of ELITEA-2005's 3 fields above — same
+    # add-data-testid pass, same PipelineScheduleModal.jsx call site.
+    trigger_schedule_edit_button = LocatorDescriptor(
+        testid="pipeline-trigger-schedule-edit-button",
+        description='"Edit schedule" icon button next to the Trigger select, '
+                     "rendered only once trigger=schedule (sibling of "
+                     "trigger_webhook_edit_button)"
+    )
+    schedule_modal_close_button = LocatorDescriptor(
+        testid="pipeline-schedule-modal-close-button",
+        description="Schedule settings modal Close (X) button"
+    )
+    schedule_mode_radio_default = LocatorDescriptor(
+        testid="pipeline-schedule-mode-radio-default",
+        description="Schedule modal mode radio — Default option"
+    )
+    schedule_mode_radio_advanced = LocatorDescriptor(
+        testid="pipeline-schedule-mode-radio-advanced",
+        description="Schedule modal mode radio — Advanced option"
+    )
+    schedule_cancel_button = LocatorDescriptor(
+        testid="pipeline-schedule-cancel-button",
+        description="Schedule settings modal Cancel button"
+    )
+    schedule_cron_input = LocatorDescriptor(
+        testid="pipeline-schedule-modal-cron-input",
+        description="Advanced-mode raw cron expression input — testid wired via "
+                     "FormInput's inputProps mechanism, lands directly on the "
+                     "native <input> (same convention as webhook_url_input / "
+                     "webhook_secret_input, no locator chaining needed)"
+    )
+
+    # Default-mode Cron fields (react-js-cron ^5.2.0) — third-party npm
+    # dependency; testids are baked into the library itself, not app code
+    # (on-main already, per AFS Concrete Handles). `period` is a plain
+    # single-select; `week-days`/`hours`/`minutes` are ant-design
+    # MULTI-selects — see _set_cron_multiselect_value().
+    schedule_period_select = LocatorDescriptor(
+        testid="select-period",
+        description='Schedule modal "Every" period select (react-js-cron, single-select)'
+    )
+    schedule_week_days_select = LocatorDescriptor(
+        testid="custom-select-week-days",
+        description='Schedule modal "on" day-of-week select (react-js-cron, '
+                     "week period only — unmounts entirely for other periods)"
+    )
+    schedule_hours_select = LocatorDescriptor(
+        testid="custom-select-hours",
+        description="Schedule modal hour select (react-js-cron, MULTI-select)"
+    )
+    schedule_minutes_select = LocatorDescriptor(
+        testid="custom-select-minutes",
+        description="Schedule modal minute select (react-js-cron, MULTI-select)"
+    )
+
+    # react-js-cron's Default-mode option popups (period/hours/minutes/
+    # week-days) render via antd's own portal (getPopupContainer defaults to
+    # document.body) — NOT as a DOM descendant of the trigger element, so a
+    # popup can't be reached via `self.trigger.locator(...)`. DECLARED
+    # IMPROVISATION (role-overrides.md § Declared-improvisation protocol):
+    # the canon's two sanctioned #579 shapes both assume descendant-chaining
+    # off a testid parent (e.g. CodeMirror per-line divs inside
+    # raw_json_editor_content); a portalled popup has no such DOM
+    # relationship. The library instead tags each field's popup with a
+    # STABLE, field-specific class `react-js-cron-select-dropdown-{type}`
+    # (confirmed live, ELITEA-2007 exploration) — used here as the closest
+    # spirit-compliant equivalent: the "parent" is the field's own real
+    # testid trigger (schedule_period_select / schedule_hours_select /
+    # schedule_minutes_select / schedule_week_days_select), and the popup is
+    # scoped by the ONE class value that library ties 1:1 to that exact
+    # field, never a free-floating `.ant-select-dropdown` page-wide handle.
+    # A closed dropdown stays MOUNTED with an added `ant-select-dropdown-
+    # hidden` class instead of being removed (confirmed live) —
+    # `:not(.ant-select-dropdown-hidden)` is required so a stale prior
+    # dropdown is never matched (AFS Automation Hints' documented scoping
+    # gotcha). Option rows themselves (`.ant-select-item-option`) carry no
+    # testid — third-party antd render, library-internal — same sanctioned
+    # shape as the CodeMirror per-line divs.
+    CRON_FIELD_DROPDOWN = '.react-js-cron-select-dropdown-{}:not(.ant-select-dropdown-hidden)'
+
     # TOOLS section (ELITEA-1955). ApplicationTools.jsx / ToolMenu.jsx is a
     # shared component reused by both Agent and Pipeline detail forms
     # (confirmed via PipelineConfigurationForm.jsx import) — same testids as
@@ -1384,6 +1465,254 @@ class PipelineDetailPage(PipelineFormPage):
             self.schedule_apply_button.click(timeout=timeout)
         self.schedule_modal.wait_for(state="hidden", timeout=timeout)
         return response_info.value.json()
+
+    # ------------------------------------------------------------------
+    # Entry-point node — Schedule settings modal internals (ELITEA-2007)
+    # ------------------------------------------------------------------
+
+    def open_schedule_settings(self, timeout: int = 10000) -> None:
+        """Click the "Edit schedule" icon and wait for the modal to load.
+
+        Only visible once ``trigger == "schedule"`` (mirrors
+        :meth:`open_webhook_settings` — source-confirmed
+        `currentTriggerType === TRIGGER_TYPES.schedule` gate,
+        `TriggerTypeSelector.jsx`). Call :meth:`select_trigger_type` with
+        ``"schedule"`` first if the trigger isn't already schedule.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.trigger_schedule_edit_button.click(timeout=timeout)
+        self.wait_for_schedule_settings_loaded(timeout=timeout)
+
+    def cancel_schedule_settings(self, timeout: int = 10000) -> None:
+        """Click Cancel in the Schedule settings modal; wait for it to close.
+
+        Discards any in-modal changes without persisting — `onClose()` is a
+        pure local state update (no network call), mirrors
+        :meth:`cancel_webhook_settings`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.schedule_cancel_button.click(timeout=timeout)
+        self.schedule_modal.wait_for(state="hidden", timeout=timeout)
+
+    # Maps the Schedule mode radio's value to its LocatorDescriptor field —
+    # same shape as _WEBHOOK_TYPE_RADIOS (fixed 2-value set, same shared
+    # RadioButtonGroup component).
+    _SCHEDULE_MODE_RADIOS = {
+        "default": "schedule_mode_radio_default",
+        "advanced": "schedule_mode_radio_advanced",
+    }
+
+    def select_schedule_mode(self, mode: str, timeout: int = 5000) -> None:
+        """Click the mode radio ("default" or "advanced") in the open Schedule modal.
+
+        Pure client-side state toggle (`cronType`) — no network wait needed,
+        mirrors :meth:`select_webhook_type`.
+
+        Args:
+            mode: One of "default", "advanced".
+            timeout: Maximum wait time in milliseconds.
+        """
+        radio = getattr(self, self._SCHEDULE_MODE_RADIOS[mode])
+        radio.click(timeout=timeout)
+
+    def get_selected_schedule_mode(self) -> str | None:
+        """Return which Schedule mode radio is currently checked, or None.
+
+        Mirrors :meth:`get_selected_webhook_type` — same
+        `RadioButtonGroup`-wrapped-native-radio `is_checked()` mechanism.
+        """
+        for mode, attr_name in self._SCHEDULE_MODE_RADIOS.items():
+            if getattr(self, attr_name).is_checked():
+                return mode
+        return None
+
+    def get_schedule_cron_expression(self, timeout: int = 5000) -> str:
+        """Read the Advanced-mode raw cron expression input's current value.
+
+        Args:
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self.schedule_cron_input.wait_for(state="visible", timeout=timeout)
+        return self.schedule_cron_input.input_value()
+
+    def get_schedule_period_value(self, timeout: int = 5000) -> str:
+        """Read the Default-mode "Every" period select's current display text.
+
+        Args:
+            timeout: Maximum wait time for the select to be visible.
+        """
+        self.schedule_period_select.wait_for(state="visible", timeout=timeout)
+        return (self.schedule_period_select.text_content() or "").strip()
+
+    def get_schedule_hour_value(self, timeout: int = 5000) -> str:
+        """Read the Default-mode hour select's current display text (e.g. "09").
+
+        Args:
+            timeout: Maximum wait time for the select to be visible.
+        """
+        self.schedule_hours_select.wait_for(state="visible", timeout=timeout)
+        return (self.schedule_hours_select.text_content() or "").strip()
+
+    def get_schedule_minute_value(self, timeout: int = 5000) -> str:
+        """Read the Default-mode minute select's current display text (e.g. "30").
+
+        Args:
+            timeout: Maximum wait time for the select to be visible.
+        """
+        self.schedule_minutes_select.wait_for(state="visible", timeout=timeout)
+        return (self.schedule_minutes_select.text_content() or "").strip()
+
+    def _open_cron_field_dropdown(self, trigger: Locator, field_type: str, timeout: int) -> Locator:
+        """Click *trigger* and return the Locator for its own option popup.
+
+        See :attr:`CRON_FIELD_DROPDOWN` for why this scoping (a stable
+        field-specific class, not descendant-chaining) is necessary here.
+
+        Args:
+            trigger: The field's own LocatorDescriptor-backed Locator
+                (e.g. ``self.schedule_hours_select``).
+            field_type: The react-js-cron field-type suffix ("period",
+                "hours", "minutes", "week-days").
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator scoped to the currently-open (non-stale) dropdown for
+            this specific field.
+        """
+        trigger.click(timeout=timeout)
+        dropdown = self.page.locator(self.CRON_FIELD_DROPDOWN.format(field_type))
+        dropdown.wait_for(state="visible", timeout=timeout)
+        return dropdown
+
+    def _click_cron_dropdown_option(self, dropdown: Locator, value: str, timeout: int) -> None:
+        """Click the option row reading exactly *value* inside an open *dropdown*.
+
+        rc-select/antd renders EACH option TWICE: a zero-size
+        (``height:0;width:0;overflow:hidden``) accessibility-only mirror
+        carrying ``role="option"``/``aria-label`` (confirmed live,
+        ELITEA-2007 implementer exploration — NOT visually rendered, so
+        Playwright correctly refuses to click it: "element is not
+        visible"), and the REAL visible row inside `.rc-virtual-list`
+        (`.ant-select-item-option-content`). Scoping to the
+        `.ant-select-item-option-content` class excludes the invisible
+        mirror entirely (it lacks that class) — `get_by_text`/`get_by_role`
+        both match across BOTH copies and either time out (role picks the
+        invisible mirror) or raise a strict-mode violation (text matches
+        both the mirror and the nested content div).
+
+        Args:
+            dropdown: Locator scoped to one field's open popup (see
+                :meth:`_open_cron_field_dropdown`).
+            value: Exact option text to click, e.g. "day" or "09".
+            timeout: Maximum wait time in milliseconds.
+        """
+        option = dropdown.locator(".ant-select-item-option-content").filter(
+            has_text=re.compile(rf"^{re.escape(value)}$")
+        )
+        option.click(timeout=timeout)
+
+    def select_schedule_period(self, value: str, timeout: int = 5000) -> None:
+        """Open the "Every" period select and choose *value*.
+
+        Single-select (no `mode` prop passed to react-js-cron's underlying
+        antd Select) — clicking an option REPLACES the current value,
+        unlike the hour/minute multi-selects below. Choosing "day" hides
+        the "on" day-of-week field entirely (source-confirmed: the
+        week-days field only mounts for the "year"/"month"/"week" periods).
+
+        Args:
+            value: One of "year", "month", "week", "day", "hour", "minute".
+            timeout: Maximum wait time in milliseconds.
+        """
+        dropdown = self._open_cron_field_dropdown(self.schedule_period_select, "period", timeout)
+        self._click_cron_dropdown_option(dropdown, value, timeout)
+
+    def _set_cron_multiselect_value(self, trigger: Locator, field_type: str, value: str, timeout: int) -> None:
+        """Set an ant-design MULTI-select Cron field to exactly *value*.
+
+        ``custom-select-hours``/``custom-select-minutes`` are ant-design
+        MULTI-selects whose default value ("00") is NOT replaced by
+        clicking a new option — it is ADDED (confirmed live, AFS Test
+        Steps 4/5 + Automation Hints). This opens the dropdown, clicks
+        *value* to add it, then clicks "00" to deselect the default —
+        leaving exactly *value* selected. Do not call this with
+        ``value="00"`` — the default is already "00" with nothing to add,
+        and the deselect click would just remove it, leaving no value
+        selected.
+
+        Args:
+            trigger: The field's own Locator (``self.schedule_hours_select``
+                or ``self.schedule_minutes_select``).
+            field_type: "hours" or "minutes".
+            value: Two-digit target value, e.g. "09".
+            timeout: Maximum wait time in milliseconds.
+        """
+        from playwright.sync_api import expect
+
+        dropdown = self._open_cron_field_dropdown(trigger, field_type, timeout)
+        value_row = dropdown.locator(".ant-select-item-option").filter(
+            has_text=re.compile(rf"^{re.escape(value)}$")
+        )
+        value_row.locator(".ant-select-item-option-content").click(timeout=timeout)
+        # Wait for the ADD to actually register in the clicked OPTION ROW's
+        # own selection-state class before clicking to deselect "00".
+        expect(value_row).to_have_class(re.compile(r"\bant-select-item-option-selected\b"), timeout=timeout)
+
+        zero_row = dropdown.locator(".ant-select-item-option").filter(has_text=re.compile(r"^00$"))
+        zero_content = zero_row.locator(".ant-select-item-option-content")
+        # Click-and-verify with a bounded retry, not a single fire-and-forget
+        # click. Confirmed live (ELITEA-2007 implementer exploration) that a
+        # single deselect click on "00" can occasionally leave BOTH values
+        # selected — reproduced deterministically under pytest's context
+        # (which always records video via a CDP screencast, per conftest.py's
+        # `context` fixture) while the identical sequence passed standalone
+        # without video recording. The screencast's extra CDP traffic shifts
+        # this third-party widget's render timing just enough to occasionally
+        # miss the click's intended target update. This loop is a condition
+        # check + bounded retry against the OBSERVABLE result (the trigger's
+        # own displayed value), not a blind sleep and not defect-masking —
+        # it fails loudly via the final `expect()` if genuinely broken.
+        for _ in range(3):
+            zero_content.click(timeout=timeout)
+            try:
+                expect(trigger).to_have_text(value, timeout=1500)
+                return
+            except AssertionError:
+                continue
+        expect(trigger).to_have_text(value, timeout=timeout)
+
+    def set_schedule_hour(self, value: str, timeout: int = 5000) -> None:
+        """Set the Default-mode hour select to exactly *value* (e.g. "09").
+
+        See :meth:`_set_cron_multiselect_value` for the deselect-the-default
+        mechanism this requires.
+
+        Args:
+            value: Two-digit hour string, e.g. "09".
+            timeout: Maximum wait time in milliseconds.
+        """
+        self._set_cron_multiselect_value(self.schedule_hours_select, "hours", value, timeout)
+
+    def set_schedule_minute(self, value: str, timeout: int = 5000) -> None:
+        """Set the Default-mode minute select to exactly *value* (e.g. "30").
+
+        See :meth:`_set_cron_multiselect_value` for the deselect-the-default
+        mechanism this requires. Passing through an intermediate two-value
+        state (e.g. "00,30") may transiently show the "Frequency cannot be
+        less than every hour" validation message if the hour field is also
+        narrow at that instant — correct guard-rail behavior, not a defect
+        (AFS Test Step 5 / Known Findings); it clears once this method
+        finishes (exactly one value selected).
+
+        Args:
+            value: Two-digit minute string, e.g. "30".
+            timeout: Maximum wait time in milliseconds.
+        """
+        self._set_cron_multiselect_value(self.schedule_minutes_select, "minutes", value, timeout)
 
     # ------------------------------------------------------------------
     # TOOLS section — MCP attach (ELITEA-1955)
