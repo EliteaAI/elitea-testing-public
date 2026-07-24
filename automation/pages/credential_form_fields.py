@@ -38,6 +38,15 @@ class CredentialFormFieldsMixin:
             "before Save — same testid, same shared ToolBaseProperty renderer."
         ),
     )
+    api_error_message = LocatorDescriptor(
+        testid="credential-form-api-error-message",
+        description=(
+            "Generic API-error banner (CredentialForm.jsx) — renders the "
+            "backend's literal error message (e.g. duplicate-name rejection) "
+            "when a Save POST fails. Shared between Create and Edit flows via "
+            "the same CredentialForm.jsx component (ELITEA-1978)."
+        ),
+    )
 
     def set_display_name(self, value: str) -> None:
         """Replace the Display Name field's value, triggering React onChange.

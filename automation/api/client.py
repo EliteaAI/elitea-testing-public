@@ -1051,6 +1051,24 @@ class CredentialAPI:
         logger.info("list_all_credentials: fetched %d credentials", len(all_items))
         return all_items
 
+    def get_credential(self, credential_id: int) -> dict:
+        """Fetch a single credential by *credential_id*.
+
+        Uses the **singular** ``/configuration/`` path segment (same
+        singular-vs-plural pattern as the rest of the API — see
+        ``.claude/rules/api-patterns.md``). Added for ELITEA-1978: verifying
+        that a credential persisted via the UI actually landed with the
+        expected ``data``/``status_ok`` values (e.g. confirming an
+        empty-Access-Token credential was saved non-functionally, per known
+        defect #1004), which the create/list responses alone don't confirm
+        after a page navigation.
+        """
+        url = self._credentials_url(credential_id)
+        logger.debug("GET credential %s", url)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        return resp.json()
+
     def create_github_credential(
         self, display_name: str, base_url: str, token: str, elitea_title: Optional[str] = None
     ) -> dict:
