@@ -186,6 +186,27 @@ class PipelineDetailPage(PipelineFormPage):
     # testid-keyed, not a raw role/CSS selector.
     SELECT_OPTION_PREFIX = '[data-testid^="select-option-"]'
 
+    # ------------------------------------------------------------------
+    # LLM node inline config (ELITEA-2004). Testid-only, added via
+    # add-data-testid — SimpleLLMInputItem.jsx/LLMNode.jsx (SYSTEM/TASK/
+    # CHAT HISTORY Type+Value fields, Input/Output select triggers).
+    # Dynamic (runtime-parameterized) testids per .agents/testing.md §
+    # Locator policy — class-level template constants, formatted with
+    # variable_name ("system"/"task"/"chat_history") at the call site.
+    # ------------------------------------------------------------------
+    LLM_NODE_TYPE_SELECT = '[data-testid="pipeline-llm-node-{}-type-select"]'
+    LLM_NODE_VALUE_INPUT = '[data-testid="pipeline-llm-node-{}-value-input"]'
+
+    llm_node_input_select = LocatorDescriptor(
+        testid="pipeline-llm-node-input-select",
+        description="LLM node's tool-agnostic Input state-variable select"
+    )
+
+    llm_node_output_select = LocatorDescriptor(
+        testid="pipeline-llm-node-output-select",
+        description="LLM node's tool-agnostic Output state-variable select"
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -1029,6 +1050,144 @@ class PipelineDetailPage(PipelineFormPage):
             return False
         text = (heading.text_content() or "").strip()
         return text == f"Input mapping (required {required_count})"
+
+    # ------------------------------------------------------------------
+    # LLM node inline config (ELITEA-2004)
+    # ------------------------------------------------------------------
+
+    def get_llm_node_type(self, variable_name: str, timeout: int = 5000) -> str:
+        """Read the LLM node's SYSTEM/TASK/CHAT HISTORY Type select display text.
+
+        Args:
+            variable_name: ``"system"``, ``"task"``, or ``"chat_history"``.
+            timeout: Maximum wait time for the select to be visible.
+
+        Returns:
+            The Type select's current display text (e.g. ``"Fixed"``).
+        """
+        select = self.page.locator(self.LLM_NODE_TYPE_SELECT.format(variable_name))
+        select.wait_for(state="visible", timeout=timeout)
+        # MUI's empty-select rendering is a zero-width space (U+200B), not
+        # an empty string — see get_mcp_node_toolkit_value.
+        text = (select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_llm_node_type(self, variable_name: str, type_value: str, timeout: int = 5000) -> None:
+        """Open the LLM node's Type select and choose *type_value*.
+
+        Args:
+            variable_name: ``"system"``, ``"task"``, or ``"chat_history"``.
+            type_value: The option's raw value (matches
+                ``select-option-{type_value}``, e.g. ``"fixed"``/``"fstring"``).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        select = self.page.locator(self.LLM_NODE_TYPE_SELECT.format(variable_name))
+        select.click(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(type_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def get_llm_node_value(self, variable_name: str, timeout: int = 5000) -> str:
+        """Read the current value of an LLM node SYSTEM/TASK/CHAT HISTORY Value field.
+
+        Args:
+            variable_name: ``"system"``, ``"task"``, or ``"chat_history"``.
+            timeout: Maximum wait time for the field to be visible.
+
+        Returns:
+            The field's current input value.
+        """
+        field = self.page.locator(self.LLM_NODE_VALUE_INPUT.format(variable_name))
+        field.wait_for(state="visible", timeout=timeout)
+        return field.input_value()
+
+    def set_llm_node_value(self, variable_name: str, value: str, timeout: int = 5000) -> None:
+        """Fill an LLM node SYSTEM/TASK/CHAT HISTORY Value field.
+
+        Uses click + el.select() + press_sequentially — MUI/React fields need
+        real keyboard events for onInput to fire (.claude/rules/mui-patterns.md),
+        and ``el.select()`` is the only reliable way to select existing text in
+        this React-controlled textarea: Playwright's ``press("Control+a")``
+        does not reliably select-all here (confirmed live — on this field it
+        instead moves the caret, so a pre-existing value like CHAT HISTORY's
+        default ``"[]"`` survives and the new text gets appended instead of
+        replacing it). Same rationale as
+        ``PipelineFormPage.update_text_field``'s docstring.
+
+        Args:
+            variable_name: ``"system"``, ``"task"``, or ``"chat_history"``.
+            value: The text to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        field = self.page.locator(self.LLM_NODE_VALUE_INPUT.format(variable_name))
+        field.wait_for(state="visible", timeout=timeout)
+        field.click()
+        field.evaluate("el => el.select()")
+        field.press_sequentially(value, delay=20)
+
+    def set_llm_node_field(
+        self, variable_name: str, type_value: str, value: str, timeout: int = 5000
+    ) -> None:
+        """Set an LLM node field's Type and Value together (the case's own unit of change).
+
+        Args:
+            variable_name: ``"system"``, ``"task"``, or ``"chat_history"``.
+            type_value: The Type option's raw value (``"fixed"``/``"fstring"``).
+            value: The Value field's text.
+            timeout: Maximum wait time for the dropdown / field.
+        """
+        self.select_llm_node_type(variable_name, type_value, timeout=timeout)
+        self.set_llm_node_value(variable_name, value, timeout=timeout)
+
+    def open_llm_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the LLM node's Input dropdown."""
+        self.llm_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def open_llm_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the LLM node's Output dropdown."""
+        self.llm_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def select_llm_node_input(self, value: str, timeout: int = 5000) -> None:
+        """Open the LLM node's Input dropdown, select *value*, and close it.
+
+        Input is a ``multiple`` MUI select (``InputSelect.jsx``) — unlike the
+        single-select MCP Toolkit/Tool dropdowns, selecting an option does
+        NOT auto-close the menu (standard MUI multi-select behavior: it stays
+        open to allow further selections). An explicit Escape close is
+        required here, or the still-open popover intercepts the next click
+        (confirmed live — a subsequent Output-select click timed out with
+        "subtree intercepts pointer events" until this was added).
+
+        Args:
+            value: The state variable's value (matches ``select-option-{value}``).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self.open_llm_node_input_select(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION.format(value)).click(timeout=timeout)
+        self.page.keyboard.press("Escape")
+        self.page.wait_for_timeout(300)
+
+    def select_llm_node_output(self, value: str, timeout: int = 5000) -> None:
+        """Open the LLM node's Output dropdown, select *value*, and close it.
+
+        Output is also a ``multiple`` MUI select (``OutputSelect.jsx``) — see
+        :meth:`select_llm_node_input` docstring for why the explicit Escape
+        close is required.
+
+        Args:
+            value: The state variable's value (matches ``select-option-{value}``).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self.open_llm_node_output_select(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION.format(value)).click(timeout=timeout)
+        self.page.keyboard.press("Escape")
+        self.page.wait_for_timeout(300)
 
     # ------------------------------------------------------------------
     # TOOLS section — MCP attach (ELITEA-1955)
