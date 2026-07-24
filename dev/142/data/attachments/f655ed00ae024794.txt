@@ -1,0 +1,35 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Save configuration — Locator.click: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator("button:has-text(\"Save\")").last
+    - locator resolved to <button disabled tabindex="-1" type="button" class="MuiButtonBase-root Mui-disabled MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeSmall MuiButton-containedSizeSmall MuiButton-colorPrimary css-oys4qc">Save</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+      - waiting 100ms
+    29 × waiting for element to be visible, enabled and stable
+       - element is not enabled
+     - retrying click action
+       - waiting 500ms
+
+WARNING  tests.ui.admin.test_guardrails_live_reload:test_guardrails_live_reload.py:313 Could not save configuration: Locator.click: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator("button:has-text(\"Save\")").last
+    - locator resolved to <button disabled tabindex="-1" type="button" class="MuiButtonBase-root Mui-disabled MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeSmall MuiButton-containedSizeSmall MuiButton-colorPrimary css-oys4qc">Save</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+      - waiting 100ms
+    29 × waiting for element to be visible, enabled and stable
+       - element is not enabled
+     - retrying click action
+       - waiting 500ms
