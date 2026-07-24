@@ -253,3 +253,71 @@ sibling "Create New Agent" canvas (ELITEA-2166).
   `GroupedCategory.jsx` (`#291`) fires on every visit to "Choose the
   toolkit type" — exclude from any "no new console errors" assertion on
   this surface.
+
+## Editing an EXISTING agent participant via the pencil icon (ELITEA-2089 — full findings)
+
+Extended 2026-07-24. The expanded PARTICIPANTS panel's per-row hover actions
+(`ParticipantActions.jsx`, `src/[fsd]/features/chat/participants/ui/ParticipantActions/`)
+open the **SAME `AgentEditor`/`AgentCanvasPage` canvas** ELITEA-2166 already built a
+page object for — confirmed live: `agent-canvas-title`/`agent-canvas-subtitle`/
+`agent-canvas-close-button`/all 5 `agent-canvas-section-*` testids render identically
+whether the canvas was opened via "+ Create New Agent" (create-mode) or via this
+row's pencil icon (edit-mode, URL gains `?edited_participant_id={id}`). **No new
+canvas-chrome page object needed for edit-mode — `AgentCanvasPage` is reusable
+as-is.**
+
+- **Participant row hover reveals TWO icon buttons, only one has a testid.**
+  `chat-participant-row-{uniqueId}` (existing `ChatPage.PARTICIPANT_ROW` template)
+  shows, on hover: a pencil "Edit" button (`id="EditButton"`, `aria-label` varies by
+  entity type — "Edit agent"/"Edit pipeline"/"Edit mcp"/"Edit toolkit" — **ZERO
+  `data-testid`**, confirmed by full-file read of `EditParticipantButton.jsx`) and a
+  trash "Remove" button (`chat-participant-remove-button`, already testid'd, already
+  wired as `ChatPage.PARTICIPANT_REMOVE_BUTTON`). The sibling
+  `DeleteParticipantButton.jsx` (same directory) already hardcodes its testid
+  directly on the `IconButton` — the Edit button's fix is a straight mirror of that
+  existing pattern (`data-testid="chat-participant-edit-button"`), not new capability.
+  One testid covers both the button's visual states (pencil when `canEdit`, gear/
+  settings icon when not — cosmetic, not identity).
+- **The expanded PARTICIPANTS panel itself has testids that are NOT yet wired into
+  `chat_page.py`.** `chat-participants-panel` (container, `data-expanded` state
+  attribute) and `chat-participants-panel-toggle-button` (ELITEA-2098) exist live on
+  `automation/testids` but no page-object field references them yet — the legacy
+  text-based `expand_participants_panel()`/`is_participants_panel_expanded()` is
+  still the only way any MERGED test reaches this panel. First case that actually
+  needs the pencil-icon edit flow should add the two `LocatorDescriptor` fields
+  rather than reach for the legacy text-based method.
+- **Composer chip is a 3-button `ButtonGroup[aria-label="Model Selector Menu"]`,
+  not 2.** `chat-switch-participant-button` (icon-only, `aria-label="Switch Agent"`)
+  + `chat-version-selector-trigger` (icon-only, `aria-label="version selector menu"`)
+  + a THIRD button (`aria-label="agent settings menu"`, **NO testid**) that carries
+  the actual visible TEXT: `echo`/`base`-style labels normally, or the literal
+  string `"Editing…"` while that same agent's own canvas (create OR edit mode) is
+  open. This confirms ELITEA-2166's `#709` finding generalizes to the edit-entry
+  point too, not just create-mode — same mechanism, same fix (assert the live text,
+  don't assume the case's literal "name + Editing..." combined wording). The first
+  two buttons stay icon-only regardless of editing state; only the third button's
+  text changes. `testid needed: chat-agent-settings-menu-button` if a future case
+  wants to assert this without scoping off the `ButtonGroup`'s aria-label.
+- **`toast-message` is a suite-wide generic success/error toast testid** — already
+  used by `artifacts_page.py`/`skill_detail_page.py`/`skills_list_page.py`, and
+  confirmed here to ALSO cover the agent-edit-save toast ("The agent has been
+  updated", exact text, byte-for-byte match to case ELITEA-2089's literal wording).
+  Any future chat/agent case needing a save-confirmation toast should reuse this
+  testid rather than hunt for a new one — it's a single shared snackbar mount point.
+- **Toast timing trap for analyst tooling** (not a product issue): a naive
+  click-Save → `wait-network-idle` → THEN check-for-toast sequence can miss it
+  entirely — the toast can dismiss before the check runs. Click-Save →
+  IMMEDIATELY wait on `[data-testid="toast-message"]` becoming visible, don't
+  interleave a network-idle wait first.
+- **Standalone Agent detail page (`/agents/all/{id}`) and the in-chat canvas share
+  the EXACT SAME `agent-welcome-message-input` testid** — confirmed live: a value
+  saved via the in-chat edit-mode canvas reads back identically on the standalone
+  page with zero transformation, no separate re-derivation needed by a future case
+  touching either surface.
+- **Cross-AFS test-data collision risk**: ELITEA-2166 and ELITEA-2089 BOTH create a
+  dedicated agent literally named `echo` (matching each case's own literal Test Data
+  table). Both AFS's fixtures are self-contained (create-in-setup, delete-in-
+  teardown) so sequential runs are safe; a genuine collision is only possible under
+  PARALLEL (xdist) execution of both specs at once. Neither AFS resolves this by
+  suffixing the name (deferred to implementer/lead, consistent with ELITEA-2166's
+  own note) — flag again if a THIRD case ever wants a fixture agent named "echo".
