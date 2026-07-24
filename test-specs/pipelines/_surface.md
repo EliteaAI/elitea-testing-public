@@ -92,6 +92,54 @@ edits needed, only a prop passed at the feature call site:**
 | Editor content (`.cm-content`) | `AIAssistantCodeMirrorInput.jsx` → `<Field.CodeMirrorEditor>` | `contentTestId` (`CodeMirrorEditor.jsx:82`, applies via `EditorView.contentAttributes` — same mechanism as `skill-instructions-editor-content`/`toolkit-raw-json-editor-content`; **use the `-editor-content` suffix convention**, not a bare `-editor` guess) |
 | Fullscreen/"AI Assistant" icon button | `SimpleLLMInputItem.jsx`'s `NodeFieldInput` `commonProps` | `fullScreenButtonProps` (threaded `InputBase.jsx` → `InputActionsToolbar.jsx`, spread onto the `IconButton`) |
 
+**Testid naming reconciliation (GAP-007/GAP-010, same cluster session, 2026-07-24):**
+the modal Close button (`aria-label="Close"`, no testid) got two independently-proposed
+names from the two sibling AFSs — GAP-007 (written first) said
+`pipeline-ai-assistant-close-button`; GAP-010's own `source.md` said
+`pipeline-ai-assistant-modal-close`. Per the established first-written-to-disk
+precedent, **`pipeline-ai-assistant-close-button` is the canonical name** — GAP-010's
+AFS was aligned to it. Whichever case's implementer runs first adds this ONE testid.
+
+## Footer AI-generation prompt (Send-gating, Enter/Shift+Enter) — confirmed fully working (GAP-010, 2026-07-24)
+
+The modal's separate bottom prompt (`textarea[placeholder="Describe your idea to
+generate or rewrite the value."]`, no `aria-label`, no testid) drives an entirely
+different feature from the f-string autocomplete above — free-text AI generation/
+rewrite of the whole editor value. Confirmed live, end-to-end, without ever firing
+a real generation (never typed a valid non-whitespace prompt AND pressed the actual
+submit path):
+
+- Send (the third, unlabeled icon-button in the dialog — only Copy/Close carry
+  `aria-label`s) is `disabled` whenever the prompt is empty or whitespace-only
+  (`.trim()` gate), `enabled` once real content is present — confirmed both
+  transitions live, including a genuine force-clear back to disabled.
+- Plain **Enter** on a whitespace-only prompt does NOT submit (no network call, modal
+  stays open, editor value untouched) — confirmed via a REAL native-text-carrying
+  keydown (`text:'\r'`), not the naive named-key dispatch some CDP tooling uses (see
+  the Tooling gotcha cross-reference section below — that dispatch shape silently
+  no-ops and would produce a false pass here).
+- **Shift+Enter** inserts an actual newline into the prompt field (confirmed:
+  cursor position advanced by exactly one char) without submitting and without
+  affecting Send's enabled state.
+- Closing the modal (Close button) commits the CodeMirror editor's OWN value back
+  to the underlying node field — the footer prompt's in-progress draft has zero
+  effect on the committed value, since it's never submitted.
+- Zero console errors, zero network requests across the whole footer-prompt
+  interaction sequence.
+
+**New testid gaps (GAP-010's own, not shared with GAP-007):**
+`pipeline-ai-prompt-input` (the footer textarea — no accessible name to fall back
+on, priority add), `pipeline-ai-prompt-send` (the Send icon-button — same, no
+`aria-label`, `disabled` state is the only observable signal today).
+
+**New shared gap (surfaced by GAP-010, applies to GAP-007's step 12 too):** neither
+case's AFS originally named a testid for the canvas-inline System/Task/Chat-History
+`Value` field itself (bare `#system-value` etc., same duplicate-native-id family as
+`#simple-select-Type` below) — both cases need to read it post-modal-close to verify
+the committed value. Flag to `add-data-testid`:
+`pipeline-llm-node-{variableName}-value-input` — the exact wiring point is already
+documented below in "SYSTEM/TASK/CHAT HISTORY Value-field wiring point".
+
 ## F-string autocomplete popper — mechanism confirmed fully working (one exception)
 
 `useCodeMirrorFStringAutocomplete.hooks.js` (AI-Assistant/modal path) and
@@ -217,6 +265,21 @@ Event('input', {bubbles:true}))` via `evaluate()` to force-set the value
 directly, confirmed to correctly trigger React's controlled-input `onChange`
 (the app's own dirty-state indicator reacted correctly). Does not affect the
 real Playwright/pytest suite (`fill()`/`press_sequentially()` are unaffected).
+
+**Addendum (GAP-010, 2026-07-24):** the same `cdp.mjs`'s `press <key>` command
+also omits the native `text` field for ANY named/non-printable key (`Enter`,
+`Shift+Enter`, `Backspace`, ...) — `text: mapped.key.length === 1 ? mapped.key
+: ''` in the script's own source. This silently no-ops real native
+newline-insertion/selection-deletion in headless Chrome, which can look like a
+legitimate "the app blocked it" result when it's actually "the keystroke never
+really landed." Worked around by dispatching a raw `Input.dispatchKeyEvent`
+directly over the CDP WebSocket with an explicit `text:'\r'` (bypassing
+`cdp.mjs`'s own `pressKey()`), which DID produce a real newline for Shift+Enter
+and confirmed plain Enter is genuinely blocked by the app (not just
+un-dispatched) for a whitespace-only prompt. Not a product defect, and does not
+affect the real Playwright/pytest suite (`page.keyboard.press("Enter"/"Shift+Enter")`
+is unaffected) — purely an analyst-tooling caution for future redispatches of
+this surface.
 
 ## Entry Point node — Trigger select & Webhook settings modal (ELITEA-2006, 2026-07-24)
 
