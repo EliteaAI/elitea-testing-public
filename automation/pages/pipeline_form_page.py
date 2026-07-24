@@ -56,6 +56,51 @@ class PipelineFormPage(BasePage):
         description="Discard changes button"
     )
 
+    # Tags combobox (ELITEA-2021 — testid gap closed via add-data-testid;
+    # TagEditor/AutoCompleteDropDown wiring mirrors CreateSkillForm.jsx's
+    # skill-tags-input shape one prefix over, per the AFS's declared-
+    # improvisation naming: .agents/role-overrides.md § Declared-
+    # improvisation protocol).
+    tags_input = LocatorDescriptor(
+        testid="agent-tags-input",
+        description="Tags combobox wrapper (Autocomplete root)"
+    )
+    tags_input_field = LocatorDescriptor(
+        testid="agent-tags-input-field",
+        description="Tags combobox's real <input> element"
+    )
+    tag_chip = LocatorDescriptor(
+        testid="agent-tag-chip",
+        description="A committed tag chip in the Tags combobox"
+    )
+
+    # Dynamic (runtime-parameterized) testid — one per committed tag option
+    # in the dropdown. Class-level template constant per .agents/testing.md
+    # § Locator policy, formatted with test-generated data only at the call site.
+    TAG_OPTION = '[data-testid="agent-tag-option-{}"]'
+
+    # Welcome message / Chat starters / Step limit — same shared components
+    # as AgentFormPage/AgentDetailPage (CreateAgentForm.jsx composes them
+    # identically for entityType="pipeline"), same testids. Ported here
+    # since PipelineFormPage had no locators for them yet (AFS ELITEA-2021
+    # Automation Hints).
+    welcome_message_input = LocatorDescriptor(
+        testid="agent-welcome-message-input",
+        description="Welcome message field"
+    )
+    conversation_starter_add_button = LocatorDescriptor(
+        testid="agent-conversation-starter-add",
+        description="Add conversation starter button"
+    )
+    conversation_starter_inputs = LocatorDescriptor(
+        testid="agent-conversation-starter-input",
+        description="Conversation starter textarea field(s)"
+    )
+    step_limit_input = LocatorDescriptor(
+        testid="agent-step-limit-input",
+        description="Step limit input (Advanced accordion section)"
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -202,6 +247,119 @@ class PipelineFormPage(BasePage):
             Current description input value.
         """
         return self.description_input.input_value()
+
+    # ------------------------------------------------------------------
+    # Tags
+    # ------------------------------------------------------------------
+
+    def add_tag(self, tag_name: str, timeout: int = 5000):
+        """Type a tag into the Tags combobox and commit it with Enter.
+
+        Args:
+            tag_name: Tag text to add.
+            timeout: Maximum wait time for the chip to appear.
+        """
+        logger.info("Adding tag '%s'", tag_name)
+        self.tags_input_field.click()
+        self.tags_input_field.press_sequentially(tag_name, delay=50)
+        self.page.keyboard.press("Enter")
+        self.tag_chip.filter(has_text=tag_name).first.wait_for(state="visible", timeout=timeout)
+        logger.info("Tag '%s' committed", tag_name)
+
+    def has_tag_chip(self, tag_name: str, timeout: int = 5000) -> bool:
+        """Check whether a committed tag chip reading *tag_name* is visible.
+
+        Args:
+            tag_name: Tag text to look for.
+            timeout: Maximum wait time.
+
+        Returns:
+            True if a matching chip is visible, False otherwise.
+        """
+        try:
+            self.tag_chip.filter(has_text=tag_name).first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    # ------------------------------------------------------------------
+    # Welcome message
+    # ------------------------------------------------------------------
+
+    def fill_welcome_message(self, text: str):
+        """Fill the Welcome message field.
+
+        Uses click + clear + press_sequentially to trigger React's onChange
+        (.claude/rules/mui-patterns.md).
+
+        Args:
+            text: Welcome message text.
+        """
+        self.welcome_message_input.click()
+        self.welcome_message_input.clear()
+        self.welcome_message_input.press_sequentially(text, delay=30)
+        self.page.wait_for_timeout(200)
+
+    def get_welcome_message(self) -> str:
+        """Read the current value of the Welcome message field."""
+        return self.welcome_message_input.input_value()
+
+    # ------------------------------------------------------------------
+    # Conversation starters
+    # ------------------------------------------------------------------
+
+    def add_conversation_starter(self, text: str, timeout: int = 5000):
+        """Click "+ Starter" and fill the newly-added starter textarea.
+
+        Args:
+            text: Starter text to fill.
+            timeout: Maximum wait time for the new input to appear.
+        """
+        logger.info("Adding conversation starter")
+        self.conversation_starter_add_button.click()
+        self.page.wait_for_timeout(500)
+        inputs = self.conversation_starter_inputs
+        inputs.last.wait_for(state="visible", timeout=timeout)
+        inputs.last.click()
+        self.page.wait_for_timeout(200)
+        if text:
+            inputs.last.fill(text)
+            self.page.wait_for_timeout(300)
+
+    def get_conversation_starter_text(self, index: int = 0) -> str:
+        """Read the value of a conversation starter textarea.
+
+        Args:
+            index: Index of the conversation starter (0-based).
+        """
+        return self.conversation_starter_inputs.nth(index).input_value()
+
+    # ------------------------------------------------------------------
+    # Step limit (Advanced section)
+    # ------------------------------------------------------------------
+
+    def set_step_limit(self, value: str):
+        """Set the Step limit field (Advanced section) to *value*.
+
+        Uses Playwright's native ``.clear()`` (a real event-triggering
+        clear) before typing — a raw select-all+Backspace key-event
+        sequence was confirmed live (AFS ELITEA-2021) to NOT reliably clear
+        this React-controlled field's stale default value ("25" on a fresh
+        create form), producing a corrupted result ("255"/"2550") instead.
+        ``press_sequentially()`` after ``clear()`` correctly triggers
+        React's onChange per keystroke (.claude/rules/mui-patterns.md).
+
+        Args:
+            value: Target step limit value (numeric string).
+        """
+        self.step_limit_input.click()
+        self.step_limit_input.clear()
+        self.step_limit_input.press_sequentially(value, delay=50)
+        self.page.wait_for_timeout(300)
+
+    def get_step_limit(self) -> str:
+        """Read the current value of the Step limit field."""
+        return self.step_limit_input.input_value()
 
     # ------------------------------------------------------------------
     # Save/Cancel/Discard actions

@@ -152,9 +152,29 @@ class PipelineDetailPage(PipelineFormPage):
         testid="agent-add-mcp-button",
         description='"+ MCP" button in the TOOLS section (ToolMenu.jsx)'
     )
+    # "+ Toolkit" button (ELITEA-2021) — ported from AgentDetailPage.add_toolkit_button,
+    # same shared ApplicationTools.jsx/ToolMenu.jsx component, same testid.
+    add_toolkit_button = LocatorDescriptor(
+        testid="agent-add-toolkit-button",
+        description='"+ Toolkit" button in the TOOLS section (ToolMenu.jsx)'
+    )
     toolkit_card = LocatorDescriptor(
         testid="agent-toolkit-card",
         description="An attached toolkit/MCP card in the TOOLS section"
+    )
+
+    # EDITOR NOTES section (ELITEA-2021, detail page only — ApplicationEditorNotes.jsx
+    # is not composed by CreateAgentForm.jsx, so this section never renders on
+    # /pipelines/create; only after the first Save navigates to /pipelines/all/{id}).
+    # Testid gap closed via add-data-testid per the AFS's declared-improvisation
+    # naming (.agents/role-overrides.md § Declared-improvisation protocol).
+    editor_notes_section = LocatorDescriptor(
+        testid="agent-editor-notes-section",
+        description="EDITOR NOTES accordion section container (detail page only)"
+    )
+    editor_notes_input = LocatorDescriptor(
+        testid="agent-editor-notes-input",
+        description="Editor Notes textarea (detail page only)"
     )
 
     # Scoped selector (inside the '+ MCP' popper) — same testid family as
@@ -1074,6 +1094,28 @@ class PipelineDetailPage(PipelineFormPage):
         self.add_mcp_button.click(force=True)
         return Popper.wait_for(self.page, timeout=timeout)
 
+    def open_toolkit_popper(self, timeout: int = 10000) -> Locator:
+        """Open the TOOLS section's "+ Toolkit" popper without selecting anything.
+
+        Additive sibling to :meth:`open_mcp_popper` (ELITEA-2021) — same
+        shared ``ApplicationTools.jsx``/``ToolMenu.jsx`` component, same
+        popper mechanics, only the trigger button differs
+        (``add_toolkit_button`` vs ``add_mcp_button``). ``open_mcp_popper``
+        itself is left unmodified (page-objects.md shared-caller rule) — it
+        has an existing merged caller (ELITEA-1955) relying on it unchanged.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator of the visible MUI popper (see ``components.mui.Popper``).
+        """
+        logger.info("Opening TOOLS section '+ Toolkit' popper")
+        self.ensure_toolkits_section_visible(timeout=timeout)
+        self.add_toolkit_button.wait_for(state="visible", timeout=timeout)
+        self.add_toolkit_button.click(force=True)
+        return Popper.wait_for(self.page, timeout=timeout)
+
     def get_mcp_popper_search_input_count(self, popper: Locator) -> int:
         """Count of the toolkit-search-input field inside an open "+ MCP" popper.
 
@@ -1146,6 +1188,51 @@ class PipelineDetailPage(PipelineFormPage):
         logger.info("MCP '%s' attached", mcp_name)
         return response_info.value.json()
 
+    def select_toolkit_in_popper(
+        self, popper: Locator, toolkit_name: str, project_id: str, timeout: int = 10000
+    ) -> dict:
+        """Select *toolkit_name* in an already-open "+ Toolkit" popper.
+
+        Additive sibling to :meth:`select_mcp_in_popper` (ELITEA-2021) — same
+        response-wait mechanics (waits on the attach PATCH's ``201`` itself,
+        never a fixed timeout) and the same testid-anchored
+        ``Popper.select_menuitem_by_testid`` selection. Differs only in the
+        match text: the Toolkit popper strips spaces from displayed names
+        (unlike the MCP popper — see ``AgentDetailPage.add_toolkit``'s
+        docstring), so the selection match is done against the
+        space-stripped name while the search query uses the raw name.
+        ``select_mcp_in_popper`` itself is left unmodified (page-objects.md
+        shared-caller rule) — it has an existing merged caller (ELITEA-1955)
+        relying on its unstripped-name matching.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_toolkit_popper`.
+            toolkit_name: Name (or prefix) of the toolkit to attach.
+            project_id: Project id, used to scope the attach response URL match.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the ``201 Created`` attach PATCH response.
+        """
+        logger.info("Selecting toolkit '%s' in popper", toolkit_name)
+        search_input = popper.locator(self.TOOLKIT_SEARCH_INPUT_SELECTOR)
+        if search_input.count() > 0 and search_input.first.is_visible():
+            Popper.search(popper, toolkit_name[:20], self.page)
+
+        # The dropdown strips spaces from names — match against the
+        # space-stripped version (same as AgentDetailPage.add_toolkit).
+        name_no_spaces = toolkit_name.replace(" ", "")
+        with self.page.expect_response(
+            lambda r: f"/tool/prompt_lib/{project_id}/" in r.url
+            and r.request.method == "PATCH"
+            and r.status == 201,
+            timeout=timeout,
+        ) as response_info:
+            Popper.select_menuitem_by_testid(popper, name_no_spaces, self.page, timeout=timeout)
+
+        logger.info("Toolkit '%s' attached", toolkit_name)
+        return response_info.value.json()
+
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit/MCP card is attached in the TOOLS section.
 
@@ -1166,6 +1253,27 @@ class PipelineDetailPage(PipelineFormPage):
             return True
         except Exception:
             return False
+
+    def fill_editor_notes(self, text: str, timeout: int = 5000):
+        """Fill the EDITOR NOTES textarea (detail page only).
+
+        Uses click + clear + press_sequentially to trigger React's onChange
+        (.claude/rules/mui-patterns.md).
+
+        Args:
+            text: Notes text to fill.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self.editor_notes_section.scroll_into_view_if_needed()
+        self.editor_notes_input.wait_for(state="visible", timeout=timeout)
+        self.editor_notes_input.click()
+        self.editor_notes_input.clear()
+        self.editor_notes_input.press_sequentially(text, delay=30)
+        self.page.wait_for_timeout(200)
+
+    def get_editor_notes(self) -> str:
+        """Read the current value of the EDITOR NOTES textarea."""
+        return self.editor_notes_input.input_value()
 
     def save_and_wait_for_update(self, project_id: str, pipeline_id: int, timeout: int = 15000) -> dict:
         """Click Save and wait for the update PUT's 201 response.
