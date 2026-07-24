@@ -128,7 +128,7 @@
 | 3 Save, reload, re-expand | field still `25` | AFS step 3 | step 3 | asserted *(decomposed: Save-response-body assertion added alongside the DOM assertion — see Axis 2)* |
 | 4 Clear, paste `1500` | clamps to `999` | AFS step 4 | step 4 | asserted |
 | 5 Clear, paste `-5` | clamps to `0` | AFS step 5 | step 5 | asserted |
-| 6 Clear, type `a`,`b`,`-` one at a time | each keystroke blocked, field unchanged; navigation keys still work | AFS step 6 | step 6 | asserted *(decomposed: navigation-key-still-works and "field still accepts digits afterward" folded into the same step as a follow-up check — see Axis 2)* |
+| 6 Clear, type `a`,`b`,`-` one at a time | each keystroke blocked, field unchanged; navigation keys still work | AFS step 6 | step 6 | asserted *(decomposed: "digit still works after reject" AND a dedicated Backspace/ArrowLeft/Tab navigation-key check are both folded into the same step — see Axis 2; the navigation-key check was added in a fix round, 2026-07-24, after review found the pre-fix version only re-exercised the digit-gate branch)* |
 | 7 Select-all+Delete | field empty, no validation error | AFS step 7 | step 7 | asserted |
 | 8 Delete throwaway agent | agent removed | AFS step 8 (Cleanup) | step 8 | asserted |
 | Test Data: MAX_STEP_LIMIT=999, MIN_STEP_LIMIT=0 | clamp boundaries | steps 4–5 | steps 4,5 | asserted |
@@ -161,6 +161,22 @@
   keydown gate's `preventDefault` calls don't leave the input in a "stuck"
   state; a real user recovering from a mistyped character needs this to keep
   working.*
+- `step 6` additionally exercises Backspace, ArrowLeft, and Tab directly —
+  *added (fix round, 2026-07-24): the case's own text names these three
+  navigation keys explicitly ("Navigation keys (Backspace/Arrow/Tab) remain
+  functional"), and `isValidKeyInput`'s `navigationKeys` allowlist is itself
+  named as a distinct coverage-target arm in `source.md`'s Automation Notes.
+  The pre-fix implementation only re-exercised the digit-gate branch (typing
+  `"7"`/`"42"` after a reject) and touched `Delete` only incidentally via
+  `clear_step_limit()`'s own Ctrl/Cmd+A+Delete — undocumented and not
+  attributed to this requirement, and not a check of Backspace/Arrow/Tab as
+  literally named. Now: Backspace deletes the last character (`"25"` →
+  `"2"`); ArrowLeft moves the caret so a following keypress lands before the
+  remaining digit (`"2"` → `"92"`, provable only if the caret actually
+  moved); Tab moves focus away from the field
+  (`expect(locator).not_to_be_focused()`). Each proves its named key is not
+  blocked by the keydown gate — not merely that digits still work
+  afterward.*
 - Non-console-error assertion excludes the pre-existing `403` burst on
   `/api/v2/secrets/secrets/default/{id}` and
   `/api/v2/elitea_core/upload_icon/prompt_lib/{id}` — *added: this exact
@@ -187,14 +203,17 @@ policy (testid-only, no fallback ladder). PROVENANCE verified fresh this run
 | Step limit input | `agent-step-limit-input` | **needs-adding → added this run** — on `automation/testids` only (EliteaAI/EliteaUI@74df748f), **NOT yet on `main`** (awaiting human cherry-pick) | Added via `add-data-testid` to `ApplicationAdvanceSettings.jsx`'s `Input.StyledInputEnhancer`, `inputProps={{ ..., 'data-testid': 'agent-step-limit-input' }}` — confirmed forwarded onto the real `<input>` via `StyledInputEnhancer` → `Input.InputBase` → MUI `TextField`'s `slotProps.htmlInput` |
 | Save button | `agent-save-button` | on-main ✓ (pre-existing, already used by every other agent-form test) | inherited from `AgentFormPage` |
 
-**Page object:** all three locators + 4 new methods
+**Page object:** all three locators + 5 new methods
 (`get_step_limit()`, `is_advanced_section_expanded()`, `type_step_limit()`,
 `clear_step_limit()`, `paste_step_limit()`) were added to
 `automation/pages/agent_form_page.py` (shared ancestor of `AgentDetailPage`,
 since `ApplicationAdvanceSettings` is common to both the create and edit
 routes) **this run**, and verified end-to-end against the live app via a
 standalone script (headless Chromium, fresh browser context, real
-`AgentDetailPage` calls) — every branch below passed:
+`AgentDetailPage` calls) — every branch below passed. A sixth method,
+`press_step_limit_key()`, was added in the fix round (2026-07-24) to
+exercise Backspace/ArrowLeft/Tab without re-clicking (which would reset the
+caret) — see § Automation Notes / Coverage Map row 6 and Axis 2 above:
 
 ```
 [PASS] Advanced section expanded by default
@@ -263,6 +282,17 @@ None. All 8 case steps executed to completion with no blockers.
   (`get_step_limit()`, `is_advanced_section_expanded()`, `type_step_limit()`,
   `clear_step_limit()`, `paste_step_limit()`) already added and verified
   this run; `AgentDetailPage` inherits them, no duplication needed.
+- **Fix round (2026-07-24):** added `press_step_limit_key()` — presses a
+  single key without the `.click()` that `type_step_limit()` does first (a
+  click on an already-focused text input can move the caret, which would
+  silently invalidate an ArrowLeft-then-digit sequence). Used to exercise
+  Backspace/ArrowLeft/Tab directly for Step 6's navigation-keys requirement
+  (see Coverage Map row 6 / Axis 2). Also replaced `clear_step_limit()`'s and
+  `paste_step_limit()`'s fixed `wait_for_timeout()` sleeps with
+  condition-based waits (`expect(locator).to_have_value("")` and a
+  double-`requestAnimationFrame` respectively) — both interactions are
+  entirely client-side (§ Network Behavior confirms zero requests), so there
+  was a real condition to wait on instead of a guessed duration.
 - **Paste simulation is the load-bearing mechanic for steps 4–5.**
   `isValidKeyInput`'s keydown gate (`ApplicationAdvanceSettings.jsx:28-52`)
   blocks any single keystroke that would push the value over

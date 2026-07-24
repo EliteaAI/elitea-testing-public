@@ -22,12 +22,11 @@ Spec: test-specs/agents/l3_step-limit-clamp-reject-and-persist_GAP-003.md
 
 import uuid
 
-import pytest
 import allure
-from playwright.sync_api import Page, Response
-
+import pytest
 from config import settings
 from pages.agent_detail_page import AgentDetailPage
+from playwright.sync_api import Page, Response, expect
 
 pytestmark = [pytest.mark.ui, pytest.mark.agents]
 
@@ -222,7 +221,8 @@ class TestAgentStepLimitClampRejectAndPersist:
                 "Step 6 — Clear the field, then type 'a', 'b', '-' one at a "
                 "time: each keystroke is rejected and the field stays "
                 "unchanged; a valid digit typed immediately afterward still "
-                "works (field is not stuck)"
+                "works (field is not stuck); Backspace/Arrow/Tab remain "
+                "functional (isValidKeyInput's navigation-keys allowlist)"
             ):
                 detail_page.clear_step_limit()
                 assert detail_page.get_step_limit() == "", (
@@ -251,7 +251,49 @@ class TestAgentStepLimitClampRejectAndPersist:
                     "Field should still accept a full valid value "
                     "immediately after the earlier rejected sequence"
                 )
-                assert_no_unexpected_console_errors("non-numeric reject sequence")
+
+                # Navigation keys (Backspace/Arrow/Tab) — isValidKeyInput's
+                # navigationKeys allowlist (ApplicationAdvanceSettings.jsx)
+                # returns True for these without calling preventDefault,
+                # unlike the reject branch above. Distinct requirement from
+                # "a digit still works after a rejected keystroke": this
+                # proves the specific navigation keys the case names remain
+                # functional, not merely that digits do.
+                detail_page.clear_step_limit()
+                detail_page.type_step_limit("25")
+                assert detail_page.get_step_limit() == "25"
+
+                detail_page.press_step_limit_key("Backspace")
+                assert detail_page.get_step_limit() == "2", (
+                    "Backspace should delete the last character — proves "
+                    "the navigation-keys allowlist doesn't block it, got "
+                    f"{detail_page.get_step_limit()!r}"
+                )
+
+                # ArrowLeft moves the caret before the remaining digit;
+                # typing '9' there produces '92' only if the caret actually
+                # moved — a direct, functional check that Arrow keys are not
+                # blocked (as opposed to merely "nothing visibly broke").
+                detail_page.press_step_limit_key("ArrowLeft")
+                detail_page.press_step_limit_key("9")
+                assert detail_page.get_step_limit() == "92", (
+                    "ArrowLeft should move the caret before the remaining "
+                    "digit, so typing '9' there should produce '92', got "
+                    f"{detail_page.get_step_limit()!r}"
+                )
+
+                # Tab's native focus-move behavior only fires if
+                # isValidKeyInput did NOT call preventDefault for it — if
+                # Tab were incorrectly blocked, focus would stay stuck on
+                # the input.
+                detail_page.press_step_limit_key("Tab")
+                expect(detail_page.step_limit_input).not_to_be_focused(
+                    timeout=UI_ELEMENT_TIMEOUT
+                )
+
+                assert_no_unexpected_console_errors(
+                    "non-numeric reject + navigation-key sequence"
+                )
 
             with allure.step(
                 "Step 7 — Select-all + Delete so the field is empty, with "

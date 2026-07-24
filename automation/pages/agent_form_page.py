@@ -8,12 +8,12 @@ Handles: /agents/create and /agents/all/{id} (edit mode)
 
 import logging
 import re
-from playwright.sync_api import Page
+
+from playwright.sync_api import Page, expect
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
-
 
 logger = logging.getLogger("elitea.pages.agent_form")
 
@@ -859,11 +859,42 @@ class AgentFormPage(BasePage):
         Uses real key events (Ctrl/Cmd+A then Delete) rather than
         ``fill("")``, keeping the same React-controlled-input path as
         ``type_step_limit``.
+
+        Waits on a condition, not a fixed sleep: this interaction is
+        entirely client-side (formik ``setFieldValue`` only, zero network
+        requests — confirmed live, see AFS § Network Behavior), so there is
+        no response to await. ``""`` is the one deterministic outcome of
+        "select-all + Delete" (``isValidStepLimit('')``), so waiting for the
+        field's own value to reach it is the real completion signal — the
+        same ``expect(locator).to_have_value(...)`` pattern already used by
+        ``mcp_form_page.py``.
         """
         self.step_limit_input.click()
         self.step_limit_input.press("ControlOrMeta+a")
         self.step_limit_input.press("Delete")
-        self.page.wait_for_timeout(200)
+        expect(self.step_limit_input).to_have_value("", timeout=2000)
+
+    @action("Press key in Step limit field")
+    def press_step_limit_key(self, key: str):
+        """Press a single key in the Step limit field at the current
+        cursor position, without re-clicking/refocusing first.
+
+        Unlike ``type_step_limit()`` — which calls ``.click()`` before
+        typing, and a click on an already-focused text input can move the
+        caret to wherever the click lands — this method presses ``key``
+        exactly where the cursor already is. Required to exercise
+        ``isValidKeyInput``'s navigation-keys allowlist
+        (``ApplicationAdvanceSettings.jsx``: Backspace/Delete/Tab/Escape/
+        Enter/Arrow*/Home/End) across a sequence of calls where caret
+        position must be preserved between them (e.g. ArrowLeft then a
+        digit — a follow-up ``.click()`` would reset the caret and silently
+        invalidate the assertion).
+
+        Args:
+            key: Playwright key name (e.g. ``"Backspace"``, ``"ArrowLeft"``,
+                ``"Tab"``, or a single printable character like ``"9"``).
+        """
+        self.step_limit_input.press(key)
 
     @action("Paste into Step limit field")
     def paste_step_limit(self, value: str):
@@ -886,6 +917,20 @@ class AgentFormPage(BasePage):
 
         Args:
             value: The full string to "paste" (e.g. "1500", "-5").
+
+        Waits on a condition, not a fixed sleep: this interaction is
+        entirely client-side (formik ``setFieldValue`` only, zero network
+        requests — confirmed live, see AFS § Network Behavior), so there is
+        no response to await. React's ``onChange``/``setFieldValue`` runs
+        synchronously inside the ``dispatchEvent()`` call above, but the
+        resulting re-render commits on the next microtask/paint cycle — this
+        method doesn't know (and shouldn't assert) what the final clamped
+        value will be, so it can't wait on a specific ``to_have_value(...)``
+        like ``clear_step_limit()`` does. Instead it waits for two
+        consecutive animation frames, which guarantees the DOM commit has
+        been flushed and painted before the caller reads the value — a real
+        completion signal, not a guessed duration. The clamp-math assertion
+        itself belongs to the test, not this method.
         """
         self.step_limit_input.evaluate(
             """(el, value) => {
@@ -897,4 +942,7 @@ class AgentFormPage(BasePage):
             }""",
             value,
         )
-        self.page.wait_for_timeout(300)
+        self.page.evaluate(
+            "() => new Promise(resolve => "
+            "requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+        )
