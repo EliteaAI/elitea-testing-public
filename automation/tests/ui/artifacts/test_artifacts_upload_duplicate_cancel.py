@@ -1,6 +1,12 @@
 """UI Test for ELITEA-1832 — Upload Flow, Duplicate Handling: Cancel Stops
 Entire Upload Including Non-Duplicate Files.
 
+Also covers ELITEA-1828 — Upload Flow: Resolve Duplicates Modal Message And
+Buttons (extend-existing; see AFS below) — the modal's exact message text
+and the presence of all four action buttons (Cancel, Skip, Replace, Keep
+both), asserted inside this test's own Step 9 at the point the dialog is
+already open and fully rendered.
+
 Regression test: verifies that clicking "Cancel" in the "Resolve duplicates"
 modal aborts the ENTIRE multi-file upload — including any non-duplicate
 files selected in the same batch — rather than uploading the non-duplicate
@@ -16,7 +22,8 @@ Test flow:
    live: fires NO network request; the app diffs the selected filenames
    against the bucket listing it already fetched when the bucket was
    opened).
-5. The "Resolve duplicates" modal opens listing ``sample.txt``.
+5. The "Resolve duplicates" modal opens listing ``sample.txt``, showing its
+   exact message text and all four action buttons (ELITEA-1828).
 6. Click "Cancel" — confirmed live (2/2 runs): fires NO network request,
    closes the dialog, and leaves the bucket's file list/count/metadata
    completely unchanged (including ``sample.txt``'s ``lastModified``
@@ -25,6 +32,7 @@ Test flow:
 7. No success toast is shown; ``sample.png`` never appears in the bucket.
 
 AFS: test-specs/artifacts/l3_upload-flow-duplicate-cancel-stops-entire-upload_ELITEA-1832.md
+AFS (extend): test-specs/artifacts/lextend_upload-flow-resolve-duplicates-modal-message-and-buttons_ELITEA-1828.md
 
 Markers:
     - ui: requires browser
@@ -96,6 +104,10 @@ def _minimal_png_bytes() -> bytes:
 class TestArtifactUploadDuplicateCancel:
     """ELITEA-1832 — Cancel in 'Resolve duplicates' stops the entire upload.
 
+    Also covers ELITEA-1828 — the 'Resolve duplicates' modal's exact message
+    text and the presence of all four action buttons (Cancel, Skip, Replace,
+    Keep both), asserted inside Step 9 (extend-existing).
+
     Verifies Cancel aborts BOTH the duplicate file's re-upload AND the
     non-duplicate file's first-time upload, leaving the bucket's contents,
     file count, and existing file metadata completely unchanged.
@@ -111,6 +123,12 @@ class TestArtifactUploadDuplicateCancel:
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/artifacts/"
         "ELITEA-1832_upload-flow-duplicate-cancel-stops-entire-upload.md",
+        "onetest-ai Test Case link",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/artifacts/"
+        "ELITEA-1828_upload-flow-duplicate-detected-resolve-modal.md",
         "onetest-ai Test Case link",
     )
     def test_cancel_stops_entire_upload_including_non_duplicate(
@@ -209,7 +227,8 @@ class TestArtifactUploadDuplicateCancel:
 
         with allure.step(
             "Step 9 — Verify the 'Resolve duplicates' modal opens listing "
-            "sample.txt, and that detection was purely client-side "
+            "sample.txt with the correct message and all four action buttons "
+            "(ELITEA-1828), and that detection was purely client-side "
             "(zero network requests between Upload click and the modal)"
         ):
             artifacts_page.wait_for_resolve_duplicates_dialog(timeout=DIALOG_TIMEOUT)
@@ -223,6 +242,20 @@ class TestArtifactUploadDuplicateCancel:
                 f"'Resolve duplicates' modal should list {DUPLICATE_FILE_NAME!r} "
                 f"as the duplicate file, got: {duplicate_names}"
             )
+
+            # --- ELITEA-1828 additions below ---
+            message_text = artifacts_page.get_resolve_duplicates_message_text()
+            assert message_text == (
+                "This file already exists in this bucket. Choose how to handle "
+                "duplicates."
+            ), (
+                f"'Resolve duplicates' modal should show the singular-duplicate "
+                f"message for a single colliding file, got: {message_text!r}"
+            )
+            expect(artifacts_page.resolve_duplicates_cancel_button).to_be_visible()
+            expect(artifacts_page.resolve_duplicates_skip_button).to_be_visible()
+            expect(artifacts_page.resolve_duplicates_replace_button).to_be_visible()
+            expect(artifacts_page.resolve_duplicates_keep_both_button).to_be_visible()
 
         with allure.step("Step 10 — Click Cancel"):
             requests_during_cancel = artifacts_page.capture_requests_matching("artifacts")

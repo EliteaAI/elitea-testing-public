@@ -77,6 +77,22 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
             "api_key_input, relabeled for GitHub's Token auth)."
         ),
     )
+    url_input = LocatorDescriptor(
+        testid="toolkit-field-url-input",
+        description=(
+            "Url required field (GitLab credential type) — same generic "
+            "ToolBaseProperty.jsx string-field renderer as base_url_input "
+            "(ELITEA-1976), no JSX change needed."
+        ),
+    )
+    private_token_input = LocatorDescriptor(
+        testid="toolkit-field-private_token-input-field",
+        description=(
+            "Private Token required field (GitLab credential type, "
+            "secret-toggle wrapper — same rendered field family as "
+            "api_key_input/access_token_input, ELITEA-1976)."
+        ),
+    )
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -190,3 +206,13 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
         """
         self.access_token_input.click()
         self.access_token_input.press_sequentially(value, delay=20)
+
+    def set_url(self, value: str) -> None:
+        """Fill the Url required field (GitLab credential type), triggering React onChange."""
+        self.url_input.click()
+        self.url_input.press_sequentially(value, delay=20)
+
+    def set_private_token(self, value: str) -> None:
+        """Fill the Private Token required field (GitLab credential type), triggering React onChange."""
+        self.private_token_input.click()
+        self.private_token_input.press_sequentially(value, delay=20)
