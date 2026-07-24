@@ -681,6 +681,20 @@ class PipelineDetailPage(PipelineFormPage):
         """
         return self.add_node_button.get_attribute("aria-expanded") == "true"
 
+    def get_add_node_menu_item_count(self) -> int:
+        """Return how many Add Node menu items are currently rendered.
+
+        Uses ``ADD_NODE_MENU_ITEM_PREFIX`` (the same prefix-match testid
+        family the click-outside geometry helper already scopes against) to
+        count every rendered item — the menu must already be open. This is
+        the exhaustiveness check: a per-slug label read (see
+        :meth:`get_add_node_menu_item_label`) only proves the 11 *known*
+        slugs show correct labels, never that the menu contains *exactly*
+        those 11 and no more (a regression exposing a 12th type would pass
+        the per-slug loop undetected).
+        """
+        return self.page.locator(self.ADD_NODE_MENU_ITEM_PREFIX).count()
+
     def get_add_node_menu_item_label(self, type_slug: str, timeout: int = 5000) -> str:
         """Read a single Add Node menu item's visible label text.
 

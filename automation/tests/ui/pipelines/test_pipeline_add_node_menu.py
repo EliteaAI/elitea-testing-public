@@ -65,6 +65,14 @@ class TestAddNodeMenu:
         with its default configuration panel already open, and re-opening
         + pressing Escape dismisses the menu without adding a second node.
         """
+        # Registered before Step 1 so console errors from every step (menu
+        # open, node add, config-panel render, Escape dismiss) are captured
+        # — not just from one step. TMS Fail criterion: "Any step produces
+        # an error"; AFS-equivalent digest requires no console errors at
+        # any step.
+        console_errors = []
+        page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+
         with allure.step("Step 1 — Navigate to pipeline canvas"):
             pipelines = _navigate_to_canvas(page, pipeline_id)
             assert pipelines.get_node_count() == 1, (
@@ -78,6 +86,11 @@ class TestAddNodeMenu:
             )
 
         with allure.step("Step 3 — Verify all 11 node types are listed with the expected labels"):
+            actual_item_count = pipelines.get_add_node_menu_item_count()
+            assert actual_item_count == len(EXPECTED_NODE_TYPE_LABELS), (
+                f"Add node menu should list exactly {len(EXPECTED_NODE_TYPE_LABELS)} node types "
+                f"(no fewer, no extra), got {actual_item_count}"
+            )
             for type_slug, expected_label in EXPECTED_NODE_TYPE_LABELS.items():
                 actual_label = pipelines.get_add_node_menu_item_label(
                     type_slug, timeout=UI_ELEMENT_TIMEOUT
@@ -113,8 +126,15 @@ class TestAddNodeMenu:
         ):
             pipelines.open_add_node_menu(timeout=UI_ELEMENT_TIMEOUT)
             pipelines.close_add_node_menu_via_escape(timeout=UI_ELEMENT_TIMEOUT)
+            assert not pipelines.is_add_node_menu_open(), (
+                "Menu should close after pressing Escape"
+            )
             assert pipelines.get_node_count() == 2, (
                 "Node count should be unchanged after dismissing the menu via Escape"
+            )
+            assert not console_errors, (
+                f"No step (menu open, node add, config panel render, Escape dismiss) "
+                f"should introduce console errors: {console_errors}"
             )
 
     @allure.issue(
@@ -127,6 +147,11 @@ class TestAddNodeMenu:
         """ELITEA-2030 step 6, alternate gesture: clicking genuinely outside
         the menu's popup panel dismisses it without adding a node.
         """
+        # Registered before Step 1 — see the sibling test's identical
+        # rationale (TMS Fail criterion: "Any step produces an error").
+        console_errors = []
+        page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+
         with allure.step("Step 1 — Navigate to pipeline canvas"):
             pipelines = _navigate_to_canvas(page, pipeline_id)
             assert pipelines.get_node_count() == 1, (
@@ -149,4 +174,8 @@ class TestAddNodeMenu:
             )
             assert pipelines.get_node_count() == 1, (
                 "Node count should be unchanged after dismissing the menu via click-outside"
+            )
+            assert not console_errors, (
+                f"No step (menu open, click-outside dismiss) should introduce "
+                f"console errors: {console_errors}"
             )
