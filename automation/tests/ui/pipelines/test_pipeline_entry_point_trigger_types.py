@@ -112,6 +112,14 @@ def test_entry_point_trigger_types(page, pipeline_with_llm_id):
         )
         assert not pipeline_page.webhook_modal.is_visible(), "Webhook modal should be closed after Apply"
 
+        # toastSuccess() fires synchronously right after the same awaited
+        # updateTrigger(...) mutation apply_webhook_settings() already waited
+        # on above (source-confirmed TriggerTypeSelector.jsx) — not subject to
+        # the separate displayed-trigger-text cache-refetch lag below.
+        expect(pipeline_page.trigger_toast_message).to_have_text(
+            "Webhook configured successfully", timeout=MODAL_TIMEOUT
+        )
+
         trigger_value = pipeline_page.get_trigger_type_value()
         assert trigger_value == "Webhook", f"Trigger select should display 'Webhook', got {trigger_value!r}"
 
@@ -175,6 +183,12 @@ def test_entry_point_trigger_types(page, pipeline_with_llm_id):
         )
         assert not pipeline_page.schedule_modal.is_visible(), "Schedule modal should be closed after Apply"
 
+        # Same toastSuccess()-fires-with-the-mutation timing as Step 5 — not
+        # subject to the displayed-trigger-text lag asserted right below.
+        expect(pipeline_page.trigger_toast_message).to_have_text(
+            "Schedule configured successfully", timeout=MODAL_TIMEOUT
+        )
+
         # The displayed text lags the mutation's cache-invalidation by up to
         # ~2s (Known Defects / Automation Hints) — Playwright's auto-retrying
         # expect().to_have_text() polls instead of asserting same-tick.
@@ -199,6 +213,10 @@ def test_entry_point_trigger_types(page, pipeline_with_llm_id):
         chat_message_response = pipeline_page.select_trigger_type("chat_message", timeout=UI_ELEMENT_TIMEOUT)
         assert chat_message_response is not None and chat_message_response.get("type") == "chat_message", (
             f"Selecting Chat Message should auto-save type=chat_message server-side, got {chat_message_response!r}"
+        )
+        # Same toastSuccess()-fires-with-the-mutation timing as Steps 5/8.
+        expect(pipeline_page.trigger_toast_message).to_have_text(
+            "Trigger updated to Chat Message", timeout=UI_ELEMENT_TIMEOUT
         )
         # Same toast-vs-display-update lag as Schedule's Apply — poll, don't
         # assert same-tick.

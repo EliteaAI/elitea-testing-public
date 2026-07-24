@@ -256,6 +256,24 @@ class PipelineDetailPage(PipelineFormPage):
         description="Schedule settings modal Apply button"
     )
 
+    # Success toast (app-wide generic component, reused across features —
+    # see skill_detail_page.SkillDetailPage.version_toast_message /
+    # artifacts_page.ArtifactsPage.success_toast_message). Fires for all 3
+    # trigger-mutation flows (source-confirmed TriggerTypeSelector.jsx):
+    # 'Webhook configured successfully', 'Schedule configured successfully',
+    # 'Trigger updated to Chat Message'. In every flow `toastSuccess(...)` is
+    # called synchronously right after the SAME awaited `updateTrigger(...)`
+    # mutation this page object already waits on (`expect_response` in
+    # select_trigger_type / apply_webhook_settings / apply_schedule_settings)
+    # — only the SEPARATE displayed-trigger-text cache refetch lags (see the
+    # Automation Hints on those methods); the toast itself is not subject to
+    # that lag.
+    trigger_toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide Toast component's message container, reused here "
+                     "for the entry-point Trigger 'configured'/'updated' toasts"
+    )
+
     # TOOLS section (ELITEA-1955). ApplicationTools.jsx / ToolMenu.jsx is a
     # shared component reused by both Agent and Pipeline detail forms
     # (confirmed via PipelineConfigurationForm.jsx import) — same testids as
