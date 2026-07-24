@@ -223,6 +223,18 @@ class PipelineDetailPage(PipelineFormPage):
         description="An attached toolkit/MCP card in the TOOLS section"
     )
 
+    # App-wide generic success toast (reused across features — see
+    # artifacts_page.ArtifactsPage.success_toast_message /
+    # skill_detail_page.SkillDetailPage.version_toast_message). ELITEA-2010
+    # confirmed its PRESENCE with the exact text "The toolkit has been
+    # successfully added to the pipeline." right after attaching a toolkit
+    # via the '+ Toolkit' popper (select_toolkit_in_popper).
+    toolkit_attach_toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide Toast component's message container, reused here "
+        "for the toolkit-attach success toast"
+    )
+
     # Scoped selector (inside the '+ MCP' popper) — same testid family as
     # AgentDetailPage.toolkit_search_input, per .agents/testing.md § Locator
     # policy (class-level constant for selectors used inside a parent locator).

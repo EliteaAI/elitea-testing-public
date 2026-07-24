@@ -17,6 +17,7 @@ import allure
 import pytest
 from config import settings
 from pages.pipeline_detail_page import PipelineDetailPage
+from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,9 @@ ATTACH_RESPONSE_TIMEOUT = 15_000
 # — matches the dynamic testid suffix, not the capitalized display label "Query").
 _QUERY_PARAM = "query"
 _QUERY_FSTRING_VALUE = "{input} error"
+
+# AFS Test Step 2 — the exact toast text confirmed live during analysis.
+_TOOLKIT_ATTACH_TOAST_TEXT = "The toolkit has been successfully added to the pipeline."
 
 
 @allure.issue(
@@ -81,6 +85,9 @@ def test_pipeline_toolkit_node_configuration_persistence(page, pipeline_id, arti
             popper, toolkit_name, project_id, timeout=ATTACH_RESPONSE_TIMEOUT
         )
         assert attach_response is not None, "Toolkit attach should return the persisted response"
+        expect(pipeline_page.toolkit_attach_toast_message).to_have_text(
+            _TOOLKIT_ATTACH_TOAST_TEXT, timeout=UI_ELEMENT_TIMEOUT
+        )
         assert pipeline_page.is_toolkit_attached(toolkit_name, timeout=UI_ELEMENT_TIMEOUT), (
             f"Toolkit {toolkit_name!r} should appear as a card in the Tools section"
         )
@@ -135,6 +142,15 @@ def test_pipeline_toolkit_node_configuration_persistence(page, pipeline_id, arti
         )
         assert pipeline_page.toolkit_node_input_mapping_optional_heading.count() == 0, (
             "Input mapping (optional) heading should not render before a Tool is selected"
+        )
+        # AFS step 4: "Interrupt before / after switches (disabled — entry-point
+        # nodes can't have Interrupt before)" — this pipeline's sole real node
+        # auto-became the entry point, so the switch is disabled. Confirmed live
+        # that Playwright's is_disabled() correctly reflects the underlying
+        # <input disabled> despite the testid sitting on the wrapping
+        # MuiButtonBase-root span, not the <input> itself.
+        assert pipeline_page.interrupt_before_switch.is_disabled(), (
+            "Interrupt before switch should be disabled for an entry-point node"
         )
 
     with allure.step("Step 5 — Select the attached toolkit; Toolkit combobox shows its name"):
@@ -249,6 +265,7 @@ def test_pipeline_toolkit_node_configuration_persistence(page, pipeline_id, arti
         assert _QUERY_FSTRING_VALUE in yaml_content, (
             f"YAML should show the literal Query value {_QUERY_FSTRING_VALUE!r}, got: {yaml_content}"
         )
+        assert not console_errors, f"Reload should not introduce console errors: {console_errors}"
 
     with allure.step(
         "Side-channel check — YAML tab shows the Toolkit node's tool/toolkit_name/"
@@ -269,3 +286,9 @@ def test_pipeline_toolkit_node_configuration_persistence(page, pipeline_id, arti
             f"YAML should show the tool-agnostic 'output:' state var as "
             f"'- messages' — see #1025, got: {yaml_content}"
         )
+        # AFS Expected Results: "No console errors at any step" — this is the
+        # final step of the test, so this closes out the global check for the
+        # side-channel step itself (the #1025 YAML-truncation defect is a
+        # display-only rendering bug, unrelated to console errors, and does not
+        # exempt this step from the same no-console-errors expectation).
+        assert not console_errors, f"Side-channel check should not introduce console errors: {console_errors}"
