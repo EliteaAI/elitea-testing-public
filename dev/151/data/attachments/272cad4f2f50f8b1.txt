@@ -1,0 +1,18 @@
+[CLEANUP] Running guardrails cleanup AFTER tests (finalizer)
+[CLEANUP] Starting guardrails cleanup...
+[CLEANUP] Navigated to guardrails page
+[CLEANUP] Cleaning up blocked toolkits
+[CLEANUP] Currently blocked toolkits: []
+[CLEANUP] Checking toolkit 'github': blocked=False
+[CLEANUP] Checking toolkit 'github': blocked=False
+[CLEANUP] Checking toolkit 'GITHUB': blocked=False
+[CLEANUP] Checking toolkit 'Github': blocked=False
+[CLEANUP] Cleaning up blocked tools
+[CLEANUP] Removing empty toolkit containers
+[CLEANUP] Removed empty toolkit containers
+[CLEANUP] Cleaning up sensitive tools
+[CLEANUP] Removing empty toolkit blocks from Sensitive Action Tools
+[CLEANUP] Removed empty sensitive toolkit blocks
+[CLEANUP] Checking if save is needed
+[CLEANUP] Save button is enabled, saving configuration
+[CLEANUP] Saved guardrails configuration
