@@ -110,8 +110,10 @@ class AgentDetailPage(AgentFormPage):
     toolkit_open_button = LocatorDescriptor(testid="toolkit-open-button")
 
     # --- Selectors for scoped use (inside parent locators) ---
-    TOOLKIT_BLOCKED_SELECTOR = '[data-testid="toolkit-blocked-banner"]'
-    TOOLKIT_TOOL_BLOCKED_SELECTOR = '[data-testid="toolkit-tools-unavailable-banner"]'
+    # BannerMessage component always uses "credential-warning-banner" testid
+    # Distinguish by aria-label content instead
+    TOOLKIT_BLOCKED_SELECTOR = '[data-testid="credential-warning-banner"][aria-label*="blocked by your organization"]'
+    TOOLKIT_TOOL_BLOCKED_SELECTOR = '[data-testid="credential-warning-banner"][aria-label*="not available anymore"]'
     CHAT_MESSAGE_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
     CHAT_MESSAGE_ITEM_SELECTOR = '[data-testid="chat-message-item"]'
     CHAT_ARTIFACT_FILE_LIST_SELECTOR = '[data-testid="chat-artifact-file-list"]'
