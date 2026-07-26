@@ -259,13 +259,33 @@ class TestGhostSkillAfterAgentRemoved:
                         "project skills' as an alternative explanation"
                     )
                 finally:
-                    # Ensure page is fully idle before closing to prevent
-                    # orphaned event listeners that cause test hangs
+                    # Aggressively clean up the tab to prevent hang during pytest teardown.
+                    # Simply closing the tab without ensuring all async operations complete
+                    # can leave orphaned event listeners that block pytest's cleanup phase.
                     try:
-                        new_tab.wait_for_load_state("networkidle", timeout=2000)
-                    except Exception:
-                        pass  # Timeout is acceptable - just ensuring cleanup attempt
-                    new_tab.close()
+                        # First, try to cancel any ongoing navigations
+                        try:
+                            new_tab.evaluate("() => window.stop()")
+                        except Exception:
+                            pass  # Tab might already be detached
+
+                        # Wait for network to settle (short timeout — we're in cleanup)
+                        try:
+                            new_tab.wait_for_load_state("networkidle", timeout=3000)
+                        except Exception:
+                            pass  # Timeout/error is acceptable — we tried
+
+                        # Remove all listeners to prevent hang
+                        try:
+                            new_tab.remove_all_listeners()
+                        except Exception:
+                            pass  # Best effort
+                    finally:
+                        # Close the tab regardless of cleanup success
+                        try:
+                            new_tab.close()
+                        except Exception as e:
+                            logger.warning("Failed to close new_tab cleanly: %s", e)
 
             if soft_failures:
                 pytest.fail(
