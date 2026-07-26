@@ -259,6 +259,12 @@ class TestGhostSkillAfterAgentRemoved:
                         "project skills' as an alternative explanation"
                     )
                 finally:
+                    # Ensure page is fully idle before closing to prevent
+                    # orphaned event listeners that cause test hangs
+                    try:
+                        new_tab.wait_for_load_state("networkidle", timeout=2000)
+                    except Exception:
+                        pass  # Timeout is acceptable - just ensuring cleanup attempt
                     new_tab.close()
 
             if soft_failures:
