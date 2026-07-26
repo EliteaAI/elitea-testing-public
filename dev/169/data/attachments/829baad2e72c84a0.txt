@@ -1,0 +1,12 @@
+WARNING  elitea.tests.skills:test_ghost_skill_after_agent_removed.py:222 Known defect #51 reproduced: 'elitea-1793-ghost-skill' still listed in 'Mention skill' popper after its agent was removed
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to chat — Locator.wait_for: Timeout 15000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("chat-message-input") to be visible
+WARNING  elitea.tests.skills:test_ghost_skill_after_agent_removed.py:222 Known defect #51 reproduced: 'elitea-1793-ghost-skill' still listed in 'Mention skill' popper after its agent was removed
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to chat — Locator.wait_for: Timeout 15000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("chat-message-input") to be visible
+WARNING  elitea.tests.skills:test_ghost_skill_after_agent_removed.py:222 Known defect #51 reproduced: 'elitea-1793-ghost-skill' still listed in 'Mention skill' popper after its agent was removed
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to chat — Locator.wait_for: Timeout 15000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("chat-message-input") to be visible
