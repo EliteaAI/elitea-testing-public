@@ -1,1 +1,0 @@
-ERROR    elitea.api:client.py:1509 Failed to create toolkit. Status: 403, Response: {"ok": false, "error": "Toolkit type 'github' is not available in this deployment"}

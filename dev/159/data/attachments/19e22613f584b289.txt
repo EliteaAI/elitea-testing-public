@@ -1,0 +1,22 @@
+[ADD_SENSITIVE] Checking toolkit 'github': found 0 existing blocks
+[ADD_SENSITIVE] Creating new toolkit block: github
+[ADD_SENSITIVE] Found input field, typing: github
+[ADD_SENSITIVE] Dropdown options count: 1
+[ADD_SENSITIVE]   Option 0: github
+[ADD_SENSITIVE] Input value after typing: 'github'
+[ADD_SENSITIVE] Clicking dropdown option 0: 'github'
+[ADD_SENSITIVE] Input value after clicking option: 'github'
+[ADD_SENSITIVE] Add button disabled before wait: True
+[ADD_SENSITIVE] Add button still disabled after timeout: True
+[ADD_SENSITIVE] Add button classes: MuiButtonBase-root Mui-disabled MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-1lno195
+[ADD_SENSITIVE] Checking toolkit 'github': found 0 existing blocks
+[ADD_SENSITIVE] Creating new toolkit block: github
+[ADD_SENSITIVE] Found input field, typing: github
+[ADD_SENSITIVE] Dropdown options count: 1
+[ADD_SENSITIVE]   Option 0: github
+[ADD_SENSITIVE] Input value after typing: 'github'
+[ADD_SENSITIVE] Clicking dropdown option 0: 'github'
+[ADD_SENSITIVE] Input value after clicking option: 'github'
+[ADD_SENSITIVE] Add button disabled before wait: True
+[ADD_SENSITIVE] Add button still disabled after timeout: True
+[ADD_SENSITIVE] Add button classes: MuiButtonBase-root Mui-disabled MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-1lno195
