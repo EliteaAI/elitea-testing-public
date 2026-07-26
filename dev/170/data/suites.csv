@@ -1,43 +1,5 @@
 "Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
-"passed","Sun Jul 26 19:08:53 UTC 2026","Sun Jul 26 19:09:27 UTC 2026","34621","tests.ui.skills","test_export_agent_with_attached_skills","TestExportAgentWithAttachedSkills","","","test_export_agent_with_attached_skills","Create a Skill + an Agent, attach the Skill, export the Agent via
-        the actions overflow menu, and verify the downloaded file's raw
-        content embeds the Skill's full content verbatim.
-
-        Steps (AFS test-specs/skills/l3_export-agent-with-attached-skills_ELITEA-1794.md):
-        1. Create a Skill via UI, with a planted unique marker string in its
-           instructions.
-        2. Create an Agent via UI.
-        3. Attach the Skill to the Agent (case precondition).
-        4. Confirm the Agent detail view is open with the Skill attached
-           (already satisfied by step 3).
-        5. Open the agent-actions overflow menu; click ""Export"" (VERSION
-           group); verify a file download is initiated.
-        6. Verify the downloaded file has a `.md`-suffixed name.
-        7. Read the downloaded file's raw content; verify it's a YAML
-           frontmatter + markdown body, with the Skill's name, `base`
-           version, and full instructions (including the marker) embedded
-           verbatim in the `skills:` list.
-        "
-"failed","Sun Jul 26 19:09:28 UTC 2026","Sun Jul 26 19:10:22 UTC 2026","54792","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
-        participant, confirm '~mention' shows the skill, dismiss, remove the
-        participant, and (soft-asserted, known defect) confirm the skill no
-        longer appears in '~mention' afterward.
-
-        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
-        1. Create Skill, create Agent, attach the skill to the agent.
-        2. Open Chat, add the agent as a participant.
-        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
-        4. Dismiss the popper with Escape without selecting anything.
-        5. Remove the agent from the chat's participants.
-        6. Type '~' again — soft-asserted per known defect #51: the removed
-           agent's skill should NOT be listed, but live product still shows
-           it (ghost).
-        7. Control check: a fresh conversation that never had a participant
-           shows the correct ""No skills attached to this agent"" empty state
-           — proving the ghost is specifically a stale-state-after-removal
-           bug, not ""the mention list always shows all project skills"".
-        "
-"passed","Sun Jul 26 19:05:55 UTC 2026","Sun Jul 26 19:06:48 UTC 2026","52534","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
+"passed","Sun Jul 26 20:48:39 UTC 2026","Sun Jul 26 20:49:34 UTC 2026","55734","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
         mention panel in the Instructions field is scoped to only the
         attached 2 — the 3rd (unattached) Skill never appears, including
         on a second, independent ""~"" trigger after clearing the field.
@@ -56,7 +18,45 @@
         6. Select-all + delete, retype ""~"" — same 2-item scoped list
            reappears; Skill C still absent (re-evaluated live).
         "
-"passed","Sun Jul 26 19:06:48 UTC 2026","Sun Jul 26 19:08:22 UTC 2026","94077","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 5 Skills + an Agent, attach all 5 Skills one at a time,
+"failed","Sun Jul 26 20:52:21 UTC 2026","Sun Jul 26 20:53:17 UTC 2026","55506","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
+        participant, confirm '~mention' shows the skill, dismiss, remove the
+        participant, and (soft-asserted, known defect) confirm the skill no
+        longer appears in '~mention' afterward.
+
+        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
+        1. Create Skill, create Agent, attach the skill to the agent.
+        2. Open Chat, add the agent as a participant.
+        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
+        4. Dismiss the popper with Escape without selecting anything.
+        5. Remove the agent from the chat's participants.
+        6. Type '~' again — soft-asserted per known defect #51: the removed
+           agent's skill should NOT be listed, but live product still shows
+           it (ghost).
+        7. Control check: a fresh conversation that never had a participant
+           shows the correct ""No skills attached to this agent"" empty state
+           — proving the ghost is specifically a stale-state-after-removal
+           bug, not ""the mention list always shows all project skills"".
+        "
+"passed","Sun Jul 26 20:51:45 UTC 2026","Sun Jul 26 20:52:21 UTC 2026","35592","tests.ui.skills","test_export_agent_with_attached_skills","TestExportAgentWithAttachedSkills","","","test_export_agent_with_attached_skills","Create a Skill + an Agent, attach the Skill, export the Agent via
+        the actions overflow menu, and verify the downloaded file's raw
+        content embeds the Skill's full content verbatim.
+
+        Steps (AFS test-specs/skills/l3_export-agent-with-attached-skills_ELITEA-1794.md):
+        1. Create a Skill via UI, with a planted unique marker string in its
+           instructions.
+        2. Create an Agent via UI.
+        3. Attach the Skill to the Agent (case precondition).
+        4. Confirm the Agent detail view is open with the Skill attached
+           (already satisfied by step 3).
+        5. Open the agent-actions overflow menu; click ""Export"" (VERSION
+           group); verify a file download is initiated.
+        6. Verify the downloaded file has a `.md`-suffixed name.
+        7. Read the downloaded file's raw content; verify it's a YAML
+           frontmatter + markdown body, with the Skill's name, `base`
+           version, and full instructions (including the marker) embedded
+           verbatim in the `skills:` list.
+        "
+"passed","Sun Jul 26 20:49:35 UTC 2026","Sun Jul 26 20:51:14 UTC 2026","98931","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 5 Skills + an Agent, attach all 5 Skills one at a time,
         verify the add-skill control disables at 5/5 with a tooltip (rather
         than a literal 6th-click rejection), and verify persistence via a
         full page reload.
@@ -75,7 +75,7 @@
         10. Confirm persistence via a full page reload (attach is
            auto-saved via API; no explicit agent-level Save is available).
         "
-"passed","Sun Jul 26 19:08:23 UTC 2026","Sun Jul 26 19:08:52 UTC 2026","29166","tests.ui.skills","test_export_agent_no_nested_dependencies","TestExportAgentNoNestedDependencies","","","test_export_agent_no_nested_dependencies","Create an Agent with no attached Skills/sub-Agents but with an
+"passed","Sun Jul 26 20:51:15 UTC 2026","Sun Jul 26 20:51:45 UTC 2026","29794","tests.ui.skills","test_export_agent_no_nested_dependencies","TestExportAgentNoNestedDependencies","","","test_export_agent_no_nested_dependencies","Create an Agent with no attached Skills/sub-Agents but with an
         external GitHub toolkit attached, export it via the actions overflow
         menu, and verify the downloaded file's raw content: correct
         frontmatter, no ``skills:`` key, instructions embedded verbatim, and
