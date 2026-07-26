@@ -1,1 +1,0 @@
-ERROR    elitea.api:client.py:1076 Failed to create credential: status=400 body={"error": "Credential with ID 'guardrails_test_credential' already exists", "field": "elitea_title"}
