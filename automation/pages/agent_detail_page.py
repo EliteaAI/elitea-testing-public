@@ -110,11 +110,10 @@ class AgentDetailPage(AgentFormPage):
     toolkit_open_button = LocatorDescriptor(testid="toolkit-open-button")
 
     # --- Selectors for scoped use (inside parent locators) ---
-    # NOTE: BannerMessage component has hardcoded data-testid="credential-warning-banner"
-    # that overrides the passed testid. Using the actual rendered testid for now.
-    # TODO: Fix EliteaUI BannerMessage to spread props and use intended testids.
-    TOOLKIT_BLOCKED_SELECTOR = '[data-testid="credential-warning-banner"]'
-    TOOLKIT_TOOL_BLOCKED_SELECTOR = '[data-testid="credential-warning-banner"]'
+    # BannerMessage component always uses "credential-warning-banner" testid
+    # Distinguish by aria-label content instead
+    TOOLKIT_BLOCKED_SELECTOR = '[data-testid="credential-warning-banner"][aria-label*="blocked by your organization"]'
+    TOOLKIT_TOOL_BLOCKED_SELECTOR = '[data-testid="credential-warning-banner"][aria-label*="not available anymore"]'
     CHAT_MESSAGE_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
     CHAT_MESSAGE_ITEM_SELECTOR = '[data-testid="chat-message-item"]'
     CHAT_ARTIFACT_FILE_LIST_SELECTOR = '[data-testid="chat-artifact-file-list"]'
@@ -1107,23 +1106,6 @@ class AgentDetailPage(AgentFormPage):
             blocked_banner.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
-            pass
-
-        # Fourth try: search by text content (fallback if testid is missing)
-        # The banner contains "blocked by your organization" text (case-insensitive)
-        blocked_text = self.page.locator('text=/blocked by your organization/i')
-        try:
-            blocked_text.wait_for(state="visible", timeout=timeout)
-            return True
-        except Exception:
-            pass
-
-        # Fifth try: broader text search for "is blocked" in toolkit context
-        blocked_any = self.page.locator(':text-matches("toolkit.*blocked|blocked.*organization", "i")')
-        try:
-            blocked_any.wait_for(state="visible", timeout=timeout)
-            return True
-        except Exception:
             return False
 
     def is_tool_blocked_in_toolkit(self, toolkit_name: str, timeout: int = 5000) -> bool:
@@ -1172,23 +1154,6 @@ class AgentDetailPage(AgentFormPage):
         blocked_banner = tools_section.locator(self.TOOLKIT_TOOL_BLOCKED_SELECTOR)
         try:
             blocked_banner.wait_for(state="visible", timeout=timeout)
-            return True
-        except Exception:
-            pass
-
-        # Fourth try: search by text content (fallback if testid is missing)
-        # The banner contains "tools are not available" or similar text (case-insensitive)
-        blocked_text = self.page.locator('text=/tools are not available/i')
-        try:
-            blocked_text.wait_for(state="visible", timeout=timeout)
-            return True
-        except Exception:
-            pass
-
-        # Fifth try: broader text search for tool unavailability
-        blocked_any = self.page.locator(':text-matches("tools.*not available|not available.*anymore", "i")')
-        try:
-            blocked_any.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
             return False
