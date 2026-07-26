@@ -101,21 +101,37 @@ class GuardrailsAdminPage(BasePage):
     # ------------------------------------------------------------------
 
     def get_blocked_toolkits(self) -> list[str]:
-        """Get list of currently blocked toolkit names from chips."""
+        """Get list of currently blocked toolkit names from chips.
+
+        Returns list of blocked toolkit names by finding deletable chips
+        in the "Blocked Toolkits" section (before "Blocked Tools" heading).
+        """
         self._expand_blocked_section()
 
-        # Blocked Toolkits section has "Type to search and filter..." input
-        # Chips appear after the input
         toolkit_names = []
 
-        # Look for chips in the Blocked Toolkits area (before Blocked Tools section)
-        # The section structure: "Blocked Toolkits" heading -> description -> input -> chips
-        blocked_toolkits_section = self.page.locator('text="Blocked Toolkits"').first
-        parent = blocked_toolkits_section.locator('xpath=ancestor::div[contains(@class, "MuiBox") or contains(@class, "section")][1]')
-        chips = parent.locator('.MuiChip-label')
+        # Strategy: Get all deletable chips on the page, then filter to those
+        # that appear before the "Blocked Tools" heading (which marks the end
+        # of the Blocked Toolkits section)
 
-        for i in range(chips.count()):
-            text = chips.nth(i).text_content()
+        # First, check if "Blocked Tools" heading exists to know the boundary
+        blocked_tools_heading = self.page.locator('text="Blocked Tools"').first
+        has_blocked_tools_section = blocked_tools_heading.count() > 0
+
+        # Get all deletable chips (these are the blocked toolkit chips)
+        chips = self.page.locator('.MuiChip-deletable .MuiChip-label').all()
+
+        for chip in chips:
+            # If we have a Blocked Tools section, only include chips that appear
+            # before it (i.e., in the Blocked Toolkits section)
+            if has_blocked_tools_section:
+                chip_box = chip.bounding_box()
+                tools_box = blocked_tools_heading.bounding_box()
+                # Skip chips that are below the "Blocked Tools" heading
+                if chip_box and tools_box and chip_box['y'] > tools_box['y']:
+                    continue
+
+            text = chip.text_content()
             if text and text.strip():
                 toolkit_names.append(text.strip())
 
@@ -261,6 +277,99 @@ class GuardrailsAdminPage(BasePage):
 
         logger.info("Removed blocked tool: %s", tool_name)
 
+    def remove_empty_toolkit_containers(self, timeout: int = 5000):
+        """Remove empty toolkit containers from Blocked Tools section.
+
+        After removing all tool chips from a toolkit, the toolkit container
+        (label + basket icon) remains. This method clicks the basket icon
+        to remove empty containers.
+
+        The basket icon appears on the right side of the toolkit label row.
+
+        Args:
+            timeout: Maximum wait time in milliseconds
+        """
+        self._expand_blocked_section(timeout)
+
+        removed_count = 0
+        max_attempts = 10  # Prevent infinite loop
+
+        for attempt in range(max_attempts):
+            # Find the "Blocked Tools" heading to identify the section
+            blocked_tools_heading = self.page.locator('text="Blocked Tools"').first
+            if blocked_tools_heading.count() == 0:
+                logger.debug("Blocked Tools section not found")
+                break
+
+            tools_heading_box = blocked_tools_heading.bounding_box()
+            if not tools_heading_box:
+                break
+
+            # Look for visible delete/trash/basket icons below the "Blocked Tools" heading
+            # Try multiple selectors for the delete icon
+            delete_icon_selectors = [
+                'svg[data-testid*="Delete"]',
+                'button[aria-label*="delete"]',
+                '[data-testid*="delete-icon"]',
+                'svg[class*="delete"]',
+                'svg[class*="Delete"]',
+                # Generic trash/basket icon selector
+                'svg',  # Last resort - all SVGs
+            ]
+
+            found_icon = None
+            for selector in delete_icon_selectors:
+                icons = self.page.locator(selector).all()
+                for icon in icons:
+                    try:
+                        if not icon.is_visible():
+                            continue
+
+                        icon_box = icon.bounding_box()
+                        if not icon_box:
+                            continue
+
+                        # Check if icon is below "Blocked Tools" heading
+                        # and before "Sensitive Actions" section (if it exists)
+                        if icon_box['y'] <= tools_heading_box['y']:
+                            continue
+
+                        # Check if this is before Sensitive Actions section
+                        sensitive_heading = self.page.locator('text="Sensitive Actions"').first
+                        if sensitive_heading.count() > 0:
+                            sensitive_box = sensitive_heading.bounding_box()
+                            if sensitive_box and icon_box['y'] >= sensitive_box['y']:
+                                continue
+
+                        # Found a candidate icon in the right section
+                        found_icon = icon
+                        break
+                    except Exception:
+                        continue
+
+                if found_icon:
+                    break
+
+            if not found_icon:
+                # No more delete icons found
+                logger.debug("No more delete icons found in Blocked Tools section")
+                break
+
+            # Click the icon to remove the toolkit container
+            try:
+                found_icon.click(timeout=timeout, force=True)
+                self.page.wait_for_timeout(500)
+                removed_count += 1
+                logger.info("Removed empty toolkit container (attempt %d)", attempt + 1)
+            except Exception as e:
+                logger.debug("Could not click delete icon: %s", e)
+                break
+
+        if removed_count > 0:
+            logger.info("Removed %d empty toolkit container(s)", removed_count)
+        else:
+            logger.info("No empty toolkit containers to remove")
+
     def is_tool_blocked(self, tool_name: str) -> bool:
         """Check if a specific tool is in the blocked tools list.
 
@@ -307,96 +416,58 @@ class GuardrailsAdminPage(BasePage):
         self._expand_sensitive_section(timeout)
 
         # Check if toolkit block already exists by looking for its header
-        # Use specific p element with exact text match to avoid false positives
-        toolkit_label = self.page.locator(f'p.MuiTypography-root:text-is("{toolkit_name.lower()}")')
-        toolkit_exists = toolkit_label.count() > 0 and toolkit_label.first.is_visible()
-        logger.info("Toolkit block '%s' exists check: %s", toolkit_name, toolkit_exists)
+        sensitive_section = self.page.locator('text="Sensitive Action Tools"').first.locator('xpath=ancestor::div[3]')
+        toolkit_headers = sensitive_section.locator(f'text="{toolkit_name.lower()}"')
 
-        if not toolkit_exists:
+        logger.info("Checking if toolkit block exists for: %s (found: %d)", toolkit_name, toolkit_headers.count())
+        print(f"[ADD_SENSITIVE] Checking toolkit '{toolkit_name}': found {toolkit_headers.count()} existing blocks")
+
+        if toolkit_headers.count() == 0:
             # Toolkit block doesn't exist, create it
             logger.info("Creating sensitive toolkit block for: %s", toolkit_name)
+            print(f"[ADD_SENSITIVE] Creating new toolkit block: {toolkit_name}")
 
             # Find "Add toolkit name..." input in Sensitive Actions section
             add_input = self.page.locator('input[placeholder*="Add toolkit name"]').last
             add_input.wait_for(state="visible", timeout=timeout)
+            print(f"[ADD_SENSITIVE] Found input field, typing: {toolkit_name}")
             add_input.click()
-            # Use press_sequentially to trigger MUI Autocomplete filtering
+            add_input.clear()
             add_input.press_sequentially(toolkit_name, delay=50)
-            self.page.wait_for_timeout(1000)  # Wait for autocomplete to filter
-
-            # Debug: log all visible options
-            all_options = self.page.locator('[role="option"]')
-            option_count = all_options.count()
-            logger.info("Found %d dropdown options after typing '%s'", option_count, toolkit_name)
-            for i in range(min(option_count, 5)):
-                try:
-                    opt_text = all_options.nth(i).text_content()
-                    logger.info("  Option %d: %s", i, opt_text)
-                except Exception:
-                    pass
-
-            # Wait for dropdown options to appear and click the matching option
-            # MUI Autocomplete uses role="option" or li elements for dropdown items
-            # Use case-insensitive matching since toolkit names may vary in case
-            dropdown_option = self.page.locator(f'[role="option"]:has-text("{toolkit_name}"), li[role="option"]:has-text("{toolkit_name}"), .MuiAutocomplete-option:has-text("{toolkit_name}")').first
-            option_clicked = False
-            try:
-                dropdown_option.wait_for(state="visible", timeout=3000)
-                dropdown_option.click()
-                option_clicked = True
-                self.page.wait_for_timeout(500)
-            except Exception as e:
-                logger.warning("No dropdown option found for %s with has-text: %s", toolkit_name, e)
-
-            if not option_clicked:
-                # Try case-insensitive text match
-                try:
-                    ci_option = self.page.locator(f'[role="option"]').filter(has_text=toolkit_name).first
-                    ci_option.wait_for(state="visible", timeout=2000)
-                    ci_option.click()
-                    option_clicked = True
-                    self.page.wait_for_timeout(500)
-                except Exception:
-                    logger.warning("Case-insensitive option search also failed for %s", toolkit_name)
-
-            if not option_clicked:
-                # Try listbox item
-                try:
-                    listbox_item = self.page.locator(f'[role="listbox"] [role="option"]').first
-                    listbox_item.wait_for(state="visible", timeout=2000)
-                    listbox_item.click()
-                    option_clicked = True
-                    self.page.wait_for_timeout(500)
-                except Exception:
-                    logger.warning("Listbox option click failed for %s", toolkit_name)
-
-            if not option_clicked:
-                # Last resort: ArrowDown to select first option, then Enter
-                logger.warning("Trying ArrowDown + Enter for %s", toolkit_name)
-                add_input.press("ArrowDown")
-                self.page.wait_for_timeout(200)
-                add_input.press("Enter")
-                self.page.wait_for_timeout(500)
-
-            # Click "+ Add" button (should now be enabled)
-            add_btn = self.page.locator('button:has-text("Add")').last
-            add_btn.wait_for(state="visible", timeout=timeout)
-            # Wait for button to be enabled (poll until not disabled)
-            try:
-                self.page.wait_for_function(
-                    """() => {
-                        const buttons = document.querySelectorAll('button');
-                        for (const b of buttons) {
-                            if (b.textContent.includes('Add') && !b.disabled) return true;
-                        }
-                        return false;
-                    }""",
-                    timeout=5000
-                )
-            except Exception:
-                logger.warning("Add button did not become enabled within timeout")
-            add_btn.click()
             self.page.wait_for_timeout(500)
+
+            # Check if dropdown appeared with matching option
+            dropdown_option = self.page.locator(f'[role="option"]:has-text("{toolkit_name}")').first
+
+            try:
+                # Wait for dropdown to appear
+                dropdown_option.wait_for(state="visible", timeout=2000)
+
+                # UI Flow: Clicking dropdown option CREATES the toolkit block immediately
+                # No Add button click needed - dropdown selection is sufficient
+                print(f"[ADD_SENSITIVE] Dropdown option found, clicking to create toolkit block")
+                dropdown_option.click()
+                self.page.wait_for_timeout(1000)  # Wait for toolkit block creation
+
+                print(f"[ADD_SENSITIVE] Toolkit block created via dropdown selection")
+
+            except Exception as e:
+                # No dropdown option found - use Add button for manual entry
+                # This allows adding arbitrary/non-existent toolkit names
+                print(f"[ADD_SENSITIVE] No dropdown option for '{toolkit_name}', using Add button")
+
+                add_btn = self.page.locator('button:has-text("Add")').last
+                add_btn.wait_for(state="visible", timeout=timeout)
+
+                # Add button should be enabled when typing arbitrary text
+                try:
+                    add_btn.wait_for(state="enabled", timeout=2000)
+                    print(f"[ADD_SENSITIVE] Add button enabled, clicking")
+                    add_btn.click()
+                    self.page.wait_for_timeout(1000)
+                except Exception:
+                    logger.warning("Add button did not enable for manual entry")
+                    raise Exception(f"Cannot add toolkit '{toolkit_name}': dropdown option not found and Add button disabled")
 
             logger.info("Created toolkit block for: %s", toolkit_name)
         else:
@@ -446,6 +517,92 @@ class GuardrailsAdminPage(BasePage):
         self.page.wait_for_timeout(500)
 
         logger.info("Removed sensitive tool: %s", tool_name)
+
+    @action("Remove empty toolkit blocks from Sensitive Action Tools")
+    def remove_empty_sensitive_toolkit_blocks(self, timeout: int = 5000):
+        """Remove empty toolkit blocks from Sensitive Action Tools section.
+
+        After removing all tool chips from a toolkit block, the block container
+        (header + trash icon + empty input) remains. This method clicks the trash
+        icon to remove empty blocks.
+
+        Specifically targets blocks for: github, artifact, data_analysis, etc.
+
+        Args:
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Removing empty toolkit blocks from Sensitive Action Tools")
+        print("[CLEANUP] Removing empty sensitive toolkit blocks")
+        self._expand_sensitive_section(timeout)
+
+        # First, debug: list ALL toolkit labels found
+        all_labels = self.page.locator('p.MuiTypography-root').all()
+        print(f"[CLEANUP] DEBUG: Found {len(all_labels)} p.MuiTypography-root elements")
+        for i, label in enumerate(all_labels[:20]):  # Limit to first 20
+            try:
+                if label.is_visible():
+                    text = label.text_content() or ""
+                    if text.strip():
+                        print(f"[CLEANUP] DEBUG: Label {i}: '{text.strip()}'")
+            except:
+                pass
+
+        removed_count = 0
+
+        # Known toolkit names to check (common ones)
+        toolkit_names = ["github", "artifact", "data_analysis", "python_sandbox", "web_browser"]
+
+        for toolkit_name in toolkit_names:
+            try:
+                # Look for toolkit label by exact text match
+                label = self.page.locator(f'p.MuiTypography-root:text-is("{toolkit_name}")').first
+                if label.count() == 0:
+                    continue  # Toolkit block doesn't exist
+
+                if not label.is_visible():
+                    continue
+
+                print(f"[CLEANUP] Found toolkit block: {toolkit_name}")
+
+                # Get the parent container (toolkit block)
+                # Structure: <div> -> <div> -> <div containing label + trash + input>
+                toolkit_block = label.locator('xpath=ancestor::div[contains(@class, "MuiBox-root")][2]')
+                if toolkit_block.count() == 0:
+                    print(f"[CLEANUP] Could not find container for: {toolkit_name}")
+                    continue
+
+                # Check if block has any tool chips
+                chips = toolkit_block.locator('.MuiChip-root')
+                chip_count = chips.count()
+                print(f"[CLEANUP] Toolkit {toolkit_name} has {chip_count} tool chips")
+
+                if chip_count > 0:
+                    continue  # Block has tools, skip
+
+                # Empty block found - click the trash icon next to the label
+                # Try to find delete/trash icon near the label
+                trash_icon = label.locator('xpath=following-sibling::*[1]//svg').first
+                if trash_icon.count() == 0:
+                    # Try finding it in the parent row
+                    trash_icon = toolkit_block.locator('svg').first
+
+                if trash_icon.count() > 0:
+                    print(f"[CLEANUP] Clicking trash icon for empty block: {toolkit_name}")
+                    trash_icon.click()
+                    self.page.wait_for_timeout(1000)  # Wait for removal animation
+                    removed_count += 1
+                    logger.info("Removed empty toolkit block: %s", toolkit_name)
+                    print(f"[CLEANUP] ✓ Removed empty block: {toolkit_name}")
+                else:
+                    print(f"[CLEANUP] Could not find trash icon for: {toolkit_name}")
+
+            except Exception as e:
+                logger.debug("Error removing toolkit block %s: %s", toolkit_name, e)
+                print(f"[CLEANUP] Error removing {toolkit_name}: {e}")
+                continue
+
+        logger.info("Removed %d empty toolkit blocks from Sensitive Action Tools", removed_count)
+        print(f"[CLEANUP] Total removed: {removed_count} empty blocks")
 
     def is_tool_in_sensitive_list(self, tool_name: str, toolkit_name: str = None) -> bool:
         """Check if a tool is in the sensitive action tools list.
