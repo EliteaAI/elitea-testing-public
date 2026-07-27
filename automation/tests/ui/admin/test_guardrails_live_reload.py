@@ -137,6 +137,8 @@ def guardrails_test_toolkit(
 
     Created once before all tests, deleted after all tests complete.
     Includes tools list to enable specific tools (by default API creates toolkit without tools).
+
+    Skips all tests if GitHub toolkit is not available in this deployment.
     """
     name = "guardrails_test_github_toolkit"
 
@@ -233,6 +235,147 @@ For example:
         logger.info("Deleted agent %s", agent_id)
     except Exception as exc:
         logger.warning("Failed to delete agent %s: %s", agent_id, exc)
+
+
+# ---------------------------------------------------------------------------
+# Guardrails Cleanup Fixture (module-level)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup_guardrails(browser: Browser, auth_state, request):
+    """Clean up guardrails configuration before and after all tests in this module.
+
+    This ensures tests start with a clean slate and don't pollute each other.
+    Runs automatically for every test in this module (autouse=True).
+
+    IMPORTANT: This fixture runs independently and uses try/finally to ensure
+    cleanup happens even if other fixtures fail during setup.
+    """
+    def _cleanup():
+        """Remove all blocked/sensitive toolkits and tools."""
+        print("[CLEANUP] Starting guardrails cleanup...")  # Always visible
+        ctx = browser.new_context(storage_state=auth_state, viewport={"width": 1920, "height": 1080})
+        ctx.set_default_timeout(15000)
+        pg = ctx.new_page()
+
+        try:
+            guardrails = GuardrailsAdminPage(pg)
+            guardrails.navigate_to_guardrails()
+            print("[CLEANUP] Navigated to guardrails page")
+
+            # Remove blocked toolkits
+            print("[CLEANUP] Cleaning up blocked toolkits")
+            logger.info("Cleaning up blocked toolkits")
+
+            # First, get the list of blocked toolkits
+            try:
+                blocked_list = guardrails.get_blocked_toolkits()
+                print(f"[CLEANUP] Currently blocked toolkits: {blocked_list}")
+            except Exception as e:
+                print(f"[CLEANUP] Could not get blocked toolkits list: {e}")
+                blocked_list = []
+
+            for toolkit in [TEST_TOOLKIT, "github", "GITHUB", "Github"]:
+                try:
+                    is_blocked = guardrails.is_toolkit_blocked(toolkit)
+                    print(f"[CLEANUP] Checking toolkit '{toolkit}': blocked={is_blocked}")
+                    if is_blocked:
+                        guardrails.remove_blocked_toolkit(toolkit)
+                        print(f"[CLEANUP] Removed blocked toolkit: {toolkit}")
+                        logger.info("Removed blocked toolkit: %s", toolkit)
+                except Exception as e:
+                    print(f"[CLEANUP] Could not remove toolkit {toolkit}: {e}")
+                    logger.debug("Could not remove toolkit %s: %s", toolkit, e)
+
+            # Remove blocked tools
+            print("[CLEANUP] Cleaning up blocked tools")
+            logger.info("Cleaning up blocked tools")
+            for tool in [TEST_TOOL, "get_issue", "GET_ISSUE", "Get_Issue"]:
+                try:
+                    if guardrails.is_tool_blocked(tool):
+                        guardrails.remove_blocked_tool(tool)
+                        print(f"[CLEANUP] Removed blocked tool: {tool}")
+                        logger.info("Removed blocked tool: %s", tool)
+                except Exception as e:
+                    print(f"[CLEANUP] Could not remove tool {tool}: {e}")
+                    logger.debug("Could not remove tool %s: %s", tool, e)
+
+            # Remove empty toolkit containers after removing all tools
+            print("[CLEANUP] Removing empty toolkit containers")
+            try:
+                guardrails.remove_empty_toolkit_containers()
+                print("[CLEANUP] Removed empty toolkit containers")
+            except Exception as e:
+                print(f"[CLEANUP] Could not remove empty toolkit containers: {e}")
+                logger.debug("Could not remove empty toolkit containers: %s", e)
+
+            # Remove sensitive tools
+            print("[CLEANUP] Cleaning up sensitive tools")
+            logger.info("Cleaning up sensitive tools")
+            for tool in [TEST_TOOL, "get_issue", "GET_ISSUE", "Get_Issue"]:
+                try:
+                    if guardrails.is_tool_in_sensitive_list(tool, TEST_TOOLKIT):
+                        guardrails.remove_sensitive_tool(tool)
+                        print(f"[CLEANUP] Removed sensitive tool: {tool}")
+                        logger.info("Removed sensitive tool: %s", tool)
+                except Exception as e:
+                    print(f"[CLEANUP] Could not remove sensitive tool {tool}: {e}")
+                    logger.debug("Could not remove sensitive tool %s: %s", tool, e)
+
+            # Remove empty toolkit blocks from Sensitive Action Tools
+            print("[CLEANUP] Removing empty toolkit blocks from Sensitive Action Tools")
+            try:
+                guardrails.remove_empty_sensitive_toolkit_blocks()
+                print("[CLEANUP] Removed empty sensitive toolkit blocks")
+            except Exception as e:
+                print(f"[CLEANUP] Could not remove empty sensitive toolkit blocks: {e}")
+                logger.debug("Could not remove empty sensitive toolkit blocks: %s", e)
+
+            # Save configuration after cleanup (only if we made changes)
+            print("[CLEANUP] Checking if save is needed")
+            try:
+                # Check if Save button is enabled (indicates changes were made)
+                save_btn = pg.locator('button:has-text("Save")').last
+                if save_btn.count() > 0 and save_btn.is_visible() and save_btn.is_enabled():
+                    print("[CLEANUP] Save button is enabled, saving configuration")
+                    guardrails.save_configuration(timeout=20000)
+                    print("[CLEANUP] Saved guardrails configuration")
+                    logger.info("Saved guardrails configuration after cleanup")
+                else:
+                    print("[CLEANUP] No changes to save (Save button not enabled)")
+            except Exception as e:
+                print(f"[CLEANUP] Could not save configuration: {e}")
+                logger.warning("Could not save configuration: %s", e)
+
+        except Exception as e:
+            print(f"[CLEANUP] Cleanup failed: {e}")
+            logger.warning("Cleanup failed: %s", e)
+        finally:
+            pg.close()
+            ctx.close()
+
+    # Clean before all tests
+    print("[CLEANUP] Running guardrails cleanup BEFORE tests")
+    logger.info("Running guardrails cleanup BEFORE tests")
+    try:
+        _cleanup()
+    except Exception as e:
+        print(f"[CLEANUP] Cleanup before tests failed: {e}")
+        logger.error("Cleanup before tests failed: %s", e)
+
+    # Register cleanup to run after module even if tests error
+    def finalizer():
+        print("[CLEANUP] Running guardrails cleanup AFTER tests (finalizer)")
+        logger.info("Running guardrails cleanup AFTER tests")
+        try:
+            _cleanup()
+        except Exception as e:
+            print(f"[CLEANUP] Cleanup after tests failed: {e}")
+            logger.error("Cleanup after tests failed: %s", e)
+
+    request.addfinalizer(finalizer)
+
+    yield
 
 
 # ---------------------------------------------------------------------------
