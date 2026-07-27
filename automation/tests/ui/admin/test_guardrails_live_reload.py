@@ -47,8 +47,8 @@ pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.guardrails]
 UI_ELEMENT_TIMEOUT = 10000
 NAVIGATION_TIMEOUT = 15000
 FORM_SAVE_TIMEOUT = 15000
-TOOLKIT_EXECUTION_TIMEOUT = 60000
-CHAT_RESPONSE_TIMEOUT = 90000
+TOOLKIT_EXECUTION_TIMEOUT = 30000
+CHAT_RESPONSE_TIMEOUT = 30000
 
 # ---------------------------------------------------------------------------
 # Test Data
@@ -577,7 +577,6 @@ class TestBlockedToolLiveReload:
             agent_page.navigate(agent_id)
             page.reload()
             agent_page.wait_for_page_load()
-
             toolkit_name = guardrails_test_agent["toolkit_name"]
             assert agent_page.is_tool_blocked_in_toolkit(toolkit_name, timeout=UI_ELEMENT_TIMEOUT), (
                 f"Toolkit '{toolkit_name}' should show 'Some tools are not available anymore' indicator"
