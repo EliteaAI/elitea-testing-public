@@ -1,0 +1,265 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"failed","Mon Jul 27 05:36:01 UTC 2026","Mon Jul 27 05:39:54 UTC 2026","233768","tests.ui.skills","test_skill_agent_interaction","TestInteractWithSkillsFromAgent","","","test_interact_with_skills_from_agent","Create two skills, attach both to an agent, and verify selective
+        invocation via the ""~<skill-name> <prompt>"" mention syntax.
+
+        Steps (AFS test-specs/skills/l3_interact-with-skills-from-agent_ELITEA-1735.md):
+        1. Create Skill 1 (uppercase-formatting instructions).
+        2. Create Skill 2 (underscore-formatting instructions).
+        3. Create an Agent.
+        4-5. Attach both skills to the agent via the Skills section.
+        6. Send a plain message (no mention) — soft-asserted per known defect #38.
+        7. Send ""~<skill-1> <prompt>"" — hard-asserted entirely UPPER CASE.
+        8. Send ""~<skill-2> <prompt>"" — hard-asserted underscore-delimited.
+        "
+"passed","Mon Jul 27 05:40:47 UTC 2026","Mon Jul 27 05:40:50 UTC 2026","3089","tests.ui.skills","test_skill_build_with_ai","TestSkillBuildWithAIReviewFormEditableFields","","","test_loading_state_shows_exact_text_and_review_form_has_no_extra_sections","During generation, the loading indicator displays the exact text
+        ""Generating skill draft..."", and once the review form is shown it
+        contains only the Name/Description/Instructions fields — no
+        tools/agents/pipelines/toolkits/MCPs/resources section renders."
+"failed","Mon Jul 27 05:44:06 UTC 2026","Mon Jul 27 05:44:45 UTC 2026","38716","tests.ui.skills","test_skill_tag_filter","TestSkillTagFilter","","","test_filter_skills_by_tag","Create 3 skills with shared/unique tags; verify tag-filter narrowing.
+
+        Steps (see AFS for full detail):
+        1. Capture baseline grid state; create Skill A (formatting, output),
+           Skill B (formatting, english), Skill C (translation); verify all
+           3 plus any pre-existing skills are visible with their own tags.
+        2. Filter by `formatting` (shared tag) — verify exactly Skill A and
+           Skill B are shown, Skill C is excluded.
+        3. Clear the filter, then filter by `translation` (unique tag) —
+           verify exactly Skill C is shown.
+        4. Clear the filter, then filter by `output` (unique tag) — verify
+           exactly Skill A is shown.
+        5. Clear the filter — verify the grid is restored to the baseline
+           plus the 3 new skills.
+        "
+"passed","Mon Jul 27 05:43:08 UTC 2026","Mon Jul 27 05:43:26 UTC 2026","18276","tests.ui.skills","test_skill_management","TestCreateSkill","","","test_create_skill_and_verify_execution","Create a skill with caps-only instruction, run it in the test panel,
+        verify the response is all uppercase, then delete the skill.
+        "
+"passed","Mon Jul 27 05:40:40 UTC 2026","Mon Jul 27 05:40:46 UTC 2026","6306","tests.ui.skills","test_skill_build_with_ai","TestSkillBuildWithAIReviewFormEditableFields","","","test_create_skill_from_unmodified_draft_persists_generated_values","Clicking ""Create Skill"" directly on a freshly generated draft —
+        with no edits to Name/Description/Instructions — creates the skill
+        with the generated values verbatim, redirects to its detail page
+        showing those values, and the new skill appears in the Skills
+        list."
+"passed","Mon Jul 27 05:42:32 UTC 2026","Mon Jul 27 05:43:07 UTC 2026","35029","tests.ui.skills","test_skill_export_import","TestSkillExportImportNonBaseVersion","","","test_import_skill_non_base_version","Export a skill's ver_1 version, import the file, verify the round trip.
+
+        Steps (see AFS for full detail):
+        1. Create a Skill with base version; note the source skill ID.
+        2. Edit instructions, click ""Save As Version"" → create `ver_1`.
+        3. With `ver_1` selected, export via the overflow menu; verify
+           the downloaded filename embeds the version name.
+        4. Read the exported file; verify frontmatter (incl. `elitea_version`)
+           and instructions body.
+        5. Navigate to Skills list; import the exported file; verify the
+           Import parameters dialog previews the ver_1 content.
+        6. Confirm import; verify navigation + unique new skill ID.
+        7. Verify imported skill's version is `base` and fields match the
+           exported ver_1 content.
+        8. Edit + save the imported skill; verify a clean save.
+        "
+"passed","Mon Jul 27 05:30:09 UTC 2026","Mon Jul 27 05:31:44 UTC 2026","95201","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 5 Skills + an Agent, attach all 5 Skills one at a time,
+        verify the add-skill control disables at 5/5 with a tooltip (rather
+        than a literal 6th-click rejection), and verify persistence via a
+        full page reload.
+
+        Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md):
+        1. Create 5 Skills via UI. A 6th distinct skill is looked up via the
+           project's existing skills (via ``skill_api``) rather than assumed
+           by name — any pre-existing skill satisfies the case's ""6 distinct
+           Skills"" precondition.
+        2. Create an Agent.
+        3. Skills section starts at 0/5, add-skill control enabled.
+        4-8. Attach Skills 1-5 one at a time; counter increments ""N/5 skills
+           added."" and a card renders after each attach.
+        9. Add-skill control becomes disabled the instant 5/5 is reached,
+           with an accessible tooltip — a 6th skill cannot be attached.
+        10. Confirm persistence via a full page reload (attach is
+           auto-saved via API; no explicit agent-level Save is available).
+        "
+"failed","Mon Jul 27 05:32:51 UTC 2026","Mon Jul 27 05:33:47 UTC 2026","55759","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
+        participant, confirm '~mention' shows the skill, dismiss, remove the
+        participant, and (soft-asserted, known defect) confirm the skill no
+        longer appears in '~mention' afterward.
+
+        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
+        1. Create Skill, create Agent, attach the skill to the agent.
+        2. Open Chat, add the agent as a participant.
+        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
+        4. Dismiss the popper with Escape without selecting anything.
+        5. Remove the agent from the chat's participants.
+        6. Type '~' again — soft-asserted per known defect #51: the removed
+           agent's skill should NOT be listed, but live product still shows
+           it (ghost).
+        7. Control check: a fresh conversation that never had a participant
+           shows the correct ""No skills attached to this agent"" empty state
+           — proving the ghost is specifically a stale-state-after-removal
+           bug, not ""the mention list always shows all project skills"".
+        "
+"passed","Mon Jul 27 05:42:06 UTC 2026","Mon Jul 27 05:42:31 UTC 2026","24927","tests.ui.skills","test_skill_export_import","TestSkillExportImport","","","test_export_and_import_skill_base_version","Export a skill's base version, import the file, verify the round trip.
+
+        Steps (see AFS for full detail):
+        1. Navigate to create-skill form; Save starts disabled.
+        2. Fill name/description/tags/instructions; Save enables.
+        3. Save; note the source skill ID.
+        4. Export the base version via the overflow menu; verify .md download.
+        5. Read the exported file; verify frontmatter + instructions body.
+        6. Navigate to Skills list; click Import; verify file chooser.
+        7. Upload the exported file; verify the Import parameters dialog.
+        8. Confirm import; verify navigation + success toast + new unique ID.
+        9. Verify imported skill's version/name/description/tags/instructions.
+        10. Edit + save the imported skill; verify a clean save.
+        "
+"failed","Mon Jul 27 05:40:53 UTC 2026","Mon Jul 27 05:42:06 UTC 2026","72778","tests.ui.skills","test_skill_conversation_interaction","TestInteractWithSkillsFromConversation","","","test_interact_with_skills_from_conversation","Create a skill, attach it to an agent, add the agent as a chat
+        participant, and verify selective invocation via ""~<skill-name> <prompt>"".
+
+        Steps (AFS test-specs/skills/l3_interact-with-skills-from-conversation_ELITEA-1736.md):
+        1. Create Skill (uppercase-formatting robot-joke instructions).
+        2. Create an Agent.
+        3. Attach the skill to the agent via the Skills section.
+        4. Open Chat, add the agent as a participant.
+        5. Send a plain message (no mention) — soft-asserted per known defect #38.
+        6. Send ""~<skill-name> <prompt>"" — hard-asserted entirely UPPER CASE.
+        "
+"passed","Mon Jul 27 05:40:35 UTC 2026","Mon Jul 27 05:40:40 UTC 2026","4315","tests.ui.skills","test_skill_build_with_ai","TestSkillBuildWithAIReviewFormEditableFields","","","test_review_form_fields_are_editable_before_creation","Overwriting the generated draft's Name/Description/Instructions
+        in the review form persists the edits, and creating the skill from
+        the edited form produces a skill with the edited (not generated)
+        values."
+"passed","Mon Jul 27 05:34:53 UTC 2026","Mon Jul 27 05:36:00 UTC 2026","67736","tests.ui.skills","test_remove_attached_skill_from_agent","TestRemoveAttachedSkillFromAgent","","","test_remove_attached_skill_from_agent","Create two Skills + an Agent, attach both, remove Skill B via the
+        hover-revealed remove control + confirmation dialog, and verify Skill
+        A remains attached while Skill B survives standalone.
+
+        Steps (AFS test-specs/skills/l3_remove-attached-skill-from-agent_ELITEA-1792.md):
+        1. Create Skill A and Skill B via UI.
+        2. Create an Agent.
+        3. Attach both Skills to the Agent (precondition for this case).
+        4. Locate the hover-revealed ""remove skill"" control for Skill B.
+        5. Click it; confirm the ""Remove skill?"" dialog; Skill B is removed
+           from the UI list while Skill A remains.
+        6. Confirm persistence via a full page reload (detach auto-saves via
+           API; no explicit agent-level Save is available for this action).
+        7. Reopen the Agent (same reload satisfies this — no separate
+           close/reopen gesture exists in the live flow); only Skill A is
+           attached.
+        8. Navigate directly to Skill B's detail page and to the Skills list;
+           Skill B still exists standalone (detached, not deleted).
+        "
+"passed","Mon Jul 27 05:33:47 UTC 2026","Mon Jul 27 05:34:52 UTC 2026","64767","tests.ui.skills","test_import_agent_recreates_skills_with_new_ids","TestImportAgentRecreatesSkillsWithNewIds","","","test_import_agent_recreates_skills_with_new_ids","Export an Agent with an attached Skill, import it, verify a new
+        Skill entity (new unique ID) is created and correctly linked.
+
+        Steps (AFS test-specs/skills/l3_import-agent-recreates-skills-with-new-ids_ELITEA-1795.md):
+        1. (Precondition setup, mirrors ELITEA-1794) Create a Skill + an
+           Agent, attach the Skill, export the Agent via the actions
+           overflow menu.
+        2. Navigate to the Agents list; click ""Import""; verify a native
+           file chooser opens.
+        3. Select the exported file; verify the ""Import parameters""
+           preview dialog previews the embedded Agent + Skill content.
+        4. Confirm the dialog's Import button; verify the ""Import
+           Complete"" success dialog lists 1 agent + 1 skill.
+        5. Click ""Got it""; verify auto-navigation to the new Agent's
+           detail page with a new, distinct Agent ID.
+        6. Verify the imported Agent's Skills section shows the Skill
+           attached (waiting on the async application_skills fetch, not
+           asserting on first paint) and the API response's skill_id is
+           new/unique.
+        7. Navigate to the Skills list; verify two cards share the Skill's
+           name (source + imported); verify the imported Skill's own
+           detail page shows a new ID and verbatim content; verify the
+           source Skill AND the source Agent are both unaffected by the
+           import (Axis 2 additions — import must be purely additive).
+        8. Edit + save the imported Agent; verify a clean save.
+        "
+"passed","Mon Jul 27 05:39:57 UTC 2026","Mon Jul 27 05:40:31 UTC 2026","34087","tests.ui.skills","test_skill_agent_version_selector","TestAttachSkillToAgentWithVersionSelector","","","test_attach_skill_to_agent_with_version_selector","Create a skill + agent, attach the skill, and verify the version
+        selector shows the default version, opens a real Versions menu, and
+        persists across a full page reload.
+
+        Steps (AFS test-specs/skills/l3_attach-skill-to-agent-with-version-selector_ELITEA-1789.md):
+        1. Create a Skill with a saved `base` version.
+        2. Create an Agent.
+        3. Locate the Skills attachment section (expanded by default).
+        4-5. Attach the Skill; verify the counter updates and the card renders.
+        6. Verify the attached Skill card shows a version selector, and that
+           clicking it (via a correctly-scoped `.version-text` locator, NOT a
+           role-based one) opens a real ""Versions"" menu — hard-asserted
+           functional flow per the AFS (known defect #46 is a handle-quality/
+           accessibility gap, not a flaky functional failure).
+        7. Confirm the default version (`base`) is shown pre-selected, both
+           on the card and as the sole entry in the opened Versions menu.
+        8. Confirm persistence via a full page reload (no explicit
+           agent-level Save is available — attach is auto-saved via API).
+        "
+"passed","Mon Jul 27 05:40:50 UTC 2026","Mon Jul 27 05:40:53 UTC 2026","2645","tests.ui.skills","test_skill_build_with_ai","TestSkillBuildWithAIModalElements","","","test_build_with_ai_opens_modal_with_expected_elements","Clicking ""Build with AI"" opens the modal, and the modal shows a
+        prompt input, a ""Generate"" button, and a ""Cancel"" button — all
+        asserted as explicit, standalone visibility checks (no prompt is
+        entered, no network call is made; case never reaches the network
+        layer)."
+"passed","Mon Jul 27 05:29:14 UTC 2026","Mon Jul 27 05:30:09 UTC 2026","54041","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
+        mention panel in the Instructions field is scoped to only the
+        attached 2 — the 3rd (unattached) Skill never appears, including
+        on a second, independent ""~"" trigger after clearing the field.
+
+        Steps (AFS test-specs/skills/l3_tilde-mention-lists-only-attached-skills_ELITEA-1791.md):
+        1. Confirm/create 3 distinct Skills (reuse a pre-existing one as
+           Skill A, looked up via API rather than assumed by name — same
+           environment-robustness rule as ELITEA-1790's cleanup note —
+           falling back to creating it fresh if none exists), create an
+           Agent, attach Skill A + Skill B, leave Skill C unattached.
+        2. Click the Instructions field — becomes focused/editable.
+        3-4. Type ""~"" — ""Mention skill"" panel appears, listing exactly
+           Skill A and Skill B; Skill C is asserted absent by exact-name
+           locator (not merely a row count).
+        5. Select Skill A — inserts ""~<skill-name>"" as plain text.
+        6. Select-all + delete, retype ""~"" — same 2-item scoped list
+           reappears; Skill C still absent (re-evaluated live).
+        "
+"passed","Mon Jul 27 05:31:45 UTC 2026","Mon Jul 27 05:32:15 UTC 2026","29442","tests.ui.skills","test_export_agent_no_nested_dependencies","TestExportAgentNoNestedDependencies","","","test_export_agent_no_nested_dependencies","Create an Agent with no attached Skills/sub-Agents but with an
+        external GitHub toolkit attached, export it via the actions overflow
+        menu, and verify the downloaded file's raw content: correct
+        frontmatter, no ``skills:`` key, instructions embedded verbatim, and
+        no leaked credential value anywhere in the file.
+
+        Steps (AFS
+        test-specs/skills/l3_export-agent-no-nested-dependencies_ELITEA-1894.md):
+        1. Create an Agent via UI (no Skills/sub-Agents attached).
+        2. Attach the pre-created GitHub toolkit to the Agent (case
+           precondition — ""no nested dependencies"" + a real credential to
+           prove non-leakage against).
+        3. Confirm the Agent detail view shows the toolkit attached and no
+           Skills (already satisfied by step 2).
+        4. Confirm the version dropdown shows the default `base` version
+           selected (single-version agent — see AFS § Blocked Steps).
+        5. Open the agent-actions overflow menu; click ""Export"" (VERSION
+           group); verify a file download is initiated.
+        6. Verify the downloaded file has a `.md`-suffixed name.
+        7. Read the downloaded file's raw content; verify the YAML
+           frontmatter (name, description, model settings) has NO
+           `skills:` key, and the instructions body is embedded verbatim.
+        8. Verify the file does NOT contain the raw GitHub token value nor
+           any credential-shaped substring — only the toolkit's non-secret
+           `elitea_title` reference.
+        "
+"passed","Mon Jul 27 05:32:15 UTC 2026","Mon Jul 27 05:32:51 UTC 2026","35923","tests.ui.skills","test_export_agent_with_attached_skills","TestExportAgentWithAttachedSkills","","","test_export_agent_with_attached_skills","Create a Skill + an Agent, attach the Skill, export the Agent via
+        the actions overflow menu, and verify the downloaded file's raw
+        content embeds the Skill's full content verbatim.
+
+        Steps (AFS test-specs/skills/l3_export-agent-with-attached-skills_ELITEA-1794.md):
+        1. Create a Skill via UI, with a planted unique marker string in its
+           instructions.
+        2. Create an Agent via UI.
+        3. Attach the Skill to the Agent (case precondition).
+        4. Confirm the Agent detail view is open with the Skill attached
+           (already satisfied by step 3).
+        5. Open the agent-actions overflow menu; click ""Export"" (VERSION
+           group); verify a file download is initiated.
+        6. Verify the downloaded file has a `.md`-suffixed name.
+        7. Read the downloaded file's raw content; verify it's a YAML
+           frontmatter + markdown body, with the Skill's name, `base`
+           version, and full instructions (including the marker) embedded
+           verbatim in the `skills:` list.
+        "
+"passed","Mon Jul 27 05:43:59 UTC 2026","Mon Jul 27 05:44:05 UTC 2026","6337","tests.ui.skills","test_skill_search","TestSkillSearch","","","test_search_skills_by_name","Search the Skills grid by partial name, exact name, a
+        non-existent name, then clear — verifying the grid's exact visible
+        set at each step (not just presence/absence of one name), so a
+        regression that only breaks the grid while leaving the separate
+        suggestions popover working would be caught.
+        "
+"passed","Mon Jul 27 05:40:31 UTC 2026","Mon Jul 27 05:40:35 UTC 2026","4099","tests.ui.skills","test_skill_build_with_ai","TestSkillBuildWithAIGenerationFailureRetry","","","test_generation_failure_shows_error_and_allows_retry","Generation failure surfaces an error, preserves the prompt, and a
+        retry (via the same Generate button) succeeds once the service
+        recovers."
