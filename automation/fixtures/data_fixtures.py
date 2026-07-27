@@ -13,8 +13,11 @@ Fixtures:
 - agent_id: Fresh agent per test
 - pipeline_id: Fresh empty pipeline per test
 - pipeline_with_llm_id: Fresh executable pipeline with LLM node
+- pipeline_with_llm_code_end_id: Fresh pipeline LLM 1 -> Code 1 -> END (3 nodes, 2 edges)
 - github_credential: GitHub API credential (skipped if GITHUB_TOKEN unset)
 - github_toolkit: GitHub toolkit attached to a fresh credential
+- github_relevant_agents: GitHub-relevant Agent pair (selected/not_selected)
+- github_relevant_skills: GitHub-relevant Skill pair (selected/not_selected)
 - invalid_jira_credential: Jira credential with invalid/expired token
 - jira_toolkit_with_invalid_credential: Jira toolkit using invalid credential
 - invalid_github_credential: GitHub credential with invalid token
@@ -25,7 +28,7 @@ import time
 
 import pytest
 
-from api import ArtifactAPI, ConversationAPI, AgentAPI, PipelineAPI, CredentialAPI, ToolkitAPI
+from api import ArtifactAPI, ConversationAPI, AgentAPI, PipelineAPI, CredentialAPI, SkillAPI, ToolkitAPI
 from config import settings
 
 logger = logging.getLogger("elitea.automation.fixtures.data")
@@ -201,6 +204,67 @@ def pipeline_with_llm_id(pipeline_api: PipelineAPI, request):
 
 
 @pytest.fixture
+def pipeline_with_llm_code_end_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with LLM 1 -> Code 1 -> END (3 nodes, 2 edges).
+
+    Used by ELITEA-2018 (Pipeline Canvas — Delete Node) to exercise deleting
+    a MIDDLE node (``Code 1``) and verify the upstream node's transition
+    auto-rewires to the deleted node's own downstream target.
+
+    Mirrors ``pipeline_with_llm_id``'s pattern but calls
+    ``PipelineAPI.create_pipeline_with_nodes()`` with an explicit node list
+    instead of ``create_pipeline_with_llm_node()``.
+
+    Yields the numeric pipeline ID so tests can navigate to
+    ``/pipelines/all/{pipeline_id}`` or use it with the API.
+
+    Args:
+        pipeline_api: PipelineAPI client (from api_fixtures)
+        request: Pytest request object (provides test metadata)
+
+    Yields:
+        int: Numeric pipeline ID
+    """
+    name = f"autotest_{request.node.name}"[:32]  # Truncate to 32 chars
+    description = f"Auto-created LLM->Code->END pipeline for test {request.node.name}"
+    nodes = [
+        {
+            "id": "LLM 1",
+            "type": "llm",
+            "input": [],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": ""},
+                "task": {"type": "fixed", "value": ""},
+            },
+            "output": [],
+            "structured_output": False,
+            "transition": "Code 1",
+        },
+        {
+            "id": "Code 1",
+            "type": "code",
+            "input": [],
+            "output": [],
+            "source_code": "print('hi')",
+            "transition": "END",
+        },
+    ]
+    pipeline = pipeline_api.create_pipeline_with_nodes(name, description, "LLM 1", nodes)
+    pid = pipeline["id"]
+    logger.info("Created LLM->Code->END pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    # Cleanup: delete pipeline even if test fails
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted LLM->Code->END pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete LLM->Code->END pipeline %s: %s", pid, exc)
+
+
+@pytest.fixture
 def github_credential(credential_api: CredentialAPI, request):
     """Create a GitHub API credential and yield its metadata.
 
@@ -274,6 +338,174 @@ def github_toolkit(github_credential: dict, toolkit_api: ToolkitAPI, request):
         logger.info("Deleted GitHub toolkit %s", toolkit["id"])
     except Exception as exc:
         logger.warning("Failed to delete toolkit %s during teardown: %s", toolkit["id"], exc)
+
+
+# ---------------------------------------------------------------------------
+# GitHub-relevant Agent pair for ELITEA-1909 ("Build with AI" suggested-Agent
+# precondition)
+# ---------------------------------------------------------------------------
+
+def _build_with_ai_agent_payload(name: str, description: str) -> dict:
+    """Payload for a minimal Agent used purely as a "Build with AI"
+    suggestion-engine candidate (never opened/edited by the test itself).
+
+    Uses ``AgentAPI.create_agent_full()`` rather than the ``create_agent()``
+    convenience method's default ``llm_settings`` (which pairs
+    ``temperature`` with ``reasoning_effort``) — that combination is
+    rejected with a 400 by this project's current default model. See the
+    ELITEA-1909 AFS's Known Defects/Gaps #3.
+    """
+    return {
+        "name": name,
+        "description": description,
+        "type": "interface",
+        "versions": [
+            {
+                "name": "base",
+                "tags": [],
+                "instructions": description,
+                "variables": [],
+                "tools": [],
+                "llm_settings": {
+                    "max_tokens": -1,
+                    "model_name": settings.default_model_name,
+                    "model_project_id": settings.default_model_project_id,
+                },
+                "conversation_starters": [],
+                "agent_type": "openai",
+                "welcome_message": "",
+                "meta": {"step_limit": 25},
+            }
+        ],
+    }
+
+
+@pytest.fixture
+def github_relevant_agents(agent_api: AgentAPI, request):
+    """Create two pre-existing, GitHub-relevant Agents so "Build with AI"'s
+    suggestion engine has real candidates to surface as ``suggested_agents``
+    — the engine only suggests Agents already configured in the project,
+    filtered by semantic relevance to the submitted prompt (see ELITEA-1909
+    AFS Preconditions — the case's own preconditions never state this).
+
+    Yields a dict with ``selected`` and ``not_selected`` sub-dicts, each
+    ``{"id": int, "name": str, "description": str}`` — the caller's test
+    prompt must name both agents by their exact ``name`` for the
+    suggestion engine's relevance match to pick them up (see AFS
+    Automation Hints: fixture descriptions and the test prompt are
+    co-maintained in the same test module for this reason).
+
+    Both agents are deleted in teardown even if the test fails.
+    """
+    # Distinctive, collision-resistant naming (AFS Automation Hints): a
+    # short numeric suffix rather than the full (often >32-char) test node
+    # name, which the API's 32-char name limit can't accommodate anyway.
+    suffix = str(int(time.time() * 1000))[-6:]
+    selected_name = f"autotest GH Issue Bot {suffix}"[:32]
+    not_selected_name = f"autotest GH PR Reviewer {suffix}"[:32]
+    selected_description = "Agent that manages GitHub issues and pull requests for a repository."
+    not_selected_description = "Agent that reviews GitHub pull requests and posts review comments."
+
+    selected = agent_api.create_agent_full(
+        _build_with_ai_agent_payload(selected_name, selected_description)
+    )
+    not_selected = agent_api.create_agent_full(
+        _build_with_ai_agent_payload(not_selected_name, not_selected_description)
+    )
+    logger.info(
+        "Created GitHub-relevant agent pair %s (%s) / %s (%s) for %s",
+        selected["id"], selected_name, not_selected["id"], not_selected_name,
+        request.node.name,
+    )
+
+    yield {
+        "selected": {
+            "id": selected["id"], "name": selected_name, "description": selected_description,
+        },
+        "not_selected": {
+            "id": not_selected["id"], "name": not_selected_name, "description": not_selected_description,
+        },
+    }
+
+    for agent in (selected, not_selected):
+        try:
+            agent_api.delete_agent(agent["id"])
+            logger.info("Deleted GitHub-relevant agent %s", agent["id"])
+        except Exception as exc:
+            logger.warning("Failed to delete agent %s during teardown: %s", agent["id"], exc)
+
+
+# ---------------------------------------------------------------------------
+# GitHub-relevant Skill pair for ELITEA-1911 ("Build with AI" suggested-Skill
+# precondition — same shape as github_relevant_agents above)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def github_relevant_skills(skill_api: SkillAPI, request):
+    """Create two pre-existing, GitHub-relevant Skills so "Build with AI"'s
+    suggestion engine has real candidates to surface as ``suggested_skills``
+    — the engine only suggests Skills already configured in the project,
+    filtered by semantic relevance to the submitted prompt (see ELITEA-1911
+    AFS Preconditions — same inventory-gating mechanism ``github_relevant_agents``
+    already documents for Toolkits/Agents).
+
+    Yields a dict with ``selected`` and ``not_selected`` sub-dicts, each
+    ``{"id": int, "name": str, "description": str}`` — the caller's test
+    prompt must name both skills by their exact ``name`` for the suggestion
+    engine's relevance match to pick them up (mirrors
+    ``github_relevant_agents``'s Automation Hints).
+
+    Skill names are constrained (live-confirmed via the Skills UI form's
+    validation message, see ``SkillAPI.create_skill()``) to lowercase
+    letters, digits, and hyphens, max 32 characters, no leading/trailing
+    hyphen — the generated names respect this.
+
+    Both skills are deleted in teardown even if the test fails.
+    """
+    suffix = str(int(time.time() * 1000))[-6:]
+    selected_name = f"autotest-gh-changelog-{suffix}"[:32]
+    not_selected_name = f"autotest-gh-issue-label-{suffix}"[:32]
+    selected_description = (
+        "Skill that writes GitHub repository changelog entries from merged pull requests."
+    )
+    not_selected_description = (
+        "Skill that reads GitHub issues and applies priority/severity labels automatically."
+    )
+    selected_instructions = (
+        "You are a skill that reads merged GitHub pull requests and writes concise "
+        "changelog entries summarizing the changes."
+    )
+    not_selected_instructions = (
+        "You are a skill that reads incoming GitHub issues and applies priority and "
+        "severity labels based on their content."
+    )
+
+    selected = skill_api.create_skill(selected_name, selected_description, selected_instructions)
+    not_selected = skill_api.create_skill(
+        not_selected_name, not_selected_description, not_selected_instructions
+    )
+    logger.info(
+        "Created GitHub-relevant skill pair %s (%s) / %s (%s) for %s",
+        selected["id"], selected_name, not_selected["id"], not_selected_name,
+        request.node.name,
+    )
+
+    yield {
+        "selected": {
+            "id": selected["id"], "name": selected_name, "description": selected_description,
+        },
+        "not_selected": {
+            "id": not_selected["id"], "name": not_selected_name, "description": not_selected_description,
+        },
+    }
+
+    for skill in (selected, not_selected):
+        try:
+            skill_api.delete_skill(skill["id"])
+            logger.info("Deleted GitHub-relevant skill %s", skill["id"])
+        except Exception as exc:
+            logger.warning("Failed to delete skill %s during teardown: %s", skill["id"], exc)
 
 
 # ---------------------------------------------------------------------------
@@ -667,3 +899,49 @@ def mcp_pipeline_with_toolkits(
         logger.info("Deleted MCP pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete MCP pipeline %s: %s", pid, exc)
+
+
+# ---------------------------------------------------------------------------
+# Notification fixtures for GAP-077
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def notification_unread_id(notification_api):
+    """Seed a deterministic UNREAD notification row via direct API PUT.
+
+    The quick panel's own query (``only_new: true``) makes "whatever happens
+    to be unread right now" an unreliable, shared/mutable precondition —
+    GAP-077 confirmed live that a single test run can zero out ALL unread
+    notifications via an incidental "Mark all as read" click, which would
+    starve any concurrent test needing an unread row. This fixture instead:
+
+    1. Reads an existing notification (any) via the unfiltered list GET.
+    2. Records its original ``is_seen`` value.
+    3. Forces it to unread (``is_seen: false``) for the test.
+    4. Restores the original value in teardown.
+
+    Never drives the UI's "Mark all as read" bulk action against shared
+    live data (GAP-077 Automation Hints).
+
+    Yields:
+        int: the seeded notification's id.
+    """
+    data = notification_api.list_notifications()
+    rows = data.get("rows", [])
+    assert rows, "No notifications exist for this project — cannot seed an unread row"
+
+    target = rows[0]
+    notification_id = target["id"]
+    original_is_seen = target["is_seen"]
+
+    notification_api.mark_seen([notification_id], is_seen=False)
+    logger.info("Seeded unread notification id=%s (was is_seen=%s)", notification_id, original_is_seen)
+
+    yield notification_id
+
+    try:
+        notification_api.mark_seen([notification_id], is_seen=original_is_seen)
+        logger.info("Restored notification id=%s to is_seen=%s", notification_id, original_is_seen)
+    except Exception as exc:
+        logger.warning("Failed to restore notification %s during teardown: %s", notification_id, exc)

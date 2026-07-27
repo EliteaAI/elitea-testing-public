@@ -1,87 +1,95 @@
-# elitea-testing — Elitea AI Platform Automation
+# elitea-testing — Elitea AI Platform Test Automation
 
-Test automation suite for [Elitea](https://stage.elitea.ai), an AI collaboration platform.
+Playwright + pytest automation for [Elitea](https://elitea.ai), an AI collaboration
+platform. Working branch: **`automation/base`** (never PR `main` directly).
 
-## Quick Start
+## Layout (four sibling clones — parent dir is NOT a git repo)
+
+```
+<parent>/                        ← this repo's parent folder (sibling clones; no env var needed)
+├── .env  .env.test              master secrets — NEVER commit, NEVER print
+├── elitea-testing-public/       THIS repo · branch automation/base · .venv (Python 3.13)
+├── EliteaUI/                    EliteaAI/EliteaUI (NO fork) · branch automation/testids · npm run dev → :5173
+├── elitea_assistant/            EliteaAI/elitea_assistant · Support Assistant (connected repo — testids via its source)
+└── onetest-ai-tm-Elitea/        TMS repo (test cases as markdown + GitHub issues)
+```
+
+## Essential Commands
 
 ```bash
-source ~/Development/venv/bin/activate
-cd ~/Development/elitea-testing/automation
+# Install (repo-local venv; system python3 may be too old — need 3.11+)
+.venv/bin/pip install -e ".[reporting]"     # reporting extra is MANDATORY (allure in addopts)
 
-# Smoke tests (<5 min, critical paths)
-HEADLESS=true pytest -m smoke -v
+# Run tests (always from automation/)
+cd automation
+../.venv/bin/pytest tests/ui/smoke/test_ui_smoke.py -v          # one file
+HEADLESS=true ../.venv/bin/pytest -m smoke -v                   # smoke suite
+# Headed is the default (config.py: headless=False). HEADLESS=true for quiet runs.
+
+# Start local UI under test (or use the start-ui-localhost skill)
+cd ../EliteaUI && npm run dev                                    # → http://localhost:5173
 ```
 
-## Project Structure
+## Critical Conventions
 
-```
-automation/
-├── conftest.py              # Fixtures, Keycloak auth, screenshots
-├── pytest.ini               # Markers, pytest config
-├── .env.test                # URLs, credentials, project ID
-├── api/                     # REST API client
-├── pages/                   # Page Object Model (ChatPage, etc.)
-├── components/              # UI helpers
-└── test_*.py                # Test files
-```
+- **Primary test target is `http://localhost:5173`** — `EliteaAI/EliteaUI` on
+  `automation/testids` (points at the DEV backend). Deployed envs (dev/next.elitea.ai)
+  are CI's job, not the local loop's.
+- **Test PRs target `automation/base`**, never `main`.
+- **Testids: dual-target.** `automation/testids` is a permanent **integration branch
+  on `EliteaAI/EliteaUI`** (no fork) holding every testid — merged *and* still in
+  review; the dev server always serves them ALL. Commit testids **straight onto
+  `automation/testids`** (HMR live), then cherry-pick them onto `testids/<case>-<slug>`
+  cut from **fresh `origin/main`** (in a worktree) and open a **draft PR to `main`**
+  for the UI team. The PR branch is built on `main` — never on the integration
+  branch — which is what keeps its diff a clean single case.
+- **Never rebase or force-push `automation/testids`** — it's a shared org branch.
+  Sync it with `git merge origin/main`. If review changes a testid, resolve the next
+  merge **in favour of `main`**.
+- **Locators are testid-only — there is NO fallback ladder**: missing testid ⇒ add it
+  via `add-data-testid` (team measures UI coverage by testid presence).
+  `LocatorDescriptor(testid="agent-form-save-button")`; `fallback`/`locator` params are
+  forbidden. Naming: `{section}-{element}-{type}`. Locators live **only as page-object
+  class fields** — never inside methods or specs. Overrides: `.agents/role-overrides.md`.
+- **Test steps wrapped in `with allure.step("Step N — …"):`** so they reach reports.
+- **`.env.test` beats shell env vars** (`config.py` orders dotenv first). Edit the file,
+  don't export.
+- `APP_PREFIX` is empty on localhost, `/app` on deployed envs.
+- Keycloak login field is `input[name="username"]`, NOT email. On localhost,
+  `auth_state` skips login entirely (uses `VITE_DEV_TOKEN`).
+- AI responses arrive over WebSocket with ~2s delay — use waits, never sleeps.
+- Never commit or print `.env` / `.env.test` contents.
+- **Tracker writes: prefix `env -u GITHUB_TOKEN gh …`** — the shared env token is the
+  wrong identity and lacks `project` scope; the keyring account is correct.
+- Coding rules auto-applied from `.claude/rules/` (page-objects, ui-tests,
+  api-patterns, mui-patterns, api-tests).
 
-## Target System
+## Key Paths
 
-- **URL**: https://stage.elitea.ai
-- **Auth**: Keycloak (username/password, NOT Clerk)
-- **Login field**: `input[name="username"]` (NOT `input[name="email"]`)
+- Tests: `automation/tests/{ui,api,unit}/` — grouped by feature
+- Page objects: `automation/pages/` (testid-only `LocatorDescriptor`)
+- Config: `automation/config.py` + `automation/.env.test` (symlink to `../../.env.test`)
+- Markers: `automation/pytest.ini` (p0–p3, smoke, regression, per-feature)
 
-## Application Structure
+## Team & Way of Work
 
-Sidebar navigation:
-- Chat — AI conversations with model selection
-- Agents — Configurable AI assistants
-- Pipelines — Multi-step AI workflows
-- Credentials — Auth management
-- Toolkits — Integrations (Jira, GitHub, etc.)
-- Apps — Published applications
-- MCPs — Model Context Protocol servers
-- Artifacts — File storage & RAG
-- Agents Studio — Agent builder
-- Settings — Configuration
+Seeded config in `.agents/`, imported below so every session and every dispatched
+subagent gets it in full (uncapped — see `.claude/hooks/sdlc-skills/config.sh` for
+why this replaced the hook's inline delivery): system design (`architecture.md`),
+coding standards (`conventions.md`), systems/PR policy/credentials map
+(`profile.md`), per-role locator/testid overrides (`role-overrides.md`), roster
+(`team-comms.md`), TMS intake/back-write policy (`test-automation.yaml`),
+framework detail (`testing.md`), the two-branch dance (`workflow.md`).
 
-## ChatPage Object
+@.agents/architecture.md
+@.agents/conventions.md
+@.agents/profile.md
+@.agents/role-overrides.md
+@.agents/team-comms.md
+@.agents/test-automation.yaml
+@.agents/testing.md
+@.agents/workflow.md
 
-```python
-from pages.chat_page import ChatPage
+## Full Reference
 
-chat = ChatPage(page)
-chat.navigate_to_chat()
-chat.wait_for_page_load()
-chat.send_message("Hello", use_enter=True)
-chat.wait_for_response()  # ~2s WebSocket delay
-count = chat.get_message_count()
-```
-
-## Running Tests
-
-```bash
-# All tests
-HEADLESS=true pytest -v
-
-# Chat tests only
-pytest test_chat_interface.py -v
-
-# Headed (debug)
-HEADLESS=false pytest test_chat_interface.py -v
-
-# API health
-pytest test_api_health.py -v
-```
-
-## Gotchas
-
-1. Keycloak login: `input[name="username"]`, NOT email
-2. WebSocket delay: AI responses take ~2 seconds
-3. Message locators: `main span:has-text("EliteA Yoko")` for message blocks
-4. Model selector: Button text changes with selected model
-
-## Python Environment
-
-- **Shared venv**: `~/Development/venv` (Python 3.12)
-- **Key packages**: pytest==9.0.2, playwright==1.58.0
+See `AGENTS.md` for stack, structure, and team agreements.

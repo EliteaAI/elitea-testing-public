@@ -3,7 +3,10 @@
 Configures Playwright browser, environment loading, API clients, and shared fixtures.
 """
 
+import os
 import sys
+import json
+import uuid
 import base64
 import logging
 from pathlib import Path
@@ -31,6 +34,7 @@ from fixtures.api_fixtures import (
     agent_api,
     artifact_api,
     credential_api,
+    notification_api,
     skill_api,
     toolkit_api,
     pipeline_api,
@@ -40,8 +44,11 @@ from fixtures.data_fixtures import (
     agent_id,
     pipeline_id,
     pipeline_with_llm_id,
+    pipeline_with_llm_code_end_id,
     github_credential,
     github_toolkit,
+    github_relevant_agents,
+    github_relevant_skills,
     artifact_bucket,
     artifact_toolkit,
     invalid_jira_credential,
@@ -50,6 +57,7 @@ from fixtures.data_fixtures import (
     github_toolkit_with_invalid_credential,
     mcp_toolkit_with_tools,
     mcp_pipeline_with_toolkits,
+    notification_unread_id,
 )
 from fixtures.cleanup_fixtures import (
     cleanup_autotest_pipelines_at_end,
@@ -58,6 +66,7 @@ from fixtures.cleanup_fixtures import (
     cleanup_autotest_agents_at_end,
     cleanup_all_conversations_at_end,
 )
+from fixtures.onboarding_fixtures import fresh_user_route
 
 # ---------------------------------------------------------------------------
 # Configuration constants (sourced from settings — backed by .env.test)
@@ -82,6 +91,11 @@ VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Logger
 logger = logging.getLogger("elitea.automation")
+
+# Runtime execution coverage (docs/coveragetrial.md) — inert unless COVERAGE=1.
+# Fragments land in repo-root coverage/.v8/ (CWD-proof); merged by coverage/report.mjs.
+_COVERAGE = os.environ.get("COVERAGE") == "1"
+_V8_DIR = Path(__file__).parent.parent / "coverage" / ".v8"
 
 
 # ---------------------------------------------------------------------------
@@ -218,6 +232,13 @@ def attach_screenshot(page: Page, name: str, description: str = "") -> Path:
 # - agent_id: Fresh agent per test
 # - pipeline_id: Fresh empty pipeline per test
 # - pipeline_with_llm_id: Fresh executable pipeline with LLM node
+# - pipeline_with_llm_code_end_id: Fresh pipeline LLM 1 -> Code 1 -> END (ELITEA-2018)
+
+# ===========================================================================
+# Onboarding fixtures (imported from fixtures/onboarding_fixtures.py)
+# ===========================================================================
+# - fresh_user_route: simulates a never-onboarded user via social/author/
+#   route interception (cov60 foundation — ELITEA-2232)
 
 # ===========================================================================
 # Cleanup fixtures (imported from fixtures/cleanup_fixtures.py)
@@ -328,9 +349,42 @@ def context(browser: Browser, auth_state, request) -> BrowserContext:
 
 @pytest.fixture
 def page(context: BrowserContext) -> Page:
-    """Create a new page for each test."""
+    """Create a new page for each test.
+
+    When COVERAGE=1, records V8 precise coverage over a raw CDP session
+    (Playwright Python has no page.coverage helper) and writes one fragment
+    per test to coverage/.v8/. Each entry gets its script `source` attached
+    via Debugger.getScriptSource — required by monocart to remap back to
+    src/**.jsx through Vite's inline sourcemaps. No-op when COVERAGE unset.
+    """
     pg = context.new_page()
+    cdp = None
+    if _COVERAGE:
+        _V8_DIR.mkdir(parents=True, exist_ok=True)
+        cdp = context.new_cdp_session(pg)
+        cdp.send("Debugger.enable")  # required for Debugger.getScriptSource
+        cdp.send("Profiler.enable")
+        cdp.send("Profiler.startPreciseCoverage", {"callCount": True, "detailed": True})
     yield pg
+    if _COVERAGE and cdp is not None:
+        try:
+            result = cdp.send("Profiler.takePreciseCoverage")["result"]
+            entries = []
+            for entry in result:
+                url = entry.get("url", "")
+                if "/src/" not in url or "node_modules" in url:
+                    continue  # app source only — skips Vite dep bundles/HMR runtime
+                try:
+                    entry["source"] = cdp.send(
+                        "Debugger.getScriptSource", {"scriptId": entry["scriptId"]}
+                    )["scriptSource"]
+                except Exception:
+                    continue  # script discarded (e.g. full reload) — skip entry
+                entries.append(entry)
+            if entries:
+                (_V8_DIR / f"{uuid.uuid4().hex}.json").write_text(json.dumps(entries))
+        except Exception as e:
+            print(f"[coverage] capture skipped: {e}")
     pg.close()
 
 

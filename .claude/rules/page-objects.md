@@ -26,33 +26,37 @@ class DetailPage(FormPage):  # Inherits get_name()
     pass
 ```
 
-## Locator Strategy: testid-only
+## Locator Strategy: testid-only (NO fallback)
 
-**All locators must use `LocatorDescriptor` with data-testid.** Fallback selectors are NOT allowed.
+**All locators must use `LocatorDescriptor` with a testid and strictly NO
+`fallback`.** `fallback` is dead code — `__get__` never calls it when a testid is
+set. If the element has no `data-testid`, add one to EliteaUI via the
+`add-data-testid` skill instead of writing a fallback.
+
+Locators live **only as class-level fields on page objects** — never constructed
+inside method bodies, never in test/spec files.
 
 ```python
 from .locator_descriptor import LocatorDescriptor
 
 class MyPage(BasePage):
-    # ONLY data-testid is allowed
-    save_button = LocatorDescriptor(testid="save-button")
-    refresh_btn = LocatorDescriptor(testid="toolkit-reload-button")
+    element = LocatorDescriptor(
+        testid="unique-testid",        # data-testid — the only locator source
+        description="What this element does"
+    )
 ```
 
-**If element lacks data-testid** → run `add-data-testid` skill to add it in EliteaUI first.
-
-**FORBIDDEN:**
+**Never use direct or fallback locators:**
 ```python
-# ❌ WRONG - fallback/locator selectors not allowed
-button = LocatorDescriptor(locator="#SomeId")
-button = LocatorDescriptor(locator='[aria-label="Delete"]')
-
-# ❌ WRONG - direct locators in __init__
+# ❌ WRONG — direct locator in a method
 def __init__(self, page):
     self.button = page.locator('button')
 
-# ✅ CORRECT - testid only
-button = LocatorDescriptor(testid="save-button")
+# ❌ WRONG — fallback is dead code, forbidden
+button = LocatorDescriptor(testid="save-btn", fallback=lambda page: ...)
+
+# ✅ CORRECT — class field, testid only
+button = LocatorDescriptor(testid="save-btn", description="Save the form")
 ```
 
 ## Architecture Pattern
@@ -120,6 +124,21 @@ CHAT_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
 # Use inside method
 message.locator(self.CHAT_DELETE_SELECTOR)
 ```
+
+**Dynamic (runtime-parameterized) testids — same mechanism, templated:**
+```python
+# ✅ CORRECT — class-level template constant; the pattern stays in the inventory
+SKILL_TAG_OPTION = '[data-testid="skill-tag-option-{}"]'
+
+def select_tag(self, tag_name: str):
+    self.page.locator(self.SKILL_TAG_OPTION.format(tag_name)).click()
+
+# ❌ WRONG — inline f-string get_by_test_id in a method body (invisible to the
+# class-level testid inventory; the #19-rework FAIL-1 shape)
+def select_tag(self, tag_name: str):
+    self.page.get_by_test_id(f"skill-tag-option-{tag_name}").click()
+```
+Naming for dynamic testids: `{section}-{element}-{param}` (parameter last).
 
 **Locators MUST be class-level fields, NEVER inline in methods:**
 ```python

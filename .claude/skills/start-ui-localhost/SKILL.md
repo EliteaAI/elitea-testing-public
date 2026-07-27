@@ -32,8 +32,10 @@ If returns 200 or 30x → server is running, skip to Step 4.
 ### Step 2: Verify EliteaUI Setup
 
 ```bash
-# Check .env exists (use LOCAL_ELITEA_FOLDER env var for portability)
-if [ -f "$LOCAL_ELITEA_FOLDER/EliteaUI/.env" ]; then
+# UI = the EliteaUI sibling clone. Derived from git, so it works from any cwd inside this repo.
+UI="$(cd "$(git rev-parse --show-toplevel)/../EliteaUI" && pwd)"
+# Check .env exists. Paths are relative to this repo (agents run with cwd = elitea-testing-public).
+if [ -f "$UI/.env" ]; then
     echo ".env exists"
 else
     echo "ERROR: .env not found. Copy from .env.example and configure."
@@ -42,14 +44,16 @@ fi
 
 # Always run npm install to ensure dependencies are up-to-date
 # (npm install is fast if nothing changed, handles new deps if package.json updated)
-cd "$LOCAL_ELITEA_FOLDER/EliteaUI" && npm install
+cd "$UI" && npm install
 ```
 
 ### Step 3: Start Dev Server
 
 ```bash
+# UI = the EliteaUI sibling clone. Derived from git, so it works from any cwd inside this repo.
+UI="$(cd "$(git rev-parse --show-toplevel)/../EliteaUI" && pwd)"
 # Start in background
-cd "$LOCAL_ELITEA_FOLDER/EliteaUI" && npm run dev &
+cd "$UI" && npm run dev &
 
 # Wait for server to be ready (max 30 seconds)
 for i in {1..30}; do
@@ -75,8 +79,8 @@ done
 
 ## Prerequisites
 
-1. **EliteaUI repo** at `$LOCAL_ELITEA_FOLDER/EliteaUI/`
-2. **Environment variable** `LOCAL_ELITEA_FOLDER` set to your local Elitea root directory
+1. **EliteaUI repo** at `../EliteaUI/`
+2. **Run from the test repo** — `EliteaUI` is a sibling of it, reached as `../EliteaUI`
 3. **.env file** configured with:
    ```
    VITE_SERVER_URL=/api/v2/

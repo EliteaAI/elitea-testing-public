@@ -474,6 +474,29 @@ class AgentAPI:
         resp = self._session.delete(url)
         _raise_for_status(resp)
 
+    def unpublish_version(self, version_id: int) -> None:
+        """Unpublish a Published version, reverting its status to Draft.
+
+        Added for ELITEA-1892's publish/unpublish cycle test — a
+        Published version has no dedicated delete endpoint (per the AFS,
+        "no delete-version UI/API, only whole-agent delete"), and
+        ``delete_agent()`` itself 400s with "Cannot delete application
+        with published or embedded versions. Unpublish first." while any
+        version on the agent is still Published. Cleanup paths that create
+        Published versions (directly or via a failed mid-test run) must
+        call this before ``delete_agent()`` to avoid leaking an
+        undeletable agent.
+
+        Args:
+            version_id: The numeric id of the PUBLISHED version to revert
+                (not the agent id — matches ``{versionId}`` in the UI's own
+                ``POST .../unpublish/prompt_lib/{project}/{versionId}`` call).
+        """
+        url = f"{self.base_url}/elitea_core/unpublish/prompt_lib/{self.project_id}/{version_id}"
+        logger.debug("UNPUBLISH version %s", url)
+        resp = self._session.post(url)
+        _raise_for_status(resp)
+
     def export_agent(self, agent_id: int, fmt: str = "md") -> bytes:
         """Export an agent as markdown.
 
@@ -787,6 +810,102 @@ class PipelineAPI:
             ],
         }
         logger.debug("CREATE pipeline with custom nodes %s name=%s", url, name)
+        resp = self._session.post(url, json=payload)
+        _raise_for_status(resp)
+        return resp.json()
+
+    def create_pipeline_with_mcp_node(
+        self,
+        name: str,
+        description: str,
+        tools: list[dict],
+        *,
+        toolkit_name: str,
+        tool: str,
+        input_mapping: Optional[dict] = None,
+        node_id: str = "MCP 1",
+    ) -> dict:
+        """Create a pipeline with a single MCP node pre-configured with a Toolkit + Tool.
+
+        Used to seed the precondition for ELITEA-1954 (MCP node Toolkit/Tool
+        switching): a pipeline with an MCP node already configured, and
+        >=2 MCP toolkits attached in the pipeline's TOOLS section — without
+        needing to drive the UI to attach toolkits or configure the node.
+
+        Args:
+            name: Pipeline display name.
+            description: Short description.
+            tools: Full toolkit JSON objects (as returned by
+                ``ToolkitAPI.get_toolkit`` / ``create_remote_mcp_toolkit``)
+                to attach in the pipeline's TOOLS section. The MCP node's
+                Toolkit dropdown lists exactly these (``ToolSelect.jsx``
+                reads ``version_details.tools``) — a bare ``{"id": ...}``
+                reference is rejected by the API (confirmed empirically:
+                400 "Missing 'settings'"), so full objects are required.
+            toolkit_name: The node's initial ``toolkit_name`` YAML field —
+                must match one of ``tools``' cleaned display names (spaces/
+                punctuation stripped; see EliteaUI's ``cleanString`` /
+                ``genToolkitName`` — e.g. toolkit "Remote Github" ->
+                ``toolkit_name: RemoteGithub``).
+            tool: The node's initial ``tool`` YAML field (a tool name from
+                the ``toolkit_name`` toolkit's ``settings.selected_tools``).
+            input_mapping: Optional initial ``input_mapping`` dict for the
+                node (defaults to empty — the initial tool/toolkit pairing
+                only needs to exist for the test's Step 3 "read current
+                values"; it does not need a fully valid mapping since the
+                test immediately switches Toolkit/Tool away from it).
+            node_id: The node's YAML id (also the entry point).
+
+        Returns:
+            Created pipeline JSON (same shape as ``create_pipeline_with_nodes``).
+        """
+        import yaml as _yaml
+
+        node = {
+            "id": node_id,
+            "type": "mcp",
+            "toolkit_name": toolkit_name,
+            "tool": tool,
+            "input": ["input"],
+            "output": ["messages"],
+            "input_mapping": input_mapping or {},
+            "structured_output": False,
+            "transition": "END",
+        }
+        instructions_yaml = _yaml.dump(
+            {"entry_point": node_id, "nodes": [node]},
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+        )
+
+        url = self._applications_url()
+        payload = {
+            "name": name,
+            "description": description,
+            "type": "interface",
+            "versions": [
+                {
+                    "name": "base",
+                    "tags": [],
+                    "instructions": instructions_yaml,
+                    "variables": [],
+                    "tools": tools,
+                    "llm_settings": _default_llm_settings(),
+                    "conversation_starters": [],
+                    "agent_type": "pipeline",
+                    "welcome_message": "",
+                    "pipeline_settings": {
+                        "nodes": [],
+                        "edges": [],
+                        "orientation": "vertical",
+                        "layout_version": "1.0",
+                    },
+                    "meta": {"step_limit": 25},
+                }
+            ],
+        }
+        logger.debug("CREATE pipeline with MCP node %s name=%s", url, name)
         resp = self._session.post(url, json=payload)
         _raise_for_status(resp)
         return resp.json()
@@ -1262,6 +1381,77 @@ class ArtifactAPI:
         _raise_for_status(resp)
         return resp.content
 
+    def upload_file(
+        self,
+        bucket_name: str,
+        file_key: str,
+        content: bytes,
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Upload raw bytes to a bucket via the S3 proxy endpoint.
+
+        Uses the same ``PUT /artifacts/s3/{bucket_name}/{file_key}?project_id=...``
+        endpoint the browser itself calls when uploading through the Artifacts
+        UI (confirmed live via network capture). Seeds precondition files fast,
+        independent of the browser — no ``/api/v2/`` prefix, same direct S3
+        proxy root as :meth:`list_bucket_files`.
+
+        Args:
+            bucket_name: Name of the target bucket (must already exist).
+            file_key: Full relative key/path for the file (e.g. ``"sample.txt"``
+                or ``"output/a.txt"``).
+            content: Raw file bytes to upload.
+            content_type: Optional ``Content-Type`` header value. Omitted when
+                not given (S3 proxy accepts uploads without it).
+
+        Raises:
+            requests.HTTPError: If the upload fails.
+        """
+        elitea_root = self.base_url.split("/api/")[0]
+        url = (
+            f"{elitea_root}/artifacts/s3/{bucket_name}/{file_key}"
+            f"?project_id={self.project_id}"
+        )
+        headers = {"Content-Type": content_type} if content_type else {}
+        logger.debug("PUT upload file %s (%d bytes)", url, len(content))
+        resp = self._session.put(url, data=content, headers=headers)
+        _raise_for_status(resp)
+
+    def get_file_metadata(self, bucket_name: str, file_key: str) -> Optional[dict]:
+        """Fetch a single file's full metadata from the bucket's S3 JSON listing.
+
+        Unlike :meth:`list_bucket_files` (which returns only key strings, and
+        is left unchanged so its existing shape/callers are unaffected), this
+        returns the full per-file dict from the ``contents[]`` array —
+        including ``lastModified``, which has no UI-visible equivalent
+        anywhere in the Artifacts file table (Name / Type / Size / Actions
+        columns only — confirmed via full-table snapshot during ELITEA-1832
+        exploration).
+
+        Args:
+            bucket_name: Name of the bucket.
+            file_key: Full key of the file to look up (e.g. ``"sample.txt"``).
+
+        Returns:
+            Dict with ``key``, ``lastModified``, ``etag``, ``size``,
+            ``storageClass`` keys, or ``None`` if the file is not present in
+            the listing.
+        """
+        elitea_root = self.base_url.split("/api/")[0]
+        url = (
+            f"{elitea_root}/artifacts/s3/{bucket_name}"
+            f"?project_id={self.project_id}&format=json"
+        )
+        logger.debug("GET file metadata %s (key=%s)", url, file_key)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        data = resp.json()
+        contents = data.get("contents", []) if isinstance(data, dict) else []
+        for item in contents:
+            if item.get("key") == file_key:
+                return item
+        return None
+
     def close(self):
         """Close the underlying HTTP session."""
         self._session.close()
@@ -1323,6 +1513,39 @@ class SkillAPI:
         }
         logger.debug("LIST skills %s", url)
         resp = self._session.get(url, params=params)
+        _raise_for_status(resp)
+        return resp.json()
+
+    def create_skill(self, name: str, description: str, instructions: str) -> dict:
+        """Create a new skill and return its JSON representation.
+
+        Mirrors ``AgentAPI.create_agent_full()``'s "raw payload" convenience
+        pattern, scoped to the fields the Skill create endpoint actually
+        needs. Payload shape confirmed source-side against EliteaUI's
+        ``skillsApi.js`` (``skillCreate`` mutation): ``{name, description,
+        versions: [{name: "base", instructions}]}`` — ``"base"`` is
+        ``LATEST_VERSION_NAME`` (``entities/version/lib/constants``). Added
+        for ELITEA-1911 (the AFS's own exploration created its fixture
+        Skills via the live UI form, flagging this convenience method as
+        the missing piece — see the AFS's Automation Hints).
+
+        Args:
+            name: Skill name. The UI form constrains this to lowercase
+                letters, digits, and hyphens, max 32 characters, no leading
+                or trailing hyphen (live-confirmed client-side validation
+                message) — callers should pre-validate names against that
+                format to avoid surprises if the API enforces it too.
+            description: Skill description (required by the API).
+            instructions: The "base" version's instructions text.
+        """
+        url = self._skills_url()
+        payload = {
+            "name": name,
+            "description": description,
+            "versions": [{"name": "base", "instructions": instructions}],
+        }
+        logger.debug("CREATE skill %s name=%s", url, name)
+        resp = self._session.post(url, json=payload)
         _raise_for_status(resp)
         return resp.json()
 
@@ -1657,6 +1880,90 @@ class ToolkitAPI:
         return self.create_toolkit(
             name=name, description=description, toolkit_type="mcp", settings=toolkit_settings
         )
+
+    def close(self):
+        """Close the underlying HTTP session."""
+        self._session.close()
+
+
+class NotificationAPI:
+    """Manage notifications via the Elitea API (GAP-077).
+
+    Uses Keycloak session cookies (from browser auth state) like
+    :class:`ConversationAPI`. This is the same endpoint the quick-panel's
+    hover-toggle and the Notification Center's bulk checkbox toggle both
+    call, and the cleanest deterministic way to seed an unread row without
+    depending on shared, mutable ambient notification data.
+
+    Args:
+        browser_cookies: List of cookie dicts from ``BrowserContext.cookies()``.
+        base_url: API root (defaults to ``ELITEA_API_BASE`` env var).
+        project_id: Project identifier (defaults to ``ELITEA_PROJECT_ID``).
+    """
+
+    def __init__(
+        self,
+        browser_cookies: list[dict],
+        base_url: Optional[str] = None,
+        project_id: Optional[str] = None,
+    ):
+        self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
+        self.project_id = project_id or str(settings.elitea_project_id)
+
+        self._session = _create_retry_session()
+        for c in browser_cookies:
+            self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
+
+        logger.debug("NotificationAPI initialised — base_url=%s", self.base_url)
+
+    def _notifications_url(self) -> str:
+        return f"{self.base_url}/notifications/notifications/prompt_lib/{self.project_id}"
+
+    def list_notifications(
+        self, limit: int = 20, offset: int = 0, sort_by: str = "created_at", sort_order: str = "desc"
+    ) -> dict:
+        """Return ``{"total": int, "rows": [...]}`` for this project.
+
+        Deliberately omits the ``only_new`` query param — confirmed live
+        (GAP-077) that ``only_new=false`` behaves identically to
+        ``only_new=true`` on this backend (both exclude seen notifications);
+        only OMITTING the param entirely returns the full seen+unseen set,
+        which is what a fixture needs to pick any existing row to seed.
+
+        Defaults to newest-first (``created_at``/``desc``) so a fixture
+        picking ``rows[0]`` seeds a row recent enough to fall inside the
+        quick panel's own ``page_size=5`` unseen-first window — an
+        arbitrary/oldest row would not reliably show up there.
+
+        Raises ``requests.HTTPError`` on non-2xx status.
+        """
+        url = self._notifications_url()
+        logger.debug("LIST notifications %s", url)
+        resp = self._session.get(
+            url,
+            params={"limit": limit, "offset": offset, "sort_by": sort_by, "sort_order": sort_order},
+        )
+        _raise_for_status(resp)
+        return resp.json()
+
+    def mark_seen(self, notification_ids: list[int], is_seen: bool) -> None:
+        """Bulk-set ``is_seen`` for *notification_ids* (single id is a 1-item list).
+
+        Same endpoint/body the UI's per-row hover-toggle and the
+        Notification Center's bulk checkbox toggle both use:
+        ``PUT .../prompt_lib/{project_id}`` with
+        ``{"ids": [...], "is_seen": bool}``.
+        """
+        url = self._notifications_url()
+        logger.debug("MARK notifications %s ids=%s is_seen=%s", url, notification_ids, is_seen)
+        resp = self._session.put(
+            url,
+            json={"ids": notification_ids, "is_seen": is_seen},
+            headers={"Content-Type": "application/json"},
+        )
+        _raise_for_status(resp)
 
     def close(self):
         """Close the underlying HTTP session."""

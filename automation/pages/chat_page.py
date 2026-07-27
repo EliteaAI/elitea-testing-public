@@ -7,7 +7,7 @@ message input, participants, and chat settings.
 import logging
 import re
 import time
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor
 from components.mui import Dialog, Popper
@@ -68,11 +68,47 @@ class ChatPage(BasePage):
         description="Sidebar toggle button"
     )
 
+    create_conversation_button = LocatorDescriptor(
+        testid="sidebar-create-button",
+        description=(
+            "+Chat / +Conversation button in the top sidebar nav. Disabled while "
+            "a new blank conversation is open and unsent; re-enables immediately "
+            "on Send. (ELITEA-2090)"
+        ),
+    )
+
     search_conversations_input = LocatorDescriptor(
         testid="conversation-search-input",
         fallback=lambda page: page.locator('input[placeholder="Search conversations..."]'),
         description="Search conversations input field in sidebar"
     )
+
+    # ------------------------------------------------------------------
+    # Project selector (ELITEA-2095)
+    # ------------------------------------------------------------------
+    # The role=combobox trigger showing "Project: {name}" in the sidebar.
+    # Realized as ``project-selector-trigger-combobox`` on the actual
+    # interactive node: SidebarProjectSelect.jsx wires a base
+    # data-testid="project-selector-trigger" onto its shared ProjectSelect ->
+    # SingleSelect component, which auto-suffixes "-combobox" onto the
+    # role=combobox node via SelectDisplayProps (SingleSelect.jsx's existing,
+    # pre-established convention — declared improvisation, see PR description
+    # for ELITEA-2095: no sanctioned shape for a bare, non-suffixed trigger
+    # testid on this shared component).
+    project_selector_trigger = LocatorDescriptor(
+        testid="project-selector-trigger-combobox",
+        description=(
+            "Sidebar project selector combobox trigger. Click opens the "
+            "project dropdown; options resolve via the dynamic "
+            "SELECT_OPTION template (same shared SingleSelectMenuItem family "
+            "as AgentDetailPage.FORK_PROJECT_OPTION)."
+        ),
+    )
+
+    # Project-selector dropdown options — same shared select-option-{value}
+    # family (SingleSelectMenuItem.jsx) as AgentDetailPage.FORK_PROJECT_OPTION
+    # — reuse the pattern, don't invent a new one.
+    SELECT_OPTION = '[data-testid="select-option-{}"]'
 
     # ------------------------------------------------------------------
     # Model selector
@@ -115,6 +151,16 @@ class ChatPage(BasePage):
         ),
     )
 
+    context_budget_messages_count = LocatorDescriptor(
+        testid="context-budget-messages-count",
+        description="Messages counter value inside the Context Budget panel (e.g. '4').",
+    )
+
+    context_budget_summaries_count = LocatorDescriptor(
+        testid="context-budget-summaries-count",
+        description="Summaries counter value inside the Context Budget panel (e.g. '0').",
+    )
+
     edit_context_button = LocatorDescriptor(
         testid="context-settings-button",
         fallback=lambda page: page.get_by_role("button", name="Edit context settings"),
@@ -137,6 +183,93 @@ class ChatPage(BasePage):
         testid="internal-tools-toggle",
         fallback=lambda page: page.locator('button[aria-label="enable internal tools"]'),
         description="DEPRECATED: Internal tools toggle button (moved to plus menu in v2.0.3)"
+    )
+
+    # ------------------------------------------------------------------
+    # "+" menu -> Agents submenu -> "+ Create New Agent" (ELITEA-2166)
+    # ------------------------------------------------------------------
+
+    agents_menuitem = LocatorDescriptor(
+        testid="agents-menuitem",
+        description=(
+            "'Agents' menuitem inside the plus-menu dropdown. HOVER (not "
+            "click) reveals the Agents submenu — PlusChatButton.jsx wires "
+            "submenu reveal via onMouseEnter, same mechanism as "
+            "internal_tools_menuitem above."
+        ),
+    )
+
+    agents_create_new_button = LocatorDescriptor(
+        testid="agents-create-new-button",
+        description=(
+            "'+ Create New Agent' item inside the Agents submenu. "
+            "ELITEA-2166 add-data-testid addition to PlusChatSubmenu.jsx's "
+            "showCreateNew MenuItem, templated ${sectionKey}-create-new-button "
+            "(sectionKey='agents' for this submenu)."
+        ),
+    )
+
+    invite_users_menuitem = LocatorDescriptor(
+        testid="invite-users-menuitem",
+        description=(
+            "'Invite Users' menuitem inside the plus-menu dropdown. Only "
+            "rendered for Team projects (PlusChatButton.jsx's "
+            "!isPrivateProject guard) — absent entirely (not merely "
+            "disabled) for Private projects. ELITEA-2166 add-data-testid "
+            "addition — the item previously carried no testid at all, "
+            "which blocked a testid-only 'is absent for Private projects' "
+            "assertion."
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # "+" menu -> Toolkits submenu -> "+ Create New Toolkit" (ELITEA-2082/2083/2080)
+    # ------------------------------------------------------------------
+
+    toolkits_menuitem = LocatorDescriptor(
+        testid="toolkits-menuitem",
+        description=(
+            "'Toolkits' menuitem inside the plus-menu dropdown. HOVER (not "
+            "click) reveals the Toolkits submenu — same onMouseEnter "
+            "mechanism as agents_menuitem above. Pre-existing on "
+            "automation/testids (PlusChatButton.jsx's EXPANDABLE_ITEMS)."
+        ),
+    )
+
+    toolkits_create_new_button = LocatorDescriptor(
+        testid="toolkits-create-new-button",
+        description=(
+            "'+ Create New Toolkit' item inside the Toolkits submenu. "
+            "Pre-existing on automation/testids — PlusChatSubmenu.jsx's "
+            "showCreateNew MenuItem, templated ${sectionKey}-create-new-button "
+            "(sectionKey='toolkits' for this submenu), same mechanism as "
+            "agents_create_new_button above."
+        ),
+    )
+
+    # Suffix-match template counting every top-level plus-menu item
+    # currently rendered — same convention as CONVERSATION_MENU_ITEM_PREFIX
+    # below. Safe to query page-wide: MUI Poppers in this codebase unmount
+    # their contents while closed, so only whichever menu is actually open
+    # contributes matches.
+    PLUS_MENU_ITEM_SUFFIX = '[data-testid$="-menuitem"]'
+
+    # ------------------------------------------------------------------
+    # Composer version-selector trigger (ELITEA-2166)
+    # ------------------------------------------------------------------
+    # NOT the same element as AgentDetailPage's "agent-version-selector-
+    # trigger" (a different component, ApplicationVersionSelect.jsx,
+    # rendered on the agent detail page's own tab bar) — this is the
+    # composer's OWN version button, rendered by VersionSelector.jsx
+    # (chat/ui/chat-input), which carried no testid until this case.
+    # Declared improvisation (canon gap): see PR description.
+    chat_version_selector_trigger = LocatorDescriptor(
+        testid="chat-version-selector-trigger",
+        description=(
+            "Composer's version-selector button, shown once an agent/"
+            "pipeline participant with versions is active (e.g. text "
+            "'base')."
+        ),
     )
 
     # ------------------------------------------------------------------
@@ -190,7 +323,7 @@ class ChatPage(BasePage):
     # and embedded chat.
 
     messages_list = LocatorDescriptor(
-        testid="chat-messages-list",
+        testid="chat-message-list",
         fallback=lambda page: page.locator('main'),
         description="Main messages list container"
     )
@@ -199,6 +332,16 @@ class ChatPage(BasePage):
         testid="chat-message-item",
         fallback=lambda page: page.locator('main ul.MuiList-root > li.MuiListItem-root'),
         description="Individual message items (user + AI)"
+    )
+
+    # The actual overflow-y:scroll SimpleBar content-wrapper wrapping
+    # chat-message-list (confirmed live: sits 2 DOM levels above the
+    # chat-message-list <ul>). Use to assert genuine scrollability
+    # (scrollHeight > clientHeight) and to drive a real scroll interaction —
+    # a CSS-overflow check alone doesn't prove a user can actually scroll.
+    chat_messages_scroll_container = LocatorDescriptor(
+        testid="chat-messages-scroll-container",
+        description="Scrollable messages region (SimpleBar content-wrapper).",
     )
 
     # ------------------------------------------------------------------
@@ -259,6 +402,31 @@ class ChatPage(BasePage):
         description="'Agents'/'Pipelines'/etc. participants popper container (Popper/Grow Paper)"
     )
 
+    # ------------------------------------------------------------------
+    # Expanded PARTICIPANTS panel (ELITEA-2098 testids; distinct from the
+    # collapsed badge's popper above — Participants.jsx, not
+    # UsersParticipantDropdown/index.jsx). Do not confuse the two: this is
+    # the actual "Participants" side panel with its own collapse/expand
+    # toggle, used by ELITEA-2083 to reach the TOOLKITS section.
+    # ------------------------------------------------------------------
+
+    chat_participants_panel = LocatorDescriptor(
+        testid="chat-participants-panel",
+        description=(
+            "PARTICIPANTS panel container. Carries a data-expanded state "
+            "attribute ('true'/'false') — testid=identity, state=data-* "
+            "per .agents/testing.md § Locator policy."
+        ),
+    )
+
+    chat_participants_panel_toggle_button = LocatorDescriptor(
+        testid="chat-participants-panel-toggle-button",
+        description=(
+            "Collapse/expand IconButton for the PARTICIPANTS panel — one "
+            "stable testid regardless of which chevron icon renders."
+        ),
+    )
+
     # Dynamic per-participant row inside the participants popper —
     # uniqueId = getChatParticipantUniqueId(participant), e.g.
     # "application_4687_399" for an agent participant.
@@ -268,6 +436,194 @@ class ChatPage(BasePage):
     # the row's dynamic testid (multiple simultaneous rows disambiguate
     # through the parent row selector, not this button's own testid).
     PARTICIPANT_REMOVE_BUTTON = '[data-testid="chat-participant-remove-button"]'
+
+    # ------------------------------------------------------------------
+    # Users participant type (ELITEA-2095) — independent of the Agent/
+    # Pipeline/Toolkit/MCP participant work above (different participant
+    # type: "Users", the conversation's own members). The collapsed
+    # "Users in this conversation" badge reuses the EXISTING
+    # PARTICIPANTS_BADGE template (.format("users")) — no new template
+    # needed there; is_participants_badge_visible(section="users") /
+    # open_participants_popover(section="users") already work as-is.
+    # ------------------------------------------------------------------
+
+    participants_users_avatar = LocatorDescriptor(
+        testid="chat-participants-users-avatar",
+        description=(
+            "Avatar in the expanded PARTICIPANTS panel's USERS section, "
+            "showing the participant's initials/name (e.g. 'TB')."
+        ),
+    )
+
+    # Conversation date-group heading container ("today"/"this_week"/
+    # "older") — scopes BOTH the group's header text AND that group's own
+    # conversation items (DateGroup.jsx renders header + Collapse'd items
+    # in one outer element). The reliable way to assert "conversation X is
+    # under Today specifically" — replaces the raw ``:has(h6) > button``
+    # CSS in get_conversation_list_items() (tracked tech debt,
+    # role-overrides.md) for Today-scoping.
+    CONVERSATION_GROUP_HEADER = '[data-testid="chat-conversation-group-header-{}"]'
+
+    # Individual conversation list item — dynamic per conversation id.
+    CONVERSATION_ITEM = '[data-testid="chat-conversation-item-{}"]'
+
+    # Prefix-match selector enumerating every conversation item regardless of
+    # id — same pattern as MENTION_SKILL_ITEM_PREFIX above. Used to find "any
+    # OTHER conversation" to navigate to.
+    CONVERSATION_ITEM_PREFIX = '[data-testid^="chat-conversation-item-"]'
+
+    # ------------------------------------------------------------------
+    # Conversation context menu (three-dot) + delete-confirmation dialog
+    # (ELITEA-2114)
+    # ------------------------------------------------------------------
+
+    # The 3-dot menu button's testid ("conversation-menu-menu-button") is
+    # NOT globally unique — ConversationItem.jsx passes the same static
+    # id="conversation-menu" to every DotMenu instance, so an unscoped
+    # query resolves to N elements once N conversations are on screen
+    # (confirmed live: "strict mode violation ... resolved to 2 elements").
+    # Always resolve it scoped inside a CONVERSATION_ITEM container — see
+    # get_conversation_menu_button().
+    CONVERSATION_MENU_BUTTON = '[data-testid="conversation-menu-menu-button"]'
+
+    # Context-menu item template — {} is one of CONVERSATION_MENU_ITEM_KEYS.
+    # Only the currently-open conversation's own MUI Menu is mounted in the
+    # DOM (menus unmount their content while closed), so — unlike the menu
+    # button above — this does not need per-conversation scoping.
+    CONVERSATION_MENU_ITEM = '[data-testid="chat-conversation-menu-{}-menuitem"]'
+
+    # Prefix-match selector enumerating every menu item currently rendered
+    # (i.e. belonging to whichever conversation's menu is open) — used to
+    # assert the total item count, catching unexpected extra/missing items.
+    CONVERSATION_MENU_ITEM_PREFIX = '[data-testid^="chat-conversation-menu-"][data-testid$="-menuitem"]'
+
+    # The 7 stable menu-item keys wired in ConversationItem.jsx's menuItems
+    # array. "pin" covers both the "Pin on top" and "Unpin" labels — one
+    # stable testid, state carried by the label text (not a second testid),
+    # per the testid=identity/state=data-* ruling.
+    CONVERSATION_MENU_ITEM_KEYS = (
+        "rename", "move-to", "playback", "make-public", "share", "pin", "delete",
+    )
+
+    # Delete-confirmation dialog (DeleteEntityModal.jsx, rendered via the
+    # shared BaseModal.jsx). Same testids as artifacts_page.py /
+    # mcp_form_page.py's own delete_confirm_* fields — this is a shared
+    # component reused across pages, each page object declares its own
+    # LocatorDescriptor for it (existing repo precedent).
+    delete_confirm_dialog = LocatorDescriptor(
+        testid="delete-confirm-dialog",
+        description="Delete-confirmation modal container (shared DeleteEntityModal).",
+    )
+
+    delete_confirm_title = LocatorDescriptor(
+        testid="delete-confirm-title",
+        description=(
+            "Delete-confirmation modal title (BaseModal.jsx DialogTitle "
+            "wrapper, ELITEA-2114). A fresh, correct handle — does NOT "
+            "depend on the broken id=\"alert-dialog-title\" wiring (BUG #694)."
+        ),
+    )
+
+    delete_confirm_message = LocatorDescriptor(
+        testid="delete-confirm-message",
+        description="Delete-confirmation modal body text.",
+    )
+
+    delete_confirm_cancel_button = LocatorDescriptor(
+        testid="delete-confirm-cancel-button",
+        description="Cancel button inside the delete-confirmation modal (ELITEA-2114).",
+    )
+
+    delete_confirm_button = LocatorDescriptor(
+        testid="delete-confirm-button",
+        description="Delete (confirm) button inside the delete-confirmation modal.",
+    )
+
+    # ------------------------------------------------------------------
+    # Chat folders — creation via CHATS header icon (ELITEA-2132)
+    # ------------------------------------------------------------------
+    # All handles below carry testids added directly to EliteaUI during the
+    # analyst pass for this case (commit 6fceb3e2 on automation/testids) —
+    # the whole "Folders" feature area had zero data-testid coverage before
+    # this. Reuses CONVERSATION_MENU_BUTTON (the shared, non-unique DotMenu
+    # button testid, scoped inside FOLDER_ITEM) for the folder dot-menu —
+    # FolderAccordion.jsx wires the same DotMenu id="conversation-menu" as
+    # ConversationItem.jsx.
+
+    conversations_panel_heading = LocatorDescriptor(
+        testid="chat-conversations-heading",
+        description=(
+            "'Chats' heading in the CHATS panel header (Conversations.jsx). "
+            "ADDED this implementation — used as step-1 proof the CHATS "
+            "panel itself is displayed."
+        ),
+    )
+
+    create_folder_button = LocatorDescriptor(
+        testid="chat-create-folder-button",
+        description=(
+            "CHATS panel header 'Create folder' icon, positioned immediately "
+            "before the search button. Conversations.jsx renders this in two "
+            "mutually-exclusive branches (expanded/collapsed sidebar) with "
+            "the same testid — only one branch is ever mounted at a time."
+        ),
+    )
+
+    search_conversations_button = LocatorDescriptor(
+        testid="conversation-search-button",
+        description=(
+            "Search-conversations icon button (ConversationSearchButton.jsx) "
+            "— pre-existing testid (not added this implementation), used as "
+            "the positional anchor for the folder-creation icon's step-2 "
+            "'immediately before the search icon' check. Distinct from "
+            "search_conversations_input, which is the search text field."
+        ),
+    )
+
+    folder_name_input = LocatorDescriptor(
+        testid="chat-folder-name-input",
+        description=(
+            "Inline folder-name editor input (FolderItem.jsx) — shared "
+            "between the create-new-folder and rename-existing-folder "
+            "flows. Only one folder can be in edit mode at a time, so no "
+            "scoping is needed."
+        ),
+    )
+
+    folder_name_confirm_button = LocatorDescriptor(
+        testid="chat-folder-name-confirm-button",
+        description="Checkmark (confirm) icon next to the folder-name editor input.",
+    )
+
+    folder_name_cancel_button = LocatorDescriptor(
+        testid="chat-folder-name-cancel-button",
+        description="X (cancel) icon next to the folder-name editor input.",
+    )
+
+    # Folder item row (whole accordion) — dynamic per folder id. Carries
+    # data-expanded="true"/"false" on the SAME element (testid = stable
+    # identity, state via data-* attribute — PR #581 ruling), scoping BOTH
+    # the header (icon/name/expand-arrow/dot-menu) AND the body (empty
+    # state / conversation list) as descendants.
+    FOLDER_ITEM = '[data-testid="chat-folder-item-{}"]'
+
+    # Scoped sub-selectors — non-unique across simultaneously-rendered
+    # folders, ALWAYS resolved via .locator() on a FOLDER_ITEM-scoped
+    # element, never at page level.
+    FOLDER_ICON = '[data-testid="chat-folder-icon"]'
+    FOLDER_EXPAND_ICON = '[data-testid="chat-folder-expand-icon"]'
+    FOLDER_EMPTY_STATE = '[data-testid="chat-folder-empty-state"]'
+
+    # Folder dot-menu "Delete" item — ADDED this implementation
+    # (FolderItem.jsx's menuItems had no `key`, so DotMenu/BasicMenuItem
+    # never emitted a data-testid for them; ConversationItem.jsx's sibling
+    # items already follow this exact key -> "{key}-menuitem" convention —
+    # mirrored here as a one-line addition, EliteaUI
+    # src/[fsd]/features/chat/conversation-list/ui/folders/FolderItem.jsx).
+    # Only "delete" was keyed — Rename/Pin are untouched by this case's own
+    # test, per the team's testid-scope ruling (testids go only on elements
+    # a test actually touches).
+    FOLDER_MENU_DELETE_ITEM = '[data-testid="chat-folder-menu-delete-menuitem"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -320,7 +676,7 @@ class ChatPage(BasePage):
 
         self.wait_for_page_load()
         logger.info(f"Navigated to chat, page loaded (actual URL: {self.page.url})")
-        
+
     def wait_for_page_load(self, timeout: int = 30000):
         """Wait for chat page to fully load.
 
@@ -372,6 +728,45 @@ class ChatPage(BasePage):
                 _time.sleep(0.2)
             logger.info("Chat page loaded after spinner wait")
         
+    @action("Switch project")
+    def switch_project(self, project_id: str, timeout: int = 10000):
+        """Switch the active project via the sidebar project selector.
+
+        Opens the ``project_selector_trigger`` combobox and clicks the
+        option matching *project_id*, resolved via the dynamic
+        ``SELECT_OPTION`` template — the same shared SingleSelectMenuItem
+        pattern already precedented in ``agent_detail_page.py``'s
+        ``select_fork_target_project()`` / ``FORK_PROJECT_OPTION`` (different
+        UI surface, same underlying DOM component).
+
+        Args:
+            project_id: Numeric id of the target project (string or
+                int-like).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Switching active project to id=%s", project_id)
+        self.project_selector_trigger.click()
+        option = self.page.locator(self.SELECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Switched to project id=%s", project_id)
+
+    def get_selected_project_text(self) -> str:
+        """Return the visible text of the sidebar project selector trigger.
+
+        Reads ``project_selector_trigger``'s own text (e.g. "Project:
+        Elitea Testing Team") — a testid-only handle. There is no separate
+        testid'd element exposing the raw numeric project id in the
+        sidebar (only the combobox's display text), so callers verifying a
+        project switch assert against the project NAME here and, where a
+        numeric id must be confirmed, cross-check via the API (e.g.
+        ``ConversationAPI.get_conversation()``'s ``project_id`` field)
+        rather than reaching for a raw, non-testid DOM handle.
+        """
+        text = self.project_selector_trigger.text_content() or ""
+        return text.strip()
+
     @action("Send message")
     def send_message(self, text: str, use_enter: bool = False):
         """Send a message in the chat.
@@ -428,13 +823,45 @@ class ChatPage(BasePage):
         
     def get_message_count(self) -> int:
         """Get the count of messages in the chat history.
-        
+
         Returns:
             Number of messages displayed
         """
         count = self.messages_container.count()
         logger.info(f"Message count: {count}")
         return count
+
+    def get_messages_scroll_metrics(self) -> dict:
+        """Return scrollHeight/clientHeight/scrollTop for the messages scroll container."""
+        return self.chat_messages_scroll_container.evaluate(
+            "el => ({scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, "
+            "scrollTop: el.scrollTop})"
+        )
+
+    def is_messages_scrollable(self) -> bool:
+        """Return True if the messages region genuinely overflows (scrollHeight > clientHeight)."""
+        metrics = self.get_messages_scroll_metrics()
+        return metrics["scrollHeight"] > metrics["clientHeight"]
+
+    def scroll_messages_container(self, delta_y: int = 200) -> tuple[int, int]:
+        """Perform a real scroll on the messages container; return (scrollTop_before, scrollTop_after).
+
+        A CSS ``overflow-y: scroll`` container with content that happens to
+        fit exactly would pass a height-only check without ever proving the
+        user can actually scroll — this drives an actual wheel interaction
+        and reads ``scrollTop`` before/after so the caller can assert it
+        changed.
+
+        Args:
+            delta_y: Vertical scroll delta in pixels (positive = scroll down).
+        """
+        before = self.chat_messages_scroll_container.evaluate("el => el.scrollTop")
+        self.chat_messages_scroll_container.hover()
+        self.page.mouse.wheel(0, delta_y)
+        self.page.wait_for_timeout(300)
+        after = self.chat_messages_scroll_container.evaluate("el => el.scrollTop")
+        logger.info("Scrolled messages container: scrollTop %s -> %s", before, after)
+        return before, after
         
     @staticmethod
     def _extract_message_body(message_locator) -> str:
@@ -1106,6 +1533,62 @@ class ChatPage(BasePage):
         agents_btn.click()
 
     # ------------------------------------------------------------------
+    # "+ Create New Agent" canvas entry point (ELITEA-2166)
+    # ------------------------------------------------------------------
+
+    def get_open_plus_menu_item_count(self) -> int:
+        """Return how many top-level plus-menu items are currently rendered.
+
+        Scoped by the shared ``-menuitem`` testid suffix (``PLUS_MENU_ITEM_SUFFIX``);
+        safe page-wide since MUI Poppers in this codebase unmount their
+        contents while closed — same precedent as
+        ``get_open_conversation_menu_item_count()`` below.
+        """
+        return self.page.locator(self.PLUS_MENU_ITEM_SUFFIX).count()
+
+    @action("Open Create New Agent canvas")
+    def open_create_new_agent_canvas(self, timeout: int = 10000):
+        """Open the in-chat 'Create New Agent' canvas.
+
+        Flow: click plus_menu_button -> HOVER agents_menuitem (reveals the
+        Agents submenu via onMouseEnter, not onClick — same mechanism as
+        ``open_internal_tools_menu()``'s Internal Tools hover) -> click
+        agents_create_new_button.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Create New Agent canvas via plus menu")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.agents_menuitem.wait_for(state="visible", timeout=timeout)
+        self.agents_menuitem.hover()
+        self.agents_create_new_button.wait_for(state="visible", timeout=timeout)
+        self.agents_create_new_button.click()
+        logger.info("Create New Agent canvas opened")
+
+    @action("Open Create New Toolkit canvas")
+    def open_create_new_toolkit_canvas(self, timeout: int = 10000):
+        """Open the in-chat 'Create New Toolkit' canvas (ELITEA-2082/2083/2080).
+
+        Flow: click plus_menu_button -> HOVER toolkits_menuitem (reveals the
+        Toolkits submenu via onMouseEnter, same mechanism as
+        ``open_create_new_agent_canvas()``'s Agents hover) -> click
+        toolkits_create_new_button.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Create New Toolkit canvas via plus menu")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.toolkits_menuitem.wait_for(state="visible", timeout=timeout)
+        self.toolkits_menuitem.hover()
+        self.toolkits_create_new_button.wait_for(state="visible", timeout=timeout)
+        self.toolkits_create_new_button.click()
+        logger.info("Create New Toolkit canvas opened")
+
+    # ------------------------------------------------------------------
     # Conversation management helpers
     # ------------------------------------------------------------------
 
@@ -1181,6 +1664,133 @@ class ChatPage(BasePage):
         deeper or have aria-label attributes).
         """
         return self.page.locator(':has(h6) > button')
+
+    def is_conversation_group_visible(self, group: str = "today", timeout: int = 5000) -> bool:
+        """Return True if the date-group container for *group* is visible.
+
+        LOCATOR: ``CONVERSATION_GROUP_HEADER`` (``chat-conversation-group-
+        header-{group}``, added ELITEA-2095) — a stable testid replacing a
+        raw ``<h6>``-text lookup. The container renders whenever the group
+        has at least one conversation and is expanded by default
+        (``DEFAULT_EXPANDED_GROUP`` in EliteaUI); it is NOT scoped to the
+        collapsed/expanded animation state itself — callers wanting to
+        assert "expanded" do so via ``is_conversation_in_group()`` finding a
+        real item underneath, per the project's state-via-data-attribute
+        policy (there is no separate collapsed/expanded testid).
+
+        Args:
+            group: Date-group key — "today" (default), "this_week", or
+                "older".
+            timeout: Maximum wait time in milliseconds.
+        """
+        container = self.page.locator(self.CONVERSATION_GROUP_HEADER.format(group))
+        try:
+            container.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_conversation_group_header(self, group: str = "today"):
+        """Return the Locator for a date-group heading container.
+
+        Same handle as ``is_conversation_group_visible`` (``CONVERSATION_
+        GROUP_HEADER``), but returns the raw Locator instead of a bool —
+        needed by callers that compare its ``bounding_box()`` against
+        another element (e.g. ELITEA-2132's "new folder entry renders
+        ABOVE the 'Today' heading" positional check), not just whether it
+        exists.
+
+        Args:
+            group: Date-group key — "today" (default), "this_week", or
+                "older".
+        """
+        return self.page.locator(self.CONVERSATION_GROUP_HEADER.format(group))
+
+    def is_conversation_in_group(
+        self, conversation_id: str | int, group: str = "today", timeout: int = 5000,
+    ) -> bool:
+        """Return True if *conversation_id* renders inside date-group *group* specifically.
+
+        Scopes the dynamic ``CONVERSATION_ITEM`` testid WITHIN the dynamic
+        ``CONVERSATION_GROUP_HEADER`` container (DateGroup.jsx renders the
+        header row and its own Collapse'd conversation items in one outer
+        element) — this is what actually proves "conversation X is under
+        Today", not merely that both render somewhere on the page. Replaces
+        the raw ``:has(h6) > button`` CSS in ``get_conversation_list_items()``
+        (tracked tech debt, role-overrides.md) for Today-scoping.
+
+        Args:
+            conversation_id: Numeric conversation id.
+            group: Date-group key — "today" (default), "this_week", or
+                "older".
+            timeout: Maximum wait time in milliseconds.
+        """
+        group_container = self.page.locator(self.CONVERSATION_GROUP_HEADER.format(group))
+        item = group_container.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        try:
+            item.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @action("Select conversation in date-group")
+    def click_conversation_in_group(
+        self, conversation_id: str | int, group: str = "today", timeout: int = 5000,
+    ):
+        """Click the conversation item scoped within date-group *group*.
+
+        Args:
+            conversation_id: Numeric conversation id.
+            group: Date-group key — "today" (default), "this_week", or
+                "older".
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking conversation %s in group %r", conversation_id, group)
+        group_container = self.page.locator(self.CONVERSATION_GROUP_HEADER.format(group))
+        item = group_container.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        item.wait_for(state="visible", timeout=timeout)
+        item.click(force=True)
+        self.wait_for_network(timeout=timeout)
+
+    @action("Select any other conversation")
+    def click_first_other_conversation(self, exclude_id: str | int, timeout: int = 5000):
+        """Click the first sidebar conversation item OTHER than *exclude_id*.
+
+        Used to force a genuine navigation away from the currently-open
+        conversation: the bare "/chat" route auto-redirects back to the
+        last-viewed conversation (SPA "resume" behavior), so navigating to
+        it does not reliably leave a specific conversation — clicking a
+        DIFFERENT real conversation does (ELITEA-2095 case step 2).
+
+        Args:
+            exclude_id: Conversation id to skip.
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            AssertionError: If no other conversation item is found.
+        """
+        items = self.page.locator(self.CONVERSATION_ITEM_PREFIX)
+        items.first.wait_for(state="visible", timeout=timeout)
+        exclude_testid = f"chat-conversation-item-{exclude_id}"
+        for i in range(items.count()):
+            item = items.nth(i)
+            target_testid = item.get_attribute("data-testid")
+            if target_testid != exclude_testid:
+                logger.info("Clicking other conversation: %s", target_testid)
+                item.click(force=True)
+                # A deterministic wait on the URL, not wait_for_network(): the
+                # resulting client-side route change may involve no new
+                # network request (conversation data already cached), so
+                # networkidle can report "settled" before the SPA's router
+                # has actually pushed the new URL — confirmed live, this was
+                # a real flake source (ELITEA-2095).
+                target_id = target_testid.removeprefix("chat-conversation-item-")
+                self.wait_for_conversation_url(target_id, timeout=timeout)
+                return
+        raise AssertionError(
+            f"No other conversation item found besides {exclude_testid!r} "
+            "to navigate away to"
+        )
 
     def get_conversation_names(self, timeout: int = 5000) -> list[str]:
         """Return the names of all conversations visible in the sidebar list.
@@ -1592,6 +2202,121 @@ class ChatPage(BasePage):
         """
         logger.info("Clicking Delete menu item")
         self.page.locator('[role="menuitem"]:has-text("Delete")').click()
+
+    # ------------------------------------------------------------------
+    # Conversation context menu by id + delete-confirmation (ELITEA-2114)
+    # ------------------------------------------------------------------
+    # Distinct from open_conversation_menu()/click_delete_menu_item() above
+    # (name-based targeting, raw #conversation-menu-action id + role-text
+    # selectors — tracked tech debt, ELITEA-2114 Concrete Handles). These
+    # target by conversation id and use the real per-item testids.
+
+    def hover_conversation_item(self, conversation_id: str | int, timeout: int = 5000):
+        """Hover *conversation_id*'s sidebar item to reveal its 3-dot menu button.
+
+        The button is present in the DOM at all times but CSS
+        ``display:none`` until hover (ConversationItem.jsx's ``menuWrapper``
+        style) — this only hovers; it does not click.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        item.wait_for(state="visible", timeout=timeout)
+        item.hover()
+
+    def get_conversation_menu_button(self, conversation_id: str | int):
+        """Return the item-scoped 3-dot menu button Locator for *conversation_id*.
+
+        Returns a Locator (not a bool) so the caller can assert visibility
+        transitions with ``expect()`` — same precedent as
+        ``get_conversation_list_items()``.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        return item.locator(self.CONVERSATION_MENU_BUTTON)
+
+    @action("Open conversation context menu")
+    def open_conversation_context_menu(self, conversation_id: str | int, timeout: int = 5000):
+        """Hover *conversation_id*'s sidebar item and click its scoped 3-dot menu button."""
+        logger.info("Opening context menu for conversation %s", conversation_id)
+        self.hover_conversation_item(conversation_id, timeout=timeout)
+        menu_button = self.get_conversation_menu_button(conversation_id)
+        menu_button.wait_for(state="visible", timeout=timeout)
+        menu_button.click(force=True)
+
+    def get_conversation_menu_item(self, item_key: str):
+        """Return the Locator for a context-menu item by its stable key.
+
+        *item_key* must be one of ``CONVERSATION_MENU_ITEM_KEYS``. Assumes
+        the conversation's context menu is already open (see
+        ``open_conversation_context_menu()``).
+        """
+        return self.page.locator(self.CONVERSATION_MENU_ITEM.format(item_key))
+
+    def get_open_conversation_menu_item_count(self) -> int:
+        """Return how many context-menu items are currently rendered.
+
+        Scoped to whichever conversation's menu is open (menus unmount
+        their items while closed, so this can't pick up a stale menu).
+        """
+        return self.page.locator(self.CONVERSATION_MENU_ITEM_PREFIX).count()
+
+    @action("Click conversation context-menu item")
+    def click_conversation_menu_item(self, item_key: str, timeout: int = 5000):
+        """Click a context-menu item (e.g. ``"delete"``) by its stable key.
+
+        See ``CONVERSATION_MENU_ITEM_KEYS``. Distinct from the pre-existing
+        ``click_delete_menu_item()`` (raw ``:has-text("Delete")`` pattern,
+        tracked tech debt) — this resolves the real per-item testid.
+        """
+        logger.info("Clicking conversation menu item: %s", item_key)
+        item = self.get_conversation_menu_item(item_key)
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+
+    def is_conversation_active(self, conversation_id: str | int, timeout: int = 5000) -> bool:
+        """Return True if *conversation_id*'s sidebar item carries ``data-active="true"``.
+
+        Mirrors the project's state-via-data-attribute pattern
+        (``data-expanded`` et al.) — a stable replacement for a CSS-class
+        or URL-only proxy for "this row is the highlighted/active
+        conversation" (ELITEA-2114).
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        item.wait_for(state="visible", timeout=timeout)
+        return item.get_attribute("data-active") == "true"
+
+    def wait_for_conversation_url_change(self, exclude_id: str | int, timeout: int = 10000):
+        """Wait until the URL points at ``/chat/{some_id}`` where ``some_id != exclude_id``.
+
+        Used after the ACTIVE conversation is deleted and the app
+        auto-selects a replacement: the replacement's id isn't
+        deterministic when other conversations exist in the project
+        (ELITEA-2114 Automation Hints), so this asserts "moved to SOME
+        other conversation" rather than a specific id.
+        """
+        exclude_str = str(exclude_id)
+        logger.info("Waiting for URL to move away from conversation %s", exclude_str)
+        self.page.wait_for_url(
+            lambda url: bool(re.search(r"/chat/(\d+)", url)) and f"/chat/{exclude_str}" not in url,
+            timeout=timeout,
+        )
+
+    @action("Confirm delete conversation")
+    def confirm_delete_conversation(self, conversation_id: str | int, timeout: int = 10000):
+        """Click the delete-confirm button and return the DELETE response.
+
+        Waits for the network response so callers can assert its status
+        code (e.g. 204) — proves the deletion is real, not just a
+        client-side list splice (ELITEA-2114 Axis 2 addition).
+        """
+        with self.page.expect_response(
+            lambda r: (
+                r.request.method == "DELETE"
+                and "/conversation/prompt_lib/" in r.url
+                and str(conversation_id) in r.url
+            ),
+            timeout=timeout,
+        ) as resp_info:
+            self.delete_confirm_button.click()
+        return resp_info.value
 
     # ------------------------------------------------------------------
     # Internal Tools / Image Creation
@@ -2043,6 +2768,345 @@ class ChatPage(BasePage):
                 f"Cannot parse max tokens from Context Budget text: {text!r}"
             ) from exc
 
+    def get_context_budget_messages_count(self) -> str:
+        """Return the Messages counter text from the Context Budget panel (e.g. "4").
+
+        Uses the dedicated ``context-budget-messages-count`` testid rather
+        than regex-parsing the whole panel's ``textContent``.
+
+        This is a one-shot read — the counter updates asynchronously shortly
+        after the panel becomes visible, so call
+        ``wait_for_context_budget_messages_count()`` first when a specific
+        value is expected (mirrors the ``wait_for_message_count()`` +
+        ``get_message_count()`` pattern used elsewhere in this class).
+        """
+        text = self.context_budget_messages_count.first.text_content() or ""
+        return text.strip()
+
+    def wait_for_context_budget_messages_count(self, expected: str, timeout: int = 10000) -> None:
+        """Wait until the Context Budget Messages counter reads *expected*.
+
+        The counter updates asynchronously shortly after the Context Budget
+        panel/heading becomes visible — a one-shot read immediately after
+        ``wait_for_context_budget_panel()`` can observe a stale value (e.g.
+        "0") before the real count renders (confirmed live: PR #693 review
+        round 2 reproduced a failure reading '0' where the failure
+        screenshot, captured moments later, already showed the correct
+        value rendered). Call this before ``get_context_budget_messages_count()``
+        whenever a specific value is expected.
+
+        Args:
+            expected: Expected counter text (e.g. "4").
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            TimeoutError: If the counter does not reach *expected* within *timeout*.
+        """
+        logger.info("Waiting for Context Budget Messages counter to read %r", expected)
+        target = self.context_budget_messages_count.filter(
+            has_text=re.compile(rf"^\s*{re.escape(expected)}\s*$")
+        )
+        target.first.wait_for(state="visible", timeout=timeout)
+        logger.info("Context Budget Messages counter reached %r", expected)
+
+    def get_context_budget_summaries_count(self) -> str:
+        """Return the Summaries counter text from the Context Budget panel (e.g. "0").
+
+        Uses the dedicated ``context-budget-summaries-count`` testid rather
+        than regex-parsing the whole panel's ``textContent``.
+
+        This is a one-shot read — see
+        ``get_context_budget_messages_count()`` docstring for why
+        ``wait_for_context_budget_summaries_count()`` should be called first
+        when a specific value is expected.
+        """
+        text = self.context_budget_summaries_count.first.text_content() or ""
+        return text.strip()
+
+    def wait_for_context_budget_summaries_count(self, expected: str, timeout: int = 10000) -> None:
+        """Wait until the Context Budget Summaries counter reads *expected*.
+
+        See ``wait_for_context_budget_messages_count()`` for why this poll
+        is needed — the same async-update race applies to the Summaries
+        counter.
+
+        Args:
+            expected: Expected counter text (e.g. "0").
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            TimeoutError: If the counter does not reach *expected* within *timeout*.
+        """
+        logger.info("Waiting for Context Budget Summaries counter to read %r", expected)
+        target = self.context_budget_summaries_count.filter(
+            has_text=re.compile(rf"^\s*{re.escape(expected)}\s*$")
+        )
+        target.first.wait_for(state="visible", timeout=timeout)
+        logger.info("Context Budget Summaries counter reached %r", expected)
+
+    # ------------------------------------------------------------------
+    # "Add users" modal (ELITEA-2167) — search/select/chip/Add/Cancel/Close
+    # picker reached via the plus menu -> "Invite Users" (Team projects
+    # only). Distinct from ``open_add_teammate_dialog()`` immediately below,
+    # which only detects that SOME picker/dialog opened (raw role-based
+    # handles, pre-existing tech debt) — these methods drive the actual
+    # picker via the testid-compliant handles added for this case
+    # (AddNewUserModal.jsx / AutoCompleteDropDown.jsx / UserSearchSelect.jsx
+    # on ``automation/testids``).
+    # ------------------------------------------------------------------
+
+    add_users_dialog = LocatorDescriptor(
+        testid="add-users-dialog",
+        description="'Add users' modal container (AddNewUserModal.jsx via the shared BaseModal).",
+    )
+
+    add_users_close_button = LocatorDescriptor(
+        testid="add-users-close-button",
+        description="X (Close) button in the 'Add users' modal header.",
+    )
+
+    add_users_search_input = LocatorDescriptor(
+        testid="add-users-search-input",
+        description="'Search users...' combobox inside the 'Add users' modal.",
+    )
+
+    add_users_cancel_button = LocatorDescriptor(
+        testid="add-users-cancel-button",
+        description="Cancel button in the 'Add users' modal — discards the pending selection.",
+    )
+
+    add_users_confirm_button = LocatorDescriptor(
+        testid="add-users-confirm-button",
+        description=(
+            "Add (confirm) button in the 'Add users' modal — disabled "
+            "until at least one user is selected."
+        ),
+    )
+
+    # Dynamic per-user option row / selected chip — the user id isn't known
+    # ahead of a search, so these are PREFIX-match templates (same
+    # convention as CONVERSATION_ITEM_PREFIX / MENTION_SKILL_ITEM_PREFIX
+    # above), disambiguated by name via ``.filter(has_text=...)`` — the same
+    # idiom already used by ``wait_for_context_budget_summaries_count()``.
+    ADD_USERS_OPTION_PREFIX = '[data-testid^="add-users-option-"]'
+    ADD_USERS_CHIP_PREFIX = '[data-testid^="add-users-chip-"]'
+
+    @action("Open Add users modal")
+    def open_add_users_modal(self, timeout: int = 10000):
+        """Open the 'Add users' modal via the plus menu -> 'Invite Users'.
+
+        Only available in Team projects — ``invite_users_menuitem`` is
+        absent entirely (not merely disabled) for Private projects.
+        """
+        logger.info("Opening 'Add users' modal via plus menu -> Invite Users")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.invite_users_menuitem.wait_for(state="visible", timeout=timeout)
+        self.invite_users_menuitem.click()
+        self.add_users_dialog.wait_for(state="visible", timeout=timeout)
+
+    @action("Search and select a user in the Add users modal")
+    def search_and_select_add_user(self, query: str, name: str, timeout: int = 10000):
+        """Type *query* into the search field and select the option matching *name*.
+
+        Selection filters the already-fetched user list client-side (no
+        network call — see AFS § Network Behavior), so the only real wait
+        is React re-rendering the option list, not a server round trip —
+        waited for via the option's own visibility, never a fixed sleep.
+
+        Resolves the specific option via ``ADD_USERS_OPTION_PREFIX`` (the
+        option's own testid is keyed by user id, which is unknown ahead of
+        a search) filtered by *name* — the same testid-anchored-locator +
+        ``.filter(has_text=...)`` idiom used elsewhere in this class
+        (``wait_for_context_budget_summaries_count``), not a raw text
+        selector standing alone.
+
+        Args:
+            query: Search substring (e.g. "sa").
+            name: Exact visible name of the option to select (e.g.
+                "Hrach Sargsyan") — case's own examples are not always the
+                alphabetically-first match, so position alone can't be
+                relied on.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Searching Add users modal for %r, selecting %r", query, name)
+        self.add_users_search_input.click()
+        self.add_users_search_input.press_sequentially(query, delay=50)
+        option = self.page.locator(self.ADD_USERS_OPTION_PREFIX).filter(has_text=name)
+        option.first.wait_for(state="visible", timeout=timeout)
+        option.first.click()
+
+    def get_add_users_chip_names(self) -> list[str]:
+        """Return the visible names on every currently selected chip in the
+        (still-open) 'Add users' modal."""
+        chips = self.page.locator(self.ADD_USERS_CHIP_PREFIX)
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
+    def is_add_users_option_present(self, name: str, timeout: int = 3000) -> bool:
+        """Return True if an option matching *name* is currently rendered in
+        the (already-searched, still-open) 'Add users' results dropdown.
+
+        Used to confirm ``excludedUserIds`` correctly drops already-added
+        participants from subsequent searches (AFS Axis 2 addition, step 7)
+        — a short default timeout since this is an absence-capable check,
+        not a "wait for it to eventually appear" one.
+        """
+        option = self.page.locator(self.ADD_USERS_OPTION_PREFIX).filter(has_text=name)
+        try:
+            option.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def is_add_users_confirm_enabled(self) -> bool:
+        """Return True if the 'Add users' modal's Add button is enabled."""
+        return self.add_users_confirm_button.is_enabled()
+
+    def dismiss_add_users_dropdown(self):
+        """Close the still-open MUI Autocomplete results popper WITHOUT
+        closing the 'Add users' dialog itself (native Escape).
+
+        MUST be called before clicking Cancel/Add/Close after a selection —
+        the popper genuinely covers those buttons and intercepts pointer
+        events otherwise (confirmed live, AFS § Automation Hints). Do not
+        reach for ``force=True`` — the popper's z-order makes a forced
+        click land on an unpredictable element.
+        """
+        self.page.keyboard.press("Escape")
+
+    @action("Confirm Add users selection")
+    def click_add_users_confirm(self, timeout: int = 5000):
+        """Dismiss any open results dropdown, then click Add."""
+        self.dismiss_add_users_dropdown()
+        self.add_users_confirm_button.wait_for(state="visible", timeout=timeout)
+        self.add_users_confirm_button.click()
+
+    @action("Cancel Add users modal")
+    def click_add_users_cancel(self, timeout: int = 5000):
+        """Dismiss any open results dropdown, then click Cancel (discards selection)."""
+        self.dismiss_add_users_dropdown()
+        self.add_users_cancel_button.wait_for(state="visible", timeout=timeout)
+        self.add_users_cancel_button.click()
+
+    @action("Close Add users modal via X")
+    def click_add_users_close(self, timeout: int = 5000):
+        """Dismiss any open results dropdown, then click the X (Close) button (discards selection)."""
+        self.dismiss_add_users_dropdown()
+        self.add_users_close_button.wait_for(state="visible", timeout=timeout)
+        self.add_users_close_button.click()
+
+    # Selector-string form of PARTICIPANTS_BADGE/PARTICIPANTS_BADGE_BUTTON,
+    # for use inside in-page JS (``document.querySelector``) — the count
+    # itself is CSS generated content (see the two methods below), which
+    # only ``window.getComputedStyle`` can read, so this pairing has to
+    # cross into ``page.evaluate``/``page.wait_for_function`` rather than
+    # a plain Locator call.
+    _PARTICIPANTS_BADGE_BUTTON_SELECTOR = (
+        '[data-testid="chat-participants-badge-{}"] [data-testid="chat-participants-badge-button"]'
+    )
+
+    def get_participants_badge_count(self, section: str = "users", timeout: int = 5000) -> str:
+        """Return the visible count on the collapsed participants badge for
+        *section* (e.g. "2" after two invited users are Added, ELITEA-2167).
+
+        The count is rendered as CSS generated content
+        (``::after { content: "<n>" }`` — ``CollapsedPerticapantsList.jsx``'s
+        ``collapsedTriggerButton`` style), never as real DOM text — confirmed
+        live: ``text_content()``/``innerHTML`` on the button return no digits
+        at all, only ``window.getComputedStyle(el, '::after').content`` does.
+        A DOM-text read (``text_content()``, ``get_by_text``, ``has_text=``)
+        can never observe this value, hence the computed-style read below.
+        """
+        badge_container = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
+        badge_button = badge_container.locator(self.PARTICIPANTS_BADGE_BUTTON)
+        badge_button.first.wait_for(state="visible", timeout=timeout)
+        raw = badge_button.first.evaluate("el => window.getComputedStyle(el, '::after').content")
+        return raw.strip('"')
+
+    def wait_for_participants_badge_count(
+        self, expected: str, section: str = "users", timeout: int = 10000,
+    ):
+        """Wait until the collapsed participants badge for *section*'s CSS
+        generated-content count reads *expected*.
+
+        Same CSS-generated-content fact as ``get_participants_badge_count()``
+        above: the number lives in ``::after``'s computed style, not DOM
+        text, so a ``Locator.filter(has_text=...)``/``wait_for()`` pair (which
+        only ever inspects DOM text) can never match it — it silently times
+        out watching a value that was never going to appear (confirmed via a
+        live repro this session: the same click flow that visibly renders
+        "2" on screen still times out on the old ``text_content()``-based
+        wait). ``page.wait_for_function`` is Playwright's own
+        condition-based polling primitive (the framework-native equivalent of
+        ``wait_for_selector`` for a computed-style condition, not a fixed
+        sleep) — it re-queries the DOM/computed style each poll until the
+        predicate is true or *timeout* elapses.
+        """
+        badge_container = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
+        badge_button = badge_container.locator(self.PARTICIPANTS_BADGE_BUTTON)
+        badge_button.first.wait_for(state="attached", timeout=timeout)
+        selector = self._PARTICIPANTS_BADGE_BUTTON_SELECTOR.format(section)
+        self.page.wait_for_function(
+            """
+            ([selector, expected]) => {
+                const el = document.querySelector(selector);
+                if (!el) return false;
+                const content = window.getComputedStyle(el, '::after').content;
+                return content === `"${expected}"`;
+            }
+            """,
+            arg=[selector, expected],
+            timeout=timeout,
+        )
+
+    # Multi-person icon wrapper on a conversation's sidebar row (ELITEA-2167)
+    # — ALWAYS rendered (single- and multi-owner conversations alike); state
+    # (has an icon or not) is carried by its own ``data-has-icon`` attribute
+    # per the testid=identity/state=data-* ruling, never by the wrapper's
+    # mere presence/absence.
+    CONVERSATION_MULTI_USER_ICON = '[data-testid="conversation-multi-user-icon"]'
+
+    def wait_for_conversation_multi_user_icon(
+        self, conversation_id: str | int, expected_has_icon: bool, timeout: int = 10000,
+    ):
+        """Assert *conversation_id*'s sidebar item's multi-person icon wrapper
+        settles to ``data-has-icon="true"``/``"false"`` per *expected_has_icon*.
+
+        Scopes ``CONVERSATION_MULTI_USER_ICON`` within the conversation's own
+        ``CONVERSATION_ITEM`` container, then waits on its ``data-has-icon``
+        attribute — confirmed live against a negative control (an empty
+        wrapper, ``data-has-icon="false"``, on a single-owner conversation vs.
+        a populated one, ``data-has-icon="true"``, once 2+ users are
+        participants).
+
+        Uses ``expect().to_have_attribute()`` (Playwright's own auto-retrying,
+        condition-based assertion) rather than a one-shot read — confirmed
+        live this session: the attribute genuinely settles asynchronously
+        right after a conversation is freshly created (a one-shot read
+        straight after DOM attachment can catch a transient pre-update
+        "false" that flips to "true" moments later once the sidebar's
+        participant count propagates from the just-completed send). The
+        negative-control wrapper is also legitimately CSS-hidden while
+        ``data-has-icon="false"`` (confirmed via the Playwright call log
+        resolving to a hidden element throughout) — ``to_have_attribute``
+        doesn't require visibility, only DOM presence, so it's correct for
+        both the hidden/false and the visible/true cases.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        icon_wrapper = item.locator(self.CONVERSATION_MULTI_USER_ICON)
+        expect(icon_wrapper).to_have_attribute(
+            "data-has-icon", "true" if expected_has_icon else "false", timeout=timeout,
+        )
+
+    new_conversation_greeting = LocatorDescriptor(
+        testid="chat-new-conversation-greeting",
+        description=(
+            "Blank-conversation greeting section ('Hello, {user}! What can "
+            "I do for you today?') — visible only for a brand-new, unsent "
+            "conversation (ELITEA-2167)."
+        ),
+    )
+
     def open_add_teammate_dialog(self, timeout: int = 5000) -> tuple[bool, str]:
         """Open the 'Invite Users' dialog via the plus menu.
 
@@ -2321,7 +3385,8 @@ class ChatPage(BasePage):
         Args:
             timeout: Maximum wait time in milliseconds.
             section: Entity section — "agents" (default), "pipelines",
-                "toolkits", or "mcp". This case only ever exercises "agents".
+                "toolkits", "mcp", or "users" (ELITEA-2167 exercises
+                "users" for the Team-project Invite Users flow).
         """
         badge = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
         try:
@@ -2329,6 +3394,19 @@ class ChatPage(BasePage):
             return True
         except Exception:
             return False
+
+    def get_participants_user_avatar_text(self, timeout: int = 5000) -> str:
+        """Return the initials/text on the expanded PARTICIPANTS panel's USERS avatar.
+
+        Must be called after ``expand_participants_panel()``. Used to read
+        WHICH participant is shown (e.g. "TB"), not merely that a USERS
+        section is present — case step 8 asks for "the correct participant".
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.participants_users_avatar.first.wait_for(state="visible", timeout=timeout)
+        return (self.participants_users_avatar.first.text_content() or "").strip()
 
     def open_participants_popover(self, timeout: int = 10000, section: str = "agents"):
         """Click the participants badge for *section* to open the participants popper.
@@ -2347,7 +3425,8 @@ class ChatPage(BasePage):
         Args:
             timeout: Maximum wait time in milliseconds.
             section: Entity section — "agents" (default), "pipelines",
-                "toolkits", or "mcp". This case only ever exercises "agents".
+                "toolkits", "mcp", or "users" (ELITEA-2167 exercises
+                "users" for the Team-project Invite Users flow).
         """
         badge_container = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
         badge_button = badge_container.locator(self.PARTICIPANTS_BADGE_BUTTON)
@@ -2356,6 +3435,11 @@ class ChatPage(BasePage):
 
         self.participants_popper.wait_for(state="visible", timeout=timeout)
         return self.participants_popper
+
+    def dismiss_participants_popover(self):
+        """Press Escape to dismiss an open participants popper (ELITEA-2167) —
+        same idiom as ``dismiss_mention_popper()``."""
+        self.page.keyboard.press("Escape")
 
     @action("Remove agent participant from chat")
     def remove_agent_participant(self, agent_id: int, timeout: int = 10000):
@@ -2403,6 +3487,135 @@ class ChatPage(BasePage):
         # memory) — reset before any subsequent hover-reveal check.
         self.page.mouse.move(0, 0)
         logger.info("Agent participant id=%s removed from chat", agent_id)
+
+    # ------------------------------------------------------------------
+    # Users-type participant removal (ELITEA-2170) — same PARTICIPANT_ROW /
+    # PARTICIPANT_REMOVE_BUTTON mechanism as remove_agent_participant()
+    # above, decomposed into per-step methods (rather than one opaque
+    # call) so the removal flow's own hover/click/confirm-dialog states
+    # can each be asserted individually, matching this case's own
+    # Coverage Map (steps 2-4 verify intermediate UI state, not just the
+    # end result).
+    # ------------------------------------------------------------------
+
+    def get_user_participant_row(self, user_id: int, timeout: int = 10000):
+        """Return the Locator for a Users-type participant's row inside the
+        already-open participants popper (``open_participants_popover(section="users")``).
+
+        Scoped via the dynamic ``chat-participant-row-{uniqueId}`` testid —
+        added to ``UserMenu.jsx`` this implementation (ELITEA-2170), a
+        one-line mirror of ``ExpandedParticipants/ParticipantItem.jsx``'s
+        already-shipped agent/pipeline/toolkit/mcp row testid. ``uniqueId``
+        = ``getChatParticipantUniqueId(participant)``, which for a
+        Users-type participant resolves to ``user_{entity_meta.id}_``
+        (trailing empty segment) — **not** ``user_{id}_{project_id}`` as
+        the AFS's source-reading assumed: confirmed live this session that
+        a "user"-entity participant's ``entity_meta`` carries only ``id``,
+        never ``project_id`` (``ParticipantDetailsContext.jsx``'s own
+        detail-fetch guard explicitly excludes
+        ``ChatParticipantType.Users`` from its ``project_id``-required
+        check — the same fact this timeout surfaced). Same family already
+        consumed by :meth:`remove_agent_participant`'s
+        ``application_{agent_id}_{project_id}`` (agent/pipeline/toolkit
+        participants DO carry ``project_id``, so that one differs from
+        this by design, not by a shared bug).
+
+        Args:
+            user_id: Target user's numeric platform id (``entity_meta.id``
+                — resolve via ``ConversationAPI.get_conversation()``'s
+                ``participants`` list, matching on ``meta.user_name``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        unique_id = f"user_{user_id}_"
+        row = self.participants_popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+        row.wait_for(state="visible", timeout=timeout)
+        return row
+
+    @action("Reveal user participant's remove button via hover")
+    def get_user_participant_remove_button(self, user_id: int, timeout: int = 10000):
+        """Hover the target user's row to reveal its hover-only 'Remove
+        user' icon button and return its Locator, scoped under the row
+        (``chat-participant-remove-button``, disambiguated via the row
+        container — this case's own AFS-specced testid-collision fix,
+        since the button testid alone is identical on every row).
+
+        Same hover-reveal CSS-transition wait as
+        :meth:`remove_agent_participant`.
+
+        Args:
+            user_id: Target user's numeric platform id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        row = self.get_user_participant_row(user_id, timeout=timeout)
+        row.scroll_into_view_if_needed()
+        row.hover()
+        self.page.wait_for_timeout(300)  # hover-reveal CSS transition (matches remove_agent_participant)
+
+        remove_btn = row.locator(self.PARTICIPANT_REMOVE_BUTTON)
+        remove_btn.wait_for(state="visible", timeout=timeout)
+        return remove_btn
+
+    # ------------------------------------------------------------------
+    # Expanded PARTICIPANTS panel helpers (ELITEA-2098 testids — distinct
+    # from the collapsed badge's popper above; see field docstrings).
+    # ------------------------------------------------------------------
+
+    def is_participants_panel_expanded_via_testid(self, timeout: int = 5000) -> bool:
+        """Return whether the PARTICIPANTS panel's data-expanded attribute reads "true".
+
+        Testid-only replacement for the legacy ``is_participants_panel_expanded()``
+        (raw ``get_by_text("Participants")`` check, tracked tech debt, left
+        untouched) — reads ``chat-participants-panel``'s ``data-expanded``
+        state attribute instead.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the panel container
+                to attach before reading its attribute.
+        """
+        self.chat_participants_panel.wait_for(state="attached", timeout=timeout)
+        return self.chat_participants_panel.get_attribute("data-expanded") == "true"
+
+    @action("Expand PARTICIPANTS panel via toggle button")
+    def expand_participants_panel_via_toggle(self, timeout: int = 10000):
+        """Click ``chat_participants_panel_toggle_button`` to expand the
+        PARTICIPANTS panel, skipping the click if already expanded.
+
+        Testid-only replacement for the legacy ``expand_participants_panel()``
+        (JS-evaluate button-hunting, tracked tech debt, left untouched).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        if self.is_participants_panel_expanded_via_testid(timeout=timeout):
+            logger.info("PARTICIPANTS panel already expanded")
+            return
+        self.chat_participants_panel_toggle_button.wait_for(state="visible", timeout=timeout)
+        self.chat_participants_panel_toggle_button.click()
+        expect(self.chat_participants_panel).to_have_attribute(
+            "data-expanded", "true", timeout=timeout
+        )
+        logger.info("PARTICIPANTS panel expanded via toggle button")
+
+    def get_toolkit_participant_row(self, toolkit_id: int, project_id: str | None = None):
+        """Return the Locator for a toolkit's row inside the expanded PARTICIPANTS panel.
+
+        Uses the SAME dynamic ``chat-participant-row-{uniqueId}`` composition
+        already established by :attr:`PARTICIPANT_ROW` for agent participants
+        (``getChatParticipantUniqueId()`` in EliteaUI) — the toolkit-flavored
+        ``entity_name`` literal is ``"toolkit"`` (singular), confirmed live
+        e.g. ``chat-participant-row-toolkit_1755_399``. Scoped under
+        :attr:`chat_participants_panel` (the expanded panel), not the
+        collapsed badge's popper — a different DOM subtree.
+
+        Args:
+            toolkit_id: Numeric id of the toolkit participant (from its
+                creation response).
+            project_id: Project id segment; defaults to
+                ``settings.elitea_project_id``.
+        """
+        pid = project_id if project_id is not None else str(settings.elitea_project_id)
+        unique_id = f"toolkit_{toolkit_id}_{pid}"
+        return self.chat_participants_panel.locator(self.PARTICIPANT_ROW.format(unique_id))
 
     @action("Open Mention skill popper")
     def open_mention_skill_popper(self, timeout: int = 10000):
@@ -2697,3 +3910,109 @@ class ChatPage(BasePage):
             self.click_read_out(message_index=message_index, timeout=timeout)
             self.wait_for_tts_controls(timeout=timeout)
         return self.open_voice_settings_from_tts(timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # Chat folder methods (ELITEA-2132)
+    # ------------------------------------------------------------------
+
+    @action("Open folder-name editor")
+    def click_create_folder_button(self, timeout: int = 5000):
+        """Click the CHATS header 'Create folder' icon (testid-based).
+
+        Distinct from the legacy ``click_create_folder()`` (``get_by_label``,
+        pre-dates the testid policy — left in place as tracked tech debt).
+        New automation should use this method. Waits for the inline
+        folder-name editor input to become visible before returning.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking chat-create-folder-button")
+        self.create_folder_button.wait_for(state="visible", timeout=timeout)
+        self.create_folder_button.click()
+        self.folder_name_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Folder-name editor opened")
+
+    def get_folder_item(self, folder_id: str | int):
+        """Return the Locator for a folder's whole accordion row (id-scoped).
+
+        Args:
+            folder_id: Numeric folder id (as returned by the create-folder
+                response, or read back from the DOM).
+        """
+        return self.page.locator(self.FOLDER_ITEM.format(folder_id))
+
+    def is_folder_expanded(self, folder_id: str | int) -> bool:
+        """Return True if *folder_id*'s row carries ``data-expanded="true"``."""
+        value = self.get_folder_item(folder_id).get_attribute("data-expanded")
+        return value == "true"
+
+    @action("Expand folder")
+    def expand_folder(self, folder_id: str | int, timeout: int = 5000):
+        """Click a folder row to expand it; waits for ``data-expanded`` to flip.
+
+        Args:
+            folder_id: Numeric folder id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Expanding folder %s", folder_id)
+        self.get_folder_item(folder_id).click()
+        expanded_item = self.page.locator(
+            f'{self.FOLDER_ITEM.format(folder_id)}[data-expanded="true"]'
+        )
+        expanded_item.wait_for(state="visible", timeout=timeout)
+        logger.info("Folder %s expanded", folder_id)
+
+    def get_folder_empty_state_text(self, folder_id: str | int) -> str:
+        """Return the empty-state text scoped inside *folder_id*'s row.
+
+        Args:
+            folder_id: Numeric folder id.
+        """
+        item = self.get_folder_item(folder_id)
+        return item.locator(self.FOLDER_EMPTY_STATE).text_content() or ""
+
+    @action("Delete folder via menu")
+    def delete_folder_via_menu(self, folder_id: str | int, timeout: int = 5000):
+        """Delete a folder via its scoped 3-dot menu -> Delete -> confirm dialog.
+
+        Mirrors the id-scoped delete flow used for conversations
+        (``open_conversation_context_menu`` / ``click_conversation_menu_item``),
+        but folder menu items currently carry a testid ONLY on "Delete"
+        (``FOLDER_MENU_DELETE_ITEM`` — added this implementation; Rename/Pin
+        are untouched, out of this case's testid scope). Reuses the shared,
+        non-unique ``CONVERSATION_MENU_BUTTON`` testid (same underlying
+        DotMenu component as conversation items), scoped inside the folder's
+        own row so it resolves to exactly one element.
+
+        Hovers ``FOLDER_ICON``, NOT the outer ``FOLDER_ITEM`` row, to reveal
+        the dot-menu. ``FolderAccordion.jsx`` only flips its ``#Menu``
+        visibility on hover of the fixed ~49px header sub-box
+        (``summaryContainer``), not the whole accordion. A bare
+        ``item.hover()`` targets the row's geometric center, which is safe
+        while collapsed but lands inside the (now-visible) body once the
+        folder is expanded -- the dot-menu never appears and
+        ``menu_button.wait_for`` times out. ``FOLDER_ICON`` lives inside
+        ``summaryContainer`` itself and is rendered in both expand states,
+        so hovering it reliably lands within the header regardless of
+        whether the folder is collapsed or expanded.
+
+        Args:
+            folder_id: Numeric folder id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Deleting folder %s via 3-dot menu", folder_id)
+        item = self.get_folder_item(folder_id)
+        item.locator(self.FOLDER_ICON).hover()
+        menu_button = item.locator(self.CONVERSATION_MENU_BUTTON)
+        menu_button.wait_for(state="visible", timeout=timeout)
+        menu_button.click(force=True)
+
+        delete_item = self.page.locator(self.FOLDER_MENU_DELETE_ITEM)
+        delete_item.wait_for(state="visible", timeout=timeout)
+        delete_item.click()
+
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+        self.delete_confirm_button.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Folder %s deleted via menu", folder_id)
