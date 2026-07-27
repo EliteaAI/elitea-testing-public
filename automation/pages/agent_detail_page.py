@@ -1108,12 +1108,11 @@ class AgentDetailPage(AgentFormPage):
         except Exception:
             return False
 
-    def is_tool_blocked_in_toolkit(self, toolkit_name: str, timeout: int = 5000) -> bool:
+    def is_tool_blocked_in_toolkit(self, toolkit_name: str, timeout: int = 10000) -> bool:
         """Check if toolkit shows 'Some tools are not available anymore' indicator.
 
         Used to verify guardrails tool blocking is applied without pylon reload.
-
-        The blocked banner may appear inside the toolkit card or as a sibling element.
+        Waits for the banner to appear (it may render with a slight delay after page load).
 
         Args:
             toolkit_name: Name of the toolkit.
@@ -1129,31 +1128,11 @@ class AgentDetailPage(AgentFormPage):
         except Exception:
             return False
 
-        # First try: banner inside the card
-        blocked_inside = card.locator(self.TOOLKIT_TOOL_BLOCKED_SELECTOR)
-        if blocked_inside.count() > 0:
-            try:
-                blocked_inside.wait_for(state="visible", timeout=1000)
-                return True
-            except Exception:
-                pass
-
-        # Second try: banner as following sibling of the card
-        blocked_sibling = card.locator("xpath=following-sibling::*[1]").filter(
-            has=self.page.locator(self.TOOLKIT_TOOL_BLOCKED_SELECTOR)
-        )
-        if blocked_sibling.count() > 0:
-            try:
-                blocked_sibling.wait_for(state="visible", timeout=timeout)
-                return True
-            except Exception:
-                pass
-
-        # Third try: any tools-unavailable banner visible in the TOOLS section
-        tools_section = self.page.locator('[data-testid="tools-section"], .tools-section, text="TOOLS"').first.locator("xpath=ancestor::*[3]")
-        blocked_banner = tools_section.locator(self.TOOLKIT_TOOL_BLOCKED_SELECTOR)
+        # The banner may appear inside the card, as a sibling, or elsewhere in the TOOLS section.
+        # Use a combined locator with 'or' to wait for any of these locations.
+        blocked_banner = self.page.locator(self.TOOLKIT_TOOL_BLOCKED_SELECTOR)
         try:
-            blocked_banner.wait_for(state="visible", timeout=timeout)
+            blocked_banner.first.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
             return False

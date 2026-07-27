@@ -126,6 +126,9 @@ class BasePage:
                 # Spinner might not be present on all pages, continue
                 pass
 
+        # Dismiss any popups that may have appeared (NPS survey, banners)
+        self.dismiss_popups()
+
     def reload_and_wait(self, timeout: int = 15000) -> None:
         """Reload the page and wait for it to be ready.
 
@@ -191,6 +194,30 @@ class BasePage:
             logger.info("Dismissed banner overlay")
         else:
             logger.debug("No banner overlay found to dismiss")
+
+    def dismiss_nps_survey_if_present(self) -> None:
+        """Dismiss NPS survey popup ('How likely are you to recommend...') if present.
+
+        This popup covers the chat send button and blocks test execution.
+        Clicks 'Not now' button to dismiss it.
+        """
+        not_now_button = self.page.locator('button:has-text("Not now")')
+        try:
+            not_now_button.wait_for(state="visible", timeout=1000)
+            not_now_button.click()
+            self.page.wait_for_timeout(500)
+            logger.info("Dismissed NPS survey popup")
+        except Exception:
+            logger.debug("No NPS survey popup found")
+
+    def dismiss_popups(self) -> None:
+        """Dismiss all known popups that may interfere with tests.
+
+        Combines banner overlay and NPS survey dismissal.
+        Call this before interacting with elements that may be covered.
+        """
+        self.dismiss_banner_if_present()
+        self.dismiss_nps_survey_if_present()
 
     def capture_requests_matching(self, url_substring: str, method: str | None = None) -> "CapturedRequests":
         """Start capturing network requests whose URL contains *url_substring*.
