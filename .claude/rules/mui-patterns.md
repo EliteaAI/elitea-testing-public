@@ -7,6 +7,18 @@ paths:
 
 # MUI / EliteAUI Interaction Patterns
 
+> **⚠️ Locator policy reconciliation (2026-07-14, testid-only ruling).** This file
+> teaches INTERACTION mechanics — waits, debounce, keyboard-vs-fill, overlay
+> clicks, hover flows. Those remain fully valid. But every raw selector shown in
+> the examples (`ul.MuiList-root`, `role="menuitem"`, `aria-label=…`, `css-*`
+> classes, bounding-box filtering) is **legacy illustration, not license**: in
+> new/modified code the element handle comes from a class-level
+> `LocatorDescriptor(testid=…)` or a `[data-testid=` template constant
+> (`.agents/testing.md` § Locator policy), and the mechanics below are applied
+> **to that handle**. Where a section documents "this area has no testids", the
+> correct action today is `add-data-testid` — the workaround applies only after
+> a stop+flag exception.
+
 ## Message Locators
 
 **CRITICAL:** All chat messages (regular chat, agent-participant chat, embedded chat) render as `<ul class="MuiList-root"> <li class="MuiListItem-root">`.
@@ -226,7 +238,11 @@ page.wait_for_timeout(500)  # Smooth scroll settle
 
 ---
 
-## Stable Aria Labels Reference
+## Stable Aria Labels Reference (LEGACY — do not use for new locators)
+
+> New code never locates by aria-label — add a testid instead. This table
+> remains ONLY as a map of what old code relies on, and as candidate elements
+> for testid backfill.
 
 Some elements have reliable `aria-label` attributes:
 
@@ -269,7 +285,12 @@ def delete_message(self, index: int):
 
 ---
 
-## Test Settings Panel (Toolkit Detail Page)
+## Test Settings Panel (Toolkit Detail Page) — TESTIDS NEEDED (stop+flag first)
+
+> This section documents a legacy workaround for a panel that predates the
+> testid policy. In new work: run `add-data-testid` for the fields you touch
+> (or stop+flag if genuinely unplaceable) — do NOT copy the label-text +
+> bounding-box approach below into new code.
 
 Tool parameter fields have **NO accessible names** — must locate by label text.
 

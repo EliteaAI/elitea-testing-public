@@ -184,6 +184,9 @@ class TestSkillTagFilter:
             logger.info("Skill C created — id=%s", skill_c_id)
 
             list_page.navigate()
+            # Wait for grid to load and settle after navigation
+            list_page.wait_for_network(timeout=10000)
+            list_page.page.wait_for_timeout(1000)  # Allow React to render
             visible_names = list_page.get_visible_skill_names()
             assert list_page.skill_exists_in_list(skill_a_name), (
                 f"{skill_a_name!r} should be visible in the grid after creation"

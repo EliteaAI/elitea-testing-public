@@ -10,6 +10,7 @@ Handles: /agents/all/{id}
 """
 
 import logging
+import re
 import time
 from urllib.parse import urlparse
 from playwright.sync_api import Page, Locator, Download
@@ -102,6 +103,11 @@ class AgentDetailPage(AgentFormPage):
     # ToolCard/agent-toolkit-card rendering with Toolkit attachments; see
     # add_mcp() below (ELITEA-1950).
     add_mcp_button = LocatorDescriptor(testid="agent-add-mcp-button")
+    # "+ Agent" add button (ToolMenu.jsx) — opens a popper listing other
+    # project agents that could be attached as sub-agent tools. Added
+    # ELITEA-1887, pushed to automation/testids commit ce74cd40. See
+    # open_agent_picker() below.
+    add_agent_button = LocatorDescriptor(testid="agent-add-agent-button")
     toolkit_card = LocatorDescriptor(testid="agent-toolkit-card")
     toolkit_delete_button = LocatorDescriptor(testid="agent-toolkit-delete-button")
     toolkit_search_input = LocatorDescriptor(testid="toolkit-search-input")
@@ -119,6 +125,18 @@ class AgentDetailPage(AgentFormPage):
     CHAT_ARTIFACT_FILE_LIST_SELECTOR = '[data-testid="chat-artifact-file-list"]'
     CHAT_ARTIFACT_FILE_CARD_SELECTOR = '[data-testid="chat-artifact-file-card"]'
     CHAT_ANSWER_CONTENT_SELECTOR = '[data-testid="chat-answer-content"]'
+    # Agent-only child (TTS read-out button) and its non-last/last-message
+    # sibling testid — scoped, per-message-item lookups used by
+    # get_last_chat_message_agent_markers() (ELITEA-1885) to distinguish an
+    # agent bubble from a user bubble. See CHAT_ANSWER_CONTENT_SELECTOR above
+    # for the non-last-message half of the same ternary
+    # (`ApplicationAnswer.jsx`'s `isLastMessage ? 'skill-test-last-response'
+    # : 'chat-answer-content'`); ``skill_test_last_response`` already exists
+    # as a page-level LocatorDescriptor for the common "only message"
+    # case, but a scoped string constant is needed here to check its
+    # presence within a *specific* message item rather than page-wide.
+    CHAT_READ_OUT_BUTTON_SELECTOR = '[data-testid="chat-read-out-button"]'
+    SKILL_TEST_LAST_RESPONSE_SELECTOR = '[data-testid="skill-test-last-response"]'
     # Dynamic (runtime-parameterized) testid templates — see
     # .claude/rules/page-objects.md "Dynamic testids" for the naming pattern.
     SKILL_CARD_SELECTOR = '[data-testid="skill-card-{}"]'
@@ -163,6 +181,22 @@ class AgentDetailPage(AgentFormPage):
     chat_clear_button = LocatorDescriptor(testid="chat-clear-button")
     skill_test_last_response = LocatorDescriptor(testid="skill-test-last-response")
 
+    # --- LLM model selector (embedded chat panel, ELITEA-1881) ---
+    # `model-selector-button`/`model-selector-name` are static testids on
+    # LLMModelSelector.jsx. Each dropdown option carries a DYNAMIC testid
+    # keyed by the model's stable API `name` field (e.g.
+    # `model-selector-option-eu.anthropic.claude-sonnet-4-5-20250929-v1:0`),
+    # added via add-data-testid during the ELITEA-1881 analyst pass
+    # (EliteaUI automation/testids commit 0b058c94). Callers select/verify
+    # an option by its rendered DISPLAY name (e.g. "Anthropic Claude 4.5
+    # Sonnet"), not the API name, so — mirroring
+    # SKILL_VERSION_OPTION_ANY_SELECTOR's "keyed by a value not known in
+    # advance" precedent — selection filters this prefix-match ANY selector
+    # by display text rather than formatting a per-model template.
+    model_selector_button = LocatorDescriptor(testid="model-selector-button")
+    model_selector_name = LocatorDescriptor(testid="model-selector-name")
+    MODEL_SELECTOR_OPTION_ANY_SELECTOR = '[data-testid^="model-selector-option-"]'
+
     # --- Skills section (agent-skills attach/mention flow, ELITEA-1735) ---
     agent_add_skill_button = LocatorDescriptor(testid="agent-add-skill-button")
     # Tooltip wrapper span for the add-skill button (ELITEA-1790 testid-only
@@ -184,9 +218,192 @@ class AgentDetailPage(AgentFormPage):
     # via add-data-testid to ExportApplicationButton.jsx's
     # useExportApplicationMenu(); see EliteaUI draft PR #549).
     export_agent_menuitem = LocatorDescriptor(testid="agent-actions-export-menuitem")
+    # VERSION-group "Fork" menuitem (ELITEA-1893 testid-only rework — added
+    # via add-data-testid: `key: 'agent-actions-fork'` in
+    # ForkEntityButton.jsx's useForkEntityMenu(), mirroring the sibling
+    # Export menuitem above; see EliteaUI automation/testids commit
+    # 61328689). Review R1 fix (commit 5dbc7530): `useForkEntityMenu()` is a
+    # SHARED hook also consumed by ToolkitsControls.jsx (Toolkit Fork) and
+    # the Pipeline path — the key is now resolved per `entity_name`
+    # (`applications` -> `agent-actions-fork`, `toolkits` ->
+    # `toolkit-actions-fork`, `pipelines` -> `pipeline-actions-fork`), so
+    # this testid value is unchanged for the Agent context but no longer
+    # leaks onto Toolkit/Pipeline Fork menuitems.
+    fork_menuitem = LocatorDescriptor(testid="agent-actions-fork-menuitem")
+    # VERSION-group "Publish"/"Unpublish" menuitems (ELITEA-1892 testid-only
+    # rework — added via add-data-testid: `key: 'publish-version'` /
+    # `key: 'unpublish-version'` in usePublishVersionMenu.hooks.jsx /
+    # useUnpublishVersionMenu.hooks.jsx, same DotMenu `testId: item.key` ->
+    # `data-testid={testId}-menuitem` mechanism already backing
+    # delete_agent_menuitem/fork_menuitem above. Mutually exclusive per
+    # version status: "Publish" renders for a Draft version (canShowPublish),
+    # "Unpublish" renders for a Published version (canUnpublish) — never both
+    # at once for the same version.
+    publish_version_menuitem = LocatorDescriptor(testid="publish-version-menuitem")
+    unpublish_version_menuitem = LocatorDescriptor(testid="unpublish-version-menuitem")
+
+    # --- Fork wizard (ELITEA-1893) — shares the ImportWizardModal dialog
+    # family with the Agents-list Import flow (AgentsListPage's
+    # import_preview_dialog/import_complete_dialog carry the SAME testids;
+    # re-declared here because Fork is triggered from the agent-actions
+    # menu on THIS page, not from the Agents list toolbar). The dialog
+    # container swaps its own testid in place from
+    # "agent-import-preview-dialog" (pre-fork) to
+    # "agent-import-complete-dialog" (post-fork) — do not assert on a
+    # single fixed testid persisting across the fork action. ---
+    fork_wizard_dialog = LocatorDescriptor(
+        testid="agent-import-preview-dialog",
+        description="Fork wizard 'Fork parameters' dialog (pre-fork state)",
+    )
+    fork_complete_dialog = LocatorDescriptor(
+        testid="agent-import-complete-dialog",
+        description="Fork wizard 'Fork Complete' dialog (post-fork state — "
+                     "same container as fork_wizard_dialog, testid swaps)",
+    )
+    fork_main_entity_name = LocatorDescriptor(
+        testid="agent-import-preview-name",
+        description="Fork wizard — Main entity card's name",
+    )
+    # Every rendered entity-preview card (Main entity + each nested
+    # dependency, if any) carries this SAME toggle testid — so its count()
+    # is a direct, testid-based proxy for "how many entity cards are
+    # showing", used to confirm no "Nested entities" section renders for a
+    # dependency-free source agent (AFS Axis 2).
+    fork_entity_card_toggle = LocatorDescriptor(
+        testid="agent-import-preview-card-toggle",
+        description="Fork wizard — 'Show details' toggle, one per rendered "
+                     "entity-preview card",
+    )
+    # Testid corrected in review R1 (ELITEA-1893): the original
+    # `agent-fork-project-select` was rendered via a state-conditional
+    # `data-testid={isForking ? '...' : '...'}` ternary in IWModalContent.jsx
+    # — forbidden per `.agents/testing.md` § Locator policy ("the element
+    # keeps ONE testid; state is a separate attribute"). Fixed by giving the
+    # SAME ProjectSelect DOM node (shared by both the Import and Fork
+    # wizards; `isForking` is a mount-time prop, not per-render-toggled
+    # state) a single unconditional testid instead. Declared improvisation:
+    # since AgentDetailPage only ever renders this dialog in Fork context
+    # (AgentsListPage owns the Import context separately), the shared
+    # testid unambiguously resolves the target project selector here — no
+    # `data-*` mode filter needed.
+    fork_project_select_trigger = LocatorDescriptor(
+        testid="agent-import-wizard-project-select",
+        description="Fork wizard — target Project selector trigger (shared "
+                     "with the Import wizard's own use of the same "
+                     "ProjectSelect DOM node — see comment above; EliteaUI "
+                     "automation/testids commit 5dbc7530)",
+    )
+    fork_confirm_button = LocatorDescriptor(
+        testid="agent-fork-confirm-button",
+        description="Fork wizard — 'Fork' confirm button (added via "
+                     "add-data-testid to IWModalForkButton.jsx's "
+                     "Button.BaseBtn, mirroring the sibling Import button's "
+                     "agent-import-confirm-button; see EliteaUI "
+                     "automation/testids commit 61328689)",
+    )
+    fork_complete_agents_list = LocatorDescriptor(
+        testid="agent-import-complete-list-agents",
+        description="Fork Complete dialog — forked Agents name list",
+    )
+    fork_complete_got_it_button = LocatorDescriptor(
+        testid="agent-import-complete-got-it-button",
+        description="Fork Complete dialog — 'Got it' confirm/navigate button",
+    )
+    # Dynamic (runtime-parameterized) testid template for the Fork wizard's
+    # Project-selector dropdown options — same shared `select-option-{value}`
+    # family (SingleSelectMenuItem.jsx) already used by
+    # PipelineDetailPage.SELECT_OPTION, keyed by the numeric project id
+    # (confirmed live, ELITEA-1893 AFS: select-option-399/400/471).
+    FORK_PROJECT_OPTION = '[data-testid="select-option-{}"]'
+
+    # --- Publish wizard (ELITEA-1892) — PublishWizardModal.jsx, non-admin
+    # branch only. Case-text drift (CLARIFICATION #612): the TMS case
+    # describes a single version-name dialog; the live product is a 3-step
+    # wizard (PUBLISH_STEPS = PREPARATION / VALIDATION / PUBLISHING) gated
+    # by an AI content-quality check between steps. The dialog container
+    # itself carries no dedicated testid (plain MUI [role="dialog"],
+    # resolved via components.mui.Dialog) — only its interactive fields do.
+    publish_version_name_input = LocatorDescriptor(
+        testid="agent-publish-version-name-input",
+        description="Publish wizard, Preparation step — version-name input",
+    )
+    publish_category_select = LocatorDescriptor(
+        testid="agent-publish-category-select",
+        description="Publish wizard, Preparation step — Category dropdown "
+                     "trigger (not named in the case text — a hard "
+                     "requirement to enable Continue, see CLARIFICATION #612)",
+    )
+    publish_agree_checkbox = LocatorDescriptor(
+        testid="agent-publish-agree-checkbox",
+        description='Publish wizard, Preparation step — "I agree with the '
+                     'Publishing Terms" checkbox (not named in the case '
+                     "text — a hard requirement to enable Continue)",
+    )
+    publish_continue_button = LocatorDescriptor(
+        testid="agent-publish-continue-button",
+        description="Publish wizard, Preparation step — Continue button "
+                     "(disabled until name + category + agree-checkbox are "
+                     "all filled/checked)",
+    )
+    publish_confirm_button = LocatorDescriptor(
+        testid="agent-publish-confirm-button",
+        description="Publish wizard, Validation step — Publish button "
+                     "(disabled while the AI publish_validate gate reports "
+                     "any Critical issue; canPublish = status !== 'FAIL')",
+    )
+    # Dynamic (runtime-parameterized) testid for the Publish wizard's
+    # Category dropdown options — same shared `select-option-{value}` family
+    # (SingleSelectMenuItem.jsx) as FORK_PROJECT_OPTION above, keyed here by
+    # the category's display label (e.g. select-option-Quality Assurance)
+    # rather than a numeric id.
+    PUBLISH_CATEGORY_OPTION = '[data-testid="select-option-{}"]'
+
+    # --- Unpublish confirm dialog (ELITEA-1892) — UnpublishConfirmModal.jsx,
+    # non-admin branch (no "Reason" textfield). Heading "Unpublish Agent".
+    unpublish_confirm_button = LocatorDescriptor(
+        testid="agent-unpublish-confirm-button",
+        description='Unpublish confirm dialog — "Unpublish" button',
+    )
 
     # --- Navigation ---
     back_button = LocatorDescriptor(testid="back-button")
+
+    # --- Icon picker (ELITEA-1899 testid-only rework — added via
+    # add-data-testid to EntityIcon.jsx/ApplicationEditForm.jsx/
+    # SelectIconDialog.jsx/ProjectIconItem.jsx; see EliteaUI commit
+    # 6bb6a23c on automation/testids). `agent_icon_button` is ALSO present
+    # on the create-form route (CreateAgentForm.jsx) — both are separate
+    # React components sharing this testid string (see this project's
+    # dual-component gotcha, `.agents/memory/qa-engineer/
+    # agent_form_dual_component_and_icon_picker_quirks.md`). ---
+    agent_icon_button = LocatorDescriptor(
+        testid="agent-form-icon-button",
+        description=(
+            "Agent icon avatar/button (opens the icon picker). CRITICAL: "
+            "only fires onClick to open the dialog once its hover-triggered "
+            "edit-pencil overlay is already mounted — a bare single "
+            "`.click()` with no prior `.hover()` only renders the overlay "
+            "and does NOT open the dialog (reproduced deterministically "
+            "2/2, ELITEA-1899 AFS). Callers must hover() before click()."
+        ),
+    )
+    icon_picker_dialog = LocatorDescriptor(testid="agent-icon-picker-dialog")
+    icon_picker_close_button = LocatorDescriptor(testid="agent-icon-picker-close-button")
+    icon_picker_default_icon = LocatorDescriptor(testid="agent-icon-picker-default-icon")
+    # Inner <img> of agent_icon_button — separate testid (not a raw ".locator
+    # img" chain off agent_icon_button) added via add-data-testid to
+    # EliteaUI's EliteAImage.jsx/EntityIcon.jsx (ELITEA-1899 review fix-pass;
+    # EliteaUI automation/testids commit 558160a6). Only rendered once an
+    # icon.url is set — see get_header_icon_src()'s placeholder-SVG quirk.
+    agent_icon_img = LocatorDescriptor(
+        testid="agent-form-icon-img",
+        description="Agent header icon's <img> element (absent until an "
+                     "icon.url is set — see get_header_icon_src())",
+    )
+    # Dynamic (runtime-parameterized) testid templates — same class-constant
+    # + `.format()` pattern as VERSION_OPTION / VARIABLE_ROW above.
+    ICON_PICKER_OPTION = '[data-testid="agent-icon-picker-option-{}"]'
+    ICON_PICKER_UPLOADED = '[data-testid="agent-icon-picker-uploaded-{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -414,6 +631,80 @@ class AgentDetailPage(AgentFormPage):
         return option.get_attribute("aria-selected") == "true"
 
     # ------------------------------------------------------------------
+    # Icon picker (ELITEA-1899)
+    # ------------------------------------------------------------------
+
+    @action("Open the icon picker dialog")
+    def open_icon_picker(self, timeout: int = 10000):
+        """Open the agent icon picker dialog.
+
+        LOCATOR: ``agent-form-icon-button`` (see field docstring above).
+        Must ``hover()`` immediately before ``click()`` — the icon's
+        clickable state only mounts once its hover-triggered edit-pencil
+        overlay is rendered; a bare single ``.click()`` with no prior
+        ``.hover()`` merely triggers the hover state and does not open the
+        dialog (confirmed live, ELITEA-1899 AFS Automation Hints — real
+        users are unaffected since mouse movement naturally precedes a
+        real click).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening the agent icon picker dialog")
+        self.agent_icon_button.scroll_into_view_if_needed()
+        self.agent_icon_button.hover()
+        self.agent_icon_button.click()
+        self.icon_picker_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Icon picker dialog opened")
+
+    @action("Select a default icon option")
+    def select_icon_option(self, index: int, timeout: int = 10000) -> str:
+        """Select a "Default" icon option by index and return its resulting src.
+
+        LOCATOR: dynamic ``agent-icon-picker-option-{index}`` testid (see
+        ``ICON_PICKER_OPTION`` above). Selecting closes the dialog
+        immediately and persists via its own ``PUT
+        .../upload_icon/prompt_lib/{project}/{versionId}`` call — decoupled
+        from the agent form's Save/Discard state (ELITEA-1899 AFS).
+
+        Args:
+            index: 0-based index of the default icon option to select.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The header icon's ``img.src`` value after the dialog closes.
+        """
+        logger.info("Selecting icon picker option index=%d", index)
+        option = self.page.locator(self.ICON_PICKER_OPTION.format(index))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.icon_picker_dialog.wait_for(state="hidden", timeout=timeout)
+        self.wait_for_network(timeout=timeout)
+        src = self.get_header_icon_src(timeout=timeout)
+        logger.info("Icon option %d selected — header icon src: %s", index, src)
+        return src
+
+    def get_header_icon_src(self, timeout: int = 10000) -> str:
+        """Return the ``src`` of the agent header icon's ``<img>`` element.
+
+        LOCATOR: ``agent-form-icon-img`` (see field docstring above) — its
+        own testid, not a raw tag chained off ``agent_icon_button``. A
+        freshly-created agent with no icon explicitly selected yet renders
+        an inline SVG placeholder (no ``<img>`` at all) instead — confirmed
+        live against a fresh agent — so this returns ``""`` in that case
+        rather than timing out.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.agent_icon_button.wait_for(state="visible", timeout=timeout)
+        try:
+            self.agent_icon_img.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        return self.agent_icon_img.get_attribute("src") or ""
+
+    # ------------------------------------------------------------------
     # Variables section (derived live from Instructions text, ELITEA-1884)
     # ------------------------------------------------------------------
 
@@ -491,6 +782,44 @@ class AgentDetailPage(AgentFormPage):
             if testid.startswith("agent-variable-row-"):
                 names.append(testid[len("agent-variable-row-"):])
         return names
+
+    @action("Fill variable value")
+    def fill_variable_value(self, variable_name: str, value: str, timeout: int = 5000):
+        """Type a value into a variable's value input.
+
+        LOCATOR: dynamic ``agent-variable-input-{variable_name}`` testid (see
+        ``VARIABLE_INPUT`` above). Confirmed live (ELITEA-1883) that both
+        ``.fill()`` (direct DOM value set) and ``press_sequentially()``
+        round-trip correctly through Save for this field — unlike
+        ``instructions_input``, which requires keyboard events for React
+        ``onChange`` (`.claude/rules/mui-patterns.md`). Uses ``click()`` +
+        ``press_sequentially()`` per the project's MUI convention, for
+        consistency with other form fields in this codebase.
+
+        Args:
+            variable_name: Exact variable name (e.g. ``"MY_VAR"``).
+            value: Value to type into the input.
+            timeout: Maximum wait time in milliseconds.
+        """
+        field = self.page.locator(self.VARIABLE_INPUT.format(variable_name))
+        field.wait_for(state="visible", timeout=timeout)
+        field.click()
+        field.press_sequentially(value, delay=30)
+        logger.info("Filled variable '%s' value: %r", variable_name, value)
+
+    def get_variable_value(self, variable_name: str, timeout: int = 5000) -> str:
+        """Return the current DOM value of a variable's value input.
+
+        LOCATOR: dynamic ``agent-variable-input-{variable_name}`` testid (see
+        ``VARIABLE_INPUT`` above).
+
+        Args:
+            variable_name: Exact variable name (e.g. ``"MY_VAR"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        field = self.page.locator(self.VARIABLE_INPUT.format(variable_name))
+        field.wait_for(state="visible", timeout=timeout)
+        return field.input_value()
 
     # ------------------------------------------------------------------
     # Internal tools (switches)
@@ -825,6 +1154,98 @@ class AgentDetailPage(AgentFormPage):
         self.page.wait_for_timeout(1000)
         self.wait_for_network(timeout=timeout)
         logger.info("MCP '%s' added to agent", mcp_name)
+
+    @action("Open agent picker")
+    def open_agent_picker(self, timeout: int = 10000) -> Locator:
+        """Open the Tools section's "+ Agent" picker popper (ELITEA-1887).
+
+        Mirrors :meth:`add_toolkit` / :meth:`add_mcp`'s click-then-wait-for-
+        popper pattern, but deliberately does NOT select anything — this
+        picker is used to inspect which agents it lists (self-attachment
+        exclusion check), never to attach.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator of the visible MUI popper (see ``components.mui.Popper``).
+        """
+        logger.info("Opening agent picker")
+        self.ensure_toolkits_section_visible(timeout=timeout)
+        self.add_agent_button.wait_for(state="visible", timeout=timeout)
+        self.add_agent_button.click(force=True)
+        self.page.wait_for_timeout(1000)
+        return Popper.wait_for(self.page, timeout=timeout)
+
+    @action("Search agent picker")
+    def search_agent_picker(self, popper: Locator, query: str, settle_ms: int = 1000):
+        """Type *query* into the agent picker's search input (ELITEA-1887).
+
+        Reuses the shared ``toolkit-search-input`` testid — the same
+        ``UnifiedDropdown`` popper component family as the Toolkit/MCP/Skill
+        pickers renders it unconditionally regardless of entity type.
+
+        Args:
+            popper: Locator of the popper element (from :meth:`open_agent_picker`).
+            query: Text to type into the search field.
+            settle_ms: Milliseconds to wait after typing for the debounced
+                search request to fire (server-side debounce is 200ms).
+        """
+        Popper.search(popper, query, self.page, settle_ms=settle_ms)
+
+    def get_agent_picker_menuitem(self, popper: Locator, agent_name: str) -> Locator:
+        """Return the picker's menuitem locator for *agent_name*, scoped to *popper*.
+
+        The picker's dynamically-named list items carry no per-item testid
+        (same established pattern as :meth:`components.mui.Popper.select_menuitem`'s
+        targets), so matching is by exact accessible name via ``role="menuitem"``.
+        The returned locator may resolve to zero elements — that's the
+        expected/asserted state for ELITEA-1887 (self-attachment blocked):
+        the backend does NOT filter the current agent out of its own search
+        results (confirmed via network capture — the API response includes
+        the self-agent row); self-exclusion is enforced entirely
+        client-side (``ToolMenu.jsx:401``). Callers must assert DOM-level
+        menu-item absence via this locator, never network-response
+        emptiness.
+
+        Args:
+            popper: Locator of the popper element.
+            agent_name: Exact agent name to look for.
+
+        Returns:
+            Locator scoped to the matching menuitem (may be empty/hidden).
+        """
+        return popper.get_by_role("menuitem", name=agent_name, exact=True)
+
+    @action("Attach agent")
+    def attach_agent(self, agent_name: str, timeout: int = 10000):
+        """Attach another Agent as a sub-agent tool via the Tools section's
+        "+ Agent" picker (ELITEA-1902).
+
+        Mirrors :meth:`add_toolkit` / :meth:`add_mcp`'s shape, but wraps
+        :meth:`open_agent_picker` + ``Popper.select_menuitem`` instead of
+        duplicating the click-then-wait-for-popper sequence — the picker
+        itself already existed (ELITEA-1887, self-attachment exclusion
+        check) with no attach convenience method on top of it. The attach
+        auto-persists (agent-level Save button stays disabled/returns to
+        disabled immediately after the picker selection resolves), same
+        auto-persist behavior already documented for `add_toolkit()` /
+        `add_mcp()`. The resulting card renders via the shared
+        ``agent-toolkit-card`` testid (confirmed design — see the
+        `toolkit_card` field's docstring above), so no dedicated
+        sub-agent-card/removal methods are needed; reuse
+        :meth:`is_toolkit_attached` / :meth:`remove_toolkit`.
+
+        Args:
+            agent_name: Exact name of the Agent to attach as a sub-agent tool.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Attaching agent '%s' as a sub-agent tool", agent_name)
+        popper = self.open_agent_picker(timeout=timeout)
+        Popper.select_menuitem(popper, agent_name, self.page, timeout=timeout)
+        self.page.wait_for_timeout(1000)
+        self.wait_for_network(timeout=timeout)
+        logger.info("Agent '%s' attached as a sub-agent tool", agent_name)
 
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit is attached to the agent.
@@ -1816,6 +2237,109 @@ class AgentDetailPage(AgentFormPage):
         self.instructions_input.clear()
 
     # ------------------------------------------------------------------
+    # Instructions field skill mention ("~" trigger) — ELITEA-1791
+    # ------------------------------------------------------------------
+    #
+    # This is a DIFFERENT entry point from send_chat_message_with_mention()
+    # above: that method drives the embedded-chat message input
+    # (data-testid="chat-message-input"), while these methods drive the
+    # Instructions accordion field (data-testid="agent-instructions-input",
+    # inherited from AgentFormPage.instructions_input). Both surfaces
+    # render the same "Mention skill" popper component, but the two input
+    # fields are separate and must not be confused.
+
+    def _instructions_mention_container(self, timeout: int = 10000):
+        """Return a locator scoped to the open "Mention skill" panel.
+
+        LOCATOR: same header text / container-depth pattern as the
+        embedded-chat mention flow (``send_chat_message_with_mention``) —
+        the header text node's 2nd ancestor `div` holds the candidate rows.
+        """
+        mention_header = self.page.get_by_text("Mention skill", exact=True)
+        mention_header.wait_for(state="visible", timeout=timeout)
+        return mention_header.locator("xpath=ancestor::div[2]")
+
+    @action("Type ~ in Instructions field")
+    def type_tilde_in_instructions(self, timeout: int = 10000) -> Locator:
+        """Type "~" in the Agent Instructions field and wait for the
+        "Mention skill" suggestion panel to appear.
+
+        Targets ``instructions_input`` (the Instructions accordion textarea,
+        accessible name "Guidelines for the AI agent") — NOT the embedded
+        chat input (see module note above). No fixed wait / network-idle
+        wait is used: the mention list is a client-side filter over data
+        the page already holds (attached-skills data fetched when the
+        Skills accordion loaded), so no additional network request fires
+        between typing "~" and the panel appearing (ELITEA-1791
+        exploration) — this waits only on the "Mention skill" header text
+        becoming visible.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator scoped to the mention suggestion panel container, for
+            asserting on the candidate rows it contains.
+        """
+        logger.info("Typing ~ in Instructions field to open mention panel")
+        self.instructions_input.click()
+        self.instructions_input.press_sequentially("~", delay=50)
+        return self._instructions_mention_container(timeout=timeout)
+
+    def get_instructions_mention_item(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return a locator for a mention candidate row by exact skill name,
+        scoped to the open "Mention skill" panel (Instructions field).
+
+        Use this for both positive assertions (row is visible) and negative
+        assertions (``expect(locator).to_have_count(0)`` for a skill that
+        must NOT be offered) — a count-based assertion on this exact-text
+        locator is stronger than counting rows, since it can't be fooled by
+        the unattached skill appearing under a different label.
+
+        Args:
+            skill_name: Exact name of the skill to look for.
+            timeout: Maximum wait time in milliseconds for the panel header.
+        """
+        container = self._instructions_mention_container(timeout=timeout)
+        return container.get_by_text(skill_name, exact=True)
+
+    @action("Select skill from Instructions mention panel")
+    def select_skill_from_instructions_mention(self, skill_name: str, timeout: int = 5000):
+        """Click a skill row in the open "Mention skill" panel (Instructions
+        field), inserting "~<skill_name>" as plain text into the field.
+
+        Must be called while the panel is open (after
+        ``type_tilde_in_instructions()``).
+
+        Args:
+            skill_name: Exact name of the attached skill to select.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting '%s' from Instructions mention panel", skill_name)
+        item = self.get_instructions_mention_item(skill_name, timeout=timeout).first
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+        self.page.wait_for_timeout(300)
+
+    @action("Clear Instructions field")
+    def clear_instructions_field(self):
+        """Clear the Instructions field content (case step 6's own described
+        technique: "removing Skill A reference" before re-triggering "~").
+
+        Uses Playwright's ``clear()`` — the same MUI-field-clearing call
+        already trusted elsewhere in this page object (``fill_form()`` in
+        ``AgentFormPage``) — rather than a manual Control+a/Delete key
+        sequence: exploration found the manual sequence unreliable here
+        (only the leading "~" was removed, not the full mention text),
+        while ``clear()`` empties the field reliably and still fires
+        React's ``onChange`` (unlike ``fill()`` with a non-empty value,
+        which is the pattern ``clear()`` itself is exempt from per
+        `.claude/rules/mui-patterns.md`).
+        """
+        self.instructions_input.click()
+        self.instructions_input.clear()
+
+    # ------------------------------------------------------------------
     # Embedded chat (right panel)
     # ------------------------------------------------------------------
 
@@ -1836,6 +2360,42 @@ class AgentDetailPage(AgentFormPage):
             Integer count of message items currently in the chat.
         """
         return self._embedded_chat_messages().count()
+
+    def get_last_chat_message_agent_markers(self) -> tuple[bool, bool, bool]:
+        """Return agent/user code-path markers for the last (or only) message.
+
+        Scoped inside the last ``chat-message-item`` — works equally for a
+        single-message list, where "last" == "only" (ELITEA-1885: welcome
+        message before any user message).
+
+        Returns:
+            ``(has_read_out, has_answer_marker, has_delete_button)``:
+
+            - ``has_read_out`` — ``chat-read-out-button`` present
+              (agent-only: TTS read-out, rendered by ``ApplicationAnswer.jsx``).
+            - ``has_answer_marker`` — either ``skill-test-last-response``
+              (this item is the last/only message) or ``chat-answer-content``
+              (non-last) is present — the ``isLastMessage ? ... : ...``
+              ternary from ``ApplicationAnswer.jsx``.
+            - ``has_delete_button`` — ``chat-message-delete-button`` present
+              (user-message-only, per ``UserMessage.jsx``).
+
+            A message rendered via the agent code path has
+            ``(True, True, False)``. Returns ``(False, False, False)`` if the
+            chat has no messages.
+        """
+        messages = self._embedded_chat_messages()
+        if messages.count() == 0:
+            return (False, False, False)
+
+        last_msg = messages.last
+        has_read_out = last_msg.locator(self.CHAT_READ_OUT_BUTTON_SELECTOR).count() > 0
+        has_answer_marker = (
+            last_msg.locator(self.CHAT_ANSWER_CONTENT_SELECTOR).count() > 0
+            or last_msg.locator(self.SKILL_TEST_LAST_RESPONSE_SELECTOR).count() > 0
+        )
+        has_delete_button = last_msg.locator(self.CHAT_MESSAGE_DELETE_SELECTOR).count() > 0
+        return (has_read_out, has_answer_marker, has_delete_button)
 
     @action("Send embedded chat message")
     def send_chat_message(self, message: str, timeout: int = 10000):
@@ -1898,6 +2458,92 @@ class AgentDetailPage(AgentFormPage):
         self.chat_send_button.wait_for(state="visible", timeout=timeout)
         self.chat_send_button.click()
         logger.info("Mention message sent (~%s)", skill_name)
+
+    # ------------------------------------------------------------------
+    # LLM model selector (embedded chat panel, ELITEA-1881)
+    # ------------------------------------------------------------------
+
+    @action("Open LLM model selector")
+    def open_model_selector(self, timeout: int = 5000):
+        """Click the embedded chat panel's model selector to open the dropdown.
+
+        LOCATOR: ``model-selector-button`` testid.
+
+        Args:
+            timeout: Maximum wait for the first option to become visible.
+        """
+        logger.info("Opening LLM model selector")
+        self.model_selector_button.click()
+        self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def get_selected_model_name(self) -> str:
+        """Return the currently displayed model name on the closed selector.
+
+        LOCATOR: ``model-selector-name`` testid.
+        """
+        return (self.model_selector_name.text_content() or "").strip()
+
+    def is_model_option_visible(self, display_name: str, timeout: int = 5000) -> bool:
+        """Return True if a model option with *display_name* is visible in
+        the open dropdown.
+
+        LOCATOR: ``MODEL_SELECTOR_OPTION_ANY_SELECTOR``, filtered by the
+        option's rendered display text (see class-level docstring comment
+        for why display text — not the dynamic testid's API-name suffix —
+        is the selection key).
+
+        Args:
+            display_name: Exact rendered model name (e.g.
+                "Anthropic Claude 4.5 Sonnet").
+            timeout: Maximum wait time in milliseconds.
+        """
+        option = self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).filter(
+            has_text=display_name
+        )
+        try:
+            option.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def close_model_selector(self, timeout: int = 5000):
+        """Close the open model-selector dropdown via Escape, without
+        selecting anything.
+
+        Mirrors ``ChatPage.close_open_dialogs()``'s Escape-key pattern.
+        Use after verifying option visibility (e.g. Step 3) when the caller
+        doesn't want to leave the dropdown open before a subsequent
+        :meth:`open_model_selector` call — reopening while it's already
+        open would toggle it closed instead.
+        """
+        self.page.keyboard.press("Escape")
+        self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).first.wait_for(
+            state="hidden", timeout=timeout
+        )
+
+    @action("Select LLM model")
+    def select_llm_model(self, display_name: str, timeout: int = 5000):
+        """Select a model from the OPEN model-selector dropdown by its
+        rendered display name.
+
+        Call after :meth:`open_model_selector`. Does not click Save — the
+        caller decides when to persist via ``save_button``/``click_save()``
+        (inherited from ``AgentFormPage``).
+
+        Args:
+            display_name: Exact rendered model name (e.g.
+                "Anthropic Claude 4.5 Sonnet").
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting LLM model: %s", display_name)
+        option = self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).filter(
+            has_text=display_name
+        )
+        option.first.wait_for(state="visible", timeout=timeout)
+        option.first.click()
+        logger.info("LLM model '%s' selected", display_name)
 
     @action("Clear embedded chat")
     def clear_embedded_chat(self, timeout: int = 10000):
@@ -2084,6 +2730,30 @@ class AgentDetailPage(AgentFormPage):
         # that don't render the skill-test-last-response testid.
         return self.get_last_chat_message()
 
+    def get_last_chat_message_full_text(self) -> str:
+        """Return the RAW text of the entire last embedded-chat ``<li>``.
+
+        Unlike :meth:`get_last_chat_response_text` (which reads only the
+        answer body), this includes the "Thought for Ns" trace accordion —
+        where the responding model's display name (e.g. "Anthropic Claude
+        4.5 Sonnet") is rendered as plain text with no dedicated testid.
+        Confirmed live during ELITEA-1881 implementation
+        (``ApplicationThinkView.jsx``'s reasoning-step label) — flagged in
+        the ELITEA-1881 AFS Concrete Handles table as "not remediated,
+        flagging for a future add-data-testid pass" rather than in scope
+        for this case's own remediation. Use this only for a substring
+        containment check (e.g. "is the model name present anywhere in
+        this response"); it is not a clean assertion target on its own.
+
+        Returns:
+            Full raw text of the last message ``<li>``, or "" if no
+            messages are present yet.
+        """
+        messages = self._embedded_chat_messages()
+        if messages.count() == 0:
+            return ""
+        return (messages.last.text_content() or "").strip()
+
     def wait_for_sensitive_action_authorization(
         self, timeout: int = 30000, click_authorize: bool = True
     ) -> bool:
@@ -2186,6 +2856,536 @@ class AgentDetailPage(AgentFormPage):
         download = download_info.value
         logger.info("Agent exported — filename: %s", download.suggested_filename)
         return download
+
+    # ------------------------------------------------------------------
+    # Fork wizard (ELITEA-1893)
+    # ------------------------------------------------------------------
+
+    @action("Open Fork wizard")
+    def open_fork_wizard(self, timeout: int = 10000):
+        """Open the Fork wizard via the actions overflow menu (VERSION group).
+
+        Opens the overflow (three-dot) menu (``open_actions_menu()``) and
+        clicks the VERSION-scoped "Fork" menuitem, then waits for the
+        wizard dialog (``agent-import-preview-dialog``, titled "Fork
+        parameters") to become visible.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening Fork wizard via actions menu")
+        self.open_actions_menu()
+        self.fork_menuitem.click()
+        self.fork_wizard_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Fork wizard dialog visible")
+
+    @action("Select Fork target project")
+    def select_fork_target_project(self, project_id: int, timeout: int = 10000):
+        """Open the Fork wizard's Project selector and pick a target project.
+
+        LOCATOR: ``fork_project_select_trigger`` opens the dropdown; the
+        option is resolved via the dynamic ``select-option-{project_id}``
+        testid (see ``FORK_PROJECT_OPTION`` above) — a stable, semantic
+        handle keyed by the project's actual numeric id, not its list
+        position (confirmed live, ELITEA-1893 AFS).
+
+        Args:
+            project_id: Numeric id of the target project (must differ from
+                the agent's current project).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting Fork target project id=%d", project_id)
+        self.fork_project_select_trigger.click()
+        option = self.page.locator(self.FORK_PROJECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        logger.info("Fork target project id=%d selected", project_id)
+
+    @action("Confirm Fork")
+    def confirm_fork(self, timeout: int = 15000):
+        """Click the Fork wizard's "Fork" confirm button.
+
+        Waits for the dialog to re-render in place as the "Fork Complete"
+        state (``agent-import-complete-dialog`` — same container, testid
+        swaps once the fork operation succeeds; see class docstring note
+        on ``fork_wizard_dialog``/``fork_complete_dialog``).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the success dialog.
+        """
+        logger.info("Confirming Fork")
+        self.fork_confirm_button.click()
+        self.fork_complete_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Fork Complete dialog visible")
+
+    @action("Confirm Fork complete (Got it)")
+    def confirm_fork_complete(self, timeout: int = 15000) -> int:
+        """Click "Got it" on the Fork Complete dialog.
+
+        Auto-navigates to the newly forked Agent's detail page, inside the
+        target project. Parses and returns the new Agent's numeric ID from
+        the resulting URL.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the navigation.
+
+        Returns:
+            The forked Agent's numeric ID.
+        """
+        self.fork_complete_got_it_button.click()
+        self.page.wait_for_url(re.compile(r".*/agents/all/\d+"), timeout=timeout)
+        self.wait_for_network(timeout=5000)
+
+        match = re.search(r"/agents/all/(\d+)", self.page.url)
+        if not match:
+            raise ValueError(
+                f"Could not parse forked Agent ID from URL: {self.page.url}"
+            )
+        forked_agent_id = int(match.group(1))
+        logger.info(
+            "Fork complete — navigated to forked agent id=%d (%s)",
+            forked_agent_id, self.page.url,
+        )
+        return forked_agent_id
+
+    # ------------------------------------------------------------------
+    # Publish / Unpublish wizard (ELITEA-1892)
+    # ------------------------------------------------------------------
+
+    def close_actions_menu(self, timeout: int = 5000):
+        """Close the open actions (three-dot) menu by pressing Escape.
+
+        Mirrors :meth:`close_versions_menu`'s Escape-press pattern for the
+        VERSION-options menu. Needed between two separate
+        :meth:`open_actions_menu` calls in the same test (e.g. checking the
+        VERSION group's menuitem before *and* after Publish/Unpublish).
+        """
+        self.page.keyboard.press("Escape")
+        self.actions_menu.wait_for(state="hidden", timeout=timeout)
+
+    @action("Open Publish wizard")
+    def open_publish_wizard(self, timeout: int = 10000):
+        """Open the Publish wizard via the actions overflow menu (VERSION group).
+
+        Opens the overflow menu and clicks the VERSION-scoped "Publish"
+        menuitem, then waits for the wizard's Preparation step (the
+        version-name input) to render. Confirmed live: `usePublishVersion
+        .hooks.js`'s ``canShowPublish`` gate requires
+        ``applications.publish`` permission AND the version's status to be
+        Draft — only render this menuitem when both hold.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening Publish wizard via actions menu")
+        self.open_actions_menu()
+        self.publish_version_menuitem.click()
+        Dialog.wait_for(self.page, timeout=timeout)
+        self.publish_version_name_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Publish wizard Preparation step visible")
+
+    @action("Fill the Publish wizard's Preparation step")
+    def fill_publish_preparation_step(
+        self, version_name: str, category_name: str, timeout: int = 10000
+    ):
+        """Fill the Preparation step: version name, Category, agree-checkbox.
+
+        Call after :meth:`open_publish_wizard`. All three fields are
+        required to enable "Continue" — Category and the Publishing-Terms
+        checkbox are NOT named in the TMS case text (CLARIFICATION #612)
+        but are hard requirements in the live product.
+
+        Args:
+            version_name: Name for the new (to-be-published) version, e.g.
+                ``"v1-release"``.
+            category_name: Exact display label of the Category option to
+                select, e.g. ``"Quality Assurance"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info(
+            "Filling Publish wizard Preparation step — version=%r category=%r",
+            version_name, category_name,
+        )
+        self.publish_version_name_input.click()
+        self.publish_version_name_input.press_sequentially(version_name, delay=50)
+
+        self.publish_category_select.click()
+        option = self.page.locator(self.PUBLISH_CATEGORY_OPTION.format(category_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+
+        self.publish_agree_checkbox.click()
+        logger.info("Publish wizard Preparation step filled")
+
+    def is_publish_continue_enabled(self) -> bool:
+        """Return whether the Preparation step's "Continue" button is enabled."""
+        return self.publish_continue_button.is_enabled()
+
+    @action("Continue from Publish wizard Preparation step")
+    def click_publish_continue(self, timeout: int = 15000) -> int:
+        """Click "Continue" and wait for the ``publish_validate`` response.
+
+        Waits for ``POST .../publish_validate/prompt_lib/{project}/{versionId}``
+        (AFS § Network Behavior — never a fixed sleep) and returns its HTTP
+        status: ``200`` when the AI content-quality gate passes (no
+        Critical issues — the Validation step's "Publish" button becomes
+        enabled), ``422`` when Critical issues remain (button stays
+        disabled).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            HTTP status code of the ``publish_validate`` response.
+        """
+        logger.info("Clicking Publish wizard Continue")
+        with self.page.expect_response(
+            lambda r: "publish_validate" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as validate_info:
+            self.publish_continue_button.click()
+        status = validate_info.value.status
+        # The response resolving does not guarantee the Validation step's DOM
+        # has re-rendered yet (one more React tick) — confirmed live: an
+        # immediate is_visible() check on publish_confirm_button raced and
+        # returned False even though the button rendered moments later.
+        # The button itself is always present on the Validation step
+        # regardless of the Critical-issue outcome (only its enabled state
+        # differs — canPublish = status !== 'FAIL'), so waiting for
+        # visibility here is safe for both the 200 and 422 cases.
+        self.publish_confirm_button.wait_for(state="visible", timeout=timeout)
+        logger.info("publish_validate responded status=%d", status)
+        return status
+
+    @action("Confirm Publish")
+    def confirm_publish(self, timeout: int = 15000) -> int:
+        """Click the Validation step's "Publish" button and wait for the
+        publish request to resolve.
+
+        Waits for ``POST .../publish/prompt_lib/{project}/{versionId}`` to
+        resolve and returns its HTTP status — callers should assert 200.
+        Publish clones the Draft version into a brand-new version that
+        carries the Published status; it does not flip the original Draft
+        version's status in place (AFS Axis 2).
+
+        Does NOT wait for / assert on a post-publish navigation: confirmed
+        live (ELITEA-1892 exploration, filed as
+        https://github.com/EliteaAI/elitea-testing-public/issues/614) that
+        the app's own auto-navigation to the new version is unreliable — it
+        can briefly navigate to the new version's URL and then silently
+        revert to the previously-active version, with no error surfaced
+        (network trace: two ``GET .../version/.../{new_id}`` calls
+        immediately followed by two ``GET .../version/.../{old_id}`` calls).
+        The underlying data is unaffected (verified via API — the new
+        version really is ``published``); only the client-side navigation
+        is unreliable. Callers MUST use :meth:`select_version_by_name` to
+        reliably land on the new version afterward — do not assume Publish
+        alone leaves you there.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            HTTP status code of the ``publish`` response.
+        """
+        logger.info("Confirming Publish")
+        with self.page.expect_response(
+            lambda r: "/publish/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as publish_info:
+            self.publish_confirm_button.click()
+        status = publish_info.value.status
+        self.wait_for_network(timeout=timeout)
+        logger.info("Publish confirmed — status=%d", status)
+        return status
+
+    @action("Select a version by name from the VERSION dropdown")
+    def select_version_by_name(
+        self, version_name: str, timeout: int = 10000, attempts: int = 2
+    ) -> str:
+        """Explicitly select a version from the VERSION dropdown and wait
+        for its data to load, returning its numeric id.
+
+        The reliable way to land on (and stay on) a specific version — see
+        :meth:`confirm_publish`'s docstring for why auto-navigation after
+        Publish cannot be trusted (issue #614). Explicitly opening the
+        VERSION dropdown and clicking a named option is a normal,
+        deliberate user action and was confirmed live to navigate
+        correctly and durably (no reversion observed after selecting this
+        way).
+
+        Each attempt is a full select+reload CYCLE (re-open the dropdown,
+        re-click the option, reload) — not just a re-poll of an
+        already-open dropdown — mirroring
+        :meth:`wait_for_publish_status_menuitem`'s bounded-attempts shape.
+        Escalation added PR #615 review round 2: confirmed live that even
+        the single reload this method already performed as belt-and-braces
+        can occasionally still not be enough on its own (~1/10 runs
+        observed during this case's verification) — the underlying store
+        can still be mid-sync across one reload — so a second full cycle
+        is attempted before giving up.
+
+        This method stays DOM-only by design (page objects never reach
+        into the API layer — see project layering) and always raises on a
+        poll that never converges; it does NOT itself decide whether that
+        timeout is #614's cosmetic staleness or a different, real bug.
+        Callers that need that distinction (e.g. to route a *confirmed*
+        #614 occurrence into a soft-assertion mechanism) should catch the
+        ``AssertionError`` and independently confirm the version's real
+        status via the API before treating it as the known defect — see
+        ``test_agent_publish_unpublish_version.py``'s
+        ``_confirm_new_version_via_api()`` for the reference pattern.
+
+        Args:
+            version_name: Exact version name to select, e.g. ``"v1-release"``.
+            timeout: Maximum wait time in milliseconds, per wait condition.
+            attempts: Number of full select+reload cycles to try.
+
+        Returns:
+            The selected version's numeric id, read from the Information
+            panel once the wait condition confirms the VERSION trigger
+            text, the Information panel's version-id, and the URL all
+            agree (the same three-way consistency check as documented for
+            the Save As Version flow's race — see :meth:`confirm_new_version`).
+
+        Raises:
+            AssertionError: if the version-id-matches condition never
+                converges after ``attempts`` full select+reload cycles.
+                The message notes issue #614 as the SUSPECTED cause (DOM
+                status staleness) — this is a hypothesis, not a confirmed
+                diagnosis; only a caller-side API check can confirm it.
+        """
+        logger.info("Selecting version %r from the VERSION dropdown", version_name)
+
+        version_id_matches_js = """name => {
+            const trigger = document.querySelector('[data-testid="agent-version-selector-trigger"]');
+            const versionIdEl = document.querySelector('[data-testid="copy-version-id"]');
+            if (!trigger || trigger.innerText.trim() !== name) return false;
+            if (!versionIdEl) return false;
+            const currentId = versionIdEl.innerText.trim();
+            if (!currentId) return false;
+            const seg = window.location.pathname.split('/').filter(Boolean).pop();
+            return seg === currentId;
+        }"""
+
+        last_exc: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            self.open_version_selector()
+            option = self.page.locator(self.VERSION_OPTION.format(version_name))
+            option.wait_for(state="visible", timeout=timeout)
+            option.click()
+
+            try:
+                self.page.wait_for_function(
+                    version_id_matches_js, arg=version_name, timeout=timeout
+                )
+            except Exception as exc:  # noqa: BLE001 - retried below, re-raised with context above
+                last_exc = exc
+                logger.warning(
+                    "select_version_by_name: VERSION trigger/id/URL never "
+                    "agreed on %r pre-reload (attempt %d/%d) — retrying",
+                    version_name, attempt, attempts,
+                )
+                continue
+
+            # Belt-and-braces (issue #614): the VERSION trigger/URL/Information-
+            # panel id can agree while OTHER version-scoped client state (the
+            # overflow menu's Publish/Unpublish item, driven by the version's
+            # `status` field from a separate store) still lags — confirmed live
+            # to occasionally persist across several menu re-opens, not just a
+            # single render tick. A hard reload forces every panel to refetch
+            # fresh from the server (which is always correct per the API), so
+            # it clears staleness a same-page re-render cannot. Uses the SAME
+            # precise wait condition (not a generic "page loaded" heuristic) to
+            # avoid reading an intermediate, not-yet-hydrated paint.
+            self.page.reload(wait_until="domcontentloaded")
+            try:
+                self.page.wait_for_function(
+                    version_id_matches_js, arg=version_name, timeout=timeout
+                )
+            except Exception as exc:  # noqa: BLE001 - retried below, re-raised with context above
+                last_exc = exc
+                logger.warning(
+                    "select_version_by_name: VERSION trigger/id/URL never "
+                    "agreed on %r post-reload (attempt %d/%d) — retrying the "
+                    "full select+reload cycle (issue #614 escalation)",
+                    version_name, attempt, attempts,
+                )
+                continue
+
+            selected_version_id = self.get_version_id()
+            logger.info(
+                "Version %r selected — id=%s (URL: %s)",
+                version_name, selected_version_id, self.page.url,
+            )
+            return selected_version_id
+
+        raise AssertionError(
+            f"select_version_by_name: VERSION trigger/Information-panel id/"
+            f"URL never converged on {version_name!r} after {attempts} full "
+            f"select+reload attempts (suspected issue #614 client-side "
+            f"status staleness — caller must independently confirm via the "
+            f"API before treating this as the known defect) — last error: "
+            f"{last_exc}"
+        )
+
+    def wait_for_publish_status_menuitem(
+        self, expect_unpublish: bool, timeout: int = 10000, attempts: int = 4
+    ) -> None:
+        """Poll the actions overflow menu (closing and reopening between
+        attempts) until it shows the expected Publish/Unpublish menuitem.
+
+        Confirmed live (issue #614): the overflow menu's Publish/Unpublish
+        menuitem can render from a STALE version-status snapshot for a beat
+        even after the VERSION selector, Information-panel version-id, and
+        URL have all already agreed on the correct version (observed in
+        ~1/4 runs during this case's implementation) — a single
+        point-in-time ``is_visible()`` check right after switching versions
+        is not reliable. Re-opening the menu (a fresh render pass) is what
+        picks up the corrected status, so this closes and reopens between
+        bounded attempts rather than polling a single already-open menu
+        (MUI doesn't live-update an already-rendered menu's items).
+
+        This method stays DOM-only by design (page objects never reach
+        into the API layer — see project layering) and always raises on a
+        poll that never converges; it does NOT itself decide whether that
+        timeout is #614's cosmetic staleness or a different, real bug.
+        Callers that need that distinction (e.g. to route a *confirmed*
+        #614 occurrence into a soft-assertion mechanism) should catch the
+        ``AssertionError`` and independently confirm the version's real
+        status via the API before treating it as the known defect — see
+        ``test_agent_publish_unpublish_version.py``'s
+        ``_confirm_version_status_via_api()`` for the reference pattern.
+
+        Args:
+            expect_unpublish: ``True`` to wait for "Unpublish" (Published
+                version), ``False`` to wait for "Publish" (Draft version).
+            timeout: Total time budget in milliseconds, split across attempts.
+            attempts: Number of open/check/close cycles to try.
+
+        Raises:
+            AssertionError: if the expected menuitem never appeared. The
+                message notes issue #614 as the SUSPECTED cause (DOM status
+                staleness) — this is a hypothesis, not a confirmed
+                diagnosis; only a caller-side API check can confirm it.
+        """
+        target = self.unpublish_version_menuitem if expect_unpublish else self.publish_version_menuitem
+        label = "Unpublish" if expect_unpublish else "Publish"
+        per_attempt_timeout = max(timeout // attempts, 1000)
+        last_exc: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            self.open_actions_menu()
+            try:
+                target.wait_for(state="visible", timeout=per_attempt_timeout)
+                logger.info(
+                    "Actions menu shows %r on attempt %d/%d", label, attempt, attempts
+                )
+                return
+            except Exception as exc:  # noqa: BLE001 - re-raised with context below
+                last_exc = exc
+                logger.warning(
+                    "Actions menu did not show %r on attempt %d/%d — retrying",
+                    label, attempt, attempts,
+                )
+                self.close_actions_menu()
+
+        # Escalation (PR #615 review round 2): the close/reopen loop above
+        # forces a fresh RENDER but not a fresh FETCH — per the observed
+        # residual flake (~1/10 runs), the underlying store can still be
+        # mid-sync even across several re-renders. A full reload (the same
+        # belt-and-braces technique :meth:`select_version_by_name` already
+        # uses for this exact defect) forces every panel — including
+        # whatever store backs this menuitem — to refetch fresh from the
+        # server, clearing staleness a same-page re-render alone cannot.
+        # One extra open/check after the reload before giving up.
+        logger.warning(
+            "Actions menu never showed %r after %d attempts — reloading "
+            "and retrying once more (issue #614 escalation)",
+            label, attempts,
+        )
+        self.page.reload(wait_until="domcontentloaded")
+        try:
+            self.wait_for_network(timeout=per_attempt_timeout)
+        except Exception:
+            # networkidle is a best-effort settle, not a hard requirement —
+            # this app keeps persistent WebSocket connections open (same
+            # documented behavior as BasePage.navigate(), which wraps this
+            # exact wait in the same try/except for the same reason), so
+            # networkidle can legitimately never fire. domcontentloaded
+            # (already awaited by the reload above) is what actually
+            # matters here. PR #615 review round 2 bugfix: this call was
+            # previously unguarded, so a networkidle timeout leaked a raw
+            # Playwright TimeoutError straight past this method's own
+            # AssertionError contract (observed live: "Timeout 2500ms
+            # exceeded" bypassing the caller's except AssertionError
+            # handling entirely) instead of feeding into the bounded-
+            # attempts/AssertionError flow callers rely on.
+            logger.debug(
+                "networkidle not reached after reload escalation for %r — "
+                "continuing (persistent WebSocket connections expected)",
+                label,
+            )
+        self.open_actions_menu()
+        try:
+            target.wait_for(state="visible", timeout=per_attempt_timeout)
+            logger.info("Actions menu shows %r after reload escalation", label)
+            return
+        except Exception as exc:  # noqa: BLE001 - re-raised with context below
+            last_exc = exc
+            self.close_actions_menu()
+
+        raise AssertionError(
+            f"Actions menu never showed the expected {label!r} menuitem "
+            f"after {attempts} attempts plus a reload escalation (suspected "
+            f"issue #614 client-side status staleness — caller must "
+            f"independently confirm via the API before treating this as "
+            f"the known defect) — last error: {last_exc}"
+        )
+
+    @action("Open Unpublish confirm dialog")
+    def open_unpublish_dialog(self, timeout: int = 10000):
+        """Open the Unpublish confirmation dialog via the actions overflow menu.
+
+        Opens the overflow menu and clicks the VERSION-scoped "Unpublish"
+        menuitem (only rendered for a Published version —
+        ``useUnpublishVersionMenu.hooks.jsx``'s ``canUnpublish`` gate), then
+        waits for the "Unpublish Agent" confirmation dialog
+        (``UnpublishConfirmModal.jsx``) to become visible.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening Unpublish confirm dialog via actions menu")
+        self.open_actions_menu()
+        self.unpublish_version_menuitem.click()
+        Dialog.wait_for(self.page, timeout=timeout)
+        self.unpublish_confirm_button.wait_for(state="visible", timeout=timeout)
+        logger.info("Unpublish confirm dialog visible")
+
+    @action("Confirm Unpublish")
+    def confirm_unpublish(self, timeout: int = 15000) -> int:
+        """Click the Unpublish confirm dialog's "Unpublish" button.
+
+        Waits for ``POST .../unpublish/prompt_lib/{project}/{versionId}`` to
+        resolve and for the dialog to close. Callers should assert the
+        returned status is 200.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            HTTP status code of the ``unpublish`` response.
+        """
+        logger.info("Confirming Unpublish")
+        with self.page.expect_response(
+            lambda r: "/unpublish/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as unpublish_info:
+            self.unpublish_confirm_button.click()
+        status = unpublish_info.value.status
+        Dialog.wait_for_hidden(self.page, timeout=timeout)
+        logger.info("Unpublish confirmed — status=%d", status)
+        return status
 
     # ------------------------------------------------------------------
     # Navigation helpers

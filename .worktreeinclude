@@ -1,0 +1,5 @@
+.env
+*/.env.test
+**/.env*
+automation/.env.test
+.venv/

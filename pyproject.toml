@@ -33,6 +33,9 @@ reporting = [
     "allure-pytest>=2.13.0",
 ]
 
+[tool.setuptools]
+packages = ["automation"]
+
 [tool.pytest.ini_options]
 # Fallback if running pytest from project root instead of automation/
 testpaths = ["automation"]
