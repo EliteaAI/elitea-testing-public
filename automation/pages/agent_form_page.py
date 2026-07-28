@@ -289,7 +289,7 @@ class AgentFormPage(BasePage):
         self.page.wait_for_timeout(100)  # Wait for focus
         self.name_input.clear()
         self.page.wait_for_timeout(100)  # Wait for clear to complete
-        self.name_input.press_sequentially(name, delay=80)
+        self.name_input.press_sequentially(name, delay=20)
         self.page.wait_for_timeout(300)
 
         # Fill description
@@ -297,7 +297,7 @@ class AgentFormPage(BasePage):
         self.page.wait_for_timeout(100)
         self.description_input.clear()
         self.page.wait_for_timeout(100)
-        self.description_input.press_sequentially(description, delay=80)
+        self.description_input.press_sequentially(description, delay=20)
         self.page.wait_for_timeout(300)
 
         # Fill instructions if provided
@@ -306,7 +306,7 @@ class AgentFormPage(BasePage):
             self.page.wait_for_timeout(100)
             self.instructions_input.clear()
             self.page.wait_for_timeout(100)
-            self.instructions_input.press_sequentially(instructions, delay=80)
+            self.instructions_input.press_sequentially(instructions, delay=20)
             self.page.wait_for_timeout(300)
 
         # Fill welcome message if provided
@@ -315,7 +315,7 @@ class AgentFormPage(BasePage):
             self.page.wait_for_timeout(100)
             self.welcome_message_input.clear()
             self.page.wait_for_timeout(100)
-            self.welcome_message_input.press_sequentially(welcome_message, delay=80)
+            self.welcome_message_input.press_sequentially(welcome_message, delay=20)
             self.page.wait_for_timeout(300)
 
         logger.info("Agent form filled successfully")
