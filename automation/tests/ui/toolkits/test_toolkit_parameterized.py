@@ -21,6 +21,7 @@ import requests
 from api import CredentialAPI, ToolkitAPI
 from config import settings
 from components.mui import Popper
+from pages.base_page import BasePage
 from pages.chat_page import ChatPage
 from toolkit_configs import TOOLKIT_CONFIGS, ToolkitConfig
 from toolkit_factories import CREDENTIAL_FACTORIES, TOOLKIT_SETTINGS_FACTORIES
@@ -426,6 +427,9 @@ class TestToolkitTestSettings:
                     _fill_test_settings_param(page, field_label, value)
 
         with allure.step("Step 6 — Click Run Tool button"):
+            # Dismiss any popups (NPS survey, banners) that may block the Run Tool button
+            BasePage(page).dismiss_popups()
+
             run_btn = page.get_by_role("button", name="Run Tool")
             run_btn.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
             run_btn.first.scroll_into_view_if_needed()
