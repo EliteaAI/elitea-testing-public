@@ -446,12 +446,15 @@ class AgentsListPage(BasePage):
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        toggles = self.import_preview_card_toggle
+        # Filter to only "Show details" buttons (not "Hide details")
+        toggles = self.import_preview_card_toggle.filter(has_text="Show details")
         expanded_count = 0
         while toggles.count() > 0:
             toggles.first.click()
             expanded_count += 1
-            self.page.wait_for_timeout(200)
+            self.page.wait_for_timeout(300)
+            # Re-query to get fresh state after DOM update
+            toggles = self.import_preview_card_toggle.filter(has_text="Show details")
         if expanded_count:
             # Grid-template-rows CSS transition (0.4s) — wait for the
             # Skill instructions preview to actually be visible rather
