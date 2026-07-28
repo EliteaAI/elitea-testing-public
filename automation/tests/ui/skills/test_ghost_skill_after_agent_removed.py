@@ -82,7 +82,6 @@ class TestGhostSkillAfterAgentRemoved:
         "onetest-ai Test Case link",
     )
     @allure.issue(KNOWN_DEFECT_ISSUE, "Known defect — ghost skill in mention popper")
-    @pytest.mark.skip(reason="Causes CI hang after failure — investigating fixture cleanup")
     @pytest.mark.p3
     @pytest.mark.regression
     def test_ghost_skill_not_shown_after_agent_participant_removed(
