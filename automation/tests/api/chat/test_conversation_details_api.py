@@ -34,13 +34,6 @@ pytestmark = [pytest.mark.api, pytest.mark.chat]
 _NONEXISTENT_CONV_ID = 999_999_999
 
 
-def _conv_detail_url(api: ConversationAPI, conv_id: int) -> str:
-    return (
-        f"{api.base_url}/elitea_core/conversation/prompt_lib"
-        f"/{api.project_id}/{conv_id}"
-    )
-
-
 @pytest.mark.p0
 @pytest.mark.smoke
 class TestConversationDetailsHappyPath:
@@ -96,8 +89,7 @@ class TestConversationDetailsHappyPath:
                 conv_id = conv["id"]
 
             with allure.step("Step 2 — Fetch raw response (not pre-parsed)"):
-                url = _conv_detail_url(conversation_api, conv_id)
-                resp = conversation_api._session.get(url)
+                resp = conversation_api.get_conversation_raw(conv_id)
 
             with allure.step("Step 3 — Verify status code is 200"):
                 assert resp.status_code == 200, (
@@ -182,8 +174,7 @@ class TestConversationDetailsErrorPath:
         the error path was not accidentally affected by the surrounding change.
         """
         with allure.step("Step 1 — GET conversation with a non-existent ID"):
-            url = _conv_detail_url(conversation_api, _NONEXISTENT_CONV_ID)
-            resp = conversation_api._session.get(url)
+            resp = conversation_api.get_conversation_raw(_NONEXISTENT_CONV_ID)
 
         with allure.step("Step 2 — Verify status code is 400"):
             assert resp.status_code == 400, (
