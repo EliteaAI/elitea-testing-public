@@ -196,18 +196,35 @@ class BasePage:
             logger.debug("No banner overlay found to dismiss")
 
     def dismiss_nps_survey_if_present(self) -> None:
-        """Dismiss NPS survey popup ('How likely are you to recommend...') if present.
+        """Dismiss NPS survey popup(s) if present.
+
+        The survey now has TWO steps:
+        1. "Are you using AI on daily basis in Elitea project" (Yes/No)
+        2. "How likely are you to recommend Elitea..." (0-10 NPS)
+
+        Clicking 'Not now' on step 1 shows step 2, so we need to click
+        'Not now' multiple times until the survey fully closes.
 
         This popup covers the chat send button and blocks test execution.
-        Clicks 'Not now' button to dismiss it.
         """
         not_now_button = self.page.locator('button:has-text("Not now")')
-        try:
-            not_now_button.wait_for(state="visible", timeout=1000)
-            not_now_button.click()
-            self.page.wait_for_timeout(500)
-            logger.info("Dismissed NPS survey popup")
-        except Exception:
+        dismissed_count = 0
+        max_attempts = 3  # Safety limit
+
+        for _ in range(max_attempts):
+            try:
+                not_now_button.wait_for(state="visible", timeout=1000)
+                not_now_button.click()
+                self.page.wait_for_timeout(500)
+                dismissed_count += 1
+                logger.debug("Clicked 'Not now' on survey step %d", dismissed_count)
+            except Exception:
+                # No more survey popups visible
+                break
+
+        if dismissed_count > 0:
+            logger.info("Dismissed NPS survey popup (%d step(s))", dismissed_count)
+        else:
             logger.debug("No NPS survey popup found")
 
     def dismiss_popups(self) -> None:

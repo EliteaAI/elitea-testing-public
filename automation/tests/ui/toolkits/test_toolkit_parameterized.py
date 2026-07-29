@@ -366,6 +366,8 @@ class TestToolkitTestSettings:
         with allure.step("Step 1 — Navigate to toolkit detail page"):
             page.goto(f"{base_url}/toolkits/all", wait_until="domcontentloaded")
             page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
+            # Dismiss NPS survey popup if it appeared on initial load
+            BasePage(page).dismiss_popups()
             page.wait_for_timeout(1000)
 
             page.goto(f"{base_url}/toolkits/all/{tk_id}", wait_until="domcontentloaded")
