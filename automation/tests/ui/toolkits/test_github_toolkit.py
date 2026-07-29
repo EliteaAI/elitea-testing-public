@@ -431,6 +431,8 @@ class TestGitHubToolkitTestSettings:
                 wait_until="domcontentloaded",
             )
             page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
+            # Dismiss NPS survey popup if it appeared on initial load
+            BasePage(page).dismiss_popups()
             page.wait_for_timeout(1000)
 
             page.goto(
