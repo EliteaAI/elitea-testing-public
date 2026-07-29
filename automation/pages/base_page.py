@@ -126,6 +126,9 @@ class BasePage:
                 # Spinner might not be present on all pages, continue
                 pass
 
+        # Dismiss any popups that may have appeared (NPS survey, banners)
+        self.dismiss_popups()
+
     def reload_and_wait(self, timeout: int = 15000) -> None:
         """Reload the page and wait for it to be ready.
 
@@ -191,6 +194,47 @@ class BasePage:
             logger.info("Dismissed banner overlay")
         else:
             logger.debug("No banner overlay found to dismiss")
+
+    def dismiss_nps_survey_if_present(self) -> None:
+        """Dismiss NPS survey popup(s) if present.
+
+        The survey now has TWO steps:
+        1. "Are you using AI on daily basis in Elitea project" (Yes/No)
+        2. "How likely are you to recommend Elitea..." (0-10 NPS)
+
+        Clicking 'Not now' on step 1 shows step 2, so we need to click
+        'Not now' multiple times until the survey fully closes.
+
+        This popup covers the chat send button and blocks test execution.
+        """
+        not_now_button = self.page.locator('button:has-text("Not now")')
+        dismissed_count = 0
+        max_attempts = 3  # Safety limit
+
+        for _ in range(max_attempts):
+            try:
+                not_now_button.wait_for(state="visible", timeout=1000)
+                not_now_button.click()
+                self.page.wait_for_timeout(500)
+                dismissed_count += 1
+                logger.debug("Clicked 'Not now' on survey step %d", dismissed_count)
+            except Exception:
+                # No more survey popups visible
+                break
+
+        if dismissed_count > 0:
+            logger.info("Dismissed NPS survey popup (%d step(s))", dismissed_count)
+        else:
+            logger.debug("No NPS survey popup found")
+
+    def dismiss_popups(self) -> None:
+        """Dismiss all known popups that may interfere with tests.
+
+        Combines banner overlay and NPS survey dismissal.
+        Call this before interacting with elements that may be covered.
+        """
+        self.dismiss_banner_if_present()
+        self.dismiss_nps_survey_if_present()
 
     def capture_requests_matching(self, url_substring: str, method: str | None = None) -> "CapturedRequests":
         """Start capturing network requests whose URL contains *url_substring*.

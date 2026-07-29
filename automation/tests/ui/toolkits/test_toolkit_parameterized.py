@@ -21,6 +21,7 @@ import requests
 from api import CredentialAPI, ToolkitAPI
 from config import settings
 from components.mui import Popper
+from pages.base_page import BasePage
 from pages.chat_page import ChatPage
 from toolkit_configs import TOOLKIT_CONFIGS, ToolkitConfig
 from toolkit_factories import CREDENTIAL_FACTORIES, TOOLKIT_SETTINGS_FACTORIES
@@ -365,6 +366,8 @@ class TestToolkitTestSettings:
         with allure.step("Step 1 — Navigate to toolkit detail page"):
             page.goto(f"{base_url}/toolkits/all", wait_until="domcontentloaded")
             page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
+            # Dismiss NPS survey popup if it appeared on initial load
+            BasePage(page).dismiss_popups()
             page.wait_for_timeout(1000)
 
             page.goto(f"{base_url}/toolkits/all/{tk_id}", wait_until="domcontentloaded")
@@ -426,6 +429,9 @@ class TestToolkitTestSettings:
                     _fill_test_settings_param(page, field_label, value)
 
         with allure.step("Step 6 — Click Run Tool button"):
+            # Dismiss any popups (NPS survey, banners) that may block the Run Tool button
+            BasePage(page).dismiss_popups()
+
             run_btn = page.get_by_role("button", name="Run Tool")
             run_btn.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
             run_btn.first.scroll_into_view_if_needed()

@@ -28,6 +28,7 @@ import pytest
 
 from api import CredentialAPI, ToolkitAPI
 from config import settings
+from pages.base_page import BasePage
 from pages.chat_page import ChatPage
 from components.mui import Popper
 import allure
@@ -430,6 +431,8 @@ class TestGitHubToolkitTestSettings:
                 wait_until="domcontentloaded",
             )
             page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
+            # Dismiss NPS survey popup if it appeared on initial load
+            BasePage(page).dismiss_popups()
             page.wait_for_timeout(1000)
 
             page.goto(
@@ -506,6 +509,9 @@ class TestGitHubToolkitTestSettings:
         # Step 4 — Click RUN TOOL
         # ------------------------------------------------------------------
         with allure.step("Step 4 — Click RUN TOOL"):
+            # Dismiss any popups (NPS survey, banners) that may block the Run Tool button
+            BasePage(page).dismiss_popups()
+
             run_btn = page.get_by_role("button", name="Run Tool")
             run_btn.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
             run_btn.first.scroll_into_view_if_needed()

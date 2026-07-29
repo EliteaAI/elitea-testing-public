@@ -281,14 +281,24 @@ class ConversationAPI:
         Note: the GET endpoint uses the **singular** path segment
         ``/conversation/`` (not ``/conversations/``).
         """
+        resp = self.get_conversation_raw(conversation_id)
+        _raise_for_status(resp)
+        return resp.json()
+
+    def get_conversation_raw(self, conversation_id: int) -> requests.Response:
+        """Return the raw ``Response`` for a single-conversation GET.
+
+        Unlike :meth:`get_conversation`, does NOT raise on non-2xx — callers
+        assert status/headers/body themselves. Used by error-path and
+        content-type tests that must inspect the response without a raised
+        ``HTTPError`` short-circuiting the check.
+        """
         url = (
             f"{self.base_url}/elitea_core/conversation/prompt_lib"
             f"/{self.project_id}/{conversation_id}"
         )
-        logger.debug("GET conversation %s", url)
-        resp = self._session.get(url)
-        _raise_for_status(resp)
-        return resp.json()
+        logger.debug("GET conversation (raw) %s", url)
+        return self._session.get(url)
 
     def delete_conversation(self, conversation_id: int) -> None:
         """Delete a conversation.  Returns ``None`` on success (HTTP 204).
