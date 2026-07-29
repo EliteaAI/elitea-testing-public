@@ -1,0 +1,52 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Send embedded chat message — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("chat-send-button")
+    - locator resolved to <button tabindex="0" type="button" data-testid="chat-send-button" aria-label="send your question" class="MuiButtonBase-root MuiButton-root MuiButton-icon MuiButton-iconPrimary MuiButton-sizeMedium MuiButton-iconSizeMedium MuiButton-colorPrimary css-1uqincl">…</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div class="MuiBox-root css-172ahpj">…</div> from <div class="MuiBox-root css-af63kp">…</div> subtree intercepts pointer events
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div class="MuiBox-root css-172ahpj">…</div> from <div class="MuiBox-root css-af63kp">…</div> subtree intercepts pointer events
+    - retrying click action
+      - waiting 100ms
+    19 × waiting for element to be visible, enabled and stable
+       - element is visible, enabled and stable
+       - scrolling into view if needed
+       - done scrolling
+       - <div class="MuiBox-root css-172ahpj">…</div> from <div class="MuiBox-root css-af63kp">…</div> subtree intercepts pointer events
+     - retrying click action
+       - waiting 500ms
+ERROR    elitea.steps:actions.py:49 Step failed: Send embedded chat message — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("chat-send-button")
+    - locator resolved to <button tabindex="0" type="button" data-testid="chat-send-button" aria-label="send your question" class="MuiButtonBase-root MuiButton-root MuiButton-icon MuiButton-iconPrimary MuiButton-sizeMedium MuiButton-iconSizeMedium MuiButton-colorPrimary css-1uqincl">…</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div class="MuiBox-root css-172ahpj">…</div> from <div class="MuiBox-root css-af63kp">…</div> subtree intercepts pointer events
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div class="MuiBox-root css-172ahpj">…</div> from <div class="MuiBox-root css-af63kp">…</div> subtree intercepts pointer events
+    - retrying click action
+      - waiting 100ms
+    19 × waiting for element to be visible, enabled and stable
+       - element is visible, enabled and stable
+       - scrolling into view if needed
+       - done scrolling
+       - <div class="MuiBox-root css-172ahpj">…</div> from <div class="MuiBox-root css-af63kp">…</div> subtree intercepts pointer events
+     - retrying click action
+       - waiting 500ms
