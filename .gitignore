@@ -73,3 +73,6 @@ docs/coverage-priority-60
 *_backup_*
 /*.png
 .agents/automation-board
+.claude/agents
+
+.claude/skills
