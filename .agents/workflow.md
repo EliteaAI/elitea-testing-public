@@ -46,6 +46,38 @@ runs that branch, so no test and no agent is ever blocked on review latency.
 - Commit style (sampled from history): conventional-ish — `test: (5199) Add guardrails
   live-reload UI tests`, `refactor: use default gpt-5.2 model`, `docs(afs): amend selectors…`.
 
+### No git worktrees for regular automation work (operator ruling 2026-07-24)
+
+**Use plain branching and one straightforward flow at a time — one branch, one case,
+no concurrent checkouts.** Do not create a `git worktree` as part of ordinary analysis,
+implementation, review, or promotion work. **Only on an explicit human ask** (e.g. a
+one-off recovery from a wedged clone) — never on your own initiative, and never as a
+routine step in a skill or loop.
+
+Why: worktrees bought parallelism this pipeline doesn't need (it is serial by design —
+one case dispatched at a time, fresh-session review, lead-owned merge gate) and cost
+real damage — a **confirmed-twice** hazard where `worktree add`/`remove` left the MAIN
+checkout on the wrong branch (PRs #608, #693 —
+`.agents/memory/qa-engineer/git_worktree_can_leave_main_checkout_on_wrong_branch.md`),
+plus abandoned trees accumulating beside the sibling clones (6 stale, ~54 MB, cleaned
+up 2026-07-24) which corrupt the load-bearing four-sibling topology.
+
+**Reach for these instead — most "I need a worktree" moments need no checkout at all:**
+
+| Goal | Do this |
+|---|---|
+| Read a file on another branch | `git show <branch>:<path>` |
+| Compare against another branch | `git diff <branch>...HEAD` · `git log <branch>..HEAD` |
+| Check a testid's presence on a ref | `git grep '<testid>' origin/main -- src/` (after `git fetch origin`) |
+| Review a PR's code | Static review — **no execution, no checkout** (reviewer slot is static by contract) |
+| Run a case's tests | The case's own branch, checked out normally, one at a time |
+| Work another branch mid-task | Commit or park current work, `git checkout`, then return |
+| Parallel work on shared files | Don't — serialize it. Two agents in one tree collide. |
+
+If a checkout genuinely must move while another agent depends on the current one
+(e.g. the EliteaUI dev server), that is a **coordination** problem: finish or park the
+in-flight work first (the `sync-base-branches` guard pattern), don't fork the tree.
+
 ### Connected repos — testids in the Support Assistant (2026-07-23, #705)
 
 Some UI ships from **separate repos we own** but consume as packages — today the **Support

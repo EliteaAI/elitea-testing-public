@@ -162,6 +162,18 @@ lookup), never replace it.
 - **Browser-driving Bash commands: timeout=600000 (10 min)** — the 120s default
   false-fails on Keycloak + SPA navigation + WebSocket AI waits (2–30s).
 
+## Every role — NO git worktrees for regular work (operator ruling 2026-07-24)
+
+Plain branching, **one thing at a time**, no concurrent checkouts. Never create a
+`git worktree` as part of ordinary analysis, implementation, review, or promotion —
+**only on an explicit human ask.** Most "I need a worktree" moments need no checkout at
+all: `git show <branch>:<path>` to read, `git diff <branch>...HEAD` to compare,
+`git grep '<id>' origin/main -- src/` to verify a ref. Review is **static** (no
+execution, no checkout). Full rationale + the replacement table:
+`.agents/workflow.md` § No git worktrees. (Origin: a confirmed-twice hazard where
+`worktree add/remove` left the MAIN checkout on the wrong branch — PRs #608/#693 — plus
+6 abandoned trees, ~54 MB, polluting the four-sibling topology.)
+
 ## Every role — batch shell round-trips (time-audit finding, 2026-07-16)
 
 - **Combine related read-only shell commands into ONE Bash call** (`git status &&
