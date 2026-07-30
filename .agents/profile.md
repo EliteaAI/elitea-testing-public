@@ -128,6 +128,32 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
 - **Style**: github-issue, labelled **`bug`**, in `EliteaAI/elitea-testing-public`
 - **Bundling policy**: strict-per-bug
 - **Link originating case**: yes — body names the TMS case ID and "Found while working #<task>"
+- **Dedup before filing (light — one command, not a research project).** Before
+  filing a bug, check whether it is already tracked. Use the real-time list API,
+  never `--search` (index lags → the #17/#18 dup filings):
+  `env -u GITHUB_TOKEN gh issue list --repo EliteaAI/elitea-testing-public --label bug
+  --state all --limit 300 --json number,title,state` then keyword-match the
+  component + symptom locally. One pass; if nothing obvious matches, file and move on.
+  - **Duplicate = same object + same trigger + same expected/actual.** Anything less
+    is NOT a duplicate:
+    - *Same pattern, different object/case/surface* ⇒ **sibling**, not duplicate.
+      File it, and cross-link both ways (`sibling of #N — same pattern, different
+      <object>`). Bucket-delete-toast vs files-delete-toast are siblings, not dupes —
+      collapsing siblings destroys coverage.
+    - *Match is CLOSED and it reproduces again* ⇒ **regression**, not duplicate. New
+      issue, body says "regression of #M". Never re-mark a closed issue as a dupe.
+    - *Unsure* ⇒ **file it**, with "possible duplicate of #N" in the body. A lost bug
+      costs far more than a linked maybe-dupe a human merges in seconds. Dedup is
+      never a filter that silently drops a finding.
+  - **A real duplicate found BEFORE filing ⇒ do not file.** Instead comment the new
+    occurrence on the existing issue (which case/step hit it + embedded evidence) so
+    evidence consolidates instead of splitting, and say "not filed — already tracked
+    as #N" in your Run Report / AFS.
+  - **Two issues already exist ⇒ mark, never close.** Survivor is the **lower issue
+    number** (oldest wins; migrate the newer's better evidence onto it first if any).
+    On the newer: add the `duplicate` label + a comment "Duplicate of #M — <why>",
+    and leave it **OPEN**. Agents never close issues (`Done` is human-only) — the
+    `duplicate` label IS the human's sweep queue (`gh issue close <n> --reason duplicate`).
 - **Never mask**: no `test.fail()`/skip/weakened asserts; isolated defect →
   `expect.soft()` with ticket linked; blocking defect → natural fail + `blocked`
 - **Two trackers, two purposes** — do not conflate:

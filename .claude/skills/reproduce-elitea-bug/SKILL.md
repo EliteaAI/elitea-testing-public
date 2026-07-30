@@ -37,6 +37,27 @@ environment**:
 Record where it reproduces in an **Environment** line: `localhost-only | DEV | both`.
 Only `DEV` or `both` may become `repro:confirmed`. `localhost-only` ⇒ `repro:local-only`.
 
+## Dedup check first — is this card already tracked?
+
+Before spending a browser session reproducing, check whether another card already
+tracks this defect (one command, cheap — you are already reading the card):
+
+```bash
+env -u GITHUB_TOKEN gh issue list --repo EliteaAI/elitea-testing-public --label bug \
+  --state all --limit 300 --json number,title,state
+```
+
+Keyword-match the component + symptom locally. Apply the duplicate/sibling/regression
+tests in `.agents/profile.md` § Bug filing — **duplicate = same object + same trigger
++ same expected/actual**; same pattern on a different object is a **sibling** (keep
+both, cross-link), and a re-occurring CLOSED issue is a **regression** (not a dupe).
+
+If it IS a real duplicate: add the `duplicate` label + comment
+"Duplicate of #M — <why>" on the **higher-numbered** card, stamp `repro:triaged`, and
+**leave it OPEN** — agents never close; the label is the human's sweep queue. Then
+stop; don't reproduce it twice. If unsure, treat it as NOT a duplicate and reproduce
+normally, noting "possible duplicate of #N".
+
 ## Rule out the non-bug explanations first
 
 A "reproduction" that is really an artifact burns a dev's day. Run the rule-outs in
@@ -65,6 +86,7 @@ terminal `repro:triaged` (which dequeues the card from the reproduce loop):
 | Localhost only | `repro:local-only` + `repro:triaged` | Post finding; recommend it is env/local, not an app bug. Do not file. |
 | Not reproducible | `repro:not-reproducible` + `repro:triaged` | Post exactly what you tried and where behaviour diverged. Do not file. |
 | Case-text assumed wrong mode | `repro:triaged` | Post finding; recommend a case-text clarification (the #40 pattern). Do not file. |
+| Already tracked by another card | `duplicate` + `repro:triaged` | Comment "Duplicate of #M — <why>" on the higher-numbered card. Leave it **OPEN** — never close. No reproduction needed. |
 
 Tracker/board writes are prefixed `env -u GITHUB_TOKEN gh …` (identity rule,
 `.agents/profile.md` § Issue tracker).
