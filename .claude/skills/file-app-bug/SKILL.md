@@ -94,10 +94,19 @@ Capture the new issue number + URL for Step 4.
 ## Step 4 — Back-link
 
 **New filing (`no_duplicate`):**
-1. Add to board #9: `env -u GITHUB_TOKEN gh project item-add 9 --owner EliteaAI --url <new-issue-url>`
-2. Comment on the originating `elitea-testing-public` issue (identity-prefixed):
+1. Comment on the originating `elitea-testing-public` issue (identity-prefixed):
    > **APPLICATION BUG CONFIRMED** — filed as EliteaAI/elitea_issues#N _<title>_
-3. Move the originating card → **`ReportedBugs`** (the renamed Reproduce column).
+2. Move the originating card → **`ReportedBugs`** (the renamed Reproduce column).
+
+> **NEVER add the `elitea_issues` issue to board #9.** Board #9 tracks *our*
+> automation work; every card on it must be an `EliteaAI/elitea-testing-public`
+> issue. The upstream bug is the dev team's to track on their own board — adding it
+> here creates a duplicate card for one defect (the originating card is already
+> there), in a repo our workflow has no states for, and drops it into `Todo`, the
+> reproduce loop's trigger column. The back-link **comment** above is what gives
+> visibility — that is the whole mechanism, no second card needed.
+> (#700's spec said to `gh project item-add` it; that was tried 2026-07-24 with
+> EliteaAI/elitea_issues#6039 and removed — do not reinstate it.)
 
 **Duplicate (`duplicate:<N>`):**
 - Comment on the originating issue (identity-prefixed):

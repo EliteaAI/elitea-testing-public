@@ -89,6 +89,14 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
   `project`, `read:org`), then `env -u GITHUB_TOKEN gh auth status` must show YOUR
   account as active. The shared `GITHUB_TOKEN` stays exported only for `.mcp.json`'s
   github MCP server.
+- **Board #9 holds ONLY `EliteaAI/elitea-testing-public` issues.** Never
+  `gh project item-add` an issue from another repo (`elitea_issues`,
+  `elitea_support`, EliteaUI, …) — it duplicates a defect the originating card
+  already tracks, in a repo this board has no workflow states for, and lands in
+  `Todo` (the reproduce loop's trigger column). Cross-repo visibility comes from a
+  **back-link comment**, never a second card. (Two real incidents: elitea_support#1231
+  via a stale support-agent config; elitea_issues#6039 via `file-app-bug` Step 4 —
+  both removed.)
 - **Dedup rule**: before filing, check with the real-time list API — NOT `--search`
   (the search index lags minutes and causes duplicate filings, cf. #17/#18):
   `env -u GITHUB_TOKEN gh issue list --state all --limit 200 --json title | grep "ELITEA-<id>"`.
