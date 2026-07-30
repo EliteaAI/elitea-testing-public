@@ -216,11 +216,21 @@ class TestToolkitCreationCancelNoToolkitNoBucket:
         with allure.step(
             "Step 5 — Verify only the 'Artifact' toolkit is displayed under 'STORAGE'"
         ):
-            assert toolkit_creation.count_type_cards(timeout=UI_ELEMENT_TIMEOUT) == 1, (
-                "Exactly one toolkit-type card should remain after filtering to 'art'"
-            )
+            # The case's observable is "the filter narrows the picker to Artifact",
+            # asserted as two halves: the Artifact card IS shown, and a type that
+            # does NOT match the query is excluded.
+            #
+            # A total-count assertion (`count_type_cards() == 1`) used to stand in
+            # for both halves, but the product now ships a second type whose name
+            # contains "art" — "Elitea Artifacts" (PLATFORM), supplied by the
+            # backend toolkit-type list, not by EliteaUI source. Any absolute count
+            # is therefore drift-prone: it broke on the 2nd such type and would
+            # break again on a 3rd. The two explicit assertions below are immune.
             artifact_card = toolkit_creation.get_type_card("artifact")
             expect(artifact_card).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(toolkit_creation.get_type_card("github")).to_have_count(
+                0, timeout=UI_ELEMENT_TIMEOUT,
+            )
 
         with allure.step(
             "Step 6 — Click the 'Artifact' toolkit card (via its testid, "

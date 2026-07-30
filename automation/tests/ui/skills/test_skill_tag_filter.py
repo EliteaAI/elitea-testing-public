@@ -109,7 +109,6 @@ class TestSkillTagFilter:
         # ------------------------------------------------------------------
         with allure.step("Step 1 — Create Skill A/B/C with shared and unique tags"):
             list_page.navigate()
-            baseline_names = list_page.get_visible_skill_names()
 
             # Skill A: both tags are new — commit each via type + Enter.
             list_page.navigate_to_create()
@@ -194,10 +193,20 @@ class TestSkillTagFilter:
             assert list_page.skill_exists_in_list(skill_c_name), (
                 f"{skill_c_name!r} should be visible in the grid after creation"
             )
-            assert len(visible_names) == len(baseline_names) + 3, (
-                f"Expected {len(baseline_names) + 3} cards after creating 3 "
-                f"skills (baseline {len(baseline_names)} + 3), got "
-                f"{len(visible_names)}: {visible_names!r}"
+            # Count only THIS run's skills, identified by their unique suffix.
+            #
+            # The previous form compared whole-grid totals
+            # (`len(visible_names) == len(baseline_names) + 3`). That silently
+            # assumes the grid renders every skill in the project, which is false
+            # once the project exceeds the grid's page size (~20 cards): the total
+            # saturates, so creating 3 more can never move it and the assertion can
+            # never hold. Scoping to this run's suffix keeps the exact "3 created,
+            # 3 visible" check while removing the page-size dependency.
+            run_skill_names = [n for n in visible_names if unique_suffix in n]
+            assert len(run_skill_names) == 3, (
+                f"Expected exactly 3 skills from this run (suffix "
+                f"{unique_suffix!r}) to be visible in the grid, got "
+                f"{len(run_skill_names)}: {run_skill_names!r}"
             )
 
             # Each card renders its own tags (case's step 1 expected result:
@@ -259,9 +268,18 @@ class TestSkillTagFilter:
         with allure.step("Step 5 — Clear all: grid restored to full unfiltered list"):
             list_page.clear_tag_filter(timeout=UI_ELEMENT_TIMEOUT)
             restored_names = list_page.get_visible_skill_names()
-            assert len(restored_names) == len(baseline_names) + 3, (
-                f"Expected grid restored to {len(baseline_names) + 3} cards "
-                f"after 'Clear all', got {len(restored_names)}: {restored_names!r}"
+            # Same page-size reasoning as Step 1: a whole-grid total
+            # (`len(restored_names) == len(baseline_names) + 3`) saturates once the
+            # project exceeds the grid's page size. What "Clear all" must prove is
+            # that the grid is no longer filtered — and seeing all THREE of this
+            # run's skills at once demonstrates exactly that, because no single tag
+            # filter used above matches more than two of them.
+            restored_run_skills = [n for n in restored_names if unique_suffix in n]
+            assert len(restored_run_skills) == 3, (
+                f"Expected all 3 of this run's skills (suffix {unique_suffix!r}) "
+                f"to be visible after 'Clear all' — no single tag filter shows "
+                f"all three, so this proves the filter was cleared. Got "
+                f"{len(restored_run_skills)}: {restored_run_skills!r}"
             )
             assert list_page.skill_exists_in_list(skill_a_name), (
                 f"{skill_a_name!r} should be visible again after clearing the filter"

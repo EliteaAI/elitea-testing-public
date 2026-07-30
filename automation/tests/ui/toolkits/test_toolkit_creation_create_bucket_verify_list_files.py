@@ -304,16 +304,23 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 )
 
             with allure.step(
-                "Steps 8-9 — Verify the toolkit list filters to show ONLY "
-                "the 'Artifact' card (count==1 proves both 'only Artifact "
-                "shown' and 'no other types displayed' — the case's own "
-                "text splits one observable across two steps)"
+                "Steps 8-9 — Verify the toolkit list filters to show the "
+                "'Artifact' card and to exclude non-matching types (the "
+                "case's own text splits one observable across two steps)"
             ):
-                assert toolkit_creation.count_type_cards(
-                    timeout=UI_ELEMENT_TIMEOUT
-                ) == 1, "Exactly one toolkit-type card should remain after filtering to 'art'"
+                # Two explicit halves instead of a total count: the Artifact card
+                # IS shown, and a type that does NOT match the query is excluded.
+                #
+                # `count_type_cards() == 1` used to stand in for both, but the
+                # product now ships a second "art"-matching type — "Elitea
+                # Artifacts" (PLATFORM), supplied by the backend toolkit-type list
+                # rather than EliteaUI source. Any absolute count is drift-prone:
+                # it broke on the 2nd such type and would break again on a 3rd.
                 artifact_card = toolkit_creation.get_type_card("artifact")
                 expect(artifact_card).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(toolkit_creation.get_type_card("github")).to_have_count(
+                    0, timeout=UI_ELEMENT_TIMEOUT,
+                )
 
             with allure.step(
                 "Step 10 — Click the 'Artifact' toolkit card (via its "
