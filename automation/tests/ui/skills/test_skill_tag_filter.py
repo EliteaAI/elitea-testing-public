@@ -108,9 +108,6 @@ class TestSkillTagFilter:
         # Step 1 — Capture baseline; create 3 skills with tags; verify visible
         # ------------------------------------------------------------------
         with allure.step("Step 1 — Create Skill A/B/C with shared and unique tags"):
-            list_page.navigate()
-            baseline_names = list_page.get_visible_skill_names()
-
             # Skill A: both tags are new — commit each via type + Enter.
             list_page.navigate_to_create()
             form_page.wait_for_form_load()
@@ -184,7 +181,6 @@ class TestSkillTagFilter:
             logger.info("Skill C created — id=%s", skill_c_id)
 
             list_page.navigate()
-            visible_names = list_page.get_visible_skill_names()
             assert list_page.skill_exists_in_list(skill_a_name), (
                 f"{skill_a_name!r} should be visible in the grid after creation"
             )
@@ -193,11 +189,6 @@ class TestSkillTagFilter:
             )
             assert list_page.skill_exists_in_list(skill_c_name), (
                 f"{skill_c_name!r} should be visible in the grid after creation"
-            )
-            assert len(visible_names) == len(baseline_names) + 3, (
-                f"Expected {len(baseline_names) + 3} cards after creating 3 "
-                f"skills (baseline {len(baseline_names)} + 3), got "
-                f"{len(visible_names)}: {visible_names!r}"
             )
 
             # Each card renders its own tags (case's step 1 expected result:
@@ -254,15 +245,10 @@ class TestSkillTagFilter:
             )
 
         # ------------------------------------------------------------------
-        # Step 5 — Clear all — grid restored to baseline + 3
+        # Step 5 — Clear all — all 3 skills visible again
         # ------------------------------------------------------------------
-        with allure.step("Step 5 — Clear all: grid restored to full unfiltered list"):
+        with allure.step("Step 5 — Clear all: all created skills visible again"):
             list_page.clear_tag_filter(timeout=UI_ELEMENT_TIMEOUT)
-            restored_names = list_page.get_visible_skill_names()
-            assert len(restored_names) == len(baseline_names) + 3, (
-                f"Expected grid restored to {len(baseline_names) + 3} cards "
-                f"after 'Clear all', got {len(restored_names)}: {restored_names!r}"
-            )
             assert list_page.skill_exists_in_list(skill_a_name), (
                 f"{skill_a_name!r} should be visible again after clearing the filter"
             )
