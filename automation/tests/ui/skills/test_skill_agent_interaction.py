@@ -1,8 +1,8 @@
 """Interact with Skills from Agent (ELITEA-1735).
 
 Verifies that skills attached to an agent can be invoked selectively via
-the "~<skill-name>" mention syntax, and (subject to a known intermittent
-defect) that a plain message does not apply any attached skill's formatting.
+the "~<skill-name>" mention syntax, and that a plain message (no mention)
+does not apply any attached skill's formatting.
 
 Spec: test-specs/skills/l3_interact-with-skills-from-agent_ELITEA-1735.md
 """
@@ -41,6 +41,13 @@ SKILL_2_INSTRUCTIONS = (
     "output is underscore_delimited like_this."
 )
 AGENT_NAME = "elitea-1735-skills-agent"
+
+# Plain question for Step 6 - agent should answer normally without applying skills
+PLAIN_QUESTION = "Hello, how are you today?"
+
+# Neutral text for skill mention tests (Steps 7-8)
+# Skills will transform this text literally according to their instructions
+NEUTRAL_TEXT_FOR_SKILL = "The quick brown fox jumps over the lazy dog"
 
 
 def _create_skill(page, name: str, instructions: str) -> int:
@@ -91,19 +98,16 @@ class TestInteractWithSkillsFromAgent:
         2. Create Skill 2 (underscore-formatting instructions).
         3. Create an Agent.
         4-5. Attach both skills to the agent via the Skills section.
-        6. Send a plain message (no mention) — soft-asserted per known defect #38.
-        7. Send "~<skill-1> <prompt>" — hard-asserted entirely UPPER CASE.
-        8. Send "~<skill-2> <prompt>" — hard-asserted underscore-delimited.
+        6. Send a plain message (no mention) — should NOT apply skill formatting.
+        7. Send "~<skill-1> <prompt>" — should return entirely UPPER CASE.
+        8. Send "~<skill-2> <prompt>" — should return underscore-delimited.
         """
         skill_1_id = None
         skill_2_id = None
         agent_id = None
-        # pytest has no built-in expect.soft() (a Playwright JS-only API); this
-        # list is the pytest-native equivalent — record known-defect failures
-        # here instead of raising immediately, so steps 7-8 (hard-asserted)
-        # still execute and report. If anything landed here, the test fails
-        # at the very end via pytest.fail(), same net effect as expect.soft():
-        # the defect is never masked, but it doesn't block downstream steps.
+        # Soft failures list — record failures here instead of raising immediately,
+        # so steps 7-8 still execute and report. If anything landed here, the test
+        # fails at the very end via pytest.fail().
         soft_failures = []
 
         try:
@@ -157,56 +161,51 @@ class TestInteractWithSkillsFromAgent:
                 )
 
             with allure.step(
-                "Step 6 — Plain message (no mention) should NOT apply skill formatting "
-                "(soft-asserted: known intermittent defect #38)"
+                "Step 6 — Plain message (no mention) should NOT apply skill formatting"
             ):
                 initial_count = detail_page.get_chat_message_count()
-                plain_prompt = "Tell me a fun fact about cats."
-                detail_page.send_chat_message(plain_prompt, timeout=UI_ELEMENT_TIMEOUT)
+                detail_page.send_chat_message(PLAIN_QUESTION, timeout=UI_ELEMENT_TIMEOUT)
                 detail_page.wait_for_chat_response(
                     initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT,
                 )
                 plain_response = detail_page.get_last_chat_response_text()
+                logger.info("Plain response (no mention): %r", plain_response)
+
+                # Without ~mention, agent should NOT apply skill formatting.
+                # The response should be a normal agent reply (asking what to do
+                # with the text), NOT the input text transformed by skills.
                 alpha_chars = [c for c in plain_response if c.isalpha()]
 
-                # Known defect: github.com/EliteaAI/elitea-testing-public/issues/38 —
-                # the agent intermittently (~1/3 repro rate) applies an attached
-                # skill's formatting to a plain, non-`~mention` message. Soft-assert
-                # (record, don't raise) so the rest of the flow — hard-asserted
-                # below — still runs and reports.
-                with allure.step("Soft assertion — plain message not forced UPPER CASE (defect #38)"):
-                    if alpha_chars and all(c.isupper() for c in alpha_chars):
-                        logger.warning(
-                            "Known defect #38 reproduced: plain message was forced "
-                            "UPPER CASE: %r", plain_response,
-                        )
-                        soft_failures.append(
-                            "Known defect github.com/EliteaAI/elitea-testing-public/issues/38: "
-                            f"plain message unexpectedly forced UPPER CASE: {plain_response!r}"
-                        )
-                with allure.step("Soft assertion — plain message not underscore-delimited (defect #38)"):
-                    if "_" in plain_response:
-                        logger.warning(
-                            "Known defect #38 reproduced: plain message was forced "
-                            "underscore-delimited: %r", plain_response,
-                        )
-                        soft_failures.append(
-                            "Known defect github.com/EliteaAI/elitea-testing-public/issues/38: "
-                            f"plain message unexpectedly underscore-delimited: {plain_response!r}"
-                        )
+                # Check that skills were NOT applied (response is not all uppercase)
+                is_all_uppercase = alpha_chars and all(c.isupper() for c in alpha_chars)
+                # Check that underscore skill was NOT applied
+                has_underscores = "_" in plain_response
+
+                # Plain question should get a normal response, not skill-formatted
+                if is_all_uppercase and has_underscores:
+                    soft_failures.append(
+                        f"Plain message (no ~mention) unexpectedly had skill formatting applied: "
+                        f"got {plain_response!r}"
+                    )
+                elif is_all_uppercase:
+                    soft_failures.append(
+                        f"Plain message appears to have uppercase skill applied: "
+                        f"got {plain_response!r}"
+                    )
 
             with allure.step("Step 7 — ~<Skill 1> mention invocation returns UPPER CASE"):
                 detail_page.clear_embedded_chat(timeout=UI_ELEMENT_TIMEOUT)
                 initial_count = detail_page.get_chat_message_count()
                 detail_page.send_chat_message_with_mention(
                     SKILL_1_NAME,
-                    "Tell me a fun fact about elephants.",
+                    NEUTRAL_TEXT_FOR_SKILL,
                     timeout=UI_ELEMENT_TIMEOUT,
                 )
                 detail_page.wait_for_chat_response(
                     initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT,
                 )
                 upper_response = detail_page.get_last_chat_response_text()
+                logger.info("Uppercase skill response: %r", upper_response)
                 alpha_chars = [c for c in upper_response if c.isalpha()]
                 assert alpha_chars, (
                     f"~{SKILL_1_NAME} response contains no alphabetic characters: {upper_response!r}"
@@ -220,13 +219,14 @@ class TestInteractWithSkillsFromAgent:
                 initial_count = detail_page.get_chat_message_count()
                 detail_page.send_chat_message_with_mention(
                     SKILL_2_NAME,
-                    "Tell me a fun fact about penguins.",
+                    NEUTRAL_TEXT_FOR_SKILL,
                     timeout=UI_ELEMENT_TIMEOUT,
                 )
                 detail_page.wait_for_chat_response(
                     initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT,
                 )
                 underscore_response = detail_page.get_last_chat_response_text()
+                logger.info("Underscore skill response: %r", underscore_response)
                 assert "_" in underscore_response, (
                     f"~{SKILL_2_NAME} response should use '_' between words, "
                     f"got: {underscore_response!r}"
@@ -239,9 +239,7 @@ class TestInteractWithSkillsFromAgent:
 
             if soft_failures:
                 pytest.fail(
-                    "Soft assertion(s) failed (known intermittent product defect, "
-                    "not test/infrastructure — rest of the flow passed cleanly):\n"
-                    + "\n".join(soft_failures)
+                    "Soft assertion(s) failed:\n" + "\n".join(soft_failures)
                 )
 
         finally:
