@@ -157,6 +157,51 @@ git diff origin/main...automation/testids --stat
 git diff origin/main...automation/testids | grep -E '^[+-]' | grep -v '^[+-][+-]' | grep -vc 'data-testid'
 
 git merge origin/main
+# DO NOT PUSH YET — run the testid-loss guard below first.
+```
+
+### Testid-loss guard — MANDATORY, between merge and push
+
+**A merge must never shrink the testid set.** Three testids were silently lost this way
+(`artifacts-delete-files-button`, `artifacts-download-files-tooltip`,
+EliteaAI/EliteaUI@a6419736 / @2cd4fad5) — each broke a test days later, and each was a
+one-line restore once found. Snapshotting the set makes the loss impossible to miss.
+
+**The pattern must cover prop indirection** (`testId="x"`, `closeButtonTestId="x"`), not just
+literal `data-testid`. Verified empirically: `artifacts-delete-files-button` is wired as
+`testId="artifacts-delete-files-button"` at the call site, so a `data-testid`-only grep reports
+"no loss" while the test breaks. (`artifacts-download-files-tooltip` was a literal `data-testid`
+and would have been caught either way — hence "cover both forms", not "prop form only".)
+
+```bash
+cd "$WORKSPACE/EliteaUI"
+TID_RE='data-testid="[^"]+"|[a-zA-Z]*[Tt]estId="[^"]+"'
+
+# 1. BEFORE the merge (run this FIRST, while still on the pre-merge commit):
+git grep -ohE "$TID_RE" HEAD -- src/ | grep -oE '"[^"]+"' | tr -d '"' | sort -u > /tmp/testids-before.txt
+
+# 2. …merge…    3. AFTER the merge:
+git grep -ohE "$TID_RE" HEAD -- src/ | grep -oE '"[^"]+"' | tr -d '"' | sort -u > /tmp/testids-after.txt
+
+# 4. The gate — MUST print nothing:
+comm -23 /tmp/testids-before.txt /tmp/testids-after.txt
+```
+
+**Any output ⇒ STOP. Do not push.** Triage each vanished testid — there are exactly two
+causes and they need opposite fixes:
+
+| Signal | Cause | Action |
+|---|---|---|
+| Other testids from the **same adding commit** survived | the merge dropped ours | **RESTORE** it (re-add the attribute), then re-run the guard |
+| The element itself is gone from `origin/main` | the UI team deliberately removed it | **Do NOT restore.** Fix the `LocatorDescriptor` + test in `elitea-testing-public`, and report it |
+
+The sibling test is mechanical:
+`git log --all --format=%h -S"<testid>" -- src/ | head -1` → the adding commit →
+`git show <commit>` → did its *other* testids survive?
+
+Only once `comm` is empty (or every difference is a confirmed deliberate removal):
+
+```bash
 git push origin automation/testids     # plain FF push. If this wants --force, STOP.
 ```
 
@@ -166,12 +211,21 @@ Testid edits are additive JSX attributes, so a conflict almost always means the 
 JSX line. Keep **main's** version of the line and re-add our `data-testid` attribute. Then
 `git add <file>` && `git merge --continue`. `git merge --abort` returns you to safety at any point.
 
-**Divergence rule — the one case that needs judgement.** If the UI team *changed* a testid during review
-(renamed it, moved it to another element) before merging our draft PR, then `main` now disagrees with the
-copy on `automation/testids`. **Resolve in favour of `main` — it is the source of truth.** Then update the
-matching `LocatorDescriptor` in `elitea-testing-public`, and re-run the affected tests. This is inherent
-to the dual-target design, not a bug. Report it to the human; the tests it touches will fail loudly
-otherwise.
+**Divergence rule — scope it precisely.** "Favour `main`" applies to **code structure** and to testid
+**renames** — it is NOT licence to drop our additive attributes. Read it as two distinct cases:
+
+| What diverged | Resolution |
+|---|---|
+| Main **refactored the surrounding code** (moved/rewrote the JSX our testid sits on) | Take **main's** structure, then **RE-ADD our testid attribute on top**. Our testids are additive and orthogonal to a refactor — losing one here is a defect, never an acceptable outcome. |
+| The UI team **renamed or moved** the testid itself | **Favour `main`** — it is the source of truth. Then update the matching `LocatorDescriptor` in `elitea-testing-public` and re-run the affected tests. |
+| Main **deleted the element** entirely | Accept the deletion. Fix the page object + test; do not resurrect the testid. |
+
+Blanket-applying "favour main" to the first row is exactly how the three known losses happened: a
+whole-file resolution in main's favour quietly discards a one-line additive attribute, and nothing
+fails until a test runs days later. The guard above is what makes that impossible to miss — treat this
+rule as the *judgement*, and the guard as the *proof*.
+
+Report any of these to the human; the tests they touch will otherwise fail loudly and far from the cause.
 
 ### Restart the dev server
 
@@ -231,6 +285,10 @@ git checkout automation/testids
 git diff origin/main...automation/testids | grep -E '^[+-]' | grep -v '^[+-][+-]' | grep -vc 'data-testid'
 
 git merge origin/main
+# The testid-loss guard applies HERE TOO — snapshot before/after and run the `comm`
+# check from Part 2 against this repo before pushing. The Support Assistant carries
+# the same hazard: main refactors a file, the merge resolves in main's favour, and an
+# additive testid disappears without any failure until a test runs.
 git push origin automation/testids     # plain FF push. NEVER --force.
 ```
 
@@ -264,6 +322,38 @@ curl -s -o /dev/null -w "localhost:5173 -> %{http_code}\n" http://localhost:5173
 cd "$WORKSPACE/elitea-testing-public/automation"
 HEADLESS=true ../.venv/bin/pytest tests/ui/smoke/ -v -p no:cacheprovider
 ```
+
+### 4. Contract check — every page-object testid still has a home
+
+The per-merge guard catches what a *merge* dropped. This catches drift from **any** cause
+(a testid lost in an earlier sync, an element the UI team removed, a typo). Run it after
+every sync; it is fast and needs no browser:
+
+```bash
+WORKSPACE="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"
+cd "$WORKSPACE/elitea-testing-public"
+
+# every testid the page objects rely on
+grep -rhoE 'testid="[a-z0-9-]+"' automation/pages/*.py | cut -d'"' -f2 | sort -u > /tmp/po_testids.txt
+
+# one bulk dump of the UI's tokens, then compare locally (321 individual git greps is far slower)
+git -C "$WORKSPACE/EliteaUI" grep -ohE '[a-z0-9]([a-z0-9-]{3,})' origin/automation/testids -- src/ \
+  | sort -u > /tmp/ui_tokens.txt
+comm -23 /tmp/po_testids.txt /tmp/ui_tokens.txt
+```
+
+**Do not read the raw count as "N broken tests"** — it over-reports badly. Classify each
+hit before acting (the `ui-testid-coverage` skill exists for exactly this):
+
+| Bucket | Tell | Real gap? |
+|---|---|---|
+| dynamic template | UI renders `` `x-${k}` ``, page object stores concrete `x-foo` | no |
+| external surface | e.g. `login-button` (Keycloak, not EliteaUI) | no |
+| **genuinely absent** | none of the above | **yes** — triage per the merge-guard table above |
+
+Baseline for calibration (2026-07-31): 321 referenced, 266 backed, 55 missing — of which
+~25 were dynamic-template false positives and 30 genuinely absent. A **rise** in the
+genuinely-absent count after a sync is the signal worth chasing.
 
 Report the actual numbers and the actual pass/fail line. Do not claim success without running these —
 a green sync with a broken UI is the failure mode this catches.

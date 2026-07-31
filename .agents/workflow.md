@@ -150,11 +150,25 @@ Do this before starting new test work. Conflicts are rare — testid edits are a
 JSX attributes. If `package.json` / `package-lock.json` changed → re-run `npm install`
 (a bare version bump doesn't require it).
 
-> **Divergence rule.** If the UI team *changes* a testid during review (renames it,
-> moves it), `main`'s version now differs from what's already on `automation/testids`.
-> The next `merge origin/main` may conflict. **Resolve in favour of `main`** — it is
-> the source of truth — then fix the affected `LocatorDescriptor` in this repo. This
-> is inherent to the dual-target design, not a bug.
+> **Divergence rule — scope it precisely.** "Favour `main`" governs **code structure**
+> and testid **renames**. It is NOT licence to drop our additive attributes:
+>
+> - Main **refactored the code around** our testid ⇒ take main's structure, then
+>   **RE-ADD our testid on top**. Testids are additive and orthogonal to a refactor;
+>   losing one here is a defect, not an acceptable merge outcome.
+> - The UI team **renamed / moved** the testid ⇒ favour `main`, then fix the
+>   `LocatorDescriptor` in this repo.
+> - Main **deleted the element** ⇒ accept it; fix the page object + test, and do not
+>   resurrect the testid.
+>
+> **Enforced, not trusted.** `sync-base-branches` § *Testid-loss guard* snapshots the
+> testid set before and after every merge and blocks the push if it shrank. Three
+> testids went missing before that gate existed: `artifacts-delete-files-button` and
+> `artifacts-download-files-tooltip` were true merge losses (one-line restores), while
+> `toolkit-detail-indexes-tab` was a legitimate element removal. Each surfaced days
+> later, far from the cause. The guard greps **both** `data-testid="x"` and the
+> prop-passed `testId="x"` form — `artifacts-delete-files-button` is wired via the
+> prop, so a `data-testid`-only check reports "no loss" while the test breaks.
 
 **Test repo ← main** (periodically): merge `main` into `automation/base`.
 
