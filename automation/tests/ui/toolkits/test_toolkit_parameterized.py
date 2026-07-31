@@ -411,33 +411,24 @@ class TestToolkitTestSettings:
                 for field_label, value in cfg.test_tool_params.items():
                     _fill_test_settings_param(page, field_label, value)
 
-        with allure.step("Step 6 — Click Run Tool button"):
-            # Dismiss any popups (NPS survey, banners) that may block the Run Tool button
+        with allure.step("Step 6 — Click the Run Test button"):
+            # Dismiss any popups (NPS survey, banners) that may block the button
             BasePage(page).dismiss_popups()
 
-            run_btn = page.get_by_role("button", name="Run Tool")
-            run_btn.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            run_btn.first.scroll_into_view_if_needed()
-            page.wait_for_timeout(500)
-
-            try:
-                page.wait_for_function(
-                    """() => {
-                        const btn = document.querySelector('button:has(> span)');
-                        const buttons = document.querySelectorAll('button');
-                        for (const b of buttons) {
-                            if (b.textContent.includes('Run Tool') || b.textContent.includes('RUN TOOL')) {
-                                return !b.disabled;
-                            }
-                        }
-                        return false;
-                    }""",
-                    timeout=UI_ELEMENT_TIMEOUT,
-                )
-            except Exception:
-                logger.warning("Run Tool button may still be disabled — attempting click anyway")
-
-            run_btn.first.click(force=True)
+            # LABEL DRIFT (EliteaUI EL-5947). The button's visible text changed
+            # from "Run Tool" to "Run Test" (TestToolSettings.jsx), which broke
+            # the old role+name handle. It already carries
+            # data-testid="toolkit-test-run-tool-button", so it is located by
+            # testid through the page object and the label no longer matters —
+            # also retiring a raw handle from this spec, per
+            # `.agents/testing.md` § Locator policy.
+            #
+            # Playwright's click actionability waits out the button's own
+            # `disabledRunTool` guard (!isValidForm || isRunning ||
+            # indexNameError || patInvalid), which replaces the old
+            # wait_for_function poll on button.disabled — and, unlike the
+            # previous force-click, will not fire while the form is invalid.
+            test_settings.run_tool(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step("Step 7 — Wait for tool execution result"):
             success_locator = page.locator(f'text="{cfg.test_tool_result_indicator}"')
