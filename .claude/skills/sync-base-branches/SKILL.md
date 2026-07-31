@@ -211,6 +211,37 @@ Testid edits are additive JSX attributes, so a conflict almost always means the 
 JSX line. Keep **main's** version of the line and re-add our `data-testid` attribute. Then
 `git add <file>` && `git merge --continue`. `git merge --abort` returns you to safety at any point.
 
+**Three gotchas that cost real time (all hit on 2026-07-31 — heed them):**
+
+1. **`git checkout --theirs <file>` replaces the ENTIRE FILE, not just the conflicted hunk.** Any
+   testid elsewhere in that file is destroyed silently. Real case: `TestToolSettings.jsx` conflicted
+   in one region, but `--theirs` also dropped `toolkit-test-tool-select` ~40 lines above the conflict.
+   **Before using `--theirs` on any file, list its testids first**
+   (`git show :2:<file> | grep data-testid`), then re-add every one of them onto main's structure:
+
+   ```bash
+   git show :2:"<file>" | grep -nE 'data-testid|[Tt]estId'   # OURS — the list you must restore
+   git show :3:"<file>" | grep -nE 'data-testid|[Tt]estId'   # MAIN — usually empty
+   ```
+
+2. **Main may have MOVED or RENAMED the element your testid was on.** Re-add to the *equivalent*
+   element in main's new structure, not the old location. Real case: main moved the run button out of
+   the content container into a footer **and renamed it "RUN TOOL" → "Run Test"** — the testid still
+   belongs on that button, and any case/AFS text quoting the old label is now stale (flag it).
+
+3. **A new dependency from `main` blocks the merge commit.** The pre-commit hook lints staged files;
+   if main added a dep (real case: `exceljs`) that your `node_modules` lacks, eslint fails
+   `import/no-unresolved` and `git commit` is rejected — on a file you never touched. **Run
+   `npm install` BEFORE committing the merge**, not after:
+
+   ```bash
+   git diff --cached --name-only | grep -E 'package(-lock)?\.json' && npm install
+   ```
+
+> **The guard reading is only meaningful once the merge is COMMITTED.** During an unresolved or
+> uncommitted merge, `HEAD` is still the pre-merge commit, so the before/after comparison shows no
+> loss even when files on disk have lost testids. Complete the merge, then run the guard.
+
 **Divergence rule — scope it precisely.** "Favour `main`" applies to **code structure** and to testid
 **renames** — it is NOT licence to drop our additive attributes. Read it as two distinct cases:
 
