@@ -552,6 +552,13 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 f"Step 27 — Verify the tool list shows all "
                 f"{EXPECTED_TOOL_COUNT} tools including 'List files'"
             ):
+                # Known defect: #1075 — the TEST SETTINGS Tool dropdown offers
+                # only 11 of the 16 available tools, while Step 12's TOOLS
+                # section (asserted above, and passing) shows all 16 with
+                # checkmarks. The case requires "all available tools" here, so
+                # this assertion stays at EXPECTED_TOOL_COUNT and fails RED
+                # until the product is fixed — per the no-masking policy, the
+                # count is NOT lowered to match current behaviour.
                 options = test_settings.get_tool_options()
                 expect(options).to_have_count(
                     EXPECTED_TOOL_COUNT, timeout=UI_ELEMENT_TIMEOUT,
