@@ -269,6 +269,17 @@ const PREAMBLE =
   'each ~15-turn mark ask: did the last stretch advance the case, or circle? ' +
   'Advance -> continue. Circle -> act on what you have and record the gap in ' +
   'findings/notes. ' +
+  // Denials block an EFFECT, not the task. Same effect via another shape =
+  // evasion; a different allowed route to the goal = adaptation — take it,
+  // but on the record, so a human can veto a substitution that broke intent.
+  'A PERMISSION DENIAL BLOCKS AN EFFECT, NOT THE TASK. Never re-achieve the ' +
+  'SAME blocked effect through a different shape (a script instead of the ' +
+  'denied command, an alternate binary, a broader allowed command) — that ' +
+  'evades a pattern, not a policy. But a genuinely different allowed route to ' +
+  'the task goal — one that does NOT produce the blocked effect — is ' +
+  'legitimate: take it and record the substitution in findings/notes (what ' +
+  'was denied, what you did instead). No such route -> the case goes blocked ' +
+  'with the denial recorded, and you continue with what remains. ' +
   FOREGROUND_RULE
 
 // ---- worker schemas --------------------------------------------------------

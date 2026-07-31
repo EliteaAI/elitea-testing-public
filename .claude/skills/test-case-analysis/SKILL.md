@@ -87,7 +87,14 @@ exceed it; what the check catches is CIRCLING: re-reading what is
 already in context, retrying the same probe, exploring without acting.
 At each ~15-turn mark ask: did the last stretch advance the case, or
 circle? Advance → continue. Circle → classify from what you have and
-record the gap in findings.
+record the gap in findings. And a permission denial blocks an EFFECT,
+not the task: never re-achieve the same blocked effect through a
+different tool or command shape (that evades a pattern, not a policy),
+but a genuinely different allowed route to the goal — one that does
+not produce the blocked effect — is legitimate: take it and record the
+substitution in findings (what was denied, what you did instead). No
+such route → the case is `blocked` with the denial recorded, and you
+continue with what remains.
 
 **Per-case parameters** (caller provides at dispatch time):
 
