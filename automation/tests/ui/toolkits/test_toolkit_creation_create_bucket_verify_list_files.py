@@ -496,12 +496,31 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 )
 
             with allure.step(
-                "Step 24 — Verify the Configuration and Indexes tabs are "
-                "shown at the top of the detail view"
+                "Step 24 — Verify the Configuration tab and the Indexes "
+                "section are shown on the detail view"
             ):
-                assert toolkit_detail.count_config_tabs(
-                    timeout=UI_ELEMENT_TIMEOUT
-                ) >= 2, "Expected at least the Configuration and Indexes tabs"
+                # EXPECTED-RESULT CHANGE (EliteaUI EL-5947): the case text says
+                # "Configuration and Indexes TABS". Indexes is no longer a tab —
+                # the redesign moved it INSIDE the Configuration tab as an
+                # accordion, and the tab array's only other entry ('Test') ships
+                # `display: 'none'` with empty content, so exactly one tab
+                # renders. The observable the case cares about (both surfaces are
+                # reachable on the detail view) is unchanged and asserted below;
+                # only their shape moved. The TMS case text needs the same update.
+                toolkit_detail.wait_for_config_surface(timeout=UI_ELEMENT_TIMEOUT)
+                # The Configuration tab is ATTACHED and selected, but the strip
+                # is not displayed (one real tab), so `to_be_visible()` would
+                # never pass — assert attachment + selection instead.
+                expect(toolkit_detail.configuration_tab).to_be_attached(
+                    timeout=UI_ELEMENT_TIMEOUT,
+                )
+                expect(toolkit_detail.configuration_tab).to_have_attribute(
+                    "aria-selected", "true", timeout=UI_ELEMENT_TIMEOUT,
+                )
+                # Indexes — now an accordion inside Configuration — IS visible.
+                expect(toolkit_detail.indexes_accordion).to_be_visible(
+                    timeout=UI_ELEMENT_TIMEOUT,
+                )
 
             with allure.step(
                 "Step 25 — Verify the TEST SETTINGS panel is visible with "

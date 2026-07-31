@@ -60,11 +60,18 @@ class ToolkitDetailPage(BasePage):
         "the detail view's top tab strip",
     )
 
-    indexes_tab = LocatorDescriptor(
-        testid="toolkit-detail-indexes-tab",
-        description="Indexes tab (icon-only; disabled until Pgvector/"
-        "Embedding Model are configured) on the detail view's top tab "
-        "strip",
+    # Indexes is NO LONGER a sibling tab. The toolkit-detail redesign
+    # (EliteaUI EL-5947) moved it INSIDE the Configuration tab as an
+    # accordion, and the only other entry in the tab array ('Test') ships
+    # `display: 'none'` with empty content — so the strip renders exactly
+    # one visible tab. The former `indexes_tab`
+    # (`toolkit-detail-indexes-tab`) no longer exists in EliteaUI on any
+    # branch; this accordion testid is the current handle, and it is
+    # present on BOTH `main` and `automation/testids`.
+    indexes_accordion = LocatorDescriptor(
+        testid="toolkit-indexes-accordion",
+        description="Indexes accordion rendered inside the Configuration "
+        "tab (replaced the former standalone Indexes tab in EL-5947)",
     )
 
     def __init__(self, page: Page):
@@ -80,25 +87,26 @@ class ToolkitDetailPage(BasePage):
         self.toolkit_title.wait_for(state="visible", timeout=timeout)
         return self.toolkit_title.text_content() or ""
 
-    def count_config_tabs(self, timeout: int = 5000) -> int:
-        """Return how many of the Configuration/Indexes tabs are present.
+    def wait_for_config_surface(self, timeout: int = 5000) -> None:
+        """Wait until the detail view's configuration surface has rendered.
 
-        A compliant testid presence/count check against
-        :attr:`configuration_tab`/:attr:`indexes_tab` — NOT a role-based
-        ``[role="tab"]`` count (the page also renders other ``role="tab"``
-        elements — see AFS § step 24 note re: an unexplained third tab
-        element — so counting by role alone risks over-counting).
+        Replaces the former ``count_config_tabs()``, whose contract ("count
+        the Configuration *and Indexes* tabs, expect >= 2") described a
+        two-tab strip that no longer exists (EliteaUI EL-5947).
+
+        Waits on the **Indexes accordion**, not the Configuration tab: with
+        only one real tab left (the array's other entry, 'Test', ships
+        ``display: 'none'`` with empty content) the strip itself is not
+        displayed, so ``configuration_tab`` resolves to a HIDDEN
+        ``role="tab"`` element — present and ``aria-selected="true"``, but
+        never visible. Callers assert its *attachment*, and the accordion's
+        *visibility*.
 
         Args:
-            timeout: Maximum wait time in milliseconds for the
-                Configuration tab (rendered first, default-selected) to
-                appear before concluding neither tab is present.
+            timeout: Maximum wait time in milliseconds for the Indexes
+                accordion to become visible.
         """
-        try:
-            self.configuration_tab.wait_for(state="visible", timeout=timeout)
-        except Exception:
-            return 0
-        return self.configuration_tab.count() + self.indexes_tab.count()
+        self.indexes_accordion.wait_for(state="visible", timeout=timeout)
 
     def navigate_to_toolkit(self, toolkit_id: int) -> None:
         """Navigate to toolkit detail page and wait for load.
