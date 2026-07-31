@@ -94,8 +94,11 @@ type: project
   BEFORE the tests that use them cross to `main` — ordered, and still the invariant.
   **Testid promotion to `main` is a human cherry-pick from `automation/testids`**
   (2026-07-16 — agents open no `main` PR; the old per-case draft-PR flow is suspended,
-  `.agents/_reverted/`). `promote-automation-batch` is tests-only; its Stage 1 just
-  *verifies* the needed testids are on `main` and deployed.
+  `.agents/_reverted/`). Promotion is the **`batch-promote`** skill (2026-07-31: absorbed
+  and retired `promote-automation-batch`): § Mode A promotes the whole state as-is,
+  § Mode B a cherry-picked subset. When the batch's testids are already on `main` it
+  verifies them and gates on a DEV run; when the batch *includes* the testids, a DEV gate
+  is impossible pre-merge, so it verifies on localhost and gates between the merges.
 - **onetest MCP write verbs** (`create_run`, `record_result`, `create_defect`, …)
   create REAL GitHub issues — never fire casually.
 

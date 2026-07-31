@@ -145,4 +145,5 @@ originals live in `.agents/_reverted/RESTORE-testid-draft-pr-flow.md` (git-ignor
 Files updated: `.agents/{workflow,testing,conventions,architecture,profile,team-comms,
 role-overrides}.md`, the three role `project_briefing.md` memories (+ suspend-banners on
 the `test-automation-lead` promotability lessons), `add-data-testid`,
-`factory/loops/{control,tal}.md`, `promote-automation-batch`.
+`factory/loops/{control,tal}.md`, `batch-promote` (then `promote-automation-batch`,
+retired into it 2026-07-31).

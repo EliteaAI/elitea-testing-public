@@ -16,7 +16,7 @@ type: project
 - **Team-owned** (test-automation team updates them, scout only FLAGS):
   `.claude/rules/*`, project skills (`add-data-testid`, `page-object-generator`,
   `test-quality-checker`, `start-ui-localhost`, `sync-base-branches`,
-  `promote-automation-batch`, …), framework code (`automation/`), EliteaUI.
+  `batch-promote`, …), framework code (`automation/`), EliteaUI.
 - **Scout-owned levers**: `.agents/*` (incl. role memories), `CLAUDE.md`, `AGENTS.md`.
 - Precedence lesson (2026-07-14 audit, hook-verified 43/43): ambient briefings LOSE
   to the actively-executing skill text; overrides must land in the skill's declared

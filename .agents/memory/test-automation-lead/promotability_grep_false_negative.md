@@ -39,7 +39,7 @@ already confirmed live via `element.evaluate()` in the analyst's earlier pass
 ## Why it matters
 
 A promotability row is the load-bearing fact in a closure record — it's what
-tells `promote-automation-batch` (and a human skimming the issue six months
+tells `batch-promote` (and a human skimming the issue six months
 later) whether a merged test can survive on a deployed env. A false NEGATIVE
 here is less dangerous than a false POSITIVE (worst case you under-claim
 readiness, not over-claim it) — but it still corrupts the record: a case

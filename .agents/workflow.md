@@ -200,7 +200,8 @@ Nothing in this loop waits on external review. That is the point.
 Testid promotion to EliteaUI `main` is a **human** step (2026-07-16): the human
 cherry-picks from `automation/testids` when they choose. Agents don't gate on it and
 don't open that PR. What the lead performs — **only on explicit request**, never
-autonomously — is the **test** batch promotion (`promote-automation-batch` skill):
+autonomously — is the batch promotion (`batch-promote` skill, § Mode A for an as-is
+whole-state promote, § Mode B for a cherry-picked subset):
 
 1. Confirm the testids the batch depends on are **present on `EliteaAI/EliteaUI` `main`
    and deployed** to the target env (a human will have promoted them from
@@ -374,8 +375,9 @@ distinct originating commit (group testids by SHA if multiple came from the same
 yet — because promotion to `main` is now a **human** cherry-pick, done when they
 choose. Such a test is **green on localhost and red on any deployed env** —
 `automation/testids` has the testids, DEV does not. So *"merged" ≠ "done"*, and the
-record must say which, naming the human as owner of the promotion. `promote-automation-batch`
-Stage 1 checks exactly this before a test batch crosses to `main`.
+record must say which, naming the human as owner of the promotion. `batch-promote`
+checks exactly this before a batch crosses to `main` — and when the batch *includes* the
+testids, its Stage 6 sequences the deployed gate between the two merges instead.
 
 **Do not close an issue whose testids aren't yet on `main`** — and do not
 park it in `Blocked` either: nothing is stuck. Post the closure record, leave the
