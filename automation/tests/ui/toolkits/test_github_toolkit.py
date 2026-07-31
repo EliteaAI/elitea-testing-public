@@ -313,19 +313,19 @@ class TestCreateGitHubToolkit:
                 )
 
             # ------------------------------------------------------------------
-            # Step 6 — Verify toolkit loads with Test Settings panel
+            # Step 6 — Verify toolkit loads with Test toolkit panel
             # ------------------------------------------------------------------
-            with allure.step("Step 6 — Verify toolkit loads with Test Settings panel"):
+            with allure.step("Step 6 — Verify toolkit loads with Test toolkit panel"):
                 toolkit_name_visible = page.locator(f'text="{toolkit_name}"').first
                 try:
                     toolkit_name_visible.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
                 except Exception:
                     pass
 
-                test_settings = page.locator('text="Test Settings"')
-                if test_settings.count() > 0:
+                test_toolkit_panel = page.locator('text="Test toolkit"')
+                if test_toolkit_panel.count() > 0:
                     try:
-                        test_settings.first.wait_for(state="visible", timeout=5000)
+                        test_toolkit_panel.first.wait_for(state="visible", timeout=5000)
                     except Exception:
                         pass
 
@@ -451,44 +451,17 @@ class TestGitHubToolkitTestSettings:
                 page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
                 page.wait_for_timeout(3000)
 
-            page.locator('text="Test Settings"').wait_for(
+            page.locator('text="Test toolkit"').wait_for(
                 state="visible", timeout=UI_ELEMENT_TIMEOUT,
             )
 
         # ------------------------------------------------------------------
-        # Step 2 — Open the Tool dropdown in the Test Settings panel
+        # Step 2 — Click Select Tool button
         # ------------------------------------------------------------------
-        with allure.step("Step 2 — Open the Tool dropdown in the Test Settings panel"):
-            tool_dropdown = None
-
-            select_elements = page.get_by_text("Select", exact=True)
-            for i in range(select_elements.count()):
-                elem = select_elements.nth(i)
-                bb = elem.bounding_box()
-                if bb and bb["x"] > 700:
-                    tool_dropdown = elem
-                    break
-
-            if tool_dropdown is None:
-                comboboxes = page.locator('[role="combobox"]')
-                for i in range(comboboxes.count()):
-                    elem = comboboxes.nth(i)
-                    bb = elem.bounding_box()
-                    if bb and bb["x"] > 700:
-                        tool_dropdown = elem
-                        break
-
-            if tool_dropdown is None:
-                tool_label = page.locator('.index-config-field:has(span:text("Tool"))').first
-                if tool_label.count() > 0:
-                    dropdown = tool_label.locator('[role="combobox"], .MuiSelect-root, input').first
-                    if dropdown.count() > 0 and dropdown.is_visible():
-                        tool_dropdown = dropdown
-
-            assert tool_dropdown is not None, (
-                "Could not find the Tool dropdown in the Test Settings panel"
-            )
-            tool_dropdown.click()
+        with allure.step("Step 2 — Click Select Tool button"):
+            select_tool_btn = page.get_by_role("button", name="Select Tool")
+            select_tool_btn.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            select_tool_btn.click()
             page.wait_for_timeout(1000)
 
         # ------------------------------------------------------------------
@@ -506,17 +479,21 @@ class TestGitHubToolkitTestSettings:
             page.wait_for_timeout(1000)
 
         # ------------------------------------------------------------------
-        # Step 4 — Click RUN TOOL
+        # Step 4 — Click Run Test
         # ------------------------------------------------------------------
-        with allure.step("Step 4 — Click RUN TOOL"):
-            # Dismiss any popups (NPS survey, banners) that may block the Run Tool button
+        with allure.step("Step 4 — Click Run Test"):
+            # Dismiss any popups (NPS survey, banners) that may block the Run Test button
             BasePage(page).dismiss_popups()
 
-            run_btn = page.get_by_role("button", name="Run Tool")
+            # UI updated: button is now "Run Test" instead of "Run Tool"
+            run_btn = page.get_by_role("button", name="Run Test")
+            if run_btn.count() == 0:
+                # Fallback for older UI
+                run_btn = page.get_by_role("button", name="Run Tool")
             run_btn.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
             run_btn.first.scroll_into_view_if_needed()
-        page.wait_for_timeout(300)
-        run_btn.first.click()
+            page.wait_for_timeout(300)
+            run_btn.first.click()
 
         # ------------------------------------------------------------------
         # Step 5 — Wait for the result to appear
