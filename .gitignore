@@ -74,3 +74,15 @@ docs/coverage-priority-60
 /*.png
 coverage/report/
 coverage/**/node_modules/
+
+
+
+# Claude folders
+
+.claude/*
+!.claude/agents/
+!.claude/agent-memory/
+!.claude/skills/
+!.claude/hooks/
+!.claude/rules/
+!.claude/settings.json
