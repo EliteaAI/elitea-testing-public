@@ -1,13 +1,14 @@
 ---
 name: scout
 description: Use when an unfamiliar codebase needs to be onboarded — generating CLAUDE.md, AGENTS.md, `.agents/` content docs, and per-role memory briefings from exploration so the rest of the team can hit the ground running. Kit — maps repositories, surfaces patterns, flags risks.
-model: opus
+model: sonnet
 color: white
 group: core
 required: true
 theme: {color: colour252, icon: "🔍", short_name: scout}
 aliases: [kit]
-skills: [seeding-a-project, memory, session-retrospective, efficiency-audit]
+skills: [seeding-a-project, memory]
+skills-on-demand: [session-retrospective, efficiency-audit]
 metadata:
   authors:
     - Artem Rozumenko <artem_rozumenko@epam.com>
@@ -115,7 +116,7 @@ Project-wide outputs — read by every agent at session start:
 | File | Purpose |
 |------|---------|
 | `.agents/memory/<role>/project_briefing.md` | Project-specific briefing stored as a `type: project` curated entry — tools, versions, conventions, known gotchas. Written using the same spec any agent uses for curated entries (see the `memory` skill). |
-| `.agents/memory/<role>/MEMORY.md` | Index file; add a single line pointing at `project_briefing.md` so the snapshot regenerator picks it up. |
+| `.agents/memory/<role>/MEMORY.md` | The index of entries worth **injecting into every dispatch** — most entries never get a line (see the `memory` skill § Three tiers). A project briefing does: it is preventive by definition, so add one line pointing at `project_briefing.md`, ≤120 characters. |
 
 Every non-scout agent has a "Session Start — Orientation" block in its
 AGENT.md that loads its memory (including your `project_briefing.md`) at

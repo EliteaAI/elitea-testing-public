@@ -132,20 +132,34 @@ wins over this file.
 ```
 User launches Tal directly (claude --agent test-automation-lead) → drops a batch
 of TMS cases (a single case is a batch of one)
-  Tal → Intake: one TMS sweep, dedup against existing AFS + tracker, open the
-        board (`.agents/automation-board/`)
-      → Analyst front: qa-engineer + test-case-analysis, dispatched in
-        parallel → AFS + status per case
-      → gate: `ready-for-automation` and `extend-existing` advance
-      → Build loop, per case: Implementer (test-automation-engineer +
-        test-automation-workflow, green ONCE) → Reviewer (qa-engineer FRESH
-        session + code-review, STATIC — no execution) → APPROVED |
-        CHANGES_REQUESTED
-      → Hardening gate, once per batch: Tal runs the batch's specs together
-        on the integration branch `tests/batch-<slug>`, N consecutive green
-        (default 3)
-      → Merge + mirror sweep: Tal merges, files follow-ups, back-writes the
-        TMS/tracker once, reports to the user
+  Tal → Intake: one TMS sweep, dedup against existing AFS + tracker, case
+        snapshots to `.agents/automation/<slug>/cases/<ID>.md`, cluster
+        similar cases
+      → THE RUN — on Claude Code one Workflow call; elsewhere the same phases
+        as sequential dispatches:
+          · ONE UNIT AT A TIME — nothing overlaps. A working tree has one
+            state at a time, so ordering is what keeps slots coherent:
+            always return the tree to the batch trunk, always branch from it
+          · Analyse: qa-engineer + test-case-analysis, on the trunk
+            → AFS + status per case, COMMITTED by the analyst itself;
+              `ready-for-automation` and `extend-existing` advance,
+              everything else ends there
+          · Build, on a branch cut FROM the trunk:
+            Implementer (test-automation-engineer + test-automation-workflow,
+            green ONCE) → Reviewer (qa-engineer FRESH session + code-review,
+            STATIC — no execution) → fix rounds until the reviewer APPROVES:
+            a blocker nobody acted on (`unaddressed`) earns another round;
+            stop only when every survivor is `persists` (attempted, still
+            failing) or `external` (not fixable on this branch)
+          · Merge back into `tests/batch-<slug>` as soon as review approves;
+            semantic conflicts park the unit; the tree returns to the trunk
+          · Gate — its own agent, never the implementer: the batch's specs
+            together, N consecutive green (default 3)
+          · Report — the run's single disk write:
+            `.agents/automation/<slug>/report.{json,md}`, one row per case
+      → Close: Tal reads the report — merges the `automated` cases, routes the
+        findings, classifies a red gate, back-writes the TMS/tracker once,
+        replans whatever isn't done
 ```
 
 ## Working agreements (team-wide)
@@ -164,21 +178,28 @@ of TMS cases (a single case is a batch of one)
   in-flight batch, then start a fresh session — never expect updated doctrine
   mid-session (field-verified failure mode).
 - **Workflows are the default batch path on Claude Code — standing opt-in.**
-  A batch of ≥2 cases runs via the shipped batch workflows
-  (`batch-build` / `batch-integrate` / `batch-campaign` under the
-  `test-automation-workflow` skill). Installing this bundle and handing the
+  A batch of ANY size — one case included — runs via the shipped batch workflows
+  (`batch-build` / `batch-campaign` under the `test-automation-workflow`
+  skill; `batch-integrate` and `batch-stabilize` are repair tools, not stages). Installing this bundle and handing the
   lead a batch IS the explicit multi-agent orchestration opt-in the Workflow
   tool's gate requires — this instruction satisfies it; the lead does not ask
   again and does not re-litigate the gate. Fall back to sequential dispatches
-  only for the accelerant's § When NOT cases (batch of 1, unseeded project,
-  tool unavailable, operator asks to supervise).
+  only for the cases listed under § When NOT to use it in the
+  `test-automation-workflow` skill's `references/workflow-accelerant.md`:
+  an unseeded project, no Workflow tool on this host, or an operator who wants
+  to supervise step by step. A batch of one is NOT an exception — it costs ~8-10
+  orchestrator turns conversationally against 2 through the workflow.
+  The contracts are identical on both paths, so nothing forks.
 - **Reuse to travel and to know — never to conclude.** Analysts and
   implementers aggressively reuse the suite to REACH areas fast (framework
   auth state, existing specs/page objects as transit) and to KNOW handles
-  (digests, prior AFS) — but coverage judgments stand on your own execution:
-  `extend-existing`/`already-covered` may target only specs **merged to
-  base**, never a same-batch AFS (same-batch similarity is a cluster/family
-  matter). Transit is not execution — the case's own steps are still run and
+  (digests, prior AFS) — but coverage judgments stand on your own execution.
+  The two verdicts have different reach, because one of them CLOSES a case:
+  `extend-existing` may target a spec merged to base **or already on this
+  batch's trunk** (it produces work that shares the batch's fate);
+  `already-covered` may target **only** a spec merged to base, because it is
+  terminal and drops the case out of the remainder. Never target a same-batch
+  AFS that has not merged (same-batch similarity is a cluster/family matter). Transit is not execution — the case's own steps are still run and
   observed live; a broken transit path is flagged as a possible regression.
 - **Dispatch is the work.** A routing turn without an actual subagent dispatch in
   the same reply did nothing.

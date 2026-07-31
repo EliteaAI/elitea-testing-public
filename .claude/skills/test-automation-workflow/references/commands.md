@@ -270,11 +270,11 @@ EOF
 )"
 ```
 
-### Post-merge TMS back-write (orchestrator, per seeded policy — playbook § Merging step 5)
+### Post-merge TMS back-write (orchestrator, per seeded policy — playbook § 3. Close)
 
 Owned by the **orchestrator after the merge** — see
-[orchestration-playbook.md § Merging automation PRs](./orchestration-playbook.md#merging-automation-prs),
-step 5 — never fired unconditionally at PR-open. Gated on CI / an opt-in
+[orchestration-playbook.md § 3. Close — read the report, act on it](./orchestration-playbook.md#3-close--read-the-report-act-on-it-yours),
+phase 5 — never fired unconditionally at PR-open. Gated on CI / an opt-in
 env flag, and only runs when the seed declares a real `tms.adapter`
 (graceful on failure — `SKILL.md` § Phase 5).
 

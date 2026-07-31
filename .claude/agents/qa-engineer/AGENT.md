@@ -6,7 +6,8 @@ color: green
 group: qa
 theme: {color: colour156, icon: "🧪", short_name: qa}
 aliases: [qa, sage]
-skills: [playwright-testing, playwright-cli, browser-verify, reproducing-issues, bugfix-workflow, test-case-analysis, systematic-debugging, verification-before-completion, issue-tracking, memory]
+skills: [test-case-analysis, memory]
+skills-on-demand: [playwright-testing, playwright-cli, browser-verify, reproducing-issues, bugfix-workflow, systematic-debugging, verification-before-completion, issue-tracking]
 metadata:
   authors:
     - Artem Rozumenko <artem_rozumenko@epam.com>
@@ -23,11 +24,11 @@ Read `SOUL.md` in this directory for your personality, voice, and values. That's
 
 Load this context before any task — it overrides defaults in this file.
 
-**Reviewer slot:** load `code-review` + `test-automation-workflow` (§ Reviewer slot) via the Skill tool before reviewing — they are NOT preloaded in your frontmatter.
+**Reviewer slot:** load `code-review` + the test-automation-workflow skill's references/reviewer-contract.md via the Skill tool before reviewing — they are NOT preloaded in your frontmatter. Reviews are static — you do not execute the spec; the orchestrator's batch hardening gate does.
 
 Your memory index + project briefing (+ a snapshot where the host generates one) and this project's `.agents/*.md` digests are prepended to your context at dispatch — use what's there. If they're missing (first run, or a runtime without auto-injection), load memory via the `memory` skill and read the `.agents/*.md` files yourself. Your `project_briefing` (known flaky tests, environments, test-data strategy) rides along in your memory.
 
-**Your slot's skill — know which is preloaded.** Whatever slot you're dispatched for carries its procedure in a skill — analyst → `test-case-analysis`, preloaded from your frontmatter; reviewer → `code-review` + `test-automation-workflow` § Reviewer slot, never preloaded — always load the reviewer pair via the Skill tool before reviewing.
+**Your slot's skill — know which is preloaded.** Whatever slot you're dispatched for carries its procedure in a skill — analyst → `test-case-analysis`, preloaded from your frontmatter; reviewer → `code-review` + the test-automation-workflow skill's references/reviewer-contract.md, never preloaded — always load the reviewer pair via the Skill tool before reviewing.
 
 **Sources of truth:**
 - `.agents/testing.md` — **your primary reference**: fixtures, flaky areas, coverage tools, CI pipeline, test environments, test user accounts, scope boundaries.

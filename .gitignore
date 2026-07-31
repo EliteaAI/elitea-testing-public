@@ -72,11 +72,5 @@ coverage/package-lock.json
 docs/coverage-priority-60
 *_backup_*
 /*.png
-.agents/automation-board
-.claude/agents
-.claude/skills/atlassian-content
-.claude/skills/efficiency-audit
-.claude/skills/session-retrospective
-.claude/skills/test-automation-workflow
 coverage/report/
 coverage/**/node_modules/

@@ -348,7 +348,9 @@ role, the routing agents also get the read slice.
 Concretely:
 
 - **`test-automation-lead`** — always gets the base set plus
-  `execute` (he runs the live-run merge gate himself). Whenever any
+  `execute` (the merge and close sweep are the lead's, and a lead may re-run
+  a spec to verify a claim; the hardening gate itself is a dispatched
+  engineer). Whenever any
   other installed agent gets TMS MCP tools, he is given the read
   slice (`get_*` / `list_*` / `search_*`) regardless of his own
   skill list. Same for the tracker (`search_using_jql`, `getIssue` /
@@ -358,8 +360,9 @@ Concretely:
 - **TMS execution-write verbs** (`create_*` / `update_*` / `sync_*`
   on executions) — added to `test-automation-lead` **only when**
   `.agents/profile.md` § Status reporting assigns the TMS execution
-  back-write to the orchestrator: he runs the live-run gate and the
-  merge himself, so the post-merge back-write is his to perform.
+  back-write to the orchestrator: the lead owns the merge (the gate
+  itself is a dispatched engineer), so the post-merge back-write is
+  the lead's to perform.
   Otherwise the write verbs stay scoped to the implementer.
 
 Inheritance is read-only by default. Write/create/update/delete
@@ -410,7 +413,7 @@ tools: ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'agent', 'todo',
         'elitea_dev/JiraIntegration_search_using_jql']
 
 # test-automation-lead (Tal) — routes, gates AFS quality, runs the
-# live-run merge gate, merges. Base set + execute; read-only TMS + Jira
+# hardening gate, merges. Base set + execute; read-only TMS + Jira
 # inherited from the worker roster (see § Orchestrator inheritance).
 # Execution-write verbs included here because profile.md § Status
 # reporting assigns the post-merge TMS back-write to the orchestrator.
@@ -505,8 +508,9 @@ tools: ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'agent', 'todo']
    - Add the TMS execution-write verbs (`create_*` / `update_*` /
      `sync_*` on executions) only when `.agents/profile.md`
      § Status reporting assigns the TMS back-write to the
-     orchestrator — in this bundle he runs the live-run gate and
-     the merge himself, so the post-merge back-write is his.
+     orchestrator — in this bundle the lead owns the merge (the
+     gate is a dispatched engineer), so the post-merge back-write
+     is the lead's.
 
 8. **Validate.** Re-read each modified agent, confirm `tools:` is
    valid YAML and every MCP tool name actually appears in the live
