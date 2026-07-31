@@ -1,6 +1,6 @@
 ---
 name: batch-promote
-description: Promotes automation work from the long-lived integration branches to main — either the whole current state as-is (Mode A, proven) or a human-chosen subset of Ready tickets by cherry-pick (Mode B, draft pending #703). Cuts branches from main in 2 repos (3 when the batch touches the Support Assistant), verifies, opens BATCHED draft PRs, backports divergence, and gates the deployed run. Human-triggered only. Supersedes promote-automation-batch.
+description: Promotes automation work from the long-lived integration branches to main — either the whole current state as-is (Mode A, proven) or a human-chosen subset of Ready tickets by cherry-pick (Mode B, draft pending #703). Cuts branches from main in 2 repos (3 when the batch touches the Support Assistant), then STABILIZES them in a loop — run the suite on localhost, triage every red to a class, fix upstream on the integration branch, rebuild, repeat — before opening BATCHED draft PRs and gating the deployed run between the merges. No defect masking to get a promotion out. Human-triggered only. Supersedes promote-automation-batch.
 allowed-tools:
   - Bash
   - Read
@@ -118,6 +118,11 @@ class and either fixed or explained. Carrying a list of "known blockers" into a 
 is how false confidence ships — a test red for a *fixable* reason is a defect, not a
 baseline.
 
+This stage is the **cheap first pass**: fix what is already known-red, on the integration
+branches, before spending a branch cut and a multi-hour run on it. It does not replace
+Stage 4's stabilization loop — it just keeps that loop from starting several iterations
+in the hole.
+
 Use **`adjust-automated-test`** for triage. Only two outcomes may reach a promote branch:
 
 - **Fixed** — drift, missing/lost testid, data-hygiene defect.
@@ -189,10 +194,69 @@ Anything unexpected ⇒ **loud stop.** Nothing silently ships or drops.
 
 ---
 
-## Stage 4 — Verify the promoted state on localhost
+## Stage 4 — Stabilize: run, triage, fix upstream, rebuild, repeat
 
-The testids are not on `main` yet, so this is a **localhost** run. Two ways to reach the
-promoted code:
+**This is a loop, not a checkpoint.** Cutting the branches is the cheap part; making the
+promoted state honest is the work. Expect several passes.
+
+```
+   ┌─────────────────────────────────────────────────────────┐
+   │  run the suite on localhost against the promoted code    │
+   │            ↓                                             │
+   │  triage EVERY red to a class — no "known blocker" lists  │
+   │            ↓                                             │
+   │  fix UPSTREAM (integration branch), not the promote branch│
+   │            ↓                                             │
+   │  rebuild the snapshot (Stage 3) ── back to the top ──────┘
+   └─ exit when every remaining red is explained (see below)
+```
+
+### Where the fix goes — decided by the cause, not by convenience
+
+| Cause | Fix where | Rebuild needed? |
+|---|---|---|
+| **The cut itself** — wrong scope, a subtree missed, tree composed incorrectly | Fix the *recipe* and rebuild. Nothing is wrong upstream. | Yes |
+| **A general defect** — drift, missing/lost testid, data hygiene, flaky wait | **Upstream**: `automation/base` for test/page-object code, `automation/testids` for testids. Then rebuild. | Yes |
+| **A product bug** | Nowhere in this skill. File it, link it, hold the assertion at the correct value. | No |
+
+**Mode A: never edit a promote branch directly.** It is *derived* — regenerating it from
+the fixed integration branch is one command (`references/as-is-mechanics.md` §2, §4). If
+you patch the promote branch instead, the defect stays upstream and returns at the next
+promotion, and you have manufactured exactly the divergence Stage 7 exists to clean up.
+
+**Mode B is the exception**: a cherry-picked branch legitimately diverges (conflict
+resolution, a fix that only makes sense in the subset), so fix on the batch branch and
+**backport per Stage 7**.
+
+### Triage discipline
+
+Classify before fixing — a red test is not evidence that the test is wrong. Use
+**`adjust-automated-test`** (classes A–F) and the project's questioning ladders in
+`.agents/role-overrides.md`: the interaction-discovery ladder before declaring any UI
+"broken", and the OpenAPI cross-check before calling a 4xx/5xx a backend bug.
+
+**No defect masking, ever** — not even to get a promotion out. Never lower a count, weaken
+a comparison, delete a step, or skip a test to turn a promote branch green. A promotion
+that ships a masked failure is worse than one that ships a documented red, because the
+mask outlives the promotion. Verify each fix by re-running the affected test *before* the
+next full pass, so a full run is never spent proving a one-line change.
+
+### Exit criteria — what may still be red
+
+Only two things:
+
+1. **A product bug** with an OPEN linked issue, the assertion held at the *correct*
+   expected value, and `# Known defect: #N` in the code (sanctioned RED — see
+   `.agents/testing.md` § Merge gate).
+2. **A documented environment gap** — a missing credential, an unseeded precondition —
+   filed as an issue, with the cause named.
+
+Everything else is fixed or the promotion waits. "Known blocker" is not a class; if the
+only thing making a test red is that someone previously decided not to fix it, fix it now.
+
+### Reaching the promoted code
+
+The testids are not on `main` yet, so this is a **localhost** run. Two ways in:
 
 **Preferred (Mode A) — prove equivalence, check out nothing.** If each promote branch's
 tree equals its integration branch's tree within the promoted scope, the running dev
@@ -222,14 +286,16 @@ HEADLESS=true ../.venv/bin/pytest tests/ui -m 'not guardrails' -v -p no:cachepro
 ```
 
 **Never edit `EliteaUI/src` while this is running** — HMR pushes the change into the
-browser mid-test and invalidates the run (`references/as-is-mechanics.md` Trap 3). If a
-fix proves necessary: kill the run, fix, rebuild the snapshot (§4 of that file), re-run.
+browser mid-test and invalidates the run (`references/as-is-mechanics.md` Trap 3). A
+partially-HMR'd run is not evidence, so **kill it rather than finish it**: a full pass
+costs ~2h, and letting it run to completion only to redo it costs the same 2h twice. Kill,
+fix, rebuild, re-run.
 
 > ⚠️ A local run proves nothing about the **Assistant's deployed path**: the alias serves
 > Assistant *source*, bypassing the package, so Assistant testids are green here even
 > though a deployed env has never heard of them. Only Stage 6.2's lockfile bump closes it.
 
-Green (or red only for the Stage-2 explained set) ⇒ proceed. This is the **pre-check**;
+Loop until the exit criteria above are met. Then proceed — this is the **pre-check**;
 Stage 6 is the gate.
 
 ---
@@ -296,8 +362,15 @@ on the real environment" proof happens. **Human-owned.**
 Anything that changed on a promote branch but is **not** on the long-lived branch must
 flow back, or the integration branches diverge from `main` and the next sync breaks.
 
-- **Triggers:** a conflict resolution, a **UI-team testid rename** during review, or a
-  Stage-4 fix.
+**In Mode A this stage is mostly empty by construction** — Stage 4 fixes upstream and
+regenerates, so the promote branch never holds anything the integration branch lacks. The
+one case that still reaches here is a change made *after* the PRs open: a **UI-team testid
+rename during review**. That is real divergence and must be backported.
+
+**In Mode B it is load-bearing**, because cherry-picked branches diverge legitimately.
+
+- **Triggers:** a conflict resolution (B), a **UI-team testid rename** during review
+  (A and B), or a post-PR fix pushed onto a promote branch (A and B).
 - **Destinations:** EliteaUI testid edits → `EliteaUI automation/testids`; Assistant edits
   → `elitea_assistant automation/testids`; `LocatorDescriptor`/test fixes →
   `elitea-testing-public automation/base`. All shared org branches: **merge-only, never
