@@ -23,6 +23,7 @@ from config import settings
 from components.mui import Popper
 from pages.base_page import BasePage
 from pages.chat_page import ChatPage
+from pages.toolkit_test_settings_page import ToolkitTestSettingsPage
 from toolkit_configs import TOOLKIT_CONFIGS, ToolkitConfig
 from toolkit_factories import CREDENTIAL_FACTORIES, TOOLKIT_SETTINGS_FACTORIES
 
@@ -362,6 +363,7 @@ class TestToolkitTestSettings:
         cfg = toolkit_config
         tk_id = managed_toolkit["id"]
         base_url = settings.app_base_url
+        test_settings = ToolkitTestSettingsPage(page)
 
         with allure.step("Step 1 — Navigate to toolkit detail page"):
             page.goto(f"{base_url}/toolkits/all", wait_until="domcontentloaded")
@@ -373,45 +375,22 @@ class TestToolkitTestSettings:
             page.goto(f"{base_url}/toolkits/all/{tk_id}", wait_until="domcontentloaded")
             page.wait_for_timeout(2000)
 
-        with allure.step("Step 2 — Wait for Test Settings panel"):
-            page.locator('text="Test Settings"').wait_for(
-                state="visible", timeout=UI_ELEMENT_TIMEOUT,
-            )
+        with allure.step("Step 2 — Open the Tool select on the Test-Tools empty state"):
+            # ORDER CHANGE (EliteaUI EL-5947). The toolkit detail page no longer
+            # opens on the Test Settings panel: TestTools.jsx now early-returns
+            # `<TestToolsEmptyState/>` while `!selectedTool`, and the panel — with
+            # its 'Test Settings' heading and Tool dropdown — only mounts AFTER a
+            # tool is chosen. Waiting for the panel first (the old Step 2) is
+            # therefore unsatisfiable: the panel cannot appear until this select
+            # is used. Selecting first, asserting the panel second.
+            #
+            # This also retires the old raw-handle hunt — a visible-text probe and
+            # a role-based combobox scan, both filtered by horizontal position,
+            # plus a CSS class fallback — in favour of a testid, per
+            # `.agents/testing.md` § Locator policy.
+            test_settings.open_empty_state_tool_select(timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step("Step 3 — Open Tool dropdown"):
-            tool_dropdown = None
-
-            select_elements = page.get_by_text("Select", exact=True)
-            for i in range(select_elements.count()):
-                elem = select_elements.nth(i)
-                bb = elem.bounding_box()
-                if bb and bb["x"] > 700:
-                    tool_dropdown = elem
-                    break
-
-            if tool_dropdown is None:
-                comboboxes = page.locator('[role="combobox"]')
-                for i in range(comboboxes.count()):
-                    elem = comboboxes.nth(i)
-                    bb = elem.bounding_box()
-                    if bb and bb["x"] > 700:
-                        tool_dropdown = elem
-                        break
-
-            if tool_dropdown is None:
-                tool_label = page.locator('.index-config-field:has(span:text("Tool"))').first
-                if tool_label.count() > 0:
-                    dropdown = tool_label.locator('[role="combobox"], .MuiSelect-root, input').first
-                    if dropdown.count() > 0 and dropdown.is_visible():
-                        tool_dropdown = dropdown
-
-            assert tool_dropdown is not None, (
-                "Could not find the Tool dropdown in the Test Settings panel"
-            )
-            tool_dropdown.click()
-            page.wait_for_timeout(1000)
-
-        with allure.step(f"Step 4 — Select tool: {cfg.test_tool_name}"):
+        with allure.step(f"Step 3 — Select tool: {cfg.test_tool_name}"):
             visible_search = Popper.find_visible_search_input(page, timeout=UI_ELEMENT_TIMEOUT)
             visible_search.fill(cfg.test_tool_name)
             page.wait_for_timeout(500)
@@ -421,7 +400,11 @@ class TestToolkitTestSettings:
                 page, lambda text: keyword in text.lower(),
             )
             assert selected, f"Could not find '{cfg.test_tool_name}' in dropdown"
-            page.wait_for_timeout(1000)
+
+        with allure.step("Step 4 — Verify the Test Settings panel is now shown"):
+            # Anchored on the panel's Tool dropdown testid rather than the
+            # 'Test Settings' heading text (raw-text handles are policy-forbidden).
+            test_settings.wait_for_panel(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step("Step 5 — Fill tool-specific parameters"):
             if cfg.test_tool_params:

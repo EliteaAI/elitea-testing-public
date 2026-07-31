@@ -53,11 +53,24 @@ class ToolkitTestSettingsPage(BasePage):
         "Sonnet'); assert non-empty only, never the exact model name",
     )
 
+    # EL-5947 gated the Test Settings panel behind tool selection:
+    #   TestTools.jsx →  if (!selectedTool) return <TestToolsEmptyState/>
+    #                    return <TestToolSettings/>          # 'Test Settings' here
+    # So a freshly-opened toolkit detail page shows the EMPTY STATE, not the panel.
+    # This select is the only route from one to the other; waiting for the panel
+    # before selecting a tool can never succeed.
+    empty_state_tool_select = LocatorDescriptor(
+        testid="toolkit-test-empty-tool-select",
+        description="'Select Tool' PopoverSelect on TestToolsEmptyState — shown "
+        "INSTEAD of the Test Settings panel until a tool is chosen (EL-5947)",
+    )
+
     tool_select = LocatorDescriptor(
         testid="toolkit-test-tool-select",
         description="Test Settings panel's 'Tool' dropdown combobox "
         "(TestToolSettings.jsx) — choosing an option renders that tool's "
-        "parameter schema as live input fields",
+        "parameter schema as live input fields. Only present AFTER a tool has "
+        "been selected via :attr:`empty_state_tool_select` (EL-5947).",
     )
 
     run_tool_button = LocatorDescriptor(
@@ -125,6 +138,57 @@ class ToolkitTestSettingsPage(BasePage):
     # ------------------------------------------------------------------
 
     @action("Select a tool in the Test Settings panel")
+    def open_empty_state_tool_select(self, timeout: int = 10000) -> None:
+        """Open the empty state's 'Select Tool' popover.
+
+        A freshly-opened toolkit detail page renders ``TestToolsEmptyState``, NOT
+        the Test Settings panel — EL-5947 gated the panel behind
+        ``if (!selectedTool)`` (``TestTools.jsx``). This popover is the only route
+        to the panel, so callers must open it and pick a tool BEFORE waiting for
+        anything inside the panel.
+
+        Deliberately open-only: the caller chooses the option, because callers
+        differ in what they have to match on (a display name from
+        ``ToolkitConfig.test_tool_name`` vs a schema key for
+        :attr:`TOOL_OPTION`). Once a tool is chosen the panel mounts with its own
+        Tool dropdown (:attr:`tool_select`), driven by :meth:`select_tool`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.empty_state_tool_select.wait_for(state="visible", timeout=timeout)
+        self.empty_state_tool_select.click()
+        logger.info("Opened the Test-Tools empty-state tool select")
+
+    def select_tool_from_empty_state(self, tool_key: str, timeout: int = 10000) -> None:
+        """Open the empty state's popover and select *tool_key* by its schema key.
+
+        Convenience wrapper for callers that know the schema key (the
+        :attr:`TOOL_OPTION` testid family). Callers holding only a display name
+        should use :meth:`open_empty_state_tool_select` and match it themselves.
+
+        Args:
+            tool_key: The tool's schema key (e.g. ``"list_files"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.open_empty_state_tool_select(timeout=timeout)
+        option = self.page.locator(self.TOOL_OPTION.format(tool_key))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        logger.info("Selected tool '%s' from the Test-Tools empty state", tool_key)
+
+    def wait_for_panel(self, timeout: int = 10000) -> None:
+        """Wait until the Test Settings panel itself has mounted.
+
+        Anchored on :attr:`tool_select` (a testid) rather than the panel's
+        ``Test Settings`` heading text: the heading is a raw-text handle, and the
+        policy is testid-only (``.agents/testing.md`` § Locator policy).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.tool_select.wait_for(state="visible", timeout=timeout)
+
     def select_tool(self, tool_key: str, timeout: int = 10000) -> None:
         """Open the Tool dropdown and select *tool_key*.
 
