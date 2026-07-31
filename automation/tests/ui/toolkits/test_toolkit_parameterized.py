@@ -373,42 +373,14 @@ class TestToolkitTestSettings:
             page.goto(f"{base_url}/toolkits/all/{tk_id}", wait_until="domcontentloaded")
             page.wait_for_timeout(2000)
 
-        with allure.step("Step 2 — Wait for Test Settings panel"):
-            page.locator('text="Test Settings"').wait_for(
+        with allure.step("Step 2 — Wait for Test toolkit panel and click Select Tool"):
+            # Initial state: panel is "Test toolkit" with "Select Tool" button
+            page.locator('text="Test toolkit"').wait_for(
                 state="visible", timeout=UI_ELEMENT_TIMEOUT,
             )
-
-        with allure.step("Step 3 — Open Tool dropdown"):
-            tool_dropdown = None
-
-            select_elements = page.get_by_text("Select", exact=True)
-            for i in range(select_elements.count()):
-                elem = select_elements.nth(i)
-                bb = elem.bounding_box()
-                if bb and bb["x"] > 700:
-                    tool_dropdown = elem
-                    break
-
-            if tool_dropdown is None:
-                comboboxes = page.locator('[role="combobox"]')
-                for i in range(comboboxes.count()):
-                    elem = comboboxes.nth(i)
-                    bb = elem.bounding_box()
-                    if bb and bb["x"] > 700:
-                        tool_dropdown = elem
-                        break
-
-            if tool_dropdown is None:
-                tool_label = page.locator('.index-config-field:has(span:text("Tool"))').first
-                if tool_label.count() > 0:
-                    dropdown = tool_label.locator('[role="combobox"], .MuiSelect-root, input').first
-                    if dropdown.count() > 0 and dropdown.is_visible():
-                        tool_dropdown = dropdown
-
-            assert tool_dropdown is not None, (
-                "Could not find the Tool dropdown in the Test Settings panel"
-            )
-            tool_dropdown.click()
+            select_tool_btn = page.get_by_role("button", name="Select Tool")
+            select_tool_btn.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            select_tool_btn.click()
             page.wait_for_timeout(1000)
 
         with allure.step(f"Step 4 — Select tool: {cfg.test_tool_name}"):
@@ -428,11 +400,15 @@ class TestToolkitTestSettings:
                 for field_label, value in cfg.test_tool_params.items():
                     _fill_test_settings_param(page, field_label, value)
 
-        with allure.step("Step 6 — Click Run Tool button"):
-            # Dismiss any popups (NPS survey, banners) that may block the Run Tool button
+        with allure.step("Step 6 — Click Run Test button"):
+            # Dismiss any popups (NPS survey, banners) that may block the Run Test button
             BasePage(page).dismiss_popups()
 
-            run_btn = page.get_by_role("button", name="Run Tool")
+            # UI updated: button is now "Run Test" instead of "Run Tool"
+            run_btn = page.get_by_role("button", name="Run Test")
+            if run_btn.count() == 0:
+                # Fallback for older UI
+                run_btn = page.get_by_role("button", name="Run Tool")
             run_btn.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
             run_btn.first.scroll_into_view_if_needed()
             page.wait_for_timeout(500)
@@ -440,10 +416,9 @@ class TestToolkitTestSettings:
             try:
                 page.wait_for_function(
                     """() => {
-                        const btn = document.querySelector('button:has(> span)');
                         const buttons = document.querySelectorAll('button');
                         for (const b of buttons) {
-                            if (b.textContent.includes('Run Tool') || b.textContent.includes('RUN TOOL')) {
+                            if (b.textContent.includes('Run Test') || b.textContent.includes('Run Tool') || b.textContent.includes('RUN TOOL')) {
                                 return !b.disabled;
                             }
                         }
@@ -452,7 +427,7 @@ class TestToolkitTestSettings:
                     timeout=UI_ELEMENT_TIMEOUT,
                 )
             except Exception:
-                logger.warning("Run Tool button may still be disabled — attempting click anyway")
+                logger.warning("Run Test button may still be disabled — attempting click anyway")
 
             run_btn.first.click(force=True)
 
