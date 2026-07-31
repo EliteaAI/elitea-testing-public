@@ -74,5 +74,9 @@ docs/coverage-priority-60
 /*.png
 .agents/automation-board
 .claude/agents
-
-.claude/skills
+.claude/skills/atlassian-content
+.claude/skills/efficiency-audit
+.claude/skills/session-retrospective
+.claude/skills/test-automation-workflow
+coverage/report/
+coverage/**/node_modules/
