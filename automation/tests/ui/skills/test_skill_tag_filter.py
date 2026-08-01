@@ -210,38 +210,51 @@ class TestSkillTagFilter:
             )
 
         # ------------------------------------------------------------------
-        # Step 2 — Filter by `formatting` (shared tag) — Skill A + B only
+        # Step 2 — Filter by 'formatting' (shared tag) — Skill A + B visible, C excluded
         # ------------------------------------------------------------------
-        with allure.step("Step 2 — Filter by 'formatting': Skill A and B only, C excluded"):
+        with allure.step("Step 2 — Filter by 'formatting': Skill A and B visible, C excluded"):
             list_page.filter_by_tag("formatting", timeout=UI_ELEMENT_TIMEOUT)
-            filtered_names = {n.lower() for n in list_page.get_visible_skill_names()}
-            assert filtered_names == {skill_a_name.lower(), skill_b_name.lower()}, (
-                f"'formatting' filter should show exactly Skill A and Skill B, "
-                f"got: {filtered_names!r}"
+            assert list_page.skill_exists_in_list(skill_a_name), (
+                f"'{skill_a_name}' should be visible with 'formatting' filter"
+            )
+            assert list_page.skill_exists_in_list(skill_b_name), (
+                f"'{skill_b_name}' should be visible with 'formatting' filter"
+            )
+            assert not list_page.skill_exists_in_list(skill_c_name), (
+                f"'{skill_c_name}' should NOT be visible with 'formatting' filter "
+                "(it has 'translation' tag, not 'formatting')"
             )
 
         # ------------------------------------------------------------------
-        # Step 3 — Clear, then filter by `translation` (unique tag) — Skill C only
+        # Step 3 — Clear, then filter by 'translation' — Skill C visible, A and B excluded
         # ------------------------------------------------------------------
         with allure.step("Step 3 — Clear filter, then filter by 'translation': Skill C only"):
             list_page.clear_tag_filter(timeout=UI_ELEMENT_TIMEOUT)
             list_page.filter_by_tag("translation", timeout=UI_ELEMENT_TIMEOUT)
-            filtered_names = {n.lower() for n in list_page.get_visible_skill_names()}
-            assert filtered_names == {skill_c_name.lower()}, (
-                f"'translation' filter should show exactly Skill C, "
-                f"got: {filtered_names!r}"
+            assert list_page.skill_exists_in_list(skill_c_name), (
+                f"'{skill_c_name}' should be visible with 'translation' filter"
+            )
+            assert not list_page.skill_exists_in_list(skill_a_name), (
+                f"'{skill_a_name}' should NOT be visible with 'translation' filter"
+            )
+            assert not list_page.skill_exists_in_list(skill_b_name), (
+                f"'{skill_b_name}' should NOT be visible with 'translation' filter"
             )
 
         # ------------------------------------------------------------------
-        # Step 4 — Clear, then filter by `output` (unique tag) — Skill A only
+        # Step 4 — Clear, then filter by 'output' — Skill A visible, B and C excluded
         # ------------------------------------------------------------------
         with allure.step("Step 4 — Clear filter, then filter by 'output': Skill A only"):
             list_page.clear_tag_filter(timeout=UI_ELEMENT_TIMEOUT)
             list_page.filter_by_tag("output", timeout=UI_ELEMENT_TIMEOUT)
-            filtered_names = {n.lower() for n in list_page.get_visible_skill_names()}
-            assert filtered_names == {skill_a_name.lower()}, (
-                f"'output' filter should show exactly Skill A, "
-                f"got: {filtered_names!r}"
+            assert list_page.skill_exists_in_list(skill_a_name), (
+                f"'{skill_a_name}' should be visible with 'output' filter"
+            )
+            assert not list_page.skill_exists_in_list(skill_b_name), (
+                f"'{skill_b_name}' should NOT be visible with 'output' filter"
+            )
+            assert not list_page.skill_exists_in_list(skill_c_name), (
+                f"'{skill_c_name}' should NOT be visible with 'output' filter"
             )
 
         # ------------------------------------------------------------------

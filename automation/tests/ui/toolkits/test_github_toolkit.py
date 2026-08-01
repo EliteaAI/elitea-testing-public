@@ -314,19 +314,19 @@ class TestCreateGitHubToolkit:
                 )
 
             # ------------------------------------------------------------------
-            # Step 6 — Verify toolkit loads with Test Settings panel
+            # Step 6 — Verify toolkit loads with Test toolkit panel
             # ------------------------------------------------------------------
-            with allure.step("Step 6 — Verify toolkit loads with Test Settings panel"):
+            with allure.step("Step 6 — Verify toolkit loads with Test toolkit panel"):
                 toolkit_name_visible = page.locator(f'text="{toolkit_name}"').first
                 try:
                     toolkit_name_visible.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
                 except Exception:
                     pass
 
-                test_settings = page.locator('text="Test Settings"')
-                if test_settings.count() > 0:
+                test_toolkit_panel = page.locator('text="Test toolkit"')
+                if test_toolkit_panel.count() > 0:
                     try:
-                        test_settings.first.wait_for(state="visible", timeout=5000)
+                        test_toolkit_panel.first.wait_for(state="visible", timeout=5000)
                     except Exception:
                         pass
 

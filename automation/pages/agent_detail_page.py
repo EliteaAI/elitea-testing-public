@@ -2447,14 +2447,14 @@ class AgentDetailPage(AgentFormPage):
     def wait_for_chat_response(
         self,
         initial_count: int = 0,
-        stable_duration_ms: int = 3000,
+        stable_duration_ms: int = 2000,
         timeout: int = 60000,
     ):
-        """Wait for the AI response in the embedded chat to stabilize.
+        """Wait for the AI response in the embedded chat to complete.
 
         Waits for new messages to appear beyond initial_count, then waits
-        for the last message's text content to stop changing for
-        stable_duration_ms.
+        for the "Clear chat" button to become visible (indicates response
+        is complete and ready).
 
         Args:
             initial_count: Number of messages before sending.
@@ -2462,8 +2462,8 @@ class AgentDetailPage(AgentFormPage):
             timeout: Overall timeout in milliseconds.
         """
         logger.info(
-            "Waiting for embedded chat response (initial_count=%d, stable=%dms, timeout=%dms)",
-            initial_count, stable_duration_ms, timeout,
+            "Waiting for embedded chat response (initial_count=%d, timeout=%dms)",
+            initial_count, timeout,
         )
         messages = self._embedded_chat_messages()
         deadline = time.time() + timeout / 1000
@@ -2474,25 +2474,49 @@ class AgentDetailPage(AgentFormPage):
                 break
             self.page.wait_for_timeout(500)
 
-        # Wait for the last AI message to have a Delete button (= response complete)
-        ai_msg = messages.last
+        # Wait for "Clear chat" button to appear (indicates response is complete)
+        remaining_ms = max(1000, int((deadline - time.time()) * 1000))
         try:
-            ai_msg.locator(self.CHAT_MESSAGE_DELETE_SELECTOR).wait_for(
-                state="visible",
-                timeout=max(1000, int((deadline - time.time()) * 1000)),
-            )
+            self.chat_clear_button.wait_for(state="visible", timeout=remaining_ms)
+            logger.info("Clear chat button visible — response complete")
         except Exception:
-            pass  # Fall through to content-stable check
+            logger.warning("Clear chat button not visible within timeout")
 
-        # Wait for content to stabilize
+        # Wait for loading indicators to disappear (RotatingMessages.jsx)
+        loading_phrases = [
+            "Waking the agent", "Packing its tools", "Wiring integrations",
+            "Fetching keys", "Installing skills", "Learning your playbook",
+            "Safety checks", "Quick sandbox", "Final polish",
+        ]
+
+        # Wait for the actual response content to stabilize
         last_content = ""
         stable_start = time.time()
 
         while time.time() < deadline:
             try:
-                current = ai_msg.text_content() or ""
+                # Try to get content from skill-test-last-response (preferred)
+                if self.skill_test_last_response.count() > 0:
+                    current = self.skill_test_last_response.last.text_content() or ""
+                else:
+                    # Fallback to full message text
+                    current = messages.last.text_content() or ""
             except Exception:
                 current = ""
+
+            # Skip if still showing loading message
+            is_loading = any(phrase in current for phrase in loading_phrases)
+            if is_loading:
+                logger.debug("Still loading: %r", current[:50] if current else "")
+                self.page.wait_for_timeout(300)
+                continue
+
+            # Skip if content looks like metadata (no actual answer yet)
+            # Real answers are longer and don't contain "toMessage" pattern
+            if current and len(current) < 100 and "toMessage" in current:
+                logger.debug("Content appears to be metadata, waiting: %r", current[:80])
+                self.page.wait_for_timeout(300)
+                continue
 
             if current and current == last_content:
                 if (time.time() - stable_start) * 1000 >= stable_duration_ms:
@@ -2502,7 +2526,7 @@ class AgentDetailPage(AgentFormPage):
                 last_content = current
                 stable_start = time.time()
 
-            self.page.wait_for_timeout(500)
+            self.page.wait_for_timeout(300)
 
         logger.warning("Embedded chat response did not stabilize within timeout")
 
