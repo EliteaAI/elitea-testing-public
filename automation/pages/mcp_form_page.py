@@ -220,7 +220,22 @@ class McpFormPage(BasePage):
         description="Test Settings panel's 'Tool' select — choosing an option renders "
         "that tool's parameter schema as live input fields (NOT the Tools-section "
         "pill click, which only toggles selected_tools membership — case-text "
-        "clarification filed as issue #595, see ELITEA-1933 AFS)",
+        "clarification filed as issue #595, see ELITEA-1933 AFS). Only present "
+        "AFTER a tool has been chosen; before that the panel does not mount at "
+        "all — see :attr:`empty_state_tool_select` (EliteaUI EL-5947).",
+    )
+
+    # EL-5947 gated the Test Settings panel behind tool selection:
+    #   TestTools.jsx →  if (!selectedTool) return <TestToolsEmptyState/>
+    #                    return <TestToolSettings/>       # 'Tool' select lives here
+    # So a freshly-opened toolkit/MCP detail page shows the EMPTY STATE, and this
+    # select is the only route from it to the panel. Same testid the artifact-
+    # toolkit page object uses (toolkit_test_settings_page.py) — one shared
+    # TestToolsEmptyState component serves both surfaces.
+    empty_state_tool_select = LocatorDescriptor(
+        testid="toolkit-test-empty-tool-select",
+        description="'Select Tool' PopoverSelect on TestToolsEmptyState — shown "
+        "INSTEAD of the Test Settings panel until a tool is chosen (EL-5947)",
     )
 
     # Dynamic (runtime-parameterized) testid — one MUI Chip per discovered tool.
@@ -993,14 +1008,33 @@ class McpFormPage(BasePage):
         )
 
     @action("Select a tool in the Test Settings panel")
-    def select_test_tool(self, tool_name: str) -> None:
-        """Open the Test Settings "Tool" dropdown and select *tool_name*.
+    def select_test_tool(self, tool_name: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Select *tool_name*, from whichever Tool select is currently rendered.
 
         This is the affordance that actually renders the tool's parameter schema
         as live input fields — NOT the Tools-section pill click (AFS step 9 /
         issue #595 case-text clarification).
+
+        EL-5947 made the surface two-state: before any tool is chosen the panel
+        does not mount and only :attr:`empty_state_tool_select` exists; once one
+        is chosen the panel's own :attr:`test_tool_select` takes over. Both open
+        the same option list, so this dispatches on whichever is present rather
+        than assuming the panel — clicking the panel select on a fresh page
+        waits out its timeout on an element that cannot appear yet.
         """
-        self.test_tool_select.click()
+        try:
+            self.test_tool_select.wait_for(state="visible", timeout=2000)
+            trigger = self.test_tool_select
+        except Exception:
+            logger.info(
+                "Test Settings panel not mounted yet (EL-5947 empty state) — "
+                "selecting %r via the empty-state Tool select",
+                tool_name,
+            )
+            self.empty_state_tool_select.wait_for(state="visible", timeout=timeout)
+            trigger = self.empty_state_tool_select
+
+        trigger.click()
         option = self.page.locator(self.SELECT_OPTION.format(tool_name))
         option.click(timeout=UI_ELEMENT_TIMEOUT)
 
