@@ -1,5 +1,0 @@
-WARNING  elitea.tests.skills:test_import_agent_recreates_skills_with_new_ids.py:466 Cleanup: failed to delete source skill id=235: 502 Server Error: Bad Gateway for url: https://dev.elitea.ai/api/v2/elitea_core/skill/prompt_lib/572/235 — headers: {'Date': 'Wed, 29 Jul 2026 11:13:25 GMT', 'Content-Length': '11'} — body: Bad Gateway
-ERROR    elitea.steps:actions.py:49 Step failed: Save skill and wait for navigation — Timeout 15000ms exceeded.
-=========================== logs ===========================
-waiting for navigation to "**/skills/all/**" until 'load'
-============================================================

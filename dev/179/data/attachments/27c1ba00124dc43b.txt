@@ -1,3 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Click read out button — Locator.wait_for: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("chat-message-item").last.locator("[data-testid=\"chat-read-out-button\"]").first to be visible
