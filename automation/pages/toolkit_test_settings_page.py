@@ -103,6 +103,12 @@ class ToolkitTestSettingsPage(BasePage):
     # touches.
     TOOL_PARAM = '[data-testid="toolkit-test-param-{}"]'
 
+    # The wrapper Box above carries the field's testid (CommonStringField.jsx);
+    # the actual <input> is a separate node. Added via add-data-testid for
+    # ELITEA-1937 (CommonStringField.jsx's inputProps) — same "-input" suffix
+    # convention as McpFormPage's toolkit-field-{k}-input (ToolBaseProperty.jsx).
+    TOOL_PARAM_INPUT = '[data-testid="toolkit-test-param-{}-input"]'
+
     # ------------------------------------------------------------------
     # Center chat/output panel (left side) — the SAME generic message-list
     # testid every chat surface in the app renders (ChatMessageList.jsx,
@@ -260,6 +266,41 @@ class ToolkitTestSettingsPage(BasePage):
         field.wait_for(state="visible", timeout=timeout)
         return field.is_visible()
 
+    def get_param_input(self, field_key: str):
+        """Return the Locator for a tool-parameter field's real ``<input>`` element.
+
+        :attr:`TOOL_PARAM`'s testid lands on ``CommonStringField.jsx``'s wrapper
+        ``Box``, not the ``<input>`` itself — mirrors ``McpFormPage``'s own
+        wrapper-vs-field split (e.g. ``client_secret_input`` vs
+        ``client_secret_input_field``). Thin wrapper around
+        :attr:`TOOL_PARAM_INPUT` so callers never construct the dynamic-testid
+        locator inline (``.claude/rules/page-objects.md``).
+
+        Args:
+            field_key: The field's schema property key (e.g. ``"repoName"``).
+        """
+        return self.page.locator(self.TOOL_PARAM_INPUT.format(field_key))
+
+    @action("Fill a tool-parameter field")
+    def fill_param_field(self, field_key: str, value: str, timeout: int = 10000) -> None:
+        """Fill *field_key*'s parameter input with *value*.
+
+        MUI text fields don't fire React's ``onChange`` on Playwright's
+        ``fill()`` (``.claude/rules/mui-patterns.md``) — uses ``click()`` +
+        ``press_sequentially()`` instead, the same discipline every other
+        MUI text-field fill in this suite follows.
+
+        Args:
+            field_key: The field's schema property key (e.g. ``"repoName"``).
+            value: Text to type into the field.
+            timeout: Maximum wait time in milliseconds for the input to
+                become visible before typing.
+        """
+        field_input = self.get_param_input(field_key)
+        field_input.wait_for(state="visible", timeout=timeout)
+        field_input.click()
+        field_input.press_sequentially(value, delay=20)
+
     # ------------------------------------------------------------------
     # Run tool
     # ------------------------------------------------------------------
@@ -296,6 +337,16 @@ class ToolkitTestSettingsPage(BasePage):
         text = self.result_message_list.text_content() or ""
         logger.info("Center panel message-list text: %r", text[:120])
         return text
+
+    def get_result_items(self):
+        """Return the Locator matching every currently-rendered Run Results item.
+
+        Thin wrapper around :attr:`RESULT_MESSAGE_ITEM` so callers (tests)
+        never construct the selector inline (``.claude/rules/page-objects.md``)
+        — used to assert absence pre-run (``to_have_count(0)``), and by
+        :meth:`wait_for_tool_result` for the post-run read.
+        """
+        return self.page.locator(self.RESULT_MESSAGE_ITEM)
 
     @action("Wait for the tool-run result to appear")
     def wait_for_tool_result(self, timeout: int = 15000) -> str:
