@@ -19,6 +19,7 @@ import re
 from playwright.sync_api import Page, expect
 
 from .base_page import BasePage
+from .locator_descriptor import LocatorDescriptor
 
 logger = logging.getLogger("elitea.pages.toolkit_detail")
 
@@ -35,8 +36,77 @@ class ToolkitDetailPage(BasePage):
     URL: /toolkits/all/{id}
     """
 
+    # Page header showing the toolkit's own name (EditToolkit.jsx) — this
+    # page's own identity element, added ELITEA-1866. NOT test-panel
+    # specific (that's :class:`ToolkitTestSettingsPage`), which is why it
+    # lives here rather than there (AFS § Overlap check).
+    toolkit_title = LocatorDescriptor(
+        testid="toolkit-detail-title",
+        description="Toolkit-name header on the detail/config page "
+        "(EditToolkit.jsx) — existing testid, already on "
+        "automation/testids before this case",
+    )
+
+    # Configuration/Indexes tabs on the detail view's top tab strip
+    # (EditToolkit.jsx). Both are icon-only with no visible text, so a
+    # role-based `[role="tab"]` locator can't disambiguate them from each
+    # other or from the page's own top-level tab — testids added ELITEA-1866
+    # PR #670 review round 1 (`EliteaAI/EliteaUI` `automation/testids`
+    # commit 0b61e8a2, via the `tabProps` mechanism already used for the
+    # Indexes tab's `data-tour` attribute).
+    configuration_tab = LocatorDescriptor(
+        testid="toolkit-detail-configuration-tab",
+        description="Configuration tab (icon-only, default-selected) on "
+        "the detail view's top tab strip",
+    )
+
+    # Indexes is NO LONGER a sibling tab. The toolkit-detail redesign
+    # (EliteaUI EL-5947) moved it INSIDE the Configuration tab as an
+    # accordion, and the only other entry in the tab array ('Test') ships
+    # `display: 'none'` with empty content — so the strip renders exactly
+    # one visible tab. The former `indexes_tab`
+    # (`toolkit-detail-indexes-tab`) no longer exists in EliteaUI on any
+    # branch; this accordion testid is the current handle, and it is
+    # present on BOTH `main` and `automation/testids`.
+    indexes_accordion = LocatorDescriptor(
+        testid="toolkit-indexes-accordion",
+        description="Indexes accordion rendered inside the Configuration "
+        "tab (replaced the former standalone Indexes tab in EL-5947)",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
+
+    def get_toolkit_title(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the toolkit-detail page header's toolkit-name text.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the header to
+                become visible.
+        """
+        self.toolkit_title.wait_for(state="visible", timeout=timeout)
+        return self.toolkit_title.text_content() or ""
+
+    def wait_for_config_surface(self, timeout: int = 5000) -> None:
+        """Wait until the detail view's configuration surface has rendered.
+
+        Replaces the former ``count_config_tabs()``, whose contract ("count
+        the Configuration *and Indexes* tabs, expect >= 2") described a
+        two-tab strip that no longer exists (EliteaUI EL-5947).
+
+        Waits on the **Indexes accordion**, not the Configuration tab: with
+        only one real tab left (the array's other entry, 'Test', ships
+        ``display: 'none'`` with empty content) the strip itself is not
+        displayed, so ``configuration_tab`` resolves to a HIDDEN
+        ``role="tab"`` element — present and ``aria-selected="true"``, but
+        never visible. Callers assert its *attachment*, and the accordion's
+        *visibility*.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the Indexes
+                accordion to become visible.
+        """
+        self.indexes_accordion.wait_for(state="visible", timeout=timeout)
 
     def navigate_to_toolkit(self, toolkit_id: int) -> None:
         """Navigate to toolkit detail page and wait for load.

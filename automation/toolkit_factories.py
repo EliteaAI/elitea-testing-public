@@ -120,6 +120,10 @@ def github_toolkit_settings(credential_elitea_title: str) -> dict:
             "repository": settings.github_repo,
             "active_branch": "main",
             "base_branch": "main",
+            # Explicitly select tools so the Test Settings dropdown is populated
+            # from settings.selected_tools rather than requiring a dynamic API call.
+            # Matches ToolkitConfig("github").test_tool_result_indicator.
+            "selected_tools": ["list_branches_in_repo"],
         },
     }
 
@@ -153,6 +157,10 @@ def gitlab_toolkit_settings(credential_elitea_title: str) -> dict:
             },
             "repository": settings.gitlab_repository,
             "branch": settings.gitlab_base_branch,
+            # Explicitly select tools so the Test Settings dropdown is populated
+            # from settings.selected_tools rather than requiring a dynamic API call.
+            # Matches ToolkitConfig("gitlab").test_tool_result_indicator.
+            "selected_tools": ["list_branches_in_repo"],
         },
     }
 
@@ -170,6 +178,10 @@ def bitbucket_toolkit_settings(credential_elitea_title: str) -> dict:
             "project": project,
             "repository": repository,
             "branch": "master",  # Bitbucket default
+            # Explicitly select tools so the Test Settings dropdown is populated
+            # from settings.selected_tools rather than requiring a dynamic API call.
+            # Matches ToolkitConfig("bitbucket").test_tool_result_indicator.
+            "selected_tools": ["list_branches_in_repo"],
         },
     }
 
@@ -185,6 +197,10 @@ def confluence_toolkit_settings(credential_elitea_title: str) -> dict:
             "space": settings.confluence_space,
             "cloud": True,
             "limit": 50,
+            # Explicitly select tools so the Test Settings dropdown is populated
+            # from settings.selected_tools rather than requiring a dynamic API call.
+            # Matches ToolkitConfig("confluence").test_tool_result_indicator.
+            "selected_tools": ["list_pages_with_label"],
         },
     }
 
