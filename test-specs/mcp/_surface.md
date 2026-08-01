@@ -28,14 +28,19 @@
 | Detail title heading | `toolkit-detail-title` | shows "Edit Toolkit" placeholder until real data lands — poll text, don't trust visibility alone |
 | Connection-status indicator ("Not Connected"/"Connected!") | `toolkit-connection-status` | `McpAuthStatus.jsx`, wrapping `Typography` — added via `add-data-testid` for ELITEA-1934 (2026-08-02). Live on `automation/testids` (EliteaUI@a467c0ac); **not yet on `main`** — human cherry-pick pending, see PR closure record. |
 | Error toast (mcp_sync_tools failure) | `toast-message` | reuses the existing app-wide `Toast.jsx` component (same as `artifacts_page.py`/`skills_list_page.py`/`skill_detail_page.py`) — confirmed live, no new testid needed. Already on `main`. |
-| Model selector (name + trigger) in Test Settings panel, `variant="field"` branch | `model-selector-name` (+ `model-selector-button`) | `LLMModelSelector.jsx` — the pair now applies in the `"field"` branch too (previously `"default"`-only), fixed via `add-data-testid` for ELITEA-1937 (2026-08-02, closes #1088). Live on `automation/testids` (EliteaUI@a467c0ac); **not yet on `main`**. `toolkit_test_settings_page.py`'s pre-existing `model_selector_name`/`model_selector_button` `LocatorDescriptor`s are correct as-is. |
+| Model selector NAME (not the button) in Test Settings panel, `variant="field"` branch | `model-selector-name` | `LLMModelSelector.jsx` — now applies in the `"field"` branch too (previously `"default"`-only), fixed via `add-data-testid` for ELITEA-1937 (2026-08-02), scoped to only this testid since that's the one ELITEA-1937's test reads. Live on `automation/testids` (EliteaUI@a467c0ac); **not yet on `main`**. |
 
 ## Confirmed testid GAPS (flag to `add-data-testid`, don't build raw fallbacks into new code without a stop+flag reason)
 
-None currently open for this surface — the three gaps found during the
-ELITEA-1934/1937 analysis session (connection-status indicator, error toast,
-model-selector `"field"` variant / #1088) were all resolved during that same
-batch's implementation (2026-08-02); see Confirmed-stable handles above.
+| Element | Where | Recommended name | Issue |
+|---|---|---|---|
+| Model selector BUTTON (trigger) in Test Settings panel, `variant="field"` branch | `LLMModelSelector.jsx` — `data-testid="model-selector-button"` still only applies in the `variant="default"` branch, NOT `"field"` (the one actually rendered here) | reuse the existing `model-selector-button` string, extend it into the `"field"` branch (same pattern `model-selector-name` just followed) | **#1088 — OPEN, confirmed regression on already-merged ELITEA-1866**: `toolkit_test_settings_page.py`'s `model_selector_button` `LocatorDescriptor` is asserted at ELITEA-1866 step 25 and is CONFIRMED red against the `approved-top10` batch trunk (re-run 2026-08-02) for exactly this reason — pre-existing, not introduced by ELITEA-1934/1937's PR. Needs a dedicated `add-data-testid` + `adjust-automated-test` fix on the ELITEA-1866 spec. |
+
+Two of the three gaps found during the ELITEA-1934/1937 analysis session
+(connection-status indicator, error toast) are fully resolved — see
+Confirmed-stable handles above. The third (`model-selector-name`/`-button`
+pair, #1088) is only half-resolved: `model-selector-name` is fixed and in
+Confirmed-stable handles; `model-selector-button` is still open, listed here.
 
 ## State machine — `TestTools.jsx` (governs BOTH Remote MCP and Artifact toolkit Test Settings panels — same shared component)
 
