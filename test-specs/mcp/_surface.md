@@ -1,8 +1,10 @@
 # Surface digest — Remote MCP (`/mcps/...`)
 
 > Handle cache from live exploration. Verify each handle as you use it — this
-> is a cache, not a source of truth. Last updated: 2026-08-01 (ELITEA-1934 /
-> ELITEA-1937 analyst session, cluster dispatch, `approved-top10` batch).
+> is a cache, not a source of truth. Last updated: 2026-08-02 (ELITEA-1934 /
+> ELITEA-1937 implementer session, fix round 2 — testid gaps resolved via
+> `add-data-testid`; originally created 2026-08-01, analyst session, cluster
+> dispatch, `approved-top10` batch).
 
 ## Confirmed-stable handles (testid-based)
 
@@ -24,14 +26,16 @@
 | Raw Json view toggle | `toolkit-raw-json-view-toggle` | |
 | Raw Json editor content | `toolkit-raw-json-editor-content` | CodeMirror virtualizes — use `get_raw_json_full()`, not `get_raw_json()`, for payloads >~30 lines |
 | Detail title heading | `toolkit-detail-title` | shows "Edit Toolkit" placeholder until real data lands — poll text, don't trust visibility alone |
+| Connection-status indicator ("Not Connected"/"Connected!") | `toolkit-connection-status` | `McpAuthStatus.jsx`, wrapping `Typography` — added via `add-data-testid` for ELITEA-1934 (2026-08-02). Live on `automation/testids` (EliteaUI@a467c0ac); **not yet on `main`** — human cherry-pick pending, see PR closure record. |
+| Error toast (mcp_sync_tools failure) | `toast-message` | reuses the existing app-wide `Toast.jsx` component (same as `artifacts_page.py`/`skills_list_page.py`/`skill_detail_page.py`) — confirmed live, no new testid needed. Already on `main`. |
+| Model selector (name + trigger) in Test Settings panel, `variant="field"` branch | `model-selector-name` (+ `model-selector-button`) | `LLMModelSelector.jsx` — the pair now applies in the `"field"` branch too (previously `"default"`-only), fixed via `add-data-testid` for ELITEA-1937 (2026-08-02, closes #1088). Live on `automation/testids` (EliteaUI@a467c0ac); **not yet on `main`**. `toolkit_test_settings_page.py`'s pre-existing `model_selector_name`/`model_selector_button` `LocatorDescriptor`s are correct as-is. |
 
 ## Confirmed testid GAPS (flag to `add-data-testid`, don't build raw fallbacks into new code without a stop+flag reason)
 
-| Element | Where | Recommended name | Issue |
-|---|---|---|---|
-| Connection-status indicator ("Not Connected"/"Connected!") | MCP detail page, near Load Tools | `toolkit-connection-status` | load-bearing for ELITEA-1934/1936 |
-| Error toast (mcp_sync_tools failure) | MUI `role="alert"` Alert | `mcp-sync-error-toast` (or extend `toast-message` if same component family — unconfirmed) | load-bearing for ELITEA-1934 |
-| Model selector (name + trigger) in Test Settings panel | `LLMModelSelector` `variant="field"` branch (`TestToolSettings.jsx`) — the `model-selector-button`/`model-selector-name` testids EXIST but only in the `variant="default"` branch, NOT `"field"` | extend the SAME testid pair into the `"field"` branch | **#1088 — possible regression on already-merged ELITEA-1866 (`toolkit_test_settings_page.py`'s `model_selector_button`/`model_selector_name` reference testids that don't exist in this rendered variant)** |
+None currently open for this surface — the three gaps found during the
+ELITEA-1934/1937 analysis session (connection-status indicator, error toast,
+model-selector `"field"` variant / #1088) were all resolved during that same
+batch's implementation (2026-08-02); see Confirmed-stable handles above.
 
 ## State machine — `TestTools.jsx` (governs BOTH Remote MCP and Artifact toolkit Test Settings panels — same shared component)
 

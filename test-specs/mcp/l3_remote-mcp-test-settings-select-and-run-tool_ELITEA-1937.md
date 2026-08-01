@@ -118,9 +118,10 @@
   result from the remote MCP server, displayed in a dedicated "Run Results"
   view that reuses the app's generic `chat-message-list` component.
 - **Two CLARIFICATIONS found** (case text vs. live product — see Known
-  Defects) and **one testid gap with a possible regression on an already-
-  merged spec** (see Known Defects, issue #1088) — none block this case's own
-  automation; all are documented dispositions in the Coverage Map below.
+  Defects) and **one testid gap, filed as issue #1088 and resolved during
+  this same PR's implementation** (see Known Defects) — none block this
+  case's own automation; all are documented dispositions in the Coverage Map
+  below.
 
 ## Coverage Map
 
@@ -131,7 +132,7 @@
 | Preconditions: Remote MCP with discovered tools available | precondition met | step 1 | step 1 | asserted — **fixture substituted (DeepWiki, not Tavily) — see Preconditions note** |
 | 1 Open a Remote MCP detail page with discovered tools | detail page loads | step 1 | step 1 | asserted |
 | 2 Verify right-side "Test Settings" panel is visible | panel displayed | step 2 | step 2 | asserted — **CLARIFICATION: pre-selection the region is the EMPTY STATE, not literally "Test Settings" — filed as #1086, see step 2's own note** |
-| 3 Verify LLM model selector shows a default model | default model shown | step 4 | step 4 | asserted — non-empty only; **testid gap flagged as #1088 (regression risk on ELITEA-1866)** |
+| 3 Verify LLM model selector shows a default model | default model shown | step 4 | step 4 | asserted — non-empty text via `model_selector_name`; **testid gap #1088 resolved this PR, see Known Defects** |
 | 4 Verify "Tool" label and combobox dropdown present | dropdown visible | step 4 | step 4 | asserted |
 | 5 Click the Tool combobox dropdown | dropdown opens | step 3 | step 3 | asserted — **case's step 4/5 correspond to this AFS's step-3 empty-state selector, since a fresh MCP starts with NO tool selected (EL-5947 gating) — see step 2/3 notes** |
 | 6 Verify dropdown lists all available tools | all 3 tools listed | step 3 | step 3 | asserted |
@@ -181,7 +182,7 @@
 | Empty-state "Select Tool" button | `[data-testid="toolkit-test-empty-tool-select"]` (existing, added ELITEA-1933, already in `mcp_form_page.py`/`toolkit_test_settings_page.py`) | none |
 | Tool dropdown option (per tool, empty-state popover) | `[data-testid="select-option-{tool_value}"]` (existing, shared dropdown-option pattern) | none |
 | Test Settings panel's Tool select (after a tool is chosen) | `[data-testid="toolkit-test-tool-select"]` (existing, same testid `mcp_form_page.py`'s `test_tool_select` and `toolkit_test_settings_page.py`'s `tool_select` both already declare) | none |
-| Model selector (name + trigger) | **NO TESTID** — confirmed via source: `TestToolSettings.jsx` renders `<LLMModelSelector variant="field" .../>`, and `LLMModelSelector.jsx` only applies `data-testid="model-selector-button"`/`"model-selector-name"` in its `variant === 'default'` branch, NOT `'field'` (the one actually used here). **`automation/pages/toolkit_test_settings_page.py`'s existing `model_selector_button`/`model_selector_name` `LocatorDescriptor`s reference testids that do NOT exist in this rendered variant** — filed as issue #1088 (possible regression on the already-merged ELITEA-1866 spec, which asserts these same locators). Flag to `add-data-testid`: add the testid pair to the `'field'` variant branch of `LLMModelSelector.jsx`. | `page.locator('div').filter(has_text=re.compile(...)).first` scoped near the "Model" label text — fragile, not recommended for new code; better to unblock via `add-data-testid` first given the regression angle |
+| Model selector (name + trigger) | **RESOLVED (2026-08-02, this PR) — issue #1088 fixed.** `LLMModelSelector.jsx`'s `'field'` variant branch now applies `data-testid="model-selector-name"` (confirmed live: `TestToolSettings.jsx` still renders `<LLMModelSelector variant="field" .../>`, that branch now carries the testid same as `'default'`). Live on `automation/testids` (EliteaUI@a467c0ac); **not yet on `main`** — awaiting human cherry-pick, tracked in the PR's closure record (so the already-merged ELITEA-1866 spec, which runs against a build where the testid IS present via `automation/testids`, is unaffected once promoted). `automation/pages/toolkit_test_settings_page.py`'s existing `model_selector_name` `LocatorDescriptor` is used as-is, unchanged. | n/a — resolved, no fallback needed |
 | Tool parameter field (`repoName`) | `[data-testid="toolkit-test-param-repoName"]` (existing dynamic-testid family, `TEST_PARAM_FIELD`/`TOOL_PARAM` class constants already in both page objects) | none |
 | Run button | `[data-testid="toolkit-test-run-tool-button"]` (existing, `run_tool_button` in `toolkit_test_settings_page.py`) — **visible text is "Run Test", not "RUN TOOL"** (issue #1087, cosmetic only; testid is stable regardless) | none |
 | Run Results container | `[data-testid="chat-message-list"]` (existing, shared `ChatMessageList.jsx` — same testid `toolkit_test_settings_page.py`'s `result_message_list` already declares) — only present AFTER Run is clicked, not before | none |
@@ -215,13 +216,18 @@
   copy sources — the welcome-message string and the interactive product tour)
   all say "RUN TOOL". Cosmetic copy inconsistency; doesn't affect automation
   (testid-based locate) or the case's own functional pass/fail.
-- **[MINOR #1088]** The Test Settings panel's model selector
-  (`LLMModelSelector` in its `'field'` variant) has NO `data-testid` on the
-  model name/button — a real gap for THIS case's step 3, and a possible
-  regression on the already-merged ELITEA-1866 spec, which asserts the same
-  (non-existent-in-this-variant) testids. Flagged to the lead for
-  verification against a fresh ELITEA-1866 run — this analysis session did
-  not re-run that suite, only traced the shared component via source.
+- **[MINOR #1088 — RESOLVED 2026-08-02, this PR]** The Test Settings panel's
+  model selector (`LLMModelSelector` in its `'field'` variant) had NO
+  `data-testid` on the model name/button at analysis time — a real gap for
+  THIS case's step 3, and a possible regression on the already-merged
+  ELITEA-1866 spec, which asserts the same testids. Fixed via `add-data-testid`
+  as part of implementing this case: `model-selector-name` now applies in the
+  `'field'` variant too (`LLMModelSelector.jsx`), live on `automation/testids`
+  (EliteaUI@a467c0ac), not yet on `main`. `automation/pages/toolkit_test_settings_page.py`'s
+  pre-existing `model_selector_name`/`model_selector_button` `LocatorDescriptor`s
+  are correct as-is — no regression on ELITEA-1866 once the testid promotes to
+  `main` (issue left OPEN per policy — agents don't close issues — but the fix
+  is in place; see the PR's closure record for the promotability check).
 - **[Pre-existing, tracked, no new issue]** Issues #291 (React dev-mode
   console warnings on the MCP create form) and #549 (MUI Tabs invalid-value
   console error on the MCP detail page) both reproduced again this session,
@@ -253,12 +259,11 @@ environment (with the fixture substitution noted in Preconditions).
   `McpFormPage` (left/creation side) + `ToolkitTestSettingsPage` (right/test
   side), same pattern `test_toolkit_creation_create_bucket_verify_list_files.py`
   already establishes for the Artifact surface.
-- **Do NOT reuse `model_selector_button`/`model_selector_name` as-is** until
-  issue #1088 is resolved (testid doesn't exist in the `'field'` variant
-  actually rendered here) — either wait for the testid fix, or use the
-  interim locator noted in Concrete Handles, and flag the assertion as
-  `expect.soft()` with `# Known defect: #1088` per the no-masking policy if
-  the implementer chooses to proceed before the fix lands.
+- **`model_selector_button`/`model_selector_name` are usable as-is** — issue
+  #1088 was resolved as part of implementing this case (`add-data-testid`
+  landed the pair in the `'field'` variant); no interim locator or
+  `expect.soft()` workaround needed. See Concrete Handles / Known Defects for
+  the resolution details.
 - **`select_tool_from_empty_state(tool_key)`** (existing method on
   `ToolkitTestSettingsPage`) is the correct entry point for step 3–4 — do NOT
   attempt to click `tool_select` directly on a fresh MCP detail page (it

@@ -147,8 +147,8 @@
 | Url input | `[data-testid="toolkit-field-url-input"]` (existing) | none |
 | Save button | `[data-testid="toolkit-form-save-button"]` (existing) | none |
 | "Load Tools" button | `[data-testid="toolkit-load-tools-button"]` (existing — added at ELITEA-1933, confirmed live and already wired into `automation/pages/mcp_form_page.py` as `load_tools_button`) | none needed |
-| Connection-status indicator (shows "Not Connected"/"Connected!") | **NO TESTID** — plain `MuiTypography` `<span>`, no testid anywhere in a 6-level ancestor walk (confirmed live via DOM walk, this session). **Flag to `add-data-testid`**: recommend `toolkit-connection-status` on the wrapping element, scoped near the existing `[data-testid="toolkit-load-tools-button"]` region (same "TOOLS" header area). This is the SAME gap the ELITEA-1933 AFS flagged in passing ("no testid in scope for this case") — this case's own steps 5/8 make it load-bearing, not optional, so it should be prioritized. | `page.get_by_text("Not Connected", exact=True)` / `page.get_by_text("Connected!", exact=True)` scoped inside the Configuration accordion region — interim only |
-| Error toast (DNS-failure message) | **NO TESTID** — MUI `Alert` (`role="alert"`, `MuiAlert-colorError`/`MuiAlert-filledError`), no `data-testid`. **Flag to `add-data-testid`**: recommend `mcp-sync-error-toast` (or extend the existing app-wide `toast-message` testid pattern used by `artifacts_page.py`/`skills_list_page.py`/`skill_detail_page.py` to this MUI-Alert-based error variant, if it's the same underlying component family — not confirmed this session). | `page.get_by_role("alert")`, asserted IMMEDIATELY after the click (same wait chain, not a separate step) — the toast auto-dismisses within a few seconds, confirmed live |
+| Connection-status indicator (shows "Not Connected"/"Connected!") | **RESOLVED (2026-08-02, this PR):** `toolkit-connection-status` added via `add-data-testid` on `McpAuthStatus.jsx` (the wrapping `Typography`), same element identified during analysis — text remains the observable per `.agents/testing.md` § Locator policy. Live on `automation/testids` (EliteaUI@a467c0ac); **not yet on `main`** — awaiting human cherry-pick, tracked in the PR's closure record. Wired as `McpFormPage.connection_status` (`LocatorDescriptor(testid="toolkit-connection-status")`). | n/a — resolved, no fallback needed |
+| Error toast (DNS-failure message) | **RESOLVED (2026-08-02, this PR):** confirmed live to reuse the existing app-wide `toast-message` testid (`Toast.jsx`, same shared component as `artifacts_page.py`/`skills_list_page.py`/`skill_detail_page.py`) — already on `main`, no new testid needed. Wired as `McpFormPage.sync_error_toast_message` (`LocatorDescriptor(testid="toast-message")`). | n/a — resolved, no fallback needed |
 
 ## Network Behavior
 
@@ -175,8 +175,10 @@ message (case text and live product both read: `"Failed to sync MCP tools:
 DNS resolution failed. Please check the server hostname in the URL."`).
 
 Two testid gaps were found (connection-status indicator, error toast) — see
-Concrete Handles; these are `add-data-testid` work items, not product defects,
-per this project's testid-only locator policy.
+Concrete Handles; these were `add-data-testid` work items, not product defects,
+per this project's testid-only locator policy. **Both resolved during
+implementation of this same PR** (2026-08-02) — see Concrete Handles for the
+final testids and provenance.
 
 ## Blocked Steps
 
@@ -189,15 +191,14 @@ environment.
 - **Reuse `automation/pages/mcp_form_page.py`** (`McpFormPage`) — this case
   needs zero new page-object methods beyond what ELITEA-1933 already added
   (`navigate_to_create`, `select_remote_mcp_type`, `fill_name`, `fill_url`,
-  `save_and_wait_for_created`, `click_load_tools`). The only NEW methods
-  needed:
-  - `get_connection_status_text()` — interim `get_by_text` fallback per
-    Concrete Handles, to be replaced with a `LocatorDescriptor(testid=
-    "toolkit-connection-status")` once `add-data-testid` lands.
-  - `wait_for_sync_error_toast()` — waits for `page.get_by_role("alert")` to
-    become visible IMMEDIATELY after `click_load_tools()`'s network wait
-    resolves (don't insert a separate step in between — the toast
-    auto-dismisses fast), returns its text.
+  `save_and_wait_for_created`, `click_load_tools`). Two NEW methods were
+  added (both testid-backed, per the resolved Concrete Handles rows above):
+  - `get_connection_status_text()` — reads `LocatorDescriptor(testid=
+    "toolkit-connection-status")`.
+  - `wait_for_sync_error_toast()` — waits for `LocatorDescriptor(testid=
+    "toast-message")` to become visible IMMEDIATELY after
+    `click_load_tools()`'s network wait resolves (don't insert a separate
+    step in between — the toast auto-dismisses fast), returns its text.
 - **`click_load_tools()` already waits on the `mcp_sync_tools` response and
   returns its parsed JSON body** (existing method, ELITEA-1933) — this case
   can assert `response["result"]["success"] is False` and
