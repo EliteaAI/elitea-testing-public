@@ -109,6 +109,27 @@ Also read what arrived from `main` — new commits touching areas the suite cove
 heads-up for Stage 3, and any `data-testid` **removed** on main's side needs the
 divergence rule applied now, not at the next sync.
 
+**Re-run this before EVERY cut, not once per promotion.** Stage 4 is a loop and each
+iteration rebuilds the branches, so "I synced this morning" is not a state you still
+have by the afternoon. On 2026-08-01 `main` moved 4 commits between the sync and the
+rebuild, and the rebuilt branch would have reverted two shipped features. The sync is
+cheap; the fetch is one second (`--no-tags`, see the traps file).
+
+**Check whether `main` fixed the same things you did.** A long stabilization loop runs
+concurrently with the rest of the team, who are looking at the same red suite:
+
+```bash
+comm -12 <(git diff --name-only origin/automation/base...origin/main -- automation/ | sort) \
+         <(git diff --name-only origin/main...origin/automation/base -- automation/ | sort)
+```
+
+Overlap is not a problem to route around — it is a **decision to surface**. Where both
+sides fixed the same drift, resolve toward the option the project's own policy requires
+(here: testid locators over raw handles), then say so **on their PR**, explaining why
+and acknowledging what was available to them at the time. A silent override is how two
+branches quietly diverge again. Everything of theirs that did not conflict must survive
+byte-identical — verify it (traps file, Trap 5).
+
 ---
 
 ## Stage 2 — Pre-flight: the suite must be honest before it is promoted
@@ -235,6 +256,29 @@ Classify before fixing — a red test is not evidence that the test is wrong. Us
 `.agents/role-overrides.md`: the interaction-discovery ladder before declaring any UI
 "broken", and the OpenAPI cross-check before calling a 4xx/5xx a backend bug.
 
+Three cheap moves that repeatedly change the verdict — do them before deep work:
+
+**1. Re-run the failures alone.** One targeted invocation of just the red node ids
+separates real from environmental in minutes, instead of inferring it across a
+multi-hour pass. Reproduces alone ⇒ real. Passes alone ⇒ pollution/ordering/flake,
+and the fix is isolation, never the assertion. On 2026-08-01 this split 9 reds into
+8 real + 1 pollution, and 3 fresh reds into 1 real + 2 flakes.
+
+**2. Read the linked issues' COMMENTS, not just their state.** An OPEN issue can
+already carry its disposition. In one pass this reclassified three tests: two console
+warnings verified as **development-build-only and impossible on any deployed env**
+("no action items — local UI issue only"), which made filtering them correct rather
+than masking; and one "defect" that was a **deliberate v2 behaviour change**, meaning
+the test asserts superseded semantics and needs its expected result inverted. None of
+that is visible from `state: OPEN`.
+
+**3. Distrust your own instrumentation.** Ad-hoc progress greps lie: a `grep -c FAILED`
+under-reported 9 failures as 2 for an entire run because this log puts the verdict on
+the line *after* the test name. Parse by test node id and reconcile against pytest's
+own summary. Likewise a background job's exit code is the **wrapper script's**, not
+pytest's — capture `$?` immediately after the pytest call if you intend to trust it.
+Never quote a number you have not reconciled at least once.
+
 **No defect masking, ever** — not even to get a promotion out. Never lower a count, weaken
 a comparison, delete a step, or skip a test to turn a promote branch green. A promotion
 that ships a masked failure is worse than one that ships a documented red, because the
@@ -243,16 +287,28 @@ next full pass, so a full run is never spent proving a one-line change.
 
 ### Exit criteria — what may still be red
 
-Only two things:
+Four things, and each needs a written reason a reader can check:
 
 1. **A product bug** with an OPEN linked issue, the assertion held at the *correct*
    expected value, and `# Known defect: #N` in the code (sanctioned RED — see
    `.agents/testing.md` § Merge gate).
 2. **A documented environment gap** — a missing credential, an unseeded precondition —
    filed as an issue, with the cause named.
+3. **A confirmed flake**, demonstrated by passing in isolation, filed so it is tracked
+   rather than folklore. Do not "fix" it by retrying harder.
+4. **A superseded expectation** — the product deliberately changed and the case now
+   asserts old behaviour. Not a defect and not a test bug: it needs the *case* revised,
+   which is a case-text decision, not an automation one. Flag it on the issue and leave
+   the test honest rather than inverting an expected result unilaterally.
 
 Everything else is fixed or the promotion waits. "Known blocker" is not a class; if the
 only thing making a test red is that someone previously decided not to fix it, fix it now.
+
+**A red you chose not to fix still needs its reasoning recorded** — including *why not
+now*. "The compliant fix changes a method many tests depend on and deserves its own
+verification run" is a legitimate reason; "ran out of time" recorded as nothing is not.
+State it on the issue and in the PR body, so the next person inherits the judgement
+rather than re-deriving it.
 
 ### Reaching the promoted code
 
@@ -276,6 +332,28 @@ git -C "$WORKSPACE/EliteaUI" checkout testids/promote-<date>
 git -C "$WORKSPACE/elitea_assistant" checkout testids/promote-<date>
 (cd "$WORKSPACE/EliteaUI" && npm run dev &)   # :5173 — expect "[vite] Support Assistant → LOCAL source"
 ```
+
+**Before a multi-hour pass, prove the server serves the state under test.** A dev
+server that has been up since before a sync can hold a stale module graph and produce
+failures you will then waste an hour triaging as real. Restart it, wait for ready, and
+spend ~20s on one fast test that depends on a change you just made:
+
+```bash
+pkill -f "node.*vite" || true; sleep 2
+(cd "$WORKSPACE/EliteaUI" && nohup npm run dev > /tmp/vite-dev.log 2>&1 &)
+for i in $(seq 1 40); do
+  [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://localhost:5173/)" = "200" ] && break
+  sleep 1
+done
+# then: run ONE test that exercises a fix from this session — green means the server is current
+```
+
+**Probing the live UI is a write.** Reproducing a defect by hand often means creating
+real entities in a shared project. Confirm you can **delete what you create** before
+creating it — permissions are per-project and the API token may be scoped elsewhere.
+(2026-08-01: two probe buckets were created in a team project where neither the UI's
+delete affordance nor the token had rights, and they are still there.) Prefer the
+project the suite already targets, and clean up in the same session.
 
 Then run — Mode A runs the **whole** suite, Mode B only the batch's tests:
 

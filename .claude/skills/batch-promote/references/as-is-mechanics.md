@@ -39,6 +39,14 @@ git fetch origin main --no-tags                     # see Trap 4
 git diff --name-only origin/main HEAD -- . ':!src'   # MUST be empty
 ```
 
+**This check is a GATE, not a readout.** A non-empty result means the integration
+branch has drifted from `main` outside the promoted scope — almost always because
+`main` moved since your last sync — and building from `HEAD`'s tree would silently
+**revert** that work. Printing the number and continuing anyway is how a promotion
+branch ends up reverting two shipped features (2026-08-01: the count came back `1`,
+was read past, and the pushed branch would have reverted `package.json` plus all of
+EL-6083 and EL-6014). If it is not `0`: stop, re-sync (Stage 1), re-check.
+
 Empty ⇒ build directly from `HEAD`'s tree:
 
 ```bash
@@ -102,6 +110,27 @@ Then commit and branch as in 2a.
 > or use a loop variable, as above.
 
 ---
+
+### 2c. Post-build revert check — run this on EVERY rebuild
+
+The scope check (§2a) only proves nothing drifted *outside* the promoted paths. It
+cannot see a revert *inside* them — if `main` changed `src/` and your integration
+branch lacks that change, the promote branch silently undoes it. Prove otherwise
+against `main`'s most recent commits:
+
+```bash
+# the last few commits main landed that touch the promoted scope
+for c in $(git log --format=%h -6 origin/main -- src/); do
+  for f in $(git show --name-only --format="" "$c" -- src/ | head -4); do
+    a=$(git rev-parse "origin/main:$f" 2>/dev/null)
+    b=$(git rev-parse "<promote-branch>:$f" 2>/dev/null)
+    [ "$a" = "$b" ] || echo "  REVERTS $f (from $c)"
+  done
+done
+```
+
+Any output ⇒ the branch reverts shipped work. Re-sync and rebuild; never "fix it in
+review". Cheap, and it is the only check that would have caught the 2026-08-01 near-miss.
 
 ## 3. Verification without a checkout (tree-SHA equivalence)
 
@@ -176,7 +205,22 @@ These clones sit on OneDrive with large histories. `git fetch origin main --no-t
 returns in about a second and is all that is needed to refresh the promotion target.
 Reserve the full fetch for when you genuinely need every ref.
 
-**Trap 5 — a merge can silently drop testids.**
+**Trap 5 — `git checkout --ours/--theirs` replaces the WHOLE FILE.**
+When a Stage-1 sync conflicts, it is tempting to resolve a file wholesale. Don't:
+those flags discard every non-conflicting hunk the other side brought in, not just
+the conflicting one. On 2026-08-01 `main` arrived with fixes to three skill tests
+plus conflicting fixes to two toolkit tests; `--ours` on the toolkit files would
+have been correct, but the same reflex applied one file over would have silently
+dropped the skill-test work. Resolve marker-by-marker, then verify the other side's
+untouched files are byte-identical:
+```bash
+for f in <files the other side changed but you did not>; do
+  [ "$(git rev-parse "origin/main:$f")" = "$(git hash-object "$f")" ] \
+    && echo "  $f matches main" || echo "  $f DIFFERS — check this was intended"
+done
+```
+
+**Trap 6 — a merge can silently drop testids.**
 Always run the testid-loss guard (`sync-base-branches` § Testid-loss guard) around the
 Stage-1 sync. A dropped testid surfaces days later as an unexplained red, far from its
 cause. It has happened more than once, and one occurrence lost two testids from a single
