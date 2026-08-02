@@ -1,13 +1,14 @@
 # Campaign: approved-next50
 
 ## State
-- Stage: plan-proposed (awaiting operator checkpoint)
-- Conductor run: wf_aa16c5c4-f74 — propose call, completed 2026-08-02
+- Stage: waves (running)
+- Conductor run: wf_aa16c5c4-f74 — propose completed; RUN re-invoked with approved plan 2026-08-02 (same runId, resumed)
+- Operator checkpoint: consolidated 11 proposed waves -> 5 (merged adjacent surface groups, kept every cluster intact), approved
 - Foundation merged: n/a — foundation is null (all 4 surfaces already foundation-rich, evidenced by directory listing)
-- Foundation surfaces CLAIMED: none (no foundation stage)
-- Heads analyzed: none yet (foundation:null skips the heads/foundation/mini-gate stages entirely)
-- Waves: 11 proposed, none run yet
-- Landing: per-batch (policy unset in plan → script default; profile.md doesn't declare a landing granularity, so the default applies) — land each wave before the next cuts its trunk
+- Foundation surfaces CLAIMED: none (no foundation stage — skipped, F=null)
+- Heads analyzed: none (skipped — no foundation stage)
+- Waves: 5 approved, running wave-01 first
+- Landing: per-batch (policy unset -> script default) — land each wave before the next cuts its trunk
 
 ## Source
 
@@ -91,7 +92,20 @@ cluster's one analyst session across waves).
 
 Verified count: 50/50 cases covered across the 11 waves, no duplicates, no omissions (checked programmatically).
 
+## Consolidated plan (approved, 5 waves)
+
+| Wave | Cases | Size |
+|---|---|---|
+| wave-01-heads_artifacts-upload-dup_pipe-hitl-node | 1920,1999,1811,1814,2181,2021,1828,1829,1831,2014,2015 | 11 |
+| wave-02-artifacts-file-editor_pipe-node-config-yaml_chat-search | 1851,1852,1856,2004,2010,1857,1858,1862,2028,2162 | 10 |
+| wave-03-chat-conversation-org_attachments_slash-commands | 2135,2137,2149,2168,2197,2200,2202,2203,2204 | 9 |
+| wave-04-chat-hitl-direct_context-agenthub-embedded-builders | 2211,2212,2213,2214,2215,2218,2075,2079,2085 | 9 |
+| wave-05-chat-canvas_pipe-entry-triggers_pipe-canvas-graph-ops | 2086,2087,2088,2005,2006,2007,2008,2018,2030,2031,2032 | 11 |
+
+Verified 50/50 covered, no dupes/gaps (checked programmatically before re-invoking).
+
 ## Log
 
 - 2026-08-02 propose — conductor wf_aa16c5c4-f74 launched
 - 2026-08-02 plan-proposed — 11 waves, foundation null, awaiting operator checkpoint
+- 2026-08-02 operator approved a consolidation to 5 waves — re-invoked wf_aa16c5c4-f74 with { plan } (task w6x0n1m8v)
