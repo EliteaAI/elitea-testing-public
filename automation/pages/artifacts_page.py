@@ -312,10 +312,37 @@ class ArtifactsPage(BasePage):
         "one per colliding file (matches multiple elements when several duplicates)",
     )
 
+    resolve_duplicates_message_text = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-message-text",
+        description="'Resolve duplicates' dialog's message line (DuplicateDialogContent.jsx) — "
+        "text is singular ('This file already exists...') for exactly 1 duplicate, plural "
+        "('{N} files already exist...') for more than 1 (ELITEA-1828).",
+    )
+
     resolve_duplicates_cancel_button = LocatorDescriptor(
         testid="artifacts-resolve-duplicates-cancel-button",
         description="'Cancel' button inside the 'Resolve duplicates' dialog — aborts "
         "the ENTIRE upload operation, including any non-duplicate files in the batch",
+    )
+
+    resolve_duplicates_skip_button = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-skip-button",
+        description="'Skip' button inside the 'Resolve duplicates' dialog — uploads only "
+        "the non-duplicate file(s) in the batch, leaves the duplicate entirely untouched "
+        "(ELITEA-1828/1829).",
+    )
+
+    resolve_duplicates_replace_button = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-replace-button",
+        description="'Replace' button inside the 'Resolve duplicates' dialog — "
+        "visibility-only as of ELITEA-1828; no cluster case exercises it yet.",
+    )
+
+    resolve_duplicates_keep_both_button = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-keep-both-button",
+        description="'Keep both' button inside the 'Resolve duplicates' dialog — uploads "
+        "the new file under a renamed '{baseName} - Copy{extension}' key, leaves the "
+        "original untouched (ELITEA-1828/1831).",
     )
 
     # ------------------------------------------------------------------
@@ -1942,6 +1969,29 @@ class ArtifactsPage(BasePage):
         bucket contents unchanged.
         """
         self.resolve_duplicates_cancel_button.click()
+
+    @action("Skip duplicate resolution (uploads only the non-duplicate file(s))")
+    def click_resolve_duplicates_skip_button(self) -> None:
+        """Click 'Skip' in the 'Resolve duplicates' dialog.
+
+        Uploads only the non-duplicate file(s) selected in the same batch —
+        confirmed live (ELITEA-1829): fires exactly one PUT per non-duplicate
+        file and none for the duplicate, leaving the duplicate's content and
+        metadata (including its 'lastModified' timestamp) untouched.
+        """
+        self.resolve_duplicates_skip_button.click()
+
+    @action("Keep both duplicate resolution (uploads the new file under a renamed key)")
+    def click_resolve_duplicates_keep_both_button(self) -> None:
+        """Click 'Keep both' in the 'Resolve duplicates' dialog.
+
+        Uploads the new file under a renamed key,
+        ``{baseName} - Copy{extension}`` (confirmed live, ELITEA-1831 —
+        space, hyphen, space, capitalized "Copy", original extension
+        preserved). Fires exactly one PUT for the renamed key; the original
+        duplicate's path is never re-touched.
+        """
+        self.resolve_duplicates_keep_both_button.click()
 
     def wait_for_resolve_duplicates_dialog_closed(self, timeout: int = 10000) -> None:
         """Wait for the 'Resolve duplicates' dialog to be hidden/removed after Cancel.
