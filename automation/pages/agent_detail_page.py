@@ -238,6 +238,32 @@ class AgentDetailPage(AgentFormPage):
     model_selector_name = LocatorDescriptor(testid="model-selector-name")
     MODEL_SELECTOR_OPTION_ANY_SELECTOR = '[data-testid^="model-selector-option-"]'
 
+    # --- Model Settings (gear) dialog (ELITEA-1880 testid-only rework —
+    # added via add-data-testid to LLMModelSelector.jsx (gear button),
+    # LLMSettingsDialog.jsx (BaseModal's dataTestId + own Cancel button),
+    # MaxTokensSection.jsx (container Box), and ReasoningSlider.jsx (via a
+    # new `testId` prop threaded through the SHARED DiscreteSlider.jsx —
+    # both ReasoningSlider and CreativitySlider consume DiscreteSlider, so
+    # the testid is prop-driven rather than hardcoded in the shared
+    # component per `.agents/testing.md` § Locator policy). EliteaUI
+    # automation/testids commit ab11bd81. Apply button intentionally has NO
+    # testid here — this case only exercises Cancel (see AFS § Concrete
+    # Handles: out of scope for THIS case). ---
+    model_settings_button = LocatorDescriptor(
+        testid="model-settings-button",
+        description="Gear icon next to the model selector — opens the Model "
+                     "settings dialog",
+    )
+    model_settings_dialog = LocatorDescriptor(testid="model-settings-dialog")
+    model_settings_cancel_button = LocatorDescriptor(testid="model-settings-cancel-button")
+    # Reasoning-capable models render this slider (Low/Medium/High); a
+    # non-reasoning model renders CreativitySlider instead, which carries no
+    # testid (out of scope for this case — see AFS Coverage Map
+    # Clarification 1).
+    model_settings_reasoning_slider = LocatorDescriptor(testid="model-settings-reasoning-slider")
+    # Always rendered regardless of model type (Default/Custom toggle).
+    model_settings_max_tokens_section = LocatorDescriptor(testid="model-settings-max-tokens-section")
+
     # --- Skills section (agent-skills attach/mention flow, ELITEA-1735) ---
     agent_add_skill_button = LocatorDescriptor(testid="agent-add-skill-button")
     # Tooltip wrapper span for the add-skill button (ELITEA-1790 testid-only
@@ -2534,6 +2560,69 @@ class AgentDetailPage(AgentFormPage):
         option.first.wait_for(state="visible", timeout=timeout)
         option.first.click()
         logger.info("LLM model '%s' selected", display_name)
+
+    # ------------------------------------------------------------------
+    # Model Settings dialog (embedded chat panel, ELITEA-1880)
+    # ------------------------------------------------------------------
+
+    @action("Open Model settings dialog")
+    def open_model_settings_dialog(self, timeout: int = 5000):
+        """Click the gear icon and wait for the Model settings dialog to open.
+
+        LOCATOR: ``model-settings-button`` -> ``model-settings-dialog``.
+        """
+        logger.info("Opening Model settings dialog")
+        self.model_settings_button.click()
+        self.model_settings_dialog.wait_for(state="visible", timeout=timeout)
+
+    def is_reasoning_slider_visible(self, timeout: int = 5000) -> bool:
+        """Return True if the Reasoning slider (Low/Medium/High) is shown.
+
+        LOCATOR: ``model-settings-reasoning-slider``. Rendered only for a
+        reasoning-capable model (``model.supports_reasoning``) — a
+        non-reasoning model renders the Creativity/Temperature slider
+        instead, which carries no testid (out of this case's scope). Call
+        after :meth:`open_model_settings_dialog`.
+        """
+        try:
+            self.model_settings_reasoning_slider.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_reasoning_slider_text(self, timeout: int = 5000) -> str:
+        """Return the Reasoning slider's own rendered text (label + Low/Medium/High).
+
+        LOCATOR: ``model-settings-reasoning-slider``. Call after
+        :meth:`open_model_settings_dialog` once
+        :meth:`is_reasoning_slider_visible` is True.
+        """
+        self.model_settings_reasoning_slider.wait_for(state="visible", timeout=timeout)
+        return (self.model_settings_reasoning_slider.text_content() or "").strip()
+
+    def get_max_tokens_section_text(self, timeout: int = 5000) -> str:
+        """Return the Max Completion Tokens section's own rendered text
+        (label + Default/Custom toggle) — always present regardless of
+        model type.
+
+        LOCATOR: ``model-settings-max-tokens-section``. Call after
+        :meth:`open_model_settings_dialog`.
+        """
+        self.model_settings_max_tokens_section.wait_for(state="visible", timeout=timeout)
+        return (self.model_settings_max_tokens_section.text_content() or "").strip()
+
+    @action("Close Model settings dialog via Cancel")
+    def close_model_settings_dialog_via_cancel(self, timeout: int = 5000):
+        """Click Cancel and wait for the Model settings dialog to close.
+
+        LOCATOR: ``model-settings-cancel-button``. Discards any local
+        (unapplied) edits made inside the dialog — this case never edits a
+        setting, so Cancel and Apply are behaviorally equivalent here (AFS
+        step 7 observation).
+        """
+        logger.info("Closing Model settings dialog via Cancel")
+        self.model_settings_cancel_button.click()
+        self.model_settings_dialog.wait_for(state="hidden", timeout=timeout)
 
     @action("Clear embedded chat")
     def clear_embedded_chat(self, timeout: int = 10000):
