@@ -1,9 +1,9 @@
 # Agents surface — exploration digest
 
 Handle cache for live-confirmed handles/quirks on the Agent detail page
-(`/agents/all/{id}?viewMode=owner`) — VERSION area + Run History. Not a substitute for
-execution — verify a handle as you use it. One writer at a time; last confirmed by:
-qa-engineer analyst, ELITEA-1877 run.
+(`/agents/all/{id}?viewMode=owner`) — VERSION area + Run History + LLM Model Settings dialog.
+Not a substitute for execution — verify a handle as you use it. One writer at a time; last
+confirmed by: qa-engineer analyst, ELITEA-1880 run.
 
 ## VERSION selector (all pre-existing, confirmed live repeatedly across ELITEA-1888/1889/1892/1890/1891)
 - `agent-version-selector-trigger` — combobox trigger, text = current version name only (no date/status).
@@ -48,6 +48,34 @@ EliteaAI/elitea-testing-public#1091 for the full write-up.
 - #614 — post-Publish/re-pin client-side status staleness (VERSION trigger, overflow-menu Publish/Unpublish
   item can lag the true server state for a beat); `select_version_by_name()` / `wait_for_publish_status_menuitem()`
   on `AgentDetailPage` already harden against it with retry+reload+API-tie-breaker patterns.
+
+## LLM Model Settings dialog (gear icon, ELITEA-1880 run, 2026-08-02)
+- Trigger: gear-icon button next to `model-selector-button`/`model-selector-name`, `aria-label="model settings menu"`.
+  **No testid** — `LLMModelSelector.jsx` default-variant `ButtonGroup` branch (the widget's `field` variant has an
+  equivalent gear button too, also untestid'd). Testid needed: `model-settings-button` (generic — this is a shared
+  widget, `src/[fsd]/widgets/llm-model-selector/`, used by ChatBox/TestSettings/etc, same generic-naming precedent
+  as the pre-existing `model-selector-button`).
+- Opens `LLMSettingsDialog.jsx` → MUI `Modal.BaseModal`, title **"Model settings"**. `Modal.BaseModal` itself
+  ALREADY supports `data-testid`/`titleTestId`/`closeButtonTestId`/`cancelButtonTestId`/`confirmButtonTestId` props
+  (`EliteaUI/src/[fsd]/shared/ui/modal/BaseModal.jsx:32-36`) but `LLMSettingsDialog.jsx` doesn't wire any of them —
+  purely a threading gap, not a missing-capability gap. Also: `LLMSettingsDialog` supplies its OWN `actions` JSX
+  (Cancel/Apply/Reset-to-defaults) rather than using BaseModal's built-in `onConfirm`-driven action row, so those
+  buttons' testids need to be added at the `Button.BaseBtn` call sites inside `LLMSettingsDialog.jsx`, not via the
+  BaseModal props.
+- Dialog content, top to bottom: **Reasoning** slider (Low/Medium/High, only when `model.supports_reasoning` is
+  true — a NON-reasoning model gets a Creativity/Temperature slider instead, `LLMSettings.jsx`'s
+  `model?.supports_reasoning ? <ReasoningSlider/> : <CreativitySlider/>` branch) → **Max Completion Tokens**
+  section (always present regardless of model type; 2-way toggle labeled **"Default" / "Custom"** — NOT "Auto",
+  despite the internal value being `'auto'`) → **Capabilities** chips (e.g. "Reasoning") → Cancel/Apply buttons
+  (no Reset-to-defaults on the agent-page instance — `onResetToDefaults` isn't wired there). None of these
+  sub-elements have testids yet. Opening/toggling the dialog fires NO network request — pure client-side React
+  state (`LLMSettingsDialog`'s `localSettings`), only pushed to the parent on Apply.
+- Reload-based persistence (page.reload() + `wait_for_page_load()`) correctly shows the previously-saved model in
+  `model-selector-name` — confirmed live, no defect. (ELITEA-1881's existing test only asserts persistence via the
+  Save PUT's 201 status, never via an actual reload — this was the first live confirmation of reload-level
+  persistence for the model selector specifically.)
+- **Tooling note:** no Playwright MCP server was available this session; explored via a standalone
+  `sync_playwright` script driving `AgentDetailPage`/`AgentAPI` directly (not committed, scratch-only).
 
 ## Agent creation payload gotcha (still open, #524)
 `temperature` + a non-`"none"` `reasoning_effort` 400s on the project's default reasoning-capable model.
