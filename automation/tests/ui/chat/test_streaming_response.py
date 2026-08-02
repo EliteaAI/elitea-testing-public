@@ -170,8 +170,7 @@ class TestStreamingResponse:
         with allure.step(
             "Step 3 — Verify the response text streams progressively: "
             "length grows across 3 independent, condition-waited samples, "
-            "and each sample is a superset of the prior one wherever the "
-            "Thought accordion's presence is unchanged between them"
+            "and each sample is a strict superset of the prior one"
         ):
             # AFS Axis 2 names this a regression guard: "the growing text is
             # a strict superset across polls (never shrinks) — guards
@@ -181,32 +180,47 @@ class TestStreamingResponse:
             # streaming." A length-only check does NOT catch that class of
             # regression (content reset to different-but-longer text still
             # grows in length) — so containment is the correct primary
-            # signal and is restored below.
+            # signal, asserted unconditionally below, exactly as the AFS
+            # specifies (no exception documented there).
             #
-            # Live discovery in THIS PR (re-verified against the running
-            # dev server, not merely inferred): this environment's default
-            # participant can take either of two generation paths across
-            # runs — (a) a file-writing TOOL path (the AFS's own 4/4
-            # analyst runs) where growth happens inside the Thought
-            # accordion's tool-preview pane, or (b) a plain-text-completion
-            # path where growth happens directly in the Answer/Markdown
-            # block and the near-instant reasoning accordion UNMOUNTS once
-            # streaming completes. Path (b)'s unmount is a benign
-            # STRUCTURAL change (content moves from the accordion's pane to
-            # the Answer block), not a content reset — but if it lands
-            # between two of this step's samples, a blanket containment
-            # check would fail on that legitimate transition rather than a
-            # real regression. So: containment is asserted whenever the
-            # accordion's presence is UNCHANGED across a sample pair (both
-            # present, or both already absent) — the only shape a genuine
-            # replace/reset regression can take; a presence CHANGE between
-            # the pair is the known benign transition and containment is
-            # skipped for that pair only. Length growth is still asserted
-            # unconditionally every time — it does not depend on structural
-            # continuity. No AFS amendment is needed: this is the AFS's own
-            # containment check, made robust to the two paths discovered
-            # live, not a relaxation of it.
-            accordion_present_1 = chat.answer_thought_accordion.count() > 0
+            # PR #1106 review round 2 verified in source (not just re-read
+            # of round 1's own claim) that no dual-path unmount risk exists
+            # inside this step's sampling window, so the round-1 structural
+            # presence gate was removed as a no-op:
+            #   - ApplicationThinkView.jsx:993-1002 — the
+            #     `chat-answer-thought-accordion` testid sits on the OUTER
+            #     `<StyledAccordion>` root. `slotProps.transition.
+            #     unmountOnExit` only governs whether `AccordionDetails`'
+            #     CHILDREN unmount on collapse (standard MUI `Collapse`);
+            #     it cannot remove the root element the testid is on. And
+            #     `expanded={isStreaming || expanded}` keeps the accordion
+            #     expanded for the accordion's entire `isStreaming` window,
+            #     so `Collapse` never reaches a collapsed state — the
+            #     children stay mounted too.
+            #   - ApplicationAnswer.jsx:591 — the wrapper renders only
+            #     while `nonSwarmChildActions?.length > 0`.
+            #   - ApplicationAnswer.jsx:270-282 — while `isProcessing`
+            #     (`isLoading || isRegenerating || isStreaming`) is true,
+            #     `nonSwarmChildActions` IS `filteredToolActions` directly
+            #     (no type-filtering happens during streaming; the
+            #     swarm/non-swarm split only runs once processing ends).
+            #   - ApplicationAnswer.jsx:222-268 — `filteredToolActions` is
+            #     built with `.map()`, never `.filter()`; while
+            #     `isStreaming` is true the map is a no-op copy, so
+            #     `filteredToolActions.length === toolActions.length` for
+            #     the whole streaming window — it can only grow, not shrink,
+            #     between two in-stream samples.
+            # Net: since Step 2 already asserts the accordion visible
+            # before this step begins (i.e. `toolActions.length` is already
+            # > 0), and that array is never filtered down while streaming,
+            # the wrapper cannot unmount between any two samples taken here
+            # — all of which land strictly inside the streaming window
+            # (`wait_for_message_body_growth` only returns on length
+            # growth, before Step 7's completion wait). The only place
+            # `nonSwarmChildActions` can shrink to 0 is the
+            # processing->complete transition, which happens after this
+            # step's window and which Step 7 does not assert against the
+            # accordion's own count.
             sample_1_text = chat._extract_message_body(ai_message)
             sample_1_len = len(sample_1_text)
             assert sample_1_len > 0, (
@@ -218,33 +232,27 @@ class TestStreamingResponse:
                 ai_message, sample_1_len, timeout=STREAM_GROWTH_TIMEOUT
             )
             sample_2_len = len(sample_2_text)
-            accordion_present_2 = chat.answer_thought_accordion.count() > 0
             assert sample_2_len > sample_1_len, (
                 f"Body text should have grown: {sample_1_len} -> {sample_2_len} chars"
             )
-            if accordion_present_1 == accordion_present_2:
-                assert sample_1_text in sample_2_text, (
-                    "Sample 2 should be a superset of sample 1 (progressive "
-                    "append, not replace/reset) while the Thought "
-                    f"accordion's presence is unchanged: {sample_1_text!r} "
-                    f"not found in {sample_2_text!r}"
-                )
+            assert sample_1_text in sample_2_text, (
+                "Sample 2 should be a superset of sample 1 (progressive "
+                f"append, not replace/reset): {sample_1_text!r} not found "
+                f"in {sample_2_text!r}"
+            )
 
             sample_3_text = chat.wait_for_message_body_growth(
                 ai_message, sample_2_len, timeout=STREAM_GROWTH_TIMEOUT
             )
             sample_3_len = len(sample_3_text)
-            accordion_present_3 = chat.answer_thought_accordion.count() > 0
             assert sample_3_len > sample_2_len, (
                 f"Body text should keep growing (not reset): {sample_2_len} -> {sample_3_len} chars"
             )
-            if accordion_present_2 == accordion_present_3:
-                assert sample_2_text in sample_3_text, (
-                    "Sample 3 should be a superset of sample 2 (progressive "
-                    "append, not replace/reset) while the Thought "
-                    f"accordion's presence is unchanged: {sample_2_text!r} "
-                    f"not found in {sample_3_text!r}"
-                )
+            assert sample_2_text in sample_3_text, (
+                "Sample 3 should be a superset of sample 2 (progressive "
+                f"append, not replace/reset): {sample_2_text!r} not found "
+                f"in {sample_3_text!r}"
+            )
 
         with allure.step(
             "Step 4 — Verify 'Pause scroll' appears, scoped to the Thought "
