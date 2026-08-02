@@ -115,3 +115,47 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   conversation B). Both now list as separate Run History rows.
 - Endpoints: list = `GET /elitea_core/conversations/prompt_lib/{projectId}?source=agent&entity_name=application&entity_meta_id={agentId}&...`;
   detail (on row click) = `GET /elitea_core/conversation/prompt_lib/{projectId}/{conversationId}`.
+
+## "+ Skill → Create new" round-trip from the Agent editor (ELITEA-1999 run, 2026-08-02)
+- `agent-add-skill-button` → `UnifiedDropdown` popper → "Create new" item (plus-icon, label "Create new")
+  is a **bare `<MenuItem>` with NO testid** (`src/components/UnifiedDropdown.jsx`, shared with the
+  Toolkit picker's identically-shaped, identically-testid-less item). **Testid gap** — thread a
+  `createNewTestId` prop through `UnifiedDropdown` (mirrors its existing `showCreateNew`/`onCreateNew`/
+  `createNewLabel` trio); `SkillMenu.jsx` should pass `agent-add-skill-create-new-button` (same pattern
+  ELITEA-2166 already used for `agents-create-new-button` on a different shared submenu).
+- Clicking it navigates to `/skills/create?source_application_id={agentId}&return_url={encoded /agents/all/{agentId}?viewMode=owner&name=... }`.
+  Both the manual Save path (`CreateSkillTabBar.onSave()`) and the Build-with-AI approve path
+  (`GenerateSkillModal.jsx`) check these two params and, if present, redirect back to `return_url` with
+  `?newSkillId={id}` appended instead of going to the Skill's own details page — same "round-trip"
+  shape the source comments call "mirrors the toolkit newToolkitId round-trip" (untested toolkit analog,
+  `ToolMenu.jsx`, likely has the identical testid gap — not verified this run, flagging for whoever
+  automates the Toolkit-picker analog).
+- **Auto-attach after redirect is ASYNC, ~4s, and NOT gated on the Agent's own Save button.**
+  `SkillMenu.jsx`'s `useEffect` reads `newSkillId` from the URL, does `GET .../skill/prompt_lib/{proj}/{id}`
+  → `PATCH .../skill/prompt_lib/{proj}/{id}` (attach) → the skills list refetches
+  (`GET .../application_skills/prompt_lib/{proj}/{agentVersionId}`) → THEN the UI's counter/`skill-card-{id}`
+  update and the `newSkillId` param is stripped from the URL. Measured live: still 0/5 + no card at t≈2-4s
+  post-redirect, 1/5 + card visible by t≈5.5s. **Asserting immediately after the redirect is a guaranteed
+  false negative** — wait on the card/counter with a real timeout (~10s), never a short/no wait. The
+  attachment PATCH persists server-side the instant it resolves 201 — reload alone (no Save click) shows
+  it; Save is NOT the causal mechanism, just what the case's own steps happen to do next.
+- Fixture-agent gotcha: use `AgentAPI.create_agent()`'s default `_default_llm_settings()` (temperature=null,
+  reasoning_effort="medium") — already avoids the #524 400 gotcha, no override needed for a disposable
+  Skill-attachment fixture agent.
+
+## Build with AI from the in-chat "+ Create New Agent" canvas (ELITEA-1920 run, 2026-08-02)
+- The canvas (`AgentCanvasPage`, ELITEA-2166) renders the exact same `CreateAgentForm.jsx` as
+  `/agents/create`, confirmed to include the SAME `GenerateAgentButton`/`generate-agent-open-button` —
+  zero new testids needed to drive Build-with-AI from inside the chat canvas.
+- Completion wiring is genuinely different from `/agents/create`, though: chat-hosted creation goes
+  through `src/hooks/chat/useAgentCreation.js` (NOT a page navigation) — it turns the created agent into
+  a participant via `addNewParticipants(...)` and auto-activates it. URL stays on
+  `/chat?edited_participant_id={id}`; it never navigates to `/agents/all/{id}` the way the standalone
+  create-page flow does. An implementer reusing `GenerateAgentModalPage.approve_button.click()` inside
+  the chat canvas must NOT wait for an `/agents/all/{id}` navigation (ELITEA-1909's pattern) — wait on
+  `AgentCanvasPage.title` switching to the agent's name, or on the Participants popover, instead.
+- `ChatPage.switch_project()` to the ALREADY-active project can hang the composer in a permanent loading
+  spinner (`MuiCircularProgress` inside a `css-*` overlay Box that then blocks `plus-menu-button` clicks)
+  in a from-scratch `sync_playwright` script — skipping the redundant switch when already on the target
+  project avoided it. Not confirmed as a real product defect (never reproduced through the normal pytest
+  fixture chain, only this ad-hoc script) — flagging as a possible transit-path fragility, not filed.
