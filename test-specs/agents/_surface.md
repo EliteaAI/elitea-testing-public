@@ -1,8 +1,9 @@
 # Agents surface — exploration digest
 
-Handle cache for live-confirmed handles/quirks on the Agent detail page's VERSION area
-(`/agents/all/{id}?viewMode=owner`). Not a substitute for execution — verify a handle as you use it.
-One writer at a time; last confirmed by: qa-engineer analyst, ELITEA-1890/1891 run.
+Handle cache for live-confirmed handles/quirks on the Agent detail page
+(`/agents/all/{id}?viewMode=owner`) — VERSION area + Run History. Not a substitute for
+execution — verify a handle as you use it. One writer at a time; last confirmed by:
+qa-engineer analyst, ELITEA-1877 run.
 
 ## VERSION selector (all pre-existing, confirmed live repeatedly across ELITEA-1888/1889/1892/1890/1891)
 - `agent-version-selector-trigger` — combobox trigger, text = current version name only (no date/status).
@@ -51,3 +52,38 @@ EliteaAI/elitea-testing-public#1091 for the full write-up.
 ## Agent creation payload gotcha (still open, #524)
 `temperature` + a non-`"none"` `reasoning_effort` 400s on the project's default reasoning-capable model.
 Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and omits `temperature`.
+
+## Run History panel (ELITEA-1877 run, live + code confirmed)
+- Trigger: `pipeline-history-tab` (shared `ViewRunHistoryButton.jsx`, `src/[fsd]/shared/ui/button/` —
+  also used by Pipelines/MCP/Toolkit run history; the name is a naming-precedent smell — feature-scoped
+  string hardcoded in a shared component — but it's pre-existing on `main` and reused as-is, not a new
+  violation to fix here). Lives in `ConfigurationTab.jsx`'s `ConfigurationRightContent`, which is the
+  right-panel content shown only while `!showHistory` — clicking it opens `RunHistoryContainer`, which
+  REPLACES the whole form+chat grid (not a tab, not an overlay).
+- `RunHistoryContainer` = `RunHistoryList` (left, the entries) + `RunHistoryChat` (right, selected
+  entry's messages). Default sort = Date **descending** (`RunHistoryList.jsx`
+  `useRunHistorySorting(SORT_TYPES.DATE)`) — index 0 is always the most recent entry, so "not the most
+  recent" = `.nth(1)` or higher, no need to read dates.
+- **Testid gaps (needs-adding):** `RunHistoryListItem.jsx`'s row `Box` has ZERO testid and zero
+  `data-*` state attribute — selection is pure `sx` styling (`styles.selected`). Add
+  `data-testid="run-history-list-item"` (same literal on every row — rows are positionally
+  distinguished) + `data-selected={selectedItem === item.id}` on that `Box`.
+- **No new testid needed for the selected run's messages** — `RunHistoryChat.jsx` renders the SAME
+  shared `ChatMessageList` component the main embedded chat uses, so `chat-message-list` /
+  `chat-message-item` (both on-main ✓, pre-existing) work unchanged inside the History panel too
+  (confirmed live). Don't add a wrapper testid just to "scope" it — only one instance of
+  `chat-message-list` exists on the page while History is open (the main embedded chat is unmounted).
+- **Confirmed defect (filed EliteaAI/elitea-testing-public#1093, MINOR, doesn't block ELITEA-1877):**
+  no UI way to close/exit Run History once opened. `RunHistoryContainer` accepts an `onClose` prop
+  (`ConfigurationTab.jsx` passes `handleCloseHistory`) but never renders anything that calls it —
+  `header`/`iconClose` styles are defined but never applied in the JSX. The button that opened History
+  (`pipeline-history-tab`) unmounts along with the rest of `ConfigurationRightContent`, so re-clicking
+  it is impossible without navigating away. Only exits: "Restore chat" on a row's overflow menu, or
+  leaving the page.
+- Test-data trick to get 2 distinct run-history entries for one agent without 2 agents/sessions: send a
+  message (conversation A persists server-side) → click **Clear chat** (`chat_clear_button` —
+  `ChatBox.jsx` `onClickClearChat`, `isAgentsPage` branch starts a fresh **local, unsaved**
+  `isNew: true` conversation, it does NOT touch conversation A) → send a second message (persists as
+  conversation B). Both now list as separate Run History rows.
+- Endpoints: list = `GET /elitea_core/conversations/prompt_lib/{projectId}?source=agent&entity_name=application&entity_meta_id={agentId}&...`;
+  detail (on row click) = `GET /elitea_core/conversation/prompt_lib/{projectId}/{conversationId}`.
