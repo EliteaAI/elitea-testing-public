@@ -200,6 +200,28 @@ class AgentDetailPage(AgentFormPage):
     chat_clear_button = LocatorDescriptor(testid="chat-clear-button")
     skill_test_last_response = LocatorDescriptor(testid="skill-test-last-response")
 
+    # --- Run History panel (ELITEA-1877) ---
+    # Opens `RunHistoryContainer`, which REPLACES the Configuration form +
+    # embedded chat (not a tab, not an overlay) — see
+    # `test-specs/agents/_surface.md` § Run History panel. `pipeline-history-tab`
+    # is pre-existing on `main` (shared `ViewRunHistoryButton.jsx`, also used by
+    # Pipelines/MCP/Toolkit run history — the name is a naming-precedent smell,
+    # not something to fix here); this page-object field is new.
+    run_history_open_button = LocatorDescriptor(testid="pipeline-history-tab")
+    # `run-history-list-item` / `data-selected` — testid + state attribute
+    # added via `add-data-testid` for this case (EliteaUI automation/testids
+    # commit a5a9d0f5, RunHistoryListItem.jsx). Same literal testid on every
+    # row — rows are positionally distinguished (default sort = Date
+    # descending, so index 0 = most recent, index 1 = "not the most recent").
+    RUN_HISTORY_LIST_ITEM_SELECTOR = '[data-testid="run-history-list-item"]'
+    RUN_HISTORY_LIST_ITEM_SELECTED_SELECTOR = (
+        '[data-testid="run-history-list-item"][data-selected="true"]'
+    )
+    # `RunHistoryContainer` accepts an `onClose` prop but never wires it to a
+    # rendered element — there is no way to close the panel once opened
+    # (filed as EliteaAI/elitea-testing-public#1093, MINOR, doesn't block
+    # this case). No "close" locator/method exists on purpose.
+
     # --- LLM model selector (embedded chat panel, ELITEA-1881) ---
     # `model-selector-button`/`model-selector-name` are static testids on
     # LLMModelSelector.jsx. Each dropdown option carries a DYNAMIC testid
@@ -2745,6 +2767,95 @@ class AgentDetailPage(AgentFormPage):
         if messages.count() == 0:
             return ""
         return (messages.last.text_content() or "").strip()
+
+    # ------------------------------------------------------------------
+    # Run History panel (ELITEA-1877)
+    # ------------------------------------------------------------------
+
+    @action("Open Run History panel")
+    def open_run_history(self, timeout: int = 10000):
+        """Click the Run History button and wait for the panel to replace
+        the Configuration form + embedded chat.
+
+        ``RunHistoryContainer`` REPLACES the whole form+chat grid — it is
+        not a tab and not an overlay — so "opened" is confirmed by waiting
+        for at least one ``run-history-list-item`` row to render (the list
+        fetch, ``GET .../conversations/prompt_lib/...``, is a real network
+        round trip; poll rather than a fixed timeout).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Run History panel")
+        self.run_history_open_button.wait_for(state="visible", timeout=timeout)
+        self.run_history_open_button.click()
+        self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+        logger.info("Run History panel opened")
+
+    def get_run_history_item_count(self) -> int:
+        """Return the number of rows currently listed in the Run History panel.
+
+        Returns:
+            Integer count of ``run-history-list-item`` rows.
+        """
+        return self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).count()
+
+    @action("Select Run History item")
+    def select_run_history_item(self, index: int, timeout: int = 10000):
+        """Click the Run History row at *index* (0 = most recent — default
+        sort is Date descending) and wait for its conversation detail to load.
+
+        Args:
+            index: Zero-based row index in the currently-rendered list.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting Run History item at index %d", index)
+        row = self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).nth(index)
+        row.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/elitea_core/conversation/prompt_lib/" in r.url
+            and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            row.click()
+        logger.info("Run History item %d selected", index)
+
+    def is_run_history_item_selected(self, index: int, timeout: int = 5000) -> bool:
+        """Return whether the Run History row at *index* carries
+        ``data-selected="true"``.
+
+        Args:
+            index: Zero-based row index in the currently-rendered list.
+            timeout: Maximum wait time for the row to be present.
+
+        Returns:
+            True if that row is the one currently marked selected.
+        """
+        row = self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).nth(index)
+        row.wait_for(state="visible", timeout=timeout)
+        return row.get_attribute("data-selected") == "true"
+
+    def get_run_history_chat_messages_text(self) -> str:
+        """Return the concatenated text of every message in the Run History
+        panel's chat (the selected row's conversation).
+
+        ``RunHistoryChat.jsx`` renders the SAME shared ``ChatMessageList``
+        component as the main embedded chat, so this reuses
+        ``chat_message_list``/``CHAT_MESSAGE_ITEM_SELECTOR`` unchanged —
+        confirmed live: only one instance of ``chat-message-list`` exists on
+        the page while History is open (the main embedded chat is unmounted).
+
+        Returns:
+            Joined text of all ``chat-message-item`` elements, or "" if none
+            are present yet.
+        """
+        messages = self._embedded_chat_messages()
+        count = messages.count()
+        if count == 0:
+            return ""
+        return "\n".join((messages.nth(i).text_content() or "") for i in range(count))
 
     def wait_for_sensitive_action_authorization(
         self, timeout: int = 30000, click_authorize: bool = True
