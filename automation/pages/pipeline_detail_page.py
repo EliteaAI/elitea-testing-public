@@ -157,6 +157,57 @@ class PipelineDetailPage(PipelineFormPage):
         description="An attached toolkit/MCP card in the TOOLS section"
     )
 
+    # "+ Toolkit" button (ELITEA-2021). Testid already exists in the DOM on
+    # `main` (ToolMenu.jsx) and is already a field on AgentDetailPage — only
+    # missing here since PipelineDetailPage previously had no Toolkit-attach
+    # field (only the sibling "+ MCP" button above).
+    add_toolkit_button = LocatorDescriptor(
+        testid="agent-add-toolkit-button",
+        description='"+ Toolkit" button in the TOOLS section (ToolMenu.jsx)'
+    )
+
+    # General/Welcome/Chat-starters fields (ELITEA-2021). These testids exist
+    # in the DOM on `main` already (shared AgentInput/ConversationStarters
+    # components, confirmed via ELITEA-2021 AFS provenance check) but had no
+    # LocatorDescriptor field on PipelineFormPage/PipelineDetailPage yet.
+    welcome_message_input = LocatorDescriptor(
+        testid="agent-welcome-message-input",
+        description="Welcome message textarea (shared AgentInput.WelcomeMessageInput)"
+    )
+
+    conversation_starter_add_button = LocatorDescriptor(
+        testid="agent-conversation-starter-add",
+        description='"+ Starter" button (shared ConversationStarters component)'
+    )
+
+    conversation_starter_inputs = LocatorDescriptor(
+        testid="agent-conversation-starter-input",
+        description="Conversation starter textarea field(s)"
+    )
+
+    # ADVANCED section Step limit (ELITEA-2021). Testid added via
+    # add-data-testid onto ApplicationAdvanceSettings.jsx's optional
+    # `stepLimitTestId` prop, wired only at PipelineConfigurationForm.jsx's
+    # call site (canon #511 scope discipline — no Agent case exercises it).
+    step_limit_input = LocatorDescriptor(
+        testid="pipeline-step-limit-input",
+        description="ADVANCED section Step limit numeric input"
+    )
+
+    # EDITOR NOTES section (ELITEA-2021). Testids added via add-data-testid
+    # onto ApplicationEditorNotes.jsx's optional `sectionTestId`/
+    # `notesInputTestId` props, wired only at PipelineConfigurationForm.jsx's
+    # call site (same scope discipline as step_limit_input above).
+    editor_notes_section = LocatorDescriptor(
+        testid="pipeline-editor-notes-section",
+        description="EDITOR NOTES accordion header"
+    )
+
+    editor_notes_input = LocatorDescriptor(
+        testid="pipeline-editor-notes-input",
+        description="EDITOR NOTES textarea"
+    )
+
     # Scoped selector (inside the '+ MCP' popper) — same testid family as
     # AgentDetailPage.toolkit_search_input, per .agents/testing.md § Locator
     # policy (class-level constant for selectors used inside a parent locator).
@@ -1146,6 +1197,50 @@ class PipelineDetailPage(PipelineFormPage):
         logger.info("MCP '%s' attached", mcp_name)
         return response_info.value.json()
 
+    def open_toolkit_popper(self, timeout: int = 10000) -> Locator:
+        """Open the TOOLS section's "+ Toolkit" popper without selecting anything.
+
+        Mirrors :meth:`open_mcp_popper` (ELITEA-1955) but for the "+ Toolkit"
+        button (``agent-add-toolkit-button``) — ``ApplicationTools.jsx``/
+        ``ToolMenu.jsx`` shares the same ``UnifiedDropdown`` popper for both
+        add affordances (ELITEA-2021 AFS § Concrete Handles).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator of the visible MUI popper (see ``components.mui.Popper``).
+        """
+        logger.info("Opening TOOLS section '+ Toolkit' popper")
+        self.ensure_toolkits_section_visible(timeout=timeout)
+        self.add_toolkit_button.wait_for(state="visible", timeout=timeout)
+        self.add_toolkit_button.click(force=True)
+        return Popper.wait_for(self.page, timeout=timeout)
+
+    def select_toolkit_in_popper(self, popper: Locator, toolkit_name: str, timeout: int = 10000) -> None:
+        """Select *toolkit_name* in an already-open "+ Toolkit" popper.
+
+        Unlike :meth:`select_mcp_in_popper`, selecting a toolkit here does
+        NOT immediately persist — confirmed live during ELITEA-2021
+        analysis: the toolkit card appears locally and the actual
+        persistence happens on the pipeline's next explicit Save (see
+        :meth:`save_and_wait_for_update`). So this only performs the click;
+        callers assert the card via :meth:`is_toolkit_attached` and persist
+        separately.
+
+        The popper's search input does not reliably narrow the row list
+        (known quirk, ELITEA-2021 AFS § Concrete Handles) — select by exact
+        visible text among the unfiltered rows via the testid-anchored
+        helper instead of relying on search.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_toolkit_popper`.
+            toolkit_name: Exact visible name of the toolkit to attach.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting toolkit '%s' in popper", toolkit_name)
+        Popper.select_menuitem_by_testid(popper, toolkit_name, self.page, timeout=timeout)
+
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit/MCP card is attached in the TOOLS section.
 
@@ -1189,6 +1284,96 @@ class PipelineDetailPage(PipelineFormPage):
         ) as response_info:
             self.save_button.evaluate("el => el.click()")
         return response_info.value.json()
+
+    # ------------------------------------------------------------------
+    # General/Welcome/Chat-starters/Advanced/Editor-Notes fields (ELITEA-2021)
+    # ------------------------------------------------------------------
+
+    def fill_welcome_message(self, message: str, timeout: int = 5000):
+        """Fill the Welcome message textarea.
+
+        Uses click + press_sequentially — MUI/React fields need real
+        keyboard events for onChange to fire (.claude/rules/mui-patterns.md).
+
+        Args:
+            message: Welcome message text.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self.welcome_message_input.wait_for(state="visible", timeout=timeout)
+        self.welcome_message_input.click()
+        self.welcome_message_input.press("Control+a")
+        self.welcome_message_input.press("Delete")
+        self.welcome_message_input.press_sequentially(message, delay=20)
+        self.page.wait_for_timeout(300)
+
+    def get_welcome_message(self) -> str:
+        """Read the current value of the Welcome message field."""
+        return self.welcome_message_input.input_value()
+
+    def add_conversation_starter(self, text: str = "", timeout: int = 5000):
+        """Click "+ Starter" and fill the newly-added starter textarea.
+
+        Args:
+            text: Text to fill in the new starter field.
+            timeout: Maximum wait time for the new field to appear.
+        """
+        logger.info("Adding conversation starter")
+        self.conversation_starter_add_button.click()
+        inputs = self.conversation_starter_inputs
+        inputs.last.wait_for(state="visible", timeout=timeout)
+        last_input = inputs.last
+        last_input.click()
+        if text:
+            last_input.press_sequentially(text, delay=20)
+            self.page.wait_for_timeout(300)
+
+    def get_conversation_starter_value(self, index: int = 0) -> str:
+        """Read the value of a conversation starter textarea by index.
+
+        Args:
+            index: Index of the conversation starter (0-based).
+        """
+        return self.conversation_starter_inputs.nth(index).input_value()
+
+    def fill_step_limit(self, value: str, timeout: int = 5000):
+        """Fill the ADVANCED section's Step limit numeric input.
+
+        Uses click + JS ``.select()`` + ``keyboard.type()`` — same pattern
+        as ``PipelineFormPage.update_text_field`` (native select() reliably
+        selects the field's existing default value, e.g. "25"; the first
+        typed keystroke then replaces the selection, same as any real user
+        typing over a selected value — real keyboard events so the
+        digit-only ``handleKeyDown`` validator sees each key).
+
+        Args:
+            value: New step limit value (digits only).
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self.step_limit_input.wait_for(state="visible", timeout=timeout)
+        self.step_limit_input.click()
+        self.step_limit_input.evaluate("el => el.select()")
+        self.page.keyboard.type(value)
+
+    def get_step_limit(self) -> str:
+        """Read the current value of the Step limit field."""
+        return self.step_limit_input.input_value()
+
+    def fill_editor_notes(self, text: str, timeout: int = 5000):
+        """Scroll to and fill the EDITOR NOTES textarea.
+
+        Args:
+            text: Notes text.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self.editor_notes_section.scroll_into_view_if_needed()
+        self.editor_notes_input.wait_for(state="visible", timeout=timeout)
+        self.editor_notes_input.click()
+        self.editor_notes_input.press_sequentially(text, delay=20)
+        self.page.wait_for_timeout(300)
+
+    def get_editor_notes(self) -> str:
+        """Read the current value of the EDITOR NOTES textarea."""
+        return self.editor_notes_input.input_value()
 
     def connect_nodes(
         self,
