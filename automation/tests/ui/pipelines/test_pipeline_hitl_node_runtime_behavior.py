@@ -90,6 +90,7 @@ def test_hitl_node_runtime_behavior(page, hitl_runtime_pipeline, pipeline_api):
     # (see the page-object docstring for the confirmed-live gotcha).
     with pipeline_page.capture_websocket_frames() as frames:
         with allure.step("Step 2 — Execute the pipeline by sending a message in embedded chat"):
+            before_send = len(frames)
             pipeline_page.navigate(hitl_runtime_pipeline["id"])
             pipeline_page.wait_for_canvas()
             pipeline_page.send_message_in_embedded_chat("Hello")
@@ -97,6 +98,21 @@ def test_hitl_node_runtime_behavior(page, hitl_runtime_pipeline, pipeline_api):
             # details" execution-started signal on this surface — there is
             # no separate canvas indicator distinct from the chat pause here.
             pipeline_page.wait_for_chat_hitl_actions_panel(timeout=PAUSE_TIMEOUT)
+            # Real execution-start assertion (fix-round correction,
+            # 2026-08-02 — AFS Coverage Map row for this step previously
+            # cited a "Run indicator" assertion that did not exist in code).
+            # The AFS's originally-specced canvas "Run N details" indicator
+            # does not exist on this surface (confirmed live); the actual
+            # observable proof that the pipeline began executing (as opposed
+            # to the message merely being queued) is the LLM node's
+            # streaming output starting to arrive over the socket — see AFS
+            # § Network Behavior (`agent_llm_chunk` precedes
+            # `agent_hitl_interrupt`). Step 3 asserts the interrupt itself;
+            # this assertion is the distinct "execution started" signal.
+            execution_started_frames = _chat_predict_events(frames[before_send:], "agent_llm_chunk")
+            assert execution_started_frames, (
+                "Expected at least one agent_llm_chunk frame confirming pipeline execution started"
+            )
 
         with allure.step(
             "Step 3 — Verify the pipeline pauses at HITL: message + Approve/Edit/Reject buttons"
@@ -201,10 +217,16 @@ def test_hitl_node_runtime_behavior(page, hitl_runtime_pipeline, pipeline_api):
         finally:
             pipeline_api.delete_pipeline(reject_pipeline_id)
 
+        # Console-error check MUST run before the known-defect pytest.fail()
+        # below — #1103 fires deterministically on every Reject run, so a
+        # pytest.fail() raised first would make any assertion after this
+        # `with` block permanently unreachable (fix-round correction,
+        # 2026-08-02: the trailing top-level assert was dead code for the
+        # entire time this known defect stays open).
+        assert not console_errors, f"No console errors expected at any step: {console_errors}"
+
         if soft_failures:
             pytest.fail(
                 "Soft assertion(s) failed (sanctioned RED — known defect #1103):\n"
                 + "\n".join(soft_failures)
             )
-
-    assert not console_errors, f"No console errors expected at any step: {console_errors}"
