@@ -27,6 +27,19 @@ logger = logging.getLogger(__name__)
 
 pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.toolkits, pytest.mark.p1, pytest.mark.regression]
 
+# NOTE (batch-gate flake, ELITEA-1979, 2026-08-02): Step 6's RUN TOOL click hits
+# the toolkit's underlying GitHub API call SERVER-SIDE (this case's own AFS §
+# Network Behavior) — a real external round-trip mediated by the single,
+# non-scaled local dev backend (.agents/architecture.md), not a client-side
+# render. When this spec runs at the tail of a long batch (a sustained run of
+# heavy AI/LLM-calling tests immediately before it), that shared backend has
+# been observed to take longer to service the call, and the Test Settings
+# panel has been observed to remount to its empty state mid-wait under that
+# load (see ToolkitTestSettingsPage.wait_for_tool_result()'s recovery path,
+# used below via tool_key=). Do NOT "fix" this back down to a smaller number
+# or drop the tool_key= recovery arg without re-confirming the batch-tail
+# timing first — a smaller number for an on-CPU/idle single-spec run gives a
+# false sense of margin that batch conditions don't have.
 RUN_TOOL_TIMEOUT = 20_000
 
 
@@ -120,7 +133,13 @@ class TestCredentialUsageInToolkitFlows:
                 test_settings.select_tool_from_empty_state("list_branches_in_repo")
                 test_settings.wait_for_panel()
                 test_settings.run_tool()
-                result_text = test_settings.wait_for_tool_result(timeout=RUN_TOOL_TIMEOUT)
+                # tool_key= opts into wait_for_tool_result()'s mid-wait panel-
+                # remount recovery (see the module-level RUN_TOOL_TIMEOUT note
+                # above and the method's own docstring) — this call's live
+                # GitHub round-trip is exactly the shape that recovery targets.
+                result_text = test_settings.wait_for_tool_result(
+                    timeout=RUN_TOOL_TIMEOUT, tool_key="list_branches_in_repo"
+                )
                 assert "✅ list_branches_in_repo" in result_text, (
                     f"Expected list_branches_in_repo to succeed (✅ marker), got: {result_text!r}"
                 )
