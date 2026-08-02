@@ -24,3 +24,5 @@
 - [#524 blocks ALL agent creation](blocker_524_blocks_all_agent_creation.md) — still OPEN; kills the agent_id fixture
 - [Isolated-defect assert can ship GREEN](isolated_defect_can_ship_green.md) — verify its logic by hand, not colour
 - [EL-5708 broke indexes_tab](indexes_tab_removed_by_el5708_toolkit_detail_page_stale.md) — count_config_tabs fails
+- [Workflow gate stall = false blocked](workflow_gate_stall_gives_false_blocked_lead_runs_gate_directly.md) — check journal.jsonl, run gate yourself
+- [Long gate Bash calls get infra-killed](long_running_gate_bash_calls_get_infra_killed.md) — retry on 0 FAILED, don't diagnose red
