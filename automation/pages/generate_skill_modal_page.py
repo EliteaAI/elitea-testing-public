@@ -97,6 +97,12 @@ class GenerateSkillModalPage(GenerateEntityModalPageBase):
         description="Review-form Instructions field (editable before creation)",
     )
 
+    review_name_helper_text = LocatorDescriptor(
+        testid="generate-skill-review-name-helper-text",
+        description="Review-form Name field's validation/character-count helper text "
+                     "(added for ELITEA-1993)",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -118,6 +124,12 @@ class GenerateSkillModalPage(GenerateEntityModalPageBase):
     def get_review_instructions(self) -> str:
         """Return the current value of the review-form Instructions field."""
         return self.review_instructions_input.input_value()
+
+    def get_review_name_helper_text(self) -> str:
+        """Return the review-form Name field's current helper text (a
+        validation error message, or the plain '{len}/64' character-count
+        counter when the value is valid)."""
+        return self.review_name_helper_text.text_content() or ""
 
     def set_review_name(self, value: str):
         """Overwrite the review-form Name field with ``value``.
