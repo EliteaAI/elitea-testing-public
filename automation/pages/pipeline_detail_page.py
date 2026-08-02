@@ -10,13 +10,17 @@ Extends PipelineFormPage with additional functionality:
 URL: /pipelines/all/{id}
 """
 
+import json
 import logging
 import re
 import time
-from playwright.sync_api import Page, Locator
-from .pipeline_form_page import PipelineFormPage
-from .locator_descriptor import LocatorDescriptor
+from contextlib import contextmanager
+
 from components.mui import Dialog, Popper
+from playwright.sync_api import Locator, Page
+
+from .locator_descriptor import LocatorDescriptor
+from .pipeline_form_page import PipelineFormPage
 
 logger = logging.getLogger("elitea.pages.pipeline_detail")
 
@@ -137,6 +141,73 @@ class PipelineDetailPage(PipelineFormPage):
             "BaseToolNode.jsx — added via add-data-testid for ELITEA-1954 "
             "review fix pass; case steps 4 and 6)"
         )
+    )
+
+    # HITL node inline config (ELITEA-2014). Testid-only, added via
+    # add-data-testid — HITLNode.jsx call sites only (untested node types
+    # stay untagged, .agents/testing.md § Locator policy). Page-wide (not
+    # scoped to a specific node container): correct as long as a test only
+    # has a single HITL node on canvas.
+    hitl_node_input_select = LocatorDescriptor(
+        testid="pipeline-hitl-node-input-select",
+        description="HITL node's tool-agnostic Input state-variable select (inline on canvas card)"
+    )
+
+    hitl_node_user_message_type_select = LocatorDescriptor(
+        testid="pipeline-hitl-node-user-message-type-select",
+        description="HITL node's USER MESSAGE Type select"
+    )
+
+    hitl_node_user_message_value_input = LocatorDescriptor(
+        testid="pipeline-hitl-node-user-message-value-input",
+        description="HITL node's USER MESSAGE Value field (textarea when Type is Fixed/F-String)"
+    )
+
+    hitl_node_router_mapping_section = LocatorDescriptor(
+        testid="pipeline-hitl-node-router-mapping-section",
+        description="HITL node's ROUTER MAPPING accordion container"
+    )
+
+    hitl_node_edit_state_key_select = LocatorDescriptor(
+        testid="pipeline-hitl-node-edit-state-key-select",
+        description="HITL node's EDIT STATE KEY Value select"
+    )
+
+    # Dynamic (runtime-parameterized) testid — one Route select per HITL
+    # action (approve/edit/reject). Class-level template constant per
+    # .agents/testing.md § Locator policy, formatted with test-generated
+    # data only at the call site.
+    HITL_NODE_ROUTE_SELECT = '[data-testid="pipeline-hitl-node-route-select-{}"]'
+
+    # SingleSelect.jsx auto-derives `${data-testid}-combobox` on its inner
+    # role="combobox" display div (SelectDisplayProps) whenever a top-level
+    # `data-testid` is passed — same mechanism already relied on by
+    # mcp_node_toolkit_select_combobox. `aria-disabled`/`aria-expanded` land
+    # on THIS inner element, not on the outer `pipeline-hitl-node-route-
+    # select-{action}` testid (which lands on MUI's MuiInputBase-root wrapper).
+    HITL_NODE_ROUTE_SELECT_COMBOBOX = '[data-testid="pipeline-hitl-node-route-select-{}-combobox"]'
+
+    # Chat HITL runtime actions (ELITEA-2015). Testid-only, added via
+    # add-data-testid — ChatHitlActions.jsx's non-sensitive-tool branch +
+    # EditControl.jsx's toggle button.
+    chat_hitl_actions_panel = LocatorDescriptor(
+        testid="chat-hitl-actions-panel",
+        description="Chat card container for a paused HITL node's Approve/Edit/Reject actions"
+    )
+
+    chat_hitl_approve_button = LocatorDescriptor(
+        testid="chat-hitl-approve-button",
+        description="Chat HITL card's Approve button"
+    )
+
+    chat_hitl_reject_button = LocatorDescriptor(
+        testid="chat-hitl-reject-button",
+        description="Chat HITL card's Reject button"
+    )
+
+    chat_hitl_edit_button = LocatorDescriptor(
+        testid="chat-hitl-edit-button",
+        description="Chat HITL card's Edit toggle button"
     )
 
     # TOOLS section (ELITEA-1955). ApplicationTools.jsx / ToolMenu.jsx is a
@@ -1961,3 +2032,266 @@ class PipelineDetailPage(PipelineFormPage):
         warning_locator = self.page.locator('[data-testid="credential-warning-banner"]')
         expect(warning_locator.first).not_to_be_visible(timeout=timeout)
         logger.info("Toolkit warning message is no longer visible")
+
+    # ------------------------------------------------------------------
+    # HITL node inline config (ELITEA-2014)
+    # ------------------------------------------------------------------
+
+    def open_hitl_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the HITL node's tool-agnostic Input select."""
+        self.hitl_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_hitl_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Input select and choose *variable_name* (a multi-select; stays open).
+
+        Args:
+            variable_name: State variable to select (matches ``select-option-{variable_name}``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.open_hitl_node_input_select(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION.format(variable_name)).click(timeout=timeout)
+        self.page.keyboard.press("Escape")
+        self.page.wait_for_timeout(200)
+
+    def get_hitl_node_input_display_text(self) -> str:
+        """Return the Input select's full rendered text (all selected chips concatenated).
+
+        Reads the testid-anchored field's own ``text_content()`` rather than
+        drilling into a raw MUI chip CSS class (``.MuiChip-label`` is
+        unstyled third-party markup with no testid — chaining a raw selector
+        off an existing field is a page-objects.md anti-pattern). Callers
+        checking whether a given variable is selected use substring
+        containment against this text.
+        """
+        return (self.hitl_node_input_select.text_content() or "").strip()
+
+    def open_hitl_node_user_message_type_select(self, timeout: int = 5000) -> None:
+        """Open the HITL node's USER MESSAGE Type select."""
+        self.hitl_node_user_message_type_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_hitl_node_user_message_type(self, type_value: str, timeout: int = 5000) -> None:
+        """Select the USER MESSAGE Type.
+
+        Args:
+            type_value: One of ``"fixed"``, ``"fstring"``, ``"variable"`` (matches
+                ``select-option-{type_value}`` — the raw YAML value, not the display label).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.open_hitl_node_user_message_type_select(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION.format(type_value)).click(timeout=timeout)
+
+    def get_hitl_node_user_message_type_display(self, timeout: int = 5000) -> str:
+        """Read the USER MESSAGE Type select's current display text."""
+        self.hitl_node_user_message_type_select.wait_for(state="visible", timeout=timeout)
+        # MUI's empty-select rendering is a zero-width space (U+200B) — same
+        # gotcha as get_mcp_node_toolkit_value.
+        text = (self.hitl_node_user_message_type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def fill_hitl_node_user_message_value(self, text: str, timeout: int = 5000) -> None:
+        """Fill the USER MESSAGE Value textarea (Type = Fixed or F-String).
+
+        Uses click + press_sequentially — MUI/React fields need real keyboard
+        events for onChange to fire (.claude/rules/mui-patterns.md).
+        """
+        self.hitl_node_user_message_value_input.wait_for(state="visible", timeout=timeout)
+        self.hitl_node_user_message_value_input.click()
+        self.hitl_node_user_message_value_input.press("Control+a")
+        self.hitl_node_user_message_value_input.press("Delete")
+        self.hitl_node_user_message_value_input.press_sequentially(text, delay=20)
+
+    def get_hitl_node_user_message_value(self) -> str:
+        """Read the USER MESSAGE Value textarea's current value."""
+        return self.hitl_node_user_message_value_input.input_value()
+
+    def open_hitl_node_route_select(self, action: str, timeout: int = 5000) -> None:
+        """Open a ROUTER MAPPING Route select for *action*.
+
+        Args:
+            action: One of ``"approve"``, ``"edit"``, ``"reject"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        select = self.page.locator(self.HITL_NODE_ROUTE_SELECT.format(action))
+        select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_hitl_node_route(self, action: str, target_node_id: str, timeout: int = 5000) -> None:
+        """Open a Route select for *action* and choose *target_node_id*.
+
+        Args:
+            action: One of ``"approve"``, ``"edit"``, ``"reject"``.
+            target_node_id: The target node's data-id (or ``"END"``), matches
+                ``select-option-{target_node_id}``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.open_hitl_node_route_select(action, timeout=timeout)
+        self.page.locator(self.SELECT_OPTION.format(target_node_id)).click(timeout=timeout)
+
+    def get_hitl_node_route_value(self, action: str, timeout: int = 5000) -> str:
+        """Read a ROUTER MAPPING Route select's current display text.
+
+        Args:
+            action: One of ``"approve"``, ``"edit"``, ``"reject"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        select = self.page.locator(self.HITL_NODE_ROUTE_SELECT.format(action))
+        select.wait_for(state="visible", timeout=timeout)
+        text = (select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def is_hitl_node_route_select_disabled(self, action: str, timeout: int = 5000) -> bool:
+        """Return whether a ROUTER MAPPING Route select is ``aria-disabled``.
+
+        Used to confirm the EDIT route select's gating on EDIT STATE KEY
+        (ELITEA-2014 AFS step 5 — ``aria-disabled`` flips from ``"true"``
+        to absent once EDIT STATE KEY has a value).
+
+        Args:
+            action: One of ``"approve"``, ``"edit"``, ``"reject"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        combobox = self.page.locator(self.HITL_NODE_ROUTE_SELECT_COMBOBOX.format(action))
+        combobox.wait_for(state="visible", timeout=timeout)
+        return combobox.get_attribute("aria-disabled") == "true"
+
+    def get_hitl_node_route_option_names(self, action: str, timeout: int = 5000) -> list[str]:
+        """Open a Route select for *action*, read its option names, then close it.
+
+        Args:
+            action: One of ``"approve"``, ``"edit"``, ``"reject"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.open_hitl_node_route_select(action, timeout=timeout)
+        names = self.get_open_listbox_option_names()
+        self.page.keyboard.press("Escape")
+        self.page.wait_for_timeout(200)
+        return names
+
+    def open_hitl_node_edit_state_key_select(self, timeout: int = 5000) -> None:
+        """Open the HITL node's EDIT STATE KEY Value select."""
+        self.hitl_node_edit_state_key_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_hitl_node_edit_state_key(self, variable_name: str, timeout: int = 5000) -> None:
+        """Select *variable_name* in the EDIT STATE KEY Value select."""
+        self.open_hitl_node_edit_state_key_select(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION.format(variable_name)).click(timeout=timeout)
+
+    def get_hitl_node_edit_state_key_value(self, timeout: int = 5000) -> str:
+        """Read the EDIT STATE KEY Value select's current display text."""
+        self.hitl_node_edit_state_key_select.wait_for(state="visible", timeout=timeout)
+        text = (self.hitl_node_edit_state_key_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    # ------------------------------------------------------------------
+    # Chat HITL runtime actions (ELITEA-2015)
+    # ------------------------------------------------------------------
+
+    def wait_for_chat_hitl_actions_panel(self, timeout: int = 30000) -> None:
+        """Wait for the chat's HITL pause card (Approve/Edit/Reject) to appear."""
+        self.chat_hitl_actions_panel.wait_for(state="visible", timeout=timeout)
+
+    def click_chat_hitl_approve(self, timeout: int = 10000) -> None:
+        """Click the Approve button on the chat's HITL pause card."""
+        self.chat_hitl_approve_button.click(timeout=timeout)
+
+    def click_chat_hitl_reject(self, timeout: int = 10000) -> None:
+        """Click the Reject button on the chat's HITL pause card."""
+        self.chat_hitl_reject_button.click(timeout=timeout)
+
+    @contextmanager
+    def capture_websocket_frames(self):
+        """Context manager that captures socket.io event frames while open.
+
+        **Must be entered BEFORE the page navigates** (before
+        :meth:`navigate` / any ``page.goto``) — Playwright's ``"websocket"``
+        page event fires once, at connection-open time; a listener attached
+        after the connection is already open never fires (confirmed live:
+        an attempt to enter this context manager mid-test, after
+        navigation, captured zero frames for the rest of the test). Enter it
+        once per test and keep the whole flow inside it; use snapshot
+        indices (``len(frames)`` before/after an action) to slice out the
+        frames a specific step cares about — do NOT re-enter the context
+        manager mid-test expecting a fresh capture window.
+
+        Yields a list that accumulates one dict per application-level
+        socket.io EVENT frame (Engine.IO type ``4`` + Socket.IO type ``2``,
+        i.e. the ``42["event_name", {...}]`` wire shape), in arrival order.
+        Each dict is the event's payload (or ``{"_value": payload}`` if the
+        payload isn't itself a dict) plus ``event`` (the socket.io event
+        name, e.g. ``"chat_predict"`` / ``"chat_continue_predict"``) and
+        ``_direction`` (``"sent"`` or ``"received"``). Non-event frames
+        (ping/pong/connect acks, raw ``{"type": "ping"}`` keepalives) are
+        silently skipped.
+
+        This project's existing tests read chat content via the DOM; HITL
+        resume behavior (ELITEA-2015) is only diagnosable via the raw
+        socket.io frames — new infrastructure per AFS Automation Hints, not
+        present elsewhere in the codebase.
+
+        Example:
+            with pipeline_page.capture_websocket_frames() as frames:
+                pipeline_page.navigate(pipeline_id)
+                pipeline_page.wait_for_canvas()
+                pipeline_page.send_message_in_embedded_chat("Hello")
+                pipeline_page.wait_for_chat_hitl_actions_panel()
+                before = len(frames)
+                pipeline_page.click_chat_hitl_approve()
+                pipeline_page.page.wait_for_timeout(5000)
+                approve_frames = frames[before:]
+            assert any(
+                f["event"] == "chat_predict" and f.get("type") == "agent_response"
+                for f in approve_frames
+            )
+        """
+        frames: list = []
+
+        def _parse_socketio_event(payload):
+            """Return (event_name, payload_dict_or_value) or None.
+
+            Only the ``42[...]`` shape (Engine.IO message + Socket.IO event)
+            carries application events; ping/pong/connect frames don't
+            match the prefix and are skipped.
+            """
+            if not isinstance(payload, str) or not payload.startswith("42"):
+                return None
+            rest = payload[2:]
+            if rest.startswith("/"):  # optional namespace prefix, e.g. "/ns,"
+                comma = rest.find(",")
+                if comma == -1:
+                    return None
+                rest = rest[comma + 1:]
+            try:
+                data = json.loads(rest)
+            except (ValueError, TypeError):
+                return None
+            if not isinstance(data, list) or not data:
+                return None
+            event_name = data[0]
+            event_payload = data[1] if len(data) > 1 else None
+            return event_name, event_payload
+
+        def _record(direction):
+            def _handler(payload):
+                parsed = _parse_socketio_event(payload)
+                if parsed is None:
+                    return
+                event_name, event_payload = parsed
+                record = dict(event_payload) if isinstance(event_payload, dict) else {"_value": event_payload}
+                record["event"] = event_name
+                record["_direction"] = direction
+                frames.append(record)
+
+            return _handler
+
+        def _on_websocket(ws):
+            ws.on("framesent", _record("sent"))
+            ws.on("framereceived", _record("received"))
+
+        self.page.on("websocket", _on_websocket)
+        try:
+            yield frames
+        finally:
+            self.page.remove_listener("websocket", _on_websocket)

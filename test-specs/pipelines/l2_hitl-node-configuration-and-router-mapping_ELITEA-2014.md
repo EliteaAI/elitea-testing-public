@@ -33,6 +33,18 @@ gating and can be set at any time. The steps below reorder EDIT STATE KEY ahead 
 the EDIT route selection to match what the live UI actually requires; see Coverage
 Map for the case-text drift note.
 
+**Implementer-discovered addendum (2026-08-02, ELITEA-2014 automation pass):** the
+`Input` combobox (step 3) is itself `disabled` unless USER MESSAGE Type is
+`F-String` — confirmed via `HITLNode.jsx`'s `isInputSelectDisabledByMessageType`
+(`userMessageType !== 'fstring'`) and the select's own tooltip ("Available only
+when the User message type is set to F-String"). Since the default USER MESSAGE
+Type is `Fixed`, driving the case's literal step order (Input, step 3, before
+USER MESSAGE, step 4) times out waiting for the Input dropdown to open. The
+shipped test therefore sets USER MESSAGE Type = F-String FIRST, then the Input
+combobox, reversing steps 3 and 4 below — the same class of case-text drift as
+the EDIT STATE KEY reordering above (technique-level, not a scope change; both
+steps' assertions are unchanged, only their execution order is).
+
 1. Create a pipeline and add a Human-in-the-loop node via the canvas "+" button →
    "Human-in-the-loop" (`add_node("Human-in-the-loop")`, existing `PipelineDetailPage`
    method).

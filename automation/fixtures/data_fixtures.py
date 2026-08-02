@@ -26,8 +26,7 @@ import logging
 import time
 
 import pytest
-
-from api import ArtifactAPI, ConversationAPI, AgentAPI, PipelineAPI, CredentialAPI, SkillAPI, ToolkitAPI
+from api import AgentAPI, ArtifactAPI, ConversationAPI, CredentialAPI, PipelineAPI, SkillAPI, ToolkitAPI
 from config import settings
 
 logger = logging.getLogger("elitea.automation.fixtures.data")
@@ -837,3 +836,88 @@ def mcp_pipeline_with_toolkits(
         logger.info("Deleted MCP pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete MCP pipeline %s: %s", pid, exc)
+
+
+_HITL_RUNTIME_PRINTER_OUTPUT = "Final: pipeline approved"
+
+
+def build_hitl_runtime_nodes(hitl_message: str) -> list[dict]:
+    """Build the LLM 1 -> HITL 1 -> Printer 1 -> END node list for ELITEA-2015.
+
+    HITL routes: APPROVE -> Printer 1, REJECT -> END (the case's stated
+    precondition). Exposed as a plain function (not a fixture) so a test
+    needing MORE THAN ONE independent instance — e.g. a fresh pipeline per
+    Approve/Reject variant, per the AFS's Test isolation note — can call it
+    directly via ``pipeline_api`` instead of duplicating the YAML.
+
+    ``LLM 1``'s task is a real, non-empty fixed value (the analyst's
+    exploration pipeline had an empty task, which is incidental to the
+    precondition, not required by the case — see the AFS Test Data note) so
+    the Reject-path evidence stays legible.
+
+    Args:
+        hitl_message: The HITL node's fixed user_message value.
+
+    Returns:
+        list[dict]: Node definitions for ``PipelineAPI.create_pipeline_with_nodes``.
+    """
+    return [
+        {
+            "id": "LLM 1",
+            "type": "llm",
+            "input": [],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": ""},
+                "task": {"type": "fixed", "value": "Say hello in one short sentence."},
+            },
+            "output": ["messages"],
+            "structured_output": False,
+            "transition": "HITL 1",
+        },
+        {
+            "id": "HITL 1",
+            "type": "hitl",
+            "user_message": {"type": "fixed", "value": hitl_message},
+            "input": [],
+            "routes": {"approve": "Printer 1", "reject": "END"},
+        },
+        {
+            "id": "Printer 1",
+            "type": "printer",
+            "input_mapping": {
+                "printer": {"type": "fixed", "value": _HITL_RUNTIME_PRINTER_OUTPUT},
+            },
+            "transition": "END",
+        },
+    ]
+
+
+@pytest.fixture
+def hitl_runtime_pipeline(pipeline_api: PipelineAPI, request):
+    """Create a pipeline LLM 1 -> HITL 1 -> Printer 1 -> END with HITL routes
+    configured (APPROVE -> Printer 1, REJECT -> END).
+
+    Satisfies the ELITEA-2015 precondition (see :func:`build_hitl_runtime_nodes`).
+
+    Yields:
+        dict: ``{"id": int, "hitl_message": str, "printer_output": str}``
+    """
+    name = f"autotest_hitl_{request.node.name}"[:32]
+    hitl_message = "Please review this response"
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created HITL runtime pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_hitl_runtime_nodes(hitl_message),
+    )
+    pid = pipeline["id"]
+    logger.info("Created HITL runtime pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield {"id": pid, "hitl_message": hitl_message, "printer_output": _HITL_RUNTIME_PRINTER_OUTPUT}
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted HITL runtime pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete HITL runtime pipeline %s: %s", pid, exc)
