@@ -1,13 +1,15 @@
 # Campaign: approved-next50
 
 ## State
-- Stage: waves (running)
-- Conductor run: wf_aa16c5c4-f74 — propose completed; RUN re-invoked with approved plan 2026-08-02 (same runId, resumed)
-- Operator checkpoint: consolidated 11 proposed waves -> 5 (merged adjacent surface groups, kept every cluster intact), approved
+- Stage: waves (running) — wave-01 LANDED, wave-02..05 merged into ONE 39-case wave, running now
+- Conductor run: wf_aa16c5c4-f74 (propose + wave-01) — wave-02-05 merge runs under a NEW runId, recorded below
+- Operator checkpoint: consolidated 11 proposed waves -> 5 (round 1), then operator asked to merge waves 02-05 into
+  ONE (round 2, after wave-01 landed) — both approved
 - Foundation merged: n/a — foundation is null (all 4 surfaces already foundation-rich, evidenced by directory listing)
 - Foundation surfaces CLAIMED: none (no foundation stage — skipped, F=null)
 - Heads analyzed: none (skipped — no foundation stage)
-- Waves: 5 approved, running wave-01 first
+- Waves: wave-01 (11 cases) LANDED — elitea-testing-public#1107, merged `7d2f8811`, TMS back-written, closure
+  records posted, board -> Ready, branches cleaned up. wave-02-05-merged (39 cases) RUNNING.
 - Landing: per-batch (policy unset -> script default) — land each wave before the next cuts its trunk
 
 ## Source
@@ -116,3 +118,14 @@ Verified 50/50 covered, no dupes/gaps (checked programmatically before re-invoki
   gate N=3-green run over ~39 spec files together plus one regression sweep — a much longer single gate than
   wave-01's; builds still run sequentially either way so total build wall-clock is unchanged, only the gate/merge
   round-trip count drops (2 total instead of 5).
+- 2026-08-02 wave-01 LANDED. Real gate run by lead (workflow's internal gate stalled on git fetch again, same as
+  approved-top10): N=3 green (9-file set) + sanctioned-red (test_pipeline_hitl_node_runtime_behavior.py, defect
+  #1103, deterministic 3/3) + full 64-file blast-radius regression sweep (9 failures, ALL confirmed pre-existing/
+  unrelated — 3 fresh-checked against automation/base, 6 matched to approved-top10-confirmed patterns, 1 follow-up
+  comment posted on #1088 re: incomplete fix). ELITEA-2181 needed a full recovery (original session force-ended
+  mid-verification; AFS/testids/test-file recovered from a gate-agent stash, page-object additions recreated) plus
+  3 review rounds (round 1: weakened regression guard + false AFS-amendment claim; round 2: fix rested on a
+  misread of EliteaUI source; round 3: correct, independently re-verified 2x). PR elitea-testing-public#1107
+  merged (7d2f8811). TMS back-written (11 cases), closure records posted, board -> Ready, 7 branches cleaned up.
+- 2026-08-02 launching merged wave-02-05 (39 cases) — re-invoking conductor with a fresh plan (only the new
+  merged wave listed; wave-01 omitted since it already landed).
