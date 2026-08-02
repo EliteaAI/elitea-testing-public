@@ -89,7 +89,11 @@ class TestBuildWithAIFromChatCanvas:
         2. Click "Build with AI"; verify the GenerateAgentModal opens.
         3. Fill the prompt, click Generate; verify the generate-draft POST
            resolves 200.
-        4. Verify the modal transitions to the populated review form.
+        4. Verify the modal transitions to the populated review form, and
+           the Name/Description/Instructions fields are actually
+           pre-populated (UI-level assertion via GenerateAgentModalPage's
+           review_name_input/review_description_input/review_instructions_
+           input, added for this AFS's field-population claim).
         5. (Suggested-resource selection intentionally not exercised — see
            module docstring.)
         6. Click "Create Agent"; verify the creation POST resolves 201 and
@@ -143,8 +147,10 @@ class TestBuildWithAIFromChatCanvas:
 
             with allure.step(
                 "Step 4 — Verify the modal transitions from loading to a "
-                "populated review form (field-population detail is out of "
-                "scope here — ELITEA-1907/1909's own subject)"
+                "populated review form, and the Name/Description/"
+                "Instructions fields are actually pre-populated in the UI "
+                "(case step 5's exact claim — a real UI-level assertion, "
+                "not just the network response body)"
             ):
                 modal.wait_for_review_form(timeout=LIVE_GENERATE_RESPONSE_TIMEOUT)
                 draft = generate_response.json()
@@ -152,6 +158,18 @@ class TestBuildWithAIFromChatCanvas:
                 assert generated_name, (
                     f"Generate-draft response should include a non-empty "
                     f"name field, got: {draft!r}"
+                )
+
+                expect(modal.review_name_input).to_have_value(
+                    generated_name, timeout=UI_ELEMENT_TIMEOUT
+                )
+                assert modal.get_review_description(), (
+                    "Review-form Description field should be pre-populated "
+                    "from the generated draft, got an empty value"
+                )
+                assert modal.get_review_instructions(), (
+                    "Review-form Instructions field should be pre-populated "
+                    "from the generated draft, got an empty value"
                 )
 
             with allure.step(
