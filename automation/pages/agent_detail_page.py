@@ -273,6 +273,14 @@ class AgentDetailPage(AgentFormPage):
     # reached, so it needs its own testid rather than a raw parent-traversal
     # chained off `agent_add_skill_button`.
     agent_add_skill_button_tooltip = LocatorDescriptor(testid="agent-add-skill-button-tooltip")
+    # "Create new" item inside the "+ Skill" dropdown (ELITEA-1999 — added
+    # via `add-data-testid`, threading an optional `createNewTestId` prop
+    # through UnifiedDropdown.jsx's existing createNewLabel/onCreateNew prop
+    # trio; SkillMenu.jsx, the caller for THIS section, supplies the value.
+    # Same pattern as ELITEA-2166's `agents-create-new-button`). Navigates to
+    # `/skills/create?source_application_id={id}&return_url=...` — see
+    # `open_create_new_skill()` below.
+    agent_add_skill_create_new_button = LocatorDescriptor(testid="agent-add-skill-create-new-button")
     skills_section = LocatorDescriptor(testid="agent-skills-section")
     skills_counter = LocatorDescriptor(testid="agent-skills-counter")
     skill_mention_list = LocatorDescriptor(testid="skill-mention-list")
@@ -1879,6 +1887,31 @@ class AgentDetailPage(AgentFormPage):
                 skill_name, counter_after,
             )
         logger.info("Skill '%s' attached to agent (counter: %r -> %r)", skill_name, counter_before, counter_after)
+
+    @action("Open Create New Skill from Agent")
+    def open_create_new_skill(self, timeout: int = 10000):
+        """Open the "+ Skill" dropdown and click "Create new".
+
+        Navigates to ``/skills/create?source_application_id={agent_id}&
+        return_url=...`` (`SkillMenu.jsx`'s `handleCreateNew()`) — the
+        entry point for the Build-with-AI-from-Agent round-trip (ELITEA-1999):
+        creating a Skill from here (manually or via Build with AI) redirects
+        back to this Agent editor and auto-attaches the new Skill, instead of
+        landing on the Skill's own details page.
+
+        LOCATOR: ``agent-add-skill-create-new-button`` — see the field's
+        docstring for the `add-data-testid` provenance.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening 'Create new' from the Skills add-menu")
+        self.ensure_skills_section_visible(timeout=timeout)
+        self.agent_add_skill_button.wait_for(state="visible", timeout=timeout)
+        self.agent_add_skill_button.click(force=True)
+        self.agent_add_skill_create_new_button.wait_for(state="visible", timeout=timeout)
+        self.agent_add_skill_create_new_button.click()
+        logger.info("Clicked 'Create new' — navigating to the Skill-create page")
 
     def get_skills_counter_text(self, timeout: int = 5000) -> str:
         """Return the Skills section counter text, e.g. "2/5 skills added.".
