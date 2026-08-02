@@ -26,11 +26,21 @@ those values, and the new skill appears in the Skills list — the
 through-line ELITEA-1990's test does not cover, since that test always
 edits the review form before creating.
 
+Covers ELITEA-1993: the review-form Name field enforces its naming rules
+(lowercase letters/digits/hyphens only, no leading/trailing hyphen, <=64
+chars) on manual edits — disabling "Create Skill" and showing the
+validation-error helper text for each invalid variant, and never letting a
+Skill be created with an invalid name. The 64-char variant is asserted per
+the AFS's corrected expectation: the field's native `maxlength` truncates
+any input to 64 chars before validation ever sees an over-length value, so
+that state is unreachable via manual editing and the field stays valid.
+
 Spec: test-specs/skills/l2_build-with-ai-generation-failure-retry_ELITEA-2001.md
 Spec: test-specs/skills/l2_generated-skill-draft-fields-are-editable-before-creation_ELITEA-1990.md
 Spec: test-specs/skills/lextend_skill-draft-generated-from-natural-language-description_ELITEA-1989.md
 Spec: test-specs/skills/lextend_clicking-build-with-ai-opens-the-generation-modal_ELITEA-1988.md
 Spec: test-specs/skills/lextend_create-skill-from-draft-saves-and-redirects-to-skill-details_ELITEA-1991.md
+Spec: test-specs/skills/l2_build-with-ai-name-field-validation_ELITEA-1993.md
 Covers: GenerateSkillModal (GenerateEntityModal.jsx via GenerateSkillModal.jsx)
 
 Shares the modal-shell behavior with the Agent flow
@@ -75,6 +85,14 @@ PROMPT_TEXT = (
     "a 3-bullet action list for the assigned agent."
 )
 SIMULATED_ERROR_MESSAGE = "Simulated generation failure for ELITEA-2001"
+
+# Exact validation-error helper text for an invalid Name (skillDraftValidation
+# .helpers.js's SKILL_NAME_RE branch) — confirmed against source by the AFS
+# (ELITEA-1993) and reused verbatim here rather than re-derived.
+NAME_VALIDATION_ERROR = (
+    "Name must be lowercase letters, digits and hyphens only, "
+    "cannot start or end with a hyphen"
+)
 
 # Minimal, valid draft payload mirroring the real generate_skill_draft
 # response shape (GenerateSkillModal.jsx / GenerateSkillReviewForm.jsx) —
@@ -700,4 +718,166 @@ class TestSkillBuildWithAIModalElements:
         with allure.step("Step 5 — Verify Cancel button is visible"):
             assert modal.cancel_button.is_visible(), (
                 "Cancel button should be visible in the modal"
+            )
+
+
+# ---------------------------------------------------------------------------
+# ELITEA-1993 — review-form Name field validation on invalid manual edits
+# ---------------------------------------------------------------------------
+
+
+class TestSkillBuildWithAINameFieldValidation:
+    """Build with AI (P2): the review-form Name field enforces its naming
+    rules on manual edits — "Create Skill" is disabled and a validation
+    error is shown for every invalid variant, and no Skill can ever be
+    created with an invalid name."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/build_with_ai/ELITEA-1993_build-with-ai-name-field-validation-on-invalid-manual-edits.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_name_field_validation_on_invalid_manual_edits(self, page):
+        """Overwriting the review-form Name field with each invalid variant
+        (uppercase, spaces, leading hyphen, trailing hyphen, >64 chars)
+        disables "Create Skill" and shows the validation-error helper text
+        (except the >64-char variant, which the native maxlength truncates
+        to a valid 64-char value before validation ever sees it); a
+        recovery edit back to a valid name re-enables the button; and no
+        create-skill network call ever fires."""
+        list_page = SkillsListPage(page)
+        modal = GenerateSkillModalPage(page)
+
+        create_skill_calls = []
+        page.on(
+            "request",
+            lambda req: create_skill_calls.append(req.url)
+            if "/elitea_core/skills/prompt_lib/" in req.url and req.method == "POST"
+            else None,
+        )
+
+        # --------------------------------------------------------------
+        # Step 1 — Generate a skill draft, enter the review form; the
+        # unmodified (valid) draft starts with "Create Skill" enabled
+        # --------------------------------------------------------------
+        with allure.step("Step 1 — Generate a skill draft, enter the review form"):
+            list_page.navigate_to_create()
+            modal.open_modal()
+            modal.fill_prompt(REVIEW_PROMPT_TEXT)
+
+            modal.mock_generate_success(GENERATED_DRAFT_PAYLOAD)
+            response = modal.click_generate_and_wait_for_response(
+                timeout=GENERATE_RESPONSE_TIMEOUT
+            )
+            assert response.status == 200, (
+                f"Expected the mocked generate-draft request to resolve 200, got {response.status}"
+            )
+            modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+
+            assert modal.get_review_name() == GENERATED_DRAFT_PAYLOAD["name"], (
+                "Review form should be pre-populated with the generated draft's name"
+            )
+            assert modal.approve_button.is_enabled(), (
+                "Create Skill should start enabled — the unmodified generated draft is itself valid"
+            )
+
+        # --------------------------------------------------------------
+        # Step 2 — Uppercase name
+        # --------------------------------------------------------------
+        with allure.step('Step 2 — Uppercase name ("MySkill") is rejected'):
+            modal.set_review_name("MySkill")
+
+            assert modal.get_review_name() == "MySkill", (
+                "Field should display the entered value verbatim, no silent lowercasing"
+            )
+            assert modal.get_review_name_helper_text() == NAME_VALIDATION_ERROR, (
+                f"Expected the validation-error helper text, got: {modal.get_review_name_helper_text()!r}"
+            )
+            assert not modal.approve_button.is_enabled(), (
+                "Create Skill should be disabled while the Name field is invalid (uppercase)"
+            )
+
+        # --------------------------------------------------------------
+        # Step 3 — Name with spaces
+        # --------------------------------------------------------------
+        with allure.step('Step 3 — Name with spaces ("my skill") is rejected'):
+            modal.set_review_name("my skill")
+
+            assert modal.get_review_name_helper_text() == NAME_VALIDATION_ERROR, (
+                f"Expected the validation-error helper text, got: {modal.get_review_name_helper_text()!r}"
+            )
+            assert not modal.approve_button.is_enabled(), (
+                "Create Skill should be disabled while the Name field is invalid (spaces)"
+            )
+
+        # --------------------------------------------------------------
+        # Step 4 — Leading hyphen
+        # --------------------------------------------------------------
+        with allure.step('Step 4 — Leading hyphen ("-my-skill") is rejected'):
+            modal.set_review_name("-my-skill")
+
+            assert modal.get_review_name_helper_text() == NAME_VALIDATION_ERROR, (
+                f"Expected the validation-error helper text, got: {modal.get_review_name_helper_text()!r}"
+            )
+            assert not modal.approve_button.is_enabled(), (
+                "Create Skill should be disabled while the Name field is invalid (leading hyphen)"
+            )
+
+        # --------------------------------------------------------------
+        # Step 5 — Trailing hyphen
+        # --------------------------------------------------------------
+        with allure.step('Step 5 — Trailing hyphen ("my-skill-") is rejected'):
+            modal.set_review_name("my-skill-")
+
+            assert modal.get_review_name_helper_text() == NAME_VALIDATION_ERROR, (
+                f"Expected the validation-error helper text, got: {modal.get_review_name_helper_text()!r}"
+            )
+            assert not modal.approve_button.is_enabled(), (
+                "Create Skill should be disabled while the Name field is invalid (trailing hyphen)"
+            )
+
+        # --------------------------------------------------------------
+        # Step 6 — Exceeds 64 characters: unreachable via manual editing.
+        # The field's native maxlength truncates any input (fill() or real
+        # typing) to exactly 64 chars before validation ever runs, so the
+        # truncated value is valid — per AFS Known Defect #2 (case-text
+        # drift, not a product defect).
+        # --------------------------------------------------------------
+        with allure.step("Step 6 — Name exceeding 64 chars is truncated to a valid 64-char value"):
+            modal.set_review_name("a" * 70)
+
+            truncated_name = modal.get_review_name()
+            assert len(truncated_name) == 64, (
+                "Native maxlength should cap the Name field at exactly 64 characters, "
+                f"got length {len(truncated_name)}"
+            )
+            assert modal.get_review_name_helper_text() == "64/64", (
+                "Truncated (valid) 64-char Name should show the plain character-count "
+                f"helper text '64/64', got: {modal.get_review_name_helper_text()!r}"
+            )
+            assert modal.approve_button.is_enabled(), (
+                "Create Skill should be enabled — the truncated 64-char Name is valid"
+            )
+
+        # --------------------------------------------------------------
+        # Step 7 — Cannot create a Skill with any invalid name: recovery
+        # contrast (valid name re-enables "Create Skill") + confirm zero
+        # create-skill network calls fired across the whole run.
+        # --------------------------------------------------------------
+        with allure.step("Step 7 — Recovery to a valid name re-enables Create Skill; no Skill was ever created"):
+            modal.set_review_name("my-valid-skill")
+
+            assert modal.get_review_name_helper_text() == "14/64", (
+                "Valid recovery Name should show the plain character-count helper text '14/64', "
+                f"got: {modal.get_review_name_helper_text()!r}"
+            )
+            assert modal.approve_button.is_enabled(), (
+                "Create Skill should re-enable once the Name field holds a valid value again — "
+                "the disabled state is a live function of current validity, not a one-way latch"
+            )
+            assert not create_skill_calls, (
+                "No create-skill request should ever have fired while any invalid Name was set, "
+                f"got: {create_skill_calls}"
             )

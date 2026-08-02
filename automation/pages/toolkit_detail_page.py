@@ -13,10 +13,10 @@ Enhancement #5114: Added support for credential status indicators:
 - Open in new tab button to view credential details
 """
 
+import json
 import logging
-import re
 
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -72,6 +72,47 @@ class ToolkitDetailPage(BasePage):
         testid="toolkit-indexes-accordion",
         description="Indexes accordion rendered inside the Configuration "
         "tab (replaced the former standalone Indexes tab in EL-5947)",
+    )
+
+    # ------------------------------------------------------------------
+    # Credential Configuration dropdown (CredentialsSelect.jsx) — added
+    # for ELITEA-1976/1979. Testid added via add-data-testid:
+    # `dataTestId={`toolkit-credential-select-${type}`}` on the underlying
+    # Select.SingleSelect, which auto-suffixes "-combobox" onto the
+    # interactive role=combobox node (SelectDisplayProps) — same mechanism
+    # already used by ChatPage.project_selector_trigger
+    # ("project-selector-trigger-combobox").
+    # ------------------------------------------------------------------
+    CREDENTIAL_SELECT_TRIGGER = '[data-testid="toolkit-credential-select-{}-combobox"]'
+
+    # Dropdown-option testid family (shared SingleSelectMenuItem.jsx /
+    # SingleSelect.jsx action-branch, same template shape as
+    # ToolkitTestSettingsPage.TOOL_OPTION). Value is the app's own
+    # JSON.stringify()'d select value — built by :meth:`_create_option_value`
+    # / :meth:`_saved_option_value` to match it exactly.
+    # Single-quoted attribute value — the encoded value itself contains
+    # double quotes (JSON), which would otherwise break the CSS selector.
+    SELECT_OPTION = "[data-testid='select-option-{}']"
+
+    # Group-header text ("CREATE" / "Saved {type} Credentials", rendered
+    # visually uppercase via CSS text-transform) — testid added for
+    # ELITEA-1976 (SingleSelect.jsx renderMenuItems, keyed by group.key,
+    # which CredentialsSelect.jsx sets to the raw group title).
+    SELECT_GROUP_HEADER = '[data-testid="select-group-header-{}"]'
+
+    credential_select_refresh_button = LocatorDescriptor(
+        testid="credential-select-refresh-button",
+        description="'Refresh the configurations' button inside the Saved "
+        "Credentials subheader (CredentialsSelect.jsx) — testid added for "
+        "ELITEA-1976",
+    )
+
+    credential_select_mismatch_footer = LocatorDescriptor(
+        testid="credential-select-mismatch-footer",
+        description="'Your configuration does not match any available "
+        "configurations.' helper text shown when the linked credential's "
+        "elitea_title no longer resolves against any fetched configuration "
+        "(CredentialMismatchFooter.jsx) — testid added for ELITEA-1979",
     )
 
     def __init__(self, page: Page):
@@ -475,3 +516,114 @@ class ToolkitDetailPage(BasePage):
         warning_locator = self._get_credential_error_locator()
         expect(warning_locator.first).not_to_be_visible(timeout=timeout)
         logger.info("Status indicator is no longer visible")
+
+    # ------------------------------------------------------------------
+    # Credential Configuration dropdown (CredentialsSelect.jsx)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _create_option_value(private: bool) -> str:
+        """Return the app's own JSON-encoded select value for a CREATE option.
+
+        Mirrors ``CredentialsSelect.jsx``'s ``createActionToSelectValue()``
+        exactly (key order ``kind`` then ``private``, compact separators —
+        matching JS's ``JSON.stringify`` output, no spaces).
+        """
+        return json.dumps({"kind": "create_action", "private": bool(private)}, separators=(",", ":"))
+
+    @staticmethod
+    def _saved_option_value(elitea_title: str, private: bool) -> str:
+        """Return the app's own JSON-encoded select value for a saved-credential option.
+
+        Mirrors ``CredentialsSelect.jsx``'s ``savedRowToSelectValue()``
+        exactly (key order ``kind``, ``elitea_title``, ``private``).
+        """
+        return json.dumps(
+            {"kind": "saved", "elitea_title": elitea_title, "private": bool(private)},
+            separators=(",", ":"),
+        )
+
+    def credential_select_trigger(self, credential_type: str) -> Locator:
+        """Return the Configuration dropdown's trigger (combobox) locator for *credential_type*."""
+        return self.page.locator(self.CREDENTIAL_SELECT_TRIGGER.format(credential_type))
+
+    def open_credential_dropdown(self, credential_type: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the Configuration dropdown trigger for *credential_type* to open it.
+
+        Args:
+            credential_type: The credential type slug (e.g. ``"github"``).
+            timeout: Maximum wait time in milliseconds for the trigger to
+                become visible before clicking.
+        """
+        trigger = self.credential_select_trigger(credential_type)
+        trigger.wait_for(state="visible", timeout=timeout)
+        trigger.click()
+        logger.info("Opened the Configuration dropdown for type=%s", credential_type)
+
+    def get_select_group_header(self, title: str) -> Locator:
+        """Return the group-header Locator for *title* (e.g. ``"Create"``)."""
+        return self.page.locator(self.SELECT_GROUP_HEADER.format(title))
+
+    def get_create_option(self, private: bool) -> Locator:
+        """Return the CREATE-section option Locator for the private/project variant."""
+        return self.page.locator(self.SELECT_OPTION.format(self._create_option_value(private)))
+
+    def click_create_option(self, private: bool, timeout: int = UI_ELEMENT_TIMEOUT) -> Page:
+        """Click a CREATE-section option and return the new tab ("Page") it opens.
+
+        ``CredentialsSelect.jsx``'s ``createSelectHandler`` always opens the
+        create-credential form via ``window.open(..., '_blank', ...)``, so
+        every CREATE-action click spawns a new browser tab.
+
+        Args:
+            private: ``True`` for "New private {type} credentials", ``False``
+                for "New project {type} credentials".
+            timeout: Maximum wait time in milliseconds for the option to
+                become visible before clicking.
+        """
+        option = self.get_create_option(private)
+        option.wait_for(state="visible", timeout=timeout)
+        with self.page.context.expect_page() as new_page_info:
+            option.click()
+        new_page = new_page_info.value
+        new_page.wait_for_load_state("domcontentloaded")
+        logger.info("Clicked CREATE option (private=%s) — new tab: %s", private, new_page.url)
+        return new_page
+
+    def get_saved_option(self, elitea_title: str, private: bool) -> Locator:
+        """Return the Saved-Credentials option Locator matching *elitea_title*/*private*."""
+        return self.page.locator(self.SELECT_OPTION.format(self._saved_option_value(elitea_title, private)))
+
+    def select_saved_credential(
+        self, elitea_title: str, private: bool, timeout: int = UI_ELEMENT_TIMEOUT
+    ) -> None:
+        """Click the Saved-Credentials option matching *elitea_title*/*private*.
+
+        Args:
+            elitea_title: The credential's ``elitea_title`` (matches the
+                option's encoded select value).
+            private: Whether the credential is private-scoped.
+            timeout: Maximum wait time in milliseconds for the option to
+                become visible before clicking.
+        """
+        option = self.get_saved_option(elitea_title, private)
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        logger.info("Selected saved credential elitea_title=%s private=%s", elitea_title, private)
+
+    def click_refresh_configurations(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the "Refresh the configurations" button and wait for network to settle."""
+        self.credential_select_refresh_button.wait_for(state="visible", timeout=timeout)
+        self.credential_select_refresh_button.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Clicked 'Refresh the configurations'")
+
+    def get_credential_select_text(self, credential_type: str) -> str:
+        """Return the Configuration dropdown trigger's current displayed text."""
+        return self.credential_select_trigger(credential_type).text_content() or ""
+
+    def is_credential_select_mismatched(self, credential_type: str) -> bool:
+        """Return whether the Configuration dropdown trigger is in the
+        red/error mismatched-credential state (``aria-invalid="true"``).
+        """
+        return self.credential_select_trigger(credential_type).get_attribute("aria-invalid") == "true"

@@ -103,6 +103,12 @@ class ToolkitTestSettingsPage(BasePage):
     # touches.
     TOOL_PARAM = '[data-testid="toolkit-test-param-{}"]'
 
+    # The wrapper Box above carries the field's testid (CommonStringField.jsx);
+    # the actual <input> is a separate node. Added via add-data-testid for
+    # ELITEA-1937 (CommonStringField.jsx's inputProps) — same "-input" suffix
+    # convention as McpFormPage's toolkit-field-{k}-input (ToolBaseProperty.jsx).
+    TOOL_PARAM_INPUT = '[data-testid="toolkit-test-param-{}-input"]'
+
     # ------------------------------------------------------------------
     # Center chat/output panel (left side) — the SAME generic message-list
     # testid every chat surface in the app renders (ChatMessageList.jsx,
@@ -260,6 +266,41 @@ class ToolkitTestSettingsPage(BasePage):
         field.wait_for(state="visible", timeout=timeout)
         return field.is_visible()
 
+    def get_param_input(self, field_key: str):
+        """Return the Locator for a tool-parameter field's real ``<input>`` element.
+
+        :attr:`TOOL_PARAM`'s testid lands on ``CommonStringField.jsx``'s wrapper
+        ``Box``, not the ``<input>`` itself — mirrors ``McpFormPage``'s own
+        wrapper-vs-field split (e.g. ``client_secret_input`` vs
+        ``client_secret_input_field``). Thin wrapper around
+        :attr:`TOOL_PARAM_INPUT` so callers never construct the dynamic-testid
+        locator inline (``.claude/rules/page-objects.md``).
+
+        Args:
+            field_key: The field's schema property key (e.g. ``"repoName"``).
+        """
+        return self.page.locator(self.TOOL_PARAM_INPUT.format(field_key))
+
+    @action("Fill a tool-parameter field")
+    def fill_param_field(self, field_key: str, value: str, timeout: int = 10000) -> None:
+        """Fill *field_key*'s parameter input with *value*.
+
+        MUI text fields don't fire React's ``onChange`` on Playwright's
+        ``fill()`` (``.claude/rules/mui-patterns.md``) — uses ``click()`` +
+        ``press_sequentially()`` instead, the same discipline every other
+        MUI text-field fill in this suite follows.
+
+        Args:
+            field_key: The field's schema property key (e.g. ``"repoName"``).
+            value: Text to type into the field.
+            timeout: Maximum wait time in milliseconds for the input to
+                become visible before typing.
+        """
+        field_input = self.get_param_input(field_key)
+        field_input.wait_for(state="visible", timeout=timeout)
+        field_input.click()
+        field_input.press_sequentially(value, delay=20)
+
     # ------------------------------------------------------------------
     # Run tool
     # ------------------------------------------------------------------
@@ -297,8 +338,18 @@ class ToolkitTestSettingsPage(BasePage):
         logger.info("Center panel message-list text: %r", text[:120])
         return text
 
+    def get_result_items(self):
+        """Return the Locator matching every currently-rendered Run Results item.
+
+        Thin wrapper around :attr:`RESULT_MESSAGE_ITEM` so callers (tests)
+        never construct the selector inline (``.claude/rules/page-objects.md``)
+        — used to assert absence pre-run (``to_have_count(0)``), and by
+        :meth:`wait_for_tool_result` for the post-run read.
+        """
+        return self.page.locator(self.RESULT_MESSAGE_ITEM)
+
     @action("Wait for the tool-run result to appear")
-    def wait_for_tool_result(self, timeout: int = 15000) -> str:
+    def wait_for_tool_result(self, timeout: int = 15000, tool_key: str | None = None) -> str:
         """Wait for the post-RUN-TOOL result to render and return its text.
 
         AI/tool responses arrive over WebSocket a few seconds after RUN
@@ -315,8 +366,44 @@ class ToolkitTestSettingsPage(BasePage):
         Playwright's auto-retrying ``expect(...).to_contain_text()``
         instead of a message-count delta.
 
+        Mid-wait panel-remount recovery (ELITEA-1979 batch-gate flake,
+        2026-08-02): under sustained backend load (a long run of prior
+        AI/LLM-calling tests immediately before this one), the right-hand
+        Test Settings panel has been observed to remount back to
+        ``TestToolsEmptyState`` (EL-5947) WHILE a run is in flight — the
+        selected tool is lost and :attr:`RESULT_MESSAGE_ITEM` empties out,
+        so the plain ``expect(...).to_contain_text()`` above times out on
+        an empty list instead of ever seeing the ✅/❌ marker. This is a
+        real symptom (not a locator bug): the RUN TOOL click for a
+        toolkit-parameterized tool hits the toolkit's underlying API
+        server-side, mediated by the SAME single, non-scaled local dev
+        backend that just finished serving a batch's worth of heavy
+        tests — a shared-resource timing issue, not a product defect. When
+        *tool_key* is supplied, a single timeout of the initial wait is
+        treated as a possible remount: if :attr:`RESULT_MESSAGE_ITEM` is
+        confirmed empty (the remount signature, distinguishing this from
+        an unrelated timeout with the result still present at count > 0,
+        which re-raises immediately), the tool is re-selected from the
+        empty state and RUN TOOL is re-clicked once, then the wait resumes
+        for the same *timeout* budget. Exactly one recovery attempt — a
+        second remount still fails the test. Callers that don't pass
+        *tool_key* keep the original single-wait behavior unchanged (this
+        page object is shared by every Test Settings caller, most of which
+        never hit this load pattern).
+
         Args:
-            timeout: Maximum wait time in milliseconds.
+            timeout: Maximum wait time in milliseconds (applied to the
+                initial wait, and again to the post-recovery wait when a
+                remount is recovered from).
+            tool_key: The tool's schema key (e.g. ``"list_branches_in_repo"``)
+                to re-select if a mid-wait panel remount is detected. Pass
+                ``None`` (default) to disable recovery — a timeout always
+                raises immediately, matching prior behavior. Recovery only
+                re-selects the tool and re-clicks RUN TOOL; it does NOT
+                refill parameter fields, so it's suited to parameterless
+                tool runs (e.g. ``list_branches_in_repo``, which reuses the
+                toolkit's own repo config) — a tool with required params
+                would need its own recovery.
 
         Returns:
             The result message's raw text content (e.g. containing
@@ -324,7 +411,25 @@ class ToolkitTestSettingsPage(BasePage):
             ``"{'total': 0, 'rows': []}"``).
         """
         result_locator = self.page.locator(self.RESULT_MESSAGE_ITEM).last
-        expect(result_locator).to_contain_text(re.compile(r"[✅❌]"), timeout=timeout)
+        try:
+            expect(result_locator).to_contain_text(re.compile(r"[✅❌]"), timeout=timeout)
+        except AssertionError:
+            if tool_key is None or self.get_result_items().count() > 0:
+                # Not the remount signature (either recovery is disabled, or
+                # the result item is present but never got its ✅/❌ marker —
+                # a real failure) — re-raise untouched.
+                raise
+            logger.warning(
+                "Test Settings panel result list emptied mid-wait (RESULT_MESSAGE_ITEM "
+                "count=0) — panel remounted to the empty state under load. Re-selecting "
+                "%r and re-clicking RUN TOOL once before giving up.",
+                tool_key,
+            )
+            self.select_tool_from_empty_state(tool_key, timeout=10000)
+            self.wait_for_panel(timeout=10000)
+            self.run_tool(timeout=10000)
+            result_locator = self.page.locator(self.RESULT_MESSAGE_ITEM).last
+            expect(result_locator).to_contain_text(re.compile(r"[✅❌]"), timeout=timeout)
         text = result_locator.text_content() or ""
         logger.info("Tool-run result: %r", text[:120])
         return text

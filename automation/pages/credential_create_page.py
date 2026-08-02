@@ -77,6 +77,14 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
             "api_key_input, relabeled for GitHub's Token auth)."
         ),
     )
+    api_error_message = LocatorDescriptor(
+        testid="credential-form-api-error-message",
+        description=(
+            "Server-side API error text rendered below the form on a failed "
+            "Save (CredentialForm.jsx) — e.g. the duplicate-elitea_title "
+            "400 message. Testid added for ELITEA-1978."
+        ),
+    )
 
     def __init__(self, page: Page):
         super().__init__(page)

@@ -75,6 +75,25 @@ class AgentDetailPage(AgentFormPage):
     # SkillDetailPage.VERSION_OPTION.
     VERSION_OPTION = '[data-testid="version-option-{}"]'
 
+    # Scoped sub-selector for the pin icon rendered INSIDE a version option
+    # (ELITEA-1891 testid-only rework — added via add-data-testid to
+    # version.helpers.jsx's buildVersionOption(); see EliteaUI
+    # automation/testids commit 4e5b819d). Only rendered on the option whose
+    # id equals the agent's `meta.default_version_id` — chain off the
+    # ALREADY-testid'd `VERSION_OPTION.format(name)` parent, never a
+    # page-level handle: `self.page.locator(self.VERSION_OPTION.format(name))
+    # .locator(self.VERSION_OPTION_PIN_ICON)`.
+    VERSION_OPTION_PIN_ICON = '[data-testid="version-option-pin-icon"]'
+
+    # Any-version-option selector for reading the VERSION dropdown's full
+    # option ORDER (ELITEA-1891) — excludes VERSION_OPTION_PIN_ICON, whose
+    # testid also starts with the `version-option-` prefix but lives on a
+    # nested non-option child <svg>, not the option MenuItem itself. Purely
+    # testid-keyed (no role/CSS-structure dependency).
+    VERSION_OPTION_ANY = (
+        '[data-testid^="version-option-"]:not([data-testid="version-option-pin-icon"])'
+    )
+
     # --- Variables section (ELITEA-1884 testid-only rework — added via
     # add-data-testid to ApplicationVariables.jsx / VariableList.jsx; see
     # EliteaUI draft PR #568). `ApplicationVariables.jsx` renders `null`
@@ -181,6 +200,28 @@ class AgentDetailPage(AgentFormPage):
     chat_clear_button = LocatorDescriptor(testid="chat-clear-button")
     skill_test_last_response = LocatorDescriptor(testid="skill-test-last-response")
 
+    # --- Run History panel (ELITEA-1877) ---
+    # Opens `RunHistoryContainer`, which REPLACES the Configuration form +
+    # embedded chat (not a tab, not an overlay) — see
+    # `test-specs/agents/_surface.md` § Run History panel. `pipeline-history-tab`
+    # is pre-existing on `main` (shared `ViewRunHistoryButton.jsx`, also used by
+    # Pipelines/MCP/Toolkit run history — the name is a naming-precedent smell,
+    # not something to fix here); this page-object field is new.
+    run_history_open_button = LocatorDescriptor(testid="pipeline-history-tab")
+    # `run-history-list-item` / `data-selected` — testid + state attribute
+    # added via `add-data-testid` for this case (EliteaUI automation/testids
+    # commit a5a9d0f5, RunHistoryListItem.jsx). Same literal testid on every
+    # row — rows are positionally distinguished (default sort = Date
+    # descending, so index 0 = most recent, index 1 = "not the most recent").
+    RUN_HISTORY_LIST_ITEM_SELECTOR = '[data-testid="run-history-list-item"]'
+    RUN_HISTORY_LIST_ITEM_SELECTED_SELECTOR = (
+        '[data-testid="run-history-list-item"][data-selected="true"]'
+    )
+    # `RunHistoryContainer` accepts an `onClose` prop but never wires it to a
+    # rendered element — there is no way to close the panel once opened
+    # (filed as EliteaAI/elitea-testing-public#1093, MINOR, doesn't block
+    # this case). No "close" locator/method exists on purpose.
+
     # --- LLM model selector (embedded chat panel, ELITEA-1881) ---
     # `model-selector-button`/`model-selector-name` are static testids on
     # LLMModelSelector.jsx. Each dropdown option carries a DYNAMIC testid
@@ -196,6 +237,32 @@ class AgentDetailPage(AgentFormPage):
     model_selector_button = LocatorDescriptor(testid="model-selector-button")
     model_selector_name = LocatorDescriptor(testid="model-selector-name")
     MODEL_SELECTOR_OPTION_ANY_SELECTOR = '[data-testid^="model-selector-option-"]'
+
+    # --- Model Settings (gear) dialog (ELITEA-1880 testid-only rework —
+    # added via add-data-testid to LLMModelSelector.jsx (gear button),
+    # LLMSettingsDialog.jsx (BaseModal's dataTestId + own Cancel button),
+    # MaxTokensSection.jsx (container Box), and ReasoningSlider.jsx (via a
+    # new `testId` prop threaded through the SHARED DiscreteSlider.jsx —
+    # both ReasoningSlider and CreativitySlider consume DiscreteSlider, so
+    # the testid is prop-driven rather than hardcoded in the shared
+    # component per `.agents/testing.md` § Locator policy). EliteaUI
+    # automation/testids commit ab11bd81. Apply button intentionally has NO
+    # testid here — this case only exercises Cancel (see AFS § Concrete
+    # Handles: out of scope for THIS case). ---
+    model_settings_button = LocatorDescriptor(
+        testid="model-settings-button",
+        description="Gear icon next to the model selector — opens the Model "
+                     "settings dialog",
+    )
+    model_settings_dialog = LocatorDescriptor(testid="model-settings-dialog")
+    model_settings_cancel_button = LocatorDescriptor(testid="model-settings-cancel-button")
+    # Reasoning-capable models render this slider (Low/Medium/High); a
+    # non-reasoning model renders CreativitySlider instead, which carries no
+    # testid (out of scope for this case — see AFS Coverage Map
+    # Clarification 1).
+    model_settings_reasoning_slider = LocatorDescriptor(testid="model-settings-reasoning-slider")
+    # Always rendered regardless of model type (Default/Custom toggle).
+    model_settings_max_tokens_section = LocatorDescriptor(testid="model-settings-max-tokens-section")
 
     # --- Skills section (agent-skills attach/mention flow, ELITEA-1735) ---
     agent_add_skill_button = LocatorDescriptor(testid="agent-add-skill-button")
@@ -363,6 +430,23 @@ class AgentDetailPage(AgentFormPage):
     unpublish_confirm_button = LocatorDescriptor(
         testid="agent-unpublish-confirm-button",
         description='Unpublish confirm dialog — "Unpublish" button',
+    )
+
+    # --- "Set as a default" (pin) — ELITEA-1891. Pre-existing via the
+    # generic DotMenu `testId: item.key` -> `data-testid={testId}-menuitem`
+    # mechanism (same family as delete_agent_menuitem/fork_menuitem above);
+    # `aria-disabled="true"` when the currently-viewed version is already
+    # the default. ---
+    set_as_default_menuitem = LocatorDescriptor(testid="set-as-a-default-menuitem")
+    # SetDefaultVersionDialog.jsx's confirm button (ELITEA-1891 testid-only
+    # rework — added via add-data-testid: the dialog is a SHARED component
+    # (agent + skill "Set as default"), so the testid is wired via a
+    # `confirmButtonTestId` prop at THIS page's own call site
+    # (useSetDefaultVersion.hooks.jsx), not hardcoded in the shared dialog
+    # itself — see EliteaUI automation/testids commit 4e5b819d.
+    set_default_version_confirm_button = LocatorDescriptor(
+        testid="agent-set-default-version-confirm-button",
+        description='"Set as default?" confirm dialog — "Set as a default" button',
     )
 
     # --- Navigation ---
@@ -629,6 +713,62 @@ class AgentDetailPage(AgentFormPage):
         """
         option = self.page.locator(self.VERSION_OPTION.format(version_name))
         return option.get_attribute("aria-selected") == "true"
+
+    def get_version_option_text(self, version_name: str) -> str:
+        """Return a version option's own rendered text, e.g.
+        ``"v2-published - 01.08.2026"`` (name + date baked into one text
+        node — see ``VERSION_OPTION`` above; ELITEA-1891).
+
+        LOCATOR: dynamic ``version-option-{version_name}`` testid. Call
+        after ``open_version_selector()``.
+
+        Args:
+            version_name: Exact version name (e.g. ``"v2-published"``).
+        """
+        option = self.page.locator(self.VERSION_OPTION.format(version_name))
+        return (option.text_content() or "").strip()
+
+    def is_version_option_pinned(self, version_name: str) -> bool:
+        """Check whether a version option in the open VERSION dropdown shows
+        the pin icon (i.e. it is the agent's default/pinned version).
+
+        LOCATOR: scoped sub-selector chained off the already-testid'd
+        ``VERSION_OPTION.format(version_name)`` parent — see
+        ``VERSION_OPTION_PIN_ICON`` above. Call after
+        ``open_version_selector()``.
+
+        Args:
+            version_name: Exact version name (e.g. ``"base"``).
+        """
+        option = self.page.locator(self.VERSION_OPTION.format(version_name))
+        return option.locator(self.VERSION_OPTION_PIN_ICON).count() > 0
+
+    def get_version_option_order(self, timeout: int = 5000) -> list[str]:
+        """Return the VERSION dropdown's option names, in DOM (visual) order.
+
+        LOCATOR: ``VERSION_OPTION_ANY`` (excludes the nested pin-icon
+        testid, which also starts with the ``version-option-`` prefix, so
+        it is never mistaken for an option itself). Reads each matched
+        element's own ``data-testid`` attribute and strips
+        the ``version-option-`` prefix — mirrors the live probes this case's
+        AFS used. Call after ``open_version_selector()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first option.
+
+        Returns:
+            Version names in the order they're rendered, e.g.
+            ``["v1-early-draft", "v3-latest-draft", "v2-published", "base"]``.
+        """
+        options = self.page.locator(self.VERSION_OPTION_ANY)
+        options.first.wait_for(state="visible", timeout=timeout)
+        count = options.count()
+        prefix = "version-option-"
+        names: list[str] = []
+        for i in range(count):
+            testid = options.nth(i).get_attribute("data-testid") or ""
+            names.append(testid[len(prefix):] if testid.startswith(prefix) else testid)
+        return names
 
     # ------------------------------------------------------------------
     # Icon picker (ELITEA-1899)
@@ -2421,6 +2561,69 @@ class AgentDetailPage(AgentFormPage):
         option.first.click()
         logger.info("LLM model '%s' selected", display_name)
 
+    # ------------------------------------------------------------------
+    # Model Settings dialog (embedded chat panel, ELITEA-1880)
+    # ------------------------------------------------------------------
+
+    @action("Open Model settings dialog")
+    def open_model_settings_dialog(self, timeout: int = 5000):
+        """Click the gear icon and wait for the Model settings dialog to open.
+
+        LOCATOR: ``model-settings-button`` -> ``model-settings-dialog``.
+        """
+        logger.info("Opening Model settings dialog")
+        self.model_settings_button.click()
+        self.model_settings_dialog.wait_for(state="visible", timeout=timeout)
+
+    def is_reasoning_slider_visible(self, timeout: int = 5000) -> bool:
+        """Return True if the Reasoning slider (Low/Medium/High) is shown.
+
+        LOCATOR: ``model-settings-reasoning-slider``. Rendered only for a
+        reasoning-capable model (``model.supports_reasoning``) — a
+        non-reasoning model renders the Creativity/Temperature slider
+        instead, which carries no testid (out of this case's scope). Call
+        after :meth:`open_model_settings_dialog`.
+        """
+        try:
+            self.model_settings_reasoning_slider.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_reasoning_slider_text(self, timeout: int = 5000) -> str:
+        """Return the Reasoning slider's own rendered text (label + Low/Medium/High).
+
+        LOCATOR: ``model-settings-reasoning-slider``. Call after
+        :meth:`open_model_settings_dialog` once
+        :meth:`is_reasoning_slider_visible` is True.
+        """
+        self.model_settings_reasoning_slider.wait_for(state="visible", timeout=timeout)
+        return (self.model_settings_reasoning_slider.text_content() or "").strip()
+
+    def get_max_tokens_section_text(self, timeout: int = 5000) -> str:
+        """Return the Max Completion Tokens section's own rendered text
+        (label + Default/Custom toggle) — always present regardless of
+        model type.
+
+        LOCATOR: ``model-settings-max-tokens-section``. Call after
+        :meth:`open_model_settings_dialog`.
+        """
+        self.model_settings_max_tokens_section.wait_for(state="visible", timeout=timeout)
+        return (self.model_settings_max_tokens_section.text_content() or "").strip()
+
+    @action("Close Model settings dialog via Cancel")
+    def close_model_settings_dialog_via_cancel(self, timeout: int = 5000):
+        """Click Cancel and wait for the Model settings dialog to close.
+
+        LOCATOR: ``model-settings-cancel-button``. Discards any local
+        (unapplied) edits made inside the dialog — this case never edits a
+        setting, so Cancel and Apply are behaviorally equivalent here (AFS
+        step 7 observation).
+        """
+        logger.info("Closing Model settings dialog via Cancel")
+        self.model_settings_cancel_button.click()
+        self.model_settings_dialog.wait_for(state="hidden", timeout=timeout)
+
     @action("Clear embedded chat")
     def clear_embedded_chat(self, timeout: int = 10000):
         """Click the "Clear the chat" button in the embedded chat panel.
@@ -2653,6 +2856,95 @@ class AgentDetailPage(AgentFormPage):
         if messages.count() == 0:
             return ""
         return (messages.last.text_content() or "").strip()
+
+    # ------------------------------------------------------------------
+    # Run History panel (ELITEA-1877)
+    # ------------------------------------------------------------------
+
+    @action("Open Run History panel")
+    def open_run_history(self, timeout: int = 10000):
+        """Click the Run History button and wait for the panel to replace
+        the Configuration form + embedded chat.
+
+        ``RunHistoryContainer`` REPLACES the whole form+chat grid — it is
+        not a tab and not an overlay — so "opened" is confirmed by waiting
+        for at least one ``run-history-list-item`` row to render (the list
+        fetch, ``GET .../conversations/prompt_lib/...``, is a real network
+        round trip; poll rather than a fixed timeout).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Run History panel")
+        self.run_history_open_button.wait_for(state="visible", timeout=timeout)
+        self.run_history_open_button.click()
+        self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+        logger.info("Run History panel opened")
+
+    def get_run_history_item_count(self) -> int:
+        """Return the number of rows currently listed in the Run History panel.
+
+        Returns:
+            Integer count of ``run-history-list-item`` rows.
+        """
+        return self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).count()
+
+    @action("Select Run History item")
+    def select_run_history_item(self, index: int, timeout: int = 10000):
+        """Click the Run History row at *index* (0 = most recent — default
+        sort is Date descending) and wait for its conversation detail to load.
+
+        Args:
+            index: Zero-based row index in the currently-rendered list.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting Run History item at index %d", index)
+        row = self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).nth(index)
+        row.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/elitea_core/conversation/prompt_lib/" in r.url
+            and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            row.click()
+        logger.info("Run History item %d selected", index)
+
+    def is_run_history_item_selected(self, index: int, timeout: int = 5000) -> bool:
+        """Return whether the Run History row at *index* carries
+        ``data-selected="true"``.
+
+        Args:
+            index: Zero-based row index in the currently-rendered list.
+            timeout: Maximum wait time for the row to be present.
+
+        Returns:
+            True if that row is the one currently marked selected.
+        """
+        row = self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).nth(index)
+        row.wait_for(state="visible", timeout=timeout)
+        return row.get_attribute("data-selected") == "true"
+
+    def get_run_history_chat_messages_text(self) -> str:
+        """Return the concatenated text of every message in the Run History
+        panel's chat (the selected row's conversation).
+
+        ``RunHistoryChat.jsx`` renders the SAME shared ``ChatMessageList``
+        component as the main embedded chat, so this reuses
+        ``chat_message_list``/``CHAT_MESSAGE_ITEM_SELECTOR`` unchanged —
+        confirmed live: only one instance of ``chat-message-list`` exists on
+        the page while History is open (the main embedded chat is unmounted).
+
+        Returns:
+            Joined text of all ``chat-message-item`` elements, or "" if none
+            are present yet.
+        """
+        messages = self._embedded_chat_messages()
+        count = messages.count()
+        if count == 0:
+            return ""
+        return "\n".join((messages.nth(i).text_content() or "") for i in range(count))
 
     def wait_for_sensitive_action_authorization(
         self, timeout: int = 30000, click_authorize: bool = True
@@ -3285,6 +3577,42 @@ class AgentDetailPage(AgentFormPage):
         status = unpublish_info.value.status
         Dialog.wait_for_hidden(self.page, timeout=timeout)
         logger.info("Unpublish confirmed — status=%d", status)
+        return status
+
+    @action("Set the currently-viewed version as the agent's default")
+    def set_current_version_as_default(self, timeout: int = 10000) -> int:
+        """Pin the CURRENTLY VIEWED version as the agent's default version
+        (ELITEA-1891).
+
+        Opens the actions overflow menu, clicks "Set as a default"
+        (``set_as_default_menuitem``), and confirms in the
+        ``SetDefaultVersionDialog`` that opens
+        (``useSetDefaultVersion.hooks.jsx``'s ``handleSetDefaultVersion`` —
+        it pins whichever version is currently loaded into the form, not a
+        version picked from this method's arguments). Waits for the
+        ``PATCH .../default_version/prompt_lib/{project}/{applicationId}``
+        request to resolve and for the dialog to close.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            HTTP status code of the ``default_version`` PATCH response.
+        """
+        logger.info("Setting the currently-viewed version as default")
+        self.open_actions_menu()
+        self.set_as_default_menuitem.click()
+        Dialog.wait_for(self.page, timeout=timeout)
+        self.set_default_version_confirm_button.wait_for(state="visible", timeout=timeout)
+
+        with self.page.expect_response(
+            lambda r: "/default_version/prompt_lib/" in r.url and r.request.method == "PATCH",
+            timeout=timeout,
+        ) as set_default_info:
+            self.set_default_version_confirm_button.click()
+        status = set_default_info.value.status
+        Dialog.wait_for_hidden(self.page, timeout=timeout)
+        logger.info("Set-as-default confirmed — status=%d", status)
         return status
 
     # ------------------------------------------------------------------

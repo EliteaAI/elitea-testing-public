@@ -238,6 +238,27 @@ class McpFormPage(BasePage):
         "INSTEAD of the Test Settings panel until a tool is chosen (EL-5947)",
     )
 
+    # ------------------------------------------------------------------
+    # Connection-status indicator + sync-error toast — added ELITEA-1934.
+    # ------------------------------------------------------------------
+    connection_status = LocatorDescriptor(
+        testid="toolkit-connection-status",
+        description="Connection status indicator ('Not Connected'/'Connected!') "
+        "next to the Login/Logout button (McpAuthStatus.jsx) — added via "
+        "add-data-testid for ELITEA-1934 (the Typography had no testid before; "
+        "text itself is the observable, not a state attribute, per "
+        ".agents/testing.md § Locator policy — one stable testid, the rendered "
+        "text is what the case asserts)",
+    )
+    sync_error_toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide Toast component's message container (ToastProvider.jsx "
+        "-> Toast.jsx, confirmed live to be the SAME shared component as "
+        "SkillDetailPage.version_toast_message / ArtifactsPage.success_toast_message "
+        "— reused here for the 'Failed to sync MCP tools: ...' error toast the "
+        "mcp_sync_tools failure fires, ELITEA-1934). No new testid needed.",
+    )
+
     # Dynamic (runtime-parameterized) testid — one MUI Chip per discovered tool.
     # Class-level template constant per .agents/testing.md § Locator policy;
     # never an inline f-string get_by_test_id in a method body.
@@ -1048,3 +1069,26 @@ class McpFormPage(BasePage):
         field = self.page.locator(self.TEST_PARAM_FIELD.format(field_key))
         field.wait_for(state="visible", timeout=timeout)
         return field.is_visible()
+
+    # ------------------------------------------------------------------
+    # Connection-status indicator + sync-error toast — added ELITEA-1934.
+    # ------------------------------------------------------------------
+
+    def get_connection_status_text(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the connection-status indicator's current text ('Not Connected'/'Connected!')."""
+        self.connection_status.wait_for(state="visible", timeout=timeout)
+        return self.connection_status.text_content() or ""
+
+    @action("Wait for the Load-Tools sync-error toast and return its text")
+    def wait_for_sync_error_toast(self, timeout: int = 5000) -> str:
+        """Wait for the sync-error toast to appear and return its text.
+
+        Must be called IMMEDIATELY after :meth:`click_load_tools` resolves, in
+        the same synchronous chain — the toast auto-dismisses within a few
+        seconds (confirmed live, AFS ELITEA-1934 step 7), so inserting a
+        separate step in between risks missing it entirely.
+        """
+        self.sync_error_toast_message.wait_for(state="visible", timeout=timeout)
+        text = self.sync_error_toast_message.text_content() or ""
+        logger.info("Sync-error toast text: %r", text)
+        return text
