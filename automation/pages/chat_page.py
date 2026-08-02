@@ -263,6 +263,36 @@ class ChatPage(BasePage):
         description="Regenerate AI response button"
     )
 
+    # ELITEA-2181: new fields, deliberately NOT reusing copy_message_button /
+    # regenerate_button above — both point at testids ("message-copy-button",
+    # "message-regenerate-button") that do not exist in source (pre-existing
+    # tech debt, kept via their ``fallback=`` role/aria-label lookups; left
+    # untouched here). These use the real, confirmed-live testids added for
+    # this case (`chat-copy-button`, `chat-regenerate-button`) with no
+    # fallback, per the testid-only locator policy.
+    copy_action_button = LocatorDescriptor(
+        testid="chat-copy-button",
+        description="Copy-to-clipboard icon on a completed AI message (hover-revealed)."
+    )
+
+    regenerate_action_button = LocatorDescriptor(
+        testid="chat-regenerate-button",
+        description=(
+            "Regenerate icon on a completed AI message (hover-revealed). Prior to "
+            "ELITEA-2181 this element had neither a testid nor an aria-label."
+        )
+    )
+
+    delete_action_button = LocatorDescriptor(
+        testid="chat-delete-button",
+        description=(
+            "Delete icon on a completed AI message (hover-revealed). The existing "
+            "testid was on-main already; ``delete_message()`` locates it "
+            "positionally (tech debt, untouched) — this field lets new assertions "
+            "use the testid directly."
+        )
+    )
+
     # ------------------------------------------------------------------
     # Voice / TTS Controls
     # ------------------------------------------------------------------
@@ -317,6 +347,52 @@ class ChatPage(BasePage):
     chat_messages_scroll_container = LocatorDescriptor(
         testid="chat-messages-scroll-container",
         description="Scrollable messages region (SimpleBar content-wrapper).",
+    )
+
+    # ------------------------------------------------------------------
+    # In-progress answer widget (ELITEA-2181 — streaming response display)
+    # ------------------------------------------------------------------
+    # RotatingMessages.jsx placeholder, ApplicationThinkView.jsx/ActionView.jsx
+    # accordion + chip + pause-scroll toggle. All four testids were added for
+    # this case (previously had no stable handle at all); confirmed live on
+    # ``automation/testids`` before wiring.
+
+    answer_loading_placeholder = LocatorDescriptor(
+        testid="chat-answer-loading-placeholder",
+        description=(
+            "Pre-content RotatingMessages placeholder shown while the AI answer "
+            "is loading and no content has arrived yet. Text cycles through 9 "
+            "known phrases every ~2s — assert presence of the element, never a "
+            "specific phrase."
+        )
+    )
+
+    answer_thought_accordion = LocatorDescriptor(
+        testid="chat-answer-thought-accordion",
+        description=(
+            "'Thought for <n> secs' reasoning/tool accordion header (renders once "
+            "content starts streaming). Scoping parent for the model chip and the "
+            "Pause/Resume-scroll toggle."
+        )
+    )
+
+    answer_model_chip = LocatorDescriptor(
+        testid="chat-answer-model-chip",
+        description=(
+            "Model-name chip (e.g. 'Anthropic Claude 4.5 Sonnet') inside the "
+            "Thought accordion's chip row. Only named on ActionView.jsx's chip "
+            "when toolkitType == 'model' (canon ruling #277 shape (a) — the "
+            "shared component's other chip kinds stay unnamed)."
+        )
+    )
+
+    answer_pause_scroll_toggle = LocatorDescriptor(
+        testid="chat-answer-pause-scroll-toggle",
+        description=(
+            "'Pause scroll' / 'Resume scroll' toggle scoped to the Thought "
+            "accordion (NOT a bubble/page-level control — CLARIFICATION issue "
+            "#1100). Label flips in place; same element throughout."
+        )
     )
 
     # ------------------------------------------------------------------
@@ -946,6 +1022,50 @@ class ChatPage(BasePage):
         raise TimeoutError(
             f"AI response did not complete within {timeout}ms — "
             f"Copy button {'appeared but content was transient' if copy_button_seen else 'never appeared'}"
+        )
+
+    def wait_for_message_body_growth(
+        self, message_locator, previous_length: int, timeout: int = 60000
+    ) -> str:
+        """Condition-wait until a message's body text grows past a prior length.
+
+        Polls ``_extract_message_body(message_locator)`` until its length
+        exceeds ``previous_length`` — proves progressive streaming (ELITEA-2181)
+        without a fixed ``sleep()``. Returns the new (grown) body text so the
+        caller can chain successive growth checks without re-extracting.
+
+        Args:
+            message_locator: the message ``<li>`` Locator being sampled
+                              (e.g. ``messages_container.nth(ai_index)``).
+            previous_length: the previously-observed body-text length; the
+                              wait resolves the instant a fresh sample exceeds it.
+            timeout: maximum wait time in milliseconds.
+
+        Raises:
+            TimeoutError: if the body text has not grown within ``timeout``.
+        """
+        logger.info(
+            "Waiting for message body to grow past %d chars (timeout=%dms)...",
+            previous_length,
+            timeout,
+        )
+        poll_interval = 0.5  # seconds
+        deadline = time.monotonic() + timeout / 1000.0
+
+        while time.monotonic() < deadline:
+            try:
+                current_text = self._extract_message_body(message_locator)
+            except Exception:
+                current_text = ""
+            if len(current_text) > previous_length:
+                logger.info(
+                    "Message body grew: %d -> %d chars", previous_length, len(current_text)
+                )
+                return current_text
+            time.sleep(poll_interval)
+
+        raise TimeoutError(
+            f"Message body did not grow past {previous_length} chars within {timeout}ms"
         )
 
     # Transient messages that indicate generation is still in progress
