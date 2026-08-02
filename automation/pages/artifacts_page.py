@@ -96,6 +96,17 @@ class ArtifactsPage(BasePage):
         description="Save button on the 'New Bucket' form — submits bucket creation",
     )
 
+    bucket_name_helper_text = LocatorDescriptor(
+        testid="artifacts-bucket-name-helper-text",
+        description="Inline validation helper-text under the Name field on the "
+        "'New Bucket' form (ELITEA-1811/1814 — new testid, implementer). Renders "
+        "the yup schema's error message once the field is touched/invalid; "
+        "empty/absent while the field is valid. Wired via CreateBucket.jsx's "
+        "TextField `FormHelperTextProps={{'data-testid': ...}}`, alongside its "
+        "existing `inputProps`-based name-input testid — MUI v5 supports both "
+        "prop shapes on the same TextField.",
+    )
+
     # ------------------------------------------------------------------
     # Bucket-row 3-dot menu (left panel, ELITEA-1808)
     # ------------------------------------------------------------------
@@ -897,6 +908,24 @@ class ArtifactsPage(BasePage):
         ) as response_info:
             self.bucket_save_button.click()
         return response_info.value
+
+    @action("Click bucket Save button (invalid name — no request expected)")
+    def click_bucket_save_button_expect_no_request(self) -> None:
+        """Click Save on the 'New Bucket' form for an INVALID name — no wait on a response.
+
+        Sibling to :meth:`click_bucket_save_button` for the invalid-name path
+        (ELITEA-1811/1814): the yup schema blocks ``formik.handleSubmit``
+        entirely client-side for an invalid name, so no
+        ``POST .../artifacts/buckets`` ever fires. Wrapping this click in
+        :meth:`click_bucket_save_button`'s ``page.expect_response`` would hang
+        for its full timeout and then raise — confirmed live during AFS
+        exploration. This is a plain click; callers assert the absence of the
+        network call themselves (e.g. via a short-lived
+        ``page.expect_response`` that is expected to time out) if that
+        guarantee is part of the case.
+        """
+        self.bucket_save_button.click()
+        logger.info("Clicked bucket Save button (invalid-name path, no response expected)")
 
     def wait_for_bucket_in_list(self, bucket_name: str, timeout: int = 15000) -> None:
         """Wait for a bucket to appear in the left-panel bucket list.
