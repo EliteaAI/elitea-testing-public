@@ -91,6 +91,31 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
     )
 
     # ------------------------------------------------------------------
+    # Review-form field access (Name / Description / Instructions) —
+    # mirrors GenerateSkillModalPage's review_name_input/review_description_
+    # input/review_instructions_input trio (added for ELITEA-1999). Landed
+    # here for ELITEA-1920's fix round: the field-population claim ("Name/
+    # Description/Instructions... all pre-populated") previously had no
+    # UI-level assertion anywhere in the suite for the Agent review form
+    # (GenerateAgentReviewForm.jsx had zero data-testid on these fields —
+    # see ELITEA-1907 AFS Concrete Handles, "testid needed").
+    # ------------------------------------------------------------------
+    review_name_input = LocatorDescriptor(
+        testid="generate-agent-review-name-input",
+        description="Review-form Name field (editable before creation)",
+    )
+
+    review_description_input = LocatorDescriptor(
+        testid="generate-agent-review-description-input",
+        description="Review-form Description field (editable before creation)",
+    )
+
+    review_instructions_input = LocatorDescriptor(
+        testid="generate-agent-review-instructions-input",
+        description="Review-form Instructions field (editable before creation)",
+    )
+
+    # ------------------------------------------------------------------
     # Suggested Resources (review step) — dynamic testids templated per
     # entityType (and item id where applicable), per this project's
     # `{section}-{element}-{param}` dynamic-testid convention
@@ -109,6 +134,22 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
 
     def _is_generate_draft_url(self, url: str) -> bool:
         return "generate_application_draft" in url
+
+    # ------------------------------------------------------------------
+    # Review-form field access — getters (mirrors GenerateSkillModalPage)
+    # ------------------------------------------------------------------
+
+    def get_review_name(self) -> str:
+        """Return the current value of the review-form Name field."""
+        return self.review_name_input.input_value()
+
+    def get_review_description(self) -> str:
+        """Return the current value of the review-form Description field."""
+        return self.review_description_input.input_value()
+
+    def get_review_instructions(self) -> str:
+        """Return the current value of the review-form Instructions field."""
+        return self.review_instructions_input.input_value()
 
     # ------------------------------------------------------------------
     # Suggested Resources — getters
