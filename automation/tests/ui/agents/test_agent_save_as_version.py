@@ -1,9 +1,13 @@
 """Save As Version creates a named version visible in the version dropdown
-(ELITEA-1888).
+(ELITEA-1888), extended to also cover switching versions updates form
+fields correctly (ELITEA-1890).
 
 Edits an existing agent's Instructions, saves the change as a new named
 version via "Save As Version", and verifies the new version is visible
-(and active) in the VERSION dropdown alongside "base".
+(and active) in the VERSION dropdown alongside "base". Then (ELITEA-1890's
+extension — Step 8) switches back to "base" and verifies the Instructions
+field reverts to its original content — the "switch back" round trip that
+ELITEA-1888's own steps never exercised.
 
 Test-data strategy (per AFS — see below, amended after the lead's live-run
 gate caught pool exhaustion on run 3/3): this test creates a **dedicated,
@@ -16,16 +20,18 @@ agent is deleted at teardown via `delete_agent_via_menu()` — this test is
 therefore fully self-sufficient (create-and-clean every run) and does not
 depend on any shared/finite pool of pre-existing data.
 
-Spec: test-specs/agents/lcritical_save-as-version-creates-named-version-visible-in-dropdown_ELITEA-1888.md
+Specs:
+- test-specs/agents/lcritical_save-as-version-creates-named-version-visible-in-dropdown_ELITEA-1888.md
+- test-specs/agents/lextend_switching-versions-updates-form-fields-correctly_ELITEA-1890.md
 """
 
 import uuid
 
-import pytest
 import allure
-
+import pytest
 from config import settings
 from pages.agent_detail_page import AgentDetailPage
+from playwright.sync_api import expect
 
 pytestmark = [pytest.mark.ui, pytest.mark.agents]
 
@@ -77,17 +83,25 @@ def _build_dedicated_agent_payload(name: str) -> dict:
 
 
 class TestAgentSaveAsVersion:
-    """Save As Version creates a named version visible in version dropdown (ELITEA-1888, lcritical/p0)."""
+    """Save As Version creates a named version visible in version dropdown
+    (ELITEA-1888, lcritical/p0), extended with the switch-back round trip
+    (ELITEA-1890, lextend)."""
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1888_save-as-version-creates-named-version-visible-in-dropdown.md",
-        "onetest-ai Test Case link",
+        "onetest-ai Test Case link (ELITEA-1888)",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1890_switching-between-versions-updates-form-fields-correctly.md",
+        "onetest-ai Test Case link (ELITEA-1890)",
     )
     @pytest.mark.p0
     @pytest.mark.regression
     def test_save_as_version_creates_named_version_visible_in_dropdown(self, page, agent_api):
         """Editing Instructions and clicking Save As Version creates a named
-        version that appears (and is active) in the VERSION dropdown."""
+        version that appears (and is active) in the VERSION dropdown; switching
+        back to 'base' reverts the Instructions field to its original content
+        (ELITEA-1890, Step 8)."""
         with allure.step("Precondition — create a dedicated disposable agent in its 'base' version"):
             # API enforces a 32-char max on agent name (confirmed live: creating
             # with the full "elitea-1888-save-as-version-<hex8>" name 400s with
@@ -189,6 +203,40 @@ class TestAgentSaveAsVersion:
                     "'base' should NOT be the active/selected option anymore"
                 )
                 detail_page.close_versions_menu()
+
+            with allure.step(
+                "Step 8 — Switch back to the original 'base' version and "
+                "verify the Instructions field reverts to its original "
+                "content (ELITEA-1890's extension — the switch-back round "
+                "trip ELITEA-1888's own steps never exercised)"
+            ):
+                # select_version_by_name() (pre-existing page-object method,
+                # ELITEA-1892) opens the VERSION dropdown, clicks the named
+                # option, and polls the trigger text / Information-panel
+                # version-id / URL until they converge — the compliant
+                # replacement for a raw open+click+wait_for_function
+                # sequence built here in the test file.
+                detail_page.select_version_by_name("base", timeout=UI_ELEMENT_TIMEOUT)
+                assert detail_page.get_version_selector_value() == "base", (
+                    "VERSION selector should show 'base' after switching back"
+                )
+                # The Instructions field's own re-render race (confirmed live,
+                # this run): select_version_by_name()'s convergence check
+                # covers the VERSION trigger text / Information-panel
+                # version-id / URL — not the Instructions field's value,
+                # which can still lag a beat behind and read as the STALE
+                # (v2-test) value right after the above assertion passes.
+                # Playwright's own auto-retrying `expect(...).to_have_value()`
+                # polls the page object's `instructions_input` LocatorDescriptor
+                # field directly (no raw selector, no wait_for_function/
+                # document.querySelector) until it settles or times out.
+                expect(detail_page.instructions_input).to_have_value(
+                    original_instructions, timeout=UI_ELEMENT_TIMEOUT
+                )
+                assert detail_page.get_instructions() == original_instructions, (
+                    "Instructions field should revert to the original 'base' "
+                    "version's content after switching back"
+                )
         finally:
             with allure.step("Cleanup — delete the dedicated agent (including the new version)"):
                 try:
