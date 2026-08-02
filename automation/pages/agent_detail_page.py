@@ -75,6 +75,25 @@ class AgentDetailPage(AgentFormPage):
     # SkillDetailPage.VERSION_OPTION.
     VERSION_OPTION = '[data-testid="version-option-{}"]'
 
+    # Scoped sub-selector for the pin icon rendered INSIDE a version option
+    # (ELITEA-1891 testid-only rework — added via add-data-testid to
+    # version.helpers.jsx's buildVersionOption(); see EliteaUI
+    # automation/testids commit 4e5b819d). Only rendered on the option whose
+    # id equals the agent's `meta.default_version_id` — chain off the
+    # ALREADY-testid'd `VERSION_OPTION.format(name)` parent, never a
+    # page-level handle: `self.page.locator(self.VERSION_OPTION.format(name))
+    # .locator(self.VERSION_OPTION_PIN_ICON)`.
+    VERSION_OPTION_PIN_ICON = '[data-testid="version-option-pin-icon"]'
+
+    # Any-version-option selector for reading the VERSION dropdown's full
+    # option ORDER (ELITEA-1891) — excludes VERSION_OPTION_PIN_ICON, whose
+    # testid also starts with the `version-option-` prefix but lives on a
+    # nested non-option child <svg>, not the option MenuItem itself. Purely
+    # testid-keyed (no role/CSS-structure dependency).
+    VERSION_OPTION_ANY = (
+        '[data-testid^="version-option-"]:not([data-testid="version-option-pin-icon"])'
+    )
+
     # --- Variables section (ELITEA-1884 testid-only rework — added via
     # add-data-testid to ApplicationVariables.jsx / VariableList.jsx; see
     # EliteaUI draft PR #568). `ApplicationVariables.jsx` renders `null`
@@ -365,6 +384,23 @@ class AgentDetailPage(AgentFormPage):
         description='Unpublish confirm dialog — "Unpublish" button',
     )
 
+    # --- "Set as a default" (pin) — ELITEA-1891. Pre-existing via the
+    # generic DotMenu `testId: item.key` -> `data-testid={testId}-menuitem`
+    # mechanism (same family as delete_agent_menuitem/fork_menuitem above);
+    # `aria-disabled="true"` when the currently-viewed version is already
+    # the default. ---
+    set_as_default_menuitem = LocatorDescriptor(testid="set-as-a-default-menuitem")
+    # SetDefaultVersionDialog.jsx's confirm button (ELITEA-1891 testid-only
+    # rework — added via add-data-testid: the dialog is a SHARED component
+    # (agent + skill "Set as default"), so the testid is wired via a
+    # `confirmButtonTestId` prop at THIS page's own call site
+    # (useSetDefaultVersion.hooks.jsx), not hardcoded in the shared dialog
+    # itself — see EliteaUI automation/testids commit 4e5b819d.
+    set_default_version_confirm_button = LocatorDescriptor(
+        testid="agent-set-default-version-confirm-button",
+        description='"Set as default?" confirm dialog — "Set as a default" button',
+    )
+
     # --- Navigation ---
     back_button = LocatorDescriptor(testid="back-button")
 
@@ -629,6 +665,62 @@ class AgentDetailPage(AgentFormPage):
         """
         option = self.page.locator(self.VERSION_OPTION.format(version_name))
         return option.get_attribute("aria-selected") == "true"
+
+    def get_version_option_text(self, version_name: str) -> str:
+        """Return a version option's own rendered text, e.g.
+        ``"v2-published - 01.08.2026"`` (name + date baked into one text
+        node — see ``VERSION_OPTION`` above; ELITEA-1891).
+
+        LOCATOR: dynamic ``version-option-{version_name}`` testid. Call
+        after ``open_version_selector()``.
+
+        Args:
+            version_name: Exact version name (e.g. ``"v2-published"``).
+        """
+        option = self.page.locator(self.VERSION_OPTION.format(version_name))
+        return (option.text_content() or "").strip()
+
+    def is_version_option_pinned(self, version_name: str) -> bool:
+        """Check whether a version option in the open VERSION dropdown shows
+        the pin icon (i.e. it is the agent's default/pinned version).
+
+        LOCATOR: scoped sub-selector chained off the already-testid'd
+        ``VERSION_OPTION.format(version_name)`` parent — see
+        ``VERSION_OPTION_PIN_ICON`` above. Call after
+        ``open_version_selector()``.
+
+        Args:
+            version_name: Exact version name (e.g. ``"base"``).
+        """
+        option = self.page.locator(self.VERSION_OPTION.format(version_name))
+        return option.locator(self.VERSION_OPTION_PIN_ICON).count() > 0
+
+    def get_version_option_order(self, timeout: int = 5000) -> list[str]:
+        """Return the VERSION dropdown's option names, in DOM (visual) order.
+
+        LOCATOR: ``VERSION_OPTION_ANY`` (excludes the nested pin-icon
+        testid, which also starts with the ``version-option-`` prefix, so
+        it is never mistaken for an option itself). Reads each matched
+        element's own ``data-testid`` attribute and strips
+        the ``version-option-`` prefix — mirrors the live probes this case's
+        AFS used. Call after ``open_version_selector()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first option.
+
+        Returns:
+            Version names in the order they're rendered, e.g.
+            ``["v1-early-draft", "v3-latest-draft", "v2-published", "base"]``.
+        """
+        options = self.page.locator(self.VERSION_OPTION_ANY)
+        options.first.wait_for(state="visible", timeout=timeout)
+        count = options.count()
+        prefix = "version-option-"
+        names: list[str] = []
+        for i in range(count):
+            testid = options.nth(i).get_attribute("data-testid") or ""
+            names.append(testid[len(prefix):] if testid.startswith(prefix) else testid)
+        return names
 
     # ------------------------------------------------------------------
     # Icon picker (ELITEA-1899)
@@ -3285,6 +3377,42 @@ class AgentDetailPage(AgentFormPage):
         status = unpublish_info.value.status
         Dialog.wait_for_hidden(self.page, timeout=timeout)
         logger.info("Unpublish confirmed — status=%d", status)
+        return status
+
+    @action("Set the currently-viewed version as the agent's default")
+    def set_current_version_as_default(self, timeout: int = 10000) -> int:
+        """Pin the CURRENTLY VIEWED version as the agent's default version
+        (ELITEA-1891).
+
+        Opens the actions overflow menu, clicks "Set as a default"
+        (``set_as_default_menuitem``), and confirms in the
+        ``SetDefaultVersionDialog`` that opens
+        (``useSetDefaultVersion.hooks.jsx``'s ``handleSetDefaultVersion`` —
+        it pins whichever version is currently loaded into the form, not a
+        version picked from this method's arguments). Waits for the
+        ``PATCH .../default_version/prompt_lib/{project}/{applicationId}``
+        request to resolve and for the dialog to close.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            HTTP status code of the ``default_version`` PATCH response.
+        """
+        logger.info("Setting the currently-viewed version as default")
+        self.open_actions_menu()
+        self.set_as_default_menuitem.click()
+        Dialog.wait_for(self.page, timeout=timeout)
+        self.set_default_version_confirm_button.wait_for(state="visible", timeout=timeout)
+
+        with self.page.expect_response(
+            lambda r: "/default_version/prompt_lib/" in r.url and r.request.method == "PATCH",
+            timeout=timeout,
+        ) as set_default_info:
+            self.set_default_version_confirm_button.click()
+        status = set_default_info.value.status
+        Dialog.wait_for_hidden(self.page, timeout=timeout)
+        logger.info("Set-as-default confirmed — status=%d", status)
         return status
 
     # ------------------------------------------------------------------
