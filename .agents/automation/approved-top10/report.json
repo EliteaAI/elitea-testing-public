@@ -1,0 +1,845 @@
+{
+  "batch": "approved-top10",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-approved-top10",
+  "gate": {
+    "verdict": "not-run",
+    "runs": 0,
+    "seconds": [],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1934",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1937 case text (steps 7-8) implies a persistent 'Welcome! Select a tool...' message is visible in a chat area right after tool-selection and before Run is clicked. Confirmed live AND via source (EliteaUI TestTools.jsx's 3-state machine) that no such state exists for Remote MCP toolkits: the panel shows only the settings form between tool-selection and run, and chat-message-list isn't in the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1086"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1937 case text (step 9) says click 'RUN TOOL'; the live button's visible text is 'Run Test' (TestToolSettings.jsx:128), while two other in-app copy sources (the welcome-message string and the interactive product tour) still say 'RUN TOOL' -- looks like a button-label rename that missed two copy strings. Cosmetic only, doesn't affect automation (testid-based locate) or the case's functional … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1087"
+        },
+        {
+          "kind": "defect",
+          "note": "The Test Settings panel's LLMModelSelector renders with variant=\"field\" (TestToolSettings.jsx), and LLMModelSelector.jsx only applies data-testid=\"model-selector-button\"/\"model-selector-name\" in its variant===\"default\" branch, NOT \"field\" -- confirmed live (both testids return null on the Remote MCP Test Settings panel) and via source. This is a real gap for ELITEA-1937's own step 3, AND a possibl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1088"
+        },
+        {
+          "kind": "note",
+          "note": "No Playwright MCP browser tool was available/wired in this dispatch (ToolSearch found nothing under mcp__playwright__* despite .mcp.json declaring the server). Fell back to the playwright-cli shell tool per the skill's own MCP-not-wired fallback ladder -- worked cleanly against localhost:5173 for both cases, all handles resolved via getByTestId()/page.evaluate(), nothing guessed. Flagging in case … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "CONFIRMED live (2026-08-02), pre-existing, unrelated to this branch: the already-merged test_toolkit_creation_create_bucket_verify_list_files.py (ELITEA-1866) is RED — asserts model_selector_button visible, but TestToolSettings.jsx (shared by both the MCP and Artifact-toolkit Test Settings panels) always renders LLMModelSelector variant=\"field\", and that variant never carried model-selector-button… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "#1088 (AFS-flagged), test_toolkit_creation_create_bucket_verify_list_files.py"
+        },
+        {
+          "kind": "note",
+          "note": "The MCP Load-Tools sync-error toast (mcp_sync_tools DNS-failure message) needed no new testid — traced toastError() through ToastProvider.jsx/Toast.jsx and confirmed it's the same shared Toast component every toastError/toastSuccess call in the app renders through (data-testid=\"toast-message\"), the same one SkillDetailPage.version_toast_message and ArtifactsPage.success_toast_message already use. … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/mcp_form_page.py sync_error_toast_message"
+        },
+        {
+          "kind": "note",
+          "note": "Could not write durable memory entries from this case branch (memory belongs on base per the memory skill's merge-conflict guidance) — wrote them, then deleted, and am returning the content here for the orchestrator to record at close instead."
+        },
+        {
+          "kind": "defect",
+          "note": "Testid-convention check (role-overrides.md § Reviewer slot / testing.md § Locator policy): commit f7a9ae15 (part of this PR's testid delivery for ELITEA-1937) hardcodes a feature-scoped testid `toolkit-test-param-${fieldKey}-input` directly inside `CommonStringField.jsx`, which lives under `src/[fsd]/shared/ui/field/` — a genuinely shared component. Confirmed via `git grep`: this component is rend… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@f7a9ae15 — src/[fsd]/shared/ui/field/CommonStringField.jsx:189"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing, out of THIS PR's scope to fix: the wrapper `<Box>`'s own testid (`toolkit-test-param-${fieldKey}`, all 3 render branches) already has the identical shared-component violation, introduced by ELITEA-1933's session, one line above the new addition this PR makes. 'Surrounding code is not precedent' (role-overrides.md) is why I'm still blocking the new addition, but the wrapper itself is … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@a3c58b93 (ELITEA-1933, prior batch case) — src/[fsd]/shared/ui/field/CommonStringField.jsx:107,132,154"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else triangulates cleanly. Case↔AFS↔diff: both AFS Coverage Maps map 1:1 onto the two tests' allure.step blocks — no dropped case element, no demoted assertion I could find (ELITEA-1934's DNS-toast exact-text match, pre/post 'Not Connected' checks, and the API-body success/error assertions; ELITEA-1937's empty-state→popover→select→param-fill→disabled-guard→run→real-content assertions al… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Fixed: CommonStringField.jsx no longer hardcodes the shared-component testid; threaded via inputTestId prop (TestToolSettings.jsx -> ToolFormContainer.jsx -> CommonStringField.jsx), mirroring the existing contentTestId pattern on CodeMirrorEditor.jsx. EliteaUI automation/testids commit a3520e57.",
+          "ref": "EliteaAI/EliteaUI@a3520e57"
+        },
+        {
+          "kind": "note",
+          "note": "Same hardcoded-in-shared-component shape still exists (not this PR's scope, reviewer didn't flag it): CommonBooleanField.jsx and AnyOfPatternField.jsx both compute `data-testid={`toolkit-test-param-${fieldKey}`}` locally on their wrapper Box, and they're reached by the same 4 features via ToolFormContainer. Worth a future targeted pass if those fields ever get testid-scoped by a test.",
+          "ref": "src/[fsd]/shared/ui/field/CommonBooleanField.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "PRIOR BLOCKING FINDING RESOLVED. The feature-scoped testid `toolkit-test-param-${fieldKey}-input` hardcoded in the shared CommonStringField.jsx (f7a9ae15) is now threaded as an `inputTestId` prop from TestToolSettings.jsx (the only call site of the 4 that needs it) through ToolFormContainer.jsx into CommonStringField.jsx. The other 3 callers (indexes/run-index, indexes/index-success, pages/indexes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@a3520e57 (src/[fsd]/shared/ui/field/CommonStringField.jsx, ToolFormContainer.jsx, TestToolSettings.jsx)"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS/digest amendments were not committed alongside the implementation, per reviewer-contract.md § Standing reviewer checks (\"AFS amendments — any selector / observable drift between AFS and implementation must be reflected in an AFS docs commit in the same PR\"). The implementer commit `376c106a` touches only page objects + tests — it never amends test-specs/mcp/*.md or _surface.md, yet it resolves… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/mcp/l2_remote-mcp-load-tools-from-invalid-url_ELITEA-1934.md:150-151, test-specs/mcp/l3_remote-mcp-test-settings-select-and-run-tool_ELITEA-1937.md:184-185,256-261,270-272, test-specs/mcp/_surface.md:28-34"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking: issue #1088 documents the model-selector-name testid gap this PR's EliteaUI@a467c0ac fixes, but carries no comment noting the fix. Agents can't close it (Done is human-only) but a comment linking the fix would close the traceability loop for whoever eventually accepts it.",
+          "ref": "GitHub issue #1088 (EliteaAI/elitea-testing-public, label bug, state OPEN)"
+        },
+        {
+          "kind": "note",
+          "note": "Residual, unverified (static review, no execution): `data-testid=\"model-selector-name\"` is a GENERIC testid shared by LLMModelSelector's `default` and `field` variants (pre-existing pattern, not a new violation — the widget already used this testid for `default` before this PR). If any other LLMModelSelector instance in `variant=\"default\"` ever co-renders on the same `/mcps/all/{id}` page, `expect… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/toolkit_test_settings_page.py:49-54 (model_selector_name), test_mcp_test_settings_select_and_run_tool.py:97"
+        },
+        {
+          "kind": "note",
+          "note": "Memory addendum for the orchestrator to record on automation/base, appended to .agents/memory/test-automation-engineer/afs_coverage_map_fixes_need_a_full_sweep_not_the_named_row.md: This fix round (ELITEA-1934/1937, PR #1089, round 2) hit the same overclaiming pattern from a NEW trigger — a pure doc-drift 'close the gap' task, not an AFS amendment. I wrote 'issue #1088 fixed' / 'model-selector-nam… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Issue #1088 (EliteaAI/elitea-testing-public, labelled bug, OPEN) is now CONFIRMED (not just possible) as a live regression on the already-merged ELITEA-1866 spec (test_toolkit_creation_create_bucket_verify_list_files.py, model_selector_button assertion at its step 25) — per this PR's own body 'Finding' section, re-run against the approved-top10 batch trunk. Needs routing: a symmetric add-data-test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "#1088"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (AFS/digest documentation drift) is CLOSED in this fix round. The diff includes a docs commit updating test-specs/mcp/l2_..._ELITEA-1934.md, l3_..._ELITEA-1937.md, and test-specs/mcp/_surface.md to reflect the three testid gaps' actual resolution status: toolkit-connection-status and toast-message (reused) marked RESOLVED with commit provenance (EliteaUI@a467c0ac); model-sel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1's other finding (CommonStringField.jsx hardcoded testid, a shared component consumed by 4 features) is also correctly fixed and independently verified: the testid is now threaded via an inputTestId prop (CommonStringField.jsx:196 'data-testid': inputTestId — undefined when not passed, so React omits the attribute entirely), supplied ONLY at TestToolSettings.jsx:115 (inputTestId={`toolk… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/toolkit_test_settings_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff (automation/pages + automation/tests) returns exactly 2 hits, both compliant: self.page.locator(self.TOOL_PARAM_INPUT.format(field_key)) and self.page.locator(self.RESULT_MESSAGE_ITEM) — both are UPPER_CASE class-level [data-testid=...] constants (TOOL_PARAM_INPUT is new, RESULT_MESSAGE_ITEM pre-existing), never raw selectors. 0 real violations. Command: gi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/mcp_form_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation (TMS case snapshot -> AFS -> PR diff) done for both ELITEA-1934 and ELITEA-1937. Every Coverage-Map Axis-1 row for both cases maps to a real, step-matching assertion in the corresponding test file (8/8 steps for 1934, 7 AFS steps covering all 10 case steps for 1937, including the two documented CLARIFICATIONS #1086/#1087 which are correctly NOT asserted against stale case text —… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_test_settings_select_and_run_tool.py"
+        }
+      ],
+      "afs": "test-specs/mcp/l2_remote-mcp-load-tools-from-invalid-url_ELITEA-1934.md",
+      "branch": "tests/batch-approved-top10-mcp-1934-1937",
+      "pr": 1089
+    },
+    {
+      "id": "ELITEA-1937",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1937 case text (steps 7-8) implies a persistent 'Welcome! Select a tool...' message is visible in a chat area right after tool-selection and before Run is clicked. Confirmed live AND via source (EliteaUI TestTools.jsx's 3-state machine) that no such state exists for Remote MCP toolkits: the panel shows only the settings form between tool-selection and run, and chat-message-list isn't in the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1086"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1937 case text (step 9) says click 'RUN TOOL'; the live button's visible text is 'Run Test' (TestToolSettings.jsx:128), while two other in-app copy sources (the welcome-message string and the interactive product tour) still say 'RUN TOOL' -- looks like a button-label rename that missed two copy strings. Cosmetic only, doesn't affect automation (testid-based locate) or the case's functional … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1087"
+        },
+        {
+          "kind": "defect",
+          "note": "The Test Settings panel's LLMModelSelector renders with variant=\"field\" (TestToolSettings.jsx), and LLMModelSelector.jsx only applies data-testid=\"model-selector-button\"/\"model-selector-name\" in its variant===\"default\" branch, NOT \"field\" -- confirmed live (both testids return null on the Remote MCP Test Settings panel) and via source. This is a real gap for ELITEA-1937's own step 3, AND a possibl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1088"
+        },
+        {
+          "kind": "note",
+          "note": "No Playwright MCP browser tool was available/wired in this dispatch (ToolSearch found nothing under mcp__playwright__* despite .mcp.json declaring the server). Fell back to the playwright-cli shell tool per the skill's own MCP-not-wired fallback ladder -- worked cleanly against localhost:5173 for both cases, all handles resolved via getByTestId()/page.evaluate(), nothing guessed. Flagging in case … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "CONFIRMED live (2026-08-02), pre-existing, unrelated to this branch: the already-merged test_toolkit_creation_create_bucket_verify_list_files.py (ELITEA-1866) is RED — asserts model_selector_button visible, but TestToolSettings.jsx (shared by both the MCP and Artifact-toolkit Test Settings panels) always renders LLMModelSelector variant=\"field\", and that variant never carried model-selector-button… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "#1088 (AFS-flagged), test_toolkit_creation_create_bucket_verify_list_files.py"
+        },
+        {
+          "kind": "note",
+          "note": "The MCP Load-Tools sync-error toast (mcp_sync_tools DNS-failure message) needed no new testid — traced toastError() through ToastProvider.jsx/Toast.jsx and confirmed it's the same shared Toast component every toastError/toastSuccess call in the app renders through (data-testid=\"toast-message\"), the same one SkillDetailPage.version_toast_message and ArtifactsPage.success_toast_message already use. … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/mcp_form_page.py sync_error_toast_message"
+        },
+        {
+          "kind": "note",
+          "note": "Could not write durable memory entries from this case branch (memory belongs on base per the memory skill's merge-conflict guidance) — wrote them, then deleted, and am returning the content here for the orchestrator to record at close instead."
+        },
+        {
+          "kind": "defect",
+          "note": "Testid-convention check (role-overrides.md § Reviewer slot / testing.md § Locator policy): commit f7a9ae15 (part of this PR's testid delivery for ELITEA-1937) hardcodes a feature-scoped testid `toolkit-test-param-${fieldKey}-input` directly inside `CommonStringField.jsx`, which lives under `src/[fsd]/shared/ui/field/` — a genuinely shared component. Confirmed via `git grep`: this component is rend… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@f7a9ae15 — src/[fsd]/shared/ui/field/CommonStringField.jsx:189"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing, out of THIS PR's scope to fix: the wrapper `<Box>`'s own testid (`toolkit-test-param-${fieldKey}`, all 3 render branches) already has the identical shared-component violation, introduced by ELITEA-1933's session, one line above the new addition this PR makes. 'Surrounding code is not precedent' (role-overrides.md) is why I'm still blocking the new addition, but the wrapper itself is … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@a3c58b93 (ELITEA-1933, prior batch case) — src/[fsd]/shared/ui/field/CommonStringField.jsx:107,132,154"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else triangulates cleanly. Case↔AFS↔diff: both AFS Coverage Maps map 1:1 onto the two tests' allure.step blocks — no dropped case element, no demoted assertion I could find (ELITEA-1934's DNS-toast exact-text match, pre/post 'Not Connected' checks, and the API-body success/error assertions; ELITEA-1937's empty-state→popover→select→param-fill→disabled-guard→run→real-content assertions al… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Fixed: CommonStringField.jsx no longer hardcodes the shared-component testid; threaded via inputTestId prop (TestToolSettings.jsx -> ToolFormContainer.jsx -> CommonStringField.jsx), mirroring the existing contentTestId pattern on CodeMirrorEditor.jsx. EliteaUI automation/testids commit a3520e57.",
+          "ref": "EliteaAI/EliteaUI@a3520e57"
+        },
+        {
+          "kind": "note",
+          "note": "Same hardcoded-in-shared-component shape still exists (not this PR's scope, reviewer didn't flag it): CommonBooleanField.jsx and AnyOfPatternField.jsx both compute `data-testid={`toolkit-test-param-${fieldKey}`}` locally on their wrapper Box, and they're reached by the same 4 features via ToolFormContainer. Worth a future targeted pass if those fields ever get testid-scoped by a test.",
+          "ref": "src/[fsd]/shared/ui/field/CommonBooleanField.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "PRIOR BLOCKING FINDING RESOLVED. The feature-scoped testid `toolkit-test-param-${fieldKey}-input` hardcoded in the shared CommonStringField.jsx (f7a9ae15) is now threaded as an `inputTestId` prop from TestToolSettings.jsx (the only call site of the 4 that needs it) through ToolFormContainer.jsx into CommonStringField.jsx. The other 3 callers (indexes/run-index, indexes/index-success, pages/indexes… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@a3520e57 (src/[fsd]/shared/ui/field/CommonStringField.jsx, ToolFormContainer.jsx, TestToolSettings.jsx)"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS/digest amendments were not committed alongside the implementation, per reviewer-contract.md § Standing reviewer checks (\"AFS amendments — any selector / observable drift between AFS and implementation must be reflected in an AFS docs commit in the same PR\"). The implementer commit `376c106a` touches only page objects + tests — it never amends test-specs/mcp/*.md or _surface.md, yet it resolves… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/mcp/l2_remote-mcp-load-tools-from-invalid-url_ELITEA-1934.md:150-151, test-specs/mcp/l3_remote-mcp-test-settings-select-and-run-tool_ELITEA-1937.md:184-185,256-261,270-272, test-specs/mcp/_surface.md:28-34"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking: issue #1088 documents the model-selector-name testid gap this PR's EliteaUI@a467c0ac fixes, but carries no comment noting the fix. Agents can't close it (Done is human-only) but a comment linking the fix would close the traceability loop for whoever eventually accepts it.",
+          "ref": "GitHub issue #1088 (EliteaAI/elitea-testing-public, label bug, state OPEN)"
+        },
+        {
+          "kind": "note",
+          "note": "Residual, unverified (static review, no execution): `data-testid=\"model-selector-name\"` is a GENERIC testid shared by LLMModelSelector's `default` and `field` variants (pre-existing pattern, not a new violation — the widget already used this testid for `default` before this PR). If any other LLMModelSelector instance in `variant=\"default\"` ever co-renders on the same `/mcps/all/{id}` page, `expect… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/toolkit_test_settings_page.py:49-54 (model_selector_name), test_mcp_test_settings_select_and_run_tool.py:97"
+        },
+        {
+          "kind": "note",
+          "note": "Memory addendum for the orchestrator to record on automation/base, appended to .agents/memory/test-automation-engineer/afs_coverage_map_fixes_need_a_full_sweep_not_the_named_row.md: This fix round (ELITEA-1934/1937, PR #1089, round 2) hit the same overclaiming pattern from a NEW trigger — a pure doc-drift 'close the gap' task, not an AFS amendment. I wrote 'issue #1088 fixed' / 'model-selector-nam… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Issue #1088 (EliteaAI/elitea-testing-public, labelled bug, OPEN) is now CONFIRMED (not just possible) as a live regression on the already-merged ELITEA-1866 spec (test_toolkit_creation_create_bucket_verify_list_files.py, model_selector_button assertion at its step 25) — per this PR's own body 'Finding' section, re-run against the approved-top10 batch trunk. Needs routing: a symmetric add-data-test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "#1088"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding (AFS/digest documentation drift) is CLOSED in this fix round. The diff includes a docs commit updating test-specs/mcp/l2_..._ELITEA-1934.md, l3_..._ELITEA-1937.md, and test-specs/mcp/_surface.md to reflect the three testid gaps' actual resolution status: toolkit-connection-status and toast-message (reused) marked RESOLVED with commit provenance (EliteaUI@a467c0ac); model-sel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/mcp/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1's other finding (CommonStringField.jsx hardcoded testid, a shared component consumed by 4 features) is also correctly fixed and independently verified: the testid is now threaded via an inputTestId prop (CommonStringField.jsx:196 'data-testid': inputTestId — undefined when not passed, so React omits the attribute entirely), supplied ONLY at TestToolSettings.jsx:115 (inputTestId={`toolk… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/toolkit_test_settings_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff (automation/pages + automation/tests) returns exactly 2 hits, both compliant: self.page.locator(self.TOOL_PARAM_INPUT.format(field_key)) and self.page.locator(self.RESULT_MESSAGE_ITEM) — both are UPPER_CASE class-level [data-testid=...] constants (TOOL_PARAM_INPUT is new, RESULT_MESSAGE_ITEM pre-existing), never raw selectors. 0 real violations. Command: gi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/mcp_form_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation (TMS case snapshot -> AFS -> PR diff) done for both ELITEA-1934 and ELITEA-1937. Every Coverage-Map Axis-1 row for both cases maps to a real, step-matching assertion in the corresponding test file (8/8 steps for 1934, 7 AFS steps covering all 10 case steps for 1937, including the two documented CLARIFICATIONS #1086/#1087 which are correctly NOT asserted against stale case text —… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/toolkits/test_mcp_test_settings_select_and_run_tool.py"
+        }
+      ],
+      "afs": "test-specs/mcp/l3_remote-mcp-test-settings-select-and-run-tool_ELITEA-1937.md",
+      "branch": "tests/batch-approved-top10-mcp-1934-1937",
+      "pr": 1089
+    },
+    {
+      "id": "ELITEA-1976",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "question",
+          "note": "git log --all shows ELITEA-1976/1978 were already implemented + AFS'd in a prior session, but ONLY on origin/automation/base-merged — a stale branch (last commit 2026-07-24) that diverged from and was never merged into the current origin/automation/base (now 2026-08-02, unrelated history). That work is orphaned/lost from the trunk's perspective. Worth a lead-level decision: is origin/automation/ba… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "origin/automation/base-merged (commits 0059e9a6, df693362, etc.)"
+        },
+        {
+          "kind": "note",
+          "note": "elitea-testing-public#999 ('GitHub toolkit type unavailable, 403, existing toolkits locked to Raw JSON') no longer reproduces as of 2026-08-02 — GitHub toolkit creation now succeeds via both API and the UI type-picker, and the 3 previously-locked toolkits (117/150/151) render full Form view with a working Configuration section. Left OPEN (agents don't close issues); flagging for a human to re-veri… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "elitea-testing-public#999"
+        },
+        {
+          "kind": "note",
+          "note": "elitea-testing-public#1004 (empty Access Token not enforced as required once 'Token' auth is selected on the GitHub credential-create form — Save stays enabled, backend persists access_token:null) re-confirmed live, still reproduces exactly as filed. Consumed by ELITEA-1978's AFS as a sanctioned-RED soft assertion; no new ticket filed.",
+          "ref": "elitea-testing-public#1004"
+        },
+        {
+          "kind": "note",
+          "note": "elitea-testing-public#1047 (Configuration select's menu does not auto-close after a CREATE-action click, per SingleSelect.jsx's skipNextCloseRef mechanism — re-clicking the trigger afterward hits an obscured element) is already filed and directly shapes how ELITEA-1976's step 9-10 should be implemented (don't blindly re-click; either check state or do a fresh reload). Not re-filed.",
+          "ref": "elitea-testing-public#1047"
+        },
+        {
+          "kind": "note",
+          "note": "A dangling, unreachable local git commit from a prior session (SHA 8c448d99 in EliteaUI, referenced by an orphaned commit message) claims a testid 'credential-form-api-error-message' was added to automation/testids — verified via fresh git fetch that it is absent from BOTH main and automation/testids today. The commit object exists but is reachable from no branch. Treated as needs-adding, not exis… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Four testid gaps identified with exact EliteaUI source pointers for the implementer's add-data-testid pass: (1) Configuration dropdown trigger has no testid despite Select.SingleSelect already supporting a dataTestId prop that CredentialsSelect.jsx simply never passes; (2) CREATE-action menu items (variant:'action') bypass the sibling 'saved' branch's automatic data-testid={option.testId ?? select… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Known, already-filed defect elitea-testing-public#1004 reproduces deterministically (1/1): GitHub credential create form's Save button stays enabled with Access Token empty once Token auth is selected, and the click succeeds (200), persisting access_token: null. Asserted via expect.soft() per the sanctioned-RED merge-gate exception; no new ticket filed (exact dedup match).",
+          "ref": "elitea-testing-public#1004"
+        },
+        {
+          "kind": "note",
+          "note": "ToolkitAPI.create_github_toolkit() (existing shared helper) hardcodes github_configuration.private=False, which mismatches a credential created in the identity's own personal project against CredentialsSelect.jsx's exact-match selectedOption lookup -- produces an immediate false mismatch state before any deletion step. Not a product bug (test-helper default); worked around per-test via create_tool… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Re-hit the already-documented SingleSelect.jsx data-testid (not dataTestId) prop-name trap (see .agents/memory/test-automation-engineer/fork_wizard_and_projectselect_testid_passthrough.md) while wiring the new toolkit-credential-select-{type} testid onto CredentialsSelect.jsx. Caught via a scratch diagnostic dump before it reached any test run or the PR. That memory entry is un-indexed -- this is … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1976 AFS's own re-verification found elitea-testing-public#999 (GitHub toolkit type unavailable for creation) no longer reproduces as of this session -- flagged there for a human to re-verify and close; not re-actioned by the implementer (closure is human-only).",
+          "ref": "elitea-testing-public#999"
+        },
+        {
+          "kind": "note",
+          "note": "expect.soft(create_page.save_button).to_be_disabled() correctly implements the sanctioned-RED pattern for known defect #1004 (deterministic, single-cause, OPEN, linked via allure.issue + inline comment). Verified pytest-playwright's built-in _soft_scope() context manager (pytest_playwright.py) auto-aggregates soft-assertion failures at test end without any extra plumbing needed — no masking risk.",
+          "ref": "automation/tests/ui/toolkits/test_credential_duplicate_mismatch_validation.py:129"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for added get_by_*/query_selector/page.locator/.locator( hits 4 lines, all `self.page.locator(self.<UPPER_CASE_CONSTANT>.format(...))`. One-hop check: CREDENTIAL_SELECT_TRIGGER, SELECT_GROUP_HEADER, SELECT_OPTION are all class-level `[data-testid=\"...\"]`/`[data-testid='...']` string templates. Compliant testid-only locating, no raw handles added. Command: `git diff 7450f097..tests/… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/toolkit_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Cross-checked all 6 testids the diff references (toolkit-credential-select-{type}, select-group-header-{key}, select-option-{value}, credential-select-refresh-button, credential-select-mismatch-footer, credential-form-api-error-message) against `origin/automation/testids` (fresh `git fetch origin` run first) — all present, all committed under [EL-1976]-prefixed commits. None yet on `origin/main` (… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@CredentialsSelect.jsx / SingleSelect.jsx / SingleSelectMenuItem.jsx / CredentialMismatchFooter.jsx / CredentialForm.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer substituted ToolkitAPI.create_toolkit() (raw settings dict, private=True) for the AFS-suggested create_github_toolkit() helper, with an inline comment explaining the helper hardcodes private=False which would trigger the mismatch state prematurely. Verified against automation/api/client.py:1598 — claim is correct. This is a sound implementation-technique substitution, not an observable… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/toolkits/test_credential_usage_in_toolkit_flows.py:78"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation done for all three cases (TMS snapshot ↔ AFS ↔ diff): every Coverage-Map Axis-1 row traced to a real assertion at the claimed step; Axis-2 additions are grounded; no already-covered/extend-existing dispositions in this batch so the merged-target rule doesn't apply here. All reused page-object methods (navigate_to_toolkit, wait_for_network, switch_project, get_selected_project_te… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "n/a"
+        }
+      ],
+      "afs": "test-specs/toolkits-credentials/l1_create-private-credential-from-toolkit-dropdown_ELITEA-1976.md",
+      "branch": "tests/1976-1978-1979-credential-dropdown-flows",
+      "pr": 1090
+    },
+    {
+      "id": "ELITEA-1978",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "question",
+          "note": "git log --all shows ELITEA-1976/1978 were already implemented + AFS'd in a prior session, but ONLY on origin/automation/base-merged — a stale branch (last commit 2026-07-24) that diverged from and was never merged into the current origin/automation/base (now 2026-08-02, unrelated history). That work is orphaned/lost from the trunk's perspective. Worth a lead-level decision: is origin/automation/ba… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "origin/automation/base-merged (commits 0059e9a6, df693362, etc.)"
+        },
+        {
+          "kind": "note",
+          "note": "elitea-testing-public#999 ('GitHub toolkit type unavailable, 403, existing toolkits locked to Raw JSON') no longer reproduces as of 2026-08-02 — GitHub toolkit creation now succeeds via both API and the UI type-picker, and the 3 previously-locked toolkits (117/150/151) render full Form view with a working Configuration section. Left OPEN (agents don't close issues); flagging for a human to re-veri… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "elitea-testing-public#999"
+        },
+        {
+          "kind": "note",
+          "note": "elitea-testing-public#1004 (empty Access Token not enforced as required once 'Token' auth is selected on the GitHub credential-create form — Save stays enabled, backend persists access_token:null) re-confirmed live, still reproduces exactly as filed. Consumed by ELITEA-1978's AFS as a sanctioned-RED soft assertion; no new ticket filed.",
+          "ref": "elitea-testing-public#1004"
+        },
+        {
+          "kind": "note",
+          "note": "elitea-testing-public#1047 (Configuration select's menu does not auto-close after a CREATE-action click, per SingleSelect.jsx's skipNextCloseRef mechanism — re-clicking the trigger afterward hits an obscured element) is already filed and directly shapes how ELITEA-1976's step 9-10 should be implemented (don't blindly re-click; either check state or do a fresh reload). Not re-filed.",
+          "ref": "elitea-testing-public#1047"
+        },
+        {
+          "kind": "note",
+          "note": "A dangling, unreachable local git commit from a prior session (SHA 8c448d99 in EliteaUI, referenced by an orphaned commit message) claims a testid 'credential-form-api-error-message' was added to automation/testids — verified via fresh git fetch that it is absent from BOTH main and automation/testids today. The commit object exists but is reachable from no branch. Treated as needs-adding, not exis… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Four testid gaps identified with exact EliteaUI source pointers for the implementer's add-data-testid pass: (1) Configuration dropdown trigger has no testid despite Select.SingleSelect already supporting a dataTestId prop that CredentialsSelect.jsx simply never passes; (2) CREATE-action menu items (variant:'action') bypass the sibling 'saved' branch's automatic data-testid={option.testId ?? select… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Known, already-filed defect elitea-testing-public#1004 reproduces deterministically (1/1): GitHub credential create form's Save button stays enabled with Access Token empty once Token auth is selected, and the click succeeds (200), persisting access_token: null. Asserted via expect.soft() per the sanctioned-RED merge-gate exception; no new ticket filed (exact dedup match).",
+          "ref": "elitea-testing-public#1004"
+        },
+        {
+          "kind": "note",
+          "note": "ToolkitAPI.create_github_toolkit() (existing shared helper) hardcodes github_configuration.private=False, which mismatches a credential created in the identity's own personal project against CredentialsSelect.jsx's exact-match selectedOption lookup -- produces an immediate false mismatch state before any deletion step. Not a product bug (test-helper default); worked around per-test via create_tool… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Re-hit the already-documented SingleSelect.jsx data-testid (not dataTestId) prop-name trap (see .agents/memory/test-automation-engineer/fork_wizard_and_projectselect_testid_passthrough.md) while wiring the new toolkit-credential-select-{type} testid onto CredentialsSelect.jsx. Caught via a scratch diagnostic dump before it reached any test run or the PR. That memory entry is un-indexed -- this is … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1976 AFS's own re-verification found elitea-testing-public#999 (GitHub toolkit type unavailable for creation) no longer reproduces as of this session -- flagged there for a human to re-verify and close; not re-actioned by the implementer (closure is human-only).",
+          "ref": "elitea-testing-public#999"
+        },
+        {
+          "kind": "note",
+          "note": "expect.soft(create_page.save_button).to_be_disabled() correctly implements the sanctioned-RED pattern for known defect #1004 (deterministic, single-cause, OPEN, linked via allure.issue + inline comment). Verified pytest-playwright's built-in _soft_scope() context manager (pytest_playwright.py) auto-aggregates soft-assertion failures at test end without any extra plumbing needed — no masking risk.",
+          "ref": "automation/tests/ui/toolkits/test_credential_duplicate_mismatch_validation.py:129"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for added get_by_*/query_selector/page.locator/.locator( hits 4 lines, all `self.page.locator(self.<UPPER_CASE_CONSTANT>.format(...))`. One-hop check: CREDENTIAL_SELECT_TRIGGER, SELECT_GROUP_HEADER, SELECT_OPTION are all class-level `[data-testid=\"...\"]`/`[data-testid='...']` string templates. Compliant testid-only locating, no raw handles added. Command: `git diff 7450f097..tests/… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/toolkit_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Cross-checked all 6 testids the diff references (toolkit-credential-select-{type}, select-group-header-{key}, select-option-{value}, credential-select-refresh-button, credential-select-mismatch-footer, credential-form-api-error-message) against `origin/automation/testids` (fresh `git fetch origin` run first) — all present, all committed under [EL-1976]-prefixed commits. None yet on `origin/main` (… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@CredentialsSelect.jsx / SingleSelect.jsx / SingleSelectMenuItem.jsx / CredentialMismatchFooter.jsx / CredentialForm.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer substituted ToolkitAPI.create_toolkit() (raw settings dict, private=True) for the AFS-suggested create_github_toolkit() helper, with an inline comment explaining the helper hardcodes private=False which would trigger the mismatch state prematurely. Verified against automation/api/client.py:1598 — claim is correct. This is a sound implementation-technique substitution, not an observable… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/toolkits/test_credential_usage_in_toolkit_flows.py:78"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation done for all three cases (TMS snapshot ↔ AFS ↔ diff): every Coverage-Map Axis-1 row traced to a real assertion at the claimed step; Axis-2 additions are grounded; no already-covered/extend-existing dispositions in this batch so the merged-target rule doesn't apply here. All reused page-object methods (navigate_to_toolkit, wait_for_network, switch_project, get_selected_project_te… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "n/a"
+        }
+      ],
+      "afs": "test-specs/toolkits-credentials/l1_credential-duplicate-mismatch-validation_ELITEA-1978.md",
+      "branch": "tests/1976-1978-1979-credential-dropdown-flows",
+      "pr": 1090
+    },
+    {
+      "id": "ELITEA-1979",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "question",
+          "note": "git log --all shows ELITEA-1976/1978 were already implemented + AFS'd in a prior session, but ONLY on origin/automation/base-merged — a stale branch (last commit 2026-07-24) that diverged from and was never merged into the current origin/automation/base (now 2026-08-02, unrelated history). That work is orphaned/lost from the trunk's perspective. Worth a lead-level decision: is origin/automation/ba… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "origin/automation/base-merged (commits 0059e9a6, df693362, etc.)"
+        },
+        {
+          "kind": "note",
+          "note": "elitea-testing-public#999 ('GitHub toolkit type unavailable, 403, existing toolkits locked to Raw JSON') no longer reproduces as of 2026-08-02 — GitHub toolkit creation now succeeds via both API and the UI type-picker, and the 3 previously-locked toolkits (117/150/151) render full Form view with a working Configuration section. Left OPEN (agents don't close issues); flagging for a human to re-veri… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "elitea-testing-public#999"
+        },
+        {
+          "kind": "note",
+          "note": "elitea-testing-public#1004 (empty Access Token not enforced as required once 'Token' auth is selected on the GitHub credential-create form — Save stays enabled, backend persists access_token:null) re-confirmed live, still reproduces exactly as filed. Consumed by ELITEA-1978's AFS as a sanctioned-RED soft assertion; no new ticket filed.",
+          "ref": "elitea-testing-public#1004"
+        },
+        {
+          "kind": "note",
+          "note": "elitea-testing-public#1047 (Configuration select's menu does not auto-close after a CREATE-action click, per SingleSelect.jsx's skipNextCloseRef mechanism — re-clicking the trigger afterward hits an obscured element) is already filed and directly shapes how ELITEA-1976's step 9-10 should be implemented (don't blindly re-click; either check state or do a fresh reload). Not re-filed.",
+          "ref": "elitea-testing-public#1047"
+        },
+        {
+          "kind": "note",
+          "note": "A dangling, unreachable local git commit from a prior session (SHA 8c448d99 in EliteaUI, referenced by an orphaned commit message) claims a testid 'credential-form-api-error-message' was added to automation/testids — verified via fresh git fetch that it is absent from BOTH main and automation/testids today. The commit object exists but is reachable from no branch. Treated as needs-adding, not exis… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Four testid gaps identified with exact EliteaUI source pointers for the implementer's add-data-testid pass: (1) Configuration dropdown trigger has no testid despite Select.SingleSelect already supporting a dataTestId prop that CredentialsSelect.jsx simply never passes; (2) CREATE-action menu items (variant:'action') bypass the sibling 'saved' branch's automatic data-testid={option.testId ?? select… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Known, already-filed defect elitea-testing-public#1004 reproduces deterministically (1/1): GitHub credential create form's Save button stays enabled with Access Token empty once Token auth is selected, and the click succeeds (200), persisting access_token: null. Asserted via expect.soft() per the sanctioned-RED merge-gate exception; no new ticket filed (exact dedup match).",
+          "ref": "elitea-testing-public#1004"
+        },
+        {
+          "kind": "note",
+          "note": "ToolkitAPI.create_github_toolkit() (existing shared helper) hardcodes github_configuration.private=False, which mismatches a credential created in the identity's own personal project against CredentialsSelect.jsx's exact-match selectedOption lookup -- produces an immediate false mismatch state before any deletion step. Not a product bug (test-helper default); worked around per-test via create_tool… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Re-hit the already-documented SingleSelect.jsx data-testid (not dataTestId) prop-name trap (see .agents/memory/test-automation-engineer/fork_wizard_and_projectselect_testid_passthrough.md) while wiring the new toolkit-credential-select-{type} testid onto CredentialsSelect.jsx. Caught via a scratch diagnostic dump before it reached any test run or the PR. That memory entry is un-indexed -- this is … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1976 AFS's own re-verification found elitea-testing-public#999 (GitHub toolkit type unavailable for creation) no longer reproduces as of this session -- flagged there for a human to re-verify and close; not re-actioned by the implementer (closure is human-only).",
+          "ref": "elitea-testing-public#999"
+        },
+        {
+          "kind": "note",
+          "note": "expect.soft(create_page.save_button).to_be_disabled() correctly implements the sanctioned-RED pattern for known defect #1004 (deterministic, single-cause, OPEN, linked via allure.issue + inline comment). Verified pytest-playwright's built-in _soft_scope() context manager (pytest_playwright.py) auto-aggregates soft-assertion failures at test end without any extra plumbing needed — no masking risk.",
+          "ref": "automation/tests/ui/toolkits/test_credential_duplicate_mismatch_validation.py:129"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for added get_by_*/query_selector/page.locator/.locator( hits 4 lines, all `self.page.locator(self.<UPPER_CASE_CONSTANT>.format(...))`. One-hop check: CREDENTIAL_SELECT_TRIGGER, SELECT_GROUP_HEADER, SELECT_OPTION are all class-level `[data-testid=\"...\"]`/`[data-testid='...']` string templates. Compliant testid-only locating, no raw handles added. Command: `git diff 7450f097..tests/… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/toolkit_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Cross-checked all 6 testids the diff references (toolkit-credential-select-{type}, select-group-header-{key}, select-option-{value}, credential-select-refresh-button, credential-select-mismatch-footer, credential-form-api-error-message) against `origin/automation/testids` (fresh `git fetch origin` run first) — all present, all committed under [EL-1976]-prefixed commits. None yet on `origin/main` (… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@CredentialsSelect.jsx / SingleSelect.jsx / SingleSelectMenuItem.jsx / CredentialMismatchFooter.jsx / CredentialForm.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer substituted ToolkitAPI.create_toolkit() (raw settings dict, private=True) for the AFS-suggested create_github_toolkit() helper, with an inline comment explaining the helper hardcodes private=False which would trigger the mismatch state prematurely. Verified against automation/api/client.py:1598 — claim is correct. This is a sound implementation-technique substitution, not an observable… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/toolkits/test_credential_usage_in_toolkit_flows.py:78"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation done for all three cases (TMS snapshot ↔ AFS ↔ diff): every Coverage-Map Axis-1 row traced to a real assertion at the claimed step; Axis-2 additions are grounded; no already-covered/extend-existing dispositions in this batch so the merged-target rule doesn't apply here. All reused page-object methods (navigate_to_toolkit, wait_for_network, switch_project, get_selected_project_te… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "n/a"
+        }
+      ],
+      "afs": "test-specs/toolkits-credentials/l1_credential-usage-in-toolkit-flows_ELITEA-1979.md",
+      "branch": "tests/1976-1978-1979-credential-dropdown-flows",
+      "pr": 1090
+    },
+    {
+      "id": "ELITEA-1890",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1891's case text implies a Pinned->Published->Draft->base three-tier version-dropdown ordering. Live product (VersionSelect.jsx's versionSelectOptions sort comparator) has no status tier at all: real rule is [pinned] -> [everything else by created_at DESCENDING, Published/Draft interleaved] -> [base, only when base isn't itself pinned]. Verified live by constructing base->v1-draft->v2-publi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1091"
+        },
+        {
+          "kind": "note",
+          "note": "Two testid gaps in the Agent version-pin flow, both confirmed absent live and flagged in ELITEA-1891's AFS for the implementer to close via add-data-testid before writing the test: (1) the pin <svg> icon inside each version-option-{name} dropdown option (version.helpers.jsx's buildVersionOption -> IconBlock) has no own testid -- scoped fix, chain a new version-option-pin-icon off the existing VERS… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/l2_version-selector-lists-all-versions-order-metadata_ELITEA-1891.md"
+        },
+        {
+          "kind": "note",
+          "note": "A freshly created agent's meta.default_version_id already equals its own base version's id -- base is the PINNED version (sorts first, carries the pin icon) on a brand-new agent, not last. It only moves to the last dropdown position once a different version is explicitly re-pinned via 'Set as a default'. Any future case/spec asserting 'base appears last' unconditionally will be non-deterministic u… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1890 resolves to extend-existing against the MERGED ELITEA-1888 spec (automation/tests/ui/agents/test_agent_save_as_version.py, origin/automation/base@2b03f6c0), not a fresh spec -- that spec already proves the forward version-switch direction verbatim; only the switch-BACK round-trip (case steps 5-6) is a gap, closeable with 2 new assertions and zero new testids/page-object methods. Implem… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/lextend_switching-versions-updates-form-fields-correctly_ELITEA-1890.md"
+        },
+        {
+          "kind": "note",
+          "note": "No Playwright MCP tool was available in this session (ToolSearch found none registered). Used the project's own Playwright Python sync API directly via disposable scratch scripts run through ../.venv/bin/python from automation/ (importing config.settings + api.client.AgentAPI(browser_cookies=[])), per playwright-testing's documented CLI/shell fallback tier. Worked cleanly for both live exploration… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Race condition found while implementing ELITEA-1890's switch-back assertion: after clicking a VERSION dropdown option, the trigger text (agent-version-selector-trigger) updates BEFORE the Instructions field's own value has refetched — a single point-in-time get_instructions() read right after waiting on the trigger text can still catch the stale (pre-switch) value. Fixed by adding a second wait_fo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_save_as_version.py"
+        },
+        {
+          "kind": "note",
+          "note": "SetDefaultVersionDialog.jsx is a shared component (agent + skill 'Set as default', entityType prop) with no testid on its confirm button before this run. Added a confirmButtonTestId prop instead of hardcoding a testid in the shared dialog, wired only at the agent call site (useSetDefaultVersion.hooks.jsx) — the skill call site (EditSkill.jsx) is untouched and still has no testid on that button, si… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/src/[fsd]/entities/version/ui/SetDefaultVersionDialog.jsx"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — POM discipline violation, beyond the mechanical grep. The new Step 8 (ELITEA-1890 extension) embeds raw CSS-attribute selector strings directly inside the spec file, in two `page.wait_for_function()` JS blobs: `document.querySelector('[data-testid=\"agent-version-selector-trigger\"]')` (line 217) and `document.querySelector('[data-testid=\"agent-instructions-input\"]')` (line 235). Both te… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_save_as_version.py:217,235"
+        },
+        {
+          "kind": "clarification",
+          "note": "Precedent for the fix already exists in this same file: `confirm_new_version()` (pre-existing, not touched by this diff) uses the identical raw-querySelector-in-wait_for_function pattern for the SAME `agent-version-selector-trigger` testid, but correctly keeps it INSIDE a page-object method. The clean fix is to extract two new page-object `wait_for_*` methods (matching the file's existing conventi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checked out clean. Mechanical grep on the full diff: `git diff origin/tests/batch-approved-top10...origin/tests/1890-1891-version-selector-switch-order | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` — 6 hits, ALL compliant (chain off `VERSION_OPTION`/`VERSION_OPTION_P… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Both raw-selector findings collapsed into one fix: the compliant replacements (select_version_by_name() + expect(...).to_have_value()) already existed on the trunk before this branch — no new page-object method had to be authored. Worth remembering for future version-selector/form-field revert waits in this suite: reach for these two before writing a fresh wait_for_function.",
+          "ref": "automation/pages/agent_detail_page.py:select_version_by_name; automation/pages/mcp_form_page.py:513 (expect(...).to_have_value precedent)"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED via a genuine fix, verified against the right code: commit acfe57ad replaced the raw testid-embedded CSS-selector strings in test_agent_save_as_version.py Step 8 (document.querySelector('[data-testid=\"agent-version-selector-trigger\"]') + a hand-rolled wait_for_function) with detail_page.select_version_by_name(\"base\") (pre-existing compliant page-object method, ELITE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_save_as_version.py:206-238"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep command + output for the record: `git diff b020b0f7..origin/tests/1890-1891-version-selector-switch-order | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` -> every code hit (agent_detail_page.py lines 70/85/86/105, test file line ~971) resolves to a class-level … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_detail_page.py:69-107"
+        },
+        {
+          "kind": "note",
+          "note": "Both new testids this unit depends on are confirmed live on origin/automation/testids (fresh: `git -C ../EliteaUI grep -n \"version-option-pin-icon\" origin/automation/testids -- src/` and same for `agent-set-default-version-confirm-button`) — both wired in commit EliteaAI/EliteaUI@4e5b819d (version.helpers.jsx:47 pin icon; useSetDefaultVersion.hooks.jsx:104 confirmButtonTestId prop, correctly NOT h… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "CLARIFICATION EliteaAI/elitea-testing-public#1091 (ELITEA-1891's case-text ordering drift) cross-verified independently against the live EliteaUI source: fetched, labeled `question`, OPEN, and its quoted VersionSelect.jsx sort comparator matches the actual file verbatim (lines 79-90) including LATEST_VERSION_NAME='base' (version.constants.js:1). The AFS's classification (reverse-masking guard — li… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/l2_version-selector-lists-all-versions-order-metadata_ELITEA-1891.md"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking documentation staleness: the ELITEA-1890 AFS's own Coverage Map (Step 5 row, 'Asserted where' cell) still cites the raw open+click+wait_for_function code sample as the implementation, even though the merged code uses the compliant select_version_by_name()+expect() alternative the AFS's own prose had already sanctioned ('the implementer may use select_version_by_name(\"base\") instead ..… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/lextend_switching-versions-updates-form-fields-correctly_ELITEA-1890.md:82-90"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1891 Step 4 ('Verify each entry shows version name and creation date/time') is spot-checked against one representative entry (V2_NAME) via a regex on its text, not literally every one of the 4 dropdown entries. This matches how the AFS itself scoped the check and is a reasonable proxy since all options render through the same buildVersionOption() helper — flagging for visibility, not blocki… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_version_selector_order.py:225-235"
+        }
+      ],
+      "afs": "test-specs/agents/lextend_switching-versions-updates-form-fields-correctly_ELITEA-1890.md",
+      "branch": "tests/1890-1891-version-selector-switch-order",
+      "pr": 1092
+    },
+    {
+      "id": "ELITEA-1891",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1891's case text implies a Pinned->Published->Draft->base three-tier version-dropdown ordering. Live product (VersionSelect.jsx's versionSelectOptions sort comparator) has no status tier at all: real rule is [pinned] -> [everything else by created_at DESCENDING, Published/Draft interleaved] -> [base, only when base isn't itself pinned]. Verified live by constructing base->v1-draft->v2-publi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1091"
+        },
+        {
+          "kind": "note",
+          "note": "Two testid gaps in the Agent version-pin flow, both confirmed absent live and flagged in ELITEA-1891's AFS for the implementer to close via add-data-testid before writing the test: (1) the pin <svg> icon inside each version-option-{name} dropdown option (version.helpers.jsx's buildVersionOption -> IconBlock) has no own testid -- scoped fix, chain a new version-option-pin-icon off the existing VERS… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/l2_version-selector-lists-all-versions-order-metadata_ELITEA-1891.md"
+        },
+        {
+          "kind": "note",
+          "note": "A freshly created agent's meta.default_version_id already equals its own base version's id -- base is the PINNED version (sorts first, carries the pin icon) on a brand-new agent, not last. It only moves to the last dropdown position once a different version is explicitly re-pinned via 'Set as a default'. Any future case/spec asserting 'base appears last' unconditionally will be non-deterministic u… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1890 resolves to extend-existing against the MERGED ELITEA-1888 spec (automation/tests/ui/agents/test_agent_save_as_version.py, origin/automation/base@2b03f6c0), not a fresh spec -- that spec already proves the forward version-switch direction verbatim; only the switch-BACK round-trip (case steps 5-6) is a gap, closeable with 2 new assertions and zero new testids/page-object methods. Implem… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/lextend_switching-versions-updates-form-fields-correctly_ELITEA-1890.md"
+        },
+        {
+          "kind": "note",
+          "note": "No Playwright MCP tool was available in this session (ToolSearch found none registered). Used the project's own Playwright Python sync API directly via disposable scratch scripts run through ../.venv/bin/python from automation/ (importing config.settings + api.client.AgentAPI(browser_cookies=[])), per playwright-testing's documented CLI/shell fallback tier. Worked cleanly for both live exploration… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Race condition found while implementing ELITEA-1890's switch-back assertion: after clicking a VERSION dropdown option, the trigger text (agent-version-selector-trigger) updates BEFORE the Instructions field's own value has refetched — a single point-in-time get_instructions() read right after waiting on the trigger text can still catch the stale (pre-switch) value. Fixed by adding a second wait_fo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_save_as_version.py"
+        },
+        {
+          "kind": "note",
+          "note": "SetDefaultVersionDialog.jsx is a shared component (agent + skill 'Set as default', entityType prop) with no testid on its confirm button before this run. Added a confirmButtonTestId prop instead of hardcoding a testid in the shared dialog, wired only at the agent call site (useSetDefaultVersion.hooks.jsx) — the skill call site (EditSkill.jsx) is untouched and still has no testid on that button, si… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/src/[fsd]/entities/version/ui/SetDefaultVersionDialog.jsx"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — POM discipline violation, beyond the mechanical grep. The new Step 8 (ELITEA-1890 extension) embeds raw CSS-attribute selector strings directly inside the spec file, in two `page.wait_for_function()` JS blobs: `document.querySelector('[data-testid=\"agent-version-selector-trigger\"]')` (line 217) and `document.querySelector('[data-testid=\"agent-instructions-input\"]')` (line 235). Both te… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_save_as_version.py:217,235"
+        },
+        {
+          "kind": "clarification",
+          "note": "Precedent for the fix already exists in this same file: `confirm_new_version()` (pre-existing, not touched by this diff) uses the identical raw-querySelector-in-wait_for_function pattern for the SAME `agent-version-selector-trigger` testid, but correctly keeps it INSIDE a page-object method. The clean fix is to extract two new page-object `wait_for_*` methods (matching the file's existing conventi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checked out clean. Mechanical grep on the full diff: `git diff origin/tests/batch-approved-top10...origin/tests/1890-1891-version-selector-switch-order | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` — 6 hits, ALL compliant (chain off `VERSION_OPTION`/`VERSION_OPTION_P… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Both raw-selector findings collapsed into one fix: the compliant replacements (select_version_by_name() + expect(...).to_have_value()) already existed on the trunk before this branch — no new page-object method had to be authored. Worth remembering for future version-selector/form-field revert waits in this suite: reach for these two before writing a fresh wait_for_function.",
+          "ref": "automation/pages/agent_detail_page.py:select_version_by_name; automation/pages/mcp_form_page.py:513 (expect(...).to_have_value precedent)"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED via a genuine fix, verified against the right code: commit acfe57ad replaced the raw testid-embedded CSS-selector strings in test_agent_save_as_version.py Step 8 (document.querySelector('[data-testid=\"agent-version-selector-trigger\"]') + a hand-rolled wait_for_function) with detail_page.select_version_by_name(\"base\") (pre-existing compliant page-object method, ELITE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_save_as_version.py:206-238"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep command + output for the record: `git diff b020b0f7..origin/tests/1890-1891-version-selector-switch-order | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` -> every code hit (agent_detail_page.py lines 70/85/86/105, test file line ~971) resolves to a class-level … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_detail_page.py:69-107"
+        },
+        {
+          "kind": "note",
+          "note": "Both new testids this unit depends on are confirmed live on origin/automation/testids (fresh: `git -C ../EliteaUI grep -n \"version-option-pin-icon\" origin/automation/testids -- src/` and same for `agent-set-default-version-confirm-button`) — both wired in commit EliteaAI/EliteaUI@4e5b819d (version.helpers.jsx:47 pin icon; useSetDefaultVersion.hooks.jsx:104 confirmButtonTestId prop, correctly NOT h… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "CLARIFICATION EliteaAI/elitea-testing-public#1091 (ELITEA-1891's case-text ordering drift) cross-verified independently against the live EliteaUI source: fetched, labeled `question`, OPEN, and its quoted VersionSelect.jsx sort comparator matches the actual file verbatim (lines 79-90) including LATEST_VERSION_NAME='base' (version.constants.js:1). The AFS's classification (reverse-masking guard — li… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/l2_version-selector-lists-all-versions-order-metadata_ELITEA-1891.md"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking documentation staleness: the ELITEA-1890 AFS's own Coverage Map (Step 5 row, 'Asserted where' cell) still cites the raw open+click+wait_for_function code sample as the implementation, even though the merged code uses the compliant select_version_by_name()+expect() alternative the AFS's own prose had already sanctioned ('the implementer may use select_version_by_name(\"base\") instead ..… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/lextend_switching-versions-updates-form-fields-correctly_ELITEA-1890.md:82-90"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-1891 Step 4 ('Verify each entry shows version name and creation date/time') is spot-checked against one representative entry (V2_NAME) via a regex on its text, not literally every one of the 4 dropdown entries. This matches how the AFS itself scoped the check and is a reasonable proxy since all options render through the same buildVersionOption() helper — flagging for visibility, not blocki… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_version_selector_order.py:225-235"
+        }
+      ],
+      "afs": "test-specs/agents/l2_version-selector-lists-all-versions-order-metadata_ELITEA-1891.md",
+      "branch": "tests/1890-1891-version-selector-switch-order",
+      "pr": 1092
+    },
+    {
+      "id": "ELITEA-1877",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Filed EliteaAI/elitea-testing-public#1093 (MINOR): the Agent detail page's Run History view has no way to close/exit once opened. ConfigurationTab.jsx only renders ConfigurationRightContent (which holds the ViewRunHistoryButton/pipeline-history-tab control) when !showHistory, so the button that opened History unmounts along with it — confirmed live, a second click on pipeline-history-tab times out… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1093"
+        },
+        {
+          "kind": "note",
+          "note": "The shared ViewRunHistoryButton.jsx component (src/[fsd]/shared/ui/button/) hardcodes data-testid=\"pipeline-history-tab\" even though it's reused by Agents, Pipelines, and Toolkit/MCP run-history — a feature-scoped-sounding name baked into a shared component, which is exactly the anti-pattern role-overrides.md's 'shared components never hardcode feature-scoped testids' rule targets. Pre-existing on… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Test-data mechanism worth reusing elsewhere: on the Agents page, 'Clear chat' (ChatBox.jsx onClickClearChat, isAgentsPage branch) does NOT delete/reset the current server-side conversation — it starts a fresh local, unsaved (isNew: true) conversation as the new active one. The old conversation survives untouched as its own Run History row. This is the cheapest way to generate 2+ distinct run-histo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS Test Data drift: the draft's disposable-agent payload used reasoning_effort:\"none\" (mirroring test_agent_llm_selector_anthropic_models.py), but that pattern is confirmed (ELITEA-1897/#560) to 500 the conversation-create call on any agent whose embedded chat is actually opened — which this case's steps 2-6 require. Caught before writing the test via test-automation-engineer memory (reasoning_ef… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/l2_run-history-select-past-run-loads-messages_ELITEA-1877.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS Axis 2 (Coverage Map) said 'nothing else added beyond the case', but the AFS's own Expected Results section required 'No console errors during the flow' — a gap between the two AFS sections. Closed it by adding the project's standard console-error/warning listener + end-of-flow assertion (same pattern as test_agent_llm_selector_anthropic_models.py) and amended Axis 2 to record it.",
+          "ref": "test-specs/agents/l2_run-history-select-past-run-loads-messages_ELITEA-1877.md"
+        },
+        {
+          "kind": "note",
+          "note": "The known #1093 defect (Run History has no close/exit control) noted in the AFS did not need any test handling — case steps never require closing History, and the test doesn't attempt it."
+        },
+        {
+          "kind": "note",
+          "note": "RUN_HISTORY_LIST_ITEM_SELECTED_SELECTOR is defined but never referenced anywhere in the diff or the file (grep confirms zero other hits) — is_run_history_item_selected() reads .get_attribute(\"data-selected\") directly instead. Dead code; harmless (it is a compliant [data-testid= selector, not a policy violation) but should be removed or wired in on the next touch of this file.",
+          "ref": "automation/pages/agent_detail_page.py:217-219"
+        },
+        {
+          "kind": "note",
+          "note": "Step 4 adds `assert not is_run_history_item_selected(NEWEST_RUN_INDEX)` (the non-clicked row stays unselected) — a real, correct strengthening, but it is not reflected as an Axis-2 addition in the AFS (only the console-listener and the button-unmount note were added at implementation time). Minor doc-completeness gap, not a functional problem — non-blocking.",
+          "ref": "automation/tests/ui/agents/test_agent_run_history_select_past_run.py:174-177"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amendments (reasoning_effort low, console-listener Axis-2 addition) shipped in the same PR as required. PROVENANCE table re-verified independently: pipeline-history-tab confirmed on origin/main (ViewRunHistoryButton.jsx); run-history-list-item + data-selected confirmed on origin/automation/testids only (EliteaUI@a5a9d0f5, scoped to exactly the row Box, no stray testids on untouched siblings) —… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/l2_run-history-select-past-run-loads-messages_ELITEA-1877.md"
+        }
+      ],
+      "afs": "test-specs/agents/l2_run-history-select-past-run-loads-messages_ELITEA-1877.md",
+      "branch": "tests/ELITEA-1877-run-history-select-past-run",
+      "pr": 1094
+    },
+    {
+      "id": "ELITEA-1880",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Testid gaps (implementer work via add-data-testid, scoped to exactly what this case's steps touch): settings gear button (aria-label=\"model settings menu\" only) -> `model-settings-button`; LLMSettingsDialog root -> `model-settings-dialog` (BaseModal already supports dataTestId/titleTestId/closeButtonTestId props, LLMSettingsDialog.jsx just doesn't wire them — pure threading gap); Reasoning slider … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/l2_llm-selector-change-model-settings-dialog-persist_ELITEA-1880.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 6 says the Max Completion Tokens toggle reads 'Auto/Custom'; live UI label is 'Default/Custom' (internal value is 'auto' but the rendered label is 'Default' — MaxTokensSection.jsx). Also the step-6 phrase 'Reasoning slider... for standard models' is imprecise: the code branches on model.supports_reasoning (Reasoning slider for reasoning-capable models, Creativity/Temperature slider other… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/l2_llm-selector-change-model-settings-dialog-persist_ELITEA-1880.md"
+        },
+        {
+          "kind": "note",
+          "note": "No Playwright MCP tool was available this session (ToolSearch found no mcp__playwright__* tools). Exploration used a standalone sync_playwright Python script (not committed) importing AgentDetailPage/AgentAPI directly — same live observations a Playwright-MCP session would produce. Recording the tool substitution per the dispatch's discipline for a genuinely different allowed route to the same goa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing tech debt spotted, not introduced/fixed here: AgentFormPage.save_button's LocatorDescriptor (automation/pages/agent_form_page.py:145-148) populates a forbidden fallback= lambda alongside its testid. Out of scope for this case (the save button already works and isn't being modified), flagging for whoever next touches that file.",
+          "ref": "automation/pages/agent_form_page.py:145"
+        },
+        {
+          "kind": "note",
+          "note": "DiscreteSlider/ReasoningSlider (src/[fsd]/widgets/llm-model-selector/ui/settings/ReasoningSlider.jsx -> shared src/[fsd]/shared/ui/slider/DiscreteSlider.jsx) renders its Low/Medium/High labels as raw lowercase DOM text (REASONING_EFFORT_VALUES = {Low:'low', Medium:'medium', High:'high'}); the capitalized look is CSS text-transform, not DOM content. A .text_content() read must compare case-insensit… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/agents/l2_llm-selector-change-model-settings-dialog-persist_ELITEA-1880.md"
+        },
+        {
+          "kind": "defect",
+          "note": "automation/tests/ui/agents/test_agent_llm_selector_model_settings_persist.py:213 — @allure.issue URL points at 'ELITEA-1880_llm-selector-change-model-settings-dialog-persist.md', but the actual case file in EliteaAI/onetest-ai-tm-Elitea is 'ELITEA-1880_llm-selector-change-model-verify-settings-dialog-save-persist.md' (confirmed via `ls ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/age… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/agents/test_agent_llm_selector_model_settings_persist.py:213"
+        },
+        {
+          "kind": "note",
+          "note": "automation/pages/agent_detail_page.py (is_reasoning_slider_visible, ~line 2617) swallows a bare `except Exception` around the `wait_for(state=\"visible\")` call rather than the specific Playwright TimeoutError. Practically harmless here (a broken locator would just fail the caller's `assert`, so it isn't defect-masking), but a narrower except would surface a genuine coding bug instead of silently re… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_detail_page.py:2617"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation confirmed clean on all axes. (1) TMS case -> AFS: all 9 steps + both preconditions have Coverage-Map rows, both case-text-drift clarifications (Reasoning-slider condition = model.supports_reasoning not 'standard models'; toggle label is 'Default' not 'Auto', both confirmed against live EliteaUI source: MaxTokensSection.jsx / LLMSettings.jsx) are genuine drift, correctly filed as CLAR… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator-policy grep on the scoped PR #1095 diff (confirmed via git log that this branch's unique commits vs trunk are 662988c7 [AFS, already on trunk before branch cut] + 40a1fec3 [this implementation]; `gh pr diff 1095` correctly scopes to just automation/pages/agent_detail_page.py + the new test file): `grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_ti… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/agents/l2_llm-selector-change-model-settings-dialog-persist_ELITEA-1880.md",
+      "branch": "tests/ELITEA-1880-llm-selector-model-settings-dialog-persist",
+      "pr": 1095
+    },
+    {
+      "id": "ELITEA-1993",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-1993 case Test Data: 'A string of 65 or more characters' as an invalid Name input is unreachable via manual UI editing -- the Name <input> has a native HTML maxlength=64 (MUI slotProps.htmlInput.maxLength) that truncates ANY input (typed keystrokes AND Playwright .fill()) to exactly 64 chars before React validation ever sees a longer value. The length-exceeds-64 branch of validateSkillDraft… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_build-with-ai-name-field-validation_ELITEA-1993.md#known-defects-found-during-exploration"
+        },
+        {
+          "kind": "note",
+          "note": "No Playwright MCP tool was available in this session/environment (ToolSearch found nothing under browser_navigate/browser_snapshot/etc or mcp__playwright__*). Used a scratch pytest probe script (deleted after the run, never committed) driving the project's own page objects + fixtures instead. Same gap other units in this batch hit and worked around the same way -- may be worth a scout follow-up if… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No product defects found. AFS's two documented Known Defects (both case-text-drift clarifications, not product bugs — Precondition wording, and the '>64 chars' case-text expectation being unreachable via manual editing due to native maxlength truncation) were both re-verified against live EliteaUI source during implementation and confirmed accurate; nothing new to add.",
+          "ref": "test-specs/skills/l2_build-with-ai-name-field-validation_ELITEA-1993.md"
+        },
+        {
+          "kind": "note",
+          "note": "Testid generate-skill-review-name-helper-text is on automation/testids (EliteaAI/EliteaUI@8e78723b) but not yet on main — same promotion-pending state as the rest of the batch's testids; closure record should list it alongside the others."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (case ↔ AFS ↔ diff) is clean. TMS case ELITEA-1993 (.agents/automation/approved-top10/cases/ELITEA-1993.md) → AFS (test-specs/skills/l2_build-with-ai-name-field-validation_ELITEA-1993.md) → PR diff (automation/pages/generate_skill_modal_page.py + automation/tests/ui/skills/test_skill_build_with_ai.py, commit bf833088 on tests/ELITEA-1993-build-with-ai-name-field-validation, cut from … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-handle grep run against the full diff, per role-overrides.md § Reviewer slot: `git diff tests/batch-approved-top10...tests/ELITEA-1993-build-with-ai-name-field-validation | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 0 hits. The one new locator (`review_name_helper_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Independently verified the testid the AFS cites (commit 8e78723b, generate-skill-review-name-helper-text) is actually present in the local EliteaUI checkout: `grep -rn \"generate-skill-review-name-helper-text\" ../EliteaUI/src/` on branch automation/testids hits GenerateSkillReviewForm.jsx:45 (`'data-testid': 'generate-skill-review-name-helper-text'`). Provenance claim checks out.",
+          "ref": "automation/pages/generate_skill_modal_page.py:100"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case Step 7 literally says 'attempting to submit ... is blocked' — the implementation never clicks the disabled 'Create Skill' button; it asserts approve_button.is_enabled()==False (per step, already captured in Steps 2-5) plus a whole-run zero-POST-request check. This is the AFS's own documented design (Coverage Map row 7, disposition 'asserted'), not implementer drift, and is the correct automat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_build_with_ai.py:872"
+        },
+        {
+          "kind": "note",
+          "note": "Both Known Defects (#1 precondition case-text drift, #2 the >64-char variant being unreachable via manual editing due to native maxlength truncation) are correctly classified as clarifications, not product bugs, following the established ELITEA-1990/1989/2001 local precedent of not filing separate tickets for this exact pattern. Implementation's Step 6 correctly asserts the corrected behavior (tru… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_build-with-ai-name-field-validation_ELITEA-1993.md:190"
+        }
+      ],
+      "afs": "test-specs/skills/l2_build-with-ai-name-field-validation_ELITEA-1993.md",
+      "branch": "tests/ELITEA-1993-build-with-ai-name-field-validation",
+      "pr": 1096
+    }
+  ],
+  "totals": {
+    "blocked": 10
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/toolkits/test_credential_duplicate_mismatch_validation.py",
+      "ticket": "elitea-testing-public#1004",
+      "why": "GitHub credential create form doesn't enforce Access Token as required once Token auth is selected; Save stays enabled and the backend persists access_token: null. expect.soft() + '# Known defect: #1004' keeps the test honestly red until the product fix ships.",
+      "test_id": "TestCredentialDuplicateMismatchValidation::test_credential_duplicate_and_empty_required_field_validation",
+      "case_ids": [
+        "ELITEA-1978"
+      ],
+      "unit": "ELITEA-1976+ELITEA-1978+ELITEA-1979"
+    }
+  ],
+  "parked": []
+}
