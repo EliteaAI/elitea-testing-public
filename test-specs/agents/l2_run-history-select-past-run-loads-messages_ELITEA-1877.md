@@ -16,11 +16,20 @@
 
 ## Test Data
 ### generate-per-test (in test setup, cleaned up in its own teardown)
-- Dedicated disposable agent via `agent_api.create_agent_full(...)`, same payload
-  shape as `test_agent_llm_selector_anthropic_models.py`'s `_build_dedicated_agent_payload`
-  (`reasoning_effort: "none"`, omit `temperature` — avoids the open #524-class 400 on the
-  project's reasoning-capable default model). `settings.default_model_name` /
-  `settings.default_model_project_id`.
+- Dedicated disposable agent via `agent_api.create_agent_full(...)`. **Amended at
+  implementation time (2026-08-02):** the original draft mirrored
+  `test_agent_llm_selector_anthropic_models.py`'s `_build_dedicated_agent_payload`
+  (`reasoning_effort: "none"`, omit `temperature`) — but that pattern is documented
+  (test-automation-engineer memory `reasoning_effort_none_breaks_embedded_chat.md`,
+  confirmed in `test_agent_management.py`'s `_build_execution_agent_payload` docstring,
+  ELITEA-1897/#560) to 500 the `POST .../conversations/prompt_lib/{project}` call
+  whenever the agent actually opens the embedded chat — which THIS case's own steps 2
+  and 3-6 require (two chat messages + Run History). Use
+  `reasoning_effort: "low"` instead (avoids both the open #524 creation-400 and the
+  #560 chat-500, and stays within a normal 30s response wait — `"medium"` is safe but
+  too slow). Omit `temperature` and the model fields (`model_name`/`model_project_id`)
+  entirely, letting the backend apply its own valid default — same shape as
+  `_build_execution_agent_payload` in `test_agent_management.py`.
 - Two distinct chat messages sent through the embedded chat panel, each producing its
   own server-side conversation (run-history entry):
   - Message A (older run): e.g. `f"first-run-{uuid4().hex[:6]}"`
@@ -101,7 +110,10 @@
   gone from the DOM) — *added: this is why the test must not try to "close" Run History
   via the same button; see § Known Defects. Not a case requirement, but the implementer
   needs to know the button won't be there to click again.*
-- (nothing else added beyond the case)
+- **Amended at implementation time (2026-08-02):** `§ Expected Results` already stated
+  "No console errors during the flow" but this row was missing from Axis 2 — added the
+  standard project-wide console-error/warning listener (same pattern as
+  `test_agent_llm_selector_anthropic_models.py`) asserted at the end of the flow.
 
 ## Cleanup
 1. Delete the disposable agent via `agent_api.delete_agent(agent_id)` (also deletes its
