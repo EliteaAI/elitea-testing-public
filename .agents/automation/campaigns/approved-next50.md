@@ -109,3 +109,10 @@ Verified 50/50 covered, no dupes/gaps (checked programmatically before re-invoki
 - 2026-08-02 propose — conductor wf_aa16c5c4-f74 launched
 - 2026-08-02 plan-proposed — 11 waves, foundation null, awaiting operator checkpoint
 - 2026-08-02 operator approved a consolidation to 5 waves — re-invoked wf_aa16c5c4-f74 with { plan } (task w6x0n1m8v)
+- 2026-08-02 operator asked to further consolidate: once wave-01 lands, merge waves 02-05 into ONE wave (39 cases:
+  1851,1852,1856,2004,2010,1857,1858,1862,2028,2162,2135,2137,2149,2168,2197,2200,2202,2203,2204,2211,2212,2213,
+  2214,2215,2218,2075,2079,2085,2086,2087,2088,2005,2006,2007,2008,2018,2030,2031,2032 — all 10 existing clusters
+  preserved). Noted for the re-invocation after wave-01's report lands. Flagged (not blocking): this makes the
+  gate N=3-green run over ~39 spec files together plus one regression sweep — a much longer single gate than
+  wave-01's; builds still run sequentially either way so total build wall-clock is unchanged, only the gate/merge
+  round-trip count drops (2 total instead of 5).
