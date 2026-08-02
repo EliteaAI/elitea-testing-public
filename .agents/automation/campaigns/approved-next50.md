@@ -128,4 +128,5 @@ Verified 50/50 covered, no dupes/gaps (checked programmatically before re-invoki
   misread of EliteaUI source; round 3: correct, independently re-verified 2x). PR elitea-testing-public#1107
   merged (7d2f8811). TMS back-written (11 cases), closure records posted, board -> Ready, 7 branches cleaned up.
 - 2026-08-02 launching merged wave-02-05 (39 cases) — re-invoking conductor with a fresh plan (only the new
-  merged wave listed; wave-01 omitted since it already landed).
+  merged wave listed; wave-01 omitted since it already landed). NEW runId (fresh Workflow call, not a resume):
+  **wf_526976ac-58a**, task wywy5pvg9. Slug: wave-02-05-merged.
