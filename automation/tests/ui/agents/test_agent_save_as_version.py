@@ -27,11 +27,11 @@ Specs:
 
 import uuid
 
-import pytest
 import allure
-
+import pytest
 from config import settings
 from pages.agent_detail_page import AgentDetailPage
+from playwright.sync_api import expect
 
 pytestmark = [pytest.mark.ui, pytest.mark.agents]
 
@@ -210,33 +210,28 @@ class TestAgentSaveAsVersion:
                 "content (ELITEA-1890's extension — the switch-back round "
                 "trip ELITEA-1888's own steps never exercised)"
             ):
-                detail_page.open_version_selector()
-                detail_page.page.locator(detail_page.VERSION_OPTION.format("base")).click()
-                detail_page.page.wait_for_function(
-                    """() => {
-                        const el = document.querySelector('[data-testid="agent-version-selector-trigger"]');
-                        return el && el.innerText.trim() === 'base';
-                    }""",
-                    timeout=UI_ELEMENT_TIMEOUT,
-                )
+                # select_version_by_name() (pre-existing page-object method,
+                # ELITEA-1892) opens the VERSION dropdown, clicks the named
+                # option, and polls the trigger text / Information-panel
+                # version-id / URL until they converge — the compliant
+                # replacement for a raw open+click+wait_for_function
+                # sequence built here in the test file.
+                detail_page.select_version_by_name("base", timeout=UI_ELEMENT_TIMEOUT)
                 assert detail_page.get_version_selector_value() == "base", (
                     "VERSION selector should show 'base' after switching back"
                 )
                 # The Instructions field's own re-render race (confirmed live,
-                # this run): the VERSION trigger's text updates BEFORE the
-                # Instructions field's value has actually refetched/reset —
-                # a single point-in-time get_instructions() read right after
-                # the trigger-text wait can still catch the STALE (v2-test)
-                # value. Poll the field's own value, not just the trigger,
-                # mirroring confirm_new_version()'s "URL updates before the
-                # VERSION selector's text" race documented above.
-                detail_page.page.wait_for_function(
-                    """expected => {
-                        const el = document.querySelector('[data-testid="agent-instructions-input"]');
-                        return !!el && el.value === expected;
-                    }""",
-                    arg=original_instructions,
-                    timeout=UI_ELEMENT_TIMEOUT,
+                # this run): select_version_by_name()'s convergence check
+                # covers the VERSION trigger text / Information-panel
+                # version-id / URL — not the Instructions field's value,
+                # which can still lag a beat behind and read as the STALE
+                # (v2-test) value right after the above assertion passes.
+                # Playwright's own auto-retrying `expect(...).to_have_value()`
+                # polls the page object's `instructions_input` LocatorDescriptor
+                # field directly (no raw selector, no wait_for_function/
+                # document.querySelector) until it settles or times out.
+                expect(detail_page.instructions_input).to_have_value(
+                    original_instructions, timeout=UI_ELEMENT_TIMEOUT
                 )
                 assert detail_page.get_instructions() == original_instructions, (
                     "Instructions field should revert to the original 'base' "
