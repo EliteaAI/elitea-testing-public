@@ -134,7 +134,7 @@ Shared editor-surface handles per ELITEA-1851's Concrete Handles table
 | Delete confirmation message | `delete-confirm-message` — **EXISTS**, text = `"Are you sure to delete the machine_learning.py?"` (live) | confirmed live; see Coverage Map clarification for the case-text mismatch |
 | Delete confirm button | `delete-confirm-button` — **EXISTS** | confirmed live |
 | Delete cancel button | `delete-confirm-cancel-button` — **EXISTS** (present, not exercised this run — not on this case's path) | exists per `DeleteEntityModal.jsx`, not asserted here (not part of this case's steps) |
-| Success/delete toast | no stable testid on the toast container (same gap noted in ELITEA-1852's AFS) — text-based assertion on the literal hardcoded string `"File deleted successfully"` is the accepted interim | flag as pending a toast-component testid, same as ELITEA-1852 |
+| Success/delete toast | **Implementer correction (Phase 2 — Explore), same finding as the ELITEA-1852 AFS:** the toast DOES have a stable testid — `success_toast_message` (`data-testid="toast-message"`, app-wide `<ToastComponent/>`, pre-existing in `artifacts_page.py` since ELITEA-1826/1832). `success_toast_message.text_content() == "File deleted successfully"` replaces the AFS's proposed raw-text `get_by_text()` handle. | `success_toast_message` — EXISTS, reused |
 | Download event | `page.expect_download()` around the Download menuitem click — Playwright's native download API, not a DOM locator | n/a |
 | Clipboard content | `page.evaluate("navigator.clipboard.readText()")` after granting `clipboard-read`/`clipboard-write` context permissions | n/a — browser API, not a DOM locator |
 
