@@ -2072,6 +2072,24 @@ class AgentDetailPage(AgentFormPage):
         testid = card.get_attribute("data-testid") or ""
         return testid.removeprefix("skill-card-")
 
+    def get_skill_card_by_id(self, skill_id: str) -> Locator:
+        """Return a locator for a single attached skill's card by its skill_id.
+
+        LOCATOR: `skill-card-{skill_id}` (`SKILL_CARD_SELECTOR`) — the
+        skill_id-keyed counterpart to `_skill_card()`, which is name-keyed
+        because most callers don't have the id in scope. Callers that DO
+        have the skill_id (e.g. right after creating it via the API/UI) use
+        this instead of reaching for `SKILL_CARD_SELECTOR` directly, keeping
+        the dynamic-testid template a page-object-internal detail
+        (`.claude/rules/page-objects.md` — locators are class-level fields,
+        never built in test/spec files).
+
+        Args:
+            skill_id: The attached skill's id, as embedded in its card's
+                `skill-card-{skill_id}` testid.
+        """
+        return self.page.locator(self.SKILL_CARD_SELECTOR.format(skill_id))
+
     def get_skill_version_text(self, skill_name: str, timeout: int = 5000) -> str:
         """Return the currently displayed version text on a skill's card.
 

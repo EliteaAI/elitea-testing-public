@@ -219,9 +219,7 @@ class TestBuildWithAISkillFromAgent:
                     f'added." once the async attach chain completes, got '
                     f"{counter_text!r}"
                 )
-                skill_card = page.locator(
-                    detail_page.SKILL_CARD_SELECTOR.format(skill_id)
-                )
+                skill_card = detail_page.get_skill_card_by_id(skill_id)
                 expect(skill_card).to_be_visible(timeout=SKILL_ATTACH_TIMEOUT)
 
             with allure.step(
@@ -244,9 +242,7 @@ class TestBuildWithAISkillFromAgent:
                     f'skills added." after Save + reload, got '
                     f"{counter_after_reload!r}"
                 )
-                skill_card_after_reload = page.locator(
-                    detail_page.SKILL_CARD_SELECTOR.format(skill_id)
-                )
+                skill_card_after_reload = detail_page.get_skill_card_by_id(skill_id)
                 expect(skill_card_after_reload).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
         finally:
             with allure.step("Cleanup — delete the created Skill"):
