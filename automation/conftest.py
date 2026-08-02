@@ -55,6 +55,7 @@ from fixtures.data_fixtures import (
     github_toolkit_with_invalid_credential,
     mcp_toolkit_with_tools,
     mcp_pipeline_with_toolkits,
+    hitl_runtime_pipeline,
 )
 from fixtures.cleanup_fixtures import (
     cleanup_autotest_pipelines_at_end,

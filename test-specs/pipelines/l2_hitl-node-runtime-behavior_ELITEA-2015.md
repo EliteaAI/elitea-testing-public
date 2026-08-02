@@ -22,6 +22,31 @@ documents the intended contract, fails deterministically today (sanctioned RED p
 the Merge gate), and flips green automatically the moment the backend fix ships.
 Steps 1–3 (pause + message + button-presence) are unaffected and assert normally.
 
+**Implementer correction (2026-08-02, automation pass, fresh live websocket capture,
+2/2 repro attempts each — independent of the analyst's session above):** step 4
+(Approve) does **not** reproduce the defect described above. Approve correctly sends
+`chat_continue_predict {hitl_resume:true, hitl_action:"approve"}` and the backend
+routes to the configured APPROVE target — Printer 1's formatted output
+("Final: pipeline approved") reaches the chat's `agent_response` frame. The
+"static hint, no Printer execution" symptom in `#1103`'s title/body applies to
+**Reject only**: Reject re-emits a fresh `start_task`/`agent_start` sequence and
+restarts the whole pipeline from the entry point instead of ending at END —
+confirmed 2/2. Per the reverse-masking guard (live product is ground truth over a
+filed defect's text), the shipped test asserts Approve as a normal HARD assertion
+and reserves `expect.soft()` / `# Known defect: #1103` for Reject only. A comment
+was added to `#1103` documenting this split so the ticket isn't chased for a
+non-repro Approve half.
+
+**Second implementer correction:** step 3's "Approve/Edit/Reject buttons appear"
+does not hold with this case's own precondition (APPROVE + REJECT routes only, no
+EDIT). Live-confirmed via the `agent_hitl_interrupt` payload's `available_actions`
+field: it is exactly `["approve", "reject"]` — no `edit` — because the live product
+only offers the Edit action when the HITL node has an `edit` route configured (same
+class of route-gating as ELITEA-2014's EDIT-STATE-KEY-gates-EDIT-route finding, not
+a defect). The shipped test asserts the Edit button's ABSENCE, matching the
+precondition as literally specified rather than adding an edit route the case never
+asked for.
+
 ## Preconditions
 - User is authenticated (localhost: automatic via `VITE_DEV_TOKEN`).
 - A pipeline exists with configuration: `LLM 1 → HITL 1 → Printer 1 → END`, with HITL
@@ -96,9 +121,11 @@ Steps 1–3 (pause + message + button-presence) are unaffected and assert normal
 
 ## Expected Results
 - HITL node pauses execution and renders the configured user message with Approve /
-  Edit / Reject buttons (confirmed working).
+  Reject buttons — no Edit button with this precondition's routes (confirmed
+  working; see implementer correction above re: Edit gating).
 - Approve routes execution to the configured APPROVE target and its output reaches
-  the chat (confirmed BROKEN — `#1103`).
+  the chat (**implementer correction: confirmed WORKING** — see note above; the
+  analyst's original "confirmed BROKEN — #1103" applies to Reject only).
 - Reject routes execution to END with no further node execution (confirmed BROKEN —
   `#1103`; the backend restarts the pipeline from its entry point instead).
 - No console errors at any step (confirmed — none observed).
@@ -111,10 +138,10 @@ Steps 1–3 (pause + message + button-presence) are unaffected and assert normal
 |---|---|---|---|---|
 | Precondition: pipeline `LLM → HITL → Printer → END` with `APPROVE→Printer`, `REJECT→END` | setup exists | step 1 | step 1: read-back topology | asserted |
 | 1 Create pipeline with described topology | pipeline saved | step 1 | step 1 | asserted |
-| 2 Execute pipeline with a message | execution starts | step 2 | step 2: Run indicator | asserted |
-| 3 Verify pipeline pauses at HITL — message + Approve/Edit/Reject shown | pause + message + buttons | step 3 | step 3: websocket `agent_hitl_interrupt` + button-count probe | asserted |
-| 4 Click Approve — verify flow continues to APPROVE route | flow proceeds to Printer | step 4 | step 4: `expect.soft()` + `# Known defect: #1103` | **clarification-via-defect** — case's expected result does NOT match live product; filed as `#1103`, asserted as the correct-per-case expectation with a soft-assert per the sanctioned-RED merge-gate exception |
-| 5 Verify final response appears in chat | Printer response shown | step 5 (folded into step 4) | step 4's soft-assert | **clarification-via-defect** — same defect, same disposition |
+| 2 Execute pipeline with a message | execution starts | step 2 | step 2: HARD assertion — at least one `agent_llm_chunk` websocket frame observed before the HITL pause | asserted — **implementer correction (fix round, 2026-08-02):** the case-specced "Run N details" canvas indicator does not exist on this surface (confirmed live, no separate assertion possible); the real execution-start signal asserted in code is the LLM node's streaming output (`agent_llm_chunk`) arriving before `agent_hitl_interrupt` (step 3's pause signal) — distinct from step 3's own assertion |
+| 3 Verify pipeline pauses at HITL — message + Approve/Edit/Reject shown | pause + message + buttons | step 3 | step 3: websocket `agent_hitl_interrupt` + button-count probe | asserted — **implementer correction: Edit button asserted ABSENT** (route-gated on a configured `edit` route, which this precondition doesn't have; not a defect) |
+| 4 Click Approve — verify flow continues to APPROVE route | flow proceeds to Printer | step 4 | step 4: HARD assertion (`agent_response` contains Printer 1's output) | **implementer correction: asserted normally** — live-confirmed WORKING (2/2), contradicting the analyst's original "confirmed BROKEN" note; `#1103` scoped to Reject only, see implementer comment on the ticket |
+| 5 Verify final response appears in chat | Printer response shown | step 5 (folded into step 4) | step 4's hard assertion | **implementer correction** — same as above |
 | 6 Execute again, click Reject — verify flow goes to END | pipeline ends, no Printer output | step 6 | step 6: `expect.soft()` + `# Known defect: #1103` | **clarification-via-defect** — live product restarts the pipeline instead of ending; same disposition |
 | Expected Final State: HITL pauses, shows buttons, routes correctly per action | — | steps 3–6 | steps 3–6 | partially asserted — pause/buttons pass; routing is the defect above |
 | Pass/Fail: HITL pauses correctly; routing matches configuration | — | all steps | all steps | steps 1–3 asserted; steps 4–6 soft-assert the correct behavior against `#1103` |
@@ -174,19 +201,38 @@ Steps 1–3 (pause + message + button-presence) are unaffected and assert normal
 
 ## Known Defects Found During Exploration
 
-- **[MAJOR] HITL node resume does not follow the configured Router mapping** — filed
-  as `EliteaAI/elitea-testing-public#1103`. Approve returns a static "How to
-  proceed?" hint instead of continuing to the configured APPROVE route; Reject
-  restarts the whole pipeline from the entry point instead of ending at the REJECT
-  route (`END`). Confirmed via live websocket capture, 2/2 fresh-conversation
-  attempts (one Approve run, one Reject run). Automation expects `expect.soft()`
-  with `# Known defect: #1103` on the affected assertions (steps 4–6) per the
-  sanctioned-RED merge-gate exception (`.agents/testing.md` § Merge gate) — pause
-  behavior (steps 1–3) is unaffected and asserts normally (hard assert, no
-  known-defect marker).
+- **[MAJOR] HITL node Reject resume does not end the pipeline — it restarts from
+  the entry point** — filed as `EliteaAI/elitea-testing-public#1103` (originally
+  filed against both Approve and Reject; **narrowed by the implementer's
+  automation pass, 2026-08-02**, see below). Reject sends the correct
+  `chat_continue_predict {hitl_resume:true, hitl_action:"reject"}` frame, but the
+  backend re-emits a fresh `start_task`/`agent_start` sequence and re-invokes the
+  entry-point node instead of ending at the REJECT route (`END`) — confirmed 2/2
+  fresh-conversation attempts (this session's original run + the implementer's
+  independent re-verification). Automation expects `expect.soft()`-equivalent
+  (`soft_failures` list + `pytest.fail()`, the Python shape for plain-value
+  comparisons) with `# Known defect: #1103` on the Reject assertions (step 6)
+  per the sanctioned-RED merge-gate exception (`.agents/testing.md` § Merge
+  gate).
+- **Implementer correction (2026-08-02):** Approve does **not** reproduce this
+  defect — confirmed 2/2 fresh-conversation attempts, independent of this
+  session's original observation. Approve correctly routes to the configured
+  APPROVE target; Printer 1's formatted output reaches the chat's
+  `agent_response` frame. A comment was added to `#1103` narrowing it to
+  Reject-only so the ticket isn't chased for a non-repro Approve half. Steps
+  1–5 (pause, message, button-presence, Approve) are unaffected and assert
+  normally (hard assert, no known-defect marker).
+- **Implementer correction (2026-08-02), Edit button:** case step 3 describes
+  Approve/Edit/Reject as always present, but with THIS precondition's routes
+  (APPROVE + REJECT only, no EDIT), the live product's `agent_hitl_interrupt`
+  payload reports `available_actions: ["approve", "reject"]` — no `edit`. The
+  Edit action is gated on a configured `edit` route (same class as ELITEA-2014's
+  EDIT-STATE-KEY-gates-EDIT-route finding), not a defect. Automation asserts the
+  Edit button's absence rather than inventing an edit route the case never
+  specified.
 
-No other defects found — the pause/message/button-presence behavior (case steps
-1–3) works exactly as specified.
+No other defects found — the pause/message behavior (case steps 1–3, adjusted
+for the Edit-button correction above) works exactly as specified.
 
 ## Blocked Steps
 
