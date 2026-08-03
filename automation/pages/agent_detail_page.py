@@ -2575,6 +2575,21 @@ class AgentDetailPage(AgentFormPage):
         except Exception:
             return False
 
+    def get_visible_model_option_names(self, timeout: int = 5000) -> list[str]:
+        """Return the rendered display text of every currently-visible option
+        in the OPEN model-selector dropdown (ELITEA-2075).
+
+        Call after :meth:`open_model_selector`. Additive — does not touch
+        :meth:`is_model_option_visible`/:meth:`select_llm_model`, which stay
+        the exact-match entry points; this is for callers that must find an
+        option by a PARTIAL/fuzzy match (e.g. "any Sonnet 4.5-family model"
+        when the exact case-text model name doesn't exist verbatim in this
+        environment).
+        """
+        options = self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR)
+        options.first.wait_for(state="visible", timeout=timeout)
+        return [(options.nth(i).text_content() or "").strip() for i in range(options.count())]
+
     def close_model_selector(self, timeout: int = 5000):
         """Close the open model-selector dropdown via Escape, without
         selecting anything.

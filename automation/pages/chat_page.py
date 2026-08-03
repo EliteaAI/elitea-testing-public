@@ -597,10 +597,26 @@ class ChatPage(BasePage):
     # "application_4687_399" for an agent participant.
     PARTICIPANT_ROW = '[data-testid="chat-participant-row-{}"]'
 
+    # Prefix-match enumerating every currently-rendered participant row
+    # regardless of uniqueId — same idiom as CONVERSATION_ITEM_PREFIX /
+    # MENTION_SKILL_ITEM_PREFIX. Used to resolve a row by its VISIBLE agent
+    # name (e.g. "Reflexion v1.0") when the caller doesn't know the
+    # participant's numeric id/project_id ahead of time (a Catalog/public
+    # agent's row uniqueId embeds PUBLIC_PROJECT_ID, a UI-side env value
+    # this suite has no need to duplicate — ELITEA-2075).
+    PARTICIPANT_ROW_PREFIX = '[data-testid^="chat-participant-row-"]'
+
     # Hover-reveal "Remove <entityType>" icon button — static, scoped via
     # the row's dynamic testid (multiple simultaneous rows disambiguate
     # through the parent row selector, not this button's own testid).
     PARTICIPANT_REMOVE_BUTTON = '[data-testid="chat-participant-remove-button"]'
+
+    # Hover-reveal "Edit <entityType>"/"View settings" icon button
+    # (EditParticipantButton.jsx) — same static testid for BOTH states (the
+    # component swaps its icon/aria-label based on edit permission, not the
+    # testid — testid=identity ruling); scoped via the row's dynamic testid,
+    # same pattern as PARTICIPANT_REMOVE_BUTTON above (ELITEA-2075 addition).
+    PARTICIPANT_EDIT_VIEW_BUTTON = '[data-testid="chat-participant-edit-view-button"]'
 
     # ------------------------------------------------------------------
     # Users participant type (ELITEA-2095) — independent of the Agent/
@@ -3264,6 +3280,47 @@ class ChatPage(BasePage):
         expect(self.participants_panel_toggle_button).to_have_attribute(
             "data-expanded", "false", timeout=timeout,
         )
+
+    def get_participant_row_by_name(self, name: str, timeout: int = 10000):
+        """Return the (expanded PARTICIPANTS panel) participant row matching
+        *name* by its visible text (e.g. ``"Reflexion v1.0"``) — ELITEA-2075.
+
+        Resolves via ``PARTICIPANT_ROW_PREFIX`` + ``.filter(has_text=...)``
+        rather than the exact ``PARTICIPANT_ROW`` template, since a Catalog/
+        public agent's row uniqueId embeds ``PUBLIC_PROJECT_ID`` (a UI-side
+        env value this suite has no reason to duplicate) — same "keyed by a
+        value not known in advance" idiom as
+        ``AgentDetailPage.is_model_option_visible``.
+
+        Call after :meth:`expand_participants_panel_via_toggle` — this reads
+        the row rendered in the expanded side panel, not the collapsed
+        badge's popper.
+        """
+        row = self.page.locator(self.PARTICIPANT_ROW_PREFIX).filter(has_text=name)
+        row.first.wait_for(state="visible", timeout=timeout)
+        return row.first
+
+    @action("Open agent participant settings (View settings / Edit agent)")
+    def open_agent_participant_settings(self, participant_name: str, timeout: int = 10000):
+        """Hover the participant row matching *participant_name* in the
+        EXPANDED PARTICIPANTS panel and click its "View settings"/"Edit
+        agent" icon (``EditParticipantButton`` — same component, same
+        testid, for both states — ELITEA-2075).
+
+        Call after :meth:`expand_participants_panel_via_toggle`. Opens the
+        agent's settings canvas (``AgentEditor.jsx``) in-place — read-only
+        (``viewMode=Public``) for a public agent the user lacks edit
+        permission on, editable otherwise.
+        """
+        logger.info("Opening participant settings for %r", participant_name)
+        row = self.get_participant_row_by_name(participant_name, timeout=timeout)
+        row.scroll_into_view_if_needed()
+        row.hover()
+        self.page.wait_for_timeout(300)  # hover-reveal CSS transition
+
+        edit_btn = row.locator(self.PARTICIPANT_EDIT_VIEW_BUTTON)
+        edit_btn.wait_for(state="visible", timeout=timeout)
+        edit_btn.click(force=True)
 
     # ------------------------------------------------------------------
     # Context Budget helpers
