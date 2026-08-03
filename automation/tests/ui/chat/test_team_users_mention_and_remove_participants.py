@@ -434,13 +434,18 @@ class TestTeamUsersMentionAndRemoveParticipants:
                 # 8-10's dropdown-row removal — the "Users" dropdown's row
                 # testid is keyed by entity_meta.id, which callers don't
                 # know ahead of time (only the display name searched for).
+                # Step 8 targets user_2 (Levon Dadayan); step 10 targets
+                # user_1 (Hrach Sargsyan) per the case's own literal text
+                # ("Hover over user_1") and this AFS's own § Test Data
+                # mapping — fix round 1 corrected an undocumented drift
+                # that had targeted user_3 (Mariam Hakobyan) instead.
                 conv_data = team_conversation_api.get_conversation(conv_id)
                 participant_id_by_name = {
                     p.get("meta", {}).get("user_name"): p.get("entity_meta", {}).get("id")
                     for p in conv_data.get("participants", [])
                     if p.get("entity_name") == "user"
                 }
-                for name in (USER_2_NAME, USER_3_NAME):
+                for name in (USER_1_NAME, USER_2_NAME):
                     assert participant_id_by_name.get(name) is not None, (
                         f"Expected a resolvable participant id for {name!r} via the "
                         f"conversation API, got participants: {conv_data.get('participants', [])!r}"
@@ -553,11 +558,12 @@ class TestTeamUsersMentionAndRemoveParticipants:
                 chat.dismiss_participants_popover()
 
             with allure.step(
-                f"Step 10 — Hover {USER_3_NAME!r}, click delete, then "
-                "Cancel; verify not removed (stays 5)"
+                f"Step 10 — Hover {USER_1_NAME!r} (case's own literal "
+                "'user_1'), click delete, then Cancel; verify not removed "
+                "(stays 5)"
             ):
                 dialog = chat.open_remove_user_dialog(
-                    participant_id_by_name[USER_3_NAME], timeout=UI_ELEMENT_TIMEOUT,
+                    participant_id_by_name[USER_1_NAME], timeout=UI_ELEMENT_TIMEOUT,
                 )
                 Dialog.click_button(dialog, "Cancel")
                 Dialog.wait_for_hidden(page, timeout=UI_ELEMENT_TIMEOUT)
@@ -566,8 +572,8 @@ class TestTeamUsersMentionAndRemoveParticipants:
                 assert badge_count == "5", f"Badge should still read '5' after Cancel, got {badge_count!r}"
                 popper = chat.open_participants_popover(section="users", timeout=UI_ELEMENT_TIMEOUT)
                 popper_text = popper.text_content() or ""
-                assert USER_3_NAME in popper_text, (
-                    f"{USER_3_NAME!r} should still be listed after Cancel, got: {popper_text!r}"
+                assert USER_1_NAME in popper_text, (
+                    f"{USER_1_NAME!r} should still be listed after Cancel, got: {popper_text!r}"
                 )
 
             with allure.step(
