@@ -28,6 +28,8 @@ import time
 import pytest
 from api import AgentAPI, ArtifactAPI, ConversationAPI, CredentialAPI, PipelineAPI, SkillAPI, ToolkitAPI
 from config import settings
+from pages.guardrails_admin_page import GuardrailsAdminPage
+from playwright.sync_api import Browser
 
 logger = logging.getLogger("elitea.automation.fixtures.data")
 
@@ -598,6 +600,74 @@ def artifact_toolkit_four_tools(artifact_bucket: dict, toolkit_api: ToolkitAPI, 
         logger.info("Deleted 4-tool artifact toolkit %s", toolkit["id"])
     except Exception as exc:
         logger.warning("Failed to delete 4-tool artifact toolkit %s: %s", toolkit["id"], exc)
+
+
+# ---------------------------------------------------------------------------
+# HITL sensitive-action fixtures for ELITEA-2211..2214 (direct toolkit call)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def artifact_seeded_file(artifact_toolkit: dict, artifact_api: ArtifactAPI, request):
+    """Seed one real file into ``artifact_toolkit``'s bucket.
+
+    Gives Authorize/Block something genuine to act on so the backend-verified
+    execution/non-execution checks (ELITEA-2212/2213/2214 — "assert via
+    ArtifactAPI, not just a UI-only signal") have ground truth to compare
+    against: Authorize should make this file disappear, Block should leave
+    it in place. No separate teardown — the ``artifact_bucket`` fixture
+    (a dependency of ``artifact_toolkit``) deletes the whole bucket.
+
+    Yields:
+        str: the file's key (relative path) inside the bucket.
+    """
+    bucket_name = artifact_toolkit["bucket_name"]
+    file_key = f"autotest-hitl-{request.node.name}"[:60] + ".txt"
+    artifact_api.upload_file(bucket_name, file_key, b"hitl automation seed file")
+    logger.info("Seeded file '%s' in bucket '%s' for %s", file_key, bucket_name, request.node.name)
+    return file_key
+
+
+@pytest.fixture(scope="module")
+def sensitive_delete_file_toolkit(browser: Browser, auth_state):
+    """Mark ``artifact``/``delete_file`` sensitive for the whole test module.
+
+    Sensitivity is toolkit-TYPE scoped
+    (``GuardrailsAdminPage.add_sensitive_tool("artifact", "delete_file")``),
+    not per-toolkit-instance, so marking/removing it ONCE per module (rather
+    than once per test) avoids redundant admin round-trips across
+    ELITEA-2211..2214's four cases, per those AFS's own Cleanup section —
+    same pattern ``test_guardrails_live_reload.py``'s
+    ``TestSensitiveToolLiveReload`` already established.
+
+    Module scope means this fixture's setup/teardown run ONCE for whichever
+    single test module requests it, even though it is centrally defined here
+    (fixture location rule — ``.claude/rules/api-patterns.md``).
+    """
+    ctx = browser.new_context(
+        storage_state=auth_state, viewport={"width": 1920, "height": 1080}
+    )
+    ctx.set_default_timeout(15000)
+    ctx.set_default_navigation_timeout(30000)
+    page = ctx.new_page()
+
+    guardrails = GuardrailsAdminPage(page)
+    guardrails.navigate_to_guardrails()
+    guardrails.add_sensitive_tool("artifact", "delete_file")
+    guardrails.save_configuration()
+    logger.info("Marked artifact/delete_file sensitive for the module")
+
+    yield
+
+    try:
+        guardrails.remove_sensitive_tool("delete_file")
+        guardrails.save_configuration()
+        logger.info("Removed artifact/delete_file from the sensitive list")
+    except Exception as exc:
+        logger.warning("Failed to remove sensitive tool 'delete_file' during teardown: %s", exc)
+    finally:
+        page.close()
+        ctx.close()
 
 
 # ---------------------------------------------------------------------------
