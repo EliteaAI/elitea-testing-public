@@ -2,7 +2,61 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-03 (ELITEA-2004/2010 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-03 (ELITEA-2028 analysis).
+
+## YAML editor ⇄ Flow canvas sync (confirmed live, 2026-08-03, ELITEA-2028)
+
+- **`yaml_view_button`/`flow_view_button`/`yaml_editor` testids all work as
+  documented** (`pipeline-yaml-view`, `pipeline-flow-view`,
+  `pipeline-yaml-editor`). Editing a node's `transition:` value in the YAML
+  editor and switching back to Flow view correctly re-renders the ReactFlow
+  edge in place (confirmed: the SAME edge DOM node's `data-testid` changes
+  from `rf__edge-xy-edge__LLM 1---EliteAPipelineEnd` to
+  `rf__edge-xy-edge__LLM 1---Code 1` after editing `transition: END` →
+  `transition: Code 1`) — no defect, matches product intent.
+- **`yaml_lines` (testid `pipeline-yaml-lines`) resolves to 0 matches in this
+  environment** — the real CodeMirror `.cm-line` divs carry no such testid.
+  `get_yaml_content()`'s existing fallback (`yaml_editor.text_content()`)
+  handles this gracefully already, but returns a newline-stripped
+  concatenated blob — fine for substring assertions, not for line-indexed
+  reads.
+- **No page-object method edits YAML content** — only reads it
+  (`get_yaml_content()`). For per-line edits, the sanctioned pattern is the
+  same #579 exception already used for `McpFormPage.fill_raw_json_line()`
+  (CodeMirror internal per-line divs, no testid possible): click the line via
+  `yaml_editor.get_by_text(current_text, exact=True)`, `Home`/`Shift+End` to
+  select, then `keyboard.type()` the replacement. Confirmed working live for
+  the pipeline YAML editor, same mechanics as the MCP Raw Json editor.
+  `.first` on `get_by_text()` resolves by DOM/document order — fine when the
+  target line is uniquely positioned (e.g. entry-point node listed first),
+  NOT safe when multiple nodes share identical transition text in
+  unpredictable order.
+- **`edge_exists(source, "END")` is unreliable — pre-existing page-object
+  gap** (`automation/pages/pipeline_detail_page.py:1557`, not caused by this
+  session). The real ReactFlow edge testid pattern is
+  `rf__edge-xy-edge__{source_id}---{target_id}`, and END's real `target_id`
+  is the literal string `EliteAPipelineEnd`, not `"END"` — the method's own
+  docstring example (`...LLM 1source-ENDtarget`) doesn't match live DOM at
+  all (no `source`/`target` suffixes, `---` separator instead of a bare
+  concatenation). `edge_exists(source, "END")` therefore always returns
+  `False` even when that edge is visibly present. Non-END targets (e.g.
+  `edge_exists("LLM 1", "Code 1")`) DO work correctly — the target-id
+  substring check just happens to be right for anything that isn't END.
+  Flag for a dedicated fix; out of scope for any case that doesn't touch it.
+- **Seeding gotcha — dirty-state baseline depends on HOW the pipeline was
+  seeded.** A pipeline created via `PipelineAPI.create_pipeline_with_llm_node()`
+  (single node, matches `pipeline_with_llm_id` fixture) loads with Save/Discard
+  correctly **disabled** (clean baseline) — confirmed 2× (fresh load + reload).
+  A pipeline created via `PipelineAPI.create_pipeline_with_nodes()` with a
+  hand-built **multi-node** list loads with Save/Discard **already enabled**
+  on first render, zero edits made — because `pipeline_settings.nodes`/`edges`
+  is left empty by that helper (no saved canvas layout), so the frontend's
+  auto-layout-on-first-render is itself treated as an unsaved change. Any case
+  whose assertion depends on a disabled→enabled transition (e.g. "Save becomes
+  enabled after X") MUST seed via a single-node API call + UI-driven
+  node-add + Save + reload, never via a raw multi-node
+  `create_pipeline_with_nodes()` call, or the assertion passes trivially for
+  the wrong reason.
 
 ## Two distinct pipeline form surfaces — don't conflate them
 
