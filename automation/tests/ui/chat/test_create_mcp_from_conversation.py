@@ -67,7 +67,7 @@ MCP_NAME = "test"
 MCP_URL = "https://api.githubcopilot.com/mcp"
 MCP_CLIENT_SECRET = "autotest-dummy-secret"
 
-DISCONNECTED_PARTICIPANT_TEXT = "Server is disconnected!  Reconnect it to use. "
+DISCONNECTED_PARTICIPANT_TEXT = "Server is disconnected!  Reconnect it to use. Log in."
 
 
 def _is_known_secrets_403(msg) -> bool:
@@ -82,6 +82,25 @@ def _is_known_secrets_403(msg) -> bool:
     return "403" in text and "secrets/secrets/default" in (text + location_url)
 
 
+def _is_known_vite_stream_externalization_warning(msg) -> bool:
+    """Filter the pre-existing, environment-wide Vite "stream" externalization
+    warning.
+
+    ``exceljs`` (an artifact/export dependency, unrelated to chat/MCP) pulls in
+    ``crypto-browserify``/``cipher-base``, which references the Node builtin
+    ``stream`` module; Vite's dev server externalizes it for browser
+    compatibility and logs a warning the first time that vendor chunk loads in
+    a session. Confirmed via source (`node_modules/.vite/deps/exceljs.js`) to
+    be a build-tooling artifact of an unrelated dependency, not something this
+    flow (or any single page) triggers deliberately — added here (discovered
+    while making the ELITEA-2085 console-message assertion real, not
+    previously filtered because nothing asserted on `console_messages` before)
+    so it can't mask a genuinely new warning, matching the `_is_known_secrets_403`
+    / `_is_known_category_section_key_warning` idiom.
+    """
+    return "stream" in msg.text and "externalized for browser compatibility" in msg.text
+
+
 def _is_known_category_section_key_warning(msg) -> bool:
     """Filter the pre-existing, already-tracked #656 console warning.
 
@@ -92,10 +111,17 @@ def _is_known_category_section_key_warning(msg) -> bool:
     ELITEA-1868 analysis. Same root cause, same component; not a new
     defect. Matches ``test_edit_instructions``'s own known-noise filter
     (#538) idiom.
+
+    NOT gated on ``msg.type`` — confirmed live (while making the
+    ELITEA-2085 console-message assertion real) that React logs this
+    "Warning: ..." text via ``console.error`` in dev mode, i.e.
+    ``msg.type == "error"`` at the browser level, not ``"warning"``,
+    despite the text. A prior version of this filter gated on
+    ``msg.type == "warning"`` and was therefore a silent no-op for the
+    one message it exists to catch.
     """
     return (
-        msg.type == "warning"
-        and "unique" in msg.text
+        "unique" in msg.text
         and "key" in msg.text
         and "prop" in msg.text
     )
@@ -141,10 +167,23 @@ class TestCreateMcpFromConversation:
         console_messages = []
 
         def _on_console(msg):
-            if msg.type == "error" and not _is_known_secrets_403(msg):
-                console_messages.append(msg)
-            elif msg.type == "warning" and not _is_known_category_section_key_warning(msg):
-                console_messages.append(msg)
+            # React's dev-mode "key" prop warning is logged via console.error
+            # (browser msg.type == "error"), NOT console.warn, despite its
+            # "Warning: ..." text — confirmed live while making this
+            # assertion real. Gating the #656 filter on msg.type == "warning"
+            # (as a prior version of this handler did) is a no-op for that
+            # specific message and lets it slip through as an "unexpected
+            # error", so every known-noise filter below is checked regardless
+            # of msg.type; only genuinely new console.error/warning survives.
+            if msg.type not in ("error", "warning"):
+                return
+            if (
+                _is_known_secrets_403(msg)
+                or _is_known_category_section_key_warning(msg)
+                or _is_known_vite_stream_externalization_warning(msg)
+            ):
+                return
+            console_messages.append(msg)
 
         page.on("console", _on_console)
 
@@ -264,6 +303,17 @@ class TestCreateMcpFromConversation:
                     DISCONNECTED_PARTICIPANT_TEXT.strip(), timeout=UI_ELEMENT_TIMEOUT
                 )
                 chat.dismiss_participants_popover()
+
+            with allure.step(
+                "Side-channel — verify no unexpected console errors/warnings "
+                "occurred across the whole flow (known secrets-403 noise and "
+                "the pre-existing #656 key-prop warning are pre-filtered by "
+                "_on_console, so any survivor here is a genuinely new issue)"
+            ):
+                assert not console_messages, (
+                    f"Unexpected console error/warning(s) during the flow: "
+                    f"{[m.text for m in console_messages]!r}"
+                )
         finally:
             with allure.step("Cleanup — delete the created MCP/toolkit"):
                 # conversation_id fixture handles conversation cleanup —
