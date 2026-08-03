@@ -255,9 +255,12 @@ class TestAgentHubParticipantReadonlyCanvasLlmOverride:
                     "Model selector should still show the selected model after Apply"
                 )
 
-                assert len(application_requests) == 0, (
+                write_requests = [
+                    r for r in application_requests if r["method"].upper() in ("PUT", "PATCH", "POST")
+                ]
+                assert len(write_requests) == 0, (
                     "Selecting a model and applying LLM settings for a public agent "
-                    f"should never PUT/PATCH/POST to /application/ — got: {application_requests!r}"
+                    f"should never PUT/PATCH/POST to /application/ — got: {write_requests!r}"
                 )
                 application_requests.stop()
 
