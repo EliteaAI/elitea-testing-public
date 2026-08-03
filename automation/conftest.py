@@ -49,6 +49,7 @@ from fixtures.data_fixtures import (
     github_relevant_skills,
     artifact_bucket,
     artifact_toolkit,
+    artifact_toolkit_four_tools,
     invalid_jira_credential,
     jira_toolkit_with_invalid_credential,
     invalid_github_credential,
