@@ -27,10 +27,19 @@
 ## Test Steps
 1. Navigate to Artifacts, click the fixture bucket
    - **Verify**: file table shows `diagram (2).png`
-2. Hover the `diagram (2).png` row
-   - **Verify**: the "View/Edit file" icon is hidden before hover, visible
-     after hover (confirmed live: `is_visible()` False → True across the
-     hover — same pattern already confirmed for ELITEA-1857's markdown row)
+2. Observe the `diagram (2).png` row (no hover required)
+   - **Verify**: the "View/Edit file" icon is visible on the row
+     unconditionally — it is **NOT** hover-gated (confirmed against source:
+     `ArtifactRowActions.jsx` renders the Preview `IconButton` whenever
+     `row.canPreview` is true, with no opacity/visibility/display CSS tied to
+     a hover state — only a `background-color` hover highlight applies to
+     the button itself. **Fix round 1 correction:** this AFS originally
+     claimed a hover-gated False→True transition — the same drift already
+     documented and left open in case-text-drift clarification
+     EliteaAI/elitea-testing-public#994 for ELITEA-1851's row icon, and
+     wrongly echoed here as "same pattern already confirmed for ELITEA-1857's
+     markdown row" — that sibling AFS carried the identical incorrect claim,
+     not independent confirmation)
 3. Click the "View/Edit file" icon
    - **Verify**: the image opens directly in the main panel (no intermediate
      Raw/Preview choice — image files render immediately)
@@ -70,7 +79,7 @@
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
 | 1 Click bucket-1 | bucket selected | step 1 | file table visible | asserted *(fixture-generated bucket, not literal "bucket-1")* |
-| 2 Hover file → icon appears on hover | icon appears | step 2 | `is_visible()` False→True across `hover()` | asserted |
+| 2 Hover file → icon appears on hover | icon visible unconditionally, NOT hover-gated | step 2 | `is_visible()` True BEFORE any hover AND after — see EliteaAI/elitea-testing-public#994 | asserted *(case text implies hover-gating; live/source behavior is "always visible" — corrected in fix round 1, not a product defect, same pattern as #994)* |
 | 3 Icon visible | icon visible | step 2 | same | asserted |
 | 4 Click file/icon → image preview opens | image preview opens | step 3 | `<img>` element renders | asserted |
 | 5 File opens displaying image directly | image displayed | step 3 | same | asserted |
