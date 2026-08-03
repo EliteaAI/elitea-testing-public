@@ -2,7 +2,90 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-03 (ELITEA-2005/2006/2007/2008 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-03 (ELITEA-2018/2030/2031/2032 analysis).
+
+## Canvas node/edge CRUD (Add-node menu, node delete, edge create/delete) (confirmed live, 2026-08-03, ELITEA-2018/2030/2031/2032)
+
+- **Add-node "+" menu lists exactly 11 types, in DOM order**: Agent, Code,
+  Custom, Decision, Human-in-the-loop, LLM, MCP, Printer, Router, State
+  modifier, Toolkit — matches TMS case data exactly, confirmed live via
+  `role="menuitem"` text dump. Zero testids on the "+" button or any menu
+  item (plain MUI `MenuItem`, confirmed via `inner_html()`). Escape closes
+  the menu (`role="menu"` count → 0) without adding a node.
+- **No node type has a click-to-expand config panel** — every node type
+  (LLM/HITL/MCP/Toolkit, and now confirmed generically via Code/Printer)
+  renders its full config always inline/expanded the moment it's added.
+  "Verify config panel is open" style case steps are trivially satisfied by
+  the node simply existing on canvas.
+- **Adding nodes via the "+" menu does NOT auto-wire any edge** — confirmed
+  live: empty pipeline (`END` only, 0 edges) → add LLM → still 0 edges →
+  add Code → still 0 edges. Each newly added node lands fully disconnected
+  regardless of add order. Any precondition needing "N nodes connected by
+  edges" must seed edges explicitly (API `transition` fields, or an
+  explicit UI drag-connect step) — do not assume node-adding implies
+  wiring. Filed as clarification `EliteaAI/elitea-testing-public#1137`
+  against ELITEA-2018's case text, which assumed otherwise.
+- **`transition` field default when OMITTED from a node dict passed to
+  `PipelineAPI.create_pipeline_with_nodes()`**: a node with no explicit
+  `transition` key auto-defaults to the NEXT node in the YAML `nodes:`
+  list (not to END) — confirmed live: two nodes with no `transition` key
+  at all produced 2 edges on first load (`node[0]→node[1]`,
+  `node[1]→END`), i.e. an implicit sequential chain. **This is a
+  false-positive trap for any "edge creation" test**: if you want a clean
+  not-yet-connected starting state between two specific nodes, you MUST
+  set `transition: "END"` explicitly on the earlier node — omitting it
+  silently pre-wires the very edge you're about to test creating.
+- **No "transition"/"routes" field exists in ANY non-HITL node's config
+  panel** — confirmed via live DOM text read (LLM node's full visible text
+  has no "Transition"/"Route" substring) AND via source
+  (`LLMNode.jsx`/`PrinterNode.jsx` render no such control; the node's
+  3-dot menu offers only "Make Entrypoint"/"Delete", no "Set transition").
+  Only the HITL node type has a visible "Route" concept (its ROUTER
+  MAPPING accordion), unrelated to LLM/Printer/Code/etc. The real,
+  confirmed mechanism for wiring/re-wiring any non-HITL node's
+  `transition` is dragging a canvas connection
+  (`PipelineDetailPage.connect_nodes()`). Case texts describing a
+  "transition/routes field in the node configuration panel" for a
+  non-HITL node are stale — filed as clarification
+  `EliteaAI/elitea-testing-public#1136` (covers ELITEA-2031 + ELITEA-2032,
+  same root cause).
+- **Edge testid format is INCONSISTENT depending on whether the target is
+  the literal END node**, confirmed live in the SAME pipeline
+  simultaneously: edges TO `END` render as
+  `rf__edge-xy-edge__{source}---EliteAPipelineEnd` (`---` separator, no
+  handle suffix — matches `PipelineDetailPage.EDGE_TESTID`); edges between
+  two non-END nodes render as
+  `rf__edge-xy-edge__{source}source-{target}target` (no `---`, explicit
+  `source`/`target` suffixes — matches `edge_exists()`'s own docstring
+  pattern instead). Use `edge_exists()` (handles both shapes via
+  prefix+substring matching) rather than `edge_testid_present()`/
+  `EDGE_TESTID` for any target that isn't literally END.
+- **Deleting a node removes exactly that node's edges — no
+  auto-reconnect.** Confirmed live: `LLM 1 → Code 1 → END`, delete
+  `Code 1` → both `LLM 1→Code 1` and `Code 1→END` are gone, edge count 0,
+  `LLM 1` is left with NO outgoing edge (not auto-rewired to `END`). Node
+  deletion is registered as an unsaved change (Save button flips enabled)
+  and persists correctly through Save + full reload.
+  `PipelineDetailPage.delete_node()` (3-dot menu → Delete → confirm
+  dialog) already exists and works as documented — reused unmodified,
+  pre-existing raw-handle tech debt (positional `MuiIconButton-colorTertiary`
+  + `get_by_role("menuitem", name="Delete")`), not newly introduced.
+- **Deleting an EDGE**: click the edge (`.react-flow__edge`, gains a
+  `selected` CSS class), press the `Delete` keyboard key → a
+  `role="dialog"` confirmation appears ("Delete confirmation — Are you
+  sure to delete the  node? It can't be restored." — **note the dialog's
+  copy says "node" even for an edge deletion, a MINOR cosmetic
+  discrepancy, not filed as its own ticket**) → confirm via
+  `components.mui.Dialog.click_button(dialog, "Delete")`. After
+  confirming: the edge is gone, and the SOURCE node's `transition`
+  property does NOT become empty/absent — it resets to the literal value
+  `END` (confirmed via the YAML editor view; matches
+  `deletionOperations.helpers.js::clearNodePropertyAndSetEnd` in the
+  source). No dedicated page-object method exists yet to CLICK a specific
+  edge by source/target (only boolean existence checks) — needs a small
+  `get_edge_locator(source_id, target_id) -> Locator` extending
+  `edge_exists()`'s own matching logic to return the Locator instead of a
+  bool (testid-based, not a new raw-handle class).
 
 ## Entry point node — Trigger control (Chat Message/Schedule/Webhook) (confirmed live, 2026-08-03, ELITEA-2005/2006/2007/2008)
 
