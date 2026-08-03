@@ -77,6 +77,24 @@ def test_yaml_edit_transition_syncs_to_flow_canvas_and_enables_save(page, pipeli
     baseline_node_count = pipeline_page.get_node_count()
     baseline_edge_count = pipeline_page.get_edge_count()
 
+    # Positive control (not one of the case's 5 numbered steps): prove the
+    # exact-testid template `edge_testid_present()` relies on actually
+    # detects a REAL edge before Step 4 leans on its NEGATIVE form ("the old
+    # edge testid is gone"). Without this, a wrong guessed testid format
+    # (`rf__edge-xy-edge__{source}---{target}`) would make edge_testid_present()
+    # return False both before AND after the edit — Step 4's "not
+    # edge_testid_present(...)" assertion would then pass vacuously, having
+    # never actually observed a real edge testid to lose. Checked here, while
+    # still on the Flow canvas (post-setup baseline, before the view switch
+    # in Step 1), against the pre-edit LLM 1 -> END edge that setup itself
+    # establishes.
+    assert pipeline_page.edge_testid_present("LLM 1", "EliteAPipelineEnd"), (
+        "Sanity check failed: edge_testid_present() should detect the real, "
+        "pre-edit LLM 1 -> END edge on the Flow canvas baseline. If this "
+        "fails, the exact-testid template itself is wrong, and Step 4's "
+        "negative ('edge testid is gone') assertion would be meaningless."
+    )
+
     with allure.step("Step 1 — Confirm default view is Flow, then switch to Yaml view"):
         assert pipeline_page.is_flow_view_active(timeout=UI_ELEMENT_TIMEOUT), (
             "Pipeline detail page should default to the Flow view"
