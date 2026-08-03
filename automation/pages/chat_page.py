@@ -531,6 +531,52 @@ class ChatPage(BasePage):
         "rename", "move-to", "playback", "make-public", "share", "pin", "delete",
     )
 
+    # ------------------------------------------------------------------
+    # "Move to" submenu (ELITEA-2135/ELITEA-2137) + pin state (ELITEA-2149)
+    # ------------------------------------------------------------------
+    # Testids added this pass, commit cf348d32 on EliteaUI's
+    # automation/testids ("test: [EL-2135] add data-testid for Move-to
+    # submenu items + pin icon/state"). DotMenu.jsx's BasicMenuItem never
+    # forwarded `testId` to nested-submenu items before this commit, so no
+    # "Move to" submenu item ever rendered a data-testid regardless of its
+    # `key` — fixed by adding `testId: subMenuItem.key` to DotMenu.jsx's
+    # subCommonProps.
+
+    move_to_create_folder_menuitem = LocatorDescriptor(
+        testid="chat-move-to-create-folder-menuitem",
+        description=(
+            "'Create folder' item inside the 'Move to' submenu "
+            "(ConversationItem.jsx's context menu). Static testid — "
+            "distinct from the top-level create-folder icon in the CHATS "
+            "header (ELITEA-2132's create_folder_button)."
+        ),
+    )
+
+    move_to_back_to_list_menuitem = LocatorDescriptor(
+        testid="chat-move-to-back-to-list-menuitem",
+        description="'Back to the list' item inside the 'Move to' submenu.",
+    )
+
+    # Dynamic per-folder submenu entry — {} is the target folder's numeric
+    # id. Never a globally-unique static field since N folders can each
+    # render their own submenu item.
+    MOVE_TO_FOLDER_ITEM = '[data-testid="chat-move-to-folder-{}-menuitem"]'
+
+    # Pin icon inside a conversation item — non-unique testid (the SAME
+    # value renders once per pinned conversation), ALWAYS resolved scoped
+    # inside a CONVERSATION_ITEM-scoped element, never at page level.
+    PIN_ICON = '[data-testid="chat-pin-icon"]'
+
+    # App-wide toast message (shared component — see ArtifactsPage.
+    # success_toast_message / SkillsListPage.import_success_toast_message
+    # for the same testid declared on other pages, existing repo
+    # precedent of each page declaring its own field for a shared
+    # component).
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide success/error toast message.",
+    )
+
     # Delete-confirmation dialog (DeleteEntityModal.jsx, rendered via the
     # shared BaseModal.jsx). Same testids as artifacts_page.py /
     # mcp_form_page.py's own delete_confirm_* fields — this is a shared
@@ -2260,6 +2306,17 @@ class ChatPage(BasePage):
     # selectors — tracked tech debt, ELITEA-2114 Concrete Handles). These
     # target by conversation id and use the real per-item testids.
 
+    def get_conversation_item(self, conversation_id: str | int):
+        """Return the Locator for a conversation's whole sidebar item (id-scoped).
+
+        The SAME testid renders once total regardless of which section
+        it's currently in (date-grouped list, inside a folder, or the
+        pinned section — ELITEA-2135/ELITEA-2149) — scoping via a parent
+        container (e.g. ``CONVERSATION_GROUP_HEADER``, ``FOLDER_ITEM``) is
+        what distinguishes location, not a different testid.
+        """
+        return self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+
     def hover_conversation_item(self, conversation_id: str | int, timeout: int = 5000):
         """Hover *conversation_id*'s sidebar item to reveal its 3-dot menu button.
 
@@ -2267,7 +2324,7 @@ class ChatPage(BasePage):
         ``display:none`` until hover (ConversationItem.jsx's ``menuWrapper``
         style) — this only hovers; it does not click.
         """
-        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        item = self.get_conversation_item(conversation_id)
         item.wait_for(state="visible", timeout=timeout)
         item.hover()
 
@@ -2319,6 +2376,147 @@ class ChatPage(BasePage):
         item = self.get_conversation_menu_item(item_key)
         item.wait_for(state="visible", timeout=timeout)
         item.click()
+
+    # ------------------------------------------------------------------
+    # "Move to" submenu flow (ELITEA-2135/ELITEA-2137)
+    # ------------------------------------------------------------------
+
+    @action("Click 'Move to' and wait for its submenu")
+    def click_move_to_and_wait_for_submenu(self, max_attempts: int = 4, timeout: int = 5000):
+        """Click the already-open context menu's 'Move to' item and reliably
+        reach the open-submenu state.
+
+        Known, filed defect (EliteaAI/elitea-testing-public#1117): a single
+        click on 'Move to' does not reliably open its submenu — roughly
+        half of ~6 isolated repros needed a second click, and hovering
+        never opens it at all. Live-verified: a longer FIXED wait after one
+        click does NOT open it (tested up to 1.5s of pure dwell) — the
+        retry CLICK is what's load-bearing, not additional wait time. This
+        polls for the submenu's mount (``move_to_create_folder_menuitem``)
+        after each click and retries the click itself, up to
+        *max_attempts* times.
+
+        Assumes the conversation's context menu is already open (see
+        ``open_conversation_context_menu``).
+
+        Args:
+            max_attempts: Maximum number of clicks on 'Move to' before
+                giving up.
+            timeout: Maximum wait time in milliseconds for the initial
+                'Move to' item and the overall submenu-open call.
+
+        Raises:
+            TimeoutError: if the submenu never mounts within *max_attempts*.
+        """
+        move_to_item = self.get_conversation_menu_item("move-to")
+        move_to_item.wait_for(state="visible", timeout=timeout)
+        move_to_item.click()
+        for attempt in range(1, max_attempts + 1):
+            try:
+                self.move_to_create_folder_menuitem.wait_for(state="visible", timeout=500)
+                logger.info("'Move to' submenu opened after %d click(s)", attempt)
+                return
+            except Exception:
+                if attempt == max_attempts:
+                    raise TimeoutError(
+                        f"'Move to' submenu did not open after {max_attempts} "
+                        "clicks (known defect EliteaAI/elitea-testing-public#1117)"
+                    )
+                logger.debug(
+                    "'Move to' submenu not open yet — retrying click (attempt %d/%d)",
+                    attempt + 1, max_attempts,
+                )
+                move_to_item.click()
+
+    @action("Open conversation's 'Move to' submenu")
+    def open_move_to_submenu(self, conversation_id: str | int, max_attempts: int = 4, timeout: int = 5000):
+        """Open *conversation_id*'s context menu, then its 'Move to' submenu.
+
+        Composes ``open_conversation_context_menu`` +
+        ``click_move_to_and_wait_for_submenu`` for callers that don't need
+        to assert the context menu's own contents first.
+
+        Args:
+            conversation_id: Numeric conversation id.
+            max_attempts: Forwarded to ``click_move_to_and_wait_for_submenu``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.open_conversation_context_menu(conversation_id, timeout=timeout)
+        self.click_move_to_and_wait_for_submenu(max_attempts=max_attempts, timeout=timeout)
+
+    def get_move_to_folder_item(self, folder_id: str | int):
+        """Return the Locator for an existing folder's entry inside the open 'Move to' submenu."""
+        return self.page.locator(self.MOVE_TO_FOLDER_ITEM.format(folder_id))
+
+    @action("Select existing folder in 'Move to' submenu")
+    def select_move_to_folder(self, folder_id: str | int, timeout: int = 5000):
+        """Click an existing folder's entry inside the open 'Move to' submenu.
+
+        Args:
+            folder_id: Numeric id of the target folder.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting existing folder %s in 'Move to' submenu", folder_id)
+        item = self.get_move_to_folder_item(folder_id)
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+
+    @action("Select 'Create folder' in 'Move to' submenu")
+    def select_move_to_create_folder(self, timeout: int = 5000):
+        """Click 'Create folder' inside the open 'Move to' submenu."""
+        logger.info("Selecting 'Create folder' in 'Move to' submenu")
+        self.move_to_create_folder_menuitem.wait_for(state="visible", timeout=timeout)
+        self.move_to_create_folder_menuitem.click()
+
+    @action("Set folder name in inline editor")
+    def set_folder_name(self, name: str):
+        """Replace the inline folder-name editor's value via keyboard events.
+
+        MUI/React form fields don't fire ``onChange`` on Playwright's
+        ``fill()`` (``.claude/rules/mui-patterns.md``) — click() + clear()
+        + press_sequentially() is the project's established pattern
+        (``AgentFormPage.fill_form()``) for reliably replacing a
+        pre-filled value. A bare ``Control+a`` press without a following
+        ``clear()`` was live-verified NOT sufficient here — the select-all
+        lost the race against React's own re-render of the default value,
+        producing ``"New folder6New folder"`` (input APPENDED, not
+        replaced) instead of ``"New folder6"``. Assumes the editor is
+        already open and ``folder_name_input`` is visible/focused (e.g.
+        right after ``click_create_folder_button()`` or
+        ``select_move_to_create_folder()``).
+
+        Args:
+            name: New folder name to type.
+        """
+        logger.info("Setting folder name to %r", name)
+        self.folder_name_input.click()
+        self.page.wait_for_timeout(100)  # Wait for focus
+        self.folder_name_input.clear()
+        self.page.wait_for_timeout(100)  # Wait for clear to complete
+        self.folder_name_input.press_sequentially(name, delay=30)
+
+    def is_conversation_pinned(self, conversation_id: str | int, timeout: int = 5000) -> bool:
+        """Return True if *conversation_id*'s sidebar item carries ``data-pinned="true"``.
+
+        Mirrors ``is_conversation_active``'s state-via-data-attribute
+        pattern (ELITEA-2149).
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        item.wait_for(state="visible", timeout=timeout)
+        return item.get_attribute("data-pinned") == "true"
+
+    def get_pin_icon(self, conversation_id: str | int):
+        """Return the ``PIN_ICON`` Locator scoped inside *conversation_id*'s item.
+
+        ``PIN_ICON`` is a non-unique testid — the same value renders once
+        per pinned conversation — so it must always be resolved scoped
+        inside a single ``CONVERSATION_ITEM`` (ELITEA-2149), never at page
+        level. Returns a Locator (not a bool) so callers can use
+        ``.count()`` for the 0->1 transition check or ``expect()`` for
+        visibility, same precedent as ``get_conversation_menu_button()``.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        return item.locator(self.PIN_ICON)
 
     def is_conversation_active(self, conversation_id: str | int, timeout: int = 5000) -> bool:
         """Return True if *conversation_id*'s sidebar item carries ``data-active="true"``.
@@ -3883,6 +4081,30 @@ class ChatPage(BasePage):
         expanded_item.wait_for(state="visible", timeout=timeout)
         logger.info("Folder %s expanded", folder_id)
 
+    def is_conversation_in_folder(
+        self, folder_id: str | int, conversation_id: str | int, timeout: int = 5000,
+    ) -> bool:
+        """Return True if *conversation_id* renders inside folder *folder_id* specifically.
+
+        Scopes the dynamic ``CONVERSATION_ITEM`` testid WITHIN the dynamic
+        ``FOLDER_ITEM`` container — the same id-scoping precedent as
+        ``is_conversation_in_group()`` for date groups (ELITEA-2135/
+        ELITEA-2137), replacing a raw ``get_folder_item(...).locator(...)``
+        chain built inline in test code.
+
+        Args:
+            folder_id: Numeric folder id.
+            conversation_id: Numeric conversation id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        folder_container = self.get_folder_item(folder_id)
+        item = folder_container.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        try:
+            item.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
     def get_folder_empty_state_text(self, folder_id: str | int) -> str:
         """Return the empty-state text scoped inside *folder_id*'s row.
 
@@ -3917,6 +4139,19 @@ class ChatPage(BasePage):
         so hovering it reliably lands within the header regardless of
         whether the folder is collapsed or expanded.
 
+        Uses ``.first`` on the ``CONVERSATION_MENU_BUTTON`` match: when the
+        folder is EXPANDED and contains a conversation (ELITEA-2135/
+        ELITEA-2137's cleanup path — a folder deleted right after a
+        conversation was moved into and left visible inside it), the
+        conversation's OWN dot-menu button shares the same non-unique
+        testid and also resolves within the folder's scope, causing a
+        strict-mode "resolved to 2 elements" violation. ``FolderAccordion.jsx``
+        always renders the header (``summaryContainer``, containing the
+        folder's own ``DotMenu``) BEFORE the accordion body/children in DOM
+        order, so ``.first`` reliably picks the folder's own button
+        regardless of expand state or content — degrading to the same
+        single match ELITEA-2132's original (empty-folder) usage always saw.
+
         Args:
             folder_id: Numeric folder id.
             timeout: Maximum wait time in milliseconds.
@@ -3924,7 +4159,7 @@ class ChatPage(BasePage):
         logger.info("Deleting folder %s via 3-dot menu", folder_id)
         item = self.get_folder_item(folder_id)
         item.locator(self.FOLDER_ICON).hover()
-        menu_button = item.locator(self.CONVERSATION_MENU_BUTTON)
+        menu_button = item.locator(self.CONVERSATION_MENU_BUTTON).first
         menu_button.wait_for(state="visible", timeout=timeout)
         menu_button.click(force=True)
 
