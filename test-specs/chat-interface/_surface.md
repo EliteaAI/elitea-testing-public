@@ -2,8 +2,89 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2135/2137/2149 cluster
-run, 2026-08-03.
+a time; last confirmed by: qa-engineer analyst, ELITEA-2168 run, 2026-08-03
+(supersedes the ELITEA-2135/2137/2149 cluster run below on other sections).
+
+## Users participant type — mention, removal, avatar overflow (ELITEA-2168)
+- **"All users" dropdown footer item is BROKEN — filed #1119.** Clicking it
+  inserts nothing into the composer and a follow-up send goes through the
+  normal LLM path (message count +2, not +1). Root cause: `DropdownFooter.jsx`
+  passes the literal string `'All users'` into `ChatBox.jsx`'s
+  `onSelectParticipant`/`NewChat.jsx`'s `onSelectThisParticipant`, which
+  expects a real participant object and has no `@everyone` special case (that
+  only exists in `onSelectUserMention`, the handler for the COMPOSER'S OWN
+  typed-`"@"` popper). **Working alternative, confirmed live**: type `"@"` in
+  the composer, select "Everyone" from `UserMentionList` — inserts
+  `"@Everyone "` correctly and correctly suppresses the LLM response.
+- **Individual user mention DOES work both ways**: clicking a user's row in
+  the participants dropdown inserts `"@Name "` into the composer (confirmed
+  live) — same mechanism as typing `"@"` and picking that user from
+  `UserMentionList`.
+- **"No LLM response" is a structural, not timing, fact.** `isSendingToUser`
+  sends (to one user or `@everyone`) never create an assistant-message
+  placeholder at all (`initializeNewMessages()` in
+  `src/common/initializeNewMessages.js`) — assert via message-count delta
+  (+1, not +2), never a timed "nothing appeared" wait.
+- **Composer's typed-`"@"` mention popper (`UserMentionList`/
+  `UserMentionItem`) has ZERO testids anywhere** — needs
+  `chat-user-mention-list` (container) + `chat-user-mention-item-{id}`
+  (dynamic; the "Everyone" row's id is the literal string `@everyone`).
+- **"Users" dropdown rows (`UserMenu.jsx`) have no per-row testid** — unlike
+  `ParticipantItem.jsx` (Agents/Pipelines/Toolkits/MCP), which already carries
+  `chat-participant-row-{uniqueId}`. Needs
+  `chat-participant-row-user_{userId}_{projectId}` (same
+  `getChatParticipantUniqueId()` shape) so the already-existing, already-
+  shared `chat-participant-remove-button` can be scoped to one specific row.
+  The "Remove user?" confirm dialog itself is the SAME shared
+  `Modal.DeleteEntityModal` agent-removal already uses — no new dialog handle
+  needed, `components.mui.Dialog` works as-is.
+- **Residual-hover gotcha reproduces for user rows too** (previously only
+  documented for `remove_agent_participant()`): after confirming a removal,
+  `page.mouse.move(0, 0)` before hovering the NEXT row is needed or the
+  delete icon may not reveal (same fix, same root cause: a lingering
+  real-mouse `:hover` on the now-gone element).
+- **"Add users" modal chip delete icon has no testid.** Each chip
+  (`add-users-chip-{userId}`, pre-existing) has a nested untestid'd
+  `<svg class="MuiChip-deleteIcon">` — needs
+  `add-users-chip-remove-{userId}` (dynamic). Clicking it removes the chip
+  from the pending selection (never exercised by ELITEA-2167, which only
+  ever adds chips, never deselects one before confirming).
+- **Blind-Escape trap on `click_add_users_confirm()` after a chip removal.**
+  That helper unconditionally presses `Escape` first to close a results
+  popper — fine after a fresh option SELECTION (a popper is genuinely open),
+  but if the immediately-prior action was a chip DELETION (no popper open at
+  that point), the same `Escape` instead closes the whole "Add users" dialog,
+  discarding the selection. Click `add_users_confirm_button` directly in that
+  sequence instead.
+- **Expanded USERS section (5-avatar + "+N" overflow)** — separate component
+  (`ExpandedParticipantsList.jsx`) from the collapsed badge
+  (`CollapsedPerticapantsList.jsx`); only visible once the Participants panel
+  is expanded, and needs > 5 total "users"-type participants to show the
+  overflow. `usersToDisplay = users.slice(0, componentWidth <= 200 ? 3 : 5)`,
+  overflow text = `` `+${users.length - usersToDisplay.length}` `` (no
+  testid on the overflow `Typography` — needs
+  `chat-participants-users-overflow-count`). Avatar itself already has
+  `chat-participants-users-avatar` (pre-existing).
+- **Expanding the panel HIDES the collapsed-badge testid entirely** — while
+  expanded, `chat-participants-badge-users` (and its nested `-button`) is not
+  rendered at all (`ExpandedParticipantsList.jsx` doesn't emit it), so any
+  `get_participants_badge_count()`/`open_participants_popover()` call after
+  expanding will time out until the panel collapses back.
+  `collapse_participants_panel()` (legacy raw-JS heuristic) FAILED live this
+  session (`expand_participants_panel()` worked); `page.reload()` is a
+  working interim fallback. The panel's own expand/collapse `IconButton`
+  (`Participants.jsx`) has NO testid — needs
+  `chat-participants-panel-toggle-button` with a `data-expanded` state
+  attribute (testid=identity/state=data-* ruling), since this case's own
+  steps directly depend on the toggle, not just incidental exploration.
+- **Live user roster for search** (client-side substring filter, confirmed
+  this session): `Hrach Sargsyan`, `Levon Dadayan`, `Mariam Hakobyan`,
+  `Tatiana Bontsevich` (same four ELITEA-2167 already uses), plus
+  `Daniyar Chambylov`, `Ihar Bylitski` (new this session) — six distinct
+  users now confirmed live in this environment, enough to exercise the
+  5-avatar-plus-overflow case without reusing the same four names twice.
+
+## Conversation context menu — "Move to" submenu (ELITEA-2135/2137)
 
 ## Conversation context menu — "Move to" submenu (ELITEA-2135/2137)
 - **CONFIRMED DEFECT, filed EliteaAI/elitea-testing-public#1117**: the "Move
