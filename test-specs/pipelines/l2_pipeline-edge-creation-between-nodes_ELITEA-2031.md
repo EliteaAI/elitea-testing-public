@@ -105,23 +105,58 @@
 | Element | Recommended Locator | Fallback |
 |---|---|---|
 | Drag-connect | `PipelineDetailPage.connect_nodes(source_id, target_id)` (existing method — JS-computed handle coordinates + real `mouse.move/down/up` drag, not a synthesized event) | — |
-| Edge existence check | `PipelineDetailPage.edge_exists(source_id, target_id)` (existing — matches `data-testid` prefix `rf__edge-xy-edge__{source}{handle}-{target}{suffix}`, third-party ReactFlow-generated testid, sanctioned per `.agents/testing.md` § Locator policy stop+flag exception #1 — outside `EliteaUI/src`) | — |
+| Edge existence check (NEW edge, step 3 positive assertion) | `PipelineDetailPage.edge_exists(source_id, target_id)` (existing — matches `data-testid` prefix `rf__edge-xy-edge__{source}{handle}-{target}{suffix}`, third-party ReactFlow-generated testid, sanctioned per `.agents/testing.md` § Locator policy stop+flag exception #1 — outside `EliteaUI/src`) | — |
+| Old-edge-gone check (OLD `LLM 1→END` edge, step 3 negative assertion, Axis 2) | `PipelineDetailPage.edge_testid_present("LLM 1", "EliteAPipelineEnd")` (existing — exact `EDGE_TESTID` template match; see the format note below for why this is the correct tool for THIS specific check) | — |
 | Edge count | `PipelineDetailPage.get_edge_count()` (existing, counts `.react-flow__edge`) | — |
 | Save button | `[data-testid="agent-save-button"]` | — |
 
 **Edge testid format inconsistency, confirmed live (worth knowing, not
-blocking)**: edges TO the literal END node render as
-`rf__edge-xy-edge__{source}---EliteAPipelineEnd` (`---` separator, no
-handle suffix — matches `PipelineDetailPage.EDGE_TESTID`), while edges
-between two non-END nodes render as
-`rf__edge-xy-edge__{source}source-{target}target` (no `---`, explicit
-`source`/`target` suffixes — matches `edge_exists()`'s own docstring
-pattern, NOT the `EDGE_TESTID` constant's format). Confirmed both formats
-live in the same pipeline simultaneously (`Printer 1---EliteAPipelineEnd`
-alongside `LLM 1source-Printer 1target`). Use `edge_exists()` for this
-case (it already handles both shapes via prefix+substring matching) —
-`edge_testid_present()`/`EDGE_TESTID` is the wrong tool here since this
-case's target is Printer, not END.
+blocking) — corrected 2026-08-04 (fix round 2): the split is lifecycle, not
+target.** The original wording below characterized the two formats as
+"edges TO END" vs "edges between two non-END nodes", which is a
+correlation, not the cause — and it produced a blanket "wrong tool" claim
+that contradicted this AFS's own Axis-2 addition (§ Axis 2, second bullet)
+and the shipped Step-3 assertion, both of which use `edge_testid_present()`
+for exactly this case's target-is-Printer edge (the OLD one). Corrected
+characterization, confirmed against `EliteaUI/src/[fsd]/features/pipelines/
+flow-editor/lib/helpers/parsePipeline.helpers.js::handleTransitionNode`
+(`edgeId = `${EDGE_PREFIX}${id}---${currentJsonNode.transition}`` — the
+`---` id format is emitted for ANY `transition:`-derived edge on a fresh
+YAML→canvas parse, regardless of whether the target is `END` or another
+node) and `useConnectNodes.hooks.js` → `EdgeOperationsHelpers.createNewEdge`
+(spreads the raw ReactFlow `connection` object with no explicit `id`, so
+`@xyflow/react`'s own `addEdge` auto-generates one from the connection's
+handle ids — `{source}{sourceHandle}-{target}{targetHandle}`, no `---` —
+until the next full Save + reload re-derives it via `parsePipeline`):
+
+- An edge **loaded from the pipeline's persisted YAML** on a fresh
+  navigate/reload — seeded edges at Step 1, or ANY edge post-Step-4-reload —
+  always gets the app's own `{source}---{target}` id, whatever its target.
+  This is the format `PipelineDetailPage.EDGE_TESTID` / `edge_testid_present()`
+  match exactly.
+- An edge **created live in-session via drag-connect**, before any Save +
+  reload, has no explicit `id` set by the app — ReactFlow's own `addEdge`
+  auto-generates one from the connection's handle ids
+  (`{source}{handle}-{target}{handle}`, no `---`). This is the format
+  `edge_exists()`'s prefix/substring matching tolerates (and `EDGE_TESTID`
+  does NOT match).
+
+At Step 3, both formats are live in the SAME pipeline simultaneously
+because the two edges under test are in different lifecycle stages: the
+NEW `LLM 1 → Printer 1` edge was JUST live-connected in this session (not
+yet saved/reloaded) → `rf__edge-xy-edge__LLM 1source-Printer 1target` →
+`edge_exists()` is the correct, in fact only correct, tool for confirming
+it. The OLD `LLM 1 → END` edge, by contrast, was rendered on the initial
+Step-1 navigate from the pipeline's seeded YAML (`transition: END`) →
+`rf__edge-xy-edge__LLM 1---EliteAPipelineEnd` → `edge_testid_present()`
+is the correct tool for confirming it's specifically gone (Axis 2's second
+bullet), not "the wrong tool" — the prior wording's "this case's target is
+Printer, not END" reasoning conflated the case's overall target (Printer)
+with the specific edge under test in this one check (the OLD, END-target,
+YAML-loaded edge). Use `edge_exists()` for the Step-3 positive assertion
+(new edge) and `edge_testid_present()` for the Step-3 negative assertion
+(old edge) — both are correct, for different edges in different lifecycle
+states, not competing options for the same check.
 
 ## Network Behavior
 - No dedicated network call for the drag-connect itself (ReactFlow local

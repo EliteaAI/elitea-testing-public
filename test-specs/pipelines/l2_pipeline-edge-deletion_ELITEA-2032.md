@@ -137,20 +137,36 @@
 
 | Element | Recommended Locator | Fallback |
 |---|---|---|
-| Edge to click | `page.locator('[data-testid="rf__edge-xy-edge__LLM 1source-Printer 1target"]')` — literal ReactFlow-generated testid (third-party widget, sanctioned per stop+flag exception #1) for this specific source→target pair; generalize via a new small page-object method (see Automation Hints) rather than hardcoding the string in the test | — |
+| Edge to click | `PipelineDetailPage.get_edge_locator("LLM 1", "Printer 1")` (existing method — see corrected format note below) | — |
 | Delete-confirmation dialog | `components.mui.Dialog.wait_for(page)` / `.click_button(dialog, "Delete")` (existing helper, already used by `delete_node()`) | — |
 | Edge existence / count post-delete | `PipelineDetailPage.edge_exists()` / `get_edge_count()` (existing) | — |
+| Old-edge-reappears check post-reload (step 6) | `PipelineDetailPage.edge_testid_present("LLM 1", "EliteAPipelineEnd")` (existing — exact `EDGE_TESTID` template match; correct tool here because this edge is being read right after a reload, i.e. loaded fresh from the saved YAML — see the corrected format note below) | — |
 | YAML view + editor | `[data-testid="pipeline-yaml-view"]` / `[data-testid="pipeline-yaml-editor"]` (confirmed working testids per `_surface.md` § YAML editor digest, ELITEA-2028) | — |
 
-**New page-object method needed** (small, testid-based — not a raw-handle
-addition): the existing `edge_exists()`/`edge_testid_present()` only
-return `bool`. This case needs to actually **click** a specific edge, so
-add e.g. `get_edge_locator(source_id, target_id, handle_suffix=None) ->
-Locator`, mirroring `edge_exists()`'s own prefix/substring search over
-`.react-flow__edge` but returning the matched `Locator` (via `.nth(i)`)
-instead of `True`/`False`, for the caller to `.click()`. This reuses the
-SAME testid-matching logic already in the file — no new selector class,
-no raw CSS/role handle.
+**Corrected testid format, 2026-08-04 (fix round 2, reconciled with the
+shipped implementation).** This row originally cited the live testid for
+the "Edge to click" element as `rf__edge-xy-edge__LLM 1source-Printer
+1target` (the `source`/`target`-handle-suffix, no-`---` format) and
+proposed a NEW `.react-flow__edge` prefix-scan method to reach it — both
+are wrong for this case. The `LLM 1 → Printer 1` edge here is **seeded via
+the API and read on a fresh canvas navigate** (Step 1), not live-connected
+in-session — per `EliteaUI/src/[fsd]/features/pipelines/flow-editor/lib/
+helpers/parsePipeline.helpers.js::handleTransitionNode`, ANY edge parsed
+from a node's YAML `transition:` property on a fresh load gets the app's
+own `{source}---{target}` id (regardless of whether the target is `END` or
+another node — the `source`/`target`-suffix, no-`---` format is specific to
+an edge ReactFlow's own `addEdge` auto-ids live, in-session, BEFORE any
+Save + reload; see ELITEA-2031's AFS § Concrete Handles for the full
+lifecycle explanation, corrected the same day for the identical
+mischaracterization). The confirmed-live testid for THIS case's edge is
+therefore `rf__edge-xy-edge__LLM 1---Printer 1` — the exact format
+`PipelineDetailPage.EDGE_TESTID` already matches. **What actually shipped**
+(review round 1): `get_edge_locator(source_id, target_id)` uses the exact
+`EDGE_TESTID` template directly (`rf__edge-xy-edge__{source}---{target}`),
+not the `.react-flow__edge` prefix/substring scan + `handle_suffix` param
+this section originally proposed — simpler than proposed, and correct for
+every edge this case touches (all either seeded-and-loaded or read
+post-reload, never live-connected-only).
 
 ## Network Behavior
 - No dedicated network call for the click-select or the Delete-key trigger
