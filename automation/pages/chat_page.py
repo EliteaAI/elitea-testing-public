@@ -168,9 +168,82 @@ class ChatPage(BasePage):
     )
 
     edit_context_button = LocatorDescriptor(
-        testid="context-settings-button",
-        fallback=lambda page: page.get_by_role("button", name="Edit context settings"),
-        description="Edit context settings button in the right panel Context Budget section"
+        testid="context-budget-edit-button",
+        description=(
+            "Edit context settings button in the right panel Context Budget "
+            "section (ContextBudgetHeader.jsx). Testid renamed for ELITEA-2218 "
+            "— the previous 'context-settings-button' testid this field pointed "
+            "at no longer exists anywhere in EliteaUI source (confirmed via a "
+            "fresh 'git grep', zero hits): the panel was refactored into "
+            "ContextBudgetExpanded/ContextBudgetHeader/ContextBudgetCompact "
+            "since this field was last verified, dropping the old testid. The "
+            "'fallback=' this field carried is also removed — dead code per "
+            "policy, and the role-based fallback text ('Edit context settings') "
+            "is itself unstable (surfaces as a Tooltip title, not an accessible "
+            "name)."
+        ),
+    )
+
+    context_budget_warning_icon = LocatorDescriptor(
+        testid="context-budget-warning-icon",
+        description=(
+            "Attention/warning icon next to the token-usage percentage, shown "
+            "ONLY once utilization reaches 100% (ContextBudgetProgress.jsx's "
+            "``isHighUtilization``, threshold = ``HIGH_UTILIZATION_THRESHOLD: 1`` "
+            "i.e. 100%). Conditionally rendered (not present in the DOM at all "
+            "below the threshold) — assert absence via ``.count() == 0`` before, "
+            "presence via ``.wait_for(state='visible')`` once the max is reached. "
+            "Testid added for ELITEA-2218 (previously no handle existed)."
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # "Edit context settings" dialog (ContextStrategyModalContent) — testids
+    # added for ELITEA-2218 (none of this dialog's fields/Save button had a
+    # data-testid before). Distinct handles from the global Settings > Memory
+    # page's (autosave-broken, #1129) fields — this dialog has its own
+    # explicit Save button / submitForm(), a different code path.
+    # ------------------------------------------------------------------
+
+    context_modal_max_tokens_input = LocatorDescriptor(
+        testid="context-modal-max-tokens-input",
+        description=(
+            "Max Context Tokens numeric input inside the 'Edit context settings' "
+            "dialog (ContextStrategyTokenManagement.jsx). Type text via "
+            "press_sequentially(), not fill() — MUI/React onChange requirement."
+        ),
+    )
+
+    context_modal_target_summary_tokens_input = LocatorDescriptor(
+        testid="context-modal-target-summary-tokens-input",
+        description=(
+            "Target Summary Tokens numeric input inside the 'Edit context "
+            "settings' dialog (ContextStrategySummarization.jsx). Must stay "
+            "below Max Context Tokens (form validation: 'less-than-max-context')."
+        ),
+    )
+
+    context_modal_preserve_recent_input = LocatorDescriptor(
+        testid="context-modal-preserve-recent-input",
+        description=(
+            "Preserve Recent Messages numeric input inside the 'Edit context "
+            "settings' dialog (ContextStrategyTokenManagement.jsx). Forcing "
+            "this LOW (project MIN=1) is what makes the post-summarization "
+            "Messages counter drop observable/provable — otherwise enough "
+            "raw recent messages stay un-summarized to keep the total high "
+            "regardless of summarization actually running."
+        ),
+    )
+
+    context_modal_save_button = LocatorDescriptor(
+        testid="context-modal-save-button",
+        description=(
+            "Save button in the 'Edit context settings' dialog "
+            "(ContextStrategyModalContent.jsx) — submits via Formik's "
+            "submitForm(); disabled until the form is dirty + valid. Saving "
+            "does NOT auto-close the dialog (no onClose call in the submit "
+            "handler) — close explicitly (e.g. Escape key) afterward."
+        ),
     )
 
     plus_menu_button = LocatorDescriptor(
@@ -3284,6 +3357,43 @@ class ChatPage(BasePage):
                 f"Cannot parse max tokens from Context Budget text: {text!r}"
             ) from exc
 
+    def wait_for_context_budget_max_tokens(self, expected: int, timeout: int = 10000) -> int:
+        """Wait until the Context Budget panel's max-tokens reading equals *expected*.
+
+        ``updateContextStrategy`` invalidates the same RTK-Query tag
+        ``getContextStatus`` provides, so the sidebar's max-tokens reading
+        updates via cache refetch shortly after a successful Save — not
+        necessarily within the single ``wait_for_network()`` call right after
+        the click (confirmed live: a one-shot read immediately after Save
+        can still show the pre-save value). Polls the same
+        deadline/poll_interval idiom as ``wait_for_ai_response()`` rather
+        than a fixed sleep.
+
+        Returns:
+            The final observed max-tokens value (equal to *expected* if this
+            returns normally).
+
+        Raises:
+            AssertionError: If *expected* is not observed within *timeout*.
+        """
+        logger.info("Waiting for Context Budget max-tokens to read %d", expected)
+        deadline = time.monotonic() + timeout / 1000.0
+        poll_interval = 0.5
+        last_seen = None
+        while time.monotonic() < deadline:
+            try:
+                last_seen = self.get_context_budget_max_tokens()
+                if last_seen == expected:
+                    logger.info("Context Budget max-tokens reached %d", expected)
+                    return last_seen
+            except ValueError:
+                pass  # Transient unparseable text during re-render
+            time.sleep(poll_interval)
+        raise AssertionError(
+            f"Context Budget max-tokens did not reach {expected} within {timeout}ms "
+            f"(last observed: {last_seen})"
+        )
+
     def get_context_budget_messages_count(self) -> str:
         """Return the Messages counter text from the Context Budget panel (e.g. "4").
 
@@ -3359,6 +3469,89 @@ class ChatPage(BasePage):
         )
         target.first.wait_for(state="visible", timeout=timeout)
         logger.info("Context Budget Summaries counter reached %r", expected)
+
+    def is_context_budget_warning_visible(self) -> bool:
+        """Return True if the high-utilization warning icon is rendered.
+
+        The icon (``context-budget-warning-icon``) is conditionally mounted —
+        it does not exist in the DOM at all below 100% utilization — so this
+        checks ``count() > 0`` rather than a plain visibility check.
+        """
+        return self.context_budget_warning_icon.count() > 0 and self.context_budget_warning_icon.first.is_visible()
+
+    def wait_for_context_budget_warning_icon(self, timeout: int = 10000) -> None:
+        """Wait until the high-utilization warning icon appears (utilization = 100%)."""
+        logger.info("Waiting for Context Budget warning icon (100%% utilization)...")
+        self.context_budget_warning_icon.first.wait_for(state="visible", timeout=timeout)
+        logger.info("Context Budget warning icon is visible")
+
+    def set_context_strategy_thresholds(
+        self, max_context_tokens: int, target_summary_tokens: int, preserve_recent_messages: int
+    ) -> None:
+        """Set Max Context Tokens + Target Summary Tokens + Preserve Recent
+        Messages in the already-open 'Edit context settings' dialog, then Save.
+
+        Requires ``edit_context_settings()`` to have been called first (dialog
+        open). Sets Max Context Tokens BEFORE Target Summary Tokens so the
+        form's own 'less-than-max-context' validation sees the new ceiling
+        before the target value is checked against it.
+
+        Uses click() + select_text() + Backspace + press_sequentially()
+        (never fill()) — these are plain MUI text inputs (type="text",
+        inputMode="numeric") whose onChange only fires on real keyboard
+        events (.claude/rules/mui-patterns.md). A plain ``Control+a`` +
+        press_sequentially() (no explicit Backspace) was tried first and
+        left the OLD value in place with the new digits prepended in front
+        of it (e.g. typing "1000" over a "10000" default produced
+        "100010000") — confirmed live; ``select_text()`` + ``Backspace``
+        (the existing ``credential_create_page.py`` clear-field pattern)
+        reliably empties the field first.
+
+        Args:
+            max_context_tokens: New Max Context Tokens value (project MIN 1000).
+            target_summary_tokens: New Target Summary Tokens value (project MIN
+                100; must stay below ``max_context_tokens``).
+            preserve_recent_messages: New Preserve Recent Messages value
+                (project MIN 1). Forcing this low is what makes a post-
+                summarization Messages-count drop observable — otherwise
+                enough raw recent messages stay un-summarized to keep the
+                total high regardless of summarization actually running.
+        """
+        logger.info(
+            "Setting context strategy thresholds: max_context_tokens=%d, "
+            "target_summary_tokens=%d, preserve_recent_messages=%d",
+            max_context_tokens, target_summary_tokens, preserve_recent_messages,
+        )
+        self.context_modal_max_tokens_input.click()
+        self.context_modal_max_tokens_input.select_text()
+        self.context_modal_max_tokens_input.press("Backspace")
+        self.context_modal_max_tokens_input.press_sequentially(str(max_context_tokens), delay=30)
+
+        self.context_modal_target_summary_tokens_input.click()
+        self.context_modal_target_summary_tokens_input.select_text()
+        self.context_modal_target_summary_tokens_input.press("Backspace")
+        self.context_modal_target_summary_tokens_input.press_sequentially(str(target_summary_tokens), delay=30)
+
+        self.context_modal_preserve_recent_input.click()
+        self.context_modal_preserve_recent_input.select_text()
+        self.context_modal_preserve_recent_input.press("Backspace")
+        self.context_modal_preserve_recent_input.press_sequentially(str(preserve_recent_messages), delay=30)
+
+        self.context_modal_save_button.click()
+        self.wait_for_network()
+        logger.info("Context strategy thresholds saved")
+
+    def close_context_settings_dialog(self, timeout: int = 5000) -> None:
+        """Close the 'Edit context settings' dialog via Escape.
+
+        ContextStrategyModalContent's own keydown handler calls ``onClose()``
+        on Escape (mirrors the Cancel button) — no dedicated close-icon
+        testid is needed. Saving does not auto-close the dialog, so this is
+        a required separate step after ``set_context_strategy_thresholds()``.
+        """
+        self.page.keyboard.press("Escape")
+        Dialog.wait_for_hidden(self.page, timeout=timeout)
+        logger.info("Context settings dialog closed")
 
     # ------------------------------------------------------------------
     # "Add users" modal (ELITEA-2167) — search/select/chip/Add/Cancel/Close
