@@ -641,6 +641,91 @@ class PipelineDetailPage(PipelineFormPage):
             return self.yaml_editor.text_content() or ""
         return "\n".join(self.yaml_lines.nth(i).text_content() or "" for i in range(line_count))
 
+    def edit_yaml_line(self, current_line_text: str, new_line_text: str) -> None:
+        """Replace one line of the YAML CodeMirror editor with *new_line_text*.
+
+        DECLARED IMPROVISATION (AFS ELITEA-2028, closely mirrors the
+        lead-approved 2026-07-16 pattern in
+        ``McpFormPage.fill_raw_json_line``, ``automation/pages/
+        mcp_form_page.py:597``): the YAML editor's per-line
+        ``<div class="cm-line">`` nodes are CodeMirror-internal render
+        nodes, not app JSX — no testid can be placed on them (sanctioned
+        #579 "third-party editor library internal render nodes"
+        exception, ``.agents/testing.md`` § Locator policy). ``get_by_text
+        ()`` scoped inside the testid-anchored ``yaml_editor`` parent
+        ``LocatorDescriptor`` field is the sanctioned shape for this
+        canon-gap; do not extend it to any handle that COULD carry a
+        testid.
+
+        Ambiguity caveat (confirmed live, AFS Concrete Handles):
+        ``get_by_text(exact=True)`` matches by DOM/document order, not by
+        node association. If more than one line in the document has
+        identical (trimmed) text, ``.first`` resolves to whichever occurs
+        earliest in the document — this method is not disambiguation-safe
+        for a caller with multiple identical target lines in
+        unpredictable order; know your document's ordering before relying
+        on ``.first``.
+
+        Args:
+            current_line_text: Exact current (trimmed) text of the target
+                line — no leading indentation, matching
+                ``fill_raw_json_line``'s calling convention — used to
+                locate the line's div via ``get_by_text(..., exact=True)``
+                scoped inside the editor.
+            new_line_text: Replacement text for the line, again without
+                leading indentation — ``Home`` moves to the first
+                non-whitespace character (confirmed live), so the line's
+                existing indentation is preserved automatically.
+        """
+        line = self.yaml_editor.get_by_text(current_line_text, exact=True).first
+        line.click()
+        self.page.keyboard.press("Home")
+        self.page.keyboard.press("Shift+End")
+        self._wait_for_yaml_line_selection_applied(line)
+        self.page.keyboard.type(new_line_text)
+        self._wait_for_yaml_content_stable()
+
+    def _wait_for_yaml_line_selection_applied(self, line_locator: Locator, timeout_ms: int = 10_000) -> None:
+        """Wait until *line_locator*'s content is selected via ``Home``/``Shift+End``.
+
+        Mirrors ``McpFormPage._wait_for_line_selection_applied`` (same
+        CodeMirror per-line selection mechanics). Not extracted to a
+        shared base — the two page objects share no common ancestor and
+        this is only the second occurrence, below Hard Rule 7's
+        third-repetition extraction threshold.
+        """
+        handle = line_locator.element_handle()
+        self.page.wait_for_function(
+            """(el) => {
+                const trimmedLen = el.textContent.trim().length;
+                const sel = window.getSelection();
+                return trimmedLen === 0 || (sel && sel.toString().length === trimmedLen);
+            }""",
+            arg=handle,
+            timeout=timeout_ms,
+        )
+
+    def _wait_for_yaml_content_stable(self, stable_duration_ms: int = 150, timeout_ms: int = 10_000) -> None:
+        """Poll the YAML editor's ``text_content()`` until it stops changing.
+
+        Mirrors ``McpFormPage._wait_for_text_content_stable`` — waits for
+        the editor's rendered text to converge (typing + any CodeMirror
+        formatting/re-render) rather than a fixed delay.
+        """
+        deadline = time.monotonic() + timeout_ms / 1000.0
+        stable_duration = stable_duration_ms / 1000.0
+        last_text = None
+        stable_since = time.monotonic()
+        while time.monotonic() < deadline:
+            current_text = self.yaml_editor.text_content() or ""
+            if current_text != last_text:
+                last_text = current_text
+                stable_since = time.monotonic()
+            elif time.monotonic() - stable_since >= stable_duration:
+                return
+            time.sleep(0.05)
+        raise TimeoutError(f"YAML editor text did not stabilise within {timeout_ms}ms (last: {last_text!r})")
+
     # ------------------------------------------------------------------
     # ReactFlow canvas — node management
     # ------------------------------------------------------------------
@@ -1596,6 +1681,39 @@ class PipelineDetailPage(PipelineFormPage):
 
         logger.debug("All edges in DOM: %s", all_testids)
         return False
+
+    # Exact edge testid, keyed by the LITERAL internal source/target ids as
+    # they appear in the DOM (not the logical id `edge_exists()` accepts —
+    # see `edge_testid_present()`'s docstring for why the two differ for
+    # the END node specifically).
+    EDGE_TESTID = '[data-testid="rf__edge-xy-edge__{}---{}"]'
+
+    def edge_testid_present(self, source_internal_id: str, target_internal_id: str) -> bool:
+        """Check whether the EXACT edge testid is present in the DOM.
+
+        Unlike `edge_exists()` (prefix + substring matching against a
+        LOGICAL target_id — unreliable for the END node, whose real
+        internal target id is `EliteAPipelineEnd`, not the literal string
+        "END"; see `edge_exists()`'s own docstring caveat), this checks
+        the literal, exact DOM testid. Callers must pass the INTERNAL ids
+        exactly as ReactFlow renders them (e.g. `EliteAPipelineEnd` for
+        the END node), not the display name.
+
+        Added for AFS ELITEA-2028 step 4: proving the SAME edge element's
+        testid changed in place (`rf__edge-xy-edge__LLM 1---
+        EliteAPipelineEnd` -> `rf__edge-xy-edge__LLM 1---Code 1`) rather
+        than merely inferring re-wiring from unchanged edge/node counts.
+
+        Args:
+            source_internal_id: Literal source node id as rendered in the
+                edge testid.
+            target_internal_id: Literal target node id as rendered in the
+                edge testid.
+
+        Returns:
+            True if an edge with that exact testid exists in the DOM.
+        """
+        return self.page.locator(self.EDGE_TESTID.format(source_internal_id, target_internal_id)).count() > 0
 
     def fit_view(self):
         """Click the ReactFlow 'Fit View' zoom control."""
