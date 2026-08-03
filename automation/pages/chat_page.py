@@ -356,6 +356,30 @@ class ChatPage(BasePage):
         ),
     )
 
+    # ------------------------------------------------------------------
+    # In-message table/diagram edit-canvas entry points (ELITEA-2086/2088)
+    # ------------------------------------------------------------------
+
+    table_edit_button = LocatorDescriptor(
+        testid="chat-table-edit-button",
+        description=(
+            "Pencil/edit icon in the toolbar above an AI-generated "
+            "Markdown table (MarkdownTableBlock.jsx) — opens the table "
+            "edit canvas. Page-wide: correct as long as a test only has "
+            "one editable table on screen."
+        ),
+    )
+
+    diagram_edit_button = LocatorDescriptor(
+        testid="chat-diagram-edit-button",
+        description=(
+            "Pencil/edit icon in the toolbar above an AI-generated "
+            "Mermaid diagram (MermaidCodeBlock.jsx) — opens the diagram "
+            "edit canvas. Page-wide: correct as long as a test only has "
+            "one editable diagram on screen."
+        ),
+    )
+
     # Suffix-match template counting every top-level plus-menu item
     # currently rendered — same convention as CONVERSATION_MENU_ITEM_PREFIX
     # below. Safe to query page-wide: MUI Poppers in this codebase unmount
@@ -472,6 +496,38 @@ class ChatPage(BasePage):
         fallback=lambda page: page.locator('main ul.MuiList-root > li.MuiListItem-root'),
         description="Individual message items (user + AI)"
     )
+
+    # An AI-generated Markdown table's rendered (non-edit) form
+    # (MarkdownTableBlock.jsx) — headers/rows are fully dynamic AI content
+    # with no stable per-cell identity to testid, so read via raw CSS
+    # scoped inside the testid-anchored messages_container, same idiom as
+    # _extract_message_body's own p/li scoping below (ELITEA-2086/2087).
+    RENDERED_TABLE_HEADER_CELL = "table thead th"
+    RENDERED_TABLE_ROW = "table tbody tr"
+    RENDERED_TABLE_CELL = "td"
+
+    diagram_svg_container = LocatorDescriptor(
+        testid="chat-mermaid-diagram-svg-container",
+        description=(
+            "Wrapping Box MermaidDiagramOutput/DiagramOutput.jsx renders "
+            "the Mermaid-library SVG into. Shared between the "
+            "conversation-view diagram and the canvas's live preview — "
+            "only one is ever mounted at a time (the conversation copy is "
+            "swapped for EditingPlaceholder while the canvas is open), so "
+            "a single testid is safe (ELITEA-2088)."
+        ),
+    )
+
+    # Sanctioned #579 exception (third-party widget subtree — the SVG
+    # itself is Mermaid.js-rendered, not app JSX) — scoped raw selectors
+    # (standard Mermaid CSS classes) as children of diagram_svg_container.
+    MERMAID_NODE = ".node"
+    # NOT ".edgePath" (that's the group WRAPPER, <g class="edgePaths">,
+    # plural) — the individual edge <path> elements carry class
+    # "flowchart-link" (confirmed live, ELITEA-2088 implementer
+    # exploration: mermaid 11.16.0's actual per-edge class list is
+    # "edge-thickness-normal edge-pattern-solid ... flowchart-link").
+    MERMAID_EDGE = ".flowchart-link"
 
     # The actual overflow-y:scroll SimpleBar content-wrapper wrapping
     # chat-message-list (confirmed live: sits 2 DOM levels above the
@@ -1211,6 +1267,59 @@ class ChatPage(BasePage):
                 return text
 
         return ""
+
+    def get_rendered_table_data(self, message_locator=None) -> list[dict]:
+        """Read a Markdown table rendered inline in an AI message
+        (``MarkdownTableBlock.jsx``'s non-edit rendering, NOT the
+        DataGrid editor) into a list of ``{header: cell_text}`` dicts,
+        in row order (ELITEA-2086/2087).
+
+        DECLARED IMPROVISATION: the table's headers/rows are fully
+        AI-generated dynamic content (varies every generation — AFS
+        ELITEA-2086 § Test Data) with no stable per-cell identity to hang
+        a testid on, the same situation as an AI message's paragraph/list
+        body text — which this class already reads via raw CSS scoped
+        inside the testid-anchored ``messages_container``
+        (:meth:`_extract_message_body`) rather than per-element testids.
+        This method follows that same established in-file idiom.
+
+        Args:
+            message_locator: The message ``<li>`` Locator to read the
+                table from. Defaults to the last message.
+        """
+        message = message_locator if message_locator is not None else self.messages_container.last
+        headers_loc = message.locator(self.RENDERED_TABLE_HEADER_CELL)
+        header_count = headers_loc.count()
+        # MUI TableCell pads its text node — confirmed live (ELITEA-2086)
+        # header/cell text_content() returns e.g. " Rank " not "Rank".
+        headers = [(headers_loc.nth(i).text_content() or "").strip() for i in range(header_count)]
+        rows_loc = message.locator(self.RENDERED_TABLE_ROW)
+        data = []
+        for r in range(rows_loc.count()):
+            cells = rows_loc.nth(r).locator(self.RENDERED_TABLE_CELL)
+            cell_count = cells.count()
+            row = {
+                headers[i]: (cells.nth(i).text_content() or "").strip()
+                for i in range(min(header_count, cell_count))
+            }
+            data.append(row)
+        return data
+
+    def wait_for_diagram_rendered(self, timeout: int = 30000):
+        """Wait until the Mermaid diagram's SVG container is visible and
+        has rendered at least one child node (ELITEA-2088)."""
+        self.diagram_svg_container.wait_for(state="visible", timeout=timeout)
+        self.diagram_svg_container.locator(self.MERMAID_NODE).first.wait_for(
+            state="attached", timeout=timeout
+        )
+
+    def get_diagram_node_count(self) -> int:
+        """Return the number of Mermaid diagram node elements currently rendered."""
+        return self.diagram_svg_container.locator(self.MERMAID_NODE).count()
+
+    def get_diagram_edge_count(self) -> int:
+        """Return the number of Mermaid diagram edge/connection elements currently rendered."""
+        return self.diagram_svg_container.locator(self.MERMAID_EDGE).count()
 
     def get_last_message_text(self) -> str:
         """Get the text content of the last message body.
@@ -2075,6 +2184,30 @@ class ChatPage(BasePage):
         self.mcps_create_new_button.wait_for(state="visible", timeout=timeout)
         self.mcps_create_new_button.click()
         logger.info("Create New MCP canvas opened")
+
+    @action("Click table edit icon")
+    def click_table_edit_icon(self, timeout: int = 10000):
+        """Click the pencil/edit icon on an AI-generated Markdown table
+        (ELITEA-2086/2087), opening the table edit canvas.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking table edit icon")
+        self.table_edit_button.wait_for(state="visible", timeout=timeout)
+        self.table_edit_button.click()
+
+    @action("Click diagram edit icon")
+    def click_diagram_edit_icon(self, timeout: int = 10000):
+        """Click the pencil/edit icon on an AI-generated Mermaid diagram
+        (ELITEA-2088), opening the diagram edit canvas.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking diagram edit icon")
+        self.diagram_edit_button.wait_for(state="visible", timeout=timeout)
+        self.diagram_edit_button.click()
 
     # ------------------------------------------------------------------
     # Conversation management helpers

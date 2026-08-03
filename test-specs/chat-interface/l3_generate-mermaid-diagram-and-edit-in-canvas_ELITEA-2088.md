@@ -113,6 +113,39 @@ None. The apparent "edit didn't take effect" signal from a `.cm-line` `all_inner
 ## Blocked Steps
 None. All 11 case steps were executed and observed end-to-end live. One sub-path (step 11's valid-edit re-render, as opposed to the error-path re-render actually observed) is flagged for the implementer's first-pass confirmation rather than independently re-verified this session (see § Coverage Map / Axis 2) — this does not block `ready-for-automation` classification since it is one isolable assertion at the tail of an otherwise-fully-confirmed flow, not a wall preventing further exploration.
 
+## Implementer Exploration Notes (Phase 2 amendment — this closes the AFS's
+own "valid-edit sync not independently re-verified" gap, § Blocked Steps)
+
+- **Mermaid's individual edge `<path>` elements carry class
+  `flowchart-link`, not `edgePath`** (`edgePaths`, plural, is only the
+  group WRAPPER `<g>`). `ChatPage.MERMAID_EDGE` uses `.flowchart-link`.
+- **A bare end-of-line append does NOT reliably land inside a node's
+  rendered label**, and this is the actual reason the AFS's own
+  valid-edit sync sub-path was unconfirmed. Confirmed live: clicking a
+  `.cm-line`, pressing `End`, and typing `" edited"` (the AFS's own
+  step-8 mechanism, confirmed to modify the SOURCE text) lands the new
+  text AFTER the line's LAST token. On a compound connection line like
+  `A[Start] --> B{Decision}`, that is past the closing `}` — syntactically
+  valid (Mermaid still re-renders without error, `node_count > 0` holds)
+  but the appended text is outside any node's bracketed label, so it
+  never appears in the rendered SVG text. Fixed by switching to
+  `ChatDiagramCanvasPage.replace_line()` (select-whole-line-then-type,
+  mirroring `McpFormPage.fill_raw_json_line`/`PipelineDetailPage.
+  edit_yaml_line`), with the caller inserting `" edited"` immediately
+  before the target line's first closing bracket
+  (`]`/`}`/`)`) — matching the AFS's own literal example
+  (`A[Start] --> B{...}` → `A[Start edited] --> B{...}`) exactly.
+- Same caveat as `edit_yaml_line`: CodeMirror's `Home` goes to the first
+  NON-whitespace character, so the replacement text passed to
+  `replace_line()` must exclude the line's leading indentation (it is
+  preserved automatically) — typing it back in doubles the indent.
+- **Step 11's assertion target inherits ELITEA-2087's rendering-path
+  finding**: after one edit-and-close cycle a block may render via
+  `Canvas.jsx`'s `canvas_message` path rather than the plain `text_message`
+  path. This case's own step 11 check reads the diagram's SVG text content
+  (`chat.diagram_svg_container.text_content()`), not the pencil button, so
+  it is unaffected either way.
+
 ## Automation Hints
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor` (`.agents/testing.md`).
 - **Edit a node-label line, not the diagram-type declaration line (line 1)** — critical for a happy-path assertion (valid re-rendered diagram) rather than accidentally exercising the syntax-error path. See § Test Data.
