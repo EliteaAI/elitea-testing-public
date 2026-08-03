@@ -17,7 +17,7 @@ Actions:
 
 import logging
 import urllib.parse
-from playwright.sync_api import Page, Download, expect
+from playwright.sync_api import Download, Locator, Page, expect
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -495,6 +495,152 @@ class ArtifactsPage(BasePage):
         description="'Delete' (confirm) button inside the delete-confirmation "
         "modal (DeleteEntityModal.jsx) — do not confuse with "
         ":attr:`delete_files_button`, the toolbar icon that OPENS this modal.",
+    )
+
+    # ------------------------------------------------------------------
+    # File preview/edit editor panel (ELITEA-1851/1852/1856)
+    # ------------------------------------------------------------------
+
+    # Dynamic testid template — per-row "View/Edit file" icon button
+    # (ArtifactRowActions.jsx). Parameter is the row's full displayed name
+    # (row.name), same identity semantics as ARTIFACT_ACTIONS_MENU_BUTTON.
+    ARTIFACT_FILE_PREVIEW_BUTTON = '[data-testid="artifacts-file-preview-button-{}"]'
+
+    # Static testid on every file row — the row itself is name-agnostic;
+    # identity comes from filtering by displayed text (`.filter(has_text=...)`),
+    # same disambiguation approach as :attr:`_file_rows`. Kept as a class
+    # constant (not a plain string literal in methods) so the selector stays
+    # in the greppable testid inventory (`.agents/testing.md` § Locator policy).
+    ARTIFACT_FILE_ROW = '[data-testid="artifacts-file-row"]'
+
+    file_preview_close_button = LocatorDescriptor(
+        testid="artifacts-preview-close-button",
+        description="X (close) icon in the editor panel header "
+        "(ELITEA-1851 — new testid, implementer, PreviewHeader.jsx).",
+    )
+
+    file_preview_file_path = LocatorDescriptor(
+        testid="artifacts-preview-file-path",
+        description="Editor panel header's full file-path Typography "
+        "(ELITEA-1851 — new testid, implementer, PreviewHeader.jsx's "
+        "`canvasTitle` element). Renders 'bucket/file.ext', or a truncated "
+        "'bucket/ ... /folder/file.ext' form for deeply nested paths.",
+    )
+
+    file_preview_language_select = LocatorDescriptor(
+        testid="artifacts-preview-language-select",
+        description="Language label + dropdown in the editor panel header "
+        "(ELITEA-1851 — new testid, implementer). Select.SingleSelect "
+        "already supported a `data-testid` passthrough prop; just not wired "
+        "at this call site before now.",
+    )
+
+    file_preview_code_editor = LocatorDescriptor(
+        testid="artifacts-preview-code-editor",
+        description="Wrapping container Box around the CodeMirror editor "
+        "for non-markdown/html/mdx/image/docx files (ELITEA-1851 — new "
+        "testid, implementer, PreviewContent.jsx's CODE branch). Line "
+        "numbers (`.cm-lineNumbers`) are CodeMirror-internal DOM scoped "
+        "under this testid'd parent — sanctioned #579 exception (third-party "
+        "editor library internal render nodes); never extended beyond that "
+        "gutter.",
+    )
+
+    # Scoped sub-selector for CodeMirror's own internal line-number gutter —
+    # #579 sanctioned exception, MUST stay chained off file_preview_code_editor.
+    CM_LINE_NUMBERS = ".cm-lineNumbers"
+
+    file_preview_code_content = LocatorDescriptor(
+        testid="artifacts-preview-code-content",
+        description="The actual editable `.cm-content` DOM node CodeMirror "
+        "renders internally (ELITEA-1851/1852 — wired via "
+        "`Field.CodeMirrorEditor`'s existing `contentTestId` prop, which "
+        "sets `data-testid` directly via `EditorView.contentAttributes` — a "
+        "first-party extension point that already existed, just wasn't "
+        "wired at this call site). Use this, not :attr:`file_preview_code_editor` "
+        "(the outer wrapper), for click/keyboard-nav targeting and content "
+        "read/verify.",
+    )
+
+    file_preview_save_button = LocatorDescriptor(
+        testid="artifacts-preview-save-button",
+        description="'Save' button in the editor panel header (ELITEA-1851 "
+        "— new testid, implementer, PreviewHeader.jsx). Present but DISABLED "
+        "until an edit is made (`disabled={isSaving || !hasUnsavedChanges}`) "
+        "— case text describing it as 'active/blue' on open is stale; see "
+        "the ELITEA-1851 AFS's Coverage Map clarification "
+        "(EliteaAI/elitea-testing-public#1108).",
+    )
+
+    file_preview_discard_button = LocatorDescriptor(
+        testid="artifacts-preview-discard-button",
+        description="'Discard' button in the editor panel header (ELITEA-1851 "
+        "— new testid, implementer, wired via `Button.DiscardButton`'s "
+        "existing `dataTestId` prop). Same disabled-until-edit gating as "
+        ":attr:`file_preview_save_button`.",
+    )
+
+    file_preview_overflow_menu_button = LocatorDescriptor(
+        testid="file-preview-overflow-menu-menu-button",
+        description="3-dot (ellipsis) actions-menu trigger in the editor "
+        "panel header — EXISTS, pre-dating this case (`DotMenu` "
+        "`id=\"file-preview-overflow-menu\"` in PreviewHeader.jsx). A "
+        "DIFFERENT DotMenu instance from the row-level "
+        "ARTIFACT_ACTIONS_MENU_BUTTON (`id=\"artifact-actions-{row.id}\"`, "
+        "ELITEA-1839) — this one has Copy Content + Download + Delete; the "
+        "row-level one has only Download + Delete. Don't conflate the two.",
+    )
+
+    file_preview_overflow_menu_container = LocatorDescriptor(
+        testid="file-preview-overflow-menu-menu",
+        description="The editor panel's 3-dot dropdown's WHOLE MUI Menu "
+        "container — EXISTS, same `${id}-menu` DotMenu convention as "
+        ":attr:`file_preview_overflow_menu_button`. Used to scope "
+        ":attr:`EDITOR_MENU_ITEM_SELECTOR` and read the three menu items "
+        "in DOM (render) order.",
+    )
+
+    # Scoped sub-selector — the three per-item testid'd MenuItems inside the
+    # editor panel's dropdown. A comma-separated CSS selector list returns
+    # matches in DOM (document) order regardless of the order the individual
+    # `[data-testid="…"]` clauses are written in, which is exactly what
+    # :meth:`get_file_preview_menu_item_labels` needs to read the dropdown's
+    # actual render order.
+    EDITOR_MENU_ITEM_SELECTOR = (
+        '[data-testid="artifacts-preview-copy-content-menuitem"], '
+        '[data-testid="artifacts-preview-download-menuitem"], '
+        '[data-testid="artifacts-preview-delete-menuitem"]'
+    )
+
+    file_preview_copy_content_menuitem = LocatorDescriptor(
+        testid="artifacts-preview-copy-content-menuitem",
+        description="'Copy Content' item inside the editor panel's 3-dot "
+        "dropdown (ELITEA-1856 — new testid, implementer). PreviewHeader.jsx's "
+        "`menuItems` array had no `key` field before this case, so DotMenu's "
+        "`testId: item.key` → `undefined` → no `data-testid` ever rendered; "
+        "added `key: 'artifacts-preview-copy-content'`, which flows through "
+        "the existing `BasicMenuItem` `data-testid={`${testId}-menuitem`}` "
+        "mechanism unchanged.",
+    )
+
+    file_preview_download_menuitem = LocatorDescriptor(
+        testid="artifacts-preview-download-menuitem",
+        description="'Download' item inside the editor panel's 3-dot dropdown "
+        "(ELITEA-1856 — new testid, implementer, same `key` mechanism as "
+        ":attr:`file_preview_copy_content_menuitem`). Do not confuse with "
+        ":attr:`download_menu_item` (the ROW-level dropdown's Download item, "
+        "ELITEA-1839, a different DotMenu instance).",
+    )
+
+    file_preview_delete_menuitem = LocatorDescriptor(
+        testid="artifacts-preview-delete-menuitem",
+        description="'Delete' item inside the editor panel's 3-dot dropdown "
+        "(ELITEA-1856 — new testid, implementer, same `key` mechanism as "
+        ":attr:`file_preview_copy_content_menuitem`). Do not confuse with "
+        ":attr:`delete_menu_item` (the ROW-level dropdown's Delete item, "
+        "ELITEA-1839, a different DotMenu instance). Clicking opens the "
+        "shared :attr:`delete_confirm_dialog` (same component ELITEA-1847 "
+        "already testid'd for the bulk-delete flow).",
     )
 
     # ------------------------------------------------------------------
@@ -2210,3 +2356,375 @@ class ArtifactsPage(BasePage):
         names = [(labels.nth(i).text_content() or "").strip() for i in range(count)]
         logger.info("Breadcrumb folder crumbs: %s", names)
         return names
+
+    # ------------------------------------------------------------------
+    # File preview/edit editor panel (ELITEA-1851/1852/1856)
+    # ------------------------------------------------------------------
+
+    def get_file_row(self, filename: str) -> Locator:
+        """Return a locator for a single file row, filtered by displayed name.
+
+        Built from the class-level :attr:`ARTIFACT_FILE_ROW` testid constant
+        rather than an inline ``page.get_by_test_id(...)`` call, so the
+        selector stays a page-object field per
+        `.claude/rules/page-objects.md` (dynamic-identity pattern — the
+        testid itself is static, filename filtering supplies the identity,
+        same shape as :meth:`get_skill_card_by_id` in `agent_detail_page.py`).
+        Callers needing hover/click use this method or one of the existing
+        higher-level helpers; test/spec files never build this locator
+        themselves.
+
+        Args:
+            filename: Exact file name to match via ``.filter(has_text=...)``.
+
+        Returns:
+            Locator scoped to the first matching row.
+        """
+        return self.page.locator(self.ARTIFACT_FILE_ROW).filter(has_text=filename).first
+
+    @action("Hover file row")
+    def hover_file_row(self, filename: str, timeout: int = 10000) -> None:
+        """Hover a file row to reveal its hover-only per-row actions (preview icon).
+
+        Args:
+            filename: Exact file name whose row to hover.
+            timeout: Maximum wait time in milliseconds.
+        """
+        file_row = self.get_file_row(filename)
+        file_row.wait_for(state="visible", timeout=timeout)
+        file_row.scroll_into_view_if_needed()
+        file_row.hover()
+
+    def is_file_preview_button_visible(self, filename: str, timeout: int = 5000) -> bool:
+        """Return whether the 'View/Edit file' icon is visible for *filename*'s row.
+
+        Intended to be called after :meth:`hover_file_row` (the icon is
+        hidden until the row is hovered).
+
+        Args:
+            filename: Exact file name (matches the dynamic
+                ``artifacts-file-preview-button-{filename}`` testid).
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if visible within *timeout*, False otherwise.
+        """
+        trigger = self.page.locator(self.ARTIFACT_FILE_PREVIEW_BUTTON.format(filename))
+        try:
+            trigger.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @action("Open file in preview/edit editor")
+    def open_file_in_editor(self, filename: str, timeout: int = 10000) -> None:
+        """Hover the file row and click its 'View/Edit file' icon to open the editor.
+
+        Shared open-flow helper for ELITEA-1851/1852/1856 (AFS Automation
+        Hints — factored once rather than duplicated per spec).
+
+        Args:
+            filename: Exact file name whose row to open (matches the
+                dynamic ``artifacts-file-preview-button-{filename}`` testid).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening '%s' in the preview/edit editor", filename)
+        self.hover_file_row(filename, timeout=timeout)
+
+        trigger = self.page.locator(self.ARTIFACT_FILE_PREVIEW_BUTTON.format(filename))
+        trigger.wait_for(state="visible", timeout=timeout)
+        trigger.click()
+
+        # The editor is "open" once its Save button renders — present
+        # (though disabled pre-edit) as soon as canPreview is true.
+        self.file_preview_save_button.wait_for(state="visible", timeout=timeout)
+        # Also wait for the file's CONTENT to have actually loaded — the
+        # editor panel's 'Copy Content' menu item is conditionally rendered
+        # on `fileContent` being truthy (PreviewHeader.jsx's `menuItems`
+        # `show` clause), which can still be fetching when the Save button
+        # first renders (separate loading state). Waiting here (once, in the
+        # shared open-flow) avoids every caller needing its own race guard
+        # before opening the 3-dot menu.
+        self.file_preview_code_content.wait_for(state="visible", timeout=timeout)
+        logger.info("Editor open for '%s'", filename)
+
+    @action("Close file preview editor")
+    def close_file_preview(self, timeout: int = 10000) -> None:
+        """Click the X (close) icon to close the editor panel.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_close_button.click()
+        self.file_preview_close_button.wait_for(state="hidden", timeout=timeout)
+        logger.info("Editor closed")
+
+    def get_file_preview_path_text(self, timeout: int = 10000) -> str:
+        """Return the editor panel header's full file-path text.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The stripped text of :attr:`file_preview_file_path`
+            (e.g. ``"autotest-bucket-123/machine_learning.py"``).
+        """
+        self.file_preview_file_path.wait_for(state="visible", timeout=timeout)
+        return (self.file_preview_file_path.text_content() or "").strip()
+
+    def get_file_preview_language_text(self, timeout: int = 10000) -> str:
+        """Return the editor panel's language-label text (e.g. 'Python (detected)').
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The stripped text of :attr:`file_preview_language_select`.
+        """
+        self.file_preview_language_select.wait_for(state="visible", timeout=timeout)
+        return (self.file_preview_language_select.text_content() or "").strip()
+
+    def is_code_editor_line_numbers_visible(self, timeout: int = 10000) -> bool:
+        """Return whether CodeMirror's line-number gutter is visible.
+
+        LOCATOR: ``.cm-lineNumbers`` is CodeMirror-internal render DOM —
+        sanctioned #579 exception (third-party editor library internal
+        render node), scoped under the testid'd :attr:`file_preview_code_editor`
+        parent per policy; never used as a free-floating page-level selector.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if the gutter is visible within *timeout*, False otherwise.
+        """
+        gutter = self.file_preview_code_editor.locator(self.CM_LINE_NUMBERS)
+        try:
+            gutter.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def is_file_preview_save_enabled(self, timeout: int = 10000) -> bool:
+        """Return whether the editor panel's Save button becomes enabled.
+
+        Polls via Playwright's auto-retrying ``expect(...).to_be_enabled()``
+        (not a single synchronous read) — React's ``hasUnsavedChanges`` state
+        update lags the CodeMirror keystroke by a frame or two, so a bare
+        ``is_enabled()`` taken immediately after typing can observe the
+        pre-update (disabled) state. Use this AFTER an edit, to confirm the
+        disabled -> enabled transition; for the pre-edit disabled check, use
+        :meth:`is_file_preview_save_disabled` instead (resolves immediately
+        rather than polling the full *timeout* for a transition that never
+        happens).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the button to
+                become enabled.
+
+        Returns:
+            True if Save became enabled within *timeout*, False otherwise.
+        """
+        try:
+            expect(self.file_preview_save_button).to_be_enabled(timeout=timeout)
+            return True
+        except AssertionError:
+            return False
+
+    def is_file_preview_save_disabled(self, timeout: int = 5000) -> bool:
+        """Return whether the editor panel's Save button is (still) disabled.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if Save is disabled within *timeout*, False otherwise.
+        """
+        try:
+            expect(self.file_preview_save_button).to_be_disabled(timeout=timeout)
+            return True
+        except AssertionError:
+            return False
+
+    def is_file_preview_discard_enabled(self, timeout: int = 10000) -> bool:
+        """Return whether the editor panel's Discard button becomes enabled.
+
+        Same auto-retrying-poll rationale as :meth:`is_file_preview_save_enabled`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the button to
+                become enabled.
+
+        Returns:
+            True if Discard became enabled within *timeout*, False otherwise.
+        """
+        try:
+            expect(self.file_preview_discard_button).to_be_enabled(timeout=timeout)
+            return True
+        except AssertionError:
+            return False
+
+    def is_file_preview_discard_disabled(self, timeout: int = 5000) -> bool:
+        """Return whether the editor panel's Discard button is (still) disabled.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if Discard is disabled within *timeout*, False otherwise.
+        """
+        try:
+            expect(self.file_preview_discard_button).to_be_disabled(timeout=timeout)
+            return True
+        except AssertionError:
+            return False
+
+    @action("Edit file preview content")
+    def edit_file_preview_content(
+        self, text: str, line_index: int = 0, timeout: int = 10000
+    ) -> None:
+        """Click into the CodeMirror content, navigate to a line, and append *text*.
+
+        Keyboard-nav only (``Control+Home`` -> ``ArrowDown`` * N -> ``End`` ->
+        type) — no character-offset math, per the AFS's "known, non-empty
+        line" guidance (exact "line 17" from the case is flavor, not a fixed
+        requirement). ``line_index=0`` (the default) targets the first
+        content line for wait-free targeting.
+
+        Args:
+            text: Text to type at the end of the target line.
+            line_index: 0-based line to target (default: first line).
+            timeout: Maximum wait time in milliseconds for the editor to be ready.
+        """
+        editor = self.file_preview_code_content
+        editor.wait_for(state="visible", timeout=timeout)
+        editor.click()
+        self.page.keyboard.press("Control+Home")
+        for _ in range(line_index):
+            self.page.keyboard.press("ArrowDown")
+        self.page.keyboard.press("End")
+        self.page.keyboard.type(text)
+        logger.info("Typed %r at line %d in the preview editor", text, line_index)
+
+    def get_file_preview_content_text(self, timeout: int = 10000) -> str:
+        """Return the CodeMirror editable content's current text.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The stripped text content of :attr:`file_preview_code_content`.
+        """
+        self.file_preview_code_content.wait_for(state="visible", timeout=timeout)
+        return (self.file_preview_code_content.text_content() or "").strip()
+
+    @action("Save file preview changes")
+    def click_file_preview_save(self, timeout: int = 15000) -> None:
+        """Click Save and wait for the ``createArtifact`` POST to resolve.
+
+        Waits on the network response (not a fixed sleep), per
+        ``.agents/testing.md``'s no-sleep rule. The RTK Query
+        ``createArtifact`` mutation POSTs to
+        ``/artifacts/artifacts/default/{project}/{bucket}`` (confirmed live
+        via EliteaUI's ``src/api/artifacts.js``).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the response.
+        """
+        with self.page.expect_response(
+            lambda r: "/artifacts/artifacts/default/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ):
+            self.file_preview_save_button.click()
+        logger.info("Save clicked, createArtifact response received")
+
+    @action("Open editor panel actions menu")
+    def open_file_preview_actions_menu(self, timeout: int = 10000) -> None:
+        """Click the 3-dot menu trigger to open the editor panel's actions dropdown.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_overflow_menu_button.wait_for(state="visible", timeout=timeout)
+        self.file_preview_overflow_menu_button.click()
+        self.file_preview_overflow_menu_container.wait_for(state="visible", timeout=timeout)
+        logger.info("Editor panel actions menu open")
+
+    def get_file_preview_menu_item_labels(self, timeout: int = 10000) -> list[str]:
+        """Return the editor panel's open dropdown's item labels, in DOM order.
+
+        Scoped to :attr:`file_preview_overflow_menu_container` via
+        :attr:`EDITOR_MENU_ITEM_SELECTOR` (a data-testid-suffix selector,
+        not a raw CSS class) — reads all three per-item testid'd
+        ``MenuItem``s in render order.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            List of the dropdown's visible label strings, in DOM order.
+        """
+        items = self.file_preview_overflow_menu_container.locator(self.EDITOR_MENU_ITEM_SELECTOR)
+        items.first.wait_for(state="visible", timeout=timeout)
+        count = items.count()
+        labels = [(items.nth(i).text_content() or "").strip() for i in range(count)]
+        logger.info("Editor panel actions menu items (in order): %s", labels)
+        return labels
+
+    @action("Click 'Copy Content' in editor panel menu")
+    def click_file_preview_copy_content(self, timeout: int = 10000) -> None:
+        """Click the open dropdown's 'Copy Content' item.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_copy_content_menuitem.wait_for(state="visible", timeout=timeout)
+        self.file_preview_copy_content_menuitem.click()
+        logger.info("'Copy Content' clicked")
+
+    @action("Click 'Download' in editor panel menu")
+    def click_file_preview_download(self, timeout: int = 10000) -> Download:
+        """Click the open dropdown's 'Download' item and capture the download.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the download event.
+
+        Returns:
+            Playwright ``Download`` object.
+        """
+        self.file_preview_download_menuitem.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.file_preview_download_menuitem.click()
+        download = download_info.value
+        logger.info(
+            "Download started from editor panel menu → suggested filename: %s",
+            download.suggested_filename,
+        )
+        return download
+
+    @action("Click 'Delete' in editor panel menu")
+    def click_file_preview_delete(self, timeout: int = 10000) -> None:
+        """Click the open dropdown's 'Delete' item, opening the confirm modal.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_delete_menuitem.wait_for(state="visible", timeout=timeout)
+        self.file_preview_delete_menuitem.click()
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Delete-confirmation modal opened from editor panel menu")
+
+    @action("Confirm delete from editor panel")
+    def confirm_file_preview_delete(self, timeout: int = 15000) -> None:
+        """Click 'Delete' inside the confirmation modal and wait for the
+        ``deleteArtifact`` DELETE request to resolve.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the response.
+        """
+        with self.page.expect_response(
+            lambda r: "/artifacts/artifact/default/" in r.url and r.request.method == "DELETE",
+            timeout=timeout,
+        ):
+            self.delete_confirm_button.click()
+        logger.info("Delete confirmed, deleteArtifact response received")
