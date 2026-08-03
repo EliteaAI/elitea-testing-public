@@ -123,7 +123,7 @@ class TestPinConversationViaPinOnTop:
 
                 conv_target_item = chat.get_conversation_item(conv_target_id)
                 conv_target_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-                pin_icon_count_before = conv_target_item.locator(chat.PIN_ICON).count()
+                pin_icon_count_before = chat.get_pin_icon(conv_target_id).count()
                 logger.info(
                     "Setup complete — conv_target=%s conv_sibling=%s pin_icon_before=%d",
                     conv_target_id, conv_sibling_id, pin_icon_count_before,
@@ -176,7 +176,7 @@ class TestPinConversationViaPinOnTop:
                     "Pin icon should NOT be present before pinning, found "
                     f"{pin_icon_count_before}"
                 )
-                pin_icon = conv_target_item.locator(chat.PIN_ICON)
+                pin_icon = chat.get_pin_icon(conv_target_id)
                 expect(pin_icon).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
                 assert pin_icon.count() == 1, (
                     f"Expected exactly 1 pin icon inside conv_target, found {pin_icon.count()}"

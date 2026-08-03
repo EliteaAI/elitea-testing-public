@@ -2505,6 +2505,19 @@ class ChatPage(BasePage):
         item.wait_for(state="visible", timeout=timeout)
         return item.get_attribute("data-pinned") == "true"
 
+    def get_pin_icon(self, conversation_id: str | int):
+        """Return the ``PIN_ICON`` Locator scoped inside *conversation_id*'s item.
+
+        ``PIN_ICON`` is a non-unique testid — the same value renders once
+        per pinned conversation — so it must always be resolved scoped
+        inside a single ``CONVERSATION_ITEM`` (ELITEA-2149), never at page
+        level. Returns a Locator (not a bool) so callers can use
+        ``.count()`` for the 0->1 transition check or ``expect()`` for
+        visibility, same precedent as ``get_conversation_menu_button()``.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        return item.locator(self.PIN_ICON)
+
     def is_conversation_active(self, conversation_id: str | int, timeout: int = 5000) -> bool:
         """Return True if *conversation_id*'s sidebar item carries ``data-active="true"``.
 
@@ -4067,6 +4080,30 @@ class ChatPage(BasePage):
         )
         expanded_item.wait_for(state="visible", timeout=timeout)
         logger.info("Folder %s expanded", folder_id)
+
+    def is_conversation_in_folder(
+        self, folder_id: str | int, conversation_id: str | int, timeout: int = 5000,
+    ) -> bool:
+        """Return True if *conversation_id* renders inside folder *folder_id* specifically.
+
+        Scopes the dynamic ``CONVERSATION_ITEM`` testid WITHIN the dynamic
+        ``FOLDER_ITEM`` container — the same id-scoping precedent as
+        ``is_conversation_in_group()`` for date groups (ELITEA-2135/
+        ELITEA-2137), replacing a raw ``get_folder_item(...).locator(...)``
+        chain built inline in test code.
+
+        Args:
+            folder_id: Numeric folder id.
+            conversation_id: Numeric conversation id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        folder_container = self.get_folder_item(folder_id)
+        item = folder_container.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        try:
+            item.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
 
     def get_folder_empty_state_text(self, folder_id: str | int) -> str:
         """Return the empty-state text scoped inside *folder_id*'s row.

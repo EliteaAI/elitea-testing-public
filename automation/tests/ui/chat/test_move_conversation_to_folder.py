@@ -214,10 +214,12 @@ class TestMoveConversationToExistingFolder:
                     f"target_folder {target_folder_id} should carry "
                     "data-expanded=\"true\" after being clicked"
                 )
-                conv_in_folder = chat.get_folder_item(target_folder_id).locator(
-                    chat.CONVERSATION_ITEM.format(conv_target_id)
+                assert chat.is_conversation_in_folder(
+                    target_folder_id, conv_target_id, timeout=UI_ELEMENT_TIMEOUT
+                ), (
+                    f"conv_target {conv_target_id} should be inside "
+                    f"target_folder {target_folder_id} after moving"
                 )
-                expect(conv_in_folder).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
             with allure.step(
                 "Side-channel check — no unexpected console errors across the full flow"
@@ -377,10 +379,12 @@ class TestMoveConversationToNewFolder:
                     f"New folder {new_folder_id} should carry "
                     "data-expanded=\"true\" after being clicked"
                 )
-                conv_in_folder = chat.get_folder_item(new_folder_id).locator(
-                    chat.CONVERSATION_ITEM.format(conv_target_id)
+                assert chat.is_conversation_in_folder(
+                    new_folder_id, conv_target_id, timeout=UI_ELEMENT_TIMEOUT
+                ), (
+                    f"conv_target {conv_target_id} should be inside "
+                    f"new_folder {new_folder_id} after moving"
                 )
-                expect(conv_in_folder).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
             with allure.step(
                 "Side-channel check — no unexpected console errors across the full flow"
