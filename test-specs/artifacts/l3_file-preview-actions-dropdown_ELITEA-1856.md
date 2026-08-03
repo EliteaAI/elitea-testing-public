@@ -77,7 +77,7 @@
 | 1 Open editor | editor opens | step 1 | Save/Discard render | asserted |
 | 2 Editor panel open | visible | step 2 | same | asserted |
 | 3 Click 3-dot menu | dropdown opens | step 3 | menu items render | asserted |
-| 4 Dropdown has Copy Content/Download/Delete | all 3 present | step 4 | `get_by_role("menuitem")` count == 3, texts match, in order | asserted |
+| 4 Dropdown has Copy Content/Download/Delete | all 3 present | step 4 | **Implementer correction (Phase 2 — Explore), testid-only per project locator policy:** `get_by_role("menuitem", name=…)` (the AFS's proposed interim handle, see Concrete Handles) is not the compliant final locator; the shipped assertion is `artifacts_page.get_file_preview_menu_item_labels()` — scoped to `file_preview_overflow_menu_container` via the `EDITOR_MENU_ITEM_SELECTOR` class constant (three per-item `[data-testid="artifacts-preview-{copy-content,download,delete}-menuitem"]` selectors, read in DOM order) — compared `== ["Copy Content", "Download", "Delete"]` | asserted |
 | 5 Click Copy Content | content copied | step 5 | clipboard write triggered | asserted |
 | 6 Verify clipboard has full content | pasted content matches | step 6 | `navigator.clipboard.readText()` == uploaded content | asserted *(stronger than "paste into a text editor" — direct clipboard API read, same observable)* |
 | 7 Click 3-dot → Download | download initiates | step 7 | `page.expect_download()` fires | asserted |
