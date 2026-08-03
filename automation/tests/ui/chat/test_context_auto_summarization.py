@@ -234,8 +234,9 @@ class TestContextAutoSummarization:
             chat.navigate_to_chat(conversation_id=conversation_id)
             chat.dismiss_banner_if_present()
 
-        with allure.step("Step 2 — Send an initial message; Context Budget panel appears "
-                          "(proves Context Management is enabled)"):
+        with allure.step("Step 2-3 — Send an initial message; Context Budget panel appears "
+                          "(proves Context Management is enabled) with Messages=1, "
+                          "Summaries=0 (AFS Step 3)"):
             initial_count = chat.get_message_count()
             chat.send_message("Hello — starting a context-management test conversation.", use_enter=True)
             chat.wait_for_input_ready()
@@ -245,6 +246,36 @@ class TestContextAutoSummarization:
             assert chat.is_context_budget_panel_visible(), (
                 "Context Budget panel should be visible after the first message "
                 "— this only renders when Context Management is enabled"
+            )
+            # AFS Step 3's explicit verify criteria — right after the first
+            # message: Messages counter reads a fresh baseline, Summaries
+            # counter reads "0" (nothing summarized yet). Wait for the
+            # counters first (async update race — see
+            # wait_for_context_budget_messages_count docstring, PR #693)
+            # before the one-shot get_* read.
+            #
+            # LIVE FINDING vs the AFS (Step 3 hedged "reads '1' (or the
+            # correct running count)" — explicitly unconfirmed live):
+            # confirmed this implementation round that the Messages counter
+            # counts BOTH sides of the exchange, not just the user's
+            # message — it reads "2" right after the first user+AI
+            # round-trip (screenshot: automation/screenshots/
+            # test_auto_summarization_triggers_at_max_context_tokens_FAIL_
+            # 20260803_151656.png, captured mid-debug of this exact
+            # assertion). Consistent with Step 7's own later finding
+            # ("messages 6 -> 8", i.e. +2 per exchange) — reported as a
+            # clarification in the AFS, not a defect.
+            chat.wait_for_context_budget_messages_count("2", timeout=UI_ELEMENT_TIMEOUT)
+            chat.wait_for_context_budget_summaries_count("0", timeout=UI_ELEMENT_TIMEOUT)
+            assert chat.get_context_budget_messages_count() == "2", (
+                "Context Budget Messages counter should read '2' immediately "
+                "after the first user+AI exchange (AFS Step 3 — the counter "
+                "tracks both sides of the round-trip, not just the user "
+                "message)"
+            )
+            assert chat.get_context_budget_summaries_count() == "0", (
+                "Context Budget Summaries counter should read '0' before any "
+                "summarization has occurred (AFS Step 3)"
             )
 
         with allure.step("Step 2b — Configure a low Max Context Tokens / Target Summary "
