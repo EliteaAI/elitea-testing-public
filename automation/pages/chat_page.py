@@ -418,6 +418,32 @@ class ChatPage(BasePage):
     MENTION_SKILL_ITEM = '[data-testid="skill-mention-item-{}"]'
 
     # ------------------------------------------------------------------
+    # Composer's typed-"@" USER mention popper (ELITEA-2168) — a distinct
+    # component (UserMentionList.jsx) from both the "~" skill-mention
+    # popper above and the Users PARTICIPANTS dropdown below.
+    # ------------------------------------------------------------------
+
+    user_mention_list = LocatorDescriptor(
+        testid="chat-user-mention-list",
+        description=(
+            "Composer's typed-'@' user-mention popper container "
+            "(UserMentionList.jsx). Lists every OTHER participant plus "
+            "'Everyone'."
+        ),
+    )
+
+    # Dynamic per-row testid for a user (or "Everyone") in the mention
+    # popper. The row's own id is the participant-LINK id (`participant.id`
+    # in ChatBox.jsx's `users` memo) for a specific user — NOT the platform
+    # user id — or the literal string "@everyone" for the Everyone row
+    # (confirmed via source). Callers of `select_user_mention()` only know
+    # a display name ahead of time, so the exact-match template is combined
+    # with a prefix-match + `.filter(has_text=...)` fallback, same idiom as
+    # `MENTION_SKILL_ITEM`/`MENTION_SKILL_ITEM_PREFIX` above.
+    USER_MENTION_ITEM = '[data-testid="chat-user-mention-item-{}"]'
+    USER_MENTION_ITEM_PREFIX = '[data-testid^="chat-user-mention-item-"]'
+
+    # ------------------------------------------------------------------
     # Participant removal + "Mention skill" popper testid rework
     # (ELITEA-1793 framework-alignment rework, issue #35 — closes PR #52's
     # raw text/aria-label/xpath-ancestor/role-based handle gap; EliteaUI
@@ -453,6 +479,19 @@ class ChatPage(BasePage):
         description="'Agents'/'Pipelines'/etc. participants popper container (Popper/Grow Paper)"
     )
 
+    # "All users" footer item in the Users participants dropdown
+    # (DropdownFooter.jsx, ELITEA-2168). CONFIRMED PRODUCT DEFECT (issue
+    # #1119): clicking it does NOT insert an @Everyone mention into the
+    # composer, unlike the composer's own typed-"@" -> "Everyone" path
+    # (which works correctly — see ``select_user_mention``).
+    participants_all_users_button = LocatorDescriptor(
+        testid="chat-participants-all-users-button",
+        description=(
+            "'All users' footer item in the Users participants dropdown. "
+            "Known defect #1119 — click currently no-ops."
+        ),
+    )
+
     # Dynamic per-participant row inside the participants popper —
     # uniqueId = getChatParticipantUniqueId(participant), e.g.
     # "application_4687_399" for an agent participant.
@@ -478,6 +517,19 @@ class ChatPage(BasePage):
         description=(
             "Avatar in the expanded PARTICIPANTS panel's USERS section, "
             "showing the participant's initials/name (e.g. 'TB')."
+        ),
+    )
+
+    # "+N" overflow-count text (ELITEA-2168) — always rendered (empty
+    # string content when there is no overflow, per
+    # ExpandedParticipantsList.jsx), so presence alone does not imply
+    # overflow; read its text to check for a value.
+    participants_users_overflow_count = LocatorDescriptor(
+        testid="chat-participants-users-overflow-count",
+        description=(
+            "'+N' overflow-count Typography in the expanded PARTICIPANTS "
+            "panel's USERS section, shown once more than "
+            "usersToDisplay.length users are participants."
         ),
     )
 
@@ -2923,6 +2975,53 @@ class ChatPage(BasePage):
         logger.warning("Could not find Participants panel collapse button")
         return False
 
+    # Participants panel's own expand/collapse toggle IconButton
+    # (Participants.jsx, ELITEA-2168) — a deterministic, testid-backed
+    # replacement for the raw-JS heuristics above, added for THIS case's own
+    # use. The two legacy methods and their existing caller
+    # (test_open_conversation_today_section.py) are left untouched
+    # (additive-only — Hard Rule 3). State is exposed as
+    # ``data-expanded="true"/"false"`` on the same element (testid=identity/
+    # state=data-* ruling), never a state-conditional testid.
+    participants_panel_toggle_button = LocatorDescriptor(
+        testid="chat-participants-panel-toggle-button",
+        description=(
+            "Participants panel's own expand/collapse IconButton. State: "
+            "`data-expanded` attribute ('true'/'false')."
+        ),
+    )
+
+    @action("Expand Participants panel via its own toggle button")
+    def expand_participants_panel_via_toggle(self, timeout: int = 5000):
+        """Click the Participants panel's toggle button until it reports expanded.
+
+        Testid-backed replacement for the legacy ``expand_participants_panel()``
+        heuristic, for this case's own use (ELITEA-2168) — deterministic,
+        does not rely on percentage-text or right-edge-button JS probing.
+        """
+        self.participants_panel_toggle_button.wait_for(state="visible", timeout=timeout)
+        if self.participants_panel_toggle_button.get_attribute("data-expanded") != "true":
+            self.participants_panel_toggle_button.click()
+        expect(self.participants_panel_toggle_button).to_have_attribute(
+            "data-expanded", "true", timeout=timeout,
+        )
+
+    @action("Collapse Participants panel via its own toggle button")
+    def collapse_participants_panel_via_toggle(self, timeout: int = 5000):
+        """Click the Participants panel's toggle button until it reports collapsed.
+
+        Testid-backed replacement for the legacy ``collapse_participants_panel()``
+        heuristic, which failed live during this case's own analyst session
+        ("Could not find Participants panel collapse button" — AFS §
+        Concrete Handles).
+        """
+        self.participants_panel_toggle_button.wait_for(state="visible", timeout=timeout)
+        if self.participants_panel_toggle_button.get_attribute("data-expanded") != "false":
+            self.participants_panel_toggle_button.click()
+        expect(self.participants_panel_toggle_button).to_have_attribute(
+            "data-expanded", "false", timeout=timeout,
+        )
+
     # ------------------------------------------------------------------
     # Context Budget helpers
     # ------------------------------------------------------------------
@@ -3138,6 +3237,16 @@ class ChatPage(BasePage):
     ADD_USERS_OPTION_PREFIX = '[data-testid^="add-users-option-"]'
     ADD_USERS_CHIP_PREFIX = '[data-testid^="add-users-chip-"]'
 
+    # Selected chip's own delete (X) icon (ELITEA-2168) — deliberately named
+    # "add-users-remove-chip-{userId}", NOT "add-users-chip-remove-{userId}":
+    # the latter would start with the same "add-users-chip-" prefix
+    # ``ADD_USERS_CHIP_PREFIX`` above already matches, which would make a
+    # chip-count/name query also match this delete icon and double-count it
+    # (AFS § Concrete Handles amendment). Prefix-match + ``.filter(has_text=
+    # ...)`` since the chip's own delete icon has no accessible text of its
+    # own — resolved by scoping within the chip container found by name.
+    ADD_USERS_CHIP_REMOVE_PREFIX = '[data-testid^="add-users-remove-chip-"]'
+
     @action("Open Add users modal")
     def open_add_users_modal(self, timeout: int = 10000):
         """Open the 'Add users' modal via the plus menu -> 'Invite Users'.
@@ -3183,11 +3292,153 @@ class ChatPage(BasePage):
         option.first.wait_for(state="visible", timeout=timeout)
         option.first.click()
 
+    @action("Search and select a user in the Add users modal (verified)")
+    def search_and_select_add_user_verified(
+        self, query: str, name: str, timeout: int = 10000, retries: int = 2,
+    ) -> None:
+        """Same intent as ``search_and_select_add_user()``, but verifies the
+        typed query actually landed in the search field before waiting for
+        the option, retrying the type if it didn't (ELITEA-2168).
+
+        Confirmed live: making several selections in the same open 'Add
+        users' session can occasionally leave the search field's
+        React-controlled value silently reset to ``''`` right after a
+        click+type — the SAME ``onClickOption`` callback that adds a chip
+        also calls ``setInputValue('')``, and a late-flushed state update
+        from a JUST-PRIOR selection can race in and clobber what was just
+        typed. A plain ``press_sequentially()`` has no way to detect this;
+        this method reads ``input_value()`` back and retries the type
+        (click + clear + retype) if it doesn't match, before ever waiting
+        on the option.
+
+        Additive sibling — does NOT modify ``search_and_select_add_user()``
+        itself (Hard Rule 3: that method has an existing merged caller,
+        ELITEA-2167's test, which is not being regression-tested here).
+
+        Only clears the field when it is NOT already empty. Confirmed live
+        this implementation: MUI Autocomplete treats Backspace on an
+        ALREADY-empty input as "delete the last selected chip" (a standard
+        Autocomplete UX pattern) — pressing Control+a/Backspace
+        unconditionally after a just-completed selection (which itself
+        resets ``inputValue`` to ``''``) silently DESELECTED the
+        previously-added chip instead of merely clearing text, corrupting
+        multi-selection sequences (e.g. only the 2nd of 2 queued users
+        actually persisted). Clearing is now conditional on the field
+        genuinely having leftover content.
+
+        Also waits for the (already-open) modal's org-user list to finish
+        its initial async fetch before the FIRST search of a session:
+        ``open_add_users_modal()`` only waits for the dialog to be
+        visible, not for ``useUserList``'s underlying fetch to resolve —
+        searching immediately after open can race a still-empty
+        ``optionList``, silently returning zero matches for a query that
+        would otherwise succeed a moment later (confirmed live this
+        implementation). Detected by clicking the field first and waiting
+        for ANY unfiltered option row to render.
+
+        Args:
+            query: Search substring (e.g. "sa").
+            name: Exact visible name of the option to select.
+            timeout: Maximum wait time in milliseconds for the option itself.
+            retries: Extra attempts if the typed query doesn't land (default 2).
+        """
+        option = self.page.locator(self.ADD_USERS_OPTION_PREFIX).filter(has_text=name)
+        last_exc: Exception | None = None
+        for attempt in range(retries + 1):
+            self.add_users_search_input.click()
+            try:
+                self.page.locator(self.ADD_USERS_OPTION_PREFIX).first.wait_for(
+                    state="visible", timeout=timeout,
+                )
+            except Exception:
+                logger.warning(
+                    "Add users org-user list not loaded yet — retrying "
+                    "(attempt %d/%d)", attempt + 1, retries + 1,
+                )
+                continue
+            if self.add_users_search_input.input_value():
+                self.add_users_search_input.press("Control+a")
+                self.add_users_search_input.press("Backspace")
+            self.add_users_search_input.press_sequentially(query, delay=50)
+            try:
+                actual = self.add_users_search_input.input_value()
+            except Exception:
+                actual = None
+            if actual != query:
+                logger.warning(
+                    "Add users search query did not land as typed (got %r, "
+                    "expected %r) — retrying (attempt %d/%d)",
+                    actual, query, attempt + 1, retries + 1,
+                )
+                continue
+            try:
+                option.first.wait_for(state="visible", timeout=timeout)
+                option.first.click()
+                return
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "Option %r not found after query %r landed — retrying (attempt %d/%d)",
+                    name, query, attempt + 1, retries + 1,
+                )
+        raise last_exc or AssertionError(
+            f"Could not select {name!r} via query {query!r} after {retries + 1} attempts"
+        )
+
     def get_add_users_chip_names(self) -> list[str]:
         """Return the visible names on every currently selected chip in the
         (still-open) 'Add users' modal."""
         chips = self.page.locator(self.ADD_USERS_CHIP_PREFIX)
         return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
+    def wait_for_add_users_chip(self, name: str, timeout: int = 5000) -> None:
+        """Wait until a chip for *name* is visible in the (open) 'Add users' modal.
+
+        Callers making several ``search_and_select_add_user()`` calls back
+        to back (ELITEA-2168 steps needing multiple selections in a row)
+        must settle each selection's React re-render before starting the
+        next search: the SAME ``onClickOption`` callback that adds the
+        chip also resets the search input's ``inputValue`` to ``''`` — a
+        rapid next click+type can race that reset and silently drop the
+        next query's keystrokes (confirmed live this implementation —
+        the option list re-opens unfiltered because the typed query never
+        landed). Not needed after a single selection followed by a
+        DIFFERENT action (Add/Cancel/Close all already settle their own
+        state independently).
+        """
+        chip = self.page.locator(self.ADD_USERS_CHIP_PREFIX).filter(has_text=name)
+        chip.first.wait_for(state="visible", timeout=timeout)
+
+    @action("Remove a selected chip in the Add users modal")
+    def remove_add_users_chip(self, name: str, timeout: int = 5000):
+        """Click *name*'s own delete (X) icon on its selected chip in the
+        (open) 'Add users' modal, deselecting it (ELITEA-2168).
+
+        Resolves the chip container via ``ADD_USERS_CHIP_PREFIX`` filtered
+        by *name* (same idiom as ``get_add_users_chip_names()``), then
+        clicks its own delete icon scoped WITHIN that chip via
+        ``ADD_USERS_CHIP_REMOVE_PREFIX`` — the prefix-match avoids needing
+        the user id, which callers of this method don't have (they only
+        know the display name that was searched/selected).
+
+        Does NOT call ``dismiss_add_users_dropdown()`` — no results popper
+        is open at this point in the flow this method is used for. The
+        NEXT action after this call must be ``add_users_confirm_button``
+        clicked directly rather than ``click_add_users_confirm()`` — the
+        latter unconditionally presses Escape first, which closes the
+        whole dialog (not just a results popper) when nothing is open to
+        dismiss (AFS § Automation Hints — blind-Escape-after-chip-removal
+        gotcha).
+
+        Args:
+            name: Exact visible name on the chip to remove (e.g.
+                "Tatiana Bontsevich").
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Removing Add users chip for %r", name)
+        chip = self.page.locator(self.ADD_USERS_CHIP_PREFIX).filter(has_text=name)
+        chip.first.wait_for(state="visible", timeout=timeout)
+        chip.first.locator(self.ADD_USERS_CHIP_REMOVE_PREFIX).click()
 
     def is_add_users_option_present(self, name: str, timeout: int = 3000) -> bool:
         """Return True if an option matching *name* is currently rendered in
@@ -3208,6 +3459,25 @@ class ChatPage(BasePage):
     def is_add_users_confirm_enabled(self) -> bool:
         """Return True if the 'Add users' modal's Add button is enabled."""
         return self.add_users_confirm_button.is_enabled()
+
+    def is_add_users_results_open(self) -> bool:
+        """Return True if the 'Add users' modal's Autocomplete results
+        popper is currently VISIBLE (ELITEA-2168).
+
+        The popper's own visibility is driven purely by
+        ``optionList.length > 0 && filteredOptionsCount > 0`` — NOT by
+        "was there a recent search action". Confirmed live this
+        implementation: removing an already-selected chip via its own
+        delete icon can flip this back to true (the removed user is no
+        longer excluded, so an empty-query filter now matches again),
+        re-opening the results list WITHOUT any further click/type,
+        silently intercepting a later click on Add/Cancel/Close. Checks
+        each ``ADD_USERS_OPTION_PREFIX`` row's own visibility (CSS
+        ``display: none`` on the popper leaves the rows attached but not
+        visible) rather than mere DOM presence.
+        """
+        options = self.page.locator(self.ADD_USERS_OPTION_PREFIX)
+        return options.count() > 0 and options.first.is_visible()
 
     def dismiss_add_users_dropdown(self):
         """Close the still-open MUI Autocomplete results popper WITHOUT
@@ -3735,6 +4005,102 @@ class ChatPage(BasePage):
         self.page.mouse.move(0, 0)
         logger.info("Agent participant id=%s removed from chat", agent_id)
 
+    @action("Open Remove-user confirmation for a Users-dropdown row")
+    def open_remove_user_dialog(self, user_id: int, timeout: int = 10000):
+        """Open a fresh 'Users' participants popover (closing it first if
+        already open), hover *user_id*'s row, click its delete icon, and
+        return the resulting 'Remove user?' dialog WITHOUT confirming or
+        cancelling it (ELITEA-2168) — the caller decides, since the case's
+        own steps 9/10 diverge here: step 9 clicks Remove, step 10 clicks
+        Cancel on a DIFFERENT row.
+
+        Generalizes ``remove_agent_participant()``'s row-resolution +
+        hover-reveal mechanism to the "user" entity type via the new
+        ``chat-participant-row-user_{user_id}_`` row testid (same
+        ``PARTICIPANT_ROW``/``getChatParticipantUniqueId()`` template
+        family ELITEA-1793 already established for Agents/Pipelines/
+        Toolkits/MCP rows). Does not modify ``remove_agent_participant()``
+        itself (additive-only — Hard Rule 3).
+
+        No ``project_id`` argument — unlike agent/pipeline participants,
+        ``getChatParticipantUniqueId()``'s ``entity_meta?.project_id``
+        segment is genuinely empty for "user" participants (confirmed
+        live this implementation: the platform user entity has no
+        project scope), so the rendered testid always ends with a bare
+        trailing underscore, e.g. ``chat-participant-row-user_7_``, never
+        ``..._user_7_471``.
+
+        Always resets the mouse to (0, 0) before hovering — a residual
+        real-mouse ``:hover`` left on a just-removed row's former position
+        can otherwise prevent the NEXT row's delete icon from reliably
+        revealing (AFS step 10 gotcha, same class already documented for
+        ``remove_agent_participant()``).
+
+        Args:
+            user_id: The participant's ``entity_meta.id`` (platform user id).
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The dialog Locator (pass to ``components.mui.Dialog.click_button``).
+        """
+        logger.info("Opening Remove-user dialog for user_id=%s", user_id)
+        # Always close (if open) and reopen fresh, rather than reusing an
+        # already-open popper as-is: right after a just-confirmed Remove,
+        # the popper can still be showing the PRE-removal participant list
+        # for a moment before the badge/list re-render settles (confirmed
+        # live this implementation) — reusing it as "already open" then
+        # races that in-flight re-render. A fresh close+reopen forces a
+        # clean re-render against current state.
+        if self.participants_popper.is_visible():
+            self.dismiss_participants_popover()
+            self.participants_popper.wait_for(state="hidden", timeout=timeout)
+        popper = self.open_participants_popover(section="users", timeout=timeout)
+
+        unique_id = f"user_{user_id}_"
+        row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+
+        # UserMenu.jsx's sortedUsers is recomputed (in-place Array.sort())
+        # on every render of the popper, which can tear down and rebuild
+        # row DOM nodes between two SEPARATE actions on the same element
+        # (confirmed live this implementation: a plain
+        # row.wait_for(visible) immediately followed by
+        # row.scroll_into_view_if_needed() intermittently hit "Element is
+        # not attached to the DOM"). A single ``hover()`` call — which
+        # already performs its own visible/stable/auto-scroll
+        # actionability checks internally — resolves the element fresh
+        # right before acting, cutting the race window from two
+        # round-trips to one. Retried once for the rare case a re-render
+        # lands mid-hover.
+        self.page.mouse.move(0, 0)
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                # force=True skips Playwright's "wait until stable" check
+                # (bounding box unchanged across consecutive frames) —
+                # confirmed live this implementation: the popper's row
+                # list keeps re-rendering continuously enough that
+                # "stable" is never satisfied within a normal timeout,
+                # even though the element itself is genuinely visible and
+                # actionable throughout. A real mouse-move event is still
+                # dispatched (force only bypasses the pre-check), so the
+                # CSS :hover-reveal on the delete icon still activates.
+                row.hover(timeout=timeout, force=True)
+                self.page.wait_for_timeout(300)  # hover-reveal CSS transition
+                remove_btn = row.locator(self.PARTICIPANT_REMOVE_BUTTON)
+                remove_btn.wait_for(state="visible", timeout=timeout)
+                remove_btn.click(force=True)
+                break
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "Row for user_id=%s detached mid-interaction — retrying (attempt %d/3)",
+                    user_id, attempt + 1,
+                )
+        else:
+            raise last_exc
+
+        return Dialog.wait_for(self.page, timeout=timeout)
+
     @action("Open Mention skill popper")
     def open_mention_skill_popper(self, timeout: int = 10000):
         """Clear the message input and type "~" to open the "Mention skill" popper.
@@ -3847,6 +4213,60 @@ class ChatPage(BasePage):
             return True
         except Exception:
             return False
+
+    @action("Open user-mention popper via '@'")
+    def open_user_mention_popper(self, timeout: int = 10000):
+        """Clear the message input and type "@" to open the composer's
+        user-mention popper (ELITEA-2168 — ``UserMentionList.jsx``, distinct
+        from both the participants dropdown and the "~" skill-mention
+        popper above).
+
+        Same ``press_sequentially``-not-``fill()`` discipline as
+        ``open_mention_skill_popper()`` — a ``fill()`` bypasses the
+        mention-trigger keyup handler and the popper never opens (AFS §
+        Automation Hints — mention-input mechanics). Clears any
+        pre-existing content first, same as ``open_mention_skill_popper()``.
+
+        Returns the ``user_mention_list`` Locator.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.message_input.wait_for(state="visible", timeout=timeout)
+        self.message_input.click()
+        self.message_input.press("Control+a")
+        self.message_input.press("Backspace")
+        self.message_input.press_sequentially("@", delay=50)
+
+        self.user_mention_list.wait_for(state="visible", timeout=timeout)
+        return self.user_mention_list
+
+    @action("Select a participant from the open user-mention popper")
+    def select_user_mention(self, name_or_everyone: str, timeout: int = 10000):
+        """Click the row matching *name_or_everyone* in the open user-mention
+        popper (ELITEA-2168).
+
+        "Everyone" resolves via the exact ``chat-user-mention-item-@everyone``
+        testid — the literal id ``ChatBox.jsx``'s ``users`` memo assigns
+        that row (AFS § Concrete Handles). Any other value is treated as a
+        display name and resolved via ``USER_MENTION_ITEM_PREFIX`` +
+        ``.filter(has_text=...)`` (same testid-anchored-locator idiom as
+        ``search_and_select_add_user()``), since a specific participant's
+        mention-row id is the participant-LINK id (``participant.id``), not
+        a value callers know ahead of time.
+
+        Args:
+            name_or_everyone: Exact visible participant name, or the
+                literal string "Everyone".
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting user mention: %r", name_or_everyone)
+        if name_or_everyone == "Everyone":
+            row = self.page.locator(self.USER_MENTION_ITEM.format("@everyone"))
+        else:
+            row = self.page.locator(self.USER_MENTION_ITEM_PREFIX).filter(has_text=name_or_everyone)
+        row.first.wait_for(state="visible", timeout=timeout)
+        row.first.click()
 
     # ------------------------------------------------------------------
     # UI state wait helpers
