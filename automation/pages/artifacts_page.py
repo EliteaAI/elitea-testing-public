@@ -2442,7 +2442,18 @@ class ArtifactsPage(BasePage):
 
     @action("Hover file row")
     def hover_file_row(self, filename: str, timeout: int = 10000) -> None:
-        """Hover a file row to reveal its hover-only per-row actions (preview icon).
+        """Hover a file row (scrolling it into view first).
+
+        NOTE: the "View/Edit file" preview icon is visible on the row
+        unconditionally — it is NOT hover-gated (confirmed against
+        ``ArtifactRowActions.jsx``: the Preview ``IconButton`` renders
+        whenever ``row.canPreview`` is true, with no opacity/visibility/
+        display CSS tied to a hover state; only a background-color hover
+        highlight applies to the button itself. Same "always visible, not
+        hover-gated" pattern as case-text-drift clarification
+        EliteaAI/elitea-testing-public#994). This method still exists
+        because some flows scroll-then-click through it; it is not a
+        precondition for the preview icon to appear.
 
         Args:
             filename: Exact file name whose row to hover.
@@ -2456,8 +2467,9 @@ class ArtifactsPage(BasePage):
     def is_file_preview_button_visible(self, filename: str, timeout: int = 5000) -> bool:
         """Return whether the 'View/Edit file' icon is visible for *filename*'s row.
 
-        Intended to be called after :meth:`hover_file_row` (the icon is
-        hidden until the row is hovered).
+        Safe to call with or without a prior :meth:`hover_file_row` — the
+        icon is visible unconditionally, not hover-gated (see
+        :meth:`hover_file_row`'s docstring / EliteaAI/elitea-testing-public#994).
 
         Args:
             filename: Exact file name (matches the dynamic

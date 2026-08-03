@@ -13,7 +13,9 @@ Test flow:
 1. Seed a fresh bucket (via API) with ``diagram (2).png`` (a minimal valid
    PNG — verbatim filename including the space+parens).
 2. Navigate to the bucket; verify the file table shows the file.
-3. Hover the row; verify the "View/Edit file" icon becomes visible.
+3. Verify the "View/Edit file" icon is visible on the row WITHOUT hovering
+   (it is NOT hover-gated — EliteaAI/elitea-testing-public#994), then confirm
+   it remains visible across a hover too.
 4. Click the icon; verify the image opens directly (no intermediate
    Raw/Preview choice) and becomes visible (condition-based wait — the
    image blob fetch can exceed a short/networkidle-based wait).
@@ -114,12 +116,28 @@ class TestArtifactFilePreviewImageRestrictedControls:
             )
 
         with allure.step(
-            "Step 2 — Hover the row; verify the 'View/Edit file' icon becomes visible"
+            "Step 2 — Verify the 'View/Edit file' icon is visible WITHOUT "
+            "hovering (not hover-gated), then confirm it stays visible "
+            "across a hover too"
         ):
+            # Regression guard for EliteaAI/elitea-testing-public#994: the icon
+            # renders unconditionally (ArtifactRowActions.jsx has no hover-gated
+            # opacity/visibility/display on the Preview IconButton). Asserting
+            # BEFORE any hover call is what actually catches a future
+            # hover-gating regression — asserting only post-hover (the AFS's
+            # original, incorrect framing) can never distinguish "always
+            # visible" from "hidden until hovered".
+            assert artifacts_page.is_file_preview_button_visible(
+                FILE_NAME, timeout=UI_ELEMENT_TIMEOUT
+            ), (
+                "'View/Edit file' icon should be visible unconditionally, "
+                "before any hover — it is NOT hover-gated "
+                "(see EliteaAI/elitea-testing-public#994)"
+            )
             artifacts_page.hover_file_row(FILE_NAME, timeout=UI_ELEMENT_TIMEOUT)
             assert artifacts_page.is_file_preview_button_visible(
                 FILE_NAME, timeout=UI_ELEMENT_TIMEOUT
-            ), "'View/Edit file' icon should be visible after hovering the row"
+            ), "'View/Edit file' icon should remain visible after hovering the row"
 
         with allure.step(
             "Steps 3-4 — Click the icon; verify the image opens directly "

@@ -49,9 +49,19 @@
 ## Test Steps
 1. Navigate to `${BASE_URL}/artifacts`, click the fixture bucket
    - **Verify**: file table shows `project-background.md`
-2. Hover the `project-background.md` row
-   - **Verify**: the "View/Edit file" icon is hidden before hover, visible
-     after hover (confirmed live: `is_visible()` False → True across the hover)
+2. Observe the `project-background.md` row (no hover required)
+   - **Verify**: the "View/Edit file" icon is visible on the row
+     unconditionally — it is **NOT** hover-gated (confirmed against source:
+     `ArtifactRowActions.jsx` renders the Preview `IconButton` whenever
+     `row.canPreview` is true, with no opacity/visibility/display CSS tied to
+     a hover state — only a `background-color` hover highlight applies to
+     the button itself. **Fix round 1 correction:** this AFS originally
+     repeated the same "hidden before hover, visible after" drift already
+     documented and left open in case-text-drift clarification
+     EliteaAI/elitea-testing-public#994 for ELITEA-1851's row icon — that
+     issue is still OPEN, i.e. the drift was never a defect to begin with,
+     just stale case-text framing this AFS should not have re-asserted as
+     "confirmed live")
 3. Click the "View/Edit file" icon
    - **Verify**: editor panel opens
 4. Verify the panel header shows the full path `<bucket-name>/project-background.md`
@@ -90,7 +100,7 @@
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
 | 1 Navigate to Artifacts, click bucket-1 | bucket selected | step 1 | file table visible | asserted *(fixture-generated bucket, not literal "bucket-1" — see Test Data)* |
-| 2 Hover row → View/Edit icon appears | icon visible on hover | step 2 | `is_visible()` False→True across `hover()` | asserted |
+| 2 Hover row → View/Edit icon appears | icon visible unconditionally, NOT hover-gated | step 2 | `is_visible()` True BEFORE any hover AND after — see EliteaAI/elitea-testing-public#994 | asserted *(case text implies hover-gating; live/source behavior is "always visible" — corrected in fix round 1, not a product defect, same pattern as #994)* |
 | 3 Click icon → editor opens | editor panel opens | step 3 | Save/Discard render | asserted |
 | 4 Header shows "bucket-1/project-background.md" | header shows correct path | step 4 | `artifacts-preview-file-path` text | asserted *(fixture bucket name, not literal "bucket-1")* |
 | 5 Language label "Markdown (detected)" with dropdown | label present | step 5 | `artifacts-preview-language-select` text | asserted |
@@ -109,10 +119,14 @@
   NOT pressed — added: strengthens step 6/7's "Preview active by default"
   claim into a genuine two-state check rather than only confirming the
   positive case.
-- Assert hover-visibility of the "View/Edit file" icon (before/after) rather
-  than only "it's clickable" — added: the case's step 2 literally describes a
-  hover-reveal interaction, worth asserting as a real state transition, same
-  discipline already established for ELITEA-1851/1862.
+- Assert the "View/Edit file" icon's visibility **both before and after**
+  hover, not just "clickable after hovering" — added, but as a REGRESSION
+  guard for the opposite of what the case text implies: **fix round 1
+  correction**, the icon is visible unconditionally (not a hover-reveal state
+  transition — see EliteaAI/elitea-testing-public#994). Asserting the
+  pre-hover state too means a future accidental hover-gating regression would
+  be caught, instead of only re-confirming the (never-doubted) post-hover
+  state.
 
 ## Cleanup
 1. `artifact_bucket` fixture teardown deletes the bucket automatically.
