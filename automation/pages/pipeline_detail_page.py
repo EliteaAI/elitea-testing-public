@@ -80,8 +80,23 @@ class PipelineDetailPage(PipelineFormPage):
     yaml_lines = LocatorDescriptor(
         testid="pipeline-yaml-lines",
         fallback=lambda page: page.locator("div.cm-editor div.cm-content .cm-line"),
-        description="YAML CodeMirror editor lines (for preserving line breaks)"
+        description="YAML CodeMirror editor lines (for preserving line breaks). "
+        "DEAD FIELD as of ELITEA-2079: the 'pipeline-yaml-lines' testid was never "
+        "added to EliteaUI (confirmed absent on both main and automation/testids, "
+        "2026-08-03) — count() always resolves to 0 and the fallback= is never "
+        "invoked (LocatorDescriptor never calls fallback when a testid is set), so "
+        "get_yaml_content() below no longer reads through this field. Kept "
+        "un-deleted (shared-caller conservatism) rather than removed outright."
     )
+
+    # Sanctioned #579 exception (third-party editor library internal render
+    # nodes): CodeMirror's per-line <div class="cm-line"> nodes are
+    # library-internal, not app JSX — no testid can be placed on them. Scoped
+    # raw selector under the testid-anchored yaml_editor parent, same shape
+    # already used by edit_yaml_line()'s get_by_text() call below. This is
+    # what get_yaml_content() actually reads lines through (ELITEA-2079 fix —
+    # yaml_lines above never resolved any elements).
+    YAML_LINE_SELECTOR = ".cm-line"
 
     chat_input = LocatorDescriptor(
         testid="chat-message-input",
@@ -629,17 +644,22 @@ class PipelineDetailPage(PipelineFormPage):
 
         CodeMirror renders each line in a separate div.cm-line element.
         Using text_content() on the parent concatenates lines without
-        newlines, so we use yaml_lines descriptor to extract each line
-        and join with newlines.
+        newlines (and interleaves the gutter's line-number nodes before
+        each line's actual text in DOM order — confirmed live, ELITEA-2079),
+        so lines are read via YAML_LINE_SELECTOR (".cm-line"), scoped under
+        the testid-anchored yaml_editor parent (sanctioned #579 exception —
+        CodeMirror's per-line nodes are library-internal, not app JSX; see
+        YAML_LINE_SELECTOR's docstring), and joined with newlines.
 
         Returns:
             The text content of the YAML editor with preserved line breaks.
         """
         self.yaml_editor.wait_for(state="visible", timeout=5000)
-        line_count = self.yaml_lines.count()
+        lines = self.yaml_editor.locator(self.YAML_LINE_SELECTOR)
+        line_count = lines.count()
         if line_count == 0:
             return self.yaml_editor.text_content() or ""
-        return "\n".join(self.yaml_lines.nth(i).text_content() or "" for i in range(line_count))
+        return "\n".join(lines.nth(i).text_content() or "" for i in range(line_count))
 
     def edit_yaml_line(self, current_line_text: str, new_line_text: str) -> None:
         """Replace one line of the YAML CodeMirror editor with *new_line_text*.

@@ -322,6 +322,40 @@ class ChatPage(BasePage):
         ),
     )
 
+    # ------------------------------------------------------------------
+    # "+" menu -> Pipelines submenu -> "+ Create New Pipeline" (ELITEA-2079)
+    # ------------------------------------------------------------------
+
+    pipelines_menuitem = LocatorDescriptor(
+        testid="pipelines-menuitem",
+        description=(
+            "'Pipelines' entry inside the plus-menu dropdown. HOVER (not "
+            "click) reveals the Pipelines submenu — PlusChatButton.jsx's "
+            "EXPANDABLE_ITEMS static config, same onMouseEnter mechanism "
+            "as agents_menuitem/mcps_menuitem."
+        ),
+    )
+
+    pipelines_create_new_button = LocatorDescriptor(
+        testid="pipelines-create-new-button",
+        description=(
+            "'+ Create New Pipeline' item inside the Pipelines submenu. "
+            "Same generic PlusChatSubmenu.jsx showCreateNew MenuItem "
+            "already used by agents_create_new_button, templated "
+            "${sectionKey}-create-new-button (sectionKey='pipelines')."
+        ),
+    )
+
+    mcps_create_new_button = LocatorDescriptor(
+        testid="mcps-create-new-button",
+        description=(
+            "'+ Create New MCP' item inside the MCPs submenu (ELITEA-2085) "
+            "— same generic PlusChatSubmenu.jsx showCreateNew MenuItem as "
+            "agents_create_new_button/pipelines_create_new_button, "
+            "templated ${sectionKey}-create-new-button (sectionKey='mcps')."
+        ),
+    )
+
     # Suffix-match template counting every top-level plus-menu item
     # currently rendered — same convention as CONVERSATION_MENU_ITEM_PREFIX
     # below. Safe to query page-wide: MUI Poppers in this codebase unmount
@@ -617,6 +651,13 @@ class ChatPage(BasePage):
     # testid — testid=identity ruling); scoped via the row's dynamic testid,
     # same pattern as PARTICIPANT_REMOVE_BUTTON above (ELITEA-2075 addition).
     PARTICIPANT_EDIT_VIEW_BUTTON = '[data-testid="chat-participant-edit-view-button"]'
+
+    # Orange warning-triangle icon + disconnected/misconfigured message row
+    # (ParticipantItem.jsx's attentionMessageRow, shared between MCP and
+    # Pipeline participant warnings per issues #684/#687) — scoped via the
+    # row's dynamic testid, same pattern as PARTICIPANT_REMOVE_BUTTON above
+    # (ELITEA-2085 addition).
+    PARTICIPANT_WARNING_ICON = '[data-testid="chat-participant-warning-icon"]'
 
     # ------------------------------------------------------------------
     # Users participant type (ELITEA-2095) — independent of the Agent/
@@ -1993,6 +2034,47 @@ class ChatPage(BasePage):
         self.agents_create_new_button.wait_for(state="visible", timeout=timeout)
         self.agents_create_new_button.click()
         logger.info("Create New Agent canvas opened")
+
+    @action("Open Create New Pipeline canvas")
+    def open_create_new_pipeline_canvas(self, timeout: int = 10000):
+        """Open the in-chat 'Create New Pipeline' canvas (ELITEA-2079).
+
+        Flow: click plus_menu_button -> HOVER pipelines_menuitem (reveals
+        the Pipelines submenu via onMouseEnter, same mechanism as
+        ``open_create_new_agent_canvas``) -> click
+        pipelines_create_new_button.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Create New Pipeline canvas via plus menu")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.pipelines_menuitem.wait_for(state="visible", timeout=timeout)
+        self.pipelines_menuitem.hover()
+        self.pipelines_create_new_button.wait_for(state="visible", timeout=timeout)
+        self.pipelines_create_new_button.click()
+        logger.info("Create New Pipeline canvas opened")
+
+    @action("Open Create New MCP canvas")
+    def open_create_new_mcp_canvas(self, timeout: int = 10000):
+        """Open the in-chat 'Create New MCP' canvas (ELITEA-2085).
+
+        Flow: click plus_menu_button -> HOVER mcps_menuitem (reveals the
+        MCPs submenu via onMouseEnter, same mechanism as
+        ``open_create_new_agent_canvas``) -> click mcps_create_new_button.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Create New MCP canvas via plus menu")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.mcps_menuitem.wait_for(state="visible", timeout=timeout)
+        self.mcps_menuitem.hover()
+        self.mcps_create_new_button.wait_for(state="visible", timeout=timeout)
+        self.mcps_create_new_button.click()
+        logger.info("Create New MCP canvas opened")
 
     # ------------------------------------------------------------------
     # Conversation management helpers

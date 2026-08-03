@@ -42,6 +42,15 @@ class McpFormPage(BasePage):
         testid="toolkit-type-card-mcp",
         description="Remote MCP type-selector card on /mcps/create",
     )
+    category_filter_tab = LocatorDescriptor(
+        testid="category-filter-tab",
+        description=(
+            "'Local'/'Remote' category filter tab above the type-card "
+            "grid (CategoryFilter.jsx) — 2 instances rendered page-wide; "
+            "disambiguate via .filter(has_text=...), same multi-instance "
+            "idiom as ChatPage.PLUS_MENU_ITEM_SUFFIX (ELITEA-2085)."
+        ),
+    )
     local_empty_state = LocatorDescriptor(
         testid="mcp-type-picker-local-empty-state",
         description="Local MCP section empty-state message on /mcps/create "
@@ -250,6 +259,13 @@ class McpFormPage(BasePage):
         ".agents/testing.md § Locator policy — one stable testid, the rendered "
         "text is what the case asserts)",
     )
+    login_button = LocatorDescriptor(
+        testid="toolkit-connection-login-button",
+        description="Login/Logout button next to the connection-status indicator "
+        "(McpAuthStatus.jsx) — added via add-data-testid for ELITEA-2085. ONE stable "
+        "testid regardless of Login/Logout state (label/onClick toggle with "
+        "hasLoggedInToMcp, testid stays fixed per .agents/testing.md § Locator policy).",
+    )
     sync_error_toast_message = LocatorDescriptor(
         testid="toast-message",
         description="App-wide Toast component's message container (ToastProvider.jsx "
@@ -313,6 +329,22 @@ class McpFormPage(BasePage):
         self.remote_mcp_type_card.click()
         self.page.wait_for_url("**/mcps/create/mcp", timeout=UI_ELEMENT_TIMEOUT)
         self.name_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    @action("Select Remote category tab")
+    def select_remote_category_tab(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the 'Remote' category filter tab (in-chat MCP canvas, ELITEA-2085).
+
+        Two ``category-filter-tab`` instances render side by side
+        ("Local"/"Remote") — disambiguated by exact text match, same
+        idiom already used for ``ChatPage``'s dynamic-suffix testids.
+        Does NOT call :meth:`select_remote_mcp_type` afterward — that
+        method's own ``wait_for_url`` assumes the standalone
+        ``/mcps/create`` page navigation, which never happens inside the
+        embedded chat canvas.
+        """
+        tab = self.category_filter_tab.filter(has_text=re.compile("^Remote$"))
+        tab.wait_for(state="visible", timeout=timeout)
+        tab.click()
 
     @action("Navigate to MCP detail page")
     def navigate_to_detail(self, toolkit_id: int, project_id: str) -> None:
