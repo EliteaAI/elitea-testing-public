@@ -52,10 +52,16 @@ class ChatPage(BasePage):
         description="Send message button"
     )
 
+    # Re-pointed ELITEA-2197/2200: "chat-attach-button" never existed in
+    # EliteaUI src (dead testid, tech debt — the field only "worked" via its
+    # now-forbidden `fallback=`). This is the showLabel AttachmentButton
+    # instance rendered inside the plus-menu popper
+    # (PlusChatButton.jsx's MenuList, `testId="chat-attach-menuitem-button"`)
+    # — the one the case's own steps click. Only visible once the popper is
+    # open; use open_attach_menuitem() to open the plus menu first.
     attach_files_button = LocatorDescriptor(
-        testid="chat-attach-button",
-        fallback=lambda page: page.get_by_role("button", name="attach files"),
-        description="Attach files button"
+        testid="chat-attach-menuitem-button",
+        description="'Attach Files' menu item inside the open plus-menu popper.",
     )
 
     # ------------------------------------------------------------------
@@ -172,6 +178,27 @@ class ChatPage(BasePage):
         fallback=lambda page: page.get_by_role("button", name="plus menu"),
         description="Plus menu button - entry point for adding participants, internal tools, and attachments"
     )
+
+    # ------------------------------------------------------------------
+    # File attachments — chip list + overflow (ELITEA-2197/2200)
+    # ------------------------------------------------------------------
+    # FileList.jsx per-item chip, dynamic by render index (0-based, stable
+    # within one attach sequence). ELITEA-2197/2200 add-data-testid addition.
+    CHAT_ATTACHMENT_CHIP = '[data-testid="chat-attachment-chip-{}"]'
+    # Prefix match for "how many visible chips are rendered" — same
+    # shared-suffix counting precedent as PLUS_MENU_ITEM_SUFFIX below.
+    CHAT_ATTACHMENT_CHIP_PREFIX = '[data-testid^="chat-attachment-chip-"]'
+
+    chat_attachment_overflow_button = LocatorDescriptor(
+        testid="chat-attachment-overflow-button",
+        description="'+N' overflow control in FileList.jsx; rendered only when hiddenAttachments.length > 0.",
+    )
+
+    # Per-hidden-attachment item inside the opened overflow Menu, dynamic by
+    # actualIndex = maxItemsToShow + index. The Menu is NOT keepMounted —
+    # items exist in the DOM only while it's open. ELITEA-2197/2200 addition.
+    CHAT_ATTACHMENT_OVERFLOW_ITEM = '[data-testid="chat-attachment-overflow-item-{}"]'
+    CHAT_ATTACHMENT_OVERFLOW_ITEM_PREFIX = '[data-testid^="chat-attachment-overflow-item-"]'
 
     internal_tools_menuitem = LocatorDescriptor(
         locator='[role="menuitem"]:has-text("Modules")',
@@ -627,6 +654,26 @@ class ChatPage(BasePage):
     toast_message = LocatorDescriptor(
         testid="toast-message",
         description="App-wide success/error toast message.",
+    )
+
+    # Toast severity root (Toast.jsx's MUI <Alert>) — ELITEA-2197/2200
+    # addition. Testid is the stable identity; severity is state carried via
+    # data-severity, per the "testid = identity, state via data-*" policy —
+    # never a severity-suffixed testid.
+    toast_alert = LocatorDescriptor(
+        testid="toast-alert",
+        description="App-wide toast Alert root; carries data-severity (info/warning/error/success).",
+    )
+
+    # Severity-scoped toast alert selector — testid identity + data-severity
+    # state filter, the compliant shape for a state-dependent assertion.
+    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
+
+    # Toast dismiss (X) icon button — ELITEA-2200 addition (Toast.jsx's
+    # custom `action` IconButton, replacing MUI's unlabeled default close).
+    toast_dismiss_button = LocatorDescriptor(
+        testid="toast-dismiss-button",
+        description="Close (X) icon button on the app-wide toast Alert.",
     )
 
     # Delete-confirmation dialog (DeleteEntityModal.jsx, rendered via the
@@ -1403,8 +1450,27 @@ class ChatPage(BasePage):
             self.sidebar_toggle.click()
             self.page.wait_for_timeout(300)  # Allow animation
         
+    @action("Open Attach Files menu item")
+    def open_attach_menuitem(self, timeout: int = 10000):
+        """Open the plus menu and reveal the 'Attach Files' item inside it.
+
+        Flow: click plus_menu_button -> wait for the showLabel
+        AttachmentButton instance rendered inside the popper
+        (``chat-attach-menuitem-button`` / ``self.attach_files_button``) to
+        become visible. It only exists in the DOM while the popper is open
+        (ELITEA-2197/2200 exploration — re-points the previously-dead
+        ``attach_files_button`` field at this real testid).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening plus menu -> Attach Files menu item")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.attach_files_button.wait_for(state="visible", timeout=timeout)
+
     def open_file_chooser(self, timeout: int = 10000):
-        """Click the attach button and return the FileChooser dialog.
+        """Open the plus menu's Attach Files item and return the FileChooser dialog.
 
         Use this when the test needs to inspect chooser properties (e.g.
         ``is_multiple()``) before selecting files.  For the common case of
@@ -1416,6 +1482,7 @@ class ChatPage(BasePage):
         Returns:
             playwright.sync_api.FileChooser
         """
+        self.open_attach_menuitem(timeout=timeout)
         with self.page.expect_file_chooser(timeout=timeout) as fc_info:
             self.attach_files_button.click()
         return fc_info.value
@@ -1435,7 +1502,110 @@ class ChatPage(BasePage):
         file_chooser = self.open_file_chooser(timeout=timeout)
         file_chooser.set_files(file_path)
         self.wait_for_network(timeout=timeout)
-        
+
+    @action("Attach files via plus menu (multi-select in one chooser action)")
+    def attach_files_via_menu(self, file_paths, timeout: int = 10000):
+        """Open the plus-menu 'Attach Files' item and select the given files.
+
+        Args:
+            file_paths: A path or list of paths, passed to a single
+                ``file_chooser.set_files(...)`` call. Selecting several files
+                in one chooser action is the only way to exceed the
+                attachment limit or feed multiple files at once — a second,
+                separate chooser action is unreachable once the button
+                disables at max capacity (ELITEA-2197 exploration, issue
+                #1122).
+            timeout: Maximum wait for the file chooser / toast (ms).
+
+        Returns:
+            playwright.sync_api.FileChooser — already resolved with the
+            files selected.
+        """
+        logger.info("Attaching %s via plus menu", file_paths)
+        self.open_attach_menuitem(timeout=timeout)
+        with self.page.expect_file_chooser(timeout=timeout) as fc_info:
+            self.attach_files_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(file_paths)
+        return file_chooser
+
+    def wait_for_toast(self, timeout: int = 10000):
+        """Wait for the app-wide toast message to become visible."""
+        self.toast_message.wait_for(state="visible", timeout=timeout)
+
+    def get_toast_text(self, timeout: int = 10000) -> str:
+        """Wait for the toast and return its message text."""
+        self.wait_for_toast(timeout=timeout)
+        return (self.toast_message.text_content() or "").strip()
+
+    def get_toast_alert(self, severity: str):
+        """Return the toast Alert locator scoped to a specific data-severity value.
+
+        Testid identity (``toast-alert``) + a ``data-severity`` state filter
+        — the compliant shape for a state-dependent assertion (state is
+        never encoded in the testid itself).
+
+        Args:
+            severity: e.g. "warning", "info", "error", "success".
+        """
+        return self.page.locator(self.TOAST_ALERT_SEVERITY.format(severity))
+
+    @action("Dismiss toast")
+    def dismiss_toast(self, timeout: int = 10000):
+        """Click the toast's dismiss (X) button and wait for it to detach."""
+        self.toast_dismiss_button.click()
+        self.toast_message.wait_for(state="hidden", timeout=timeout)
+
+    def get_attachment_chip_count(self) -> int:
+        """Count of currently visible attachment chips (FileList.jsx, excludes overflow)."""
+        return self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX).count()
+
+    def get_attachment_overflow_count(self) -> int:
+        """Parse the '+N' overflow count from the overflow button's text.
+
+        Returns 0 if the overflow control isn't rendered (all attachments
+        fit as visible chips).
+        """
+        if self.chat_attachment_overflow_button.count() == 0:
+            return 0
+        text = self.chat_attachment_overflow_button.text_content() or ""
+        match = re.search(r"\+(\d+)", text)
+        return int(match.group(1)) if match else 0
+
+    def get_total_attached_file_count(self) -> int:
+        """Total attached files = visible chips + overflow number.
+
+        Never hardcode a "N visible" split — FileList.jsx's visible/overflow
+        boundary is container-width-dependent (ELITEA-2197 exploration).
+        """
+        return self.get_attachment_chip_count() + self.get_attachment_overflow_count()
+
+    def get_visible_attachment_names(self) -> list:
+        """Filenames of the currently visible attachment chips, in render order."""
+        chips = self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX)
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
+    def get_overflow_attachment_names(self, timeout: int = 5000) -> list:
+        """Open the overflow menu (if present) and return the hidden filenames.
+
+        The overflow Menu is NOT keepMounted (FileList.jsx) — items only
+        exist in the DOM while the menu is open, so this opens it, reads
+        names, then closes it again (Escape) to leave the page as found.
+        """
+        if self.chat_attachment_overflow_button.count() == 0:
+            return []
+        self.chat_attachment_overflow_button.click()
+        items = self.page.locator(self.CHAT_ATTACHMENT_OVERFLOW_ITEM_PREFIX)
+        items.first.wait_for(state="visible", timeout=timeout)
+        names = [(items.nth(i).text_content() or "").strip() for i in range(items.count())]
+        self.page.keyboard.press("Escape")
+        return names
+
+    def get_all_attached_file_names(self) -> list:
+        """All attached filenames — visible chips + overflow menu contents."""
+        return self.get_visible_attachment_names() + self.get_overflow_attachment_names()
+
+
     @action("Copy message")
     def copy_message(self, message_index: int = -1):
         """Copy a message to clipboard.
