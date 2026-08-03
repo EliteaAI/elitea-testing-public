@@ -2,7 +2,76 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-03 (ELITEA-2028 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-03 (ELITEA-2005/2006/2007/2008 analysis).
+
+## Entry point node — Trigger control (Chat Message/Schedule/Webhook) (confirmed live, 2026-08-03, ELITEA-2005/2006/2007/2008)
+
+Rendered by the shared, node-type-agnostic `NodeCard.jsx` base component
+(`{isEntrypoint && <TriggerTypeSelector .../>}`) — appears on ANY node type set as the entry
+point, always as the FIRST field inside the node body, ahead of the node-type-specific fields
+(SYSTEM/TASK/CHAT HISTORY for LLM, etc.). Source: `EliteaUI/src/[fsd]/features/pipelines/
+flow-editor/ui/settings/TriggerTypeSelector.jsx` + `PipelineWebhookModal.jsx` +
+`PipelineScheduleModal.jsx`.
+
+- **Trigger combobox**: `node.locator('[id^="simple-select-"]').first` — confirmed always the
+  FIRST such element (the SYSTEM/TASK/CHAT HISTORY Type selects on LLM nodes also match
+  `id="simple-select-Type"`, further down). **Zero testids** — same "shared `SingleSelect`
+  already accepts `dataTestId`, just needs wiring at the call site" gap as the HITL/LLM/Toolkit
+  node fields documented below. The 3 OPTION elements already have testids for free:
+  `select-option-chat_message`/`select-option-schedule`/`select-option-webhook` (inherited from
+  `SingleSelectMenuItem.jsx`'s existing auto-derivation — same mechanism as every other
+  `SingleSelect` in this codebase).
+- **Persistence mechanism is its OWN dedicated endpoint**, NOT the pipeline's general Save:
+  `PUT ${API}/elitea_core/pipeline_trigger/prompt_lib/{project_id}/pipeline/{pipeline_id}/trigger`
+  fires immediately on every trigger-type selection (including Chat Message) and on Modal Apply.
+  The pipeline-level `[data-testid="agent-save-button"]` stays DISABLED after a trigger-only
+  change — confirmed live, repeatedly. Any case whose text says "Save pipeline — reload" for a
+  trigger change is describing a persistence mechanism that doesn't exist for this control; the
+  underlying observable (survives reload) is still true via the dedicated endpoint.
+- **Webhook modal timing gap (confirmed live, reproducible 3/3 runs)**: selecting "Webhook" opens
+  the modal IMMEDIATELY (before its own data has loaded) — only Webhook-Type radios + description
+  + Payload Format + Cancel/Apply are present at first paint. The "Webhook URL" / "Secret Value" /
+  "Example Request" sections are entirely ABSENT from the DOM (not hidden) for ~1.5–4.5s while a
+  secondary `GET .../trigger` populates the RTK-Query cache the modal's props read from. No
+  loading indicator shown for the gap. **Automation must wait for the "Webhook URL" text/testid to
+  appear, never assert the field inventory immediately after the dialog becomes visible.**
+- **Schedule modal has NO such timing gap** — all fields present immediately (no secret/URL
+  generation involved).
+- **Schedule modal's hour/minute pickers are MULTI-SELECT checkbox grids** (third-party
+  `react-js-cron` library, `.react-js-cron-select` for Every/on, a SEPARATE non-ant-select popover
+  for hour/minute), not simple dropdowns — clicking a new value ADDS to the selection rather than
+  replacing it. To set a single specific hour/minute: click the currently-checked cell to UNCHECK
+  it FIRST, then click the target cell. Naive "just click the new value" produces a multi-valued
+  cron and an inline "Frequency cannot be less than every hour" validation message. Both Default
+  and Advanced mode share the same underlying `cronExpression` string state — switching modes
+  loses no data either direction.
+- **Restriction logic (Printer/HITL/interrupt → Chat-Message-only) is gated on the pipeline's
+  LAST-SAVED YAML, not the live/unsaved canvas** — confirmed live: adding a Printer node to the
+  canvas has ZERO effect on the Trigger dropdown's option set until the pipeline is Saved. Once
+  Saved, the restriction applies immediately (no reload needed — re-derives from Formik `values`
+  updated by the Save response) and survives reload. This precondition is NOT mentioned in any of
+  the case texts that test it — a naive "add node → immediately assert restriction" sequence will
+  find all 3 options still present and get a false negative.
+- **Immediate post-click/post-Cancel combobox text reads can be STALE for ~1–2s** — the displayed
+  value is driven by an RTK-Query GET (`useGetPipelineTriggerQuery`) that doesn't always settle
+  synchronously with a mutation. Clicking "Cancel" in either modal does NOT revert the trigger
+  TYPE (it was already committed by the PUT that fired on mere selection) — Cancel only discards
+  in-modal-only edits (webhook sub-type / secret regen / unapplied cron). Always assert
+  persistence via reload or by waiting for the specific network response, never via an immediate
+  DOM read after Cancel.
+- **Testid gaps, all confirmed via source read (prop plumbing already exists — zero new component
+  code, just wire the prop at the call site), full list + exact recommended names in the
+  ELITEA-2005/2006/2007 AFS § Concrete Handles**: Trigger combobox (`SingleSelect`'s existing
+  `dataTestId` prop), Webhook-Type radio group + Schedule Mode radio group (`Checkbox.
+  RadioButtonGroup`'s existing `testId` prop, auto-derives per-item), Webhook URL/Secret inputs +
+  Schedule cron-text input (`FormInput`/MUI `TextField` needs `inputProps={{'data-testid':...}}`,
+  NOT a bare `data-testid` prop — lands on the wrapper otherwise), modal roots + Cancel/Apply
+  buttons (`Modal.BaseModal`'s existing `data-testid`/`cancelButtonTestId`/`confirmButtonTestId`
+  props), copy/eye/refresh `IconButton`s (plain `data-testid`, no existing prop needed).
+- **Minor prop-drop, not filed as a defect**: `PipelineScheduleModal.jsx` passes `label="Schedule
+  Type"` to `Checkbox.RadioButtonGroup`, which does not consume/render a `label` prop at all — the
+  Mode radio group has no visible heading. Locate by the two option labels ("Default"/"Advanced")
+  instead.
 
 ## YAML editor ⇄ Flow canvas sync (confirmed live, 2026-08-03, ELITEA-2028)
 
