@@ -274,6 +274,86 @@ a time; last confirmed by: qa-engineer analyst, ELITEA-2197/2200 cluster run,
   at 7 after `Escape`). Closing requires an outside click (anywhere in the
   main chat/message area) — that took the switch count to 0.
 
+## Slash-mention ('/') toolkit/MCP picker (ELITEA-2202/2203/2204)
+- Component tree: `SlashSuggestionList.jsx` (`EliteaUI/src/[fsd]/features/chat/ui/slash-suggestion-list/`)
+  renders `NewParticipantList` (`EliteaUI/src/pages/NewChat/Recommendations/`,
+  **shared** with `RecommendationList`/`SearchResultList`) for the toolkit-pick
+  phase, and its own `ToolList`/`ToolItem` (NOT shared elsewhere — confirmed via
+  `git grep -rl "ToolList"` inside `src/`) for the tool-pick phase. **Every one
+  of these 4 files has ZERO testids** — confirmed via full-file read AND
+  `git grep -c "data-testid\|testId"` returning empty for all four against both
+  `origin/main` and `origin/automation/testids`.
+- Trigger: typing `/` as the first character of an empty composer (via
+  `chat-message-input`, pre-existing on-main) opens the picker. Dropdown title
+  DOM text is title-case `"Mention Toolkit or MCP"` (CSS-uppercased on screen to
+  "MENTION TOOLKIT OR MCP" — assert the title-case string, not the visual caps).
+  Empty-state body text (zero toolkit/MCP participants): exact string
+  `"No matching results"`.
+- Closes via **outside click** (`ClickAwayListener`, confirmed live). Do **not**
+  use `Escape` — same architecture as the Modules panel documented above, which
+  is live-confirmed NOT to close on `Escape`; not independently isolated for
+  THIS popper, but the shape is identical, so treat as the same quirk.
+- Only conversation **participants** of type Toolkit/MCP ever appear
+  (`filteredParticipants` filters `activeConversation.participants` client-side
+  — a toolkit that exists in the project but isn't a participant never shows).
+- Selecting a toolkit: composer becomes `/{toolkit_name}` (no trailing space),
+  and a SECOND list appears titled `` `{toolkitName} available tools` `` (DOM
+  text lowercase, CSS-uppercased on screen), populated from
+  `toolkitDetails.settings.selected_tools` (non-MCP) or
+  `settings.available_mcp_tools` (MCP) — i.e. whatever `selected_tools` the
+  toolkit was CONFIGURED with, not a fixed list. `useToolkitsDetailsQuery` has a
+  brief `isToolsFetching` loading state before the list renders.
+- Selecting a tool: composer becomes `/{toolkit_name}/{tool_name} ` — **WITH a
+  trailing space** (`onSlashCommitMention`'s replacement is
+  `` `${mentionToken} ` ``) — assert the trailing space, it's the confirmed
+  mechanism, not incidental whitespace.
+- **Add-participant mechanism differs from the AGENT flow** (existing
+  `ChatPage.add_toolkit_participant()`, `chat_page.py:3910-3952`, is NOT
+  reusable here): Toolkits/MCPs entries in the plus-menu (`toolkits-menuitem`/
+  `mcps-menuitem`, both **on-main**) render as **toggle switches**
+  (`showToggle: true` in `PlusChatSubmenu.jsx`) — clicking a row toggles
+  participant membership WITHOUT closing the submenu (contrast with Agents'
+  select-and-close). The search inputs (`{section}-search-input`) and per-row
+  items (`` `${sectionKey}-menu-item-${item.key}` ``, live-confirmed concrete
+  shape: `toolkits-menu-item-toolkit-{project_id}-{toolkit_id}` /
+  `mcps-menu-item-mcp-{project_id}-{toolkit_id}`) are all real testids —
+  **on `automation/testids` only**, commit `73595e8d` ("add data-testid for
+  plus-menu entity items/rows (ELITEA-2094)"), not yet on `main`.
+- **Quirk, confirmed live**: closing the plus-menu popper (`Escape`) and
+  re-clicking `plus-menu-button` to switch from the Toolkits submenu to the
+  MCPs submenu **toggles the whole popper CLOSED** instead of reopening it —
+  same "second click on an already-open popper closes it" shape already
+  documented above for the Attach-Files popper. Fix: go directly from Toolkits
+  to MCPs by clicking `mcps-menuitem` within the SAME already-open outer
+  popper (these top-level items are `onMouseEnter`-triggered, and Playwright's
+  `.click()` hovers first, so a plain `.click()` on `mcps-menuitem` works
+  without needing to reopen anything).
+- `mcps-menuitem`'s visibility is gated by `useIsMcpVisible()` (platform
+  settings `mcp_exposure_enabled`/`mcp_in_menu_enabled`) — confirmed live via
+  `GET /elitea_core/platform_settings/prompt_lib`: both `true` in this
+  environment.
+- **CLARIFICATION filed, issue #1125**: ELITEA-2204's case text names an
+  expected tool `list_collections`, which is not a valid tool name in this
+  environment (backend rejects it — corroborated by a pre-existing error
+  already in this repo's own `automation/reports/archive/junit_20260722_212653.xml`,
+  from before the suite's `create_artifact_toolkit()` factory was fixed). The
+  live, correct tool name for the same capability is `list_indexes`.
+- Icon differentiation per participant type (`EntityIcon.jsx`) has real,
+  different SVG components per type but **zero testids on any of them** — out
+  of scope to testid (shared across many unrelated call sites); the type-label
+  TEXT ("Toolkit"/"MCP"/"agent"/"pipeline", `NewParticipantCard.jsx`'s
+  `participant.type` ternary) is the practical, in-scope assertion signal
+  instead.
+- **Environment note (569+ stale artifact buckets already present)**: this
+  project's `/artifacts/buckets/default/{project_id}` list already carries
+  500+ `autotest-*` buckets from prior sessions before this pass added one more
+  — `ArtifactAPI.delete_bucket()` 404'd on both the plain-name and compound-ID
+  URL forms for a bucket created and confirmed-existing minutes earlier in the
+  SAME session (toolkit cleanup via `ToolkitAPI.delete_toolkit()` succeeded
+  fine). Not independently root-caused this pass (pre-existing, wide-spread
+  pattern, not a new regression) — flagging for whoever next does bucket
+  hygiene, not filed as a defect.
+
 ## Sibling TMS cases — near-duplicate scope
 ELITEA-2463 (search) and ELITEA-2464 (Modules panel) are both still
 `draft`/unautomated (tracking cards #971/#972) and are, respectively, a more
