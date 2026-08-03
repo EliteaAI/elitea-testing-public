@@ -323,6 +323,43 @@ class PipelineDetailPage(PipelineFormPage):
     # testid-keyed, not a raw role/CSS selector.
     SELECT_OPTION_PREFIX = '[data-testid^="select-option-"]'
 
+    # Canvas "+" Add Node trigger and its popup menu (ELITEA-2030). Testids
+    # added via add-data-testid onto AddNodeMenu.jsx's IconButton and Menu —
+    # this is app JSX we own, not a #579 third-party exception.
+    add_node_button = LocatorDescriptor(
+        testid="pipeline-add-node-button",
+        description="Canvas '+' Add Node trigger button"
+    )
+
+    add_node_menu = LocatorDescriptor(
+        testid="pipeline-add-node-menu",
+        description="Add Node menu popup listing every node type"
+    )
+
+    # Dynamic (runtime-parameterized) testid — one per node type rendered in
+    # the Add Node menu, keyed by the INTERNAL type (FlowEditorConstants.
+    # PipelineNodeTypes value, e.g. "llm", "hitl", "state_modifier"), not the
+    # display label ("LLM", "Human-in-the-loop", "State modifier"). Class-
+    # level template constant per .agents/testing.md § Locator policy.
+    ADD_NODE_MENU_ITEM_BY_TYPE = '[data-testid="pipeline-add-node-menu-item-{}"]'
+
+    # Prefix-match variant for enumerating every item currently rendered in
+    # an open Add Node menu, in DOM order — same testid family, no type
+    # known up front.
+    ADD_NODE_MENU_ITEM_PREFIX = '[data-testid^="pipeline-add-node-menu-item-"]'
+
+    # Generic "any canvas popup menu" check — shared DOM shape across two
+    # distinct app components, each with its own real testid (not a raw
+    # role/class selector): the Add Node menu above, and the ReactFlow
+    # "create new node" context menu that can appear when a canvas
+    # drag-connect misses its target handle (`pipeline-connection-dropdown
+    # -menu`, ConnectionDropdown.jsx — testid added alongside the Add Node
+    # menu's for the same ELITEA-2030/2031 pair of cases).
+    POPUP_MENU_TESTIDS = (
+        '[data-testid="pipeline-add-node-menu"], '
+        '[data-testid="pipeline-connection-dropdown-menu"]'
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -815,17 +852,23 @@ class PipelineDetailPage(PipelineFormPage):
         threshold this codebase already applies elsewhere (see
         ``_wait_for_yaml_line_selection_applied``'s docstring).
 
+        Testid-based (ELITEA-2030): ``add_node_button``/``add_node_menu``
+        LocatorDescriptor fields plus the ``ADD_NODE_MENU_ITEM_PREFIX``
+        template constant, added to AddNodeMenu.jsx via ``add-data-testid``
+        — replaces the earlier ``button.MuiIconButton-colorPrimary`` /
+        ``get_by_role("menuitem")`` raw handles this test's AFS had flagged
+        as a "testid gap, not blocking"; the gap is closed, not waived.
+
         Args:
             timeout: Maximum wait time for the menu items to be visible.
 
         Returns:
             List of menu item label texts, in DOM order.
         """
-        add_btn = self.page.locator("button.MuiIconButton-colorPrimary").first
-        add_btn.click()
+        self.add_node_button.click()
         self.page.wait_for_timeout(300)
 
-        items = self.page.get_by_role("menuitem")
+        items = self.page.locator(self.ADD_NODE_MENU_ITEM_PREFIX)
         items.first.wait_for(state="visible", timeout=timeout)
         count = items.count()
         return [(items.nth(i).text_content() or "").strip() for i in range(count)]
@@ -837,45 +880,57 @@ class PipelineDetailPage(PipelineFormPage):
         opened via that method (to inspect labels first). For the common
         "just add this node type" case, prefer :meth:`add_node`.
 
+        Testid-based (ELITEA-2030): uses ``ADD_NODE_MENU_ITEM_BY_TYPE``,
+        keyed by the item's INTERNAL type (e.g. "llm", "hitl",
+        "state_modifier" — FlowEditorConstants.PipelineNodeTypes value),
+        NOT the display label ``add_node()`` takes ("LLM",
+        "Human-in-the-loop", "State modifier"). Deliberately different
+        contract from :meth:`add_node` — the testid AddNodeMenu.jsx renders
+        is keyed by the internal type, not the label.
+
         Args:
-            node_type: Exact display name of the item to click (e.g. "LLM").
+            node_type: Internal node-type key of the item to click (e.g.
+                "llm", not "LLM").
             timeout: Maximum wait time for the item to be clickable.
         """
-        menu_item = self.page.get_by_role("menuitem", name=node_type, exact=True)
+        menu_item = self.page.locator(self.ADD_NODE_MENU_ITEM_BY_TYPE.format(node_type))
         menu_item.wait_for(state="visible", timeout=timeout)
         menu_item.click()
         self.page.wait_for_timeout(1000)
 
     def is_popup_menu_visible(self) -> bool:
-        """Return whether ANY ``role="menu"`` popup is currently rendered.
+        """Return whether either canvas popup menu is currently rendered.
 
         Generic check — shared DOM shape for both the Add Node menu (ELITEA-
         2030's Escape-dismiss assertion) and the ReactFlow "create new node"
         context menu that can appear when a canvas drag-connect misses its
         target handle (ELITEA-2031's post-drag assertion, mirroring the
-        same ``role="menu"`` check :meth:`connect_nodes` already uses
-        internally to auto-dismiss it).
+        same check :meth:`connect_nodes` already uses internally to
+        auto-dismiss it). Testid-based via ``POPUP_MENU_TESTIDS`` (both
+        ``pipeline-add-node-menu`` and ``pipeline-connection-dropdown-menu``
+        real app testids), not a raw ``[role="menu"]`` selector.
 
         Returns:
-            True if a ``role="menu"`` element is present in the DOM.
+            True if either popup menu's testid is present in the DOM.
         """
-        return self.page.locator('[role="menu"]').count() > 0
+        return self.page.locator(self.POPUP_MENU_TESTIDS).count() > 0
 
     def wait_for_popup_menu_hidden(self, timeout: int = 5000) -> None:
-        """Wait (polling) until no ``role="menu"`` popup remains in the DOM.
+        """Wait (polling) until neither canvas popup menu remains in the DOM.
 
         Use after dismissing a menu (Escape / click-outside) instead of an
         instant :meth:`is_popup_menu_visible` check — the menu's close
         animation can leave it mounted-but-fading for a short window, so an
         instant check can false-negative by firing before the unmount
-        completes.
+        completes. Testid-based via ``POPUP_MENU_TESTIDS`` — see
+        :meth:`is_popup_menu_visible`.
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
         from playwright.sync_api import expect
 
-        expect(self.page.locator('[role="menu"]')).to_have_count(0, timeout=timeout)
+        expect(self.page.locator(self.POPUP_MENU_TESTIDS)).to_have_count(0, timeout=timeout)
 
     def get_node_count(self) -> int:
         """Return the number of nodes on the canvas.
@@ -1811,43 +1866,43 @@ class PipelineDetailPage(PipelineFormPage):
         """
         return self.page.locator(self.EDGE_TESTID.format(source_internal_id, target_internal_id)).count() > 0
 
-    def get_edge_locator(
-        self, source_id: str, target_id: str, handle_suffix: str | None = None
-    ) -> Locator:
+    def get_edge_locator(self, source_id: str, target_id: str) -> Locator:
         """Return the Locator for the edge from *source_id* to *target_id*.
 
-        Mirrors ``edge_exists()``'s own prefix/substring search over
-        ``.react-flow__edge`` (same testid-matching logic, no new selector
-        class introduced) but returns the matched ``Locator`` instead of a
-        bool, so the caller can ``.click()`` it — ``edge_exists()``/
-        ``edge_testid_present()`` only report existence.
+        Testid-based (ELITEA-2032): uses the same exact ``EDGE_TESTID``
+        template :meth:`edge_testid_present` relies on
+        (``rf__edge-xy-edge__{source}---{target}``, confirmed live) instead
+        of the legacy ``.react-flow__edge`` class-scan + manual prefix/
+        substring match ``edge_exists()`` uses. Reading the testid via
+        ``get_attribute()`` after a raw CSS-class scan locates the element
+        by CLASS, not by testid — not a testid-only locator per
+        ``.agents/testing.md`` § Locator policy regardless of precedent
+        elsewhere in this file (existing raw handles are tracked tech debt
+        — #25/#42 — never a justification for a new one).
+
+        No ``handle_suffix`` parameter (the prior version had one): the
+        exact-testid format has no live-confirmed handle-suffix variant
+        (e.g. for HITL approve/reject edges), and the sole caller
+        (ELITEA-2032) doesn't need one — add it only once a confirmed
+        format for a handle-qualified edge testid exists.
 
         Args:
-            source_id: data-id of the source node.
-            target_id: data-id of the target node.
-            handle_suffix: Optional source handle suffix (e.g. "approve"),
-                same meaning as on :meth:`edge_exists`.
+            source_id: Internal source node id exactly as it appears in the
+                edge's data-testid (e.g. "LLM 1").
+            target_id: Internal target node id exactly as it appears in the
+                edge's data-testid (e.g. "Printer 1", "EliteAPipelineEnd").
 
         Returns:
-            Locator matching the edge's ``.react-flow__edge`` element.
+            Locator matching the edge's exact
+            ``[data-testid="rf__edge-xy-edge__{source}---{target}"]`` element.
 
         Raises:
             ValueError: If no matching edge is found in the DOM.
         """
-        edges = self.page.locator(".react-flow__edge")
-        edge_count = edges.count()
-
-        if handle_suffix:
-            expected_prefix = f"rf__edge-xy-edge__{source_id}{handle_suffix}-{target_id}"
-        else:
-            expected_prefix = f"rf__edge-xy-edge__{source_id}"
-
-        for i in range(edge_count):
-            testid = edges.nth(i).get_attribute("data-testid") or ""
-            if testid.startswith(expected_prefix) and f"-{target_id}" in testid:
-                return edges.nth(i)
-
-        raise ValueError(f"No edge found from '{source_id}' to '{target_id}' among {edge_count} edges")
+        locator = self.page.locator(self.EDGE_TESTID.format(source_id, target_id))
+        if locator.count() == 0:
+            raise ValueError(f"No edge found from '{source_id}' to '{target_id}'")
+        return locator.first
 
     def fit_view(self):
         """Click the ReactFlow 'Fit View' zoom control."""

@@ -71,6 +71,21 @@ def test_drag_connect_creates_edge_replacing_prior_transition(page, pipeline_llm
             f"a single-source-single-transition model means LLM 1 can only ever have "
             f"ONE outgoing edge, got {edge_count_after}"
         )
+        # edge_exists()'s aggregate count staying at 2 proves A transition
+        # moved, not that the specific OLD one did — LLM 1's prior -> END
+        # edge could in principle still be present alongside a new LLM 1 ->
+        # Printer 1 edge if the source's transition were additive rather
+        # than replaced, with the count only balancing by coincidence.
+        # edge_testid_present() checks the exact DOM testid for the old
+        # edge instead, same tool the sibling ELITEA-2032 test
+        # (test_pipeline_edge_deletion.py Step 6) uses for the identical
+        # END-target case — edge_exists() is unreliable for the END node
+        # specifically (its real internal target id is "EliteAPipelineEnd",
+        # not "END").
+        assert not pipeline_page.edge_testid_present("LLM 1", "EliteAPipelineEnd"), (
+            "The old LLM 1 -> END edge should be specifically gone (re-pointed to "
+            "Printer 1, not left behind as a second outgoing edge)"
+        )
 
     with allure.step("Step 4 — Save, then reload — verify the edge persists"):
         assert pipeline_page.save_button.is_enabled(), (

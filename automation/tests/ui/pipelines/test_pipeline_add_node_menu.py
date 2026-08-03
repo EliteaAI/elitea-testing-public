@@ -9,13 +9,16 @@ the node appears on canvas with its config immediately visible (no
 click-to-expand step exists for any node type on this canvas), then
 re-opens the menu and confirms Escape dismisses it without adding a node.
 
-Testid gap, not blocking (AFS Concrete Handles): the Add-node "+" button and
-its 11 menu items carry zero ``data-testid``s — confirmed live via menu
-``inner_html()`` dump. Per the AFS's own recommendation this test reuses the
-existing raw-handle ``add_node()``-family methods as-is (matching
-``test_pipeline_nodes.py::TestAddNode``'s precedent for the SAME menu)
-rather than adding new testids as a side effect of this case; wiring them
-is flagged as its own, separately-scoped task.
+Testid gap CLOSED (review round 1, was AFS "not blocking" — the recommendation
+to reuse the existing raw-handle ``add_node()``-family methods as-is did not
+survive review: `.agents/role-overrides.md` treats a missing testid as work
+to do, not a reason to rung down, regardless of what an AFS recommends).
+`get_add_node_menu_items()`/`wait_for_popup_menu_hidden()` below are now
+testid-based (`pipeline-add-node-button`, `pipeline-add-node-menu`,
+`pipeline-add-node-menu-item-{type}`, added to AddNodeMenu.jsx via
+`add-data-testid`, on `automation/testids`). `add_node()` itself (used at
+Step 4) is untouched pre-existing tech debt (#25/#42) — this case's own new
+methods don't inherit its raw handles.
 """
 
 import allure
