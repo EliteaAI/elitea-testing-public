@@ -2,8 +2,88 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2168 run, 2026-08-03
-(supersedes the ELITEA-2135/2137/2149 cluster run below on other sections).
+a time; last confirmed by: qa-engineer analyst, ELITEA-2197/2200 cluster run,
+2026-08-03 (supersedes nothing below — new section, other sections unchanged).
+
+## File attachments — 10-file limit, unsupported-type rejection, toast severity (ELITEA-2197/2200)
+- **The real "Attach Files" control lives INSIDE the "+" (plus-menu) popper,
+  not as a standalone visible button.** `ChatPage.attach_files_button`
+  (`automation/pages/chat_page.py:55-58`, `testid="chat-attach-button"`) is
+  **dead — that testid does not exist anywhere in `EliteaUI/src`** (confirmed
+  `git grep` against both `origin/main` and `origin/automation/testids`, zero
+  hits); the field only "works" today via its (forbidden-in-new-code)
+  `fallback=`. Reach the real control via: click `[data-testid="plus-menu-button"]`
+  (pre-existing, on-main) to open the popper, then click the "Attach Files"
+  row inside it (`button[aria-label="attach files"]` — 2nd match of that
+  selector on the page; the 1st match, bbox `28×28` at the composer's bottom
+  toolbar, is a separate, functionally-hidden `AttachmentButton` instance
+  with `pointerEvents:none` — do not target it).
+- **`AttachmentButton` (`PlusChatButton.jsx`) renders THREE times**: (1)
+  hidden/`pointerEvents:none` instance at `PlusChatButton.jsx:336` (ref'd,
+  never click-targeted), (2) the real popper item at `PlusChatButton.jsx:373`
+  (`showLabel`, text = `"Attach Files\n{N} left"`) — THIS is what
+  ELITEA-2197/2200 touch, (3)+(4) separate instances in `UserMessage.jsx`
+  (edit mode) and `NewChatInput.jsx` — not explored this pass. Needs a
+  `testId` prop threaded through the shared component, set ONLY at the
+  popper call site (`chat-attach-menuitem-button`) — per the shared-component
+  testid rule, don't hardcode a feature name inside `AttachmentButton` itself.
+- **The popper does not auto-close after a file-chooser selection.** Its
+  `isOpen` state persists across the native OS dialog. A second click on
+  `plus-menu-button` right after selecting files **toggles it CLOSED**
+  (don't re-click to "confirm" the menu is still open — just re-query the
+  existing, still-open popper's elements).
+- **The "Attach Files" popper item becomes `disabled` once `attachments.length
+  >= 10`** (`isAtMaxCapacity` in `AttachmentButton.jsx`), showing
+  `"Attach Files\n0 left"`. A disabled MUI button never fires `onClick` — no
+  file picker, no toast. This means the case-text flow "attach 10, then
+  separately attempt an 11th" is **unreachable** live — filed as a
+  clarification, issue #1122. The `toastWarning`
+  (`"You've reached the {N}-file limit. Only the first {N} will be
+  processed."`) only fires from `validateAttachmentFiles()`'s count check
+  **inside a single file-chooser selection** that itself exceeds remaining
+  capacity (e.g. select 11 files in ONE action when 0 attached, or select 2
+  when 9 are already attached) — confirmed live: selecting 11 `.txt` files at
+  once correctly triggers the warning and keeps exactly the first 10
+  (selection order, `fileArray.splice(allowedCount)`).
+- **`FileList.jsx` (`EliteaUI/src/components/Chat/FileList.jsx`) renders the
+  attachment chips — ZERO testids anywhere in this component** (confirmed via
+  full-file read, not just grep). Per-chip `Box` (no testid), its remove (X)
+  icon (no testid), the `"+N"` overflow `Button.BaseBtn` (no testid,
+  `aria-label="Show more files"`), and the overflow `Menu`'s per-item
+  `MenuItem`s (no testid, **not** `keepMounted` — items only exist in the DOM
+  while the overflow menu is open) all need `add-data-testid` work. The
+  visible-vs-overflow split is **container-width-dependent**
+  (`useGetComponentWidth` + `Math.floor(availableWidth / 208)`, confirmed
+  live: `1700px`-wide viewport → 4 visible + `"+6"` overflow for 10 total) —
+  automation must assert the SUM (visible + parsed overflow number), never a
+  hardcoded "N visible" count.
+- **Toast severity/dismiss have no testid either** (`EliteaUI/src/components/Toast.jsx`).
+  `[data-testid="toast-message"]` (pre-existing, on-main) covers only the
+  message TEXT node — the outer `Alert` (which carries `severity` as a CSS
+  class, e.g. `MuiAlert-colorWarning`/`MuiAlert-colorInfo`) and its
+  auto-rendered MUI default close button (`aria-label="Close"`, from the
+  `onClose` prop) both need new testids: `toast-alert` +
+  `data-severity={severity}` on the `Alert` (state-via-`data-*` on a stable
+  identity, matching this project's own established pattern), and
+  `toast-dismiss-button` via a custom `action` prop (MUI's default close
+  icon has no prop path for a testid without one).
+- **CONFIRMED DEFECT, filed #1121**: the unsupported-file-type toast
+  (`"Invalid file types detected: {file} ({ext}). Only {allowed} files are
+  allowed."`) renders with `severity="info"` (blue, info icon) — NOT an
+  error-level severity, despite the feature's own naming and the case's
+  "error banner" framing. Root cause: `AttachmentButton.jsx`'s
+  `displayErrorMessages()` calls `toastInfo(...)` for the invalid-type
+  branch while its sibling 10-file-limit branch (same function) correctly
+  uses `toastWarning(...)`. Message text/dismiss/non-attachment are all
+  correct — only the severity color/icon is wrong.
+- **Allowed extensions are backend-driven and dynamic** (`useAllowedExtensions()`
+  → `GET` document-loaders query) — don't hardcode the full list in an
+  assertion; match the toast's stable prefix/suffix instead (`"Invalid file
+  types detected: {file} ({ext}). Only "` … `" files are allowed."`).
+- **Non-attachment check ordering matters**: the rejected-file toast's own
+  message TEXT contains the filename substring, so a naive
+  `page.get_by_text(filename)` "not attached" check will false-positive
+  while the toast is still open. Dismiss the toast first, then check.
 
 ## Users participant type — mention, removal, avatar overflow (ELITEA-2168)
 - **"All users" dropdown footer item is BROKEN — filed #1119.** Clicking it
