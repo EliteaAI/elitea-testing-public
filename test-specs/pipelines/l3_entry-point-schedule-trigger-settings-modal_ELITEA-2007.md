@@ -19,17 +19,25 @@
 |-------|-------|
 | Hour | 09 |
 | Minute | 30 |
-| Expected summary (daily) | At 09:30, every day |
+| Expected summary (daily) | `At 09:30` — **NOT** the case's own literal "At 09:30, every day"; see CLARIFICATION below |
 
-**CLARIFICATION on Test Data (case-text drift, not a defect — see § Known Defects):** the
-default cron on a freshly-webhook-less pipeline is `0 0 * * 6` (confirmed live —
-`PipelineScheduleModal.jsx`'s hardcoded `PipelineCronDefault`), which renders as "Every **week**
-on **SAT** at 00:00" / summary "At 00:00, only on Saturday" — **not** "Every day", contradicting
-an implicit assumption in the case's step 4 ("Change 'Every' to 'day'" reads naturally as changing
-FROM day, but the live default is "week", so this is actually changing INTO "day" for the first
-time). This doesn't change the case's own instructions (which explicitly says to change "Every"
-to "day"), so it does not block or alter any step — noted here only so the implementer isn't
-surprised that the "before" state in a screenshot/assertion is "week"/"SAT", not "day".
+**CLARIFICATION on Test Data (case-text drift, not a defect) — already filed as
+[EliteaAI/elitea-testing-public#1013](https://github.com/EliteaAI/elitea-testing-public/issues/1013)
+(found by a prior analysis pass on this exact case; cross-checked and confirmed consistent with
+this session's own live observation of the summary re-deriving dynamically, though this session
+did not itself pin the exact final string before moving on to the multi-select interaction
+finding — see § Test Steps step 5). Two points, both from #1013, both incorporated directly into
+this AFS's own assertions (not re-argued here):**
+1. **The summary's exact live string for Every=day, 09:30 is `At 09:30` — no `, every day` suffix.**
+   The qualifier clause only appears when it disambiguates a non-daily period (e.g. the modal's
+   own default, Every=week/SAT, reads "At 00:00, only on Saturday"); for the daily period there is
+   nothing left to disambiguate, so the formatter correctly omits it. This AFS's own step 5
+   asserts the CORRECT live string, not the case's stale one, per the reverse-masking guard.
+2. The default cron on a freshly-created pipeline is `0 0 * * 6` (`PipelineScheduleModal.jsx`'s
+   hardcoded `PipelineCronDefault`) — "Every **week** on **SAT** at 00:00", **not** "Every day".
+   The case's step 4 ("Change 'Every' to 'day'") is phrased as if starting from a daily default,
+   but is actually the FIRST switch into "day" from the real "week" default — doesn't block or
+   alter any step, just means the "before" state in a screenshot/assertion is "week"/"SAT".
 
 ## Test Steps
 
@@ -76,15 +84,17 @@ surprised that the "before" state in a screenshot/assertion is "week"/"SAT", not
      ("Change hour to 09, minute to 30") implies a simple replace; the correct live interaction is:
      open the hour popover, click the currently-checked "00" cell to UNCHECK it, then click "09" to
      check it (repeat the same pattern for minute: uncheck "00", check "30")** — this produces the
-     clean single-value result the case's Test Data table expects (`At 09:30, every day`). This
-     interaction-model detail is essential for the implementer and is captured as an Automation
-     Hint, not filed as a defect (the widget's multi-select capability is an intentional
-     third-party library feature — react-js-cron supports comma-separated cron fields by design —
-     the case simply doesn't anticipate it).
+     clean single-value result the case's Test Data table expects. This interaction-model detail
+     is essential for the implementer and is captured as an Automation Hint, not filed as a defect
+     (the widget's multi-select capability is an intentional third-party library feature —
+     react-js-cron supports comma-separated cron fields by design — the case simply doesn't
+     anticipate it).
    - **Verify (once hour/minute correctly single-valued)**: summary line updates dynamically to
-     "At 09:30, every day" — confirmed the summary DOES re-derive live off every hour/minute
-     change (observed intermediate states "At 00:00 and 09:00" → "At 00:00,09:00 : 00,30" →
-     clean "09:30" form once both fields are correctly single-valued), satisfying the case's core
+     **`At 09:30`** (the CORRECT live string per #1013 — NOT the case's own "At 09:30, every day",
+     see § Test Data CLARIFICATION) — confirmed the summary DOES re-derive live off every
+     hour/minute change (observed intermediate states "At 00:00 and 09:00" → "At 00:00,09:00 :
+     00,30" → clean "09:30" form once both fields are correctly single-valued), satisfying the
+     case's core
      assertion that the summary updates dynamically.
 6. Switch to "Advanced" mode — verify cron expression input appears.
    - **Verify**: confirmed live — switching to Advanced hides the Default-mode dropdowns/Every-
@@ -215,6 +225,56 @@ routing):
    the correct (uncheck-then-check) interaction does produce the expected result.
 Both filed as issues — see reference once created by the orchestrator per the seeded bug-filing
 policy (this analyst session did not file directly — see notes for routing, same as ELITEA-2006).
+
+## ⚠️ Prior Work Discovered Mid-Session — orchestrator attention needed
+
+**A complete, working, previously-reviewed automation implementation for this exact cluster
+already exists in this repo's git history, but is NOT reachable from the current tip of
+`origin/automation/base`.** Discovered while dedup-checking before filing a defect (found
+issues #1006/#1009/#1013/#1021 already filed against this exact surface by a prior pass) —
+followed the trail into `gh pr list --search trigger` and confirmed via `git merge-base
+--is-ancestor`:
+
+| Case | PR | State | Base (per GitHub) | Merge commit | Reachable from current `origin/automation/base`? |
+|---|---|---|---|---|---|
+| ELITEA-2006 | [#1015](https://github.com/EliteaAI/elitea-testing-public/pull/1015) | MERGED (2026-07-24) | `automation/base` | `32fb6fe4` | **NO** |
+| ELITEA-2005 | [#1022](https://github.com/EliteaAI/elitea-testing-public/pull/1022) | MERGED (2026-07-24) | `tests/ELITEA-2006-webhook-trigger-settings-modal` (stacked) | `29333bd8` | **NO** |
+| ELITEA-2007 | [#1038](https://github.com/EliteaAI/elitea-testing-public/pull/1038) | **CLOSED, not merged** (2026-07-29) | `tests/ELITEA-2005-entry-point-trigger-types` (stacked) | — | N/A — never merged |
+| ELITEA-2008 | none found | — | — | — | no prior PR located |
+
+PR #1015's own GitHub metadata says its base was `automation/base`, yet its merge commit is
+**not** an ancestor of the CURRENT `origin/automation/base` tip (`68e8f6f4`, 2026-08-03) — it
+IS reachable from `origin/automation/base-merged` (a separate, older, diverged branch,
+`a895133d`, 2026-07-24) and two unrelated feature branches. This strongly suggests
+`automation/base`'s history was rewritten/reset at some point after 2026-07-24, orphaning at
+least these two merged PRs (and possibly others merged in the same window) — a serious finding
+given `.agents/workflow.md` documents `automation/base` as long-lived and never force-pushed.
+**This analyst session did not attempt any git-history recovery or investigation beyond
+confirming the above — that is squarely an orchestrator/lead-level decision, not an analyst
+one.**
+
+**Why this AFS still classifies `ready-for-automation` rather than `already-covered`**: per this
+session's own contract, `already-covered`/`extend-existing` may target ONLY a spec/test merged
+to the CURRENT `origin/automation/base` (or, for `extend-existing`, this batch's own trunk) — the
+orphaned PRs satisfy neither, so the strict rule is followed and this case proceeds as fresh
+`ready-for-automation` work. **But dispatching an implementer to redo this from scratch, without
+first checking whether PRs #1015/#1022's actual code can simply be recovered and re-merged
+(`git cherry-pick 32fb6fe4`/`29333bd8` onto a fresh `automation/base`-rooted branch, or a direct
+branch-history investigation), risks pure duplicated effort for ELITEA-2005/2006** — both PRs'
+own descriptions indicate essentially complete, testid'd, reviewed implementations covering the
+same case observables this AFS documents. ELITEA-2007's closed PR #1038 also contains a
+substantially complete implementation (same multi-select-checkbox finding this AFS independently
+rediscovered live) that was abandoned only because its branch stack rested on the now-orphaned
+ELITEA-2005 branch — recovering it may be far cheaper than a fresh implementation. ELITEA-2008
+appears to have no prior implementation attempt.
+
+**Recommendation for the orchestrator**: before dispatching implementers for this cluster,
+have someone (lead or a dedicated git-recovery task) investigate why `automation/base` lost
+these commits and whether `32fb6fe4` (ELITEA-2006), `29333bd8` (ELITEA-2005), and PR #1038's
+branch tip (ELITEA-2007, closed but not deleted — check `tests/ELITEA-2007-schedule-trigger-settings-modal`
+or similar for the actual head ref) can be cherry-picked/rebased onto current `automation/base`
+directly, which would likely be far cheaper than fresh implementation for 3 of the 4 cases in
+this cluster.
 
 ## Blocked Steps
 
