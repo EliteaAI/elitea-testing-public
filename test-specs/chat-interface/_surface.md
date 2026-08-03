@@ -2,9 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2218, 2026-08-03
+a time; last confirmed by: qa-engineer analyst, ELITEA-2075, 2026-08-03
 (supersedes nothing below — new section, other sections unchanged; previous
-confirmer: ELITEA-2211..2215 cluster run, 2026-08-03).
+confirmer: ELITEA-2218, 2026-08-03).
 
 ## Context Management / Auto-Summarization — settings location, autosave defect (ELITEA-2218)
 - **Global settings moved**: Context Management + Automatic Summarization now
@@ -404,6 +404,105 @@ confirmer: ELITEA-2211..2215 cluster run, 2026-08-03).
   fine). Not independently root-caused this pass (pre-existing, wide-spread
   pattern, not a new regression) — flagging for whoever next does bucket
   hygiene, not filed as a defect.
+
+## Agent Hub ("Catalog") participant read-only canvas + per-conversation LLM override (ELITEA-2075)
+- **Naming drift, case-text only**: the sidebar nav item is **"Catalog"**
+  (`EliteaCatalog.jsx`, route `/elitea-catalog`), NOT "Agent HUB" — `AgentHub`
+  is only a legacy redirect source (`RouteDefinitions.AgentHub = '/agents-hub'`
+  → redirects to `/elitea-catalog`). The agent detail modal's action button
+  is **"Start Chat"**, not "Start conversation". Both are stale case-text,
+  not defects — assert the live labels.
+- **CONFIRMED DEFECT, already tracked #1043** (re-encountered, not re-filed):
+  the Catalog agent-detail modal's "Start Chat" button has no loading guard —
+  clicking it before `AgentModal.jsx`'s own `getPublicApplicationDetail` fetch
+  resolves throws `TypeError: Cannot read properties of null (reading
+  'version_details')` and silently no-ops (no navigation, no toast). Confirmed
+  live 2/2 on a fast click, 0/2 on a click after a ~1.5s wait. Automation must
+  wait for the modal's own content (e.g. the "Show instructions" link or
+  conversation-starters block) to render before clicking Start Chat — this is
+  synchronization, not defect-masking.
+- **"View settings" is the SAME `EditParticipantButton`/`#EditButton` as
+  "Edit agent"** (`ParticipantActions.jsx`) — its tooltip and aria-label swap
+  to "View settings" specifically when `canEdit` is false (public/Agent-Hub
+  agent + no edit permission on it). Reached via: expand collapsed Participants
+  badge (`chat-participants-panel-toggle-button`) → hover the agent row → click
+  `#EditButton` (no dedicated testid on this button itself — it's a raw `id`
+  attribute, not `data-testid`; confirmed `aria-label="View settings"` is
+  present and stable, but per project locator policy this element still
+  **needs a real `data-testid`** — e.g. `chat-participant-edit-view-button` —
+  since it's on this case's own executed path).
+- **The canvas that opens is `AgentEditor.jsx`/`CreateAgentForm`'s shared
+  edit surface** (SAME component tree as the "+ Create New Agent" canvas
+  ELITEA-1920/2166 already documented above), NOT a separate read-only view.
+  `isPublic={!canEditIt}` (passed to `BaseEditor`/`EditorHeader`) is what:
+  (a) renders the "Public" label (plain `Typography`, text "Public", **no
+  testid**) instead of Discard+Save buttons, (b) sets `canEditModel =
+  canEditIt || !!onPublicLlmOverride` — TRUE for a public agent specifically
+  *because* the chat canvas passes a `onConversationLlmOverride` callback, so
+  the LLM selector is the ONE editable control by design, not an oversight.
+  Confirmed live: `model-selector-name`/`model-selector-button`/
+  `model-settings-button` (all pre-existing, on-main, shared with
+  `AgentDetailPage` — same `LLMModelSelector.jsx` widget) all present and
+  clickable; `agent-canvas-title`/`agent-canvas-subtitle`/
+  `agent-canvas-close-button` (pre-existing) show "Reflexion"/"v1.0".
+- **Model change is saved to the chat PARTICIPANT's `entity_settings.llm_settings`
+  (`onChangeParticipantSettings`), never PUT to the agent's own version** —
+  confirmed live: selecting a model or clicking Apply in the settings dialog
+  fires ZERO `PUT`/`PATCH`/`POST` request containing "application" in the URL.
+  Confirmed persistence: closing the canvas (`agent-canvas-close-button`) and
+  reopening it (View settings again) in the SAME conversation still shows the
+  overridden model — this is the case's "changes are saved per conversation
+  only" contract, live-verified both halves (persists in-conversation, never
+  reaches the backend agent record).
+- **Model dropdown option text drift**: the case's literal "Anthropic Claude
+  4.5 Sonnet" does not exist verbatim in this environment; the live option is
+  named **"Azure Claude Sonnet 4.5"** (11 total models in the
+  `model-selector-option-*` list this session). Match by a partial/case-
+  insensitive "sonnet" + "4.5" filter, not the exact case string.
+- **TOOLS module toggles are functionally inert, not just visually greyed**:
+  confirmed live — the `<input type="checkbox" role="switch">`'s `checked` JS
+  property (read via `page.evaluate`) is unchanged before/after BOTH a raw
+  `page.mouse.click()` at its bounding-box center AND a Playwright
+  `.click(force=True)`, and zero network calls fire. **Do NOT assert via the
+  `disabled`/`aria-disabled` HTML attributes** — neither is actually set on
+  the raw `<input>` in this component (MUI disables it through a different
+  mechanism); assert via the `checked` property staying constant across a
+  click attempt instead. 4 toggles visible without scrolling (Attachments,
+  Data Analysis, Image creation, Agents & Pipeline Builder) + a "Show all"
+  expander; no testid on any of the 4 (each only has an icon + label text).
+- **Model Settings dialog (`model-settings-dialog`, pre-existing, shared
+  `LLMSettingsDialog.jsx`) — REASONING slider + MAX COMPLETION TOKENS +
+  CAPABILITIES all confirmed live** for this model: `model-settings-
+  reasoning-slider` (pre-existing) renders Low/Medium/High; MAX COMPLETION
+  TOKENS shows a Default/Custom radio pair (`model-settings-max-tokens-section`
+  pre-existing, container only — the two radios themselves have no testid);
+  a "Capabilities" section (own `CapabilitySection.jsx`, **zero testid**,
+  conditionally rendered only when the model supports vision and/or
+  reasoning) showed "Image analysis" + "Reasoning" chips for this model.
+  **Selecting "High" reasoning has no dedicated per-level testid or click
+  target** — `ReasoningSlider.jsx`/`DiscreteSlider.jsx` renders one invisible
+  click-trigger `Box` per mark, absolutely positioned by percentage
+  (`left: {(value-min)/(max-min)*100}%`) OVER the slider control, each with
+  `pointerEvents: 'none'` at the CURRENTLY-selected mark (so it can't be
+  re-clicked, only dragged). Confirmed live mechanism: click within the
+  `model-settings-reasoning-slider` container's bounding box at
+  `x = box.x + box.width - 5` (rightmost ≈ 100% position = "High") — this is
+  a bounding-box-relative click, not a stable handle; needs a `data-testid`
+  per mark (e.g. templated `model-settings-reasoning-level-{level}`) if this
+  becomes a recurring automation need beyond this one case.
+- **The Apply button in `LLMSettingsDialog.jsx` has NO testid** (confirmed —
+  `AgentDetailPage`'s own docstring already flagged this as "out of scope,
+  only Cancel exercised" for ELITEA-1880/1881; THIS case is the first that
+  needs to click it). Located this session via `get_by_role("button", name=
+  "Apply")` (single match, MUI `Button.BaseBtn` text "Apply") — needs a real
+  `model-settings-apply-button` testid added. Same gap for "Reset to
+  defaults" (only rendered when `onResetToDefaults` is passed, i.e. only in
+  this per-conversation-override flow — not exercised by this case's steps).
+- **Composer participant-chip text is "Viewing..." for a public/Agent-Hub
+  agent** while its own canvas is open — a THIRD state alongside the already-
+  documented "Editing..." (own agent) — confirmed live, `chat-{participant}-
+  v{version}-chip` area. Same transient-state family as issue #709
+  (clarified, not a defect).
 
 ## Sibling TMS cases — near-duplicate scope
 ELITEA-2463 (search) and ELITEA-2464 (Modules panel) are both still
