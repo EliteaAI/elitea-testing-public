@@ -528,13 +528,76 @@ def artifact_toolkit(artifact_bucket: dict, toolkit_api: ToolkitAPI, request):
         toolkit["id"], name, bucket_name, request.node.name,
     )
 
-    yield {"id": toolkit["id"], "name": name, "bucket_name": bucket_name}
+    yield {
+        "id": toolkit["id"],
+        "name": name,
+        "bucket_name": bucket_name,
+        "project_id": int(toolkit_api.project_id),  # ELITEA-2203: slash-mention menu-item testids need it
+    }
 
     try:
         toolkit_api.delete_toolkit(toolkit["id"])
         logger.info("Deleted artifact toolkit %s", toolkit["id"])
     except Exception as exc:
         logger.warning("Failed to delete artifact toolkit %s: %s", toolkit["id"], exc)
+
+
+# ELITEA-2204's exact, narrow selected_tools list -- NOT create_artifact_toolkit()'s
+# hardcoded 16-tool list, which would make the case's "exactly 4 tools, in this
+# order" assertion false against the live default (AFS § Test Data).
+_FOUR_TOOL_SELECTED_TOOLS = ["index_data", "list_indexes", "search_index", "stepback_search_index"]
+
+
+@pytest.fixture
+def artifact_toolkit_four_tools(artifact_bucket: dict, toolkit_api: ToolkitAPI, request):
+    """Create an Artifact toolkit with EXACTLY 4 ``selected_tools`` (ELITEA-2204).
+
+    ``artifact_toolkit`` (above) reuses ``create_artifact_toolkit()``, whose
+    factory hardcodes a 16-tool ``selected_tools`` list -- unusable for a case
+    that asserts the slash-mention tools list shows exactly 4, in configuration
+    order. This fixture calls ``toolkit_api.create_toolkit()`` directly with
+    the narrower list instead, keeping the same
+    ``pgvector_configuration``/``embedding_model``/``bucket`` shape
+    ``create_artifact_toolkit()`` already uses.
+
+    Depends on ``artifact_bucket`` -- both are cleaned up after the test.
+
+    Yields:
+        dict: ``{"id": int, "name": str, "bucket_name": str, "project_id": int}``
+    """
+    ts = str(int(time.time()))
+    raw = f"autotest-art4-{request.node.name}"
+    name = raw[:28] + f"-{ts[-4:]}"  # keep total ≤ 32 chars (API limit)
+
+    bucket_name = artifact_bucket["name"]
+    toolkit = toolkit_api.create_toolkit(
+        name=name,
+        description=f"Auto-created 4-tool artifact toolkit for {request.node.name}",
+        toolkit_type="artifact",
+        settings={
+            "pgvector_configuration": None,
+            "embedding_model": "text-embedding-3-small",
+            "bucket": bucket_name,
+            "selected_tools": _FOUR_TOOL_SELECTED_TOOLS,
+        },
+    )
+    logger.info(
+        "Created 4-tool artifact toolkit %s ('%s') → bucket '%s' for %s",
+        toolkit["id"], name, bucket_name, request.node.name,
+    )
+
+    yield {
+        "id": toolkit["id"],
+        "name": name,
+        "bucket_name": bucket_name,
+        "project_id": int(toolkit_api.project_id),
+    }
+
+    try:
+        toolkit_api.delete_toolkit(toolkit["id"])
+        logger.info("Deleted 4-tool artifact toolkit %s", toolkit["id"])
+    except Exception as exc:
+        logger.warning("Failed to delete 4-tool artifact toolkit %s: %s", toolkit["id"], exc)
 
 
 # ---------------------------------------------------------------------------
@@ -761,6 +824,7 @@ def mcp_toolkit_with_tools(toolkit_api: ToolkitAPI, request):
         "name": name,
         "toolkit_name": toolkit.get("toolkit_name", name),
         "tools": [t["name"] for t in tools],
+        "project_id": int(toolkit_api.project_id),  # ELITEA-2203: slash-mention menu-item testids need it
     }
 
     try:

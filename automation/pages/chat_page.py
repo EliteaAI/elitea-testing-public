@@ -3951,6 +3951,219 @@ class ChatPage(BasePage):
 
         logger.info("Toolkit '%s' added as chat participant", toolkit_name)
 
+    # ------------------------------------------------------------------
+    # Slash-mention dropdown: '/' -> toolkit/MCP picker -> tool picker
+    # (ELITEA-2202/2203/2204)
+    # ------------------------------------------------------------------
+
+    slash_mention_list = LocatorDescriptor(
+        testid="slash-mention-list",
+        description=(
+            "Slash-mention dropdown container (toolkit/MCP participant "
+            "picker), shown while the composer starts with '/'. Renders "
+            "'Mention Toolkit or MCP' as its title, then either participant "
+            "cards or 'No matching results'."
+        ),
+    )
+
+    slash_mention_tool_list = LocatorDescriptor(
+        testid="slash-mention-tool-list",
+        description=(
+            "Available-tools list shown after selecting a toolkit from the "
+            "slash-mention dropdown. Titled '{toolkit_name} available "
+            "tools'."
+        ),
+    )
+
+    toolkits_menuitem = LocatorDescriptor(
+        testid="toolkits-menuitem",
+        description=(
+            "'Toolkits' entry in the open plus-menu popper (hover-triggered "
+            "-- a plain .click() works, it hovers first)."
+        ),
+    )
+
+    mcps_menuitem = LocatorDescriptor(
+        testid="mcps-menuitem",
+        description=(
+            "'MCPs' entry in the open plus-menu popper (hover-triggered). "
+            "Gated by useIsMcpVisible() platform settings."
+        ),
+    )
+
+    toolkits_search_input = LocatorDescriptor(
+        testid="toolkits-search-input",
+        description="Search field inside the plus-menu's Toolkits submenu.",
+    )
+
+    mcps_search_input = LocatorDescriptor(
+        testid="mcps-search-input",
+        description="Search field inside the plus-menu's MCPs submenu.",
+    )
+
+    # Dynamic testids -- class-level template constants (.agents/testing.md
+    # § Locator policy). Format with (project_id, toolkit_id) unless noted.
+    SLASH_MENTION_ITEM = '[data-testid="slash-mention-item-{}_{}"]'
+    SLASH_MENTION_TOOL_ITEM = '[data-testid="slash-mention-tool-item-{}"]'  # format(tool_name)
+    TOOLKIT_PARTICIPANT_MENU_ITEM = '[data-testid="toolkits-menu-item-toolkit-{}-{}"]'
+    MCP_PARTICIPANT_MENU_ITEM = '[data-testid="mcps-menu-item-mcp-{}-{}"]'
+    # Prefix wildcards (same shared-suffix-counting precedent as
+    # PLUS_MENU_ITEM_SUFFIX above) -- used for count/order checks that
+    # don't care about one specific dynamic suffix.
+    SLASH_MENTION_ITEM_PREFIX = '[data-testid^="slash-mention-item-"]'
+    SLASH_MENTION_TOOL_ITEM_PREFIX = '[data-testid^="slash-mention-tool-item-"]'
+
+    @action("Open slash-mention dropdown")
+    def open_slash_mention_dropdown(self, timeout: int = 10000):
+        """Click the message input and type '/' to open the slash-mention
+        dropdown (ELITEA-2202/2203/2204). Waits for ``slash_mention_list``
+        to become visible.
+        """
+        self.message_input.click()
+        self.message_input.press_sequentially("/")
+        self.slash_mention_list.wait_for(state="visible", timeout=timeout)
+
+    @action("Close slash-mention dropdown via outside click")
+    def close_slash_mention_dropdown(self, timeout: int = 10000):
+        """Click a neutral point inside the message list to close the
+        slash-mention dropdown (``ClickAwayListener``) and wait for it to
+        detach.
+
+        Do NOT use Escape -- confirmed live NOT to close this
+        Popper+ClickAwayListener shape (AFS ELITEA-2202 step 4 /
+        ``_surface.md`` § Modules panel documents the identical quirk for
+        the sibling plus-menu "Modules" popper).
+        """
+        self.messages_list.click(position={"x": 10, "y": 10})
+        self.slash_mention_list.wait_for(state="detached", timeout=timeout)
+
+    def get_slash_mention_item(self, project_id: int, toolkit_id: int):
+        """Return the Locator for a slash-mention dropdown item (toolkit or MCP)."""
+        return self.page.locator(self.SLASH_MENTION_ITEM.format(project_id, toolkit_id))
+
+    def get_slash_mention_tool_item(self, tool_name: str):
+        """Return the Locator for a per-tool row in the available-tools list."""
+        return self.page.locator(self.SLASH_MENTION_TOOL_ITEM.format(tool_name))
+
+    def get_slash_mention_item_count(self) -> int:
+        """Count of toolkit/MCP items currently shown in the slash-mention
+        dropdown (same prefix-count idiom as ``get_attachment_chip_count()``)."""
+        return self.slash_mention_list.locator(self.SLASH_MENTION_ITEM_PREFIX).count()
+
+    def get_slash_mention_tool_testids(self) -> list[str]:
+        """Ordered list of ``data-testid`` values for the rows currently
+        shown in the open available-tools list (DOM order == configured
+        ``selected_tools`` order, ELITEA-2204)."""
+        items = self.slash_mention_tool_list.locator(self.SLASH_MENTION_TOOL_ITEM_PREFIX)
+        return [items.nth(i).get_attribute("data-testid") for i in range(items.count())]
+
+    @action("Select toolkit from slash-mention dropdown")
+    def select_slash_mention_toolkit(self, project_id: int, toolkit_id: int, timeout: int = 10000):
+        """Click a toolkit/MCP card in the open slash-mention dropdown.
+
+        Replaces the '/' fragment with '/{toolkit_name}' and opens the
+        available-tools list (``slash_mention_tool_list``). Waits past the
+        container's mere visibility into its ``isToolsFetching`` loading
+        state actually resolving (``useToolkitsDetailsQuery`` -- confirmed
+        live: the container renders immediately with a loading spinner and
+        ZERO tool-item testids, so waiting on container visibility alone
+        races the fetch and reads an empty list, ELITEA-2204) -- waits for
+        the first tool-item row to attach instead.
+        """
+        item = self.get_slash_mention_item(project_id, toolkit_id)
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+        self.slash_mention_tool_list.wait_for(state="visible", timeout=timeout)
+        self.slash_mention_tool_list.locator(self.SLASH_MENTION_TOOL_ITEM_PREFIX).first.wait_for(
+            state="visible", timeout=timeout,
+        )
+
+    @action("Select tool from available-tools list")
+    def select_slash_mention_tool(self, tool_name: str, timeout: int = 10000):
+        """Click a tool row in the open available-tools list.
+
+        Replaces the composer fragment with '/{toolkit_name}/{tool_name} '
+        (confirmed live trailing space).
+        """
+        item = self.get_slash_mention_tool_item(tool_name)
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+
+    @action("Open plus menu -> Toolkits submenu")
+    def open_toolkits_submenu(self, timeout: int = 10000):
+        """Open the plus menu and click 'Toolkits' to reveal its submenu
+        (search input + toggle-switch item rows)."""
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.toolkits_menuitem.wait_for(state="visible", timeout=timeout)
+        self.toolkits_menuitem.click()
+        self.toolkits_search_input.wait_for(state="visible", timeout=timeout)
+
+    @action("Add toolkit participant via slash-menu toggle")
+    def add_toolkit_participant_via_slash_menu(
+        self, project_id: int, toolkit_id: int, timeout: int = 10000,
+    ):
+        """Add a toolkit as a chat participant via the plus menu's Toolkits
+        submenu toggle-switch row (ELITEA-2203).
+
+        NOT a reuse of the legacy ``add_toolkit_participant()`` (agents'
+        select-and-close flow, ``li[role="menuitem"]:has-text(...)``
+        locators) -- Toolkits/MCPs rows here render as toggle switches
+        (``showToggle: true``) and clicking a row toggles participant
+        membership WITHOUT closing the submenu, a genuinely different
+        interaction shape.
+
+        Opens the plus menu, clicks 'Toolkits', and clicks the matching
+        row (resolved directly by its dynamic testid -- the list is sorted
+        newest-first, so a just-created toolkit is already on the first,
+        unfiltered page; no need to type into the search field, which
+        avoids racing this fixture's long, timestamp-suffixed generated
+        name against a per-keystroke, non-debounced search call).
+        Does NOT close the popper afterward -- caller decides (see
+        ``add_mcp_participant_via_slash_menu`` for the two-in-one-popper
+        case, or ``close_plus_menu_popper`` to close alone).
+        """
+        self.open_toolkits_submenu(timeout=timeout)
+        item = self.page.locator(self.TOOLKIT_PARTICIPANT_MENU_ITEM.format(project_id, toolkit_id))
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+        self.wait_for_network(timeout=timeout)
+
+    @action("Add MCP participant via slash-menu toggle (same open popper)")
+    def add_mcp_participant_via_slash_menu(
+        self, project_id: int, toolkit_id: int, timeout: int = 10000,
+    ):
+        """Add an MCP as a chat participant via the plus menu's MCPs submenu
+        toggle-switch row, WITHOUT closing the popper first (ELITEA-2203
+        quirk: closing (``Escape``) and re-clicking ``plus_menu_button``
+        between the Toolkits and MCPs submenus toggles the whole popper
+        CLOSED instead of reopening it -- go directly from one submenu to
+        the other within the same open popper; ``mcps_menuitem`` is
+        hover-triggered so a plain ``.click()`` works without reopening
+        anything).
+
+        Resolves the row directly by its dynamic testid, same
+        no-search-needed reasoning as ``add_toolkit_participant_via_slash_menu``.
+
+        Call this directly after ``add_toolkit_participant_via_slash_menu``
+        (same open popper) -- do not close in between.
+        """
+        self.mcps_menuitem.wait_for(state="visible", timeout=timeout)
+        self.mcps_menuitem.click()
+        self.mcps_search_input.wait_for(state="visible", timeout=timeout)
+        item = self.page.locator(self.MCP_PARTICIPANT_MENU_ITEM.format(project_id, toolkit_id))
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+        self.wait_for_network(timeout=timeout)
+
+    @action("Close plus-menu popper via outside click")
+    def close_plus_menu_popper(self, timeout: int = 5000):
+        """Click a neutral point inside the message list to close the
+        plus-menu popper. Do NOT use Escape (ELITEA-2203 quirk -- closes
+        the popper in a way that then blocks the next open, see
+        ``add_mcp_participant_via_slash_menu`` docstring)."""
+        self.messages_list.click(position={"x": 10, "y": 10})
+
     def is_agent_participant_in_composer(self, agent_name: str, timeout: int = 10000) -> bool:
         """Return True if *agent_name* is shown as the active agent in the composer.
 
