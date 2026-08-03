@@ -54,6 +54,27 @@ download/delete via `ArtifactRowActions`'s DotMenu).
 | URL query params on preview open | `?bucket=<name>&file=<key>` | `Artifacts.jsx`'s `setSearchParams({ bucket, file })` | confirmed live |
 | Test-data seeding for this surface | `artifact_bucket` fixture + `ArtifactAPI.upload_file(bucket, key, bytes)` | `automation/fixtures/data_fixtures.py:453`, `automation/api/client.py:1292` | no "bucket-1"/"machine_learning.py" fixture exists anywhere in the suite — each preview/edit case seeds its own fresh bucket+file; cases that mutate (1852 edits) or delete (1856) the file MUST NOT share a bucket with read-only cases (1851) |
 
+## Confirmed handles (as of ELITEA-1857/1858/1862 cluster analysis, 2026-08-03)
+
+Markdown-file (Preview/Raw toggle) and image-file editor surfaces — extends
+the ELITEA-1851/1852/1856 editor-surface digest above. The `.py`-file cluster
+never exercised the render-mode toggle (CODE files skip straight to
+CodeMirror, no toggle) or the IMAGE branch — both are genuinely new surface.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Render-mode toggle group | **testid needed**: `artifacts-preview-mode-toggle-group` | `PreviewHeader.jsx`, `ToggleButtonGroup` (currently only `aria-label="Render Mode Toggle"`, no `data-testid`) | present for markdown/html/mdx/data/mermaid files, absent for image/code/docx (`modeTogglerAvailable` gate) |
+| "Rendered mode" toggle button | **testid needed**: `artifacts-preview-mode-toggle-rendered` | same file, `ToggleButton value="rendered"` | name by the stable `value` prop, NOT the visible label — label text is "Preview" for markdown/html/mdx, "Table" for CSV/TSV, "Diagram" for Mermaid (state-conditional label, stable value) |
+| "Code mode" toggle button | **testid needed**: `artifacts-preview-mode-toggle-code` | same file, `ToggleButton value="code"` | always labeled "Raw" for every file type that has a toggler |
+| Rendered Markdown content wrapper | **testid needed**: `artifacts-preview-markdown-content` | `PreviewContent.jsx`, `<Box sx={styles.markdownWrapper}><Markdown>{fileContent}</Markdown></Box>` | currently untagged; verify headings/bold/bullets via `.text_content()`/`.inner_html()` scoped under this testid |
+| Rendered image | **testid needed**: `artifacts-preview-image` | `PreviewContent.jsx`, `<Box component="img" src={imageBlobUrl} alt={file.name} .../>` | currently only `alt={file.name}`, no `data-testid`; interim raw handle `img[alt='{filename}']` is NOT testid-compliant, must be replaced before merging |
+| Default render mode on open | markdown/data/mermaid/image/html/mdx → `RENDERED`; everything else → `CODE` | `FilePreviewCanvas/index.jsx`'s open-effect | confirmed live: a `.md` file opens with "Preview" pressed by default |
+| Save behavior branch on file type | `isHtmlFile \|\| isMdxFile \|\| isMarkdownFile` → editor stays open, auto-switches `renderMode` to `RENDERED` after save; everything else → `onClose()` closes the editor | `FilePreviewCanvas/index.jsx`'s `handleSaveChanges` | **live-confirmed, contradicts case ELITEA-1858's "reopen the file" step** — no reopen occurs or is needed; filed `EliteaAI/elitea-testing-public#1111` |
+| Editing gate (`canEdit`) | `renderMode === CODE && !isImageFileType && fileContent` | `FilePreviewCanvas/index.jsx` | false in Preview/rendered mode (no editing possible) AND unconditionally false for images (no Raw-tab escape hatch exists for images — there's no toggle at all) |
+| Copy Content menu-item visibility | `show: canPreview && fileContent && !isImageFileType` | `PreviewHeader.jsx`'s `menuItems` | confirmed live: image files' actions dropdown has exactly `["Download", "Delete"]`, Copy Content structurally absent (filtered pre-render, not merely disabled) |
+| Reliable single-line edit targeting in CodeMirror | `page.locator(".cm-line").filter(has_text="<target text>").first.click()` then `End` then `type()` | n/a — technique, not a testid | **`Control+Home` did NOT reliably move the cursor to true document start** in this CodeMirror instance during live testing — a plain `.click()` on the content wrapper lands wherever the pointer's bounding-box center falls, and `Control+Home` failed to correct it (live repro: an edit intended for line 1 landed on paragraph 2 instead). The existing `edit_file_preview_content(text, line_index=0)` helper (ELITEA-1852) works for THAT case only because it doesn't care which line gets hit ("any known content line" per its own AFS) — don't reuse it blind when a case needs a SPECIFIC line (e.g. the heading). |
+| Image load timing | image blob fetch can exceed 1s beyond `networkidle` on a busy shared DEV backend | live-observed | use a condition-based wait on the `<img>` element's visibility (generous timeout), not a fixed short sleep — a `networkidle` + 1s wait intermittently caught the panel still on "Loading file content..." |
+
 ## Known gotchas
 - **Formik `touched` gating**: typing alone never reveals a validation error
   in this form — only blur or submit-attempt sets `touched.name = true`,
@@ -75,4 +96,12 @@ download/delete via `ArtifactRowActions`'s DotMenu).
   — reconfirmed live this session on 3/3 buckets created for the
   ELITEA-1828/1829/1831 cluster. Already wrapped in try/except by the
   fixture; doesn't fail tests, but expect `autotest-*` buckets to keep
-  accumulating in the `Private` project.
+  accumulating in the `Private` project. **Reconfirmed again in the
+  ELITEA-1857/1858/1862 cluster (2026-08-03)** — the `Private` project now
+  shows **555 accumulated buckets**. Flagging for a dedicated cleanup sweep;
+  out of scope for any single case's teardown to fix.
+- MCP Playwright server unreachable via `ToolSearch` again in the
+  ELITEA-1857/1858/1862 cluster session (2026-08-03) — now 4 consecutive
+  sessions (ELITEA-1880/1993, ELITEA-2004/2010, ELITEA-1828/1829/1831, and
+  this one). See `.agents/memory/qa-engineer/no_playwright_mcp_use_sync_playwright_script.md`
+  — go straight to a `playwright.sync_api` scratch script, don't retry `ToolSearch`.
