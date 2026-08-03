@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-02 (ELITEA-2014/2015 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-03 (ELITEA-2004/2010 analysis).
 
 ## Two distinct pipeline form surfaces — don't conflate them
 
@@ -133,6 +133,100 @@ threading a testid through (same pattern as the MCP node's
   execution; Reject re-runs the pipeline from the entry point (`LLM 1`) instead of
   ending at END. Confirmed via live websocket capture, 2/2 fresh-conversation
   attempts. Any future HITL-runtime case will hit the same wall until #1103 ships.
+
+## LLM node — inline config panel (confirmed live, 2026-08-03, ELITEA-2004)
+
+Same always-expanded-inline pattern as MCP/HITL — no click-to-open, no side panel.
+Node body shows, in DOM order: Trigger (read-only-ish "Chat Message" select) → SYSTEM
+(Type select + Value textarea) → TASK (Type select + Value textarea) → CHAT HISTORY
+(Type select + Value textarea) → Input/Output (tool-agnostic state-var selects) →
+Toolkits (disabled — no toolkit attach mechanism on an LLM node) → Interrupt
+before/after → Structured output.
+
+**Zero testids anywhere inside the node body** (only `rf__node-{id}` wrapper +
+`node-menu-menu-button`, same as HITL/MCP before their `add-data-testid` passes).
+
+- **SYSTEM/TASK/CHAT HISTORY Value textareas have STABLE, unique DOM ids** —
+  `#system-value` / `#task-value` / `#chat_history-value` — no positional targeting
+  needed, unlike almost everything else on these node types. Good interim locators.
+- **SYSTEM/TASK/CHAT HISTORY Type selects share a DUPLICATED DOM id** —
+  `id="simple-select-Type"` × 3 inside one node, identical anti-pattern to the HITL
+  node's 3 Router-mapping Route selects. Positional only: `.nth(0)`=SYSTEM,
+  `.nth(1)`=TASK, `.nth(2)`=CHAT HISTORY (DOM-order confirmed). Options are always
+  exactly `Fixed` / `F-String` / `Variable`. Default Type for all 3 sections on a
+  freshly-added node is `Fixed`.
+- Input/Output selects: `#simple-select-Input` / `#simple-select-Output` — stable,
+  unique (only one each per node). On a fresh empty pipeline the only two options
+  are `input` and `messages`.
+- Save persists everything correctly; full-reload round-trip confirmed for all of
+  SYSTEM/TASK/CHAT HISTORY (Type+Value) and Input/Output. Save returns `PUT
+  .../application/prompt_lib/{project}/{id}` → `201`. Zero console errors, zero
+  failed requests, across every run.
+
+## Toolkit node — inline config panel, CONDITIONALLY rendered (confirmed live, 2026-08-03, ELITEA-2010)
+
+Same always-expanded-inline pattern as MCP/HITL/LLM. Structurally very close to the
+MCP node (Toolkit select → Tool select → per-tool-parameter INPUT MAPPING), but is a
+**distinct node type** (`nodeType === "toolkit"`, not `"mcp"`) with its own,
+currently-untestid'd DOM.
+
+**Load-bearing precondition, not in most case texts**: the Tool select and BOTH
+`INPUT MAPPING (REQUIRED N)`/`(OPTIONAL N)` accordions are **conditionally
+rendered**, and their presence depends on the attached toolkit's
+`settings.selected_tools`:
+- A toolkit created WITHOUT `selected_tools` set (e.g. the plain
+  `ToolkitAPI.create_github_toolkit()` helper / the existing `github_toolkit`
+  fixture) attaches fine and shows the `Toolkit` select correctly, but the `Tool`
+  select **never renders at all** (0 options, absent from the DOM, not just
+  disabled) — confirmed live, reproduced twice. Not a bug: a toolkit with zero
+  selected tools has zero tools to offer.
+- A toolkit created WITH `selected_tools: [...]` (via `ToolkitAPI.create_toolkit()`
+  with a raw `settings` dict, or `toolkit_factories.github_toolkit_settings()`)
+  shows the Tool select with exactly those tools as options once a Toolkit is
+  chosen. Selecting a Tool then reveals INPUT MAPPING split into REQUIRED/OPTIONAL
+  accordions per the tool's actual parameter schema (e.g. `search_issues`:
+  1 required `SEARCH QUERY`, 2 optional `MAX COUNT`/`REPO NAME`).
+- **Any case/AFS building a Toolkit-node precondition must explicitly set
+  `selected_tools` on the toolkit** — the existing `github_toolkit` fixture does
+  NOT do this and cannot be reused as-is.
+
+**Zero testids anywhere inside the node body**, same as LLM/HITL before their
+`add-data-testid` passes:
+- Toolkit select: `#simple-select-Toolkit` — stable, unique (one per node).
+- Tool select: `#simple-select-Tool` — stable, unique, but conditionally rendered
+  (see above).
+- INPUT MAPPING Type selects: `id="simple-select-Type"` duplicated once per tool
+  parameter (3× for `search_issues`) — same duplicate-id anti-pattern as LLM/HITL.
+  Positional only, and unlike the LLM node's fixed count-of-3, **the count and
+  required/optional split varies per tool** — don't hardcode `.nth()` indices
+  without first counting REQUIRED vs OPTIONAL rows for the specific tool in use.
+- INPUT MAPPING Value fields: **fully unstable** — React-generated `id` (e.g.
+  `:r7l:`, changes between mounts), `name="value"` shared by every row, no
+  distinguishing attribute. Same gap the MCP node had before ELITEA-1954's
+  `add-data-testid` pass added `pipeline-mcp-node-input-mapping-value-{param}`
+  (via `InputMappingItem.jsx`) — the Toolkit node needs the identical fix, likely
+  the same shared component, just not yet wired for this node type's call site.
+- Input/Output selects: `#simple-select-Input` / `#simple-select-Output` — same
+  shape and same `input`/`messages` options as the LLM node (pipeline-wide state
+  vars, not toolkit/tool-specific).
+
+**Toolkit-attach popper timing** (attaching a toolkit to the pipeline's TOOLS
+section before adding the node): the popper's toolkit list can sit on "Loading..."
+for several seconds on this environment (dev project has ~30 pre-existing
+toolkits) — a short fixed wait (~600ms) produced an EMPTY list in one run; an
+explicit wait for `[data-testid="toolkit-menu-item"]` to appear (confirmed working
+up to 15s) is required, not a fixed sleep. Same popper as the MCP node's TOOLS
+attach flow (`agent-add-toolkit-button` / `toolkit-search-input` /
+`toolkit-menu-item` — all confirmed working once waited for properly), reused
+without change. Note: `[data-testid="toolkit-search-input"]` itself resolves to
+the MUI `FormControl` wrapper `<div>`, not the `<input>` — descend one level
+(`[data-testid="toolkit-search-input"] input`) or `.fill()` throws "Element is
+not an <input>".
+
+Save persists everything correctly; full-reload round-trip confirmed for
+Toolkit/Tool selection AND the INPUT MAPPING Value text. Zero console errors, zero
+failed requests, across every run (including the zero-`selected_tools` run, which
+is a legitimate empty state, not an error state).
 
 ## Quirks observed live
 
