@@ -664,3 +664,102 @@ a product defect (never observed via the real test suite's own fixtures).
   ("you have 588 buckets... which one?"), never a tool call, given the
   ambient bucket-count noise above. Naming the bucket explicitly in the
   message reliably reaches a real tool-call attempt (confirmed live twice).
+
+## In-chat "Create New X" canvas family — Pipeline/MCP (ELITEA-2079/2085, 2026-08-03)
+
+Covers the `+` menu's **Pipelines** and **MCPs** submenus → their respective
+"Create New …" in-chat canvases. Both canvases are the SAME shared
+`BaseEditor`/`EditorHeader` chrome + entity-specific form, exactly like the
+Agent canvas (ELITEA-2166) — confirm-as-you-go still required, but the shape
+below is now load-bearing precedent for any sibling case in this family
+(Toolkit-from-chat, ELITEA-2080-2083, is the one remaining unexplored
+sibling and should follow the identical pattern).
+
+- **Entry-point testids, both confirmed on-main ✓**: `pipelines-menuitem` /
+  `mcps-menuitem` (hover-triggered, `PlusChatButton.jsx`'s static
+  `EXPANDABLE_ITEMS`), then `pipelines-create-new-button` /
+  `mcps-create-new-button` (`PlusChatSubmenu.jsx`'s
+  `${sectionKey}-create-new-button` pattern — `sectionKey` = the raw
+  `SUBMENU_KEYS` value, i.e. `"pipelines"`/`"mcps"`, NOT a display label).
+- **Pipeline-canvas Flow Editor is the SAME `EditorPanel` component the
+  standalone `/pipelines/all/{id}` page uses** (`PipelineEditor.jsx` imports
+  `@/pages/Pipelines/Components/EditorPanel`) — `PipelineDetailPage`'s
+  existing methods (`add_node`, `switch_to_yaml_view`/`switch_to_flow_view`,
+  `get_yaml_content`, `get_node_count`) work UNCHANGED on the chat canvas.
+  Same reuse pattern for the MCP-canvas form: `ToolkitEditor.jsx` renders the
+  identical `ToolkitForm`/`ToolkitTypeSelector` the standalone
+  `McpFormPage`/toolkit-creation flow uses — `toolkit-form-name-input`,
+  `toolkit-field-url-input`, `toolkit-field-client_secret-input-field`,
+  `toolkit-type-card-mcp`, `toolkit-connection-status`, `category-filter-tab`
+  ("Local"/"Remote", 2 instances — disambiguate with `.filter(has_text=...)`)
+  all confirmed **on-main ✓**, identical testids, zero new form-field work.
+- **`get_yaml_content()` MUST be used for YAML-line assertions — never raw
+  `inner_text()` on the editor.** CodeMirror's gutter renders line-numbers
+  BEFORE the content lines in DOM order, so `inner_text()` on the whole
+  editor yields `"1\n2\n3...19\nentry_point: LLM 1\nnodes:\n..."` — numbers
+  first, content after. A naive read silently misaligns "line N" assertions.
+  `PipelineDetailPage.get_yaml_content()` (existing, `.cm-line`-scoped)
+  already avoids this.
+- **Four-way canvas-chrome testid gap, confirmed across BOTH Pipeline and
+  MCP canvases (BaseEditor/EditorHeader-level, not entity-specific code):**
+  `BaseEditor`/`EditorHeader` already support optional `titleTestId` /
+  `subtitleTestId` / `closeButtonTestId` props (wired end-to-end, confirmed
+  by reading `EditorHeader.jsx`) — ELITEA-2166 supplied them ONLY at
+  `AgentEditor.jsx`'s call site (`agent-canvas-title` /
+  `agent-canvas-close-button`). Neither `PipelineEditor.jsx` nor
+  `ToolkitEditor.jsx` supplies them at all — confirmed live: the close-X
+  button (first header button, no text, no aria-label) and the post-save
+  canvas title both resolve via testid on the Agent canvas but NOT on
+  Pipeline/MCP. `testid needed` on each remaining call site:
+  `pipeline-canvas-close-button` (Pipeline; title not needed by any case yet);
+  `mcp-canvas-title` + `mcp-canvas-close-button` (MCP — `ToolkitEditor.jsx`
+  ALSO renders the plain-Toolkit-creation canvas through the same component,
+  so both must be threaded conditionally: `isMCP ? 'mcp-canvas-*' :
+  undefined`, leaving the Toolkit path's own future testid for whichever
+  case first touches it).
+- **Canvas create-mode Save/Create buttons are two DIFFERENT components with
+  different gaps**: `CreateApplicationSaveButton.jsx` (Agent/Pipeline
+  create-mode) still has ZERO testid on `main` despite ELITEA-2166's AFS
+  recommending `agent-save-button` — re-flag if you hit it, the fix hasn't
+  landed yet. `CreateToolkitButton.jsx` (Toolkit/MCP create-mode, a
+  DIFFERENT component) also has zero testid — `testid needed:
+  mcp-canvas-create-button` (`isMCP`-conditional, same shape as above). The
+  EDIT-mode Save button (`SaveApplicationButton.jsx`) already carries
+  `agent-save-button` unconditionally and DOES work as-is inside both the
+  Pipeline and (presumably) Toolkit/MCP chat canvases — confirmed live for
+  Pipeline. This misleading-name quirk is already tracked as issue #1040.
+- **Participant infra is fully generic and needs NO new work for
+  Pipeline/MCP participant types**: `PARTICIPANTS_BADGE`/`PARTICIPANT_ROW`
+  dynamic templates already in `chat_page.py` work unchanged —
+  `chat-participants-badge-pipelines`/`-mcp`,
+  `chat-participants-badge-icon-pipelines`/`-mcp`, and
+  `chat-participant-row-{pipeline,mcp}_{id}_{project_id}` all confirmed live.
+  PARTICIPANTS panel groups by entity-type heading exactly as case text
+  describes ("PIPELINES" / "MCPS" sections, confirmed verbatim).
+- **Disconnected-participant warning icon has NO testid**: `ParticipantWarning.jsx`
+  (shared between MCP and Pipeline misconfigured-participant rendering per
+  issues #684/#687) has zero `data-testid` anywhere. `testid needed:
+  chat-participant-warning-icon` — UNconditional (component is already
+  entity-agnostic, not a per-caller hardcode situation). Exact confirmed
+  live text for a disconnected Remote MCP: `"Server is disconnected!
+  Reconnect it to use. Log in."`
+- **Known test-robustness gotcha (issue #1085) reproduces easily on THIS
+  surface** if you drive a brand-new conversation via a raw
+  `sidebar-create-button` click without the `conversation_id` fixture's
+  readiness handling: the center message-pane can show a persistent loading
+  spinner (an overlay `MuiBox` that swallows clicks/covers the composer)
+  for far longer than a short fixed wait — reproduced live, root-caused to
+  the SAME class of issue as #1085 (conversation-list load time under
+  accumulated local test data), NOT a defect in whatever feature you're
+  actually testing. The real fixture-driven suite (`conversation_id` +
+  `navigate_to_chat(conversation_id=...)`) does NOT hit this — verified live
+  by re-running `test_chat_interface.py::TestSendingMessages` (5/5 passed)
+  in the identical environment immediately after reproducing the hang in a
+  raw script. **Always use the `conversation_id` fixture for message-send
+  assertions on this surface**, never a bare `+Chat` button click + short
+  wait, regardless of which entity/canvas the case is actually about.
+- **Known pre-existing console noise, dedup-checked, do not re-file:**
+  issue #656 ("unique key prop" React warning in `CategorySection.jsx`)
+  fires on EVERY toolkit-type-picker render (Toolkit AND MCP creation,
+  chat-canvas AND standalone) — filter it the same way `test_edit_instructions`
+  filters its own known #538 noise.
