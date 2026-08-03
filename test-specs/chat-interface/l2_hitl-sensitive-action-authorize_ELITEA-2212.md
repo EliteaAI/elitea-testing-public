@@ -74,7 +74,7 @@ ELITEA-2211 § Test Data).
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Verify card + 3 buttons visible | visible | step 1 | (already covered by ELITEA-2211, reused as this case's precondition) | already-covered *(same-batch, cited only as reuse-for-reach, not a dedup verdict — this case's OWN steps 2-5 are still executed independently, per skill's "transit is not execution" rule)* |
+| 1 Verify card + 3 buttons visible | visible | step 1 | step 1 setup, this case's OWN test body (see fix round 1 note below) | asserted *(fix round 1, 2026-08-03: originally cited ELITEA-2211 — a same-batch, not-yet-merged spec — as the sole site of this assertion; the reviewer contract requires "already-covered"/reuse citations to target a spec merged to base, which ELITEA-2211 is not. This case's own test now independently asserts all three buttons visible before clicking Authorize, so the row no longer depends on that citation)* |
 | 2 Click Authorize | card closes, proceeds | step 2 | step 2 | asserted |
 | 3 Tool execution completes | execution completes | step 3 | step 3 (backend file-listing check) | asserted |
 | 4 Chips shown (model + tool) | chips visible | step 4 | step 4 | asserted |

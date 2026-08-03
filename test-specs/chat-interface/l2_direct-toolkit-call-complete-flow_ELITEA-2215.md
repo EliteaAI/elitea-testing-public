@@ -37,6 +37,18 @@
      showing "Thought for X secs" (confirmed live, e.g. "Thought for 14
      secs" on the analogous `delete_file` message).
 2. Expand the thinking-steps accordion.
+   - **CONFIRMED LIVE during implementation (CLARIFICATION 3, added fix
+     round 1, 2026-08-03):** this step's own "expand the accordion" action
+     does not apply as written — 5 timed polls against the real backend
+     (0.5s apart) confirm the accordion is ALREADY auto-expanded for the
+     whole tool-call/streaming window (`ApplicationThinkView.jsx`'s
+     `expanded={isStreaming || expanded}`, the same auto-expand behavior
+     ELITEA-2181's streaming-response test already asserts without ever
+     clicking). A manual click is not only unnecessary, it is actively
+     unreliable — the accordion's rendered height changes as it streams, so
+     a fixed click point can land on a different part of a growing element
+     between the actionability check and the dispatched event. The
+     implementation asserts presence/text directly instead of clicking.
    - **Verify**: tool call shown — **CONFIRMED LIVE, case-text drift found
      (CLARIFICATION, not a defect):** the case describes this as
      `"toolkit_name.tool_name"` (dot-separated), but the LIVE rendered chip
@@ -115,12 +127,25 @@
   this pass — no HITL pause frames in this flow (no sensitivity configured).
 
 ## Known Defects Found During Exploration
-None found. Both case-text/live-product divergences above (dotted vs
-colon-separated chip format; 3-chips-as-described vs
-1-combined-chip+N-model-chips-in-practice) are classified as
-**CLARIFICATION** per the reverse-masking guard — the live product's
-behavior is correct and internally consistent; the case text is the
-stale/imprecise element. Recommend filing a lightweight case-text
+**Updated fix round 1 (2026-08-03) — was stale at "None found."** One
+product defect WAS found during implementation, filed as
+[EliteaAI/elitea-testing-public#1127](https://github.com/EliteaAI/elitea-testing-public/issues/1127):
+across 3 separate live local runs, the direct-toolkit-call flow (no agent)
+sometimes leaks the model's tool-call intent as raw visible text instead of
+invoking the real backend tool — confirmed non-deterministic (2/5 runs
+executed correctly). Per `.agents/testing.md`'s 2026-07-18 closed-set
+variant (ELITEA-1892/#615 precedent), the implementation handles this via a
+`soft_failures`/`pytest.fail()` aggregation gated behind an independent
+`ArtifactAPI` ground-truth tie-breaker (same backend check ELITEA-2212/2213
+use) — never a weakened assertion of the correct contract. See the test's
+module docstring "Fix round 1" note for the full classification logic.
+
+Both case-text/live-product divergences below (dotted vs colon-separated
+chip format; 3-chips-as-described vs 1-combined-chip+N-model-chips-in-
+practice; and CLARIFICATION 3 above, the accordion auto-expand) are
+classified as **CLARIFICATION** per the reverse-masking guard — the live
+product's behavior is correct and internally consistent; the case text is
+the stale/imprecise element. Recommend filing a lightweight case-text
 clarification note against ELITEA-2215 in the TMS per
 `.agents/role-overrides.md`'s interaction-discovery-ladder precedent (not a
 `bug`-labelled tracker issue — this repo's bug-filing is for THIS repo's

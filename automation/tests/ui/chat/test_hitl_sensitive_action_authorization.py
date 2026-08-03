@@ -230,6 +230,20 @@ class TestSensitiveActionAuthorize:
             page, conversation_id, toolkit_name, bucket_name, artifact_seeded_file
         )
 
+        with allure.step(
+            "Step — Verify all three action buttons are visible on THIS "
+            "case's own card instance (independent verification — fix round "
+            "1: the AFS Coverage Map row 1 previously cited ELITEA-2211, a "
+            "same-batch/not-yet-merged spec, as the sole site of this "
+            "assertion, which is not a valid merged-target citation; this "
+            "case now asserts it independently too)"
+        ):
+            expect(chat.sensitive_action_authorize_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.sensitive_action_block_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.sensitive_action_block_with_comment_button).to_be_visible(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
+
         with allure.step("Step — Click Authorize; verify the card closes"):
             chat.sensitive_action_authorize_button.first.click()
             expect(chat.sensitive_action_panel).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
@@ -292,6 +306,20 @@ class TestSensitiveActionBlock:
         chat = _reach_sensitive_action_card(
             page, conversation_id, toolkit_name, bucket_name, artifact_seeded_file
         )
+
+        with allure.step(
+            "Step — Verify all three action buttons are visible on THIS "
+            "case's own card instance (independent verification — fix round "
+            "1: the AFS Coverage Map row 1 previously cited ELITEA-2211, a "
+            "same-batch/not-yet-merged spec, as the sole site of this "
+            "assertion, which is not a valid merged-target citation; this "
+            "case now asserts it independently too)"
+        ):
+            expect(chat.sensitive_action_authorize_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.sensitive_action_block_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.sensitive_action_block_with_comment_button).to_be_visible(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
 
         with allure.step("Step — Click Block; verify the card closes"):
             chat.sensitive_action_block_button.first.click()
