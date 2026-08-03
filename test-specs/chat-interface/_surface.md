@@ -2,9 +2,59 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2211..2215 cluster run,
-2026-08-03 (supersedes nothing below — new section, other sections unchanged;
-previous confirmer: ELITEA-2197/2200 cluster run, 2026-08-03).
+a time; last confirmed by: qa-engineer analyst, ELITEA-2218, 2026-08-03
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: ELITEA-2211..2215 cluster run, 2026-08-03).
+
+## Context Management / Auto-Summarization — settings location, autosave defect (ELITEA-2218)
+- **Global settings moved**: Context Management + Automatic Summarization now
+  live at `/settings/memory` (tab id `memory`), NOT `/settings/personalization`
+  (that route 404s via `SettingsRedirect.jsx` — `personalization` isn't in its
+  `VALID_TABS` list). `UserProfileSettingsPage.navigate_to_profile()` still
+  points at the dead route — fix before reuse.
+- **CONFIRMED DEFECT, filed #1129**: on `/settings/memory`, the THREE numeric
+  fields (Max Context Tokens, Preserve Recent Messages, Target Summary
+  Tokens) do not autosave — typed value shows on-screen, zero network calls
+  fire on blur, value reverts on reload. Toggle controls on the SAME form
+  (Context Management toggle, Context Editing toggle) autosave correctly
+  (`PUT /api/v2/social/author/`, confirmed persists). Root cause:
+  `useFormikAutoSaveOnBlur` (blur+dirty gated, in `MemoryFormContent.jsx`) vs
+  the toggles' `onChange` handlers calling `onAutoSaveRequested()` directly —
+  the three numeric fields' `onChange` handlers (`handleNumericInputChange`,
+  `handleMaxTokensChange`) never call `onAutoSaveRequested()`. Do not use
+  these fields to configure a custom threshold; use the per-conversation
+  "Edit context settings" modal instead (below), or accept the default
+  (confirmed live: 10,000 tokens).
+- **Context Management + Automatic Summarization are ON by default** for a
+  fresh session/user (`context_enabled: true`, `enable_summarization: true`
+  confirmed via both the settings form and a new conversation's
+  `meta.context_strategy.enabled: true`).
+- **Missing testids** (none of these have `data-testid` in source, confirmed
+  via file read of `MemoryContextManagement.jsx`/`MemorySummarization.jsx`):
+  Automatic Summarization toggle, Summarization Instructions textarea, Target
+  Summary Tokens input. Also the Preserve Recent Messages input — the
+  existing `UserProfileSettingsPage.preserve_recent_messages_input` field
+  CLAIMS `testid="preserve-recent-messages-input"` but this does not exist in
+  source (dead/aspirational testid, existing tech debt, uses a forbidden
+  `fallback=`).
+- **Context Budget panel (chat side) is behind a COLLAPSED-by-default
+  Participants panel** — must call `ChatPage.expand_participants_panel()`
+  first (existing method; a from-scratch reimplementation of its click
+  heuristic did not reproduce the same result on the first try in this
+  session — reuse the merged method, don't re-derive).
+- **"Edit context settings" per-conversation modal** (`context-settings-button`,
+  opens `ContextStrategyModalContent`) has its OWN explicit Save button +
+  `submitForm()` — a DIFFERENT code path from the broken global-settings
+  blur-autosave. Source-reviewed only (not click-verified this session) as
+  the recommended path to set a custom low threshold without hitting #1129.
+  **None of this modal's fields or its Save button have a `data-testid`
+  either** (confirmed via file read — zero hits) — needs `add-data-testid`
+  work across the board if this path is used.
+- **Not reached live this session** (time budget, after isolating #1129): the
+  actual max-token summarization trigger, the "Summarizing the chat history"
+  indicator (no handle found anywhere in `chat_page.py` or discovered live),
+  and the warning-state affordance near the token bar as it approaches max.
+  First implementer pass on ELITEA-2218 should confirm these.
 
 ## File attachments — 10-file limit, unsupported-type rejection, toast severity (ELITEA-2197/2200)
 - **The real "Attach Files" control lives INSIDE the "+" (plus-menu) popper,
