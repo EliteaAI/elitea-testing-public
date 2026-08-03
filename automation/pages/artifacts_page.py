@@ -644,6 +644,64 @@ class ArtifactsPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # File preview/edit — markdown mode toggle + image preview
+    # (ELITEA-1857/1858/1862)
+    # ------------------------------------------------------------------
+
+    file_preview_mode_toggle_group = LocatorDescriptor(
+        testid="artifacts-preview-mode-toggle-group",
+        description="Render-mode ToggleButtonGroup in the editor panel "
+        "header (ELITEA-1857 — new testid, implementer, PreviewHeader.jsx). "
+        "Present only for markdown/html/mdx/data/mermaid files "
+        "(`modeTogglerAvailable` gate); absent for image/code/docx files — "
+        "assert `.to_have_count(0)` for those (ELITEA-1862).",
+    )
+
+    file_preview_mode_toggle_rendered = LocatorDescriptor(
+        testid="artifacts-preview-mode-toggle-rendered",
+        description="'Rendered' mode ToggleButton inside "
+        ":attr:`file_preview_mode_toggle_group` (ELITEA-1857 — new testid, "
+        "implementer). Named by the stable `value=\"rendered\"` prop, NOT "
+        "the visible label — the label text is state-conditional ('Preview' "
+        "for markdown/html/mdx, 'Table' for CSV/TSV, 'Diagram' for "
+        "Mermaid), which the locator policy forbids naming by. State read "
+        "via `aria-pressed` chained off this testid'd element.",
+    )
+
+    file_preview_mode_toggle_code = LocatorDescriptor(
+        testid="artifacts-preview-mode-toggle-code",
+        description="'Code' (always labeled 'Raw') mode ToggleButton "
+        "inside :attr:`file_preview_mode_toggle_group` (ELITEA-1857 — new "
+        "testid, implementer). Same `aria-pressed` state-read pattern as "
+        ":attr:`file_preview_mode_toggle_rendered`.",
+    )
+
+    file_preview_markdown_content = LocatorDescriptor(
+        testid="artifacts-preview-markdown-content",
+        description="Rendered Markdown content wrapper (ELITEA-1857 — new "
+        "testid, implementer, PreviewContent.jsx's MARKDOWN branch — "
+        "`<Box><Markdown>{fileContent}</Markdown></Box>`). Headings/bold/"
+        "bullets verified via `.text_content()`/`.inner_html()` scoped "
+        "under this testid, not a new raw selector; also the click target "
+        "for the no-input-accepted negative check (ELITEA-1857 step 9).",
+    )
+
+    file_preview_image = LocatorDescriptor(
+        testid="artifacts-preview-image",
+        description="Rendered `<img>` element for an image file "
+        "(ELITEA-1862 — new testid, implementer, PreviewContent.jsx's "
+        "IMAGE branch). Only renders when `isImageFileType` — no mode "
+        "toggle, no language select, no CodeMirror editor coexist with it.",
+    )
+
+    # Scoped sub-selector for CodeMirror's own internal per-line render
+    # nodes — #579 sanctioned exception, MUST stay chained off
+    # file_preview_code_content (whose `.cm-content` node is these lines'
+    # direct parent). Used to target ONE specific known line for editing
+    # (ELITEA-1858) rather than blind Control+Home-based nav.
+    CM_LINE = ".cm-line"
+
+    # ------------------------------------------------------------------
     # Init
     # ------------------------------------------------------------------
 
@@ -2445,7 +2503,22 @@ class ArtifactsPage(BasePage):
         # first renders (separate loading state). Waiting here (once, in the
         # shared open-flow) avoids every caller needing its own race guard
         # before opening the 3-dot menu.
-        self.file_preview_code_content.wait_for(state="visible", timeout=timeout)
+        #
+        # Exactly ONE of three mutually-exclusive content surfaces renders,
+        # depending on file type/render-mode: CodeMirror content (code
+        # files, or a markdown/html/mdx file switched to Raw mode),
+        # the rendered Markdown wrapper (a markdown/html/mdx file's default
+        # Preview mode, ELITEA-1857), or the <img> element (image files,
+        # ELITEA-1862 — which never render CodeMirror or the mode toggle at
+        # all). Waiting on whichever one actually applies (extended
+        # ELITEA-1857/1858/1862; the CodeMirror-only wait was the original
+        # ELITEA-1851/1852/1856 shape) keeps this shared open-flow helper
+        # correct for every file type the suite exercises, without every
+        # caller needing its own type-specific race guard.
+        content_ready = self.file_preview_code_content.or_(self.file_preview_image).or_(
+            self.file_preview_markdown_content
+        )
+        content_ready.wait_for(state="visible", timeout=timeout)
         logger.info("Editor open for '%s'", filename)
 
     @action("Close file preview editor")
@@ -2728,3 +2801,155 @@ class ArtifactsPage(BasePage):
         ):
             self.delete_confirm_button.click()
         logger.info("Delete confirmed, deleteArtifact response received")
+
+    # ------------------------------------------------------------------
+    # File preview/edit — markdown mode toggle + image preview
+    # (ELITEA-1857/1858/1862)
+    # ------------------------------------------------------------------
+
+    def get_file_preview_mode_toggle_state(self, timeout: int = 10000) -> dict[str, str]:
+        """Return the render-mode toggle's ``aria-pressed`` state for both buttons.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the toggle group
+                to become visible.
+
+        Returns:
+            Dict ``{"rendered": "true"|"false", "code": "true"|"false"}``.
+        """
+        self.file_preview_mode_toggle_group.wait_for(state="visible", timeout=timeout)
+        return {
+            "rendered": self.file_preview_mode_toggle_rendered.get_attribute("aria-pressed") or "false",
+            "code": self.file_preview_mode_toggle_code.get_attribute("aria-pressed") or "false",
+        }
+
+    @action("Switch render mode to Raw")
+    def click_file_preview_mode_toggle_code(self, timeout: int = 10000) -> None:
+        """Click the 'Raw' (code) mode toggle button and wait for it to become pressed.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_mode_toggle_code.click()
+        expect(self.file_preview_mode_toggle_code).to_have_attribute(
+            "aria-pressed", "true", timeout=timeout
+        )
+        logger.info("Render mode switched to Raw (code)")
+
+    @action("Switch render mode to Preview")
+    def click_file_preview_mode_toggle_rendered(self, timeout: int = 10000) -> None:
+        """Click the 'Preview'/'Rendered' mode toggle button and wait for it to become pressed.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_mode_toggle_rendered.click()
+        expect(self.file_preview_mode_toggle_rendered).to_have_attribute(
+            "aria-pressed", "true", timeout=timeout
+        )
+        logger.info("Render mode switched to Preview (rendered)")
+
+    def get_file_preview_markdown_content_text(self, timeout: int = 10000) -> str:
+        """Return the rendered Markdown content wrapper's visible text.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The stripped text of :attr:`file_preview_markdown_content`.
+        """
+        self.file_preview_markdown_content.wait_for(state="visible", timeout=timeout)
+        return (self.file_preview_markdown_content.text_content() or "").strip()
+
+    def get_file_preview_markdown_content_html(self, timeout: int = 10000) -> str:
+        """Return the rendered Markdown content wrapper's inner HTML.
+
+        Confirms actual rendered Markdown STRUCTURE (heading/bold/bullet
+        elements), not raw hash/asterisk syntax — per the AFS's Concrete
+        Handles guidance: ``.inner_html()`` scoped under the existing
+        testid'd wrapper, not a new raw tag selector.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The inner HTML of :attr:`file_preview_markdown_content`.
+        """
+        self.file_preview_markdown_content.wait_for(state="visible", timeout=timeout)
+        return self.file_preview_markdown_content.inner_html()
+
+    @action("Attempt to type into the rendered Markdown preview")
+    def attempt_type_in_markdown_preview(self, text: str, timeout: int = 10000) -> None:
+        """Click the rendered Markdown content area and attempt to type *text*.
+
+        The Markdown branch mounts a static ``<Markdown>`` render, not an
+        editable CodeMirror instance — this method exists to PROVE no input
+        is accepted (AFS ELITEA-1857 step 9), not to actually edit anything.
+        Callers verify via ``page.content()`` (not a new locator) that
+        *text* never appears anywhere on the page afterward.
+
+        Args:
+            text: Marker text to attempt typing.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_markdown_content.wait_for(state="visible", timeout=timeout)
+        self.file_preview_markdown_content.click()
+        self.page.keyboard.type(text)
+        logger.info("Attempted to type %r into the Markdown preview (should have no effect)", text)
+
+    def is_file_preview_image_visible(self, timeout: int = 20000) -> bool:
+        """Return whether the rendered ``<img>`` preview becomes visible.
+
+        A generous, condition-based wait — the image blob fetch can exceed
+        ``networkidle`` timing on a busy shared DEV backend (AFS ELITEA-1862
+        Axis 2 finding); never replace this with a fixed sleep.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if the image became visible within *timeout*, False otherwise.
+        """
+        try:
+            expect(self.file_preview_image).to_be_visible(timeout=timeout)
+            return True
+        except AssertionError:
+            return False
+
+    @action("Edit a specific CodeMirror line by matching text")
+    def edit_file_preview_line_containing(
+        self, match_text: str, append_text: str, timeout: int = 10000
+    ) -> None:
+        """Click the specific ``.cm-line`` containing *match_text* and append
+        *append_text* at its end.
+
+        AFS-mandated targeting technique (ELITEA-1858) — filters
+        ``.cm-line`` by exact target text rather than reusing
+        :meth:`edit_file_preview_content`'s ``Control+Home``-based nav.
+        Live-testing showed ``Control+Home`` does not reliably reach true
+        document start in this CodeMirror instance (a plain click lands
+        wherever the pointer's bounding-box center falls, and
+        ``Control+Home`` failed to correct it) — filtering by exact line
+        content is deterministic regardless of scroll position or click-
+        target ambiguity. Use this for a SPECIFIC known line (e.g. a
+        heading); :meth:`edit_file_preview_content` remains correct for
+        "any known content line" callers (ELITEA-1852).
+
+        LOCATOR: ``.cm-line`` is CodeMirror-internal render DOM — sanctioned
+        #579 exception (third-party editor library internal render node),
+        scoped under the testid'd :attr:`file_preview_code_content` parent
+        (whose ``.cm-content`` node is these lines' direct parent).
+
+        Args:
+            match_text: Exact text of the target line to filter by.
+            append_text: Text to append at the end of that line.
+            timeout: Maximum wait time in milliseconds.
+        """
+        target_line = self.file_preview_code_content.locator(self.CM_LINE).filter(
+            has_text=match_text
+        ).first
+        target_line.wait_for(state="visible", timeout=timeout)
+        target_line.click()
+        self.page.keyboard.press("End")
+        self.page.keyboard.type(append_text)
+        logger.info("Appended %r to the CodeMirror line containing %r", append_text, match_text)
