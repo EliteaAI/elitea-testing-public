@@ -2,7 +2,54 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2181 run, 2026-08-02.
+a time; last confirmed by: qa-engineer analyst, ELITEA-2162 run, 2026-08-03.
+
+## Conversation search (ELITEA-2162)
+- `conversation-search-button` (on-main) opens `conversation-search-input`
+  (on-main) + an X/clear icon — but the folder/date-group list is **not**
+  replaced on click alone; it stays visible until a query is actually typed
+  (500ms debounce). Case text sometimes implies immediate replacement — it
+  isn't (issue #1114).
+- The X/clear icon (`IconButton onClick={handleSearchClear}` in
+  `Conversations.jsx`) has **no testid** — needs `add-data-testid`
+  (`conversation-search-clear-button`).
+- Filtering is server-driven: `GET /elitea_core/folder/prompt_lib/{projectId}
+  ?...&query=<value>&grouped=true`, case-insensitive substring match on
+  conversation name. Matching rows get testid
+  `chat-conversation-item-{conversation.id}` — **on `automation/testids`
+  only**, not yet on `main` as of 2026-08-03.
+- Clicking a result: URL becomes `/chat/{id}?name=<name>`, search input stays
+  visible (doesn't auto-close).
+
+## Modules panel / internal tools toggle (ELITEA-2162)
+- `plus-menu-button` (on-main) → **hover** (not click) the `Modules`
+  menuitem, testid `internal-tools-menuitem` (on-main; same-element
+  conditional pair, `undefined` on the unused branch — compliant #277
+  shape (a)). Existing `ChatPage.internal_tools_menuitem` field uses a raw
+  `has-text("Modules")` locator instead of this testid — pre-existing tech
+  debt, worth fixing when next touched.
+- 7 toggle switches render (`role="switch"`, MUI `Switch.BaseSwitch`), each
+  with **zero testid** — only locatable via accessible name (`label` prop =
+  the tool's `title`). Stable underlying keys (from
+  `internalTools.constants.js`): `image_generation`, `data_analysis`,
+  `internal_mcp`, `planner`, `pyodide`, `swarm`, `lazy_tools_mode`. Needs
+  `add-data-testid` with a dynamic pattern: `modules-toggle-{tool_key}`.
+- Toggling any switch PUTs `meta.internal_tools` via
+  `useConversationEditMutation` (same endpoint family as
+  `ConversationAPI.rename_conversation`), then shows the app-wide
+  `toast-message` toast with text **`"Modules configuration updated"`**
+  (lowercase "u" — case text across ELITEA-2162/2464 says "Updated", issue
+  #1115).
+- **`Escape` does NOT close the panel** (live-confirmed: switch count stayed
+  at 7 after `Escape`). Closing requires an outside click (anywhere in the
+  main chat/message area) — that took the switch count to 0.
+
+## Sibling TMS cases — near-duplicate scope
+ELITEA-2463 (search) and ELITEA-2464 (Modules panel) are both still
+`draft`/unautomated (tracking cards #971/#972) and are, respectively, a more
+granular breakdown of ELITEA-2162's steps 1–4 and 5–9. Once ELITEA-2162's
+spec merges, both should very likely resolve `already-covered` /
+`extend-existing` against it — sequence their analysis after this one lands.
 
 ## Streaming / in-progress response widget (ELITEA-2181)
 - The "loading indicator" shown between Send and content-arrival is
