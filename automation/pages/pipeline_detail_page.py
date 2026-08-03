@@ -801,6 +801,82 @@ class PipelineDetailPage(PipelineFormPage):
         self.page.wait_for_timeout(1000)
         logger.info("Added node: %s", node_type)
 
+    def get_add_node_menu_items(self, timeout: int = 5000) -> list[str]:
+        """Open the Add Node menu and return every item's visible label.
+
+        Leaves the menu OPEN for the caller to either select an item (via
+        :meth:`select_add_node_menu_item`) or dismiss it (Escape / click
+        outside) — this is an inspect-then-decide flow that ``add_node()``
+        itself can't serve since that method opens AND selects in one call.
+
+        Duplicates ``add_node()``'s own "+ button click, wait 300ms" open
+        sequence rather than extracting a shared private helper — this is
+        only the second occurrence, below the third-repetition extraction
+        threshold this codebase already applies elsewhere (see
+        ``_wait_for_yaml_line_selection_applied``'s docstring).
+
+        Args:
+            timeout: Maximum wait time for the menu items to be visible.
+
+        Returns:
+            List of menu item label texts, in DOM order.
+        """
+        add_btn = self.page.locator("button.MuiIconButton-colorPrimary").first
+        add_btn.click()
+        self.page.wait_for_timeout(300)
+
+        items = self.page.get_by_role("menuitem")
+        items.first.wait_for(state="visible", timeout=timeout)
+        count = items.count()
+        return [(items.nth(i).text_content() or "").strip() for i in range(count)]
+
+    def select_add_node_menu_item(self, node_type: str, timeout: int = 5000) -> None:
+        """Click a node type in an ALREADY-OPEN Add Node menu.
+
+        Companion to :meth:`get_add_node_menu_items` — use when the menu was
+        opened via that method (to inspect labels first). For the common
+        "just add this node type" case, prefer :meth:`add_node`.
+
+        Args:
+            node_type: Exact display name of the item to click (e.g. "LLM").
+            timeout: Maximum wait time for the item to be clickable.
+        """
+        menu_item = self.page.get_by_role("menuitem", name=node_type, exact=True)
+        menu_item.wait_for(state="visible", timeout=timeout)
+        menu_item.click()
+        self.page.wait_for_timeout(1000)
+
+    def is_popup_menu_visible(self) -> bool:
+        """Return whether ANY ``role="menu"`` popup is currently rendered.
+
+        Generic check — shared DOM shape for both the Add Node menu (ELITEA-
+        2030's Escape-dismiss assertion) and the ReactFlow "create new node"
+        context menu that can appear when a canvas drag-connect misses its
+        target handle (ELITEA-2031's post-drag assertion, mirroring the
+        same ``role="menu"`` check :meth:`connect_nodes` already uses
+        internally to auto-dismiss it).
+
+        Returns:
+            True if a ``role="menu"`` element is present in the DOM.
+        """
+        return self.page.locator('[role="menu"]').count() > 0
+
+    def wait_for_popup_menu_hidden(self, timeout: int = 5000) -> None:
+        """Wait (polling) until no ``role="menu"`` popup remains in the DOM.
+
+        Use after dismissing a menu (Escape / click-outside) instead of an
+        instant :meth:`is_popup_menu_visible` check — the menu's close
+        animation can leave it mounted-but-fading for a short window, so an
+        instant check can false-negative by firing before the unmount
+        completes.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        from playwright.sync_api import expect
+
+        expect(self.page.locator('[role="menu"]')).to_have_count(0, timeout=timeout)
+
     def get_node_count(self) -> int:
         """Return the number of nodes on the canvas.
 
@@ -1734,6 +1810,44 @@ class PipelineDetailPage(PipelineFormPage):
             True if an edge with that exact testid exists in the DOM.
         """
         return self.page.locator(self.EDGE_TESTID.format(source_internal_id, target_internal_id)).count() > 0
+
+    def get_edge_locator(
+        self, source_id: str, target_id: str, handle_suffix: str | None = None
+    ) -> Locator:
+        """Return the Locator for the edge from *source_id* to *target_id*.
+
+        Mirrors ``edge_exists()``'s own prefix/substring search over
+        ``.react-flow__edge`` (same testid-matching logic, no new selector
+        class introduced) but returns the matched ``Locator`` instead of a
+        bool, so the caller can ``.click()`` it — ``edge_exists()``/
+        ``edge_testid_present()`` only report existence.
+
+        Args:
+            source_id: data-id of the source node.
+            target_id: data-id of the target node.
+            handle_suffix: Optional source handle suffix (e.g. "approve"),
+                same meaning as on :meth:`edge_exists`.
+
+        Returns:
+            Locator matching the edge's ``.react-flow__edge`` element.
+
+        Raises:
+            ValueError: If no matching edge is found in the DOM.
+        """
+        edges = self.page.locator(".react-flow__edge")
+        edge_count = edges.count()
+
+        if handle_suffix:
+            expected_prefix = f"rf__edge-xy-edge__{source_id}{handle_suffix}-{target_id}"
+        else:
+            expected_prefix = f"rf__edge-xy-edge__{source_id}"
+
+        for i in range(edge_count):
+            testid = edges.nth(i).get_attribute("data-testid") or ""
+            if testid.startswith(expected_prefix) and f"-{target_id}" in testid:
+                return edges.nth(i)
+
+        raise ValueError(f"No edge found from '{source_id}' to '{target_id}' among {edge_count} edges")
 
     def fit_view(self):
         """Click the ReactFlow 'Fit View' zoom control."""

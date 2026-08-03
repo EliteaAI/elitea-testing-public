@@ -65,16 +65,42 @@
 6. Save — verify edge removal persists after reload.
    - **Verify**: `page.reload()` → `wait_for_canvas()` →
      `edge_exists("LLM 1", "Printer 1")` still `False`,
-     `get_edge_count() == 1`. (No explicit extra Save needed beyond the
+     `edge_testid_present("LLM 1", "EliteAPipelineEnd")` is `True`,
+     `get_edge_count() == 2`. (No explicit extra Save needed beyond the
      dialog confirm — the delete-edge confirm dialog commits the change
      the same way `delete_node()`'s confirm does; verify via the existing
      Save-button-enabled check before reload, matching the pattern used in
      the delete-node/edge-creation siblings.)
+   - **⚠️ Implementer amendment (2026-08-03, confirmed live via Save PUT
+     response capture):** the AFS as originally written expected
+     `get_edge_count() == 1` after reload — this is WRONG and has been
+     corrected above. The saved pipeline's `pipeline_settings` field is
+     empty (`{}` — confirmed by inspecting the actual `PUT
+     .../application/prompt_lib/{project}/{id}` response body), meaning the
+     canvas has NO cached layout and re-derives every node/edge purely from
+     the `instructions` YAML's `transition` fields on each fresh load. `LLM
+     1`'s transition legitimately resets to the literal `END` (step 5,
+     unchanged), so a **fresh load renders that as a real `LLM 1 -> END`
+     edge**, alongside the pre-existing `Printer 1 -> END` edge — 2 edges
+     total, not 1. The pre-reload transient state (step 4, right after the
+     in-canvas delete, before Save) genuinely IS 1 edge — `onDelete`'s
+     client-side edge-removal only filters the deleted edge out of
+     `flowEdges`, it does not proactively add the implicit `LLM 1 -> END`
+     edge until the next full YAML→canvas parse (i.e. on reload). Step 4's
+     assertion is unaffected; only step 6's is corrected. This is the same
+     "every node always has SOME transition, defaulting to END" rule this
+     AFS's own Preconditions section already documents — it just wasn't
+     carried forward into step 6's edge-count assertion. Not re-filed as a
+     `#1136`-family clarification (that thread covers the case's imagined
+     "transition field" only) — this is a fresh, distinct finding.
 
 ## Expected Results
 - The `LLM 1→Printer 1` edge is permanently removed.
 - `LLM 1`'s transition resets to `END` (not an empty/absent value).
-- State survives Save + full page reload.
+- State survives Save + full page reload — after reload, `LLM 1` renders a
+  real `LLM 1 -> END` edge (2 edges total: `LLM 1->END`, `Printer 1->END`),
+  since the canvas re-derives all edges from the saved YAML `transition`
+  fields on every fresh load (see Implementer amendment on step 6 above).
 
 ## Coverage Map
 
@@ -87,7 +113,7 @@
 | 3 Delete the edge (delete key / context action) | deletion triggered | step 3 | step 3: Delete key → confirm dialog → confirm | asserted *(case offers "delete key or context action" — Delete key is the confirmed-working path; no separate right-click context menu was found for edges, so only the Delete-key path is automated)* |
 | 4 Verify edge removed from canvas | edge gone | step 4 | step 4: `edge_exists()` False, count 1 | asserted |
 | 5 Verify transition field cleared | field empty/no target | step 5 | step 5: YAML shows `transition: END` | clarification *(no literal "field" exists to read as empty — real observable is the YAML property resetting to the terminal END value, which is this domain's equivalent of "no explicit target"; `#1136`)* |
-| 6 Save — verify persists after reload | no edge after reload | step 6 | step 6: `edge_exists()` False post-reload | asserted |
+| 6 Save — verify persists after reload | no edge after reload | step 6 | step 6: `edge_exists()` False post-reload; `edge_testid_present("LLM 1", "EliteAPipelineEnd")` True; count 2 | asserted *(implementer-amended edge-count expectation, see step 6 note — the deleted edge specifically is confirmed gone; the count itself is 2 post-reload because LLM 1's reset transition renders as a real edge on a fresh load)* |
 
 ### Axis 2 — Analyst additions
 
