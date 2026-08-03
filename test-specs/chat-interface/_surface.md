@@ -2,9 +2,107 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2075, 2026-08-03
-(supersedes nothing below — new section, other sections unchanged; previous
-confirmer: ELITEA-2218, 2026-08-03).
+a time; last confirmed by: qa-engineer analyst, ELITEA-2086/2087/2088,
+2026-08-03 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: ELITEA-2075, 2026-08-03).
+
+## Table/diagram/code canvas editing — the "Edit table"/"Edit diagram" family (ELITEA-2086/2087/2088)
+- **Entire component tree has ZERO `data-testid` anywhere** — confirmed via
+  full-file reads + `git grep -c "data-testid\|testId"` returning 0 on both
+  `origin/main` and `origin/automation/testids` for: `MarkdownTableBlock.jsx`,
+  `Canvas.jsx`, `CanvasEditHeader.jsx`, `MarkdownTableEditor.jsx`,
+  `EditingPlaceholder.jsx`, `MermaidCodeBlock.jsx`, `CanvasEditor.jsx`. This is
+  a large, previously-undiscovered testid gap on a heavily-used chat feature.
+- **Shared chrome across ALL canvas-edit types (table/diagram/code)** —
+  `Canvas.jsx`'s `CanvasContent` + `CanvasEditHeader.jsx` + `EditingPlaceholder.jsx`
+  render identically regardless of `type`/`language` (`'table'`/`'diagram'`/`'code'`),
+  only the TEXT content changes (`editButtonTitle`/`editingTitle` computed via a
+  ternary in `Canvas.jsx`). One set of testids covers all three:
+  `chat-canvas-title` (heading, dynamic text "Edit table"/"Edit diagram"/"Edit
+  code"), `chat-canvas-close-button` (X, first button in the header row, no
+  aria-label today), `chat-canvas-editing-indicator` (the conversation-pane
+  placeholder, dynamic text "Table editing..."/"Diagram editing..."/"Code
+  editing..."). **Add these ONCE** — whichever of ELITEA-2086/2087/2088
+  implements first should add them; the others just consume, don't
+  re-request/duplicate.
+- **Per-type edit-icon trigger is a SEPARATE `IconButton` per source component**
+  (not shared): `MarkdownTableBlock.jsx`'s own icon (Tooltip "Edit table") vs
+  `MermaidCodeBlock.jsx`'s own icon (Tooltip "Edit diagram") — each needs its
+  own testid (`chat-table-edit-button` / `chat-diagram-edit-button`), even
+  though the resulting CANVAS chrome they open is the shared one above.
+- **Interim (pre-testid) reachable handle, confirmed live, NOT for shipped
+  automation**: `[aria-label="Edit table"] button` / `[aria-label="Edit
+  diagram"] button` both resolved to the correct edit `IconButton` live —
+  exact origin of the `aria-label` not independently traced to source (MUI
+  `Tooltip` wrapping, not a literal `aria-label` prop anywhere in
+  `MarkdownTableBlock.jsx`/`MermaidCodeBlock.jsx`/`Canvas.jsx` — worth a closer
+  look if reused, but per policy this is scaffolding-only, not a shipped
+  locator).
+- **Table editing** (ELITEA-2086/2087): the canvas grid is MUI X `DataGrid`
+  (`MarkdownTableEditor.jsx`). Cells addressable via MUI-provided
+  `data-field="<ColumnName>"` (NOT custom testids); row-selection checkbox
+  column is `data-field="__check__"`. **`.MuiDataGrid-columnHeader`'s own
+  `innerText` reads EMPTY** — the visible label lives one level deeper
+  (`.MuiDataGrid-columnHeaderTitle`) or just read `data-field` directly
+  (more stable). Pagination footer text confirmed exact: `"Rows per page: 50"`
+  / `"1–10 of 10"` (MUI default `.MuiTablePagination-root`, not custom-built).
+  Cell-edit mechanism: **`dblclick()` required** (single click only
+  selects/focuses); the nested cell editor's `input`/`textarea` DOES accept
+  plain Playwright `fill()` (unlike the general MUI-form-field `fill()`
+  caveat in `mui-patterns.md` — DataGrid's own cell editor wires `onChange`
+  directly to input events). **Declared improvisation flagged for reviewer
+  sign-off**: DataGrid's per-cell/`data-field` DOM is treated as analogous to
+  the #579 sanctioned-exception categories (not a 1:1 match — DataGrid renders
+  app data per cell, unlike ReactFlow/CodeMirror) — recommend ONE testid on
+  the DataGrid's containing `Box` (`chat-table-canvas-grid`), then scope raw
+  `data-field` selectors as children, mirroring the CodeMirror pattern below.
+- **AI-generated table content is NON-DETERMINISTIC across generations** —
+  confirmed live, two separate runs of the identical prompt ("generate a
+  table of top 10 IT companies") produced DIFFERENT row orders (run 1: Apple
+  first; run 2: Microsoft first) and a differing column set (a 5th "Market Cap
+  (Approx.)" column present in one run, absent the other). **Never assert
+  fixed row index or a fixed exact column list** — assert set-membership /
+  core-column-presence instead. This applies to any case built on an
+  AI-generated-content prompt, not just this cluster.
+- **Diagram editing** (ELITEA-2088): the canvas code editor is CodeMirror
+  (`.cm-editor`/`.cm-content`/`.cm-line`, one `.cm-line` per source line) —
+  a **direct match to the existing #579 sanctioned exception** (same category
+  as `mcp_form_page.py:121`'s precedent, no reviewer escalation needed): add
+  ONE real testid on the editor's container (`chat-canvas-mermaid-editor-content`),
+  scope `.cm-line` raw selectors as children.
+- **Real-time Mermaid syntax validation is CONFIRMED WORKING and genuinely
+  live** — editing the diagram-TYPE declaration line (`flowchart TD` →
+  `flowchart TD edited`, NOT a node-label line) breaks Mermaid syntax and
+  immediately surfaces a red error panel: exact text `"Syntax error: Missing
+  semicolon, new line, or unexpected characters (Line 1)"` +
+  `"Problematic code: <text>"` + a "Quick Fix" affordance (AI-assisted,
+  backed by `useGenerateContentBlockingMutation`/`MERMAID_QUICK_FIX` service
+  prompt, not exercised live) + `mermaid version 11.16.0` shown. **For a
+  happy-path automation assertion (valid re-rendered diagram, not an error
+  state), edit a NODE-LABEL line instead of line 1** — confirmed live that
+  editing the type-declaration line is what triggers the error, this is a
+  case-text ambiguity ("edit one block of text" doesn't specify which),
+  not a defect.
+- **Canvas→conversation sync on close is CONFIRMED for the error-path edit**
+  (closing after the type-line edit above: the conversation's OWN diagram
+  render shows the identical error state/text the canvas did) — the
+  MECHANISM (canvas state persists to conversation on close) is proven; the
+  specific "valid edit → diagram re-renders normally" sub-path was not
+  independently re-verified in the same session (time went to the more
+  informative real-time-validation discovery) — flagged for the ELITEA-2088
+  implementer's first pass, not a blocker.
+- **Wait-strategy trap, confirmed live**: a bare `page.wait_for_selector("svg")`
+  after sending "generate a mermaid diagram" false-positive-matches an
+  unrelated icon SVG elsewhere on the page (nav/sidebar icons) well before the
+  actual diagram renders — produced a false "edit icon not found" on the
+  first live attempt. Use `wait_for_ai_response()` +
+  `wait_for_message_content_stable()` (existing `ChatPage` methods) instead,
+  same as any other AI-generated-content wait on this surface.
+- **CodeMirror `.cm-line` re-reads can go stale** — an `all_inner_texts()`
+  snapshot captured before a `.keyboard.type()` edit, then reused without
+  re-querying, read as unchanged even though the live DOM (confirmed via
+  screenshot) had updated. Always re-query `.cm-line` fresh after an edit,
+  don't reuse a pre-edit locator handle/array.
 
 ## Context Management / Auto-Summarization — settings location, autosave defect (ELITEA-2218)
 - **Global settings moved**: Context Management + Automatic Summarization now
