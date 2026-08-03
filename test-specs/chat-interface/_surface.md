@@ -2,7 +2,76 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2162 run, 2026-08-03.
+a time; last confirmed by: qa-engineer analyst, ELITEA-2135/2137/2149 cluster
+run, 2026-08-03.
+
+## Conversation context menu — "Move to" submenu (ELITEA-2135/2137)
+- **CONFIRMED DEFECT, filed EliteaAI/elitea-testing-public#1117**: the "Move
+  to" menu item's submenu (Create folder / Back to the list / existing
+  folders) does NOT open reliably. Hovering it (even real mouse movement +
+  1.5s dwell, 0/2) and keyboard `ArrowRight` (0/1, after `ArrowDown`×2 focus)
+  never open it. A plain click — the item's own coded activation gesture
+  (`ConversationItem.jsx`: `hasSubMenu: true`, `DotMenu.jsx`'s
+  `BasicMenuItem`: `onClick={subMenuItems?.length ? onClickMenu : onClick}`)
+  — opened it on the first attempt in roughly half of ~6 isolated repros and
+  needed a second click the rest of the time; clicking again while it IS
+  open closes it (backdrop click-away). **Automation workaround**: click,
+  poll for `.MuiPopover-root` count to go 1→2 (or for
+  `chat-move-to-create-folder-menuitem` to become visible) within ~350ms,
+  retry the click if not — reaches the open state reliably within 1–2
+  attempts every time. See `ChatPage.open_move_to_submenu()` (specced,
+  ELITEA-2135's AFS).
+- Submenu items previously rendered ZERO testids regardless of `key` — a
+  SEPARATE, purely cosmetic gap from the defect above: `DotMenu.jsx`'s
+  `BasicMenuItem` nested-submenu rendering (`subMenuItems.map(...)`) never
+  forwarded `testId` to `subCommonProps` at all. Fixed this pass (commit
+  `cf348d32`, `automation/testids`): `chat-move-to-create-folder-menuitem`,
+  `chat-move-to-back-to-list-menuitem`, `chat-move-to-folder-{folder_id}-menuitem`
+  (dynamic, one per existing folder — the `folderItems.map()` call in
+  `Conversations.jsx` had NO `key` field at all before this pass, which ALSO
+  meant two same-named folders — e.g. two default-named "New folder"s —
+  collided on React's fallback key (`subMenuItem.key || subMenuItem.label`),
+  producing a live-confirmed "two children with the same key" console
+  warning; fixed by the same `key` addition).
+- Toast on move: `Chat moved to "${targetFolder.name}" folder successfully`
+  (source: `useMoveToFolderConversation.hooks.js`) — WITH quote marks around
+  the folder name; the case texts' paraphrase ("Chat moved to [folder name]
+  folder successfully") omits them — cosmetic case-text drift, not a defect.
+- "Move to" is DISABLED while the conversation is pinned
+  (`ConversationItem.jsx`: `disabled: isPinned || ...`) — a pin/move-to test
+  pairing needs an UNPINNED conversation.
+- "Move to" > "Create folder" seeds a CLIENT-SIDE-ONLY placeholder folder
+  (`isNew: true`, default name "New folder") the instant it's clicked; the
+  REAL server-side folder + the actual conversation move only happen on
+  confirm (`moveTargetConversationToNewFolder()`: `createFolder()` THEN
+  `onMoveToFolderConversation()`) — same two-phase shape ELITEA-2132 already
+  documented for the CHATS-header create-folder button, but this entry
+  point's confirm ALSO moves a conversation in the same action (and DOES
+  show a toast) — the two "Create folder" entry points are similar-looking
+  but functionally different flows, don't conflate them.
+
+## Pin conversation (ELITEA-2149)
+- `chat-conversation-menu-pin-menuitem` (pre-existing, ELITEA-2114) — single
+  click, no submenu, NOT affected by the "Move to" defect above (0 flake
+  across every repro this pass).
+- "Pin on top" is DISABLED when the conversation is already inside a folder
+  AND not currently pinned (`disabled: !isPinned && !!conversation.folder_id`)
+  — pin tests need an conversation that's NOT inside a folder.
+- ADDED this pass (commit `cf348d32`): `data-pinned="true"/"false"` on
+  `chat-conversation-item-{id}` (mirrors the pre-existing `data-active`
+  attribute, ELITEA-2114); `chat-pin-icon` testid on the inline `PinIcon`
+  usage inside `ConversationItem.jsx` (conditionally rendered
+  `{isPinned && !isPlayback && <PinIcon .../>}` — confirmed live 0→1 count
+  transition on pin, not a static/always-present icon).
+- Panel order (source-confirmed, `Conversations.jsx`'s literal JSX order):
+  pinned folders → `<PinnedConversations>` → unpinned folders →
+  date-grouped/ungrouped conversations. Live-verified 2 of these 4 tiers
+  (pinned conversation Y=56, well above "Today" heading Y=178–260 across
+  repro runs) — a full 4-tier live check needs a seeded pinned FOLDER, which
+  no case so far has needed; flagged as a follow-up opportunity, not done.
+- No success toast on pin (`usePinConversation.hooks.js`'s
+  `onPinConversation` only calls `toastError` on FAILURE) — don't wait for
+  one.
 
 ## Conversation search (ELITEA-2162)
 - `conversation-search-button` (on-main) opens `conversation-search-input`
