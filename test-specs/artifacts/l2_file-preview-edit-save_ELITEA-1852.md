@@ -79,7 +79,7 @@
 | 6 Click Save | save completes | step 7 | POST fires, no error toast | asserted |
 | 7 Green success notification "File saved successfully" | notification appears | step 8 | toast text exact match | asserted *(confirmed live — matches case text exactly, no drift here)* |
 | 8 Editor closes, returns to file table | editor closes | step 9 | Save button no longer present; file table visible | asserted |
-| 9 "Last update" timestamp updated | timestamp current | step 10 | row text date/time increases | asserted |
+| 9 "Last update" timestamp updated | timestamp current | step 10 | row text date/time (fix round 1: asserted non-decreasing on the UI row, not a strict "must be later" — the column's display resolution is whole minutes and this flow can complete inside one, which a strict check would flake on for a real, correct save; the strict/precise "did it change" signal is the existing `lastModified` ms-precision backend check on the same step) | asserted |
 | 10 Reopen, verify saved change present | "# edited line" visible | step 11 | `get_by_text` on reopened content | asserted |
 
 ### Axis 2 — Analyst additions

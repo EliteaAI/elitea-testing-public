@@ -17,7 +17,7 @@ Actions:
 
 import logging
 import urllib.parse
-from playwright.sync_api import Page, Download, expect
+from playwright.sync_api import Download, Locator, Page, expect
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -505,6 +505,13 @@ class ArtifactsPage(BasePage):
     # (ArtifactRowActions.jsx). Parameter is the row's full displayed name
     # (row.name), same identity semantics as ARTIFACT_ACTIONS_MENU_BUTTON.
     ARTIFACT_FILE_PREVIEW_BUTTON = '[data-testid="artifacts-file-preview-button-{}"]'
+
+    # Static testid on every file row — the row itself is name-agnostic;
+    # identity comes from filtering by displayed text (`.filter(has_text=...)`),
+    # same disambiguation approach as :attr:`_file_rows`. Kept as a class
+    # constant (not a plain string literal in methods) so the selector stays
+    # in the greppable testid inventory (`.agents/testing.md` § Locator policy).
+    ARTIFACT_FILE_ROW = '[data-testid="artifacts-file-row"]'
 
     file_preview_close_button = LocatorDescriptor(
         testid="artifacts-preview-close-button",
@@ -2354,6 +2361,27 @@ class ArtifactsPage(BasePage):
     # File preview/edit editor panel (ELITEA-1851/1852/1856)
     # ------------------------------------------------------------------
 
+    def get_file_row(self, filename: str) -> Locator:
+        """Return a locator for a single file row, filtered by displayed name.
+
+        Built from the class-level :attr:`ARTIFACT_FILE_ROW` testid constant
+        rather than an inline ``page.get_by_test_id(...)`` call, so the
+        selector stays a page-object field per
+        `.claude/rules/page-objects.md` (dynamic-identity pattern — the
+        testid itself is static, filename filtering supplies the identity,
+        same shape as :meth:`get_skill_card_by_id` in `agent_detail_page.py`).
+        Callers needing hover/click use this method or one of the existing
+        higher-level helpers; test/spec files never build this locator
+        themselves.
+
+        Args:
+            filename: Exact file name to match via ``.filter(has_text=...)``.
+
+        Returns:
+            Locator scoped to the first matching row.
+        """
+        return self.page.locator(self.ARTIFACT_FILE_ROW).filter(has_text=filename).first
+
     @action("Hover file row")
     def hover_file_row(self, filename: str, timeout: int = 10000) -> None:
         """Hover a file row to reveal its hover-only per-row actions (preview icon).
@@ -2362,7 +2390,7 @@ class ArtifactsPage(BasePage):
             filename: Exact file name whose row to hover.
             timeout: Maximum wait time in milliseconds.
         """
-        file_row = self.page.get_by_test_id("artifacts-file-row").filter(has_text=filename).first
+        file_row = self.get_file_row(filename)
         file_row.wait_for(state="visible", timeout=timeout)
         file_row.scroll_into_view_if_needed()
         file_row.hover()

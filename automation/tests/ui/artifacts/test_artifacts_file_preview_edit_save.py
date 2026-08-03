@@ -17,7 +17,9 @@ Test flow:
 7. Click Save; wait on the ``createArtifact`` network response.
 8. Verify the success toast reads exactly "File saved successfully".
 9. Verify the editor closes (code file -> auto-close branch).
-10. Verify the file row's "Last update" timestamp and size both advanced.
+10. Verify the file row's UI-displayed "Last update" timestamp and size
+    both reflect the save (backend metadata for size + precise
+    lastModified; the UI-rendered "Last update" cell itself, non-decreasing).
 11. Reopen the file; verify "# edited line" is present in the reloaded content.
 12. Verify no console errors across the edit+save flow.
 
@@ -34,6 +36,8 @@ Usage:
 """
 
 import logging
+import re
+from datetime import datetime
 
 import allure
 import pytest
@@ -62,6 +66,34 @@ FILE_CONTENT = (
 )
 EDIT_TEXT = "# edited line"
 SUCCESS_TOAST_TEXT = "File saved successfully"
+
+# Matches ArtifactTable.jsx's ARTIFACT_TABLE_CONFIG.DATE_FORMAT ('dd-MM-yyyy,
+# hh:mm a') — the "Last update" column has no per-cell testid (ArtifactTable
+# renders columns through a shared, generic grid component), so its displayed
+# value is read via a regex match on the row's full text (same approach
+# `ArtifactsPage.get_file_row_text` already uses for other columns), never a
+# new raw locator.
+LAST_UPDATE_TIMESTAMP_RE = re.compile(r"\d{2}-\d{2}-\d{4}, \d{2}:\d{2} [AP]M")
+LAST_UPDATE_TIMESTAMP_FORMAT = "%d-%m-%Y, %I:%M %p"
+
+
+def _extract_last_update_timestamp(row_text: str) -> datetime:
+    """Parse the file row's UI-rendered 'Last update' timestamp from its full text.
+
+    Args:
+        row_text: A file row's full stripped text content (as returned by
+            :meth:`ArtifactsPage.get_file_row_text`).
+
+    Returns:
+        The parsed timestamp (minute precision, matching the UI's own
+        display format).
+    """
+    match = LAST_UPDATE_TIMESTAMP_RE.search(row_text)
+    assert match, (
+        "File row should render a 'Last update' timestamp matching "
+        f"'dd-MM-yyyy, hh:mm a': {row_text!r}"
+    )
+    return datetime.strptime(match.group(), LAST_UPDATE_TIMESTAMP_FORMAT)
 
 
 @allure.epic("Artifacts")
@@ -112,6 +144,15 @@ class TestArtifactFilePreviewEditSave:
             "via the 'View/Edit file' icon"
         ):
             artifacts_page.navigate_to_bucket(bucket_name, timeout=NAVIGATION_TIMEOUT)
+            # Capture the UI-displayed "Last update" timestamp BEFORE the
+            # edit, so Step 10 can verify the UI itself (not just the API)
+            # reflects the save — the AFS's Concrete Handles table specifies
+            # reading this via the row's full text, matched against the
+            # confirmed-live 'dd-MM-yyyy, hh:mm a' format.
+            row_text_before = artifacts_page.get_file_row_text(
+                FILE_NAME, timeout=UI_ELEMENT_TIMEOUT
+            )
+            last_update_before = _extract_last_update_timestamp(row_text_before)
             artifacts_page.open_file_in_editor(FILE_NAME, timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step(
@@ -174,10 +215,10 @@ class TestArtifactFilePreviewEditSave:
             )
 
         with allure.step(
-            "Step 10 — Verify the 'Last update' timestamp advanced and the "
-            "row's file size changed (stronger persistence signal than the "
-            "timestamp alone — catches a 'toast lied, nothing actually "
-            "saved' regression)"
+            "Step 10 — Verify the file row's UI-displayed 'Last update' "
+            "timestamp reflects the save, and the row's file size changed "
+            "(stronger persistence signal than the timestamp alone — "
+            "catches a 'toast lied, nothing actually saved' regression)"
         ):
             metadata_after = artifact_api.get_file_metadata(bucket_name, FILE_NAME)
             assert metadata_after is not None, "File should still be present after save"
@@ -186,10 +227,30 @@ class TestArtifactFilePreviewEditSave:
                 f"after={metadata_after['size']}"
             )
             assert metadata_after.get("lastModified") != modified_before, (
-                "File's lastModified timestamp should advance after a real save"
+                "File's lastModified timestamp should advance after a real save "
+                "(independent ground truth — backend metadata, ms precision)"
             )
             row_text = artifacts_page.get_file_row_text(FILE_NAME, timeout=UI_ELEMENT_TIMEOUT)
             assert FILE_NAME in row_text, f"Row should still list '{FILE_NAME}': {row_text!r}"
+            # UI-displayed check (AFS step 10 / Concrete Handles) — the row's
+            # own rendered "Last update" timestamp, not just the backend
+            # metadata above. Asserted as non-decreasing rather than
+            # strictly-later: the column's display resolution is whole
+            # minutes (`dd-MM-yyyy, hh:mm a`), and this flow can complete
+            # within the same minute it started, so a strict "must be
+            # later" check would be flaky on a real, correct save. The
+            # backend `lastModified` assertion above is the strict/precise
+            # "did it really change" signal; this one verifies the UI
+            # itself renders a consistent, never-regressed value — declared
+            # improvisation per `.agents/role-overrides.md` § Declared-
+            # improvisation protocol (no canon guidance on minute-precision
+            # UI timestamp flakiness).
+            last_update_after = _extract_last_update_timestamp(row_text)
+            assert last_update_after >= last_update_before, (
+                "File row's UI-displayed 'Last update' timestamp should never "
+                f"regress after a real save: before={last_update_before}, "
+                f"after={last_update_after}"
+            )
 
         with allure.step(
             "Step 11 — Reopen 'machine_learning.py' and verify the saved "

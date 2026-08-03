@@ -202,9 +202,9 @@ class TestArtifactFilePreviewActionsDropdown:
             expect(artifacts_page.file_preview_save_button).to_have_count(
                 0, timeout=UI_ELEMENT_TIMEOUT
             )
-            expect(
-                page.get_by_test_id("artifacts-file-row").filter(has_text=FILE_NAME)
-            ).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
+            expect(artifacts_page.get_file_row(FILE_NAME)).to_have_count(
+                0, timeout=UI_ELEMENT_TIMEOUT
+            )
             remaining_files = artifact_api.list_bucket_files(bucket_name)
             assert FILE_NAME not in remaining_files, (
                 f"'{FILE_NAME}' should be gone from the bucket per a fresh API "
