@@ -2,8 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2197/2200 cluster run,
-2026-08-03 (supersedes nothing below — new section, other sections unchanged).
+a time; last confirmed by: qa-engineer analyst, ELITEA-2211..2215 cluster run,
+2026-08-03 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: ELITEA-2197/2200 cluster run, 2026-08-03).
 
 ## File attachments — 10-file limit, unsupported-type rejection, toast severity (ELITEA-2197/2200)
 - **The real "Attach Files" control lives INSIDE the "+" (plus-menu) popper,
@@ -434,3 +435,83 @@ Skipping the redundant switch (project was already correct) avoided it
 entirely. Not reproduced through the normal pytest fixture chain — flagging
 as a possible transit-path fragility for a from-scratch driver, not filed as
 a product defect (never observed via the real test suite's own fixtures).
+
+## HITL sensitive-action authorization card + direct-toolkit-call chip rendering (ELITEA-2211..2215)
+- **Admin UI Guardrails (`${ELITEA_URL}/admin/app/configuration#guardrails`)
+  is NOT served on `localhost:5173`** — confirmed live this pass
+  (`page.goto()`, body text literally `"Page not found. Try Home page"`,
+  under the normal app shell/sidebar). This is a pre-existing, ALREADY
+  DOCUMENTED constraint (`tests/ui/admin/test_guardrails_cleanup_only.py`'s
+  own comment: "Admin UI isn't served on localhost"); every case in this
+  cluster whose precondition is "toolkit configured with HITL authorization"
+  (ELITEA-2211/2212/2213/2214) needs the SAME `pytest.mark.guardrails`
+  marker + CI-against-deployed-env execution path the existing
+  `TestSensitiveToolLiveReload` (ELITEA-1696) already uses — not a new gap.
+- **Sensitivity is toolkit-TYPE scoped, not per-toolkit-instance.**
+  `GuardrailsAdminPage.add_sensitive_tool(toolkit_type, tool_name)` marks
+  the tool sensitive for EVERY toolkit of that type project-wide. Any new
+  test using this must clean up (`remove_sensitive_tool` + `save_configuration`)
+  or it silently breaks unrelated tests that call the same tool name on a
+  different toolkit instance of the same type.
+- **`ChatHitlActions.jsx` (`EliteaUI/src/[fsd]/features/chat/ui/chat-hitl-actions/`)
+  is the sensitive-action card's source** (read in full this pass, not just
+  grepped). Confirmed testids: `sensitive-action-panel` (container, only
+  rendered when `guardrail_type` is `sensitive_tool`/`parallel_sensitive_tools`),
+  `sensitive-action-authorize-button`. **NO testid exists** on: the "Block"
+  button (same component, `variant="alarm"`), or ANY element in
+  `BlockWithCommentControl.jsx` (collapsed trigger, expanded textarea,
+  Cancel button, Submit button) — confirmed via full-file read of both
+  components, zero `data-testid` occurrences outside the two named above.
+  These testids currently exist ONLY on `AgentDetailPage`
+  (`sensitive_action_panel`/`sensitive_action_authorize_button` fields,
+  `pages/agent_detail_page.py:188-189`) — `ChatPage` (the main chat, used
+  by this cluster's "no agent" flow) has ZERO HITL/sensitive-action
+  `LocatorDescriptor`s today; they need to be added there too (same
+  underlying React component, same testids apply).
+- **The Block-with-Comment collapsed trigger and its expanded-state Submit
+  button are TWO SEPARATE DOM elements with the SAME visible label**
+  ("Block with Comment") — `BlockWithCommentControl.jsx` swaps its entire
+  return branch on `open` state (not a same-element ternary, so canon
+  ruling #277's same-element-pair rule does not apply here). Each needs its
+  own distinct testid; text-based disambiguation would be ambiguous/fragile.
+- **Toolkit/tool-call chip has NO testid** (`ActionView.jsx:360`,
+  `data-testid={toolkitType === 'model' ? 'chat-answer-model-chip' : undefined}` —
+  only the `model` branch is named). Confirmed live (direct toolkit call,
+  no agent, `delete_file` on a fresh artifact toolkit): the rendered chip
+  text is `"{toolkit_name}: {tool_name}"` (colon-separated, via
+  `ActionView.jsx`'s `buildTitle(': ', true)`) — e.g.
+  `"autotest-hitl-tk-749815: delete_file"`. A turn can render **multiple**
+  model chips (2 observed live for one multi-step reasoning chain: Sonnet +
+  Haiku) alongside exactly ONE toolkit/tool chip — don't assert a fixed
+  chip count without accounting for the model-chip count being
+  data-dependent.
+- **Message-composer mechanics (from-scratch script, not the `ChatPage`
+  fixture chain):** `page.keyboard.press("Enter")` after typing into the
+  composer does NOT submit the message — confirmed live, the text just sat
+  in the composer. Must click the actual send button
+  (`[data-testid="chat-send-button"]`) — matches `ChatPage.send_message()`'s
+  own default (`use_enter=False`), so this is a from-scratch-script pitfall,
+  not a real page-object gap.
+- **Reloaded/history conversation view collapses the thought accordion by
+  default** (`aria-expanded="false"`) and shows a plain-text summary
+  (`data-testid="skill-test-last-response"`) instead of the live chip row —
+  the model/toolkit chips only render once the accordion is (re-)expanded
+  (`[data-testid="chat-answer-thought-accordion"] button` click). Don't
+  assert chip presence on a freshly-reloaded/history-navigated conversation
+  without first expanding it.
+- **Test-data-hygiene finding (not a defect in scope for this cluster):**
+  the project had **588 artifact buckets** at analysis time. A throwaway
+  bucket created this pass could NOT be deleted via `ArtifactAPI.delete_bucket()`
+  — both the bucket-name and the `p--{project_id}.{bucket_name}` fallback
+  paths returned 404 immediately after creation. `artifact_bucket` fixture's
+  teardown swallows this (`logger.warning`, non-fatal,
+  `fixtures/data_fixtures.py:487-489`), so failures accumulate silently
+  across runs. Likely root cause of the 588-bucket pileup; worth its own
+  investigation outside this cluster.
+- **An unambiguous, single-target chat message is required to reach a real
+  tool-call attempt** when the toolkit is scoped to a project with many
+  buckets — confirmed live: the literal ELITEA-2211 case text ("remove from
+  the bucket all files") produced a CLARIFYING QUESTION from the LLM
+  ("you have 588 buckets... which one?"), never a tool call, given the
+  ambient bucket-count noise above. Naming the bucket explicitly in the
+  message reliably reaches a real tool-call attempt (confirmed live twice).
