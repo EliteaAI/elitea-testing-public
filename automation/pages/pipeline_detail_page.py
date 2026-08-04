@@ -309,6 +309,31 @@ class PipelineDetailPage(PipelineFormPage):
         description="HITL node's EDIT STATE KEY Value select"
     )
 
+    # Router node inline config (ELITEA-2033). Testid-only, added via
+    # add-data-testid — RouterNode.jsx call sites only (untested node types
+    # stay untagged, .agents/testing.md § Locator policy). Page-wide (not
+    # scoped to a specific node container): correct as long as a test only
+    # has a single Router node on canvas.
+    router_node_condition_input = LocatorDescriptor(
+        testid="pipeline-router-node-condition-input",
+        description="Router node's Condition Jinja textarea (inline on canvas card)"
+    )
+
+    router_node_routes_select = LocatorDescriptor(
+        testid="pipeline-router-node-routes-select",
+        description="Router node's Routes multi-select (existing pipeline node ids + END)"
+    )
+
+    router_node_input_select = LocatorDescriptor(
+        testid="pipeline-router-node-input-select",
+        description="Router node's tool-agnostic Input state-variable select"
+    )
+
+    router_node_default_output_select = LocatorDescriptor(
+        testid="pipeline-router-node-default-output-select",
+        description="Router node's Default output single-select"
+    )
+
     # Dynamic (runtime-parameterized) testid — one Route select per HITL
     # action (approve/edit/reject). Class-level template constant per
     # .agents/testing.md § Locator policy, formatted with test-generated
@@ -1246,6 +1271,24 @@ class PipelineDetailPage(PipelineFormPage):
         """
         return self.page.locator(".react-flow__node").count()
 
+    def wait_for_node_count(self, expected_count: int, timeout: int = 10000) -> None:
+        """Poll (not an instant read) until the canvas has exactly *expected_count* nodes.
+
+        Added for ELITEA-2033 (adding two same-type nodes in a row, where
+        ``wait_for_node_on_canvas()``'s ``.first`` match can't distinguish
+        "still just the first one" from "the second one arrived"). Keeps the
+        raw ``.react-flow__node`` handle inside the page object — same
+        sanctioned ReactFlow-internal handle :meth:`get_node_count` already
+        uses — rather than a spec file constructing its own locator.
+
+        Args:
+            expected_count: The exact node count to wait for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        from playwright.sync_api import expect
+
+        expect(self.page.locator(".react-flow__node")).to_have_count(expected_count, timeout=timeout)
+
     def get_node_ids(self) -> list[str]:
         """Return the data-id values of all nodes on the canvas.
 
@@ -1762,8 +1805,11 @@ class PipelineDetailPage(PipelineFormPage):
         Double-clicking the node name span makes the first input inside
         the node become editable and focused.
 
-        NOTE: Renaming a node changes its data-id. For example, renaming
-        "LLM 1" to "MyNode" sets the data-id to "LLM MyNode".
+        NOTE: Renaming a node changes its data-id. Live-confirmed (ELITEA-2033
+        exploration) the new data-id is the new name VERBATIM, with no
+        retained type prefix — renaming "Printer 1" to "approve" sets the
+        data-id to exactly "approve", not "Printer approve". (This corrects
+        an earlier, incorrect claim here that the type prefix stayed.)
         The method returns the new data-id so callers can track it.
 
         Args:
@@ -1781,9 +1827,19 @@ class PipelineDetailPage(PipelineFormPage):
         name_label.dblclick()
         self.page.wait_for_timeout(300)
 
-        # The first input[type="text"] inside the node holds the name
+        # The first input[type="text"] inside the node holds the name.
+        # NOTE (ELITEA-2033 fix): `press("Control+a")` does NOT select-all in
+        # this environment (Chromium/macOS) — live-confirmed via direct DOM
+        # inspection that selectionStart/selectionEnd don't change after the
+        # keypress, so the prior implementation only Backspace-deleted the
+        # LAST character before typing, producing "Printer approve" instead
+        # of "approve" for a "Printer 1" -> "approve" rename. Uses
+        # `select_text()` + `_wait_for_field_selection_applied` instead — the
+        # same reliable, OS-independent clear pattern `_fill_node_field_value`
+        # already relies on.
         name_input = node.locator('input[type="text"]').first
-        name_input.press("Control+a")
+        name_input.select_text()
+        self._wait_for_field_selection_applied(name_input)
         name_input.press("Backspace")
         name_input.type(new_name)
         self.page.wait_for_timeout(300)
@@ -1792,12 +1848,19 @@ class PipelineDetailPage(PipelineFormPage):
         self._deselect_all()
         self.page.wait_for_timeout(300)
 
-        # Find the node's new data-id (renaming changes it)
+        # Find the node's new data-id (renaming changes it). Prefer an exact
+        # verbatim match on new_name first — live-confirmed (ELITEA-2033)
+        # this is what the product actually sets, no type prefix retained.
+        # A prefix-based fallback is kept for any call site that predates
+        # this fix and still expects a prefix-retaining rename.
         new_node_id = self.page.evaluate(
-            """(oldId) => {
-                // The type prefix stays, only the name portion changes
-                const prefix = oldId.split(' ')[0];
+            """([oldId, newName]) => {
                 const nodes = document.querySelectorAll('.react-flow__node');
+                for (const n of nodes) {
+                    const nid = n.getAttribute('data-id');
+                    if (nid === newName) return nid;
+                }
+                const prefix = oldId.split(' ')[0];
                 for (const n of nodes) {
                     const nid = n.getAttribute('data-id');
                     if (nid && nid !== 'END' && nid.startsWith(prefix) && nid !== oldId) {
@@ -1813,7 +1876,7 @@ class PipelineDetailPage(PipelineFormPage):
                 }
                 return oldId;
             }""",
-            node_id,
+            [node_id, new_name],
         )
         logger.info("Node %s renamed to '%s' (new id: %s)", node_id, new_name, new_node_id)
         return new_node_id
@@ -2978,6 +3041,30 @@ class PipelineDetailPage(PipelineFormPage):
             raise ValueError(f"No edge found from '{source_id}' to '{target_id}'")
         return locator.first
 
+    def wait_for_edge(self, source_id: str, target_id: str, timeout: int = 10000) -> None:
+        """Poll (not an instant read) until the exact edge testid appears in the DOM.
+
+        Added for ELITEA-2033: `get_edge_locator()` / `edge_testid_present()`
+        are both synchronous, non-polling `.count()` reads (by design — other
+        callers rely on an instant read right after an action, e.g. asserting
+        ABSENCE) — a Router node's edge is created by a React state update
+        that can lag a tick behind the click, so this polls the SAME exact
+        ``EDGE_TESTID`` template via Playwright's own
+        ``expect().to_have_count()`` before a caller's boolean check.
+
+        Args:
+            source_id: Internal source node id exactly as it appears in the
+                edge's data-testid (e.g. "Router 1", "Router 1default_output").
+            target_id: Internal target node id exactly as it appears in the
+                edge's data-testid (e.g. "approve", "END").
+            timeout: Maximum wait time in milliseconds.
+        """
+        from playwright.sync_api import expect
+
+        expect(self.page.locator(self.EDGE_TESTID.format(source_id, target_id))).to_have_count(
+            1, timeout=timeout
+        )
+
     def fit_view(self):
         """Click the ReactFlow 'Fit View' zoom control."""
         btn = self.page.locator('button[title="Fit View"]')
@@ -3564,6 +3651,102 @@ class PipelineDetailPage(PipelineFormPage):
         """Read the EDIT STATE KEY Value select's current display text."""
         self.hitl_node_edit_state_key_select.wait_for(state="visible", timeout=timeout)
         text = (self.hitl_node_edit_state_key_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    # ------------------------------------------------------------------
+    # Router node inline config (ELITEA-2033)
+    # ------------------------------------------------------------------
+
+    def fill_router_node_condition(self, text: str, timeout: int = 5000) -> None:
+        """Fill the Router node's Condition Jinja textarea.
+
+        Uses click + press_sequentially — MUI/React fields need real keyboard
+        events for onChange to fire (.claude/rules/mui-patterns.md). The
+        field is a plain MUI TextField multiline textarea (NOT CodeMirror/
+        Monaco despite the `language="jinja"` prop — that only affects the
+        separate full-screen AI Assistant modal, confirmed via source read),
+        so no CodeMirror-line-scoping technique is needed here. Starts empty
+        on a freshly-added node, so no clear-before-type step is needed.
+
+        Args:
+            text: The Jinja condition template to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self.router_node_condition_input.wait_for(state="visible", timeout=timeout)
+        self.router_node_condition_input.click()
+        self.router_node_condition_input.press_sequentially(text, delay=20)
+
+    def get_router_node_condition(self) -> str:
+        """Read the Router node's Condition textarea current value."""
+        return self.router_node_condition_input.input_value()
+
+    def open_router_node_routes_select(self, timeout: int = 5000) -> None:
+        """Open the Router node's Routes multi-select dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.router_node_routes_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_router_node_routes(self, values: list[str], timeout: int = 5000) -> None:
+        """Open the Routes dropdown and select every value in *values*, then close.
+
+        Routes is a picklist of EXISTING pipeline node ids (+ a literal
+        ``END`` option), not a freeform/creatable tag field (AFS Coverage
+        Map clarification) — each value must match a node id already on the
+        canvas. A multi-select (like the LLM/HITL Input selects): selecting
+        an option does not auto-close the popover, so every value is
+        selected before a single Escape closes it.
+
+        Args:
+            values: Existing pipeline node ids (or ``"END"``) to select as
+                routes — matches ``select-option-{value}``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.open_router_node_routes_select(timeout=timeout)
+        for value in values:
+            self.page.locator(self.SELECT_OPTION.format(value)).click(timeout=timeout)
+        self.page.keyboard.press("Escape")
+        self._wait_for_open_popovers_closed(timeout=timeout)
+
+    def get_router_node_routes_value(self) -> str:
+        """Read the Routes select's currently-selected chips as concatenated text."""
+        text = (self.router_node_routes_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_router_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the Router node's tool-agnostic Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.router_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_router_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Input dropdown and select *variable_name*."""
+        self.open_router_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_router_node_input_value(self) -> str:
+        """Read the Router node's currently-selected Input display text."""
+        text = (self.router_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_router_node_default_output_select(self, timeout: int = 5000) -> None:
+        """Open the Router node's Default output single-select dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.router_node_default_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_router_node_default_output(self, target_node_id: str, timeout: int = 5000) -> None:
+        """Open the Default output select and choose *target_node_id* (or ``"END"``).
+
+        A single-select — selecting an option auto-closes the popover
+        (unlike the multi-select Routes/Input fields above).
+        """
+        self.open_router_node_default_output_select(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION.format(target_node_id)).click(timeout=timeout)
+
+    def get_router_node_default_output_value(self, timeout: int = 5000) -> str:
+        """Read the Default output select's current display text."""
+        self.router_node_default_output_select.wait_for(state="visible", timeout=timeout)
+        text = (self.router_node_default_output_select.text_content() or "").replace("​", "")
         return text.strip()
 
     # ------------------------------------------------------------------
