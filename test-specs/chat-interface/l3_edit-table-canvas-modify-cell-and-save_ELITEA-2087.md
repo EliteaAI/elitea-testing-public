@@ -104,6 +104,35 @@ None.
 ## Blocked Steps
 None. All 10 case steps were executed and observed end-to-end live, twice.
 
+## Implementer Exploration Notes (Phase 2 amendment)
+
+- **Row-content matching needs SUBSTRING, not exact, matching.** The case's
+  own Test Data says "the cell whose text is/contains 'Microsoft'" — this
+  implementation's own live run needed contains-matching in practice: the
+  initial `:text-is("Microsoft")` (exact) CSS pseudo-selector timed out
+  finding a row, because the AFS's own pre-edit assertion (`"Microsoft" in
+  value`) is a substring check while the grid lookup was exact. Fixed to
+  `:has-text("Microsoft")` (substring) in
+  `ChatTableCanvasPage.ROW_BY_CELL_TEXT` — consistent with the case's own
+  wording either way, and robust to a generated company name rendering as
+  a longer variant (e.g. "Microsoft Corporation") in some generations.
+- **Step 8 ("locate the table in the conversation") must NOT be asserted
+  via the pencil/edit icon's visibility.** Confirmed live: once a
+  canvas-editable block has been through one edit-and-close cycle, its
+  conversation-pane render switches from a plain Markdown `text_message`
+  item (rendered via `Token.jsx` → `MarkdownTableBlock.jsx`, whose OWN
+  toolbar/pencil `chat-table-edit-button` targets) to a `canvas_message`
+  item rendered via `Canvas.jsx`'s `CanvasContent` (a SEPARATE,
+  currently-untested pencil button; the nested `<Markdown
+  showToolbar={false}>` hides `MarkdownTableBlock`'s own toolbar in this
+  path). The underlying `<table>` markup is unaffected (same
+  `MarkdownTableBlock` component either way), so step 8's assertion was
+  written against table DATA presence (`get_rendered_table_data()`
+  non-empty) instead — matching the AFS's own Coverage Map disposition for
+  this step ("`MarkdownTableBlock` table element visible"), not the pencil.
+  Not exercised further by this case, but flagged for whichever future
+  case re-edits an already-edited block.
+
 ## Automation Hints
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor` (`.agents/testing.md`).
 - **Compose with ELITEA-2086's steps** — this case's precondition IS ELITEA-2086's end state; write as one continuous test (send message → open canvas → verify structure [ELITEA-2086's assertions] → edit cell → close → verify sync [this case's assertions]) OR as two independent tests that both start from "send message → open canvas" (accepting the duplicated setup) — **do not** write this case's test to literally depend on ELITEA-2086's test having run first (test isolation, `.claude/rules/ui-tests.md` § Test Isolation).
