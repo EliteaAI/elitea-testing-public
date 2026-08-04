@@ -402,6 +402,23 @@ class PipelineDetailPage(PipelineFormPage):
         description="STATE panel's close ('x') button"
     )
 
+    # Dynamic (runtime-parameterized) testids — one per STATE panel row,
+    # keyed by variable name (ELITEA-2042). Class-level template constants
+    # per .agents/testing.md § Locator policy, formatted with test-generated
+    # data only at the call site. Added via add-data-testid,
+    # EliteaAI/EliteaUI@d120871f (StateVariableItem.jsx / StateVariableItemActions.jsx
+    # / StateTypeSelector.jsx / StateVariableIconButton.jsx).
+    STATE_VARIABLE_NAME = '[data-testid="pipeline-state-variable-name-{}"]'
+    STATE_VARIABLE_TOGGLE = '[data-testid="pipeline-state-variable-toggle-{}"]'
+    STATE_VARIABLE_DELETE = '[data-testid="pipeline-state-variable-delete-{}"]'
+    STATE_VARIABLE_TYPE_SELECT = '[data-testid="pipeline-state-variable-type-select-{}"]'
+
+    # Static per INTERNAL type value (StateTypeSelector.jsx's Menu items) —
+    # NOT the display label. `flowEditor.constants.js`'s `StateVariableTypes`
+    # maps String->str, Number->number, List->list, Json->dict (the 4th
+    # option's display label "Json" != its internal/YAML value "dict").
+    STATE_TYPE_OPTION = '[data-testid="pipeline-state-type-option-{}"]'
+
     # Dynamic (runtime-parameterized) testid — one chip per DECISION OUTPUTS
     # entry. Class-level template constants per .agents/testing.md § Locator
     # policy: an exact-match template for a known value, and a prefix
@@ -4150,6 +4167,127 @@ class PipelineDetailPage(PipelineFormPage):
         if self.state_drawer_close_button.count() > 0:
             self.state_drawer_close_button.click(timeout=timeout)
             self.state_drawer_toggle_button.wait_for(state="visible", timeout=timeout)
+
+    def get_state_variable_name_text(self, name: str, timeout: int = 5000) -> str:
+        """Read a STATE panel row's display-mode name label text.
+
+        Testid-based (``STATE_VARIABLE_NAME``) — the row's ``<Typography>``
+        name label (``StateVariableItem.jsx``), which shows ONLY the
+        variable's name, no type indicator (AFS ELITEA-2042 step 4
+        clarification — the type is only observable via YAML/the row's own
+        type-select icon).
+        """
+        locator = self.page.locator(self.STATE_VARIABLE_NAME.format(name))
+        locator.wait_for(state="visible", timeout=timeout)
+        return (locator.text_content() or "").strip()
+
+    def is_state_variable_toggle_checked(self, name: str, timeout: int = 5000) -> bool:
+        """Return whether a STATE panel row's toggle switch is checked.
+
+        Testid-based (``STATE_VARIABLE_TOGGLE``) — the testid lands on the
+        MUI ``SwitchBase`` span, which itself carries the ``Mui-checked``
+        class when on; reading the class is compliant (the testid's
+        presence/value is stable identity, state is read separately, same
+        discipline as a ``data-*`` state filter per .agents/testing.md §
+        Locator policy).
+        """
+        locator = self.page.locator(self.STATE_VARIABLE_TOGGLE.format(name))
+        locator.wait_for(state="visible", timeout=timeout)
+        return "Mui-checked" in (locator.get_attribute("class") or "")
+
+    def is_state_variable_delete_button_present(self, name: str) -> bool:
+        """Return whether a STATE panel row renders a delete control.
+
+        Testid-based (``STATE_VARIABLE_DELETE``) — used for its ABSENCE on
+        default rows (canon ruling #511 extension, absence assertions count
+        as references): ``StateVariableItemActions.jsx``'s ``showToggle``
+        branch (default rows) is mutually exclusive with the delete-
+        ``IconButton`` branch, so a default row's delete testid is never in
+        the DOM at all — this is a structural guarantee, not a timing race.
+        """
+        return self.page.locator(self.STATE_VARIABLE_DELETE.format(name)).count() > 0
+
+    def click_state_variable_type_select(self, name: str, timeout: int = 5000) -> None:
+        """Open a STATE panel row's type-selector dropdown.
+
+        Testid-based (``STATE_VARIABLE_TYPE_SELECT``). The button is
+        genuinely ``disabled`` while the row is still in create-mode
+        (``StateVariableItem.jsx``: ``disableTypeSelector={isCreateMode ||
+        !editable}``) — callers must commit the row's name first (see
+        :meth:`add_state_variable`).
+
+        Waits on the ``str`` (String) option's own testid rather than a raw
+        ``[role="menu"]`` selector — ``StateTypeSelector.jsx`` renders all 4
+        options unconditionally (never gated on the row's current type), so
+        ``STATE_TYPE_OPTION.format("str")`` becoming visible is itself proof
+        the dropdown opened, testid-only per .agents/testing.md § Locator
+        policy.
+        """
+        locator = self.page.locator(self.STATE_VARIABLE_TYPE_SELECT.format(name))
+        locator.click(timeout=timeout)
+        self.page.locator(self.STATE_TYPE_OPTION.format("str")).wait_for(state="visible", timeout=timeout)
+
+    def get_state_type_dropdown_options(self, timeout: int = 5000) -> list[str]:
+        """Return the currently-open type dropdown's visible option labels.
+
+        Call after :meth:`click_state_variable_type_select`. Reads all 4
+        options via ``STATE_TYPE_OPTION``, keyed by INTERNAL type value
+        (``str``/``number``/``list``/``dict``) in the fixed DOM order the
+        component renders them (``StateTypeSelector.jsx`` iterates
+        ``FlowEditorConstants.StateVariableTypes`` in declaration order).
+
+        Returns:
+            List of the 4 options' visible display labels, in DOM order
+            (e.g. ``["String", "Number", "List", "Json"]``).
+        """
+        labels = []
+        for type_key in ("str", "number", "list", "dict"):
+            option = self.page.locator(self.STATE_TYPE_OPTION.format(type_key))
+            option.wait_for(state="visible", timeout=timeout)
+            labels.append((option.text_content() or "").strip())
+        return labels
+
+    def select_open_state_type_option(self, type_key: str, timeout: int = 5000) -> None:
+        """Select *type_key* in the CURRENTLY-OPEN type dropdown.
+
+        Use after :meth:`click_state_variable_type_select` (and, optionally,
+        :meth:`get_state_type_dropdown_options` to inspect the options
+        first) — mirrors this page object's existing open-then-select split
+        for the Toolkit/Tool listbox (:meth:`select_open_listbox_option`).
+        For the common "just pick this type" case without inspecting the
+        options, prefer :meth:`select_state_variable_type`.
+
+        Args:
+            type_key: The option's INTERNAL type value (matches
+                ``pipeline-state-type-option-{type_key}``, e.g. ``"str"``).
+            timeout: Maximum wait time for the option to be clickable.
+        """
+        option = self.page.locator(self.STATE_TYPE_OPTION.format(type_key))
+        option.click(timeout=timeout)
+        # Testid-only close signal (see click_state_variable_type_select's
+        # docstring) — all 4 options unmount together when the menu closes,
+        # so "str" leaving the DOM is proof the dropdown closed.
+        self.page.locator(self.STATE_TYPE_OPTION.format("str")).wait_for(state="hidden", timeout=timeout)
+
+    def select_state_variable_type(self, name: str, type_key: str, timeout: int = 5000) -> None:
+        """Open a row's type selector and choose *type_key* (internal value, e.g. ``"str"``) in one call."""
+        self.click_state_variable_type_select(name, timeout=timeout)
+        self.select_open_state_type_option(type_key, timeout=timeout)
+
+    def is_state_type_option_selected(self, type_key: str, timeout: int = 5000) -> bool:
+        """Return whether *type_key* is the CURRENTLY-SELECTED option in an open type dropdown.
+
+        Call while the dropdown is open (after :meth:`click_state_variable_type_select`).
+        Testid-based (``STATE_TYPE_OPTION``) — ``StateTypeSelector.jsx`` passes
+        MUI's ``MenuItem`` a ``selected={isSelected}`` prop, which renders a
+        ``Mui-selected`` class on the option when it matches the row's current
+        type; reading the class is compliant (the testid's presence/value is
+        stable identity, state is read separately — same discipline as
+        :meth:`is_state_variable_toggle_checked`'s ``Mui-checked`` read).
+        """
+        option = self.page.locator(self.STATE_TYPE_OPTION.format(type_key))
+        option.wait_for(state="visible", timeout=timeout)
+        return "Mui-selected" in (option.get_attribute("class") or "")
 
     # ------------------------------------------------------------------
     # Chat HITL runtime actions (ELITEA-2015)
