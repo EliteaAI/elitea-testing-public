@@ -147,6 +147,7 @@ class TestGenerateMermaidDiagramAndEditInCanvas:
             edge_count = chat.get_diagram_edge_count()
             assert node_count > 0, f"Expected at least one diagram node, got {node_count}"
             assert edge_count > 0, f"Expected at least one connecting edge, got {edge_count}"
+            logger.info("Diagram rendered with %d node(s), %d edge(s)", node_count, edge_count)
 
         with allure.step("Step 4 — Locate the pencil/edit icon on the diagram"):
             expect(chat.diagram_edit_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
@@ -206,6 +207,7 @@ class TestGenerateMermaidDiagramAndEditInCanvas:
             assert expected_full_line in edited_lines, (
                 f"Expected {expected_full_line!r} among the edited source lines, got: {edited_lines!r}"
             )
+            logger.info("Node-label line edited: %r -> %r", target_line, expected_full_line)
 
         with allure.step(
             "Step 9 — Verify real-time syntax validation: the diagram "

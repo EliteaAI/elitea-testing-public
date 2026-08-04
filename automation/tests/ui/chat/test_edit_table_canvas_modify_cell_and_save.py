@@ -128,6 +128,7 @@ class TestEditTableCanvasModifyCellAndSave:
 
             chat.click_table_edit_icon(timeout=UI_ELEMENT_TIMEOUT)
             canvas.wait_for_open(timeout=UI_ELEMENT_TIMEOUT)
+            logger.info("Table edit canvas opened; pre-edit companies: %s", pre_edit_companies)
 
         with allure.step("Step 1 — Verify the table canvas editor is open"):
             table_canvas.wait_for_grid(timeout=UI_ELEMENT_TIMEOUT)
@@ -183,6 +184,7 @@ class TestEditTableCanvasModifyCellAndSave:
             canvas.close(timeout=UI_ELEMENT_TIMEOUT)
             expect(canvas.close_button).to_be_hidden(timeout=UI_ELEMENT_TIMEOUT)
             expect(chat.message_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            logger.info("Canvas closed after confirming edit %r -> %r", ORIGINAL_VALUE, EDITED_VALUE)
 
         with allure.step("Step 8 — Locate the table back in the conversation"):
             # Confirmed live (Phase 2 exploration finding, not in the AFS's

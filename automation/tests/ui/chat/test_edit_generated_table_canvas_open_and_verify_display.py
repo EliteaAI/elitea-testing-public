@@ -162,6 +162,7 @@ class TestEditGeneratedTableCanvasOpenAndVerifyDisplay:
             assert hq_header, f"Expected a headquarters-type column among {headers!r}"
             focus_header = _find_header_containing(headers, FOCUS_HEADER_KEYWORDS)
             assert focus_header, f"Expected a business/focus-type column among {headers!r}"
+            logger.info("Rendered table columns: %s", headers)
 
         with allure.step(
             "Step 4 — Verify the table shows 10 rows of company data "
@@ -190,6 +191,7 @@ class TestEditGeneratedTableCanvasOpenAndVerifyDisplay:
             expect(canvas.editing_indicator).to_contain_text(
                 "Table editing...", timeout=UI_ELEMENT_TIMEOUT
             )
+            logger.info("Table edit canvas opened with heading %r", canvas.title.text_content())
 
         with allure.step(
             "Step 7 — Verify the canvas displays the table as an editable "
