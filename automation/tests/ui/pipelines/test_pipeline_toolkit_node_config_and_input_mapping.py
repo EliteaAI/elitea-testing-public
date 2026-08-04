@@ -100,6 +100,20 @@ def test_toolkit_node_config_and_input_mapping(page, pipeline_id, github_toolkit
         )
         assert pipeline_page.toolkit_node_input_select.is_visible(), "Input select should be visible inline"
         assert pipeline_page.toolkit_node_output_select.is_visible(), "Output select should be visible inline"
+        # Interrupt before/after + Structured output — added to close a gap
+        # the first implementation left unasserted despite the case's own
+        # step 3 naming them and the AFS Coverage Map claiming full coverage
+        # (fix-round finding). Both are unconditional on the Toolkit node
+        # (ToolkitNode.jsx passes showStructuredOutput; CommonInterruptSettings.jsx).
+        assert pipeline_page.is_node_interrupt_before_toggle_visible(node_id), (
+            "Interrupt before toggle should be visible inline"
+        )
+        assert pipeline_page.toolkit_node_interrupt_after_toggle.is_visible(), (
+            "Interrupt after toggle should be visible inline"
+        )
+        assert pipeline_page.toolkit_node_structured_output_toggle.is_visible(), (
+            "Structured output toggle should be visible inline"
+        )
         # Negative/absence assertions (AFS Axis 2) — the case's literal
         # step-3 wording implies Tool/INPUT MAPPING are part of the initial
         # reveal; live product only renders them once a Toolkit (then Tool)
