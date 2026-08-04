@@ -15,6 +15,8 @@ Fixtures:
 - pipeline_with_llm_id: Fresh executable pipeline with LLM node
 - github_credential: GitHub API credential (skipped if GITHUB_TOKEN unset)
 - github_toolkit: GitHub toolkit attached to a fresh credential
+- github_toolkit_with_selected_tools: GitHub toolkit with settings.selected_tools
+  set (required for the pipeline Toolkit node's Tool select to render)
 - github_relevant_agents: GitHub-relevant Agent pair (selected/not_selected)
 - github_relevant_skills: GitHub-relevant Skill pair (selected/not_selected)
 - invalid_jira_credential: Jira credential with invalid/expired token
@@ -267,6 +269,58 @@ def github_toolkit(github_credential: dict, toolkit_api: ToolkitAPI, request):
         base_branch=_GITHUB_BRANCH,
     )
     logger.info("Created GitHub toolkit %s (%s) for %s", toolkit["id"], name, request.node.name)
+
+    yield {"id": toolkit["id"], "name": name, "branch": _GITHUB_BRANCH}
+
+    try:
+        toolkit_api.delete_toolkit(toolkit["id"])
+        logger.info("Deleted GitHub toolkit %s", toolkit["id"])
+    except Exception as exc:
+        logger.warning("Failed to delete toolkit %s during teardown: %s", toolkit["id"], exc)
+
+
+@pytest.fixture
+def github_toolkit_with_selected_tools(github_credential: dict, toolkit_api: ToolkitAPI, request):
+    """Create a GitHub toolkit with ``settings.selected_tools`` explicitly set.
+
+    Sibling of :func:`github_toolkit` — that fixture does NOT set
+    ``selected_tools``, which is fine for toolkit-attach/agent flows but is a
+    load-bearing gap for the pipeline Toolkit node (ELITEA-2010 AFS §
+    Preconditions / Automation Hints): a toolkit with no ``selected_tools``
+    renders a Toolkit node with no Tool select at all (0 options, absent
+    from the DOM, confirmed live) — the node's Tool dropdown reads the
+    toolkit's own ``settings.selected_tools``, not a dynamic "discover all
+    tools" call. This fixture selects ``search_issues`` (1 required param —
+    SEARCH QUERY — plus 2 optional — MAX COUNT / REPO NAME), matching the
+    AFS's Test Data.
+
+    Depends on ``github_credential`` — both are cleaned up after the test.
+
+    Yields a dict with ``id``, ``name``, and ``branch`` keys — same shape as
+    :func:`github_toolkit`.
+
+    Args:
+        github_credential: GitHub credential fixture (provides elitea_title)
+        toolkit_api: ToolkitAPI client (from api_fixtures)
+        request: Pytest request object (provides test metadata)
+
+    Yields:
+        dict: ``{"id": int, "name": str, "branch": str}``
+    """
+    name = f"autotest_gh_tk_tools_{request.node.name}"[:32]
+    toolkit = toolkit_api.create_github_toolkit(
+        name=name,
+        description=f"Auto-created for test {request.node.name}",
+        credential_elitea_title=github_credential["elitea_title"],
+        repository=settings.git_repo,
+        active_branch=_GITHUB_BRANCH,
+        base_branch=_GITHUB_BRANCH,
+        selected_tools=["search_issues"],
+    )
+    logger.info(
+        "Created GitHub toolkit %s (%s, selected_tools=['search_issues']) for %s",
+        toolkit["id"], name, request.node.name,
+    )
 
     yield {"id": toolkit["id"], "name": name, "branch": _GITHUB_BRANCH}
 

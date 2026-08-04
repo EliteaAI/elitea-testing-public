@@ -1573,6 +1573,7 @@ class ToolkitAPI:
         repository: str,
         active_branch: str,
         base_branch: str,
+        selected_tools: list[str] | None = None,
     ) -> dict:
         """Create a GitHub toolkit and return its JSON representation.
 
@@ -1583,24 +1584,37 @@ class ToolkitAPI:
             repository: GitHub repository in ``owner/repo`` format.
             active_branch: Branch for toolkit operations.
             base_branch: Base branch for comparisons (e.g. ``main``).
+            selected_tools: Optional explicit tool-name list for
+                ``settings.selected_tools``. Omitted (``None``) reproduces the
+                original behavior — no key in ``settings`` at all. This is
+                load-bearing for the pipeline Toolkit node (ELITEA-2010): a
+                toolkit created WITHOUT ``selected_tools`` renders a Toolkit
+                node with no Tool select at all (0 options, absent from the
+                DOM) — confirmed live during ELITEA-2010 exploration; the
+                Toolkit node's Tool dropdown is driven by the toolkit's own
+                ``settings.selected_tools``, not a dynamic "discover all
+                tools" call.
 
         Returns:
             Dict with ``id`` and other toolkit fields.
         """
         url = self._toolkits_url()
+        settings: dict = {
+            "github_configuration": {
+                "elitea_title": credential_elitea_title,
+                "private": False,
+            },
+            "repository": repository,
+            "active_branch": active_branch,
+            "base_branch": base_branch,
+        }
+        if selected_tools is not None:
+            settings["selected_tools"] = selected_tools
         payload = {
             "type": "github",
             "name": name,
             "description": description,
-            "settings": {
-                "github_configuration": {
-                    "elitea_title": credential_elitea_title,
-                    "private": False,
-                },
-                "repository": repository,
-                "active_branch": active_branch,
-                "base_branch": base_branch,
-            },
+            "settings": settings,
         }
         logger.debug("CREATE github toolkit %s name=%s", url, name)
         resp = self._session.post(
