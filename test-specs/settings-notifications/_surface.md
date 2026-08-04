@@ -67,6 +67,50 @@ relying on it correctly go red for a missing precondition (not flake).
   page fetch, 200 OK observed for both pages.
 - `GET .../prompt_lib/{id}?only_new=true&only_total=true&limit=1&offset=0` —
   unread-count probe, fires once on mount.
+- `PUT /api/v2/notifications/notifications/prompt_lib/{personal_project_id}` —
+  bulk mark-seen/unseen (ELITEA-2259, confirmed live 2026-08-04). Body:
+  `{"ids": [<id>, ...], "is_seen": <bool>}`. 200 on success; invalidates the
+  `TAG_NOTIFICATIONS` RTK-Query tag, which auto-triggers a list refetch (no
+  manual reload needed to see the change reflected — reload is only needed
+  to prove SERVER-SIDE persistence). Each row's `is_seen` flips exactly for
+  the ids in the request body; every other row's `is_seen`/`updated_at` is
+  untouched — confirmed by diffing full response bodies before/after.
 - Pagination is `limit`/`offset`, sortable by `created_at` — no `search` param
   applied unless `search.length >= 2` (`MIN_SEARCH_LENGTH` in
   `NotificationCenter.jsx`), debounced 600ms.
+
+## Read/unread state (`is_seen`) — no visible DOM indicator today
+Rows carry `is_seen` in the API response but there is NO dot/bold/badge in
+the rendered table distinguishing read from unread (only a subtle
+`text.primary` vs `text.secondary` color on the date cell — not usable as a
+reliable test signal). **Verify read/unread state via the list-fetch
+response body's `is_seen` field, not a DOM attribute check**, unless/until a
+future case adds a `data-is-seen` (or similar) attribute to the row.
+
+## Selection + bulk mark-read/unread (ELITEA-2259, confirmed live 2026-08-04)
+- `NotificationTable.jsx` uses `useRowSelection` for per-row checkboxes
+  (`GridTableRow`'s `Checkbox.BaseCheckbox`, `onChange` → `handleSelectRow`).
+- The toolbar (`NotificationTableToolbar.jsx`) has **ONE mark-toggle button**,
+  not two — its accessible name flips between `"Mark selected as read"` and
+  `"Mark selected as unread"` based on
+  `shouldMarkAsRead = rows.some(row => selectedRowIds.has(row.id) &&
+  !row.is_seen)` (true if ANY currently-selected row is unread). Case text
+  describing "two buttons" is a documented clarification (issue #1166), not
+  a defect — the single toggle is correct, testable UX.
+- `GridTableRow.jsx` ALREADY accepts a `checkboxTestId` prop (destructured,
+  wired onto `Checkbox.BaseCheckbox`'s `data-testid`) — `NotificationTable.jsx`
+  doesn't pass one yet. Precedent for the dynamic value shape:
+  `ArtifactTable.jsx:527` uses `checkboxTestId={`artifacts-file-checkbox-${row.id}`}`;
+  the notification analogue is `notification-checkbox-${row.id}`.
+- The toolbar's mark-toggle `BaseBtn` has only a state-dependent `aria-label`
+  today, no `data-testid` — needs one NEW static testid
+  (`notification-mark-toggle-button`) whose value must NOT itself flip with
+  state (only the button's accessible name/label does).
+- Success toasts: `"Notifications marked as read"` / `"Notifications marked
+  as unread"` (exact strings, from `toastSuccess()` call sites) — use the
+  existing app-wide generic `toast-message` testid (already used by
+  `artifacts_page.py`), no new toast testid needed.
+- 61 of 67 real notifications on the test account are unread as of
+  2026-08-04 — comfortably enough for any case needing "N unread
+  notifications" without seeding; discover ids dynamically from the list
+  response rather than hardcoding, since this is real growing DEV history.
