@@ -15,3 +15,4 @@
 - [EliteaUI commits need [EL-NNNN]](eliteaui_testid_commit_message_format.md) — commitlint rejects [ELITEA-NNNN]
 - [Priority marker drift](priority_marker_drift_afs_vs_pytest_mark.md) — grep AFS Priority vs @pytest.mark.p*
 - [Open cross-cutting defects](open_cross_cutting_defects.md) — #524, #694, bucket-fixture 404, #551/#585, #607
+- [API seed project mismatch](api_pipeline_seed_project_mismatch.md) — standalone scripts can miss the browser's active project
