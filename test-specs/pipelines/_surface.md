@@ -782,3 +782,48 @@ is a legitimate empty state, not an error state).
   interpolated string returns NO hits even though the testid genuinely
   renders. Grep the template PREFIX or read the source component directly.
   Full detail: `l2_pipeline-state-panel-default-and-custom-variables_ELITEA-2042.md`.
+
+## Invalid YAML in the editor is rejected server-side with a clear error, and the app-wide toast testids need no EliteaUI work (confirmed live, 2026-08-04/05, ELITEA-2068)
+
+- Editing a `transition: END` line to remove the colon and append random
+  text (`transition END invalid_no_colon_xyz123`) via `edit_yaml_line()` and
+  clicking Save fires `PUT .../application/prompt_lib/{project}/{id}`, which
+  returns **400** with body containing `"Invalid pipeline YAML data"` (a
+  Pydantic-style validation error from the backend's own YAML parse attempt).
+- **`edit_yaml_line()`-via-real-keystrokes gotcha — an unterminated quote is
+  NOT a reliable way to break YAML through this method.** CodeMirror's YAML
+  mode has an auto-close-brackets/quotes extension: typing `transition:
+  "END` through `edit_yaml_line()`'s real `keyboard.type()` call auto-inserts
+  the matching closing `"`, silently producing the VALID quoted scalar
+  `transition: "END"` — the pipeline then SAVES SUCCESSFULLY (200, success
+  toast), not the expected 400. This was caught the hard way: an ad-hoc
+  Playwright-MCP exploration session that typed the same text via a raw
+  `.fill()` call (no real keystrokes → no auto-close) looked invalid, but the
+  actual page-object method's `keyboard.type()` path auto-closed it —
+  exploration technique and production code path disagreed. **Colon removal
+  (no bracket/quote character) is not susceptible and is the reliable
+  invalid-YAML technique for this editor** — matches the case text's own
+  suggested example ("remove a colon, add random text").
+- The Flow canvas does NOT error or blank out when switched to with invalid
+  YAML pending — it keeps rendering the last-known-valid graph. The error only
+  surfaces on Save attempt, via the app-wide toast, not on the view switch
+  itself.
+- The Flow canvas does NOT error or blank out when switched to with invalid
+  YAML pending — it keeps rendering the last-known-valid graph. The error only
+  surfaces on Save attempt, via the app-wide toast, not on the view switch
+  itself.
+- The app-wide toast (`Toast.jsx`, `src/components/Toast.jsx`) already carries
+  `data-testid="toast-alert"` (root, + `data-severity` state attribute),
+  `data-testid="toast-message"` (text body), and `data-testid=
+  "toast-dismiss-button"` — confirmed pre-existing, used elsewhere (see
+  `ChatPage.toast_alert`/`toast_message`/`TOAST_ALERT_SEVERITY`). No EliteaUI
+  testid work needed to assert an error toast from ANY page — just declare a
+  page-object field for the same testid on that page (repo precedent: each
+  page declares its own field for this shared component, per
+  `ChatPage`/`ArtifactsPage`/`SkillsListPage`/`SkillDetailPage`).
+- After a failed save, Save/Discard remain enabled (edit stays pending,
+  un-reverted) — confirming the user can fix the YAML and retry, or Discard to
+  revert; the server genuinely rejects the write (verified via
+  `PipelineAPI.get_pipeline()` — `instructions` unchanged post-attempt), it
+  isn't a silent partial persist.
+  Full detail: `l3_pipeline-yaml-editor-invalid-syntax_ELITEA-2068.md`.

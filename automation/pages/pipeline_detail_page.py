@@ -108,6 +108,26 @@ class PipelineDetailPage(PipelineFormPage):
     # yaml_lines above never resolved any elements).
     YAML_LINE_SELECTOR = ".cm-line"
 
+    # App-wide toast (Toast.jsx, src/components/Toast.jsx) — shared component,
+    # testids pre-exist and need no EliteaUI change (confirmed live, ELITEA-2068).
+    # Each page object declares its own field for this shared component per
+    # existing repo precedent (ChatPage.toast_alert / ArtifactsPage.
+    # success_toast_message / SkillDetailPage.version_toast_message, etc.).
+    toast_alert = LocatorDescriptor(
+        testid="toast-alert",
+        description="App-wide toast Alert root; carries data-severity (info/warning/error/success).",
+    )
+
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide toast message text body.",
+    )
+
+    # Severity-scoped toast alert selector — testid identity + data-severity
+    # state filter, the compliant shape for a state-dependent assertion
+    # (mirrors ChatPage.TOAST_ALERT_SEVERITY).
+    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
+
     chat_input = LocatorDescriptor(
         testid="chat-message-input",
         fallback=lambda page: page.locator('textarea#standard-multiline-static'),
@@ -3013,6 +3033,56 @@ class PipelineDetailPage(PipelineFormPage):
         ) as response_info:
             self.save_button.evaluate("el => el.click()")
         return response_info.value.json()
+
+    def save_and_wait_for_error_response(
+        self, project_id: str, pipeline_id: int, timeout: int = 15000
+    ) -> dict:
+        """Click Save and wait for the update PUT's FAILING (4xx/5xx) response.
+
+        Mirrors ``save_and_wait_for_update`` (ELITEA-1954) but matches on a
+        failing status instead of ``201`` — for ELITEA-2068's invalid-YAML
+        case, where clicking Save with unparseable YAML in the editor is
+        expected to be rejected server-side rather than silently succeed.
+
+        Args:
+            project_id: Project id, used to scope the response URL match.
+            pipeline_id: The pipeline's numeric id.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            dict with ``status`` (int) and ``body`` (str — raw response
+            text, not assumed-JSON: the error body is a Pydantic-style
+            validation error confirmed live, but reading it as text and
+            letting the caller substring-match is more robust than
+            assuming a fixed schema).
+        """
+        with self.page.expect_response(
+            lambda r: f"/application/prompt_lib/{project_id}/{pipeline_id}" in r.url
+            and r.request.method == "PUT"
+            and r.status >= 400,
+            timeout=timeout,
+        ) as response_info:
+            self.save_button.evaluate("el => el.click()")
+        response = response_info.value
+        return {"status": response.status, "body": response.text()}
+
+    def get_toast_alert(self, severity: str):
+        """Return the toast Alert locator scoped to a specific data-severity value.
+
+        Testid identity (``toast-alert``) + a ``data-severity`` state filter
+        — the compliant shape for a state-dependent assertion (state is
+        never encoded in the testid itself). Mirrors
+        ``ChatPage.get_toast_alert``.
+
+        Args:
+            severity: e.g. "warning", "info", "error", "success".
+        """
+        return self.page.locator(self.TOAST_ALERT_SEVERITY.format(severity))
+
+    def get_toast_text(self, timeout: int = 10000) -> str:
+        """Wait for the app-wide toast message to become visible and return its text."""
+        self.toast_message.wait_for(state="visible", timeout=timeout)
+        return (self.toast_message.text_content() or "").strip()
 
     # ------------------------------------------------------------------
     # General/Welcome/Chat-starters/Advanced/Editor-Notes fields (ELITEA-2021)
