@@ -160,6 +160,29 @@ silently writing as the wrong identity. Verify identity with one manual
 `gh issue create` test call before kicking off a large parallel batch, and
 check the returned URL is on the expected repo/account.
 
+## Bulk-write pitfall: 120s foreground timeout SIGKILLs mid-loop with an EMPTY log
+
+**Confirmed 2026-08-04**, closing out a 39-case wave: a Python loop issuing
+~78 sequential `gh` write calls (per-case closure comment + board
+`item-edit`) inside one Bash tool call hit the 120s foreground timeout and
+was killed — but stdout had been redirected to a log file and **never
+flushed before the SIGKILL, so the log came back completely empty**, with
+no way to tell from it how far the loop got. Most of the calls had in fact
+already landed against the real API by the time it died.
+
+- **Don't trust an empty log as "nothing happened."** After any such
+  timeout, re-verify actual state for every target (`gh issue view --json
+  comments`, `gh project item-list`) before assuming failure — a naive
+  blind retry-of-everything would have double-posted most of the closure
+  comments here (found: 38/39 comments had landed, 38/39 board moves had
+  landed, only the very last case in dict-iteration-order was short).
+- **For >~15 sequential `gh` write calls**, either run the loop with
+  `run_in_background: true` (no 120s cap) or `print(..., flush=True)`
+  after each call so a kill still leaves a readable partial log.
+- Same underlying family as the `returncode==0`-is-not-proof-of-success and
+  `item-edit`-exits-silently lessons below — add "the whole process can die
+  before its own log hits disk" as a third failure mode in this class.
+
 ## Summary/tracking issue + board Done
 
 A single "intake sync" issue (not routed to the pipeline) documents the
