@@ -168,6 +168,18 @@ class PipelineDetailPage(PipelineFormPage):
         )
     )
 
+    # Added via add-data-testid for ELITEA-2037 (widened BaseToolNode.jsx's
+    # interruptAfterTestId/structuredOutputTestId from Toolkit-only to every
+    # node type in TEST_ID_PREFIX_BY_NODE_TYPE — EliteaAI/EliteaUI@00768a44).
+    mcp_node_interrupt_after_toggle = LocatorDescriptor(
+        testid="pipeline-mcp-node-interrupt-after-toggle",
+        description="MCP node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
+    )
+    mcp_node_structured_output_toggle = LocatorDescriptor(
+        testid="pipeline-mcp-node-structured-output-toggle",
+        description="MCP node's 'Structured output' switch (CommonInterruptSettings.jsx)"
+    )
+
     # LLM node inline config (ELITEA-2004). Testid-only, added via
     # add-data-testid — LLMNode.jsx call sites only (SimpleLLMInputs is
     # shared with Code/Printer nodes, which stay untagged — untested node
@@ -2193,6 +2205,47 @@ class PipelineDetailPage(PipelineFormPage):
         text = (heading.text_content() or "").strip()
         return text == f"Input mapping (required {required_count})"
 
+    def open_mcp_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the MCP node's tool-agnostic Input dropdown.
+
+        Mirrors ``open_toolkit_node_input_select`` / ``open_llm_node_input_select``
+        — same underlying multi-select component (ELITEA-2037).
+        """
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.mcp_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_mcp_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the MCP node's Input dropdown and select *variable_name*.
+
+        The underlying control is ``role="listbox" aria-multiselectable="true"``
+        (AFS step 10 note) — selecting doesn't auto-close the popover, so this
+        closes it via Escape same as the sibling LLM/Toolkit node methods.
+        """
+        self.open_mcp_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_mcp_node_input_value(self) -> str:
+        """Read the MCP node's currently-selected Input display text."""
+        text = (self.mcp_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_mcp_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the MCP node's tool-agnostic Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.mcp_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_mcp_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the MCP node's Output dropdown and select *variable_name*."""
+        self.open_mcp_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_mcp_node_output_value(self) -> str:
+        """Read the MCP node's currently-selected Output display text."""
+        text = (self.mcp_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
     # ------------------------------------------------------------------
     # LLM node inline config (ELITEA-2004)
     # ------------------------------------------------------------------
@@ -2390,6 +2443,17 @@ class PipelineDetailPage(PipelineFormPage):
             return True
         except Exception:
             return False
+
+    def is_node_interrupt_before_toggle_disabled(self, node_id: str, timeout: int = 5000) -> bool:
+        """Return whether *node_id*'s 'Interrupt before' switch is disabled.
+
+        Sibling of :meth:`is_node_interrupt_before_toggle_visible` (ELITEA-2037)
+        — CommonInterruptSettings.jsx disables this toggle when the node is the
+        pipeline's entry point (``entry_point === id`` gating).
+        """
+        toggle = self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id))
+        toggle.wait_for(state="visible", timeout=timeout)
+        return toggle.is_disabled()
 
     # ------------------------------------------------------------------
     # Toolkit node inline config (ELITEA-2010)

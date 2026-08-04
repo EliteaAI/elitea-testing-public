@@ -35,7 +35,8 @@
    - **Verify**: the popup's listbox item (`[data-testid="select-option-{mcp_name}"]`) is clicked; the popup stays open (multi-attach pattern) — dismiss with `Escape` or a click outside.
 4. Verify the MCP appears attached in the Tools section.
    - **Verify**: an attached-item card (`agent-toolkit-card`) renders with the MCP's name and a "Show tools" affordance. **CLARIFICATION (case-text drift, filed EliteaAI/elitea-testing-public#1149, sibling of #530)**: the case text says "listed under the MCP sub-tab" — the live product has **no MCP sub-tab**. The Toolkit/MCP/Agent/Pipeline buttons are 4 independent ADD triggers, not view-filter tabs; every attached item (any type) renders in ONE flat list sharing the single testid `agent-toolkit-card` (confirmed via `document.querySelectorAll('[data-testid="agent-toolkit-card"]')` → exactly 1 after attaching 1 MCP). Assert the card's presence/name, not a "sub-tab active" state that doesn't exist.
-   - **Also confirmed (network)**: unlike the AGENT-level Tools section (#530: MCP attach auto-saves via an immediate `PATCH`), the PIPELINE-level Tools attach does **not** auto-persist — no persistence request fires on attach (only `GET .../toolkits/…` / `GET .../tools/…` listing calls). The attachment is persisted together with the rest of the pipeline's changes by the pipeline-level Save (step 11) — so case step 11 correctly covers the Tools-section attachment too; only step 4's "sub-tab" wording is stale.
+   - **CORRECTED (network, fix-round finding — this AFS's original claim below was wrong)**: like the AGENT-level Tools section (#530: MCP attach auto-saves via an immediate `PATCH`), the PIPELINE-level Tools attach **also** auto-persists — selecting the MCP in the popper fires an immediate `PATCH .../tool/prompt_lib/{project_id}/` returning `201 Created`, same mechanism as agents, not a pipeline-specific difference. Re-verified live (2026-08-04, foreground pytest run of this case's own spec: `test_mcp_node_fresh_attach` PASSED, 40.5s) — the implementation's `PipelineDetailPage.select_mcp_in_popper()` (pre-existing, reused from ELITEA-1955) hard-blocks on `page.expect_response(... method == "PATCH" and status == 201 ...)` before returning; if no such PATCH fired, the call would time out and the step would fail, not silently pass. The already-merged ELITEA-1955 sibling test corroborates the same wait in the same pipeline-Tools-attach context. **This AFS's original text (below, and § Network Behavior) plus clarification issue EliteaAI/elitea-testing-public#1149's "no persistence request fires on attach" paragraph were both incorrect and have been corrected here; #1149 carries a follow-up comment.** The pipeline-level Save (step 11) still ALSO persists the Tools-section attachment as part of the full node/pipeline payload (both true: attach fires its own immediate PATCH, AND the subsequent Save's PUT re-persists the same attachment state as part of the whole pipeline) — case step 11 remains correctly covered; only step 4's "sub-tab" wording (separately clarified above) was stale, and now this network claim is too.
+   - ~~Original (incorrect) claim, kept for audit trail: "unlike the AGENT-level Tools section (#530: MCP attach auto-saves via an immediate `PATCH`), the PIPELINE-level Tools attach does **not** auto-persist — no persistence request fires on attach (only `GET .../toolkits/…` / `GET .../tools/…` listing calls)."~~
 5. Click "Add node" on the canvas (`pipeline-add-node-button`), then select "MCP" from the menu (`pipeline-add-node-menu-item-mcp`).
    - **Verify**: an "MCP 1" node appears on the canvas (ReactFlow wrapper `[data-testid="rf__node-MCP 1"]`), auto-wired as the pipeline's entry point (it is the first/only node) with no auto-created edge to `END` (matches the digest's confirmed "adding a node never auto-wires an edge" finding).
 6. Observe the MCP node's config fields, inline/expanded on the canvas card (no click-to-open action — same always-expanded pattern as every other node type).
@@ -88,7 +89,7 @@
 - Step 6 additionally asserts the **absence** of Tool select and Input-mapping accordions on the freshly-added, unconfigured node (`to_have_count(0)` / not-in-DOM check) before step 7 — *added because a naive implementer might assert only presence-after-configuration and silently skip verifying the pre-Toolkit-select empty state, which is exactly the state a future regression (e.g. Tool select rendering with stale/wrong options before a Toolkit is chosen) would need to be caught by.*
 - Step 10 notes the Input select's `aria-multiselectable="true"` nature — *added because assuming plain single-select semantics could produce a brittle locator/assertion if the implementer copies patterns from a genuinely single-select field elsewhere in the codebase.*
 - No console-error assertion was in the original case text; added it to step 11 and throughout as a side-channel check — *standard practice per this project's `test-case-analysis` skill; zero console errors were observed across the whole flow (steps 2–12), no defect to report.*
-- Network-behavior note on step 4 (no auto-save-on-attach for pipelines, unlike agents) — *added because the sibling AGENT-level case (ELITEA-1950/#530) documents different persistence timing; an implementer reading that precedent without re-verifying live for pipelines could wrongly assert an immediate PATCH that never fires here.*
+- Network-behavior note on step 4 — **CORRECTED (fix round, 2026-08-04): pipelines auto-save-on-attach via an immediate PATCH exactly like agents; the original note here claimed the opposite ("no auto-save-on-attach for pipelines, unlike agents") and that claim was wrong** — re-verified live via this case's own passing spec (`select_mcp_in_popper()`'s hard-blocking PATCH-201 wait, corroborated by the merged ELITEA-1955 sibling using the identical wait). See Test Steps step 4 and § Network Behavior for the corrected text and audit trail of the original (incorrect) claim.
 
 ## Cleanup
 
@@ -125,7 +126,7 @@
 
 ## Network Behavior
 - `PUT ${ELITEA_API_BASE}/elitea_core/application/prompt_lib/${PROJECT_ID}/{pipeline_id}` — fires on the pipeline Save click (step 11); `201 Created` on success; this single request persists BOTH the Tools-section MCP attachment AND the node's Toolkit/Tool/Input/Output/Input-mapping state — wait for this response before asserting reload persistence, not a fixed timeout.
-- No request fires immediately on the MCP-attach popup selection (step 3/4) — only `GET .../toolkits/prompt_lib/{project}` / `GET .../tools/prompt_lib/{project}?...&mcp=true` (listing calls that populate the popup). Contrast with the AGENT-level Tools section (#530), which auto-persists via an immediate `PATCH`.
+- **CORRECTED (fix-round finding, 2026-08-04):** `PATCH ${ELITEA_API_BASE}/elitea_core/tool/prompt_lib/${PROJECT_ID}/` — fires immediately on the MCP-attach popup selection (step 3/4), `201 Created` on success; this is the SAME immediate-auto-persist mechanism as the AGENT-level Tools section (#530), not a pipeline-specific "no persistence" difference. `GET .../toolkits/prompt_lib/{project}` / `GET .../tools/prompt_lib/{project}?...&mcp=true` (listing calls that populate the popup) also fire, but are not the whole story. Re-verified live 2026-08-04 (this case's own spec passed with `select_mcp_in_popper()`'s hard-blocking `page.expect_response(... PATCH ... status == 201 ...)` wait); corroborated by the already-merged ELITEA-1955 sibling using the identical wait in the identical context. ~~Original (incorrect) claim: "No request fires immediately on the MCP-attach popup selection... only GET calls... Contrast with the AGENT-level Tools section (#530), which auto-persists via an immediate PATCH."~~ Both this line and clarification issue EliteaAI/elitea-testing-public#1149 repeated the incorrect claim; #1149 has a follow-up correction comment.
 - `GET ${ELITEA_API_BASE}/elitea_core/toolkit_available_tools/prompt_lib/${PROJECT_ID}/{toolkit_id}` — fires once the attached MCP toolkit is selected in the node's Toolkit dropdown; returns the toolkit's tool list that populates the Tool dropdown.
 - `GET ${ELITEA_API_BASE}/elitea_core/application/prompt_lib/${PROJECT_ID}/{pipeline_id}` — fires on page load/reload (step 12); confirms persisted node config is what the Flow-view canvas renders from.
 
@@ -134,11 +135,43 @@
 **None found in the MCP-node fresh-attach/add/configure/persist flow itself.** All 12 case steps produced the expected result once the two documented CLARIFICATIONs (Tools "sub-tab" wording, conditional Tool/Input-mapping rendering) are accounted for: attach, add-node, Toolkit/Tool selection, Input-mapping fill, Input/Output selection, save, and full-reload persistence all worked correctly with zero console errors across the entire flow.
 
 One clarification filed:
-- **[INFO] Pipeline Tools section has no "MCP sub-tab"** — filed as `EliteaAI/elitea-testing-public#1149` (label `question`, sibling of `#530` which covers the same pattern on the AGENT-level Tools section). See step 4 and Coverage Map above for full detail.
+- **[INFO] Pipeline Tools section has no "MCP sub-tab"** — filed as `EliteaAI/elitea-testing-public#1149` (label `question`, sibling of `#530` which covers the same pattern on the AGENT-level Tools section). See step 4 and Coverage Map above for full detail. **Fix-round correction (2026-08-04):** that issue's body also carried this AFS's original (incorrect) "no persistence request fires on attach, only GET calls" network claim — corrected via a follow-up comment on #1149; the issue's still-valid "no MCP sub-tab" finding is unaffected.
 
 ## Blocked Steps
 
 None. All 12 case steps were executed to completion against the live local environment.
+
+## Implementer Notes (added during automation, ELITEA-2037)
+
+- **2 of the 4 flagged `add-data-testid` gaps were closed** — the MCP node's
+  "Interrupt after" toggle and "Structured output" toggle are both asserted
+  by this test's step 6 (visibility AND disabled/enabled state, per this
+  AFS's own "confirmed live" notes), so both were widened from Toolkit-only
+  to every `nodeType` in `BaseToolNode.jsx`'s `TEST_ID_PREFIX_BY_NODE_TYPE`
+  map (`interruptAfterTestId`/`structuredOutputTestId` now resolve off
+  `testIdPrefix` directly instead of a Toolkit-only ternary) —
+  `EliteaAI/EliteaUI@00768a44` on `automation/testids`. New page-object
+  fields: `mcp_node_interrupt_after_toggle`, `mcp_node_structured_output_toggle`;
+  new method: `is_node_interrupt_before_toggle_disabled(node_id)`.
+- **The other 2 gaps (Input-mapping row "Type" select, "optional N" heading)
+  were left un-added**, per this AFS's own stated allowance ("leave as a
+  documented, testid-ready-but-unexercised gap and note it in the Run
+  Report"): this test's step 9 leaves Type at its default `Fixed` (never
+  interacts with the Type select — the Coverage Map's own step-9 "asserted
+  where" already narrows to "typed Value text" only), and `ask_question` has
+  0 optional params, so the optional-heading accordion never renders for
+  this test's data. Per `.agents/testing.md` § Locator policy ("referenced" =
+  called on the test's actual code path), adding either testid now would be
+  an unreferenced, coverage-metric-corrupting addition — left for whichever
+  future MCP-node case actually exercises Type-switching or an
+  optional-param tool.
+- New page-object methods added for the MCP node's tool-agnostic Input/Output
+  selects (`open_mcp_node_input_select`, `select_mcp_node_input_variable`,
+  `get_mcp_node_input_value`, and the Output equivalents) — these existed for
+  the LLM/Toolkit node siblings but not yet for MCP; this case is the first
+  MCP-node test to touch Input/Output (ELITEA-1954/1955 didn't).
+- Test file: `automation/tests/ui/pipelines/test_pipeline_mcp_node_fresh_attach.py`.
+  Green on first local run (41.6s, headless).
 
 ## Automation Hints
 

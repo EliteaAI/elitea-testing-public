@@ -453,15 +453,37 @@ re-derive.
   `TEST_ID_PREFIX_BY_NODE_TYPE` mechanism instead**, same caveat as
   `.agents/workflow.md`'s closure-record two-stage-grep note for prop
   indirection.
-- **Pipeline-level "+MCP" attach (`agent-add-mcp-button`, Tools section) does
-  NOT auto-persist** — unlike the AGENT-level Tools section
-  (`EliteaAI/elitea-testing-public#530`), no request fires on MCP-attach
-  selection (only `GET .../toolkits/…` / `GET .../tools/…?mcp=true` listing
-  calls). The attachment is persisted together with the rest of the node
-  config by the pipeline's own Save (confirmed: `PUT
-  .../application/prompt_lib/{project}/{pipeline_id}` → `201` after Save,
-  reload shows the attachment survived). Filed as a sibling clarification:
-  `EliteaAI/elitea-testing-public#1149` (of `#530`).
+- **CORRECTED (2026-08-04, ELITEA-2037 fix round 2): pipeline-level "+MCP"
+  attach (`agent-add-mcp-button`, Tools section) DOES auto-persist** — like
+  the AGENT-level Tools section (`EliteaAI/elitea-testing-public#530`),
+  selecting the MCP in the popper fires an immediate `PATCH
+  .../elitea_core/tool/prompt_lib/{project_id}/` → `201 Created`, the SAME
+  auto-persist mechanism as agents, not a pipeline-specific difference. `GET
+  .../toolkits/…` / `GET .../tools/…?mcp=true` (listing calls that populate
+  the popup) also fire, but are not the whole story. Re-verified live via 2
+  foreground pytest runs of the case's own spec
+  (`test_pipeline_mcp_node_fresh_attach.py::test_mcp_node_fresh_attach`, both
+  green) — `PipelineDetailPage.select_mcp_in_popper()` (pre-existing, reused
+  from ELITEA-1955) hard-blocks on `page.expect_response(... method ==
+  "PATCH" and status == 201 ...)` before returning, so a passing run is
+  itself proof the PATCH fired; corroborated by the already-merged
+  ELITEA-1955 sibling test using the identical wait in the identical
+  context. The pipeline's own Save (`PUT
+  .../application/prompt_lib/{project}/{pipeline_id}` → `201`) still ALSO
+  re-persists the Tools-section attachment as part of the whole
+  node/pipeline payload — both true: attach fires its own immediate PATCH,
+  AND Save's PUT re-persists the same state. Filed as a sibling
+  clarification (unaffected by this correction — it only covered the
+  missing MCP sub-tab, not persistence timing):
+  `EliteaAI/elitea-testing-public#1149` (of `#530`); #1149 carries a
+  follow-up comment correcting the network claim its body originally
+  repeated. ~~Original (incorrect) claim, kept for audit trail: "does NOT
+  auto-persist — unlike the AGENT-level Tools section (#530), no request
+  fires on MCP-attach selection (only GET .../toolkits/… /
+  GET .../tools/…?mcp=true listing calls). The attachment is persisted
+  together with the rest of the node config by the pipeline's own Save."~~
+  See `l2_pipeline-mcp-node-integration-fresh-attach_ELITEA-2037.md` § Network
+  Behavior for the full re-verification detail.
 - **No "MCP sub-tab" exists** — the Toolkit/MCP/Agent/Pipeline buttons in the
   Tools section are 4 independent ADD triggers (poppers), not view-filter
   tabs. Every attached item, whatever its type, renders in ONE flat list
