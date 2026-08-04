@@ -125,6 +125,20 @@ class TestEditTableCanvasModifyCellAndSave:
                 f"Expected {ORIGINAL_VALUE!r} to appear in the generated table, "
                 f"got: {pre_edit_companies!r}"
             )
+            # The AI-generated company name is matched by SUBSTRING everywhere
+            # else in this test (cell/row lookup below uses :has-text()) — it
+            # may render as "Microsoft" or a longer variant like "Microsoft
+            # Corporation". Capture the ACTUAL matched string here so Step 10's
+            # untouched-rows comparison subtracts the real edited value, not
+            # the literal ORIGINAL_VALUE constant. Root cause of an
+            # intermittent gate failure (2026-08-04): when the AI generated
+            # "Microsoft Corporation", `set(pre_edit_companies) - {"Microsoft"}`
+            # (exact-match subtraction) silently failed to remove it, so
+            # expected_unchanged kept the very row that had been edited away —
+            # a test-code bug, not a product defect or a DOM-read gap (both
+            # pre/post reads asserted `len(...) == 10` clean; the mismatch was
+            # purely in the set arithmetic, not in what was rendered).
+            edited_company_name = next(v for v in pre_edit_companies if ORIGINAL_VALUE in v)
 
             chat.click_table_edit_icon(timeout=UI_ELEMENT_TIMEOUT)
             canvas.wait_for_open(timeout=UI_ELEMENT_TIMEOUT)
@@ -220,7 +234,12 @@ class TestEditTableCanvasModifyCellAndSave:
         with allure.step(
             "Step 10 — Verify every other row's Company value is unchanged"
         ):
-            expected_unchanged = set(pre_edit_companies) - {ORIGINAL_VALUE}
+            # Subtract the ACTUAL matched pre-edit string (edited_company_name),
+            # not the literal ORIGINAL_VALUE constant — the AI may have named
+            # the row "Microsoft Corporation" (or another variant containing
+            # ORIGINAL_VALUE), and an exact-match subtraction against the bare
+            # constant would leave that row stranded in expected_unchanged.
+            expected_unchanged = set(pre_edit_companies) - {edited_company_name}
             actual_unchanged = set(post_edit_companies) - {EDITED_VALUE}
             assert actual_unchanged == expected_unchanged, (
                 f"Non-edited rows should be untouched.\n"
