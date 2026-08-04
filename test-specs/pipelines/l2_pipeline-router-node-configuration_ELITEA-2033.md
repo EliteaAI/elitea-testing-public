@@ -221,25 +221,43 @@ Defects Found During Exploration below.
 
 ## Known Defects Found During Exploration
 
-**None found in the Router node's configuration/persistence/edge-wiring
-behavior itself** — Condition, Routes (both routes edges), Input, and
-Default output (including its own distinct edge) all configure and persist
-correctly through Save + a real UI reload, with zero console errors.
+**Amended by the implementer (2026-08-04):** the analyst session's manual
+exploration found no issue with Default output, but implementer automation
+(fast, deterministic Playwright clicks) surfaced a real, reproducible product
+defect in exactly that field — filed as
+[EliteaAI/elitea-testing-public#1036](https://github.com/EliteaAI/elitea-testing-public/issues/1036):
 
-One case-text drift was identified and should be filed as a CLARIFICATION
-(not a bug), per the reverse-masking guard:
+- **[MAJOR] Router node "Default output" silently fails to persist when set
+  to "END" on a freshly-added node.** A fresh Router node's Default output
+  select already DISPLAYS "END" via a client-side fallback
+  (`yamlNode?.default_output || 'END'` in `RouterNode.jsx`). MUI's own
+  `SelectInput.js` only fires `onChange` when the clicked option's value
+  DIFFERS from the Select's current `value` prop — so clicking "END" (this
+  AFS's own step 6, deliberately chosen to "re-confirm the already-selected
+  option") is a silent no-op: `default_output` never gets written and the
+  canvas edge never renders. Deterministic — reproduces on every attempt.
+  Automated as a sanctioned-RED via this project's `soft_failures` +
+  `pytest.fail()` shape (see
+  `automation/tests/ui/pipelines/test_pipeline_router_node_configuration.py`);
+  every other assertion (Condition, both Routes edges, Input, Save, and — in
+  this implementer's testing — the post-reload persistence check, which
+  passed cleanly in every run despite the pre-Save edge check failing)
+  passes cleanly.
+
+Condition, Routes (both routes edges), and Input all configure and persist
+correctly through Save + a real UI reload, with zero console errors — the
+analyst's finding stands for every OTHER field.
+
+One case-text drift was also identified and filed as a CLARIFICATION (not a
+bug), per the reverse-masking guard — now filed as
+[EliteaAI/elitea-testing-public#1144](https://github.com/EliteaAI/elitea-testing-public/issues/1144):
 
 - **[INFO] Case precondition/step-4 wording ("target nodes for routing
   exist" / "add route values") doesn't match how the live UI's Routes field
   actually works** — it's a picklist of existing node ids, not a freeform
   tag input, so target nodes must be pre-named to match the condition's
-  literal output values. Recommend filing as an
-  `EliteaAI/elitea-testing-public` `question`-labelled clarification (same
-  shape as `#1104`/`#1136`/`#1137` filed against sibling pipeline cases)
-  so the TMS case text can be corrected to spell out the node-rename setup
-  step. **Not yet filed by this analyst session** — see Automation Hints /
-  handoff note; the implementer or lead should file it alongside PR
-  creation, quoting this AFS's Coverage Map clarification as the body.
+  literal output values (same shape as `#1104`/`#1136`/`#1137` filed against
+  sibling pipeline cases).
 
 ## Blocked Steps
 
