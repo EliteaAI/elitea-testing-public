@@ -782,3 +782,32 @@ is a legitimate empty state, not an error state).
   interpolated string returns NO hits even though the testid genuinely
   renders. Grep the template PREFIX or read the source component directly.
   Full detail: `l2_pipeline-state-panel-default-and-custom-variables_ELITEA-2042.md`.
+
+## Invalid YAML in the editor is rejected server-side with a clear error, and the app-wide toast testids need no EliteaUI work (confirmed live, 2026-08-04, ELITEA-2068)
+
+- Editing a `transition: END` line to an unterminated-quote form
+  (`transition: "END`) via `edit_yaml_line()` and clicking Save fires `PUT
+  .../application/prompt_lib/{project}/{id}`, which returns **400** with body
+  containing `"Invalid pipeline YAML data"` (full message: `Value error,
+  Invalid pipeline YAML data: while scanning a quoted scalar in "<unicode
+  string>", line N, column M: …` — a Pydantic-style validation error from the
+  backend's own YAML parse attempt).
+- The Flow canvas does NOT error or blank out when switched to with invalid
+  YAML pending — it keeps rendering the last-known-valid graph. The error only
+  surfaces on Save attempt, via the app-wide toast, not on the view switch
+  itself.
+- The app-wide toast (`Toast.jsx`, `src/components/Toast.jsx`) already carries
+  `data-testid="toast-alert"` (root, + `data-severity` state attribute),
+  `data-testid="toast-message"` (text body), and `data-testid=
+  "toast-dismiss-button"` — confirmed pre-existing, used elsewhere (see
+  `ChatPage.toast_alert`/`toast_message`/`TOAST_ALERT_SEVERITY`). No EliteaUI
+  testid work needed to assert an error toast from ANY page — just declare a
+  page-object field for the same testid on that page (repo precedent: each
+  page declares its own field for this shared component, per
+  `ChatPage`/`ArtifactsPage`/`SkillsListPage`/`SkillDetailPage`).
+- After a failed save, Save/Discard remain enabled (edit stays pending,
+  un-reverted) — confirming the user can fix the YAML and retry, or Discard to
+  revert; the server genuinely rejects the write (verified via
+  `PipelineAPI.get_pipeline()` — `instructions` unchanged post-attempt), it
+  isn't a silent partial persist.
+  Full detail: `l3_pipeline-yaml-editor-invalid-syntax_ELITEA-2068.md`.
