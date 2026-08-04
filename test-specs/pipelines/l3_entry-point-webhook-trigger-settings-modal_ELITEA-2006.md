@@ -139,7 +139,7 @@
 | Secret Value input | `dialog.locator('input[type="text"]').nth(1)` (second non-radio text input, once rendered) — value is masked dots by default | **NO `data-testid`.** Same `inputProps={{'data-testid': ...}}` fix as the URL field. Recommended: `pipeline-webhook-secret-input`. |
 | Secret Value eye/copy/refresh buttons | 3 `IconButton`s in DOM order after the Secret input: `VisibilityIcon`/`VisibilityOffIcon` (toggle), `ContentCopyIcon` (copy), `RefreshIcon` (regenerate) | **NO `data-testid` on any of the 3.** Recommended: `pipeline-webhook-secret-toggle-button`, `pipeline-webhook-secret-copy-button`, `pipeline-webhook-secret-regenerate-button`. |
 | Example Request code block + copy button | `dialog.locator('pre')` for the code text; adjacent `IconButton` with `ContentCopyIcon` for copy | **NO `data-testid` on either.** Recommended: `pipeline-webhook-example-request-block`, `pipeline-webhook-example-request-copy-button`. |
-| Cancel / Apply buttons | `dialog.get_by_role("button", name="Cancel"/"Apply")` — confirmed reliable by visible text | `Modal.BaseModal` (`EliteaUI/src/[fsd]/shared/ui/modal/BaseModal.jsx`) already accepts `cancelButtonTestId`/`confirmButtonTestId` props (confirmed via source read) — recommend wiring `pipeline-webhook-modal-cancel-button`/`pipeline-webhook-modal-apply-button` at the call site rather than relying on visible-text role queries long-term, though the text-based query is a safe interim fallback (button labels are static, not i18n-variable in this codebase today). |
+| Cancel / Apply buttons | `dialog.get_by_role("button", name="Cancel"/"Apply")` — confirmed reliable by visible text | **CORRECTED 2026-08-04 (post implementation):** `PipelineWebhookModal.jsx` passes a custom `actions={<Box>...</Box>}` block to `Modal.BaseModal`, so `BaseModal`'s `cancelButtonTestId`/`confirmButtonTestId` props are never consulted — `renderActions()` returns the custom JSX verbatim, bypassing the testid-prop path entirely. Recommend wiring `data-testid="pipeline-webhook-modal-cancel-button"`/`"pipeline-webhook-modal-apply-button"` directly onto the two custom `Button` elements inside that `actions` block instead. |
 | Modal root | `[role="dialog"]` — confirmed unique (only one dialog open at a time in this flow) | `Modal.BaseModal` already accepts a top-level `data-testid` prop (confirmed via source read) — recommend `pipeline-webhook-settings-modal`. |
 
 ## Network Behavior
@@ -239,9 +239,16 @@ None. All 7 case steps were executed to completion against the live local enviro
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor`. **Requires `add-data-testid`
   work** — see § Concrete Handles for the full list (Webhook Type radios via existing `testId`
   prop plumbing on `Checkbox.RadioButtonGroup`; URL/Secret inputs via `inputProps={{'data-testid':
-  ...}}`; copy/eye/refresh `IconButton`s via a bare `data-testid` prop each; modal root + Cancel/
-  Apply via `Modal.BaseModal`'s already-existing `data-testid`/`cancelButtonTestId`/
-  `confirmButtonTestId` props).
+  ...}}`; copy/eye/refresh `IconButton`s via a bare `data-testid` prop each; modal root via
+  `Modal.BaseModal`'s already-existing `data-testid` prop). **Correction (2026-08-04, post
+  implementation):** the Cancel/Apply buttons do NOT go through `Modal.BaseModal`'s
+  `cancelButtonTestId`/`confirmButtonTestId` props — `PipelineWebhookModal.jsx` passes a custom
+  `actions={<Box>...</Box>}` block to `BaseModal`, so `renderActions()` returns that JSX verbatim
+  and the testid-prop path is bypassed entirely. The implemented fix wires `data-testid` directly
+  onto the two custom `Button` elements inside that `actions` block instead
+  (`pipeline-webhook-modal-cancel-button` / `pipeline-webhook-modal-apply-button` — same testid
+  names, different plumbing route). Same correction applies to ELITEA-2007's Schedule modal (also
+  a custom `actions` block).
 - **Wait strategy is the load-bearing detail for this case**: wait for `dialog.get_by_text("Webhook
   URL")` (or its testid once added) to become visible before asserting the full field inventory —
   do NOT use a fixed short timeout (confirmed flaky below ~1.5s, confirmed reliable by ~4.5s across

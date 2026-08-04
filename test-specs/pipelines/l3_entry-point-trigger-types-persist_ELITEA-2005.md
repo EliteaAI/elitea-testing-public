@@ -181,7 +181,7 @@ fresh pipeline.
 
 | Element | Recommended Locator | Fallback / Notes |
 |---|---|---|
-| Trigger combobox (entry point node) | `node.locator('[id^="simple-select-"]').first` — confirmed the Trigger select is always the FIRST `simple-select-*` element inside the node body, ahead of the (also-unstable) `#simple-select-Type` ×3 selects further down | **NO `data-testid` — flag to `add-data-testid`.** The underlying `<SingleSelect>` component (`EliteaUI/src/[fsd]/shared/ui/select/SingleSelect.jsx`) ALREADY accepts a `dataTestId` prop that forwards to `data-testid` on the trigger element AND auto-derives `${dataTestId}-combobox` — **zero new component plumbing needed**, only wiring `dataTestId="pipeline-entry-point-trigger-select"` at the call site in `TriggerTypeSelector.jsx`'s `<SingleSelect ... />` (confirmed via source read, same "prop already exists, just needs wiring" pattern already documented for the HITL node's `InputSelect`/`SingleSelect` fields in the `_surface.md` digest). |
+| Trigger combobox (entry point node) | `node.locator('[id^="simple-select-"]').first` — confirmed the Trigger select is always the FIRST `simple-select-*` element inside the node body, ahead of the (also-unstable) `#simple-select-Type` ×3 selects further down | **NO `data-testid` — flag to `add-data-testid`.** The underlying `<SingleSelect>` component (`EliteaUI/src/[fsd]/shared/ui/select/SingleSelect.jsx`) ALREADY accepts a **literal `data-testid` prop** (destructured internally as `'data-testid': dataTestId` — NOT a camelCase `dataTestId` prop name, corrected 2026-08-04 after live implementation) that forwards to `data-testid` on the trigger element AND auto-derives `${dataTestId}-combobox` — **zero new component plumbing needed**, only wiring `data-testid="pipeline-entry-point-trigger-select"` at the call site in `TriggerTypeSelector.jsx`'s `<SingleSelect ... />` (confirmed via source read, same "prop already exists, just needs wiring" pattern already documented for the HITL node's `InputSelect`/`SingleSelect` fields in the `_surface.md` digest). |
 | Trigger option — Chat Message | `[data-testid="select-option-chat_message"]` | **Already exists** — inherited "for free" from `SingleSelectMenuItem.jsx`'s `data-testid={option.testId ?? `select-option-${option.value}`}` auto-derivation. No `add-data-testid` work needed for the 3 options. |
 | Trigger option — Schedule | `[data-testid="select-option-schedule"]` | Already exists, same mechanism. |
 | Trigger option — Webhook | `[data-testid="select-option-webhook"]` | Already exists, same mechanism. |
@@ -295,8 +295,9 @@ single LLM-entry-point pipeline plus a second entry-point-swap (Code node) verif
 ## Automation Hints
 
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor` per `.agents/testing.md`. **This
-  case requires `add-data-testid` work**: the Trigger combobox itself needs `dataTestId=
-  "pipeline-entry-point-trigger-select"` wired at its `TriggerTypeSelector.jsx` call site (prop
+  case requires `add-data-testid` work**: the Trigger combobox itself needs `data-testid=
+  "pipeline-entry-point-trigger-select"` (literal `data-testid` prop, not `dataTestId` — corrected
+  2026-08-04, see § Concrete Handles) wired at its `TriggerTypeSelector.jsx` call site (prop
   plumbing already exists in `SingleSelect` — zero new component code, just pass the prop). The 3
   option elements already have testids for free (see § Concrete Handles) — no work needed there.
 - Use `pipeline_with_llm_id` (existing fixture) as the seed — it produces exactly the "single

@@ -323,6 +323,18 @@ class PipelineDetailPage(PipelineFormPage):
     # select-{action}` testid (which lands on MUI's MuiInputBase-root wrapper).
     HITL_NODE_ROUTE_SELECT_COMBOBOX = '[data-testid="pipeline-hitl-node-route-select-{}-combobox"]'
 
+    # Dynamic (runtime-parameterized) testid — one "Interrupt before" toggle
+    # per node (CommonInterruptSettings.jsx, rendered inline on every node
+    # type). Class-level template constant per .agents/testing.md § Locator
+    # policy, formatted with the target node's id at the call site. Added via
+    # add-data-testid, EliteaAI/EliteaUI@a2ce4732 (ELITEA-2008). "Before" was
+    # chosen over "after": `disabled={yamlNode?.transition === End || ...}`
+    # makes "after" unusable on a freshly-added, unconnected node (pipeline
+    # auto-wires new nodes to END, confirmed live) — "before" only disables
+    # for the SAVED entry point (`entry_point === id`), which a non-entry-point
+    # node never is.
+    NODE_INTERRUPT_BEFORE_TOGGLE = '[data-testid="pipeline-node-interrupt-before-toggle-{}"]'
+
     # Chat HITL runtime actions (ELITEA-2015). Testid-only, added via
     # add-data-testid — ChatHitlActions.jsx's non-sensitive-tool branch +
     # EditControl.jsx's toggle button.
@@ -345,6 +357,135 @@ class PipelineDetailPage(PipelineFormPage):
         testid="chat-hitl-edit-button",
         description="Chat HITL card's Edit toggle button"
     )
+
+    # Entry-point node — Trigger select & Webhook/Schedule settings modals
+    # (ELITEA-2005/2006/2007/2008). Rendered inline on whichever node card IS
+    # the pipeline's entry point (NodeCard.jsx: `isEntrypoint &&
+    # <TriggerTypeSelector>`) — page-wide (not scoped to a specific node
+    # container), same convention as the MCP/HITL node fields above: correct
+    # as long as a test only has a single entry-point node on canvas at a
+    # time. Added via add-data-testid, EliteaAI/EliteaUI@b43fbce0.
+    trigger_select = LocatorDescriptor(
+        testid="pipeline-entry-point-trigger-select",
+        description="Entry-point node's Trigger select (Chat Message/Schedule/Webhook)"
+    )
+
+    trigger_schedule_edit_button = LocatorDescriptor(
+        testid="pipeline-entry-point-trigger-schedule-edit-button",
+        description='"Edit schedule" clock-icon button next to the Trigger select, '
+                     "rendered only while currentTriggerType === 'schedule'"
+    )
+
+    webhook_modal = LocatorDescriptor(
+        testid="pipeline-webhook-settings-modal",
+        description="Webhook settings modal (dialog root)"
+    )
+    webhook_type_radio_github = LocatorDescriptor(
+        testid="pipeline-webhook-type-radio-github",
+        description="Webhook Type radio — GitHub option"
+    )
+    webhook_type_radio_gitlab = LocatorDescriptor(
+        testid="pipeline-webhook-type-radio-gitlab",
+        description="Webhook Type radio — GitLab option"
+    )
+    webhook_type_radio_custom = LocatorDescriptor(
+        testid="pipeline-webhook-type-radio-custom",
+        description="Webhook Type radio — Custom option"
+    )
+    webhook_type_description = LocatorDescriptor(
+        testid="pipeline-webhook-type-description",
+        description="Webhook Type description text (changes per selected type)"
+    )
+    webhook_url_input = LocatorDescriptor(
+        testid="pipeline-webhook-url-input",
+        description="Webhook URL read-only field — testid wired via FormInput's "
+                     "inputProps, lands directly on the native <input>"
+    )
+    webhook_url_copy_button = LocatorDescriptor(
+        testid="pipeline-webhook-url-copy-button",
+        description="Webhook URL copy button"
+    )
+    webhook_secret_input = LocatorDescriptor(
+        testid="pipeline-webhook-secret-input",
+        description="Secret Value masked/revealed field — same inputProps wiring as "
+                     "webhook_url_input"
+    )
+    webhook_secret_toggle_button = LocatorDescriptor(
+        testid="pipeline-webhook-secret-toggle-button",
+        description="Secret Value eye (show/hide) button"
+    )
+    webhook_secret_copy_button = LocatorDescriptor(
+        testid="pipeline-webhook-secret-copy-button",
+        description="Secret Value copy button"
+    )
+    webhook_secret_regenerate_button = LocatorDescriptor(
+        testid="pipeline-webhook-secret-regenerate-button",
+        description="Secret Value regenerate (refresh) button"
+    )
+    webhook_secret_helper_text = LocatorDescriptor(
+        testid="pipeline-webhook-secret-helper-text",
+        description="Secret Value helper text"
+    )
+    webhook_payload_format_description = LocatorDescriptor(
+        testid="pipeline-webhook-payload-format-description",
+        description="Payload Format description (static text)"
+    )
+    webhook_example_request_block = LocatorDescriptor(
+        testid="pipeline-webhook-example-request-block",
+        description="Example Request code block"
+    )
+    webhook_example_request_copy_button = LocatorDescriptor(
+        testid="pipeline-webhook-example-request-copy-button",
+        description="Example Request copy button"
+    )
+    webhook_modal_cancel_button = LocatorDescriptor(
+        testid="pipeline-webhook-modal-cancel-button",
+        description="Webhook settings modal Cancel button"
+    )
+    webhook_modal_apply_button = LocatorDescriptor(
+        testid="pipeline-webhook-modal-apply-button",
+        description="Webhook settings modal Apply button"
+    )
+
+    schedule_modal = LocatorDescriptor(
+        testid="pipeline-schedule-settings-modal",
+        description="Schedule settings modal (dialog root)"
+    )
+    schedule_summary_text = LocatorDescriptor(
+        testid="pipeline-schedule-summary-text",
+        description='Schedule modal cron summary text (e.g. "At 00:00, only on Saturday")'
+    )
+    schedule_modal_cancel_button = LocatorDescriptor(
+        testid="pipeline-schedule-modal-cancel-button",
+        description="Schedule settings modal Cancel button"
+    )
+    schedule_modal_apply_button = LocatorDescriptor(
+        testid="pipeline-schedule-modal-apply-button",
+        description="Schedule settings modal Apply button"
+    )
+    schedule_cron_input = LocatorDescriptor(
+        testid="pipeline-schedule-cron-input",
+        description="Advanced-mode raw cron expression text input"
+    )
+
+    # Mode radio (Default/Advanced) — RadioButtonGroup's `testId` prop
+    # auto-derives `${testId}-${item.value.lower()}` on the FormControlLabel
+    # wrapper (confirmed via source read, same mechanism as the Webhook Type
+    # radios above).
+    schedule_mode_radio_default = LocatorDescriptor(
+        testid="pipeline-schedule-mode-radio-default",
+        description="Schedule modal Mode radio — Default option"
+    )
+    schedule_mode_radio_advanced = LocatorDescriptor(
+        testid="pipeline-schedule-mode-radio-advanced",
+        description="Schedule modal Mode radio — Advanced option"
+    )
+
+    # Third-party widget (react-js-cron / antd internals) — sanctioned #579
+    # exception: no app testid can be placed on the library's own
+    # `.ant-select`/`.react-js-cron-select` nodes. Scoped constant, chained
+    # off the (testid'd) schedule_modal root per the #579 discipline.
+    SCHEDULE_CRON_SELECT = ".react-js-cron-select"
 
     # TOOLS section (ELITEA-1955). ApplicationTools.jsx / ToolMenu.jsx is a
     # shared component reused by both Agent and Pipeline detail forms
@@ -1111,6 +1252,343 @@ class PipelineDetailPage(PipelineFormPage):
         if match:
             return match.group(1).strip()
         return None
+
+    # ------------------------------------------------------------------
+    # Entry-point node — Trigger select & Webhook/Schedule settings modals
+    # (ELITEA-2005/2006/2007/2008)
+    # ------------------------------------------------------------------
+
+    _WEBHOOK_TYPE_RADIOS = {
+        "github": "webhook_type_radio_github",
+        "gitlab": "webhook_type_radio_gitlab",
+        "custom": "webhook_type_radio_custom",
+    }
+
+    def get_trigger_type_value(self, timeout: int = 5000) -> str:
+        """Read the Trigger select's currently-displayed value text.
+
+        Args:
+            timeout: Maximum wait time for the select to be visible.
+        """
+        self.trigger_select.wait_for(state="visible", timeout=timeout)
+        return (self.trigger_select.text_content() or "").strip()
+
+    def open_trigger_select(self, timeout: int = 10000, entry_point_node_id: str | None = None) -> None:
+        """Open the entry-point node's Trigger dropdown.
+
+        ``force=True`` — an unconnected sibling node dropped near the entry
+        point (ELITEA-2008's Printer/HITL/Code nodes) can overlap the entry
+        point's own card on the ReactFlow canvas, intercepting the click
+        (MUI overlay interception, `.claude/rules/mui-patterns.md`). When an
+        overlapping sibling is a real risk (multi-node canvases), pass
+        *entry_point_node_id* to re-select the entry point node first,
+        raising its z-order above any sibling that landed on top of it.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+            entry_point_node_id: Optional data-id of the entry point node to
+                bring to the front before opening the dropdown.
+        """
+        if entry_point_node_id:
+            self._select_node(entry_point_node_id)
+        self.trigger_select.click(timeout=timeout, force=True)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def get_trigger_options(self, timeout: int = 10000, entry_point_node_id: str | None = None) -> list[str]:
+        """Open the Trigger dropdown, read the visible option names, close via Escape.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+            entry_point_node_id: Optional data-id of the entry point node to
+                bring to the front before opening the dropdown (see
+                :meth:`open_trigger_select`).
+        """
+        self.open_trigger_select(timeout=timeout, entry_point_node_id=entry_point_node_id)
+        options = self.get_open_listbox_option_names()
+        self.page.keyboard.press("Escape")
+        return options
+
+    def toggle_node_interrupt_before(self, node_id: str, timeout: int = 5000) -> None:
+        """Click a node's inline "Interrupt before" switch (CommonInterruptSettings.jsx).
+
+        Disabled by the source only when *node_id* IS the pipeline's saved
+        entry point (`yamlJsonObject.entry_point === id`) — callers must
+        target a node that is NOT the entry point.
+
+        The testid is wired via `slotProps.switch.slotProps.input` (added
+        EliteaAI/EliteaUI, ELITEA-2008 fix) so it lands directly on the
+        native ``<input type="checkbox">`` — NOT the `MuiSwitch-switchBase`
+        wrapper span MUI's `Switch` normally puts extra props on
+        (`.agents/memory/test-automation-engineer/
+        testid_lands_on_mui_wrapper_not_input.md`; MUI v7's `Switch` silently
+        drops a legacy `inputProps` testid entirely). Clicked via
+        ``element.click()`` (JS, `.claude/rules/mui-patterns.md` § MUI
+        Overlay Interception — same technique as :meth:`delete_node`), NOT a
+        coordinate-based Playwright click, even with ``force=True``.
+        Confirmed live (ELITEA-2008): after a node add/delete cycle earlier
+        on the canvas (e.g. Printer/HITL added then removed before this
+        node), some other canvas element ends up topmost at this switch's
+        on-screen coordinates. `force=True` only skips Playwright's
+        actionability *checks* — the underlying mouse event is still
+        dispatched at those coordinates and the browser still delivers it to
+        whatever's topmost there, so a coordinate click silently lands on
+        the intercepting element instead of the switch (no exception, no
+        `aria-disabled`, the switch's `checked` state simply never flips).
+        `element.click()` on the (now testid'd) native checkbox bypasses
+        on-screen z-order entirely and still fires React's `onChange`.
+
+        Args:
+            node_id: The data-id of the target node.
+            timeout: Maximum wait time in milliseconds.
+        """
+        toggle = self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id))
+        toggle.wait_for(state="attached", timeout=timeout)
+        toggle.evaluate("el => el.click()")
+
+    def select_trigger_type(self, value: str, timeout: int = 10000) -> dict | None:
+        """Open the entry-point node's Trigger select and choose *value*.
+
+        Selecting ``"webhook"`` or ``"chat_message"`` fires a
+        `PUT .../pipeline_trigger/.../trigger` immediately (source-confirmed
+        `handleTriggerTypeChange`, `TriggerTypeSelector.jsx`) — this waits on
+        that response, not a fixed timeout. Selecting ``"webhook"``
+        additionally opens the Webhook settings modal once the response
+        resolves; callers wait on ``webhook_modal`` separately after this
+        returns.
+
+        Selecting ``"schedule"`` is DIFFERENT: `handleTriggerTypeChange` only
+        calls `setIsScheduleModalOpen(true)` — a synchronous local-state
+        update, no awaited mutation — so no PUT fires until the Schedule
+        modal's own Apply. This method returns ``None`` for ``"schedule"``
+        rather than waiting on a response that will never arrive; callers
+        wait on ``schedule_modal`` separately.
+
+        Args:
+            value: One of ``"chat_message"``, ``"schedule"``, ``"webhook"``.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the trigger-update PUT response, or ``None``
+            when *value* is ``"schedule"``.
+        """
+        self.trigger_select.click(timeout=timeout, force=True)
+        option = self.page.locator(self.SELECT_OPTION.format(value))
+        option.wait_for(state="visible", timeout=timeout)
+
+        if value == "schedule":
+            option.click(timeout=timeout)
+            return None
+
+        with self.page.expect_response(
+            lambda r: "/pipeline_trigger/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as response_info:
+            option.click(timeout=timeout)
+
+        return response_info.value.json()
+
+    def wait_for_webhook_settings_loaded(self, timeout: int = 10000) -> None:
+        """Wait for the Webhook settings modal AND its data-dependent fields.
+
+        The URL/Secret sections render only once `triggerData` is populated
+        (`PipelineWebhookModal.jsx`: `{webhookUrl && (...)}` / `{secretValue
+        && (...)}`), sourced from the SAME RTK-Query tag the trigger-mutating
+        PUT invalidates — whose refetch can resolve slightly AFTER the PUT
+        response itself, so the modal can become visible before its fields
+        do (confirmed live, ~1.5-4.5s gap). Waits on the Webhook URL field
+        specifically rather than a fixed sleep.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.webhook_modal.wait_for(state="visible", timeout=timeout)
+        self.webhook_url_input.wait_for(state="visible", timeout=timeout)
+
+    def select_webhook_type(self, webhook_type: str, timeout: int = 5000) -> None:
+        """Click the Webhook Type radio matching *webhook_type* in the open modal.
+
+        Pure client-side derivation of the URL/description/example request
+        off ``selectedWebhookType`` — no network wait needed (source-
+        confirmed `PipelineWebhookModal.jsx`).
+
+        Args:
+            webhook_type: One of ``"github"``, ``"gitlab"``, ``"custom"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        radio = getattr(self, self._WEBHOOK_TYPE_RADIOS[webhook_type])
+        radio.click(timeout=timeout)
+
+    def get_selected_webhook_type(self) -> str | None:
+        """Return which Webhook Type radio is currently checked, or None.
+
+        The testid lands on the MUI ``FormControlLabel`` wrapping the native
+        ``<input type="radio">`` (RadioButtonGroup.jsx) — Playwright's
+        ``is_checked()`` resolves correctly through the associated
+        ``<label>`` wrapper.
+        """
+        for webhook_type, attr_name in self._WEBHOOK_TYPE_RADIOS.items():
+            if getattr(self, attr_name).is_checked():
+                return webhook_type
+        return None
+
+    def get_webhook_url(self, timeout: int = 5000) -> str:
+        """Read the Webhook URL field's current value."""
+        self.webhook_url_input.wait_for(state="visible", timeout=timeout)
+        return self.webhook_url_input.input_value()
+
+    def reveal_webhook_secret(self, timeout: int = 5000) -> None:
+        """Click the Secret Value eye (show/hide) toggle button."""
+        self.webhook_secret_toggle_button.click(timeout=timeout)
+
+    def get_webhook_secret(self, timeout: int = 5000) -> str:
+        """Read the Secret Value field's current value (masked or revealed)."""
+        self.webhook_secret_input.wait_for(state="visible", timeout=timeout)
+        return self.webhook_secret_input.input_value()
+
+    def apply_webhook_settings(self, timeout: int = 10000) -> dict:
+        """Click Apply in the Webhook settings modal; wait for the trigger PUT.
+
+        Waits on the actual `PUT .../pipeline_trigger/.../trigger` network
+        response rather than the modal merely closing — `applyChanges` calls
+        `onSubmit(...)` (a Promise, NOT awaited) then `onClose()`
+        synchronously (source-confirmed `PipelineWebhookModal.jsx`), so the
+        modal-hidden state can be reached before the mutation resolves.
+
+        Returns:
+            Parsed JSON body of the trigger-update PUT response.
+        """
+        with self.page.expect_response(
+            lambda r: "/pipeline_trigger/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as response_info:
+            self.webhook_modal_apply_button.click(timeout=timeout)
+        self.webhook_modal.wait_for(state="hidden", timeout=timeout)
+        return response_info.value.json()
+
+    def wait_for_schedule_settings_loaded(self, timeout: int = 10000) -> None:
+        """Wait for the Schedule settings modal to be visible.
+
+        Unlike the Webhook modal, the Schedule modal's content is pure local
+        component state — nothing here waits on a network refetch.
+        """
+        self.schedule_modal.wait_for(state="visible", timeout=timeout)
+
+    def get_schedule_summary_text(self, timeout: int = 5000) -> str:
+        """Read the Schedule modal's cron summary text."""
+        self.schedule_summary_text.wait_for(state="visible", timeout=timeout)
+        return (self.schedule_summary_text.text_content() or "").strip()
+
+    def apply_schedule_settings(self, timeout: int = 10000) -> dict:
+        """Click Apply in the Schedule settings modal; wait for the trigger PUT.
+
+        `applyChanges` calls `onSubmit(cronExpression)` (a Promise, NOT
+        awaited) then `onClose()` synchronously — same close-before-mutation-
+        resolves shape as :meth:`apply_webhook_settings`, so this waits on
+        the actual PUT response rather than the modal merely closing.
+
+        Returns:
+            Parsed JSON body of the trigger-update PUT response.
+        """
+        with self.page.expect_response(
+            lambda r: "/pipeline_trigger/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as response_info:
+            self.schedule_modal_apply_button.click(timeout=timeout)
+        self.schedule_modal.wait_for(state="hidden", timeout=timeout)
+        return response_info.value.json()
+
+    def get_schedule_cron_select_count(self) -> int:
+        """Count the visible `.react-js-cron-select` widgets in the open Schedule modal.
+
+        4 when the day-of-week "on" selector is visible (week/on/hour/minute),
+        3 when hidden (day-or-finer/hour/minute) — scoped to the (testid'd)
+        ``schedule_modal`` root per the #579 sanctioned third-party exception.
+        """
+        return self.schedule_modal.locator(self.SCHEDULE_CRON_SELECT).count()
+
+    # react-js-cron's hour/minute "at HH:MM" popovers render as antd
+    # `.ant-select-dropdown` panels (same `.ant-select-item-option` item
+    # class the Every/on selects use — confirmed live via DOM dump, 2026-08-03
+    # ELITEA-2007 implementation) — a MULTI-SELECT checkbox grid, not a
+    # single-value dropdown: clicking a new option ADDS to the current
+    # selection rather than replacing it. Sanctioned #579 third-party
+    # exception, scoped off the page (the dropdown portals to <body>, not
+    # inside the testid'd schedule_modal root) since only one such dropdown
+    # is ever open at a time.
+    # `:visible` is a Playwright CSS-engine extension (not standard CSS) —
+    # antd leaves a CLOSED dropdown's DOM node in place (hidden, not
+    # removed), so an unfiltered `.ant-select-dropdown` count includes stale
+    # closed instances from an earlier field (e.g. the "Every" select) and
+    # makes a same-class-family open/closed distinction impossible without it.
+    CRON_DROPDOWN = ".ant-select-dropdown:visible"
+    # Sub-selectors, scoped off a single open CRON_DROPDOWN instance at the
+    # call site (never queried page-wide — see set_schedule_hour_minute).
+    CRON_DROPDOWN_OPTION = '.ant-select-item-option[title="{}"]'
+    CRON_DROPDOWN_SELECTED_OPTION = '.ant-select-item-option[aria-selected="true"]'
+    CRON_DROPDOWN_VIRTUAL_LIST = ".rc-virtual-list-holder"
+
+    def set_schedule_hour_minute(self, hour: str, minute: str, timeout: int = 5000) -> None:
+        """Set the Schedule modal's hour/minute "at HH:MM" pickers to a single value.
+
+        To land on a clean single value: open the popover, click the
+        currently-checked cell to UNCHECK it, then click the target cell to
+        check it — for both hour and minute independently.
+
+        Args:
+            hour: Target hour, zero-padded (e.g. ``"09"``).
+            minute: Target minute, zero-padded (e.g. ``"30"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        from playwright.sync_api import expect
+
+        # (target, item_count) — hour grid is 0-23 (24 items), minute grid is
+        # 0-59 (60 items), confirmed live via DOM dump. Needed to compute the
+        # virtualized list's scroll-to-render offset below.
+        dropdown = self.page.locator(self.CRON_DROPDOWN)
+        for target, item_count in ((hour, 24), (minute, 60)):
+            trigger = self.schedule_modal.get_by_text("00", exact=True).first
+            trigger.click(timeout=timeout)
+            # Exactly one dropdown must be open at a time — a stale one left
+            # open from the previous field (Escape not always closing it
+            # reliably here) would make `.last` below ambiguous between two
+            # overlapping option grids.
+            expect(dropdown).to_have_count(1, timeout=timeout)
+            open_dropdown = dropdown.last
+
+            # The dropdown panel overlaps the modal's own helper text (MUI
+            # overlay interception, .claude/rules/mui-patterns.md) and can
+            # reflow outside the viewport once an item is (un)checked —
+            # JS-evaluate click bypasses both the pointer-interception AND
+            # viewport-visibility actionability checks (mui-patterns.md:
+            # "evaluate() ... for critical actions").
+            selected_option = open_dropdown.locator(self.CRON_DROPDOWN_SELECTED_OPTION).first
+            selected_option.wait_for(state="attached", timeout=timeout)
+            selected_option.evaluate("el => el.click()")  # uncheck default
+
+            # The grid is `rc-virtual-list`-virtualized — an option far from
+            # the current scroll position never mounts in the DOM at all, so
+            # a plain wait_for(attached) times out. Scroll the list's holder
+            # to the target's proportional offset first, matching the
+            # standard rc-virtual-list scroll-to-render pattern.
+            list_holder = open_dropdown.locator(self.CRON_DROPDOWN_VIRTUAL_LIST)
+            list_holder.evaluate(
+                "(el, [idx, count]) => { el.scrollTop = (idx / count) * el.scrollHeight; }",
+                [int(target), item_count],
+            )
+            target_option = open_dropdown.locator(self.CRON_DROPDOWN_OPTION.format(target))
+            target_option.wait_for(state="attached", timeout=timeout)
+            target_option.scroll_into_view_if_needed(timeout=timeout)
+            target_option.evaluate("el => el.click()")  # check target
+
+            # Click the modal title (neutral area, no click handler of its
+            # own) to close the dropdown — more reliable here than Escape,
+            # which this custom grid widget doesn't always capture — then
+            # confirm it is actually gone before the next field's trigger
+            # click, so the two fields' dropdowns never overlap.
+            self.page.get_by_text("Schedule settings", exact=True).click(timeout=timeout)
+            expect(dropdown).to_have_count(0, timeout=timeout)
 
     def edit_node_name(self, node_id: str, new_name: str) -> str:
         """Edit a node's name by double-clicking on its name label.
