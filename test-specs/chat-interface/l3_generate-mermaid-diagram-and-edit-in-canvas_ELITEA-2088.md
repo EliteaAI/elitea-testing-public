@@ -67,7 +67,7 @@
 | 6 Verify Mermaid syntax in text editor | syntax visible/editable | step 6 | `.cm-line` count == source line count | asserted |
 | 7 Verify "Diagram editing..." indicator | indicator visible | step 7 | exact text match | asserted — testid needed (shared) |
 | 8 Edit block, add "edited" | text modified | step 8 | edited `.cm-line` text contains "edited" | asserted |
-| 9 Verify real-time syntax validation | validation occurs | step 9 | error panel appears immediately on invalid edit | asserted (confirmed via the error-path edit) |
+| 9 Verify real-time syntax validation | validation occurs | step 9 | diagram stays valid/rendered after the happy-path node-label edit (`node_count > 0`) | asserted — happy-path only; the error-panel path (which is what directly proves real-time validation firing) was confirmed live by the analyst but is NOT automated by this test — see § Implementer Exploration Notes / Follow-up Recommendation below |
 | 10 Close canvas | canvas closes | step 10 | canvas testids absent post-close | asserted — testid needed (shared) |
 | 11 Verify changes applied in conversation diagram | change reflected | step 11 | conversation view mirrors canvas's edited (error or valid) state | asserted for error-path; valid-path re-render **not independently re-verified this session** — flagged for implementer's first pass |
 | Expected Final State: canvas opens, editing works, changes reflected | — | steps 5–11 | — | asserted |
@@ -112,6 +112,73 @@ None. The apparent "edit didn't take effect" signal from a `.cm-line` `all_inner
 
 ## Blocked Steps
 None. All 11 case steps were executed and observed end-to-end live. One sub-path (step 11's valid-edit re-render, as opposed to the error-path re-render actually observed) is flagged for the implementer's first-pass confirmation rather than independently re-verified this session (see § Coverage Map / Axis 2) — this does not block `ready-for-automation` classification since it is one isolable assertion at the tail of an otherwise-fully-confirmed flow, not a wall preventing further exploration.
+
+## Implementer Exploration Notes (Phase 2 amendment — this closes the AFS's
+own "valid-edit sync not independently re-verified" gap, § Blocked Steps)
+
+- **Mermaid's individual edge `<path>` elements carry class
+  `flowchart-link`, not `edgePath`** (`edgePaths`, plural, is only the
+  group WRAPPER `<g>`). `ChatPage.MERMAID_EDGE` uses `.flowchart-link`.
+- **A bare end-of-line append does NOT reliably land inside a node's
+  rendered label**, and this is the actual reason the AFS's own
+  valid-edit sync sub-path was unconfirmed. Confirmed live: clicking a
+  `.cm-line`, pressing `End`, and typing `" edited"` (the AFS's own
+  step-8 mechanism, confirmed to modify the SOURCE text) lands the new
+  text AFTER the line's LAST token. On a compound connection line like
+  `A[Start] --> B{Decision}`, that is past the closing `}` — syntactically
+  valid (Mermaid still re-renders without error, `node_count > 0` holds)
+  but the appended text is outside any node's bracketed label, so it
+  never appears in the rendered SVG text. Fixed by switching to
+  `ChatDiagramCanvasPage.replace_line()` (select-whole-line-then-type,
+  mirroring `McpFormPage.fill_raw_json_line`/`PipelineDetailPage.
+  edit_yaml_line`), with the caller inserting `" edited"` immediately
+  before the target line's first closing bracket
+  (`]`/`}`/`)`) — matching the AFS's own literal example
+  (`A[Start] --> B{...}` → `A[Start edited] --> B{...}`) exactly.
+- Same caveat as `edit_yaml_line`: CodeMirror's `Home` goes to the first
+  NON-whitespace character, so the replacement text passed to
+  `replace_line()` must exclude the line's leading indentation (it is
+  preserved automatically) — typing it back in doubles the indent.
+- **Step 11's assertion target inherits ELITEA-2087's rendering-path
+  finding**: after one edit-and-close cycle a block may render via
+  `Canvas.jsx`'s `canvas_message` path rather than the plain `text_message`
+  path. This case's own step 11 check reads the diagram's SVG text content
+  (`chat.diagram_svg_container.text_content()`), not the pencil button, so
+  it is unaffected either way.
+
+## Follow-up Recommendation (Implementer amendment, fix round 1 — review finding on PR #1133)
+
+The Coverage Map's step-9 row previously claimed `asserted (confirmed via the
+error-path edit)` for "verify real-time syntax validation" while the delivered
+test only performs a valid node-label edit and asserts the diagram still
+renders — that assertion would pass identically even if no real-time
+validation existed at all; it does not, on its own, distinguish "validation
+ran and passed" from "nothing was ever validated." This AFS's own §
+Automation Hints steered the implementer toward the happy path only, which
+is honest test-design guidance but left the Coverage Map's disposition
+overstating what the shipped assertion actually proves.
+
+**Resolution (this amendment):** the Coverage Map row above is corrected to
+say plainly that step 9 is asserted happy-path-only in automation, and that
+the error-path validation-firing behavior — although confirmed working live
+by the analyst (§ Test Steps, step 9; full error text captured there) — is
+NOT independently re-verified by this test. No new assertion was added to
+this case: introducing a transient invalid edit (append to the diagram-type
+declaration line) mid-flow would require a new testid
+(`chat-canvas-mermaid-syntax-error`, currently `needs-adding`) and adds a
+break/restore cycle around CodeMirror's already-documented virtualized-line
+timing quirk (§ Known Defects Found) immediately before the steps 10–11
+close/sync assertions this test already depends on — risk judged
+disproportionate to a single Coverage Map wording fix.
+
+**Recommendation:** a dedicated future case (e.g. "Chat – Mermaid canvas
+real-time validation surfaces a syntax error and Quick-Fix affordance") should
+exercise the error path directly: edit line 1, assert the exact error text +
+"Quick Fix" affordance appear (testid `chat-canvas-mermaid-syntax-error`
+needs adding), then either revert or exercise the Quick-Fix flow itself. That
+case would be the one to genuinely prove real-time validation for both the
+pass and fail directions; this case's own scope stays happy-path per its
+Automation Hints below.
 
 ## Automation Hints
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor` (`.agents/testing.md`).

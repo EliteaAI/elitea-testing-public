@@ -9,7 +9,19 @@
   case needs NO Guardrails/HITL configuration — a plain toolkit call).
 - **User set**: `${TEST_USER}`
 - **Analyst**: qa-engineer (cluster run, ELITEA-2211..2215, 2026-08-03)
-- **Status**: ready-for-automation
+- **Status**: blocked — **downgraded fix round 2 (2026-08-04), see § Known
+  Defects Found for why.** The test IS implemented and IS runnable (green when
+  the known defect doesn't fire), but the case is **not** considered
+  automated/complete for THIS wave: its only red-vs-green path relies on a
+  known defect (#1127) that is confirmed **non-deterministic** (2/5 runs) and
+  therefore does not currently satisfy `.agents/testing.md` § Merge gate's
+  sanctioned-RED bar. `test_direct_toolkit_call_complete_flow.py` is excluded
+  from this wave's N-consecutive-green hardening-gate spec list (see the
+  module docstring's "Fix round 2" note and the `GATE_EXCLUDED_REASON`
+  constant at the top of that file — both are the mechanical markers the
+  orchestrator greps for when composing the gate's required-spec list).
+  Un-blocks when either #1127 is fixed, or its determinism is re-established
+  with further evidence (see Known Defects section).
 
 ## Preconditions
 - An Artifact-type toolkit (`ToolkitAPI.create_artifact_toolkit`, includes
@@ -37,6 +49,18 @@
      showing "Thought for X secs" (confirmed live, e.g. "Thought for 14
      secs" on the analogous `delete_file` message).
 2. Expand the thinking-steps accordion.
+   - **CONFIRMED LIVE during implementation (CLARIFICATION 3, added fix
+     round 1, 2026-08-03):** this step's own "expand the accordion" action
+     does not apply as written — 5 timed polls against the real backend
+     (0.5s apart) confirm the accordion is ALREADY auto-expanded for the
+     whole tool-call/streaming window (`ApplicationThinkView.jsx`'s
+     `expanded={isStreaming || expanded}`, the same auto-expand behavior
+     ELITEA-2181's streaming-response test already asserts without ever
+     clicking). A manual click is not only unnecessary, it is actively
+     unreliable — the accordion's rendered height changes as it streams, so
+     a fixed click point can land on a different part of a growing element
+     between the actionability check and the dispatched event. The
+     implementation asserts presence/text directly instead of clicking.
    - **Verify**: tool call shown — **CONFIRMED LIVE, case-text drift found
      (CLARIFICATION, not a defect):** the case describes this as
      `"toolkit_name.tool_name"` (dot-separated), but the LIVE rendered chip
@@ -115,12 +139,52 @@
   this pass — no HITL pause frames in this flow (no sensitivity configured).
 
 ## Known Defects Found During Exploration
-None found. Both case-text/live-product divergences above (dotted vs
-colon-separated chip format; 3-chips-as-described vs
-1-combined-chip+N-model-chips-in-practice) are classified as
-**CLARIFICATION** per the reverse-masking guard — the live product's
-behavior is correct and internally consistent; the case text is the
-stale/imprecise element. Recommend filing a lightweight case-text
+**Updated fix round 1 (2026-08-03) — was stale at "None found."** One
+product defect WAS found during implementation, filed as
+[EliteaAI/elitea-testing-public#1127](https://github.com/EliteaAI/elitea-testing-public/issues/1127):
+across 3 separate live local runs, the direct-toolkit-call flow (no agent)
+sometimes leaks the model's tool-call intent as raw visible text instead of
+invoking the real backend tool — confirmed non-deterministic (2/5 runs
+executed correctly). The implementation handles this via a
+`soft_failures`/`pytest.fail()` aggregation gated behind an independent
+`ArtifactAPI` ground-truth tie-breaker (same backend check ELITEA-2212/2213
+use) — never a weakened assertion of the correct contract. See the test's
+module docstring for the full classification logic.
+
+**Corrected fix round 2 (2026-08-04) — the round 1 note above overstated the
+merge-gate fit; corrected here, code unchanged.** Round 1 cited
+`.agents/testing.md`'s 2026-07-18 "closed-set variant" (ELITEA-1892/#615) as
+precedent for treating this as sanctioned-RED-eligible. On review that citation
+does not hold: the closed-set variant covers **multiple distinct defects, each
+independently 100%-reproducing on its own trigger** — it does not cover **one
+defect firing probabilistically (2/5) on the same trigger**. Issue #1127 itself
+documents the non-determinism as filed evidence, and `.agents/testing.md` §
+Merge gate's plain sanctioned-RED bar requires "(a) deterministic — identical
+failure 3/3" for the failure being excepted. #1127 cannot supply that on
+today's evidence (three GREEN local runs this session show the *runner* got
+lucky, or that `ArtifactAPI`'s ground truth correctly cleared the test when the
+defect didn't fire that run — neither establishes the *defect* fires
+deterministically).
+
+**Disposition:** the `ArtifactAPI` ground-truth tie-breaker code is good
+engineering and stays as-is — it correctly distinguishes "hit #1127's
+confirmed signature" from "something else broke," which is valuable
+independent of gate eligibility. What changes is the classification: this
+case is **not** treated as sanctioned-RED and is **not** counted as automated
+for this wave. `test_direct_toolkit_call_complete_flow.py` is excluded from
+the wave's N-consecutive-green hardening gate (see module docstring "Fix round
+2" + the `GATE_EXCLUDED_REASON` module constant — both greppable markers for
+the orchestrator). Re-evaluate once #1127 is fixed, or once further evidence
+(more filed runs) either confirms a stable, non-1.0 defect rate that a future
+merge-gate policy addendum could sanction, or shows the defect was actually a
+transient environment issue now gone.
+
+Both case-text/live-product divergences below (dotted vs colon-separated
+chip format; 3-chips-as-described vs 1-combined-chip+N-model-chips-in-
+practice; and CLARIFICATION 3 above, the accordion auto-expand) are
+classified as **CLARIFICATION** per the reverse-masking guard — the live
+product's behavior is correct and internally consistent; the case text is
+the stale/imprecise element. Recommend filing a lightweight case-text
 clarification note against ELITEA-2215 in the TMS per
 `.agents/role-overrides.md`'s interaction-discovery-ladder precedent (not a
 `bug`-labelled tracker issue — this repo's bug-filing is for THIS repo's

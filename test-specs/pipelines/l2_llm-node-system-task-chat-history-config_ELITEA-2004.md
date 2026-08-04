@@ -104,6 +104,16 @@
 | Pipeline Save button | `[data-testid="agent-save-button"]` — confirmed, shared with agent/pipeline create-and-edit forms (reused from ELITEA-1954) | none needed |
 | Canvas "+ Add node" button | `button.MuiIconButton-colorPrimary` (first match) — same locator `PipelineDetailPage.add_node()` already uses in production code, confirmed still correct | none needed — already exercised by `test_pipeline_nodes.py` |
 
+**Implementation status (fix-round amendment — closes the "AFS never amended with the implemented handles" review finding):** every testid `Recommended` above (SYSTEM/TASK/CHAT HISTORY Type selects + Value fields, Input/Output selects) was implemented exactly as named — confirmed via `automation/pages/pipeline_detail_page.py`'s `llm_node_*` `LocatorDescriptor` fields. The 5 rows below cover the remaining case-list elements (Trigger, Toolkits, Interrupt before/after, Structured output) whose testids were added in the fix-round-1 commit, not the original implementation, and were never previously recorded here:
+
+| Element | Recommended Locator | Fallback |
+|---|---|---|
+| Entry-point Trigger select (shown for whichever node is the pipeline's current entry point) | `[data-testid="pipeline-entry-point-trigger-select"]` — pre-existing testid from the ELITEA-2005/06/07/08 prep work (`EliteaAI/EliteaUI@b43fbce0`); first *consumed* by this case's test in the fix-round-1 commit (`e4511214`) | none needed |
+| LLM node Toolkits multi-select | `[data-testid="pipeline-llm-node-toolkits-select"]` — added fix-round-1 (`EliteaAI/EliteaUI@37b0598b`), `ToolkitsSelect.jsx`, LLM-only call site | none needed |
+| Node Interrupt-before toggle (dynamic, node-id-keyed, shared across node types) | `[data-testid="pipeline-node-interrupt-before-toggle-{node_id}"]` — pre-existing from the ELITEA-2008 prep work (`EliteaAI/EliteaUI@a2ce4732`); first *consumed* by this case's test in fix-round-1 (`e4511214`) | none needed |
+| LLM node Interrupt-after toggle | `[data-testid="pipeline-llm-node-interrupt-after-toggle"]` — added fix-round-1 (`EliteaAI/EliteaUI@37b0598b`), `CommonInterruptSettings.jsx` caller-supplied `interruptAfterTestId` prop | none needed |
+| LLM node Structured-output toggle | `[data-testid="pipeline-llm-node-structured-output-toggle"]` — added fix-round-1 (`EliteaAI/EliteaUI@37b0598b`), `CommonInterruptSettings.jsx` caller-supplied `structuredOutputTestId` prop | none needed |
+
 ## Network Behavior
 - `PUT ${ELITEA_API_BASE}/elitea_core/application/prompt_lib/${PROJECT_ID}/{pipeline_id}` — fires on Save click; `201 Created` on success; this is the single request that persists the LLM node's SYSTEM/TASK/CHAT HISTORY/Input/Output state — wait for this response before reloading/asserting persistence, not a fixed timeout. Confirmed via live network capture this session.
 - `GET ${ELITEA_API_BASE}/elitea_core/application/prompt_lib/${PROJECT_ID}/{pipeline_id}` — fires on page load/reload; the reloaded canvas renders from this response.

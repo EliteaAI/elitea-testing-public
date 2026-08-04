@@ -191,7 +191,7 @@ this AFS's own assertions (not re-argued here):**
 | "Every" / "on" ant-design selects | `dialog.locator(".react-js-cron-select")` — 4 elements when "on" is visible (week/on/hour/minute), 3 when hidden (day-or-finer/hour/minute); DOM order confirmed stable | **Third-party widget (`react-js-cron`, ant-design internals) — sanctioned #579 raw-handle exception.** No app testid possible on the library's internal `.ant-select`/`.react-js-cron-select` nodes; the `.react-js-cron-select` CSS class IS the stable scoped handle, chained off the modal's own root (which itself should get a `data-testid` per above) — this satisfies the #579 discipline (parent has a real testid once added, raw handle scoped to it). |
 | "at" hour/minute multi-select popovers | Opened via clicking the currently-shown hour/minute text (e.g. `page.get_by_text("00", exact=True).first`); grid cells are plain text nodes ("00".."23" for hour, "00".."59" for minute) inside the opened popover, NOT `.ant-select-item-option` (that class is for the Every/on ant-selects only — confirmed live these are a DIFFERENT sub-widget within `react-js-cron`) | Same #579 third-party exception as above — no app testid possible; scope interactions to the open popover container (`page.locator('[role="presentation"]').last` immediately after the click that opens it, to avoid cross-matching stray "00"/"09" text elsewhere on the page). |
 | Advanced-mode cron text input | `dialog.locator("input")` — the sole non-radio input when in Advanced mode | **NO `data-testid`.** `FormInput` used here too — same `inputProps={{'data-testid': ...}}` fix as the Webhook modal's URL/Secret fields. Recommended: `pipeline-schedule-cron-input`. |
-| Cancel / Apply buttons | `dialog.get_by_role("button", name="Cancel"/"Apply")` | Same `Modal.BaseModal` `cancelButtonTestId`/`confirmButtonTestId` plumbing as the Webhook modal — recommend `pipeline-schedule-modal-cancel-button`/`pipeline-schedule-modal-apply-button`. |
+| Cancel / Apply buttons | `dialog.get_by_role("button", name="Cancel"/"Apply")` | **CORRECTED 2026-08-04 (post implementation):** same as the Webhook modal — `PipelineScheduleModal.jsx` passes a custom `actions={<Box>...</Box>}` block to `Modal.BaseModal`, bypassing `cancelButtonTestId`/`confirmButtonTestId` entirely. `data-testid="pipeline-schedule-modal-cancel-button"`/`"pipeline-schedule-modal-apply-button"` are wired directly onto the two custom `Button` elements inside that `actions` block instead. |
 | Schedule-edit clock icon (post-Apply, next to Trigger combobox) | `node.locator("button").last` scoped to the entry point node — present only while `currentTriggerType === "schedule"` (confirmed via source read of `TriggerTypeSelector.jsx`'s conditional render) | **NO `data-testid`.** Recommended: `pipeline-entry-point-trigger-schedule-edit-button`. |
 
 ## Network Behavior
@@ -285,9 +285,12 @@ None. All 9 case steps were executed to completion against the live local enviro
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor`. **Requires `add-data-testid`
   work** — see § Concrete Handles (Mode radio via existing `testId` prop plumbing on
   `Checkbox.RadioButtonGroup`; Summary/cron-input via a bare/`inputProps` `data-testid`; modal
-  root + Cancel/Apply via `Modal.BaseModal`'s existing props). The `.react-js-cron-select` /
-  hour-minute-popover elements are the #579 sanctioned third-party exception — no testid work
-  needed or possible there, scope raw handles to the (testid'd) modal root.
+  root via `Modal.BaseModal`'s existing `data-testid` prop). **Correction (2026-08-04, post
+  implementation):** Cancel/Apply do NOT go through `Modal.BaseModal`'s testid props — see §
+  Concrete Handles — they're wired directly on the custom `actions` block's `Button` elements.
+  The `.react-js-cron-select` / hour-minute-popover elements are the #579 sanctioned third-party
+  exception — no testid work needed or possible there, scope raw handles to the (testid'd) modal
+  root.
 - **The single most important automation-authoring detail in this case**: to set hour/minute to a
   SPECIFIC single value, first click the currently-checked cell to UNCHECK it, THEN click the
   target cell to check it — for both hour and minute independently. Recommend a page-object

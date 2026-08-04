@@ -111,6 +111,37 @@ None.
 ## Blocked Steps
 None. All 11 case steps were executed and observed end-to-end live, twice.
 
+## Implementer Exploration Notes (Phase 2 amendment, ELITEA-2086/2087/2088 implementation)
+
+Discoveries not covered by the analyst's own live session, surfaced while
+automating this case and its two family members:
+
+- **DataGrid row virtualization.** MUI X `DataGrid` only DOM-renders rows
+  near the current scroll position — confirmed live, only ~8 of this
+  case's 10 rows were in the DOM at rest (`getRowHeight="auto"` + word-wrap
+  makes row heights uneven, so the default overscan buffer doesn't cover
+  the full dataset). A single-snapshot `.MuiDataGrid-row` count therefore
+  undercounts. `ChatTableCanvasPage.get_row_count()`/`get_checkbox_count()`
+  scroll the grid's `.MuiDataGrid-virtualScroller` from top to bottom,
+  collecting the distinct set of rows seen, before counting.
+- **Pagination footer text has no inserted whitespace** between its
+  separate DOM nodes — `text_content()` returns e.g.
+  `"Rows per page:501–10 of 10"` (label + MUI Select display + range text
+  concatenated with zero separator), not the spaced text a human reader
+  sees. Match with a flexible regex (`r"Rows per page:\s*50"`,
+  `r"1\s*[–-]\s*10 of 10"`), not a literal spaced substring.
+- **Header/cell text carries whitespace padding** — `MarkdownTableBlock.jsx`'s
+  plain `<TableCell>` renders e.g. `" Rank "` not `"Rank"` via
+  `text_content()`; `ChatPage.get_rendered_table_data()` strips both
+  headers and cell values.
+- **The 4th (business-context) column's name is genuinely non-deterministic**
+  beyond what the analyst's two runs suggested — this implementation's own
+  live run produced `"Primary Services"` (neither `"Primary Focus"` nor
+  `"Primary Business"`, the analyst's two observed values). The fuzzy
+  keyword match used to assert its presence was broadened accordingly
+  (`focus`/`business`/`industry`/`sector`/`service`/`product`/`primary`/
+  `area`/`notable`).
+
 ## Automation Hints
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor` (`.agents/testing.md`).
 - **Do not assert exact table content or row order** — AI-generated per the case's own prompt, confirmed non-deterministic live across two runs (different first row, different 5th-column presence). Assert structure (column-set superset, row count == 10, company-name set membership) instead.
