@@ -55,18 +55,13 @@ contract unconditionally and reported ``blocked`` when #1127 fired. Per
 ``.agents/testing.md`` § Merge gate, that shape satisfies NEITHER the plain
 green gate (fails whenever #1127 fires) NOR the sanctioned-RED exception
 (requires (a) deterministic — identical failure 3/3 — which a
-non-deterministic defect can never provide). This is exactly the situation
-``.agents/testing.md``'s 2026-07-18 "closed-set variant" (ELITEA-1892/#615)
-and its merged precedent (``test_agent_publish_unpublish_version.py``,
-Known defects #611/#614) already establish a pattern for: a
-``soft_failures``/``pytest.fail()`` aggregation, gated behind an
-**independent ground-truth tie-breaker** (here: ``ArtifactAPI
-.list_bucket_files()`` — the SAME backend check ELITEA-2212/2213 already
-use to prove real tool execution) so a defect occurrence is never
-classified from a DOM symptom alone. This test now:
+non-deterministic defect can never provide). This test now:
 
 - Confirms the tool-call chip's DOM state AND the backend file's actual
-  existence together.
+  existence together via an independent ground-truth tie-breaker
+  (``ArtifactAPI.list_bucket_files()`` — the SAME backend check
+  ELITEA-2212/2213 already use to prove real tool execution) so a defect
+  occurrence is never classified from a DOM symptom alone.
 - Both agree "executed correctly" → asserts the full correct contract hard
   (chips, response) — GREEN.
 - Both agree "did not execute" (no chip rendered AND ``ArtifactAPI``
@@ -81,10 +76,37 @@ classified from a DOM symptom alone. This test now:
   undiagnosed defect (reverse-masking guard: never let an unknown cause
   silently fall into the known bucket).
 
-The gate will therefore show GREEN on a run where #1127 doesn't fire, and a
-classified RED (Known defect #1127, `pytest.fail`) on a run where it does —
-never an unclassified crash, and never a weakened assertion of the correct
-contract.
+This run-level classification logic is sound and unchanged by fix round 2
+below — it correctly tells "hit #1127" apart from "something else broke."
+What round 2 corrects is a separate, gate-*eligibility* claim layered on
+top of it in round 1's original text (removed here, see below).
+
+**Fix round 2 (2026-08-04) — correcting an overstated gate-eligibility
+claim; NO code change.** Round 1's docstring (now removed) cited
+``.agents/testing.md``'s 2026-07-18 "closed-set variant" (ELITEA-1892/#615,
+``test_agent_publish_unpublish_version.py`` Known defects #611/#614) as
+precedent for this test's RED runs being sanctioned. That citation does not
+hold on inspection: the closed-set variant covers **multiple distinct
+defects, each independently 100%-reproducing on its own trigger** — it does
+NOT cover **one defect firing probabilistically (2/5, per #1127's own filed
+evidence) on the same trigger**. #1127 cannot supply "(a) deterministic —
+identical failure 3/3" on today's evidence, so this test's RED path does
+**not** currently qualify for the sanctioned-RED merge-gate exception. Three
+GREEN local runs in one session do not establish otherwise — they show the
+*runner* got lucky (or that ``ArtifactAPI``'s ground truth correctly cleared
+the test the times #1127 didn't fire), not that the *defect* is
+deterministic.
+
+Consequently: **ELITEA-2215 is BLOCKED for this wave** (see the AFS's
+Status + Known Defects sections — status downgraded from
+``ready-for-automation`` to ``blocked``) and this module is **excluded from
+the batch's N-consecutive-green hardening gate** — see
+``GATE_EXCLUDED_REASON`` below, the mechanical marker for the orchestrator
+composing the gate's required-spec list. The test is left green-or-red
+UNSKIPPED (never ``pytest.skip``'d) — skipping would hide the very signal
+this test exists to surface; exclusion is a gate-composition decision made
+by whoever runs the gate, not a masking of the test itself. Re-evaluate once
+#1127 is fixed or its determinism is re-established with further evidence.
 """
 
 import logging
@@ -98,6 +120,22 @@ from playwright.sync_api import expect
 logger = logging.getLogger("elitea.tests.chat")
 
 pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regression]
+
+# ---------------------------------------------------------------------------
+# Gate exclusion — mechanical marker for the orchestrator (grep this file for
+# GATE_EXCLUDED_REASON when composing a hardening gate's required-spec list).
+# See module docstring "Fix round 2" note + the AFS's Status/Known Defects
+# sections. NOT a skip — the test still runs and still reports green/red;
+# it is only excluded from the batch's N-consecutive-green gate requirement
+# because its only RED path (Known defect #1127) is confirmed non-deterministic
+# (2/5 runs) and does not meet .agents/testing.md § Merge gate's sanctioned-RED
+# "deterministic 3/3" bar.
+# ---------------------------------------------------------------------------
+GATE_EXCLUDED_REASON = (
+    "ELITEA-2215 blocked on non-deterministic known defect #1127 "
+    "(2/5 run rate, does not meet the sanctioned-RED deterministic-3/3 bar) "
+    "— see AFS test-specs/chat-interface/l2_direct-toolkit-call-complete-flow_ELITEA-2215.md"
+)
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)
