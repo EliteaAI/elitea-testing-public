@@ -5,6 +5,7 @@
 > `grep -rl '<keyword>' .agents/memory/test-automation-engineer/`
 
 - [Project briefing](project_briefing.md) — your slot, the six-phase loop, the ≤2-rerun budget, the Run Report
+- [Verify feature branch first](verify_feature_branch_before_first_commit.md) — `git branch --show-current` BEFORE anything else; dispatch starts you ON the trunk
 - [Console side-channel checks](console_side_channel_checks.md) — 5 ways a "no console errors" assert proves nothing
 - [Waits & races](never_assume_a_transition_settled.md) — networkidle/capture-list/Enter-send/cold-nav all lie
 - [Verify your own delivery](verify_your_own_delivery_before_handoff.md) — exit code, stdout and "done" all lie
