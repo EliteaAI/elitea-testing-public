@@ -94,10 +94,26 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
         )
 
     with allure.step("Step 3 — Select the fixture MCP from the popup"):
+        # Regression check for a fix-round finding (2026-08-04): this AFS
+        # originally claimed pipeline-level MCP-attach fires "no persistence
+        # request ... only GET calls" (contradicted by ELITEA-1955's sibling
+        # test using this same page-object method) — corrected in the AFS's
+        # Test Steps step 4 / § Network Behavior. `select_mcp_in_popper()`
+        # hard-blocks on `page.expect_response(... PATCH ... status == 201
+        # ...)` before returning, so it is itself the regression guard: if a
+        # future product change ever stops persisting on attach (reverting to
+        # the originally-claimed GET-only behavior, or vice versa breaking
+        # the immediate PATCH), this call times out and the step fails
+        # loudly instead of silently passing on a stale assumption.
         attach_response = pipeline_page.select_mcp_in_popper(
             popper, mcp_display_name, project_id, timeout=UI_ELEMENT_TIMEOUT
         )
-        assert attach_response is not None, "MCP attach should return the persisted toolkit payload"
+        assert attach_response is not None, (
+            "MCP attach should return the persisted toolkit payload from the "
+            "immediate PATCH .../tool/prompt_lib/{project}/ 201 response — the "
+            "pipeline Tools-section attach auto-persists on selection, same as "
+            "the agent-level Tools section (#530), not deferred to pipeline Save"
+        )
 
     with allure.step(
         "Step 4 — Verify the MCP appears attached in TOOLS as a flat-list card (no MCP sub-tab — "
