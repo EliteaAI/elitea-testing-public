@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-04 (ELITEA-2033 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-04 (ELITEA-2034 analysis).
 
 ## Canvas node/edge CRUD (Add-node menu, node delete, edge create/delete) (confirmed live, 2026-08-03, ELITEA-2018/2030/2031/2032)
 
@@ -532,3 +532,73 @@ is a legitimate empty state, not an error state).
   during this analysis). Fix: switch the sidebar project selector to
   "Private" (`select-option-399`) before creating pipelines by hand, or
   read the sidebar's active project id before scripting against the API.
+
+## Decision node — config, DECISION OUTPUTS, edge-testid instability (confirmed live, 2026-08-04, ELITEA-2034)
+
+- **Decision node's config is inline (same generic pattern as every other
+  node type)**: `Input` multi-select, `Description` (plain multiline
+  `AIAssistantInput`/`TextField`, NOT CodeMirror — same as Router's
+  Condition field), `Decision outputs` (an initially-empty chip container,
+  no typeable input inside it at all), `Interrupt before`/`Interrupt after`
+  switches. Two source handles at all times: `Output` (`data-handleid="nodes"`)
+  and `Default output` (`data-handleid="default_output"`) — case text for
+  ELITEA-2034 matches the live UI's handle labels exactly (unlike its
+  DECISION OUTPUTS wording, below).
+- **DECISION OUTPUTS chips are added ONLY by drag-connecting a canvas edge
+  from the `Output` handle to an existing, correctly-named target node** —
+  confirmed via source (`DecisionNodeShared.jsx`'s `DecisionOutputs` renders
+  zero interactive children when empty; `conditionDecisionBuilders.helpers.js`'s
+  `buildNewDecision` appends `connection.target` to the node's `nodes` array
+  on `onConnect`) and live DOM inspection. This is the SAME drag-connect
+  mechanism as HITL's ROUTER MAPPING, **NOT** Router node's dropdown-picklist
+  `Routes` field — despite both producing "output chips = existing node ids,"
+  the interaction differs. Case text ("add target node names as chips") reads
+  as freeform typing; filed as a CLARIFICATION, same pattern as
+  `#1104`/`#1136`/`#1137`/`#1144`. Target nodes must be pre-renamed
+  (`edit_node_name`) to match the desired output values before connecting.
+- **Edge testid shape is UNSTABLE across save/reload for Decision node edges
+  specifically — the most important trap in this session.** The SAME logical
+  edge's `data-testid` differs between the live pre-save drag state and the
+  post-reload (parsed-from-YAML) state:
+  - `nodes`-handle (DECISION OUTPUTS) edge: pre-save
+    `{source}nodes-{target}target` (e.g. `Decision 1nodes-bug_respondertarget`)
+    → post-reload `{source}---{target}` (e.g. `Decision 1---bug_responder`,
+    the `nodes` suffix DISAPPEARS).
+  - `default_output` edge: pre-save `{source}default_output-{target}target`
+    → post-reload `{source}default_output---{target}` (suffix STAYS, but the
+    separator changes from concatenation to `---`).
+  - **Use `edge_exists(source_id, target_id)` WITHOUT `handle_suffix`** for
+    Decision node edge assertions in either state — its prefix+substring
+    matching tolerates both shapes. Do NOT use `edge_testid_present()`/
+    `EDGE_TESTID`/`get_edge_locator()` (exact-`---`-only match) for Decision
+    edges — unlike Router's routes edges (ELITEA-2033), which use the `---`
+    shape in BOTH states and so ARE safe with the exact-match helpers.
+- **Custom state variables are NOT built-in** (unlike Router's `input`/
+  `messages`, which are) — a fresh pipeline's Decision `Input` combobox lists
+  only `input`/`messages` until added via the flow editor's `STATE` side
+  panel "+" control. No existing fixture parameter seeds custom state vars;
+  add them in-test via the `STATE` panel.
+- **`STATE` panel's add-variable "+" button has an unreliable Playwright
+  computed accessible name (`"Context"`)** — `get_by_role("button", {name:
+  "Context"})` is ambiguous/unstable (confirmed: this session's tooling
+  resolved multiple genuinely different click targets to the identical
+  locator text across 3 separate attempts) and should not be used. Worse:
+  the resulting new-row text input's accessible name is `"name"`
+  (`get_by_role("textbox", {name: "name", exact: True})` — WORKS reliably),
+  but the raw CSS selector `input[name="name"]` is a live trap — it ALSO
+  matches the pipeline's own unrelated General "Name" field
+  (`id="name" name="name"`, precedes the STATE panel in DOM order), and
+  `querySelector`/`.locator()` without role-scoping silently overwrote the
+  pipeline's Name field TWICE this session. Always take a fresh snapshot
+  after opening the row and use the role-scoped locator, never a `name=`
+  attribute CSS selector, for this panel.
+- **CORRECTION to this digest's Router-session entry on
+  `pipeline-node-interrupt-before-toggle-{id}`**: it is **NOT** yet
+  "unconditional on main" — a fresh `git fetch origin` + `git grep` this
+  session found it ONLY on `origin/automation/testids`
+  (`CommonInterruptSettings.jsx`), absent from `origin/main`. Re-verify
+  provenance per-session rather than trusting a prior session's "on-main"
+  claim without re-fetching — testid promotion state changes between
+  sessions. `Interrupt after` remains caller-opt-in and Decision's own call
+  site (`NormalDecisionNode.jsx`) does not pass it — needs-adding.
+  Full detail: `l2_pipeline-decision-node-configuration_ELITEA-2034.md`.
