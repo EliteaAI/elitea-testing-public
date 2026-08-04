@@ -50,3 +50,12 @@ index.json, 2743 cases indexed". `_index.py` fallback fixed it in one shot,
 diff scoped to exactly the one entry. This is now a **reliable, repeatable
 failure of the MCP verb**, not a one-off — treat the mtime/git-diff check as
 mandatory every time, not a suspicious-result-only step.
+
+**Confirmed a 3rd time, #505/ELITEA-2068:** same no-op (2743 cases claimed,
+`index.json` unchanged). Gotcha this time: my first `_index.py` invocation
+used `--dir tests/automated-full-regression-ui` (the case's own subfolder,
+seemed natural) and only indexed 697 cases — silently narrower than the
+real tree. The script's own default is `--dir tests` (the *whole* tests/
+tree, matching what the MCP tool's "2743 cases" count actually covers) — use
+that default (or pass `--dir tests` explicitly), never a case's subfolder,
+or the rebuild itself becomes a silent under-count.
