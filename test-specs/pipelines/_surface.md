@@ -2,15 +2,22 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-04 (ELITEA-2034 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-04 (ELITEA-2037 analysis).
 
 ## Canvas node/edge CRUD (Add-node menu, node delete, edge create/delete) (confirmed live, 2026-08-03, ELITEA-2018/2030/2031/2032)
 
 - **Add-node "+" menu lists exactly 11 types, in DOM order**: Agent, Code,
   Custom, Decision, Human-in-the-loop, LLM, MCP, Printer, Router, State
   modifier, Toolkit — matches TMS case data exactly, confirmed live via
-  `role="menuitem"` text dump. Zero testids on the "+" button or any menu
-  item (plain MUI `MenuItem`, confirmed via `inner_html()`). Escape closes
+  `role="menuitem"` text dump.
+  **CORRECTION (2026-08-04, ELITEA-2037 analysis): "zero testids on the '+'
+  button or any menu item" is now STALE — testids have since been added.**
+  `[data-testid="pipeline-add-node-button"]` (the "+" trigger) and
+  `[data-testid="pipeline-add-node-menu-item-{type}"]` (one per menu item,
+  lowercase type, e.g. `pipeline-add-node-menu-item-mcp`) both confirmed
+  working live this session (`AddNodeMenu.jsx`). Provenance: on
+  `automation/testids` only, absent from `main` (fresh `git fetch` +
+  `git grep`, 2026-08-04) — not yet promoted. Escape closes
   the menu (`role="menu"` count → 0) without adding a node.
 - **No node type has a click-to-expand config panel** — every node type
   (LLM/HITL/MCP/Toolkit, and now confirmed generically via Code/Printer)
@@ -380,6 +387,112 @@ before/after → Structured output.
   SYSTEM/TASK/CHAT HISTORY (Type+Value) and Input/Output. Save returns `PUT
   .../application/prompt_lib/{project}/{id}` → `201`. Zero console errors, zero
   failed requests, across every run.
+
+## MCP node — inline config panel, CONDITIONALLY rendered (confirmed live, 2026-08-04, ELITEA-2037)
+
+Same always-expanded-inline pattern as every other node type. Shares the SAME
+base component (`BaseToolNode.jsx`) as the Toolkit node (ELITEA-2010, below) —
+`nodeType === "mcp"`, `TEST_ID_PREFIX_BY_NODE_TYPE['mcp'] = 'pipeline-mcp-node'`.
+Most testids were added earlier (ELITEA-1954/1955's `add-data-testid` passes)
+and are already wired as `PipelineDetailPage` fields — reuse directly, don't
+re-derive.
+
+- **Static fields present immediately on a freshly-added, unconfigured node**:
+  Trigger (only if this node is the entry point), **Toolkit** select (empty),
+  **Input** (multi-select, `role="listbox" aria-multiselectable="true"`,
+  tool-agnostic state var), **Output** (same), **Interrupt before** (switch,
+  dynamic testid `pipeline-node-interrupt-before-toggle-{node_id}`,
+  unconditional across ALL node types — `disabled` when this node IS the
+  entry point), **Interrupt after** (switch — `disabled` when the node's
+  `transition` is `END`), **Structured output** (switch, enabled by default,
+  MCP passes `showStructuredOutput` unconditionally unlike the generic
+  Function-node default).
+- **Tool select and BOTH INPUT MAPPING (REQUIRED N)/(OPTIONAL N) accordions
+  are CONDITIONALLY rendered — absent from the DOM (not hidden) until a
+  Toolkit with ≥1 tool is selected.** Same conditional-rendering contract as
+  the Toolkit node below — a case-text step listing "Toolkit, Tool, Input,
+  Output, INPUT MAPPING, Interrupt before/after, Structured output" as all
+  simultaneously present on a fresh node is describing 2 UI states, not 1;
+  split the assertion across "before Toolkit select" and "after Tool select".
+- **Testid gap (4 elements), confirmed via BOTH source read
+  (`BaseToolNode.jsx` lines ~206-238) AND live DOM this session — the prop
+  plumbing already exists generically (shared with the Toolkit node, which
+  DOES get these wired), it's a Toolkit-nodeType-only conditional today:**
+  1. **"Interrupt after" toggle** — `interruptAfterTestId` prop passed
+     `undefined` for `nodeType === Mcp`. No testid anywhere on this switch
+     (confirmed live: `data-testid` attribute absent). Recommend
+     `pipeline-mcp-node-interrupt-after-toggle`.
+  2. **"Structured output" toggle** — same gap, `structuredOutputTestId`.
+     Recommend `pipeline-mcp-node-structured-output-toggle`.
+  3. **Input-mapping row "Type" select** — `typeTestIdPrefix` prop, MCP
+     passes `undefined`. Only reachable via the duplicated, non-unique
+     `id="simple-select-Type"` (positional `.nth()` only, same anti-pattern
+     as LLM/HITL). Recommend `pipeline-mcp-node-input-mapping-type-{param}`
+     (dynamic, mirrors the Value field's existing naming).
+  4. **Input-mapping "optional N" accordion heading** — `optionalHeadingTestId`
+     prop, MCP passes `undefined`. Recommend
+     `pipeline-mcp-node-input-mapping-optional-heading`. Not live-exercisable
+     without a tool that has optional params (`ask_question`, this session's
+     test data, has 0 optional) — confirmed via source read only.
+  All 4 are 1-line fixes mirroring the Toolkit node's own call site
+  (`BaseToolNode.jsx` lines 208-241) — widen the existing
+  `nodeType === Toolkit ? ... : undefined` ternaries to also cover
+  `nodeType === Mcp`, or give MCP its own parallel testid.
+- **Already-working, reused-from-ELITEA-1954/1955 testids** (all on
+  `automation/testids` only, confirmed via `git grep` this session — NOT yet
+  on `main`): `pipeline-mcp-node-toolkit-select` (+ `-combobox` variant),
+  `pipeline-mcp-node-tool-select` (+ `-combobox`), `pipeline-mcp-node-input-select`
+  (+ `-combobox`), `pipeline-mcp-node-output-select` (+ `-combobox`),
+  `pipeline-mcp-node-input-mapping-heading`,
+  `pipeline-mcp-node-input-mapping-value-{param}` (class constant
+  `MCP_NODE_INPUT_MAPPING_VALUE` on `PipelineDetailPage`). **All are
+  constructed at runtime via string-template concatenation
+  (`` `${testIdPrefix}-toolkit-select` ``) — a literal bare-substring `git grep`
+  for the FULL testid string finds nothing; verify provenance via the
+  constituent prefix (`pipeline-mcp-node`) and the
+  `TEST_ID_PREFIX_BY_NODE_TYPE` mechanism instead**, same caveat as
+  `.agents/workflow.md`'s closure-record two-stage-grep note for prop
+  indirection.
+- **CORRECTED (2026-08-04, ELITEA-2037 fix round 2): pipeline-level "+MCP"
+  attach (`agent-add-mcp-button`, Tools section) DOES auto-persist** — like
+  the AGENT-level Tools section (`EliteaAI/elitea-testing-public#530`),
+  selecting the MCP in the popper fires an immediate `PATCH
+  .../elitea_core/tool/prompt_lib/{project_id}/` → `201 Created`, the SAME
+  auto-persist mechanism as agents, not a pipeline-specific difference. `GET
+  .../toolkits/…` / `GET .../tools/…?mcp=true` (listing calls that populate
+  the popup) also fire, but are not the whole story. Re-verified live via 2
+  foreground pytest runs of the case's own spec
+  (`test_pipeline_mcp_node_fresh_attach.py::test_mcp_node_fresh_attach`, both
+  green) — `PipelineDetailPage.select_mcp_in_popper()` (pre-existing, reused
+  from ELITEA-1955) hard-blocks on `page.expect_response(... method ==
+  "PATCH" and status == 201 ...)` before returning, so a passing run is
+  itself proof the PATCH fired; corroborated by the already-merged
+  ELITEA-1955 sibling test using the identical wait in the identical
+  context. The pipeline's own Save (`PUT
+  .../application/prompt_lib/{project}/{pipeline_id}` → `201`) still ALSO
+  re-persists the Tools-section attachment as part of the whole
+  node/pipeline payload — both true: attach fires its own immediate PATCH,
+  AND Save's PUT re-persists the same state. Filed as a sibling
+  clarification (unaffected by this correction — it only covered the
+  missing MCP sub-tab, not persistence timing):
+  `EliteaAI/elitea-testing-public#1149` (of `#530`); #1149 carries a
+  follow-up comment correcting the network claim its body originally
+  repeated. ~~Original (incorrect) claim, kept for audit trail: "does NOT
+  auto-persist — unlike the AGENT-level Tools section (#530), no request
+  fires on MCP-attach selection (only GET .../toolkits/… /
+  GET .../tools/…?mcp=true listing calls). The attachment is persisted
+  together with the rest of the node config by the pipeline's own Save."~~
+  See `l2_pipeline-mcp-node-integration-fresh-attach_ELITEA-2037.md` § Network
+  Behavior for the full re-verification detail.
+- **No "MCP sub-tab" exists** — the Toolkit/MCP/Agent/Pipeline buttons in the
+  Tools section are 4 independent ADD triggers (poppers), not view-filter
+  tabs. Every attached item, whatever its type, renders in ONE flat list
+  sharing the single testid `agent-toolkit-card` (confirmed:
+  `document.querySelectorAll('[data-testid="agent-toolkit-card"]')` → 1 after
+  attaching 1 MCP). Same root cause/pattern as `#530`, different entity
+  (pipeline Tools vs agent Tools) — same shared `ApplicationTools.jsx`/
+  `ToolMenu.jsx` component.
+  Full detail: `l2_pipeline-mcp-node-integration-fresh-attach_ELITEA-2037.md`.
 
 ## Toolkit node — inline config panel, CONDITIONALLY rendered (confirmed live, 2026-08-03, ELITEA-2010)
 
