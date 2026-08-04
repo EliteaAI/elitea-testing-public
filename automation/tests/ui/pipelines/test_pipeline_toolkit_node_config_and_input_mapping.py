@@ -144,6 +144,10 @@ def test_toolkit_node_config_and_input_mapping(page, pipeline_id, github_toolkit
             "'Input mapping (required 1)' section should appear for search_issues's "
             "1 required parameter (search_query)"
         )
+        assert pipeline_page.is_toolkit_node_input_mapping_optional_section_visible(2, timeout=UI_ELEMENT_TIMEOUT), (
+            "'Input mapping (optional 2)' section should appear for search_issues's "
+            "2 optional parameters (max_count, repo_name)"
+        )
         # The now-expanded node's INPUT MAPPING row can land directly under
         # ReactFlow's own pinned bottom-left canvas controls (live-confirmed:
         # a coordinate-based click on the SEARCH QUERY Type select silently

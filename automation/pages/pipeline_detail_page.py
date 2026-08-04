@@ -266,6 +266,10 @@ class PipelineDetailPage(PipelineFormPage):
         testid="pipeline-toolkit-node-input-mapping-heading",
         description="Toolkit node's 'Input mapping (required N)' accordion heading"
     )
+    toolkit_node_input_mapping_optional_heading = LocatorDescriptor(
+        testid="pipeline-toolkit-node-input-mapping-optional-heading",
+        description="Toolkit node's 'Input mapping (optional N)' accordion heading"
+    )
     toolkit_node_interrupt_after_toggle = LocatorDescriptor(
         testid="pipeline-toolkit-node-interrupt-after-toggle",
         description="Toolkit node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
@@ -1712,6 +1716,24 @@ class PipelineDetailPage(PipelineFormPage):
             return False
         text = (heading.text_content() or "").strip()
         return text == f"Input mapping (required {required_count})"
+
+    def is_toolkit_node_input_mapping_optional_section_visible(self, optional_count: int, timeout: int = 5000) -> bool:
+        """Check whether the Toolkit node's "Input mapping (optional N)" accordion is visible.
+
+        Args:
+            optional_count: Expected N in the accordion title.
+            timeout: Maximum wait time.
+
+        Returns:
+            True if the section with the exact optional count is visible.
+        """
+        heading = self.toolkit_node_input_mapping_optional_heading
+        try:
+            heading.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (optional {optional_count})"
 
     def get_toolkit_node_input_mapping_type(self, param_name: str, timeout: int = 5000) -> str:
         """Read the current Type select value of an Input-mapping row.
