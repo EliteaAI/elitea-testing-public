@@ -13,12 +13,19 @@ Testid gap CLOSED (review round 1, was AFS "not blocking" — the recommendation
 to reuse the existing raw-handle ``add_node()``-family methods as-is did not
 survive review: `.agents/role-overrides.md` treats a missing testid as work
 to do, not a reason to rung down, regardless of what an AFS recommends).
-`get_add_node_menu_items()`/`wait_for_popup_menu_hidden()` below are now
-testid-based (`pipeline-add-node-button`, `pipeline-add-node-menu`,
+`get_add_node_menu_items()`/`wait_for_popup_menu_hidden()`/
+`select_add_node_menu_item()` below are all testid-based
+(`pipeline-add-node-button`, `pipeline-add-node-menu`,
 `pipeline-add-node-menu-item-{type}`, added to AddNodeMenu.jsx via
-`add-data-testid`, on `automation/testids`). `add_node()` itself (used at
-Step 4) is untouched pre-existing tech debt (#25/#42) — this case's own new
-methods don't inherit its raw handles.
+`add-data-testid`, on `automation/testids`). Step 4 originally kept the
+legacy raw-handle `add_node()` call as "untouched pre-existing tech debt
+(#25/#42), out of scope at the time" — fix round 4 revisited that: with
+`select_add_node_menu_item()` now shipped and otherwise having zero callers
+(canon ruling #511 — an unreferenced method isn't "exercised" by merely
+existing), wiring it into Step 4 both closes the dead-code finding and
+replaces this test's own raw-handle call with the testid-based pair it was
+built for. `add_node()` itself is untouched and remains in use by every
+other pipeline test — only this file's Step 4 now uses the testid path.
 """
 
 import allure
@@ -72,7 +79,12 @@ def test_add_node_menu_lists_types_adds_node_and_dismisses(page, pipeline_id):
 
     with allure.step("Step 4 — Click 'LLM' to add an LLM node"):
         node_count_before = pipeline_page.get_node_count()
-        pipeline_page.add_node("LLM")
+        # Testid-based open+select pair (not the legacy raw-handle add_node()):
+        # get_add_node_menu_items() opens the menu and leaves it open for the
+        # companion select_add_node_menu_item() to click the "llm" item by its
+        # internal type key (see class docstrings on both methods).
+        pipeline_page.get_add_node_menu_items(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.select_add_node_menu_item("llm", timeout=UI_ELEMENT_TIMEOUT)
         llm_node_id = pipeline_page.wait_for_node_on_canvas("llm", timeout=UI_ELEMENT_TIMEOUT)
         assert llm_node_id, "LLM node should have a non-empty data-id after being added"
         assert pipeline_page.get_node_count() == node_count_before + 1, (

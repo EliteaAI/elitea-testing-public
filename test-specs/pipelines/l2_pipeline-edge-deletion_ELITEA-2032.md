@@ -41,8 +41,10 @@
    - **Verify**: `edge_exists("LLM 1", "Printer 1")` is `True`;
      `get_edge_count() == 2` (`LLM 1→Printer 1`, `Printer 1→END`).
 2. Click on the `LLM 1→Printer 1` edge on the canvas (edges are clickable
-   `.react-flow__edge` groups — locate via the confirmed live testid
-   `rf__edge-xy-edge__LLM 1source-Printer 1target`, then click it).
+   `.react-flow__edge` groups — locate via `PipelineDetailPage.get_edge_locator("LLM 1",
+   "Printer 1")`, matching the confirmed live testid
+   `rf__edge-xy-edge__LLM 1---Printer 1` — see Concrete Handles §
+   Corrected testid format — then click it).
    - **Verify**: the edge's `class` attribute gains `selected`
      (confirmed live: `react-flow__edge react-flow__edge-custom nopan
      selected selectable`).
@@ -137,7 +139,7 @@
 
 | Element | Recommended Locator | Fallback |
 |---|---|---|
-| Edge to click | `PipelineDetailPage.get_edge_locator("LLM 1", "Printer 1")` (existing method — see corrected format note below) | — |
+| Edge to click | `PipelineDetailPage.get_edge_locator("LLM 1", "Printer 1")` (method added in this PR's round 1 — see corrected format note below) | — |
 | Delete-confirmation dialog | `components.mui.Dialog.wait_for(page)` / `.click_button(dialog, "Delete")` (existing helper, already used by `delete_node()`) | — |
 | Edge existence / count post-delete | `PipelineDetailPage.edge_exists()` / `get_edge_count()` (existing) | — |
 | Old-edge-reappears check post-reload (step 6) | `PipelineDetailPage.edge_testid_present("LLM 1", "EliteAPipelineEnd")` (existing — exact `EDGE_TESTID` template match; correct tool here because this edge is being read right after a reload, i.e. loaded fresh from the saved YAML — see the corrected format note below) | — |

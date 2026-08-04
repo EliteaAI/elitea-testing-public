@@ -87,7 +87,7 @@
 
 | Element | Recommended Locator | Fallback |
 |---|---|---|
-| Add node ("+") button | `PipelineDetailPage.add_node(node_type)` (Step 4, pre-existing tech debt, reused unmodified) / `PipelineDetailPage.add_node_button` (Steps 2-3, 6 — new testid-backed `LocatorDescriptor`, `pipeline-add-node-button`) | — |
+| Add node ("+") button | `PipelineDetailPage.add_node_button` (Steps 2-3, 4, 6 — new testid-backed `LocatorDescriptor`, `pipeline-add-node-button`, opened via `get_add_node_menu_items()`) | — |
 | Menu + menu items | `PipelineDetailPage.get_add_node_menu_items()` / `select_add_node_menu_item()`, testid-based via `pipeline-add-node-menu` + `pipeline-add-node-menu-item-{type}` (added to `AddNodeMenu.jsx` via `add-data-testid`, on `automation/testids`) | — |
 | Node appears on canvas | `PipelineDetailPage.wait_for_node_on_canvas("llm")` (existing) | — |
 | Node count | `PipelineDetailPage.get_node_count()` (existing) | — |
@@ -107,10 +107,19 @@ require `add-data-testid`, regardless of whether reusing a raw handle would
 also work and regardless of an AFS's own "not blocking" framing — an AFS
 recommendation doesn't waive the hard-override. Reviewer flagged this in
 round 1; testids were added onto `AddNodeMenu.jsx`'s trigger button, `Menu`,
-and each `MenuItem` (keyed by internal node type) instead. `add_node()`
-itself (Step 4, pre-existing tech debt shared with
-`test_pipeline_nodes.py::TestAddNode`) was left untouched — out of this
-case's scope, not blocking the new methods from being testid-clean.
+and each `MenuItem` (keyed by internal node type) instead.
+
+**Step 4 update (fix round 4).** `add_node()` (Step 4, pre-existing tech debt
+shared with `test_pipeline_nodes.py::TestAddNode`) was initially left
+untouched as out of this case's scope. Round 3 review flagged the companion
+`select_add_node_menu_item()` method as dead code (zero callers anywhere in
+the branch — canon ruling #511, a method isn't "exercised" by merely
+existing). Rather than delete it, round 4 wired it into this test's own
+Step 4 (`get_add_node_menu_items()` to open + `select_add_node_menu_item("llm")`
+to select), closing the dead-code finding AND completing the testid-clean
+sweep for this case's own steps. `add_node()` itself is untouched and
+remains correct, in-use tech debt for every OTHER pipeline test that calls
+it — this is a same-file, same-case change, not a re-scope of that debt.
 
 ## Network Behavior
 - None — pure client-side canvas/menu interaction, no XHR involved in
@@ -125,8 +134,10 @@ case's scope, not blocking the new methods from being testid-clean.
 
 ## Automation Hints
 - Framework: Playwright + pytest.
-- Page object: `automation/pages/pipeline_detail_page.py` — `add_node()`,
-  `wait_for_node_on_canvas()`, `get_node_count()` all exist; reuse as-is.
+- Page object: `automation/pages/pipeline_detail_page.py` — `wait_for_node_on_canvas()`,
+  `get_node_count()` exist, reuse as-is; Step 4 uses the testid-based
+  `get_add_node_menu_items()` + `select_add_node_menu_item("llm")` pair
+  (round 4 — see Concrete Handles § Step 4 update), not `add_node()`.
 - `helpers._navigate_to_canvas(page, pipeline_id)` for setup navigation.
 - For step 3 (reading the full menu item list), extend `add_node()`'s
   existing menu-open logic rather than duplicating the "+..click, wait 300ms"
