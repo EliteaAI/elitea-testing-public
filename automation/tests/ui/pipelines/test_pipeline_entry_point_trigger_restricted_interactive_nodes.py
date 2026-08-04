@@ -44,7 +44,9 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
     with allure.step("Step 1 — Navigate to the fresh pipeline; verify baseline: all 3 trigger options"):
         pipeline_page = _navigate_to_canvas(page, pipeline_with_llm_id)
         llm_node_id = pipeline_page.wait_for_node_on_canvas("llm", timeout=UI_ELEMENT_TIMEOUT)
-        baseline_options = pipeline_page.get_trigger_options(timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id)
+        baseline_options = pipeline_page.get_trigger_options(
+            timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id
+        )
         assert baseline_options == ["Chat Message", "Schedule", "Webhook"], (
             f"Baseline (no restricting elements) should offer all 3 trigger types, got {baseline_options!r}"
         )
@@ -65,7 +67,9 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
         # canvas — confirmed via source read of TriggerTypeSelector.jsx's
         # `hasInteractiveElements` useMemo. A literal "add node -> assert
         # restriction" would produce a false negative here.
-        pre_save_options = pipeline_page.get_trigger_options(timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id)
+        pre_save_options = pipeline_page.get_trigger_options(
+            timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id
+        )
         assert pre_save_options == ["Chat Message", "Schedule", "Webhook"], (
             "Restriction should NOT apply before Save — the unsaved Printer node on the live "
             f"canvas has no effect on the Trigger dropdown yet, got {pre_save_options!r}"
@@ -81,7 +85,9 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
         "Step 5 — Open the Trigger dropdown again; verify ONLY Chat Message is available, "
         "immediately (no reload needed) AND after a reload"
     ):
-        post_save_options = pipeline_page.get_trigger_options(timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id)
+        post_save_options = pipeline_page.get_trigger_options(
+            timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id
+        )
         assert post_save_options == ["Chat Message"], (
             f"Only Chat Message should be available once the Printer node is saved, got {post_save_options!r}"
         )
@@ -91,7 +97,9 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
         pipeline_page.wait_for_detail_page_load()
         pipeline_page.wait_for_canvas()
         pipeline_page.wait_for_node_on_canvas("llm", timeout=UI_ELEMENT_TIMEOUT)
-        post_reload_options = pipeline_page.get_trigger_options(timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id)
+        post_reload_options = pipeline_page.get_trigger_options(
+            timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id
+        )
         assert post_reload_options == ["Chat Message"], (
             f"Restriction should survive a reload, got {post_reload_options!r}"
         )
@@ -129,7 +137,9 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
         pipeline_page.toggle_node_interrupt_before(code_node_id, timeout=UI_ELEMENT_TIMEOUT)
 
         pipeline_page.save_and_wait_for_update(project_id, pipeline_with_llm_id, timeout=SAVE_RESPONSE_TIMEOUT)
-        interrupt_options = pipeline_page.get_trigger_options(timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id)
+        interrupt_options = pipeline_page.get_trigger_options(
+            timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id
+        )
         assert interrupt_options == ["Chat Message"], (
             f"Only Chat Message should be available with a saved non-empty interrupt list, "
             f"got {interrupt_options!r}"
@@ -152,7 +162,9 @@ def test_entry_point_trigger_restricted_interactive_nodes(page, pipeline_with_ll
         pipeline_page.wait_for_detail_page_load()
         pipeline_page.wait_for_canvas()
         pipeline_page.wait_for_node_on_canvas("llm", timeout=UI_ELEMENT_TIMEOUT)
-        restored_options = pipeline_page.get_trigger_options(timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id)
+        restored_options = pipeline_page.get_trigger_options(
+            timeout=UI_ELEMENT_TIMEOUT, entry_point_node_id=llm_node_id
+        )
         assert restored_options == ["Chat Message", "Schedule", "Webhook"], (
             f"All 3 trigger types should be available again once every restricting element is "
             f"removed and saved, got {restored_options!r}"

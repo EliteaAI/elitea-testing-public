@@ -1152,11 +1152,35 @@ class PipelineDetailPage(PipelineFormPage):
         entry point (`yamlJsonObject.entry_point === id`) — callers must
         target a node that is NOT the entry point.
 
+        The testid is wired via `slotProps.switch.slotProps.input` (added
+        EliteaAI/EliteaUI, ELITEA-2008 fix) so it lands directly on the
+        native ``<input type="checkbox">`` — NOT the `MuiSwitch-switchBase`
+        wrapper span MUI's `Switch` normally puts extra props on
+        (`.agents/memory/test-automation-engineer/
+        testid_lands_on_mui_wrapper_not_input.md`; MUI v7's `Switch` silently
+        drops a legacy `inputProps` testid entirely). Clicked via
+        ``element.click()`` (JS, `.claude/rules/mui-patterns.md` § MUI
+        Overlay Interception — same technique as :meth:`delete_node`), NOT a
+        coordinate-based Playwright click, even with ``force=True``.
+        Confirmed live (ELITEA-2008): after a node add/delete cycle earlier
+        on the canvas (e.g. Printer/HITL added then removed before this
+        node), some other canvas element ends up topmost at this switch's
+        on-screen coordinates. `force=True` only skips Playwright's
+        actionability *checks* — the underlying mouse event is still
+        dispatched at those coordinates and the browser still delivers it to
+        whatever's topmost there, so a coordinate click silently lands on
+        the intercepting element instead of the switch (no exception, no
+        `aria-disabled`, the switch's `checked` state simply never flips).
+        `element.click()` on the (now testid'd) native checkbox bypasses
+        on-screen z-order entirely and still fires React's `onChange`.
+
         Args:
             node_id: The data-id of the target node.
             timeout: Maximum wait time in milliseconds.
         """
-        self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id)).click(timeout=timeout)
+        toggle = self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id))
+        toggle.wait_for(state="attached", timeout=timeout)
+        toggle.evaluate("el => el.click()")
 
     def select_trigger_type(self, value: str, timeout: int = 10000) -> dict | None:
         """Open the entry-point node's Trigger select and choose *value*.
