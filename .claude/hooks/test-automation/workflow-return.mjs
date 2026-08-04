@@ -19,7 +19,7 @@
 //      file is not written and the run behaves exactly as it does today.
 //   3. It never touches a NON-workflow dispatch. A lead's own subagents are
 //      none of its business — see isWorkflowTranscript.
-import { readFileSync, writeFileSync, mkdirSync, openSync, readSync, closeSync, statSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, openSync, readSync, closeSync, statSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -104,8 +104,48 @@ export function transcriptPathOf(payload) {
   return payload?.transcript_path ?? payload?.transcriptPath ?? null;
 }
 
-export function run(payload, { projectDir = process.cwd(), now = null } = {}) {
+/** `agent-abc123` or `abc123` — the payload and the filename disagree on the prefix. */
+function agentIdOf(payload) {
+  const raw = payload?.agent_id ?? payload?.agentId ?? null;
+  return typeof raw === 'string' && raw ? raw.replace(/^agent-/, '') : null;
+}
+
+/**
+ * The subagent transcript this stop event is about.
+ *
+ * Field lesson, 2026-08-03 (two projects, three runs, ZERO receipts ever
+ * written): SubagentStop's `transcript_path` names the PARENT session's
+ * transcript, not the subagent's file, and no subagent-path field exists in
+ * the payload — so the old direct check never matched anything real. What the
+ * payload does carry is `agent_id`, and the subagent's file lives under the
+ * parent's session directory:
+ *   <parent minus .jsonl>/subagents/agent-<id>.jsonl                 (direct)
+ *   <parent minus .jsonl>/subagents/workflows/wf_<run>/agent-<id>.jsonl (workflow)
+ *
+ * Returns the WORKFLOW transcript path, or null. A direct dispatch resolves to
+ * null on purpose — the workflows/ path segment stays the only discriminator.
+ * The direct-path fast case is kept for hosts that do hand us the agent file.
+ */
+export function resolveAgentTranscript(payload) {
   const tp = transcriptPathOf(payload);
+  if (tp && isWorkflowTranscript(tp) && existsSync(tp)) return tp;
+
+  const agentId = agentIdOf(payload);
+  if (!tp || !agentId) return null;
+  const sessionDir = tp.replace(/\.jsonl$/, '');
+  const wfRoot = join(sessionDir, 'subagents', 'workflows');
+  let runs;
+  try { runs = readdirSync(wfRoot, { withFileTypes: true }); } catch { return null; }
+  for (const e of runs) {
+    if (!e.isDirectory() || !e.name.startsWith('wf_')) continue;
+    const candidate = join(wfRoot, e.name, `agent-${agentId}.jsonl`);
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+export function run(payload, { projectDir = process.cwd(), now = null } = {}) {
+  const tp = resolveAgentTranscript(payload);
   if (!tp || !isWorkflowTranscript(tp) || !existsSync(tp)) return null;
 
   const found = extractResult(tailLines(tp));
@@ -132,9 +172,36 @@ export function run(payload, { projectDir = process.cwd(), now = null } = {}) {
   } catch { return null; }
 }
 
-function main() {
-  let raw = '';
-  try { raw = readFileSync(0, 'utf8'); } catch { /* no stdin */ }
+/**
+ * Read the hook payload from stdin with a hard deadline. The runtime can
+ * leave a hook's stdin OPEN after writing the payload (the same behaviour
+ * that forced lib.sh's backgrounded-cat read) — a plain blocking read then
+ * waits for an EOF that never comes until the hook timeout kills the
+ * process, which is exactly how this hook produced zero receipts across
+ * three field runs. The payload arrives immediately and is a single JSON
+ * document, so: finish the moment the buffer parses, or at the deadline
+ * with whatever arrived.
+ */
+export function readStdinBounded(ms = 2000) {
+  return new Promise((resolve) => {
+    let buf = '';
+    let done = false;
+    const finish = () => { if (!done) { done = true; clearTimeout(timer); resolve(buf); } };
+    const timer = setTimeout(finish, ms);
+    try {
+      process.stdin.setEncoding('utf8');
+      process.stdin.on('data', (d) => {
+        buf += d;
+        try { JSON.parse(buf); finish(); } catch { /* incomplete — keep reading */ }
+      });
+      process.stdin.on('end', finish);
+      process.stdin.on('error', finish);
+    } catch { finish(); }
+  });
+}
+
+async function main() {
+  const raw = await readStdinBounded();
   let payload = null;
   try { payload = JSON.parse(raw); } catch { /* not JSON */ }
   if (payload) {

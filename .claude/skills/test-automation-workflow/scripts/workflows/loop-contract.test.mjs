@@ -71,7 +71,7 @@ test('the reviewer contract carries the classification for hosts with no workflo
 });
 
 test('the implementer contract separates rerun budget from fix rounds', () => {
-  const i = refs('implementer-contract.md');
+  const i = read('../../../test-automation-implementation/SKILL.md');
   assert.match(i, /NOT a budget for fix rounds after a review/);
   assert.match(i, /Address every blocking finding/);
   // "I couldn't, because X" must be a first-class answer, or silence wins.
@@ -117,7 +117,7 @@ test('the cross-slot rule is in the docs, so it holds without a workflow too', (
   assert.match(p, /a slot that idles looks exactly like a slot that is thinking/i);
   // The gate is named as the most exposed, since it is the least obvious.
   assert.match(p, /N consecutive\*\* suite runs/);
-  const i = refs('implementer-contract.md');
+  const i = read('../../../test-automation-implementation/SKILL.md');
   assert.match(i, /Run it in the FOREGROUND/);
   assert.match(i, /Never end a turn with "I'll wait for this to complete"/);
 });

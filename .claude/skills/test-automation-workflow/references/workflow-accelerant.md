@@ -13,8 +13,8 @@ are identical, so nothing forks.
 
 **Why bother:** conversational orchestration costs one full orchestrator turn
 per dispatch AND per return — a batch of 5 is ~20 turns, each re-processing
-your whole context. The workflow replaces those with script code, overlaps
-cases (one case in review while another is still in analysis), enforces the
+your whole context. The workflow replaces those with script code — units run strictly one at a
+time (§ Who may run at once) — enforces the
 R2 cap / sequencing / exception routing as `if` statements, and survives
 crashes (`resumeFromRunId` replays completed agents from cache — a batch that
 dies at case 4 does not redo three live analyst runs).
@@ -36,10 +36,16 @@ Workflow({
     // agentTypes: { analyst, implementer, reviewer, gate } — defaults: qa-engineer /
     //                                        test-automation-engineer / qa-engineer / test-automation-engineer
     // workerModel / workerEffort           — analyst+implementer default: inherit session
-    // reviewerModel: "sonnet"              — reviewer floor (checklist over three artifacts;
-    //                                        the gate backstops); raise it or use reviewPanel for stakes
-    // extendImplementerModel: null         — opt-in per-case tiering: e.g. "sonnet" for
+    // reviewerModel: null                  — frontmatter governs (no floor); override per run,
+    //                                        or use reviewPanel for stakes
+    // extendImplementerModel: null         — opt-in per-case tiering: e.g. "haiku" for
     //                                        extend-existing gap-fills (gate catches weakness either way)
+    // tiering: "auto"                      — 'off' restores always-analyst; auto routes mapped-surface
+    //                                        units to a combined analyse+build dispatch (rule 6 below)
+    // triageModel: "haiku"                 — the read-only routing dispatch's model
+    // quotaResume: false                   — set true ONLY when resuming after an account-ceiling halt
+    // fixRounds: 8                         — runaway backstop for the review/fix loop, not the control
+    // mergeModel / reporterModel: "haiku"  — the two deliberate cheap-tier slots
     // gateN: 3                             — consecutive deterministic greens the gate demands
     // gateCmd: null                        — suite command; null → the gate agent resolves it from .agents/testing.md
     // integrationBranch: "tests/batch-<slug>"
@@ -66,17 +72,13 @@ cursor, not the running phase — the right-hand pane describes whatever row you
 have selected, so `Report · Not started yet` is an answer about Report, not a
 complaint about the run.
 
-**No board, no clerks, no intermediate status writes.** That is not an
-omission — it is the measured conclusion. A board records progress, and
-progress only needs recording if something reads it mid-run; nothing did. The
-workflow held its own state in memory, resume replayed from the runtime's
-cache rather than from the board, and the lead read it only at the end — which
-the report answers directly. What it cost was a clerk dispatch per transition
-(a clerk existed only because a workflow script has no filesystem access) and
-a second copy of the truth that drifted: 4 of 12 merged cases on one campaign
-still sat at `approved-static`. Everything that must survive an interruption
-is already persisted by someone whose job it is — the runtime writes every
-agent's return to `journal.jsonl`, and git holds the branches and PRs.
+**No board, no clerks, no intermediate status writes.** A board records
+progress, and progress only needs recording if something reads it mid-run;
+nothing did — resume replays from the runtime's cache, `journal.jsonl` holds
+every agent's return, git holds the branches and PRs. The measured case
+against keeping a second copy of the truth (a clerk dispatch per transition;
+4 of 12 merged cases drifted to a stale status) lives in the playbook's
+state-and-recovery sections — one home, not two.
 
 ## Two branch levels
 
@@ -121,12 +123,9 @@ implementer wants its own. Nothing reconciles that except ordering.
 The **only** sanctioned fan-out is read-only: several reviewers on one *finished*
 diff (the opt-in `reviewPanel`), writing nothing, while no writer runs.
 
-An earlier revision ran analysts in parallel with builds. Measured: eight
-`local changes would be overwritten by checkout` aborts, merge conflicts
-concentrated in shared page objects, 90 conflict hits and three git-surgery
-rescues in one session. Serialising deletes the class instead of guarding it —
-and buys back agent freedom, since every "analysts run no git" style
-prohibition existed only because a second agent might be in the tree.
+Why — with the field numbers (eight checkout aborts, 90 conflict hits, three
+git-surgery rescues in one session) and what serialising buys back in agent
+freedom — lives in playbook § ONE TREE, ONE MASTER. One home, not two.
 
 **One working tree; isolation comes from branches.** A per-implementer worktree
 carries only *tracked* files, so it arrives without `.env` and without
@@ -144,13 +143,10 @@ like everything else. **Isolation is branches; safety is order.** The tree has
 exactly one writer at a time, and the sequence enforces it:
 
 ```
-analysts (parallel, write only their own AFS)
-        ↓
-builds  (sequential — one writer in the tree)
-        ↓
-integrate (after the builds; checks out the integration branch)
-        ↓
-gate    (finalisation; checks out the branch under test)
+per unit, strictly in turn:
+  analyse (trunk) → implement (branch cut from trunk) → review → merge back (trunk)
+then once:
+  gate (trunk; refuses a dirty tree) → report
 ```
 
 Dropping the gate's worktree **removed** work rather than adding it: a worktree
@@ -186,19 +182,17 @@ unit on the chain, ≈ $14 instead of ≈ $69, and one review instead of five.
 
 ## The gate lives inside the run
 
-The gate is a **separate agent in the workflow** — not the implementer (who
-would be certifying their own work), and not you. Moving it off the lead was
-measured, not stylistic: hand-run, it drained 12 cases while the pipeline
-delivered 36, at 3h50m and 114 shell calls for 8 merges — a third of the
-pipeline's throughput, and the binding constraint on the whole campaign.
-
-Its mechanics are scripted (`scripts/gate/gate-case.mjs`: fetch, checkout,
-merge base first, run N× with timings, verdict). Its contract is narrow on
-purpose: **N consecutive deterministic greens, a red anywhere ends the
-attempt, and it never merges, classifies, or fixes.** A red goes into the
-report and the classification is yours — product defect / flake / architecture
-(playbook § Handling blockers). For a flake or test-code bug the answer is the
-**stabilize workflow** (below), not per-case fix dispatches.
+A **separate agent in the workflow** — not the implementer (who would be
+certifying their own work), and not you — with a deliberately narrow contract:
+**N consecutive deterministic greens, a red anywhere ends the attempt, and it
+never merges, classifies, or fixes.** Mechanics are scripted
+(`scripts/gate/gate-case.mjs`). The full doctrine — the two-count design (new
+specs N×, blast radius once), the three scripted rules, and the measured
+reason gating left the lead (12 vs 36 cases, 3h50m, 114 shell calls) — lives
+in playbook § Gate — the merge signal; one home, not two. A red goes into the
+report; classifying it is yours (playbook § Handling blockers), and a flake or
+test-code bug routes to the **stabilize workflow** (below), never to per-case
+fix dispatches.
 
 ## The other shipped scripts
 
@@ -209,15 +203,13 @@ re-merge a unit that was PARKED on a semantic conflict once the collision is
 resolved on its case branch, or to integrate a batch that was built without the
 workflow —
 `args: { slug, base, branch, cases: [{id, branch}, …] }` → `{integration_branch,
-head_sha, merged, parked, notes}`. Field data (2026-07-21): integration fallout
-handled conversationally cost one lead session 63 merge-family commands, 90
-conflict hits, and three pure-git-surgery dispatches. One integrator with
-bounded rules replaces all of it: resolve only **mechanical unions** (both-added
-imports, additive page-object members, independent files), park **anything
-semantic**, and **never delete or `--ours`/`--theirs` away a file to make a
-merge pass** — destructive unblocking is how AFS files got lost in the field.
-Sequenced builds — each branching from the previous — make most of these
-conflicts impossible in the first place; the integrator is the net, not the plan.
+head_sha, merged, parked, notes}`. Its conflict rules are the merge-back rules
+(playbook § Merge back and § Canonical dispatch templates → Merge-back — one
+home): mechanical unions only, park anything semantic, never delete or
+`--ours`/`--theirs` away a file. Field data (2026-07-21): conversational
+integration fallout cost one lead session 63 merge-family commands, 90
+conflict hits, and three git-surgery dispatches; merging per unit as the run
+goes makes most of that impossible, and the integrator is the net, not the plan.
 
 **Stabilize** — [`../scripts/workflows/batch-stabilize.workflow.mjs`](../scripts/workflows/batch-stabilize.workflow.mjs).
 For a red gate you have already classified as a flake or test-code bug:
@@ -351,7 +343,26 @@ prose. Keep these if you ever fork it:
    tool's `model` param are the overrides. Exactly two slots deliberately
    override frontmatter downward — merge-back and the report writer default
    to the cheap tier (mechanical work; the gate backstops) — and both take
-   args (`mergeModel`, `reporterModel`) to undo it.
+   args (`mergeModel`, `reporterModel`) to undo it. The same frontmatter
+   file also carries the worker's **MCP scope** (`mcpServers:`): direct
+   dispatches and standalone runs pay every configured server's schemas
+   per turn, while workflow-spawned workers' MCP access has flipped
+   with host builds (present on 2.1.218, absent on 2.1.220) — scoping
+   makes access explicit and deterministic on every path.
+   Both workers ship an inline browser-server definition (subagent-scoped,
+   one at a time under the serial pipeline); the per-project lists are seeded
+   at Step 6.8 (`seeding-a-project` → agent-tools-wiring § Claude Code).
+6. **Analyst tiering — the standalone analyst is for novel ground**
+   (`tiering: 'auto'` default; `'off'` restores always-analyst). One cheap
+   triage dispatch (haiku, read-only) routes each unit: surfaces whose
+   `_surface.md` digest exists and whose steps read routine go to a
+   **combined** analyse+build slot — one implementer dispatch does both
+   halves, still executing the case live and still committing the AFS on the
+   trunk before building — everything else takes the standalone analyst.
+   Conservative twice over: triage routes to the analyst on any doubt, and
+   the combined slot returns `needs-analyst` before writing anything when
+   the ground turns out novel, falling back to the normal chain at the cost
+   of one dispatch.
 
 ## Hooks & memory (verified 2026-07-20)
 
@@ -441,9 +452,13 @@ timestamps at all — the report writer and git supply them.
   mid-run. Resending the full `cases` array on a resume costs nothing: the
   cache absorbs completed units. And hitting a ceiling is not a crisis if the
   resume story holds — it was proven clean twice in one session.
-- **Resume, two ways.** On a crash or kill, re-invoke with the SAME
-  scriptPath/args plus `resumeFromRunId`: completed agents (including live
-  analyst runs) replay from cache; only the failed call onward re-runs.
+- **Resume, two ways.** On a crash, kill, or operator pause (unpausing ENDS
+  the run and the harness appends the exact resume call — invoke it as given,
+  in the same session), re-invoke with the SAME scriptPath/args plus
+  `resumeFromRunId`: completed agents (including live analyst runs) replay
+  from cache; only the failed call onward re-runs. Same scriptPath means same
+  script BYTES — don't update the installed bundle between a pause/crash and
+  its resume, or every unit from the first changed prompt re-runs live.
   **The runId is context-fragile:** write it to disk the moment the Workflow
   call returns it (the campaign card, or the batch's dir) so a crash OR a
   context compaction can't orphan the run. If resume isn't possible at all,

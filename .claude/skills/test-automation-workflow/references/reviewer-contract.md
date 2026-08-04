@@ -32,6 +32,8 @@ Missing context → flag the gap; don't fabricate defaults.
 
 **Context economy (hard rules — same wording as the workflow PREAMBLE; keep in step).** The bill is resident-context × turns — every turn re-sends your whole context, so turn count and payload size ARE the cost. Batch independent tool calls into ONE message (read the AFS, the diff, and the case snapshot together, never one tool per turn); read each artifact once and work from what you read (ranged reads for big files; no re-reads to double-check what is already in context); you are STATIC — you never run suites or a browser, so no runner output and no screenshots belong in your transcript. Soft budget, a self-check not a cap: ~15 tool turns per case under review (batching makes turns dense). A genuinely large diff may exceed it; what the check catches is circling — re-reading artifacts already in context, re-diffing what you already diffed. At each ~15-turn mark ask: did the last stretch advance the verdict, or circle? Advance → continue. Circle → write the verdict from what you have, noting what you did not get to.
 
+**Memory you write is a deliverable too.** A review that surfaces a durable gotcha (a pattern the suite keeps getting wrong, a triangulation trap) records it under `.agents/memory/<your-agent>/` and commits it **by exact path** on the branch under review before finishing — an additive `docs(memory):` commit that touches nothing in `automation/`, so the code diff you judged is unchanged. Never leave memory as loose files; uncommitted knowledge is what tree-cleaning sweeps delete.
+
 **Return contract:**
 
 - Verdict: `APPROVED` | `CHANGES_REQUESTED`
@@ -54,6 +56,18 @@ diff**, not of your patience:
 
 A **new** item you are raising for the first time is not in this list: new ground
 is progress and needs no status.
+
+**Scope every classified blocker to the case ids it actually binds**
+(`case_ids`). Omit the scope only when the blocker truly holds the whole unit —
+a shared fixture, the family AFS, a framework gap. This is load-bearing, not
+bookkeeping: when every surviving blocker is confined to a subset of the unit's
+cases, the loop **splits the unit** — the stuck cases are carved out (recorded
+`blocked`, code quarantined behind a declared skip or, if itself condemned,
+removed with a preservation sha; AFS kept) and the finished remainder still
+lands. An
+unscoped `persists` chains N finished cases to the fate of one stuck one;
+that exact coupling once stranded four merged-ready cases behind a single
+policy question.
 
 Two failure modes to name, because both are tempting and both are expensive:
 
@@ -106,10 +120,10 @@ Empirically: AFS-drift bugs slip through file:line review because the file and t
 - **Per-step assertion** — every step that carries a case-side (or Axis-2) expected result has a **real assertion AT that step**, not only an end-state assertion. A step performed as a bare action (navigation/click/request) with no `expect()` where an observable is specified is `CHANGES_REQUESTED`. (A green test proves nothing about an intermediate step that was never asserted — this is the one gap no automated gate can see.)
 - Assertion strength (no demoted expects, no missing `toBeEnabled` guards)
 - Selector stability (locator ladder per testing.md)
-- Defect masking — bi-directional: no `test.fail`/`xit`/weakened assertions away from defects; no assertions held to stale case-text against live-correct product (implementer-contract § Reverse-masking guard)
-- POM discipline (no raw selectors in spec files; additive-only on shared-caller files — implementer-contract § Hard Rules → 3)
+- Defect masking — bi-directional: no `test.fail`/`xit`/weakened assertions away from defects; no assertions held to stale case-text against live-correct product (test-automation-implementation § Reverse-masking guard). **One sanctioned exception: a carve quarantine** — a skip marker the split path ordered, whose reason quotes the blocker and names the unit/AFS, on a case recorded `blocked`. The hunt's target is a silent skip beneath a case claiming `automated`; a declared quarantine claims nothing. Verify the declaration statically (marker present, reason quotes the blocker — the gate’s run is what shows it skipped) — do not order its deletion.
+- POM discipline (no raw selectors in spec files; additive-only on shared-caller files — test-automation-implementation § Hard Rules → 3)
 - Naming + dead code
 - AFS amendments — any selector / observable drift between AFS and implementation must be reflected in an AFS docs commit in the same PR
-- Read-only-by-default check — if seed/cleanup logic shipped where the observable could have been asserted read-only on stable data, flag for refactor (implementer-contract § Hard Rules → 10)
+- Read-only-by-default check — if seed/cleanup logic shipped where the observable could have been asserted read-only on stable data, flag for refactor (test-automation-implementation § Hard Rules → 10)
 
 Verdict: `APPROVED` | `CHANGES_REQUESTED` with file:line findings. Findings go back to implementer; the orchestrator decides ship-vs-amend.

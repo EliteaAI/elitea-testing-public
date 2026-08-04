@@ -126,8 +126,10 @@ Host-native sub-agent spawning:
 Use the canonical dispatch templates in
 [orchestration-playbook.md § Canonical dispatch templates](./orchestration-playbook.md#canonical-dispatch-templates)
 — native subagent types, per-case parameters, and the reviewer
-triangulation preamble. For a batch, fire one dispatch per case in a
-single message; collect paths; verify files exist.
+triangulation preamble. Dispatch analysts ONE AT A TIME — the analyst
+owns the tree and commits its own AFS to the trunk (playbook § The
+loop, per unit); verify each returned AFS path exists on disk before
+the next dispatch. Never fan out writers (playbook § Dispatching).
 
 ### Copilot / other hosts
 
@@ -137,14 +139,14 @@ host. Pass the same prompt. The `qa-engineer` persona lives in
 `test-case-analysis` skill it loads lives under the matching
 `.../skills/` path.
 
-**Collecting results** (critical for background / parallel runs):
+**Collecting results** (per dispatch, before the next one starts):
 
-1. Wait for all agents to complete.
-2. Retrieve each agent's final message via the host's `read_agent` tool.
+1. Wait for the agent to complete — never end a turn with a dispatch in flight.
+2. Retrieve its final message via the host's `read_agent` tool (or the return itself).
 3. Parse for the AFS path.
 4. Verify the file exists on disk — `ls test-specs/.../lN_*.md`. If
    missing, recreate it yourself from the agent's returned content.
-5. Aggregate paths before handing off to automation engineers.
+5. Aggregate paths as you go; hand the full list to the automation engineers.
 
 ## Phase 5–6: Automation implementation
 

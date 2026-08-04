@@ -304,9 +304,10 @@ treat a stale entry as a prompt to look at the app, not as a fact.
 **Write the AFS and commit it yourself, on the batch trunk.** Units run one at
 a time, so the working tree is yours alone for the whole dispatch — ordinary
 git applies. Make sure you are on the batch trunk first (create it from the
-base branch if it does not exist anywhere yet), then stage the AFS and the
-digest **by exact path**, commit, and push. Never switch to another branch, and
-leave the tree on the trunk when you finish.
+base branch if it does not exist anywhere yet), then stage the AFS, the
+digest, **and any role-memory entries you wrote** — all **by exact path** —
+commit, and push. Never switch to another branch, and leave the tree on the
+trunk when you finish.
 
 Committing immediately is the point: your analysis lands the moment it exists,
 so a case that ends `already-covered`, `blocked` or `un-automatable` still has
@@ -328,7 +329,10 @@ In short:
 - **Default UI tool** — [`playwright-testing`](../playwright-testing/)
   (Playwright MCP). Prefer its accessibility-snapshot tool for accessible-name
   discovery — it yields both the ref you need to click and the
-  role-name pair you'll assert on.
+  role-name pair you'll assert on. Under the bundle's lean server flags,
+  actions do NOT echo the page back (`--snapshot-mode none`) — snapshot
+  explicitly when you need to read it — and screenshots land on disk as
+  paths (`--image-responses omit`).
 - **MCP server not wired** — the Playwright CLI from the shell
   drives the same browser surface (`codegen`,
   `--trace`, multi-tab, storage, request mocking).
@@ -513,20 +517,28 @@ test-results/json/<tms-id>-<iso-timestamp>.json
 Relative paths inside the AFS; the automation engineer re-uses the
 same convention for CI artifacts.
 
-## Batching cases
+## Batching cases — you never dispatch sub-agents
 
-When handed multiple cases:
+**This skill dispatches nobody, in any mode.** In the pipeline you ARE the
+dispatched sub-agent: clustering is decided upstream (the plan/triage forms
+the cluster) and arrives as ONE dispatch to you — and a dispatched agent
+cannot nest further dispatches anyway. Standalone, the same rule holds,
+because every analyst writes AFS files, the digest, and memory into one
+shared working tree — parallel analyst fan-out is exactly the collision
+class serialization retired.
 
-- Single case → run directly. No delegation.
-- Multiple cases → delegate one sub-agent per case via the host's
-  subagent dispatch, in the form `.agents/team-comms.md` documents
-  (Claude Code: an `Agent(...)` tool call). Each sub-agent gets its
-  own isolated execution context
-  (its own browser context for UI, its own client/session for API).
-- After sub-agents finish, retrieve each one's final message via the
-  host's result-retrieval tool (NOT a shell command), extract the
-  AFS path, **verify the file exists on disk**, and recreate it
-  yourself from the returned content if it didn't persist.
+When invoked directly with multiple cases:
+
+- Single case → run it.
+- Similar cases sharing a surface → run them yourself as ONE clustered
+  session (§ Cluster dispatches above): per-case evidence, then the
+  family-vs-separate output call.
+- A pile of unrelated cases → that is a *batch*, and batches belong to the
+  pipeline — hand it to the orchestrator role (`test-automation-workflow`)
+  rather than grinding it through one analyst session. If you must proceed
+  standalone anyway, run the cases one after another in this session,
+  verify each AFS exists on disk as you go, and say in your return where
+  you stopped — never spawn parallel workers.
 
 ## Handoff
 

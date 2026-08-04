@@ -74,7 +74,8 @@ Each major step has a focused reference file:
 - **[references/team-comms-workflow.md](references/team-comms-workflow.md)**
   — full Step 6.5 procedure
 - **[references/agent-tools-wiring.md](references/agent-tools-wiring.md)**
-  — full Step 6.8 procedure (tool whitelists for restrictive hosts)
+  — full Step 6.8 procedure (tool whitelists for restrictive hosts +
+  Claude `mcpServers:` scoping)
 - **[references/role-overrides.md](references/role-overrides.md)** —
   full Step 6.9 procedure (role substitutions when agents are missing)
 - **[references/role-customization.md](references/role-customization.md)**
@@ -240,13 +241,23 @@ Mark any field you couldn't confirm with the skill's normal
 downstream by Step 6.8 (tool-whitelist wiring) and by the whole
 test-automation pipeline at runtime.
 
-## Step 6.8 — Wire agent tool whitelists (restrictive hosts)
+## Step 6.8 — Wire agent tool whitelists + MCP scoping
 
 Hosts that default to a restrictive tool-permission model — notably
 GitHub Copilot CLI, where an agent with no `tools:` line only gets
 `['agent']` — need a per-agent `tools:` whitelist written into the
-installed agent frontmatter. Claude Code's permissive default means
-this step skips on that host.
+installed agent frontmatter. On Claude Code the `tools:` part skips
+(permissive default is correct), but the step still writes **per-agent
+`mcpServers:` scoping**: on direct dispatches and standalone runs every
+configured server's tool schemas ride along on each turn, while
+workflow-spawned workers' MCP access has flipped with host versions
+(present on 2.1.218, absent on 2.1.220) — scoping makes access explicit
+and deterministic on every path instead of a build lottery. The
+reference carries who gets which servers (both workers ship an inline
+browser server the bundle defines — scout tunes it per project, strips
+it for API-only stacks, and adds the TMS adapter for qa-engineer; a
+"none" intent gets `mcpServers: []` plus the `disallowedTools`
+fallback; lead/scout → unscoped).
 
 Scout is **fully autonomous** at this step — no operator prompts, no
 per-agent capability manifest. It derives the whitelist from evidence

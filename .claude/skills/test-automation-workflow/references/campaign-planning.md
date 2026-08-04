@@ -38,7 +38,7 @@ auth/fixtures, data helpers for the campaign's surfaces, on branch
   ships with ONE smoke spec exercising the new page objects end-to-end (tag it
   as the surface's standing smoke — it stays, it's an asset, not scaffolding).
   The stage runs a static review and **the same fix loop a case build gets**
-  (§ The five phases in [`orchestration-playbook.md`](orchestration-playbook.md)):
+  (§ The loop, per unit in [`orchestration-playbook.md`](orchestration-playbook.md)):
   rounds continue while any blocker is `unaddressed`, and stop only when what
   is left is `persists` or `external`. Then the **mini-gate**: the smoke
   **N× consecutive green** (§ Merge gate N) plus the existing suite green once.
@@ -316,8 +316,9 @@ all compact:
    child — their AFS files become the foundation inventory), builds +
    statically reviews the **foundation** branch and smoke spec, then
    **early-returns** for the mini-gate.
-5. **Lead:** mini-gate the smoke (N× green), merge foundation to base,
-   re-invoke with `{ plan, foundationMerged: true, headsAnalyzed }`.
+5. **Conductor:** mini-gates the smoke (N× green + the existing suite once),
+   then early-returns. **Lead:** merge foundation to base and re-invoke with
+   `{ plan, foundationMerged: true, headsAnalyzed }`.
 6. **Conductor:** loops the **waves**. A wave is ONE build child (heads
    passed as `preAnalyzed`, never re-analyzed) which integrates and gates
    itself and returns ONE report; the conductor collects it and rolls on. It

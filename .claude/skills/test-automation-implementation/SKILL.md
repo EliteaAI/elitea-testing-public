@@ -1,9 +1,21 @@
-# Implementer slot contract — test-automation-workflow
+---
+name: test-automation-implementation
+description: "Use when an Automation-Friendly Spec (AFS) needs to become a green, framework-resident test — the implementer slot of the test-automation pipeline. Six-phase loop (Absorb → Explore → Automate → Execute → Debug → Handoff), the 12 Hard Rules, the Run Report template. Analyst counterpart: test-case-analysis; orchestration: test-automation-workflow."
+license: Apache-2.0
+metadata:
+  authors:
+    - Alexander Bychinskiy <alexander_bychinskiy@epam.com>
+    - Artem Rozumenko <artem_rozumenko@epam.com>
+  version: "0.1.0"
+---
 
-The implementer's full IC procedure. Loaded on demand by the implementer
-dispatch (the orchestrator's dispatch template names this file); the parent
-[SKILL.md](../SKILL.md) carries the philosophy, the slot summary, and the
-Hard-Rules index.
+# Test Automation Implementation
+
+The implementer slot's own skill — the full IC contract, preloaded by
+`test-automation-engineer` the same way `test-case-analysis` is the analyst's.
+Pipeline philosophy, orchestration, and the batch mechanics live in the
+[`test-automation-workflow`](../test-automation-workflow/SKILL.md) skill (load
+on demand); this skill is what the implementer needs at hand on every dispatch.
 
 ## Implementer slot contract
 
@@ -42,9 +54,11 @@ Missing context → flag the gap; don't fabricate defaults.
 - **Keep runner output lean** — line/dot reporter, tail long failures; never dump a full HTML report or trace into the transcript.
 - **Screenshots only when a step fails or visual judgment is the task** — save to disk and cite the path instead of re-emitting pixels into context.
 - **Soft budget, a self-check not a cap: ~15 tool turns per case in your unit** (batching makes turns dense — 15 batched turns carry what ~40 single-call turns did). A genuinely long case — 30 steps, a deep debug — may exceed it; what the check catches is **circling**: re-reading what's already in context, retrying the same probe, exploring without acting. At each ~15-turn mark ask: did the last stretch advance the case, or circle? Advance → continue. Circle → act on what you have and record the gap in your Run Report notes.
+- **Never clean the tree wholesale.** `git stash --include-untracked`, `git clean -fd`, `git checkout -- .` and `git reset --hard` delete work you did not write — `_returns/` receipts are untracked bookkeeping, and anything written since the last commit is just as exposed; all of it vanishes with no diff and no error (field incident 2026-08-03: one such stash before a `git checkout` swept six freshly written memory entries and three receipts; later agents ran without them). Need a clean tree before switching branches? **Stash by path** (`git stash push -- <the paths you touched>`) or commit your own work first. If a dirty tree you didn't create is blocking you, report it in findings instead of clearing it.
+- **Commit what you produce — memory included.** Durable learnings you write under `.agents/memory/<your-agent>/` are part of your deliverable: `git add` them **by exact path** with your work on your case branch, and the merge carries them to the trunk (a parked unit's memory is landed by the merge agent anyway — the code may not land, but what you learned always does). Two disciplines keep this clean: memory rides in **your own commits by path** — never swept in by a broad stage — and any mechanical self-check grep runs against the project's **code root** (e.g. `git diff … -- automation/`), never the whole tree, so memory prose can't produce false hits in a diff scan (field-measured failure: an unscoped locator-policy grep matched dozens of documentation strings).
 - **A permission denial blocks an effect, not the task.** Never re-achieve the *same* blocked effect through a different shape — a script instead of the denied command, an alternate binary, a broader allowed command; that evades a pattern, not a policy. But a genuinely different allowed route to the task goal — one that does **not** produce the blocked effect — is legitimate adaptation: take it, and record the substitution in your Run Report notes (what was denied, what you did instead) so a human can veto one that broke intent. No such route → the case goes `blocked` with the denial recorded, and you continue with what remains.
 
-**Retry budget.** Soft limit: **≤ 2 reruns** against the same root cause before escalating. The orchestrator's R2 cap rule will refuse R3 on the same cause regardless — see [`references/orchestration-playbook.md`](./orchestration-playbook.md) § R2 cap rule.
+**Retry budget.** Soft limit: **≤ 2 reruns** against the same root cause before escalating. The orchestrator's R2 cap rule will refuse R3 on the same cause regardless — see [`orchestration-playbook.md`](../test-automation-workflow/references/orchestration-playbook.md) § R2 cap rule.
 
 **That budget is about a spec that will not go green. It is NOT a budget for fix rounds after a review** — those run until the reviewer approves. On a fix round:
 
@@ -147,50 +161,17 @@ Classify the failure honestly:
 
 Read whatever failure artifacts the project's framework emits (for a Playwright/browser project: `test-results/`, `playwright-report/`, `allure-results/`, `error-context.md`; for other frameworks the equivalent — JUnit/TAP/JSON reports, HAR/response dumps, perf result files). The framework usually pinpoints the exact mismatch.
 
-**When the artifacts aren't informative.** Three tiers of logging enhancement, three different authorities:
-
-| Tier | What to do | Authority |
-|---|---|---|
-| **In-test logging** — `test.step()` annotations, `console.log` for one-off noise, richer POM error messages | Add freely — local to the spec/POM, no config touched | Implementer's call |
-| **Additive reporter** — wire a SECONDARY reporter alongside the existing one (Playwright `reporter: [['html'], ['junit'], ['list']]`, pytest `-v` plugin, Cypress `mocha-multi-reporters`, custom log file utility) | Implementer adds in the PR; **PR description flags the addition explicitly** so the orchestrator reviews specifically for: existing reporter output unchanged, CI/TMS consumers still work, no significant runtime/disk cost | Implementer adds, the orchestrator reviews — never silent |
-| **Reporter replacement / removal** — swap `['junit']` for `['allure']`, change output schema, drop an existing reporter | Return `needs-escalation` to the orchestrator. Framework-scale decision; the existing reporter is almost certainly feeding TMS back-write or CI dashboards | the orchestrator only |
-
-**Hard rule: never remove or replace an existing reporter mid-PR.** The reporter contract is downstream-facing. Additive is reversible (one line removed and you're back to baseline); replacement breaks integrations silently. If the existing reporter is "wrong format" or "noisy," that's a `needs-escalation` escalation.
-
-**Recommended pattern: parallel verbose reporter.** Add a stdout-only reporter alongside the existing file reporter:
-
-```ts
-// playwright.config.ts — example
-reporter: [
-  ['html', { open: 'never' }],   // existing — keep verbatim
-  ['junit', { outputFile: 'test-results/junit.xml' }],  // existing — keep verbatim
-  ['list'],  // ADDED — stdout only, no file
-],
-```
-
-The existing reporter's output file (`junit.xml` above) is unchanged, so anything parsing it (TMS adapter, CI pipeline, dashboard) keeps working. The stdout `['list']` gives the implementer richer console output during debug runs.
-
-#### TMS / result-reporting reporters — gate them
-
-The three-tier table above governs reporters added for **diagnostics** (richer console / extra report files). A different class of reporter **pushes results to the TMS / tracker** — a framework-wired reporter (e.g. a Playwright `jira-reporter` / an Xray results-import reporter) or an adapter back-write. Those need an extra discipline beyond "additive and reviewed":
-
-**TMS result-reporting must be gated, graceful, and config-validated — never fire on every local run.** Any mechanism that posts results to the TMS / tracker — a framework-wired reporter (e.g. a Playwright `jira-reporter` / an Xray results-import reporter) or an adapter back-write — MUST:
-
-1. **Gate on CI or an explicit opt-in env flag** (`process.env.CI`, `TMS_SYNC=1`, or the framework equivalent). A developer running the suite locally (`npx playwright test …`) to iterate must NOT trigger TMS network calls — default OFF locally.
-2. **Degrade gracefully** — on missing credentials, an unreachable host, or an auth redirect, log ONCE and continue. Never emit a per-test error, never spam the console, never fail the test run. The test result is the product; TMS sync is a best-effort side-effect.
-3. **Validate the endpoint before posting** — confirm the TMS base URL resolves without a redirect loop. (`redirect count exceeded` / a `fetch failed` repeated per test is the classic symptom of a wrong base URL or an auth redirect to a login page — fix the config or gate the reporter; don't let it spam.)
-
-When you meet an ungated reporter spamming a local run, treat it as a defect to fix (gate it + make it graceful), not noise to ignore.
+**When the artifacts aren’t informative** — three tiers of logging enhancement (in-test logging is your call; an ADDITIVE secondary reporter ships in the PR explicitly flagged; reporter replacement/removal is `needs-escalation`, never a mid-PR move) and the gating rules for TMS / result-reporting reporters (CI / opt-in gated, graceful on failure, config-validated — never firing on a local run): read [`references/reporters.md`](references/reporters.md) when you actually face one. Two rules stay absolute here: **never remove or replace an existing reporter mid-PR** (downstream-facing; escalate instead), and an ungated reporter spamming local runs is a defect to fix, not noise to ignore.
 
 ### Phase 6 — Handoff
 
-Five-step task-completion protocol (see [`completing-a-task`](../../completing-a-task/) skill):
+Five-step task-completion protocol (see [`completing-a-task`](../completing-a-task/) skill):
 
 1. **Verify locally** — single test green, lint clean, diff reviewed.
 2. **Commit on a feature branch** — only if `.agents/workflow.md` grants commit authority to this slot; match the convention (typically `tests/<TMS-ID>-<slug>` or `automation/<case-id>-<slug>`; when the caller created the branch, use it). No commit authority → stop after step 1 and return the diff + Run Report; the caller lands the branch and opens the PR.
 3. **Push & open PR** via the project's PR tool — `gh pr create` (GitHub), `glab mr create` (GitLab), `az repos pr create` (Azure DevOps). Target branch per `.agents/profile.md` § Automation PR policy. **Include the Run Report in the PR description** — that copy is the durable one the reviewer and orchestrator read (§ Run Report below).
 4. **Comment on the originating story/issue** with the PR link via `issue-tracking` — **only if `.agents/profile.md` § Status reporting → "Comment PR link" is `yes`** (skip silently if `no` or no tracker is configured).
-5. **Verify the TMS back-write wiring** — the execution back-write itself happens **post-merge and belongs to the orchestrator** (playbook § 3. Close — read the report, act on it); at handoff you confirm the wiring exists (a CI-gated reporter or the orchestrator's adapter protocol) — **only if the seed configures it** (§ Status reporting → "TMS execution back-write" `yes`, i.e. a real `tms.adapter`, not `markdown` / `none`). Perform the write yourself only when running standalone (no orchestrator) — then per the seeded policy, gated + graceful per § Phase 5 → TMS / result-reporting reporters: never on a local iteration; gate on CI / an opt-in flag, degrade gracefully offline (log once, never fail the run). No TMS sync in the seed → nothing to back-write.
+5. **Verify the TMS back-write wiring** — the execution back-write itself happens **post-merge and belongs to the orchestrator** (playbook § 3. Close — read the report, act on it); at handoff you confirm the wiring exists (a CI-gated reporter or the orchestrator's adapter protocol) — **only if the seed configures it** (§ Status reporting → "TMS execution back-write" `yes`, i.e. a real `tms.adapter`, not `markdown` / `none`). Perform the write yourself only when running standalone (no orchestrator) — then per the seeded policy, gated + graceful per [`references/reporters.md`](references/reporters.md) § TMS / result-reporting reporters: never on a local iteration; gate on CI / an opt-in flag, degrade gracefully offline (log once, never fail the run). No TMS sync in the seed → nothing to back-write.
 
 Steps 4–5 are **seed-governed**: perform the external writes the project's seeded way-of-work establishes, skip the ones it doesn't. The seed (`.agents/*`) is the contract; never invent a write it didn't set up, never drop one it did.
 
@@ -232,7 +213,7 @@ Missing fields are unacceptable — every field has a defensible "none" or "n/a"
 ### 1. Match the project's framework, don't import your own
 
 - Read `.agents/testing.md` first. Whatever framework it names, that's your framework.
-- If nothing is documented, detect it (see SKILL.md § 1. Discover framework). First hit wins.
+- If nothing is documented, detect it (see the `test-automation-workflow` skill § 1. Discover framework). First hit wins.
 - No framework at all? Return `needs-escalation` — framework bootstrap is the orchestrator's call.
 
 **Skills are accelerants, not prerequisites.** Use an installed skill when one fits the project's framework (e.g. `playwright-testing` for a Playwright/browser project). If none is installed you are not blocked: conform to the existing framework by reading `.agents/testing.md` + three neighbouring tests; if the framework is unfamiliar or greenfield, learn it from its official docs (and, where the host has skill-discovery wired, optionally install a matching skill — or author a small project-local skill that persists for later cases); worst case, write from first principles + the docs and say so in your Run Report. Only return `needs-escalation` when something is genuinely unobtainable — a paid license, a physical device, an unknown undocumented tool. Never silently force a framework or tool the project doesn't use.
@@ -278,7 +259,7 @@ Why this matters empirically: the test will pass-by-luck on the next product cha
 Use the project's existing abstraction over the thing under test — page object for UI, API client / service object for API, screen object for mobile, scenario module for perf. Extend it, don't duplicate it, and centralize the address of the thing under test there. The page-object example:
 
 - Extend existing page objects. Don't duplicate. Don't introduce a second `LoginPage` next to the existing one.
-- If a page object doesn't exist for the surface you're testing, create it — in the exact style the existing ones use. (Exception: if `.agents/testing.md` records the project's flat-path default — no abstraction layer yet; layers emerge at 3+ duplication per framework-scaffold § Path-dependent — follow that instead of minting a lone page object.)
+- If a page object doesn't exist for the surface you're testing, create it — in the exact style the existing ones use. (Exception: if `.agents/testing.md` records the project's flat-path default — no abstraction layer yet; layers emerge at 3+ duplication per the `test-automation-workflow` skill’s framework-scaffold.md § Path-dependent — follow that instead of minting a lone page object.)
 - Centralize selectors in the page object. A `data-testid` should appear in exactly one file. (Same discipline for the analogues: an endpoint path / base URL lives once in the API client; a screen's accessibility-ids live once in the screen object.)
 - Semantic method names (`login()`, `applyPromoCode()`), not `clickButton3()`.
 
@@ -356,22 +337,20 @@ Why this matters empirically: seed/cleanup is the largest flake source in any no
 
 The rule sequence: Rule 7 (reuse before create) tells you to find an existing helper; this rule tells you to find existing **data**. Both are the same instinct — prefer what's already proven stable over freshly-built state.
 
-### 11. Shared files have one writer, on the base branch
+### 11. Shared files have one writer — know whose you may touch
 
-Anything every case branch appends to at the same spot collides on every merge. Three files are in this class, and the rule is identical for all of them:
+Files that several roles could write need a declared owner, or every merge relitigates them:
 
 | File | Writer | Where it is committed |
 |---|---|---|
-| `test-specs/<feature>/_surface.md` | analyst only | base branch |
-| `.agents/memory/<role>/{MEMORY.md,daily/*.md}` | whoever learns the lesson | base branch |
+| `test-specs/<feature>/_surface.md` | analyst only — you read it, report drift in your Run Report, never edit it | the trunk (the analyst commits it) |
+| `.agents/memory/<your-agent>/…` | you — **commit what you produce**, by exact path, on the branch you are on (§ Context economy above); the merge carries it to the trunk. In a PARALLEL context (no pipeline dispatch granting you the tree), the memory skill's base-branch caution applies instead — the serialized pipeline is what makes commit-in-place safe (cov60: 26 of 32 merge conflicts were memory add/add collisions from parallel branches; serialization retired that cause) | your case branch |
 | The AFS (`test-specs/…`) | analyst writes AND commits it to the trunk; you amend | **the analyst already committed it** before your branch was cut — amend it on your branch when exploration shows drift, by exact path, with the spec that motivated the change |
-
-**Your role memory never rides your case branch.** You are on one, so that is your situation: put the lesson in your Run Report notes and let the orchestrator record it on base. Field measurement: **26 of 32 merge conflicts across one campaign** were add/add collisions in two memory files, 81% of all conflict work, on top of the real code conflicts that actually deserved attention.
 
 **Expect the AFS already COMMITTED on the trunk when you start.** Units run one at a time, so the analyst owned the tree before you and committed its own AFS there; your branch is cut from the trunk, so the file is simply present. If exploration shows it has drifted from the live product (a selector, an observable), **amend it on your branch** and commit the amendment with the spec that motivated it, so the change is reviewed alongside the code — stage by exact path, never `git add -A`/`.`. If the dispatch names an `afs_path` that is not on your branch at all, the analyst did not finish the handoff — say so and return, rather than reconstructing the spec from the case text. Reconstructing silently is how a batch ends up with an implementation that no longer matches the reviewed AFS.
 
 ### 12. Scaffold minimal — no unsolicited integrations
 
-When you scaffold a framework or set up test infra (framework-execution mode), build only what runs tests: runner + config, abstraction layer, fixtures, one smoke test, run/CI command. **Don't wire integrations the task didn't ask for and the project doesn't declare — especially network-calling ones** (TMS/result reporters, analytics, dashboards, notification hooks). A TMS-reporting reporter is opt-in: add it only when explicitly requested **or** declared in `.agents/test-automation.yaml`, and then gated + graceful per § Phase 5 → "TMS / result-reporting reporters — gate them". Genuinely-needed integration? Propose it to the orchestrator and wait; never wire it silently.
+When you scaffold a framework or set up test infra (framework-execution mode), build only what runs tests: runner + config, abstraction layer, fixtures, one smoke test, run/CI command. **Don't wire integrations the task didn't ask for and the project doesn't declare — especially network-calling ones** (TMS/result reporters, analytics, dashboards, notification hooks). A TMS-reporting reporter is opt-in: add it only when explicitly requested **or** declared in `.agents/test-automation.yaml`, and then gated + graceful per [`references/reporters.md`](references/reporters.md) § TMS / result-reporting reporters. Genuinely-needed integration? Propose it to the orchestrator and wait; never wire it silently.
 
 Why this matters: an unsolicited side-effect — the `jira-reporter`-firing-on-every-local-`npx playwright test` class, making per-test network calls that fail and spam offline — breaks local dev and erodes trust. The user asked for tests, not for their machine to phone a TMS on every run.

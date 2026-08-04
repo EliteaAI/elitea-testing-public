@@ -135,20 +135,41 @@ Every curated entry carries a `type:` field:
 
 ---
 
-## Memory belongs on the base branch
+## Committing memory: where you stand, or the base branch — by pipeline
 
-`MEMORY.md` and `daily/<today>.md` are **append-at-the-end** files that every
-role and every task touches at the same spot. Commit them on a feature/case
-branch and they collide with every other branch on merge — an add/add conflict
-per branch, forever. Measured on one batch-automation campaign: **26 of 32
-merge conflicts came from exactly these two files** (81% of all conflict work),
-against only 6 real code conflicts.
+**In the serial batch pipeline (one working tree, one writer at a time):
+commit what you produce, by exact path, on the branch you are on.** The
+analyst commits memory with its AFS on the batch trunk; the implementer and
+reviewer commit theirs with their work on the case branch; the merge carries
+it to the trunk, and a parked unit's memory is landed by the merge agent
+anyway. This is safe *because* units are serial: the next branch is cut only
+after the previous one merged, so it inherits the day's memory and **appends**
+— a modify, never an add/add collision. Never leave entries as loose files:
+uncommitted knowledge sat untracked for a whole campaign under the old rule,
+and one wholesale `git stash --include-untracked` swept six entries mid-wave
+(field incident 2026-08-03) while every later agent ran without them.
 
-So: commit memory writes to the **base branch**, never onto the branch you
-happen to be working on. If you can't — a dispatched worker is on a case
-branch, which is exactly that situation — **don't write memory at all**: put the lesson in the result you return, and let the
-orchestrator record it. A lesson reported and recorded once beats the same
-lesson committed on twelve branches.
+**How you know which regime you are in: your dispatch says so — and when it
+doesn't, assume parallel.** The pipeline announces itself in the prompt: a
+batch-workflow dispatch opens with "dispatched from the batch workflow", and a
+lead's sequential dispatch hands you the batch geometry — a trunk, a case
+branch that is yours alone, an AFS path. Exclusive tree ownership is the
+defining property, and only the dispatch can grant it; you cannot infer it
+from `git status`. No such grant — you were launched standalone, picked up a
+task on a mission board, or work beside a feature team — means you must assume
+other branches exist in parallel. The default errs the cheap way: wrongly
+treating a pipeline dispatch as parallel costs one lesson being reported
+instead of committed; wrongly treating a parallel context as the pipeline
+recreates the add/add conflict disaster below.
+
+**Outside that pipeline — anywhere parallel branches may exist — the old
+caution stands.** `MEMORY.md` and `daily/<today>.md` are append-at-the-end
+files every role touches at the same spot; committed from concurrent branches
+they collide on every merge. Measured on one campaign of that era: **26 of 32
+merge conflicts came from exactly these two files** (81% of all conflict
+work). In parallel contexts, commit memory on the **base branch** or put the
+lesson in your returned result for the orchestrator to record — one recorded
+lesson beats the same lesson committed on twelve branches.
 
 ## Operations
 

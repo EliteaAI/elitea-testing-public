@@ -72,7 +72,11 @@ test('findings ride every worker return, orthogonal to the outcome', () => {
   assert.match(text, /addFindings/);
   // and workers are told where a non-blocking observation goes
   assert.match(text, /did NOT stop you/);
-  assert.match(text, /Do not write it to memory yourself/);
+  // Memory is the second channel, and it is committed like any deliverable —
+  // the old "do not write memory yourself" left entries untracked for a whole
+  // campaign, and a wholesale stash swept six of them mid-wave (2026-08-03).
+  assert.match(text, /COMMIT WHAT YOU PRODUCE/);
+  assert.doesNotMatch(text, /Do not write it to memory yourself/);
 });
 
 // The gate is its own agent inside the workflow: not the implementer (who would
@@ -166,10 +170,12 @@ test('account ceiling halts admission instead of tripping the environment breake
 test('no concurrency at all: a plain sequential loop over units', () => {
   assert.match(text, /ONE TREE, ONE MASTER/);
   assert.match(text, /for \(const unit of UNITS\)/);
-  assert.match(text, /const u = await runAnalyst\(unit\)/);
-  assert.match(text, /await buildUnit\(u\)/);
-  // one unit fully finishes before the next begins
-  assert.match(text, /for \(const unit of UNITS\) \{\n\s*phase\('Analysis'\)\n\s*const u = await runAnalyst\(unit\)/);
+  assert.match(text, /u = await runAnalyst\(unit\)/);
+  assert.match(text, /await buildUnit\(u, pre\)/);
+  // one unit fully finishes before the next begins — analysis (combined or
+  // analyst-routed) awaited inline, then the build, all inside one loop body
+  assert.match(text, /for \(const unit of UNITS\) \{\n\s*phase\('Analysis'\)/);
+  assert.match(text, /const c = await runCombined\(unit\)/);
   // None of the concurrency machinery may come back.
   assert.doesNotMatch(text, /Promise\.all/);
   assert.doesNotMatch(text, /buildChain/);
@@ -285,8 +291,45 @@ test('the fix loop continues on unaddressed work and stops only on cannot-move',
   assert.match(text, /'unaddressed', 'persists', 'external'/);
   // unaddressed anywhere → another round, regardless of what else is in the list
   assert.match(text, /if \(unaddressed\.length\) return \{ go: true/);
-  // and the loop consults it rather than a counter
-  assert.match(text, /const v = loopVerdict\(r\)\n\s*if \(!v\.go\) \{ stopped = v\.why; break \}/);
+  // and the loop consults it rather than a counter — stopping (or splitting)
+  // only when the verdict says another round cannot help
+  assert.match(text, /const v = loopVerdict\(r\)\n\s*if \(!v\.go\) \{/);
+  assert.match(text, /else \{ stopped = v\.why; break \}/);
+});
+
+// A unit amortizes dispatch cost, and the price was fate-coupling: one
+// policy-stuck case stranded four finished ones (ELITEA-2211..2215). When
+// every surviving blocker is scoped to a proper subset of the unit's cases,
+// the loop carves those cases out — blocked, code stripped, AFS kept — and
+// the remainder goes back through review and lands.
+test('unit split: subset-scoped stuck cases are carved out instead of blocking the unit', () => {
+  // the reviewer scopes each surviving blocker to case ids…
+  assert.match(text, /Scope every blocking_detail entry with case_ids\[\]/);
+  // …loopVerdict surfaces the union only when EVERY survivor is scoped…
+  assert.match(text, /stuck: scoped \? \[\.\.\.new Set\(detail\.flatMap\(\(d\) => d\.case_ids\)\)\] : null/);
+  // …and the loop splits once per unit, only on a PROPER subset
+  assert.match(text, /!carvedOnce && stuck\.length && stuck\.length < ids\.length/);
+  assert.match(text, /label: carve \? `carve:\$\{ul\}` : `fix:\$\{ul\}:\$\{round\}`/);
+  // an almost-ready test is a STATUS problem, not a code problem: the default
+  // is a declared skip that ships the code inert and re-arms later — deletion
+  // is reserved for code the blocker itself condemns
+  assert.match(text, /QUARANTINE by default/);
+  assert.match(text, /DECLARED, never silent/);
+  assert.match(text, /re-arms by deleting the marker/);
+  assert.match(text, /REMOVE instead ONLY when the blocker says the code ITSELF is wrong/);
+  // no work is lost either way: quarantined code rides the trunk; removed code
+  // gets a preservation sha and re-entry RESTORES from trunk history
+  assert.match(text, /record the preservation point/);
+  assert.match(text, /RESTORES from it \(`git checkout <sha> -- <paths>`\), never rebuilds/);
+  assert.match(text, /notes MUST START with `quarantined:<paths>` or `preserved@<sha>`/);
+  // the carve keeps knowledge and never touches the survivors' logic
+  assert.match(text, /Either way KEEP their AFS on the branch/);
+  assert.match(text, /Do NOT touch the remaining cases' logic/);
+  // carved cases are recorded blocked (mode riding the note) and the unit shrinks
+  assert.match(text, /carved out of \$\{ul\}: \$\{carve\.why\} — \$\{fix\.notes\}/);
+  assert.match(text, /u\.members = u\.members\.filter\(\(m\) => !carve\.stuck\.includes\(m\.id\)\)/);
+  // the re-review is told the carve happened and verifies it
+  assert.match(text, /CARVED OUT of the unit after the round above/);
 });
 
 test('the round cap is a runaway backstop, not the working control', () => {
@@ -447,7 +490,7 @@ test('batch-build never nests a child workflow', () => {
 // A thrown build costs its own unit and nothing else: the trunk is where it
 // was, so the next unit still starts from a known state.
 test('a thrown build costs its unit, not the run', () => {
-  assert.match(text, /try \{\n\s*phase\('Build'\)\n\s*await buildUnit\(u\)/);
+  assert.match(text, /try \{\n\s*phase\('Build'\)\n\s*await buildUnit\(u, pre\)/);
   assert.match(text, /build failed:/);
   assert.match(text, /continuing with the next unit/);
 });
@@ -572,4 +615,48 @@ test('mechanical slots default to the cheap tier; judgment slots follow frontmat
   // In particular no hardcoded model literal may reappear on the reviewer.
   assert.doesNotMatch(text, /reviewerModel \?\? A\.workerModel \?\? '/);
   assert.match(text, /frontmatter `model:` governs/);
+});
+
+// Field incident 2026-08-03: `git stash --include-untracked` before a checkout
+// swept 6 memory entries + 3 receipts out of the tree. `.agents/` state is
+// untracked by design, so an unscoped clean removes it with no diff and no error.
+test('no wholesale tree cleaning: receipts + fresh writes are protected', () => {
+  assert.match(text, /NEVER CLEAN THE TREE WHOLESALE/);
+  assert.match(text, /git stash --include-untracked/);
+  assert.match(text, /git stash push -- /);          // the scoped alternative
+  assert.match(text, /untracked bookkeeping/);       // receipts stay untracked; memory no longer is
+});
+
+// A parked unit's code stays on its branch, but its knowledge lands anyway —
+// failure units produce the best gotchas, and stranding them on an unmerged
+// branch is how they get lost.
+test('a parked unit lands its memory on the trunk before reporting', () => {
+  assert.match(text, /LAND THE UNIT'S KNOWLEDGE ANYWAY/);
+  assert.match(text, /-- \.agents\/memory\//);
+  assert.match(text, /learnings from a parked unit/);
+});
+
+// Tiering: the standalone analyst earns its cost on NOVEL ground. A cheap
+// triage dispatch routes mapped-surface units to a COMBINED analyse+build
+// slot — one implementer dispatch where the normal chain spends two — with
+// two conservative escapes: triage defaults to 'analyst' on any doubt, and
+// the combined slot itself returns needs-analyst BEFORE writing anything
+// when the ground turns out novel.
+test('analyst tiering: triage routes mapped units to a combined slot, conservatively', () => {
+  assert.match(text, /const TIERING = A\.tiering \?\? 'auto'/);
+  assert.match(text, /READ-ONLY routing decision/);
+  assert.match(text, /model: A\.triageModel \?\? 'haiku', effort: 'low', schema: TRIAGE_SCHEMA/);
+  // doubt routes to the analyst, and the cost asymmetry is stated where the choice is made
+  assert.match(text, /your own doubt — routes 'analyst'/);
+  assert.match(text, /a wasted analyst dispatch costs one dispatch; a combined slot on novel ground costs a bad AFS/);
+  // the combined slot's escape hatch fires BEFORE any write, and falls back cleanly
+  assert.match(text, /return status needs-analyst with why in notes and STOP/);
+  assert.match(text, /if \(c === 'fallback'\) u = await runAnalyst\(unit\)/);
+  // the combined slot still executes live and still lands the AFS on the trunk first
+  assert.match(text, /the digest speeds travel, it never replaces execution/);
+  assert.match(text, /push BEFORE you start building/);
+  // a dead triage costs nothing — the conservative route is the default route
+  assert.match(text, /triage agent died — every unit takes the standalone analyst/);
+  // the pre-built path skips the implement dispatch but not review/merge/gate
+  assert.match(text, /const impl = pre \?\? await agent\(/);
 });

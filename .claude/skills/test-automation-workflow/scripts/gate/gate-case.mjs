@@ -171,7 +171,7 @@ function main() {
     else result.fetched = false;                     // no remote at all — local-only repo
     const dirty = git(repo, ['status', '--porcelain']);
     if (dirty) {
-      result.notes = 'working tree is dirty — commit, stash or clean it first; gating checks branches out in this tree.';
+      result.notes = 'working tree is dirty — commit your own paths, or stash BY PATH (git stash push -- <paths>); NEVER stash or clean the whole tree (untracked receipts/AFS/memory vanish silently). Gating checks branches out in this tree.';
       return fail(result, json);
     }
     // origin/<branch> is the intended target: it is what will actually be

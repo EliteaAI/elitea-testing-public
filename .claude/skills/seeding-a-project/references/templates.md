@@ -288,7 +288,7 @@ skip it silently — it's not part of this project's way of work._
 - **File tickets for defects**: governed by **§ Bug filing** above (`none` there
   = don't file).
 - **Gating**: result back-write runs only in CI / under an opt-in flag, never on
-  a local dev run (see `test-automation-workflow` references/implementer-contract.md § Phase 5 — Debug).
+  a local dev run (see the `test-automation-implementation` skill, references/reporters.md).
 
 ### Automation PR policy
 
