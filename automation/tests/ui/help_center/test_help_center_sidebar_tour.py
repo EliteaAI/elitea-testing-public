@@ -80,6 +80,8 @@ class TestHelpCenterSidebarTour:
             tour.wait_for_step()
             expect(tour.step_counter).to_have_text(f"1 / {TOUR_TOTAL_STEPS}")
             expect(tour.title).to_have_text(TOUR_STEP_TITLES[0])
+            expect(tour.description).to_be_visible()
+            assert tour.get_description_text(), "Step 1 description should not be empty"
 
         with allure.step("Step 3 — Verify step counter reads 1/17 and Back is disabled"):
             expect(tour.step_counter).to_have_text(f"1 / {TOUR_TOTAL_STEPS}")
@@ -92,6 +94,8 @@ class TestHelpCenterSidebarTour:
             tour.click_next()
             expect(tour.step_counter).to_have_text(f"2 / {TOUR_TOTAL_STEPS}")
             expect(tour.title).to_have_text(TOUR_STEP_TITLES[1])
+            expect(tour.description).to_be_visible()
+            assert tour.get_description_text(), "Step 2 description should not be empty"
             assert not tour.is_back_disabled(), "Back should be enabled once past step 1"
             previous_bbox = tour.wait_for_spotlight_change(previous_bbox)
 
