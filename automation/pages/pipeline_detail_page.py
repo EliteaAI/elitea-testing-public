@@ -71,6 +71,16 @@ class PipelineDetailPage(PipelineFormPage):
         description="ReactFlow canvas wrapper"
     )
 
+    canvas_controls = LocatorDescriptor(
+        testid="rf__controls",
+        description=(
+            "ReactFlow canvas zoom/fit-view control panel (bottom-left, pinned "
+            "overlay) — real app testid on the panel container; its individual "
+            "buttons are ReactFlow's own third-party internal render (#579 "
+            "sanctioned exception, see fit_canvas_view())"
+        )
+    )
+
     yaml_editor = LocatorDescriptor(
         testid="pipeline-yaml-editor",
         fallback=lambda page: page.locator("div.cm-editor div.cm-content"),
@@ -156,6 +166,117 @@ class PipelineDetailPage(PipelineFormPage):
             "BaseToolNode.jsx — added via add-data-testid for ELITEA-1954 "
             "review fix pass; case steps 4 and 6)"
         )
+    )
+
+    # LLM node inline config (ELITEA-2004). Testid-only, added via
+    # add-data-testid — LLMNode.jsx call sites only (SimpleLLMInputs is
+    # shared with Code/Printer nodes, which stay untagged — untested node
+    # types stay untagged, .agents/testing.md § Locator policy). Page-wide
+    # (not scoped to a specific node container): correct as long as a test
+    # only has a single LLM node on canvas.
+    llm_node_system_type_select = LocatorDescriptor(
+        testid="pipeline-llm-node-system-type-select",
+        description="LLM node's SYSTEM section Type select (inline on canvas card)"
+    )
+    llm_node_system_value = LocatorDescriptor(
+        testid="pipeline-llm-node-system-value",
+        description="LLM node's SYSTEM section Value field"
+    )
+    llm_node_task_type_select = LocatorDescriptor(
+        testid="pipeline-llm-node-task-type-select",
+        description="LLM node's TASK section Type select"
+    )
+    llm_node_task_value = LocatorDescriptor(
+        testid="pipeline-llm-node-task-value",
+        description="LLM node's TASK section Value field"
+    )
+    llm_node_chat_history_type_select = LocatorDescriptor(
+        testid="pipeline-llm-node-chat-history-type-select",
+        description="LLM node's CHAT HISTORY section Type select"
+    )
+    llm_node_chat_history_value = LocatorDescriptor(
+        testid="pipeline-llm-node-chat-history-value",
+        description="LLM node's CHAT HISTORY section Value field"
+    )
+    llm_node_input_select = LocatorDescriptor(
+        testid="pipeline-llm-node-input-select",
+        description="LLM node's tool-agnostic Input state-variable select"
+    )
+    llm_node_output_select = LocatorDescriptor(
+        testid="pipeline-llm-node-output-select",
+        description="LLM node's tool-agnostic Output state-variable select"
+    )
+    llm_node_toolkits_select = LocatorDescriptor(
+        testid="pipeline-llm-node-toolkits-select",
+        description="LLM node's Toolkits multi-select (ToolkitsSelect.jsx, LLM-only call site)"
+    )
+    llm_node_interrupt_after_toggle = LocatorDescriptor(
+        testid="pipeline-llm-node-interrupt-after-toggle",
+        description="LLM node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
+    )
+    llm_node_structured_output_toggle = LocatorDescriptor(
+        testid="pipeline-llm-node-structured-output-toggle",
+        description="LLM node's 'Structured output' switch (CommonInterruptSettings.jsx)"
+    )
+
+    # Entry-point Trigger select (ELITEA-2005/06/07/08 testid prep, first
+    # consumed here) — TriggerTypeSelector.jsx renders this unconditionally
+    # for whichever node is the pipeline's current entry point, regardless of
+    # node type; a fresh empty pipeline's first added node becomes the entry
+    # point automatically (FlowEditor.jsx), so it's visible for both the LLM
+    # node (ELITEA-2004) and the Toolkit node (ELITEA-2010) cases.
+    entry_point_trigger_select = LocatorDescriptor(
+        testid="pipeline-entry-point-trigger-select",
+        description="Entry-point node's Trigger type select (Chat Message/Schedule/Webhook)"
+    )
+
+    # Dynamic (runtime-parameterized) testid — CommonInterruptSettings.jsx's
+    # "Interrupt before" toggle is keyed by node id, not node type (ELITEA-2008,
+    # unconditional for every node type sharing the component). Class-level
+    # template constant per .agents/testing.md § Locator policy, formatted
+    # with the node's own `data-id` (as returned by wait_for_node_on_canvas).
+    NODE_INTERRUPT_BEFORE_TOGGLE = '[data-testid="pipeline-node-interrupt-before-toggle-{}"]'
+
+    # Toolkit node inline config (ELITEA-2010). Testid-only, added via
+    # add-data-testid — BaseToolNode.jsx's node-type -> testid-prefix map now
+    # covers both "mcp" (unchanged, pipeline-mcp-node-*) and "toolkit" (new,
+    # pipeline-toolkit-node-*). Page-wide (not scoped to a specific node
+    # container): correct as long as a test only has a single Toolkit node
+    # on canvas.
+    toolkit_node_toolkit_select = LocatorDescriptor(
+        testid="pipeline-toolkit-node-toolkit-select",
+        description="Toolkit node's Toolkit select (inline on the ReactFlow canvas card)"
+    )
+    toolkit_node_tool_select = LocatorDescriptor(
+        testid="pipeline-toolkit-node-tool-select",
+        description=(
+            "Toolkit node's Tool select — conditionally rendered, absent from "
+            "the DOM entirely until a Toolkit with >=1 selected_tools is chosen"
+        )
+    )
+    toolkit_node_input_select = LocatorDescriptor(
+        testid="pipeline-toolkit-node-input-select",
+        description="Toolkit node's tool-agnostic Input state-variable select"
+    )
+    toolkit_node_output_select = LocatorDescriptor(
+        testid="pipeline-toolkit-node-output-select",
+        description="Toolkit node's tool-agnostic Output state-variable select"
+    )
+    toolkit_node_input_mapping_required_heading = LocatorDescriptor(
+        testid="pipeline-toolkit-node-input-mapping-heading",
+        description="Toolkit node's 'Input mapping (required N)' accordion heading"
+    )
+    toolkit_node_input_mapping_optional_heading = LocatorDescriptor(
+        testid="pipeline-toolkit-node-input-mapping-optional-heading",
+        description="Toolkit node's 'Input mapping (optional N)' accordion heading"
+    )
+    toolkit_node_interrupt_after_toggle = LocatorDescriptor(
+        testid="pipeline-toolkit-node-interrupt-after-toggle",
+        description="Toolkit node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
+    )
+    toolkit_node_structured_output_toggle = LocatorDescriptor(
+        testid="pipeline-toolkit-node-structured-output-toggle",
+        description="Toolkit node's 'Structured output' switch (CommonInterruptSettings.jsx)"
     )
 
     # HITL node inline config (ELITEA-2014). Testid-only, added via
@@ -312,6 +433,15 @@ class PipelineDetailPage(PipelineFormPage):
     # with test-generated data only at the call site.
     MCP_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-mcp-node-input-mapping-value-{}"]'
 
+    # Dynamic (runtime-parameterized) testids — one Value/Type select pair per
+    # tool parameter (e.g. search_query, repo_name, max_count). Class-level
+    # template constants per .agents/testing.md § Locator policy, formatted
+    # with test-generated data only at the call site. Same mechanism as
+    # MCP_NODE_INPUT_MAPPING_VALUE above, gated to nodeType==toolkit in
+    # BaseToolNode.jsx (ELITEA-2010).
+    TOOLKIT_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-toolkit-node-input-mapping-value-{}"]'
+    TOOLKIT_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-toolkit-node-input-mapping-type-{}"]'
+
     # Select-dropdown option pattern shared by Toolkit/Tool/Input/Output
     # selects (SingleSelectMenuItem.jsx: `select-option-{value}`) — confirmed
     # present and reliable per ELITEA-1954 AFS Concrete Handles.
@@ -322,6 +452,16 @@ class PipelineDetailPage(PipelineFormPage):
     # family (`select-option-{value}`), no value known up front. Still
     # testid-keyed, not a raw role/CSS selector.
     SELECT_OPTION_PREFIX = '[data-testid^="select-option-"]'
+
+    # A "Type" select's (SYSTEM/TASK/CHAT HISTORY on the LLM node; each
+    # Input-mapping row on the MCP/Toolkit node) option testid is
+    # `select-option-{value}`, but `value` is NOT the display label —
+    # FlowEditorConstants.agentTaskTypeOptions defines the raw lowercase
+    # type ("fixed"/"fstring"/"variable"), not "Fixed"/"F-String"/"Variable".
+    # Confirmed live (ELITEA-2004/ELITEA-2010 exploration) — reusing
+    # SELECT_OPTION with the display label 404s. Callers pass the display
+    # label (matching what get_*_type() reads back); this map translates.
+    TYPE_OPTION_VALUE_BY_LABEL = {"Fixed": "fixed", "F-String": "fstring", "Variable": "variable"}
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -773,6 +913,31 @@ class PipelineDetailPage(PipelineFormPage):
 
         self.canvas_wrapper.wait_for(state="visible", timeout=timeout)
         logger.info("ReactFlow canvas visible")
+
+    def fit_canvas_view(self, timeout: int = 5000) -> None:
+        """Click ReactFlow's own "Fit View" control to recenter/rescale the canvas.
+
+        A node's lower rows (e.g. a Toolkit node's Input-mapping parameters,
+        once expanded) can end up positioned directly under the canvas's own
+        pinned bottom-left controls panel (live-confirmed, ELITEA-2010: a
+        coordinate-based click on the intercepted Type select silently
+        landed on the "Fit View" button instead of opening the target's
+        dropdown — neither ``force=True`` nor ``evaluate("el => el.click()")``
+        reach the real target once another element is genuinely on top of it
+        on screen). Fit View reliably clears the overlap by
+        repositioning/rescaling the flow to fit all nodes.
+
+        #579 sanctioned exception (third-party widget subtree): the
+        individual button is ReactFlow's own internal render
+        (``react-flow__controls-fitview``, no app testid can be placed on
+        it) — scoped to the real app testid ``canvas_controls`` parent per
+        the discipline in ``.agents/testing.md`` § Locator policy.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('button[title="Fit View"]').click(timeout=timeout)
+        self.page.wait_for_timeout(500)  # pan/zoom transition settle
 
     def add_node(self, node_type: str, timeout: int = 5000):
         """Add a node to the canvas via the + button menu.
@@ -1256,6 +1421,402 @@ class PipelineDetailPage(PipelineFormPage):
             return False
         text = (heading.text_content() or "").strip()
         return text == f"Input mapping (required {required_count})"
+
+    # ------------------------------------------------------------------
+    # LLM node inline config (ELITEA-2004)
+    # ------------------------------------------------------------------
+
+    _LLM_NODE_SECTIONS = ("system", "task", "chat_history")
+
+    def _llm_node_type_select_locator(self, section: str) -> Locator:
+        """Return the class-level Type-select LocatorDescriptor for *section*."""
+        if section not in self._LLM_NODE_SECTIONS:
+            raise ValueError(f"Unknown LLM node section: {section!r}, expected one of {self._LLM_NODE_SECTIONS}")
+        return getattr(self, f"llm_node_{section}_type_select")
+
+    def _llm_node_value_locator(self, section: str) -> Locator:
+        """Return the class-level Value-field LocatorDescriptor for *section*."""
+        if section not in self._LLM_NODE_SECTIONS:
+            raise ValueError(f"Unknown LLM node section: {section!r}, expected one of {self._LLM_NODE_SECTIONS}")
+        return getattr(self, f"llm_node_{section}_value")
+
+    def _wait_for_field_selection_applied(self, field: Locator, timeout: int = 5000) -> None:
+        """Wait until *field*'s full value is selected, or it has nothing to select.
+
+        ``Locator.select_text()`` performs the browser selection
+        synchronously, but a MUI controlled-input re-render can reset
+        ``selectionStart``/``selectionEnd`` on the next tick — poll the real
+        DOM selection state (not a fixed delay) before sending Backspace, so
+        Backspace can't race a not-yet-applied selection. Same pattern as
+        ``McpFormPage._wait_for_selection_applied``.
+        """
+        handle = field.element_handle()
+        self.page.wait_for_function(
+            """(el) => el.value.length === 0 ||
+               (el.selectionStart === 0 && el.selectionEnd === el.value.length)""",
+            arg=handle,
+            timeout=timeout,
+        )
+
+    def _fill_node_field_value(self, field: Locator, value: str, timeout: int = 5000) -> None:
+        """Replace *field*'s content with *value*, robust against pre-populated MUI fields.
+
+        ``press("Control+a")`` does not reliably select-all on a
+        pre-populated MUI field — live-confirmed for the LLM node's CHAT
+        HISTORY Value field (default ``"[]"``): the caret landed at the end
+        instead of selecting, so subsequent typing appended
+        (``"[]"`` + ``"[]"`` -> ``"[][]"``) rather than replacing. Uses
+        ``select_text()`` + ``Backspace`` instead — the same reliable-clear
+        pattern already used by ``McpFormPage._fill_text_input`` /
+        ``SkillFormPage.fill_instructions``. MUI/React fields need real
+        keyboard events for onChange to fire (.claude/rules/mui-patterns.md),
+        so this never uses ``fill()``.
+
+        Args:
+            field: The value-field Locator (LLM node section or Toolkit
+                node Input-mapping row).
+            value: The text to type.
+            timeout: Maximum wait time in milliseconds.
+        """
+        field.wait_for(state="visible", timeout=timeout)
+        field.click()
+        field.select_text()
+        self._wait_for_field_selection_applied(field, timeout=timeout)
+        field.press("Backspace")
+        field.press_sequentially(value, delay=20)
+
+    def get_llm_node_section_type(self, section: str, timeout: int = 5000) -> str:
+        """Read the current Type select value for *section* (system/task/chat_history).
+
+        Args:
+            section: One of ``"system"``, ``"task"``, ``"chat_history"``.
+            timeout: Maximum wait time for the select to be visible.
+        """
+        type_select = self._llm_node_type_select_locator(section)
+        type_select.wait_for(state="visible", timeout=timeout)
+        # MUI's empty-select rendering is a zero-width space (U+200B), not
+        # an empty string — same gotcha as get_mcp_node_toolkit_value.
+        text = (type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_llm_node_section_type(self, section: str, type_value: str, timeout: int = 5000) -> None:
+        """Open *section*'s Type select and choose *type_value* (Fixed/F-String/Variable).
+
+        Args:
+            section: One of ``"system"``, ``"task"``, ``"chat_history"``.
+            type_value: Option display text, e.g. ``"F-String"``.
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        type_select = self._llm_node_type_select_locator(section)
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        type_select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def fill_llm_node_section_value(self, section: str, value: str, timeout: int = 5000) -> None:
+        """Fill *section*'s Value field.
+
+        Uses click + press_sequentially — MUI/React fields need real keyboard
+        events for onChange to fire (.claude/rules/mui-patterns.md).
+
+        Args:
+            section: One of ``"system"``, ``"task"``, ``"chat_history"``.
+            value: The text to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        value_field = self._llm_node_value_locator(section)
+        self._fill_node_field_value(value_field, value, timeout=timeout)
+
+    def get_llm_node_section_value(self, section: str) -> str:
+        """Read *section*'s current Value field content.
+
+        Args:
+            section: One of ``"system"``, ``"task"``, ``"chat_history"``.
+        """
+        return self._llm_node_value_locator(section).input_value()
+
+    def _wait_for_open_popovers_closed(self, timeout: int = 5000) -> None:
+        """Wait until no select-option-* row is visible anywhere on the page.
+
+        Selecting an option normally closes its own popover synchronously,
+        but the close animation/unmount can still be in flight when the very
+        next call opens a DIFFERENT select immediately after (e.g. the LLM/
+        Toolkit node's consecutive Input -> Output selects) — the
+        still-closing popover's backdrop then intercepts the next select's
+        click (live-confirmed: "element ... intercepts pointer events").
+        Testid-based (``SELECT_OPTION_PREFIX`` — the same
+        ``select-option-{value}`` family every dropdown option carries,
+        SingleSelectMenuItem.jsx) rather than a raw MUI popover class, per
+        .agents/testing.md § Locator policy. Best-effort — if nothing is
+        open this returns immediately.
+        """
+        from playwright.sync_api import expect
+
+        try:
+            expect(self.page.locator(self.SELECT_OPTION_PREFIX)).to_have_count(0, timeout=timeout)
+        except Exception:
+            pass
+
+    def open_llm_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the LLM node's Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.llm_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def _select_multi_select_option_and_close(self, variable_name: str, timeout: int = 5000) -> None:
+        """Select *variable_name* in the currently-open multi-select listbox, then close it.
+
+        The Input/Output state-variable selects (LLM and Toolkit node) are
+        MUI multi-selects (``InputSelect``/``OutputSelect``: ``multiple``) —
+        selecting an option does NOT auto-close the popover, unlike a
+        single-select (Toolkit/Tool). Left open, the still-visible popover
+        intercepts the next select's click (live-confirmed: "intercepts
+        pointer events" when opening a second select right after). Closes
+        via Escape and waits for the popover to actually leave the DOM.
+        """
+        self.select_open_listbox_option(variable_name, timeout=timeout)
+        self.page.keyboard.press("Escape")
+        self._wait_for_open_popovers_closed(timeout=timeout)
+
+    def select_llm_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Input dropdown and select *variable_name*."""
+        self.open_llm_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_llm_node_input_value(self) -> str:
+        """Read the LLM node's currently-selected Input display text."""
+        text = (self.llm_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_llm_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the LLM node's Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.llm_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_llm_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Output dropdown and select *variable_name*."""
+        self.open_llm_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_llm_node_output_value(self) -> str:
+        """Read the LLM node's currently-selected Output display text."""
+        text = (self.llm_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def is_node_interrupt_before_toggle_visible(self, node_id: str, timeout: int = 5000) -> bool:
+        """Return whether *node_id*'s 'Interrupt before' switch is visible.
+
+        Node-id-keyed, not node-type-keyed (ELITEA-2008) — works for any node
+        type sharing CommonInterruptSettings.jsx, e.g. the value returned by
+        ``wait_for_node_on_canvas()``.
+        """
+        toggle = self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id))
+        try:
+            toggle.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    # ------------------------------------------------------------------
+    # Toolkit node inline config (ELITEA-2010)
+    # ------------------------------------------------------------------
+
+    def get_toolkit_node_toolkit_value(self, timeout: int = 5000) -> str:
+        """Read the Toolkit node's currently-selected Toolkit display text."""
+        self.toolkit_node_toolkit_select.wait_for(state="visible", timeout=timeout)
+        text = (self.toolkit_node_toolkit_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def get_toolkit_node_tool_value(self, timeout: int = 5000) -> str:
+        """Read the Toolkit node's currently-selected Tool display text.
+
+        Returns empty string both when no tool is selected AND when the Tool
+        select isn't rendered at all yet (conditionally rendered — see
+        ``toolkit_node_tool_select`` description).
+
+        Args:
+            timeout: Maximum wait time for the select to be visible (not
+                applied when the element never appears — see above).
+        """
+        try:
+            self.toolkit_node_tool_select.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        text = (self.toolkit_node_tool_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def is_toolkit_node_tool_select_visible(self, timeout: int = 2000) -> bool:
+        """Check whether the Toolkit node's Tool select is rendered at all.
+
+        Used to assert the absence of the Tool select before a Toolkit is
+        selected (AFS step 4 negative assertion — the two-stage reveal is a
+        test-enforced contract, not a documented assumption).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            self.toolkit_node_tool_select.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def open_toolkit_node_toolkit_select(self, timeout: int = 5000) -> None:
+        """Open the Toolkit node's Toolkit dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.toolkit_node_toolkit_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_toolkit_node_toolkit(self, toolkit_name: str, timeout: int = 5000) -> None:
+        """Open the Toolkit dropdown and select *toolkit_name*.
+
+        Args:
+            toolkit_name: The toolkit's display value (matches
+                ``select-option-{toolkit_name}``).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self.open_toolkit_node_toolkit_select(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(toolkit_name))
+        option.click(timeout=timeout)
+
+    def open_toolkit_node_tool_select(self, timeout: int = 5000) -> None:
+        """Open the Toolkit node's Tool dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.toolkit_node_tool_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_toolkit_node_tool(self, tool_name: str, timeout: int = 5000) -> None:
+        """Open the Tool dropdown and select *tool_name*.
+
+        Args:
+            tool_name: The tool's value (matches ``select-option-{tool_name}``).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self.open_toolkit_node_tool_select(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(tool_name))
+        option.click(timeout=timeout)
+
+    def is_toolkit_node_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:
+        """Check whether the Toolkit node's "Input mapping (required N)" accordion is visible.
+
+        Args:
+            required_count: Expected N in the accordion title.
+            timeout: Maximum wait time.
+
+        Returns:
+            True if the section with the exact required count is visible.
+        """
+        heading = self.toolkit_node_input_mapping_required_heading
+        try:
+            heading.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (required {required_count})"
+
+    def is_toolkit_node_input_mapping_optional_section_visible(self, optional_count: int, timeout: int = 5000) -> bool:
+        """Check whether the Toolkit node's "Input mapping (optional N)" accordion is visible.
+
+        Args:
+            optional_count: Expected N in the accordion title.
+            timeout: Maximum wait time.
+
+        Returns:
+            True if the section with the exact optional count is visible.
+        """
+        heading = self.toolkit_node_input_mapping_optional_heading
+        try:
+            heading.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (optional {optional_count})"
+
+    def get_toolkit_node_input_mapping_type(self, param_name: str, timeout: int = 5000) -> str:
+        """Read the current Type select value of an Input-mapping row.
+
+        Args:
+            param_name: The tool parameter's raw schema key (e.g. ``"search_query"``).
+            timeout: Maximum wait time for the select to be visible.
+        """
+        type_select = self.page.locator(self.TOOLKIT_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        type_select.wait_for(state="visible", timeout=timeout)
+        text = (type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_toolkit_node_input_mapping_type(self, param_name: str, type_value: str, timeout: int = 5000) -> None:
+        """Open an Input-mapping row's Type select and choose *type_value*.
+
+        Args:
+            param_name: The tool parameter's raw schema key (e.g. ``"search_query"``).
+            type_value: Option display text, e.g. ``"F-String"``.
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        type_select = self.page.locator(self.TOOLKIT_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        type_select.scroll_into_view_if_needed(timeout=timeout)
+        type_select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def get_toolkit_node_input_mapping_value(self, param_name: str, timeout: int = 5000) -> str:
+        """Read the current value of an Input-mapping "Value" field.
+
+        Args:
+            param_name: The tool parameter's raw schema key (e.g. ``"search_query"``).
+            timeout: Maximum wait time for the field to be visible.
+        """
+        field = self.page.locator(self.TOOLKIT_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        return field.input_value()
+
+    def fill_toolkit_node_input_mapping_value(self, param_name: str, value: str, timeout: int = 5000) -> None:
+        """Fill an Input-mapping "Value" field for a fixed/f-string tool parameter.
+
+        Args:
+            param_name: The tool parameter's raw schema key (e.g. ``"search_query"``).
+            value: The text to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        field = self.page.locator(self.TOOLKIT_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        self._fill_node_field_value(field, value, timeout=timeout)
+
+    def open_toolkit_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the Toolkit node's Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.toolkit_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_toolkit_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Input dropdown and select *variable_name*."""
+        self.open_toolkit_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_toolkit_node_input_value(self) -> str:
+        """Read the Toolkit node's currently-selected Input display text."""
+        text = (self.toolkit_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_toolkit_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the Toolkit node's Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.toolkit_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_toolkit_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Output dropdown and select *variable_name*."""
+        self.open_toolkit_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_toolkit_node_output_value(self) -> str:
+        """Read the Toolkit node's currently-selected Output display text."""
+        text = (self.toolkit_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
 
     # ------------------------------------------------------------------
     # TOOLS section — MCP attach (ELITEA-1955)

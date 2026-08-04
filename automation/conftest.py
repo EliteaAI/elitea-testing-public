@@ -45,6 +45,7 @@ from fixtures.data_fixtures import (
     pipeline_with_llm_id,
     github_credential,
     github_toolkit,
+    github_toolkit_with_selected_tools,
     github_relevant_agents,
     github_relevant_skills,
     artifact_bucket,
