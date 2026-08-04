@@ -743,3 +743,42 @@ is a legitimate empty state, not an error state).
   sessions. `Interrupt after` remains caller-opt-in and Decision's own call
   site (`NormalDecisionNode.jsx`) does not pass it — needs-adding.
   Full detail: `l2_pipeline-decision-node-configuration_ELITEA-2034.md`.
+
+## STATE panel — default vs. custom variable rows (confirmed live, 2026-08-04, ELITEA-2042)
+
+- **Default rows (`input`/`messages`) render ONLY name + toggle, no type
+  indicator at all.** Full `outerHTML` capture: `<p>{name}</p>` + a MUI
+  `<Switch>`, nothing else — no type badge/icon/text. The case text's
+  "input (str, toggle on)" wording implies the type is visible on the row;
+  it isn't. Type is only observable via the YAML `state:` section, or (for a
+  non-default row) that row's own type-select icon. Filed as a CLARIFICATION,
+  not a defect: `EliteaAI/elitea-testing-public#1154`.
+- **No-delete-control on default rows is a STRUCTURAL guarantee, not just an
+  observation** — `StateVariableItemActions.jsx`'s `showToggle` branch
+  (toggle-only) is mutually exclusive with the delete-`IconButton` branch, so
+  this is safe to assert directly rather than "not seen this session."
+- **New-row commit is Enter/blur, no separate confirm button** —
+  `StateVariableItem.jsx`'s `handleNameBlur`/`handleNameKeyDown`. The row's
+  type-selector button is genuinely `disabled` while still in create-mode
+  (`disableTypeSelector={isCreateMode || !editable}`) — don't click it before
+  committing the name.
+- **Type dropdown display label ≠ internal/YAML value for the 4th option:**
+  `StateVariableTypes` (`flowEditor.constants.js`) maps String→`str`,
+  Number→`number`, List→`list`, **Json→`dict`** (not `json`). Any test
+  selecting "Json" must assert `type: dict` in the YAML.
+- **Testid gaps (needs-adding via `add-data-testid`):** default/custom row
+  name label, row toggle, row delete button (dynamic `-{name}` suffix), and
+  the type-selector's 4 menu items + the type-select button itself — all in
+  `StateVariableItem.jsx` → `StateVariableItemActions.jsx` →
+  `StateTypeSelector.jsx` → `StateVariableIconButton.jsx`
+  (`src/[fsd]/features/pipelines/flow-editor/ui/state/`). Already-wired STATE
+  testids (drawer toggle/close, add-variable button/name-input) need no
+  further work.
+- **Literal-substring `git grep` false negative, confirmed twice more this
+  session:** `pipeline-flow-view`/`pipeline-yaml-view`
+  (`` `pipeline-${item.value}-view` ``, `GroupedButton.jsx`) and
+  `pipeline-add-node-menu-item-llm` (`` `pipeline-add-node-menu-item-${item.type}` ``,
+  `AddNodeMenu.jsx`) are JS template literals — grepping the fully
+  interpolated string returns NO hits even though the testid genuinely
+  renders. Grep the template PREFIX or read the source component directly.
+  Full detail: `l2_pipeline-state-panel-default-and-custom-variables_ELITEA-2042.md`.
