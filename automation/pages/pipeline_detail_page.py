@@ -1665,7 +1665,21 @@ class PipelineDetailPage(PipelineFormPage):
 
         To land on a clean single value: open the popover, click the
         currently-checked cell to UNCHECK it, then click the target cell to
-        check it — for both hour and minute independently.
+        check it — for both hour and minute independently. Both toggles are
+        VERIFIED (not just fired-and-forgotten) before moving on: a
+        JS-evaluate click dispatches a synthetic ``click`` event with no
+        guarantee React's onChange/state-update — or, worse, the
+        `rc-virtual-list` re-render triggered by the scroll/scroll-into-view
+        calls below — has settled by the time the call returns. An
+        unverified miss on either toggle leaves the grid in a multi-value
+        state (e.g. both "00" and the target checked), which only surfaces
+        several steps later as the modal's own inline validation error
+        ("Frequency cannot be less than every hour") rather than here where
+        the actual cause is. One re-click retry covers a remount landing
+        between the scroll and the click; a persistent mismatch fails loudly
+        with a locator-count assertion instead of masking into that
+        downstream message (ELITEA-2007 gate flake, 2026-08-04: 2 green / 1
+        red across 3 consecutive gate runs of this spec).
 
         Args:
             hour: Target hour, zero-padded (e.g. ``"09"``).
@@ -1694,9 +1708,18 @@ class PipelineDetailPage(PipelineFormPage):
             # JS-evaluate click bypasses both the pointer-interception AND
             # viewport-visibility actionability checks (mui-patterns.md:
             # "evaluate() ... for critical actions").
-            selected_option = open_dropdown.locator(self.CRON_DROPDOWN_SELECTED_OPTION).first
+            selected_options = open_dropdown.locator(self.CRON_DROPDOWN_SELECTED_OPTION)
+            selected_option = selected_options.first
             selected_option.wait_for(state="attached", timeout=timeout)
             selected_option.evaluate("el => el.click()")  # uncheck default
+            try:
+                expect(selected_options).to_have_count(0, timeout=timeout)
+            except AssertionError:
+                # Re-resolve and retry once — the locator queries fresh at
+                # call time, so this targets whatever cell is ACTUALLY
+                # selected now rather than a stale handle.
+                selected_options.first.evaluate("el => el.click()")
+                expect(selected_options).to_have_count(0, timeout=timeout)
 
             # The grid is `rc-virtual-list`-virtualized — an option far from
             # the current scroll position never mounts in the DOM at all, so
@@ -1712,6 +1735,18 @@ class PipelineDetailPage(PipelineFormPage):
             target_option.wait_for(state="attached", timeout=timeout)
             target_option.scroll_into_view_if_needed(timeout=timeout)
             target_option.evaluate("el => el.click()")  # check target
+            try:
+                expect(selected_options).to_have_count(1, timeout=timeout)
+                expect(selected_options.first).to_have_attribute("title", target, timeout=timeout)
+            except AssertionError:
+                # Same remount risk as above — scroll_into_view_if_needed
+                # can itself trigger a further internal scroll that detaches
+                # the just-resolved cell out from under the click. Re-scroll
+                # + re-click once against a freshly resolved target_option.
+                target_option.scroll_into_view_if_needed(timeout=timeout)
+                target_option.evaluate("el => el.click()")
+                expect(selected_options).to_have_count(1, timeout=timeout)
+                expect(selected_options.first).to_have_attribute("title", target, timeout=timeout)
 
             # Click the modal title (neutral area, no click handler of its
             # own) to close the dropdown — more reliable here than Escape,
