@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-03 (ELITEA-2018/2030/2031/2032 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-04 (ELITEA-2033 analysis).
 
 ## Canvas node/edge CRUD (Add-node menu, node delete, edge create/delete) (confirmed live, 2026-08-03, ELITEA-2018/2030/2031/2032)
 
@@ -35,20 +35,32 @@
   not-yet-connected starting state between two specific nodes, you MUST
   set `transition: "END"` explicitly on the earlier node — omitting it
   silently pre-wires the very edge you're about to test creating.
-- **No "transition"/"routes" field exists in ANY non-HITL node's config
+- **No "transition"/"routes" field exists in LLM/Printer/Code/etc's config
   panel** — confirmed via live DOM text read (LLM node's full visible text
   has no "Transition"/"Route" substring) AND via source
   (`LLMNode.jsx`/`PrinterNode.jsx` render no such control; the node's
   3-dot menu offers only "Make Entrypoint"/"Delete", no "Set transition").
-  Only the HITL node type has a visible "Route" concept (its ROUTER
-  MAPPING accordion), unrelated to LLM/Printer/Code/etc. The real,
-  confirmed mechanism for wiring/re-wiring any non-HITL node's
-  `transition` is dragging a canvas connection
+  The real, confirmed mechanism for wiring/re-wiring any of THESE node
+  types' `transition` is dragging a canvas connection
   (`PipelineDetailPage.connect_nodes()`). Case texts describing a
-  "transition/routes field in the node configuration panel" for a
-  non-HITL node are stale — filed as clarification
+  "transition/routes field in the node configuration panel" for one of
+  these types are stale — filed as clarification
   `EliteaAI/elitea-testing-public#1136` (covers ELITEA-2031 + ELITEA-2032,
   same root cause).
+  **CORRECTION (2026-08-04, ELITEA-2033 analysis) — the prior version of
+  this entry over-generalized to "only HITL has a Route concept": that is
+  FALSE. The dedicated Router node type ALSO has a first-class `Routes`
+  field** (a multi-select of existing node ids/`END`, distinct from HITL's
+  named APPROVE/EDIT/REJECT routes) **plus a `Default output` field that
+  wires its own separate edge.** Router routes/default-output edges use
+  the SAME `EDGE_PREFIX` id-construction mechanism (`xy-edge__{id}---{value}`
+  for routes, `xy-edge__{id}default_output---{value}` for the default
+  output — no separator before `default_output`, a HITL-style gotcha) so
+  `edge_testid_present()`/`get_edge_locator()` work unmodified once the
+  right string is passed. Full details: `l2_pipeline-router-node-configuration_ELITEA-2033.md`.
+  The "no transition/routes field" claim stands ONLY for LLM/Printer/Code/
+  MCP/Toolkit/State-modifier/Custom/Agent — i.e. every type except HITL and
+  Router.
 - **Edge testid format is INCONSISTENT depending on whether the target is
   the literal END node**, confirmed live in the SAME pipeline
   simultaneously: edges TO `END` render as
@@ -448,3 +460,75 @@ is a legitimate empty state, not an error state).
 - The dev project has ~30 leaked `AutoTest * Toolkit *` rows from prior sessions —
   don't hardcode one of these names as "the" existing toolkit; use the `github_toolkit`
   fixture (`automation/fixtures/data_fixtures.py:243`) to provision a real one per test.
+
+## Router node — Condition/Routes/Input/Default output (confirmed live, 2026-08-04, ELITEA-2033)
+
+- **Router has its own first-class `Routes` field** (distinct from HITL's
+  named APPROVE/EDIT/REJECT routes) — a multi-select `RouteSelect`
+  component whose options are **existing pipeline node ids + a synthetic
+  `END` option**, NOT a freeform/creatable tag field. To route to targets
+  named e.g. "approve"/"reject" (a Jinja condition's literal string
+  outputs), those nodes must already exist with exactly those names —
+  achieved live via the canvas inline node-rename (`edit_node_name()`),
+  not via typing into the Routes field itself.
+- **Selecting a Routes value wires a real canvas edge immediately, before
+  Save** — confirmed live (`Router 1 → approve` edge appeared in the
+  snapshot the instant "approve" was clicked in the dropdown, well before
+  any Save click). Same is true of `Default output`.
+- **`Default output` is a separate field/edge from `Routes`**, defaulting
+  to `END` with its own dedicated ReactFlow source handle
+  (`routerNode_default_output` vs `routerNode_routes`). Selecting it wires
+  a THIRD edge distinct from the two routes edges.
+- **Edge testid construction differs between Routes and Default-output
+  edges** (both app-constructed via `FlowEditorConstants.EDGE_PREFIX =
+  'xy-edge__'`, confirmed in `RouteSelect.jsx`/`RouterNode.jsx` source and
+  live DOM):
+  - Routes edge: `rf__edge-xy-edge__{router_id}---{target}` — matches the
+    plain `EDGE_TESTID` template `PipelineDetailPage` already has; works
+    unmodified with `edge_testid_present()`/`get_edge_locator()`.
+  - Default-output edge: `rf__edge-xy-edge__{router_id}default_output---{target}`
+    — **no separator between the router's id and the literal
+    `default_output`** (same no-separator-concatenation gotcha as HITL's
+    `HITL 1reject-ENDtarget`). Still usable with the existing
+    `EDGE_TESTID`/`get_edge_locator()` machinery by passing the
+    pre-concatenated string as the "source" arg
+    (`get_edge_locator(f"{node_id}default_output", "END")`) — no new
+    page-object method needed.
+- **`Condition` is a plain MUI `TextField` (`<textarea>`), NOT a
+  CodeMirror/Monaco editor**, despite `AIAssistantInput` receiving
+  `language="jinja"` — that prop only affects the "AI Assistant" full-screen
+  modal's syntax highlighting, not the inline field. Standard
+  `.input_value()`-readable, no #579 CodeMirror-line-scoping needed.
+- **Zero testids on any of the 4 interactive Router fields** (Condition,
+  Routes, Input, Default output) as of this session. `Input` and `Default
+  output`'s underlying shared components already accept a `dataTestId`/
+  `data-testid` prop (one-line RouterNode.jsx wiring each); `Condition`
+  needs an `inputProps={{'data-testid': ...}}` addition (same pattern as
+  HITL's USER MESSAGE Value field); `Routes`'s `RouteSelect.jsx` has NO
+  testid plumbing at all yet (needs a new prop, 2-line fix). Full detail +
+  exact testid names: `l2_pipeline-router-node-configuration_ELITEA-2033.md`.
+- **`PipelineDetailPage.edit_node_name()`'s docstring is stale/wrong**: it
+  claims a rename retains the node-type prefix ("LLM 1" → "MyNode" becomes
+  data-id "LLM MyNode"). Live-confirmed FALSE — renaming "Printer 1" to
+  "approve" produces data-id exactly `approve`, no prefix. Also: pressing
+  `Enter` after typing does NOT commit the rename; only clicking the canvas
+  empty pane (`.react-flow__pane`, a real blur) commits it — the existing
+  method already does this correctly via `_deselect_all()`, only the
+  docstring's claimed resulting id is wrong. Needs a doc fix (not a
+  behavior fix) at `pipeline_detail_page.py:1765-1767`.
+- **Session/environment gotcha, not a product defect**: a localhost
+  session's browser-active project (sidebar "Project:" selector) can
+  differ from `.env.test`'s `ELITEA_PROJECT_ID` — this session's browser
+  defaulted to "Elitea Testing Team" (id 471) while `.env.test` says `399`
+  ("Private"). Creating a pipeline via a standalone `PipelineAPI` script
+  using the default project id then opening it in that mismatched browser
+  session produces a 400 (wrong project in the URL) or, if you also try to
+  create directly against the mismatched project, a 403
+  `access_denied`/`models.applications.applications.create` (the dev-token
+  user lacks create rights on "Elitea Testing Team"). Fixtures using
+  `browser_cookies`-based auth (the normal test pattern) don't hit this —
+  they inherit whatever project is actually active. Only bites standalone
+  token-auth scripts run outside a browser session (exactly what happened
+  during this analysis). Fix: switch the sidebar project selector to
+  "Private" (`select-option-399`) before creating pipelines by hand, or
+  read the sidebar's active project id before scripting against the API.
