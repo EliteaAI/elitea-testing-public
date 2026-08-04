@@ -51,6 +51,8 @@ from fixtures.data_fixtures import (
     artifact_bucket,
     artifact_toolkit,
     artifact_toolkit_four_tools,
+    artifact_seeded_file,
+    sensitive_delete_file_toolkit,
     invalid_jira_credential,
     jira_toolkit_with_invalid_credential,
     invalid_github_credential,

@@ -60,7 +60,7 @@ Same fixture shape as ELITEA-2211/2212.
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Buttons visible | visible | step 1 | reused from ELITEA-2211 as this case's own precondition/setup (own conversation, executed independently) | asserted |
+| 1 Buttons visible | visible | step 1 | step 1 setup, this case's OWN test body (see fix round 1 note below) | asserted *(fix round 1, 2026-08-03: originally cited ELITEA-2211 — a same-batch, not-yet-merged spec — as the reuse site for this row; the reviewer contract requires "already-covered"/reuse citations to target a spec merged to base, which ELITEA-2211 is not. This case's own test now independently asserts all three buttons visible before clicking Block, so the row no longer depends on that citation)* |
 | 2 Click Block | card closes/updates | step 2 | step 2 | asserted |
 | 3 Tool does NOT execute | no execution | step 3 | step 3 (backend file-listing, file still present) | asserted |
 | 4 LLM response indicates block | response mentions block | step 4 | step 4 (loose non-empty/non-success signal, see step 4 note) | asserted *(clarification: exact wording not verifiable locally, see note)* |

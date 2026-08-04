@@ -572,6 +572,66 @@ class ChatPage(BasePage):
         )
     )
 
+    answer_tool_chip = LocatorDescriptor(
+        testid="chat-answer-tool-chip",
+        description=(
+            "Toolkit/tool-call chip inside the Thought accordion's chip row "
+            "(ActionView.jsx's model/tool ternary, else-branch — canon ruling "
+            "#277 shape (b): both branches named since ELITEA-2212/2215 assert "
+            "presence + text and ELITEA-2213 asserts absence on its own "
+            "executed path). Text is '{toolkit_name}: {tool_name}'."
+        )
+    )
+
+    # ------------------------------------------------------------------
+    # HITL sensitive-action authorization card — direct toolkit call, no
+    # agent (ELITEA-2211..2214). Same underlying ChatHitlActions.jsx
+    # component AgentDetailPage already has locators for; ChatPage had none
+    # (confirmed via grep before this addition).
+    # ------------------------------------------------------------------
+
+    sensitive_action_panel = LocatorDescriptor(
+        testid="sensitive-action-panel",
+        description=(
+            "HITL Sensitive Action Authorization card. Renders only when "
+            "hitlInterrupt.guardrail_type is 'sensitive_tool'/"
+            "'parallel_sensitive_tools' (ChatHitlActions.jsx) — its mere "
+            "presence, vs the OTHER container testid 'chat-hitl-actions-panel', "
+            "IS the 'sensitive' signal."
+        )
+    )
+
+    sensitive_action_authorize_button = LocatorDescriptor(
+        testid="sensitive-action-authorize-button",
+        description="Authorize (green) button on the sensitive-action card.",
+    )
+
+    sensitive_action_block_button = LocatorDescriptor(
+        testid="sensitive-action-block-button",
+        description="Block (red) button on the sensitive-action card.",
+    )
+
+    sensitive_action_block_with_comment_button = LocatorDescriptor(
+        testid="sensitive-action-block-with-comment-button",
+        description=(
+            "'Block with Comment' collapsed-state trigger button "
+            "(BlockWithCommentControl.jsx)."
+        ),
+    )
+
+    sensitive_action_block_comment_input = LocatorDescriptor(
+        testid="sensitive-action-block-comment-input",
+        description="Comment textarea shown after clicking 'Block with Comment'.",
+    )
+
+    sensitive_action_block_comment_submit_button = LocatorDescriptor(
+        testid="sensitive-action-block-comment-submit-button",
+        description=(
+            "Submit button in the expanded Block-with-Comment control (same "
+            "visible label as the collapsed trigger — testid disambiguates)."
+        ),
+    )
+
     # ------------------------------------------------------------------
     # Active participant / skill-mention popper (ELITEA-1736 testid rework)
     # ------------------------------------------------------------------
@@ -4513,6 +4573,37 @@ class ChatPage(BasePage):
         self.wait_for_network(timeout=timeout)
 
         logger.info("Toolkit '%s' added as chat participant", toolkit_name)
+
+    # ------------------------------------------------------------------
+    # HITL sensitive-action authorization card — direct toolkit call, no
+    # agent (ELITEA-2211..2214)
+    # ------------------------------------------------------------------
+
+    def wait_for_sensitive_action_panel(self, timeout: int = 30000) -> bool:
+        """Wait for the Sensitive Action Authorization card to appear.
+
+        Mirrors ``AgentDetailPage.wait_for_sensitive_action_authorization()``
+        but for the direct-toolkit-call flow on the main ``/chat`` page (no
+        agent) and WITHOUT auto-clicking Authorize — callers choose
+        Authorize / Block / Block with Comment themselves, since
+        ELITEA-2211..2214 each exercise a different one of the three.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if the panel appeared, False otherwise.
+        """
+        logger.info("Waiting for Sensitive Action Authorization panel (direct toolkit call)")
+        try:
+            self.sensitive_action_panel.wait_for(state="visible", timeout=timeout)
+            logger.info("Sensitive Action Authorization panel appeared")
+            return True
+        except Exception:
+            logger.warning(
+                "Sensitive Action Authorization panel did NOT appear within %dms", timeout
+            )
+            return False
 
     # ------------------------------------------------------------------
     # Slash-mention dropdown: '/' -> toolkit/MCP picker -> tool picker
