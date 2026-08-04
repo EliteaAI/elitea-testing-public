@@ -4274,6 +4274,21 @@ class PipelineDetailPage(PipelineFormPage):
         self.click_state_variable_type_select(name, timeout=timeout)
         self.select_open_state_type_option(type_key, timeout=timeout)
 
+    def is_state_type_option_selected(self, type_key: str, timeout: int = 5000) -> bool:
+        """Return whether *type_key* is the CURRENTLY-SELECTED option in an open type dropdown.
+
+        Call while the dropdown is open (after :meth:`click_state_variable_type_select`).
+        Testid-based (``STATE_TYPE_OPTION``) — ``StateTypeSelector.jsx`` passes
+        MUI's ``MenuItem`` a ``selected={isSelected}`` prop, which renders a
+        ``Mui-selected`` class on the option when it matches the row's current
+        type; reading the class is compliant (the testid's presence/value is
+        stable identity, state is read separately — same discipline as
+        :meth:`is_state_variable_toggle_checked`'s ``Mui-checked`` read).
+        """
+        option = self.page.locator(self.STATE_TYPE_OPTION.format(type_key))
+        option.wait_for(state="visible", timeout=timeout)
+        return "Mui-selected" in (option.get_attribute("class") or "")
+
     # ------------------------------------------------------------------
     # Chat HITL runtime actions (ELITEA-2015)
     # ------------------------------------------------------------------

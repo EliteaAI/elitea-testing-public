@@ -121,7 +121,17 @@ def test_state_panel_default_and_custom_variables(page, pipeline_id):
             f"Type dropdown should show exactly {_EXPECTED_TYPE_OPTIONS!r} in order, got {type_options!r}"
         )
 
-    with allure.step("Step 8 — Select String (keep the pre-selected type)"):
+    with allure.step("Step 8 — Select String (keep the pre-selected type); verify String type is retained"):
+        pipeline_page.select_open_state_type_option("str", timeout=UI_ELEMENT_TIMEOUT)
+        # Re-open the dropdown to assert the row's type actually stayed on String
+        # ("str") after the selection — StateTypeSelector.jsx marks the
+        # currently-selected MenuItem with MUI's `selected` prop (Mui-selected
+        # class); re-select the same option afterward to close the dropdown
+        # again without changing the row's type.
+        pipeline_page.click_state_variable_type_select(_CUSTOM_VARIABLE_NAME, timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.is_state_type_option_selected("str", timeout=UI_ELEMENT_TIMEOUT), (
+            "Type dropdown should show String ('str') as the selected option after selection"
+        )
         pipeline_page.select_open_state_type_option("str", timeout=UI_ELEMENT_TIMEOUT)
 
     with allure.step(f"Step 9 — Verify {_CUSTOM_VARIABLE_NAME!r} appears in the STATE panel list"):
