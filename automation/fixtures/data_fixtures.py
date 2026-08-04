@@ -1109,3 +1109,169 @@ def hitl_runtime_pipeline(pipeline_api: PipelineAPI, request):
         logger.info("Deleted HITL runtime pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete HITL runtime pipeline %s: %s", pid, exc)
+
+
+def _llm_node_dict(transition: str) -> dict:
+    """Build the LLM 1 node dict shared by the canvas node/edge CRUD fixtures
+    below (ELITEA-2018/2031/2032) — same shape confirmed live in the AFS
+    exploration sessions for all three cases.
+
+    Args:
+        transition: The node's ``transition`` target (e.g. ``"Code 1"``,
+            ``"Printer 1"``, ``"END"``).
+    """
+    return {
+        "id": "LLM 1",
+        "type": "llm",
+        "input": [],
+        "input_mapping": {
+            "chat_history": {"type": "fixed", "value": []},
+            "system": {"type": "fixed", "value": ""},
+            "task": {"type": "fixed", "value": "hi"},
+        },
+        "output": ["messages"],
+        "structured_output": False,
+        "transition": transition,
+    }
+
+
+def build_delete_node_pipeline_nodes() -> list[dict]:
+    """LLM 1 -> Code 1 -> END node list for ELITEA-2018 (Pipeline Canvas —
+    Delete Node). Confirmed live (2026-08-03): produces exactly 3 nodes /
+    2 edges on first canvas load, no manual UI wiring needed.
+    """
+    return [
+        _llm_node_dict(transition="Code 1"),
+        {
+            "id": "Code 1",
+            "type": "code",
+            "input": [],
+            "output": [],
+            "code": "print('hi')",
+            "transition": "END",
+        },
+    ]
+
+
+@pytest.fixture
+def pipeline_llm_code_end(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``LLM 1 -> Code 1 -> END`` (3 nodes, 2 edges) before
+    the test and delete it afterwards. Satisfies the ELITEA-2018 precondition
+    (see :func:`build_delete_node_pipeline_nodes`).
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_delnode_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created delete-node pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_delete_node_pipeline_nodes(),
+    )
+    pid = pipeline["id"]
+    logger.info("Created delete-node pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted delete-node pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete delete-node pipeline %s: %s", pid, exc)
+
+
+def _printer_node_dict(transition: str) -> dict:
+    """Build the Printer 1 node dict shared by the edge-creation/-deletion
+    fixtures below (ELITEA-2031/2032).
+
+    Args:
+        transition: The node's ``transition`` target (e.g. ``"END"``).
+    """
+    return {
+        "id": "Printer 1",
+        "type": "printer",
+        "input_mapping": {"printer": {"type": "fixed", "value": "done"}},
+        "transition": transition,
+    }
+
+
+def build_llm_printer_nodes(llm_transition: str) -> list[dict]:
+    """Build an ``LLM 1`` + ``Printer 1`` node pair, parametrized on where
+    ``LLM 1`` transitions to. Shared by the ELITEA-2031 (edge creation) and
+    ELITEA-2032 (edge deletion) fixtures below — same node pair, differing
+    only in whether LLM 1 already points at Printer 1.
+
+    Args:
+        llm_transition: ``LLM 1``'s ``transition`` value — ``"END"`` seeds
+            two independently-terminating nodes (ELITEA-2031, so the edge
+            under test doesn't pre-exist); ``"Printer 1"`` seeds the edge
+            directly (ELITEA-2032, so the edge under test already exists).
+
+    Returns:
+        list[dict]: ``[LLM 1, Printer 1]`` node definitions.
+    """
+    return [
+        _llm_node_dict(transition=llm_transition),
+        _printer_node_dict(transition="END"),
+    ]
+
+
+@pytest.fixture
+def pipeline_llm_printer_disconnected(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with ``LLM 1`` and ``Printer 1``, each independently
+    ``transition: END`` (NOT connected to each other) before the test, and
+    delete it afterwards. Satisfies the ELITEA-2031 precondition — omitting
+    ``transition`` on both nodes entirely auto-defaults ``LLM 1`` to
+    ``transition: Printer 1`` (the next node in the YAML list), which would
+    pre-create the very edge this case tests the creation of; both must
+    explicitly point at END.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_edgecreate_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created edge-creation pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_llm_printer_nodes(llm_transition="END"),
+    )
+    pid = pipeline["id"]
+    logger.info("Created edge-creation pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted edge-creation pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete edge-creation pipeline %s: %s", pid, exc)
+
+
+@pytest.fixture
+def pipeline_llm_printer_connected(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``LLM 1 -> Printer 1 -> END`` (the edge under test
+    already exists) before the test, and delete it afterwards. Satisfies the
+    ELITEA-2032 precondition.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_edgedelete_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created edge-deletion pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_llm_printer_nodes(llm_transition="Printer 1"),
+    )
+    pid = pipeline["id"]
+    logger.info("Created edge-deletion pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted edge-deletion pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete edge-deletion pipeline %s: %s", pid, exc)
