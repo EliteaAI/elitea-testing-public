@@ -41,6 +41,16 @@ NOW=$(date -u +%s); TARGET=$((NOW+300))
 until [ "$(date -u +%s)" -ge "$TARGET" ]; do sleep 5; done
 ```
 
+**Same pattern applies to `Workflow()` calls, not just `Agent()`.** A batch-build
+dispatch returns a `taskId` + `runId` immediately (it always backgrounds). Persist
+BOTH to disk the instant they return (`.agents/automation/<slug>/run.json`) —
+before anything else — then poll `TaskOutput(task_id: <taskId>, block: true,
+timeout: 600000)` in a loop in-turn exactly as above; a single-case batch's 4-phase
+run (analyst → implement → review → merge → gate → report) easily exceeds one
+600s window, so 3-4 consecutive `timeout`/`running` returns before `completed` is
+normal, not a stall. Confirmed working end-to-end #477/ELITEA-2040 (~37min, 3
+polls to completion).
+
 ## Recovery
 
 - **A subagent that ends its turn "waiting for the monitor/notification" has

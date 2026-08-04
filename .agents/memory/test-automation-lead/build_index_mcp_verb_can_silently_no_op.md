@@ -42,3 +42,11 @@ had been large or touched entries with unclear/contradictory state, the
 surgical single-entry Python edit from the other entry is still the right
 tool; don't reach for the full rebuild as a default, only as a checked
 fallback when the MCP verb has already failed you.
+
+**Confirmed a 2nd time, #477/ELITEA-2040 (same session-day):** identical
+no-op — mtime predated the call, `status`/`execution_type` still
+`draft`/`manual` in `index.json` after the MCP tool reported "wrote
+index.json, 2743 cases indexed". `_index.py` fallback fixed it in one shot,
+diff scoped to exactly the one entry. This is now a **reliable, repeatable
+failure of the MCP verb**, not a one-off — treat the mtime/git-diff check as
+mandatory every time, not a suspicious-result-only step.

@@ -40,8 +40,12 @@ Presence is proven by reading the construction site. One grep shape never suffic
   on a new case.
 - **A contradiction with the AFS/implementer's "already exists" claim is a
   methodology tell, not a gap** — re-check the grep before writing "gap".
+- **Stage-2 filter is case-sensitive by default — run it `-i`.** Prop-indirection
+  lines like `valueFieldTestId: 'pipeline-llm-node-system-value'` (capital `T`)
+  never match a lowercase-only `testid` alternation. `git grep -i -- "$t" <ref>
+  -- src/ | grep -iE "(data-testid|testid.*=.*$t)"` — both stages, always `-i`.
 
-## Seen 6×
+## Seen 7×
 
 - #26/ELITEA-1735 — `slotProps` object literal + ternary; literal grep said no/no while the test ran green.
 - #62/#66/#128/#162 — runtime-composed: `${id}-menu-button`, `${columnTestIdPrefix}-…`, `buttonTestId` forwarding, MUI `SelectDisplayProps`.
@@ -49,6 +53,7 @@ Presence is proven by reading the construction site. One grep shape never suffic
 - #30/EliteaUI#544, #101/ELITEA-1988 — bare-grep false positives: prefix collision, then an import path.
 - #370/ELITEA-2167 — reused name present on main in a *different* component; caught by a reviewer, not by me.
 - #150/ELITEA-1892, #67/ELITEA-1889 — DotMenu 3-hop; zero-diff-on-owning-file proved "already promotable".
+- #477/ELITEA-2040 — case-only stage-2 filter false-negatived `valueFieldTestId: '…'` (object-literal key, capital T) on both `main` and `automation/testids`; `-i` fixed it.
 
 See also: promotability_grep_false_negative.md ·
 promotability_grep_false_positive_prefix.md ·

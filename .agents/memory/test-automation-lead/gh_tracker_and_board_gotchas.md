@@ -59,6 +59,11 @@ type: feedback
   (`git log --oneline -1 <branch>` vs `origin/<branch>`) — chasing a reviewer's
   wrong-method finding is how an unpushed commit got caught.
 
+- **`gh project item-edit` needs `--project-id` in addition to `--id`, `--field-id`,
+  `--single-select-option-id`.** Omitting `--project-id` fails; the command prints
+  **nothing on success** either way — always confirm the move via the read-back
+  technique above (node-id query), never trust the empty return.
+
 ## Seen 10×
 
 - #262 audit — `--limit 200` returned the oldest 200 of 564, silently missing #262 (`Ready`).
