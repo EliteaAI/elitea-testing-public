@@ -334,6 +334,70 @@ class PipelineDetailPage(PipelineFormPage):
         description="Router node's Default output single-select"
     )
 
+    # Decision node inline config (ELITEA-2034). Testid-only, added via
+    # add-data-testid — NormalDecisionNode.jsx / DecisionNodeShared.jsx call
+    # sites only (untested node types stay untagged, .agents/testing.md §
+    # Locator policy). Page-wide (not scoped to a specific node container):
+    # correct as long as a test only has a single Decision node on canvas.
+    decision_node_input_select = LocatorDescriptor(
+        testid="pipeline-decision-node-input-select",
+        description="Decision node's tool-agnostic Input state-variable multi-select"
+    )
+
+    decision_node_description_input = LocatorDescriptor(
+        testid="pipeline-decision-node-description-input",
+        description="Decision node's Description textarea (classification prompt)"
+    )
+
+    decision_node_outputs_container = LocatorDescriptor(
+        testid="pipeline-decision-node-outputs-container",
+        description="Decision node's DECISION OUTPUTS chip-list container"
+    )
+
+    decision_node_interrupt_after_toggle = LocatorDescriptor(
+        testid="pipeline-decision-node-interrupt-after-toggle",
+        description="Decision node's Interrupt after switch"
+    )
+
+    decision_node_output_handle = LocatorDescriptor(
+        testid="pipeline-decision-node-output-handle",
+        description="Decision node's Output (DECISION OUTPUTS wiring) source handle — visible label reads 'Output'"
+    )
+
+    decision_node_default_output_handle = LocatorDescriptor(
+        testid="pipeline-decision-node-default-output-handle",
+        description="Decision node's Default output source handle — visible label reads 'Default output'"
+    )
+
+    # STATE side panel — add-custom-variable flow (ELITEA-2034). Page-wide.
+    state_drawer_toggle_button = LocatorDescriptor(
+        testid="pipeline-state-drawer-toggle-button",
+        description="Collapsed-state 'State' button that opens the STATE side panel"
+    )
+
+    state_add_variable_button = LocatorDescriptor(
+        testid="pipeline-state-add-variable-button",
+        description="STATE panel's '+ Context' button (starts a new custom state variable row)"
+    )
+
+    state_add_variable_name_input = LocatorDescriptor(
+        testid="pipeline-state-add-variable-name-input",
+        description="STATE panel's new-variable name textbox (create mode only)"
+    )
+
+    state_drawer_close_button = LocatorDescriptor(
+        testid="pipeline-state-drawer-close-button",
+        description="STATE panel's close ('x') button"
+    )
+
+    # Dynamic (runtime-parameterized) testid — one chip per DECISION OUTPUTS
+    # entry. Class-level template constants per .agents/testing.md § Locator
+    # policy: an exact-match template for a known value, and a prefix
+    # selector (same convention as SELECT_OPTION / SELECT_OPTION_PREFIX
+    # below) for enumerating every rendered chip regardless of value.
+    DECISION_NODE_OUTPUT_CHIP = '[data-testid="pipeline-decision-node-output-chip-{}"]'
+    DECISION_NODE_OUTPUT_CHIP_PREFIX = '[data-testid^="pipeline-decision-node-output-chip-"]'
+
     # Dynamic (runtime-parameterized) testid — one Route select per HITL
     # action (approve/edit/reject). Class-level template constant per
     # .agents/testing.md § Locator policy, formatted with test-generated
@@ -3748,6 +3812,140 @@ class PipelineDetailPage(PipelineFormPage):
         self.router_node_default_output_select.wait_for(state="visible", timeout=timeout)
         text = (self.router_node_default_output_select.text_content() or "").replace("​", "")
         return text.strip()
+
+    # ------------------------------------------------------------------
+    # Decision node inline config (ELITEA-2034)
+    # ------------------------------------------------------------------
+
+    def open_decision_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the Decision node's tool-agnostic Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.decision_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_decision_node_input_variables(self, values: list[str], timeout: int = 5000) -> None:
+        """Open the Input dropdown and select every value in *values*, then close.
+
+        A multi-select (same ``InputSelect`` component family as Router's
+        Input/Routes fields) — selecting an option does not auto-close the
+        popover, so every value is selected before a single Escape closes it.
+
+        Args:
+            values: State-variable names to select (matches ``select-option-{value}``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.open_decision_node_input_select(timeout=timeout)
+        for value in values:
+            self.page.locator(self.SELECT_OPTION.format(value)).click(timeout=timeout)
+        self.page.keyboard.press("Escape")
+        self._wait_for_open_popovers_closed(timeout=timeout)
+
+    def get_decision_node_input_value(self) -> str:
+        """Read the Decision node's currently-selected Input display text."""
+        text = (self.decision_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def fill_decision_node_description(self, text: str, timeout: int = 5000) -> None:
+        """Fill the Decision node's Description textarea (classification prompt).
+
+        Plain MUI TextField multiline textarea (same ``AIAssistantInput``
+        family as Router's Condition field, NOT CodeMirror/Monaco despite
+        node-family styling) — click + press_sequentially for real keyboard
+        events (.claude/rules/mui-patterns.md). Starts empty on a
+        freshly-added node, so no clear-before-type step is needed.
+        """
+        self.decision_node_description_input.wait_for(state="visible", timeout=timeout)
+        self.decision_node_description_input.click()
+        self.decision_node_description_input.press_sequentially(text, delay=20)
+
+    def get_decision_node_description(self) -> str:
+        """Read the Decision node's Description textarea current value."""
+        return self.decision_node_description_input.input_value()
+
+    def is_decision_node_output_chip_present(self, value: str) -> bool:
+        """Check whether a DECISION OUTPUTS chip labeled *value* is present."""
+        return self.page.locator(self.DECISION_NODE_OUTPUT_CHIP.format(value)).count() > 0
+
+    def get_decision_node_output_chip_count(self) -> int:
+        """Return the number of DECISION OUTPUTS chips currently rendered."""
+        return self.page.locator(self.DECISION_NODE_OUTPUT_CHIP_PREFIX).count()
+
+    def wait_for_edge_present(self, source_id: str, target_id: str, timeout: int = 10000) -> None:
+        """Poll until an edge from *source_id* to *target_id* appears, tolerating both shapes.
+
+        Unlike ``wait_for_edge()`` (which polls the EXACT post-reload
+        ``EDGE_TESTID`` ``---``-only shape and is NOT valid for a Decision
+        node's DECISION OUTPUTS edges pre-Save — their pre-save testid drops
+        the ``---`` separator entirely, e.g. ``Decision 1nodes-bug_respondertarget``
+        vs. the post-reload ``Decision 1---bug_responder``), this polls via
+        the SAME loose prefix+substring matching ``edge_exists()`` uses, so
+        it works for both shapes without the caller needing to know which
+        one is currently live.
+
+        Args:
+            source_id: Internal source node id as it appears in the edge's
+                data-testid (e.g. "Decision 1", "Decision 1default_output").
+            target_id: Internal target node id as it appears in the edge's
+                data-testid (e.g. "bug_responder", "END").
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.page.wait_for_function(
+            """([source, target]) => {
+                const edges = document.querySelectorAll('.react-flow__edge');
+                const prefix = `rf__edge-xy-edge__${source}`;
+                for (const edge of edges) {
+                    const testid = edge.getAttribute('data-testid') || '';
+                    if (testid.startsWith(prefix) && testid.includes(`-${target}`)) {
+                        return true;
+                    }
+                }
+                return false;
+            }""",
+            arg=[source_id, target_id],
+            timeout=timeout,
+        )
+
+    def open_state_panel(self, timeout: int = 5000) -> None:
+        """Open the STATE side panel, if it's not already open (idempotent).
+
+        The toggle button (``pipeline-state-drawer-toggle-button``) is only
+        rendered in the DOM while the drawer is CLOSED (``FlowEditor.jsx``:
+        ``{!isStateDrawerOpen && (...)}``), so its absence means the panel
+        is already open.
+        """
+        if self.state_drawer_toggle_button.count() > 0:
+            self.state_drawer_toggle_button.click(timeout=timeout)
+        self.state_add_variable_button.wait_for(state="visible", timeout=timeout)
+
+    def add_state_variable(self, name: str, timeout: int = 5000) -> None:
+        """Add a new custom state variable via the STATE panel's '+' control.
+
+        Opens a new-row textbox (``pipeline-state-add-variable-name-input``),
+        types *name*, and commits via Enter. There is NO separate confirm
+        (checkmark) button — live-reverified 2026-08-04 against
+        ``StateVariableItem.jsx``/``StateVariableItemActions.jsx``: the
+        create-mode row's only other controls are a disabled type-selector
+        and a delete/cancel ("x") button. Committing (Enter, which blurs the
+        field) unmounts the create-mode row, which this method waits on as
+        its completion signal.
+        """
+        self.state_add_variable_button.click(timeout=timeout)
+        self.state_add_variable_name_input.wait_for(state="visible", timeout=timeout)
+        self.state_add_variable_name_input.click()
+        self.state_add_variable_name_input.press_sequentially(name, delay=20)
+        self.state_add_variable_name_input.press("Enter")
+        self.state_add_variable_name_input.wait_for(state="detached", timeout=timeout)
+
+    def close_state_panel(self, timeout: int = 5000) -> None:
+        """Close the STATE side panel, if it's currently open (idempotent).
+
+        The panel is a wide drawer that overlaps the canvas and intercepts
+        clicks/dblclicks on nodes underneath it — close it before continuing
+        with node-canvas interactions once state-variable setup is done.
+        """
+        if self.state_drawer_close_button.count() > 0:
+            self.state_drawer_close_button.click(timeout=timeout)
+            self.state_drawer_toggle_button.wait_for(state="visible", timeout=timeout)
 
     # ------------------------------------------------------------------
     # Chat HITL runtime actions (ELITEA-2015)
