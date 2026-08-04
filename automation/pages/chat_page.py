@@ -205,10 +205,13 @@ class ChatPage(BasePage):
 
     # ------------------------------------------------------------------
     # Modules panel toggle switches (ELITEA-2162) — 7 fixed tool keys wired
-    # in PlusChatButton.jsx's renderSubmenuContent(); testid added this
-    # implementation (EliteaAI/EliteaUI@386245c9), template per the
-    # dynamic-testid convention (.agents/testing.md § Locator policy).
-    # Stable keys confirmed live against
+    # in PlusChatButton.jsx's renderSubmenuContent(); testid first added in
+    # EliteaAI/EliteaUI@386245c9 via inputProps, which MUI v7's <Switch>
+    # silently drops (resolved 0 elements) — the working implementation is
+    # EliteaAI/EliteaUI@e22e9881, which moves the testid to slotProps.input.
+    # Cherry-pick e22e9881 (not 386245c9 alone) for this testid to render.
+    # Template per the dynamic-testid convention
+    # (.agents/testing.md § Locator policy). Stable keys confirmed live against
     # src/[fsd]/shared/lib/constants/internalTools.constants.js.
     # ------------------------------------------------------------------
     MODULES_TOGGLE_SWITCH = '[data-testid="modules-toggle-{}"]'
