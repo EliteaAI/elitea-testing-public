@@ -140,6 +140,38 @@ One clarification filed:
 
 None. All 12 case steps were executed to completion against the live local environment.
 
+## Implementer Notes (added during automation, ELITEA-2037)
+
+- **2 of the 4 flagged `add-data-testid` gaps were closed** — the MCP node's
+  "Interrupt after" toggle and "Structured output" toggle are both asserted
+  by this test's step 6 (visibility AND disabled/enabled state, per this
+  AFS's own "confirmed live" notes), so both were widened from Toolkit-only
+  to every `nodeType` in `BaseToolNode.jsx`'s `TEST_ID_PREFIX_BY_NODE_TYPE`
+  map (`interruptAfterTestId`/`structuredOutputTestId` now resolve off
+  `testIdPrefix` directly instead of a Toolkit-only ternary) —
+  `EliteaAI/EliteaUI@00768a44` on `automation/testids`. New page-object
+  fields: `mcp_node_interrupt_after_toggle`, `mcp_node_structured_output_toggle`;
+  new method: `is_node_interrupt_before_toggle_disabled(node_id)`.
+- **The other 2 gaps (Input-mapping row "Type" select, "optional N" heading)
+  were left un-added**, per this AFS's own stated allowance ("leave as a
+  documented, testid-ready-but-unexercised gap and note it in the Run
+  Report"): this test's step 9 leaves Type at its default `Fixed` (never
+  interacts with the Type select — the Coverage Map's own step-9 "asserted
+  where" already narrows to "typed Value text" only), and `ask_question` has
+  0 optional params, so the optional-heading accordion never renders for
+  this test's data. Per `.agents/testing.md` § Locator policy ("referenced" =
+  called on the test's actual code path), adding either testid now would be
+  an unreferenced, coverage-metric-corrupting addition — left for whichever
+  future MCP-node case actually exercises Type-switching or an
+  optional-param tool.
+- New page-object methods added for the MCP node's tool-agnostic Input/Output
+  selects (`open_mcp_node_input_select`, `select_mcp_node_input_variable`,
+  `get_mcp_node_input_value`, and the Output equivalents) — these existed for
+  the LLM/Toolkit node siblings but not yet for MCP; this case is the first
+  MCP-node test to touch Input/Output (ELITEA-1954/1955 didn't).
+- Test file: `automation/tests/ui/pipelines/test_pipeline_mcp_node_fresh_attach.py`.
+  Green on first local run (41.6s, headless).
+
 ## Automation Hints
 
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor` (per `.agents/testing.md`). **Most of the MCP node's config-field testids ALREADY EXIST** (added during ELITEA-1954/1955's `add-data-testid` passes) and are already wired as `PipelineDetailPage` fields/methods (`mcp_node_toolkit_select`, `select_mcp_node_toolkit()`, `select_mcp_node_tool()`, `fill_mcp_node_input_mapping_value()`, `is_input_mapping_section_visible()`, etc. — see `automation/pages/pipeline_detail_page.py:1964+`). Reuse these directly; do not re-derive.
