@@ -89,6 +89,16 @@ class ChatPage(BasePage):
         description="Search conversations input field in sidebar"
     )
 
+    search_conversations_clear_button = LocatorDescriptor(
+        testid="conversation-search-clear-button",
+        description=(
+            "Clear/X icon button next to the search input (ELITEA-2162 — "
+            "testid added, EliteaAI/EliteaUI@386245c9, Conversations.jsx "
+            "~L686). Renders whenever the search bar is active, alongside "
+            "search_conversations_input."
+        ),
+    )
+
     # ------------------------------------------------------------------
     # Project selector (ELITEA-2095)
     # ------------------------------------------------------------------
@@ -274,8 +284,16 @@ class ChatPage(BasePage):
     CHAT_ATTACHMENT_OVERFLOW_ITEM_PREFIX = '[data-testid^="chat-attachment-overflow-item-"]'
 
     internal_tools_menuitem = LocatorDescriptor(
-        locator='[role="menuitem"]:has-text("Modules")',
-        description="Modules menuitem inside plus menu dropdown (formerly Internal Tools)"
+        testid="internal-tools-menuitem",
+        description=(
+            "Modules menuitem inside plus menu dropdown (formerly Internal "
+            "Tools). Switched from a raw role/text locator to this "
+            "pre-existing on-main testid (ELITEA-2162) — same-element "
+            "conditional pair, shape (a) per canon ruling #277 (only the "
+            "used branch is named; PlusChatButton.jsx's EXPANDABLE_ITEMS "
+            "entry). HOVER (not click) reveals the submenu, same mechanism "
+            "as agents_menuitem below."
+        ),
     )
 
     # Legacy locator - kept for backward compatibility but no longer works
@@ -283,6 +301,31 @@ class ChatPage(BasePage):
         testid="internal-tools-toggle",
         fallback=lambda page: page.locator('button[aria-label="enable internal tools"]'),
         description="DEPRECATED: Internal tools toggle button (moved to plus menu in v2.0.3)"
+    )
+
+    # ------------------------------------------------------------------
+    # Modules panel toggle switches (ELITEA-2162) — 7 fixed tool keys wired
+    # in PlusChatButton.jsx's renderSubmenuContent(); testid first added in
+    # EliteaAI/EliteaUI@386245c9 via inputProps, which MUI v7's <Switch>
+    # silently drops (resolved 0 elements) — the working implementation is
+    # EliteaAI/EliteaUI@e22e9881, which moves the testid to slotProps.input.
+    # Cherry-pick e22e9881 (not 386245c9 alone) for this testid to render.
+    # Template per the dynamic-testid convention
+    # (.agents/testing.md § Locator policy). Stable keys confirmed live against
+    # src/[fsd]/shared/lib/constants/internalTools.constants.js.
+    # ------------------------------------------------------------------
+    MODULES_TOGGLE_SWITCH = '[data-testid="modules-toggle-{}"]'
+    MODULES_TOGGLE_SWITCH_PREFIX = '[data-testid^="modules-toggle-"]'
+
+    # (tool_key, accessible name) — DOM/case order, live-confirmed.
+    MODULE_TOGGLE_ORDER = (
+        ("image_generation", "Image creation"),
+        ("data_analysis", "Data Analysis"),
+        ("internal_mcp", "Agents & Pipeline Builder"),
+        ("planner", "Planner"),
+        ("pyodide", "Python Sandbox"),
+        ("swarm", "Swarm Mode"),
+        ("lazy_tools_mode", "Smart Tool Selection"),
     )
 
     # ------------------------------------------------------------------
@@ -879,6 +922,16 @@ class ChatPage(BasePage):
             "'immediately before the search icon' check. Distinct from "
             "search_conversations_input, which is the search text field."
         ),
+    )
+
+    # Generic app-wide success/confirmation toast (Toast.jsx) — pre-existing
+    # testid, shared across pages (see ArtifactsPage.success_toast_message /
+    # SkillsListPage.import_success_toast_message for the same-component
+    # precedent, one field per consuming page object). Used by the Modules
+    # panel's "Modules configuration updated" confirmation (ELITEA-2162).
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide success/confirmation toast (Toast.jsx).",
     )
 
     folder_name_input = LocatorDescriptor(
@@ -2441,6 +2494,65 @@ class ChatPage(BasePage):
         search_btn.wait_for(state="visible", timeout=timeout)
         search_btn.click()
 
+    @action("Type conversation search query")
+    def type_conversation_search_query(self, query: str, timeout: int = 10000):
+        """Type *query* into the already-open search input and wait for the
+        debounced ``folder/prompt_lib`` filter response to resolve.
+
+        Preconditions: search must already be active (call
+        open_search_conversations_button() first — search_conversations_input
+        visible). Overwrites any existing text via Ctrl+A + typed keys, which
+        also serves as "clear and type" for a follow-up query.
+
+        LOCATOR: search_conversations_input is a plain MUI ``InputBase``
+        (SimpleSearchBar.jsx) — click(click_count=3) [triple-click, selects
+        all text OS-independently — Ctrl+A does NOT select-all in a Chromium
+        text field on macOS, only Meta+A does] + press_sequentially (not
+        fill()) so React's controlled onChange actually fires per-keystroke,
+        matching the mui-patterns.md convention. The filter fires
+        ``GET .../elitea_core/folder/prompt_lib/{project}?...&query=<value>
+        &grouped=true`` ~500ms after the last keystroke (useDebounceValue).
+
+        Args:
+            query: Substring to search for (case-insensitive match against
+                conversation name).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Typing conversation search query: %r", query)
+        self.search_conversations_input.click(click_count=3)
+        with self.page.expect_response(
+            lambda r: "/folder/prompt_lib/" in r.url and f"query={query}" in r.url,
+            timeout=timeout,
+        ):
+            self.search_conversations_input.press_sequentially(query, delay=50)
+        logger.info("Search filter response received for query: %r", query)
+
+    def get_conversation_item(self, conversation_id: str | int):
+        """Return the Locator for a single conversation item row by id
+        (page-wide, unscoped — CONVERSATION_ITEM). Works for both the plain
+        sidebar list and search-mode results (both render the same testid).
+        """
+        return self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+
+    def get_conversation_item_rows(self):
+        """Return the Locator matching ALL rendered conversation item rows
+        (CONVERSATION_ITEM_PREFIX) — for count assertions on filtered
+        search results.
+        """
+        return self.page.locator(self.CONVERSATION_ITEM_PREFIX)
+
+    @action("Click a conversation item")
+    def click_conversation_item(self, conversation_id: str | int, timeout: int = 5000):
+        """Click a conversation item row by id (e.g. a search result) to open it.
+
+        Args:
+            conversation_id: Numeric conversation id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        item = self.get_conversation_item(conversation_id)
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+
     def search_conversations_via_button(self, query: str, timeout: int = 5000):
         """Open the search dialog and type a query.
 
@@ -3087,6 +3199,125 @@ class ChatPage(BasePage):
         self.page.wait_for_timeout(300)
 
         return is_checked
+
+    # ------------------------------------------------------------------
+    # Modules panel toggles — testid-based (ELITEA-2162). New call sites
+    # use MODULES_TOGGLE_SWITCH / tool_key, not the role="switch" + display
+    # -title handles above (get_internal_tool_switch(),
+    # enable/disable_image_creation() — pre-existing, untouched here).
+    # ------------------------------------------------------------------
+
+    def get_module_toggle_switch(self, tool_key: str):
+        """Return the Locator for a Modules-panel toggle switch by its
+        stable internal tool key (testid-based).
+
+        Must be called while the Modules panel is open (after
+        open_internal_tools_menu()).
+
+        Args:
+            tool_key: Internal tool key, e.g. "image_generation",
+                "data_analysis" — see MODULE_TOGGLE_ORDER for the full
+                key/accessible-name mapping.
+        """
+        return self.page.locator(self.MODULES_TOGGLE_SWITCH.format(tool_key))
+
+    def get_module_toggle_switches(self):
+        """Return the Locator matching ALL rendered Modules-panel toggle
+        switches (MODULES_TOGGLE_SWITCH_PREFIX) — for count assertions
+        (e.g. "0 switches" once the panel is closed).
+        """
+        return self.page.locator(self.MODULES_TOGGLE_SWITCH_PREFIX)
+
+    def verify_module_toggle_order(self, timeout: int = 5000):
+        """Assert all 7 MODULE_TOGGLE_ORDER switches are visible, each with
+        its expected accessible name, in DOM order.
+
+        Must be called while the Modules panel is open (after
+        open_internal_tools_menu()).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        all_switches = self.get_module_toggle_switches()
+        expect(all_switches).to_have_count(len(self.MODULE_TOGGLE_ORDER), timeout=timeout)
+        for index, (tool_key, title) in enumerate(self.MODULE_TOGGLE_ORDER):
+            expect(all_switches.nth(index)).to_have_attribute(
+                "data-testid", f"modules-toggle-{tool_key}", timeout=timeout
+            )
+            switch = self.get_module_toggle_switch(tool_key)
+            expect(switch).to_be_visible(timeout=timeout)
+            expect(switch).to_have_accessible_name(title, timeout=timeout)
+        logger.info("Verified all %d module toggles in order", len(self.MODULE_TOGGLE_ORDER))
+
+    @action("Toggle a Modules panel switch")
+    def click_module_toggle(self, tool_key: str, timeout: int = 10000):
+        """Click a Modules-panel toggle switch (testid-based) and wait for
+        the PUT that persists ``meta.internal_tools`` to resolve, then wait
+        for the "Modules configuration updated" confirmation toast.
+
+        Does NOT close the Modules panel — Escape does not close it
+        (live-confirmed); use close_modules_panel() for that.
+
+        LOCATOR: uses ``force=True`` (mui-patterns.md § MUI Overlay
+        Interception) — each switch has an adjacent ``InfoTooltip`` icon
+        whose ``role="tooltip"`` popper can render over the switch and
+        intercept the click if the cursor is still near it from the
+        preceding hover-to-open-menu step. Also waits for the switch to be
+        ENABLED first — PlusChatButton.jsx briefly disables it while the
+        previous toggle's PUT is settling; a click during that window is a
+        native no-op (a disabled ``<input>`` ignores clicks even with
+        ``force=True``, which only bypasses Playwright's own actionability
+        checks, not the browser's disabled-element semantics) and would
+        otherwise hang this method's expect_response wait forever.
+
+        Args:
+            tool_key: Internal tool key — see MODULE_TOGGLE_ORDER.
+            timeout: Maximum wait time in milliseconds.
+        """
+        switch = self.get_module_toggle_switch(tool_key)
+        expect(switch).to_be_enabled(timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/elitea_core/conversation/prompt_lib/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ):
+            switch.click(force=True)
+        expect(self.toast_message).to_be_visible(timeout=timeout)
+        logger.info("Toggled module %r; confirmation toast visible", tool_key)
+
+    def is_module_toggle_checked(self, tool_key: str) -> bool:
+        """Return whether a Modules-panel toggle switch is currently checked.
+
+        Args:
+            tool_key: Internal tool key — see MODULE_TOGGLE_ORDER.
+        """
+        return self.get_module_toggle_switch(tool_key).is_checked()
+
+    def get_module_toggle_count(self) -> int:
+        """Count visible Modules-panel toggle switches (testid-based)."""
+        return self.get_module_toggle_switches().count()
+
+    def close_modules_panel(self, timeout: int = 5000):
+        """Close the Modules panel via an outside click.
+
+        Escape does NOT close it (live-confirmed: switch count stays at 7
+        after Escape) — only a click outside the popper
+        (ClickAwayListener in PlusChatButton.jsx, which checks
+        ``subMenuRef.contains(event.target)``) does. Clicks the TOP-LEFT
+        corner of the scrollable messages region rather than its default
+        center — the Modules popper renders as an absolutely-positioned
+        overlay that visually covers the CENTER of the messages container
+        (live-confirmed: a center-point click's coordinates land inside
+        the popper's own bounding box, so ClickAwayListener treats it as
+        an inside click and never fires close), so a corner well clear of
+        both the plus-menu list and the switches panel is required for a
+        genuine "outside" click.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.chat_messages_scroll_container.click(position={"x": 10, "y": 10})
+        expect(self.get_module_toggle_switches()).to_have_count(0, timeout=timeout)
+        logger.info("Modules panel closed via outside click")
 
     @action("Select model")
     def select_model(self, model_name: str, timeout: int = 5000):
