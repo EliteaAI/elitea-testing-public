@@ -52,10 +52,16 @@ class ChatPage(BasePage):
         description="Send message button"
     )
 
+    # Re-pointed ELITEA-2197/2200: "chat-attach-button" never existed in
+    # EliteaUI src (dead testid, tech debt — the field only "worked" via its
+    # now-forbidden `fallback=`). This is the showLabel AttachmentButton
+    # instance rendered inside the plus-menu popper
+    # (PlusChatButton.jsx's MenuList, `testId="chat-attach-menuitem-button"`)
+    # — the one the case's own steps click. Only visible once the popper is
+    # open; use open_attach_menuitem() to open the plus menu first.
     attach_files_button = LocatorDescriptor(
-        testid="chat-attach-button",
-        fallback=lambda page: page.get_by_role("button", name="attach files"),
-        description="Attach files button"
+        testid="chat-attach-menuitem-button",
+        description="'Attach Files' menu item inside the open plus-menu popper.",
     )
 
     # ------------------------------------------------------------------
@@ -81,6 +87,16 @@ class ChatPage(BasePage):
         testid="conversation-search-input",
         fallback=lambda page: page.locator('input[placeholder="Search conversations..."]'),
         description="Search conversations input field in sidebar"
+    )
+
+    search_conversations_clear_button = LocatorDescriptor(
+        testid="conversation-search-clear-button",
+        description=(
+            "Clear/X icon button next to the search input (ELITEA-2162 — "
+            "testid added, EliteaAI/EliteaUI@386245c9, Conversations.jsx "
+            "~L686). Renders whenever the search bar is active, alongside "
+            "search_conversations_input."
+        ),
     )
 
     # ------------------------------------------------------------------
@@ -162,9 +178,82 @@ class ChatPage(BasePage):
     )
 
     edit_context_button = LocatorDescriptor(
-        testid="context-settings-button",
-        fallback=lambda page: page.get_by_role("button", name="Edit context settings"),
-        description="Edit context settings button in the right panel Context Budget section"
+        testid="context-budget-edit-button",
+        description=(
+            "Edit context settings button in the right panel Context Budget "
+            "section (ContextBudgetHeader.jsx). Testid renamed for ELITEA-2218 "
+            "— the previous 'context-settings-button' testid this field pointed "
+            "at no longer exists anywhere in EliteaUI source (confirmed via a "
+            "fresh 'git grep', zero hits): the panel was refactored into "
+            "ContextBudgetExpanded/ContextBudgetHeader/ContextBudgetCompact "
+            "since this field was last verified, dropping the old testid. The "
+            "'fallback=' this field carried is also removed — dead code per "
+            "policy, and the role-based fallback text ('Edit context settings') "
+            "is itself unstable (surfaces as a Tooltip title, not an accessible "
+            "name)."
+        ),
+    )
+
+    context_budget_warning_icon = LocatorDescriptor(
+        testid="context-budget-warning-icon",
+        description=(
+            "Attention/warning icon next to the token-usage percentage, shown "
+            "ONLY once utilization reaches 100% (ContextBudgetProgress.jsx's "
+            "``isHighUtilization``, threshold = ``HIGH_UTILIZATION_THRESHOLD: 1`` "
+            "i.e. 100%). Conditionally rendered (not present in the DOM at all "
+            "below the threshold) — assert absence via ``.count() == 0`` before, "
+            "presence via ``.wait_for(state='visible')`` once the max is reached. "
+            "Testid added for ELITEA-2218 (previously no handle existed)."
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # "Edit context settings" dialog (ContextStrategyModalContent) — testids
+    # added for ELITEA-2218 (none of this dialog's fields/Save button had a
+    # data-testid before). Distinct handles from the global Settings > Memory
+    # page's (autosave-broken, #1129) fields — this dialog has its own
+    # explicit Save button / submitForm(), a different code path.
+    # ------------------------------------------------------------------
+
+    context_modal_max_tokens_input = LocatorDescriptor(
+        testid="context-modal-max-tokens-input",
+        description=(
+            "Max Context Tokens numeric input inside the 'Edit context settings' "
+            "dialog (ContextStrategyTokenManagement.jsx). Type text via "
+            "press_sequentially(), not fill() — MUI/React onChange requirement."
+        ),
+    )
+
+    context_modal_target_summary_tokens_input = LocatorDescriptor(
+        testid="context-modal-target-summary-tokens-input",
+        description=(
+            "Target Summary Tokens numeric input inside the 'Edit context "
+            "settings' dialog (ContextStrategySummarization.jsx). Must stay "
+            "below Max Context Tokens (form validation: 'less-than-max-context')."
+        ),
+    )
+
+    context_modal_preserve_recent_input = LocatorDescriptor(
+        testid="context-modal-preserve-recent-input",
+        description=(
+            "Preserve Recent Messages numeric input inside the 'Edit context "
+            "settings' dialog (ContextStrategyTokenManagement.jsx). Forcing "
+            "this LOW (project MIN=1) is what makes the post-summarization "
+            "Messages counter drop observable/provable — otherwise enough "
+            "raw recent messages stay un-summarized to keep the total high "
+            "regardless of summarization actually running."
+        ),
+    )
+
+    context_modal_save_button = LocatorDescriptor(
+        testid="context-modal-save-button",
+        description=(
+            "Save button in the 'Edit context settings' dialog "
+            "(ContextStrategyModalContent.jsx) — submits via Formik's "
+            "submitForm(); disabled until the form is dirty + valid. Saving "
+            "does NOT auto-close the dialog (no onClose call in the submit "
+            "handler) — close explicitly (e.g. Escape key) afterward."
+        ),
     )
 
     plus_menu_button = LocatorDescriptor(
@@ -173,9 +262,38 @@ class ChatPage(BasePage):
         description="Plus menu button - entry point for adding participants, internal tools, and attachments"
     )
 
+    # ------------------------------------------------------------------
+    # File attachments — chip list + overflow (ELITEA-2197/2200)
+    # ------------------------------------------------------------------
+    # FileList.jsx per-item chip, dynamic by render index (0-based, stable
+    # within one attach sequence). ELITEA-2197/2200 add-data-testid addition.
+    CHAT_ATTACHMENT_CHIP = '[data-testid="chat-attachment-chip-{}"]'
+    # Prefix match for "how many visible chips are rendered" — same
+    # shared-suffix counting precedent as PLUS_MENU_ITEM_SUFFIX below.
+    CHAT_ATTACHMENT_CHIP_PREFIX = '[data-testid^="chat-attachment-chip-"]'
+
+    chat_attachment_overflow_button = LocatorDescriptor(
+        testid="chat-attachment-overflow-button",
+        description="'+N' overflow control in FileList.jsx; rendered only when hiddenAttachments.length > 0.",
+    )
+
+    # Per-hidden-attachment item inside the opened overflow Menu, dynamic by
+    # actualIndex = maxItemsToShow + index. The Menu is NOT keepMounted —
+    # items exist in the DOM only while it's open. ELITEA-2197/2200 addition.
+    CHAT_ATTACHMENT_OVERFLOW_ITEM = '[data-testid="chat-attachment-overflow-item-{}"]'
+    CHAT_ATTACHMENT_OVERFLOW_ITEM_PREFIX = '[data-testid^="chat-attachment-overflow-item-"]'
+
     internal_tools_menuitem = LocatorDescriptor(
-        locator='[role="menuitem"]:has-text("Modules")',
-        description="Modules menuitem inside plus menu dropdown (formerly Internal Tools)"
+        testid="internal-tools-menuitem",
+        description=(
+            "Modules menuitem inside plus menu dropdown (formerly Internal "
+            "Tools). Switched from a raw role/text locator to this "
+            "pre-existing on-main testid (ELITEA-2162) — same-element "
+            "conditional pair, shape (a) per canon ruling #277 (only the "
+            "used branch is named; PlusChatButton.jsx's EXPANDABLE_ITEMS "
+            "entry). HOVER (not click) reveals the submenu, same mechanism "
+            "as agents_menuitem below."
+        ),
     )
 
     # Legacy locator - kept for backward compatibility but no longer works
@@ -183,6 +301,31 @@ class ChatPage(BasePage):
         testid="internal-tools-toggle",
         fallback=lambda page: page.locator('button[aria-label="enable internal tools"]'),
         description="DEPRECATED: Internal tools toggle button (moved to plus menu in v2.0.3)"
+    )
+
+    # ------------------------------------------------------------------
+    # Modules panel toggle switches (ELITEA-2162) — 7 fixed tool keys wired
+    # in PlusChatButton.jsx's renderSubmenuContent(); testid first added in
+    # EliteaAI/EliteaUI@386245c9 via inputProps, which MUI v7's <Switch>
+    # silently drops (resolved 0 elements) — the working implementation is
+    # EliteaAI/EliteaUI@e22e9881, which moves the testid to slotProps.input.
+    # Cherry-pick e22e9881 (not 386245c9 alone) for this testid to render.
+    # Template per the dynamic-testid convention
+    # (.agents/testing.md § Locator policy). Stable keys confirmed live against
+    # src/[fsd]/shared/lib/constants/internalTools.constants.js.
+    # ------------------------------------------------------------------
+    MODULES_TOGGLE_SWITCH = '[data-testid="modules-toggle-{}"]'
+    MODULES_TOGGLE_SWITCH_PREFIX = '[data-testid^="modules-toggle-"]'
+
+    # (tool_key, accessible name) — DOM/case order, live-confirmed.
+    MODULE_TOGGLE_ORDER = (
+        ("image_generation", "Image creation"),
+        ("data_analysis", "Data Analysis"),
+        ("internal_mcp", "Agents & Pipeline Builder"),
+        ("planner", "Planner"),
+        ("pyodide", "Python Sandbox"),
+        ("swarm", "Swarm Mode"),
+        ("lazy_tools_mode", "Smart Tool Selection"),
     )
 
     # ------------------------------------------------------------------
@@ -219,6 +362,64 @@ class ChatPage(BasePage):
             "addition — the item previously carried no testid at all, "
             "which blocked a testid-only 'is absent for Private projects' "
             "assertion."
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # "+" menu -> Pipelines submenu -> "+ Create New Pipeline" (ELITEA-2079)
+    # ------------------------------------------------------------------
+
+    pipelines_menuitem = LocatorDescriptor(
+        testid="pipelines-menuitem",
+        description=(
+            "'Pipelines' entry inside the plus-menu dropdown. HOVER (not "
+            "click) reveals the Pipelines submenu — PlusChatButton.jsx's "
+            "EXPANDABLE_ITEMS static config, same onMouseEnter mechanism "
+            "as agents_menuitem/mcps_menuitem."
+        ),
+    )
+
+    pipelines_create_new_button = LocatorDescriptor(
+        testid="pipelines-create-new-button",
+        description=(
+            "'+ Create New Pipeline' item inside the Pipelines submenu. "
+            "Same generic PlusChatSubmenu.jsx showCreateNew MenuItem "
+            "already used by agents_create_new_button, templated "
+            "${sectionKey}-create-new-button (sectionKey='pipelines')."
+        ),
+    )
+
+    mcps_create_new_button = LocatorDescriptor(
+        testid="mcps-create-new-button",
+        description=(
+            "'+ Create New MCP' item inside the MCPs submenu (ELITEA-2085) "
+            "— same generic PlusChatSubmenu.jsx showCreateNew MenuItem as "
+            "agents_create_new_button/pipelines_create_new_button, "
+            "templated ${sectionKey}-create-new-button (sectionKey='mcps')."
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # In-message table/diagram edit-canvas entry points (ELITEA-2086/2088)
+    # ------------------------------------------------------------------
+
+    table_edit_button = LocatorDescriptor(
+        testid="chat-table-edit-button",
+        description=(
+            "Pencil/edit icon in the toolbar above an AI-generated "
+            "Markdown table (MarkdownTableBlock.jsx) — opens the table "
+            "edit canvas. Page-wide: correct as long as a test only has "
+            "one editable table on screen."
+        ),
+    )
+
+    diagram_edit_button = LocatorDescriptor(
+        testid="chat-diagram-edit-button",
+        description=(
+            "Pencil/edit icon in the toolbar above an AI-generated "
+            "Mermaid diagram (MermaidCodeBlock.jsx) — opens the diagram "
+            "edit canvas. Page-wide: correct as long as a test only has "
+            "one editable diagram on screen."
         ),
     )
 
@@ -339,6 +540,38 @@ class ChatPage(BasePage):
         description="Individual message items (user + AI)"
     )
 
+    # An AI-generated Markdown table's rendered (non-edit) form
+    # (MarkdownTableBlock.jsx) — headers/rows are fully dynamic AI content
+    # with no stable per-cell identity to testid, so read via raw CSS
+    # scoped inside the testid-anchored messages_container, same idiom as
+    # _extract_message_body's own p/li scoping below (ELITEA-2086/2087).
+    RENDERED_TABLE_HEADER_CELL = "table thead th"
+    RENDERED_TABLE_ROW = "table tbody tr"
+    RENDERED_TABLE_CELL = "td"
+
+    diagram_svg_container = LocatorDescriptor(
+        testid="chat-mermaid-diagram-svg-container",
+        description=(
+            "Wrapping Box MermaidDiagramOutput/DiagramOutput.jsx renders "
+            "the Mermaid-library SVG into. Shared between the "
+            "conversation-view diagram and the canvas's live preview — "
+            "only one is ever mounted at a time (the conversation copy is "
+            "swapped for EditingPlaceholder while the canvas is open), so "
+            "a single testid is safe (ELITEA-2088)."
+        ),
+    )
+
+    # Sanctioned #579 exception (third-party widget subtree — the SVG
+    # itself is Mermaid.js-rendered, not app JSX) — scoped raw selectors
+    # (standard Mermaid CSS classes) as children of diagram_svg_container.
+    MERMAID_NODE = ".node"
+    # NOT ".edgePath" (that's the group WRAPPER, <g class="edgePaths">,
+    # plural) — the individual edge <path> elements carry class
+    # "flowchart-link" (confirmed live, ELITEA-2088 implementer
+    # exploration: mermaid 11.16.0's actual per-edge class list is
+    # "edge-thickness-normal edge-pattern-solid ... flowchart-link").
+    MERMAID_EDGE = ".flowchart-link"
+
     # The actual overflow-y:scroll SimpleBar content-wrapper wrapping
     # chat-message-list (confirmed live: sits 2 DOM levels above the
     # chat-message-list <ul>). Use to assert genuine scrollability
@@ -395,6 +628,66 @@ class ChatPage(BasePage):
         )
     )
 
+    answer_tool_chip = LocatorDescriptor(
+        testid="chat-answer-tool-chip",
+        description=(
+            "Toolkit/tool-call chip inside the Thought accordion's chip row "
+            "(ActionView.jsx's model/tool ternary, else-branch — canon ruling "
+            "#277 shape (b): both branches named since ELITEA-2212/2215 assert "
+            "presence + text and ELITEA-2213 asserts absence on its own "
+            "executed path). Text is '{toolkit_name}: {tool_name}'."
+        )
+    )
+
+    # ------------------------------------------------------------------
+    # HITL sensitive-action authorization card — direct toolkit call, no
+    # agent (ELITEA-2211..2214). Same underlying ChatHitlActions.jsx
+    # component AgentDetailPage already has locators for; ChatPage had none
+    # (confirmed via grep before this addition).
+    # ------------------------------------------------------------------
+
+    sensitive_action_panel = LocatorDescriptor(
+        testid="sensitive-action-panel",
+        description=(
+            "HITL Sensitive Action Authorization card. Renders only when "
+            "hitlInterrupt.guardrail_type is 'sensitive_tool'/"
+            "'parallel_sensitive_tools' (ChatHitlActions.jsx) — its mere "
+            "presence, vs the OTHER container testid 'chat-hitl-actions-panel', "
+            "IS the 'sensitive' signal."
+        )
+    )
+
+    sensitive_action_authorize_button = LocatorDescriptor(
+        testid="sensitive-action-authorize-button",
+        description="Authorize (green) button on the sensitive-action card.",
+    )
+
+    sensitive_action_block_button = LocatorDescriptor(
+        testid="sensitive-action-block-button",
+        description="Block (red) button on the sensitive-action card.",
+    )
+
+    sensitive_action_block_with_comment_button = LocatorDescriptor(
+        testid="sensitive-action-block-with-comment-button",
+        description=(
+            "'Block with Comment' collapsed-state trigger button "
+            "(BlockWithCommentControl.jsx)."
+        ),
+    )
+
+    sensitive_action_block_comment_input = LocatorDescriptor(
+        testid="sensitive-action-block-comment-input",
+        description="Comment textarea shown after clicking 'Block with Comment'.",
+    )
+
+    sensitive_action_block_comment_submit_button = LocatorDescriptor(
+        testid="sensitive-action-block-comment-submit-button",
+        description=(
+            "Submit button in the expanded Block-with-Comment control (same "
+            "visible label as the collapsed trigger — testid disambiguates)."
+        ),
+    )
+
     # ------------------------------------------------------------------
     # Active participant / skill-mention popper (ELITEA-1736 testid rework)
     # ------------------------------------------------------------------
@@ -416,6 +709,32 @@ class ChatPage(BasePage):
     # Dynamic per-row testid for a skill in the mention popper — templated,
     # never an inline f-string get_by_test_id (.claude/rules/page-objects.md).
     MENTION_SKILL_ITEM = '[data-testid="skill-mention-item-{}"]'
+
+    # ------------------------------------------------------------------
+    # Composer's typed-"@" USER mention popper (ELITEA-2168) — a distinct
+    # component (UserMentionList.jsx) from both the "~" skill-mention
+    # popper above and the Users PARTICIPANTS dropdown below.
+    # ------------------------------------------------------------------
+
+    user_mention_list = LocatorDescriptor(
+        testid="chat-user-mention-list",
+        description=(
+            "Composer's typed-'@' user-mention popper container "
+            "(UserMentionList.jsx). Lists every OTHER participant plus "
+            "'Everyone'."
+        ),
+    )
+
+    # Dynamic per-row testid for a user (or "Everyone") in the mention
+    # popper. The row's own id is the participant-LINK id (`participant.id`
+    # in ChatBox.jsx's `users` memo) for a specific user — NOT the platform
+    # user id — or the literal string "@everyone" for the Everyone row
+    # (confirmed via source). Callers of `select_user_mention()` only know
+    # a display name ahead of time, so the exact-match template is combined
+    # with a prefix-match + `.filter(has_text=...)` fallback, same idiom as
+    # `MENTION_SKILL_ITEM`/`MENTION_SKILL_ITEM_PREFIX` above.
+    USER_MENTION_ITEM = '[data-testid="chat-user-mention-item-{}"]'
+    USER_MENTION_ITEM_PREFIX = '[data-testid^="chat-user-mention-item-"]'
 
     # ------------------------------------------------------------------
     # Participant removal + "Mention skill" popper testid rework
@@ -453,15 +772,51 @@ class ChatPage(BasePage):
         description="'Agents'/'Pipelines'/etc. participants popper container (Popper/Grow Paper)"
     )
 
+    # "All users" footer item in the Users participants dropdown
+    # (DropdownFooter.jsx, ELITEA-2168). CONFIRMED PRODUCT DEFECT (issue
+    # #1119): clicking it does NOT insert an @Everyone mention into the
+    # composer, unlike the composer's own typed-"@" -> "Everyone" path
+    # (which works correctly — see ``select_user_mention``).
+    participants_all_users_button = LocatorDescriptor(
+        testid="chat-participants-all-users-button",
+        description=(
+            "'All users' footer item in the Users participants dropdown. "
+            "Known defect #1119 — click currently no-ops."
+        ),
+    )
+
     # Dynamic per-participant row inside the participants popper —
     # uniqueId = getChatParticipantUniqueId(participant), e.g.
     # "application_4687_399" for an agent participant.
     PARTICIPANT_ROW = '[data-testid="chat-participant-row-{}"]'
 
+    # Prefix-match enumerating every currently-rendered participant row
+    # regardless of uniqueId — same idiom as CONVERSATION_ITEM_PREFIX /
+    # MENTION_SKILL_ITEM_PREFIX. Used to resolve a row by its VISIBLE agent
+    # name (e.g. "Reflexion v1.0") when the caller doesn't know the
+    # participant's numeric id/project_id ahead of time (a Catalog/public
+    # agent's row uniqueId embeds PUBLIC_PROJECT_ID, a UI-side env value
+    # this suite has no need to duplicate — ELITEA-2075).
+    PARTICIPANT_ROW_PREFIX = '[data-testid^="chat-participant-row-"]'
+
     # Hover-reveal "Remove <entityType>" icon button — static, scoped via
     # the row's dynamic testid (multiple simultaneous rows disambiguate
     # through the parent row selector, not this button's own testid).
     PARTICIPANT_REMOVE_BUTTON = '[data-testid="chat-participant-remove-button"]'
+
+    # Hover-reveal "Edit <entityType>"/"View settings" icon button
+    # (EditParticipantButton.jsx) — same static testid for BOTH states (the
+    # component swaps its icon/aria-label based on edit permission, not the
+    # testid — testid=identity ruling); scoped via the row's dynamic testid,
+    # same pattern as PARTICIPANT_REMOVE_BUTTON above (ELITEA-2075 addition).
+    PARTICIPANT_EDIT_VIEW_BUTTON = '[data-testid="chat-participant-edit-view-button"]'
+
+    # Orange warning-triangle icon + disconnected/misconfigured message row
+    # (ParticipantItem.jsx's attentionMessageRow, shared between MCP and
+    # Pipeline participant warnings per issues #684/#687) — scoped via the
+    # row's dynamic testid, same pattern as PARTICIPANT_REMOVE_BUTTON above
+    # (ELITEA-2085 addition).
+    PARTICIPANT_WARNING_ICON = '[data-testid="chat-participant-warning-icon"]'
 
     # ------------------------------------------------------------------
     # Users participant type (ELITEA-2095) — independent of the Agent/
@@ -478,6 +833,19 @@ class ChatPage(BasePage):
         description=(
             "Avatar in the expanded PARTICIPANTS panel's USERS section, "
             "showing the participant's initials/name (e.g. 'TB')."
+        ),
+    )
+
+    # "+N" overflow-count text (ELITEA-2168) — always rendered (empty
+    # string content when there is no overflow, per
+    # ExpandedParticipantsList.jsx), so presence alone does not imply
+    # overflow; read its text to check for a value.
+    participants_users_overflow_count = LocatorDescriptor(
+        testid="chat-participants-users-overflow-count",
+        description=(
+            "'+N' overflow-count Typography in the expanded PARTICIPANTS "
+            "panel's USERS section, shown once more than "
+            "usersToDisplay.length users are participants."
         ),
     )
 
@@ -529,6 +897,72 @@ class ChatPage(BasePage):
     # per the testid=identity/state=data-* ruling.
     CONVERSATION_MENU_ITEM_KEYS = (
         "rename", "move-to", "playback", "make-public", "share", "pin", "delete",
+    )
+
+    # ------------------------------------------------------------------
+    # "Move to" submenu (ELITEA-2135/ELITEA-2137) + pin state (ELITEA-2149)
+    # ------------------------------------------------------------------
+    # Testids added this pass, commit cf348d32 on EliteaUI's
+    # automation/testids ("test: [EL-2135] add data-testid for Move-to
+    # submenu items + pin icon/state"). DotMenu.jsx's BasicMenuItem never
+    # forwarded `testId` to nested-submenu items before this commit, so no
+    # "Move to" submenu item ever rendered a data-testid regardless of its
+    # `key` — fixed by adding `testId: subMenuItem.key` to DotMenu.jsx's
+    # subCommonProps.
+
+    move_to_create_folder_menuitem = LocatorDescriptor(
+        testid="chat-move-to-create-folder-menuitem",
+        description=(
+            "'Create folder' item inside the 'Move to' submenu "
+            "(ConversationItem.jsx's context menu). Static testid — "
+            "distinct from the top-level create-folder icon in the CHATS "
+            "header (ELITEA-2132's create_folder_button)."
+        ),
+    )
+
+    move_to_back_to_list_menuitem = LocatorDescriptor(
+        testid="chat-move-to-back-to-list-menuitem",
+        description="'Back to the list' item inside the 'Move to' submenu.",
+    )
+
+    # Dynamic per-folder submenu entry — {} is the target folder's numeric
+    # id. Never a globally-unique static field since N folders can each
+    # render their own submenu item.
+    MOVE_TO_FOLDER_ITEM = '[data-testid="chat-move-to-folder-{}-menuitem"]'
+
+    # Pin icon inside a conversation item — non-unique testid (the SAME
+    # value renders once per pinned conversation), ALWAYS resolved scoped
+    # inside a CONVERSATION_ITEM-scoped element, never at page level.
+    PIN_ICON = '[data-testid="chat-pin-icon"]'
+
+    # App-wide toast message (shared component — see ArtifactsPage.
+    # success_toast_message / SkillsListPage.import_success_toast_message
+    # for the same testid declared on other pages, existing repo
+    # precedent of each page declaring its own field for a shared
+    # component).
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide success/error toast message.",
+    )
+
+    # Toast severity root (Toast.jsx's MUI <Alert>) — ELITEA-2197/2200
+    # addition. Testid is the stable identity; severity is state carried via
+    # data-severity, per the "testid = identity, state via data-*" policy —
+    # never a severity-suffixed testid.
+    toast_alert = LocatorDescriptor(
+        testid="toast-alert",
+        description="App-wide toast Alert root; carries data-severity (info/warning/error/success).",
+    )
+
+    # Severity-scoped toast alert selector — testid identity + data-severity
+    # state filter, the compliant shape for a state-dependent assertion.
+    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
+
+    # Toast dismiss (X) icon button — ELITEA-2200 addition (Toast.jsx's
+    # custom `action` IconButton, replacing MUI's unlabeled default close).
+    toast_dismiss_button = LocatorDescriptor(
+        testid="toast-dismiss-button",
+        description="Close (X) icon button on the app-wide toast Alert.",
     )
 
     # Delete-confirmation dialog (DeleteEntityModal.jsx, rendered via the
@@ -604,6 +1038,16 @@ class ChatPage(BasePage):
             "'immediately before the search icon' check. Distinct from "
             "search_conversations_input, which is the search text field."
         ),
+    )
+
+    # Generic app-wide success/confirmation toast (Toast.jsx) — pre-existing
+    # testid, shared across pages (see ArtifactsPage.success_toast_message /
+    # SkillsListPage.import_success_toast_message for the same-component
+    # precedent, one field per consuming page object). Used by the Modules
+    # panel's "Modules configuration updated" confirmation (ELITEA-2162).
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide success/confirmation toast (Toast.jsx).",
     )
 
     folder_name_input = LocatorDescriptor(
@@ -936,6 +1380,59 @@ class ChatPage(BasePage):
                 return text
 
         return ""
+
+    def get_rendered_table_data(self, message_locator=None) -> list[dict]:
+        """Read a Markdown table rendered inline in an AI message
+        (``MarkdownTableBlock.jsx``'s non-edit rendering, NOT the
+        DataGrid editor) into a list of ``{header: cell_text}`` dicts,
+        in row order (ELITEA-2086/2087).
+
+        DECLARED IMPROVISATION: the table's headers/rows are fully
+        AI-generated dynamic content (varies every generation — AFS
+        ELITEA-2086 § Test Data) with no stable per-cell identity to hang
+        a testid on, the same situation as an AI message's paragraph/list
+        body text — which this class already reads via raw CSS scoped
+        inside the testid-anchored ``messages_container``
+        (:meth:`_extract_message_body`) rather than per-element testids.
+        This method follows that same established in-file idiom.
+
+        Args:
+            message_locator: The message ``<li>`` Locator to read the
+                table from. Defaults to the last message.
+        """
+        message = message_locator if message_locator is not None else self.messages_container.last
+        headers_loc = message.locator(self.RENDERED_TABLE_HEADER_CELL)
+        header_count = headers_loc.count()
+        # MUI TableCell pads its text node — confirmed live (ELITEA-2086)
+        # header/cell text_content() returns e.g. " Rank " not "Rank".
+        headers = [(headers_loc.nth(i).text_content() or "").strip() for i in range(header_count)]
+        rows_loc = message.locator(self.RENDERED_TABLE_ROW)
+        data = []
+        for r in range(rows_loc.count()):
+            cells = rows_loc.nth(r).locator(self.RENDERED_TABLE_CELL)
+            cell_count = cells.count()
+            row = {
+                headers[i]: (cells.nth(i).text_content() or "").strip()
+                for i in range(min(header_count, cell_count))
+            }
+            data.append(row)
+        return data
+
+    def wait_for_diagram_rendered(self, timeout: int = 30000):
+        """Wait until the Mermaid diagram's SVG container is visible and
+        has rendered at least one child node (ELITEA-2088)."""
+        self.diagram_svg_container.wait_for(state="visible", timeout=timeout)
+        self.diagram_svg_container.locator(self.MERMAID_NODE).first.wait_for(
+            state="attached", timeout=timeout
+        )
+
+    def get_diagram_node_count(self) -> int:
+        """Return the number of Mermaid diagram node elements currently rendered."""
+        return self.diagram_svg_container.locator(self.MERMAID_NODE).count()
+
+    def get_diagram_edge_count(self) -> int:
+        """Return the number of Mermaid diagram edge/connection elements currently rendered."""
+        return self.diagram_svg_container.locator(self.MERMAID_EDGE).count()
 
     def get_last_message_text(self) -> str:
         """Get the text content of the last message body.
@@ -1305,8 +1802,27 @@ class ChatPage(BasePage):
             self.sidebar_toggle.click()
             self.page.wait_for_timeout(300)  # Allow animation
         
+    @action("Open Attach Files menu item")
+    def open_attach_menuitem(self, timeout: int = 10000):
+        """Open the plus menu and reveal the 'Attach Files' item inside it.
+
+        Flow: click plus_menu_button -> wait for the showLabel
+        AttachmentButton instance rendered inside the popper
+        (``chat-attach-menuitem-button`` / ``self.attach_files_button``) to
+        become visible. It only exists in the DOM while the popper is open
+        (ELITEA-2197/2200 exploration — re-points the previously-dead
+        ``attach_files_button`` field at this real testid).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening plus menu -> Attach Files menu item")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.attach_files_button.wait_for(state="visible", timeout=timeout)
+
     def open_file_chooser(self, timeout: int = 10000):
-        """Click the attach button and return the FileChooser dialog.
+        """Open the plus menu's Attach Files item and return the FileChooser dialog.
 
         Use this when the test needs to inspect chooser properties (e.g.
         ``is_multiple()``) before selecting files.  For the common case of
@@ -1318,6 +1834,7 @@ class ChatPage(BasePage):
         Returns:
             playwright.sync_api.FileChooser
         """
+        self.open_attach_menuitem(timeout=timeout)
         with self.page.expect_file_chooser(timeout=timeout) as fc_info:
             self.attach_files_button.click()
         return fc_info.value
@@ -1337,7 +1854,110 @@ class ChatPage(BasePage):
         file_chooser = self.open_file_chooser(timeout=timeout)
         file_chooser.set_files(file_path)
         self.wait_for_network(timeout=timeout)
-        
+
+    @action("Attach files via plus menu (multi-select in one chooser action)")
+    def attach_files_via_menu(self, file_paths, timeout: int = 10000):
+        """Open the plus-menu 'Attach Files' item and select the given files.
+
+        Args:
+            file_paths: A path or list of paths, passed to a single
+                ``file_chooser.set_files(...)`` call. Selecting several files
+                in one chooser action is the only way to exceed the
+                attachment limit or feed multiple files at once — a second,
+                separate chooser action is unreachable once the button
+                disables at max capacity (ELITEA-2197 exploration, issue
+                #1122).
+            timeout: Maximum wait for the file chooser / toast (ms).
+
+        Returns:
+            playwright.sync_api.FileChooser — already resolved with the
+            files selected.
+        """
+        logger.info("Attaching %s via plus menu", file_paths)
+        self.open_attach_menuitem(timeout=timeout)
+        with self.page.expect_file_chooser(timeout=timeout) as fc_info:
+            self.attach_files_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(file_paths)
+        return file_chooser
+
+    def wait_for_toast(self, timeout: int = 10000):
+        """Wait for the app-wide toast message to become visible."""
+        self.toast_message.wait_for(state="visible", timeout=timeout)
+
+    def get_toast_text(self, timeout: int = 10000) -> str:
+        """Wait for the toast and return its message text."""
+        self.wait_for_toast(timeout=timeout)
+        return (self.toast_message.text_content() or "").strip()
+
+    def get_toast_alert(self, severity: str):
+        """Return the toast Alert locator scoped to a specific data-severity value.
+
+        Testid identity (``toast-alert``) + a ``data-severity`` state filter
+        — the compliant shape for a state-dependent assertion (state is
+        never encoded in the testid itself).
+
+        Args:
+            severity: e.g. "warning", "info", "error", "success".
+        """
+        return self.page.locator(self.TOAST_ALERT_SEVERITY.format(severity))
+
+    @action("Dismiss toast")
+    def dismiss_toast(self, timeout: int = 10000):
+        """Click the toast's dismiss (X) button and wait for it to detach."""
+        self.toast_dismiss_button.click()
+        self.toast_message.wait_for(state="hidden", timeout=timeout)
+
+    def get_attachment_chip_count(self) -> int:
+        """Count of currently visible attachment chips (FileList.jsx, excludes overflow)."""
+        return self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX).count()
+
+    def get_attachment_overflow_count(self) -> int:
+        """Parse the '+N' overflow count from the overflow button's text.
+
+        Returns 0 if the overflow control isn't rendered (all attachments
+        fit as visible chips).
+        """
+        if self.chat_attachment_overflow_button.count() == 0:
+            return 0
+        text = self.chat_attachment_overflow_button.text_content() or ""
+        match = re.search(r"\+(\d+)", text)
+        return int(match.group(1)) if match else 0
+
+    def get_total_attached_file_count(self) -> int:
+        """Total attached files = visible chips + overflow number.
+
+        Never hardcode a "N visible" split — FileList.jsx's visible/overflow
+        boundary is container-width-dependent (ELITEA-2197 exploration).
+        """
+        return self.get_attachment_chip_count() + self.get_attachment_overflow_count()
+
+    def get_visible_attachment_names(self) -> list:
+        """Filenames of the currently visible attachment chips, in render order."""
+        chips = self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX)
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
+    def get_overflow_attachment_names(self, timeout: int = 5000) -> list:
+        """Open the overflow menu (if present) and return the hidden filenames.
+
+        The overflow Menu is NOT keepMounted (FileList.jsx) — items only
+        exist in the DOM while the menu is open, so this opens it, reads
+        names, then closes it again (Escape) to leave the page as found.
+        """
+        if self.chat_attachment_overflow_button.count() == 0:
+            return []
+        self.chat_attachment_overflow_button.click()
+        items = self.page.locator(self.CHAT_ATTACHMENT_OVERFLOW_ITEM_PREFIX)
+        items.first.wait_for(state="visible", timeout=timeout)
+        names = [(items.nth(i).text_content() or "").strip() for i in range(items.count())]
+        self.page.keyboard.press("Escape")
+        return names
+
+    def get_all_attached_file_names(self) -> list:
+        """All attached filenames — visible chips + overflow menu contents."""
+        return self.get_visible_attachment_names() + self.get_overflow_attachment_names()
+
+
     @action("Copy message")
     def copy_message(self, message_index: int = -1):
         """Copy a message to clipboard.
@@ -1636,6 +2256,71 @@ class ChatPage(BasePage):
         self.agents_create_new_button.wait_for(state="visible", timeout=timeout)
         self.agents_create_new_button.click()
         logger.info("Create New Agent canvas opened")
+
+    @action("Open Create New Pipeline canvas")
+    def open_create_new_pipeline_canvas(self, timeout: int = 10000):
+        """Open the in-chat 'Create New Pipeline' canvas (ELITEA-2079).
+
+        Flow: click plus_menu_button -> HOVER pipelines_menuitem (reveals
+        the Pipelines submenu via onMouseEnter, same mechanism as
+        ``open_create_new_agent_canvas``) -> click
+        pipelines_create_new_button.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Create New Pipeline canvas via plus menu")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.pipelines_menuitem.wait_for(state="visible", timeout=timeout)
+        self.pipelines_menuitem.hover()
+        self.pipelines_create_new_button.wait_for(state="visible", timeout=timeout)
+        self.pipelines_create_new_button.click()
+        logger.info("Create New Pipeline canvas opened")
+
+    @action("Open Create New MCP canvas")
+    def open_create_new_mcp_canvas(self, timeout: int = 10000):
+        """Open the in-chat 'Create New MCP' canvas (ELITEA-2085).
+
+        Flow: click plus_menu_button -> HOVER mcps_menuitem (reveals the
+        MCPs submenu via onMouseEnter, same mechanism as
+        ``open_create_new_agent_canvas``) -> click mcps_create_new_button.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Create New MCP canvas via plus menu")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.mcps_menuitem.wait_for(state="visible", timeout=timeout)
+        self.mcps_menuitem.hover()
+        self.mcps_create_new_button.wait_for(state="visible", timeout=timeout)
+        self.mcps_create_new_button.click()
+        logger.info("Create New MCP canvas opened")
+
+    @action("Click table edit icon")
+    def click_table_edit_icon(self, timeout: int = 10000):
+        """Click the pencil/edit icon on an AI-generated Markdown table
+        (ELITEA-2086/2087), opening the table edit canvas.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking table edit icon")
+        self.table_edit_button.wait_for(state="visible", timeout=timeout)
+        self.table_edit_button.click()
+
+    @action("Click diagram edit icon")
+    def click_diagram_edit_icon(self, timeout: int = 10000):
+        """Click the pencil/edit icon on an AI-generated Mermaid diagram
+        (ELITEA-2088), opening the diagram edit canvas.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking diagram edit icon")
+        self.diagram_edit_button.wait_for(state="visible", timeout=timeout)
+        self.diagram_edit_button.click()
 
     # ------------------------------------------------------------------
     # Conversation management helpers
@@ -2002,6 +2687,65 @@ class ChatPage(BasePage):
         search_btn.wait_for(state="visible", timeout=timeout)
         search_btn.click()
 
+    @action("Type conversation search query")
+    def type_conversation_search_query(self, query: str, timeout: int = 10000):
+        """Type *query* into the already-open search input and wait for the
+        debounced ``folder/prompt_lib`` filter response to resolve.
+
+        Preconditions: search must already be active (call
+        open_search_conversations_button() first — search_conversations_input
+        visible). Overwrites any existing text via Ctrl+A + typed keys, which
+        also serves as "clear and type" for a follow-up query.
+
+        LOCATOR: search_conversations_input is a plain MUI ``InputBase``
+        (SimpleSearchBar.jsx) — click(click_count=3) [triple-click, selects
+        all text OS-independently — Ctrl+A does NOT select-all in a Chromium
+        text field on macOS, only Meta+A does] + press_sequentially (not
+        fill()) so React's controlled onChange actually fires per-keystroke,
+        matching the mui-patterns.md convention. The filter fires
+        ``GET .../elitea_core/folder/prompt_lib/{project}?...&query=<value>
+        &grouped=true`` ~500ms after the last keystroke (useDebounceValue).
+
+        Args:
+            query: Substring to search for (case-insensitive match against
+                conversation name).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Typing conversation search query: %r", query)
+        self.search_conversations_input.click(click_count=3)
+        with self.page.expect_response(
+            lambda r: "/folder/prompt_lib/" in r.url and f"query={query}" in r.url,
+            timeout=timeout,
+        ):
+            self.search_conversations_input.press_sequentially(query, delay=50)
+        logger.info("Search filter response received for query: %r", query)
+
+    def get_conversation_item(self, conversation_id: str | int):
+        """Return the Locator for a single conversation item row by id
+        (page-wide, unscoped — CONVERSATION_ITEM). Works for both the plain
+        sidebar list and search-mode results (both render the same testid).
+        """
+        return self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+
+    def get_conversation_item_rows(self):
+        """Return the Locator matching ALL rendered conversation item rows
+        (CONVERSATION_ITEM_PREFIX) — for count assertions on filtered
+        search results.
+        """
+        return self.page.locator(self.CONVERSATION_ITEM_PREFIX)
+
+    @action("Click a conversation item")
+    def click_conversation_item(self, conversation_id: str | int, timeout: int = 5000):
+        """Click a conversation item row by id (e.g. a search result) to open it.
+
+        Args:
+            conversation_id: Numeric conversation id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        item = self.get_conversation_item(conversation_id)
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+
     def search_conversations_via_button(self, query: str, timeout: int = 5000):
         """Open the search dialog and type a query.
 
@@ -2260,6 +3004,17 @@ class ChatPage(BasePage):
     # selectors — tracked tech debt, ELITEA-2114 Concrete Handles). These
     # target by conversation id and use the real per-item testids.
 
+    def get_conversation_item(self, conversation_id: str | int):
+        """Return the Locator for a conversation's whole sidebar item (id-scoped).
+
+        The SAME testid renders once total regardless of which section
+        it's currently in (date-grouped list, inside a folder, or the
+        pinned section — ELITEA-2135/ELITEA-2149) — scoping via a parent
+        container (e.g. ``CONVERSATION_GROUP_HEADER``, ``FOLDER_ITEM``) is
+        what distinguishes location, not a different testid.
+        """
+        return self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+
     def hover_conversation_item(self, conversation_id: str | int, timeout: int = 5000):
         """Hover *conversation_id*'s sidebar item to reveal its 3-dot menu button.
 
@@ -2267,7 +3022,7 @@ class ChatPage(BasePage):
         ``display:none`` until hover (ConversationItem.jsx's ``menuWrapper``
         style) — this only hovers; it does not click.
         """
-        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        item = self.get_conversation_item(conversation_id)
         item.wait_for(state="visible", timeout=timeout)
         item.hover()
 
@@ -2319,6 +3074,147 @@ class ChatPage(BasePage):
         item = self.get_conversation_menu_item(item_key)
         item.wait_for(state="visible", timeout=timeout)
         item.click()
+
+    # ------------------------------------------------------------------
+    # "Move to" submenu flow (ELITEA-2135/ELITEA-2137)
+    # ------------------------------------------------------------------
+
+    @action("Click 'Move to' and wait for its submenu")
+    def click_move_to_and_wait_for_submenu(self, max_attempts: int = 4, timeout: int = 5000):
+        """Click the already-open context menu's 'Move to' item and reliably
+        reach the open-submenu state.
+
+        Known, filed defect (EliteaAI/elitea-testing-public#1117): a single
+        click on 'Move to' does not reliably open its submenu — roughly
+        half of ~6 isolated repros needed a second click, and hovering
+        never opens it at all. Live-verified: a longer FIXED wait after one
+        click does NOT open it (tested up to 1.5s of pure dwell) — the
+        retry CLICK is what's load-bearing, not additional wait time. This
+        polls for the submenu's mount (``move_to_create_folder_menuitem``)
+        after each click and retries the click itself, up to
+        *max_attempts* times.
+
+        Assumes the conversation's context menu is already open (see
+        ``open_conversation_context_menu``).
+
+        Args:
+            max_attempts: Maximum number of clicks on 'Move to' before
+                giving up.
+            timeout: Maximum wait time in milliseconds for the initial
+                'Move to' item and the overall submenu-open call.
+
+        Raises:
+            TimeoutError: if the submenu never mounts within *max_attempts*.
+        """
+        move_to_item = self.get_conversation_menu_item("move-to")
+        move_to_item.wait_for(state="visible", timeout=timeout)
+        move_to_item.click()
+        for attempt in range(1, max_attempts + 1):
+            try:
+                self.move_to_create_folder_menuitem.wait_for(state="visible", timeout=500)
+                logger.info("'Move to' submenu opened after %d click(s)", attempt)
+                return
+            except Exception:
+                if attempt == max_attempts:
+                    raise TimeoutError(
+                        f"'Move to' submenu did not open after {max_attempts} "
+                        "clicks (known defect EliteaAI/elitea-testing-public#1117)"
+                    )
+                logger.debug(
+                    "'Move to' submenu not open yet — retrying click (attempt %d/%d)",
+                    attempt + 1, max_attempts,
+                )
+                move_to_item.click()
+
+    @action("Open conversation's 'Move to' submenu")
+    def open_move_to_submenu(self, conversation_id: str | int, max_attempts: int = 4, timeout: int = 5000):
+        """Open *conversation_id*'s context menu, then its 'Move to' submenu.
+
+        Composes ``open_conversation_context_menu`` +
+        ``click_move_to_and_wait_for_submenu`` for callers that don't need
+        to assert the context menu's own contents first.
+
+        Args:
+            conversation_id: Numeric conversation id.
+            max_attempts: Forwarded to ``click_move_to_and_wait_for_submenu``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.open_conversation_context_menu(conversation_id, timeout=timeout)
+        self.click_move_to_and_wait_for_submenu(max_attempts=max_attempts, timeout=timeout)
+
+    def get_move_to_folder_item(self, folder_id: str | int):
+        """Return the Locator for an existing folder's entry inside the open 'Move to' submenu."""
+        return self.page.locator(self.MOVE_TO_FOLDER_ITEM.format(folder_id))
+
+    @action("Select existing folder in 'Move to' submenu")
+    def select_move_to_folder(self, folder_id: str | int, timeout: int = 5000):
+        """Click an existing folder's entry inside the open 'Move to' submenu.
+
+        Args:
+            folder_id: Numeric id of the target folder.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting existing folder %s in 'Move to' submenu", folder_id)
+        item = self.get_move_to_folder_item(folder_id)
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+
+    @action("Select 'Create folder' in 'Move to' submenu")
+    def select_move_to_create_folder(self, timeout: int = 5000):
+        """Click 'Create folder' inside the open 'Move to' submenu."""
+        logger.info("Selecting 'Create folder' in 'Move to' submenu")
+        self.move_to_create_folder_menuitem.wait_for(state="visible", timeout=timeout)
+        self.move_to_create_folder_menuitem.click()
+
+    @action("Set folder name in inline editor")
+    def set_folder_name(self, name: str):
+        """Replace the inline folder-name editor's value via keyboard events.
+
+        MUI/React form fields don't fire ``onChange`` on Playwright's
+        ``fill()`` (``.claude/rules/mui-patterns.md``) — click() + clear()
+        + press_sequentially() is the project's established pattern
+        (``AgentFormPage.fill_form()``) for reliably replacing a
+        pre-filled value. A bare ``Control+a`` press without a following
+        ``clear()`` was live-verified NOT sufficient here — the select-all
+        lost the race against React's own re-render of the default value,
+        producing ``"New folder6New folder"`` (input APPENDED, not
+        replaced) instead of ``"New folder6"``. Assumes the editor is
+        already open and ``folder_name_input`` is visible/focused (e.g.
+        right after ``click_create_folder_button()`` or
+        ``select_move_to_create_folder()``).
+
+        Args:
+            name: New folder name to type.
+        """
+        logger.info("Setting folder name to %r", name)
+        self.folder_name_input.click()
+        self.page.wait_for_timeout(100)  # Wait for focus
+        self.folder_name_input.clear()
+        self.page.wait_for_timeout(100)  # Wait for clear to complete
+        self.folder_name_input.press_sequentially(name, delay=30)
+
+    def is_conversation_pinned(self, conversation_id: str | int, timeout: int = 5000) -> bool:
+        """Return True if *conversation_id*'s sidebar item carries ``data-pinned="true"``.
+
+        Mirrors ``is_conversation_active``'s state-via-data-attribute
+        pattern (ELITEA-2149).
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        item.wait_for(state="visible", timeout=timeout)
+        return item.get_attribute("data-pinned") == "true"
+
+    def get_pin_icon(self, conversation_id: str | int):
+        """Return the ``PIN_ICON`` Locator scoped inside *conversation_id*'s item.
+
+        ``PIN_ICON`` is a non-unique testid — the same value renders once
+        per pinned conversation — so it must always be resolved scoped
+        inside a single ``CONVERSATION_ITEM`` (ELITEA-2149), never at page
+        level. Returns a Locator (not a bool) so callers can use
+        ``.count()`` for the 0->1 transition check or ``expect()`` for
+        visibility, same precedent as ``get_conversation_menu_button()``.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        return item.locator(self.PIN_ICON)
 
     def is_conversation_active(self, conversation_id: str | int, timeout: int = 5000) -> bool:
         """Return True if *conversation_id*'s sidebar item carries ``data-active="true"``.
@@ -2496,6 +3392,125 @@ class ChatPage(BasePage):
         self.page.wait_for_timeout(300)
 
         return is_checked
+
+    # ------------------------------------------------------------------
+    # Modules panel toggles — testid-based (ELITEA-2162). New call sites
+    # use MODULES_TOGGLE_SWITCH / tool_key, not the role="switch" + display
+    # -title handles above (get_internal_tool_switch(),
+    # enable/disable_image_creation() — pre-existing, untouched here).
+    # ------------------------------------------------------------------
+
+    def get_module_toggle_switch(self, tool_key: str):
+        """Return the Locator for a Modules-panel toggle switch by its
+        stable internal tool key (testid-based).
+
+        Must be called while the Modules panel is open (after
+        open_internal_tools_menu()).
+
+        Args:
+            tool_key: Internal tool key, e.g. "image_generation",
+                "data_analysis" — see MODULE_TOGGLE_ORDER for the full
+                key/accessible-name mapping.
+        """
+        return self.page.locator(self.MODULES_TOGGLE_SWITCH.format(tool_key))
+
+    def get_module_toggle_switches(self):
+        """Return the Locator matching ALL rendered Modules-panel toggle
+        switches (MODULES_TOGGLE_SWITCH_PREFIX) — for count assertions
+        (e.g. "0 switches" once the panel is closed).
+        """
+        return self.page.locator(self.MODULES_TOGGLE_SWITCH_PREFIX)
+
+    def verify_module_toggle_order(self, timeout: int = 5000):
+        """Assert all 7 MODULE_TOGGLE_ORDER switches are visible, each with
+        its expected accessible name, in DOM order.
+
+        Must be called while the Modules panel is open (after
+        open_internal_tools_menu()).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        all_switches = self.get_module_toggle_switches()
+        expect(all_switches).to_have_count(len(self.MODULE_TOGGLE_ORDER), timeout=timeout)
+        for index, (tool_key, title) in enumerate(self.MODULE_TOGGLE_ORDER):
+            expect(all_switches.nth(index)).to_have_attribute(
+                "data-testid", f"modules-toggle-{tool_key}", timeout=timeout
+            )
+            switch = self.get_module_toggle_switch(tool_key)
+            expect(switch).to_be_visible(timeout=timeout)
+            expect(switch).to_have_accessible_name(title, timeout=timeout)
+        logger.info("Verified all %d module toggles in order", len(self.MODULE_TOGGLE_ORDER))
+
+    @action("Toggle a Modules panel switch")
+    def click_module_toggle(self, tool_key: str, timeout: int = 10000):
+        """Click a Modules-panel toggle switch (testid-based) and wait for
+        the PUT that persists ``meta.internal_tools`` to resolve, then wait
+        for the "Modules configuration updated" confirmation toast.
+
+        Does NOT close the Modules panel — Escape does not close it
+        (live-confirmed); use close_modules_panel() for that.
+
+        LOCATOR: uses ``force=True`` (mui-patterns.md § MUI Overlay
+        Interception) — each switch has an adjacent ``InfoTooltip`` icon
+        whose ``role="tooltip"`` popper can render over the switch and
+        intercept the click if the cursor is still near it from the
+        preceding hover-to-open-menu step. Also waits for the switch to be
+        ENABLED first — PlusChatButton.jsx briefly disables it while the
+        previous toggle's PUT is settling; a click during that window is a
+        native no-op (a disabled ``<input>`` ignores clicks even with
+        ``force=True``, which only bypasses Playwright's own actionability
+        checks, not the browser's disabled-element semantics) and would
+        otherwise hang this method's expect_response wait forever.
+
+        Args:
+            tool_key: Internal tool key — see MODULE_TOGGLE_ORDER.
+            timeout: Maximum wait time in milliseconds.
+        """
+        switch = self.get_module_toggle_switch(tool_key)
+        expect(switch).to_be_enabled(timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/elitea_core/conversation/prompt_lib/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ):
+            switch.click(force=True)
+        expect(self.toast_message).to_be_visible(timeout=timeout)
+        logger.info("Toggled module %r; confirmation toast visible", tool_key)
+
+    def is_module_toggle_checked(self, tool_key: str) -> bool:
+        """Return whether a Modules-panel toggle switch is currently checked.
+
+        Args:
+            tool_key: Internal tool key — see MODULE_TOGGLE_ORDER.
+        """
+        return self.get_module_toggle_switch(tool_key).is_checked()
+
+    def get_module_toggle_count(self) -> int:
+        """Count visible Modules-panel toggle switches (testid-based)."""
+        return self.get_module_toggle_switches().count()
+
+    def close_modules_panel(self, timeout: int = 5000):
+        """Close the Modules panel via an outside click.
+
+        Escape does NOT close it (live-confirmed: switch count stays at 7
+        after Escape) — only a click outside the popper
+        (ClickAwayListener in PlusChatButton.jsx, which checks
+        ``subMenuRef.contains(event.target)``) does. Clicks the TOP-LEFT
+        corner of the scrollable messages region rather than its default
+        center — the Modules popper renders as an absolutely-positioned
+        overlay that visually covers the CENTER of the messages container
+        (live-confirmed: a center-point click's coordinates land inside
+        the popper's own bounding box, so ClickAwayListener treats it as
+        an inside click and never fires close), so a corner well clear of
+        both the plus-menu list and the switches panel is required for a
+        genuine "outside" click.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.chat_messages_scroll_container.click(position={"x": 10, "y": 10})
+        expect(self.get_module_toggle_switches()).to_have_count(0, timeout=timeout)
+        logger.info("Modules panel closed via outside click")
 
     @action("Select model")
     def select_model(self, model_name: str, timeout: int = 5000):
@@ -2725,6 +3740,94 @@ class ChatPage(BasePage):
         logger.warning("Could not find Participants panel collapse button")
         return False
 
+    # Participants panel's own expand/collapse toggle IconButton
+    # (Participants.jsx, ELITEA-2168) — a deterministic, testid-backed
+    # replacement for the raw-JS heuristics above, added for THIS case's own
+    # use. The two legacy methods and their existing caller
+    # (test_open_conversation_today_section.py) are left untouched
+    # (additive-only — Hard Rule 3). State is exposed as
+    # ``data-expanded="true"/"false"`` on the same element (testid=identity/
+    # state=data-* ruling), never a state-conditional testid.
+    participants_panel_toggle_button = LocatorDescriptor(
+        testid="chat-participants-panel-toggle-button",
+        description=(
+            "Participants panel's own expand/collapse IconButton. State: "
+            "`data-expanded` attribute ('true'/'false')."
+        ),
+    )
+
+    @action("Expand Participants panel via its own toggle button")
+    def expand_participants_panel_via_toggle(self, timeout: int = 5000):
+        """Click the Participants panel's toggle button until it reports expanded.
+
+        Testid-backed replacement for the legacy ``expand_participants_panel()``
+        heuristic, for this case's own use (ELITEA-2168) — deterministic,
+        does not rely on percentage-text or right-edge-button JS probing.
+        """
+        self.participants_panel_toggle_button.wait_for(state="visible", timeout=timeout)
+        if self.participants_panel_toggle_button.get_attribute("data-expanded") != "true":
+            self.participants_panel_toggle_button.click()
+        expect(self.participants_panel_toggle_button).to_have_attribute(
+            "data-expanded", "true", timeout=timeout,
+        )
+
+    @action("Collapse Participants panel via its own toggle button")
+    def collapse_participants_panel_via_toggle(self, timeout: int = 5000):
+        """Click the Participants panel's toggle button until it reports collapsed.
+
+        Testid-backed replacement for the legacy ``collapse_participants_panel()``
+        heuristic, which failed live during this case's own analyst session
+        ("Could not find Participants panel collapse button" — AFS §
+        Concrete Handles).
+        """
+        self.participants_panel_toggle_button.wait_for(state="visible", timeout=timeout)
+        if self.participants_panel_toggle_button.get_attribute("data-expanded") != "false":
+            self.participants_panel_toggle_button.click()
+        expect(self.participants_panel_toggle_button).to_have_attribute(
+            "data-expanded", "false", timeout=timeout,
+        )
+
+    def get_participant_row_by_name(self, name: str, timeout: int = 10000):
+        """Return the (expanded PARTICIPANTS panel) participant row matching
+        *name* by its visible text (e.g. ``"Reflexion v1.0"``) — ELITEA-2075.
+
+        Resolves via ``PARTICIPANT_ROW_PREFIX`` + ``.filter(has_text=...)``
+        rather than the exact ``PARTICIPANT_ROW`` template, since a Catalog/
+        public agent's row uniqueId embeds ``PUBLIC_PROJECT_ID`` (a UI-side
+        env value this suite has no reason to duplicate) — same "keyed by a
+        value not known in advance" idiom as
+        ``AgentDetailPage.is_model_option_visible``.
+
+        Call after :meth:`expand_participants_panel_via_toggle` — this reads
+        the row rendered in the expanded side panel, not the collapsed
+        badge's popper.
+        """
+        row = self.page.locator(self.PARTICIPANT_ROW_PREFIX).filter(has_text=name)
+        row.first.wait_for(state="visible", timeout=timeout)
+        return row.first
+
+    @action("Open agent participant settings (View settings / Edit agent)")
+    def open_agent_participant_settings(self, participant_name: str, timeout: int = 10000):
+        """Hover the participant row matching *participant_name* in the
+        EXPANDED PARTICIPANTS panel and click its "View settings"/"Edit
+        agent" icon (``EditParticipantButton`` — same component, same
+        testid, for both states — ELITEA-2075).
+
+        Call after :meth:`expand_participants_panel_via_toggle`. Opens the
+        agent's settings canvas (``AgentEditor.jsx``) in-place — read-only
+        (``viewMode=Public``) for a public agent the user lacks edit
+        permission on, editable otherwise.
+        """
+        logger.info("Opening participant settings for %r", participant_name)
+        row = self.get_participant_row_by_name(participant_name, timeout=timeout)
+        row.scroll_into_view_if_needed()
+        row.hover()
+        self.page.wait_for_timeout(300)  # hover-reveal CSS transition
+
+        edit_btn = row.locator(self.PARTICIPANT_EDIT_VIEW_BUTTON)
+        edit_btn.wait_for(state="visible", timeout=timeout)
+        edit_btn.click(force=True)
+
     # ------------------------------------------------------------------
     # Context Budget helpers
     # ------------------------------------------------------------------
@@ -2817,6 +3920,43 @@ class ChatPage(BasePage):
                 f"Cannot parse max tokens from Context Budget text: {text!r}"
             ) from exc
 
+    def wait_for_context_budget_max_tokens(self, expected: int, timeout: int = 10000) -> int:
+        """Wait until the Context Budget panel's max-tokens reading equals *expected*.
+
+        ``updateContextStrategy`` invalidates the same RTK-Query tag
+        ``getContextStatus`` provides, so the sidebar's max-tokens reading
+        updates via cache refetch shortly after a successful Save — not
+        necessarily within the single ``wait_for_network()`` call right after
+        the click (confirmed live: a one-shot read immediately after Save
+        can still show the pre-save value). Polls the same
+        deadline/poll_interval idiom as ``wait_for_ai_response()`` rather
+        than a fixed sleep.
+
+        Returns:
+            The final observed max-tokens value (equal to *expected* if this
+            returns normally).
+
+        Raises:
+            AssertionError: If *expected* is not observed within *timeout*.
+        """
+        logger.info("Waiting for Context Budget max-tokens to read %d", expected)
+        deadline = time.monotonic() + timeout / 1000.0
+        poll_interval = 0.5
+        last_seen = None
+        while time.monotonic() < deadline:
+            try:
+                last_seen = self.get_context_budget_max_tokens()
+                if last_seen == expected:
+                    logger.info("Context Budget max-tokens reached %d", expected)
+                    return last_seen
+            except ValueError:
+                pass  # Transient unparseable text during re-render
+            time.sleep(poll_interval)
+        raise AssertionError(
+            f"Context Budget max-tokens did not reach {expected} within {timeout}ms "
+            f"(last observed: {last_seen})"
+        )
+
     def get_context_budget_messages_count(self) -> str:
         """Return the Messages counter text from the Context Budget panel (e.g. "4").
 
@@ -2893,6 +4033,89 @@ class ChatPage(BasePage):
         target.first.wait_for(state="visible", timeout=timeout)
         logger.info("Context Budget Summaries counter reached %r", expected)
 
+    def is_context_budget_warning_visible(self) -> bool:
+        """Return True if the high-utilization warning icon is rendered.
+
+        The icon (``context-budget-warning-icon``) is conditionally mounted —
+        it does not exist in the DOM at all below 100% utilization — so this
+        checks ``count() > 0`` rather than a plain visibility check.
+        """
+        return self.context_budget_warning_icon.count() > 0 and self.context_budget_warning_icon.first.is_visible()
+
+    def wait_for_context_budget_warning_icon(self, timeout: int = 10000) -> None:
+        """Wait until the high-utilization warning icon appears (utilization = 100%)."""
+        logger.info("Waiting for Context Budget warning icon (100%% utilization)...")
+        self.context_budget_warning_icon.first.wait_for(state="visible", timeout=timeout)
+        logger.info("Context Budget warning icon is visible")
+
+    def set_context_strategy_thresholds(
+        self, max_context_tokens: int, target_summary_tokens: int, preserve_recent_messages: int
+    ) -> None:
+        """Set Max Context Tokens + Target Summary Tokens + Preserve Recent
+        Messages in the already-open 'Edit context settings' dialog, then Save.
+
+        Requires ``edit_context_settings()`` to have been called first (dialog
+        open). Sets Max Context Tokens BEFORE Target Summary Tokens so the
+        form's own 'less-than-max-context' validation sees the new ceiling
+        before the target value is checked against it.
+
+        Uses click() + select_text() + Backspace + press_sequentially()
+        (never fill()) — these are plain MUI text inputs (type="text",
+        inputMode="numeric") whose onChange only fires on real keyboard
+        events (.claude/rules/mui-patterns.md). A plain ``Control+a`` +
+        press_sequentially() (no explicit Backspace) was tried first and
+        left the OLD value in place with the new digits prepended in front
+        of it (e.g. typing "1000" over a "10000" default produced
+        "100010000") — confirmed live; ``select_text()`` + ``Backspace``
+        (the existing ``credential_create_page.py`` clear-field pattern)
+        reliably empties the field first.
+
+        Args:
+            max_context_tokens: New Max Context Tokens value (project MIN 1000).
+            target_summary_tokens: New Target Summary Tokens value (project MIN
+                100; must stay below ``max_context_tokens``).
+            preserve_recent_messages: New Preserve Recent Messages value
+                (project MIN 1). Forcing this low is what makes a post-
+                summarization Messages-count drop observable — otherwise
+                enough raw recent messages stay un-summarized to keep the
+                total high regardless of summarization actually running.
+        """
+        logger.info(
+            "Setting context strategy thresholds: max_context_tokens=%d, "
+            "target_summary_tokens=%d, preserve_recent_messages=%d",
+            max_context_tokens, target_summary_tokens, preserve_recent_messages,
+        )
+        self.context_modal_max_tokens_input.click()
+        self.context_modal_max_tokens_input.select_text()
+        self.context_modal_max_tokens_input.press("Backspace")
+        self.context_modal_max_tokens_input.press_sequentially(str(max_context_tokens), delay=30)
+
+        self.context_modal_target_summary_tokens_input.click()
+        self.context_modal_target_summary_tokens_input.select_text()
+        self.context_modal_target_summary_tokens_input.press("Backspace")
+        self.context_modal_target_summary_tokens_input.press_sequentially(str(target_summary_tokens), delay=30)
+
+        self.context_modal_preserve_recent_input.click()
+        self.context_modal_preserve_recent_input.select_text()
+        self.context_modal_preserve_recent_input.press("Backspace")
+        self.context_modal_preserve_recent_input.press_sequentially(str(preserve_recent_messages), delay=30)
+
+        self.context_modal_save_button.click()
+        self.wait_for_network()
+        logger.info("Context strategy thresholds saved")
+
+    def close_context_settings_dialog(self, timeout: int = 5000) -> None:
+        """Close the 'Edit context settings' dialog via Escape.
+
+        ContextStrategyModalContent's own keydown handler calls ``onClose()``
+        on Escape (mirrors the Cancel button) — no dedicated close-icon
+        testid is needed. Saving does not auto-close the dialog, so this is
+        a required separate step after ``set_context_strategy_thresholds()``.
+        """
+        self.page.keyboard.press("Escape")
+        Dialog.wait_for_hidden(self.page, timeout=timeout)
+        logger.info("Context settings dialog closed")
+
     # ------------------------------------------------------------------
     # "Add users" modal (ELITEA-2167) — search/select/chip/Add/Cancel/Close
     # picker reached via the plus menu -> "Invite Users" (Team projects
@@ -2940,6 +4163,16 @@ class ChatPage(BasePage):
     ADD_USERS_OPTION_PREFIX = '[data-testid^="add-users-option-"]'
     ADD_USERS_CHIP_PREFIX = '[data-testid^="add-users-chip-"]'
 
+    # Selected chip's own delete (X) icon (ELITEA-2168) — deliberately named
+    # "add-users-remove-chip-{userId}", NOT "add-users-chip-remove-{userId}":
+    # the latter would start with the same "add-users-chip-" prefix
+    # ``ADD_USERS_CHIP_PREFIX`` above already matches, which would make a
+    # chip-count/name query also match this delete icon and double-count it
+    # (AFS § Concrete Handles amendment). Prefix-match + ``.filter(has_text=
+    # ...)`` since the chip's own delete icon has no accessible text of its
+    # own — resolved by scoping within the chip container found by name.
+    ADD_USERS_CHIP_REMOVE_PREFIX = '[data-testid^="add-users-remove-chip-"]'
+
     @action("Open Add users modal")
     def open_add_users_modal(self, timeout: int = 10000):
         """Open the 'Add users' modal via the plus menu -> 'Invite Users'.
@@ -2985,11 +4218,153 @@ class ChatPage(BasePage):
         option.first.wait_for(state="visible", timeout=timeout)
         option.first.click()
 
+    @action("Search and select a user in the Add users modal (verified)")
+    def search_and_select_add_user_verified(
+        self, query: str, name: str, timeout: int = 10000, retries: int = 2,
+    ) -> None:
+        """Same intent as ``search_and_select_add_user()``, but verifies the
+        typed query actually landed in the search field before waiting for
+        the option, retrying the type if it didn't (ELITEA-2168).
+
+        Confirmed live: making several selections in the same open 'Add
+        users' session can occasionally leave the search field's
+        React-controlled value silently reset to ``''`` right after a
+        click+type — the SAME ``onClickOption`` callback that adds a chip
+        also calls ``setInputValue('')``, and a late-flushed state update
+        from a JUST-PRIOR selection can race in and clobber what was just
+        typed. A plain ``press_sequentially()`` has no way to detect this;
+        this method reads ``input_value()`` back and retries the type
+        (click + clear + retype) if it doesn't match, before ever waiting
+        on the option.
+
+        Additive sibling — does NOT modify ``search_and_select_add_user()``
+        itself (Hard Rule 3: that method has an existing merged caller,
+        ELITEA-2167's test, which is not being regression-tested here).
+
+        Only clears the field when it is NOT already empty. Confirmed live
+        this implementation: MUI Autocomplete treats Backspace on an
+        ALREADY-empty input as "delete the last selected chip" (a standard
+        Autocomplete UX pattern) — pressing Control+a/Backspace
+        unconditionally after a just-completed selection (which itself
+        resets ``inputValue`` to ``''``) silently DESELECTED the
+        previously-added chip instead of merely clearing text, corrupting
+        multi-selection sequences (e.g. only the 2nd of 2 queued users
+        actually persisted). Clearing is now conditional on the field
+        genuinely having leftover content.
+
+        Also waits for the (already-open) modal's org-user list to finish
+        its initial async fetch before the FIRST search of a session:
+        ``open_add_users_modal()`` only waits for the dialog to be
+        visible, not for ``useUserList``'s underlying fetch to resolve —
+        searching immediately after open can race a still-empty
+        ``optionList``, silently returning zero matches for a query that
+        would otherwise succeed a moment later (confirmed live this
+        implementation). Detected by clicking the field first and waiting
+        for ANY unfiltered option row to render.
+
+        Args:
+            query: Search substring (e.g. "sa").
+            name: Exact visible name of the option to select.
+            timeout: Maximum wait time in milliseconds for the option itself.
+            retries: Extra attempts if the typed query doesn't land (default 2).
+        """
+        option = self.page.locator(self.ADD_USERS_OPTION_PREFIX).filter(has_text=name)
+        last_exc: Exception | None = None
+        for attempt in range(retries + 1):
+            self.add_users_search_input.click()
+            try:
+                self.page.locator(self.ADD_USERS_OPTION_PREFIX).first.wait_for(
+                    state="visible", timeout=timeout,
+                )
+            except Exception:
+                logger.warning(
+                    "Add users org-user list not loaded yet — retrying "
+                    "(attempt %d/%d)", attempt + 1, retries + 1,
+                )
+                continue
+            if self.add_users_search_input.input_value():
+                self.add_users_search_input.press("Control+a")
+                self.add_users_search_input.press("Backspace")
+            self.add_users_search_input.press_sequentially(query, delay=50)
+            try:
+                actual = self.add_users_search_input.input_value()
+            except Exception:
+                actual = None
+            if actual != query:
+                logger.warning(
+                    "Add users search query did not land as typed (got %r, "
+                    "expected %r) — retrying (attempt %d/%d)",
+                    actual, query, attempt + 1, retries + 1,
+                )
+                continue
+            try:
+                option.first.wait_for(state="visible", timeout=timeout)
+                option.first.click()
+                return
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "Option %r not found after query %r landed — retrying (attempt %d/%d)",
+                    name, query, attempt + 1, retries + 1,
+                )
+        raise last_exc or AssertionError(
+            f"Could not select {name!r} via query {query!r} after {retries + 1} attempts"
+        )
+
     def get_add_users_chip_names(self) -> list[str]:
         """Return the visible names on every currently selected chip in the
         (still-open) 'Add users' modal."""
         chips = self.page.locator(self.ADD_USERS_CHIP_PREFIX)
         return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
+    def wait_for_add_users_chip(self, name: str, timeout: int = 5000) -> None:
+        """Wait until a chip for *name* is visible in the (open) 'Add users' modal.
+
+        Callers making several ``search_and_select_add_user()`` calls back
+        to back (ELITEA-2168 steps needing multiple selections in a row)
+        must settle each selection's React re-render before starting the
+        next search: the SAME ``onClickOption`` callback that adds the
+        chip also resets the search input's ``inputValue`` to ``''`` — a
+        rapid next click+type can race that reset and silently drop the
+        next query's keystrokes (confirmed live this implementation —
+        the option list re-opens unfiltered because the typed query never
+        landed). Not needed after a single selection followed by a
+        DIFFERENT action (Add/Cancel/Close all already settle their own
+        state independently).
+        """
+        chip = self.page.locator(self.ADD_USERS_CHIP_PREFIX).filter(has_text=name)
+        chip.first.wait_for(state="visible", timeout=timeout)
+
+    @action("Remove a selected chip in the Add users modal")
+    def remove_add_users_chip(self, name: str, timeout: int = 5000):
+        """Click *name*'s own delete (X) icon on its selected chip in the
+        (open) 'Add users' modal, deselecting it (ELITEA-2168).
+
+        Resolves the chip container via ``ADD_USERS_CHIP_PREFIX`` filtered
+        by *name* (same idiom as ``get_add_users_chip_names()``), then
+        clicks its own delete icon scoped WITHIN that chip via
+        ``ADD_USERS_CHIP_REMOVE_PREFIX`` — the prefix-match avoids needing
+        the user id, which callers of this method don't have (they only
+        know the display name that was searched/selected).
+
+        Does NOT call ``dismiss_add_users_dropdown()`` — no results popper
+        is open at this point in the flow this method is used for. The
+        NEXT action after this call must be ``add_users_confirm_button``
+        clicked directly rather than ``click_add_users_confirm()`` — the
+        latter unconditionally presses Escape first, which closes the
+        whole dialog (not just a results popper) when nothing is open to
+        dismiss (AFS § Automation Hints — blind-Escape-after-chip-removal
+        gotcha).
+
+        Args:
+            name: Exact visible name on the chip to remove (e.g.
+                "Tatiana Bontsevich").
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Removing Add users chip for %r", name)
+        chip = self.page.locator(self.ADD_USERS_CHIP_PREFIX).filter(has_text=name)
+        chip.first.wait_for(state="visible", timeout=timeout)
+        chip.first.locator(self.ADD_USERS_CHIP_REMOVE_PREFIX).click()
 
     def is_add_users_option_present(self, name: str, timeout: int = 3000) -> bool:
         """Return True if an option matching *name* is currently rendered in
@@ -3010,6 +4385,25 @@ class ChatPage(BasePage):
     def is_add_users_confirm_enabled(self) -> bool:
         """Return True if the 'Add users' modal's Add button is enabled."""
         return self.add_users_confirm_button.is_enabled()
+
+    def is_add_users_results_open(self) -> bool:
+        """Return True if the 'Add users' modal's Autocomplete results
+        popper is currently VISIBLE (ELITEA-2168).
+
+        The popper's own visibility is driven purely by
+        ``optionList.length > 0 && filteredOptionsCount > 0`` — NOT by
+        "was there a recent search action". Confirmed live this
+        implementation: removing an already-selected chip via its own
+        delete icon can flip this back to true (the removed user is no
+        longer excluded, so an empty-query filter now matches again),
+        re-opening the results list WITHOUT any further click/type,
+        silently intercepting a later click on Add/Cancel/Close. Checks
+        each ``ADD_USERS_OPTION_PREFIX`` row's own visibility (CSS
+        ``display: none`` on the popper leaves the rows attached but not
+        visible) rather than mere DOM presence.
+        """
+        options = self.page.locator(self.ADD_USERS_OPTION_PREFIX)
+        return options.count() > 0 and options.first.is_visible()
 
     def dismiss_add_users_dropdown(self):
         """Close the still-open MUI Autocomplete results popper WITHOUT
@@ -3313,6 +4707,250 @@ class ChatPage(BasePage):
 
         logger.info("Toolkit '%s' added as chat participant", toolkit_name)
 
+    # ------------------------------------------------------------------
+    # HITL sensitive-action authorization card — direct toolkit call, no
+    # agent (ELITEA-2211..2214)
+    # ------------------------------------------------------------------
+
+    def wait_for_sensitive_action_panel(self, timeout: int = 30000) -> bool:
+        """Wait for the Sensitive Action Authorization card to appear.
+
+        Mirrors ``AgentDetailPage.wait_for_sensitive_action_authorization()``
+        but for the direct-toolkit-call flow on the main ``/chat`` page (no
+        agent) and WITHOUT auto-clicking Authorize — callers choose
+        Authorize / Block / Block with Comment themselves, since
+        ELITEA-2211..2214 each exercise a different one of the three.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            True if the panel appeared, False otherwise.
+        """
+        logger.info("Waiting for Sensitive Action Authorization panel (direct toolkit call)")
+        try:
+            self.sensitive_action_panel.wait_for(state="visible", timeout=timeout)
+            logger.info("Sensitive Action Authorization panel appeared")
+            return True
+        except Exception:
+            logger.warning(
+                "Sensitive Action Authorization panel did NOT appear within %dms", timeout
+            )
+            return False
+
+    # ------------------------------------------------------------------
+    # Slash-mention dropdown: '/' -> toolkit/MCP picker -> tool picker
+    # (ELITEA-2202/2203/2204)
+    # ------------------------------------------------------------------
+
+    slash_mention_list = LocatorDescriptor(
+        testid="slash-mention-list",
+        description=(
+            "Slash-mention dropdown container (toolkit/MCP participant "
+            "picker), shown while the composer starts with '/'. Renders "
+            "'Mention Toolkit or MCP' as its title, then either participant "
+            "cards or 'No matching results'."
+        ),
+    )
+
+    slash_mention_tool_list = LocatorDescriptor(
+        testid="slash-mention-tool-list",
+        description=(
+            "Available-tools list shown after selecting a toolkit from the "
+            "slash-mention dropdown. Titled '{toolkit_name} available "
+            "tools'."
+        ),
+    )
+
+    toolkits_menuitem = LocatorDescriptor(
+        testid="toolkits-menuitem",
+        description=(
+            "'Toolkits' entry in the open plus-menu popper (hover-triggered "
+            "-- a plain .click() works, it hovers first)."
+        ),
+    )
+
+    mcps_menuitem = LocatorDescriptor(
+        testid="mcps-menuitem",
+        description=(
+            "'MCPs' entry in the open plus-menu popper (hover-triggered). "
+            "Gated by useIsMcpVisible() platform settings."
+        ),
+    )
+
+    toolkits_search_input = LocatorDescriptor(
+        testid="toolkits-search-input",
+        description="Search field inside the plus-menu's Toolkits submenu.",
+    )
+
+    mcps_search_input = LocatorDescriptor(
+        testid="mcps-search-input",
+        description="Search field inside the plus-menu's MCPs submenu.",
+    )
+
+    # Dynamic testids -- class-level template constants (.agents/testing.md
+    # § Locator policy). Format with (project_id, toolkit_id) unless noted.
+    SLASH_MENTION_ITEM = '[data-testid="slash-mention-item-{}_{}"]'
+    SLASH_MENTION_TOOL_ITEM = '[data-testid="slash-mention-tool-item-{}"]'  # format(tool_name)
+    TOOLKIT_PARTICIPANT_MENU_ITEM = '[data-testid="toolkits-menu-item-toolkit-{}-{}"]'
+    MCP_PARTICIPANT_MENU_ITEM = '[data-testid="mcps-menu-item-mcp-{}-{}"]'
+    # Prefix wildcards (same shared-suffix-counting precedent as
+    # PLUS_MENU_ITEM_SUFFIX above) -- used for count/order checks that
+    # don't care about one specific dynamic suffix.
+    SLASH_MENTION_ITEM_PREFIX = '[data-testid^="slash-mention-item-"]'
+    SLASH_MENTION_TOOL_ITEM_PREFIX = '[data-testid^="slash-mention-tool-item-"]'
+
+    @action("Open slash-mention dropdown")
+    def open_slash_mention_dropdown(self, timeout: int = 10000):
+        """Click the message input and type '/' to open the slash-mention
+        dropdown (ELITEA-2202/2203/2204). Waits for ``slash_mention_list``
+        to become visible.
+        """
+        self.message_input.click()
+        self.message_input.press_sequentially("/")
+        self.slash_mention_list.wait_for(state="visible", timeout=timeout)
+
+    @action("Close slash-mention dropdown via outside click")
+    def close_slash_mention_dropdown(self, timeout: int = 10000):
+        """Click a neutral point inside the message list to close the
+        slash-mention dropdown (``ClickAwayListener``) and wait for it to
+        detach.
+
+        Do NOT use Escape -- confirmed live NOT to close this
+        Popper+ClickAwayListener shape (AFS ELITEA-2202 step 4 /
+        ``_surface.md`` § Modules panel documents the identical quirk for
+        the sibling plus-menu "Modules" popper).
+        """
+        self.messages_list.click(position={"x": 10, "y": 10})
+        self.slash_mention_list.wait_for(state="detached", timeout=timeout)
+
+    def get_slash_mention_item(self, project_id: int, toolkit_id: int):
+        """Return the Locator for a slash-mention dropdown item (toolkit or MCP)."""
+        return self.page.locator(self.SLASH_MENTION_ITEM.format(project_id, toolkit_id))
+
+    def get_slash_mention_tool_item(self, tool_name: str):
+        """Return the Locator for a per-tool row in the available-tools list."""
+        return self.page.locator(self.SLASH_MENTION_TOOL_ITEM.format(tool_name))
+
+    def get_slash_mention_item_count(self) -> int:
+        """Count of toolkit/MCP items currently shown in the slash-mention
+        dropdown (same prefix-count idiom as ``get_attachment_chip_count()``)."""
+        return self.slash_mention_list.locator(self.SLASH_MENTION_ITEM_PREFIX).count()
+
+    def get_slash_mention_tool_testids(self) -> list[str]:
+        """Ordered list of ``data-testid`` values for the rows currently
+        shown in the open available-tools list (DOM order == configured
+        ``selected_tools`` order, ELITEA-2204)."""
+        items = self.slash_mention_tool_list.locator(self.SLASH_MENTION_TOOL_ITEM_PREFIX)
+        return [items.nth(i).get_attribute("data-testid") for i in range(items.count())]
+
+    @action("Select toolkit from slash-mention dropdown")
+    def select_slash_mention_toolkit(self, project_id: int, toolkit_id: int, timeout: int = 10000):
+        """Click a toolkit/MCP card in the open slash-mention dropdown.
+
+        Replaces the '/' fragment with '/{toolkit_name}' and opens the
+        available-tools list (``slash_mention_tool_list``). Waits past the
+        container's mere visibility into its ``isToolsFetching`` loading
+        state actually resolving (``useToolkitsDetailsQuery`` -- confirmed
+        live: the container renders immediately with a loading spinner and
+        ZERO tool-item testids, so waiting on container visibility alone
+        races the fetch and reads an empty list, ELITEA-2204) -- waits for
+        the first tool-item row to attach instead.
+        """
+        item = self.get_slash_mention_item(project_id, toolkit_id)
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+        self.slash_mention_tool_list.wait_for(state="visible", timeout=timeout)
+        self.slash_mention_tool_list.locator(self.SLASH_MENTION_TOOL_ITEM_PREFIX).first.wait_for(
+            state="visible", timeout=timeout,
+        )
+
+    @action("Select tool from available-tools list")
+    def select_slash_mention_tool(self, tool_name: str, timeout: int = 10000):
+        """Click a tool row in the open available-tools list.
+
+        Replaces the composer fragment with '/{toolkit_name}/{tool_name} '
+        (confirmed live trailing space).
+        """
+        item = self.get_slash_mention_tool_item(tool_name)
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+
+    @action("Open plus menu -> Toolkits submenu")
+    def open_toolkits_submenu(self, timeout: int = 10000):
+        """Open the plus menu and click 'Toolkits' to reveal its submenu
+        (search input + toggle-switch item rows)."""
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.toolkits_menuitem.wait_for(state="visible", timeout=timeout)
+        self.toolkits_menuitem.click()
+        self.toolkits_search_input.wait_for(state="visible", timeout=timeout)
+
+    @action("Add toolkit participant via slash-menu toggle")
+    def add_toolkit_participant_via_slash_menu(
+        self, project_id: int, toolkit_id: int, timeout: int = 10000,
+    ):
+        """Add a toolkit as a chat participant via the plus menu's Toolkits
+        submenu toggle-switch row (ELITEA-2203).
+
+        NOT a reuse of the legacy ``add_toolkit_participant()`` (agents'
+        select-and-close flow, ``li[role="menuitem"]:has-text(...)``
+        locators) -- Toolkits/MCPs rows here render as toggle switches
+        (``showToggle: true``) and clicking a row toggles participant
+        membership WITHOUT closing the submenu, a genuinely different
+        interaction shape.
+
+        Opens the plus menu, clicks 'Toolkits', and clicks the matching
+        row (resolved directly by its dynamic testid -- the list is sorted
+        newest-first, so a just-created toolkit is already on the first,
+        unfiltered page; no need to type into the search field, which
+        avoids racing this fixture's long, timestamp-suffixed generated
+        name against a per-keystroke, non-debounced search call).
+        Does NOT close the popper afterward -- caller decides (see
+        ``add_mcp_participant_via_slash_menu`` for the two-in-one-popper
+        case, or ``close_plus_menu_popper`` to close alone).
+        """
+        self.open_toolkits_submenu(timeout=timeout)
+        item = self.page.locator(self.TOOLKIT_PARTICIPANT_MENU_ITEM.format(project_id, toolkit_id))
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+        self.wait_for_network(timeout=timeout)
+
+    @action("Add MCP participant via slash-menu toggle (same open popper)")
+    def add_mcp_participant_via_slash_menu(
+        self, project_id: int, toolkit_id: int, timeout: int = 10000,
+    ):
+        """Add an MCP as a chat participant via the plus menu's MCPs submenu
+        toggle-switch row, WITHOUT closing the popper first (ELITEA-2203
+        quirk: closing (``Escape``) and re-clicking ``plus_menu_button``
+        between the Toolkits and MCPs submenus toggles the whole popper
+        CLOSED instead of reopening it -- go directly from one submenu to
+        the other within the same open popper; ``mcps_menuitem`` is
+        hover-triggered so a plain ``.click()`` works without reopening
+        anything).
+
+        Resolves the row directly by its dynamic testid, same
+        no-search-needed reasoning as ``add_toolkit_participant_via_slash_menu``.
+
+        Call this directly after ``add_toolkit_participant_via_slash_menu``
+        (same open popper) -- do not close in between.
+        """
+        self.mcps_menuitem.wait_for(state="visible", timeout=timeout)
+        self.mcps_menuitem.click()
+        self.mcps_search_input.wait_for(state="visible", timeout=timeout)
+        item = self.page.locator(self.MCP_PARTICIPANT_MENU_ITEM.format(project_id, toolkit_id))
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+        self.wait_for_network(timeout=timeout)
+
+    @action("Close plus-menu popper via outside click")
+    def close_plus_menu_popper(self, timeout: int = 5000):
+        """Click a neutral point inside the message list to close the
+        plus-menu popper. Do NOT use Escape (ELITEA-2203 quirk -- closes
+        the popper in a way that then blocks the next open, see
+        ``add_mcp_participant_via_slash_menu`` docstring)."""
+        self.messages_list.click(position={"x": 10, "y": 10})
+
     def is_agent_participant_in_composer(self, agent_name: str, timeout: int = 10000) -> bool:
         """Return True if *agent_name* is shown as the active agent in the composer.
 
@@ -3537,6 +5175,102 @@ class ChatPage(BasePage):
         self.page.mouse.move(0, 0)
         logger.info("Agent participant id=%s removed from chat", agent_id)
 
+    @action("Open Remove-user confirmation for a Users-dropdown row")
+    def open_remove_user_dialog(self, user_id: int, timeout: int = 10000):
+        """Open a fresh 'Users' participants popover (closing it first if
+        already open), hover *user_id*'s row, click its delete icon, and
+        return the resulting 'Remove user?' dialog WITHOUT confirming or
+        cancelling it (ELITEA-2168) — the caller decides, since the case's
+        own steps 9/10 diverge here: step 9 clicks Remove, step 10 clicks
+        Cancel on a DIFFERENT row.
+
+        Generalizes ``remove_agent_participant()``'s row-resolution +
+        hover-reveal mechanism to the "user" entity type via the new
+        ``chat-participant-row-user_{user_id}_`` row testid (same
+        ``PARTICIPANT_ROW``/``getChatParticipantUniqueId()`` template
+        family ELITEA-1793 already established for Agents/Pipelines/
+        Toolkits/MCP rows). Does not modify ``remove_agent_participant()``
+        itself (additive-only — Hard Rule 3).
+
+        No ``project_id`` argument — unlike agent/pipeline participants,
+        ``getChatParticipantUniqueId()``'s ``entity_meta?.project_id``
+        segment is genuinely empty for "user" participants (confirmed
+        live this implementation: the platform user entity has no
+        project scope), so the rendered testid always ends with a bare
+        trailing underscore, e.g. ``chat-participant-row-user_7_``, never
+        ``..._user_7_471``.
+
+        Always resets the mouse to (0, 0) before hovering — a residual
+        real-mouse ``:hover`` left on a just-removed row's former position
+        can otherwise prevent the NEXT row's delete icon from reliably
+        revealing (AFS step 10 gotcha, same class already documented for
+        ``remove_agent_participant()``).
+
+        Args:
+            user_id: The participant's ``entity_meta.id`` (platform user id).
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The dialog Locator (pass to ``components.mui.Dialog.click_button``).
+        """
+        logger.info("Opening Remove-user dialog for user_id=%s", user_id)
+        # Always close (if open) and reopen fresh, rather than reusing an
+        # already-open popper as-is: right after a just-confirmed Remove,
+        # the popper can still be showing the PRE-removal participant list
+        # for a moment before the badge/list re-render settles (confirmed
+        # live this implementation) — reusing it as "already open" then
+        # races that in-flight re-render. A fresh close+reopen forces a
+        # clean re-render against current state.
+        if self.participants_popper.is_visible():
+            self.dismiss_participants_popover()
+            self.participants_popper.wait_for(state="hidden", timeout=timeout)
+        popper = self.open_participants_popover(section="users", timeout=timeout)
+
+        unique_id = f"user_{user_id}_"
+        row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+
+        # UserMenu.jsx's sortedUsers is recomputed (in-place Array.sort())
+        # on every render of the popper, which can tear down and rebuild
+        # row DOM nodes between two SEPARATE actions on the same element
+        # (confirmed live this implementation: a plain
+        # row.wait_for(visible) immediately followed by
+        # row.scroll_into_view_if_needed() intermittently hit "Element is
+        # not attached to the DOM"). A single ``hover()`` call — which
+        # already performs its own visible/stable/auto-scroll
+        # actionability checks internally — resolves the element fresh
+        # right before acting, cutting the race window from two
+        # round-trips to one. Retried once for the rare case a re-render
+        # lands mid-hover.
+        self.page.mouse.move(0, 0)
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                # force=True skips Playwright's "wait until stable" check
+                # (bounding box unchanged across consecutive frames) —
+                # confirmed live this implementation: the popper's row
+                # list keeps re-rendering continuously enough that
+                # "stable" is never satisfied within a normal timeout,
+                # even though the element itself is genuinely visible and
+                # actionable throughout. A real mouse-move event is still
+                # dispatched (force only bypasses the pre-check), so the
+                # CSS :hover-reveal on the delete icon still activates.
+                row.hover(timeout=timeout, force=True)
+                self.page.wait_for_timeout(300)  # hover-reveal CSS transition
+                remove_btn = row.locator(self.PARTICIPANT_REMOVE_BUTTON)
+                remove_btn.wait_for(state="visible", timeout=timeout)
+                remove_btn.click(force=True)
+                break
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "Row for user_id=%s detached mid-interaction — retrying (attempt %d/3)",
+                    user_id, attempt + 1,
+                )
+        else:
+            raise last_exc
+
+        return Dialog.wait_for(self.page, timeout=timeout)
+
     @action("Open Mention skill popper")
     def open_mention_skill_popper(self, timeout: int = 10000):
         """Clear the message input and type "~" to open the "Mention skill" popper.
@@ -3649,6 +5383,60 @@ class ChatPage(BasePage):
             return True
         except Exception:
             return False
+
+    @action("Open user-mention popper via '@'")
+    def open_user_mention_popper(self, timeout: int = 10000):
+        """Clear the message input and type "@" to open the composer's
+        user-mention popper (ELITEA-2168 — ``UserMentionList.jsx``, distinct
+        from both the participants dropdown and the "~" skill-mention
+        popper above).
+
+        Same ``press_sequentially``-not-``fill()`` discipline as
+        ``open_mention_skill_popper()`` — a ``fill()`` bypasses the
+        mention-trigger keyup handler and the popper never opens (AFS §
+        Automation Hints — mention-input mechanics). Clears any
+        pre-existing content first, same as ``open_mention_skill_popper()``.
+
+        Returns the ``user_mention_list`` Locator.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.message_input.wait_for(state="visible", timeout=timeout)
+        self.message_input.click()
+        self.message_input.press("Control+a")
+        self.message_input.press("Backspace")
+        self.message_input.press_sequentially("@", delay=50)
+
+        self.user_mention_list.wait_for(state="visible", timeout=timeout)
+        return self.user_mention_list
+
+    @action("Select a participant from the open user-mention popper")
+    def select_user_mention(self, name_or_everyone: str, timeout: int = 10000):
+        """Click the row matching *name_or_everyone* in the open user-mention
+        popper (ELITEA-2168).
+
+        "Everyone" resolves via the exact ``chat-user-mention-item-@everyone``
+        testid — the literal id ``ChatBox.jsx``'s ``users`` memo assigns
+        that row (AFS § Concrete Handles). Any other value is treated as a
+        display name and resolved via ``USER_MENTION_ITEM_PREFIX`` +
+        ``.filter(has_text=...)`` (same testid-anchored-locator idiom as
+        ``search_and_select_add_user()``), since a specific participant's
+        mention-row id is the participant-LINK id (``participant.id``), not
+        a value callers know ahead of time.
+
+        Args:
+            name_or_everyone: Exact visible participant name, or the
+                literal string "Everyone".
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting user mention: %r", name_or_everyone)
+        if name_or_everyone == "Everyone":
+            row = self.page.locator(self.USER_MENTION_ITEM.format("@everyone"))
+        else:
+            row = self.page.locator(self.USER_MENTION_ITEM_PREFIX).filter(has_text=name_or_everyone)
+        row.first.wait_for(state="visible", timeout=timeout)
+        row.first.click()
 
     # ------------------------------------------------------------------
     # UI state wait helpers
@@ -3883,6 +5671,30 @@ class ChatPage(BasePage):
         expanded_item.wait_for(state="visible", timeout=timeout)
         logger.info("Folder %s expanded", folder_id)
 
+    def is_conversation_in_folder(
+        self, folder_id: str | int, conversation_id: str | int, timeout: int = 5000,
+    ) -> bool:
+        """Return True if *conversation_id* renders inside folder *folder_id* specifically.
+
+        Scopes the dynamic ``CONVERSATION_ITEM`` testid WITHIN the dynamic
+        ``FOLDER_ITEM`` container — the same id-scoping precedent as
+        ``is_conversation_in_group()`` for date groups (ELITEA-2135/
+        ELITEA-2137), replacing a raw ``get_folder_item(...).locator(...)``
+        chain built inline in test code.
+
+        Args:
+            folder_id: Numeric folder id.
+            conversation_id: Numeric conversation id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        folder_container = self.get_folder_item(folder_id)
+        item = folder_container.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        try:
+            item.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
     def get_folder_empty_state_text(self, folder_id: str | int) -> str:
         """Return the empty-state text scoped inside *folder_id*'s row.
 
@@ -3917,6 +5729,19 @@ class ChatPage(BasePage):
         so hovering it reliably lands within the header regardless of
         whether the folder is collapsed or expanded.
 
+        Uses ``.first`` on the ``CONVERSATION_MENU_BUTTON`` match: when the
+        folder is EXPANDED and contains a conversation (ELITEA-2135/
+        ELITEA-2137's cleanup path — a folder deleted right after a
+        conversation was moved into and left visible inside it), the
+        conversation's OWN dot-menu button shares the same non-unique
+        testid and also resolves within the folder's scope, causing a
+        strict-mode "resolved to 2 elements" violation. ``FolderAccordion.jsx``
+        always renders the header (``summaryContainer``, containing the
+        folder's own ``DotMenu``) BEFORE the accordion body/children in DOM
+        order, so ``.first`` reliably picks the folder's own button
+        regardless of expand state or content — degrading to the same
+        single match ELITEA-2132's original (empty-folder) usage always saw.
+
         Args:
             folder_id: Numeric folder id.
             timeout: Maximum wait time in milliseconds.
@@ -3924,7 +5749,7 @@ class ChatPage(BasePage):
         logger.info("Deleting folder %s via 3-dot menu", folder_id)
         item = self.get_folder_item(folder_id)
         item.locator(self.FOLDER_ICON).hover()
-        menu_button = item.locator(self.CONVERSATION_MENU_BUTTON)
+        menu_button = item.locator(self.CONVERSATION_MENU_BUTTON).first
         menu_button.wait_for(state="visible", timeout=timeout)
         menu_button.click(force=True)
 

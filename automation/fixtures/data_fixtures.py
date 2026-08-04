@@ -15,6 +15,8 @@ Fixtures:
 - pipeline_with_llm_id: Fresh executable pipeline with LLM node
 - github_credential: GitHub API credential (skipped if GITHUB_TOKEN unset)
 - github_toolkit: GitHub toolkit attached to a fresh credential
+- github_toolkit_with_selected_tools: GitHub toolkit with settings.selected_tools
+  set (required for the pipeline Toolkit node's Tool select to render)
 - github_relevant_agents: GitHub-relevant Agent pair (selected/not_selected)
 - github_relevant_skills: GitHub-relevant Skill pair (selected/not_selected)
 - invalid_jira_credential: Jira credential with invalid/expired token
@@ -28,6 +30,8 @@ import time
 import pytest
 from api import AgentAPI, ArtifactAPI, ConversationAPI, CredentialAPI, PipelineAPI, SkillAPI, ToolkitAPI
 from config import settings
+from pages.guardrails_admin_page import GuardrailsAdminPage
+from playwright.sync_api import Browser
 
 logger = logging.getLogger("elitea.automation.fixtures.data")
 
@@ -267,6 +271,58 @@ def github_toolkit(github_credential: dict, toolkit_api: ToolkitAPI, request):
         base_branch=_GITHUB_BRANCH,
     )
     logger.info("Created GitHub toolkit %s (%s) for %s", toolkit["id"], name, request.node.name)
+
+    yield {"id": toolkit["id"], "name": name, "branch": _GITHUB_BRANCH}
+
+    try:
+        toolkit_api.delete_toolkit(toolkit["id"])
+        logger.info("Deleted GitHub toolkit %s", toolkit["id"])
+    except Exception as exc:
+        logger.warning("Failed to delete toolkit %s during teardown: %s", toolkit["id"], exc)
+
+
+@pytest.fixture
+def github_toolkit_with_selected_tools(github_credential: dict, toolkit_api: ToolkitAPI, request):
+    """Create a GitHub toolkit with ``settings.selected_tools`` explicitly set.
+
+    Sibling of :func:`github_toolkit` — that fixture does NOT set
+    ``selected_tools``, which is fine for toolkit-attach/agent flows but is a
+    load-bearing gap for the pipeline Toolkit node (ELITEA-2010 AFS §
+    Preconditions / Automation Hints): a toolkit with no ``selected_tools``
+    renders a Toolkit node with no Tool select at all (0 options, absent
+    from the DOM, confirmed live) — the node's Tool dropdown reads the
+    toolkit's own ``settings.selected_tools``, not a dynamic "discover all
+    tools" call. This fixture selects ``search_issues`` (1 required param —
+    SEARCH QUERY — plus 2 optional — MAX COUNT / REPO NAME), matching the
+    AFS's Test Data.
+
+    Depends on ``github_credential`` — both are cleaned up after the test.
+
+    Yields a dict with ``id``, ``name``, and ``branch`` keys — same shape as
+    :func:`github_toolkit`.
+
+    Args:
+        github_credential: GitHub credential fixture (provides elitea_title)
+        toolkit_api: ToolkitAPI client (from api_fixtures)
+        request: Pytest request object (provides test metadata)
+
+    Yields:
+        dict: ``{"id": int, "name": str, "branch": str}``
+    """
+    name = f"autotest_gh_tk_tools_{request.node.name}"[:32]
+    toolkit = toolkit_api.create_github_toolkit(
+        name=name,
+        description=f"Auto-created for test {request.node.name}",
+        credential_elitea_title=github_credential["elitea_title"],
+        repository=settings.git_repo,
+        active_branch=_GITHUB_BRANCH,
+        base_branch=_GITHUB_BRANCH,
+        selected_tools=["search_issues"],
+    )
+    logger.info(
+        "Created GitHub toolkit %s (%s, selected_tools=['search_issues']) for %s",
+        toolkit["id"], name, request.node.name,
+    )
 
     yield {"id": toolkit["id"], "name": name, "branch": _GITHUB_BRANCH}
 
@@ -528,13 +584,144 @@ def artifact_toolkit(artifact_bucket: dict, toolkit_api: ToolkitAPI, request):
         toolkit["id"], name, bucket_name, request.node.name,
     )
 
-    yield {"id": toolkit["id"], "name": name, "bucket_name": bucket_name}
+    yield {
+        "id": toolkit["id"],
+        "name": name,
+        "bucket_name": bucket_name,
+        "project_id": int(toolkit_api.project_id),  # ELITEA-2203: slash-mention menu-item testids need it
+    }
 
     try:
         toolkit_api.delete_toolkit(toolkit["id"])
         logger.info("Deleted artifact toolkit %s", toolkit["id"])
     except Exception as exc:
         logger.warning("Failed to delete artifact toolkit %s: %s", toolkit["id"], exc)
+
+
+# ELITEA-2204's exact, narrow selected_tools list -- NOT create_artifact_toolkit()'s
+# hardcoded 16-tool list, which would make the case's "exactly 4 tools, in this
+# order" assertion false against the live default (AFS § Test Data).
+_FOUR_TOOL_SELECTED_TOOLS = ["index_data", "list_indexes", "search_index", "stepback_search_index"]
+
+
+@pytest.fixture
+def artifact_toolkit_four_tools(artifact_bucket: dict, toolkit_api: ToolkitAPI, request):
+    """Create an Artifact toolkit with EXACTLY 4 ``selected_tools`` (ELITEA-2204).
+
+    ``artifact_toolkit`` (above) reuses ``create_artifact_toolkit()``, whose
+    factory hardcodes a 16-tool ``selected_tools`` list -- unusable for a case
+    that asserts the slash-mention tools list shows exactly 4, in configuration
+    order. This fixture calls ``toolkit_api.create_toolkit()`` directly with
+    the narrower list instead, keeping the same
+    ``pgvector_configuration``/``embedding_model``/``bucket`` shape
+    ``create_artifact_toolkit()`` already uses.
+
+    Depends on ``artifact_bucket`` -- both are cleaned up after the test.
+
+    Yields:
+        dict: ``{"id": int, "name": str, "bucket_name": str, "project_id": int}``
+    """
+    ts = str(int(time.time()))
+    raw = f"autotest-art4-{request.node.name}"
+    name = raw[:28] + f"-{ts[-4:]}"  # keep total ≤ 32 chars (API limit)
+
+    bucket_name = artifact_bucket["name"]
+    toolkit = toolkit_api.create_toolkit(
+        name=name,
+        description=f"Auto-created 4-tool artifact toolkit for {request.node.name}",
+        toolkit_type="artifact",
+        settings={
+            "pgvector_configuration": None,
+            "embedding_model": "text-embedding-3-small",
+            "bucket": bucket_name,
+            "selected_tools": _FOUR_TOOL_SELECTED_TOOLS,
+        },
+    )
+    logger.info(
+        "Created 4-tool artifact toolkit %s ('%s') → bucket '%s' for %s",
+        toolkit["id"], name, bucket_name, request.node.name,
+    )
+
+    yield {
+        "id": toolkit["id"],
+        "name": name,
+        "bucket_name": bucket_name,
+        "project_id": int(toolkit_api.project_id),
+    }
+
+    try:
+        toolkit_api.delete_toolkit(toolkit["id"])
+        logger.info("Deleted 4-tool artifact toolkit %s", toolkit["id"])
+    except Exception as exc:
+        logger.warning("Failed to delete 4-tool artifact toolkit %s: %s", toolkit["id"], exc)
+
+
+# ---------------------------------------------------------------------------
+# HITL sensitive-action fixtures for ELITEA-2211..2214 (direct toolkit call)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def artifact_seeded_file(artifact_toolkit: dict, artifact_api: ArtifactAPI, request):
+    """Seed one real file into ``artifact_toolkit``'s bucket.
+
+    Gives Authorize/Block something genuine to act on so the backend-verified
+    execution/non-execution checks (ELITEA-2212/2213/2214 — "assert via
+    ArtifactAPI, not just a UI-only signal") have ground truth to compare
+    against: Authorize should make this file disappear, Block should leave
+    it in place. No separate teardown — the ``artifact_bucket`` fixture
+    (a dependency of ``artifact_toolkit``) deletes the whole bucket.
+
+    Yields:
+        str: the file's key (relative path) inside the bucket.
+    """
+    bucket_name = artifact_toolkit["bucket_name"]
+    file_key = f"autotest-hitl-{request.node.name}"[:60] + ".txt"
+    artifact_api.upload_file(bucket_name, file_key, b"hitl automation seed file")
+    logger.info("Seeded file '%s' in bucket '%s' for %s", file_key, bucket_name, request.node.name)
+    return file_key
+
+
+@pytest.fixture(scope="module")
+def sensitive_delete_file_toolkit(browser: Browser, auth_state):
+    """Mark ``artifact``/``delete_file`` sensitive for the whole test module.
+
+    Sensitivity is toolkit-TYPE scoped
+    (``GuardrailsAdminPage.add_sensitive_tool("artifact", "delete_file")``),
+    not per-toolkit-instance, so marking/removing it ONCE per module (rather
+    than once per test) avoids redundant admin round-trips across
+    ELITEA-2211..2214's four cases, per those AFS's own Cleanup section —
+    same pattern ``test_guardrails_live_reload.py``'s
+    ``TestSensitiveToolLiveReload`` already established.
+
+    Module scope means this fixture's setup/teardown run ONCE for whichever
+    single test module requests it, even though it is centrally defined here
+    (fixture location rule — ``.claude/rules/api-patterns.md``).
+    """
+    ctx = browser.new_context(
+        storage_state=auth_state, viewport={"width": 1920, "height": 1080}
+    )
+    ctx.set_default_timeout(15000)
+    ctx.set_default_navigation_timeout(30000)
+    page = ctx.new_page()
+
+    guardrails = GuardrailsAdminPage(page)
+    guardrails.navigate_to_guardrails()
+    guardrails.add_sensitive_tool("artifact", "delete_file")
+    guardrails.save_configuration()
+    logger.info("Marked artifact/delete_file sensitive for the module")
+
+    yield
+
+    try:
+        guardrails.remove_sensitive_tool("delete_file")
+        guardrails.save_configuration()
+        logger.info("Removed artifact/delete_file from the sensitive list")
+    except Exception as exc:
+        logger.warning("Failed to remove sensitive tool 'delete_file' during teardown: %s", exc)
+    finally:
+        page.close()
+        ctx.close()
 
 
 # ---------------------------------------------------------------------------
@@ -761,6 +948,7 @@ def mcp_toolkit_with_tools(toolkit_api: ToolkitAPI, request):
         "name": name,
         "toolkit_name": toolkit.get("toolkit_name", name),
         "tools": [t["name"] for t in tools],
+        "project_id": int(toolkit_api.project_id),  # ELITEA-2203: slash-mention menu-item testids need it
     }
 
     try:
@@ -921,3 +1109,169 @@ def hitl_runtime_pipeline(pipeline_api: PipelineAPI, request):
         logger.info("Deleted HITL runtime pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete HITL runtime pipeline %s: %s", pid, exc)
+
+
+def _llm_node_dict(transition: str) -> dict:
+    """Build the LLM 1 node dict shared by the canvas node/edge CRUD fixtures
+    below (ELITEA-2018/2031/2032) — same shape confirmed live in the AFS
+    exploration sessions for all three cases.
+
+    Args:
+        transition: The node's ``transition`` target (e.g. ``"Code 1"``,
+            ``"Printer 1"``, ``"END"``).
+    """
+    return {
+        "id": "LLM 1",
+        "type": "llm",
+        "input": [],
+        "input_mapping": {
+            "chat_history": {"type": "fixed", "value": []},
+            "system": {"type": "fixed", "value": ""},
+            "task": {"type": "fixed", "value": "hi"},
+        },
+        "output": ["messages"],
+        "structured_output": False,
+        "transition": transition,
+    }
+
+
+def build_delete_node_pipeline_nodes() -> list[dict]:
+    """LLM 1 -> Code 1 -> END node list for ELITEA-2018 (Pipeline Canvas —
+    Delete Node). Confirmed live (2026-08-03): produces exactly 3 nodes /
+    2 edges on first canvas load, no manual UI wiring needed.
+    """
+    return [
+        _llm_node_dict(transition="Code 1"),
+        {
+            "id": "Code 1",
+            "type": "code",
+            "input": [],
+            "output": [],
+            "code": "print('hi')",
+            "transition": "END",
+        },
+    ]
+
+
+@pytest.fixture
+def pipeline_llm_code_end(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``LLM 1 -> Code 1 -> END`` (3 nodes, 2 edges) before
+    the test and delete it afterwards. Satisfies the ELITEA-2018 precondition
+    (see :func:`build_delete_node_pipeline_nodes`).
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_delnode_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created delete-node pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_delete_node_pipeline_nodes(),
+    )
+    pid = pipeline["id"]
+    logger.info("Created delete-node pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted delete-node pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete delete-node pipeline %s: %s", pid, exc)
+
+
+def _printer_node_dict(transition: str) -> dict:
+    """Build the Printer 1 node dict shared by the edge-creation/-deletion
+    fixtures below (ELITEA-2031/2032).
+
+    Args:
+        transition: The node's ``transition`` target (e.g. ``"END"``).
+    """
+    return {
+        "id": "Printer 1",
+        "type": "printer",
+        "input_mapping": {"printer": {"type": "fixed", "value": "done"}},
+        "transition": transition,
+    }
+
+
+def build_llm_printer_nodes(llm_transition: str) -> list[dict]:
+    """Build an ``LLM 1`` + ``Printer 1`` node pair, parametrized on where
+    ``LLM 1`` transitions to. Shared by the ELITEA-2031 (edge creation) and
+    ELITEA-2032 (edge deletion) fixtures below — same node pair, differing
+    only in whether LLM 1 already points at Printer 1.
+
+    Args:
+        llm_transition: ``LLM 1``'s ``transition`` value — ``"END"`` seeds
+            two independently-terminating nodes (ELITEA-2031, so the edge
+            under test doesn't pre-exist); ``"Printer 1"`` seeds the edge
+            directly (ELITEA-2032, so the edge under test already exists).
+
+    Returns:
+        list[dict]: ``[LLM 1, Printer 1]`` node definitions.
+    """
+    return [
+        _llm_node_dict(transition=llm_transition),
+        _printer_node_dict(transition="END"),
+    ]
+
+
+@pytest.fixture
+def pipeline_llm_printer_disconnected(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with ``LLM 1`` and ``Printer 1``, each independently
+    ``transition: END`` (NOT connected to each other) before the test, and
+    delete it afterwards. Satisfies the ELITEA-2031 precondition — omitting
+    ``transition`` on both nodes entirely auto-defaults ``LLM 1`` to
+    ``transition: Printer 1`` (the next node in the YAML list), which would
+    pre-create the very edge this case tests the creation of; both must
+    explicitly point at END.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_edgecreate_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created edge-creation pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_llm_printer_nodes(llm_transition="END"),
+    )
+    pid = pipeline["id"]
+    logger.info("Created edge-creation pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted edge-creation pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete edge-creation pipeline %s: %s", pid, exc)
+
+
+@pytest.fixture
+def pipeline_llm_printer_connected(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``LLM 1 -> Printer 1 -> END`` (the edge under test
+    already exists) before the test, and delete it afterwards. Satisfies the
+    ELITEA-2032 precondition.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_edgedelete_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created edge-deletion pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_llm_printer_nodes(llm_transition="Printer 1"),
+    )
+    pid = pipeline["id"]
+    logger.info("Created edge-deletion pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted edge-deletion pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete edge-deletion pipeline %s: %s", pid, exc)

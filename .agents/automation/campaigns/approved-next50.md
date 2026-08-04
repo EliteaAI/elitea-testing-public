@@ -130,3 +130,4 @@ Verified 50/50 covered, no dupes/gaps (checked programmatically before re-invoki
 - 2026-08-02 launching merged wave-02-05 (39 cases) — re-invoking conductor with a fresh plan (only the new
   merged wave listed; wave-01 omitted since it already landed). NEW runId (fresh Workflow call, not a resume):
   **wf_526976ac-58a**, task wywy5pvg9. Slug: wave-02-05-merged.
+- 2026-08-02 resumed wf_526976ac-58a (task wnpzuoy2r, same args) — completed calls replay from cache.
