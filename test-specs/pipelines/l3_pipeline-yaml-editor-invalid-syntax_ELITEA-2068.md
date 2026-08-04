@@ -35,15 +35,32 @@
    then switch to Yaml view.
    - **Verify**: `pipeline-yaml-editor` (YAML CodeMirror) becomes visible.
 2. Introduce invalid YAML syntax: edit the LLM node's `transition: END`
-   line to `transition: "END` (an unterminated double-quote — a
-   confirmed-live YAML scanner error, not a guess) via
-   `PipelineDetailPage.edit_yaml_line()` (existing method, reused as-is —
-   see AFS ELITEA-2028's Concrete Handles for the method's own docstring
-   and ambiguity caveat; not applicable here since this pipeline has only
-   ONE `transition: END` line).
+   line to `transition END invalid_no_colon_xyz123` (colon removed, random
+   text appended — literally the case's own suggested technique, "remove a
+   colon, add random text") via `PipelineDetailPage.edit_yaml_line()`
+   (existing method, reused as-is — see AFS ELITEA-2028's Concrete Handles
+   for the method's own docstring and ambiguity caveat; not applicable here
+   since this pipeline has only ONE `transition: END` line).
+   - **CONFIRMED-LIVE GOTCHA (colon-removal chosen deliberately over an
+     unterminated-quote form):** a quote-based invalid edit
+     (`transition: "END`, an unterminated double-quote) is NOT reliably
+     invalid when typed through `edit_yaml_line()` — CodeMirror's YAML mode
+     has an auto-close-brackets/quotes extension that auto-inserts the
+     matching closing `"` as `keyboard.type()` sends the opening quote
+     keystroke, silently turning it into the VALID quoted scalar
+     `transition: "END"`. This was caught empirically: the same edit typed
+     via a raw `.fill()` in an ad-hoc exploration session looked invalid
+     (no real keystrokes → no auto-close), but the actual
+     `edit_yaml_line()` production code path (real `keyboard.type()`)
+     auto-closed it and the pipeline SAVED SUCCESSFULLY — a false failure
+     if left as the case's implementation. Colon-removal has no
+     bracket/quote character for CodeMirror to auto-pair, so it is not
+     susceptible to this. Recorded in `_surface.md` for future analysts on
+     this surface.
    - **Verify**: `get_yaml_content()` contains the literal
-     `transition: "END` (confirms the invalid syntax is present in the
-     editor's content, matching the case's own Step-2 expected result).
+     `transition END invalid_no_colon_xyz123` (confirms the invalid syntax
+     is present in the editor's content, matching the case's own Step-2
+     expected result).
 3. Switch back to Flow view.
    - **Verify**: `pipeline-flow-view`'s canvas (`rf__wrapper`) becomes
      visible. Confirmed live: the canvas does NOT error or blank out —
@@ -76,9 +93,10 @@
    - **Verify**: `PipelineAPI.get_pipeline(pipeline_id)`'s stored
      `instructions` (server-side, via a direct API read — NOT just the UI
      state) still contain the ORIGINAL, valid `transition: END` line and
-     do NOT contain the invalid `transition: "END` edit — i.e. the
-     server genuinely rejected the write, this isn't merely a client-side
-     toast with the mutation silently persisted underneath.
+     do NOT contain the invalid `transition END invalid_no_colon_xyz123`
+     edit — i.e. the server genuinely rejected the write, this isn't
+     merely a client-side toast with the mutation silently persisted
+     underneath.
 
 ## Expected Results
 - YAML editor is visible after switching to Yaml view.
@@ -104,7 +122,7 @@
 |---|---|---|---|---|
 | precond: existing pipeline is open | — | setup (pre-step-1) | fixture seeds + navigates | asserted |
 | 1 Open pipeline, switch to Yaml view | YAML editor displayed | step 1 | `step 1`: `pipeline-yaml-editor` visible | asserted |
-| 2 Introduce invalid YAML syntax | YAML content contains invalid syntax | step 2 | `step 2`: `get_yaml_content()` contains `transition: "END` | asserted |
+| 2 Introduce invalid YAML syntax | YAML content contains invalid syntax | step 2 | `step 2`: `get_yaml_content()` contains `transition END invalid_no_colon_xyz123` | asserted |
 | 3 Switch to Flow view | Flow view displayed (may show partial/error state) | step 3 | `step 3`: `rf__wrapper` canvas visible | asserted |
 | 4 Verify Save button enabled | Save button active | step 4 | `step 4`: `save_button.is_enabled()` True | asserted |
 | 5 Attempt save — error message shown, save blocked | Error message shown; save blocked | step 5 | `step 5`: 400 response + toast text assertion | asserted |
