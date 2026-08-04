@@ -1,16 +1,20 @@
 # Campaign: approved-next50
 
 ## State
-- Stage: waves (running) — wave-01 LANDED, wave-02..05 merged into ONE 39-case wave, running now
-- Conductor run: wf_aa16c5c4-f74 (propose + wave-01) — wave-02-05 merge runs under a NEW runId, recorded below
+- Stage: **COMPLETE — 50/50 cases reached a terminal outcome**
+- Conductor run: wf_aa16c5c4-f74 (propose + wave-01) — wave-02-05 merge ran under wf_526976ac-58a
 - Operator checkpoint: consolidated 11 proposed waves -> 5 (round 1), then operator asked to merge waves 02-05 into
   ONE (round 2, after wave-01 landed) — both approved
 - Foundation merged: n/a — foundation is null (all 4 surfaces already foundation-rich, evidenced by directory listing)
 - Foundation surfaces CLAIMED: none (no foundation stage — skipped, F=null)
 - Heads analyzed: none (skipped — no foundation stage)
 - Waves: wave-01 (11 cases) LANDED — elitea-testing-public#1107, merged `7d2f8811`, TMS back-written, closure
-  records posted, board -> Ready, branches cleaned up. wave-02-05-merged (39 cases) RUNNING.
-- Landing: per-batch (policy unset -> script default) — land each wave before the next cuts its trunk
+  records posted, board -> Ready, branches cleaned up.
+  wave-02-05-merged (39 cases) LANDED — elitea-testing-public#1143, merged `9680e1a6`, 33 automated (3
+  sanctioned RED: #1119/#1121/#1039) + 6 blocked (5 on #1140, 1 on #1142), TMS back-written for the 33, closure
+  records posted on all 39, board -> Ready (33) / Blocked (6), 17 unit branches + trunk cleaned up.
+- Campaign totals: 44/50 automated, 6/50 blocked (real product blockers, code merged and correct)
+- Landing: per-batch — each wave landed before the next cut its trunk
 
 ## Source
 
@@ -131,3 +135,17 @@ Verified 50/50 covered, no dupes/gaps (checked programmatically before re-invoki
   merged wave listed; wave-01 omitted since it already landed). NEW runId (fresh Workflow call, not a resume):
   **wf_526976ac-58a**, task wywy5pvg9. Slug: wave-02-05-merged.
 - 2026-08-02 resumed wf_526976ac-58a (task wnpzuoy2r, same args) — completed calls replay from cache.
+- 2026-08-04 wave-02-05-merged CLOSED. Recovered all 6 interrupted units (2004+2010, 2162, 2211-2215,
+  2086-2088, 2005-2008, 2018/2030/2031/2032) through review to merge. Gate run directly by the lead (not the
+  workflow's internal gate): green-required 29-file set N=3 clean (1 mid-gate flake — ELITEA-2007 virtualized
+  cron-picker click-verification gap — found+fixed by a dispatched implementer, commit `60b3d49b`, re-gated
+  fresh N=3); 3 sanctioned-red specs (#1119/#1121/#1039) independently confirmed deterministic 3/3 each;
+  85-file blast-radius regression sweep — 19 failed/7 errored, every one triaged (14 matched known
+  patterns/defects, 5 freshly checked against unmodified `automation/base` — 2 reproduced identically, 2
+  matched the same AI-response-timing flake by signature, 1 one-off transient cleared on recheck), zero
+  regressions. PR elitea-testing-public#1143 merged `9680e1a6`. TMS back-written for 33 automated cases
+  (mechanical Form-C derivation from source, self-checked); onetest index.json rebuilt (2743 cases). Closure
+  records posted + board moved for all 39 issues (33 -> Ready, 6 -> Blocked) — testid provenance verified via
+  one bulk fresh-fetch check (84 new testids this wave, 83 on `automation/testids` only awaiting human
+  cherry-pick, 1 pre-existing reuse). 17 unit branches + the trunk deleted. Campaign closed: 44/50 automated,
+  6/50 blocked on real product defects with merged, correct code.
