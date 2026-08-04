@@ -18,3 +18,5 @@
 - [AI text substring-vs-exact flake](ai_text_substring_vs_exact_match_flake.md) — before blaming virtualization, check match semantics agree
 - [Control+a no select-all on macOS](control_a_no_select_all_on_macos_chromium.md) — use select_text()+wait, not raw Ctrl+A, to clear a field
 - [MUI Select onChange skips on same value](mui_select_onchange_only_fires_on_value_change.md) — "re-select shown value" AFS steps can hit a real no-op defect
+- [Pipeline STATE panel overlap + wait_for_function](pipeline_state_panel_overlaps_canvas_and_wait_for_function_arg_kwarg.md) — close it before canvas clicks; arg= is keyword-only
+- [Interrupt before toggle omission](interrupt_before_toggle_recurring_omission.md) — 3rd pipeline-node AFS to skip it; use is_node_interrupt_before_toggle_visible(node_id)
