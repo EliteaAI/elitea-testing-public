@@ -28,4 +28,5 @@
 - [Long gate Bash calls get infra-killed](long_running_gate_bash_calls_get_infra_killed.md) — retry on 0 FAILED, don't diagnose red
 - [Case→issue mapping isn't in the snapshot](tms_case_to_issue_mapping_not_in_snapshot.md) — capture at intake; strict `[Automate][ELITEA-<id>]` match, not bare-ID
 - [Testid provenance: bulk not per-case](testid_provenance_bulk_check_for_multi_case_closure.md) — one dump+diff for the whole wave; `+`-lines only
+- [Workflow tool: use scriptPath, not workflow('name',...)](workflow_tool_named_registry_is_empty_use_scriptpath.md) — named registry is empty; wrapper-script call fails silently-fast
 - [build_index MCP verb can silently no-op](build_index_mcp_verb_can_silently_no_op.md) — check index.json mtime, don't trust the success message
