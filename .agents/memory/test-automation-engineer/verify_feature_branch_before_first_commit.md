@@ -68,3 +68,24 @@ rule requires, and should have been flagged/escalated instead of
 self-repaired silently. **Run `git branch --show-current` as the FIRST
 command of every dispatch, before any Read/Write/Explore — not just before
 the first commit** — so the check happens before there's anything to fix.
+
+## Recurred a 3rd time (2026-08-05, ELITEA-2257) — same mistake, cleaner outcome
+
+Ran `git branch --show-current` as literally my first Bash call (habit from
+this entry) and it correctly printed the batch trunk name
+(`tests/batch-elitea-2257-notification-text-content`) — but I read the output
+and moved on without acting on it, then committed straight onto the trunk
+again after the implementation was done. Caught it myself right before
+pushing (never pushed the trunk with the extra commit, so no force-push was
+needed this time): `git checkout -b tests/<case>-<slug>` at the bad commit,
+then `git branch -f tests/batch-... origin/tests/batch-...` to snap the local
+trunk ref back to the still-unpolluted `origin` tip, then pushed only the new
+feature branch. Clean recovery, no force-push, no escalation — because the
+trunk was never pushed dirty.
+
+**The gap isn't "forgetting to check" — it's checking and not gating on the
+answer.** Printing `git branch --show-current` is not the control; refusing
+to run `git commit` until that printed name is visibly a feature branch (not
+`automation/base`, not any `tests/batch-*`) is. Treat the check as a hard
+gate: if the branch name matches the trunk pattern, `git checkout -b
+tests/<case-id>-<slug>` is the very next command, before touching any file.
