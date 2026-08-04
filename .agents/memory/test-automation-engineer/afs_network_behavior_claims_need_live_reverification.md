@@ -40,3 +40,20 @@ citation of some other endpoint.
   code (the reused method's own hard-blocking wait) — the missing piece is
   documentation/assertion-message clarity tying that existing wait to the
   specific claim it disproves, not a brand-new assertion.
+
+## Fix round 2 — the feature's `_surface.md` digest is a THIRD independent copy
+
+A wrong network-behavior claim doesn't live in just the AFS + the clarification
+issue. `test-specs/pipelines/_surface.md`'s MCP-node section carried its own,
+independently-worded copy of the same "does NOT auto-persist / only GET calls"
+claim — round 1 fixed the AFS and #1149 but missed it, and the reviewer caught
+it as a fresh blocking finding in round 2. **When correcting a network-behavior
+(or any live-product-fact) claim, grep the feature's `_surface.md` for the same
+claim in its own words** — it's a separate hand-authored summary, not a
+generated rollup of the AFS, so fixing the AFS never auto-fixes it.
+
+Ownership note: `_surface.md` is normally analyst-owned (implementer reports
+drift, doesn't edit) — but a fix-round dispatch that explicitly names the
+`_surface.md` paragraph and directs the correction is a legitimate, narrow
+exception; do the edit as instructed and flag the ownership boundary in the PR
+comment for visibility rather than bouncing it back as `needs-analyst-rerun`.
