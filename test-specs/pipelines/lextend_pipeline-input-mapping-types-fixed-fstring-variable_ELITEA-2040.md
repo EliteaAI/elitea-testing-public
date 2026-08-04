@@ -74,7 +74,9 @@
    the option list is **exactly** `Fixed`/`F-String`/`Variable` — read via
    `[data-testid^="select-option-"]` inside the open popover.
    - **Verify**: exactly 3 options, testids `select-option-fixed`/`select-option-fstring`/`select-option-variable`,
-     labels `Fixed`/`F-String`/`Variable` — confirmed live this session, in that DOM order.
+     labels `Fixed`/`F-String`/`Variable`, asserted as a set — **amended by implementer**: live DOM
+     order is `fstring, variable, fixed` (`FlowEditorConstants.agentTaskTypeOptions`), not the
+     `fixed, fstring, variable` order originally recorded here from analyst exploration.
 4. SYSTEM Type defaults to `Fixed` (no action needed) — fill the Value field
    (`pipeline-llm-node-system-value`, a `<textarea>` at this point) with
    `Extract these four values from the given input`.
@@ -190,7 +192,7 @@
 | Element | Recommended Locator | Fallback |
 |---|---|---|
 | LLM node Type select (SYSTEM) | `[data-testid="pipeline-llm-node-system-type-select"]` — pre-existing, confirmed working (ELITEA-2004) | none needed |
-| Type select's 3 options | `[data-testid="select-option-fixed"]` / `-fstring` / `-variable` — confirmed live this session, exact 3, in that DOM order | `[data-testid^="select-option-"]` to enumerate/count |
+| Type select's 3 options | `[data-testid="select-option-fixed"]` / `-fstring` / `-variable` — exact 3. **Amended by implementer (Phase 2 exploration, ELITEA-2040 branch):** live DOM order is actually `fstring, variable, fixed` (`FlowEditorConstants.agentTaskTypeOptions`, `EliteaUI/src/[fsd]/features/pipelines/flow-editor/lib/constants/flowEditor.constants.js`), NOT `fixed, fstring, variable` as originally recorded here — the option **set** is correct, the recorded **order** was not; asserted as a set in the implemented test | `[data-testid^="select-option-"]` to enumerate/count |
 | SYSTEM Value field, Fixed/F-String modes | `[data-testid="pipeline-llm-node-system-value"]` (a `<textarea>`) — pre-existing, confirmed working (ELITEA-2004) | none needed |
 | **SYSTEM Value field, Variable mode** | **Currently NO `data-testid`** — confirmed live via direct DOM inspection: the element is a MUI `Select` (`id="simple-select-Value"`, `role="combobox"`, **no `data-testid` attribute at all**) when Type=`Variable`. **Root cause confirmed via source**: `EliteaUI/src/[fsd]/features/pipelines/flow-editor/ui/settings/SimpleLLMInputItem.jsx` — the component already receives a `valueFieldTestId` prop (threaded from `LLMNode.jsx`'s `testIdsByKey.system.valueFieldTestId = 'pipeline-llm-node-system-value'`) and correctly applies it to the Fixed/F-String branch's `<NodeFieldInput dataTestId={valueFieldTestId} .../>`, but the `else` branch's `<SingleSelect label="Value" ... />` (the Variable-mode widget) is **missing `data-testid={valueFieldTestId}` entirely** — a one-line fix that reuses the SAME testid name already wired at every call site (SYSTEM/TASK/CHAT HISTORY on the LLM node, and HITL's `user_message`), consistent with "one testid identifies the Value field regardless of which widget renders it." | **Flag to `add-data-testid`**: add `data-testid={valueFieldTestId}` to the `SingleSelect` in `SimpleLLMInputItem.jsx`'s Variable-mode branch (confirmed exact location this session). No new testid *name* is needed — the existing `pipeline-llm-node-system-value` is reused. |
 | Variable-mode Value-select's options | `[data-testid="select-option-input"]` / `[data-testid="select-option-messages"]` — confirmed live, identical `select-option-{value}` mechanism already used by Input/Output selects | `[data-testid^="select-option-"]` to enumerate |
