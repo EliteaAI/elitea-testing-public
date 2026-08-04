@@ -3,7 +3,10 @@
 TMS: ELITEA-2068
 (test-specs/pipelines/l3_pipeline-yaml-editor-invalid-syntax_ELITEA-2068.md)
 
-Introduces invalid YAML syntax (an unterminated quote) into the pipeline's
+Introduces invalid YAML syntax (a colon-stripped transition line — CodeMirror's
+YAML-mode auto-close-brackets/quotes extension silently auto-closes a typed
+opening quote, so an unterminated quote can't be produced this way; removing
+the colon is the syntax break that actually sticks) into the pipeline's
 YAML editor and verifies the pipeline cannot be saved with it: Save enables
 (dirty state), the update PUT is rejected server-side with 400 and an
 "Invalid pipeline YAML data" message, an app-wide error toast surfaces that
@@ -69,7 +72,7 @@ def test_yaml_editor_invalid_syntax_blocks_save(page, pipeline_with_llm_id, pipe
         pipeline_page.yaml_editor.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.yaml_editor.is_visible(), "YAML CodeMirror editor should become visible"
 
-    with allure.step("Step 2 — Introduce invalid YAML syntax (unterminated quote)"):
+    with allure.step("Step 2 — Introduce invalid YAML syntax (colon-stripped transition line)"):
         pre_edit_yaml = pipeline_page.get_yaml_content()
         assert "transition: END" in pre_edit_yaml, (
             f"Precondition: pipeline should start with a valid 'transition: END' line: {pre_edit_yaml!r}"
