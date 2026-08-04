@@ -53,6 +53,9 @@ page object.
   dropped entirely in this repo's MUI v7, `count()` returns 0 with no error.
   Same file also covers two adjacent interaction gotchas from the same case
   (disabled-during-save re-click, popper-overlaps-container close-click).
+- `singleselect_combobox_gets_a_separate_suffixed_testid.md` (ELITEA-2040) —
+  `SingleSelect.jsx` puts the base testid on the `<Select>` root, and a
+  SEPARATE `"${base}-combobox"` testid on the actual `role="combobox"` node.
 
 > Not covered by `.claude/rules/mui-patterns.md` (which explains
 > `press_sequentially` and debounce, not testid placement) — which is why this

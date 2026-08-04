@@ -2092,6 +2092,22 @@ class PipelineDetailPage(PipelineFormPage):
         count = options.count()
         return [(options.nth(i).text_content() or "").strip() for i in range(count)]
 
+    def get_open_listbox_option_testids(self) -> list[str]:
+        """Return the ``data-testid`` of every option in the currently-open listbox.
+
+        Same enumeration mechanism as ``get_open_listbox_option_names`` (a
+        single open MUI-portaled listbox, matched by ``SELECT_OPTION_PREFIX``),
+        reading each option's ``data-testid`` instead of its display text —
+        used to assert the exact ``select-option-{value}`` set a Type/Value
+        select offers, in DOM order.
+
+        Returns:
+            List of option testids, in DOM order.
+        """
+        options = self.page.locator(self.SELECT_OPTION_PREFIX)
+        count = options.count()
+        return [options.nth(i).get_attribute("data-testid") or "" for i in range(count)]
+
     def select_open_listbox_option(self, option_value: str, timeout: int = 5000) -> None:
         """Click an option in the currently-open Toolkit/Tool listbox.
 
@@ -2264,6 +2280,35 @@ class PipelineDetailPage(PipelineFormPage):
             raise ValueError(f"Unknown LLM node section: {section!r}, expected one of {self._LLM_NODE_SECTIONS}")
         return getattr(self, f"llm_node_{section}_value")
 
+    # Variable-mode Value select's role="combobox" display element carries a
+    # SEPARATE, "-combobox"-suffixed testid from the field's normal one
+    # (SingleSelect.jsx's SelectDisplayProps={{'data-testid': `${dataTestId}-combobox`}}) —
+    # the field's own testid (e.g. "pipeline-llm-node-system-value") lands on
+    # the outer FormControl/Select root instead, which has no role attribute.
+    # Same class-level template-constant mechanism as SELECT_OPTION for a
+    # dynamic (base-testid-parameterized) selector.
+    LLM_NODE_VALUE_COMBOBOX = '[data-testid="{}-combobox"]'
+
+    def _llm_node_value_field_testid(self, section: str) -> str:
+        """Return the base ``data-testid`` string of *section*'s Value-field LocatorDescriptor."""
+        if section not in self._LLM_NODE_SECTIONS:
+            raise ValueError(f"Unknown LLM node section: {section!r}, expected one of {self._LLM_NODE_SECTIONS}")
+        descriptor = getattr(type(self), f"llm_node_{section}_value")
+        return descriptor.testid
+
+    def get_llm_node_section_value_combobox_locator(self, section: str) -> Locator:
+        """Return the Variable-mode Value select's ``role="combobox"`` display element for *section*.
+
+        Only present/visible when *section*'s current Type is ``"Variable"``
+        — proves the Value field is specifically a MUI Select combobox, not
+        just "some non-textarea element" (see ``get_llm_node_section_value_field_shape``).
+
+        Args:
+            section: One of ``"system"``, ``"task"``, ``"chat_history"``.
+        """
+        base_testid = self._llm_node_value_field_testid(section)
+        return self.page.locator(self.LLM_NODE_VALUE_COMBOBOX.format(base_testid))
+
     def _wait_for_field_selection_applied(self, field: Locator, timeout: int = 5000) -> None:
         """Wait until *field*'s full value is selected, or it has nothing to select.
 
@@ -2360,6 +2405,101 @@ class PipelineDetailPage(PipelineFormPage):
             section: One of ``"system"``, ``"task"``, ``"chat_history"``.
         """
         return self._llm_node_value_locator(section).input_value()
+
+    def get_llm_node_section_value_field_shape(self, section: str, timeout: int = 5000) -> dict:
+        """Return the DOM element identity of *section*'s Value field.
+
+        Distinguishes the Fixed/F-String ``<textarea>`` from the
+        Variable-mode MUI ``Select`` (``role="combobox"``) by DOM element
+        identity, not just displayed text — a regression that left the old
+        textarea mounted (with a stale leftover value) instead of swapping
+        to the new Select would otherwise look like a pass if only text
+        content were checked.
+
+        Args:
+            section: One of ``"system"``, ``"task"``, ``"chat_history"``.
+            timeout: Maximum wait time for the field to be visible.
+
+        Returns:
+            ``{"tag_name": <UPPERCASE tag>, "role": <role attribute or None>}``
+        """
+        value_field = self._llm_node_value_locator(section)
+        value_field.wait_for(state="visible", timeout=timeout)
+        tag_name = value_field.evaluate("el => el.tagName")
+        role = value_field.get_attribute("role")
+        return {"tag_name": tag_name, "role": role}
+
+    def get_llm_node_section_variable_value(self, section: str, timeout: int = 5000) -> str:
+        """Read *section*'s Value field when its Type is ``"Variable"``.
+
+        In Variable mode the Value field renders as a MUI ``Select``
+        (``role="combobox"``), not a text input — ``input_value()`` (used by
+        ``get_llm_node_section_value`` for Fixed/F-String) throws on this
+        element. Reads ``text_content()`` with the same zero-width-space
+        strip as ``get_llm_node_section_type`` (MUI's empty-select rendering
+        is U+200B, not an empty string).
+
+        Args:
+            section: One of ``"system"``, ``"task"``, ``"chat_history"``.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        value_field = self._llm_node_value_locator(section)
+        value_field.wait_for(state="visible", timeout=timeout)
+        text = (value_field.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_llm_node_section_type_select(self, section: str, timeout: int = 5000) -> None:
+        """Open *section*'s Type select without choosing an option.
+
+        Use when the caller needs to inspect the open option list (e.g. via
+        ``get_open_listbox_option_testids``) before selecting one — mirrors
+        ``open_llm_node_input_select``. When no prior inspection is needed,
+        prefer ``select_llm_node_section_type``, which opens and selects in
+        one call.
+
+        Args:
+            section: One of ``"system"``, ``"task"``, ``"chat_history"``.
+            timeout: Maximum wait time for the select / popover.
+        """
+        type_select = self._llm_node_type_select_locator(section)
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        type_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def open_llm_node_section_variable_value_select(self, section: str, timeout: int = 5000) -> None:
+        """Open *section*'s Value select without choosing an option.
+
+        Only valid when *section*'s current Type is ``"Variable"`` — at any
+        other Type the Value field is a text input, not a select. Use when
+        the caller needs to inspect the open option list (e.g. via
+        ``get_open_listbox_option_testids``) before selecting one.
+
+        Args:
+            section: One of ``"system"``, ``"task"``, ``"chat_history"``.
+            timeout: Maximum wait time for the select / popover.
+        """
+        value_field = self._llm_node_value_locator(section)
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        value_field.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_llm_node_section_variable_value(
+        self, section: str, variable_name: str, timeout: int = 5000
+    ) -> None:
+        """Open *section*'s Value select (Variable mode) and choose *variable_name*.
+
+        Against the same ``_llm_node_value_locator`` field
+        ``fill_llm_node_section_value``/``get_llm_node_section_value`` use for
+        Fixed/F-String — only the read/write mechanism differs by the widget
+        the current Type renders.
+
+        Args:
+            section: One of ``"system"``, ``"task"``, ``"chat_history"``.
+            variable_name: The state variable's option value (e.g. ``"input"``).
+            timeout: Maximum wait time for the select / option.
+        """
+        self.open_llm_node_section_variable_value_select(section, timeout=timeout)
+        self.select_open_listbox_option(variable_name, timeout=timeout)
 
     def _wait_for_open_popovers_closed(self, timeout: int = 5000) -> None:
         """Wait until no select-option-* row is visible anywhere on the page.

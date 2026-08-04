@@ -2,7 +2,35 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-04 (ELITEA-2037 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-04 (ELITEA-2040 analysis).
+
+## LLM/HITL node Type+Value field — `Variable` Type swaps the Value field's WIDGET, not just its behaviour (confirmed live, 2026-08-04, ELITEA-2040)
+
+- **`SimpleLLMInputItem.jsx`** (shared across LLM node's SYSTEM/TASK/CHAT HISTORY and HITL's
+  `user_message`) renders the Value field as ONE of two entirely different components depending
+  on `type`: `type ∈ {fixed, fstring}` → a free-text `<textarea>` (`NodeFieldInput`, testid'd via
+  the `valueFieldTestId` prop, e.g. `pipeline-llm-node-system-value`); `type === variable` → a MUI
+  `Select` (`id="simple-select-Value"`, `role="combobox"`) whose options are the pipeline's own
+  state variables (`input`/`messages` — same `select-option-{value}` mechanism as the node's
+  `Input`/`Output` selects). Confirmed live via direct DOM `tagName`/`outerHTML` reads before/after
+  switching Type.
+- **The Select branch is MISSING its `data-testid` entirely** — the component already receives
+  `valueFieldTestId` and correctly threads it to the textarea branch's `NodeFieldInput`, but the
+  `else` branch's `<SingleSelect label="Value" ... />` never receives `data-testid={valueFieldTestId}`.
+  One-line `add-data-testid` fix, reusing the SAME testid name (no new name, no call-site change)
+  — same underlying gap likely affects HITL's `user_message` field and any future call site of this
+  shared component, though only the LLM node's SYSTEM section was fixed/verified for ELITEA-2040.
+- **Value is CLEARED on any Type transition involving `Variable`, but PRESERVED across Fixed↔F-String**
+  — confirmed live both directions (F-String→Variable cleared the text; Variable→Fixed left the
+  textarea empty, not the pre-Variable text) and via source
+  (`SimpleLLMInputItem.jsx`'s `onChange`: `shouldPreserveValue = (fstring→fixed) || (fixed→fstring)`,
+  else clears to `defaultValue`). Any test walking through multiple Types on one field must
+  re-enter the Value after every Type change that touches `Variable` — do not assume the prior
+  text survives.
+- **Type select's 3 options are exactly `Fixed`/`F-String`/`Variable`**, testid'd
+  `select-option-fixed`/`select-option-fstring`/`select-option-variable` (same
+  `select-option-{value}` mechanism as everywhere else) — confirmed live, matches
+  `TYPE_OPTION_VALUE_BY_LABEL` already in `pipeline_detail_page.py`.
 
 ## Canvas node/edge CRUD (Add-node menu, node delete, edge create/delete) (confirmed live, 2026-08-03, ELITEA-2018/2030/2031/2032)
 
