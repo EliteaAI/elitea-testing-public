@@ -58,12 +58,24 @@
      types — `INTERACTIVE_NODE_TYPES = [PipelineNodeTypes.Hitl, PipelineNodeTypes.Printer]`, a
      shared array checked by the same `.some()` call, confirmed via source read — see § Blocked
      Steps for the honest disposition of this sub-step).
-7. Remove HITL, enable "Interrupt after" on any node in the pipeline, Save.
+7. Remove HITL, enable "Interrupt before" on a second (non-entry-point) node in the pipeline, Save.
+   - **AMENDED DURING IMPLEMENTATION (docs(afs) commit, PR #1141 round 2) — "Interrupt after"
+     substituted for "Interrupt before".** The case text (step 6) and this AFS originally said
+     "Interrupt after"; the implementer found it unusable for this step: the pipeline builder
+     auto-wires a freshly-added node's output to END, and `CommonInterruptSettings.jsx` disables
+     the "Interrupt after" toggle whenever `transition === END` (confirmed live during
+     implementation). "Interrupt before" has no such gate — it only disables when the node IS the
+     saved entry point, which a freshly-added Code node never is. The substitution is
+     spec-equivalent for this case's purpose: `hasInterrupts` (below) OR-combines
+     `interrupt_before`/`interrupt_after` identically, so either array being non-empty produces
+     the same restriction outcome the case is actually testing.
    - **Verify**: same restriction applies — confirmed via source read (`hasInterrupts` check:
      `Array.isArray(parsed.interrupt_before) && parsed.interrupt_before.length > 0) ||
      (Array.isArray(parsed.interrupt_after) && parsed.interrupt_after.length > 0)`), same
      `hasInteractiveElements` OR-combination as the node-type check — not independently
-     re-verified live this session; see § Blocked Steps.
+     re-verified live this session; see § Blocked Steps. Now live-executed by the implementer via
+     `toggle_node_interrupt_before()` (green, `test_pipeline_entry_point_trigger_restricted_interactive_nodes.py`
+     step 7).
 8. Remove all HITL/Printer/interrupt configurations, Save, reload.
    - **Verify**: all 3 trigger types available again — confirmed live,
      `_trigger_options() == ['Chat Message', 'Schedule', 'Webhook']` after removing the Printer
@@ -73,7 +85,11 @@
 ## Expected Results
 - The Trigger dropdown restricts to Chat-Message-only whenever the pipeline's **last-saved**
   version contains a Printer node, a HITL node, or a non-empty `interrupt_before`/`interrupt_after`
-  list — evaluated as a single OR condition (`hasInteractiveElements`).
+  list — evaluated as a single OR condition (`hasInteractiveElements`). **Implementation note
+  (added round 2):** step 7 exercises this via `interrupt_before` specifically (the "Interrupt
+  before" toggle) rather than `interrupt_after` — see step 7's amendment note for why "Interrupt
+  after" is unusable on a freshly-added, auto-wired-to-END node. Both arrays feed the identical OR
+  condition, so this substitution does not change what Expected Result is being verified.
 - The restriction is keyed on the SAVED YAML, not the live unsaved canvas — adding a
   restricting element to the canvas has NO effect on the Trigger dropdown until Save.
 - Once saved, the restriction takes effect immediately (no reload needed) and survives a reload.
@@ -96,7 +112,7 @@
 | 3 Open Trigger dropdown | Dropdown opens | step 3 | step 3 | asserted |
 | 4 Verify only "Chat Message" available (Schedule/Webhook absent) | Only Chat Message listed | steps 3–5 | step 5 (POST-SAVE) | asserted — **CLARIFICATION, load-bearing: the case's own step sequence (add Printer → click node → verify restriction) never mentions a Save action, but the restriction is 100% gated on the pipeline being SAVED with the restricting element present — confirmed live the restriction does NOT apply to an unsaved canvas addition. This is not a defect (the product's actual contract — restrict based on the persisted version, not the working canvas — is a reasonable design), but the case text as written would produce a FALSE NEGATIVE if automated literally (asserting restriction right after adding the node, before Save, would find all 3 options still present and incorrectly fail/flag the case). Recorded here so the AFS's own steps insert the required Save before asserting restriction — see step 4.** |
 | 5 Remove Printer, add HITL instead — verify same restriction | Only Chat Message with HITL | step 6 | step 6: source-code parity argument | asserted — **partial**, see § Blocked Steps for why this sub-step wasn't independently re-executed live |
-| 6 Remove HITL, enable "Interrupt after" — verify same restriction | Only Chat Message with interrupt | step 7 | step 7: source-code parity argument | asserted — **partial**, see § Blocked Steps |
+| 6 Remove HITL, enable "Interrupt before" (amended from case's "Interrupt after" — see step 7 note) — verify same restriction | Only Chat Message with interrupt | step 7 | step 7: live-executed (`toggle_node_interrupt_before`) | asserted — live-executed round 2 (was source-code-parity-only at analysis time; see § Blocked Steps for the original disposition) |
 | 7 Remove all HITL/Printer/interrupt — verify all 3 available again | All 3 types restored | step 8 | step 8: post-removal, post-Save, post-reload options | asserted — live-executed for the Printer-node cycle |
 | Expected Final State: restriction applies for Printer/HITL/interrupt, restores when removed | — | steps 2–8 | steps 2–8 | asserted for Printer node fully; HITL/interrupt asserted via source-code parity, not independently live-executed (see § Blocked Steps) |
 | Pass/Fail: trigger restricts correctly, restores when removed | — | all steps | all steps | asserted, with the HITL/interrupt caveat above |
@@ -131,7 +147,7 @@
 | "+ Add node" → "Printer" / "Human-in-the-loop" menu items | `PipelineDetailPage.add_node("Printer")` / `add_node("Human-in-the-loop")` — already exist, confirmed exact display-name strings via `EliteaUI/src/[fsd]/features/pipelines/flow-editor/lib/constants/flowEditor.constants.js` (`PipelineNodeDisplayNames`) | none needed |
 | Node deletion | `PipelineDetailPage.delete_node(node_id)` — already exists | none needed |
 | Pipeline Save button | `[data-testid="agent-save-button"]` — confirmed present and functional (shared with every other pipeline-editing case in this suite) | none needed |
-| "Interrupt before"/"Interrupt after" toggles | Present inline on every node body (confirmed on the LLM node this session, per its own field inventory — `Interrupt before`/`Interrupt after` `Switch` components), no dedicated modal | **NO `data-testid` — not independently confirmed this session (see § Blocked Steps); flag to `add-data-testid` once a future case actually drives this control.** Likely a plain MUI `Switch`, recommend `pipeline-{node-type}-node-interrupt-before-toggle`/`-interrupt-after-toggle` pending confirmation. |
+| "Interrupt before"/"Interrupt after" toggles | Present inline on every node body (confirmed on the LLM node this session, per its own field inventory — `Interrupt before`/`Interrupt after` `Switch` components), no dedicated modal | **CONFIRMED during implementation (round 2 amendment).** Actual testid is **node-ID-parameterized**, not node-type-parameterized as originally recommended here: `pipeline-node-interrupt-before-toggle-{node_id}` (`PipelineDetailPage.NODE_INTERRUPT_BEFORE_TOGGLE = '[data-testid="pipeline-node-interrupt-before-toggle-{}"]'`, `pipeline_detail_page.py:215`, formatted via `.format(node_id)`). Node-TYPE-parameterization (this AFS's original guess) would have collided across multiple same-type nodes in one pipeline — the id-keyed form is correct. Consumed via `PipelineDetailPage.toggle_node_interrupt_before(node_id)`. Relocated mid-implementation from the `MuiSwitch-switchBase` wrapper span onto the real `<input>` via `slotProps.switch.slotProps.input` (`EliteaAI/EliteaUI@85fe6ef3`) — MUI v7 silently drops a legacy `inputProps` testid. |
 
 ## Network Behavior
 
