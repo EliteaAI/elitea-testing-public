@@ -25,7 +25,19 @@
 
 1. Navigate to Agent Hub (`/elitea-catalog`) from the left sidebar while the active project is "Private".
    - **Verify**: URL is `/elitea-catalog`; page title is `"ELITEA Catalog - Private"` (confirmed live via `useBrowserPageTitle`, includes the active project name — an extra, free confirmation that we are in the Private project context).
-   - **Verify**: sidebar `project-selector-trigger-combobox` text still reads "Project: Private" (unchanged by navigation).
+   - **Verify**: sidebar `project-selector-trigger-combobox` contains the project name "Private" (unchanged by navigation).
+   - **IMPLEMENTER AMENDMENT (drift, not a defect):** the element's `text_content()`
+     is NOT `"Project: Private"` as originally stated — the trigger renders an
+     avatar-initial `<span>` ("P") immediately followed by two separate `<div>`s
+     ("Project:" / "Private") with no whitespace between nodes, so the raw
+     concatenated text is `"PProject:Private"`. Confirmed live via
+     `browser_evaluate` (`innerHTML` dump). Asserting exact equality against
+     `"Project: Private"` would fail on a non-defect (reverse-masking guard) — the
+     compliant assertion is `"Private" in get_selected_project_text()`, matching
+     the substring idiom already used elsewhere for this same method
+     (`test_open_conversation_today_section.py`, `test_credential_create_private_from_toolkit_dropdown.py`).
+     The project-context confirmation itself still holds; only the exact-string
+     premise was stale.
 2. Verify the page loads with the Catalog heading.
    - **CASE-TEXT DRIFT (CLARIFICATION, filed — not a defect)**: case text says `"Welcome to Agent HUB"`; live heading text is **`"Welcome to ELITEA Catalog!"`** (`catalog-page-heading`, `EliteaCatalog.jsx`). Same root cause as the ELITEA-2075 AFS's step-1 nav-label drift (`AgentHub`/`/agents-hub` is only a legacy redirect source in `routes.js`, never a rendered label) — filed as its own ticket this session since it wasn't previously filed as a standalone issue (see § Known Defects). Assert the live heading text.
 3. Verify the search bar is visible at the top center.

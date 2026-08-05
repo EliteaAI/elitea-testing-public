@@ -9,18 +9,34 @@ grep against both ``origin/main`` and ``origin/automation/testids`` — zero
 testids anywhere in ``AgentHub.jsx``/``AgentCard.jsx``/``AgentModal.jsx``
 before this implementation) — this is genuinely new coverage.
 
+ELITEA-2350 extends this page object with the category filter-rail chips
+(``CategoryRail.jsx``, shared with the Skills tab) and an agent-card-count
+helper, for the page-load verification case.
+
 URL: /elitea-catalog
 """
 
 import logging
+import re
 
 from playwright.sync_api import Page
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.agent_hub")
+
+_CATEGORY_SLUG_RE = re.compile(r"[^a-z0-9]+")
+
+
+def _slugify_category(category: str) -> str:
+    """Slugify a category display label the same way EliteaUI does client-side
+    (``AgentCategorySection.jsx``/``CategoryRail.jsx``): lowercase, then
+    non-alphanumeric runs collapsed to a single ``-`` (e.g. "Knowledge &
+    Documentation" -> "knowledge-documentation").
+    """
+    return _CATEGORY_SLUG_RE.sub("-", category.lower())
 
 
 class AgentHubPage(BasePage):
@@ -51,6 +67,13 @@ class AgentHubPage(BasePage):
     # display name alone), so a prefix-match + .filter(has_text=...) is used
     # to select by name, same idiom as AgentDetailPage.MODEL_SELECTOR_OPTION_ANY_SELECTOR.
     AGENT_CARD_PREFIX = '[data-testid^="catalog-agent-card-"]'
+
+    # Category filter-rail chip (Featured + Categories sections,
+    # CategoryRail.jsx, ELITEA-2350) — dynamic per category name, same
+    # slugify convention as CATEGORY_HEADING above. Threaded from AgentsTab
+    # via a caller-supplied `chipTestIdPrefix` prop per the shared-component
+    # testid discipline (CategoryRail is shared with SkillsTab).
+    CATEGORY_FILTER_CHIP = '[data-testid="catalog-agent-category-filter-chip-{}"]'
 
     # --- Agent preview modal (AgentModal.jsx) ---
     modal_agent_name = LocatorDescriptor(
@@ -106,6 +129,25 @@ class AgentHubPage(BasePage):
     def get_agent_card(self, agent_name: str):
         """Return the Locator for the agent card matching *agent_name* (by visible text)."""
         return self.page.locator(self.AGENT_CARD_PREFIX).filter(has_text=agent_name)
+
+    def get_agent_card_count(self) -> int:
+        """Return the number of agent cards currently rendered in the main content area."""
+        return self.page.locator(self.AGENT_CARD_PREFIX).count()
+
+    def is_category_filter_chip_visible(self, category_label: str, timeout: int = 10000) -> bool:
+        """Return True if the category filter-rail chip for *category_label* is visible.
+
+        Args:
+            category_label: Human display label (e.g. "Knowledge & Documentation",
+                "My Liked") — slugified internally the same way EliteaUI does
+                client-side (CategoryRail.jsx).
+        """
+        chip = self.page.locator(self.CATEGORY_FILTER_CHIP.format(_slugify_category(category_label)))
+        try:
+            chip.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
 
     @action("Open agent preview modal from Catalog")
     def open_agent_by_name(self, agent_name: str, timeout: int = 15000):
