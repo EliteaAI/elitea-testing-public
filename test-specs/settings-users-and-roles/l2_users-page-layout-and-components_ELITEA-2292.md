@@ -208,14 +208,18 @@ exists, either by wiring an **already-supported** shared-component prop
 | Row Edit (pencil) icon | `EditUsersButton.jsx` — same component as the header instance, per-row usage in `UsersTable.jsx`'s `renderActions` (no `isBatchEdit`) | `user-row-edit-button` | Same new `testId` prop as the header instance (see above); pass `testId="user-row-edit-button"` at `UsersTable.jsx`'s `renderActions` call site. |
 | Row Delete (trash) icon | `DeleteUserButton.jsx` — same component as the header instance, per-row usage in `UsersTable.jsx`'s `renderActions` (no `useSecondaryButton`) | `user-row-delete-button` | Same new `testId` prop as the header instance; pass `testId="user-row-delete-button"` at `UsersTable.jsx`'s `renderActions` call site. |
 
-**Sort-indicator icons (Name/Email/Last login)**: NOT a separate testid.
-`GridTableHeader.jsx` already renders a `SortArrows` `<svg>` inside the
-column's header `Box` only when `column.sortable && onSort` is true
-(confirmed in source, `GridTableHeader.jsx:56-60`). Locate it via
-`.locator("svg")` chained off the already-testid-scoped
-`user-column-header-{field}` element — the sanctioned "locating within an
-already-testid-scoped element" pattern (`.agents/testing.md`), not a raw
-page-level selector.
+**Sort-indicator icons (Name/Email/Last login)**: dedicated component-level
+testid, not a raw `<svg>` handle. `GridTableHeader.jsx` renders a
+`SortArrows` icon inside the column's header `Box` only when
+`column.sortable && onSort` is true (confirmed in source,
+`GridTableHeader.jsx:56-60`). The icon now carries its own dynamic testid,
+`user-sort-icon-{field}` (added on EliteaUI via `EliteaAI/EliteaUI@bedf5331`,
+then renamed via `EliteaAI/EliteaUI@52582fe3` to avoid colliding with the
+`user-column-header-*` prefix selector). Locate it via the class-level
+template constant `COLUMN_SORT_ICON_SELECTOR = '[data-testid="user-sort-icon-{}"]'`
+formatted with the column field, per the dynamic-testid pattern
+(`.agents/testing.md` § Locator policy) — not `.locator("svg")` chained off
+the column-header element.
 
 Not touched by this case (no testid requested — scope discipline,
 `.agents/role-overrides.md` "touches" = actually invoked on this test's
@@ -268,9 +272,13 @@ None.
 - Column-header count assertion:
   `page.locator('[data-testid^="user-column-header-"]')` count == 5 (same
   prefix-selector mechanism as `personal-token-column-header-*`).
-- Sort-indicator assertion: `self.column_header_name.locator("svg")` (and
-  siblings for email/last_login) expected count == 1; `self.column_header_roles.locator("svg")`
-  / `self.column_header_actions.locator("svg")` expected count == 0.
+- Sort-indicator assertion: `get_column_sort_icon_count(column_field)` —
+  `self.page.locator(self.COLUMN_SORT_ICON_SELECTOR.format(column_field))
+  .count()` against the `user-sort-icon-{field}` testid (class-level
+  template constant `COLUMN_SORT_ICON_SELECTOR =
+  '[data-testid="user-sort-icon-{}"]'` on `AdminUsersPage`) — expected
+  count == 1 for `name`/`email`/`last_login`, count == 0 for
+  `roles`/`actions`.
 - Row-cell assertions: scope everything off `self.user_row.first` (or a
   dedicated `first_user_row` `LocatorDescriptor`-style helper matching
   `PersonalTokensPage.get_first_row_action_icon`'s pattern) — never a raw
@@ -283,3 +291,27 @@ None.
   offset/milliseconds.
 - Header Edit/Delete buttons: assert `is_visible()` AND `is_disabled()` (NOT
   `is_enabled()`) — they are correctly disabled with nothing selected.
+
+### Amendment (implementer exploration, 2026-08-05) — project-switch precondition
+
+A bare `navigate("/settings/users")` against the env's default project
+(`.env.test`'s `ELITEA_PROJECT_ID` = 399) does NOT reach this page: confirmed
+live that 399 is this test user's **PRIVATE** project, and `Settings.jsx`
+carries a guard effect (`isPrivateProject` / "hide Users for private
+projects") that redirects `tab === 'users'` to `/settings/project-general`
+once project data resolves (~2-3s after navigation — the tab is briefly
+"users" in the URL, then flips). This AFS's own Preconditions/Test Data
+section already named project **400 ("UI Testing")** — a TEAM project — as
+where the case's 2 users were confirmed live, which is what the analyst was
+actually on during exploration (via the sidebar project badge); it just
+wasn't previously flagged as a required precondition ACTION for automation
+(vs. a passive fact).
+
+`AdminUsersPage.navigate()` now performs a two-hop flow: land on the
+always-reachable `/settings/project-general` tab first, switch the sidebar's
+active project to 400 via the pre-existing `project-selector-trigger-combobox`
+/ `select-option-{id}` testids (same shared component family as
+`ChatPage.switch_project`), THEN navigate to `/settings/users` — by which
+point the guard's check is already false and never fires. This is a
+same-scope technique fix (Phase 2 "how", not "what") — no case step or
+assertion changed; it does not affect AFS Coverage Map / Axis 2.
