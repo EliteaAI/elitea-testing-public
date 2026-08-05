@@ -50,3 +50,31 @@ type renders BOTH "is successfully created: {...}" and "is successfully
 reindexed. {...}" variants — either satisfies the AFS's step 5. A 5th
 "is failed." index outcome also observed (undocumented by the case,
 informational only, not asserted).
+
+## ELITEA-2259 additions — per-row checkbox + toolbar mark-toggle button
+
+`GridTableRow` already accepted a `checkboxTestId` prop on its
+`Checkbox.BaseCheckbox` (same shape as `ArtifactTable.jsx`'s
+`artifacts-file-checkbox-${row.id}`) — `NotificationTable.jsx`'s call site
+just wasn't passing it; one-line wire:
+`checkboxTestId={`notification-checkbox-${row.id}`}`. The checkbox's
+`data-testid` lands on the MUI `Checkbox` ROOT, not the nested `<input>` —
+`is_checked()` raises "Not a checkbox or radio button" on it; read
+`get_attribute("class")` and check for `"Mui-checked"` instead (same
+workaround as `ArtifactsPage.is_file_checkbox_checked`).
+
+The toolbar's single read/unread toggle button (`NotificationTableToolbar.jsx`,
+a bare `BaseBtn`) had NO testid at all — only a state-dependent `aria-label`
+("Mark selected as read"/"Mark selected as unread"). Added ONE static
+`data-testid="notification-mark-toggle-button"` regardless of state (testid =
+stable identity; state lives in the `aria-label`, read via
+`get_attribute("aria-label")`). `BaseBtn` forwards arbitrary props
+(`{...restProps}`) straight onto the underlying `MuiButton`, so `data-testid`
+just works — no shared-component API change needed, unlike the pagination
+button in the ELITEA-2257 section above.
+
+Bulk-mark PUT and the paginated list GET share the exact same URL
+(`/api/v2/notifications/notifications/prompt_lib/{id}`, PUT has no query
+string at all) — differ only by HTTP method. The response-predicate gotcha
+above (distinguish by `sort_by=created_at` for the list GET) still applies;
+add a `response.request.method == "PUT"` check for the mutation.
