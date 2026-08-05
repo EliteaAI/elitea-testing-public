@@ -84,7 +84,10 @@ hang. Keep planted markers short.
 - ELITEA-2312 / PR #1189 — `wait_for_network()` called mid-test after the page had already reached `networkidle` once resolved instantly, ignoring a search-input `.fill()`'s about-to-fire request; fixed with `expect_response` (cache-miss) + a loading-indicator-testid wait (cache-hit-safe).
 - …plus 4 earlier occurrence(s) — full per-case detail in the source entries below.
 
-See also: save_networkidle_race_quirk.md ·
+See also: console_capture_read_races_async_dispatch.md (rule-3 variant — a
+console-message capture list read right after a click can miss an event that
+fires inside the click's own async success handler) ·
+save_networkidle_race_quirk.md ·
 hover_gated_wait_condition_and_response_status_race.md ·
 send_message_enter_key_races_spa_navigation.md ·
 artifacts_direct_bucket_url_nav_project_id_race.md ·

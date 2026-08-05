@@ -2,8 +2,47 @@
 
 Handle cache for live-confirmed handles/quirks on the Agent Hub / Catalog
 surface (`/elitea-catalog`). Not a substitute for execution — verify a handle
-as you use it. One writer at a time; last confirmed by: test-automation-engineer
-(combined analyst+implementer dispatch), ELITEA-2352, 2026-08-05.
+as you use it. One writer at a time; last confirmed by: qa-engineer (analyst
+slot), ELITEA-2354, 2026-08-05.
+
+## Like/unlike an agent card — testids needed, shared `Like.jsx` component
+- Heart icon + count on every agent card is the shared `src/components/Like.jsx`
+  (also used by the data-table widget and `Card.jsx` for pipelines) via
+  `AgentHubLike.jsx` → `AgentCard.jsx`. **Zero testids anywhere in the chain**
+  (confirmed via source + `git grep`). Because `Like.jsx` is shared, the testid
+  must be a caller-supplied `testId` prop threaded from `AgentCard.jsx`
+  (`catalog-agent-like-button-{application.id}`), not hardcoded inside
+  `Like.jsx` itself — same discipline as `CategoryRail.jsx`'s chip prop.
+- "Liked" state has no accessible signal (icon swaps `HeartIcon`↔`HeartActiveIcon`,
+  confirmed visually via screenshot diff, zero DOM attribute difference) — needs
+  a `data-liked="true"/"false"` attribute on the same button, same precedent as
+  ELITEA-2352's chip `data-selected`. Full detail:
+  `l3_agent-hub-like-agent-from-list-view_ELITEA-2354.md`.
+- Endpoints: `POST /api/v2/social/like/prompt_lib/{project_id}/application/{id}`
+  → `201` (like); `DELETE` same path → `204` (unlike). Update is optimistic
+  client-side (no re-fetch awaited).
+- **Known defect (filed, MINOR, non-blocking)**: every like AND unlike click
+  fires a Redux "non-serializable value" `console.error`
+  (`agentHub/updateApplicationInCategories` action payload carries a raw
+  function). Root cause: `useAgentHubData.hooks.js:330` dispatches a closure;
+  `slices/agentHub.js:42-49`'s reducer invokes it. Dev-console-only noise, the
+  like/unlike flow itself is correct. Filed as
+  [EliteaAI/elitea-testing-public#1215](https://github.com/EliteaAI/elitea-testing-public/issues/1215).
+  **Future analysts on like/unlike-adjacent cases (ELITEA-2355, 2364, 2365):
+  expect the same console error and cite #1215 rather than re-discovering it.**
+- **Like counts are mutable shared product data, not a stable fixture** — a
+  case's named "e.g." example agent (e.g. "AI Platform Design Advisor") will
+  NOT reliably show a specific like count session-to-session; automation must
+  dynamically discover a card matching the needed starting state (e.g. "any
+  card with 0 likes") rather than hardcoding the example name.
+- **Default post-refresh view only renders the top-6 "Trending" cards** (sorted
+  by likes desc) — a freshly-liked LOW-count agent is not guaranteed to appear
+  there after a reload. Use the Catalog search box (`catalog-search-input`) to
+  re-locate a specific agent by name after a refresh, rather than assuming it's
+  still in the default unfiltered view.
+- **Any case that likes an agent MUST unlike it again as cleanup** — like state
+  is shared, cross-session product data that sibling cases in this family (My
+  Liked filter, reload-button, unlike) depend on as a clean baseline.
 
 ## Category filter-rail chip "selected" state — NO accessible signal existed pre-ELITEA-2352
 - Before this dispatch, the filter-rail `Chip` (`CategoryRail.jsx`) had **zero**

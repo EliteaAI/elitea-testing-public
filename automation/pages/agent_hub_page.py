@@ -26,7 +26,7 @@ URL: /elitea-catalog
 import logging
 import re
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from utils.actions import action
 
 from .base_page import BasePage
@@ -87,6 +87,18 @@ class AgentHubPage(BasePage):
     # via a caller-supplied `chipTestIdPrefix` prop per the shared-component
     # testid discipline (CategoryRail is shared with SkillsTab).
     CATEGORY_FILTER_CHIP = '[data-testid="catalog-agent-category-filter-chip-{}"]'
+
+    # Like button (heart icon + count) on an agent card, ELITEA-2354 —
+    # dynamic per application id, same idiom as CATEGORY_FILTER_CHIP/
+    # CATEGORY_HEADING above. Root component is the SHARED `Like.jsx`
+    # (also consumed by the data-table widget and pipeline Card.jsx), so
+    # the testid is a caller-supplied `testId` prop threaded
+    # AgentCard.jsx -> AgentHubLike.jsx -> Like.jsx, not hardcoded inside
+    # Like.jsx itself (EliteaAI/EliteaUI@e079c0d0). "Liked" state is a
+    # `data-liked="true"/"false"` attribute on the SAME button (state via
+    # data-*, not a state-switched testid — same precedent as
+    # CATEGORY_FILTER_CHIP's `data-selected`, ELITEA-2352).
+    LIKE_BUTTON = '[data-testid="catalog-agent-like-button-{}"]'
 
     # --- Agent preview modal (AgentModal.jsx) ---
     modal_agent_name = LocatorDescriptor(
@@ -244,3 +256,133 @@ class AgentHubPage(BasePage):
         """
         self.modal_start_chat_button.wait_for(state="visible", timeout=timeout)
         self.modal_start_chat_button.click()
+
+    # --- Like/unlike (ELITEA-2354) ---
+
+    @action("Navigate to Agent Hub and capture the initial applications snapshot")
+    def navigate_and_capture_applications(self, timeout: int = 15000) -> list[dict]:
+        """Navigate to the Catalog page (same target as :meth:`navigate`) and
+        additionally capture the initial bulk "all applications" response body
+        (``GET /public_applications/prompt_lib/...`` — source:
+        ``useAgentHubData.hooks.js``'s ``fetchAllAndCategorize``, the
+        ``ALL_AGENTS_LIMIT`` bulk fetch, distinct from the separate Trending/
+        My-Liked requests fired on the same mount, which are excluded by
+        checking for their own distinguishing query params), returning its
+        ``rows`` (each a dict with ``id``, ``name``, ``likes``, ...).
+
+        Used for ELITEA-2354's dynamic "find a 0-like agent" discovery —
+        reading the network payload directly is more robust than parsing card
+        DOM text for the agent name (``AgentCard.jsx``'s name ``Typography``
+        carries no testid).
+        """
+
+        def _is_all_applications_response(response):
+            return (
+                "/public_applications/prompt_lib/" in response.url
+                and response.request.method == "GET"
+                and "trend_start_period" not in response.url
+                and "my_liked" not in response.url
+            )
+
+        with self.page.expect_response(_is_all_applications_response, timeout=timeout) as response_info:
+            super().navigate("/elitea-catalog")
+        self.wait_for_page_load(timeout=timeout)
+        return response_info.value.json().get("rows", [])
+
+    @staticmethod
+    def find_zero_like_application(applications: list[dict]) -> dict | None:
+        """Return the first application dict (as returned by
+        :meth:`navigate_and_capture_applications`) whose ``likes`` field is 0,
+        or ``None`` if none currently qualify.
+
+        ELITEA-2354's dynamic-discovery requirement — like counts are mutable
+        shared product data, not a stable per-name fixture (see this case's
+        AFS § Test Data: the case text's own example agent does not reliably
+        show 0 likes session-to-session).
+        """
+        for app in applications:
+            if app.get("likes", 0) == 0:
+                return app
+        return None
+
+    def get_like_button(self, application_id: int):
+        """Return the Locator for the like button (heart icon + count) on the
+        agent card matching *application_id* (ELITEA-2354)."""
+        return self.page.locator(self.LIKE_BUTTON.format(application_id))
+
+    def get_like_count(self, application_id: int, timeout: int = 10000) -> int:
+        """Return the like button's numeric count (ELITEA-2354) — the count
+        ``Typography`` is the only text node inside the button besides the
+        icon ``<svg>`` (which has no text).
+
+        This is a one-shot, non-retrying read — correct for a pre-action
+        baseline check (the value isn't expected to be changing). To assert
+        an EXPECTED count after a like/unlike click, use
+        :meth:`wait_for_like_count` instead — the count update is optimistic
+        client-side and asynchronous relative to the click's own network
+        response resolving, so a one-shot read taken immediately after the
+        click can race the state update (confirmed live during
+        implementation: the cleanup unlike's response returned 204 but a
+        same-tick ``get_like_count`` read still showed the pre-unlike value).
+        """
+        button = self.get_like_button(application_id)
+        button.wait_for(state="visible", timeout=timeout)
+        text = button.text_content() or "0"
+        return int(text.strip())
+
+    def wait_for_like_count(self, application_id: int, expected_count: int, timeout: int = 10000) -> None:
+        """Wait (Playwright auto-retrying assertion) for the like button's
+        text to read *expected_count* (ELITEA-2354) — see
+        :meth:`get_like_count`'s docstring for why a retrying wait is
+        required here instead of a one-shot read.
+        """
+        expect(self.get_like_button(application_id)).to_have_text(str(expected_count), timeout=timeout)
+
+    def is_agent_liked(self, application_id: int, timeout: int = 5000) -> bool:
+        """Return True if the like button for *application_id* currently shows
+        ``data-liked="true"`` (ELITEA-2354) — same ``data-*`` state-attribute
+        precedent as :meth:`is_category_filter_chip_selected`'s
+        ``data-selected``.
+        """
+        liked_locator = self.page.locator(self.LIKE_BUTTON.format(application_id) + '[data-liked="true"]')
+        try:
+            liked_locator.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @action("Click like/unlike button on agent card")
+    def click_like_button(self, application_id: int, timeout: int = 10000):
+        """Click the like button for *application_id*, toggling like/unlike,
+        and return the underlying ``/social/like/prompt_lib/...`` network
+        response (``201`` on like, ``204`` on unlike — AFS § Network
+        Behavior, ELITEA-2354)."""
+        button = self.get_like_button(application_id)
+        button.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/social/like/prompt_lib/" in r.url and r.request.method in ("POST", "DELETE"),
+            timeout=timeout,
+        ) as response_info:
+            button.click()
+        return response_info.value
+
+    @action("Search Catalog by agent name")
+    def search(self, query: str, timeout: int = 15000):
+        """Type *query* into the Catalog search box and wait for the
+        debounced (300ms — source: ``AgentsTab.jsx``'s
+        ``useDebounceValue(query, 300)``) search request to resolve
+        (ELITEA-2354).
+
+        Uses ``press_sequentially()``, not ``fill()``, to trigger the MUI
+        TextField's React ``onChange`` (``.claude/rules/mui-patterns.md``) —
+        ``fill()`` sets the DOM value directly and would leave the debounced
+        ``query`` React state empty, never firing a search request at all.
+        """
+        self.search_input.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/public_applications/prompt_lib/" in r.url and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            self.search_input.click()
+            self.search_input.press_sequentially(query, delay=50)
+        self.wait_for_network(timeout=timeout)
