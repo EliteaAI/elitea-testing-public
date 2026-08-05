@@ -19,3 +19,4 @@
 - [Pipeline STATE panel traps](pipeline_state_panel_ambiguous_add_button_and_name_input_collision.md) — role name "Context" ambiguous; input[name="name"] hits pipeline Name field
 - [Clipboard read hangs w/o permission](clipboard_read_hangs_without_permission_grant.md) — grant clipboard-read at context creation or readText() hangs forever
 - [InputBase autoBlur breaks Control+a](input_autoblur_breaks_control_a_select_all.md) — clear via Home+Shift+End instead
+- [settings-analytics: stale "six" counts](settings_analytics_case_family_stale_six_count.md) — live has 7 tabs/8 KPIs, not 6; clarification not defect
