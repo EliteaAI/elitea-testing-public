@@ -90,3 +90,21 @@ file whose priority is set via **module-level** `pytestmark` (not a per-function
 decorator), diff the new case's own frontmatter priority against that shared
 marker explicitly — module-level priority is a trap once a second, differently-
 prioritized case lands in the same file. Flagged CHANGES_REQUESTED.
+
+## Recurrence variant (PR #1186/ELITEA-2310, 2026-08-05) — fresh AFS, plain module-level pytestmark, no sibling to compare against
+
+Third occurrence, simplest mechanism yet: a brand-new (not `extend-existing`)
+AFS/test — no covering test in the same file to eyeball against. Case
+frontmatter: `priority: high`. AFS metadata: `**Priority**: l2` (correct per
+convention, just missing the usual `(high — as authored...)` annotation).
+`test_analytics_default_load.py` declares `pytestmark = [pytest.mark.ui,
+pytest.mark.admin, pytest.mark.p2, pytest.mark.regression]` — `p2` (medium),
+should be `p1` (high) per `pytest.ini` (`p1: Priority 1 (high)`) and the
+established `l2(high)→p1` mapping confirmed across `test-specs/artifacts/`,
+`test-specs/chat-interface/`, etc. (8+ sibling AFS/tests, zero exceptions).
+**Check generalizes**: don't wait for a sibling test in the same file to
+compare against — grep the AFS's own `Priority:` line against its own
+compiled `pytest.mark.p*`/`pytestmark` every time, sibling or not; a solo
+fresh AFS drifts just as easily as an extended one. Flagged CHANGES_REQUESTED
+(one-line fix: `pytest.mark.p2` → `pytest.mark.p1` in the module-level
+`pytestmark` list).
