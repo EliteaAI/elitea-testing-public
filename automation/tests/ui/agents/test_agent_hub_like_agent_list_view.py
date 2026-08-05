@@ -67,6 +67,45 @@ def _is_known_defect_1215(text: str) -> bool:
     return _KNOWN_DEFECT_1215_PREFIX in text
 
 
+def _cleanup_soft_failures(
+    *,
+    unlike_status: int,
+    like_count_restored: bool,
+    final_like_count: int,
+    unexpected_unlike_errors: list[str],
+) -> list[str]:
+    """Pure helper: turn the cleanup-unlike observations into soft-failure
+    messages instead of a logger-only record.
+
+    Cleanup here mutates SHARED, cross-session product data (the agent's
+    public like count/state) that sibling cases in this family depend on as
+    a baseline (see this module's docstring). A failed cleanup that is only
+    `logger.error()`-ed is invisible to the test result — the test still
+    goes green while the baseline stays polluted for every case that runs
+    after it. Each of the three cleanup-unlike observations therefore
+    produces its own soft-failure message when it fails, appended to the
+    same `soft_failures`/`pytest.fail()` mechanism already used for the
+    known #1215 defect above, so a broken cleanup surfaces as a real (if
+    soft) test failure rather than a silent log line.
+    """
+    failures: list[str] = []
+    if unlike_status != 204:
+        failures.append(
+            f"Cleanup unlike expected 204, got {unlike_status} — like-count "
+            "baseline may not be restored for sibling cases"
+        )
+    if not like_count_restored:
+        failures.append(
+            f"Cleanup did not restore like count to 0, got {final_like_count} "
+            "— shared like-count baseline left polluted for sibling cases"
+        )
+    if unexpected_unlike_errors:
+        failures.append(
+            f"Unexpected console errors on cleanup unlike click: {unexpected_unlike_errors}"
+        )
+    return failures
+
+
 class TestAgentHubLikeAgentListView:
     """ELITEA-2354: Agent Hub — like an agent from the list view (l3, medium)."""
 
@@ -191,14 +230,18 @@ class TestAgentHubLikeAgentListView:
                         # the unlike count update is equally optimistic/async
                         # relative to the click's own network response (see
                         # AgentHubPage.get_like_count's docstring).
+                        like_count_restored = True
+                        final_like_count = 0
                         try:
                             agent_hub.wait_for_like_count(application_id, 0, timeout=UI_ELEMENT_TIMEOUT)
                         except AssertionError:
+                            like_count_restored = False
+                            final_like_count = agent_hub.get_like_count(application_id)
                             logger.error(
                                 "Cleanup did not restore like count to 0 for %r (id=%s), got %s",
                                 agent_name,
                                 application_id,
-                                agent_hub.get_like_count(application_id),
+                                final_like_count,
                             )
                         unexpected_unlike_errors = [
                             m.text for m in unlike_console_errors if not _is_known_defect_1215(m.text)
@@ -215,9 +258,29 @@ class TestAgentHubLikeAgentListView:
                         # soft_failures; the step-3 occurrence above already
                         # marks this test RED-by-design for the one open ticket).
                         unlike_console_errors.stop()
+
+                        # Cleanup verification is routed into soft_failures
+                        # (same mechanism as the known #1215 defect above),
+                        # not logger-only: this test mutates a SHARED,
+                        # cross-session like-count baseline that sibling
+                        # cases depend on, so a failed cleanup must never be
+                        # able to pass this test silently while leaving that
+                        # baseline polluted (fix-round 1, review finding).
+                        soft_failures.extend(
+                            _cleanup_soft_failures(
+                                unlike_status=unlike_response.status,
+                                like_count_restored=like_count_restored,
+                                final_like_count=final_like_count,
+                                unexpected_unlike_errors=unexpected_unlike_errors,
+                            )
+                        )
                     except Exception as exc:  # noqa: BLE001 — cleanup must never mask the real failure
                         logger.error(
                             "Cleanup unlike raised for %r (id=%s): %s", agent_name, application_id, exc
+                        )
+                        soft_failures.append(
+                            f"Cleanup unlike raised an exception for {agent_name!r} "
+                            f"(id={application_id}): {exc}"
                         )
 
         if soft_failures:
