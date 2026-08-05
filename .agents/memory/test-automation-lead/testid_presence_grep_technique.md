@@ -44,8 +44,13 @@ Presence is proven by reading the construction site. One grep shape never suffic
   lines like `valueFieldTestId: 'pipeline-llm-node-system-value'` (capital `T`)
   never match a lowercase-only `testid` alternation. `git grep -i -- "$t" <ref>
   -- src/ | grep -iE "(data-testid|testid.*=.*$t)"` — both stages, always `-i`.
+- **Stage-2's `testid.*=.*$t` alternation requires an `=`, so it false-negatives
+  a colon-separated object-literal key** — `{ label: 'Overview', testid:
+  'analytics-tab-overview' }` (array-of-tab/preset-definition pattern) has no
+  `=` anywhere on the line. Use `[Tt]estId[:=]|testid[:=]` instead of
+  `testid.*=.*$t` to cover both separators.
 
-## Seen 8×
+## Seen 9×
 
 - #26/ELITEA-1735 — `slotProps` object literal + ternary; literal grep said no/no while the test ran green.
 - #62/#66/#128/#162 — runtime-composed: `${id}-menu-button`, `${columnTestIdPrefix}-…`, `buttonTestId` forwarding, MUI `SelectDisplayProps`.
@@ -55,6 +60,7 @@ Presence is proven by reading the construction site. One grep shape never suffic
 - #150/ELITEA-1892, #67/ELITEA-1889 — DotMenu 3-hop; zero-diff-on-owning-file proved "already promotable".
 - #477/ELITEA-2040 — case-only stage-2 filter false-negatived `valueFieldTestId: '…'` (object-literal key, capital T) on both `main` and `automation/testids`; `-i` fixed it.
 - #812/ELITEA-2304 — `${dataTestId}-combobox` (`SingleSelect.jsx`'s `SelectDisplayProps`) false-negatived 2 of 8 testids on `automation/testids`; traced to the shared Select component source before concluding "gap".
+- #818/ELITEA-2310 — colon-separated object-literal (`ANALYTICS_TABS` array: `{ label: 'Overview', testid: 'analytics-tab-overview' }`) false-negatived 7 of 17 testids on `automation/testids` (the `.*=.*` alternation needs an `=` that a colon never provides); widened filter fixed it before the closure record was posted.
 
 See also: promotability_grep_false_negative.md ·
 promotability_grep_false_positive_prefix.md ·
