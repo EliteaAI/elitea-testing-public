@@ -283,3 +283,115 @@ class TestSecretCreateInlineCheckmarkXCancel:
                     f"Cleanup failed: expected 204 deleting {saved_name!r}, got "
                     f"{delete_response.status_code} {delete_response.text}"
                 )
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "settings/secrets/ELITEA-2337_secret-name-only-allows-letters-numbers-and-underscores-hyph.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p1
+    def test_secret_name_rejects_hyphen_and_special_chars_valid_name_clears_error(
+        self, page
+    ):
+        """ELITEA-2337 — a secret name containing a hyphen, or a space/special
+        character, shows the validation error "Only alphanumeric characters and
+        underscore are allowed" and disables the save (checkmark) icon;
+        replacing it with a conforming name (letters/numbers/underscores only)
+        clears the error and re-enables the checkmark. Read-only against the
+        pending row: never clicks the checkmark, creates no secret, needs no
+        API cleanup - discards the pending row via the existing Cancel (X) icon.
+        (The empty-row-starts-enabled and fresh-valid-name-enables-checkmark
+        observables are already touched by
+        test_create_secret_inline_checkmark_saves_x_cancels's own Steps 1-4 -
+        not repeated here; this test's own new ground is the INVALID states and
+        the invalid->valid recovery transition.)"""
+        secrets_page = SecretsPage(page)
+        console_errors = secrets_page.capture_console_errors()
+
+        try:
+            with allure.step(
+                "Step 1 — Navigate to Settings -> Secrets; click '+' and wait "
+                "for the new row's name input"
+            ):
+                secrets_page.navigate()
+                secrets_page.click_add_button()
+                expect(secrets_page.name_input).to_be_visible(timeout=ROW_WAIT_TIMEOUT)
+
+            with allure.step(
+                "Step 2 — Enter a hyphenated name; verify the validation error "
+                "is shown and the checkmark stays disabled"
+            ):
+                secrets_page.type_name("my-secret")
+                assert secrets_page.name_input.input_value() == "my-secret", (
+                    f"Expected name input to show 'my-secret', got "
+                    f"{secrets_page.name_input.input_value()!r}"
+                )
+                expect(secrets_page.name_error).to_have_text(
+                    "Only alphanumeric characters and underscore are allowed"
+                )
+                expect(secrets_page.save_button).to_be_disabled(timeout=ROW_WAIT_TIMEOUT)
+
+            with allure.step(
+                "Step 3 — Replace with a name containing a space and a special "
+                "character; verify the same validation error and disabled "
+                "checkmark"
+            ):
+                secrets_page.clear_and_type_name("my secret!")
+                assert secrets_page.name_input.input_value() == "my secret!", (
+                    f"Expected name input to show 'my secret!', got "
+                    f"{secrets_page.name_input.input_value()!r}"
+                )
+                expect(secrets_page.name_error).to_have_text(
+                    "Only alphanumeric characters and underscore are allowed"
+                )
+                expect(secrets_page.save_button).to_be_disabled(timeout=ROW_WAIT_TIMEOUT)
+
+            with allure.step(
+                "Step 4 — Replace with a conforming name; verify the "
+                "validation error clears and the checkmark becomes enabled"
+            ):
+                secrets_page.clear_and_type_name("my_secret_123")
+                assert secrets_page.name_input.input_value() == "my_secret_123", (
+                    f"Expected name input to show 'my_secret_123', got "
+                    f"{secrets_page.name_input.input_value()!r}"
+                )
+                expect(secrets_page.name_error).to_have_count(0)
+                expect(secrets_page.save_button).to_be_enabled(timeout=ROW_WAIT_TIMEOUT)
+
+            with allure.step("Step 5 — Verify no console errors across the flow"):
+                unexpected_errors = [
+                    m.text for m in console_errors if not _is_known_defect_1203(m.text)
+                ]
+                assert not unexpected_errors, (
+                    f"Unexpected console errors: {unexpected_errors}"
+                )
+                known_defect_errors = [
+                    m.text for m in console_errors if _is_known_defect_1203(m.text)
+                ]
+                if known_defect_errors:
+                    # Known defect: EliteaAI/elitea-testing-public#1203 - this
+                    # test also mounts /settings/secrets, so it is expected to
+                    # hit the same deterministic mount-time console warning
+                    # as the covering test in this same file. Sanctioned-RED
+                    # per .agents/testing.md § Merge gate.
+                    pytest.fail(
+                        "Test flow completed and all functional assertions passed, "
+                        "but a known-defect soft failure was recorded:\n"
+                        "Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1203: "
+                        f"React 'Maximum update depth exceeded' console error(s) on "
+                        f"/settings/secrets mount: {len(known_defect_errors)} occurrence(s)"
+                    )
+        finally:
+            console_errors.stop()
+            # Cleanup (not an AFS case step) - the pending row is never saved
+            # (checkmark is never clicked in this test), so discard it via the
+            # existing Cancel (X) icon: zero network calls, no secret ever
+            # created, no API cleanup needed. Guard with a bare try since the
+            # row may already be gone if an earlier assertion failed mid-flow.
+            try:
+                secrets_page.click_cancel_button()
+            except Exception:
+                logger.warning(
+                    "Cleanup: could not click cancel button (row may already "
+                    "be gone or page navigated away)"
+                )

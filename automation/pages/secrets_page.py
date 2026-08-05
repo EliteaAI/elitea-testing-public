@@ -94,6 +94,11 @@ class SecretsPage(BasePage):
         testid="secrets-pagination-info",
         description='Pagination range text — "N - M of T"',
     )
+    name_error = LocatorDescriptor(
+        testid="secret-name-error",
+        description="Name-field validation error text, visible only while "
+        "the currently-editing row's name fails SECRET_NAME_PATTERN",
+    )
 
     # Scoped sub-selectors (class-level UPPER_CASE constants, per
     # .agents/testing.md § Locator policy) — chained off an already-testid-scoped
@@ -146,6 +151,31 @@ class SecretsPage(BasePage):
         self.name_input.press_sequentially(name, delay=20)
         self.value_input.click()
         self.value_input.press_sequentially(value, delay=20)
+
+    def type_name(self, name: str) -> None:
+        """Type *name* into the currently-editing row's name input without
+        asserting the save button's resulting enabled/disabled state (unlike
+        fill_new_row(), which fills both name+value and is meant for the
+        happy path — not valid for negative/invalid-name cases where the
+        save button is EXPECTED to be disabled)."""
+        self.name_input.click()
+        self.name_input.press_sequentially(name, delay=20)
+
+    def clear_and_type_name(self, name: str) -> None:
+        """Replace the name input's current content with *name*.
+
+        Uses Home + Shift+End to select the full line, then types over the
+        selection — Control+a is unreliable here (confirmed live during
+        ELITEA-2337 AFS exploration: a Control+a press directly after typing
+        left the field showing the old and new text concatenated instead of
+        replacing it), same technique and same root cause already documented
+        on the sibling Personal Tokens page's own
+        clear_and_type_name() (ELITEA-2286).
+        """
+        self.name_input.click()
+        self.page.keyboard.press("Home")
+        self.page.keyboard.press("Shift+End")
+        self.name_input.press_sequentially(name, delay=20)
 
     def click_save_button(self, timeout: int = UI_ELEMENT_TIMEOUT):
         """Click the checkmark (✓) icon; wait for the secret-create POST to

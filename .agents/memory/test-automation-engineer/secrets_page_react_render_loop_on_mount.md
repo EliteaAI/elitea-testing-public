@@ -83,3 +83,13 @@ AFS text already described is itself new AFS drift — check every paragraph
 that echoes the changed behaviour, not just the most recent one.
 
 (from ELITEA-2336)
+
+**Reconfirmed on ELITEA-2337** (new, independent test in the same file,
+`test_secret_name_rejects_hyphen_and_special_chars_valid_name_clears_error`):
+1/1 local run hit the exact same signature (14 occurrences), all functional
+(name-validation) assertions passed, `pytest.fail()` fired via the same
+`_is_known_defect_1203()` matcher reused as-is (no new matcher derived).
+Confirms the defect is tied to the route mount itself, not to any specific
+interaction sequence within it — any test that navigates to
+`/settings/secrets` should expect to reproduce this and reuse the existing
+matcher rather than re-deriving one.
