@@ -32,6 +32,16 @@ agent name" → live "Search by agent or pipeline name". One exception found:
 the "Chat Messages" chart's title+subtitle matched the case exactly — don't
 assume EVERY string in a case from this family is stale, verify each one.
 
+**Drift also extends into the row-click DETAIL sub-views** (ELITEA-2313,
+ELITEA-2321, 2026-08-05) — same family, one level deeper: user-detail KPI
+count 6→10 (case invents nothing, just under-lists), agent-detail KPI count
+5→8 (case here INVENTS a KPI, "Error Rate", that doesn't exist in source or
+live at all — a step beyond simple omission), chart titles ("Daily Usage"→
+"Runs by Day"), and a table-column "Events"→"Runs" rename that recurs at
+this deeper level too. Tools-panel columns/empty-state text ("No tool
+data") were the one exact match in ELITEA-2321 — again, verify per-string,
+don't assume the whole case is uniformly stale.
+
 ## What to do
 
 This is case-text drift, not a product defect — reverse-masking guard
