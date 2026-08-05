@@ -3,7 +3,8 @@
 Handle cache for live-confirmed handles/quirks on the Settings → Secrets
 surface (`/settings/secrets`, renders `SecretsContent.jsx` / `SecretsTable.jsx`).
 Not a substitute for execution — verify a handle as you use it. One writer at a
-time; first confirmed by: qa-engineer analyst, ELITEA-2336, 2026-08-05.
+time; first confirmed by: qa-engineer analyst, ELITEA-2336, 2026-08-05. Updated
+by ELITEA-2337/2338/2343 analyst sessions (same day).
 
 ## Page structure
 - Route: `/settings/secrets` (`ProtectedRoutes.jsx`, `path="secrets"`).
@@ -109,6 +110,60 @@ time; first confirmed by: qa-engineer analyst, ELITEA-2336, 2026-08-05.
   endpoint the UI's own delete flow calls (now confirmed twice, live, via
   ELITEA-2338's own full UI-driven flow above — this is no longer an
   inference from a single manual trigger).
+
+## Row-level eye icon (Show/Hide toggle) — confirmed live, ELITEA-2343, 2026-08-05
+- **Two distinct "hide" mechanisms exist on the same row — do not conflate.**
+  This section covers the ROW-LEVEL toggle (`renderActions`'s "Show/Hide
+  secret action" `IconButton`, `SecretsTable.jsx:496-509`), which is
+  DIFFERENT from the three-dot menu's "Hide" item (`SecretActionsMenu.jsx`,
+  covered above in § Delete flow and by sibling case ELITEA-2344/#852) — the
+  menu's Hide calls a server mutation behind a confirmation dialog; this
+  toggle does not.
+- **Zero testid**, confirmed both live (DOM query) and in source — a bare
+  `IconButton` with no `data-testid`, unlike its neighbor
+  `secret-row-actions-button`. **Testid needed:
+  `secret-row-visibility-toggle-button`** (uniqueness confirmed against both
+  `main` and `automation/testids` — zero hits).
+- **NOT gated by `isDefault`** — confirmed in source, no `disabled` prop at
+  all on this `IconButton` (contrast the three menu items, all
+  `disabled={isDefault}`). A default/system secret's value CAN be revealed
+  via this toggle. Irrelevant risk-wise (reveal is read-only), but means a
+  future case could legitimately target a real secret's row for THIS
+  specific interaction, unlike delete/edit.
+- **Reveal (click when masked)**: fires `GET
+  /api/v2/secrets/secret/default/{project_id}/{name}` → `200 OK` — SAME URL
+  shape as the DELETE endpoint (singular "secret"), different HTTP method.
+  Confirmed live response body:
+  `{"name": "<name>", "secret_name": "{{secret.<name>}}", "is_hidden": false,
+  "value": "<plaintext>"}`. The Value cell (`secret-value-cell`) then shows
+  `data.value` verbatim (`useSecretVisibility.hooks.js`'s `handleShowSecret`).
+- **Hide (click when revealed)**: confirmed live via before/after
+  `browser_network_requests` diff — **ZERO** new network requests. Purely
+  client-side (`handleHideSecret`: `setRows(... secretValue: row.secret_name)`)
+  — restores the exact masked template string the initial list GET already
+  supplied, no re-fetch.
+- **Icon identity — a usable non-app testid.** The toggle's icon `<svg>`
+  carries its own `data-testid` **automatically supplied by
+  `@mui/icons-material`** (equal to the icon component's export name) —
+  confirmed live via `browser_evaluate`: `VisibilityIcon` (masked/closed-eye
+  state) ↔ `VisibilityOffIcon` (revealed/crossed-eye state). Confirmed in
+  source that neither `<VisibilityIcon>` nor `<VisibilityOffIcon>` receives
+  an app-authored `data-testid` prop at the call site — this is 100% MUI
+  library behavior, not `add-data-testid` work. ELITEA-2343's AFS uses this
+  as a scoped `[data-testid="VisibilityIcon"]` / `[data-testid="VisibilityOffIcon"]`
+  sub-selector chained off the (new) button testid — flagged there as a
+  DECLARED IMPROVISATION since no canon pattern explicitly covers a
+  vendor-auto-generated testid on a conditionally-swapped child component;
+  see that AFS's § Concrete Handles for the full reasoning and the reviewer
+  fallback (drop the icon-shape assertion, keep only the Value-cell text
+  assertion) if the improvisation is rejected.
+- **`open_row_actions_menu()`'s declared-improvisation React-onClick
+  workaround was NOT needed this session** — a normal Playwright `.click()`
+  opened the three-dot menu successfully (used for this case's own cleanup
+  delete). Contrary to ELITEA-2338's implementation-day finding (deterministic
+  failure of real clicks). Not resolved either way — keep the existing
+  workaround as a safe superset; flagged as a possible non-determinism, not a
+  reproduction of the original root cause.
 
 ## Data scale
 - Project `Private` (399) already has 100+ real secrets (e.g. `auth_token`,
