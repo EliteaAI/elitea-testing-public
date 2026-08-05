@@ -430,7 +430,8 @@ class AgentFormPage(BasePage):
         field_map = {
             "name": self.name_input,
             "description": self.description_input,
-            "instructions": self.instructions_input
+            "instructions": self.instructions_input,
+            "welcome_message": self.welcome_message_input,
         }
 
         if field_name not in field_map:
@@ -465,6 +466,16 @@ class AgentFormPage(BasePage):
         """
         self.update_text_field("description", new_description)
         logger.info(f"Updated agent description to: {new_description}")
+
+    @action("Update agent welcome message")
+    def update_welcome_message(self, new_welcome_message: str):
+        """Update the welcome message field (ELITEA-1885).
+
+        Args:
+            new_welcome_message: New welcome message text
+        """
+        self.update_text_field("welcome_message", new_welcome_message)
+        logger.info(f"Updated agent welcome message to: {new_welcome_message}")
 
     # ------------------------------------------------------------------
     # Welcome Message methods

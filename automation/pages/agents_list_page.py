@@ -84,18 +84,41 @@ class AgentsListPage(BasePage):
                      "testid across every Skill card in the preview)"
     )
 
+    # Toggle testid is ALWAYS present since EliteaUI PR #581 review fix
+    # (e0407b70): state moved to a data-expanded attribute. Collapsed-only
+    # scoping happens via this constant, per .agents/testing.md § Locator
+    # policy (testid-keyed selector + data-* state filter).
+    IMPORT_PREVIEW_COLLAPSED_TOGGLE_SELECTOR = (
+        '[data-testid="agent-import-preview-card-toggle"][data-expanded="false"]'
+    )
+
     import_preview_card_toggle = LocatorDescriptor(
         testid="agent-import-preview-card-toggle",
-        description="'Show details' toggle, shared by every entity-preview "
-                     "card (Main entity + each Skill). Rendered ONLY while "
-                     "collapsed (removed from the DOM once expanded) so a "
-                     "'click until none remain' loop naturally converges"
+        description="'Show details'/'Hide details' toggle, shared by every "
+                     "entity-preview card (Main entity + each Skill). Always "
+                     "present; data-expanded carries the state (PR #581 fix)"
     )
 
     import_preview_skill_instructions = LocatorDescriptor(
         testid="agent-import-preview-skill-instructions",
         description="Import preview — the embedded Skill's instructions "
                      "text (visible only once its card is expanded)"
+    )
+
+    # -- Nested-Agent preview (ELITEA-1902, testid-only rework — EliteaUI
+    # commit 74f72323 on automation/testids) -- the "Nested entities" block
+    # renders nested-Agent dependency cards with these NEW testids, mirroring
+    # the Skill-card pattern above (name/instructions text, shared
+    # `import_preview_card_toggle` toggle across every card type).
+    import_preview_nested_agent_name = LocatorDescriptor(
+        testid="agent-import-preview-nested-agent-name",
+        description="Import preview — the nested (dependency) Agent's name"
+    )
+
+    import_preview_nested_agent_instructions = LocatorDescriptor(
+        testid="agent-import-preview-nested-agent-instructions",
+        description="Import preview — the nested (dependency) Agent's "
+                     "instructions text (visible only once its card is expanded)"
     )
 
     import_confirm_button = LocatorDescriptor(
@@ -197,6 +220,27 @@ class AgentsListPage(BasePage):
         description="Agent card name (title) — collection locator, one per visible card",
     )
 
+    # Shared Card.jsx component testids (ELITEA-1899 testid-only rework —
+    # `entity-card` mirrors the pre-existing pattern used by
+    # CredentialsListPage/SkillsListPage/McpListPage; `entity-card-icon` is
+    # NEW this run, added via add-data-testid to Card.jsx — see EliteaUI
+    # commit 6bb6a23c on automation/testids).
+    entity_card = LocatorDescriptor(
+        testid="entity-card",
+        description="Agent card outer container (card view) — collection locator",
+    )
+    entity_card_icon = LocatorDescriptor(
+        testid="entity-card-icon",
+        description="Agent card icon — collection locator, one per visible card",
+    )
+    # Inner <img> of entity_card_icon — its own testid (not a raw ".locator
+    # img" chain appended to the entity-card-icon testid), added via
+    # add-data-testid to EliteaUI's EliteAImage.jsx/EntityIcon.jsx
+    # (ELITEA-1899 review fix-pass; EliteaUI automation/testids commit
+    # 558160a6). Scoped per-card in get_card_icon_src() via
+    # `card.locator(...)` since it's a collection locator (one per card).
+    ENTITY_CARD_ICON_IMG_SELECTOR = '[data-testid="entity-card-icon-img"]'
+
     def get_agent_card_names(self, timeout: int = 5000) -> list[str]:
         """Return names of all agent cards visible on the dashboard.
 
@@ -233,6 +277,29 @@ class AgentsListPage(BasePage):
             return True
         except Exception:
             return False
+
+    def get_card_icon_src(self, name: str, timeout: int = 10000) -> str:
+        """Return the ``src`` of a matching agent card's icon ``<img>``.
+
+        LOCATOR: scopes ``entity_card`` by visible name text, then reads
+        the ``entity-card-icon-img`` testid (see ``ENTITY_CARD_ICON_IMG_SELECTOR``
+        above) — its own testid, not a raw ``<img>`` tag chained off
+        ``entity-card-icon`` (ELITEA-1899 — confirmed live: the card
+        matching ``name`` shows the exact same icon URL as the agent
+        header, not just a visual/screenshot-only match).
+
+        Args:
+            name: Exact agent name to match the card by.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The card icon's ``img.src`` value.
+        """
+        card = self.entity_card.filter(has_text=name).first
+        card.wait_for(state="visible", timeout=timeout)
+        icon = card.locator(self.ENTITY_CARD_ICON_IMG_SELECTOR)
+        icon.wait_for(state="visible", timeout=timeout)
+        return icon.get_attribute("src") or ""
 
     @action("Select agent")
     def select_agent(self, name: str, timeout: int = 5000):
@@ -428,26 +495,28 @@ class AgentsListPage(BasePage):
         """Expand every "Show details" toggle in the Import parameters dialog.
 
         Unlike the Skill import dialog (a single entity preview), the
-        Agent import dialog renders two collapsed preview sections —
-        "Main entity" (the Agent) and "Skills" (each embedded Skill) —
-        each behind its own "Show details" toggle
-        (``IWModalEntityCardWrapper``, ``defaultExpanded=false``). Clicks
-        all of them so Description/Instructions preview text is actually
-        rendered (non-zero height) before assertions read it.
+        Agent import dialog renders collapsed preview sections — "Main
+        entity" (the Agent), "Skills" (each embedded Skill), and (ELITEA-1902)
+        "Nested entities" (each embedded nested Agent) — each behind its own
+        "Show details" toggle (``IWModalEntityCardWrapper``,
+        ``defaultExpanded=false``). Clicks all of them so Description/
+        Instructions preview text is actually rendered (non-zero height)
+        before assertions read it.
 
         Every toggle carries the SAME ``agent-import-preview-card-toggle``
-        data-testid, but only while its own card is collapsed — the JSX
-        omits the attribute once expanded (``IWModalEntityCardWrapper``'s
-        own ``isExpanded`` state). So the locator is re-queried and its
-        first match clicked repeatedly until none remain — a fixed-count
-        loop indexed by ``nth()`` would go out of bounds after the first
-        click shrinks the live match set.
+        data-testid, ALWAYS present, with ``data-expanded`` reflecting the
+        card's state (EliteaUI PR #581 review fix ``e0407b70`` — the old
+        JSX omitted the testid once expanded). So the loop queries the
+        COLLAPSED subset via ``IMPORT_PREVIEW_COLLAPSED_TOGGLE_SELECTOR``
+        and clicks its first match until none remain — each click flips
+        ``data-expanded`` to true, shrinking the collapsed set, so the
+        loop converges exactly as before. Looping on the bare testid
+        would never terminate now.
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        # Filter to only "Show details" buttons (not "Hide details")
-        toggles = self.import_preview_card_toggle.filter(has_text="Show details")
+        toggles = self.page.locator(self.IMPORT_PREVIEW_COLLAPSED_TOGGLE_SELECTOR)
         expanded_count = 0
         while toggles.count() > 0:
             toggles.first.click()
@@ -456,12 +525,18 @@ class AgentsListPage(BasePage):
             # Re-query to get fresh state after DOM update
             toggles = self.import_preview_card_toggle.filter(has_text="Show details")
         if expanded_count:
-            # Grid-template-rows CSS transition (0.4s) — wait for the
-            # Skill instructions preview to actually be visible rather
-            # than a fixed sleep.
-            self.import_preview_skill_instructions.first.wait_for(
-                state="visible", timeout=timeout,
-            )
+            # Grid-template-rows CSS transition (0.4s) — wait for whichever
+            # instructions preview this dialog actually renders to become
+            # visible rather than a fixed sleep. A Skill-only import (the
+            # pre-ELITEA-1902 caller) renders `import_preview_skill_instructions`;
+            # a nested-Agent-only import (ELITEA-1902) renders
+            # `import_preview_nested_agent_instructions` instead — neither
+            # locator exists in the other scenario, so `.or_()` resolves on
+            # whichever one is actually present without changing behavior
+            # for the pre-existing Skill-only callers.
+            self.import_preview_skill_instructions.first.or_(
+                self.import_preview_nested_agent_instructions.first
+            ).wait_for(state="visible", timeout=timeout)
         logger.info(
             "Expanded %d 'Show details' toggle(s) in import dialog", expanded_count,
         )

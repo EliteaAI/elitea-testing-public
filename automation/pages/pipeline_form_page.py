@@ -52,8 +52,13 @@ class PipelineFormPage(BasePage):
 
     discard_button = LocatorDescriptor(
         testid="discard-button",
-        fallback=lambda page: page.get_by_role("button", name="Discard"),
-        description="Discard changes button"
+        description="Discard changes button (ApplicationTabBar.jsx — the pipeline "
+        "detail page reuses the application tab bar). Rendered unconditionally; "
+        "only `disabled` toggles with form dirtiness, so it is always visible. "
+        "The `fallback=` that used to sit here was dead code — LocatorDescriptor "
+        "never invokes it when a testid is set — and it masked nothing: the "
+        "testid was simply not reaching the DOM until the call site was fixed "
+        "to pass DiscardButton's `dataTestId` prop instead of `data-testid`.",
     )
 
     def __init__(self, page: Page):

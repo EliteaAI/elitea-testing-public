@@ -484,6 +484,29 @@ class AgentAPI:
         resp = self._session.delete(url)
         _raise_for_status(resp)
 
+    def unpublish_version(self, version_id: int) -> None:
+        """Unpublish a Published version, reverting its status to Draft.
+
+        Added for ELITEA-1892's publish/unpublish cycle test — a
+        Published version has no dedicated delete endpoint (per the AFS,
+        "no delete-version UI/API, only whole-agent delete"), and
+        ``delete_agent()`` itself 400s with "Cannot delete application
+        with published or embedded versions. Unpublish first." while any
+        version on the agent is still Published. Cleanup paths that create
+        Published versions (directly or via a failed mid-test run) must
+        call this before ``delete_agent()`` to avoid leaking an
+        undeletable agent.
+
+        Args:
+            version_id: The numeric id of the PUBLISHED version to revert
+                (not the agent id — matches ``{versionId}`` in the UI's own
+                ``POST .../unpublish/prompt_lib/{project}/{versionId}`` call).
+        """
+        url = f"{self.base_url}/elitea_core/unpublish/prompt_lib/{self.project_id}/{version_id}"
+        logger.debug("UNPUBLISH version %s", url)
+        resp = self._session.post(url)
+        _raise_for_status(resp)
+
     def export_agent(self, agent_id: int, fmt: str = "md") -> bytes:
         """Export an agent as markdown.
 
@@ -878,13 +901,7 @@ class PipelineAPI:
                     "instructions": instructions_yaml,
                     "variables": [],
                     "tools": tools,
-                    "llm_settings": {
-                        "max_tokens": -1,
-                        "temperature": 0.6,
-                        "reasoning_effort": "medium",
-                        "model_name": settings.default_model_name,
-                        "model_project_id": settings.default_model_project_id,
-                    },
+                    "llm_settings": _default_llm_settings(),
                     "conversation_starters": [],
                     "agent_type": "pipeline",
                     "welcome_message": "",
@@ -1272,6 +1289,77 @@ class ArtifactAPI:
         _raise_for_status(resp)
         return resp.content
 
+    def upload_file(
+        self,
+        bucket_name: str,
+        file_key: str,
+        content: bytes,
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Upload raw bytes to a bucket via the S3 proxy endpoint.
+
+        Uses the same ``PUT /artifacts/s3/{bucket_name}/{file_key}?project_id=...``
+        endpoint the browser itself calls when uploading through the Artifacts
+        UI (confirmed live via network capture). Seeds precondition files fast,
+        independent of the browser — no ``/api/v2/`` prefix, same direct S3
+        proxy root as :meth:`list_bucket_files`.
+
+        Args:
+            bucket_name: Name of the target bucket (must already exist).
+            file_key: Full relative key/path for the file (e.g. ``"sample.txt"``
+                or ``"output/a.txt"``).
+            content: Raw file bytes to upload.
+            content_type: Optional ``Content-Type`` header value. Omitted when
+                not given (S3 proxy accepts uploads without it).
+
+        Raises:
+            requests.HTTPError: If the upload fails.
+        """
+        elitea_root = self.base_url.split("/api/")[0]
+        url = (
+            f"{elitea_root}/artifacts/s3/{bucket_name}/{file_key}"
+            f"?project_id={self.project_id}"
+        )
+        headers = {"Content-Type": content_type} if content_type else {}
+        logger.debug("PUT upload file %s (%d bytes)", url, len(content))
+        resp = self._session.put(url, data=content, headers=headers)
+        _raise_for_status(resp)
+
+    def get_file_metadata(self, bucket_name: str, file_key: str) -> Optional[dict]:
+        """Fetch a single file's full metadata from the bucket's S3 JSON listing.
+
+        Unlike :meth:`list_bucket_files` (which returns only key strings, and
+        is left unchanged so its existing shape/callers are unaffected), this
+        returns the full per-file dict from the ``contents[]`` array —
+        including ``lastModified``, which has no UI-visible equivalent
+        anywhere in the Artifacts file table (Name / Type / Size / Actions
+        columns only — confirmed via full-table snapshot during ELITEA-1832
+        exploration).
+
+        Args:
+            bucket_name: Name of the bucket.
+            file_key: Full key of the file to look up (e.g. ``"sample.txt"``).
+
+        Returns:
+            Dict with ``key``, ``lastModified``, ``etag``, ``size``,
+            ``storageClass`` keys, or ``None`` if the file is not present in
+            the listing.
+        """
+        elitea_root = self.base_url.split("/api/")[0]
+        url = (
+            f"{elitea_root}/artifacts/s3/{bucket_name}"
+            f"?project_id={self.project_id}&format=json"
+        )
+        logger.debug("GET file metadata %s (key=%s)", url, file_key)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        data = resp.json()
+        contents = data.get("contents", []) if isinstance(data, dict) else []
+        for item in contents:
+            if item.get("key") == file_key:
+                return item
+        return None
+
     def close(self):
         """Close the underlying HTTP session."""
         self._session.close()
@@ -1333,6 +1421,39 @@ class SkillAPI:
         }
         logger.debug("LIST skills %s", url)
         resp = self._session.get(url, params=params)
+        _raise_for_status(resp)
+        return resp.json()
+
+    def create_skill(self, name: str, description: str, instructions: str) -> dict:
+        """Create a new skill and return its JSON representation.
+
+        Mirrors ``AgentAPI.create_agent_full()``'s "raw payload" convenience
+        pattern, scoped to the fields the Skill create endpoint actually
+        needs. Payload shape confirmed source-side against EliteaUI's
+        ``skillsApi.js`` (``skillCreate`` mutation): ``{name, description,
+        versions: [{name: "base", instructions}]}`` — ``"base"`` is
+        ``LATEST_VERSION_NAME`` (``entities/version/lib/constants``). Added
+        for ELITEA-1911 (the AFS's own exploration created its fixture
+        Skills via the live UI form, flagging this convenience method as
+        the missing piece — see the AFS's Automation Hints).
+
+        Args:
+            name: Skill name. The UI form constrains this to lowercase
+                letters, digits, and hyphens, max 32 characters, no leading
+                or trailing hyphen (live-confirmed client-side validation
+                message) — callers should pre-validate names against that
+                format to avoid surprises if the API enforces it too.
+            description: Skill description (required by the API).
+            instructions: The "base" version's instructions text.
+        """
+        url = self._skills_url()
+        payload = {
+            "name": name,
+            "description": description,
+            "versions": [{"name": "base", "instructions": instructions}],
+        }
+        logger.debug("CREATE skill %s name=%s", url, name)
+        resp = self._session.post(url, json=payload)
         _raise_for_status(resp)
         return resp.json()
 
