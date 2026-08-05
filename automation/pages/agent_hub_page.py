@@ -123,6 +123,58 @@ class AgentHubPage(BasePage):
         description="'Start Chat' button in the agent preview modal (AgentModal.jsx).",
     )
 
+    modal_dialog = LocatorDescriptor(
+        testid="catalog-agent-modal",
+        description="Preview modal's main panel — the overlay content root (ELITEA-2356).",
+    )
+
+    modal_agent_icon = LocatorDescriptor(
+        testid="catalog-agent-modal-agent-icon",
+        description="Agent icon (EntityIcon) inside the preview modal (ELITEA-2356).",
+    )
+
+    modal_owner_name = LocatorDescriptor(
+        testid="catalog-agent-modal-owner-name",
+        description="Author/owner name Typography inside the preview modal header (ELITEA-2356).",
+    )
+
+    modal_menu_button = LocatorDescriptor(
+        testid="agent-hub-modal-menu-button",
+        description=(
+            "Overflow ('...') menu button in the preview modal header (AgentHubModalMenu.jsx) — "
+            "contains Export/Fork/Share; 'Share' performs the copy-link action (ELITEA-2356)."
+        ),
+    )
+
+    modal_close_button = LocatorDescriptor(
+        testid="catalog-agent-modal-close-button",
+        description="'x' close IconButton (aria-label='close') in the preview modal header (ELITEA-2356).",
+    )
+
+    modal_description = LocatorDescriptor(
+        testid="catalog-agent-modal-description",
+        description="Agent description Typography inside the preview modal (ELITEA-2356).",
+    )
+
+    modal_chat_starters_section = LocatorDescriptor(
+        testid="catalog-agent-modal-chat-starters-section",
+        description="'CHAT STARTERS' section container inside the preview modal (ELITEA-2356).",
+    )
+
+    modal_welcome_message_section = LocatorDescriptor(
+        testid="catalog-agent-modal-welcome-message-section",
+        description="'Welcome Message' section container inside the preview modal (ELITEA-2356).",
+    )
+
+    # Dynamic (state-filtered) like button — the SAME testid as the plain field
+    # above, combined with the data-liked state attribute (Like.jsx auto-derives
+    # it from testId presence — same precedent as the card-list like button,
+    # ELITEA-2354). Templated class-level constant per .agents/testing.md's
+    # dynamic-testid convention (no per-modal-instance parameter needed — only
+    # one modal renders at a time).
+    MODAL_LIKE_BUTTON = '[data-testid="catalog-agent-modal-like-button"]'
+    MODAL_LIKE_BUTTON_LIKED_STATE = '[data-testid="catalog-agent-modal-like-button"][data-liked="{}"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -244,6 +296,13 @@ class AgentHubPage(BasePage):
         ):
             card.first.click()
         self.modal_show_instructions_link.wait_for(state="visible", timeout=timeout)
+
+    def get_modal_liked_state(self) -> str:
+        """Return the preview modal's like button ``data-liked`` value
+        ('true'/'false') (ELITEA-2356) — same ``data-*`` state-attribute
+        precedent as :meth:`is_agent_liked` for the card-list like button.
+        """
+        return self.page.locator(self.MODAL_LIKE_BUTTON).get_attribute("data-liked") or ""
 
     @action("Click Start Chat in the agent preview modal")
     def click_start_chat(self, timeout: int = 10000):
