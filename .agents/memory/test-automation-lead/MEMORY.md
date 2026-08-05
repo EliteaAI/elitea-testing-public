@@ -30,3 +30,4 @@
 - [Testid provenance: bulk not per-case](testid_provenance_bulk_check_for_multi_case_closure.md) — one dump+diff for the whole wave; `+`-lines only
 - [Workflow tool: use scriptPath, not workflow('name',...)](workflow_tool_named_registry_is_empty_use_scriptpath.md) — named registry is empty; wrapper-script call fails silently-fast
 - [build_index MCP verb can silently no-op](build_index_mcp_verb_can_silently_no_op.md) — check index.json mtime, don't trust the success message
+- [batch-build never opens trunk→base PR](batch_workflow_never_opens_trunk_to_base_pr.md) — lead always `gh pr create`+merge it by hand, every batch

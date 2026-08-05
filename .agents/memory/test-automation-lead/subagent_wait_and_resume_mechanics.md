@@ -69,6 +69,15 @@ polls to completion).
   re-dispatching: `git status`, `git log --oneline <base>..<branch>`, and PRs
   opened since in this repo *and* EliteaUI. The subagent usually finished; verify
   its diff rather than duplicating it into a divergent second attempt.
+- **A workflow `agent()` call that dies mid-run** (e.g. `API Error: Claude's
+  response exceeded the 64000 output token maximum`) is a harness death, not a
+  case finding — the run returns `not-started` for that case with nothing learned.
+  A SINGLE such death is a plain retry: re-invoke `Workflow({scriptPath,
+  resumeFromRunId, args})` unchanged — the cache replays everything already
+  completed (e.g. triage) and only the dead call re-runs live. Confirmed
+  #779/ELITEA-2272: analyst died at ~26min/113k tokens, resume completed clean at
+  ~56min. Reserve the account-ceiling/circuit-breaker read for **several**
+  consecutive deaths, not one.
 
 ## Seen 6×
 
