@@ -23,3 +23,4 @@
 - [Interrupt before toggle omission](interrupt_before_toggle_recurring_omission.md) — 3rd pipeline-node AFS to skip it; use is_node_interrupt_before_toggle_visible(node_id)
 - [grid-table name column bypasses renderCell](grid_table_name_column_bypasses_rendercell.md) — thread nameCellTestId, not a renderCell 'name' branch
 - [AFS Priority vs pytest.mark](afs_priority_vs_pytest_mark_preflight_check.md) — grep AFS Priority vs @pytest.mark.pN BEFORE writing the test, incl. module-inherited
+- [Settings->Users hidden for private project](settings_users_hidden_for_private_project_guard.md) — env's ELITEA_PROJECT_ID is the private project; switch project BEFORE navigating to /settings/users

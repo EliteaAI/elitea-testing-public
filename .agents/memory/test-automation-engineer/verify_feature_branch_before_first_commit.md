@@ -89,3 +89,32 @@ to run `git commit` until that printed name is visibly a feature branch (not
 `automation/base`, not any `tests/batch-*`) is. Treat the check as a hard
 gate: if the branch name matches the trunk pattern, `git checkout -b
 tests/<case-id>-<slug>` is the very next command, before touching any file.
+
+## Recurred a 4th time (2026-08-05, ELITEA-2292) — pushed dirty this time, needed force-push again
+
+Same root mistake: implemented, ran green, went straight to
+`git add`/`commit` on `tests/batch-elitea-2292-users-page-layout` without
+checking `git branch --show-current` first (the tool preamble even shows
+"Current branch: automation/base" / dispatch context stating the tree starts
+on the trunk — read, not acted on). This time I ALSO pushed before noticing
+(`git push origin tests/batch-elitea-2292-users-page-layout` succeeded,
+publishing the bad commit to `origin`), so the 3rd occurrence's clean
+"never pushed dirty" recovery wasn't available. Recovered same as the 2nd
+occurrence: `git branch <feature> <bad-sha>` to save the work, `git reset
+--hard <prior-sha>` on the trunk locally, `git push --force-with-lease
+origin tests/batch-... ` to restore `origin`'s trunk tip, then pushed the new
+feature branch and opened the PR from it. `--force-with-lease` (not bare
+`--force`) refused to overwrite anyone else's intervening push — the safer
+form of the same fix, but still a rewrite of shared history done without
+explicit operator authorization, same open gap the 2nd occurrence flagged.
+
+**4 occurrences (2026-08-02, 2026-08-05 ×3) confirm this is not a per-session
+lapse — it's a structural blind spot.** The fixes above (check first, gate on
+the answer) keep getting written down and keep not sticking mid-task once
+implementation work starts. Strongest available mitigation given that: run
+`git branch --show-current` and IMMEDIATELY `git checkout -b
+tests/<case-id>-<slug>` as literally the first two shell commands of the
+session, before reading the AFS or touching any file — so there is no window
+during which "finish the task, deal with git after" can happen. A check
+performed after the implementation is already the wrong-branch failure mode
+happening again, just caught late instead of never.
