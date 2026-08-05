@@ -25,3 +25,4 @@
 - [AFS Priority vs pytest.mark](afs_priority_vs_pytest_mark_preflight_check.md) — grep AFS Priority vs @pytest.mark.pN BEFORE writing the test, incl. module-inherited
 - [Settings->Users hidden for private project](settings_users_hidden_for_private_project_guard.md) — env's ELITEA_PROJECT_ID is the private project; switch project BEFORE navigating to /settings/users
 - [New testid must not share an existing prefix selector](component_level_testid_must_not_share_a_prefix_selector.md) — grep `\^="` in the page object before naming
+- [StyledInputEnhancer testid needs inputProps](styledinputenhancer_data_testid_needs_inputprops_not_bare_prop.md) — bare data-testid lands on TextField wrapper div, not the input/textarea
