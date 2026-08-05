@@ -143,6 +143,16 @@ class AdminUsersPage(BasePage):
         testid="users-invite-confirm-button",
         description='Invite-users dialog — "Invite" confirm button',
     )
+    # `emailsErrorTestId` newly threaded through InviteUserDialog ->
+    # Users.jsx's call site (ELITEA-2307, EliteaAI/EliteaUI@8bda203c) — the
+    # dialog's inline email-validation `<FormHelperText>` previously had NO
+    # testid support at all. Renders only while `error` is true (blur-gated,
+    # see `type_invalid_email_and_blur()` below), so presence itself is the
+    # error-state signal.
+    invite_emails_error_text = LocatorDescriptor(
+        testid="users-invite-emails-error-text",
+        description='Invite-users dialog — inline "Invalid email: {email}" validation error text',
+    )
 
     # --- Edit roles dialog (header batch-edit — ELITEA-2304) ---
     # `dialogTestId` / `titleTestId` / `roleSelectTestId` / `saveButtonTestId`
@@ -389,6 +399,29 @@ class AdminUsersPage(BasePage):
         emails input to become visible."""
         self.invite_button.click()
         self.invite_emails_input.wait_for(state="visible", timeout=timeout)
+
+    def type_email_in_invite_dialog(self, email: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Type *email* into the Invite dialog's Emails field WITHOUT
+        blurring it (ELITEA-2307).
+
+        Deliberately does NOT reuse :meth:`invite_users` — that method
+        fills, selects a role, and clicks Invite, awaiting the resulting
+        POST; this case never reaches that request (the Invite button
+        stays disabled on an invalid-email error). Split from
+        :meth:`blur_invite_emails_field` (rather than one combined
+        fill-and-blur helper) because validation is blur-gated, not
+        live-as-you-type (confirmed via ``InviteUserDialog.jsx`` source +
+        live re-check: ``onChange`` only updates local state, ``onBlur`` is
+        what calls ``parseEmails`` and sets ``error``/``helperText``) — a
+        caller must be able to assert "no error yet" in between the two
+        calls.
+        """
+        self.invite_emails_input.fill(email, timeout=timeout)
+
+    def blur_invite_emails_field(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Blur the Invite dialog's Emails field (Tab) to trigger
+        validation — see :meth:`type_email_in_invite_dialog`."""
+        self.invite_emails_input.press("Tab", timeout=timeout)
 
     def _select_multi_select_role_and_close(self, combobox, role: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
         """Select *role* in *combobox*'s currently-closed Roles multi-select,
