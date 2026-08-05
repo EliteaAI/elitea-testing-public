@@ -32,3 +32,4 @@
 - [build_index MCP verb can silently no-op](build_index_mcp_verb_can_silently_no_op.md) — omit `repo:` arg entirely; it misroutes to ~/.onetest-workspaces
 - [batch-build never opens trunk→base PR](batch_workflow_never_opens_trunk_to_base_pr.md) — lead always `gh pr create`+merge it by hand, every batch
 - [Workflow new-ground blocker needs blocking_detail too](workflow_new_ground_blocker_needs_blocking_detail_too.md) — `blocked` may be a loop-control gap, not unfixable — read the finding first
+- [Workflow R2 cap is total, not per-cause](batch_workflow_r2_counter_is_total_not_per_cause.md) — verify per-cause via the implementer's own notes + `gh pr view` before accepting an "R2 cap exceeded" park
