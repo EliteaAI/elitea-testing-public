@@ -22,3 +22,4 @@
 - [settings-analytics: stale "six" counts](settings_analytics_case_family_stale_six_count.md) — live has 7 tabs/8 KPIs, not 6; clarification not defect
 - [MUI v7 TablePagination testids](mui_tablepagination_v7_testid_slotprops.md) — use slotProps.{select,displayedRows,actions.*Button}, not deprecated props
 - [Recharts tooltip testid](recharts_hover_tooltip_testid_pattern.md) — thread via content={p=>...}; hover w/ real mouse.move, not page.evaluate
+- [Agent Hub family naming drift](agent_hub_family_agent_hub_vs_catalog_naming_drift.md) — "Agent HUB" case text vs live "Catalog"; cite #1208, don't re-file
