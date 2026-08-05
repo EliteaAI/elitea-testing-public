@@ -18,3 +18,4 @@
 - [API seed project mismatch](api_pipeline_seed_project_mismatch.md) — standalone scripts can miss the browser's active project
 - [Pipeline STATE panel traps](pipeline_state_panel_ambiguous_add_button_and_name_input_collision.md) — role name "Context" ambiguous; input[name="name"] hits pipeline Name field
 - [Clipboard read hangs w/o permission](clipboard_read_hangs_without_permission_grant.md) — grant clipboard-read at context creation or readText() hangs forever
+- [InputBase autoBlur breaks Control+a](input_autoblur_breaks_control_a_select_all.md) — clear via Home+Shift+End instead

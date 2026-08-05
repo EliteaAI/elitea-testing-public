@@ -78,6 +78,12 @@ class CreatePersonalTokenPage(BasePage):
         testid="create-personal-token-generate-button",
         description="Generate button — disabled until name is non-empty and valid.",
     )
+    name_error = LocatorDescriptor(
+        testid="create-personal-token-name-error",
+        description="Name field's validation-error helper text — visible only "
+        "while the entered name fails TOKEN_NAME_PATTERN "
+        "(/^[a-zA-Z0-9_-]*$/); absent (count 0) once the name is valid.",
+    )
     dialog_title = LocatorDescriptor(
         testid="generated-token-dialog-title",
         description='GeneratedTokenDialog title — exact text "New token generated!"',
@@ -129,6 +135,29 @@ class CreatePersonalTokenPage(BasePage):
         self.name_input.click()
         self.name_input.press_sequentially(name, delay=20)
         expect(self.generate_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
+
+    def type_name(self, name: str) -> None:
+        """Type *name* into the Name field without asserting Generate's
+        resulting enabled/disabled state (unlike fill_name(), which asserts
+        enabled — not valid for negative/invalid-name cases where Generate
+        is expected to stay disabled)."""
+        self.name_input.click()
+        self.name_input.press_sequentially(name, delay=20)
+
+    def clear_and_type_name(self, name: str) -> None:
+        """Replace the Name field's current content with *name*.
+
+        Uses Home + Shift+End to select the full line, then types over the
+        selection — Control+a is unreliable here because Input.InputBase's
+        enableAutoBlur fires a real blur()+focus() cycle ~10ms after every
+        change, which can race a Control+a keypress and silently reset the
+        cursor before the shortcut lands (confirmed live during ELITEA-2286
+        AFS exploration).
+        """
+        self.name_input.click()
+        self.page.keyboard.press("Home")
+        self.page.keyboard.press("Shift+End")
+        self.name_input.press_sequentially(name, delay=20)
 
     def get_expiration_measure_text(self) -> str:
         """Return the currently-selected expiration-unit display text."""

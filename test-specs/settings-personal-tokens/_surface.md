@@ -5,7 +5,10 @@ Tokens surface (`/settings/tokens`, renders `PersonalTokens.jsx`). Not a
 substitute for execution — verify a handle as you use it. One writer at a
 time; first confirmed by: qa-engineer analyst, ELITEA-2277, 2026-08-05.
 Extended by: qa-engineer analyst, ELITEA-2280, 2026-08-05 (create-token flow
-+ delete-confirmation cleanup flow).
++ delete-confirmation cleanup flow). Extended by: qa-engineer analyst,
+ELITEA-2286, 2026-08-05 (Name-field client-side validation: `useAutoBlur`
+mechanism, reliable field-clearing technique, `beforeunload` nav-blocker
+gotcha).
 
 ## Create-token flow (`/settings/create-personal-token`, `CreatePersonalToken.jsx`)
 - The add-button (`personal-tokens-add-button`) does NOT open an inline
@@ -49,6 +52,47 @@ Extended by: qa-engineer analyst, ELITEA-2280, 2026-08-05 (create-token flow
   grants the permission at context-creation time. Never diagnose this as a
   product regression before checking the calling context's granted
   permissions first.
+
+## Name-field client-side validation (`CreatePersonalToken.jsx`, ELITEA-2286)
+- `TOKEN_NAME_PATTERN = /^[a-zA-Z0-9_-]*$/` (line 18), enforced via a yup
+  `.matches()` schema with message `"Only alphanumeric characters,
+  underscore and hyphen are allowed"` + `.required('Name is required')`.
+  A space fails the same branch as any other disallowed character — no
+  separate "space" handling in the code, confirmed live.
+- **No explicit blur/Tab needed to see the error or the disabled Generate
+  button appear.** `Input.InputBase` (`enableAutoBlur` prop, default
+  `true`) wraps `onChange` so `useAutoBlur.js` fires a REAL
+  `document.activeElement.blur(); .focus()` cycle ~10ms after every
+  keystroke — this is what sets Formik's `touched.name` (plain
+  `handleChange` alone never touches a field). The error paragraph +
+  `isGenerateDisabled` (`!name || (touched.name && Boolean(errors.name))`)
+  both reflect within about one render tick of typing an invalid char.
+  Automation should just `expect(...)`-poll, no manual blur step.
+- **Field-clearing gotcha: `Control+a` is UNRELIABLE on this input**
+  (confirmed live) — the same `useAutoBlur` refocus cycle above can race a
+  `Control+a` select-all keypress and silently reset the cursor to
+  position 0 before the shortcut lands, so a `Control+a` + `Backspace`
+  sequence was observed removing only the leading character instead of the
+  whole field. **Reliable technique, confirmed live:** `press("Home")` then
+  `press("Shift+End")` (keyboard-only line-select) immediately followed by
+  `press_sequentially(new_text)` — typing over the active selection
+  replaces it in one step.
+- **`beforeunload` dialog on navigate-away with unsaved changes** —
+  `useNavBlocker` (`CreatePersonalToken.jsx:84-86`, keyed off `hasChanged`)
+  blocks a raw `page.goto()`/reload once any form field differs from its
+  initial value; confirmed live (hit directly while re-navigating during
+  exploration — the navigation call hung until the dialog was handled).
+  Any case that needs to leave this page mid-form needs
+  `page.on("dialog", ...)` handling or should use the page's own
+  close-icon/back-button flow instead of a raw navigation.
+- **Validation-error paragraph testid** (`create-personal-token-name-error`)
+  — did NOT exist before ELITEA-2286 (confirmed by source read of
+  `CreatePersonalToken.jsx` as of ELITEA-2280/2284's sessions, which never
+  touched the Name field's error state). `Input.InputBase`'s `helperText`
+  prop accepts any `ReactNode` — wrap the existing `getNameHelperText()`
+  call in a small element carrying the testid at the `CreatePersonalToken.jsx`
+  call site; zero `InputBase.jsx` change needed, same "wire an existing
+  generic prop" pattern as every other handle on this page.
 
 ## Table row cell content (`TokensTable.jsx` `renderCell`)
 - Name cell: `Text.EllipsisTypography` showing `row.name` verbatim.
