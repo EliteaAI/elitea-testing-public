@@ -8,6 +8,16 @@ IS the freshly created token).
 
 Test case: ELITEA-2280
 AFS: test-specs/settings-personal-tokens/l3_personal-token-create-and-verify_ELITEA-2280.md
+
+Also covers ELITEA-2284 ("Expired tokens show a gray icon and active tokens
+show a green icon with remaining days") — an `extend-existing` AFS. Steps
+4-5 of that case (active token -> green icon + "in X days") are already
+asserted by this file's Step 12 below; the new
+`test_expired_token_shows_expired_icon_and_label` test appended at the
+bottom of this class covers ELITEA-2284's remaining steps 2-3 (expired
+token -> gray icon + "Expired" label), read-only against existing live
+data.
+AFS: test-specs/settings-personal-tokens/lextend_expired-and-active-token-expiration-icons_ELITEA-2284.md
 """
 
 import logging
@@ -213,3 +223,36 @@ class TestPersonalTokenCreateAndVerify:
                 expect(tokens_page.get_row_by_name(token_name)).to_have_count(
                     0, timeout=ROW_WAIT_TIMEOUT
                 )
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "settings-personal-tokens/ELITEA-2284_expired-tokens-show-icon-and-active-tokens-show-icon-with-re.md",
+        "onetest-ai Test Case link",
+    )
+    def test_expired_token_shows_expired_icon_and_label(self, page):
+        """ELITEA-2284 (steps 2-3) — an existing expired token's Expiration
+        cell shows the gray/expired state icon and the exact 'Expired'
+        label. Read-only: uses existing live project data, no token created
+        or deleted. (ELITEA-2284 steps 4-5 — active token, green icon, 'in X
+        days' — are already asserted by
+        test_create_personal_token_and_verify_in_table's Step 12 above; not
+        repeated here.)"""
+        tokens_page = PersonalTokensPage(page)
+
+        with allure.step("Step 1 — Navigate to Settings -> Personal Tokens"):
+            tokens_page.navigate()
+
+        with allure.step("Step 2 — Locate an existing expired token row"):
+            row = tokens_page.get_row_by_name("Marian")
+            expect(row).to_have_count(1, timeout=ROW_WAIT_TIMEOUT)
+
+        with allure.step(
+            'Step 3 — Verify the Expiration cell shows the expired state '
+            '(gray icon) and the exact "Expired" label'
+        ):
+            status = tokens_page.get_row_expiration_status(row, state="expired")
+            expect(status).to_be_visible(timeout=ROW_WAIT_TIMEOUT)
+            status_text = (status.text_content() or "").strip()
+            assert status_text == "Expired", (
+                f"Expected the Expiration cell to read 'Expired', got {status_text!r}"
+            )
