@@ -36,15 +36,15 @@ in ``SecretsTable.jsx`` as ``secrets-pagination-info`` — per
 ``.agents/testing.md`` "shared components never hardcode feature-scoped
 testids".
 
-Locator provenance (ELITEA-2338, delete flow): the row actions (three-dot)
-button and the three actions-menu items already carried real
-``data-testid``s on ``automation/testids`` at implementation time
-(``EliteaAI/EliteaUI@dd47b184`` — "add data-testid for secret row actions
-button + menu items (delete flow)"), predating this test-automation-engineer
-session; the AFS's "testid needed" claims were drift (see this case's Run
-Report) — confirmed via a fresh ``git fetch origin`` + ``git grep`` against
-both ``origin/main`` (absent) and ``origin/automation/testids`` (present) on
-implementation day. No new ``add-data-testid`` work was required.
+Locator provenance (ELITEA-2338, delete flow): the AFS correctly specced all
+four row-actions testids as **"testid needed"** — ``SecretsTable.jsx``'s
+three-dot ``IconButton`` (lines 511-518) and ``SecretActionsMenu.jsx``'s three
+``MenuItem``s (lines 34/50/66) carried zero ``data-testid`` at analysis time.
+This implementation session added them via ``add-data-testid`` and committed
+them onto ``automation/testids`` as ``EliteaAI/EliteaUI@dd47b184`` — "add
+data-testid for secret row actions button + menu items (delete flow)" — dated
+~2 minutes after this case's AFS commit, i.e. genuinely new work done to
+fulfill the AFS's request, not a pre-existing testid the AFS drifted on.
 ``secret-row-actions-button`` is a static ``data-testid`` on the row's
 ``IconButton`` wrapping ``DotsMenuIcon`` (``SecretsTable.jsx:512``).
 ``secret-actions-menu-edit-value`` / ``secret-actions-menu-hide`` /
