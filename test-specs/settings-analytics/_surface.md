@@ -105,5 +105,65 @@ this feature area. First implementer creates it.
 - **No positive-case (`errors > 0`) live data available** in the "UI Testing"
   exploration project — all 3 users observed have `errors: 0`. The red-color
   branch is source-confirmed but not live-exercised; ELITEA-2312's AFS
-  documents this as a Blocked Step, not a defect. A future case/project with
-  a genuine error-attributed analytics row should extend the test to cover it.
+  documents this as a Blocked Step, not a defect. **Resolved during ELITEA-2312
+  implementation**: the `auth_state` fixture's actual default project is
+  **"Private" (project id `399`)**, distinct from the analyst's exploration
+  project "UI Testing" — "Private" has real `errors > 0` rows (`User 6250`:
+  errors=78, `testbot@elitea.ai`: errors=75, live in the default "Last 24h"
+  range) so the positive branch is live-exercisable with no seeding. Confirmed
+  again during ELITEA-2313 exploration (2026-08-05) — switch the project
+  selector to "Private" (`select-option-399` — no dedicated testid on the
+  option itself, MUI Select generates it) for any future case in this feature
+  needing `errors > 0` fixture data.
+
+## User Detail view (`AnalyticsUserDetailed.jsx`) — confirmed live 2026-08-05, ELITEA-2313
+
+- **Confirmed (fresh `git fetch origin`): `AnalyticsUserDetailed.jsx` is
+  byte-identical on `main` and `automation/testids`** — already fully on `main`,
+  like the rest of the Analytics feature.
+- **Not a route** — clicking a Users-tab row is a same-page React state swap
+  (`AnalyticsUsers.jsx`'s `selectedUserId` state), not a URL navigation. The
+  browser URL stays `/settings/analytics` throughout; there is no per-user deep
+  link. Don't wait on a URL change — wait on the
+  `analytics_user_detail/prompt_lib/` GET response + the view's own loading
+  spinner instead.
+- **KPI cards: TEN**, not six: `ACTIVE DAYS, LLM CALLS, TOOL CALLS,
+  AGENT & PIPELINE RUNS, CHAT MSG, ERRORS, TOTAL TOKENS, INPUT TOKENS,
+  OUTPUT TOKENS, TOTAL COST`. Same stale-case-text family as the tab/KPI/column
+  counts elsewhere in this feature — this time for ELITEA-2313's case text.
+  Filed elitea-testing-public#1191.
+- **Errors KPI color rule matches the Users-table rule exactly**
+  (`AnalyticsUserDetailed.jsx:99`): `color: kpis.errors > 0 ? palette.status.rejected
+  : undefined`. Confirmed live: `errors=75` → `rgb(215, 22, 22)`; the other 9
+  cards render `rgb(255, 255, 255)` (default). Unlike the Users-table Errors
+  column (#1188), **ELITEA-2313's case text is NOT stale here** — it says
+  "greater than 0", matching source/live exactly.
+- **Summary panel labels**: "Models Used", "Tools Used", "**Agents & Pipelines
+  Used**" (not "Agents Used" — same stale-case-text pattern; the live label
+  matches the Analytics tab's own "Agents & Pipelines" naming). Each panel
+  shows a count line (`"{N} models"` etc.) and, when N>0, a scrollable list of
+  name+count rows; when N=0, an empty-state string ("No tool usage" etc.).
+- **`KpiCard.jsx` and `ChartTooltip.jsx` are SHARED components** (also consumed
+  by `AnalyticsOverview`, `AnalyticsCosts`, `AnalyticsAgentDetailed`,
+  `AnalyticsToolDetailed`, `UsageSummary`) — any testid on them must be a
+  caller-supplied prop (`testId`/`valueTestId` on `KpiCard`, a render-prop-
+  threaded `testId` on `ChartTooltip` since Recharts injects `active`/
+  `payload`/`label` at render time), wired ONLY at the `AnalyticsUserDetailed`
+  call sites this case touches — not at the other consumers.
+- **Chart hover tooltip works** — confirmed via a synthetic `mouseover`/
+  `mousemove` dispatch during exploration (Recharts' internal hover-tracking
+  listens on the whole plot `<svg>`); the ACTUAL automated test must use a real
+  `page.mouse.move()`/`.hover()` at coordinates from a testid'd chart-container
+  bounding box, never `page.evaluate`-dispatched synthetic events (exploration-
+  only per the pristine-repro-gate rule).
+- **A user with no `user_email` set renders a BLANK detail-view title** — no
+  fallback to `User {id}` the way the list row has. Filed as a genuine defect,
+  elitea-testing-public#1192 (not a case-text clarification — the case's
+  premise assumes an email always exists). Pick a row WITH an email for any
+  future case's happy-path assertions in this view (e.g. `testbot@elitea.ai`
+  in the "Private" project).
+- **Data endpoint**: `GET /api/v2/elitea_core/analytics_user_detail/prompt_lib/
+  {project_id}?user_id={id}&date_from=...&date_to=...` — fires once per row
+  click; 200 OK, no console errors. No new request fires on back-navigation
+  (`handleBack` only resets local state; the Users-tab query result stays
+  cached by RTK-Query from the original tab-mount fetch).
