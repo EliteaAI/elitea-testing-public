@@ -36,3 +36,4 @@
 - [TMS ids CAN collide across modules](onetest_case_id_can_collide_across_modules.md) — SYSTEMIC (150+ ids); run `grep -h '^id: ELITEA-' -r tests/ | sort | uniq -d` every intake
 - [Report outcome "blocked" can still mean LAND IT](batch_report_case_outcome_blocked_can_still_mean_land_it.md) — check `gate.verdict`+`next` before parking a sanctioned-RED case
 - [Gate red at runs=1 — confirm before parking](gate_red_at_1_run_lead_confirms_sanctioned_red_before_landing.md) — internal gate honestly stops at 1 red; run your own N=3 before classifying
+- [Workflow status:failed ≠ work lost](workflow_hard_failure_can_still_have_landed_real_work.md) — check git+journal.jsonl, then just resume; don't redo
