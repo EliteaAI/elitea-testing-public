@@ -53,11 +53,27 @@ feature-scoped testid on a shared component, per
 non-deprecated ``TablePagination`` ``slotProps`` (``select`` /
 ``displayedRows`` / ``actions.previousButton`` / ``actions.nextButton``),
 confirmed present in ``node_modules/@mui/material/TablePagination``.
+
+**ELITEA-2313 (user detail view, ``AnalyticsUserDetailed.jsx``)** — same-page
+state swap (no route change) when a Users-tab row is clicked; zero
+pre-existing testids. ``analytics-user-detail-kpi-card`` repeats on all 10
+KPI cards (shared ``KpiCard.jsx``, new ``testId`` prop wired on the outer
+``Box``). ``analytics-user-detail-kpi-value`` repeats on all 10 cards' VALUE
+node specifically (new ``valueTestId`` prop on ``KpiCard.jsx``, same index
+order as the card list) — added uniformly, not just on the Errors card,
+after live exploration showed the card's own outer ``Box`` carries no
+``color`` style at all (constant computed color regardless of the Errors
+branch); only the value node reflects the conditional ``color`` prop, so a
+card-level check would be a trivially-passing assertion for the other 9
+cards. ``analytics-user-detail-chart-tooltip`` is wired on the shared
+``ChartTooltip.jsx`` via a render-function ``content`` prop (Recharts injects
+``active``/``payload``/``label`` at render time) — only at this call site.
 """
 
 import logging
 
 from playwright.sync_api import Page
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -76,6 +92,10 @@ ANALYTICS_QUERY_URL_SUBSTRING = "/elitea_core/analytics/prompt_lib/"
 # Overview/Health one above; fires on Users-tab mount and again on every
 # search-input keystroke change.
 ANALYTICS_USERS_QUERY_URL_SUBSTRING = "/elitea_core/analytics_users/prompt_lib/"
+
+# User-detail-view query (`useAnalyticsUserDetailQuery`) — fires once when a
+# Users-tab row is clicked (ELITEA-2313).
+ANALYTICS_USER_DETAIL_QUERY_URL_SUBSTRING = "/elitea_core/analytics_user_detail/prompt_lib/"
 
 
 class AnalyticsPage(BasePage):
@@ -168,6 +188,54 @@ class AnalyticsPage(BasePage):
     )
     users_pagination_next = LocatorDescriptor(
         testid="analytics-users-pagination-next", description="Next-page button"
+    )
+
+    # User detail view (ELITEA-2313) — same-page state swap when a Users-tab
+    # row is clicked, not a route navigation.
+    user_detail_back_button = LocatorDescriptor(
+        testid="analytics-user-detail-back-button", description="Back arrow to return to the Users-tab table"
+    )
+    user_detail_title = LocatorDescriptor(
+        testid="analytics-user-detail-title", description="Detail-view title — the user's email"
+    )
+    user_detail_loading_indicator = LocatorDescriptor(
+        testid="analytics-user-detail-loading-indicator",
+        description="Detail-view data-fetch loading spinner — present only while in flight",
+    )
+    user_detail_kpi_cards = LocatorDescriptor(
+        testid="analytics-user-detail-kpi-card",
+        description="Repeated per-KPI card (same testid on all 10 cards — select via .nth(i))",
+    )
+    user_detail_kpi_values = LocatorDescriptor(
+        testid="analytics-user-detail-kpi-value",
+        description="Repeated per-KPI card VALUE node (same order as user_detail_kpi_cards, "
+        "select via .nth(i)) — used for the Errors-card color check; the color prop is applied "
+        "to this Typography specifically, not the outer card Box, so this dedicated node is "
+        "required to make the negative-branch (9 default-colored cards) assertion meaningful",
+    )
+    user_detail_chart_title = LocatorDescriptor(
+        testid="analytics-user-detail-chart-title", description='Daily Activity chart title — "Daily Activity"'
+    )
+    user_detail_chart_subtitle = LocatorDescriptor(
+        testid="analytics-user-detail-chart-subtitle",
+        description='Daily Activity chart subtitle — "Events by type per day"',
+    )
+    user_detail_chart_container = LocatorDescriptor(
+        testid="analytics-user-detail-chart-container",
+        description="Daily Activity chart's wrapping container — used for presence and to "
+        "compute hover coordinates",
+    )
+    user_detail_chart_tooltip = LocatorDescriptor(
+        testid="analytics-user-detail-chart-tooltip", description="Recharts hover tooltip content"
+    )
+    user_detail_models_panel = LocatorDescriptor(
+        testid="analytics-user-detail-models-panel", description='"Models Used" summary panel'
+    )
+    user_detail_tools_panel = LocatorDescriptor(
+        testid="analytics-user-detail-tools-panel", description='"Tools Used" summary panel'
+    )
+    user_detail_agents_panel = LocatorDescriptor(
+        testid="analytics-user-detail-agents-panel", description='"Agents & Pipelines Used" summary panel'
     )
 
     def __init__(self, page: Page):
@@ -334,3 +402,78 @@ class AnalyticsPage(BasePage):
         if self.users_search_input.input_value():
             self.users_search_input.fill("")
             self._wait_for_users_settled()
+
+    # ------------------------------------------------------------------
+    # User detail view (ELITEA-2313)
+    # ------------------------------------------------------------------
+
+    def _is_analytics_user_detail_query_response(self, response) -> bool:
+        """True for the user-detail GET (`useAnalyticsUserDetailQuery`) —
+        fires once when a Users-tab row is clicked."""
+        return (
+            ANALYTICS_USER_DETAIL_QUERY_URL_SUBSTRING in response.url
+            and response.request.method == "GET"
+        )
+
+    def _wait_for_user_detail_settled(self) -> None:
+        """Wait for the detail view's render to catch up with a just-resolved
+        query response (same response-vs-render gap as `_wait_for_users_settled`)."""
+        self.user_detail_loading_indicator.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+
+    def open_user_detail_by_row(self, index: int) -> None:
+        """Click the user row at *index* (same testid repeats on every row —
+        `.nth(index)`) and wait for the detail view to settle.
+
+        No URL change — `AnalyticsUsers.jsx`'s `handleUserClick` sets local
+        `selectedUserId` state, which conditionally renders
+        `<AnalyticsUserDetailed>` in place of the table.
+        """
+        with self.page.expect_response(
+            self._is_analytics_user_detail_query_response, timeout=NAVIGATION_TIMEOUT
+        ):
+            self.users_rows.nth(index).click()
+        self.user_detail_title.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        self._wait_for_user_detail_settled()
+
+    def get_user_detail_kpi_labels_in_order(self) -> list[str]:
+        """Return each rendered KPI card's label (first line of its
+        aggregate inner text), in DOM order."""
+        cards = self.user_detail_kpi_cards
+        return [cards.nth(i).inner_text().split("\n")[0] for i in range(cards.count())]
+
+    def get_panel_summary(self, panel_locator) -> list[str]:
+        """Return *panel_locator*'s (one of the ``user_detail_*_panel``
+        fields) aggregate inner text split into non-empty lines — line 0 is
+        the panel title, line 1 the count label, remaining lines the
+        item list (or a single empty-state line when the count is 0)."""
+        text = panel_locator.inner_text()
+        return [line for line in text.split("\n") if line]
+
+    def back_to_users_table(self, verify_no_refetch: bool = True, no_refetch_timeout: int = 1_500) -> None:
+        """Click the detail view's back arrow and confirm the Users-tab
+        table is restored.
+
+        By default also confirms NO fresh Users-tab query fires within
+        *no_refetch_timeout* ms: `handleBack` only resets local
+        `selectedUserId` state — the Users-tab query result was already
+        cached by RTK-Query from the original tab-mount fetch (source-
+        confirmed). Raises `AssertionError` if a matching request is
+        observed instead (a cache-reuse regression).
+        """
+        if verify_no_refetch:
+            try:
+                with self.page.expect_response(
+                    self._is_analytics_users_query_response, timeout=no_refetch_timeout
+                ):
+                    self.user_detail_back_button.click()
+            except PlaywrightTimeoutError:
+                pass  # expected: no matching response observed within the window
+            else:
+                raise AssertionError(
+                    "Expected no fresh Users-tab query on back navigation (the RTK-Query "
+                    "cache from the tab-mount fetch should be reused), but a new "
+                    "analytics_users/prompt_lib/ request fired"
+                )
+        else:
+            self.user_detail_back_button.click()
+        self.users_table_header.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
