@@ -57,8 +57,9 @@
   pagination controls — all render without console errors.
 - The GET `.../analytics_users/prompt_lib/{project_id}?date_from=...&date_to=...&limit=...&offset=...&sort_by=total_events&sort_order=desc`
   request resolves 200 and the table reflects its response (`total`, `rows`).
-- Errors column: default color for `errors === 0`, red/rejected color for `errors > 0` (per
-  source; live data only exercises the `=== 0` branch — see § Blocked Steps).
+- Errors column: default color for `errors === 0`, red/rejected color for `errors > 0` — both
+  branches live-verified against the `auth_state` fixture's actual project data (see § Blocked
+  Steps for the closure note).
 - Search input live-filters the table (confirmed: typing "testbot" narrowed 3 rows → 1 row and
   updated the count/pagination label to "1 users" / "1–1 of 1" — no Enter or blur needed, no
   debounce beyond render-time).
@@ -71,7 +72,7 @@
 | 2 Section header shows "User Activity" + user count (e.g. "1 users") | Condition holds | step 2 | `step 2`: title text + count pattern | asserted |
 | 3 "Search by email" input present, top right | Condition holds | step 3 | `step 3`: input present + position | asserted |
 | 4 Table has columns USER, EVENTS, DAYS, LLM, TOOL, AGENT, CHAT MSG, ERRORS | Condition holds | step 4 | `step 4`: live 9-column set asserted instead | clarification *(case's 8-column list incl. "EVENTS" is stale; live table has 9 columns incl. Total Tokens/Total Cost and no Events column — filed elitea-testing-public#1188)* |
-| 5 ERRORS column value shown in red when ≥ 0 | Condition holds | step 5 | `step 5`: negative case (`errors===0` → default color) asserted; positive case (`errors>0` → red) confirmed by source only | clarification + blocked *(case's "≥0" threshold is stale/self-contradictory — literal reading recolors every value; live source confirms `>0`. Positive branch (`errors>0`) has no live data to exercise in the exploration project — see § Blocked Steps. Filed elitea-testing-public#1188)* |
+| 5 ERRORS column value shown in red when ≥ 0 | Condition holds | step 5 | `step 5`: both branches asserted live — negative case (`errors===0` → default color) and positive case (`errors>0` → red/rejected color), against the `auth_state` fixture's actual project data | clarification *(case's "≥0" threshold is stale/self-contradictory — literal reading recolors every value; live source confirms `>0`. Filed elitea-testing-public#1188. Positive branch had no live data in the analyst's exploration project ("UI Testing") — originally deferred per § Blocked Steps — but was closed during implementation once the `auth_state` fixture's actual target project ("Private") was found to have rows with `errors > 0`; see § Blocked Steps for the closure note)* |
 | 6 Pagination controls present: rows-per-page selector, page range label, prev/next arrows | Condition holds | step 6 | `step 6`: all three control groups asserted, including default rows-per-page value and disabled-when-one-page state | asserted |
 
 **Axis 2 — Analyst additions.**
@@ -160,17 +161,26 @@ Uniqueness verified (2026-08-05, `git fetch origin` fresh, `EliteaUI@a68b3728`):
   assert the live contract, not the case's stale numbers.
 
 ## Blocked Steps
-- **Step 5, positive branch only** (`errors > 0` → red/rejected color actually renders): the
-  exploration project ("UI Testing") has no user with `errors > 0` in its analytics data, and
-  there is no cheap/available mechanism in this environment to seed an error-attributed analytics
-  event for a specific user (would require driving a real tool/LLM failure end-to-end and waiting
-  for it to aggregate into the analytics pipeline — disproportionate to this case's scope, which
-  is table structure/pagination, not analytics-pipeline correctness). The negative branch
-  (`errors === 0` → default color) IS live-verified and automated (step 5 above). The positive
-  branch is confirmed only by reading `AnalyticsUsers.jsx:144-151` directly — cite this AFS +
-  source line in the test as a documented, source-verified-but-not-live-executed assertion gap,
-  not a defect. If a future project/environment naturally accumulates a user with `errors > 0`,
-  the implementer should extend the test to assert the positive branch against that real row.
+- **(Closed during implementation, 2026-08-05)** Step 5, positive branch (`errors > 0` →
+  red/rejected color actually renders): at analysis time, the exploration project ("UI Testing")
+  had no user with `errors > 0` in its analytics data, and there was no cheap/available mechanism
+  in that environment to seed an error-attributed analytics event for a specific user (would
+  require driving a real tool/LLM failure end-to-end and waiting for it to aggregate into the
+  analytics pipeline — disproportionate to this case's scope, which is table structure/pagination,
+  not analytics-pipeline correctness). The negative branch (`errors === 0` → default color) was
+  live-verified and automated per the original step 5 plan; the positive branch was, at that
+  point, confirmed only by reading `AnalyticsUsers.jsx:144-151` directly. During implementation,
+  the `auth_state` fixture's actual target project ("Private" — distinct from the analyst's
+  exploration project "UI Testing") was found to already have two users with `errors > 0`
+  (`User 6250`: 78, `testbot@elitea.ai`: 75) live in the default "Last 24h" range — so the positive
+  branch is live-exercisable against this suite's real fixture data with no seeding required. The
+  implementer folded it into this PR: the shipped test asserts both branches live (see Coverage
+  Map row 5, and the test's Step 5 in
+  `automation/tests/ui/admin/test_analytics_users_activity_table.py`), iterating every rendered row
+  and asserting the default color for `errors === 0` rows and the red/rejected color for
+  `errors > 0` rows, with a hard assertion that at least one `errors === 0` row was exercised (the
+  `errors > 0` branch is asserted per-row when present but not required as a precondition, since
+  live data may legitimately shift to all-zero over time).
 
 ## Automation Hints
 - Framework: Playwright + pytest (per `.agents/testing.md`).
@@ -231,6 +241,6 @@ Uniqueness verified (2026-08-05, `git fetch origin` fresh, `EliteaUI@a68b3728`):
   it has TWO users with `errors > 0` (User 6250: 78, testbot@elitea.ai: 75) live in the default
   "Last 24h" range. This means the AFS § Blocked Steps gap (errors>0 -> red, previously
   source-confirmed only) IS actually live-exercisable in the project this suite's fixtures target.
-  Left as a documented follow-up rather than added mid-implementation (a scope addition belongs
-  with analyst review of the AFS, not silently folded into this PR) — see this test file's
-  docstring and the Run Report.
+  Closed during implementation: the positive branch (`errors > 0` → red/rejected color) is now
+  asserted live in the same Step 5 as the negative branch, against this real fixture data — see
+  Coverage Map row 5 and § Blocked Steps for the closure note.
