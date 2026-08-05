@@ -1,8 +1,23 @@
 ---
 name: AFS Priority line vs pytest.mark — implementer preflight check
-description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 (own p2) and again on ELITEA-2284/PR #1175 (inherited module p2).
+description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 (own p2), ELITEA-2284/PR #1175 (inherited module p2), and ELITEA-2310/PR #1186 (own p2, missed a full round).
 type: feedback
 ---
+
+## Recurrence 3 — ELITEA-2310/PR #1186 (finding raised R1, no fix attempt visible until R2)
+
+Same lesson, a new failure mode: `pytestmark` module list declared
+`pytest.mark.p2` while the AFS `Priority: l2` (high, → `p1`). The reviewer
+flagged this **in round 1**, but the round-1 fix pass left it untouched — no
+attempt was visible in the diff — so it recurred as an "unaddressed" finding
+into round 2, costing a full extra review round for a one-line fix. Lesson
+compounding recurrences 1–2: it's not enough to know the check exists — a fix
+round must **verify every named finding was actually applied**, not just the
+ones that felt like the "real" work (here, the marker line is easy to skip
+past when the round's other findings look more substantive). Treat a
+reviewer-named priority-marker finding as equally mandatory as a locator or
+assertion finding — it is a one-grep, one-line fix with zero excuse to slip
+a round.
 
 ## Recurrence 2 — ELITEA-2284/PR #1175 (module-level inheritance variant)
 
