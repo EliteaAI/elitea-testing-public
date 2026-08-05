@@ -38,7 +38,20 @@ locator-policy provenance table means (on `automation/testids` / `main`) —
 they're scratch work sitting in the shared working tree, one `git clean`/
 `git checkout` away from vanishing for anyone else. Commit them onto
 `automation/testids` (same `add-data-testid` flow) as part of your
-implementation, and correct the AFS provenance note in your Run Report
-rather than silently trusting it.
+implementation, and correct the AFS provenance note **in the AFS file
+itself** — a `docs(afs): …` commit amending the § Concrete Handles table row
+by row (provenance column + originating commit SHA) — not just narrated in
+the PR description or Run Report.
 
-(from ELITEA-2336)
+**Round-1 correction (same case, review round):** the first implementation
+pass DID mention the true provenance — but only in the PR body's "Testid
+provenance" paragraph and the Run Report, never as an edit to the AFS's own
+Concrete Handles table, which still read "All handles below are pre-existing
+testids — zero new `add-data-testid` work required" through the whole review
+cycle. The reviewer's mechanical check reads the AFS file, not the PR prose —
+narrating a correction anywhere other than the AFS itself does not close the
+finding, even when the narration is accurate and even when it ships in the
+same PR. If you know the provenance is wrong, edit the source-of-truth
+document, don't just explain the discrepancy next to it.
+
+(from ELITEA-2336, round 1 fix)
