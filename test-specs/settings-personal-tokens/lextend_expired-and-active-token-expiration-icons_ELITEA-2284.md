@@ -5,12 +5,14 @@
 - **Source case**: `.agents/automation/elitea-2284/cases/ELITEA-2284.md`
   (snapshot; TMS module `settings-personal-tokens`)
 - **Linked Story**: EliteaAI/elitea-testing-public#792 (tracking issue)
-- **Priority**: l3 (medium, per case frontmatter `priority: high` — note: case
-  frontmatter says `priority: high` but body doesn't otherwise argue urgency;
-  siblings ELITEA-2277/2280 on the same module both used `l3`/`p2` for
-  `medium`-labelled cases — this case's frontmatter genuinely says `high`, so
-  **l2** is used here, one notch above its siblings, per the frontmatter value
-  actually present)
+- **Priority**: l2 (high, per case frontmatter `priority: high`, mapped
+  directly — `l2`/`p1` per this repo's `l<n>` convention, e.g.
+  `l2_publish-draft-version-status-changes-unpublish-available_ELITEA-1892.md`.
+  Siblings ELITEA-2277/2280 on the same module are `l3`/`p2`
+  (`priority: medium`) — this case's frontmatter genuinely says `high`, one
+  notch above them, so it does **not** inherit the covering spec's
+  module-level `p2`; see § Gap assertions for how the new test carries its
+  own `p1` marker instead)
 - **Environment Explored**: local (`http://localhost:5173`, EliteaUI
   `automation/testids` branch → DEV backend, project `Private` /
   `${ELITEA_PROJECT_ID}` = 399)
@@ -124,12 +126,19 @@ Add a **new, independent `test()` method** to
 `test_create_personal_token_and_verify_in_table` body stays byte-identical.
 Tag the new method with the same `@allure.issue` pattern, pointing at this
 case's TMS source, plus append `ELITEA-2284` to the class/module's coverage
-so both TMS IDs trace to this file (module already carries
+so both TMS IDs trace to this file. The module already carries
 `pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2,
-pytest.mark.regression]` — reuse as-is, no new markers needed since both
-cases share module/priority).
+pytest.mark.regression]` (correct for ELITEA-2280, `medium`/`p2`) — reuse it
+as-is for `ui`/`admin`/`regression`, but this case's own priority is `high`
+(§ Metadata → `l2`/`p1`), **not** the module's `p2`, so the new test needs
+its own per-function `@pytest.mark.p1` decorator (applied above `def
+test_expired_token_shows_expired_icon_and_label`, alongside the inherited
+module-level marks) — otherwise a `pytest -m "p0 or p1"` high-priority gate
+run silently excludes this case. The original test's module-level `p2`
+stays untouched.
 
 ```python
+@pytest.mark.p1
 def test_expired_token_shows_expired_icon_and_label(self, page):
     """ELITEA-2284 (steps 2-3) — an existing expired token's Expiration
     cell shows the gray/expired state icon and the exact 'Expired' label.

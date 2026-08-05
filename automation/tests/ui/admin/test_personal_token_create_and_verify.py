@@ -229,6 +229,7 @@ class TestPersonalTokenCreateAndVerify:
         "settings-personal-tokens/ELITEA-2284_expired-tokens-show-icon-and-active-tokens-show-icon-with-re.md",
         "onetest-ai Test Case link",
     )
+    @pytest.mark.p1
     def test_expired_token_shows_expired_icon_and_label(self, page):
         """ELITEA-2284 (steps 2-3) — an existing expired token's Expiration
         cell shows the gray/expired state icon and the exact 'Expired'
