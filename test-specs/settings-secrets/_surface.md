@@ -58,26 +58,57 @@ time; first confirmed by: qa-engineer analyst, ELITEA-2336, 2026-08-05.
   copy-to-clipboard of the real value via `showSecret` lazy query, NOT
   exercised by ELITEA-2336).
 
-## Delete flow (NOT exercised by ELITEA-2336's own steps — confirmed via manual cleanup)
+## Delete flow (confirmed live end-to-end, ELITEA-2338, 2026-08-05)
 - Row actions: hover/visible IconButtons for Show/Hide (permission-gated) +
-  a "more" (dots) menu button — **NEITHER has a testid** (`SecretsTable.jsx`
-  `renderActions`, plain `IconButton` wrapping `DotsMenuIcon` with no
-  `data-testid`).
-- The dots-menu opens `SecretActionsMenu.jsx` (Edit value / Hide / Delete) —
-  **zero testids on any menu item**; only locatable by `role="menuitem"` +
-  accessible name currently. If a future case needs to drive delete/hide via
-  UI (not just cleanup), this whole menu needs `add-data-testid` work first —
-  flag it then, don't retrofit here since ELITEA-2336 doesn't touch it.
-- Delete confirmation reuses the SHARED `Modal.DeleteEntityModal` — same
-  testids as every other page that uses it (`delete-confirm-dialog` /
-  `delete-confirm-name-input` / `delete-confirm-button`), zero new testid work
-  once you're past the menu-trigger gap above.
-- **Cleanup shortcut used by ELITEA-2336's AFS**: skip the UI delete flow
-  entirely (avoids the testid gap above) and call the API directly —
-  `DELETE /api/v2/secrets/secret/default/{project_id}/{name}` → `204`.
-  Confirmed live: this is the exact same endpoint the UI's own delete flow
-  calls, verified by triggering delete manually through the UI once during
-  exploration and observing the same request/response shape.
+  a "more" (dots) menu button — **NEITHER has a testid**, confirmed both live
+  (DOM query) and in source (`SecretsTable.jsx:511-518`, plain `IconButton`
+  wrapping `DotsMenuIcon` with no `data-testid`). **Testid needed:
+  `secret-row-actions-button`** (ELITEA-2338 AFS assigns this; uniqueness
+  confirmed, zero existing hits on EliteaUI `main`).
+- The dots-menu opens `SecretActionsMenu.jsx` (Edit value / Hide / Delete, in
+  that order) — **zero testids on any menu item**, confirmed in source
+  (lines 34/50/66) and live (only locatable by `role="menuitem"` + accessible
+  name). **Testids needed** (ELITEA-2338 AFS assigns):
+  `secret-actions-menu-edit-value` / `secret-actions-menu-hide` /
+  `secret-actions-menu-delete`. Only one menu instance is ever open at a time
+  (single `anchorEl` state) — static testids, no per-row parameterization
+  needed. `Hide` renders only `{!isNew}` — irrelevant in practice since the
+  menu only opens on already-saved rows.
+- Items are `disabled={isDefault}` (all three, same prop) — a system/default
+  secret disables the whole menu. **Always target a freshly-created,
+  run-unique secret for delete-flow tests**, never an existing real one — this
+  avoids both the `isDefault` gate and corrupting shared project data (100+
+  real secrets live, see § Data scale).
+- Delete confirmation reuses the SHARED `Modal.DeleteEntityModal` — confirmed
+  live + in source (`DeleteEntityModal.jsx`): `delete-confirm-dialog` (root),
+  `delete-confirm-message` (body text, exact live text confirmed: `"Are you
+  sure to delete the <name>? Enter the name to complete the action."`),
+  `delete-confirm-name-input` (empty on open), `delete-confirm-cancel-button`,
+  `delete-confirm-button` (**disabled** until typed name exactly matches —
+  confirmed live via DOM `disabled` attribute pre/post-type). Zero new testid
+  work needed here — all pre-existing, confirmed for a second time
+  (ELITEA-2336/2337 also touched this shared modal on other pages).
+- **Confirm-delete network contract** (confirmed live): clicking the enabled
+  `delete-confirm-button` fires `DELETE
+  /api/v2/secrets/secret/default/{project_id}/{name}` → **204 No Content**,
+  followed by a `GET` refetch of the list endpoint. A success toast appears
+  (exact text `"The <name> secret has been successfully deleted."`) with **no
+  testid** — don't gate automation on it; the DELETE response + refetch +
+  row-count are the stable proof.
+- **Post-delete empty state**: with a search filter active on the deleted
+  name, the table renders `"No secrets"` (plain `Typography`, **no
+  testid**) instead of the row grid. Assert via `secret_row` count === 0
+  scoped to the filter, not the untestidded empty-state text — stays
+  testid-only per locator policy. Confirmed live both immediately after
+  delete and after a fresh `page.reload()` (genuine server round-trip, not
+  client-cache-only).
+- **Cleanup shortcut** (still valid for OTHER cases whose own steps don't
+  delete their test secret, e.g. ELITEA-2336's save-flow secret): skip the UI
+  delete flow entirely and call the API directly —
+  `DELETE /api/v2/secrets/secret/default/{project_id}/{name}` → `204`. Same
+  endpoint the UI's own delete flow calls (now confirmed twice, live, via
+  ELITEA-2338's own full UI-driven flow above — this is no longer an
+  inference from a single manual trigger).
 
 ## Data scale
 - Project `Private` (399) already has 100+ real secrets (e.g. `auth_token`,
