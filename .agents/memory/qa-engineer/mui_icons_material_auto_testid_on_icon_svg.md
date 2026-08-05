@@ -1,37 +1,48 @@
 ---
 name: MUI icons-material auto-testid on icon svg
-description: "@mui/icons-material icon components auto-carry data-testid={ExportName} on their <svg>, even with zero app-authored data-testid prop — usable as a scoped, declared-improvisation sub-selector for state (e.g. VisibilityIcon vs VisibilityOffIcon), never as a substitute for the parent button's own testid"
+description: "@mui/icons-material icon <svg>s carry an auto data-testid={ExportName} — but ONLY in dev builds; vite build (prod/deployed) strips it to undefined. Verified NOT safe as a locator basis."
 type: project
 ---
 
-Confirmed live (ELITEA-2343 analysis, 2026-08-05, `/settings/secrets` row-level
-Show/Hide toggle): every `@mui/icons-material` icon component renders its
-`<svg>` with `data-testid` automatically set to the icon's own export name —
-`<VisibilityIcon/>` → `<svg data-testid="VisibilityIcon">`,
-`<VisibilityOffIcon/>` → `<svg data-testid="VisibilityOffIcon">` — **with zero
-app-authored `data-testid` prop at the call site** (confirmed by reading
-`SecretsTable.jsx`: neither icon receives one). This is a library behavior,
-not `add-data-testid` work, and it exists for EVERY MUI icon component in the
-app, not just these two.
+**UPDATE (ELITEA-2343 review, 2026-08-06) — the improvisation this entry
+originally flagged is NOT sound; ruled CHANGES_REQUESTED.** Read
+`node_modules/@mui/material/utils/createSvgIcon.js` (EliteaUI):
 
-**Useful for:** verifying which of two conditionally-swapped icon components
-is currently rendered (e.g. an open-eye vs crossed-eye toggle, an
-expand/collapse chevron pair) via a scoped `[data-testid="<IconName>"]`
-sub-selector chained off the REAL (app-authored) testid on the parent
-interactive element — the parent keeps ONE static testid per
-`.agents/testing.md`'s "testid = stable identity" ruling; only the CHILD
-icon's own auto-testid differs, because it's a genuinely different React
-component being swapped in, not a value-ternary on one element.
+```js
+"data-testid": process.env.NODE_ENV !== 'production' ? `${displayName}Icon` : undefined,
+```
 
-**Not a substitute for:** the parent element's own testid. The button/icon
-container itself still needs `add-data-testid` if it has none — this is
-purely a bonus handle for the icon's identity once the parent is locatable.
+The attribute is **conditional on `NODE_ENV`, not a stable library
+constant.** `npm run dev` (Vite dev server, what the local batch pipeline
+and hardening gate run against) leaves `NODE_ENV=development`, so it's
+present and a locator built on it passes locally 100% of the time. `npm run
+build` (`vite build` — confirmed used by `EliteaAI/EliteaUI`'s own release
+workflows, `tag_build_release.yml`/`build_and_release.yml`) sets
+`NODE_ENV=production`, and Vite's `define` plugin has no override in this
+repo's `vite.config.js` — so on every **deployed** env (dev.elitea.ai,
+next.elitea.ai — a production build) the attribute is `undefined` and
+`[data-testid="VisibilityIcon"]`-style selectors find **nothing**. A test
+built on this locator is GREEN on localhost and RED on every deployed
+promotion gate, for a reason that looks exactly like a real regression.
 
-**Not yet canon-sanctioned:** flagged as a DECLARED IMPROVISATION in
-ELITEA-2343's AFS (`test-specs/settings-secrets/l3_secret-eye-icon-reveal-and-mask-toggle_ELITEA-2343.md`
-§ Concrete Handles) — no existing role-overrides/testing.md ruling explicitly
-addresses a vendor-auto-generated (not `add-data-testid`-added) `data-testid`.
-Reviewer should verify the reasoning holds; if rejected, the safe fallback is
-to assert only the functionally-primary observable (e.g. the value-cell text
-swap) and drop the icon-shape assertion rather than reach for a role/CSS
-handle.
+**Rule going forward: never use an MUI-auto `data-testid` on an icon `<svg>`
+as a locator basis, in any capacity** — not even as the "scoped
+sub-selector, declared improvisation" shape this entry originally sanctioned
+as plausible. It is a debug-only artifact, not a stable handle. If a case
+needs to distinguish two conditionally-rendered icon components, either (a)
+assert the functionally-primary observable instead (e.g. the value-cell text
+swap that already proves the state — this is what ELITEA-2343's own AFS
+listed as its documented fallback), or (b) ask a human/`add-data-testid` to
+put a REAL, app-authored `data-testid` on the two icon call sites
+(`<VisibilityIcon data-testid="…visible" />` / `<VisibilityOffIcon
+data-testid="…hidden" />`) — that's a one-line JSX change and turns this
+from a landmine into a normal testid.
+
+**Original (superseded) framing**, for context: analysis mistakenly read
+"present with zero app-authored prop, confirmed live" as evidence of
+stability, without checking whether that presence survives a production
+build. "Confirmed live" against a dev server is not sufficient verification
+for a selector that must also survive CI's deployed-env promotion gate —
+same lesson as any dev-only convenience (React DevTools hooks, source maps,
+`__reactProps$*` internals): confirm behavior across BOTH build modes before
+trusting it as a handle.
