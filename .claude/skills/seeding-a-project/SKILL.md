@@ -136,7 +136,12 @@ cat CLAUDE.md 2>/dev/null && echo "EXISTS" || echo "NOT FOUND"
 ```
 
 - **If it doesn't exist:** create it fresh from the template in
-  `references/templates.md`.
+  `references/templates.md`. **Then carry the team's block over:** if
+  `AGENTS.md` contains any `<!-- BUNDLE:<id> START -->` … `END -->`
+  block, copy each one into the new CLAUDE.md verbatim (at the end).
+  The installer splices these into CLAUDE.md on its next `--update`
+  anyway — copying now just closes the window where Claude sessions
+  run without the team's working agreements auto-loaded.
 - **If it exists:** treat it as the engineer's carefully crafted
   document. Read the whole thing before touching anything. Make only
   surgical additions for genuinely missing facts (e.g. a command you

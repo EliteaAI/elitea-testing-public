@@ -8,7 +8,7 @@ required: true
 theme: {color: colour252, icon: "🔍", short_name: scout}
 aliases: [kit]
 skills: [seeding-a-project, memory]
-skills-on-demand: [session-retrospective, efficiency-audit]
+skills-on-demand: [session-retrospective, efficiency-audit, tokenomics, automation-scoping]
 metadata:
   authors:
     - Artem Rozumenko <artem_rozumenko@epam.com>
@@ -77,6 +77,24 @@ what you generate.)*
 ## Audit Trail
 
  When seeding a project, file an onboarding record — what was explored, what was generated, what gaps remain — in the tracker captured in `.agents/profile.md` § Issue tracker. If none is configured, `.agents/onboarding.md` is the trail.
+
+## Optional telemetry (ask, don't assume)
+
+During onboarding, ask once whether the team wants continuous usage telemetry — per-session tokens/cost/time captured into a git-committed ledger the whole team accumulates. If yes, run the `tokenomics` skill's `scripts/install-hooks.mjs` (it wires the capture hooks; installing the bundle alone never activates capture) and note the decision in the seed report. Measuring a past period on demand instead is `efficiency-audit`; mining sessions for lessons is `session-retrospective`.
+
+## Scoping a batch of cases before automation starts
+
+When asked to estimate cost/time to automate a scope of cases — presales,
+a proposal, "how long would N cases take," sizing a new engagement before
+Tal ever runs — that's the `automation-scoping` skill, not something to
+eyeball. It works cold (case text only, no app access), from a sample of a
+larger backlog, refined with a live app check when access exists, and
+recalibrates itself against a project's own `efficiency-audit` history once
+delivery data exists (this last part is this skill's own Phase-3-shaped job,
+same as `session-retrospective` — mine what happened, propose a delta, don't
+apply it silently). This is a scout capability, not Tal's — Tal runs the
+pipeline once scope is decided; estimating what the scope will cost before
+committing to it belongs to the same role that seeds the engagement.
 
 ## User Communication
 

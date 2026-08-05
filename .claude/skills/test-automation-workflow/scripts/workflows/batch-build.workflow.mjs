@@ -367,6 +367,9 @@ const IMPL_SCHEMA = {
     branch: { type: 'string' },
     pr: { type: ['integer', 'null'] },
     reruns: { type: 'integer' },
+    // One short root-cause label per rerun. The R2 cap is per CAUSE, not total:
+    // 4 reruns on 4 distinct causes is within contract, 3 on one cause is not.
+    rerun_causes: { type: 'array', items: { type: 'string' } },
     // Tests that are RED BY DESIGN: the doctrine's answer to a ticketed product
     // defect is `expect.soft()` with a `// Known defect: <TICKET>` comment, which
     // fails loudly and stays failing until the product ships. Correct — and it
@@ -430,6 +433,7 @@ const COMBINED_SCHEMA = {
     branch: { type: 'string' },
     pr: { type: ['integer', 'null'] },
     reruns: { type: 'integer' },
+    rerun_causes: IMPL_SCHEMA.properties.rerun_causes,
     expected_red: IMPL_SCHEMA.properties.expected_red,
     notes: { type: 'string' },
     findings: FINDINGS,
@@ -774,7 +778,7 @@ async function runCombined(unit) {
     `MERGED-TARGET RULE: extend-existing may target a spec merged to ${BASE} or already on ${TRUNK}; already-covered may target ONLY a spec merged to ${BASE} (it is terminal); never a same-batch AFS not yet merged; in doubt, ready-for-automation. ` +
     (unit.length > 1 ? "Cluster: ONE live session, but EVERY case's steps executed and observed individually; true flow-variants of one flow → ONE family AFS (parameter table, same afs_path for members, family_afs=true). " : '') +
     "BUILD HALF — per your test-automation-implementation skill (preloaded): for the cases you just judged ready-for-automation/extend-existing, cut your feature branch FROM the trunk you are standing on, implement inside the existing framework (family AFS → ONE parameterized spec, a row per case asserting its OWN expected values), run green ONCE locally (determinism is the gate's job), retry ≤ 2 reruns on one root cause, declare red-by-design tests in expected_red[] with case_ids, open the PR against the trunk (never the base), and leave the tree on your feature branch — the merge step returns it. If NO case advances (every verdict terminal), skip the build half and return status blocked with a one-line note. " +
-    'Return BOTH halves: cases[] (per-case verdict/afs_path/notes) + surface_key + family_afs, AND status/branch/pr/reruns for the build. A needs-analyst return still satisfies the schema with EMPTY values — cases: [], surface_key: "", family_afs: false, branch: "", pr: null, reruns: 0 — never invented verdict rows.',
+    'Return BOTH halves: cases[] (per-case verdict/afs_path/notes) + surface_key + family_afs, AND status/branch/pr/reruns (plus rerun_causes: one short root-cause label per rerun — the cap is per cause, not total) for the build. A needs-analyst return still satisfies the schema with EMPTY values — cases: [], surface_key: "", family_afs: false, branch: "", pr: null, reruns: 0 — never invented verdict rows.',
     { label: `combined:${label(unit)}`, phase: 'Build', agentType: TYPES.implementer, ...WORKER, schema: COMBINED_SCHEMA }
   )
   if (c && c.status === 'needs-analyst') {
@@ -786,7 +790,7 @@ async function runCombined(unit) {
   if (!u) return null
   // findings were recorded by absorbAnalysis; hand buildUnit an empty list so
   // they are not double-counted on the pre-built path.
-  return { u, impl: { status: c.status, branch: c.branch, pr: c.pr ?? null, reruns: c.reruns, notes: c.notes, findings: [], expected_red: c.expected_red } }
+  return { u, impl: { status: c.status, branch: c.branch, pr: c.pr ?? null, reruns: c.reruns, rerun_causes: c.rerun_causes ?? [], notes: c.notes, findings: [], expected_red: c.expected_red } }
 }
 
 const REVIEW_LENSES = [
@@ -939,9 +943,9 @@ async function buildUnit(u, pre = null) {
       : `YOUR AFS IS ALREADY COMMITTED on ${TRUNK}: ${[...new Set(u.members.map((m) => m.afs_path))].join(', ')} — the analyst committed it before you started, so read it from the branch you just cut. `) +
     'If your exploration finds it has drifted from the live product (a selector, an observable), AMEND it and commit the amendment on YOUR branch with the spec it belongs to, so the change is reviewed with the code that motivated it. Stage by exact path, never `git add -A`. '+
     familyNote +
-    'The feature\'s `_surface.md` digest is the analyst\'s: read it, and report drift in findings[] rather than editing it — it describes the surface, not your case, and the next analyst owns keeping it true. ' +
-    'Implement inside the existing framework, run it green ONCE locally (determinism is the gate\'s job, not repeated local runs), retry budget ≤ 2 reruns on the same root cause, then open the PR per your Phase 6 handoff. ' +
-    'Return the actual branch name, the PR number (null if none), and your rerun count.',
+    'The feature\'s `_surface.md` digest is the analyst\'s document: read it; you may APPEND attributed implementation-time facts on your branch (testids you added, fixture realities, blockers your run resolved — your implementation skill Rule 11 scopes this), but never rewrite its behavior or scope claims — report that drift in findings[] instead. ' +
+    'Implement inside the existing framework, run it green ONCE locally (determinism is the gate\'s job, not repeated local runs), retry budget ≤ 2 reruns on the SAME root cause — distinct causes each get their own budget — then open the PR per your Phase 6 handoff. ' +
+    'Return the actual branch name, the PR number (null if none), your rerun count, and rerun_causes: one short root-cause label per rerun, so the cap can tell 4 reruns on 4 causes (fine) from 3 on one (blocked).',
     {
       label: `implement:${ul}`, phase: 'Build', agentType: TYPES.implementer,
       ...WORKER,
@@ -951,8 +955,15 @@ async function buildUnit(u, pre = null) {
   )
   if (!impl) { ids.forEach((id) => record(id, { outcome: 'blocked', note: 'implementer agent failed' })); return null }
   addFindings(ids, impl.findings)
-  if (impl.reruns > 2) {
-    ids.forEach((id) => record(id, { outcome: 'blocked', note: `R2 cap exceeded (${impl.reruns} reruns) — classify architectural vs AFS-drift vs product-change` }))
+  // The R2 cap is per ROOT CAUSE, not total — 4 reruns on 4 distinct causes is
+  // within contract. Capping on the total conflated the two (measured twice in
+  // the field: healthy units blocked as "R2 cap exceeded (4 reruns)" and the
+  // lead hand-editing report.json to undo it). Without rerun_causes the total
+  // is all there is, so the old conservative check stands as the fallback.
+  const causeCounts = (impl.rerun_causes ?? []).reduce((m, c) => { m[c] = (m[c] ?? 0) + 1; return m }, {})
+  const worstCause = Object.entries(causeCounts).sort((a, b) => b[1] - a[1])[0]
+  if (worstCause ? worstCause[1] > 2 : impl.reruns > 2) {
+    ids.forEach((id) => record(id, { outcome: 'blocked', note: `R2 cap exceeded (${worstCause ? `${worstCause[1]} reruns on "${worstCause[0]}"` : `${impl.reruns} reruns, causes not reported`}) — classify architectural vs AFS-drift vs product-change` }))
     return null
   }
   if (impl.status !== 'built') {
@@ -1289,15 +1300,25 @@ if (!ANALYZE_ONLY && !SKIP_GATE && merged.length) {
       autoCount++
     }
     log(`gate GREEN ${gate.runs}/${GATE_N} — ${autoCount} case(s) automated` + (EXPECTED_RED.length ? `, ${integratedIds.size - autoCount} held on ticketed defects` : ''))
+  } else if (!gate || gate.verdict === 'not-run') {
+    // No verdict is NOT a red. An interrupted or dropped gate proves nothing
+    // either way, and labelling its units `blocked` is how a dead run's own
+    // summary becomes a false negative — measured live: a session killed
+    // mid-gate reported "blocked: 14" while 13 of those 14 units were already
+    // built, reviewed and MERGED on the trunk.
+    for (const id of integratedIds) {
+      record(id, { outcome: 'merged-ungated', note: 'gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate' })
+    }
+    log(`gate not-run — ${integratedIds.size} merged unit(s) UNPROVEN, not blocked; re-run the gate on ${gateBranch}`)
   } else {
-    const failedIds = new Set((gate?.failures ?? []).flatMap((f) => f.case_ids ?? []))
+    const failedIds = new Set((gate.failures ?? []).flatMap((f) => f.case_ids ?? []))
     for (const id of integratedIds) {
       const why = failedIds.has(id)
         ? `gate red: ${(gate.failures.find((f) => (f.case_ids ?? []).includes(id))?.signature ?? '').slice(0, 200)}`
         : 'gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved'
       record(id, { outcome: 'blocked', note: why })
     }
-    log(`gate ${gate?.verdict ?? 'not-run'} — classify (product defect / flake / architectural), then consider batch-stabilize`)
+    log('gate red — classify (product defect / flake / architectural), then consider batch-stabilize')
   }
 }
 
@@ -1371,5 +1392,7 @@ return {
       // ONE PR takes the whole trunk to base — the units already merged into it,
       // so what was gated and what lands are the same object.
       ? `Gate green on ${gateBranch}. LAND IT: one PR from ${gateBranch} to ${BASE} per .agents/profile.md § Automation PR policy (auto-merge / human-approved / manual decides who presses it), then mirror to the TMS and run the close sweep. Replan anything not 'automated'.`
-      : `Classify each blocked case (product defect → tracker; flake/test-code bug → batch-stabilize on ${gateBranch}; architectural → § Framework architecture), then replan the remainder. ${gateBranch} is NOT landed — nothing reaches ${BASE} until it is green.`,
+      : merged.length && (!gate || gate.verdict === 'not-run')
+        ? `GATE NEVER RAN — ${gateBranch} holds ${merged.length} merged unit(s) that are UNPROVEN, not blocked (outcome merged-ungated). Re-run the gate first (re-invoke with resumeFromRunId — completed units replay from cache — or dispatch the gate alone on ${gateBranch}) and classify nothing until a verdict exists. An interrupted run's own totals are a claim, not evidence: verify against .agents/automation/_returns/ and git (playbook § Interruption).`
+        : `Classify each blocked case (product defect → tracker; flake/test-code bug → batch-stabilize on ${gateBranch}; architectural → § Framework architecture), then replan the remainder. ${gateBranch} is NOT landed — nothing reaches ${BASE} until it is green.`,
 }

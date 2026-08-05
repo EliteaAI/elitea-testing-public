@@ -203,8 +203,11 @@ test('units branch from the trunk and merge back, leaving the tree on it', () =>
   assert.match(text, /it already carries every unit that finished before you/);
   assert.match(text, /git merge --no-ff \$\{impl\.branch\}/);
   assert.match(text, /LEAVE THE TREE ON \$\{TRUNK\}/);
-  // The digest stays the analyst's, so the implementer reports drift instead.
-  assert.match(text, /report drift in findings\[\] rather than editing it/);
+  // The digest is one-writer-at-a-time: the implementer may APPEND attributed
+  // implementation-time facts, but the analyst's behavior claims stay theirs —
+  // disagreement is reported as drift, never edited in.
+  assert.match(text, /you may APPEND attributed implementation-time facts/);
+  assert.match(text, /never rewrite its behavior or scope claims — report that drift in findings\[\] instead/);
 });
 
 // A unit that reviews clean but cannot merge is not `automated` and not a
@@ -659,4 +662,34 @@ test('analyst tiering: triage routes mapped units to a combined slot, conservati
   assert.match(text, /triage agent died — every unit takes the standalone analyst/);
   // the pre-built path skips the implement dispatch but not review/merge/gate
   assert.match(text, /const impl = pre \?\? await agent\(/);
+});
+
+// An interrupted gate returns `not-run` (or the gate agent drops to null) —
+// that is NOT a red. Field measurement: a session killed mid-gate reported
+// "blocked: 14" while 13 of the 14 units were already built, reviewed and
+// merged on the trunk; the false negative sent the lead classifying phantom
+// blocks. Merged-but-unproven units carry their own outcome so a dead run's
+// summary can never claim they failed.
+test('gate not-run is not a red: merged units become merged-ungated, never blocked', () => {
+  assert.match(text, /\} else if \(!gate \|\| gate\.verdict === 'not-run'\) \{/);
+  assert.match(text, /outcome: 'merged-ungated'/);
+  assert.match(text, /UNPROVEN, not blocked/);
+  // the next-step guidance stops the lead from trusting the totals
+  assert.match(text, /GATE NEVER RAN/);
+  assert.match(text, /An interrupted run's own totals are a claim, not evidence/);
+  // the real-red path still records blocked
+  assert.match(text, /outcome: 'blocked', note: why/);
+});
+
+// The R2 cap is per ROOT CAUSE, not per unit-total: 4 reruns on 4 distinct
+// causes is within contract. Capping the total blocked healthy units twice in
+// the field and made the lead hand-edit report.json to undo it. Without
+// rerun_causes the total remains the conservative fallback.
+test('R2 cap counts reruns per root cause, with the total as fallback', () => {
+  assert.match(text, /rerun_causes: \{ type: 'array', items: \{ type: 'string' \} \}/);
+  assert.match(text, /rerun_causes: IMPL_SCHEMA\.properties\.rerun_causes/);
+  assert.match(text, /worstCause \? worstCause\[1\] > 2 : impl\.reruns > 2/);
+  assert.match(text, /causes not reported/);
+  // both dispatch prompts carry the per-cause contract
+  assert.match(text, /one short root-cause label per rerun/);
 });

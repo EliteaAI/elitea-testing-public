@@ -233,21 +233,26 @@ export function subagentUnits(events, sessionId) {
   return out;
 }
 
-/** cwd, branch and the wall-clock window, from the stream's own events. */
+/** cwd, branch, role, skills and the wall-clock window, from the stream's own events. */
 function meta(events) {
-  let cwd = null, gitBranch = '?', startTs = null, endTs = null;
+  let cwd = null, gitBranch = '?', startTs = null, endTs = null, role = null;
+  const skills = new Set();
   for (const ev of events) {
     if (ev.type === 'session.start') {
       cwd = ev.data?.context?.cwd ?? cwd;
       gitBranch = ev.data?.context?.branch ?? gitBranch;
     }
+    // The parent session's `--agent` — emitted by CLI ≥1.0.63 (verified live);
+    // older streams lack the event and the role stays null (ad-hoc/unknown).
+    if (ev.type === 'subagent.selected') role = ev.data?.agentName ?? role;
+    if (ev.type === 'skill.invoked' && ev.data?.name) skills.add(ev.data.name);
     const t = ev.timestamp ? Date.parse(ev.timestamp) : NaN;
     if (Number.isNaN(t)) continue;
     if (startTs === null || t < startTs) startTs = t;
     if (endTs === null || t > endTs) endTs = t;
   }
   return {
-    cwd, gitBranch, startTs, endTs,
+    cwd, gitBranch, startTs, endTs, role, skills,
     date: startTs ? localDate(startTs) : '?',
     durationMin: (startTs && endTs) ? Math.round((endTs - startTs) / 60000) : 0,
   };
@@ -316,14 +321,14 @@ export function collectCopilotGroups(cwd, { root, roots, excludeSession, tags = 
 
     const parent = {
       id, kind: 'session', parentId: null, sessionId: id,
-      role: tags[id] || null,
+      role: tags[id] || m.role || null, // explicit tag wins; else subagent.selected (CLI ≥1.0.63)
       description: '(orchestrator/session)',
       usage: parentUsage,
       premiumRequests, apiDurationMs, credits, usd,
       gitBranch: m.gitBranch, date: m.date, durationMin: m.durationMin,
       startTs: m.startTs, endTs: m.endTs,
       turns: counts.turns, toolCalls: counts.toolCalls, toolErrors: counts.toolErrors,
-      skills: [], dispatched: counts.dispatched,
+      skills: [...m.skills], dispatched: counts.dispatched,
       projectDir: m.cwd,
     };
     for (const s of subs) {

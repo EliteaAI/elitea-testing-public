@@ -9,18 +9,41 @@ grep against both ``origin/main`` and ``origin/automation/testids`` — zero
 testids anywhere in ``AgentHub.jsx``/``AgentCard.jsx``/``AgentModal.jsx``
 before this implementation) — this is genuinely new coverage.
 
+ELITEA-2350 extends this page object with the category filter-rail chips
+(``CategoryRail.jsx``, shared with the Skills tab) and an agent-card-count
+helper, for the page-load verification case.
+
+ELITEA-2352 adds click/selected-state helpers for the same filter-rail chips.
+The chip's "selected" state has no accessible signal via Playwright's own
+`[active]` accessibility marker (that reflects DOM focus, not app selection —
+see ``test-specs/agent-hub/_surface.md``); a ``data-selected`` state attribute
+was added to the chip in ``CategoryRail.jsx`` (``EliteaAI/EliteaUI@9b93f67c``)
+per ``.agents/testing.md``'s "state via data-* attributes" rule.
+
 URL: /elitea-catalog
 """
 
 import logging
+import re
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.agent_hub")
+
+_CATEGORY_SLUG_RE = re.compile(r"[^a-z0-9]+")
+
+
+def _slugify_category(category: str) -> str:
+    """Slugify a category display label the same way EliteaUI does client-side
+    (``AgentCategorySection.jsx``/``CategoryRail.jsx``): lowercase, then
+    non-alphanumeric runs collapsed to a single ``-`` (e.g. "Knowledge &
+    Documentation" -> "knowledge-documentation").
+    """
+    return _CATEGORY_SLUG_RE.sub("-", category.lower())
 
 
 class AgentHubPage(BasePage):
@@ -52,6 +75,31 @@ class AgentHubPage(BasePage):
     # to select by name, same idiom as AgentDetailPage.MODEL_SELECTOR_OPTION_ANY_SELECTOR.
     AGENT_CARD_PREFIX = '[data-testid^="catalog-agent-card-"]'
 
+    # Content-list category heading — prefix match across ALL rendered category
+    # sections (ELITEA-2352), used to enumerate which categories are currently
+    # visible rather than probing one at a time. Same underlying testid as
+    # CATEGORY_HEADING above, just unparameterized for the "list them all" case.
+    CATEGORY_HEADING_PREFIX = '[data-testid^="catalog-category-heading-"]'
+
+    # Category filter-rail chip (Featured + Categories sections,
+    # CategoryRail.jsx, ELITEA-2350) — dynamic per category name, same
+    # slugify convention as CATEGORY_HEADING above. Threaded from AgentsTab
+    # via a caller-supplied `chipTestIdPrefix` prop per the shared-component
+    # testid discipline (CategoryRail is shared with SkillsTab).
+    CATEGORY_FILTER_CHIP = '[data-testid="catalog-agent-category-filter-chip-{}"]'
+
+    # Like button (heart icon + count) on an agent card, ELITEA-2354 —
+    # dynamic per application id, same idiom as CATEGORY_FILTER_CHIP/
+    # CATEGORY_HEADING above. Root component is the SHARED `Like.jsx`
+    # (also consumed by the data-table widget and pipeline Card.jsx), so
+    # the testid is a caller-supplied `testId` prop threaded
+    # AgentCard.jsx -> AgentHubLike.jsx -> Like.jsx, not hardcoded inside
+    # Like.jsx itself (EliteaAI/EliteaUI@e079c0d0). "Liked" state is a
+    # `data-liked="true"/"false"` attribute on the SAME button (state via
+    # data-*, not a state-switched testid — same precedent as
+    # CATEGORY_FILTER_CHIP's `data-selected`, ELITEA-2352).
+    LIKE_BUTTON = '[data-testid="catalog-agent-like-button-{}"]'
+
     # --- Agent preview modal (AgentModal.jsx) ---
     modal_agent_name = LocatorDescriptor(
         testid="catalog-agent-modal-agent-name",
@@ -74,6 +122,58 @@ class AgentHubPage(BasePage):
         testid="catalog-agent-modal-start-chat-button",
         description="'Start Chat' button in the agent preview modal (AgentModal.jsx).",
     )
+
+    modal_dialog = LocatorDescriptor(
+        testid="catalog-agent-modal",
+        description="Preview modal's main panel — the overlay content root (ELITEA-2356).",
+    )
+
+    modal_agent_icon = LocatorDescriptor(
+        testid="catalog-agent-modal-agent-icon",
+        description="Agent icon (EntityIcon) inside the preview modal (ELITEA-2356).",
+    )
+
+    modal_owner_name = LocatorDescriptor(
+        testid="catalog-agent-modal-owner-name",
+        description="Author/owner name Typography inside the preview modal header (ELITEA-2356).",
+    )
+
+    modal_menu_button = LocatorDescriptor(
+        testid="agent-hub-modal-menu-button",
+        description=(
+            "Overflow ('...') menu button in the preview modal header (AgentHubModalMenu.jsx) — "
+            "contains Export/Fork/Share; 'Share' performs the copy-link action (ELITEA-2356)."
+        ),
+    )
+
+    modal_close_button = LocatorDescriptor(
+        testid="catalog-agent-modal-close-button",
+        description="'x' close IconButton (aria-label='close') in the preview modal header (ELITEA-2356).",
+    )
+
+    modal_description = LocatorDescriptor(
+        testid="catalog-agent-modal-description",
+        description="Agent description Typography inside the preview modal (ELITEA-2356).",
+    )
+
+    modal_chat_starters_section = LocatorDescriptor(
+        testid="catalog-agent-modal-chat-starters-section",
+        description="'CHAT STARTERS' section container inside the preview modal (ELITEA-2356).",
+    )
+
+    modal_welcome_message_section = LocatorDescriptor(
+        testid="catalog-agent-modal-welcome-message-section",
+        description="'Welcome Message' section container inside the preview modal (ELITEA-2356).",
+    )
+
+    # Dynamic (state-filtered) like button — the SAME testid as the plain field
+    # above, combined with the data-liked state attribute (Like.jsx auto-derives
+    # it from testId presence — same precedent as the card-list like button,
+    # ELITEA-2354). Templated class-level constant per .agents/testing.md's
+    # dynamic-testid convention (no per-modal-instance parameter needed — only
+    # one modal renders at a time).
+    MODAL_LIKE_BUTTON = '[data-testid="catalog-agent-modal-like-button"]'
+    MODAL_LIKE_BUTTON_LIKED_STATE = '[data-testid="catalog-agent-modal-like-button"][data-liked="{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -107,6 +207,71 @@ class AgentHubPage(BasePage):
         """Return the Locator for the agent card matching *agent_name* (by visible text)."""
         return self.page.locator(self.AGENT_CARD_PREFIX).filter(has_text=agent_name)
 
+    def get_agent_card_count(self) -> int:
+        """Return the number of agent cards currently rendered in the main content area."""
+        return self.page.locator(self.AGENT_CARD_PREFIX).count()
+
+    def is_category_filter_chip_visible(self, category_label: str, timeout: int = 10000) -> bool:
+        """Return True if the category filter-rail chip for *category_label* is visible.
+
+        Args:
+            category_label: Human display label (e.g. "Knowledge & Documentation",
+                "My Liked") — slugified internally the same way EliteaUI does
+                client-side (CategoryRail.jsx).
+        """
+        chip = self.page.locator(self.CATEGORY_FILTER_CHIP.format(_slugify_category(category_label)))
+        try:
+            chip.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @action("Click category filter-rail chip")
+    def click_category_filter_chip(self, category_label: str, timeout: int = 10000):
+        """Click the category filter-rail chip for *category_label* (ELITEA-2352).
+
+        Args:
+            category_label: Human display label (e.g. "Business Analyst") —
+                slugified internally the same way EliteaUI does client-side.
+        """
+        chip = self.page.locator(self.CATEGORY_FILTER_CHIP.format(_slugify_category(category_label)))
+        chip.first.wait_for(state="visible", timeout=timeout)
+        chip.first.click()
+
+    def is_category_filter_chip_selected(self, category_label: str, timeout: int = 10000) -> bool:
+        """Return True if the category filter-rail chip for *category_label* is
+        currently selected (ELITEA-2352).
+
+        Uses the ``data-selected="true"`` state attribute added to the chip in
+        ``CategoryRail.jsx`` (``EliteaAI/EliteaUI@9b93f67c``) — NOT Playwright's
+        own accessibility-tree ``[active]`` marker, which reflects DOM focus,
+        not the app's selection state (confirmed live: focus moves away from a
+        still-selected chip the instant another element is clicked, while
+        ``data-selected`` correctly persists). See
+        ``test-specs/agent-hub/_surface.md`` for the full finding.
+
+        Args:
+            category_label: Human display label (e.g. "Business Analyst") —
+                slugified internally the same way EliteaUI does client-side.
+        """
+        selected_chip = self.page.locator(
+            self.CATEGORY_FILTER_CHIP.format(_slugify_category(category_label)) + '[data-selected="true"]'
+        )
+        try:
+            selected_chip.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_visible_category_heading_texts(self) -> list[str]:
+        """Return the text of every currently-rendered content-list category
+        heading (ELITEA-2352) — e.g. ``["Business Analyst"]`` after a
+        single-category filter click, proving other categories' sections were
+        excluded, not merely that the expected one is present.
+        """
+        headings = self.page.locator(self.CATEGORY_HEADING_PREFIX)
+        return [(headings.nth(i).text_content() or "").strip() for i in range(headings.count())]
+
     @action("Open agent preview modal from Catalog")
     def open_agent_by_name(self, agent_name: str, timeout: int = 15000):
         """Click the agent card matching *agent_name* to open its preview
@@ -132,6 +297,13 @@ class AgentHubPage(BasePage):
             card.first.click()
         self.modal_show_instructions_link.wait_for(state="visible", timeout=timeout)
 
+    def get_modal_liked_state(self) -> str:
+        """Return the preview modal's like button ``data-liked`` value
+        ('true'/'false') (ELITEA-2356) — same ``data-*`` state-attribute
+        precedent as :meth:`is_agent_liked` for the card-list like button.
+        """
+        return self.page.locator(self.MODAL_LIKE_BUTTON).get_attribute("data-liked") or ""
+
     @action("Click Start Chat in the agent preview modal")
     def click_start_chat(self, timeout: int = 10000):
         """Click the 'Start Chat' button in the (already-ready) agent preview modal.
@@ -143,3 +315,133 @@ class AgentHubPage(BasePage):
         """
         self.modal_start_chat_button.wait_for(state="visible", timeout=timeout)
         self.modal_start_chat_button.click()
+
+    # --- Like/unlike (ELITEA-2354) ---
+
+    @action("Navigate to Agent Hub and capture the initial applications snapshot")
+    def navigate_and_capture_applications(self, timeout: int = 15000) -> list[dict]:
+        """Navigate to the Catalog page (same target as :meth:`navigate`) and
+        additionally capture the initial bulk "all applications" response body
+        (``GET /public_applications/prompt_lib/...`` — source:
+        ``useAgentHubData.hooks.js``'s ``fetchAllAndCategorize``, the
+        ``ALL_AGENTS_LIMIT`` bulk fetch, distinct from the separate Trending/
+        My-Liked requests fired on the same mount, which are excluded by
+        checking for their own distinguishing query params), returning its
+        ``rows`` (each a dict with ``id``, ``name``, ``likes``, ...).
+
+        Used for ELITEA-2354's dynamic "find a 0-like agent" discovery —
+        reading the network payload directly is more robust than parsing card
+        DOM text for the agent name (``AgentCard.jsx``'s name ``Typography``
+        carries no testid).
+        """
+
+        def _is_all_applications_response(response):
+            return (
+                "/public_applications/prompt_lib/" in response.url
+                and response.request.method == "GET"
+                and "trend_start_period" not in response.url
+                and "my_liked" not in response.url
+            )
+
+        with self.page.expect_response(_is_all_applications_response, timeout=timeout) as response_info:
+            super().navigate("/elitea-catalog")
+        self.wait_for_page_load(timeout=timeout)
+        return response_info.value.json().get("rows", [])
+
+    @staticmethod
+    def find_zero_like_application(applications: list[dict]) -> dict | None:
+        """Return the first application dict (as returned by
+        :meth:`navigate_and_capture_applications`) whose ``likes`` field is 0,
+        or ``None`` if none currently qualify.
+
+        ELITEA-2354's dynamic-discovery requirement — like counts are mutable
+        shared product data, not a stable per-name fixture (see this case's
+        AFS § Test Data: the case text's own example agent does not reliably
+        show 0 likes session-to-session).
+        """
+        for app in applications:
+            if app.get("likes", 0) == 0:
+                return app
+        return None
+
+    def get_like_button(self, application_id: int):
+        """Return the Locator for the like button (heart icon + count) on the
+        agent card matching *application_id* (ELITEA-2354)."""
+        return self.page.locator(self.LIKE_BUTTON.format(application_id))
+
+    def get_like_count(self, application_id: int, timeout: int = 10000) -> int:
+        """Return the like button's numeric count (ELITEA-2354) — the count
+        ``Typography`` is the only text node inside the button besides the
+        icon ``<svg>`` (which has no text).
+
+        This is a one-shot, non-retrying read — correct for a pre-action
+        baseline check (the value isn't expected to be changing). To assert
+        an EXPECTED count after a like/unlike click, use
+        :meth:`wait_for_like_count` instead — the count update is optimistic
+        client-side and asynchronous relative to the click's own network
+        response resolving, so a one-shot read taken immediately after the
+        click can race the state update (confirmed live during
+        implementation: the cleanup unlike's response returned 204 but a
+        same-tick ``get_like_count`` read still showed the pre-unlike value).
+        """
+        button = self.get_like_button(application_id)
+        button.wait_for(state="visible", timeout=timeout)
+        text = button.text_content() or "0"
+        return int(text.strip())
+
+    def wait_for_like_count(self, application_id: int, expected_count: int, timeout: int = 10000) -> None:
+        """Wait (Playwright auto-retrying assertion) for the like button's
+        text to read *expected_count* (ELITEA-2354) — see
+        :meth:`get_like_count`'s docstring for why a retrying wait is
+        required here instead of a one-shot read.
+        """
+        expect(self.get_like_button(application_id)).to_have_text(str(expected_count), timeout=timeout)
+
+    def is_agent_liked(self, application_id: int, timeout: int = 5000) -> bool:
+        """Return True if the like button for *application_id* currently shows
+        ``data-liked="true"`` (ELITEA-2354) — same ``data-*`` state-attribute
+        precedent as :meth:`is_category_filter_chip_selected`'s
+        ``data-selected``.
+        """
+        liked_locator = self.page.locator(self.LIKE_BUTTON.format(application_id) + '[data-liked="true"]')
+        try:
+            liked_locator.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @action("Click like/unlike button on agent card")
+    def click_like_button(self, application_id: int, timeout: int = 10000):
+        """Click the like button for *application_id*, toggling like/unlike,
+        and return the underlying ``/social/like/prompt_lib/...`` network
+        response (``201`` on like, ``204`` on unlike — AFS § Network
+        Behavior, ELITEA-2354)."""
+        button = self.get_like_button(application_id)
+        button.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/social/like/prompt_lib/" in r.url and r.request.method in ("POST", "DELETE"),
+            timeout=timeout,
+        ) as response_info:
+            button.click()
+        return response_info.value
+
+    @action("Search Catalog by agent name")
+    def search(self, query: str, timeout: int = 15000):
+        """Type *query* into the Catalog search box and wait for the
+        debounced (300ms — source: ``AgentsTab.jsx``'s
+        ``useDebounceValue(query, 300)``) search request to resolve
+        (ELITEA-2354).
+
+        Uses ``press_sequentially()``, not ``fill()``, to trigger the MUI
+        TextField's React ``onChange`` (``.claude/rules/mui-patterns.md``) —
+        ``fill()`` sets the DOM value directly and would leave the debounced
+        ``query`` React state empty, never firing a search request at all.
+        """
+        self.search_input.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/public_applications/prompt_lib/" in r.url and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            self.search_input.click()
+            self.search_input.press_sequentially(query, delay=50)
+        self.wait_for_network(timeout=timeout)
