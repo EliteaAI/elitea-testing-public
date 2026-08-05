@@ -161,16 +161,16 @@ class TestUsersPageLayout:
                 )
 
             for attr_name in SORTABLE_COLUMN_ATTRS:
-                header = getattr(users_page, attr_name)
-                sort_icon_count = users_page.get_column_sort_icon_count(header)
+                column_field = attr_name.removeprefix("column_header_")
+                sort_icon_count = users_page.get_column_sort_icon_count(column_field)
                 assert sort_icon_count == 1, (
                     f"Expected a sort-indicator icon on sortable column "
                     f"{attr_name}, got {sort_icon_count}"
                 )
 
             for attr_name in NON_SORTABLE_COLUMN_ATTRS:
-                header = getattr(users_page, attr_name)
-                sort_icon_count = users_page.get_column_sort_icon_count(header)
+                column_field = attr_name.removeprefix("column_header_")
+                sort_icon_count = users_page.get_column_sort_icon_count(column_field)
                 assert sort_icon_count == 0, (
                     f"Expected NO sort-indicator icon on non-sortable column "
                     f"{attr_name}, got {sort_icon_count}"

@@ -141,6 +141,17 @@ class AdminUsersPage(BasePage):
     # family (SingleSelectMenuItem.jsx) as ChatPage.SELECT_OPTION /
     # ToolkitDetailPage.SELECT_OPTION — reuse the pattern, don't invent a new one.
     SELECT_OPTION = '[data-testid="select-option-{}"]'
+    # Sort-indicator icon on a sortable column header — dynamic testid,
+    # component-level addition to GridTableHeader.jsx mirroring its existing
+    # `columnTestIdPrefix` mechanism (EliteaAI/EliteaUI@52582fe3, ELITEA-2292
+    # fix round 2). Rendered only when the column is sortable, so presence
+    # (count 1 vs 0) is itself the sortable/non-sortable signal — no raw
+    # `svg` chaining needed. Deliberately NOT prefixed `user-column-header-`
+    # (unlike the header-cell testid) — that prefix is also matched by
+    # COLUMN_HEADER_PREFIX_SELECTOR above, and a sort-icon testid sharing it
+    # would double-count in get_column_header_count() for every sortable
+    # column (caught live: 8 vs expected 5 on first run).
+    COLUMN_SORT_ICON_SELECTOR = '[data-testid="user-sort-icon-{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -212,12 +223,13 @@ class AdminUsersPage(BasePage):
         (matched by the shared ``user-column-header-`` prefix)."""
         return self.page.locator(self.COLUMN_HEADER_PREFIX_SELECTOR).count()
 
-    def get_column_sort_icon_count(self, column_header) -> int:
-        """Return the number of ``<svg>`` sort-indicator icons rendered
-        inside *column_header* (a Locator for one of the
-        ``column_header_*`` fields above — sanctioned chaining off an
-        already-testid-scoped element)."""
-        return column_header.locator("svg").count()
+    def get_column_sort_icon_count(self, column_field: str) -> int:
+        """Return the count of the sort-indicator icon testid element for
+        *column_field* (the raw column key, e.g. ``"name"``, ``"roles"`` —
+        NOT the ``column_header_*`` attribute name). 1 for a sortable
+        column, 0 for a non-sortable one — see
+        ``COLUMN_SORT_ICON_SELECTOR``."""
+        return self.page.locator(self.COLUMN_SORT_ICON_SELECTOR.format(column_field)).count()
 
     def is_select_all_checked(self) -> bool:
         """Return whether the select-all checkbox is checked.
