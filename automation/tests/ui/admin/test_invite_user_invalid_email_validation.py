@@ -14,6 +14,24 @@ is never clicked and no user is created — no cleanup of seeded data is
 required (`.agents/testing.md` § Test data strategy — prefer read-only
 assertions when the observable doesn't require fresh state).
 
+A role IS selected in the dialog (via `select_role_in_invite_dialog`,
+pre-existing since ELITEA-2304) before the disabled-button assertions,
+even though the case's own steps never mention a role. This is required
+for those assertions to isolate what they claim to prove: per
+`InviteUserDialog.jsx`, the Invite button's `disabled` prop is
+`!emails.length || !selectedRoles.length || error` — with NO role ever
+selected, `!selectedRoles.length` alone keeps the button disabled for the
+whole flow, so a disabled-button assertion would pass regardless of the
+email-validation (`error`) outcome it's meant to exercise. Pre-selecting
+a role removes that confound: Step 2's assertion is then driven purely by
+`!emails.length` (no emails yet) and Step 4's purely by `error` (the
+invalid-email state), matching what each step's docstring claims.
+Confirmed live: with a role selected, the Invite button is disabled at
+Step 2 for lack of emails, and disabled again at Step 4 specifically
+because `error` is true (emails and role are both non-empty by then).
+Selecting a role is dialog-setup technique, not a new case assertion —
+the case's own steps and their expected results are unchanged.
+
 The dialog is reopened fresh for each of the two example emails (rather
 than typing the second over the first in the same open dialog). Live
 exploration during implementation found `InviteUserDialog.jsx` re-validates
@@ -41,6 +59,12 @@ logger = logging.getLogger(__name__)
 pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p3, pytest.mark.regression]
 
 INVALID_EMAILS = ("notanemail", "user@")
+# Pre-selected in the dialog so the disabled-button assertions isolate the
+# email-validation (`error`) gate rather than the role-selection
+# (`!selectedRoles.length`) gate — see module docstring. Same value as
+# `test_users_batch_edit_roles.SEEDED_ROLE`; any option works since it's
+# never submitted here (Invite is never clicked on this path).
+SELECTED_ROLE = "editor"
 
 
 class TestInviteUserInvalidEmailValidation:
@@ -89,16 +113,22 @@ class TestInviteUserInvalidEmailValidation:
 
         for email in INVALID_EMAILS:
             with allure.step(
-                'Step 2 — Click the "+" Invite-users button: the Invite '
-                f"dialog opens with the Emails field visible and the Invite "
-                f"button starts disabled (no emails yet) — [{email!r} run]"
+                'Step 2 — Click the "+" Invite-users button and pre-select '
+                f"a role ({SELECTED_ROLE!r} — isolates the disabled-button "
+                "assertions from the role-selection gate, see module "
+                "docstring): the Invite dialog opens with the Emails field "
+                "visible and the Invite button starts disabled (no emails "
+                f"yet) — [{email!r} run]"
             ):
                 users_page.open_invite_dialog()
                 assert users_page.invite_emails_input.is_visible(), (
                     "Expected the Invite dialog's Emails field to be visible"
                 )
+                users_page.select_role_in_invite_dialog(SELECTED_ROLE)
                 assert users_page.invite_confirm_button.is_disabled(), (
-                    "Expected the Invite button to start disabled with no emails entered"
+                    "Expected the Invite button to start disabled with no "
+                    f"emails entered, even with role {SELECTED_ROLE!r} "
+                    "selected"
                 )
 
             with allure.step(
@@ -126,7 +156,10 @@ class TestInviteUserInvalidEmailValidation:
                 )
                 assert users_page.invite_confirm_button.is_disabled(), (
                     f"Expected the Invite button to be disabled while the "
-                    f"{email!r} validation error is showing"
+                    f"{email!r} validation error is showing (role "
+                    f"{SELECTED_ROLE!r} is selected and the field is "
+                    "non-empty here, so this failing specifically proves "
+                    "the `error` gate — not the role/emails-empty gates)"
                 )
 
             # Close the dialog between examples (not an AFS case step) so

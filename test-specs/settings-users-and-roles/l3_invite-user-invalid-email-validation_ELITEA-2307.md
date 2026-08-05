@@ -78,6 +78,20 @@ prose beyond the steps table exists in this case (Test Data section says
   `InviteUserDialog.jsx`, the real mechanism preventing an invalid-email
   submission; the case's title promises "shows validation error" but the
   practical guarantee a user cares about is that Invite is blocked too.*
+  **Implementer amendment (fix round 1, reviewer finding):** the button's
+  actual `disabled` expression is `!emails.length || !selectedRoles.length
+  || error` — three independent gates OR'd together. With no role ever
+  selected in the dialog, `!selectedRoles.length` alone keeps the button
+  disabled throughout, so the step 2/4 assertions as originally
+  implemented passed independent of the email/`error` outcome they claim
+  to isolate — they were not wrong (the button IS disabled at both
+  points) but didn't prove what their prose claimed. Fix: the
+  implementation now calls the pre-existing
+  `AdminUsersPage.select_role_in_invite_dialog()` (ELITEA-2304) right
+  after opening the dialog, so a role is selected throughout steps 2-4.
+  This is dialog-setup technique (Phase 2/3, not a scope change) — the
+  case's steps and expected results are unchanged; only the confound on
+  an *added* (Axis 2) assertion is removed.
 - `step 4` runs the case's TWO given example emails (`notanemail`, `user@`)
   as two assertions of the same step rather than picking one — *added:
   confirmed both live, cheap since the dialog is already open, and it
