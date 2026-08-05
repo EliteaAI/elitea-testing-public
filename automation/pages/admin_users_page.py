@@ -34,14 +34,18 @@ env's ``ELITEA_PROJECT_ID`` (399 in ``.env.test``) IS this test user's private
 project, so a bare ``navigate("/settings/users")`` against it always loses the
 race and lands on ``/settings/project-general`` instead. The AFS's own
 Preconditions/Test Data section already named a different, TEAM project —
-``${ELITEA_PROJECT_ID}`` = 400 ("UI Testing") — as where the case's 2 users
-were confirmed live; :meth:`navigate` switches to that project first (see
-``USERS_TEAM_PROJECT_ID``) so the guard never fires.
+id 400 ("UI Testing") — as where the case's 2 users were confirmed live;
+:meth:`navigate` switches to that project first (see
+``settings.users_team_project_id``, sourced from ``USERS_TEAM_PROJECT_ID`` in
+``.env.test`` — see ``config.py`` for why this is a DISTINCT key from the
+existing, unrelated ``ELITEA_TEAM_PROJECT_ID``) so the guard never fires.
 """
 
 import logging
 
 from playwright.sync_api import Page, Response
+
+from config import settings
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -56,12 +60,6 @@ NAVIGATION_TIMEOUT = 15_000
 # resolve before asserting on the rendered table/columns.
 USERS_LIST_URL_SUBSTRING = "/admin/users/default/"
 ROLES_LIST_URL_SUBSTRING = "/admin/roles/default/"
-
-# "UI Testing" — a TEAM (non-private) project the acting test user belongs
-# to; confirmed live to carry 2 existing users. See the module docstring's
-# "Live-discovered precondition" note for why this must differ from the
-# env's ELITEA_PROJECT_ID (399, this user's PRIVATE project).
-USERS_TEAM_PROJECT_ID = "400"
 
 
 class AdminUsersPage(BasePage):
@@ -162,7 +160,7 @@ class AdminUsersPage(BasePage):
         )
 
     def ensure_team_project_selected(
-        self, project_id: str = USERS_TEAM_PROJECT_ID, timeout: int = NAVIGATION_TIMEOUT
+        self, project_id: str = settings.users_team_project_id, timeout: int = NAVIGATION_TIMEOUT
     ) -> None:
         """Switch the sidebar's active project to *project_id*.
 
