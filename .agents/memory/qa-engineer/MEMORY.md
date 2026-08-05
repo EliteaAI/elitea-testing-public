@@ -10,7 +10,7 @@
 - [A passing assertion may prove nothing](passing_assertion_may_prove_nothing.md) — can it fail in the broken case?
 - [Locator review beyond the grep](locator_review_beyond_the_grep.md) — testid-clean still breaks POM; check the layer
 - [extend-existing: classify + shape](extend_existing_classification_and_shape.md) — insert, sibling, or fresh spec?
-- [Analyst has no commit authority](analyst_slot_has_no_git_commit_authority.md) — AFS untracked; testid commits OK
+- [Analyst commit authority](analyst_slot_has_no_git_commit_authority.md) — batch dispatch: commit AFS on trunk; standalone: leave untracked
 - [Can't self-approve a PR via gh](gh_identity_blocks_self_approval.md) — post the verdict via gh pr comment instead
 - [EliteaUI commits need [EL-NNNN]](eliteaui_testid_commit_message_format.md) — commitlint rejects [ELITEA-NNNN]
 - [Priority marker drift](priority_marker_drift_afs_vs_pytest_mark.md) — grep AFS Priority vs @pytest.mark.p*

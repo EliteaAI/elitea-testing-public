@@ -70,15 +70,71 @@ component edit needed:
   header and row instances collide on the same testid.
 - Header batch Edit/Delete buttons are correctly DISABLED on initial page
   load (`disabled={!selectedUsers.length}`) — don't assert `is_enabled()`
-  there, assert `is_disabled()`.
+  there, assert `is_disabled()`. Note (ELITEA-2304): the enabling condition
+  is ANY non-empty selection (`disabled={!selectedUsers.length}`), not
+  specifically "two or more" — a single selected row already enables it.
 - The case source text's per-step "Expected Result" column is largely
   generic/templated boilerplate ("Action completes without error and
   produces the expected UI state" repeated across ~10 rows) — don't treat
   it as literal per-element intent; the live component behavior is the
   ground truth (see ELITEA-2292 AFS § Axis 2 for the worked example on the
   header Delete button).
+- **Project-topology constraint (ELITEA-2304, critical for any write-flow
+  case on this surface): the acting test account (`testbot@elitea.ai`) has
+  `admin` role, and therefore the header/row Edit-Delete UI at all, ONLY in
+  project 400 ("UI Testing").** Confirmed live across every other project
+  reachable from the sidebar selector — `Elitea Testing Team` (471, 15
+  users), `Bugs & Features` (406, 29 users), `Elitea Development` (25, 23
+  users) — Test Bot holds `viewer` (or isn't listed on page 1) in all three,
+  and the Users page renders **no** batch-Edit/Delete buttons and **no**
+  per-row action icons at all there (permission-gated out entirely, not
+  merely disabled). Any case needing 3+ safely-mutable users for a
+  write-flow (this surface's only write-capable project has exactly 2,
+  one of which is the acting account) must seed disposable users via
+  "Invite users" rather than relying on existing project-471/406/25 data —
+  those projects are unreachable for mutation regardless of user count.
+- **Inviting a user works instantly for edit/delete purposes, no
+  acceptance needed** (ELITEA-2304): a freshly-invited row appears
+  immediately in the table with Name = the invited email, Last login =
+  `-`, the selected initial role, and full row-level Edit/Delete actions —
+  confirmed live, no login/acceptance step required. Safe, fast seed
+  mechanism for any case needing extra mutable user rows on this surface.
+- **Edit-roles dialog (`EditUserRolesDialog.jsx`, shared by both the header
+  batch-edit and per-row edit instances) had ZERO testids before ELITEA-2304**
+  — confirmed via full-file read. Added: `dialogTestId`/`titleTestId` (thread
+  onto `Modal.BaseModal`'s pre-existing `data-testid`/`titleTestId` props),
+  `roleSelectTestId` (thread onto `Select.SingleSelect`'s pre-existing
+  `data-testid` prop — auto-generates a `-combobox` suffix testid too, per
+  `SingleSelect.jsx`'s existing `SelectDisplayProps` logic), and
+  `saveButtonTestId` (new `data-testid` on the dialog's own custom Save
+  `Button.BaseBtn` — this dialog passes a custom `actions` node to
+  `BaseModal`, so `BaseModal`'s own `confirmButtonTestId`/`onConfirm`
+  mechanism is bypassed and doesn't apply). Wired ONLY at `Users.jsx`'s
+  header (`isBatchEdit`) `EditUsersButton` call site — the per-row instance
+  in `UsersTable.jsx`'s `renderActions` still has no dialog testids (no
+  case has exercised the row-level edit dialog yet).
+- Role-select options (`admin`/`editor`/`viewer`) need NO new testid work —
+  `SingleSelectMenuItem.jsx` unconditionally renders
+  `data-testid={option.testId ?? 'select-option-' + option.value}` on every
+  menu item regardless of grouped/flat mode, and `Users.jsx`'s
+  `rolesOptions` already maps `{label: name, value: name}` — so
+  `select-option-admin`/`-editor`/`-viewer` are live for free, same
+  mechanism the project selector and Invite-users dialog already use.
+- Batch-edit-roles driving request: `PUT /api/v2/admin/users/default/{projectId}`,
+  response body `{"msg": "roles updated"}`, 200 OK — single call for however
+  many users are selected (not one call per user).
+- Per-user delete (row-level, used for cleanup of seeded users):
+  `DELETE /api/v2/admin/users/default/{projectId}?id[]={user_id}` → `204 No
+  Content`. Confirmation dialog is the generic `Modal.DeleteEntityModal`
+  (testid `delete-confirm-button`, pre-existing, shared with other delete
+  flows on this surface and elsewhere).
 
 ## AFS on file
 - `l2_users-page-layout-and-components_ELITEA-2292.md` — page layout +
   header components + table columns/sortability + row content shape.
-  No prior AFS existed for this surface before this run.
+- `l2_batch-edit-roles-for-multiple-selected-users_ELITEA-2304.md` —
+  header batch-edit-roles flow: select 2+ rows → header Edit enables →
+  "Edit roles" dialog → select role → Save → selected rows update,
+  unselected rows provably unchanged. Introduced the `users-edit-roles-*`
+  dialog testids (see Gotchas above) and the seed-2-disposable-users
+  pattern for write-flow cases on this surface.
