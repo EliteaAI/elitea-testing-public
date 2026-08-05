@@ -22,3 +22,4 @@
 - [Pipeline STATE panel overlap + wait_for_function](pipeline_state_panel_overlaps_canvas_and_wait_for_function_arg_kwarg.md) — close it before canvas clicks; arg= is keyword-only
 - [Interrupt before toggle omission](interrupt_before_toggle_recurring_omission.md) — 3rd pipeline-node AFS to skip it; use is_node_interrupt_before_toggle_visible(node_id)
 - [grid-table name column bypasses renderCell](grid_table_name_column_bypasses_rendercell.md) — thread nameCellTestId, not a renderCell 'name' branch
+- [AFS Priority vs pytest.mark](afs_priority_vs_pytest_mark_preflight_check.md) — grep AFS Priority vs @pytest.mark.pN BEFORE writing the test, incl. module-inherited
