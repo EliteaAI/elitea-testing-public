@@ -41,7 +41,28 @@ recorded: Known defect <issue-url>"). If so:
 5. Any run that DOESN'T match (different cause, or a new step also fails) ⇒
    real red — route to `batch-stabilize` or classify as a genuine defect.
 
-## Seen 1×
+## A third variant: `verdict: "not-run"`, `runs: 0`, outcome `merged-ungated`
+
+When the batch's ONLY new/changed spec is itself the declared red-by-design
+test (no other spec needs the N-consecutive-green proof), the gate agent has
+**zero eligible specs** for that count — it correctly refuses to report
+`green` (nothing proven) or `red` (that would misrepresent a deterministic,
+expected, ticketed failure as a batch break) and returns `not-run`, `runs: 0`,
+with reasoning in `notes` ("N-consecutive-green covers ZERO eligible specs").
+The report writer's generic phrasing — "gate never produced a verdict
+(interrupted or dropped) — merged on the trunk but unproven" — makes this
+read exactly like an infra stall (see
+`workflow_gate_stall_gives_false_blocked_lead_runs_gate_directly.md`), but
+it isn't one: read the gate agent's own `notes`/`failures[]` in the journal
+first. If it explicitly reasons through the zero-eligible-specs case and
+reports a failure signature matching the declared defect, the gate
+substantively succeeded — GATE_SCHEMA's 3-value verdict enum (`green`/`red`/
+`not-run`) just has nowhere honest to put "sanctioned-red, N/A for green,
+1/3 banked." Treat its one run as run 1 of 3 and finish the count yourself
+(same steps 1-4 above); do not resume the workflow (same cached-result trap
+as the stall variant) and do not treat `merged-ungated` as broken.
+
+## Seen 2×
 
 #845/ELITEA-2337 — report: `gate.verdict: "red"`, `runs: 1`,
 `cases[0].outcome: "blocked"`. Both the covering test and the new
@@ -50,6 +71,17 @@ on the gate's single sample. Lead ran 3 independent invocations personally:
 identical signature all 3 times, step-level Allure check confirmed the new
 test's own Steps 1-4 `passed` in every run. Landed via PR #1207, TMS
 back-written, closure record posted, card → Ready.
+
+#851/ELITEA-2343 — report: `gate.verdict: "not-run"`, `runs: 0`, outcome
+`merged-ungated` (the not-run variant above). The batch's only new spec was
+itself the sanctioned-RED test (OPEN #1203, same signature). Gate agent's
+notes explicitly reasoned "zero eligible specs for the N-green count," ran
+the spec once (18.91s, matched signature). Lead dispatched one more fresh
+gate-role agent for 2 more independent runs (18.52s, 17.29s — identical
+signature both times, #1203 confirmed still OPEN via `gh issue view`),
+reaching 3/3. Opened + merged the trunk→base PR (#1225) personally — the
+workflow never does this for a non-green verdict either — TMS back-written,
+closure record posted with verified promotability, card → Ready.
 
 See also: batch_report_case_outcome_blocked_can_still_mean_land_it.md ·
 merge_gate_extend_existing_sanctioned_red_needs_step_level_check.md ·
