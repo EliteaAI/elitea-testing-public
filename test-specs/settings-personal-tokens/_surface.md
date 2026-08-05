@@ -4,6 +4,88 @@ Handle cache for live-confirmed handles/quirks on the Settings → Personal
 Tokens surface (`/settings/tokens`, renders `PersonalTokens.jsx`). Not a
 substitute for execution — verify a handle as you use it. One writer at a
 time; first confirmed by: qa-engineer analyst, ELITEA-2277, 2026-08-05.
+Extended by: qa-engineer analyst, ELITEA-2280, 2026-08-05 (create-token flow
++ delete-confirmation cleanup flow).
+
+## Create-token flow (`/settings/create-personal-token`, `CreatePersonalToken.jsx`)
+- The add-button (`personal-tokens-add-button`) does NOT open an inline
+  dialog — confirmed live: it navigates to a separate route,
+  `/settings/create-personal-token`. Full page: title "New Token" (via the
+  same `DrawerPageHeader` + `titleTestId` mechanism as "Personal Tokens"),
+  Name input (Formik, validates `[a-zA-Z0-9_-]` only, required), Expiration
+  period = `SingleSelect` (`measure`, default `"days"`, options `never/days/
+  weeks/hours/minutes` — `EXPIRATION_MEASURES` in `src/common/constants.js:485`)
+  + a numeric value input (`expiration`, default `30` —
+  `DEFAULT_TOKEN_EXPIRATION_DAYS`, `constants.js:484`). Generate button
+  disabled until name is non-empty and valid.
+- Generate → `POST /api/v2/auth/token/` (200, body
+  `{name, expires: {measure, value}}`) → opens `GeneratedTokenDialog` (NOT a
+  route, an in-page MUI `Dialog`) showing title "New token generated!",
+  attention-styled warning text, the entered name above the full token
+  string, and a Copy button. Also triggers an immediate `GET
+  /api/v2/auth/token/` refetch, so the table is current before the dialog
+  even closes.
+- Copy button: `handleCopy(token)` (writes to OS/browser clipboard) +
+  `toastInfo('The token has been copied to the clipboard.')` + button text
+  flips to "Copied!" (disabled ~5s, `COPY_DISABLED_DURATION`).
+- Dialog close: a `Box`-wrapped `CancelIcon` with `onClick={onClose}` (no
+  accessible role/name — testid is the only viable handle) — closing
+  triggers `onCancel()` → `navigate(-1)`, landing back on `/settings/tokens`.
+  **Escape key does the same** (the dialog's own `onKeyDown` handles
+  `Escape` → `onClose`, and `Enter` → triggers Copy) — either is valid, AFS
+  specs the icon click as primary since it doesn't depend on focus state.
+- **Clipboard-read gotcha (costly, flag forward):**
+  `page.evaluate("navigator.clipboard.readText()")` against a browser
+  context that was NOT created with the `clipboard-read` permission granted
+  hangs indefinitely — it does not reject, it just never resolves (silently
+  waiting on a permission prompt that headless/MCP contexts never show).
+  This bit an exploratory MCP session directly (a bare `browser_evaluate`
+  call to read the clipboard hung for the full 1800s idle timeout). The
+  pytest suite's `context` fixture already grants `["clipboard-read",
+  "clipboard-write"]` at context creation (`automation/conftest.py:279`) —
+  so the pytest suite itself is fine — but ANY ad-hoc/scratch browser
+  session (Playwright CLI, a manual script, a different MCP browser
+  instance) attempting the same clipboard read will hang unless it also
+  grants the permission at context-creation time. Never diagnose this as a
+  product regression before checking the calling context's granted
+  permissions first.
+
+## Table row cell content (`TokensTable.jsx` `renderCell`)
+- Name cell: `Text.EllipsisTypography` showing `row.name` verbatim.
+- Value cell: `Text.EllipsisTypography` showing `'...' + row.token.slice(-4)`
+  (masked, last 4 chars of the actual token string).
+- Expiration cell: `ExpiryInDays` sub-component, 4 mutually-exclusive
+  branches by `calculateExpiryInDays(expires)`: `>7d` → green `SuccessIcon`
+  (`theme.palette.status.published`, confirmed hex `#2BD48D`) + `"in N
+  days"`; `1-7d` → amber `AttentionIcon` (`status.onModeration`) + `"in N
+  days"`; `expiryInDays === -1` (no expiry / "Never") → green `SuccessIcon`
+  + `"Never"`; else → gray `RemoveIcon` (`icon.fill.disabled`) + `"Expired"`.
+  None of the 4 branches carry a testid yet — same component/testid should
+  be added to all 4 (`token-expiration-status` + a `data-expiration-state`
+  attribute distinguishing the branch), per this project's "stable testid +
+  state via `data-*`" locator ruling — do NOT give the 4 branches 4 different
+  testids.
+- `EllipsisTypography` and `BaseBtn`/plain MUI `Button` all spread unknown
+  props (including `data-testid`) straight through to the underlying DOM
+  node — for these, a `data-testid` can be added directly at ANY call site
+  without touching the shared component's source at all. Same is true of
+  `SingleSelect` (already accepts a `data-testid` prop, wires it onto both
+  the Select root and `SelectDisplayProps` as `${id}-combobox`) and
+  `Input.InputBase`'s native `<input>` via its existing `inputProps` object
+  (same mechanism `SimpleSearchBar` already uses, per the ELITEA-2277 entry
+  above) — check for one of these "already-generic" mechanisms before
+  assuming a shared component needs a code change for a new testid.
+
+## Delete-confirmation flow — zero testid work needed (shared, pre-existing)
+`DeleteEntityButton` → `Modal.DeleteEntityModal` (`src/[fsd]/shared/ui/modal/
+DeleteEntityModal.jsx`) already ships with a FULL testid set, confirmed live
+in this exact flow: `delete-confirm-dialog` (root), `delete-confirm-title`,
+`delete-confirm-message`, `delete-confirm-name-input` (only rendered when
+`shouldRequestInputName` — true by default; deleting a personal token
+requires typing its exact name before the confirm button enables),
+`delete-confirm-cancel-button`, `delete-confirm-button`. Reusable as-is by
+ANY future case that needs to delete-and-confirm something built on this
+shared modal — check here before requesting new testids for a delete flow.
 
 ## Route & component tree
 - `/settings/tokens` (bare path, `APP_PREFIX` empty on localhost) routes to
