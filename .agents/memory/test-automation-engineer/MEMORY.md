@@ -29,3 +29,4 @@
 - [Disabled-button multi-gate isolation](disabled_button_multi_gate_assertion_isolation.md) — pre-satisfy every OTHER gate in `disabled={A||B||C}` before asserting
 - [press_sequentially can drop the first char](search_input_press_sequentially_drops_leading_keystroke.md) — plain native-input search box: prefer .fill() if a sibling page object already does
 - [AFS "pre-existing testid" can be uncommitted](afs_pre_existing_testid_claim_can_be_uncommitted_worktree_only.md) — check `git status`/`git log` in EliteaUI, not just the live DOM
+- [a11y `[active]` = focus, not selection](playwright_active_marker_is_focus_not_selection.md) — never assert it as "selected"; add data-selected instead
