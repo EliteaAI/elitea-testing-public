@@ -58,15 +58,21 @@ class TestBatchEditRolesForMultipleSelectedUsers:
                 "Step 1 — Navigate to Settings -> Users: user rows become visible"
             ):
                 users_page.navigate()
-                row_count = users_page.user_row.count()
-                assert row_count > 0, (
-                    f"Expected the users table to render at least one row, got {row_count}"
+                # Captured (not hardcoded) so Step 2's assertion self-heals
+                # against any already-present rows instead of permanently
+                # breaking after a single leaked row (ELITEA-2304 hardening-
+                # gate diagnosis, 2026-08-05 — this project's user list is
+                # shared, persistent, live data; see the cleanup discussion
+                # below the try/finally).
+                initial_row_count = users_page.user_row.count()
+                assert initial_row_count > 0, (
+                    f"Expected the users table to render at least one row, got {initial_row_count}"
                 )
 
             with allure.step(
                 "Step 2 — Seed test data: invite 2 disposable users with role "
-                "'editor'; verify the table now lists 4 rows total, each seeded "
-                "row showing role 'editor'"
+                "'editor'; verify the table now lists 2 more rows than at Step "
+                "1, each seeded row showing role 'editor'"
             ):
                 users_page.open_invite_dialog()
                 invite_response = users_page.invite_users(seeded_emails, SEEDED_ROLE)
@@ -75,7 +81,9 @@ class TestBatchEditRolesForMultipleSelectedUsers:
                 )
                 seeded_rows_present = True
 
-                expect(users_page.user_row).to_have_count(4, timeout=ROW_WAIT_TIMEOUT)
+                expect(users_page.user_row).to_have_count(
+                    initial_row_count + 2, timeout=ROW_WAIT_TIMEOUT
+                )
                 for email in seeded_emails:
                     row = users_page.get_row_by_text(email)
                     expect(row).to_have_count(1, timeout=ROW_WAIT_TIMEOUT)
@@ -172,10 +180,33 @@ class TestBatchEditRolesForMultipleSelectedUsers:
             # Cleanup (not an AFS case step — mandatory, unwrapped, runs
             # regardless of test outcome: this case seeds real, persistent
             # rows in shared live project data — see AFS § Cleanup).
+            #
+            # Per-item isolation + non-atomicity fix (ELITEA-2304 hardening-
+            # gate diagnosis, 2026-08-05): the previous loop gated deletion on
+            # a single non-retrying `row.count() > 0` snapshot and had zero
+            # exception isolation between emails, so (a) deleting the first
+            # seeded row invalidates the users-list query cache — if the
+            # SECOND row's existence check landed during that refetch
+            # window, `.count()` could read 0 and silently skip deletion
+            # with no exception anywhere, and (b) an assert/expect failure
+            # while processing the first email aborted the loop outright,
+            # so the second email was never even attempted. Both defects
+            # land on the same symptom: only the last seeded row ever
+            # leaked into the live project's shared table.
+            #
+            # Fixed by: (1) confirming presence via a WAITING assertion
+            # instead of a single immediate snapshot, so a transient
+            # refetch race can never be misread as "already gone"; and
+            # (2) wrapping each email's delete+verify in its own
+            # try/except so one row's failure never skips the rest —
+            # failures are collected and raised together as one aggregated
+            # error only after every seeded email has been attempted.
             if seeded_rows_present:
+                cleanup_failures: list[str] = []
                 for email in seeded_emails:
-                    row = users_page.get_row_by_text(email)
-                    if row.count() > 0:
+                    try:
+                        row = users_page.get_row_by_text(email)
+                        expect(row).to_have_count(1, timeout=ROW_WAIT_TIMEOUT)
                         delete_response = users_page.delete_user_row(row)
                         assert delete_response.status == 204, (
                             f"Expected 204 from deleting seeded user {email!r}, "
@@ -184,3 +215,15 @@ class TestBatchEditRolesForMultipleSelectedUsers:
                         expect(users_page.get_row_by_text(email)).to_have_count(
                             0, timeout=ROW_WAIT_TIMEOUT
                         )
+                    except Exception as exc:  # noqa: BLE001 - isolate + aggregate, never swallow
+                        cleanup_failures.append(f"{email!r}: {exc}")
+                        logger.error(
+                            "Cleanup failed for seeded user %r — row may be "
+                            "leaked into shared live project data: %s",
+                            email,
+                            exc,
+                        )
+                assert not cleanup_failures, (
+                    "Cleanup failed for one or more seeded users — leaked "
+                    f"into shared live project data: {cleanup_failures}"
+                )
