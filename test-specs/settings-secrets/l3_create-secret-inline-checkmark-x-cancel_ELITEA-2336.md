@@ -129,10 +129,23 @@
   exception (deterministic, single-cause, linked to an OPEN defect), the
   console-error assertion is written as a REAL assertion (no console errors)
   soft-asserted via the `soft_failures`/`pytest.fail()` idiom, filtered by
-  exact signature (`"Maximum update depth exceeded"` + `"SecretsContent.jsx"`)
-  so any genuinely NEW/unexpected console error still hard-fails immediately.
-  The test therefore stays honestly, deterministically RED on this one known
-  cause until `#1203` ships — never masked, never weakened.
+  the warning's **stable text prefix alone** (`"Maximum update depth
+  exceeded"`) so any genuinely NEW/unexpected console error still hard-fails
+  immediately. **AMENDED post-implementation (fix round 3) — an earlier
+  version of this matcher also required the `"SecretsContent.jsx"`
+  component-stack substring to be present, but Playwright's console-message
+  capture does not always include the full component stack for this
+  warning: a short-form occurrence (~250 chars, no stack suffix) was
+  observed live during round-2 verification alongside the normal long-form
+  occurrence (~4600 chars, full stack incl. `SecretsContent.jsx`). Requiring
+  both substrings meant the short-form occurrence fell into
+  `unexpected_errors` and hard-failed the test with a different failure
+  signature than the long-form occurrence — violating the sanctioned-RED
+  gate's "(a) deterministic — identical failure 3/3" requirement. The
+  matcher was hardened to anchor on the stable text prefix alone, dropping
+  the volatile stack/component suffix from the match condition.** The test
+  therefore stays honestly, deterministically RED on this one known cause
+  until `#1203` ships — never masked, never weakened.
 
 ## Coverage Map
 
