@@ -2,7 +2,7 @@
 name: efficiency-audit
 description: Measure the token/cost/time efficiency of AI coding-agent work — per session, per role, per day, and per individual sub-agent — with every dollar metered by ccusage. Use when the user asks "what did this cost", cost per session/role/test case, which role/sub-agent burned the most, tool-call/skill/time breakdowns, "before vs after" cost comparisons, or wants to audit AI spend over time.
 license: Apache-2.0
-compatibility: Requires Node 18+. **Claude Code:** reads transcripts under $CLAUDE_CONFIG_DIR/projects (else ~/.claude/projects, ~/.config/claude/projects) and prices every dollar with `ccusage` (auto-run via `npx ccusage@latest`). **GitHub Copilot:** pass `--host copilot` — reads ~/.copilot/session-state/*/events.jsonl (also $COPILOT_HOME and a repo-local ./.copilot; all existing roots are searched), needs no ccusage, and takes cost from Copilot's own billed figure (`session.shutdown.totalNanoAiu`, AI credits at $0.01 each). Sessions predating GitHub's 2026-06-01 usage-based billing carry no credit figure and report tokens with cost n/a. `build-report-html.mjs` renders either host's `--json` snapshot as one self-contained HTML page. `--resolved-from` works on both hosts and needs no workflow: it reads the pipeline's `.agents/automation/<slug>/report.json`, whether that was written by the batch workflow or by the lead at close (including after rebuilding an interrupted run).
+compatibility: Requires Node 18+. **Claude Code:** reads transcripts under $CLAUDE_CONFIG_DIR/projects (else ~/.claude/projects, ~/.config/claude/projects) and prices every dollar with `ccusage` (auto-run via `npx ccusage@latest`). **GitHub Copilot:** pass `--host copilot` — reads ~/.copilot/session-state/*/events.jsonl (also $COPILOT_HOME and a repo-local ./.copilot; all existing roots are searched), needs no ccusage, and takes cost from Copilot's own billed figure (`session.shutdown.totalNanoAiu`, AI credits at $0.01 each). Parent-session roles come from the `subagent.selected` event (CLI ≥1.0.63; older streams report role-less sessions) and loaded skills from `skill.invoked`. Sessions predating GitHub's 2026-06-01 usage-based billing carry no credit figure and report tokens with cost n/a. This store is CLI-only — VS Code Copilot SIDEBAR sessions live in VS Code's own workspaceStorage and are covered by the `tokenomics` skill's ledger, not by this audit. `build-report-html.mjs` renders either host's `--json` snapshot as one self-contained HTML page. `--resolved-from` works on both hosts and needs no workflow: it reads the pipeline's `.agents/automation/<slug>/report.json`, whether that was written by the batch workflow or by the lead at close (including after rebuilding an interrupted run).
 metadata:
   authors:
     - Alexander Bychinskiy
@@ -39,8 +39,10 @@ Reach for this whenever the user wants to *quantify* agent spend or efficiency:
 - "Is this change worth it?" ($/resolved-unit, cache-hit rate, output share).
 - Auditing or tracking usage over time (snapshots + diffs).
 
-Not for: reading raw ccusage dashboards (just run `ccusage`), or non-cost
-session mining (that's `session-retrospective`).
+Not for: reading raw ccusage dashboards (just run `ccusage`), non-cost
+session mining (that's `session-retrospective`), or continuous/team-wide
+capture that survives transcript expiry — including VS Code Copilot sidebar
+sessions — which is the `tokenomics` skill's ledger.
 
 ## Step 0 — clarify the scope first
 

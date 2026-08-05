@@ -882,9 +882,13 @@ export function renderMarkdown(rollup, { resolved, label, weight, pricer = 'ccus
   if (rollup.unpricedModels && rollup.unpricedModels.length) {
     out.push(`> ⚠️ **Cost is UNDERCOUNTED.** These models have usage but no price in the current pricing DB — their tokens counted as $0: **${rollup.unpricedModels.join(', ')}**. Re-run with \`--online\` to fetch current LiteLLM pricing.`, '');
   }
+  // The note names the ACTUAL pricer — saying "ccusage" about Copilot's billed
+  // nano-AIU figure sent readers to the wrong tool to verify it (seen live).
   const methodNote = {
-    metered: 'per-file metered by ccusage (exact — each sub-agent priced individually)',
-    allocated: `allocated: each session's real ccusage $ split across sub-agents by ${weight || 'cost'}-weighted tokens`,
+    metered: pricer === 'ccusage'
+      ? 'per-file metered by ccusage (exact — each sub-agent priced individually)'
+      : `priced from ${pricer}'s own billed figure, split across units by token share`,
+    allocated: `allocated: each session's real ${pricer} $ split across sub-agents by ${weight || 'cost'}-weighted tokens`,
     mixed: 'mixed — some sessions metered per file, some allocated (see per-row source)',
     unavailable: `no ${pricer} cost available`,
   }[rollup.costMethod] || '';

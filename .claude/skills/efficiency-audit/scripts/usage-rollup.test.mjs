@@ -436,6 +436,16 @@ test('unpriced models: buildRollup carries them and renderMarkdown warns of the 
   assert.match(md, /--online/);
 });
 
+test('renderMarkdown: a non-ccusage pricer is never labelled ccusage in the by-role method note', () => {
+  const groups = [{ sessionId: 's1', projectDir: '/p', date: '2026-06-01',
+    units: [{ id: 's1', kind: 'session', parentId: null, role: 'x', usage: { output: 10, input: 0, cacheRead: 0, cacheCreation: 0, models: new Set() }, date: '2026-06-01', durationMin: 1, turns: 1, projectDir: '/p' }] }];
+  const r = buildRollup(groups, { meteredMap: new Map([['s1', 1.5]]), meteredSource: 'copilot-nano-aiu' });
+  const md = renderMarkdown(r, { pricer: 'GitHub Copilot' });
+  const roleSection = md.slice(md.indexOf('## By role'), md.indexOf('## By day'));
+  assert.doesNotMatch(roleSection, /ccusage/, 'the method note names the actual pricer');
+  assert.match(roleSection, /GitHub Copilot/);
+});
+
 test('parseUnit: duplicate tool_result errors for one tool_use_id count ONCE — toolSuccess never negative', () => {
   const records = [
     { type: 'assistant', message: { id: 'm1', content: [{ type: 'tool_use', id: 't1', name: 'Bash' }] } },

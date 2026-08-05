@@ -292,9 +292,14 @@ cases share assertions that were never meant to be shared — the weaker case
 stops being tested and **nothing turns red**. When the flows are not obviously
 the same flow, write them separately.
 
-**One writer.** You are the digest's only author, and you commit it yourself
-along with your AFS (below). Implementers and the orchestrator report drift to
-you; they don't edit it.
+**One writer at a time.** You are the digest's author, and you commit it
+yourself along with your AFS (below). Implementers may **append** attributed
+implementation-time notes on their case branch — testids they added, fixture
+realities, blockers their run resolved (`test-automation-implementation`
+Phase 2 scopes this) — but your behavior and scope claims are yours alone:
+disagreement with those comes back to you as reported drift, never as an
+edit. When you next work this surface, verify appended notes as you use them,
+like any cached handle, and keep or prune them as you would your own entries.
 
 You are also the only analyst running — units are strictly sequential — so
 there is no "last writer wins" race any more. The digest is still a **cache of

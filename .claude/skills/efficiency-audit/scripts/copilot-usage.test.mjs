@@ -94,6 +94,35 @@ test('groups are one per session, parent first, filtered to the project', () => 
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+// CLI ≥1.0.63 names the parent session's --agent (subagent.selected) and the
+// skills it loads (skill.invoked) — verified live 2026-08-05; older streams
+// lack both, so the fields default rather than break.
+test('parent role from subagent.selected and skills from skill.invoked; a tag still wins', () => {
+  const root = mkdtempSync(join(tmpdir(), 'cu-'));
+  try {
+    stageSession(root, 's1', [
+      ev('session.start', { context: { cwd: '/repo', branch: 'main' } }),
+      ev('subagent.selected', { agentName: 'test-automation-lead', agentDisplayName: 'test-automation-lead' }),
+      ev('skill.invoked', { name: 'test-automation-workflow', path: '/x/SKILL.md' }),
+      shutdown({ 'sonnet-4.6': metrics(100, 1) }),
+    ]);
+    const [g] = collectCopilotGroups('/repo', { root });
+    assert.equal(g.units[0].role, 'test-automation-lead');
+    assert.deepEqual(g.units[0].skills, ['test-automation-workflow']);
+    const [tagged] = collectCopilotGroups('/repo', { root, tags: { s1: 'operator' } });
+    assert.equal(tagged.units[0].role, 'operator', 'an explicit tag overrides the stream');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a pre-1.0.63 stream (no subagent.selected) keeps role null', () => {
+  const root = mkdtempSync(join(tmpdir(), 'cu-'));
+  try {
+    stageSession(root, 's1', [ev('session.start', { context: { cwd: '/repo' } }), shutdown({ m: metrics(1, 1) })]);
+    const [g] = collectCopilotGroups('/repo', { root });
+    assert.equal(g.units[0].role, null);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 // The session total already includes its sub-agents; reporting both at full
 // value would inflate the project's spend by the sub-agent share.
 test('the parent row is net of its sub-agents so they do not double-count', () => {

@@ -144,3 +144,15 @@ test('per-batch landing returns between waves; campaign-end rolls on', () => {
   assert.match(text, /plan\.waves\.filter\(\(w\) => !landedWaves\.includes\(w\?\.slug\)\)/);
   assert.match(text, /landedWaves: \$\{JSON\.stringify\(\[\.\.\.landedWaves, w\.slug\]\)\}/);
 });
+
+// A wave whose gate never ran is not 'nothing-landed' — its merged-ungated
+// units sit on the trunk, unproven. Field measurement: a mid-gate crash
+// reported nothing-landed/blocked:14 while 13 of 14 units were merged; the
+// conductor must say "re-run the gate", never "nothing happened".
+test("an interrupted wave surfaces as 'ungated', never 'nothing-landed'", () => {
+  assert.match(text, /report\?\.totals\?\.\['merged-ungated'\] \? 'ungated'/);
+  assert.match(text, /report_written: report\?\.report_written \?\? false/);
+  assert.match(text, /thisWave\?\.status === 'ungated'/);
+  assert.match(text, /unproven, NOT blocked/);
+  assert.match(text, /never from this summary alone/);
+});
