@@ -210,3 +210,56 @@ this feature area. First implementer creates it.
   click; 200 OK, no console errors. No new request fires on back-navigation
   (`handleBack` only resets local state; the Users-tab query result stays
   cached by RTK-Query from the original tab-mount fetch).
+
+## Agent/Pipeline Detail view (`AnalyticsAgentDetailed.jsx`) — confirmed live 2026-08-05, ELITEA-2321
+
+- **Zero pre-existing testids** on the file (mirrors the Users-detail/Agents-tab
+  finding); reachable from the Agents & Pipelines tab's row click
+  (`AnalyticsAgents.jsx`'s `handleAgentClick`/`selectedAgent` state) — the SAME
+  same-page state-swap pattern as the Users-tab → user-detail transition, NOT a
+  route/URL change. `pages/analytics_page.py`'s `open_agent_detail_by_row()`
+  (ELITEA-2320) already waits on the response but stops there — ELITEA-2320's own
+  spec explicitly scoped the sub-view's CONTENT out of bounds; ELITEA-2321 is the
+  first case to assert it.
+- **KPI cards: EIGHT**, not five: `TOTAL RUNS, UNIQUE USERS, TOTAL COST, TOTAL
+  TOKENS, INPUT TOKENS, OUTPUT TOKENS, AVG LATENCY, ERRORS`
+  (`AnalyticsAgentDetailed.jsx:67-110`). There is **no "Error Rate" KPI at all** —
+  a case-text invention, not present in source or live product. Filed
+  elitea-testing-public#1199.
+- **Chart is titled "Runs by Day"**, not "Daily Usage" (`AnalyticsAgentDetailed.jsx:118`,
+  conditional on `daily_usage.length > 0`). Same clarification issue (#1199).
+- **Users panel columns are `User, Runs, Avg Latency, Errors`** — the second column
+  is "Runs", NOT "Events" (case-text says EVENTS; same Events→Runs naming drift
+  already documented for the Activity table itself, #1195). Subtitle format:
+  `"{N} users used this agent / pipeline"`.
+- **Tools panel columns are `Tool, Calls`** — matches case text exactly, no drift.
+  Subtitle format: `"{N} tools used by this agent / pipeline"`; empty state renders
+  literal text **"No tool data"** when N=0 (`AnalyticsAgentDetailed.jsx:291-297`) —
+  also matches case text exactly, no drift here.
+- **Errors KPI color rule**: `AnalyticsAgentDetailed.jsx:107`,
+  `color: kpis.errors > 0 ? palette.status.rejected : undefined` — identical shape
+  to the Users-tab/user-detail Errors cards. **No positive-branch live data** in
+  "Private" at analysis time (same gap as ELITEA-2320's Activity-table Errors
+  column) — negative branch only was live-verified.
+- **`KpiCard.jsx` reused, same `testId`/`valueTestId` prop pair** added for
+  ELITEA-2313's `AnalyticsUserDetailed` call site — this is a second call site for
+  the SAME shared-component props, no new component-level work needed, just wire
+  the props at `AnalyticsAgentDetailed`'s 8 `<KPICard>` call sites.
+- **Title (`entity_name`) has no known blank-value gap** — unlike
+  `AnalyticsUserDetailed`'s `user_email` (#1192), `entity_name` was populated on
+  every row checked this run (an agent/pipeline's name, unlike a user's email,
+  isn't user-optional data).
+- **Test-data trick for the Tools-panel empty-state branch**: no need for a second
+  project — within "Private" itself, `guardrails_test_agent` (row 1, has tool
+  calls) and a low-usage pipeline row near the end of the table (e.g.
+  `autotest_test_empty_pipeline_exe...`, 1 run, $0.00 cost, 0 tokens) exercise the
+  populated vs. empty Tools-panel branches respectively — both reachable via one
+  project, no project-switch round trip needed for this case (unlike
+  ELITEA-2320's Users-column / chart-presence branches, which DO need the
+  "UI Testing" project).
+- **Data endpoint**: `GET /api/v2/elitea_core/analytics_agent_detail/prompt_lib/
+  {project_id}?entity_id={id}&date_from=...&date_to=...` — fires once per row
+  click; 200 OK, no console errors. No new request fires on back-navigation
+  (`handleBack` — `AnalyticsAgents.jsx:83` — only resets local `selectedAgent`
+  state; live-confirmed via `browser_network_requests` before/after the back
+  click, identical request list both times).
