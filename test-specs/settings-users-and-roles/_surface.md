@@ -138,3 +138,37 @@ component edit needed:
   unselected rows provably unchanged. Introduced the `users-edit-roles-*`
   dialog testids (see Gotchas above) and the seed-2-disposable-users
   pattern for write-flow cases on this surface.
+- `l3_invite-user-invalid-email-validation_ELITEA-2307.md` — Invite-users
+  dialog client-side email-format validation (no invite ever submitted).
+
+## Confirmed handles (as of ELITEA-2307 analysis, 2026-08-05)
+
+`InviteUserDialog.jsx` (`src/components/InviteUserDialog.jsx`) source-read +
+live-confirmed:
+
+- **Validation is BLUR-gated, not live-as-you-type.** `onChange={handleChange}`
+  only updates the `emails`/`inputText` state; `onBlur={handleBlur}` is what
+  calls `parseEmails()` and sets `error`/`helperText`. Typing `notanemail` or
+  `user@` alone shows NO error (live-confirmed, snapshot right after
+  `.fill()`); pressing `Tab` immediately surfaces
+  `Invalid email: {email}` as a `<FormHelperText>` paragraph directly below
+  the Emails field. Same "touched"-gating family as the Artifacts bucket-name
+  form above — don't assert right after fill, blur first.
+- Error text: exact, deterministic `Invalid email: {email}` — built by
+  `validateEmails()` in the same file (regex-based, one shared prefix, emails
+  joined by `, ` when multiple are invalid).
+- **Error `<FormHelperText>` has ZERO testid today** — confirmed via
+  `document.querySelectorAll('p')` filter live: `class="MuiFormHelperText-root
+  Mui-error MuiFormHelperText-sizeSmall css-..."`, `data-testid: null`.
+  `testid needed: users-invite-emails-error-text` — thread a new
+  `emailsErrorTestId` prop the same way `emailsInputTestId` already threads
+  (`Users.jsx`'s `InviteUserDialog` call site), landing on the
+  `<FormHelperText>` node itself (a NEW prop — unlike `emailsInputTestId`,
+  which uses `inputProps` to reach the nested `<textarea>`, this one is a
+  direct prop on the JSX element being tagged, no `slotProps` indirection
+  needed).
+- Invite (confirm) button (`users-invite-confirm-button`, pre-existing) stays
+  disabled while `error` is true (`disabled={!emails.length ||
+  !selectedRoles.length || error}`) — no request ever fires for an
+  invalid-email attempt; don't reuse `AdminUsersPage.invite_users()` (it
+  awaits a POST response) for this path.
