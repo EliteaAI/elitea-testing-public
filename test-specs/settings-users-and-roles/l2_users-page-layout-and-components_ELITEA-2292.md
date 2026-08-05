@@ -208,14 +208,18 @@ exists, either by wiring an **already-supported** shared-component prop
 | Row Edit (pencil) icon | `EditUsersButton.jsx` — same component as the header instance, per-row usage in `UsersTable.jsx`'s `renderActions` (no `isBatchEdit`) | `user-row-edit-button` | Same new `testId` prop as the header instance (see above); pass `testId="user-row-edit-button"` at `UsersTable.jsx`'s `renderActions` call site. |
 | Row Delete (trash) icon | `DeleteUserButton.jsx` — same component as the header instance, per-row usage in `UsersTable.jsx`'s `renderActions` (no `useSecondaryButton`) | `user-row-delete-button` | Same new `testId` prop as the header instance; pass `testId="user-row-delete-button"` at `UsersTable.jsx`'s `renderActions` call site. |
 
-**Sort-indicator icons (Name/Email/Last login)**: NOT a separate testid.
-`GridTableHeader.jsx` already renders a `SortArrows` `<svg>` inside the
-column's header `Box` only when `column.sortable && onSort` is true
-(confirmed in source, `GridTableHeader.jsx:56-60`). Locate it via
-`.locator("svg")` chained off the already-testid-scoped
-`user-column-header-{field}` element — the sanctioned "locating within an
-already-testid-scoped element" pattern (`.agents/testing.md`), not a raw
-page-level selector.
+**Sort-indicator icons (Name/Email/Last login)**: dedicated component-level
+testid, not a raw `<svg>` handle. `GridTableHeader.jsx` renders a
+`SortArrows` icon inside the column's header `Box` only when
+`column.sortable && onSort` is true (confirmed in source,
+`GridTableHeader.jsx:56-60`). The icon now carries its own dynamic testid,
+`user-sort-icon-{field}` (added on EliteaUI via `EliteaAI/EliteaUI@bedf5331`,
+then renamed via `EliteaAI/EliteaUI@52582fe3` to avoid colliding with the
+`user-column-header-*` prefix selector). Locate it via the class-level
+template constant `COLUMN_SORT_ICON_SELECTOR = '[data-testid="user-sort-icon-{}"]'`
+formatted with the column field, per the dynamic-testid pattern
+(`.agents/testing.md` § Locator policy) — not `.locator("svg")` chained off
+the column-header element.
 
 Not touched by this case (no testid requested — scope discipline,
 `.agents/role-overrides.md` "touches" = actually invoked on this test's
@@ -268,9 +272,13 @@ None.
 - Column-header count assertion:
   `page.locator('[data-testid^="user-column-header-"]')` count == 5 (same
   prefix-selector mechanism as `personal-token-column-header-*`).
-- Sort-indicator assertion: `self.column_header_name.locator("svg")` (and
-  siblings for email/last_login) expected count == 1; `self.column_header_roles.locator("svg")`
-  / `self.column_header_actions.locator("svg")` expected count == 0.
+- Sort-indicator assertion: `get_column_sort_icon_count(column_field)` —
+  `self.page.locator(self.COLUMN_SORT_ICON_SELECTOR.format(column_field))
+  .count()` against the `user-sort-icon-{field}` testid (class-level
+  template constant `COLUMN_SORT_ICON_SELECTOR =
+  '[data-testid="user-sort-icon-{}"]'` on `AdminUsersPage`) — expected
+  count == 1 for `name`/`email`/`last_login`, count == 0 for
+  `roles`/`actions`.
 - Row-cell assertions: scope everything off `self.user_row.first` (or a
   dedicated `first_user_row` `LocatorDescriptor`-style helper matching
   `PersonalTokensPage.get_first_row_action_icon`'s pattern) — never a raw
