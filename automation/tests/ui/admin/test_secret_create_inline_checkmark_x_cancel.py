@@ -351,6 +351,10 @@ class TestSecretCreateInlineCheckmarkXCancel:
                 "validation error clears and the checkmark becomes enabled"
             ):
                 secrets_page.clear_and_type_name("my_secret_123")
+                assert secrets_page.name_input.input_value() == "my_secret_123", (
+                    f"Expected name input to show 'my_secret_123', got "
+                    f"{secrets_page.name_input.input_value()!r}"
+                )
                 expect(secrets_page.name_error).to_have_count(0)
                 expect(secrets_page.save_button).to_be_enabled(timeout=ROW_WAIT_TIMEOUT)
 
