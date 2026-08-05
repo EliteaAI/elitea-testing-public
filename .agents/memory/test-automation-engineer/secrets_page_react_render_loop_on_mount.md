@@ -73,4 +73,13 @@ requirement. Regression-pinned by
 (long-form-with-stack / short-form-no-stack / unrelated-error). Live re-run
 after the fix hits the correct `pytest.fail()` soft-known-defect line.
 
+**Fix-round-4 note:** round-3's code fix (above) did not touch the AFS. The
+AFS's *round-2* amendment block (in `## Expected Results`) still described the
+OLD dual-substring filter condition, so it went stale the moment round 3's
+code landed — flagged as round 4's blocking finding. Fixed docs-only
+(`bd0105ba`): amended the round-2 block's stale clause + added a round-3
+amendment block. Lesson: a code fix that changes behaviour an EARLIER round's
+AFS text already described is itself new AFS drift — check every paragraph
+that echoes the changed behaviour, not just the most recent one.
+
 (from ELITEA-2336)
