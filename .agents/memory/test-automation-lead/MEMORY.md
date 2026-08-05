@@ -31,3 +31,4 @@
 - [Workflow tool: use scriptPath, not workflow('name',...)](workflow_tool_named_registry_is_empty_use_scriptpath.md) — named registry is empty; wrapper-script call fails silently-fast
 - [build_index MCP verb can silently no-op](build_index_mcp_verb_can_silently_no_op.md) — omit `repo:` arg entirely; it misroutes to ~/.onetest-workspaces
 - [batch-build never opens trunk→base PR](batch_workflow_never_opens_trunk_to_base_pr.md) — lead always `gh pr create`+merge it by hand, every batch
+- [Workflow new-ground blocker needs blocking_detail too](workflow_new_ground_blocker_needs_blocking_detail_too.md) — `blocked` may be a loop-control gap, not unfixable — read the finding first
