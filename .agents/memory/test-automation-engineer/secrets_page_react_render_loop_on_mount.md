@@ -64,4 +64,13 @@ unique enough: `"Warning: Maximum update depth exceeded. This can happen
 when a component calls setState inside useEffect"`) instead of requiring
 the component-name suffix.
 
+**Fixed in fix-round-3** (as the reviewer's next-round blocking finding, per
+the pattern above — flagging without fixing only postponed it one
+round-trip). `_is_known_defect_1203()` now matches
+`"Maximum update depth exceeded" in text` alone, no stack-suffix
+requirement. Regression-pinned by
+`tests/unit/test_secret_create_inline_known_defect_1203_matcher.py`
+(long-form-with-stack / short-form-no-stack / unrelated-error). Live re-run
+after the fix hits the correct `pytest.fail()` soft-known-defect line.
+
 (from ELITEA-2336)
