@@ -84,9 +84,22 @@
 - `step 4` asserts exact column **order**, not just presence — *added: order is part of the
   visible UI contract and free to assert once the header handle is captured (mirrors ELITEA-2310's
   tab/preset order assertions).*
-- `step 6` asserts the *default* rows-per-page value (20) and the exact `rowsPerPageOptions`
-  (10/20/50) — *added: the case only asks for "a selector present"; asserting its default/options
-  catches a silent options-list regression cheaply, using the same locator.*
+- `step 6` asserts the *default* rows-per-page value (20), read directly off
+  `analytics-users-pagination-rows-select`'s rendered text — *added: the case only asks for "a
+  selector present"; asserting the default value catches a silent regression cheaply, using the
+  same locator.*
+  — **Implementer amendment (2026-08-05):** the AFS's original wording also proposed asserting the
+  exact `rowsPerPageOptions` list (10/20/50) "cheaply, using the same locator." Live exploration
+  found this is NOT cheap: MUI's `TablePagination` renders the closed-select's *current* value via
+  `slotProps.select`'s testid, but the open-dropdown menu items (the actual 10/20/50 options) are
+  generated internally with no per-option testid hook — `TablePagination`'s `slotProps` exposes only
+  a single `menuItem` slot applied identically to every option, which cannot disambiguate "the 20
+  option" from "the 50 option." Enumerating them would need net-new per-option testid plumbing (not
+  in the analyst's original 10-handle Concrete Handles table) — out of proportion to this addition's
+  "free" framing and disallowed as a fresh non-testid handle under `.agents/testing.md` § Locator
+  policy. Technique gap, not a scope drop: this AFS now asserts only the *default* rows-per-page
+  value; the options-list enumeration is left for a future case that scopes the per-option testid
+  work explicitly.
 - **Search-filter smoke check** (not in the case's numbered steps, but directly adjacent to step 3
   "search input is present" and free to verify with the same handle): typing an existing user's
   email substring narrows the table to matching rows and updates the count/pagination label
@@ -175,6 +188,11 @@ Uniqueness verified (2026-08-05, `git fetch origin` fresh, `EliteaUI@a68b3728`):
   reusing the Overview one (they're different endpoints).
 - Column-header assertion: split `analytics-users-table-header`'s `.inner_text()` on `"\n"` and
   compare the resulting list to the expected 9-label tuple — exact match, not substring/contains.
+  **Implementer note (2026-08-05):** `tableCell`'s `sx` applies `text-transform: uppercase` —
+  `inner_text()` reflects the CSS-rendered text, so the expected tuple must be the UPPERCASE form
+  (`"USER"`, `"ACTIVE DAYS"`, …), not the JSX source's title-case strings. Confirmed live: the
+  title-case comparison failed 1/1 (fast infrastructure fix, re-run green after correcting the
+  expected tuple's case).
 - Errors-color assertion: use Playwright's `expect(locator).to_have_css("color", "rgb(255, 255,
   255)")` (or the theme's actual `palette.text.secondary` resolved value — confirm via
   `getComputedStyle` at implementation time, since `rgb(255, 255, 255)` was observed against the
@@ -185,3 +203,34 @@ Uniqueness verified (2026-08-05, `git fetch origin` fresh, `EliteaUI@a68b3728`):
   `rowsPerPage=20`): range label "1–3 of 3", both prev/next buttons `disabled` — this is the
   live-observed default; if the exploration project's user count changes, the range label changes
   correspondingly (still single-page while `total <= 20`).
+- **Implementer note (2026-08-05) — search-filter smoke check, two root causes found:**
+  (1) `press_sequentially` occasionally dropped the leading keystroke on
+  `analytics-users-search-input` (a Playwright/React re-render-timing race, not a product defect).
+  `SearchInput.jsx` wires `onChange` straight off a plain native `<input>` (no MUI TextField/masking
+  layer), and `.fill()` is this codebase's established, working pattern for exactly that shape
+  (`agents_list_page.py`'s `search()`/`clear_search()`) — switched to it.
+  (2) Independently, `BasePage.wait_for_network()` (wraps `page.wait_for_load_state("networkidle")`)
+  is a one-time-per-navigation Playwright lifecycle event — once the page has already reached
+  `networkidle` (true well before this method runs), calling it again resolves immediately
+  regardless of a request `.fill()` triggers a few ms later, so it never actually waited for the
+  search response (reproduced as a false-empty "0 rows after searching 'testbot'" filtered result,
+  2/2). Fixed by wrapping `.fill()` in `page.expect_response(...)` against
+  `ANALYTICS_USERS_QUERY_URL_SUBSTRING` (the same pattern `open_users_tab()` already uses) instead
+  of `wait_for_network()`. Confirmed green after both fixes.
+  (3) The response-vs-render lag itself needed its own fix: `expect_response` only confirms the
+  network request finished, not that React has re-rendered with the new `data`/`isFetching` state —
+  added a testid (`analytics-users-loading-indicator`, `EliteaAI/EliteaUI@00eab214`) on the
+  Users-tab's `isFetching` spinner and a `_wait_for_users_settled()` helper (wait for it hidden) to
+  close that gap. (4) Clearing the search back to `""` is frequently a cache HIT — RTK-Query already
+  ran that exact query at tab-mount — so no new network request fires at all; wrapping the clear in
+  `expect_response` timed out waiting for a request that legitimately never happens.
+  `clear_users_search()` now relies on `_wait_for_users_settled()` alone (handles both the cached
+  and uncached case).
+  **Also discovered while debugging:** the `auth_state` fixture's default test project ("Private")
+  has richer data than the "Private"-adjacent "UI Testing" project the analyst explored against —
+  it has TWO users with `errors > 0` (User 6250: 78, testbot@elitea.ai: 75) live in the default
+  "Last 24h" range. This means the AFS § Blocked Steps gap (errors>0 -> red, previously
+  source-confirmed only) IS actually live-exercisable in the project this suite's fixtures target.
+  Left as a documented follow-up rather than added mid-implementation (a scope addition belongs
+  with analyst review of the AFS, not silently folded into this PR) — see this test file's
+  docstring and the Run Report.
