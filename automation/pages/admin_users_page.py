@@ -124,6 +124,57 @@ class AdminUsersPage(BasePage):
         description="Sidebar project selector combobox trigger.",
     )
 
+    # --- Invite-users dialog (ELITEA-2304 — batch-edit-roles seed step) ---
+    # `emailsInputTestId` / `roleSelectTestId` / `confirmButtonTestId` newly
+    # threaded through InviteUserDialog -> Users.jsx's call site
+    # (EliteaAI/EliteaUI@ed2ddbb9) — the dialog previously had ZERO testids
+    # wired despite the case's AFS assuming otherwise; confirmed live during
+    # implementer exploration. Cancel is intentionally NOT wired — this
+    # case's steps never click it (canon ruling #511 scope discipline).
+    invite_emails_input = LocatorDescriptor(
+        testid="users-invite-emails-input",
+        description="Invite-users dialog — comma-separated emails textarea",
+    )
+    invite_role_select_combobox = LocatorDescriptor(
+        testid="users-invite-role-select-combobox",
+        description="Invite-users dialog — Roles multi-select combobox trigger",
+    )
+    invite_confirm_button = LocatorDescriptor(
+        testid="users-invite-confirm-button",
+        description='Invite-users dialog — "Invite" confirm button',
+    )
+
+    # --- Edit roles dialog (header batch-edit — ELITEA-2304) ---
+    # `dialogTestId` / `titleTestId` / `roleSelectTestId` / `saveButtonTestId`
+    # newly threaded through EditUserRolesDialog -> Users.jsx's HEADER
+    # (isBatchEdit) call site only (EliteaAI/EliteaUI@435ff111) — never at
+    # the per-row call site, which this case never opens. Cancel likewise
+    # not wired (never clicked by this case).
+    edit_roles_dialog = LocatorDescriptor(
+        testid="users-edit-roles-dialog",
+        description="Batch-edit 'Edit roles' dialog root",
+    )
+    edit_roles_dialog_title = LocatorDescriptor(
+        testid="users-edit-roles-title",
+        description='Batch-edit dialog title — exact text "Edit roles"',
+    )
+    edit_roles_select_combobox = LocatorDescriptor(
+        testid="users-edit-roles-select-combobox",
+        description="Batch-edit dialog — Roles multi-select combobox trigger",
+    )
+    edit_roles_save_button = LocatorDescriptor(
+        testid="users-edit-roles-save-button",
+        description="Batch-edit dialog — Save button (disabled until a role changes)",
+    )
+
+    # --- Delete-confirmation dialog (generic Modal.DeleteEntityModal) ---
+    # Pre-existing shared component testid (also used by
+    # PersonalTokensPage's cleanup flow) — reused as-is, not newly added.
+    delete_confirm_button = LocatorDescriptor(
+        testid="delete-confirm-button",
+        description="Delete-confirmation dialog — Delete button",
+    )
+
     # Scoped sub-selectors — count/prefix assertions and per-row cell lookups,
     # per .agents/testing.md § Locator policy (UPPER_CASE class constants).
     # Row-cell testids repeat once per row (not row-unique), so every getter
@@ -168,6 +219,29 @@ class AdminUsersPage(BasePage):
         return (
             ROLES_LIST_URL_SUBSTRING in response.url
             and response.request.method == "GET"
+        )
+
+    def _is_users_post_response(self, response: Response) -> bool:
+        """True for the invite-users POST (ELITEA-2304 — confirmed live:
+        `POST /admin/users/default/{project}`, 200 OK)."""
+        return (
+            USERS_LIST_URL_SUBSTRING in response.url
+            and response.request.method == "POST"
+        )
+
+    def _is_users_put_response(self, response: Response) -> bool:
+        """True for the batch-edit-roles PUT (AFS step 7 — 200 OK,
+        `{"msg": "roles updated"}`)."""
+        return (
+            USERS_LIST_URL_SUBSTRING in response.url
+            and response.request.method == "PUT"
+        )
+
+    def _is_users_delete_response(self, response: Response) -> bool:
+        """True for the per-user delete DELETE (cleanup — 204 No Content)."""
+        return (
+            USERS_LIST_URL_SUBSTRING in response.url
+            and response.request.method == "DELETE"
         )
 
     def ensure_team_project_selected(
@@ -273,3 +347,112 @@ class AdminUsersPage(BasePage):
         """Return the row-level Delete (trash) icon Locator for the FIRST
         user row."""
         return self.user_row.first.locator(self.USER_ROW_DELETE_BUTTON_SELECTOR)
+
+    # --- Row lookup by visible text (ELITEA-2304) ---
+    def get_row_by_text(self, text: str):
+        """Return the user-row Locator filtered by row text match on *text*
+        (sanctioned chaining off the already-testid-scoped :attr:`user_row`,
+        same pattern as ``PersonalTokensPage.get_row_by_name``).
+
+        Used both for pre-existing users (match on Name, e.g. "Levon
+        Dadayan") and for seeded/invited users (match on email — an
+        invited-but-not-yet-logged-in row renders an EMPTY Name cell
+        (``user-row-name``), with the invited address only in the Email
+        column; live-confirmed during ELITEA-2304 implementer exploration,
+        contradicting the AFS's original "Name = the email itself"
+        assumption, which was amended)."""
+        return self.user_row.filter(has_text=text)
+
+    def is_row_checkbox_checked(self, row) -> bool:
+        """Return whether *row*'s own checkbox is checked.
+
+        Same ``Mui-checked`` class-list workaround as
+        :meth:`is_select_all_checked` — the ``user-row-checkbox`` testid
+        lands on the MUI Checkbox ROOT ``<span>``, not the nested
+        ``<input>``."""
+        checkbox = row.locator(self.USER_ROW_CHECKBOX_SELECTOR)
+        class_attr = checkbox.get_attribute("class") or ""
+        return "Mui-checked" in class_attr
+
+    def select_user_row(self, row) -> None:
+        """Check *row*'s own checkbox (a Locator returned by
+        :meth:`get_row_by_text`) — never select-all."""
+        row.locator(self.USER_ROW_CHECKBOX_SELECTOR).click()
+
+    def get_role_cell_for_row(self, row):
+        """Return the Role-cell Locator scoped within *row*."""
+        return row.locator(self.USER_COLUMN_VALUE_ROLES_SELECTOR)
+
+    # --- Invite-users dialog flow (ELITEA-2304 seed step) ---
+    def open_invite_dialog(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the '+' Invite-users button and wait for the dialog's
+        emails input to become visible."""
+        self.invite_button.click()
+        self.invite_emails_input.wait_for(state="visible", timeout=timeout)
+
+    def _select_multi_select_role_and_close(self, combobox, role: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Select *role* in *combobox*'s currently-closed Roles multi-select,
+        then close the opened listbox.
+
+        Both the Invite-users and Edit-roles dialogs use a `multiple` MUI
+        Select (``Select.SingleSelect`` with ``multiple`` + ``showBorder`` —
+        selecting an option does NOT auto-close the popover, unlike a
+        single-select. Same pattern as
+        ``PipelineDetailPage._select_multi_select_option_and_close``: close
+        via Escape (consumed by the MUI Menu's own handler before it can
+        bubble to the dialog's Escape-closes-dialog handler — confirmed
+        live, the Edit-roles dialog stays open)."""
+        combobox.click(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(role))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+        self.page.keyboard.press("Escape")
+
+    def select_role_in_invite_dialog(self, role: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Open the Invite dialog's Roles select and choose *role*."""
+        self._select_multi_select_role_and_close(self.invite_role_select_combobox, role, timeout=timeout)
+
+    def invite_users(self, emails: list[str], role: str, timeout: int = NAVIGATION_TIMEOUT) -> Response:
+        """Fill the emails textarea, select *role*, and click Invite.
+
+        Returns the driving invite POST response (confirmed live:
+        ``POST /admin/users/default/{project}``, 200 OK).
+        """
+        self.invite_emails_input.fill(",".join(emails))
+        self.select_role_in_invite_dialog(role, timeout=timeout)
+        with self.page.expect_response(self._is_users_post_response, timeout=timeout) as post_info:
+            self.invite_confirm_button.click()
+        return post_info.value
+
+    # --- Edit-roles dialog flow (header batch-edit — ELITEA-2304) ---
+    def open_edit_roles_dialog(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the header batch-Edit button and wait for the "Edit roles"
+        dialog to open."""
+        self.header_edit_button.click()
+        self.edit_roles_dialog.wait_for(state="visible", timeout=timeout)
+
+    def select_role_in_edit_dialog(self, role: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Open the Edit-roles dialog's Roles select and choose *role*."""
+        self._select_multi_select_role_and_close(self.edit_roles_select_combobox, role, timeout=timeout)
+
+    def save_edit_roles(self, timeout: int = NAVIGATION_TIMEOUT) -> tuple[Response, Response]:
+        """Click Save in the Edit-roles dialog and return the (PUT, refetch
+        GET) driving responses (AFS step 7 — PUT 200 OK with body
+        ``{"msg": "roles updated"}``, and the users list re-fetches)."""
+        with self.page.expect_response(
+            self._is_users_put_response, timeout=timeout
+        ) as put_info, self.page.expect_response(
+            self._is_users_list_response, timeout=timeout
+        ) as refetch_info:
+            self.edit_roles_save_button.click()
+        return put_info.value, refetch_info.value
+
+    # --- Cleanup: row-level delete (ELITEA-2304 — mandatory teardown) ---
+    def delete_user_row(self, row, timeout: int = NAVIGATION_TIMEOUT) -> Response:
+        """Click *row*'s Delete icon, confirm in the delete-confirmation
+        dialog, and return the driving DELETE response (204 No Content)."""
+        row.locator(self.USER_ROW_DELETE_BUTTON_SELECTOR).click()
+        self.delete_confirm_button.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(self._is_users_delete_response, timeout=timeout) as delete_info:
+            self.delete_confirm_button.click()
+        return delete_info.value
