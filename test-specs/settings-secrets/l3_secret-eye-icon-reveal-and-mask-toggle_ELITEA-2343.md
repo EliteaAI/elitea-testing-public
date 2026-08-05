@@ -173,11 +173,12 @@
 Locator policy on this project is **testid-only, no fallback ladder**
 (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`). One
 button-level testid is new (implementer work via `add-data-testid`); the two
-icon-state sub-selectors are a **declared improvisation** (see note below the
-table) using MUI's own auto-generated `data-testid` on the icon `<svg>`
-children — still a `[data-testid=` selector, chained off the (to-be-added)
-button testid, per the "scoped sub-selector, UPPER_CASE class constant"
-pattern. Everything else is pre-existing and confirmed live/in-source this
+icon-state sub-selectors are **also new, real app-authored testids** (updated
+during implementation fix round 2 — see note below the table): the original
+declared improvisation, which chained off MUI's own auto-generated
+`data-testid` on the icon `<svg>` children, was REJECTED at review because
+that attribute is `NODE_ENV`-gated and stripped on every production/deployed
+build. Everything else is pre-existing and confirmed live/in-source this
 session.
 
 | Element | Testid | Provenance |
@@ -194,39 +195,47 @@ session.
 | "Delete" menu item | `secret-actions-menu-delete` | pre-existing (ELITEA-2338) |
 | Delete confirmation dialog + fields | `delete-confirm-dialog` / `delete-confirm-name-input` / `delete-confirm-button` | pre-existing — shared `DeleteEntityModal.jsx` |
 
-**Icon-state sub-selectors (scoped off the button testid above, DECLARED
-IMPROVISATION per `.agents/role-overrides.md` § Declared-improvisation
-protocol — no sanctioned canon pattern explicitly covers a vendor-library
-auto-generated `data-testid` on a conditionally-swapped child component):**
+**Icon-state sub-selectors (scoped off the button testid above) — UPDATED,
+fix round 2 (reviewer finding, PR #1224):**
 
 ```python
 # class level, on secrets_page.py — scoped off row_actions-style pattern,
 # same shape as SECRET_ROW_ACTIONS_BUTTON_SELECTOR
-VISIBILITY_ICON_VISIBLE_SELECTOR = '[data-testid="VisibilityIcon"]'
-VISIBILITY_ICON_HIDDEN_SELECTOR = '[data-testid="VisibilityOffIcon"]'
+VISIBILITY_ICON_VISIBLE_SELECTOR = '[data-testid="secret-row-visibility-icon-show"]'
+VISIBILITY_ICON_HIDDEN_SELECTOR = '[data-testid="secret-row-visibility-icon-hide"]'
 ```
 
-Reasoning for why this is NOT the outlawed "state-switched testid on one
-element" shape (`.agents/testing.md` § "Testid = stable identity"): the
-button being clicked keeps exactly ONE static testid
-(`secret-row-visibility-toggle-button`), added once and never varying. The
-`data-testid` that changes belongs to a DIFFERENT DOM node — the icon
-`<svg>` — because `SecretsTable.jsx` swaps in a genuinely different React
-component (`<VisibilityIcon>` vs `<VisibilityOffIcon>`, both imported from
-`@mui/icons-material`) depending on `isSecretVisible`, and MUI's icon
-components carry their own `data-testid` (equal to the export name)
-automatically — confirmed live via `browser_evaluate`, confirmed in source
-that neither icon has an app-authored `data-testid` prop at the call site.
-This is structurally closest to the canon's `#277` "same-element
-conditional pair" shape (two mutually-exclusive branches, both named, both
-referenced by locators on this test's own executed path — steps 3/6 assert
-`VisibilityIcon` present, steps 6/9 assert `VisibilityOffIcon` present) even
-though the two branches here are literally different components rather than
-one component's ternary prop. Flagged explicitly for the implementer and
-reviewer to verify this reasoning; if rejected, the fallback is to assert
-ONLY the Value-cell text swap (steps 5/8, already testid-based and
-suffficient proof of the reveal/mask functionality) and drop the icon-shape
-assertion (steps 6/9) entirely rather than use a role/CSS handle.
+**Superseded reasoning (original, rejected at review):** the original
+version of this selector pair chained off MUI's own auto-generated
+`data-testid` on the icon `<svg>` (equal to the icon component's export
+name — `VisibilityIcon` / `VisibilityOffIcon`), justified as a scoped
+sub-selector closest to canon `#277`'s "same-element conditional pair"
+shape. **This was incorrect**: reading
+`node_modules/@mui/material/utils/createSvgIcon.js` directly shows the
+attribute is set only `process.env.NODE_ENV !== 'production'` — a `vite
+build` (every deployed env / promotion gate) strips it to `undefined`.
+Green on localhost (Vite dev server) 100% of the time, silently
+unlocatable on every deployed environment — exactly the "confirmed live
+against a dev server only" trap `.agents/role-overrides.md` warns about
+elsewhere in this project.
+
+**Current (fixed) reasoning:** real, app-authored `data-testid`s were added
+directly on the two icon call sites in `SecretsTable.jsx`
+(`EliteaAI/EliteaUI@e6260731`, on `automation/testids`) —
+`secret-row-visibility-icon-show` on `<VisibilityIcon>` (masked state,
+click reveals) and `secret-row-visibility-icon-hide` on
+`<VisibilityOffIcon>` (revealed state, click hides). `createSvgIcon`'s own
+JSX spreads `...props` *after* its internal auto-`data-testid`, so the
+explicit prop overrides it in both dev AND prod builds (confirmed by
+reading the same file). This is still canon `#277`'s "same-element
+conditional pair, both branches referenced" shape (two mutually-exclusive
+branches, both named, both referenced by locators on this test's own
+executed path — steps 3/6 assert the `-show` testid present, steps 6/9
+assert the `-hide` testid present) — now with a real, build-mode-stable
+testid instead of a vendor-internal debug artifact. Durable rule recorded:
+`.agents/memory/qa-engineer/mui_icons_material_auto_testid_on_icon_svg.md`
+— never use an MUI-auto `data-testid` on an icon `<svg>` as a locator
+basis, in any capacity; ask for a real app-authored testid instead.
 
 ## Network Behavior
 - `POST /api/v2/secrets/secrets/default/{project_id}` — create (step 2), `201`.

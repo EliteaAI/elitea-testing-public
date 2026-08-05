@@ -41,20 +41,30 @@ Locator provenance (ELITEA-2343, eye-icon reveal/mask toggle): the AFS specced
 ``SecretsTable.jsx``'s Show/Hide ``IconButton`` (lines 496-509) carried zero
 ``data-testid`` at analysis time. This implementation session added it,
 committed onto ``automation/testids`` as ``EliteaAI/EliteaUI@01de2292`` —
-"add data-testid for secret row visibility toggle button". The icon-state
-sub-selectors (``VISIBILITY_ICON_VISIBLE_SELECTOR`` /
-``VISIBILITY_ICON_HIDDEN_SELECTOR``) are a DECLARED IMPROVISATION (per
-``.agents/role-overrides.md`` § Declared-improvisation protocol): they scope
-off the new button testid to read MUI's own auto-generated
-``data-testid="VisibilityIcon"`` / ``data-testid="VisibilityOffIcon"`` on the
-icon ``<svg>`` children — a vendor-library-supplied ``[data-testid=`` value,
-not an app-authored attribute, but still a real ``[data-testid=`` selector
-chained off an already-testid-scoped parent, per the "scoped sub-selector"
-pattern. Both branches are exercised by this test's own steps (reveal
-asserts ``VisibilityIcon`` -> ``VisibilityOffIcon``; hide asserts the
-reverse), closest to canon ruling #277's "same-element conditional pair,
-both branches referenced" shape. See this case's AFS § Concrete Handles for
-the full reasoning and the reviewer fallback.
+"add data-testid for secret row visibility toggle button".
+
+The icon-state sub-selectors (``VISIBILITY_ICON_VISIBLE_SELECTOR`` /
+``VISIBILITY_ICON_HIDDEN_SELECTOR``) originally chained off MUI's own
+auto-generated ``data-testid="VisibilityIcon"`` / ``"VisibilityOffIcon"`` on
+the icon ``<svg>`` children (a declared improvisation). **Fixed round 2**
+(reviewer finding, PR #1224): ``@mui/material``'s ``createSvgIcon.js`` sets
+that attribute only ``process.env.NODE_ENV !== 'production'`` — a `vite
+build` (every deployed env / promotion gate) strips it to ``undefined``, so
+the improvisation was green on localhost and silently unlocatable
+everywhere else. Replaced with real, app-authored ``data-testid``s added
+directly on the two conditionally-rendered icon components in
+``SecretsTable.jsx`` — ``secret-row-visibility-icon-show`` on
+``<VisibilityIcon>`` (masked state, click reveals) and
+``secret-row-visibility-icon-hide`` on ``<VisibilityOffIcon>`` (revealed
+state, click hides), committed onto ``automation/testids`` as
+``EliteaAI/EliteaUI@e6260731`` — "add data-testid for secret row
+visibility icon show/hide state". This is canon ruling #277's "same-element
+conditional pair, both branches referenced" shape: both branches are named
+AND both are exercised by this test's own steps (reveal asserts SHOW ->
+HIDE; hide asserts HIDE -> SHOW). See
+``.agents/memory/qa-engineer/mui_icons_material_auto_testid_on_icon_svg.md``
+for the full MUI-internals finding and this case's AFS § Concrete Handles
+for the original reasoning.
 
 Locator provenance (ELITEA-2338, delete flow): the AFS correctly specced all
 four row-actions testids as **"testid needed"** — ``SecretsTable.jsx``'s
@@ -232,13 +242,19 @@ class SecretsPage(BasePage):
         '[data-testid="secret-row-visibility-toggle-button"]'
     )
     # Icon-state sub-selectors, chained off the visibility-toggle button
-    # (DECLARED IMPROVISATION — see this class's docstring "Locator provenance
-    # (ELITEA-2343...)" note and the AFS § Concrete Handles for the full
-    # reasoning): MUI's own `@mui/icons-material` components carry their own
-    # `data-testid` equal to the export name, automatically — not an
-    # app-authored attribute, but still a real `[data-testid=` selector.
-    VISIBILITY_ICON_VISIBLE_SELECTOR = '[data-testid="VisibilityIcon"]'
-    VISIBILITY_ICON_HIDDEN_SELECTOR = '[data-testid="VisibilityOffIcon"]'
+    # (ELITEA-2343). Real, app-authored `data-testid`s added directly on the
+    # two conditionally-rendered icon components in SecretsTable.jsx
+    # (canon ruling #277 "same-element conditional pair, both branches
+    # referenced" shape — this test asserts both: reveal asserts SHOW ->
+    # HIDE, hide asserts HIDE -> SHOW). Fixed round 2 (reviewer finding,
+    # PR #1224): the original version of these selectors chained off MUI's
+    # own auto-generated `data-testid={ExportName}` on the icon <svg>
+    # (`createSvgIcon.js`), which is stripped to `undefined` on
+    # `NODE_ENV==='production'` (i.e. every `vite build` / deployed env) —
+    # green on localhost only, silently unlocatable everywhere else. See
+    # `.agents/memory/qa-engineer/mui_icons_material_auto_testid_on_icon_svg.md`.
+    VISIBILITY_ICON_VISIBLE_SELECTOR = '[data-testid="secret-row-visibility-icon-show"]'
+    VISIBILITY_ICON_HIDDEN_SELECTOR = '[data-testid="secret-row-visibility-icon-hide"]'
 
     def __init__(self, page: Page):
         super().__init__(page)

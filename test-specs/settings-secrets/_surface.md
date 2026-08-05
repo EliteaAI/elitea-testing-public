@@ -157,6 +157,24 @@ by ELITEA-2337/2338/2343 analyst sessions (same day).
   see that AFS's § Concrete Handles for the full reasoning and the reviewer
   fallback (drop the icon-shape assertion, keep only the Value-cell text
   assertion) if the improvisation is rejected.
+  **Resolved during ELITEA-2343 implementation, fix round 2 (reviewer
+  finding, PR #1224): the improvisation was REJECTED — read
+  `node_modules/@mui/material/utils/createSvgIcon.js` directly: the
+  auto-`data-testid` is gated `process.env.NODE_ENV !== 'production'`, so a
+  `vite build` (every deployed env) strips it to `undefined` and the
+  selector finds nothing there, despite being green on localhost 100% of
+  the time (Vite dev server never sets `NODE_ENV=production`). Fixed by
+  adding REAL, app-authored `data-testid`s directly on the two icon call
+  sites in `SecretsTable.jsx` — `secret-row-visibility-icon-show` on
+  `<VisibilityIcon>`, `secret-row-visibility-icon-hide` on
+  `<VisibilityOffIcon>` (`EliteaAI/EliteaUI@e6260731`, on
+  `automation/testids`). `createSvgIcon`'s own JSX spreads `...props`
+  *after* its internal auto-`data-testid`, so an explicit prop overrides it
+  in both dev AND prod builds — confirmed by reading the same file. See
+  `.agents/memory/qa-engineer/mui_icons_material_auto_testid_on_icon_svg.md`
+  for the durable rule this established: never use an MUI-auto
+  `data-testid` on an icon `<svg>` as a locator basis, in any capacity —
+  always ask for a real app-authored testid at the call site instead.**
 - **`open_row_actions_menu()`'s declared-improvisation React-onClick
   workaround was NOT needed this session** — a normal Playwright `.click()`
   opened the three-dot menu successfully (used for this case's own cleanup
