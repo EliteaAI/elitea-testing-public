@@ -2,8 +2,50 @@
 
 Handle cache for live-confirmed handles/quirks on the Agent Hub / Catalog
 surface (`/elitea-catalog`). Not a substitute for execution — verify a handle
-as you use it. One writer at a time; last confirmed by: qa-engineer analyst,
-ELITEA-2350, 2026-08-05.
+as you use it. One writer at a time; last confirmed by: test-automation-engineer
+(combined analyst+implementer dispatch), ELITEA-2352, 2026-08-05.
+
+## Category filter-rail chip "selected" state — NO accessible signal existed pre-ELITEA-2352
+- Before this dispatch, the filter-rail `Chip` (`CategoryRail.jsx`) had **zero**
+  accessible/stable way to detect "selected" state: no `aria-selected`, no
+  `aria-pressed`, no `data-*` state attribute — only a computed CSS
+  background-color style difference (`styles.selectedChip` vs `styles.chip`).
+- **Trap: Playwright's own accessibility-snapshot `[active]` marker on the chip
+  is PURE DOM-FOCUS, not the app's selection state** — confirmed live by
+  clicking a second chip (focus + `[active]` moved to it, even though the
+  first-clicked category remained the actually-filtered one) and by clicking
+  an unrelated element like the search input (`[active]` disappeared from the
+  still-selected chip). Never assert on `[active]`/focus for this component.
+- Fixed this dispatch: added `data-selected="true"/"false"` directly on the
+  chip (`EliteaAI/EliteaUI@9b93f67c`, on `automation/testids`, not yet on
+  `main`), driven by the same `selectedCategories.includes(category)`
+  expression already used for styling. Confirmed live: flips on click,
+  persists correctly across focus changes (unlike the `[active]` false
+  signal). Combined locator: `[data-testid="catalog-agent-category-filter-chip-{slug}"][data-selected="true"]`.
+
+## Category filtering is actually multi-select at the app-state level (not explored further)
+- `handleTagSelect` in `AgentsTab.jsx` toggles `selectedTagNames` as an array
+  (add/remove), and `useGroupedCategories`'s own `selectedCategories` follows
+  suit — clicking a SECOND chip after a first ADDS its section to the content
+  list rather than replacing it (confirmed live: after Business Analyst then
+  DevOps, both sections rendered simultaneously). ELITEA-2352 only exercises
+  the single-click case, so this wasn't pursued further — relevant to a future
+  "filter by multiple categories" sibling case (see below).
+
+## "Reload category items" icon — DOES NOT EXIST (case-text drift, 2nd instance in this family)
+- ELITEA-2352's case text (and title) claims a "reload category items" icon
+  renders next to the filtered category's section header. **Confirmed absent**
+  both visually and via source: `AgentCategorySection.jsx`'s `headerContainer`
+  renders only a `Typography` title, and a full-file grep for reload/refresh
+  icon components (`RestartAlt`/`SyncIcon`/`ReplayIcon`/`Autorenew`/
+  `RefreshIcon`/`CachedIcon`) under `src/[fsd]/features/agent-hub` and
+  `src/[fsd]/shared/ui/category` returns 0 hits. The page's only refresh is a
+  fully automatic, throttled background refresh (`useCatalogAutoRefresh`) —
+  no manual UI trigger anywhere. Filed as
+  [EliteaAI/elitea-testing-public#1212](https://github.com/EliteaAI/elitea-testing-public/issues/1212).
+  **Future analysts in this family: expect the same claim to recur** across
+  sibling cases (like #1208's "Agent HUB" header text did) — cite #1212 rather
+  than re-discovering it.
 
 ## Page identity / naming (case-text drift, recurring across the ELITEA-2350..2370+ family)
 - The TMS "Agent Hub" family (ELITEA-2350 through at least ELITEA-2370, ~20

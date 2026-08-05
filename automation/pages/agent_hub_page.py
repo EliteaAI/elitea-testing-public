@@ -13,6 +13,13 @@ ELITEA-2350 extends this page object with the category filter-rail chips
 (``CategoryRail.jsx``, shared with the Skills tab) and an agent-card-count
 helper, for the page-load verification case.
 
+ELITEA-2352 adds click/selected-state helpers for the same filter-rail chips.
+The chip's "selected" state has no accessible signal via Playwright's own
+`[active]` accessibility marker (that reflects DOM focus, not app selection —
+see ``test-specs/agent-hub/_surface.md``); a ``data-selected`` state attribute
+was added to the chip in ``CategoryRail.jsx`` (``EliteaAI/EliteaUI@9b93f67c``)
+per ``.agents/testing.md``'s "state via data-* attributes" rule.
+
 URL: /elitea-catalog
 """
 
@@ -67,6 +74,12 @@ class AgentHubPage(BasePage):
     # display name alone), so a prefix-match + .filter(has_text=...) is used
     # to select by name, same idiom as AgentDetailPage.MODEL_SELECTOR_OPTION_ANY_SELECTOR.
     AGENT_CARD_PREFIX = '[data-testid^="catalog-agent-card-"]'
+
+    # Content-list category heading — prefix match across ALL rendered category
+    # sections (ELITEA-2352), used to enumerate which categories are currently
+    # visible rather than probing one at a time. Same underlying testid as
+    # CATEGORY_HEADING above, just unparameterized for the "list them all" case.
+    CATEGORY_HEADING_PREFIX = '[data-testid^="catalog-category-heading-"]'
 
     # Category filter-rail chip (Featured + Categories sections,
     # CategoryRail.jsx, ELITEA-2350) — dynamic per category name, same
@@ -148,6 +161,52 @@ class AgentHubPage(BasePage):
             return True
         except Exception:
             return False
+
+    @action("Click category filter-rail chip")
+    def click_category_filter_chip(self, category_label: str, timeout: int = 10000):
+        """Click the category filter-rail chip for *category_label* (ELITEA-2352).
+
+        Args:
+            category_label: Human display label (e.g. "Business Analyst") —
+                slugified internally the same way EliteaUI does client-side.
+        """
+        chip = self.page.locator(self.CATEGORY_FILTER_CHIP.format(_slugify_category(category_label)))
+        chip.first.wait_for(state="visible", timeout=timeout)
+        chip.first.click()
+
+    def is_category_filter_chip_selected(self, category_label: str, timeout: int = 10000) -> bool:
+        """Return True if the category filter-rail chip for *category_label* is
+        currently selected (ELITEA-2352).
+
+        Uses the ``data-selected="true"`` state attribute added to the chip in
+        ``CategoryRail.jsx`` (``EliteaAI/EliteaUI@9b93f67c``) — NOT Playwright's
+        own accessibility-tree ``[active]`` marker, which reflects DOM focus,
+        not the app's selection state (confirmed live: focus moves away from a
+        still-selected chip the instant another element is clicked, while
+        ``data-selected`` correctly persists). See
+        ``test-specs/agent-hub/_surface.md`` for the full finding.
+
+        Args:
+            category_label: Human display label (e.g. "Business Analyst") —
+                slugified internally the same way EliteaUI does client-side.
+        """
+        selected_chip = self.page.locator(
+            self.CATEGORY_FILTER_CHIP.format(_slugify_category(category_label)) + '[data-selected="true"]'
+        )
+        try:
+            selected_chip.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_visible_category_heading_texts(self) -> list[str]:
+        """Return the text of every currently-rendered content-list category
+        heading (ELITEA-2352) — e.g. ``["Business Analyst"]`` after a
+        single-category filter click, proving other categories' sections were
+        excluded, not merely that the expected one is present.
+        """
+        headings = self.page.locator(self.CATEGORY_HEADING_PREFIX)
+        return [(headings.nth(i).text_content() or "").strip() for i in range(headings.count())]
 
     @action("Open agent preview modal from Catalog")
     def open_agent_by_name(self, agent_name: str, timeout: int = 15000):
