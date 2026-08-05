@@ -115,8 +115,24 @@
   masked `{{secret.<name>}}` placeholder.
 - X (✗) discards the pending row client-side only — zero network calls, no secret
   created server-side.
-- No console errors across the full create → verify → cancel → verify flow
-  (confirmed live: 0 errors, 0 warnings).
+- No **unexpected** console errors across the full create → verify → cancel →
+  verify flow. **AMENDED post-implementation (fix round 2) — the analyst's
+  original exploration session observed 0 errors/0 warnings, but the
+  implementer's automated run surfaced a genuine, deterministic (3/3 across
+  two full pytest runs + one isolated repro script) React "Maximum update
+  depth exceeded" console warning firing on EVERY `/settings/secrets` mount,
+  before any interaction, isolated to `SecretsContent.jsx` — filed as
+  `EliteaAI/elitea-testing-public#1203`. Confirmed NOT caused by this case's
+  own testid additions (inert string props, no render/dependency-array
+  effect) and NOT affecting functional behaviour (all 9 functional steps
+  pass every run).** Per `.agents/testing.md` § Merge gate's sanctioned-RED
+  exception (deterministic, single-cause, linked to an OPEN defect), the
+  console-error assertion is written as a REAL assertion (no console errors)
+  soft-asserted via the `soft_failures`/`pytest.fail()` idiom, filtered by
+  exact signature (`"Maximum update depth exceeded"` + `"SecretsContent.jsx"`)
+  so any genuinely NEW/unexpected console error still hard-fails immediately.
+  The test therefore stays honestly, deterministically RED on this one known
+  cause until `#1203` ships — never masked, never weakened.
 
 ## Coverage Map
 
@@ -238,10 +254,30 @@ same sanctioned pattern as `personal_tokens_page.py`'s `TOKEN_NAME_CELL_SELECTOR
   cleanup-only, not part of the case's own steps (see § Cleanup).
 
 ## Known Defects Found During Exploration
-None found. The one live-behaviour divergence from the case text (pagination
-reset — see step 3) reads as intentional UX, not a defect; filed as a
-clarification (`EliteaAI/elitea-testing-public#1202`), not a bug, per the
-reverse-masking guard.
+None found **at analyst-exploration time** — the one live-behaviour divergence
+from the case text (pagination reset — see step 3) reads as intentional UX,
+not a defect; filed as a clarification (`EliteaAI/elitea-testing-public#1202`),
+not a bug, per the reverse-masking guard.
+
+**AMENDED post-implementation (fix round 2) — a genuine product defect
+surfaced during automation, after this AFS's analyst pass:**
+
+- **`#1203`** (OPEN, filed by the implementer, dedup-checked against `#538` —
+  sibling, not a dupe: `#538` triggers on typing, `#1203` triggers on mount,
+  different trigger/same-object) — `/settings/secrets` fires a React "Maximum
+  update depth exceeded" console warning repeatedly on EVERY mount, before
+  any interaction, isolated to `SecretsContent.jsx`. Root-caused via an
+  isolated repro script (2 reruns) as deterministic (3/3) and NOT caused by
+  this case's own testid additions (static string props, no
+  render/dependency-array effect). Does not affect functional behaviour —
+  the full create → verify → cancel → verify flow (steps 1-9) passes every
+  run. Directly affects this case's step 10 (console-error check), asserted
+  via the `soft_failures`/`pytest.fail()` idiom (a raw console-message list
+  isn't `expect.soft()`-bindable — same pattern as
+  `test_agent_publish_unpublish_version.py`'s `#611` handling) per the
+  sanctioned-RED merge-gate exception. This test is expected to run RED —
+  9/9 functional assertions green, `pytest.fail()` on the recorded known-
+  defect soft failure — until `#1203` ships.
 
 ## Blocked Steps
 None.
