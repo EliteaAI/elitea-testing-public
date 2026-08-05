@@ -3,7 +3,50 @@
 Handle cache for live-confirmed handles/quirks on the Agent Hub / Catalog
 surface (`/elitea-catalog`). Not a substitute for execution — verify a handle
 as you use it. One writer at a time; last confirmed by: qa-engineer (analyst
-slot), ELITEA-2354, 2026-08-05.
+slot), ELITEA-2356, 2026-08-05.
+
+## Agent detail modal (`AgentModal.jsx`) — mostly untested, only 3 of ~10 fields have testids
+- Opened by clicking any Catalog agent card; content-ready signal is the
+  underlying `GET /api/v2/elitea_core/public_application/prompt_lib/{id}`
+  (singular) request resolving — reuse `AgentHubPage.open_agent_by_name()`,
+  which already waits on this exact response.
+- **Pre-existing testids (on-main, ELITEA-2075):** `catalog-agent-modal-agent-name`,
+  `catalog-agent-modal-show-instructions-link`, `catalog-agent-modal-start-chat-button`.
+  Also pre-existing (unrelated dispatch): `agent-hub-modal-menu-button` (the
+  overflow "..." menu — Export/Fork/Share; "Share" performs the copy-link action).
+- **Zero testids (confirmed via source + live), needed for ELITEA-2356:**
+  agent icon (`EntityIcon` at `AgentModal.jsx:222-227` — the component
+  already accepts a `data-testid` prop, just needs it passed), owner name
+  (`AgentModal.jsx:190-195` Typography), the like button (`AgentHubLike` at
+  `AgentModal.jsx:198-201` threads NO `testId` at all, unlike the card-list
+  like button which does — same `Like.jsx` component, `data-liked` auto-derives
+  once a `testId` is threaded), close "x" button (`AgentModal.jsx:208-216`,
+  `aria-label="close"` only), description (`AgentModal.jsx:236-241`), and both
+  content sections' containers (`AgentConversationStarters.jsx` /
+  `AgentWelcomeMessage.jsx`). Full recommended names + line numbers:
+  `l3_agent-hub-open-agent-detail-modal_ELITEA-2356.md` § Concrete Handles.
+- **Case-text drift (recurring, already tracked, cite don't re-file):** case
+  families calling this modal say "CONVERSATION STARTERS" / "Start
+  conversation" — live product reads **"CHAT STARTERS"** / **"Start Chat"**
+  (`AgentConversationStarters.jsx` / `AgentModal.jsx:267`). Filed as
+  [EliteaAI/elitea-testing-public#1042](https://github.com/EliteaAI/elitea-testing-public/issues/1042),
+  which explicitly names ELITEA-2356 (and ELITEA-2357/2358/2359/2360/2361/2362/
+  2368/2369) as affected siblings — **every future case that opens this
+  modal will hit the same drift; cite #1042, don't re-file.**
+- **New this dispatch:** "copy link icon" case-text also drifts — there is no
+  standalone copy-link icon; it's the `agent-hub-modal-menu-button` overflow
+  menu's "Share" item. Filed as
+  [EliteaAI/elitea-testing-public#1218](https://github.com/EliteaAI/elitea-testing-public/issues/1218)
+  (also names ELITEA-2359/#867 as an affected sibling — the case that
+  actually exercises the copy-link action).
+- Welcome Message section header is "Welcome Message" (title case, NOT
+  all-caps) while the adjacent Chat Starters header IS all-caps — a real,
+  confirmed live inconsistency in the product's own copy, not itself worth a
+  separate ticket (noted here so a future analyst doesn't re-litigate it).
+- Agent descriptions are free-text, author-authored data (not app-generated
+  copy) — a typo in one agent's description (confirmed live: "User Story
+  Creator" reads "Thuis agent is responsible...") is live product DATA, not a
+  UI defect. Assert description non-empty/visible, never the literal string.
 
 ## Like/unlike an agent card — testids needed, shared `Like.jsx` component
 - Heart icon + count on every agent card is the shared `src/components/Like.jsx`
