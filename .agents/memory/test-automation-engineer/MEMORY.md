@@ -29,3 +29,5 @@
 - [Disabled-button multi-gate isolation](disabled_button_multi_gate_assertion_isolation.md) — pre-satisfy every OTHER gate in `disabled={A||B||C}` before asserting
 - [press_sequentially can drop the first char](search_input_press_sequentially_drops_leading_keystroke.md) — plain native-input search box: prefer .fill() if a sibling page object already does
 - [AFS "pre-existing testid" can be uncommitted](afs_pre_existing_testid_claim_can_be_uncommitted_worktree_only.md) — check `git status`/`git log` in EliteaUI, not just the live DOM
+- [MUI Menu trigger click can silently no-op](secrets_row_actions_menu_click_needs_react_props_invoke.md) — .click()/force/el.click() all fail; invoke React onClick prop directly
+- [Testid provenance: check timestamps](testid_provenance_claim_verify_commit_timestamp_vs_afs.md) — diff testid commit vs AFS commit before claiming "predates session"/"drift"
