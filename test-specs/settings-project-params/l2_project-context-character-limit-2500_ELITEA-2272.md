@@ -65,8 +65,17 @@
    - **Verify**: URL becomes `${BASE_URL}/settings/project-context?view=create`;
      the CodeMirror editor content area (testid
      `project-context-editor-content`) is visible; Save (testid
-     `project-context-save-button`) and Discard/Cancel are both **disabled**
-     (no edits yet — `isDirty` false).
+     `project-context-save-button`) is **disabled** (no edits yet —
+     `isDirty` false).
+   - **Amendment (implementer, Phase 2):** dropped the original draft's
+     "and Discard/Cancel are both disabled" clause from this verify — the
+     Concrete Handles table explicitly scopes Discard/Cancel as "not
+     touched" (case never discards) and requests no testid for it; the
+     control-condition purpose this step serves (proving step 5's "Save
+     enabled" is a real state change) is already carried by the Save
+     button alone, which does have a testid. Adding a Discard/Cancel
+     testid solely to satisfy a redundant half of this assertion would be
+     scope creep per `.agents/role-overrides.md`'s "touches" discipline.
 4. Click into the editor content, clear it (select-all + Backspace — mirrors
    the established `fill_instructions()` pattern in `skill_form_page.py`),
    then enter **exactly 2500 characters** (paste via clipboard write +
@@ -128,10 +137,12 @@
 | Objective/Expected Final State: Save button remains enabled at the 2500 character boundary | (restates step 6) | AFS step 8 | `step 8` | asserted *(no separate row needed — identical to step 6)* |
 
 ## Axis 2 — Analyst additions
-- `step 3` asserts Save/Discard start **disabled** before any edit — *added:
-  this is the control condition proving the later "enabled" assertions
-  (steps 5/8) are a real state change caused by content entry, not always-on
-  buttons.*
+- `step 3` asserts Save starts **disabled** before any edit — *added: this is
+  the control condition proving the later "enabled" assertions (steps 5/8)
+  are a real state change caused by content entry, not an always-on button.
+  (Implementer amendment: dropped the Discard/Cancel half of this check —
+  see step 3's amendment note — no testid was requested for it and it is
+  explicitly out of scope.)*
 - `step 9` clicks Save and asserts the "Project Context saved" toast plus the
   post-save URL — *added: closes the loop on the case's implicit assumption
   that an enabled Save button actually functions; also gives step 10's
