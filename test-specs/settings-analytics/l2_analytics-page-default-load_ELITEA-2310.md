@@ -81,9 +81,10 @@ None — read-only page load, no data created or mutated.
 | Tab — Health | `LocatorDescriptor(testid="analytics-tab-health")` | needs-adding | same |
 | Tab — Guide | `LocatorDescriptor(testid="analytics-tab-guide")` | needs-adding | same |
 | Loading spinner (Overview/Health data fetch) | `LocatorDescriptor(testid="analytics-loading-indicator")` | needs-adding | `AnalyticsContainer.jsx:288-291` — `<Box sx={styles.loadingState}><CircularProgress size={32} /></Box>`, rendered only while `needsOverview && isFetching`; used for an absence assertion (`to_have_count(0)` / `not_to_be_visible()`) after the analytics request settles, per `.agents/testing.md` § Locator policy (absence assertions count as references) |
+| Overview tab KPI row (step 8 — proof of rendered content, not just spinner-gone) | `LocatorDescriptor(testid="analytics-overview-kpi-row")` | needs-adding | **Implementer amendment (Phase 2, 2026-08-05):** `AnalyticsOverview.jsx:29-32` — `<Box sx={styles.kpiRow} data-tour={ANALYTICS_TOUR_TARGET_IDS.kpiCards}>`; not in the original Concrete Handles table — step 8's "KPI content is rendered" clause had no named handle. Added so the assertion is a real locator check, not implied by the spinner's absence alone. |
 
 Uniqueness verified (2026-08-05, `git fetch origin` fresh):
-`git grep -- "<testid>" origin/main -- src/` → **0 hits** for all 15 new testids above; `analytics-export-button` (not used by this case) already exists on `main`.
+`git grep -- "<testid>" origin/main -- src/` → **0 hits** for all 15 new testids above, plus `analytics-overview-kpi-row` (added during implementation, also 0 hits) — 16 new testids total; `analytics-export-button` (not used by this case) already exists on `main`.
 
 ## Network Behavior
 - `GET /api/v2/elitea_core/analytics/prompt_lib/{project_id}?date_from=...&date_to=...` — fires on mount with the default 1-day range; wait for this to resolve (200) before asserting the loading spinner is gone / KPI content is visible. Confirmed 200 OK in exploration, no console errors.
