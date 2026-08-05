@@ -45,8 +45,11 @@
    0", which literally would mean every value (including 0) is red — contradicted by both live
    observation (three `errors: 0` rows render white/default, not red) and source
    (`AnalyticsUsers.jsx:144-151`: `color: u.errors > 0 ? palette.status.rejected : undefined`).
-   This AFS asserts the live/source-confirmed `> 0` threshold for the negative case; see
-   § Blocked Steps for the positive-case (`errors > 0` → actually red) verification gap.
+   This AFS asserts the live/source-confirmed `> 0` threshold for **both** branches — the
+   negative case (`errors === 0` → default color) and the positive case (`errors > 0` →
+   red/rejected color) are both asserted live in this step, against the `auth_state` fixture's
+   actual project data; see § Blocked Steps for the historical provenance/closure note on how the
+   positive-case fixture data was found during implementation.
 6. Verify pagination controls are present: a "Rows per page" selector (default value 20, options
    10/20/50), a page-range label matching the pattern `"{from}–{to} of {count}"` (live observed:
    "1–3 of 3" for 3 users on one page), and previous/next page arrow buttons (both disabled when
@@ -207,8 +210,12 @@ Uniqueness verified (2026-08-05, `git fetch origin` fresh, `EliteaUI@a68b3728`):
   255)")` (or the theme's actual `palette.text.secondary` resolved value — confirm via
   `getComputedStyle` at implementation time, since `rgb(255, 255, 255)` was observed against the
   currently-active theme and could differ under a different theme/mode) for the `errors === 0`
-  case; do NOT hardcode an assumed "red" hex without reading `palette.status.rejected`'s resolved
-  value first if/when the positive branch becomes testable (see § Blocked Steps).
+  case. The positive branch (`errors > 0` → red/rejected color) is tested now, live in this same
+  Step 5, against the `auth_state` fixture's actual project data (see § Blocked Steps for the
+  closure note) — do NOT hardcode an assumed "red" hex for it either; read
+  `palette.status.rejected`'s resolved value via `getComputedStyle` the same way, and assert via
+  the existing `analytics-users-row-errors` testid / `to_have_css("color", ...)`, never a
+  positional child selector.
 - Pagination default-state assertion (3 users, `rowsPerPageOptions=[10,20,50]`, default
   `rowsPerPage=20`): range label "1–3 of 3", both prev/next buttons `disabled` — this is the
   live-observed default; if the exploration project's user count changes, the range label changes
