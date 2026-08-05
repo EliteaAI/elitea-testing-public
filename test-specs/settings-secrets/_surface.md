@@ -182,6 +182,67 @@ by ELITEA-2337/2338/2343 analyst sessions (same day).
   failure of real clicks). Not resolved either way — keep the existing
   workaround as a safe superset; flagged as a possible non-determinism, not a
   reproduction of the original root cause.
+- **Non-determinism reproduced a second time, same session (ELITEA-2344,
+  2026-08-05).** Opening the three-dot menu TWICE in one session, same page,
+  same button, no reload in between: the FIRST open (to Hide a freshly
+  created secret) succeeded with a plain Playwright `.click()`; the SECOND
+  open minutes later (to Delete a different freshly created secret, for
+  cleanup) did NOT — the button received the click (no error) but no
+  `[role="menu"]` ever appeared, and the existing React-`onClick` workaround
+  was needed to actually open it. This strengthens (doesn't resolve) the
+  non-determinism first documented by ELITEA-2338's implementer and flagged
+  as "not needed"/"inconclusive" by ELITEA-2343. Net evidence across all
+  three sessions is now split ~50/50 — **implementers should keep using the
+  workaround unconditionally**, never simplify to a plain click based on any
+  single session's contrary result. Root-cause tracking:
+  `EliteaAI/elitea-testing-public#1222` (open).
+
+## Three-dot menu → "Hide" flow (confirmed live, ELITEA-2344, 2026-08-05)
+- **Third confirmation mechanism on this page — do not conflate with the
+  other two** (row-level eye-icon toggle, § above; shared `DeleteEntityModal`
+  used by the menu's Delete item, § Delete flow above). The menu's **Hide**
+  item opens a **different, generic, shared `AlertDialog`** component
+  (`src/components/AlertDialog.jsx`, NOT `Modal.DeleteEntityModal`) — used
+  app-wide beyond Secrets (confirmed via `git grep`: `AttachmentSettingsModal.jsx`,
+  `ToolkitsOperationButtons.jsx`, others). Does **not** require typing the
+  secret name to confirm (unlike Delete) — a direct confirm click.
+- **Live confirmation copy (confirmed via DOM read, differs from the ELITEA-2344
+  case's quoted text — filed as clarification `EliteaAI/elitea-testing-public#1226`,
+  not a defect):** title `"Hide secret?"`, body
+  `Are you sure to hide the secret "<name>"? Once hidden, the secret will no
+  longer be visible.`, confirm button text `"Hide"`.
+- **Zero testid on the dialog body text** — `StyledDialogContentText` in
+  `AlertDialog.jsx` carries only an ARIA `id="alert-dialog-description"`, not
+  a `data-testid`. **Testid needed: `alert-dialog-content`** (generic, shared
+  component — never scope it to secrets; uniqueness confirmed against both
+  `main` and `automation/testids`). The confirm button already has a generic
+  pre-existing testid: `alert-dialog-confirm-button` (`AlertDialog.jsx:78`).
+- **The row-scoped `id={`alert-dialog-${row.id}`}` prop passed at the
+  `SecretsTable.jsx` call site does nothing** — confirmed via source read,
+  `AlertDialog.jsx` never destructures or forwards an `id` prop. Harmless in
+  practice: MUI only mounts the `open`-gated Dialog instance into the DOM, so
+  `document.querySelector('[role="dialog"]')` reliably finds exactly one
+  match at a time (confirmed live) — no per-row scoping is actually needed
+  for either the body-text or confirm-button locators.
+- **Confirm-hide network contract** (confirmed live): clicking
+  `alert-dialog-confirm-button` fires
+  `POST /api/v2/secrets/hide/default/{project_id}/{name}` → **200 OK**
+  (note: `.../hide/...`, NOT the singular `.../secret/...` DELETE-endpoint
+  shape used by Delete/reveal), followed by a `GET` refetch of the list
+  endpoint. No toast text was confirmed for this flow this session — not
+  needed, the POST response + row-count are the stable proof.
+- **Post-hide, the secret is gone from the table** (row-count 0 under a
+  name-filtered search + unfiltered pagination total drop, confirmed both
+  immediately and after a fresh `page.reload()` — genuine server round-trip,
+  same double-check shape as ELITEA-2338's delete flow). **No UI affordance
+  to "un-hide" was found** — consistent with (though not literally worded
+  the same as) the case's "cannot be unhidden" claim.
+- **The "+" button genuinely allows recreating a secret with the exact same
+  (previously-hidden) name — confirmed as a real create, not just a UI
+  affordance check:** typed the identical name into a fresh inline row,
+  `secret-row-save-button` was enabled with no `secret-name-error`, and the
+  create `POST` resolved **201 Created** (not a 409/400 conflict). The
+  backend does not treat a hidden secret's name as still-reserved.
 
 ## Data scale
 - Project `Private` (399) already has 100+ real secrets (e.g. `auth_token`,
