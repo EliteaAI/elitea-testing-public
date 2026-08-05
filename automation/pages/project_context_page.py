@@ -27,7 +27,7 @@ Phase-2 amendment on AFS step 3).
 
 import logging
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -98,20 +98,32 @@ class ProjectContextPage(BasePage):
         identically to native typing, and is dramatically faster than
         per-keystroke ``type()`` for a 2500-character fill.
 
+        Uses condition-based waits throughout (no ``wait_for_timeout``): a
+        web-first assertion confirms the clear landed before pasting, another
+        confirms the paste landed in the editor, and a third confirms the
+        character counter (a separate element, driven by its own slightly
+        lagged state update off the same CodeMirror transaction) has caught
+        up too — before this method returns, so a caller reading
+        :meth:`get_char_counter_text` immediately after never observes a
+        stale pre-paste value.
+
         Args:
             text: Replacement content.
         """
         self.editor_content.click()
         self.editor_content.select_text()
         self.page.keyboard.press("Backspace")
-        self.page.wait_for_timeout(100)
+        expect(self.editor_content).to_have_text("", timeout=5000)
+
+        counter_before_paste = self.get_char_counter_text()
 
         self.page.evaluate(
             "(text) => navigator.clipboard.writeText(text)", text
         )
         paste_shortcut = "Meta+V" if self.page.evaluate("() => navigator.platform.includes('Mac')") else "Control+V"
         self.page.keyboard.press(paste_shortcut)
-        self.page.wait_for_timeout(300)
+        expect(self.editor_content).to_have_text(text, timeout=10000)
+        expect(self.char_counter).not_to_have_text(counter_before_paste, timeout=5000)
         logger.info("Pasted %d characters into Project Context editor", len(text))
 
     def type_additional_character(self, char: str = "B") -> None:
@@ -119,10 +131,28 @@ class ProjectContextPage(BasePage):
 
         Used to verify content beyond the character limit is silently
         rejected by CodeMirror's ``maxLength`` transaction filter.
+
+        Waits (condition-based, no ``wait_for_timeout``) for the keystroke to
+        be fully processed — i.e. for the rendered content length to settle
+        at one of its two possible terminal values: unchanged (rejected) or
+        +1 (accepted). This method does not itself assert which outcome
+        occurred — that accept/reject verdict is the caller's assertion
+        (AFS Step 7); it only waits for CodeMirror's transaction filter to
+        finish so the caller reads a settled DOM, not a mid-keystroke one.
         """
+        length_before = self.get_editor_content_length()
         self.editor_content.click()
         self.page.keyboard.press(char)
-        self.page.wait_for_timeout(200)
+        self.page.wait_for_function(
+            """([expectedBefore, expectedAfter]) => {
+                const el = document.querySelector('[data-testid="project-context-editor-content"]');
+                if (!el) return false;
+                const len = el.textContent.length;
+                return len === expectedBefore || len === expectedAfter;
+            }""",
+            arg=[length_before, length_before + len(char)],
+            timeout=5000,
+        )
         logger.info("Pressed additional character %r in editor", char)
 
     def get_editor_content_length(self) -> int:
