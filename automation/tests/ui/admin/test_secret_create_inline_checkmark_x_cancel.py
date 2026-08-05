@@ -23,9 +23,13 @@ effect). Soft-asserted via the pytest-native `soft_failures`/`pytest.fail()`
 mechanism (same idiom as `test_agent_publish_unpublish_version.py`'s #611
 handling — a raw console-message list isn't `expect.soft()`-bindable) so
 this assertion stays isolated: an UNEXPECTED console error (any text other
-than this known signature) still hard-fails immediately. Sanctioned-RED per
-`.agents/testing.md` § Merge gate — this test is expected to stay RED until
-EliteaAI/elitea-testing-public#1203 ships.
+than this known signature) still hard-fails immediately. `_is_known_defect_1203()`
+matches on the warning's own STABLE text prefix alone (NOT a component-stack
+suffix — Playwright's console-message capture does not always include the
+full stack, see the function's own docstring) so the classification stays
+deterministic across a short-form and a long-form occurrence alike.
+Sanctioned-RED per `.agents/testing.md` § Merge gate — this test is expected
+to stay RED until EliteaAI/elitea-testing-public#1203 ships.
 """
 
 import logging
@@ -48,9 +52,25 @@ ROW_WAIT_TIMEOUT = 15_000
 def _is_known_defect_1203(text: str) -> bool:
     """True for the known, filed, isolated console warning (EliteaAI/
     elitea-testing-public#1203) — a React "Maximum update depth exceeded"
-    warning that fires on every `/settings/secrets` mount, pinned to
-    `SecretsContent.jsx`."""
-    return "Maximum update depth exceeded" in text and "SecretsContent.jsx" in text
+    warning that fires on every `/settings/secrets` mount.
+
+    Matches on the STABLE warning-text prefix alone. An earlier version of
+    this matcher also required the `SecretsContent.jsx` component-stack
+    substring to be present, but Playwright's console-message capture does
+    not always include the full component stack for this warning — a
+    short-form occurrence (~250 chars, no stack suffix) was observed
+    live during round-2 verification (fix-round 3, ELITEA-2336/PR #1204),
+    alongside the normal long-form occurrence (~4600 chars, full stack incl.
+    `SecretsContent.jsx`). Requiring both substrings meant the short-form
+    occurrence fell into `unexpected_errors` and hard-failed the test with a
+    different failure signature than the long-form occurrence — violating
+    the sanctioned-RED gate's "(a) deterministic — identical failure 3/3"
+    requirement (`.agents/testing.md` § Merge gate). Same fix shape already
+    applied to the #518 known-defect matcher (`test_credential_create.py`) —
+    anchor on the warning's own stable text, not a volatile stack/component
+    suffix that may or may not be captured.
+    """
+    return "Maximum update depth exceeded" in text
 
 
 class TestSecretCreateInlineCheckmarkXCancel:
