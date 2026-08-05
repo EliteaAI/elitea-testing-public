@@ -36,6 +36,36 @@ in ``SecretsTable.jsx`` as ``secrets-pagination-info`` — per
 ``.agents/testing.md`` "shared components never hardcode feature-scoped
 testids".
 
+Locator provenance (ELITEA-2343, eye-icon reveal/mask toggle): the AFS specced
+``secret-row-visibility-toggle-button`` as **"testid needed"** —
+``SecretsTable.jsx``'s Show/Hide ``IconButton`` (lines 496-509) carried zero
+``data-testid`` at analysis time. This implementation session added it,
+committed onto ``automation/testids`` as ``EliteaAI/EliteaUI@01de2292`` —
+"add data-testid for secret row visibility toggle button".
+
+The icon-state sub-selectors (``VISIBILITY_ICON_VISIBLE_SELECTOR`` /
+``VISIBILITY_ICON_HIDDEN_SELECTOR``) originally chained off MUI's own
+auto-generated ``data-testid="VisibilityIcon"`` / ``"VisibilityOffIcon"`` on
+the icon ``<svg>`` children (a declared improvisation). **Fixed round 2**
+(reviewer finding, PR #1224): ``@mui/material``'s ``createSvgIcon.js`` sets
+that attribute only ``process.env.NODE_ENV !== 'production'`` — a `vite
+build` (every deployed env / promotion gate) strips it to ``undefined``, so
+the improvisation was green on localhost and silently unlocatable
+everywhere else. Replaced with real, app-authored ``data-testid``s added
+directly on the two conditionally-rendered icon components in
+``SecretsTable.jsx`` — ``secret-row-visibility-icon-show`` on
+``<VisibilityIcon>`` (masked state, click reveals) and
+``secret-row-visibility-icon-hide`` on ``<VisibilityOffIcon>`` (revealed
+state, click hides), committed onto ``automation/testids`` as
+``EliteaAI/EliteaUI@e6260731`` — "add data-testid for secret row
+visibility icon show/hide state". This is canon ruling #277's "same-element
+conditional pair, both branches referenced" shape: both branches are named
+AND both are exercised by this test's own steps (reveal asserts SHOW ->
+HIDE; hide asserts HIDE -> SHOW). See
+``.agents/memory/qa-engineer/mui_icons_material_auto_testid_on_icon_svg.md``
+for the full MUI-internals finding and this case's AFS § Concrete Handles
+for the original reasoning.
+
 Locator provenance (ELITEA-2338, delete flow): the AFS correctly specced all
 four row-actions testids as **"testid needed"** — ``SecretsTable.jsx``'s
 three-dot ``IconButton`` (lines 511-518) and ``SecretActionsMenu.jsx``'s three
@@ -124,6 +154,13 @@ class SecretsPage(BasePage):
         description="Name-field validation error text, visible only while "
         "the currently-editing row's name fails SECRET_NAME_PATTERN",
     )
+    visibility_toggle_button = LocatorDescriptor(
+        testid="secret-row-visibility-toggle-button",
+        description="Show/Hide (eye icon) toggle IconButton on a saved secret "
+        "row — reveals the plaintext value (server round-trip) / re-masks it "
+        "(client-side only). Matches every visible row's button page-wide; "
+        "use get_row_visibility_toggle_button(row) to scope to one row.",
+    )
     row_actions_button = LocatorDescriptor(
         testid="secret-row-actions-button",
         description="Three-dot ('more actions') IconButton on a saved secret "
@@ -198,6 +235,26 @@ class SecretsPage(BasePage):
     # shows exactly three items in DOM order, same pattern as
     # personal_tokens_page.py's TOKEN_ACTION_PREFIX_SELECTOR.
     SECRET_ACTIONS_MENU_ITEM_PREFIX_SELECTOR = '[data-testid^="secret-actions-menu-"]'
+    # Scopes the visibility-toggle button to ONE specific row — chaining a
+    # `[data-testid=` selector off an already-scoped row locator (ELITEA-2343),
+    # same sanctioned pattern as SECRET_ROW_ACTIONS_BUTTON_SELECTOR above.
+    SECRET_ROW_VISIBILITY_TOGGLE_BUTTON_SELECTOR = (
+        '[data-testid="secret-row-visibility-toggle-button"]'
+    )
+    # Icon-state sub-selectors, chained off the visibility-toggle button
+    # (ELITEA-2343). Real, app-authored `data-testid`s added directly on the
+    # two conditionally-rendered icon components in SecretsTable.jsx
+    # (canon ruling #277 "same-element conditional pair, both branches
+    # referenced" shape — this test asserts both: reveal asserts SHOW ->
+    # HIDE, hide asserts HIDE -> SHOW). Fixed round 2 (reviewer finding,
+    # PR #1224): the original version of these selectors chained off MUI's
+    # own auto-generated `data-testid={ExportName}` on the icon <svg>
+    # (`createSvgIcon.js`), which is stripped to `undefined` on
+    # `NODE_ENV==='production'` (i.e. every `vite build` / deployed env) —
+    # green on localhost only, silently unlocatable everywhere else. See
+    # `.agents/memory/qa-engineer/mui_icons_material_auto_testid_on_icon_svg.md`.
+    VISIBILITY_ICON_VISIBLE_SELECTOR = '[data-testid="secret-row-visibility-icon-show"]'
+    VISIBILITY_ICON_HIDDEN_SELECTOR = '[data-testid="secret-row-visibility-icon-hide"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -424,3 +481,53 @@ class SecretsPage(BasePage):
         ):
             self.delete_confirm_button.click()
         return delete_info.value
+
+    def get_row_visibility_toggle_button(self, row):
+        """Return the Show/Hide (eye icon) toggle button Locator scoped
+        within *row* (a Locator returned by :meth:`get_row_by_name`)."""
+        return row.locator(self.SECRET_ROW_VISIBILITY_TOGGLE_BUTTON_SELECTOR)
+
+    def expect_visibility_icon_masked_state(self, row, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Assert *row*'s toggle button currently renders the masked/closed-eye
+        state (MUI's `VisibilityIcon`, AFS steps 3/9)."""
+        toggle_button = self.get_row_visibility_toggle_button(row)
+        expect(toggle_button.locator(self.VISIBILITY_ICON_VISIBLE_SELECTOR)).to_be_visible(
+            timeout=timeout
+        )
+
+    def expect_visibility_icon_revealed_state(self, row, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Assert *row*'s toggle button currently renders the revealed/crossed-eye
+        state (MUI's `VisibilityOffIcon`, AFS step 6)."""
+        toggle_button = self.get_row_visibility_toggle_button(row)
+        expect(toggle_button.locator(self.VISIBILITY_ICON_HIDDEN_SELECTOR)).to_be_visible(
+            timeout=timeout
+        )
+
+    def reveal_secret_value(self, row, timeout: int = UI_ELEMENT_TIMEOUT):
+        """Click *row*'s Show/Hide toggle to REVEAL the plaintext value; wait
+        for the reveal GET (`useLazySecretShowQuery`) to resolve.
+
+        Returns the Playwright ``Response`` — side-channel proof this is a
+        real server round-trip, not a client-side unmask (AFS step 4). Shares
+        the exact URL substring with the delete endpoint (differing only by
+        HTTP method), so the predicate filters on GET explicitly.
+        """
+
+        def _is_reveal_response(response) -> bool:
+            return (
+                SECRET_DELETE_URL_SUBSTRING in response.url
+                and response.request.method == "GET"
+            )
+
+        toggle_button = self.get_row_visibility_toggle_button(row)
+        with self.page.expect_response(_is_reveal_response, timeout=timeout) as resp_info:
+            toggle_button.click()
+        return resp_info.value
+
+    def hide_secret_value(self, row) -> None:
+        """Click *row*'s crossed-out eye toggle to re-mask the value —
+        purely client-side (AFS step 7); fires no network request. Callers
+        that need to prove the no-request contract should wrap this call with
+        :meth:`capture_requests_matching` themselves (see the test)."""
+        toggle_button = self.get_row_visibility_toggle_button(row)
+        toggle_button.click()

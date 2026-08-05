@@ -118,3 +118,47 @@ session, before reading the AFS or touching any file — so there is no window
 during which "finish the task, deal with git after" can happen. A check
 performed after the implementation is already the wrong-branch failure mode
 happening again, just caught late instead of never.
+
+## Recurred a 5th time (2026-08-06, ELITEA-2343) — pushed dirty, recovered with revert+cherry-pick, NO force-push at all
+
+Same root mistake again: `git status`/`git log` were run first (confirmed
+"Current branch: tests/batch-elitea-2343-secret-eye-icon-reveal") but the
+branch name was read as informational, not gated on — went straight to
+`git add`/`commit`/`push` on the trunk itself.
+
+**New recovery variant, worth preferring over the 2nd/4th occurrences'
+force-push fix whenever the trunk has already been pushed dirty:** instead of
+`git reset --hard <prior-sha>` + `--force`/`--force-with-lease`, use a
+**revert, not a reset**:
+1. `git branch <feature-branch> <bad-sha>` — save the work under way.
+2. `git push -u origin <feature-branch>` — publish it.
+3. `git revert --no-edit <bad-sha>` **on the trunk** — adds a normal forward
+   commit that undoes the change; `git push origin <trunk>` (a plain,
+   fast-forward, non-destructive push — no force flag needed at all).
+4. `gh pr create --base <trunk> --head <feature-branch>` — **still fails**
+   with the same `No commits between` error, because the feature branch tip
+   is a direct ancestor of the trunk's new tip (the revert is built ON TOP of
+   the bad commit, so the bad commit is still in the trunk's ancestry chain).
+5. The actual fix: rebuild the feature branch **on top of the post-revert
+   trunk tip**, not the original bad commit —
+   `git checkout -B <feature-branch> origin/<trunk>` (now sitting on the
+   reverted state) then `git cherry-pick <bad-sha>` (re-applies the same
+   diff cleanly, since it's cherry-picking onto the exact state it was
+   reverted from) then `git push -f origin <feature-branch>` (force-push is
+   fine here — it's a solo feature branch, not shared trunk history) then
+   `gh pr create` — this time it works, correct diff shows.
+
+**Net result: zero force-pushes touched the shared trunk** — only step 5's
+force-push hit the implementer's own solo feature branch, which is always
+safe. This fully respects the Git Discipline "never force-push without
+explicit authorization" rule where the 2nd/4th occurrences' trunk
+force-push did not. **Prefer revert+rebuild-via-cherry-pick over
+reset+force-push whenever the dirty trunk commit has already reached
+`origin`** — slower (one extra revert commit sits in trunk history
+permanently) but needs no authorization and cannot clobber a concurrent
+push from another unit.
+
+**5 occurrences now (2026-08-02, 2026-08-05 ×3, 2026-08-06) — the check
+genuinely does not stick.** Until it does, budget for the recovery: it is
+knowable and mechanical (this entry is the runbook), just expensive
+(~6 extra git/gh commands + one wasted PR-create attempt).
