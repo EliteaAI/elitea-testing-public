@@ -21,6 +21,17 @@ version of the Analytics page. Confirmed live (2026-08-05, localhost,
   case text says the pickers "reflect the Last 7d range" by default, which
   also contradicts the same case's own "Last 24h/24d is default" step.
 
+**Confirmed the drift extends BELOW the tab/KPI level too** (ELITEA-2320,
+2026-08-05): per-tab chart/table titles, subtitles, and column lists carry
+the same staleness. Agents & Pipelines tab: "Most Active Agents" →
+live "Most Active Agents & Pipelines"; "Top N by events" → live "Top N by
+runs"; "Agent Activity" table → live "Agent & Pipeline Activity"; case's
+5-column list (incl. non-existent "Events") → live 8–9 columns (Users
+column conditional on `isPersonalProject`); search placeholder "Search by
+agent name" → live "Search by agent or pipeline name". One exception found:
+the "Chat Messages" chart's title+subtitle matched the case exactly — don't
+assume EVERY string in a case from this family is stale, verify each one.
+
 ## What to do
 
 This is case-text drift, not a product defect — reverse-masking guard
