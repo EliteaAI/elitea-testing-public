@@ -73,3 +73,15 @@ real tree. The script's own default is `--dir tests` (the *whole* tests/
 tree, matching what the MCP tool's "2743 cases" count actually covers) — use
 that default (or pass `--dir tests` explicitly), never a case's subfolder,
 or the rebuild itself becomes a silent under-count.
+
+**Confirmed a 4th time, #788/ELITEA-2280 (2026-08-05):** despite this entry
+already documenting the root cause explicitly, I still typed
+`build_index(repo="EliteaAI/onetest-ai-tm-Elitea")` out of habit (it reads as
+the obviously-correct explicit form) and got the clean "2743 cases indexed"
+success message. `ls -la index.json` in the real sibling showed the mtime
+predated my call and the entry was still `draft`/`manual`/empty
+`automation_test_id`. Re-ran with **zero args** — correct write, mtime
+updated, diff scoped to exactly the one changed id. Lesson refined: reading
+this entry in the abstract isn't enough to stop the habit — before EVERY
+`build_index` call, actually check the call for a `repo:` key and delete it,
+don't rely on remembering "I know about this bug already."
