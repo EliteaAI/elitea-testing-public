@@ -15,6 +15,24 @@ not signals.
    the app debounces before dispatching. Never assert on a captured response
    right after `click_save()`. Poll the captured list for a **resolved
    status** (15 s budget, not the usual 8–10 s).
+   **Addendum (ELITEA-2312):** it is also a **one-time-per-navigation
+   lifecycle event**, not a repeatable "wait until currently idle" check —
+   once the page has already reached `networkidle` once (true by the time
+   any helper method runs mid-test), a LATER call to
+   `BasePage.wait_for_network()` can resolve **immediately**, ignoring a
+   request an action a few ms earlier is about to trigger. Confirmed live:
+   `.fill()` into a search box → `wait_for_network()` → read row count = 0,
+   even though the search's own XHR hadn't fired yet. Two fixes, pick based
+   on whether the action is guaranteed to fire a request: (a) wrap the
+   action in `page.expect_response(predicate)` when it's a genuine new query
+   (cache miss); (b) when the action MAY be a cache hit (e.g. clearing a
+   search back to a value already fetched at mount — RTK Query serves it
+   from cache, no network call at all, so `expect_response` times out
+   waiting for a request that legitimately never happens), add a testid to
+   the component's loading/fetching-state element and wait for IT to be
+   hidden instead — resolves instantly on a cache hit (never shown), and
+   catches the real response-vs-render lag on a cache miss (isFetching
+   flips false in the same render that repopulates the rows).
 2. **`capture_requests_matching()` is proven for ABSENCE only.** A positive
    `status == 200` read races to `None`. Two valid fixes: `page.expect_response()`
    (blocks; use when no other completion signal exists) or **defer the read**
@@ -58,11 +76,12 @@ an unrelated case's PR. Separately, a typed-text field has a real ceiling:
 timeout ⇒ any field text over ~120 chars times out looking like a product
 hang. Keep planted markers short.
 
-## Seen 7×
+## Seen 8×
 
 - ELITEA-1884 / PR #536 — networkidle resolved before the Save PUT dispatched.
 - ELITEA-1808 / PR #643 — hover-gated wait condition; `capture_requests_matching()` status `None`. Addenda: ELITEA-1826 (defer-the-read), ELITEA-2114/#696 (register before Setup).
 - ELITEA-2090 / PR #682 — `send_message(use_enter=True)` raced the `/chat/{id}` nav.
+- ELITEA-2312 / PR #1189 — `wait_for_network()` called mid-test after the page had already reached `networkidle` once resolved instantly, ignoring a search-input `.fill()`'s about-to-fire request; fixed with `expect_response` (cache-miss) + a loading-indicator-testid wait (cache-hit-safe).
 - …plus 4 earlier occurrence(s) — full per-case detail in the source entries below.
 
 See also: save_networkidle_race_quirk.md ·
@@ -71,4 +90,5 @@ send_message_enter_key_races_spa_navigation.md ·
 artifacts_direct_bucket_url_nav_project_id_race.md ·
 mcp_list_first_navigation_timeout_flake.md ·
 support_assistant_ai_response_timeout_flakiness.md ·
-agent_form_fill_form_timeout_ceiling.md
+agent_form_fill_form_timeout_ceiling.md ·
+search_input_press_sequentially_drops_leading_keystroke.md
