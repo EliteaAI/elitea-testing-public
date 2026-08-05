@@ -28,7 +28,7 @@ import logging
 import time
 
 import pytest
-from api import AgentAPI, ArtifactAPI, ConversationAPI, CredentialAPI, PipelineAPI, SkillAPI, ToolkitAPI
+from api import AgentAPI, APIClient, ArtifactAPI, ConversationAPI, CredentialAPI, PipelineAPI, SkillAPI, ToolkitAPI
 from config import settings
 from pages.guardrails_admin_page import GuardrailsAdminPage
 from playwright.sync_api import Browser
@@ -1275,3 +1275,41 @@ def pipeline_llm_printer_connected(pipeline_api: PipelineAPI, request):
         logger.info("Deleted edge-deletion pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete edge-deletion pipeline %s: %s", pid, exc)
+
+
+def _delete_project_context(client: APIClient) -> None:
+    """Best-effort DELETE of the active project's Project Context.
+
+    Tolerates HTTP 404 (``{"error": "Project context not found"}`` —
+    confirmed live) — "already clean" is a pass, not a failure. Any other
+    non-2xx status is re-raised so a real API problem is not swallowed.
+    """
+    path = f"/elitea_core/project_context/prompt_lib/{client.project_id}/project-context"
+    resp = client.delete(path)
+    if resp.status_code == 404:
+        logger.info("Project Context already absent for project %s (404 — clean)", client.project_id)
+        return
+    resp.raise_for_status()
+    logger.info("Deleted Project Context for project %s", client.project_id)
+
+
+@pytest.fixture
+def clean_project_context(api: APIClient):
+    """Ensure the active project has no Project Context before AND after the test.
+
+    Deletes via the API (tolerating 404 — "already clean" is a pass) both
+    before the test runs (clean precondition for the empty-state "Create"
+    flow) and after it finishes (teardown, restores the empty-state
+    precondition for the next run) — ELITEA-2272.
+
+    No corresponding "id" is yielded: this fixture's only job is the
+    delete-before/delete-after bracket, not creating an entity.
+    """
+    _delete_project_context(api)
+
+    yield
+
+    try:
+        _delete_project_context(api)
+    except Exception as exc:
+        logger.warning("Failed to delete Project Context in teardown: %s", exc)
