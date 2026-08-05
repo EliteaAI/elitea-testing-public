@@ -84,6 +84,21 @@ Users tab). The table header column SET varies by ``isPersonalProject``
 project, 9 for a non-personal one (``Users`` inserted after ``Runs``). The
 four pagination testids reuse the same MUI v7 ``TablePagination``
 ``slotProps`` pattern as the Users tab.
+
+**ELITEA-2321 (agent/pipeline detail view, ``AnalyticsAgentDetailed.jsx``)** —
+same-page state swap (no route change) when an Agents & Pipelines-tab row is
+clicked, mirroring ELITEA-2313's user-detail view; zero pre-existing testids.
+All 7 distinct testids below added via ``add-data-testid``, straight onto
+``automation/testids`` (``EliteaAI/EliteaUI@52eb4729``).
+``analytics-agent-detail-kpi-card`` / ``analytics-agent-detail-kpi-value``
+reuse the ``testId``/``valueTestId`` prop pair already wired on the shared
+``KpiCard.jsx`` (ELITEA-2313's call site) — this is the second call site for
+the same shared-component props, not new component work; repeat on all 8
+``<KPICard>`` call sites in this file. The "Runs by Day" chart title/
+container are conditionally rendered (``daily_usage.length > 0``) — testids
+only exist in the DOM when the chart is shown. Users/Tools panels use the
+same ``get_panel_summary`` aggregate-text technique as ELITEA-2313's Models/
+Tools/Agents panels.
 """
 
 import logging
@@ -328,6 +343,47 @@ class AnalyticsPage(BasePage):
     )
     agents_pagination_next = LocatorDescriptor(
         testid="analytics-agents-pagination-next", description="Next-page button"
+    )
+
+    # ------------------------------------------------------------------
+    # Agent/pipeline detail view (ELITEA-2321) — same-page state swap when
+    # an Agents & Pipelines-tab row is clicked, not a route navigation.
+    # ------------------------------------------------------------------
+    agent_detail_back_button = LocatorDescriptor(
+        testid="analytics-agent-detail-back-button",
+        description="Back arrow to return to the Agents & Pipelines-tab table",
+    )
+    agent_detail_title = LocatorDescriptor(
+        testid="analytics-agent-detail-title", description="Detail-view title — the agent/pipeline's name"
+    )
+    agent_detail_loading_indicator = LocatorDescriptor(
+        testid="analytics-agent-detail-loading-indicator",
+        description="Detail-view data-fetch loading spinner — present only while in flight",
+    )
+    agent_detail_kpi_cards = LocatorDescriptor(
+        testid="analytics-agent-detail-kpi-card",
+        description="Repeated per-KPI card (same testid on all 8 cards — select via .nth(i))",
+    )
+    agent_detail_kpi_values = LocatorDescriptor(
+        testid="analytics-agent-detail-kpi-value",
+        description="Repeated per-KPI card VALUE node (same order as agent_detail_kpi_cards, "
+        "select via .nth(i)) — used for the Errors-card color check; the color prop is applied "
+        "to this Typography specifically, not the outer card Box (same shape as "
+        "user_detail_kpi_values)",
+    )
+    agent_detail_chart_title = LocatorDescriptor(
+        testid="analytics-agent-detail-chart-title",
+        description='"Runs by Day" chart title, present only when daily_usage.length > 0',
+    )
+    agent_detail_chart_container = LocatorDescriptor(
+        testid="analytics-agent-detail-chart-container",
+        description="Runs by Day chart's wrapping container — used for presence only",
+    )
+    agent_detail_users_panel = LocatorDescriptor(
+        testid="analytics-agent-detail-users-panel", description='"Users" summary panel'
+    )
+    agent_detail_tools_panel = LocatorDescriptor(
+        testid="analytics-agent-detail-tools-panel", description='"Tools" summary panel'
     )
 
     # Sidebar project-selector combobox — pre-existing testid, duplicated
@@ -680,3 +736,67 @@ class AnalyticsPage(BasePage):
             ANALYTICS_AGENT_DETAIL_QUERY_URL_SUBSTRING in response.url
             and response.request.method == "GET"
         )
+
+    def get_agent_row_identifier(self, index: int) -> str:
+        """First column's rendered text (agent/pipeline name) for the row at
+        *index* — read via the row's aggregate inner text (mirrors
+        ``get_user_row_identifier``'s technique), since only the Errors cell
+        has its own testid within a row."""
+        row_text = self.agents_rows.nth(index).inner_text()
+        lines = [line for line in row_text.split("\n") if line]
+        return lines[0] if lines else ""
+
+    # ------------------------------------------------------------------
+    # Agent/pipeline detail view (ELITEA-2321)
+    # ------------------------------------------------------------------
+
+    def _wait_for_agent_detail_settled(self) -> None:
+        """Wait for the detail view's render to catch up with a just-resolved
+        query response (same response-vs-render gap as `_wait_for_users_settled`)."""
+        self.agent_detail_loading_indicator.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+
+    def open_agent_detail(self, index: int) -> None:
+        """Click the agent/pipeline row at *index* and wait for the detail
+        view to fully settle (network response + title visible + loading
+        spinner hidden) — a superset of `open_agent_detail_by_row`, which
+        only waits on the network response (kept for ELITEA-2320's own
+        navigation-only assertions)."""
+        self.open_agent_detail_by_row(index)
+        self.agent_detail_title.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        self._wait_for_agent_detail_settled()
+
+    def get_agent_detail_kpi_labels_in_order(self) -> list[str]:
+        """Return each rendered KPI card's label (first line of its
+        aggregate inner text), in DOM order."""
+        cards = self.agent_detail_kpi_cards
+        return [cards.nth(i).inner_text().split("\n")[0] for i in range(cards.count())]
+
+    def back_to_agents_table(self, verify_no_refetch: bool = True, no_refetch_timeout: int = 1_500) -> None:
+        """Click the detail view's back arrow and confirm the Agents &
+        Pipelines-tab table is restored.
+
+        By default also confirms NO fresh Agents-tab query fires within
+        *no_refetch_timeout* ms: `handleBack` only resets local
+        `selectedAgent` state — the Agents-tab query result was already
+        cached by RTK-Query from the original tab-mount fetch (source-
+        confirmed, mirrors `back_to_users_table`'s identical reasoning).
+        Raises `AssertionError` if a matching request is observed instead
+        (a cache-reuse regression).
+        """
+        if verify_no_refetch:
+            try:
+                with self.page.expect_response(
+                    self._is_analytics_agents_query_response, timeout=no_refetch_timeout
+                ):
+                    self.agent_detail_back_button.click()
+            except PlaywrightTimeoutError:
+                pass  # expected: no matching response observed within the window
+            else:
+                raise AssertionError(
+                    "Expected no fresh Agents & Pipelines-tab query on back navigation (the "
+                    "RTK-Query cache from the tab-mount fetch should be reused), but a new "
+                    "analytics_agents/prompt_lib/ request fired"
+                )
+        else:
+            self.agent_detail_back_button.click()
+        self.agents_table_header.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
