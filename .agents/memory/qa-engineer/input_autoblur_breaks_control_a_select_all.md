@@ -62,3 +62,27 @@ without any explicit blur/Tab step — the auto-blur cycle is what sets
 Formik's `touched.<field>` as a side effect. Don't add a defensive extra
 blur step "just in case"; it's already happening automatically within
 ~10ms, well inside Playwright's default `expect()` polling window.
+
+## Recurrence (ELITEA-2337, 2026-08-05) — same InputBase quirk, DIFFERENT validation-gating mechanism
+
+Reconfirmed live on the Settings → Secrets surface's name field
+(`EditSecretInputGridTable.jsx`, built on `Input.StyledInputEnhancer` →
+`Input.InputBase`, same shared component chain): `Control+a` after typing
+left the field showing the OLD and NEW text concatenated
+(`"my secret!my-secret"`) instead of replacing it — identical failure shape
+to the ELITEA-2286 original. `Home`+`Shift+End` fixed it the same way.
+
+**Important nuance — don't over-generalize the "no blur needed" half of
+this entry.** On Secrets, the validation error appears on EVERY keystroke
+unconditionally (`useMemo` re-derives `validationError` from `inputValue`
+directly, no `touched`/Formik gating at all) — there is no
+blur-sets-`touched` mechanism here, unlike Personal Tokens' Formik-based
+form. The auto-blur race still breaks `Control+a` (that's a property of the
+shared `InputBase` component itself, independent of the caller's validation
+logic), but *why no blur step is needed to observe the error* differs
+per-component: Personal Tokens needs the auto-blur's SIDE EFFECT (setting
+`touched`) to reveal an already-computed error; Secrets doesn't need any
+blur at all because its error was never gated behind `touched` in the first
+place. Check each surface's own validation mechanism before assuming which
+explanation applies — don't port one surface's reasoning to another by
+analogy alone.
