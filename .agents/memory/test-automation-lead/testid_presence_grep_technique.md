@@ -45,7 +45,7 @@ Presence is proven by reading the construction site. One grep shape never suffic
   never match a lowercase-only `testid` alternation. `git grep -i -- "$t" <ref>
   -- src/ | grep -iE "(data-testid|testid.*=.*$t)"` — both stages, always `-i`.
 
-## Seen 7×
+## Seen 8×
 
 - #26/ELITEA-1735 — `slotProps` object literal + ternary; literal grep said no/no while the test ran green.
 - #62/#66/#128/#162 — runtime-composed: `${id}-menu-button`, `${columnTestIdPrefix}-…`, `buttonTestId` forwarding, MUI `SelectDisplayProps`.
@@ -54,6 +54,7 @@ Presence is proven by reading the construction site. One grep shape never suffic
 - #370/ELITEA-2167 — reused name present on main in a *different* component; caught by a reviewer, not by me.
 - #150/ELITEA-1892, #67/ELITEA-1889 — DotMenu 3-hop; zero-diff-on-owning-file proved "already promotable".
 - #477/ELITEA-2040 — case-only stage-2 filter false-negatived `valueFieldTestId: '…'` (object-literal key, capital T) on both `main` and `automation/testids`; `-i` fixed it.
+- #812/ELITEA-2304 — `${dataTestId}-combobox` (`SingleSelect.jsx`'s `SelectDisplayProps`) false-negatived 2 of 8 testids on `automation/testids`; traced to the shared Select component source before concluding "gap".
 
 See also: promotability_grep_false_negative.md ·
 promotability_grep_false_positive_prefix.md ·
