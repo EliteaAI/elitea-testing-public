@@ -68,6 +68,22 @@ card-level check would be a trivially-passing assertion for the other 9
 cards. ``analytics-user-detail-chart-tooltip`` is wired on the shared
 ``ChartTooltip.jsx`` via a render-function ``content`` prop (Recharts injects
 ``active``/``payload``/``label`` at render time) — only at this call site.
+
+**ELITEA-2320 (Agents & Pipelines tab, ``AnalyticsAgents.jsx``)** — zero
+pre-existing testids; all 17 below added via ``add-data-testid``, straight
+onto ``automation/testids`` (``EliteaAI/EliteaUI@019797e6``). Bar chart
+(``analytics-agents-chart-*``) and Chat Messages area chart
+(``analytics-agents-chat-chart-*``) are each conditionally rendered
+(``agentChartData.length > 0`` / ``chat_daily.length > 0``) — testids only
+exist in the DOM when their chart is shown. ``analytics-agents-search-input``
+reuses the shared ``SearchInput.jsx`` ``testId`` prop wired during ELITEA-2312
+(call-site-only change here). ``analytics-agents-row`` /
+``analytics-agents-row-errors`` repeat per rendered row (same pattern as the
+Users tab). The table header column SET varies by ``isPersonalProject``
+(``!isPersonalProject && <Users column>``) — 8 columns for a personal
+project, 9 for a non-personal one (``Users`` inserted after ``Runs``). The
+four pagination testids reuse the same MUI v7 ``TablePagination``
+``slotProps`` pattern as the Users tab.
 """
 
 import logging
@@ -96,6 +112,15 @@ ANALYTICS_USERS_QUERY_URL_SUBSTRING = "/elitea_core/analytics_users/prompt_lib/"
 # User-detail-view query (`useAnalyticsUserDetailQuery`) — fires once when a
 # Users-tab row is clicked (ELITEA-2313).
 ANALYTICS_USER_DETAIL_QUERY_URL_SUBSTRING = "/elitea_core/analytics_user_detail/prompt_lib/"
+
+# Agents & Pipelines tab query (`useAnalyticsAgentsQuery`) — a distinct
+# endpoint from Overview/Users; fires on tab mount, on every search-input
+# keystroke change, and on a project switch (ELITEA-2320).
+ANALYTICS_AGENTS_QUERY_URL_SUBSTRING = "/elitea_core/analytics_agents/prompt_lib/"
+
+# Agent/pipeline-detail-view query (`useAnalyticsAgentDetailQuery`) — fires
+# once when an Agents & Pipelines-tab row is clicked (ELITEA-2320).
+ANALYTICS_AGENT_DETAIL_QUERY_URL_SUBSTRING = "/elitea_core/analytics_agent_detail/prompt_lib/"
 
 
 class AnalyticsPage(BasePage):
@@ -237,6 +262,88 @@ class AnalyticsPage(BasePage):
     user_detail_agents_panel = LocatorDescriptor(
         testid="analytics-user-detail-agents-panel", description='"Agents & Pipelines Used" summary panel'
     )
+
+    # ------------------------------------------------------------------
+    # Agents & Pipelines tab (ELITEA-2320)
+    # ------------------------------------------------------------------
+    agents_chart_title = LocatorDescriptor(
+        testid="analytics-agents-chart-title",
+        description='Bar-chart title — "Most Active Agents & Pipelines", present only when '
+        "agentChartData.length > 0",
+    )
+    agents_chart_subtitle = LocatorDescriptor(
+        testid="analytics-agents-chart-subtitle",
+        description='Bar-chart subtitle — dynamic "Top {N} by runs"',
+    )
+    agents_chart_container = LocatorDescriptor(
+        testid="analytics-agents-chart-container", description="Bar chart's wrapping container — presence only"
+    )
+    agents_chat_chart_title = LocatorDescriptor(
+        testid="analytics-agents-chat-chart-title",
+        description='Chat Messages area-chart title, present only when chat_daily.length > 0',
+    )
+    agents_chat_chart_subtitle = LocatorDescriptor(
+        testid="analytics-agents-chat-chart-subtitle",
+        description='Chat Messages area-chart subtitle — static "User messages per day"',
+    )
+    agents_chat_chart_container = LocatorDescriptor(
+        testid="analytics-agents-chat-chart-container",
+        description="Chat Messages chart's wrapping container — presence only",
+    )
+    agents_activity_title = LocatorDescriptor(
+        testid="analytics-agents-activity-title",
+        description='Table section header — "Agent & Pipeline Activity"',
+    )
+    agents_count = LocatorDescriptor(
+        testid="analytics-agents-count", description='Table count subtitle — "{N} agents & pipelines"'
+    )
+    agents_search_input = LocatorDescriptor(
+        testid="analytics-agents-search-input",
+        description='"Search by agent or pipeline name" input, top-right of the Activity card',
+    )
+    agents_table_header = LocatorDescriptor(
+        testid="analytics-agents-table-header",
+        description="Table header row — 8 columns (personal project) or 9 (non-personal, adds Users)",
+    )
+    agents_loading_indicator = LocatorDescriptor(
+        testid="analytics-agents-loading-indicator",
+        description="Agents-tab data-fetch loading spinner — present only while a (re)fetch is in flight",
+    )
+    agents_rows = LocatorDescriptor(
+        testid="analytics-agents-row",
+        description="Repeated per-agent/pipeline data row (same testid on every row — select via .nth(i))",
+    )
+    agents_row_errors = LocatorDescriptor(
+        testid="analytics-agents-row-errors",
+        description="Repeated per-row Errors cell (same testid on every row — select via .nth(i))",
+    )
+    agents_pagination_rows_select = LocatorDescriptor(
+        testid="analytics-agents-pagination-rows-select", description='"Rows per page" select control'
+    )
+    agents_pagination_range = LocatorDescriptor(
+        testid="analytics-agents-pagination-range", description='Page-range label — "{from}–{to} of {count}"'
+    )
+    agents_pagination_prev = LocatorDescriptor(
+        testid="analytics-agents-pagination-prev", description="Previous-page button"
+    )
+    agents_pagination_next = LocatorDescriptor(
+        testid="analytics-agents-pagination-next", description="Next-page button"
+    )
+
+    # Sidebar project-selector combobox — pre-existing testid, duplicated
+    # here (not cross-imported from ChatPage) per the project's page-object
+    # convention (same shape as AdminUsersPage.project_selector_trigger).
+    # Needed to exercise the personal-vs-non-personal column-set branch
+    # (step 5's Axis-2 addition) without leaving this page.
+    project_selector_trigger = LocatorDescriptor(
+        testid="project-selector-trigger-combobox",
+        description="Sidebar project selector combobox trigger.",
+    )
+
+    # Project-selector dropdown options — same shared select-option-{value}
+    # family (SingleSelectMenuItem.jsx) as ChatPage.SELECT_OPTION /
+    # AdminUsersPage.SELECT_OPTION — reuse the pattern, don't invent a new one.
+    SELECT_OPTION = '[data-testid="select-option-{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -477,3 +584,99 @@ class AnalyticsPage(BasePage):
         else:
             self.user_detail_back_button.click()
         self.users_table_header.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    # ------------------------------------------------------------------
+    # Agents & Pipelines tab (ELITEA-2320)
+    # ------------------------------------------------------------------
+
+    def _is_analytics_agents_query_response(self, response) -> bool:
+        """True for the Agents & Pipelines-tab data GET (`useAnalyticsAgentsQuery`)
+        — a distinct endpoint from Overview/Users, fires on tab mount, on
+        every search-input keystroke change, and on a project switch."""
+        return (
+            ANALYTICS_AGENTS_QUERY_URL_SUBSTRING in response.url
+            and response.request.method == "GET"
+        )
+
+    def _wait_for_agents_settled(self) -> None:
+        """Wait for the Agents-tab render to catch up with a just-resolved
+        query response (same response-vs-render gap as `_wait_for_users_settled`)."""
+        self.agents_loading_indicator.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+
+    def open_agents_pipelines_tab(self) -> None:
+        """Click the Agents & Pipelines tab and wait for its data query to
+        resolve, then for the table header to render."""
+        with self.page.expect_response(
+            self._is_analytics_agents_query_response, timeout=NAVIGATION_TIMEOUT
+        ):
+            self.tab_agents_pipelines.click()
+        self.agents_table_header.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        self._wait_for_agents_settled()
+
+    def get_agents_table_column_labels(self) -> list[str]:
+        """Return the table column header labels in rendered order (each
+        header cell is a block-level Typography, so splitting the header
+        row's aggregate inner text on newline recovers the ordered list).
+        Column SET varies by `isPersonalProject` — 8 columns for a personal
+        project, 9 (Users inserted after Runs) for a non-personal one."""
+        text = self.agents_table_header.inner_text()
+        return [line for line in text.split("\n") if line]
+
+    def get_agents_row_count(self) -> int:
+        """Number of currently-rendered agent/pipeline rows."""
+        return self.agents_rows.count()
+
+    def get_agent_row_errors_value(self, index: int) -> int:
+        """Errors-column value (as int) for the row at *index*."""
+        return int(self.agents_row_errors.nth(index).text_content())
+
+    def switch_project(self, project_id: str, timeout: int = NAVIGATION_TIMEOUT) -> None:
+        """Switch the sidebar's active project while staying on the
+        Agents & Pipelines tab, then wait for the render to settle.
+
+        Used to exercise the `isPersonalProject` column-set branch (step 5's
+        Axis-2 addition) without leaving `/settings/analytics` — the sidebar
+        project selector is app-wide chrome, not scoped to any one page.
+
+        Deliberately does NOT wrap the click in `expect_response` the way
+        `open_agents_pipelines_tab` does: switching BACK to a project whose
+        analytics query (same date range, same search="") already resolved
+        earlier in the same test is frequently a RTK-Query cache HIT — no
+        new network request fires at all (observed live switching 400 -> 399
+        after 399 was already fetched at tab-mount) — so waiting on one would
+        time out for a request that legitimately never fires (same reasoning
+        as `clear_users_search`). `wait_for_network` + `_wait_for_agents_settled`
+        handle both cases: instant when cached, a real wait when a fresh
+        fetch is needed.
+        """
+        self.project_selector_trigger.click()
+        option = self.page.locator(self.SELECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.wait_for_network(timeout=timeout)
+        self._wait_for_agents_settled()
+
+    def open_agent_detail_by_row(self, index: int) -> None:
+        """Click the agent/pipeline row at *index* (same testid repeats on
+        every row — `.nth(index)`) and wait for the detail-view query to
+        resolve.
+
+        No dedicated detail-view page object yet (AFS: full detail-sub-view
+        content is out of scope for ELITEA-2320) — callers confirm the
+        navigation via the response status plus `agents_table_header`
+        leaving the DOM (same-page state swap, `AnalyticsAgents.jsx`'s
+        `handleAgentClick` sets local `selectedAgent` state).
+        """
+        with self.page.expect_response(
+            self._is_analytics_agent_detail_query_response, timeout=NAVIGATION_TIMEOUT
+        ) as response_info:
+            self.agents_rows.nth(index).click()
+        return response_info.value
+
+    def _is_analytics_agent_detail_query_response(self, response) -> bool:
+        """True for the agent/pipeline-detail GET (`useAnalyticsAgentDetailQuery`)
+        — fires once when an Agents & Pipelines-tab row is clicked."""
+        return (
+            ANALYTICS_AGENT_DETAIL_QUERY_URL_SUBSTRING in response.url
+            and response.request.method == "GET"
+        )
