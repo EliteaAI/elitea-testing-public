@@ -45,8 +45,11 @@
    0", which literally would mean every value (including 0) is red — contradicted by both live
    observation (three `errors: 0` rows render white/default, not red) and source
    (`AnalyticsUsers.jsx:144-151`: `color: u.errors > 0 ? palette.status.rejected : undefined`).
-   This AFS asserts the live/source-confirmed `> 0` threshold for the negative case; see
-   § Blocked Steps for the positive-case (`errors > 0` → actually red) verification gap.
+   This AFS asserts the live/source-confirmed `> 0` threshold for **both** branches — the
+   negative case (`errors === 0` → default color) and the positive case (`errors > 0` →
+   red/rejected color) are both asserted live in this step, against the `auth_state` fixture's
+   actual project data; see § Blocked Steps for the historical provenance/closure note on how the
+   positive-case fixture data was found during implementation.
 6. Verify pagination controls are present: a "Rows per page" selector (default value 20, options
    10/20/50), a page-range label matching the pattern `"{from}–{to} of {count}"` (live observed:
    "1–3 of 3" for 3 users on one page), and previous/next page arrow buttons (both disabled when
@@ -57,8 +60,9 @@
   pagination controls — all render without console errors.
 - The GET `.../analytics_users/prompt_lib/{project_id}?date_from=...&date_to=...&limit=...&offset=...&sort_by=total_events&sort_order=desc`
   request resolves 200 and the table reflects its response (`total`, `rows`).
-- Errors column: default color for `errors === 0`, red/rejected color for `errors > 0` (per
-  source; live data only exercises the `=== 0` branch — see § Blocked Steps).
+- Errors column: default color for `errors === 0`, red/rejected color for `errors > 0` — both
+  branches live-verified against the `auth_state` fixture's actual project data (see § Blocked
+  Steps for the closure note).
 - Search input live-filters the table (confirmed: typing "testbot" narrowed 3 rows → 1 row and
   updated the count/pagination label to "1 users" / "1–1 of 1" — no Enter or blur needed, no
   debounce beyond render-time).
@@ -71,7 +75,7 @@
 | 2 Section header shows "User Activity" + user count (e.g. "1 users") | Condition holds | step 2 | `step 2`: title text + count pattern | asserted |
 | 3 "Search by email" input present, top right | Condition holds | step 3 | `step 3`: input present + position | asserted |
 | 4 Table has columns USER, EVENTS, DAYS, LLM, TOOL, AGENT, CHAT MSG, ERRORS | Condition holds | step 4 | `step 4`: live 9-column set asserted instead | clarification *(case's 8-column list incl. "EVENTS" is stale; live table has 9 columns incl. Total Tokens/Total Cost and no Events column — filed elitea-testing-public#1188)* |
-| 5 ERRORS column value shown in red when ≥ 0 | Condition holds | step 5 | `step 5`: negative case (`errors===0` → default color) asserted; positive case (`errors>0` → red) confirmed by source only | clarification + blocked *(case's "≥0" threshold is stale/self-contradictory — literal reading recolors every value; live source confirms `>0`. Positive branch (`errors>0`) has no live data to exercise in the exploration project — see § Blocked Steps. Filed elitea-testing-public#1188)* |
+| 5 ERRORS column value shown in red when ≥ 0 | Condition holds | step 5 | `step 5`: both branches asserted live — negative case (`errors===0` → default color) and positive case (`errors>0` → red/rejected color), against the `auth_state` fixture's actual project data | clarification *(case's "≥0" threshold is stale/self-contradictory — literal reading recolors every value; live source confirms `>0`. Filed elitea-testing-public#1188. Positive branch had no live data in the analyst's exploration project ("UI Testing") — originally deferred per § Blocked Steps — but was closed during implementation once the `auth_state` fixture's actual target project ("Private") was found to have rows with `errors > 0`; see § Blocked Steps for the closure note)* |
 | 6 Pagination controls present: rows-per-page selector, page range label, prev/next arrows | Condition holds | step 6 | `step 6`: all three control groups asserted, including default rows-per-page value and disabled-when-one-page state | asserted |
 
 **Axis 2 — Analyst additions.**
@@ -84,9 +88,22 @@
 - `step 4` asserts exact column **order**, not just presence — *added: order is part of the
   visible UI contract and free to assert once the header handle is captured (mirrors ELITEA-2310's
   tab/preset order assertions).*
-- `step 6` asserts the *default* rows-per-page value (20) and the exact `rowsPerPageOptions`
-  (10/20/50) — *added: the case only asks for "a selector present"; asserting its default/options
-  catches a silent options-list regression cheaply, using the same locator.*
+- `step 6` asserts the *default* rows-per-page value (20), read directly off
+  `analytics-users-pagination-rows-select`'s rendered text — *added: the case only asks for "a
+  selector present"; asserting the default value catches a silent regression cheaply, using the
+  same locator.*
+  — **Implementer amendment (2026-08-05):** the AFS's original wording also proposed asserting the
+  exact `rowsPerPageOptions` list (10/20/50) "cheaply, using the same locator." Live exploration
+  found this is NOT cheap: MUI's `TablePagination` renders the closed-select's *current* value via
+  `slotProps.select`'s testid, but the open-dropdown menu items (the actual 10/20/50 options) are
+  generated internally with no per-option testid hook — `TablePagination`'s `slotProps` exposes only
+  a single `menuItem` slot applied identically to every option, which cannot disambiguate "the 20
+  option" from "the 50 option." Enumerating them would need net-new per-option testid plumbing (not
+  in the analyst's original 10-handle Concrete Handles table) — out of proportion to this addition's
+  "free" framing and disallowed as a fresh non-testid handle under `.agents/testing.md` § Locator
+  policy. Technique gap, not a scope drop: this AFS now asserts only the *default* rows-per-page
+  value; the options-list enumeration is left for a future case that scopes the per-option testid
+  work explicitly.
 - **Search-filter smoke check** (not in the case's numbered steps, but directly adjacent to step 3
   "search input is present" and free to verify with the same handle): typing an existing user's
   email substring narrows the table to matching rows and updates the count/pagination label
@@ -147,17 +164,26 @@ Uniqueness verified (2026-08-05, `git fetch origin` fresh, `EliteaUI@a68b3728`):
   assert the live contract, not the case's stale numbers.
 
 ## Blocked Steps
-- **Step 5, positive branch only** (`errors > 0` → red/rejected color actually renders): the
-  exploration project ("UI Testing") has no user with `errors > 0` in its analytics data, and
-  there is no cheap/available mechanism in this environment to seed an error-attributed analytics
-  event for a specific user (would require driving a real tool/LLM failure end-to-end and waiting
-  for it to aggregate into the analytics pipeline — disproportionate to this case's scope, which
-  is table structure/pagination, not analytics-pipeline correctness). The negative branch
-  (`errors === 0` → default color) IS live-verified and automated (step 5 above). The positive
-  branch is confirmed only by reading `AnalyticsUsers.jsx:144-151` directly — cite this AFS +
-  source line in the test as a documented, source-verified-but-not-live-executed assertion gap,
-  not a defect. If a future project/environment naturally accumulates a user with `errors > 0`,
-  the implementer should extend the test to assert the positive branch against that real row.
+- **(Closed during implementation, 2026-08-05)** Step 5, positive branch (`errors > 0` →
+  red/rejected color actually renders): at analysis time, the exploration project ("UI Testing")
+  had no user with `errors > 0` in its analytics data, and there was no cheap/available mechanism
+  in that environment to seed an error-attributed analytics event for a specific user (would
+  require driving a real tool/LLM failure end-to-end and waiting for it to aggregate into the
+  analytics pipeline — disproportionate to this case's scope, which is table structure/pagination,
+  not analytics-pipeline correctness). The negative branch (`errors === 0` → default color) was
+  live-verified and automated per the original step 5 plan; the positive branch was, at that
+  point, confirmed only by reading `AnalyticsUsers.jsx:144-151` directly. During implementation,
+  the `auth_state` fixture's actual target project ("Private" — distinct from the analyst's
+  exploration project "UI Testing") was found to already have two users with `errors > 0`
+  (`User 6250`: 78, `testbot@elitea.ai`: 75) live in the default "Last 24h" range — so the positive
+  branch is live-exercisable against this suite's real fixture data with no seeding required. The
+  implementer folded it into this PR: the shipped test asserts both branches live (see Coverage
+  Map row 5, and the test's Step 5 in
+  `automation/tests/ui/admin/test_analytics_users_activity_table.py`), iterating every rendered row
+  and asserting the default color for `errors === 0` rows and the red/rejected color for
+  `errors > 0` rows, with a hard assertion that at least one `errors === 0` row was exercised (the
+  `errors > 0` branch is asserted per-row when present but not required as a precondition, since
+  live data may legitimately shift to all-zero over time).
 
 ## Automation Hints
 - Framework: Playwright + pytest (per `.agents/testing.md`).
@@ -175,13 +201,53 @@ Uniqueness verified (2026-08-05, `git fetch origin` fresh, `EliteaUI@a68b3728`):
   reusing the Overview one (they're different endpoints).
 - Column-header assertion: split `analytics-users-table-header`'s `.inner_text()` on `"\n"` and
   compare the resulting list to the expected 9-label tuple — exact match, not substring/contains.
+  **Implementer note (2026-08-05):** `tableCell`'s `sx` applies `text-transform: uppercase` —
+  `inner_text()` reflects the CSS-rendered text, so the expected tuple must be the UPPERCASE form
+  (`"USER"`, `"ACTIVE DAYS"`, …), not the JSX source's title-case strings. Confirmed live: the
+  title-case comparison failed 1/1 (fast infrastructure fix, re-run green after correcting the
+  expected tuple's case).
 - Errors-color assertion: use Playwright's `expect(locator).to_have_css("color", "rgb(255, 255,
   255)")` (or the theme's actual `palette.text.secondary` resolved value — confirm via
   `getComputedStyle` at implementation time, since `rgb(255, 255, 255)` was observed against the
   currently-active theme and could differ under a different theme/mode) for the `errors === 0`
-  case; do NOT hardcode an assumed "red" hex without reading `palette.status.rejected`'s resolved
-  value first if/when the positive branch becomes testable (see § Blocked Steps).
+  case. The positive branch (`errors > 0` → red/rejected color) is tested now, live in this same
+  Step 5, against the `auth_state` fixture's actual project data (see § Blocked Steps for the
+  closure note) — do NOT hardcode an assumed "red" hex for it either; read
+  `palette.status.rejected`'s resolved value via `getComputedStyle` the same way, and assert via
+  the existing `analytics-users-row-errors` testid / `to_have_css("color", ...)`, never a
+  positional child selector.
 - Pagination default-state assertion (3 users, `rowsPerPageOptions=[10,20,50]`, default
   `rowsPerPage=20`): range label "1–3 of 3", both prev/next buttons `disabled` — this is the
   live-observed default; if the exploration project's user count changes, the range label changes
   correspondingly (still single-page while `total <= 20`).
+- **Implementer note (2026-08-05) — search-filter smoke check, two root causes found:**
+  (1) `press_sequentially` occasionally dropped the leading keystroke on
+  `analytics-users-search-input` (a Playwright/React re-render-timing race, not a product defect).
+  `SearchInput.jsx` wires `onChange` straight off a plain native `<input>` (no MUI TextField/masking
+  layer), and `.fill()` is this codebase's established, working pattern for exactly that shape
+  (`agents_list_page.py`'s `search()`/`clear_search()`) — switched to it.
+  (2) Independently, `BasePage.wait_for_network()` (wraps `page.wait_for_load_state("networkidle")`)
+  is a one-time-per-navigation Playwright lifecycle event — once the page has already reached
+  `networkidle` (true well before this method runs), calling it again resolves immediately
+  regardless of a request `.fill()` triggers a few ms later, so it never actually waited for the
+  search response (reproduced as a false-empty "0 rows after searching 'testbot'" filtered result,
+  2/2). Fixed by wrapping `.fill()` in `page.expect_response(...)` against
+  `ANALYTICS_USERS_QUERY_URL_SUBSTRING` (the same pattern `open_users_tab()` already uses) instead
+  of `wait_for_network()`. Confirmed green after both fixes.
+  (3) The response-vs-render lag itself needed its own fix: `expect_response` only confirms the
+  network request finished, not that React has re-rendered with the new `data`/`isFetching` state —
+  added a testid (`analytics-users-loading-indicator`, `EliteaAI/EliteaUI@00eab214`) on the
+  Users-tab's `isFetching` spinner and a `_wait_for_users_settled()` helper (wait for it hidden) to
+  close that gap. (4) Clearing the search back to `""` is frequently a cache HIT — RTK-Query already
+  ran that exact query at tab-mount — so no new network request fires at all; wrapping the clear in
+  `expect_response` timed out waiting for a request that legitimately never happens.
+  `clear_users_search()` now relies on `_wait_for_users_settled()` alone (handles both the cached
+  and uncached case).
+  **Also discovered while debugging:** the `auth_state` fixture's default test project ("Private")
+  has richer data than the "Private"-adjacent "UI Testing" project the analyst explored against —
+  it has TWO users with `errors > 0` (User 6250: 78, testbot@elitea.ai: 75) live in the default
+  "Last 24h" range. This means the AFS § Blocked Steps gap (errors>0 -> red, previously
+  source-confirmed only) IS actually live-exercisable in the project this suite's fixtures target.
+  Closed during implementation: the positive branch (`errors > 0` → red/rejected color) is now
+  asserted live in the same Step 5 as the negative branch, against this real fixture data — see
+  Coverage Map row 5 and § Blocked Steps for the closure note.
