@@ -60,11 +60,20 @@ Extended by: qa-engineer analyst, ELITEA-2280, 2026-08-05 (create-token flow
   days"`; `1-7d` → amber `AttentionIcon` (`status.onModeration`) + `"in N
   days"`; `expiryInDays === -1` (no expiry / "Never") → green `SuccessIcon`
   + `"Never"`; else → gray `RemoveIcon` (`icon.fill.disabled`) + `"Expired"`.
-  None of the 4 branches carry a testid yet — same component/testid should
-  be added to all 4 (`token-expiration-status` + a `data-expiration-state`
-  attribute distinguishing the branch), per this project's "stable testid +
-  state via `data-*`" locator ruling — do NOT give the 4 branches 4 different
-  testids.
+  **Update (ELITEA-2284, 2026-08-05): the testid is now IN PLACE on all 4
+  branches** — `token-expiration-status` + `data-expiration-state`
+  (`active|warning|never|expired`), confirmed in
+  `TokensTable.jsx` and wired in `automation/pages/personal_tokens_page.py`
+  (`TOKEN_EXPIRATION_STATUS_SELECTOR`, `get_row_expiration_status(row,
+  state=...)`). `active` state is exercised by the merged
+  `test_personal_token_create_and_verify.py` (ELITEA-2280) Step 12;
+  `expired` state is exercised by its ELITEA-2284 extension
+  (`test_expired_token_shows_expired_icon_and_label`). `warning`/`never`
+  states remain unexercised by any test as of this session — flag if a
+  future case needs them. **No live stable data currently exhibits the
+  `active` state without test-created mutation** — every persistent
+  non-expired token in the live project (399) has no expiry ("Never"); only
+  a freshly-created token (finite expiration) shows `active`/"in N days".
 - `EllipsisTypography` and `BaseBtn`/plain MUI `Button` all spread unknown
   props (including `data-testid`) straight through to the underlying DOM
   node — for these, a `data-testid` can be added directly at ANY call site
