@@ -180,21 +180,41 @@ step-4/6 secret (`<generated_name>`); the step 7-9 secret is never persisted
 
 ## Concrete Handles (discovered during exploration)
 
-All handles below are **pre-existing testids** — zero new `add-data-testid` work
-required for this case's own 9 steps (cleanup uses the API, not UI testids — see
-§ Cleanup).
+**AMENDED post-implementation (fix round 1, ELITEA-2336 review) — the table below
+originally claimed all handles were "pre-existing testids" and "zero new
+`add-data-testid` work required". That claim was FALSE.** All 9 core handles were
+actually **uncommitted working-tree JSX edits** in the EliteaUI clone at analysis
+time — visible live (hence "confirmed live" in the analyst's notes) but never
+committed to `automation/testids`, so from any fresh clone's perspective they did
+not exist. The implementer committed all 9 plus one additional NEW testid
+(`secrets-pagination-info`, needed for step 3's pagination-reset assertion) as
+`EliteaAI/EliteaUI@c2a5b4c7` on `automation/testids` — confirmed via
+`git log origin/main..origin/automation/testids -- src/ | grep 2336` (present on
+`automation/testids`, absent from `main` as of this amendment). This IS
+`add-data-testid` work, not zero-touch reuse of pre-existing identity.
 
 | Element | Testid (LocatorDescriptor) | Provenance | Notes |
 |---|---|---|---|
-| Page title | `secrets-page-title` | on-`automation/testids` (pre-existing; confirmed via source read of `SecretsContent.jsx`, not yet independently checked against `main` — treat as "needs closure-record verification") | `DrawerPageHeader titleTestId` prop |
-| Add ("+") button | `secrets-add-button` | pre-existing | Also wired as the `SECRETS_TOUR_TARGET_IDS.addButton` interactive-tour anchor — same element, dual purpose |
-| Secret row (repeatable) | `secret-row` | pre-existing | `GridTableRow`'s own `data-testid` prop; identical for every row (new + existing) — scope with `.filter(has_text=<name>)`, same pattern as `personal_tokens_page.py`'s `token_row` |
-| Name input (edit mode) | `secret-name-input` | pre-existing | `EditSecretInputGridTable.jsx` — only rendered for `row.isNew` rows (existing secrets can't rename, only re-value) |
-| Value input (edit mode) | `secret-value-input` | pre-existing | Same component, `field="secretValue"` |
-| Save (✓) button | `secret-row-save-button` | pre-existing | Only rendered while the row is in edit mode |
-| Cancel (✗) button | `secret-row-cancel-button` | pre-existing | Same |
-| Name cell (view mode) | `secret-name-cell` | pre-existing | `Text.EllipsisTypography`, scope within a `secret_row` locator |
-| Value cell (view mode, masked) | `secret-value-cell` | pre-existing | `SecretValueCell.jsx` — button label text, format `"{{secret." + name + "}}"` |
+| Page title | `secrets-page-title` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only (not yet on `main`) | `DrawerPageHeader titleTestId` prop, `SecretsContent.jsx` |
+| Add ("+") button | `secrets-add-button` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `DrawerPageHeader` `slotProps.addButton.testId`; also wired as the `SECRETS_TOUR_TARGET_IDS.addButton` interactive-tour anchor — same element, dual purpose |
+| Secret row (repeatable) | `secret-row` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `GridTableRow`'s `data-testid` prop, `SecretsTable.jsx`; identical for every row (new + existing) — scope with `.filter(has_text=<name>)`, same pattern as `personal_tokens_page.py`'s `token_row` |
+| Name input (edit mode) | `secret-name-input` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `EditSecretInputGridTable.jsx` `inputProps['data-testid']`, `field === 'name'` branch — only rendered for `row.isNew` rows (existing secrets can't rename, only re-value) |
+| Value input (edit mode) | `secret-value-input` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | Same component, `field === 'value'` branch |
+| Save (✓) button | `secret-row-save-button` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `SecretsTable.jsx` `IconButton`, only rendered while the row is in edit mode |
+| Cancel (✗) button | `secret-row-cancel-button` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | Same |
+| Name cell (view mode) | `secret-name-cell` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `Text.EllipsisTypography`, `SecretsTable.jsx`, scope within a `secret_row` locator |
+| Value cell (view mode, masked) | `secret-value-cell` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `SecretValueCell.jsx` — button label text, format `"{{secret." + name + "}}"` |
+| Pagination info text | `secrets-pagination-info` | **NEW testid, not in original AFS** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `pageInfoTestId` prop threaded onto the shared `GridTablePagination.jsx` (`data-testid={pageInfoTestId}` on the `Typography` showing "1 - N of total"), wired at the Secrets call site (`SecretsTable.jsx`); needed to assert step 3's pagination-reset-to-page-1 clarification (#1202) |
+
+**Verification command used for the "on `automation/testids` only" column** (run
+from `../EliteaUI` after `git fetch origin`):
+```
+git log origin/main..origin/automation/testids -- src/ | grep -i 2336
+# → c2a5b4c7 test: [EL-2336] add data-testid for Secrets inline create row + pagination info
+```
+None of the 10 testids above are present on `main` as of this amendment — the
+closure record must carry this same verification (fresh fetch, not a stale
+clone) rather than copy this AFS's claim forward.
 
 ### Scoped sub-selectors (class-level UPPER_CASE constants, per `.agents/testing.md`)
 
