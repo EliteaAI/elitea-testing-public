@@ -1,8 +1,28 @@
 ---
 name: AFS Priority line vs pytest.mark — implementer preflight check
-description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 after I landed p2 for an AFS-declared "l2 (high)" case sitting next to a p1 covering test in the same file.
+description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 (own p2) and again on ELITEA-2284/PR #1175 (inherited module p2).
 type: feedback
 ---
+
+## Recurrence 2 — ELITEA-2284/PR #1175 (module-level inheritance variant)
+
+Same lesson, different mechanism: `extend-existing` appended
+`test_expired_token_shows_expired_icon_and_label` (AFS priority `high`/`l2`,
+→ `p1`) into a file whose module-level `pytestmark` already carried `p2`
+(correct for the *original* `p2`/medium covering test). Because the new
+`test()` has no marker of its own, it silently **inherits** the module's
+`p2` — there's no "wrong marker" to spot in a diff, just an *absent* one,
+which is even easier to miss than recurrence 1's explicit-but-wrong `p2`.
+Reviewer caught it in round 1; I hadn't run the preflight check below before
+the initial handoff either. **Fix:** a per-function `@pytest.mark.p1` on the
+new test only — module-level `pytestmark` (and the original test) stay
+untouched. Also fix the AFS itself if its own reasoning claims "shares
+module/priority with the covering test" — that claim is the root cause, not
+just the missing decorator: an AFS that asserts a false priority-sharing
+premise will keep producing this exact miss on every future
+`extend-existing` case in the same file. **Run the preflight check below
+BEFORE writing the test, not just before Phase 6 handoff** — that's the gap
+both recurrences share.
 
 ## What happened
 
