@@ -1,8 +1,29 @@
 ---
 name: onetest TMS case IDs can collide across unrelated cases
-description: recurred twice now (ELITEA-2313, ELITEA-2320) — a "new" TMS id can already be in use by an unrelated case in a different module; check before trusting the dispatch's named file
+description: SYSTEMIC, not rare — full-tree check found 150+ colliding ids (whole sequential ranges duplicated), not isolated pairs. Always run the uniq -d check at intake.
 type: project
 ---
+
+## Recurrence #3 (2026-08-05, card #829, ELITEA-2321) — confirmed SYSTEMIC, not a rare pair
+
+Ran the escalated full-tree check this entry itself prescribed
+(`grep -h '^id: ELITEA-' -r tests/ | sort | uniq -d`) as a routine intake
+step for the first time, rather than a targeted single-id check. Result:
+**150+ colliding ids**, including whole sequential ranges duplicated
+end-to-end (2219-2251 = 33 ids, 2570-2586 = 17 ids, plus 2310-2331,
+2478-2517, and more). This is not "a handful of unlucky collisions" — it
+reads as two overlapping id-generation passes over large chunks of the
+tree, or a bulk-seeding artifact. ELITEA-2321 itself collided with an
+unrelated `artifacts` case ("Download MDX File from Three-Dot Menu").
+
+No ambiguity for the dispatch itself (issue #829 named the exact source
+file, as every prior recurrence has) — worked only the named file. Did
+**not** file a new tracker issue for the scale finding — same handling as
+recurrences #1/#2 (memory is the record; a human triages the whole tree
+once rather than one Q issue per pair). If this entry is read during a
+scout/retrospective pass, the systemic scale is grounds for a real tracker
+`question` issue proposing a TMS data-quality pass — it has not been filed
+because no session's dispatch scope has covered that broader ask yet.
 
 ## Recurrence #2 (2026-08-05, card #828, ELITEA-2320)
 
