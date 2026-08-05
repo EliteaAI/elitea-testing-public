@@ -283,3 +283,27 @@ None.
   offset/milliseconds.
 - Header Edit/Delete buttons: assert `is_visible()` AND `is_disabled()` (NOT
   `is_enabled()`) — they are correctly disabled with nothing selected.
+
+### Amendment (implementer exploration, 2026-08-05) — project-switch precondition
+
+A bare `navigate("/settings/users")` against the env's default project
+(`.env.test`'s `ELITEA_PROJECT_ID` = 399) does NOT reach this page: confirmed
+live that 399 is this test user's **PRIVATE** project, and `Settings.jsx`
+carries a guard effect (`isPrivateProject` / "hide Users for private
+projects") that redirects `tab === 'users'` to `/settings/project-general`
+once project data resolves (~2-3s after navigation — the tab is briefly
+"users" in the URL, then flips). This AFS's own Preconditions/Test Data
+section already named project **400 ("UI Testing")** — a TEAM project — as
+where the case's 2 users were confirmed live, which is what the analyst was
+actually on during exploration (via the sidebar project badge); it just
+wasn't previously flagged as a required precondition ACTION for automation
+(vs. a passive fact).
+
+`AdminUsersPage.navigate()` now performs a two-hop flow: land on the
+always-reachable `/settings/project-general` tab first, switch the sidebar's
+active project to 400 via the pre-existing `project-selector-trigger-combobox`
+/ `select-option-{id}` testids (same shared component family as
+`ChatPage.switch_project`), THEN navigate to `/settings/users` — by which
+point the guard's check is already false and never fires. This is a
+same-scope technique fix (Phase 2 "how", not "what") — no case step or
+assertion changed; it does not affect AFS Coverage Map / Axis 2.
