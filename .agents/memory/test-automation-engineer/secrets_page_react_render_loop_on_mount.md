@@ -44,4 +44,24 @@ Soft-asserted via `soft_failures`/`pytest.fail()` (see
 filter unexpected console errors from the known signature so a genuinely
 NEW error still hard-fails.
 
+**Round-2 finding — `_is_known_defect_1203()`'s `"SecretsContent.jsx" in text`
+check is occasionally too strict.** Across 3 verification reruns of the
+merged spec, 2 correctly reached the intended `pytest.fail()` soft path
+("Known defect https://…/1203: … 18 occurrence(s)"), but 1 hard-failed at
+the earlier `assert not unexpected_errors` line instead — that run's single
+captured `ConsoleMessage.text` lacked the stack-trace suffix entirely (short
+form, ~250 chars, no `SecretsContent.jsx`), vs the normal long form (~4600
+chars, full component stack, `args_len == 2`). Root cause not fully pinned
+down (Playwright's `.text` concatenation of `console.error(fmt, stackArg)`
+args appears to occasionally drop the second arg) — reproduces at the
+`page.goto()` level too (ad-hoc script: 0/1/1 errors across 3 bare
+navigations, i.e. the underlying warning's occurrence-count AND arg
+completeness are both somewhat non-deterministic per mount, not just the
+count). Not fixed as of fix-round-2 (out of that round's named-finding
+scope) — if the batch hardening gate's 3x reruns hit the short-text branch,
+harden the filter to match on the message-text prefix alone (already
+unique enough: `"Warning: Maximum update depth exceeded. This can happen
+when a component calls setState inside useEffect"`) instead of requiring
+the component-name suffix.
+
 (from ELITEA-2336)

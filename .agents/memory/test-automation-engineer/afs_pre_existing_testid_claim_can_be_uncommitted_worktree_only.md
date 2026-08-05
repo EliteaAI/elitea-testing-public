@@ -54,4 +54,19 @@ finding, even when the narration is accurate and even when it ships in the
 same PR. If you know the provenance is wrong, edit the source-of-truth
 document, don't just explain the discrepancy next to it.
 
-(from ELITEA-2336, round 1 fix)
+**Round-2 confirmation — the rule generalizes past the Concrete Handles
+table.** Round 2's finding was a DIFFERENT AFS section (`Known Defects Found
+During Exploration` + `Expected Results`) still saying "None found" / "0
+errors, 0 warnings" even though the implementation had, since round 0, been
+soft-asserting a filed console-error defect (`#1203`) and declaring the spec
+sanctioned-RED — the PR body / Run Report / test docstring all narrated this
+accurately from round 0 onward, but nobody had edited those two AFS
+sections. Same root cause as round 1, different section: **every AFS
+section that states a fact the implementation later revises (handle
+provenance, defects found, expected results) needs its OWN edit** — fixing
+one drifted section doesn't imply the others got checked too. When a review
+round flags "AFS section X wasn't amended," treat it as a cue to scan the
+*whole* AFS for other stale factual claims before declaring the round done,
+not just patch the one named section.
+
+(from ELITEA-2336, round 1 + round 2 fixes)
