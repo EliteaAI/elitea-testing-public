@@ -30,7 +30,7 @@
 2. Click on any agent card (e.g., "User Story Creator").
    - **Verify**: click succeeds; the underlying `GET /api/v2/elitea_core/public_application/prompt_lib/{id}` request fires (confirmed live: `.../public_application/prompt_lib/172` → `200`) — reuse `AgentHubPage.open_agent_by_name()`, which already waits on this exact response before returning.
 3. Verify the agent detail modal opens as an overlay.
-   - **Verify**: a MUI `Dialog` (`role="dialog"`) becomes visible over the Catalog page content — confirmed live.
+   - **Verify**: a MUI `Dialog` (`role="dialog"`) becomes visible over the Catalog page content — confirmed live — **testid added by implementer**: `catalog-agent-modal` on the dialog's main panel (`role="dialog"` alone doesn't disambiguate reliably per project locator policy; see `AgentHubPage.modal_dialog` in § Concrete Handles).
 4. Verify the modal displays agent icon, agent name, owner name, liked status, copy link icon, "x" button and description.
    - **Verify — agent icon**: `EntityIcon` renders inside the modal content area, above the name (confirmed live: default "elitea" branded icon for an agent with no custom `icon_meta`) — **testid needed**: `catalog-agent-modal-agent-icon` (the underlying `EntityIcon` component already accepts a `data-testid` prop and renders it on its own root `Box` — `EliteaUI/src/components/EntityIcon.jsx:203`; AgentModal.jsx's call site (`EliteaUI/src/[fsd]/features/agent-hub/ui/AgentModal.jsx:222-227`) currently passes none).
    - **Verify — agent name**: `catalog-agent-modal-agent-name` (pre-existing testid) reads "User Story Creator" — confirmed live.
@@ -63,7 +63,7 @@
 |---|---|---|---|---|
 | 1 Navigate to Agent Hub | Target page/section loads successfully | step 1 | `catalog-page-heading` visible | asserted |
 | 2 Click on any agent card | Control responds; expected next state is shown | step 2 | agent-details GET fires, resolves 200 | asserted |
-| 3 Verify the agent detail modal opens as an overlay | Condition holds as described | step 3 | dialog visible | asserted |
+| 3 Verify the agent detail modal opens as an overlay | Condition holds as described | step 3 | `catalog-agent-modal` visible (testid added by implementer — see § Concrete Handles) | asserted |
 | 4 Verify modal displays icon, name, owner, liked status, copy link icon, "x" button, description | Condition holds as described | step 4 | 7 sub-elements, each own handle (see step 4 detail) | asserted *(copy-link-icon sub-element is drift, see clarification)* |
 | 5 Verify "CONVERSATION STARTERS" section | Condition holds as described | step 5 | `catalog-agent-modal-chat-starters-section` visible, header text asserted against live copy | asserted *(label drift, see clarification, already tracked #1042)* |
 | 6 Verify "WELCOME MESSAGE" section | Condition holds as described | step 6 | `catalog-agent-modal-welcome-message-section` visible | asserted |
@@ -89,6 +89,7 @@ None — read-only modal-open interaction, no state created. No agent liked, no 
 |---|---|---|---|
 | Catalog page heading | `AgentHubPage.page_heading` (`catalog-page-heading`) | none | on-main ✓ (pre-existing, ELITEA-2075) |
 | Agent card | `AgentHubPage.AGENT_CARD_PREFIX` / `get_agent_card()` (`[data-testid^="catalog-agent-card-"]`) | none | on-main ✓ (pre-existing, ELITEA-2075) |
+| Modal overlay root (dialog panel) | `AgentHubPage.modal_dialog` (`catalog-agent-modal`) — added by the implementer: `role="dialog"` alone doesn't disambiguate reliably (see `.agents/memory/test-automation-engineer/mui_dialog_needs_its_own_testid_not_role_dialog.md`), so the MUI `Dialog`'s main panel got its own testid | none | added by implementer this dispatch — on `automation/testids` ✓ (pushed EliteaAI/EliteaUI@b0dc74c0/@46586f2d), not yet on `main` |
 | Modal agent name | `AgentHubPage.modal_agent_name` (`catalog-agent-modal-agent-name`) | none | on-main ✓ (pre-existing, ELITEA-2075) |
 | Modal agent icon | testid needed: `catalog-agent-modal-agent-icon` (pass as `data-testid` prop to the existing `<EntityIcon>` call, `AgentModal.jsx:222-227` — the component already supports the prop) | none | needs-adding |
 | Modal owner name | testid needed: `catalog-agent-modal-owner-name` (`AgentModal.jsx:190-195` `Typography`) | none | needs-adding |
