@@ -69,3 +69,24 @@ the first test) — harmless (class attr shadows the module global via
 `self.`), but a real DRY violation on wording that's a documented
 CLARIFICATION target (#659/#660): a future wording fix now needs two call
 sites updated instead of one. Verdict: **APPROVED**.
+
+## Recurrence variant (PR #1175/ELITEA-2284, 2026-08-05) — module-level pytestmark
+
+Same defect class, different mechanism: `test_personal_token_create_and_verify.py`
+declares priority as a **module-level** `pytestmark = [..., pytest.mark.p2, ...]`
+(fine while the module held only ELITEA-2280, priority medium). The ELITEA-2284
+extension appended a second test method to the SAME module — case frontmatter
+says `priority: high` — with no per-function marker override, so it silently
+inherits the module's `p2`. Confirmed against convention: `pytest.ini` defines
+`p1: Priority 1 (high)`; other `l2 (high)`-labelled cases (ELITEA-2114, ELITEA-1866,
+ELITEA-2166, ELITEA-2168, ELITEA-2075) all compile to `@pytest.mark.p1` as a
+**per-function decorator**, precisely because module-level priority markers don't
+survive a second case with a different priority landing in the same file. The
+AFS itself was also internally self-contradictory (Priority line opened "l3
+(medium...)" then concluded "so l2 is used here") and its Gap-assertions section
+asserted "both cases share module/priority" — false, and the root cause of the
+drift. **Check extended**: when an `extend-existing` AFS adds a sibling test to a
+file whose priority is set via **module-level** `pytestmark` (not a per-function
+decorator), diff the new case's own frontmatter priority against that shared
+marker explicitly — module-level priority is a trap once a second, differently-
+prioritized case lands in the same file. Flagged CHANGES_REQUESTED.
