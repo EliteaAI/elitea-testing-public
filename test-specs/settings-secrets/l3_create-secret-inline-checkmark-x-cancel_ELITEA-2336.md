@@ -115,8 +115,37 @@
   masked `{{secret.<name>}}` placeholder.
 - X (✗) discards the pending row client-side only — zero network calls, no secret
   created server-side.
-- No console errors across the full create → verify → cancel → verify flow
-  (confirmed live: 0 errors, 0 warnings).
+- No **unexpected** console errors across the full create → verify → cancel →
+  verify flow. **AMENDED post-implementation (fix round 2) — the analyst's
+  original exploration session observed 0 errors/0 warnings, but the
+  implementer's automated run surfaced a genuine, deterministic (3/3 across
+  two full pytest runs + one isolated repro script) React "Maximum update
+  depth exceeded" console warning firing on EVERY `/settings/secrets` mount,
+  before any interaction, isolated to `SecretsContent.jsx` — filed as
+  `EliteaAI/elitea-testing-public#1203`. Confirmed NOT caused by this case's
+  own testid additions (inert string props, no render/dependency-array
+  effect) and NOT affecting functional behaviour (all 9 functional steps
+  pass every run).** Per `.agents/testing.md` § Merge gate's sanctioned-RED
+  exception (deterministic, single-cause, linked to an OPEN defect), the
+  console-error assertion is written as a REAL assertion (no console errors)
+  soft-asserted via the `soft_failures`/`pytest.fail()` idiom, filtered by
+  the warning's **stable text prefix alone** (`"Maximum update depth
+  exceeded"`) so any genuinely NEW/unexpected console error still hard-fails
+  immediately. **AMENDED post-implementation (fix round 3) — an earlier
+  version of this matcher also required the `"SecretsContent.jsx"`
+  component-stack substring to be present, but Playwright's console-message
+  capture does not always include the full component stack for this
+  warning: a short-form occurrence (~250 chars, no stack suffix) was
+  observed live during round-2 verification alongside the normal long-form
+  occurrence (~4600 chars, full stack incl. `SecretsContent.jsx`). Requiring
+  both substrings meant the short-form occurrence fell into
+  `unexpected_errors` and hard-failed the test with a different failure
+  signature than the long-form occurrence — violating the sanctioned-RED
+  gate's "(a) deterministic — identical failure 3/3" requirement. The
+  matcher was hardened to anchor on the stable text prefix alone, dropping
+  the volatile stack/component suffix from the match condition.** The test
+  therefore stays honestly, deterministically RED on this one known cause
+  until `#1203` ships — never masked, never weakened.
 
 ## Coverage Map
 
@@ -180,21 +209,41 @@ step-4/6 secret (`<generated_name>`); the step 7-9 secret is never persisted
 
 ## Concrete Handles (discovered during exploration)
 
-All handles below are **pre-existing testids** — zero new `add-data-testid` work
-required for this case's own 9 steps (cleanup uses the API, not UI testids — see
-§ Cleanup).
+**AMENDED post-implementation (fix round 1, ELITEA-2336 review) — the table below
+originally claimed all handles were "pre-existing testids" and "zero new
+`add-data-testid` work required". That claim was FALSE.** All 9 core handles were
+actually **uncommitted working-tree JSX edits** in the EliteaUI clone at analysis
+time — visible live (hence "confirmed live" in the analyst's notes) but never
+committed to `automation/testids`, so from any fresh clone's perspective they did
+not exist. The implementer committed all 9 plus one additional NEW testid
+(`secrets-pagination-info`, needed for step 3's pagination-reset assertion) as
+`EliteaAI/EliteaUI@c2a5b4c7` on `automation/testids` — confirmed via
+`git log origin/main..origin/automation/testids -- src/ | grep 2336` (present on
+`automation/testids`, absent from `main` as of this amendment). This IS
+`add-data-testid` work, not zero-touch reuse of pre-existing identity.
 
 | Element | Testid (LocatorDescriptor) | Provenance | Notes |
 |---|---|---|---|
-| Page title | `secrets-page-title` | on-`automation/testids` (pre-existing; confirmed via source read of `SecretsContent.jsx`, not yet independently checked against `main` — treat as "needs closure-record verification") | `DrawerPageHeader titleTestId` prop |
-| Add ("+") button | `secrets-add-button` | pre-existing | Also wired as the `SECRETS_TOUR_TARGET_IDS.addButton` interactive-tour anchor — same element, dual purpose |
-| Secret row (repeatable) | `secret-row` | pre-existing | `GridTableRow`'s own `data-testid` prop; identical for every row (new + existing) — scope with `.filter(has_text=<name>)`, same pattern as `personal_tokens_page.py`'s `token_row` |
-| Name input (edit mode) | `secret-name-input` | pre-existing | `EditSecretInputGridTable.jsx` — only rendered for `row.isNew` rows (existing secrets can't rename, only re-value) |
-| Value input (edit mode) | `secret-value-input` | pre-existing | Same component, `field="secretValue"` |
-| Save (✓) button | `secret-row-save-button` | pre-existing | Only rendered while the row is in edit mode |
-| Cancel (✗) button | `secret-row-cancel-button` | pre-existing | Same |
-| Name cell (view mode) | `secret-name-cell` | pre-existing | `Text.EllipsisTypography`, scope within a `secret_row` locator |
-| Value cell (view mode, masked) | `secret-value-cell` | pre-existing | `SecretValueCell.jsx` — button label text, format `"{{secret." + name + "}}"` |
+| Page title | `secrets-page-title` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only (not yet on `main`) | `DrawerPageHeader titleTestId` prop, `SecretsContent.jsx` |
+| Add ("+") button | `secrets-add-button` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `DrawerPageHeader` `slotProps.addButton.testId`; also wired as the `SECRETS_TOUR_TARGET_IDS.addButton` interactive-tour anchor — same element, dual purpose |
+| Secret row (repeatable) | `secret-row` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `GridTableRow`'s `data-testid` prop, `SecretsTable.jsx`; identical for every row (new + existing) — scope with `.filter(has_text=<name>)`, same pattern as `personal_tokens_page.py`'s `token_row` |
+| Name input (edit mode) | `secret-name-input` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `EditSecretInputGridTable.jsx` `inputProps['data-testid']`, `field === 'name'` branch — only rendered for `row.isNew` rows (existing secrets can't rename, only re-value) |
+| Value input (edit mode) | `secret-value-input` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | Same component, `field === 'value'` branch |
+| Save (✓) button | `secret-row-save-button` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `SecretsTable.jsx` `IconButton`, only rendered while the row is in edit mode |
+| Cancel (✗) button | `secret-row-cancel-button` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | Same |
+| Name cell (view mode) | `secret-name-cell` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `Text.EllipsisTypography`, `SecretsTable.jsx`, scope within a `secret_row` locator |
+| Value cell (view mode, masked) | `secret-value-cell` | **added** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `SecretValueCell.jsx` — button label text, format `"{{secret." + name + "}}"` |
+| Pagination info text | `secrets-pagination-info` | **NEW testid, not in original AFS** — `EliteaAI/EliteaUI@c2a5b4c7`, on `automation/testids` only | `pageInfoTestId` prop threaded onto the shared `GridTablePagination.jsx` (`data-testid={pageInfoTestId}` on the `Typography` showing "1 - N of total"), wired at the Secrets call site (`SecretsTable.jsx`); needed to assert step 3's pagination-reset-to-page-1 clarification (#1202) |
+
+**Verification command used for the "on `automation/testids` only" column** (run
+from `../EliteaUI` after `git fetch origin`):
+```
+git log origin/main..origin/automation/testids -- src/ | grep -i 2336
+# → c2a5b4c7 test: [EL-2336] add data-testid for Secrets inline create row + pagination info
+```
+None of the 10 testids above are present on `main` as of this amendment — the
+closure record must carry this same verification (fresh fetch, not a stale
+clone) rather than copy this AFS's claim forward.
 
 ### Scoped sub-selectors (class-level UPPER_CASE constants, per `.agents/testing.md`)
 
@@ -218,10 +267,30 @@ same sanctioned pattern as `personal_tokens_page.py`'s `TOKEN_NAME_CELL_SELECTOR
   cleanup-only, not part of the case's own steps (see § Cleanup).
 
 ## Known Defects Found During Exploration
-None found. The one live-behaviour divergence from the case text (pagination
-reset — see step 3) reads as intentional UX, not a defect; filed as a
-clarification (`EliteaAI/elitea-testing-public#1202`), not a bug, per the
-reverse-masking guard.
+None found **at analyst-exploration time** — the one live-behaviour divergence
+from the case text (pagination reset — see step 3) reads as intentional UX,
+not a defect; filed as a clarification (`EliteaAI/elitea-testing-public#1202`),
+not a bug, per the reverse-masking guard.
+
+**AMENDED post-implementation (fix round 2) — a genuine product defect
+surfaced during automation, after this AFS's analyst pass:**
+
+- **`#1203`** (OPEN, filed by the implementer, dedup-checked against `#538` —
+  sibling, not a dupe: `#538` triggers on typing, `#1203` triggers on mount,
+  different trigger/same-object) — `/settings/secrets` fires a React "Maximum
+  update depth exceeded" console warning repeatedly on EVERY mount, before
+  any interaction, isolated to `SecretsContent.jsx`. Root-caused via an
+  isolated repro script (2 reruns) as deterministic (3/3) and NOT caused by
+  this case's own testid additions (static string props, no
+  render/dependency-array effect). Does not affect functional behaviour —
+  the full create → verify → cancel → verify flow (steps 1-9) passes every
+  run. Directly affects this case's step 10 (console-error check), asserted
+  via the `soft_failures`/`pytest.fail()` idiom (a raw console-message list
+  isn't `expect.soft()`-bindable — same pattern as
+  `test_agent_publish_unpublish_version.py`'s `#611` handling) per the
+  sanctioned-RED merge-gate exception. This test is expected to run RED —
+  9/9 functional assertions green, `pytest.fail()` on the recorded known-
+  defect soft failure — until `#1203` ships.
 
 ## Blocked Steps
 None.
