@@ -1,8 +1,42 @@
 ---
 name: Analyst slot has no git commit authority
-description: workflow.md:159 reserves commits to "the implementer, on the work branch the lead names" — the analyst slot writes/edits the AFS file but never runs git commit/push on it, even though prior docs(afs) commits exist in git log (those were made by the lead, not inferred permission for the analyst). RECURRED TWICE already (ELITEA-1808, 2026-07-19; ELITEA-1817, 2026-07-20) after this entry existed — reading the entry is not enough, actively check it BEFORE the first `git commit` of every analyst-slot session.
+description: SUPERSEDED 2026-08-05 by the batch pipeline — on a batch-workflow dispatch (trunk named, "you own the tree") the analyst DOES commit the AFS itself. This entry's original rule only applies to standalone/no-trunk dispatches. Check the dispatch prompt FIRST.
 type: feedback
 ---
+
+## SUPERSEDED (2026-08-05, ELITEA-2304) — read this section first
+
+The batch pipeline (`test-automation-workflow` skill, current
+`test-case-analysis` § Handoff, and `.agents/workflow.md`) now makes the
+analyst the AFS's committer, by design: "Committing your own analysis is
+the point — your analysis lands the moment it exists." A batch-workflow
+dispatch names a batch trunk (`tests/batch-<slug>`) and says outright "YOU
+OWN THE TREE RIGHT NOW... ordinary git is yours." `grep -n "commit
+authority" .agents/workflow.md` now returns **nothing** — the line this
+entry was built on (`workflow.md:159`, "the implementer commits on the
+work branch the lead names") no longer exists in the current file.
+
+**Current rule: check which regime the dispatch says you're in, don't
+assume either default.**
+- Dispatch opens with "dispatched from the batch workflow" / names a batch
+  trunk / says "you own the tree" → **commit the AFS, the `_surface.md`
+  digest, and any memory entries yourself, by exact path, on that trunk.**
+  This is the common case now.
+- Standalone dispatch, no trunk named, no explicit commit grant → the
+  original rule below still applies: leave the AFS **untracked on disk**,
+  report the path, let the caller commit it.
+
+The historical incident below (three recurrences of committing to
+`automation/base` directly under the OLD non-batch regime) is preserved for
+context on why over-eager committing was ever a problem — but do not let it
+scare you out of committing when the CURRENT dispatch explicitly grants
+that authority. The failure mode to avoid now is the mirror image: leaving
+a batch-trunk AFS uncommitted because this entry says "no commit
+authority" without reading which regime applies.
+
+---
+
+## Original entry (pre-batch-pipeline regime) — kept for historical context
 
 ## What happened
 
