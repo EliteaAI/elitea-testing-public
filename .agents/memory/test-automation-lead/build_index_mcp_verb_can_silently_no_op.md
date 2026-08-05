@@ -1,21 +1,35 @@
 ---
 name: build_index MCP verb can silently no-op — verify mtime, don't trust the success message
-description: mcp__onetest-tms__build_index reported "wrote index.json, N cases indexed" but the file on disk in the sibling clone never changed (cwd mismatch); check mtime before trusting it, fall back to the packaged _index.py script
+description: passing repo: to any onetest-tms MCP tool (build_index included) clones/writes a SEPARATE checkout at ~/.onetest-workspaces/<owner>/<name> — omit repo entirely so it uses $OT_REPO_ROOT (the real sibling clone)
 type: feedback
 ---
 
-Hit on ELITEA-2037 (issue #474). Called `mcp__onetest-tms__build_index` with
-`repo: "EliteaAI/onetest-ai-tm-Elitea"` after hand-editing the case markdown's
-frontmatter. It returned a clean success: "✓ wrote index.json — 2743 cases
-indexed". But `ls -la index.json` in the actual sibling clone
-(`../onetest-ai-tm-Elitea`) showed an mtime from **before** my markdown edit —
-the tool had not touched that file. A repo-wide `find` for any `index.json`
-modified since the call turned up nothing either; wherever the MCP server's
-`build_index` actually wrote (if anywhere), it wasn't discoverable from this
-checkout. `.mcp.json` sets no explicit `cwd` for the `onetest-tms` server, so
-its working directory is inherited from wherever Claude Code was launched
-(`elitea-testing-public/`, not the TMS sibling) — plausible root cause, not
-confirmed.
+**ROOT CAUSE CONFIRMED (2026-08-05, #784/ELITEA-2277), reading `server.js`
+itself:** every `onetest-tms` MCP tool takes an optional `repo` arg. When
+given, `workspace(repo)` clones/pulls **`$OT_WORKSPACE/<owner>/<name>`**
+(default `~/.onetest-workspaces/<owner>/<name>`) and runs the tool THERE —
+a throwaway parallel checkout, not the sibling clone. When `repo` is
+**omitted**, it uses `DEFAULT_CWD = process.env.OT_REPO_ROOT || …` — and
+`OT_REPO_ROOT` is in fact set (confirmed via `ps eww -p <pid>`) to the real
+`../onetest-ai-tm-Elitea` sibling. So the fix is trivial: **call
+`build_index` (and every other onetest-tms tool) with NO `repo` argument.**
+Passing `repo: "EliteaAI/onetest-ai-tm-Elitea"` looks like the obviously
+correct explicit form and is exactly what silently misroutes the write.
+
+If you already passed `repo:` and suspect this: `rm -rf
+~/.onetest-workspaces/<owner>/<name>` to clear the stale parallel clone (it
+will re-clone from whatever `main` was at the time and can otherwise mislead
+a later accidental `repo:`-qualified call into reading/writing stale data
+indefinitely), then re-run the tool bare.
+
+**Original symptom (issue #474, before the cause was known):** Called
+`mcp__onetest-tms__build_index` with `repo: "EliteaAI/onetest-ai-tm-Elitea"`
+after hand-editing the case markdown's frontmatter. It returned a clean
+success: "✓ wrote index.json — 2743 cases indexed". But `ls -la index.json`
+in the actual sibling clone (`../onetest-ai-tm-Elitea`) showed an mtime from
+**before** my markdown edit — the tool had not touched that file (it had
+silently written to `~/.onetest-workspaces/EliteaAI/onetest-ai-tm-Elitea`
+instead, per the confirmed cause above).
 
 **Don't trust the tool's own "wrote index.json" / "N cases indexed" message as
 proof of a real write.** Check `ls -la index.json` (or `git status`) in the
