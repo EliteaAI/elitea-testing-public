@@ -1,8 +1,25 @@
 ---
 name: AFS Priority line vs pytest.mark — implementer preflight check
-description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 (own p2), ELITEA-2284/PR #1175 (inherited module p2), ELITEA-2310/PR #1186 (own p2, missed a full round), and ELITEA-2377/PR #1242 (module-level, l3->p2 not p3, same-round miss).
+description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 (own p2), ELITEA-2284/PR #1175 (inherited module p2), ELITEA-2310/PR #1186 (own p2, missed a full round), ELITEA-2377/PR #1242 (module-level, l3->p2 not p3, same-round miss), and ELITEA-2435/PR #1256 (both module + per-function p3 not p2, fresh single-test file, same-round miss).
 type: feedback
 ---
+
+## Recurrence 5 — ELITEA-2435/PR #1256 (fresh single-test file, module AND per-function both wrong, same-round miss)
+
+Same lesson, 5th hit in ~2 weeks: brand-new `test_skill_pin_unpin.py`
+(not `extend-existing`, no sibling in the file) declared **both**
+the module-level `pytestmark` list AND a redundant per-function
+`@pytest.mark.p3` decorator on its single test — both `p3` (low) while
+the AFS `Priority: l3 (medium)` maps to `p2`. Reviewer flagged it in round
+1; **no fix attempt was visible in the diff going into round 1's own
+review** — this preflight check existed on disk the whole time and still
+wasn't run before the original handoff. Fixed both sites in one commit
+(one-line edits each). No dedicated regression test (same reasoning as
+recurrence 4). Verified via fresh-process green run + `pytest --collect-only
+-m p2 <file>` now collecting the test (0 before) + `ruff check` clean.
+**Reinforces recurrence 2/3's lesson harder**: the check must run BEFORE
+Phase 6 handoff, every single time, not just after it's been named once —
+knowing the check exists is not the same as running it.
 
 ## Recurrence 4 — ELITEA-2377/PR #1242 (module-level pytestmark, low-vs-medium direction)
 

@@ -8,7 +8,7 @@ Handles: /skills/all
 import re
 import time
 import logging
-from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import Locator, Page, Response, TimeoutError as PlaywrightTimeoutError
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -116,6 +116,15 @@ class SkillsListPage(BasePage):
     # Scoped sub-selector — a skill card's own (non-overflow) tag chip.
     # See ``get_card_tags()``.
     CARD_TAG_CHIP = '[data-testid="entity-card-tag-chip"]'
+
+    # Dynamic (runtime-parameterized) testid template — a skill card's own
+    # "Pin to top"/"Unpin from top" icon button (shared PinButton.jsx
+    # component; getPinTestIdSlug() maps skill cards -> 'skill'). Confirmed
+    # live PRE-EXISTING testid for ELITEA-2435 (see test-specs/skills/
+    # l3_skill-pin-unpin-flow_ELITEA-2435.md, Concrete Handles) — no
+    # add-data-testid round-trip needed for this element. See
+    # ``pin_toggle_button()``.
+    SKILL_PIN_TOGGLE_BUTTON = '[data-testid="skill-pin-toggle-button-{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -232,6 +241,55 @@ class SkillsListPage(BasePage):
             (tag_labels.nth(i).text_content() or "").strip()
             for i in range(tag_labels.count())
         ]
+
+    # ------------------------------------------------------------------
+    # Pin/Unpin (ELITEA-2435)
+    # ------------------------------------------------------------------
+
+    def pin_toggle_button(self, skill_id) -> Locator:
+        """Return the list-row "Pin to top"/"Unpin from top" icon button for *skill_id*."""
+        return self.page.locator(self.SKILL_PIN_TOGGLE_BUTTON.format(skill_id))
+
+    def click_skill_card(self, skill_name: str, timeout: int = 10000) -> None:
+        """Click the already-rendered skill card matching *skill_name*.
+
+        Assumes the caller is already on ``/skills/all`` (e.g. right after
+        asserting card order) — mirrors
+        ``CredentialsListPage.click_credential_card()``. Does not wait for
+        the detail page to load; callers should follow up with
+        ``SkillDetailPage(page).wait_for_page_load()``.
+
+        Args:
+            skill_name: The skill's exact name (card title text).
+            timeout: Maximum wait time in milliseconds for the card to render.
+        """
+        card = self.skill_card.filter(has_text=skill_name)
+        card.first.wait_for(state="visible", timeout=timeout)
+        card.first.click()
+
+    def get_pin_toggle_label(self, skill_id) -> str:
+        """Return the button's current accessible label ("Pin to top" / "Unpin from top").
+
+        Read as an attribute off the already-testid-located button — not used
+        as a locator strategy (testid-only policy, .agents/testing.md).
+        """
+        return self.pin_toggle_button(skill_id).get_attribute("aria-label") or ""
+
+    @action("Toggle skill pin (list view)")
+    def click_pin_toggle(self, skill_id) -> Response:
+        """Click the list-row pin/unpin button and wait for the underlying
+        ``POST``/``DELETE .../social/pin/prompt_lib/{project}/skill/{id}``
+        response, per the AFS's wait-on-network-response guidance (no fixed sleep).
+
+        Returns:
+            The matched Playwright ``Response``.
+        """
+        pattern = "/social/pin/prompt_lib/"
+        with self.page.expect_response(
+            lambda r: pattern in r.url and r.url.rstrip("/").endswith(f"/skill/{skill_id}")
+        ) as response_info:
+            self.pin_toggle_button(skill_id).click()
+        return response_info.value
 
     def wait_for_skill_absent(self, name: str, timeout: int = 10000):
         """Wait until a skill is no longer visible in the list.
