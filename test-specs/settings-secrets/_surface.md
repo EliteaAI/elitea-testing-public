@@ -244,6 +244,69 @@ by ELITEA-2337/2338/2343 analyst sessions (same day).
   create `POST` resolved **201 Created** (not a 409/400 conflict). The
   backend does not treat a hidden secret's name as still-reserved.
 
+## Three-dot menu → "Edit value" flow (confirmed live, ELITEA-2347, 2026-08-06)
+- **Fourth distinct interaction mechanism on this page** (alongside the
+  row-level eye-icon toggle, the menu's Hide, and the shared delete modal).
+  "Edit value" enters the SAME row-level edit mode the create flow uses
+  (`GridRowModes.Edit`, `EditSecretInputGridTable` renders for the Value
+  column) but for an EXISTING (`!isNew`) row, NOT a `isNew` one.
+- **Name column renders NO input at all in this mode — confirmed live and in
+  source.** `SecretsTable.jsx`'s `renderNameCell` guard is literally
+  `if (isEditing && row.isNew)` — for an existing row, even while actively in
+  edit mode, the Name column renders the exact same `secret-name-cell` static
+  `Text.EllipsisTypography` it shows in plain view mode. `secret-name-input`
+  count is `0` for an existing row's edit-value mode (confirmed via DOM
+  query) — contrast the CREATE flow (ELITEA-2336), where a brand-new row DOES
+  render `secret-name-input` live-editable. This is the mechanism behind the
+  case's "name field is read-only" claim — there is no disabled/readonly
+  input anywhere in this code path, just no input at all.
+- **Value field starts EMPTY, not pre-filled with the existing plaintext.**
+  Clicking "Edit value" fires `handleEditClick` (`useSecretRowActions.hooks.js`)
+  which calls `showSecret` (→ `GET /api/v2/secrets/secret/default/{project_id}/{name}`,
+  same endpoint the row-level reveal toggle uses, `200 OK`, confirmed live) —
+  but `SecretsTable.jsx`'s WRAPPING `handleEditClick` (lines 221-246)
+  immediately clears the fetched value: `secretValue: ''`. Confirmed live:
+  `secret-value-input`'s `.inputValue()` === `""` right after entering edit
+  mode, before typing anything. The GET's plaintext result is fetched and
+  silently discarded — not a bug, just wasted work (possibly a leftover from
+  an earlier design that pre-filled the field); don't mistake this GET for
+  evidence the field will show the old value.
+- **Save fires `PUT /api/v2/secrets/secret/default/{project_id}/{name}`** —
+  confirmed live, body `{"value": "<new value>"}`, `200 OK`, response body
+  `{"name": "<name>", "secret_name": "{{secret.<name>}}"}` (same shape as the
+  create mutation's response). Distinct from every other secrets mutation:
+  singular `secret` path segment (like delete/reveal) but `PUT` method
+  (unique to this flow).
+- **No list-GET refetch after the edit PUT** — confirmed live (network diff)
+  AND in source: `useSecretRowUpdate.hooks.js`'s `processRowUpdate`, the
+  `else` (non-`isNew`) branch updates `rows` state directly from the mutation
+  response and never calls `refetch()` — only the `isNew`/create branch does
+  (on a `setTimeout`). An implementer who waits on a list-GET after this PUT
+  will wait forever / rely on a timeout instead of a real signal.
+- **Reveal after edit is a genuine server round-trip proof, not just local
+  state.** Clicking the eye icon after saving fires a FRESH
+  `GET /api/v2/secrets/secret/default/{project_id}/{name}` (`200 OK`) and the
+  revealed `secret-value-cell` shows exactly the newly-saved value — this is
+  the strongest available proof the PUT actually persisted server-side (as
+  opposed to only updating optimistic local React state). Confirmed live this
+  session end-to-end: created `autotest_edit_2347_a1b2c3d4` = `original-value-123`
+  → Edit value → saved `updated-value-456` (PUT 200) → revealed via eye icon →
+  text content exactly `"updated-value-456"`.
+- **Menu-open non-determinism, fourth data point.** Same three-dot button as
+  ELITEA-2338/2343/2344 — this session's FIRST open (for Edit value) needed
+  the existing React-`onClick` workaround (plain `.click()` left the button
+  "active"/pressed with no menu mounting); the SECOND open (cleanup Delete)
+  succeeded with a plain click. Net evidence across all four sessions remains
+  mixed — keep using `open_row_actions_menu()`'s workaround unconditionally.
+  Tracking: `EliteaAI/elitea-testing-public#1222` (open).
+- **Cleanup-only console 404, not reproduced within the case's own steps.**
+  After deleting the test secret (post-assertion cleanup), one console error
+  fired: `Failed to load resource: 404` for
+  `GET .../secret/default/399/<name>` — likely a stray background request
+  racing the delete. Did not occur during steps 1-8 of the case itself (only
+  during teardown). Not investigated further; flagged so a future session
+  doesn't misattribute it to the edit-value flow under test.
+
 ## Data scale
 - Project `Private` (399) already has 100+ real secrets (e.g. `auth_token`,
   `default_llm_model_name`, `pgvector_project_connstr`, `webhook_secret_v450`,
