@@ -24,3 +24,4 @@
 - [Recharts tooltip testid](recharts_hover_tooltip_testid_pattern.md) — thread via content={p=>...}; hover w/ real mouse.move, not page.evaluate
 - [Agent Hub family naming drift](agent_hub_family_agent_hub_vs_catalog_naming_drift.md) — "Agent HUB" case text vs live "Catalog"; cite #1208, don't re-file
 - [MUI icon auto-testid is dev-only](mui_icons_material_auto_testid_on_icon_svg.md) — `createSvgIcon` strips it in prod builds; NOT a safe locator, ever
+- [Provenance grep false negatives](provenance_grep_needs_case_insensitive.md) — needs -i; object-literal `testId:` (colon) still fails filter, eyeball raw grep

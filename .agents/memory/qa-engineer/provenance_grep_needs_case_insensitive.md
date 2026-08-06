@@ -31,3 +31,20 @@ vs literal-`data-testid=` false-negative history (#73/#95/#166/#175/#262) —
 this is the SAME family of bug, one layer up (case, not just prop-vs-literal
 shape). Worth folding into that section's canonical command next time
 someone touches it.
+
+**Third gap, found ELITEA-2347 (2026-08-06): `-i` alone still isn't enough for
+an OBJECT-LITERAL prop.** `testId: 'secrets-add-button',` (colon, no `=` at
+all) fails the filter EVEN WITH `-i`, because the regex
+`testid.*=.*$t` requires a literal `=` character between the "testid" match
+and the value — an object-literal key:value pair has none. Confirmed live:
+`git grep -qiE -- "secrets-add-button" origin/automation/testids -- src/ |
+grep -qiE "(data-testid|testid.*=.*secrets-add-button)"` reports NO MATCH
+even though `git grep` itself finds the line
+`testId: 'secrets-add-button',` in `SecretsContent.jsx`. **When the filter
+says "no" and you're not certain, don't trust it — re-run the STAGE-1 `git
+grep` alone (no filter) and eyeball the matched lines by hand.** The filter
+is a convenience for the common `data-testid="x"` / `testId={x}` shapes; it
+is not exhaustive, and treating a filtered "no" as ground truth produced a
+false negative here that a 10-second manual check caught. For a small
+handle set (typical AFS Concrete Handles table, &lt;20 testids), skip the
+filter regex entirely and just read the raw `git grep` output per testid.
