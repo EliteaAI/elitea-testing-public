@@ -60,6 +60,29 @@ class SkillsListPage(BasePage):
         description="App-wide Toast component's message container"
     )
 
+    # Toast severity root (Toast.jsx's MUI <Alert>) — ELITEA-2438 addition,
+    # mirroring ChatPage.toast_alert / PipelineDetailPage's identical field.
+    # Testid is the stable identity; severity is state carried via
+    # data-severity, per the "testid = identity, state via data-*" policy —
+    # never a severity-suffixed testid.
+    toast_alert = LocatorDescriptor(
+        testid="toast-alert",
+        description="App-wide toast Alert root; carries data-severity (info/warning/error/success)."
+    )
+
+    # Severity-scoped toast alert selector — testid identity + data-severity
+    # state filter, the compliant shape for a state-dependent assertion.
+    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
+
+    # Scoped sub-selector — the toast message text node, read from inside a
+    # severity-scoped toast_alert (see ``get_toast_text()``).
+    TOAST_MESSAGE_SELECTOR = '[data-testid="toast-message"]'
+
+    toast_dismiss_button = LocatorDescriptor(
+        testid="toast-dismiss-button",
+        description="Close (X) icon button on the app-wide toast Alert."
+    )
+
     search_input = LocatorDescriptor(
         testid="agent-search-input",
         description=(
@@ -558,6 +581,26 @@ class SkillsListPage(BasePage):
     # Import
     # ------------------------------------------------------------------
 
+    @action("Upload skill file")
+    def upload_skill_file(self, file_path: str):
+        """Click Import and upload a file via the native file chooser.
+
+        Unlike :meth:`import_skill`, this does NOT wait for the "Import
+        parameters" dialog to appear — a file whose frontmatter is missing
+        a required key (e.g. ``name``) is rejected client-side before that
+        dialog ever renders (ELITEA-2438), so a caller that unconditionally
+        waited on it would time out. Callers uploading a well-formed file
+        should prefer :meth:`import_skill`, which builds on this method.
+
+        Args:
+            file_path: Absolute path to the ``.md`` file to upload.
+        """
+        logger.info("Uploading skill file (no dialog wait): %s", file_path)
+        with self.page.expect_file_chooser() as fc_info:
+            self.import_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(file_path)
+
     @action("Import skill from file")
     def import_skill(self, file_path: str, timeout: int = 10000):
         """Import a skill from an exported ``.md`` file.
@@ -572,16 +615,59 @@ class SkillsListPage(BasePage):
             file_path: Absolute path to the ``.md`` file to upload.
             timeout: Maximum wait time in milliseconds for the dialog.
         """
-        logger.info("Importing skill from file: %s", file_path)
-        with self.page.expect_file_chooser() as fc_info:
-            self.import_button.click()
-        file_chooser = fc_info.value
-        file_chooser.set_files(file_path)
+        self.upload_skill_file(file_path)
 
         # Wait for the "Import parameters" dialog to render the parsed preview.
         dialog = Dialog.wait_for(self.page, timeout=timeout)
         dialog.get_by_text("Import parameters").wait_for(state="visible", timeout=timeout)
         logger.info("Import parameters dialog visible")
+
+    def has_visible_dialog(self, timeout: int = 500) -> bool:
+        """Return True if a MUI dialog (``[role="dialog"]``) is visible.
+
+        Delegates to the shared ``components.mui.Dialog`` locator (used by
+        this page's own :meth:`import_skill`) rather than introducing a new
+        raw role selector — used to assert the ABSENCE of the "Import
+        parameters" dialog after an invalid file upload (ELITEA-2438), where
+        client-side validation rejects the file before that dialog ever
+        renders.
+
+        Args:
+            timeout: Maximum wait time in milliseconds. Short by default —
+                callers checking absence should already have waited for
+                whatever positive signal (e.g. an error toast) proves the
+                flow settled, so this is a fast confirmation, not a poll.
+        """
+        try:
+            Dialog.wait_for(self.page, timeout=timeout)
+            return True
+        except PlaywrightTimeoutError:
+            return False
+
+    def get_toast_alert(self, severity: str):
+        """Return the toast Alert locator scoped to a specific data-severity value.
+
+        Testid identity (``toast-alert``) + a ``data-severity`` state filter
+        — the compliant shape for a state-dependent assertion (state is
+        never encoded in the testid itself). Mirrors
+        ``ChatPage.get_toast_alert()``.
+
+        Args:
+            severity: e.g. "warning", "info", "error", "success".
+        """
+        return self.page.locator(self.TOAST_ALERT_SEVERITY.format(severity))
+
+    def get_toast_text(self, severity: str, timeout: int = 10000) -> str:
+        """Wait for a severity-scoped toast and return its message text.
+
+        Args:
+            severity: e.g. "warning", "info", "error", "success".
+            timeout: Maximum wait time in milliseconds for the toast.
+        """
+        alert = self.get_toast_alert(severity)
+        alert.wait_for(state="visible", timeout=timeout)
+        message = alert.locator(self.TOAST_MESSAGE_SELECTOR)
+        return (message.text_content() or "").strip()
 
     @action("Expand import preview details")
     def expand_import_preview_details(self, timeout: int = 10000):
