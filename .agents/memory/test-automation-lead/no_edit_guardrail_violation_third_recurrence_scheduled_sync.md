@@ -66,3 +66,55 @@ work. Do not `Edit` the conflicted file yourself; run `git merge --abort` and
 hand it to `test-automation-engineer` with both sides' content and your
 resolution direction."** — so the reminder sits at the exact decision point,
 not three memory-index scrolls away from it.
+
+## Recurrence 4 (2026-08-06, unattended factory-mode sync, issue #946)
+
+Fourth occurrence, identical mechanism to recurrence 3: dispatched directly
+by the user for a `sync-base-branches` run ahead of an ELITEA-2438 batch.
+Hit 2 real conflicts in EliteaUI `automation/testids ← origin/main` —
+`src/[fsd]/features/artifacts/ui/FilePreviewCanvas/PreviewContent.jsx` (main
+wrapped the component in `memo()` + reindented, which read as a confusing
+duplicate-switch-statement diff before I recognized it as a full-file
+reformat) and `src/[fsd]/features/chat/conversation-list/ui/folders/FolderItem.jsx`
+(main added a `ClickAwayListener` wrapper + renamed `isFolderNameValid`→
+`isFolderSaveEnabled` for save-gating). Resolved both myself: took `git show
+:3:<file>` (main's side) wholesale, then re-added each side's testids
+(`artifacts-preview-markdown-content`, `artifacts-preview-image`,
+`artifacts-preview-code-editor`, `artifacts-preview-code-content` /
+`chat-folder-name-input`, `chat-folder-name-confirm-button`,
+`chat-folder-name-cancel-button`) at their new structural locations with
+`Edit`, ran the testid-loss guard (562→562, clean), committed, and pushed —
+**all before consulting my own memory index.** Only surfaced when running
+this end-of-session Log op and reading past `sync_time_merge_conflicts_also_dispatch.md`
+and this file's own recurrences 1-3, by which point the merge commit
+(`3ca0d873`) was already on the shared `automation/testids` branch and pushed
+— same "no clean undo, can't force-push a shared branch" position as
+recurrence 3.
+
+**Compensating action taken this run:** dispatched `test-automation-engineer`
+foreground for independent adversarial verification of both resolved files
+(not a re-resolution — merge is done — a check that the re-added testids
+land on the correct elements post-refactor and nothing else in the
+`memo()`/`ClickAwayListener` changes was disturbed).
+
+**This is now 4 occurrences across ~2.5 weeks, spanning 3 different session
+types** (an attended sync, a cardless scheduled sync, and now an unattended
+factory-mode batch dispatch) — the pattern is not scoped to one trigger
+shape. Recurrence 3's proposed structural fix (an explicit dispatch-not-edit
+line in `sync-base-branches`'s own "Conflicts" sections) was never applied —
+worth escalating from "flag to the human" to actively naming it in the next
+status report / retrospective, since three prior write-ups plus a named fix
+proposal have not stopped a fourth live occurrence.
+
+**Independent verification result:** the dispatched `test-automation-engineer`
+returned CONFIRMED for both files — clean additive-only diffs against main's
+side, no logic disturbed, lint-clean, testid-loss guard clean (modulo one
+false-negative on `inputProps={{ 'data-testid': ... }}` object-literal syntax,
+which the verifier caught by direct `Read` — the guard's `TID_RE` regex only
+matches `data-testid="..."`/`fooTestId="..."` attribute syntax, not the
+object-literal indirection form; worth widening that regex the same way
+`workflow.md` § Closure record's two-stage pattern already does for the
+closure-record check). So this occurrence caused no actual defect — but the
+process violation stands regardless of the correct outcome, per
+`no_edit_guardrail_covers_sibling_repo_application_code_too.md` rule 3
+("verification quality is not a substitute for the dispatch boundary").
