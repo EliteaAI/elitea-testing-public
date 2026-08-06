@@ -95,12 +95,20 @@ None — all 6 case steps were reached and observed live.
 ## Automation Hints
 - Framework: Playwright + pytest (this project), Playwright MCP tools used this dispatch.
 - Reuse `AgentHubPage.search(query)` as-is for steps 2–4 (it already waits on the exact debounced `public_applications` response this case needs — see its docstring).
-- `AgentHubPage` needs ONE new method for step 6 — no page object currently clears the search field:
+- Assert step 5 structurally, not by hardcoded count: read all currently-visible card names (`AGENT_CARD_PREFIX` locator's `text_content()` over each match, or the debounced response body's `rows[].name`) and assert (a) `len(filtered) < len(baseline)`, (b) every filtered name contains the query substring case-insensitively, (c) the case's named example ("User Story Creator") is among them.
+- Assert step 6 by comparing the restored card-name set (or count) back to the step-1 baseline set/count captured before typing — exact equality, not just "not empty".
+- Console-error capture across steps 3–6 (reuse the existing `capture_console_errors()`/`console_errors` idiom from `test_agent_hub_like_agent_list_view.py`) — expect zero; this case has no known defect to soft-assert around, unlike the like/unlike flow's #1215.
+- Marker suggestion: `@pytest.mark.p2` (medium priority → l3), `@pytest.mark.regression`, `@pytest.mark.agents` (matches ELITEA-2350/2352/2354's marker set for this same page).
+
+**Amended during implementation (ELITEA-2363, PR #1230, fix round after reviewer findings) — the snippet originally drafted here for `clear_search()` had a real race and was NOT what shipped. Replaced below with what actually merged, plus two more waits the review surfaced as missing.** All three are documented in `never_assume_a_transition_settled.md` (test-automation-engineer memory).
+
+- **`AgentHubPage.clear_search()` — actual shipped version.** The original draft's generic `expect_response` predicate (`"/public_applications/prompt_lib/" in r.url`) matches THREE parallel requests that all re-fire on clear (bulk all-applications, Trending, My-Liked — see § Network Behavior) and can resolve on the fast Trending/My-Liked call while the bulk request — the one that actually repopulates the content grid — is still in flight, leaving the grid showing the stale filtered set for a beat after the method returns. Fixed by scoping the predicate to the bulk call specifically (excluding `trend_start_period`/`my_liked`, the same filter `navigate_and_capture_applications` already uses):
   ```python
   @action("Clear Catalog search field")
   def clear_search(self, timeout: int = 15000):
       """Clear the Catalog search field and wait for the debounced
-      empty-query request to resolve (ELITEA-2363).
+      empty-query BULK request (the one that actually drives the main
+      content grid) to resolve (ELITEA-2363).
 
       Uses select-all + Backspace, NOT `fill("")` — per
       `.claude/rules/mui-patterns.md`, `fill()` sets the DOM value
@@ -109,18 +117,34 @@ None — all 6 case steps were reached and observed live.
       unchanged. There is no dedicated clear/X button on this field
       (confirmed via source — EliteaCatalog.jsx's TextField has no
       InputProps endAdornment) — this IS the intended interaction.
+
+      Clearing re-fires the SAME 3-request pattern as initial page mount
+      (bulk all-applications, Trending, My Liked — AFS § Network
+      Behavior) — all three share the ``/public_applications/prompt_lib/``
+      substring, so the predicate below excludes the Trending/My-Liked
+      query params to deterministically await the BULK response
+      specifically (confirmed live during implementation: awaiting "any"
+      matching response could resolve on the faster My-Liked/Trending
+      call while the bulk request — and therefore the re-rendered
+      content grid — was still in flight).
       """
+
+      def _is_bulk_applications_response(response):
+          return (
+              "/public_applications/prompt_lib/" in response.url
+              and response.request.method == "GET"
+              and "trend_start_period" not in response.url
+              and "my_liked" not in response.url
+          )
+
       self.search_input.wait_for(state="visible", timeout=timeout)
-      with self.page.expect_response(
-          lambda r: "/public_applications/prompt_lib/" in r.url and r.request.method == "GET",
-          timeout=timeout,
-      ):
+      with self.page.expect_response(_is_bulk_applications_response, timeout=timeout):
           self.search_input.click()
           self.search_input.press("ControlOrMeta+a")
           self.search_input.press("Backspace")
       self.wait_for_network(timeout=timeout)
   ```
-- Assert step 5 structurally, not by hardcoded count: read all currently-visible card names (`AGENT_CARD_PREFIX` locator's `text_content()` over each match, or the debounced response body's `rows[].name`) and assert (a) `len(filtered) < len(baseline)`, (b) every filtered name contains the query substring case-insensitively, (c) the case's named example ("User Story Creator") is among them.
-- Assert step 6 by comparing the restored card-name set (or count) back to the step-1 baseline set/count captured before typing — exact equality, not just "not empty".
-- Console-error capture across steps 3–6 (reuse the existing `capture_console_errors()`/`console_errors` idiom from `test_agent_hub_like_agent_list_view.py`) — expect zero; this case has no known defect to soft-assert around, unlike the like/unlike flow's #1215.
-- Marker suggestion: `@pytest.mark.p2` (medium priority → l3), `@pytest.mark.regression`, `@pytest.mark.agents` (matches ELITEA-2350/2352/2354's marker set for this same page).
+- **Two more waits the fixed `clear_search()` alone didn't cover, both added to `AgentHubPage`:**
+  - `wait_for_agent_card_count(expected_count, timeout)` / `wait_for_agent_card_count_not(unexpected_count, timeout)` — retrying `expect(locator).to_have_count(...)`/`.not_to_have_count(...)` assertions, used after `search()` (step 5, wait for the count to move away from the baseline before reading filtered names) and after `clear_search()` (step 6, wait for the count to return to exactly the baseline before reading restored names) — network-settling alone doesn't guarantee the React commit has landed by the time the DOM is read.
+  - `wait_for_any_agent_card(timeout)` — used in **step 1** after `navigate_and_capture_applications()` (reused from ELITEA-2354, waits on the bulk response) and before reading the baseline names. The page heading is static and renders before the data-dependent card grid does, so a bare navigate-then-read races the same way. **Important, and NOT a wait for the DOM count to equal the bulk response's raw row count** — each category section (`AgentCategorySection.jsx`) only renders its first `INITIAL_CARD_DISPLAY_COUNT` items initially, with the rest behind "Show more"; the bulk response routinely lists far more rows (confirmed live: 46 rows) than are ever rendered in the grid at once (confirmed live: 23 cards). Waiting for "at least one card visible" is the correct render-completion signal here, not an exact count.
+- **Step 4's network-count assertion — filter-then-count-1 is NOT enough.** The correct assertion counts ALL requests captured to the search endpoint during the typing window FIRST (assert the total is exactly 1), THEN checks that one request's `query` param — not filtering to `query=="story"` and counting the survivors. Filter-then-count would still show exactly 1 survivor even if the debounce were broken and fired once per keystroke (5 requests for "story", 4 with partial queries filtered out, 1 with the final value) — a real regression that the filter-first shape cannot catch.

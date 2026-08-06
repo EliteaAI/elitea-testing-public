@@ -488,6 +488,28 @@ class AgentHubPage(BasePage):
             self.search_input.press("Backspace")
         self.wait_for_network(timeout=timeout)
 
+    def wait_for_any_agent_card(self, timeout: int = 10000) -> None:
+        """Wait (Playwright auto-retrying assertion) for at least one agent
+        card to be rendered (ELITEA-2363) — the render-completion signal to
+        use after :meth:`navigate_and_capture_applications`'s network-level
+        wait, before reading :meth:`get_visible_agent_card_names` for a
+        baseline.
+
+        Deliberately NOT a wait for the DOM card count to equal the fetch
+        response's raw row count: each category section only displays its
+        first ``INITIAL_CARD_DISPLAY_COUNT`` items initially, with the rest
+        behind "Show more" (``AgentCategorySection.jsx``) — the bulk
+        response can (and normally does) list far more rows than are ever
+        rendered in the grid at once, so comparing rendered-card-count to
+        response-row-count is comparing the wrong two numbers (confirmed
+        live during implementation: a 46-row response against a 23-card
+        initial render). React 18 batches the per-category dispatch calls
+        issued from the same fetch's `.then()` continuation into a single
+        commit, so once ANY card is visible, that commit — and therefore
+        every category's initial slice — has already landed.
+        """
+        self.page.locator(self.AGENT_CARD_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
     def wait_for_agent_card_count(self, expected_count: int, timeout: int = 10000) -> None:
         """Wait (Playwright auto-retrying assertion) for the number of
         currently-rendered agent cards to equal *expected_count* (ELITEA-2363).

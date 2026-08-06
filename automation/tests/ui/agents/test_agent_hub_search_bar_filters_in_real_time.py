@@ -56,8 +56,21 @@ class TestAgentHubSearchBarFiltersInRealTime:
 
         try:
             with allure.step("Step 1 — Navigate to Agent Hub and capture the pre-search baseline"):
-                agent_hub.navigate()
+                # navigate_and_capture_applications() (ELITEA-2354) waits specifically
+                # on the bulk all-applications response (excluding the parallel
+                # Trending/My-Liked calls) before returning — the network-level
+                # completion signal. The DOM render is a SEPARATE async step relative
+                # to that response resolving (the same race class as clear_search()
+                # below: the heading is static and renders before the data-dependent
+                # card grid does), so wait_for_any_agent_card() additionally confirms
+                # the render itself landed before reading names for the baseline —
+                # NOT a wait for the DOM count to equal the response's raw row count,
+                # since each category section only renders its first
+                # INITIAL_CARD_DISPLAY_COUNT items initially (AgentCategorySection.jsx).
+                applications = agent_hub.navigate_and_capture_applications(timeout=NAVIGATION_TIMEOUT)
+                assert applications, "Expected the bulk applications fetch to return at least one row"
                 assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
+                agent_hub.wait_for_any_agent_card(timeout=UI_ELEMENT_TIMEOUT)
                 baseline_cards = agent_hub.get_visible_agent_card_names()
                 assert baseline_cards, "Expected at least one agent card rendered before searching"
 
@@ -80,17 +93,24 @@ class TestAgentHubSearchBarFiltersInRealTime:
                 "Step 4 — Verify exactly one debounced network request fired with query=story, "
                 "no Enter/submit control involved"
             ):
-                matching_requests = [
-                    r
-                    for r in network_capture
-                    if parse_qs(urlparse(r["url"]).query).get("query") == [SEARCH_TERM]
-                ]
-                assert len(matching_requests) == 1, (
-                    f"Expected exactly one debounced request with query={SEARCH_TERM!r}, "
-                    f"got {len(matching_requests)}: {network_capture!r}"
+                # Count ALL requests fired to the search endpoint during the typing
+                # window FIRST, then check the single survivor's query param — not
+                # filter-by-query-then-count-1. A broken per-keystroke debounce (firing
+                # once per character instead of once after the debounce window) would
+                # still leave exactly one entry whose query param is the FINAL value
+                # "story" if we filtered first, silently passing a real regression.
+                assert len(network_capture) == 1, (
+                    f"Expected exactly one request to {PUBLIC_APPLICATIONS_PATH!r} fired "
+                    f"while typing {SEARCH_TERM!r} (debounced), got {len(network_capture)}: "
+                    f"{network_capture!r}"
                 )
-                assert matching_requests[0]["status"] == 200, (
-                    f"Expected the debounced search request to return 200, got {matching_requests[0]!r}"
+                only_request = network_capture[0]
+                assert parse_qs(urlparse(only_request["url"]).query).get("query") == [SEARCH_TERM], (
+                    f"Expected the single request's query param to be {SEARCH_TERM!r}, "
+                    f"got {only_request!r}"
+                )
+                assert only_request["status"] == 200, (
+                    f"Expected the debounced search request to return 200, got {only_request!r}"
                 )
                 network_capture.stop()
 
