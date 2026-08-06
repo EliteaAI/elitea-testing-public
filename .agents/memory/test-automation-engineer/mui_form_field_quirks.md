@@ -96,6 +96,15 @@ product defect but is test-data-length error. Keep generated kebab-case
 names short (prefix + short suffix, verify total length <= the field's
 known max) rather than assuming free-form length.
 
+**Same trap, Agent name field (ELITEA-1873):** `agent-name-input` enforces
+the same 32-char client-side maxlength (matches the API's 32-char limit,
+ELITEA-1888 AFS). `new_name = f"{original_name}-EDITED"` where
+`original_name` is already a ~28-char generated agent name silently
+truncated to `...-EDI` and failed the dirty-value assertion. Don't append a
+suffix to an already-near-limit generated name — use a short, fixed,
+unrelated replacement value instead when the field's exact content (not
+just "changed") isn't the thing under test.
+
 ## MUI Autocomplete forwards unknown props to its root element
 
 `AutoCompleteDropDown`/MUI `Autocomplete` spreads `{...props}` onto the
