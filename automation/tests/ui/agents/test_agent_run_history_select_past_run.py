@@ -23,6 +23,7 @@ agent's chat is actually opened. See AFS § Test Data amendment.
 Spec: test-specs/agents/l2_run-history-select-past-run-loads-messages_ELITEA-1877.md
 """
 
+import re
 import uuid
 
 import allure
@@ -38,6 +39,15 @@ pytestmark = [pytest.mark.ui, pytest.mark.agents]
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
 AI_RESPONSE_TIMEOUT = 60_000
+
+# ELITEA-1876 — Run History row rendered-text patterns (Date + Version +
+# Duration columns; RunHistoryListItem.jsx / RunHistorySortableHeader.jsx).
+# Displayed date format is `dd-MM-yyyy, hh:mm a`.
+RUN_HISTORY_DATE_PATTERN = re.compile(r"\d{2}-\d{2}-\d{4}, \d{2}:\d{2} (AM|PM)", re.IGNORECASE)
+RUN_HISTORY_DURATION_PATTERN = re.compile(r"\d+(\.\d+)?\s*s\b")
+# Known version name for the disposable agents this test/its extension use —
+# every version created by this suite is named "base" (AFS § Concrete Handles).
+RUN_HISTORY_VERSION_TEXT = "base"
 
 # Newest-first Run History ordering (default sort = Date descending,
 # code-confirmed in `RunHistoryList.jsx`'s `useRunHistorySorting(SORT_TYPES.DATE)`
@@ -85,18 +95,27 @@ def _build_dedicated_agent_payload(name: str) -> dict:
 
 
 class TestAgentRunHistorySelectPastRun:
-    """Run History — selecting a past run loads its own messages (ELITEA-1877, p2)."""
+    """Run History — selecting a past run loads its own messages (ELITEA-1877, p2);
+    extended with ELITEA-1876's per-row Date/Version/Duration assertions
+    (extend-existing — see test-specs/agents/lextend_run-history-list-shows-
+    timestamp-and-version-duration_ELITEA-1876.md)."""
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1877_selecting-a-past-run-from-history-loads-its-messages.md",
         "onetest-ai Test Case link",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1876_run-history-panel-shows-past-runs-with-timestamp-and-preview.md",
+        "onetest-ai Test Case link (extend-existing ELITEA-1876)",
     )
     @pytest.mark.p2
     @pytest.mark.regression
     def test_select_past_run_loads_chat_messages(self, page: Page, agent_api):
         """Clicking an older Run History entry loads its own messages into
         the chat panel, distinct from the run that was active before the
-        panel was opened."""
+        panel was opened. Also verifies (ELITEA-1876) that every listed row
+        — not just the one clicked — displays its Date, Version, and
+        Duration columns."""
         with allure.step("Precondition — create a dedicated disposable agent"):
             agent_name = f"elitea-1877-runhist-{uuid.uuid4().hex[:8]}"
             agent = agent_api.create_agent_full(_build_dedicated_agent_payload(agent_name))
@@ -161,6 +180,36 @@ class TestAgentRunHistorySelectPastRun:
                     "Run History list should show at least 2 entries "
                     f"(conversation A + conversation B), got {item_count}"
                 )
+
+            with allure.step(
+                "Step ELITEA-1876/1 — Verify every Run History row displays a "
+                "well-formed timestamp (not just the row about to be clicked)"
+            ):
+                row_texts = detail_page.get_run_history_item_texts()
+                assert len(row_texts) == item_count, (
+                    f"Expected {item_count} Run History row texts, got "
+                    f"{len(row_texts)}: {row_texts!r}"
+                )
+                for i, row_text in enumerate(row_texts):
+                    assert RUN_HISTORY_DATE_PATTERN.search(row_text), (
+                        f"Run History row {i} should display a timestamp matching "
+                        f"'dd-MM-yyyy, hh:mm AM/PM', got: {row_text!r}"
+                    )
+
+            with allure.step(
+                "Step ELITEA-1876/2 — Verify every Run History row also displays "
+                "its Version and Duration columns (live contract — see AFS "
+                "'Live product finding'; case's 'preview' wording is stale)"
+            ):
+                for i, row_text in enumerate(row_texts):
+                    assert RUN_HISTORY_VERSION_TEXT in row_text, (
+                        f"Run History row {i} should display its Version "
+                        f"({RUN_HISTORY_VERSION_TEXT!r}), got: {row_text!r}"
+                    )
+                    assert RUN_HISTORY_DURATION_PATTERN.search(row_text), (
+                        f"Run History row {i} should display a Duration matching "
+                        f"'<number> s', got: {row_text!r}"
+                    )
 
             with allure.step(
                 "Step 4 — Click the older (non-most-recent) run entry and "
