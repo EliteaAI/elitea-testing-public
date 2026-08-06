@@ -1820,13 +1820,19 @@ class AgentDetailPage(AgentFormPage):
     def send_chat_message(self, message: str, timeout: int = 10000):
         """Type and send a message in the embedded chat panel.
 
+        Uses press_sequentially() instead of fill() to trigger React onChange.
+        MUI inputs don't update React state with fill() — the Send button
+        stays disabled because React thinks the input is empty.
+
         Args:
             message: The message text to send.
             timeout: Maximum wait time for elements.
         """
         logger.info("Sending message in embedded chat: %s", message[:60])
         self.chat_message_input.wait_for(state="visible", timeout=timeout)
-        self.chat_message_input.fill(message)
+        self.chat_message_input.click()
+        self.chat_message_input.clear()
+        self.chat_message_input.press_sequentially(message, delay=10)
         self.page.wait_for_timeout(300)
 
         self.chat_send_button.wait_for(state="visible", timeout=timeout)

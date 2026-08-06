@@ -2,18 +2,8 @@
 
 Verifies that adding an agent as a chat participant surfaces its attached
 skill via "~mention", that dismissing the mention popper and removing the
-participant both work cleanly — and (per a known, deterministic product
-defect) that re-typing "~" after removal should NOT surface the removed
-agent's skill again.
-
-Steps 1-4 (add participant, confirm mention shows the skill, dismiss,
-remove participant) are hard-asserted: no product defect there. Steps 5-6
-(re-check "~mention" post-removal) are soft-asserted — the removed agent's
-skill ghosts in the "Mention skill" popper, a genuine, deterministically
-reproducible (2/2) product defect, filed as
-github.com/EliteaAI/elitea-testing-public/issues/51. Soft-asserting means
-this test goes red the instant #51 is fixed, without masking the defect or
-blocking the rest of the flow.
+participant both work cleanly, and that re-typing "~" after removal does
+NOT surface the removed agent's skill again.
 
 No conversation is ever created in this case (the message is never sent),
 so cleanup only needs to remove the agent + skill.
@@ -47,8 +37,6 @@ SKILL_DESCRIPTION = "ELITEA-1793 automation skill — ghost-skill-after-remove v
 SKILL_INSTRUCTIONS = "Tell jokes about robots. Always output in UPPER CASE"
 AGENT_NAME = "elitea-1793-joker-agent"
 
-KNOWN_DEFECT_ISSUE = "github.com/EliteaAI/elitea-testing-public/issues/51"
-
 
 def _create_skill(page, name: str, description: str, instructions: str) -> int:
     """Create a skill via the UI and return its numeric ID.
@@ -81,7 +69,6 @@ class TestGhostSkillAfterAgentRemoved:
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-1793_ghost-skill-not-shown-after-agent-participant-removed.md",
         "onetest-ai Test Case link",
     )
-    @allure.issue(KNOWN_DEFECT_ISSUE, "Known defect — ghost skill in mention popper")
     @pytest.mark.p3
     @pytest.mark.regression
     def test_ghost_skill_not_shown_after_agent_participant_removed(
@@ -89,8 +76,8 @@ class TestGhostSkillAfterAgentRemoved:
     ):
         """Create a skill, attach it to an agent, add the agent as a chat
         participant, confirm '~mention' shows the skill, dismiss, remove the
-        participant, and (soft-asserted, known defect) confirm the skill no
-        longer appears in '~mention' afterward.
+        participant, and confirm the skill no longer appears in '~mention'
+        afterward.
 
         Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
         1. Create Skill, create Agent, attach the skill to the agent.
@@ -98,17 +85,12 @@ class TestGhostSkillAfterAgentRemoved:
         3. Type '~' — the "Mention skill" popper lists the attached skill.
         4. Dismiss the popper with Escape without selecting anything.
         5. Remove the agent from the chat's participants.
-        6. Type '~' again — soft-asserted per known defect #51: the removed
-           agent's skill should NOT be listed, but live product still shows
-           it (ghost).
+        6. Type '~' again — the removed agent's skill should NOT be listed.
         7. Control check: a fresh conversation that never had a participant
-           shows the correct "No skills attached to this agent" empty state
-           — proving the ghost is specifically a stale-state-after-removal
-           bug, not "the mention list always shows all project skills".
+           shows the correct "No skills attached to this agent" empty state.
         """
         skill_id = None
         agent_id = None
-        soft_failures = []
 
         try:
             with allure.step("Step 1 — Create Skill and Agent, attach the skill to the agent"):
@@ -202,40 +184,24 @@ class TestGhostSkillAfterAgentRemoved:
                 )
 
             with allure.step(
-                "Step 6 — Type '~' again (soft-assert, known defect "
-                f"{KNOWN_DEFECT_ISSUE}): the removed agent's skill should "
+                "Step 6 — Type '~' again: the removed agent's skill should "
                 "NOT be listed"
             ):
                 popper_after_removal = chat.open_mention_skill_popper(
                     timeout=UI_ELEMENT_TIMEOUT
                 )
-                ghost_skill_shown = chat.is_skill_in_mention_popper(
+                assert not chat.is_skill_in_mention_popper(
                     popper_after_removal, SKILL_NAME, timeout=UI_ELEMENT_TIMEOUT
+                ), (
+                    f"Skill '{SKILL_NAME}' should NOT appear in the 'Mention skill' "
+                    "popper after its participant agent was removed from the chat"
                 )
-                # Known defect: github.com/EliteaAI/elitea-testing-public/issues/51 —
-                # the "Mention skill" popper retains the removed agent's
-                # skill (a stale client-side list that isn't invalidated on
-                # participant-remove). Soft-assert (record, don't raise) so
-                # the control check in Step 7 still runs and reports; this
-                # test goes red the moment #51 is fixed.
-                if ghost_skill_shown:
-                    logger.warning(
-                        "Known defect #51 reproduced: '%s' still listed in "
-                        "'Mention skill' popper after its agent was removed",
-                        SKILL_NAME,
-                    )
-                    soft_failures.append(
-                        f"Known defect {KNOWN_DEFECT_ISSUE}: skill '{SKILL_NAME}' "
-                        "still appears in the 'Mention skill' popper after its "
-                        "participant agent was removed from the chat"
-                    )
                 chat.dismiss_mention_popper()
 
             with allure.step(
                 "Step 7 — Control check: a fresh conversation (no participant "
                 "ever added) shows the correct 'No skills attached to this "
-                "agent' empty state — proves the ghost is specifically a "
-                "stale-state-after-removal bug"
+                "agent' empty state"
             ):
                 new_tab = page.context.new_page()
                 try:
@@ -260,13 +226,6 @@ class TestGhostSkillAfterAgentRemoved:
                     )
                 finally:
                     new_tab.close()
-
-            if soft_failures:
-                pytest.fail(
-                    "Soft assertion(s) failed (known deterministic product "
-                    "defect, not test/infrastructure — rest of the flow "
-                    "passed cleanly):\n" + "\n".join(soft_failures)
-                )
 
         finally:
             # Cleanup per AFS: no conversation is ever created in this case
