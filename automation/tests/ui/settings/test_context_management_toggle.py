@@ -24,7 +24,7 @@ Coverage Map + EliteaAI/elitea-testing-public#1238):
 Markers:
     - ui: requires browser
     - settings: settings pages tests
-    - p3: low priority (per case metadata: l3)
+    - p2: medium priority (per case metadata: l3 — this suite's l3 maps to p2, not p3)
     - regression
 """
 
@@ -37,7 +37,7 @@ from playwright.sync_api import Response, expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.settings, pytest.mark.p3, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.settings, pytest.mark.p2, pytest.mark.regression]
 
 # ---------------------------------------------------------------------------
 # Timeout / autosave constants
