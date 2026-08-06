@@ -13,6 +13,7 @@
 - [Sanctioned-RED traps](sanctioned_red_soft_assert_traps.md) — soft_failures not expect.soft; RED isn't guaranteed
 - [An assertion can prove the wrong fact](assertion_proves_the_wrong_fact.md) — invert-check passes, claim still false
 - [Agent fixtures that will chat](reasoning_effort_none_breaks_embedded_chat.md) — reasoning_effort:"none" 500s chat
+- [Proving a negative w/o sleep](proving_a_negative_without_wait_for_timeout.md) — `Locator.wait_for()` + `pytest.raises(TimeoutError)`, never wait_for_timeout
 - [post_data_json is None](playwright_post_data_json_none_use_route_interception.md) — use page.route() to read a request body, not response.request
 - [Testid lands on the MUI wrapper](testid_lands_on_mui_wrapper_not_input.md) — relocate via inputProps/slotProps
 - [Entity-card scoping](entity_card_scoping_pattern.md) — shared Card.jsx already has entity-card/-name; check first
