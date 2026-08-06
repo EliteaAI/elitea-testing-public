@@ -445,3 +445,110 @@ class AgentHubPage(BasePage):
             self.search_input.click()
             self.search_input.press_sequentially(query, delay=50)
         self.wait_for_network(timeout=timeout)
+
+    @action("Clear Catalog search field")
+    def clear_search(self, timeout: int = 15000):
+        """Clear the Catalog search field and wait for the debounced
+        empty-query BULK request (the one that actually drives the main
+        content grid) to resolve (ELITEA-2363).
+
+        Uses select-all + Backspace, NOT `fill("")` — per
+        `.claude/rules/mui-patterns.md`, `fill()` sets the DOM value
+        directly and would not fire the debounced React `onChange`,
+        leaving the `query` state (and therefore the rendered list)
+        unchanged. There is no dedicated clear/X button on this field
+        (confirmed via source — EliteaCatalog.jsx's TextField has no
+        InputProps endAdornment) — this IS the intended interaction.
+
+        Clearing re-fires the SAME 3-request pattern as initial page mount
+        (bulk all-applications, Trending, My Liked — AFS § Network
+        Behavior) — all three share the ``/public_applications/prompt_lib/``
+        substring, so the predicate below excludes the Trending/My-Liked
+        query params the same way :meth:`navigate_and_capture_applications`
+        does, to deterministically await the BULK response specifically
+        (confirmed live during implementation: awaiting "any" matching
+        response could resolve on the faster My-Liked/Trending call while
+        the bulk request — and therefore the re-rendered content grid — was
+        still in flight, a race that left the main card grid still showing
+        the pre-clear filtered set for a beat after this method returned).
+        """
+
+        def _is_bulk_applications_response(response):
+            return (
+                "/public_applications/prompt_lib/" in response.url
+                and response.request.method == "GET"
+                and "trend_start_period" not in response.url
+                and "my_liked" not in response.url
+            )
+
+        self.search_input.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(_is_bulk_applications_response, timeout=timeout):
+            self.search_input.click()
+            self.search_input.press("ControlOrMeta+a")
+            self.search_input.press("Backspace")
+        self.wait_for_network(timeout=timeout)
+
+    def wait_for_any_agent_card(self, timeout: int = 10000) -> None:
+        """Wait (Playwright auto-retrying assertion) for at least one agent
+        card to be rendered (ELITEA-2363) — the render-completion signal to
+        use after :meth:`navigate_and_capture_applications`'s network-level
+        wait, before reading :meth:`get_visible_agent_card_names` for a
+        baseline.
+
+        Deliberately NOT a wait for the DOM card count to equal the fetch
+        response's raw row count: each category section only displays its
+        first ``INITIAL_CARD_DISPLAY_COUNT`` items initially, with the rest
+        behind "Show more" (``AgentCategorySection.jsx``) — the bulk
+        response can (and normally does) list far more rows than are ever
+        rendered in the grid at once, so comparing rendered-card-count to
+        response-row-count is comparing the wrong two numbers (confirmed
+        live during implementation: a 46-row response against a 23-card
+        initial render). React 18 batches the per-category dispatch calls
+        issued from the same fetch's `.then()` continuation into a single
+        commit, so once ANY card is visible, that commit — and therefore
+        every category's initial slice — has already landed.
+        """
+        self.page.locator(self.AGENT_CARD_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def wait_for_agent_card_count(self, expected_count: int, timeout: int = 10000) -> None:
+        """Wait (Playwright auto-retrying assertion) for the number of
+        currently-rendered agent cards to equal *expected_count* (ELITEA-2363).
+
+        The Catalog content grid's re-render after a search/clear is
+        asynchronous relative to the underlying network response resolving
+        (same class of race documented on :meth:`wait_for_like_count`), so a
+        one-shot read taken immediately after :meth:`clear_search`/:meth:`search`
+        return can observe stale DOM.
+        """
+        expect(self.page.locator(self.AGENT_CARD_PREFIX)).to_have_count(expected_count, timeout=timeout)
+
+    def wait_for_agent_card_count_not(self, unexpected_count: int, timeout: int = 10000) -> None:
+        """Wait (Playwright auto-retrying assertion) for the number of
+        currently-rendered agent cards to no longer equal *unexpected_count*
+        (ELITEA-2363) — used after :meth:`search` to deterministically await
+        the content grid narrowing to a filtered result set, without
+        hardcoding the exact filtered count (the Catalog's agent list is
+        live, mutable, shared product data — AFS § Test Data).
+        """
+        expect(self.page.locator(self.AGENT_CARD_PREFIX)).not_to_have_count(unexpected_count, timeout=timeout)
+
+    def get_visible_agent_card_names(self) -> list[str]:
+        """Return the text content of every currently-rendered agent card
+        (ELITEA-2363), read via ``AGENT_CARD_PREFIX`` (this class's existing
+        dynamic-testid prefix, ELITEA-2075/2354 — the same handle
+        :meth:`get_agent_card`/:meth:`get_agent_card_count` already use).
+
+        Used to assert the search-filtered set structurally (fewer cards,
+        every name contains the query substring) and the clear-restores-all
+        invariant (exact set equality against the pre-search baseline)
+        without hardcoding a card count — the Catalog's agent list is live,
+        mutable, shared product data (AFS § Test Data).
+
+        Note: each card's ``text_content()`` also includes its like-count
+        digit (``AgentHubLike``/``Like.jsx``, no separator) since the agent
+        name ``Typography`` itself carries no dedicated testid — harmless for
+        substring/set-equality comparisons, since no like state changes
+        during this case.
+        """
+        cards = self.page.locator(self.AGENT_CARD_PREFIX)
+        return [(cards.nth(i).text_content() or "").strip() for i in range(cards.count())]

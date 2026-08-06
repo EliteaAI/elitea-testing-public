@@ -1,6 +1,6 @@
 ---
 name: Assertion honesty — an assertion can pass without proving its claim
-description: "There is an expect() at this step" is not "this step fails when the product is broken." Six shapes where a real assertion is present and still vacuous, and the one question that catches all of them.
+description: "There is an expect() at this step" is not "this step fails when the product is broken." Eight shapes where a real assertion is present and still vacuous, and the one question that catches all of them.
 type: feedback
 ---
 
@@ -11,7 +11,7 @@ different value?** If both branches of the failure mode produce the same
 observable, the assertion is vacuous — an Important finding even though the
 per-step-assertion gate is literally satisfied.
 
-## The six shapes and their remedies
+## The eight shapes and their remedies
 
 1. **Wrong comparison target.** A positional/bounding-box check can be
    non-tautological (fails when inverted) and still compare against a
@@ -43,8 +43,24 @@ per-step-assertion gate is literally satisfied.
    raw read into a polling `expect(...)`, trace every sibling raw read on the
    same element; flag inherited-settle safety as a robustness note so a future
    cleanup of that upstream wait doesn't reintroduce the race.
+7. **Filter-then-count hides over-firing.** `[r for r in captured if r.query ==
+   EXPECTED][... ] == 1` only proves "the request I wanted eventually showed
+   up with the right params" — it cannot see whether OTHER requests (a
+   per-keystroke fetch instead of a debounced one, say `query=s`/`st`/`sto`/…)
+   also fired and got filtered out before the count. When the claim under
+   test IS the absence of extra firings (a debounce, a dedup, an
+   at-most-once), assert the length of the UNFILTERED capture, not a
+   post-filter subset — the two read identically once the wanted request
+   shows up at all.
+8. **Wait inherited from the wrong signal.** A baseline/first-read is "safe"
+   because a preceding navigate/wait touched a RELATED but distinct element —
+   e.g. a page heading becoming visible says nothing about an async
+   data-fetch that populates a card grid underneath it. Every retrying wait
+   added later in the same test (post-search, post-clear) is a tell: if step
+   N's read needed a `wait_for_X_count`, step 1's read of the same collection
+   needs one too, even though nothing forced it to fail yet.
 
-## Seen 6×
+## Seen 8×
 
 - PR #698/ELITEA-2132 R3 — bbox check proved Folders-vs-Conversations layout separation, never folder insertion order; an append-instead-of-prepend regression would pass.
 - PR #696/ELITEA-2114 — `delete-confirm-title` (built to route around #694, text live-verified in the AFS) asserted visible-only.
@@ -52,6 +68,7 @@ per-step-assertion gate is literally satisfied.
 - ELITEA-1947/PR #621 — `mcp_list_page.get_card_names()` returns `[]` on any timeout; shared across 6+ specs.
 - PR #675/ELITEA-1835 — every allure step `passed` while the test was correctly sanctioned-RED from a soft assert.
 - PR #682/ELITEA-2090 — GA3's race fixed to polling; GA1's bare `is_disabled()` on the same button safe only via `click_create_conversation()`'s internal 1 s sleep.
+- PR #1230/ELITEA-2363 — Step 4 filters captured `public_applications` requests down to `query=="story"` before asserting `len()==1`; a broken debounce firing one request per keystroke would still leave exactly one entry with the final query value, so the "single debounced request" claim (the AFS's own Axis-2 addition) goes unverified. Same PR, Step 1: `get_visible_agent_card_names()` read right after `navigate()` (which only waits on `page_heading`, not the bulk applications fetch) — the identical async-render race the implementer had *just* fixed for `clear_search()` (steps 5/6 use `wait_for_agent_card_count[_not]`), left unfixed on the baseline read those two steps compare against.
 
 See also: positional_assertion_wrong_comparison_target_survives_invert_sanity_check.md ·
 purpose_built_handle_asserted_visible_not_text_elitea2114.md ·
