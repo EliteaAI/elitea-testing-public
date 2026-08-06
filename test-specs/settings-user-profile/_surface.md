@@ -158,3 +158,47 @@ import but are wired to different Formik forms).
   may be field-specific (Max Context Tokens / Preserve Recent Messages
   untested this session) or a partial fix since filing. Don't assume #1129
   reproduces for Target Summary Tokens specifically without re-checking.
+
+## Max Context Tokens — non-numeric/negative rejection (ELITEA-2391 session, 2026-08-06)
+
+**Also contradicts #1129**: typing a valid value (`64000`) into Max Context
+Tokens and blurring DID autosave successfully this session (PUT → 200,
+value echoed as `default_context_management.max_context_tokens`). Same
+caveat as Target Summary Tokens above — don't assume #1129 reproduces here
+without re-checking; Preserve Recent Messages remains untested.
+
+**The onChange handler filters keystrokes, not just validates on submit —
+this is the actual mechanism behind "rejects non-numeric/negative".**
+`handleConvertToNumberChange` (`src/[fsd]/widgets/context-budget/lib/validation.js:169-173`,
+shared by BOTH Max Context Tokens and Target Summary Tokens — confirmed via
+source, `MemoryContextManagement.jsx` and `MemorySummarization.jsx` both
+call it) runs `value.replace(/[^0-9]/g, '')` on every keystroke before
+`setFieldValue`. Consequences, confirmed live:
+- Typing `"abc"` → every keystroke has zero digits → field ends up
+  **empty**, not showing "abc". `aria-invalid="true"`, helper text "This
+  field is required" (the field is `required` when `context_enabled` is
+  true).
+- Typing `"-100"` → the minus-sign keystroke is stripped identically to a
+  letter → field ends up showing **`"100"`, not `"-100"`**. A literal
+  negative number can **never** reach Formik state for either field — only
+  its unsigned digits can. `100` then fails `min(1000)` →
+  `aria-invalid="true"`, helper text "Max tokens must be at least 1,000".
+  There is no distinct "negative rejected" error message anywhere in the
+  schema; a typed negative always surfaces as a min-boundary error on
+  whatever digits survive the strip.
+- Neither invalid case fires an autosave PUT (same `validateForm()`-gates-
+  `submitForm()` mechanism documented for Target Summary Tokens above).
+
+Max Context Tokens' own limits: `VALIDATION_LIMITS.MAX_CONTEXT_TOKENS =
+{ MIN: 1000, MAX: 10000000 }` (same constants file as `MAX_TOKENS`, i.e.
+Target Summary Tokens' limits — don't confuse the two sibling constants).
+Schema: `profileValidationSchema.max_context_tokens` in
+`src/[fsd]/features/settings/lib/helpers/profile.helpers.js` — `.min(1000)`,
+`.max(10000000)`, `.integer()`, `.required()` when `context_enabled: true`.
+
+**Implication for automation**: a page-object setter that only accepts
+`value: int` (e.g. the pre-existing `set_max_context_tokens()`) cannot
+drive this test — it needs a sibling method that types a raw `str` and does
+NOT bake in `wait_for_autosave()` (that method's docstring already flags it
+as best-effort/non-committal about whether a PUT actually fired). Same
+shape as `set_target_summary_tokens()`, added for ELITEA-2378.

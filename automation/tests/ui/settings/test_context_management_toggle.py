@@ -526,3 +526,196 @@ class TestContextManagementToggle:
                     original_target_tokens,
                 )
                 profile.set_target_summary_tokens(original_target_tokens)
+
+    def test_max_context_tokens_rejects_non_numeric_and_negative_input(self, page):
+        """Max Context Tokens rejects non-numeric/negative input client-side (ELITEA-2391).
+
+        Distinct observable from ``test_target_summary_tokens_range_validation``
+        (ELITEA-2378): that test exercises the SIBLING field (Target Summary
+        Tokens) and its out-of-range min/max rejection. This test exercises
+        Max Context Tokens' OWN client-side character filter
+        (``handleConvertToNumberChange`` in
+        ``src/[fsd]/widgets/context-budget/lib/validation.js`` — the SAME
+        handler consumed by Target Summary Tokens) which strips every
+        non-digit keystroke (including the minus sign) BEFORE it ever
+        reaches Formik state:
+
+        - Typing ``"abc"`` (zero digits) leaves the field empty, which then
+          fails the ``required`` rule (Max Context Tokens is required while
+          Context Management is enabled).
+        - Typing ``"-100"`` reduces to ``"100"`` (the minus sign is
+          stripped), which then fails the schema's ``min(1000)`` boundary —
+          there is no separate "reject negative" error message because a
+          literal negative number can never reach Formik state for this
+          field.
+
+        Both cases block the autosave submit (``useFormikAutoSaveOnBlur``
+        calls ``validateForm()`` before ``submitForm()`` and returns early
+        on errors); a valid value (64000) is accepted and autosaves
+        normally, response body echoing the persisted value.
+
+        AFS: test-specs/settings-user-profile/
+        lextend_max-context-tokens-non-numeric-negative-validation_ELITEA-2391.md
+        """
+        profile = UserProfileSettingsPage(page)
+
+        with allure.step(
+            "Step 1 — Navigate to Settings -> Memory and verify the Context "
+            "Management section is visible"
+        ):
+            profile.navigate_to_profile()
+            expect(profile.context_management_section).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+        with allure.step(
+            "Step 2 — Ensure Context Management is enabled (precondition — "
+            "Max Context Tokens is unreachable while it's OFF)"
+        ):
+            if profile.is_context_management_enabled():
+                logger.info("Context Management already ON — precondition satisfied, no click needed")
+            else:
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.enable_context_management()
+                assert put_info.value.status == 200, (
+                    f"Turning Context Management ON (precondition) should "
+                    f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+                )
+                _ = get_info.value
+
+        with allure.step(
+            "Step 3 — Verify Max Context Tokens is visible and enabled; "
+            "read its current value and store for the final restore step"
+        ):
+            expect(profile.max_context_tokens_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(profile.max_context_tokens_input).to_be_enabled()
+            original_max_tokens = profile.get_max_context_tokens()
+            assert original_max_tokens > 0, (
+                f"Max Context Tokens should be a positive integer, got {original_max_tokens}"
+            )
+
+        try:
+            with allure.step(
+                "Step 4 — Type \"abc\" (non-numeric) into Max Context Tokens "
+                "and blur; verify the field ends up empty, is flagged "
+                "invalid with a required-field error, and no autosave PUT fires"
+            ):
+                put_seen: list[Response] = []
+
+                def _capture_put(response: Response) -> None:
+                    if _is_autosave_put_response(response):
+                        put_seen.append(response)
+
+                page.on("response", _capture_put)
+                try:
+                    profile.type_max_context_tokens_raw("abc")
+                    expect(profile.max_context_tokens_input).to_have_value(
+                        "", timeout=UI_ELEMENT_TIMEOUT
+                    )
+                    expect(profile.max_context_tokens_input).to_have_attribute(
+                        "aria-invalid", "true", timeout=UI_ELEMENT_TIMEOUT
+                    )
+                    # Bounded negative wait: there is no positive condition to
+                    # wait on for "this did NOT happen" — validateForm() gates
+                    # submitForm() synchronously on blur, so 2s comfortably
+                    # exceeds any debounce/validation cycle observed live
+                    # without inflating runtime. See AFS Automation Hints.
+                    page.wait_for_timeout(2_000)
+                finally:
+                    page.remove_listener("response", _capture_put)
+                assert not put_seen, (
+                    f"Typing \"abc\" into Max Context Tokens should be blocked "
+                    f"by client-side validation (non-digit keystrokes filtered, "
+                    f"field ends up empty and required) — no PUT "
+                    f"{AUTOSAVE_PUT_PATH} should fire, but saw {len(put_seen)}"
+                )
+
+            with allure.step(
+                "Step 5 — Type \"-100\" into Max Context Tokens and blur; "
+                "verify the minus sign is stripped (field shows \"100\", not "
+                "\"-100\"), the field is flagged invalid with a "
+                "min-boundary error, and no autosave PUT fires"
+            ):
+                put_seen = []
+
+                def _capture_put(response: Response) -> None:
+                    if _is_autosave_put_response(response):
+                        put_seen.append(response)
+
+                page.on("response", _capture_put)
+                try:
+                    profile.type_max_context_tokens_raw("-100")
+                    expect(profile.max_context_tokens_input).to_have_value(
+                        "100", timeout=UI_ELEMENT_TIMEOUT
+                    )
+                    expect(profile.max_context_tokens_input).to_have_attribute(
+                        "aria-invalid", "true", timeout=UI_ELEMENT_TIMEOUT
+                    )
+                    page.wait_for_timeout(2_000)  # see Step 4's rationale
+                finally:
+                    page.remove_listener("response", _capture_put)
+                assert not put_seen, (
+                    f"Typing \"-100\" into Max Context Tokens should be "
+                    f"blocked by client-side validation (minus sign filtered, "
+                    f"remaining \"100\" fails the min(1000) boundary) — no PUT "
+                    f"{AUTOSAVE_PUT_PATH} should fire, but saw {len(put_seen)}"
+                )
+
+            with allure.step(
+                "Step 6 — Type 64000 (valid) into Max Context Tokens and "
+                "blur; verify no invalid state, autosave PUT fires -> 200, "
+                "and the response body echoes the persisted value"
+            ):
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.type_max_context_tokens_raw("64000")
+                autosave_response = put_info.value
+                assert autosave_response.status == 200, (
+                    f"Setting Max Context Tokens to 64000 (valid) should "
+                    f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {autosave_response.status}"
+                )
+                _ = get_info.value
+                expect(profile.max_context_tokens_input).not_to_have_attribute(
+                    "aria-invalid", "true", timeout=UI_ELEMENT_TIMEOUT
+                )
+                persisted_value = autosave_response.json()["default_context_management"]["max_context_tokens"]
+                assert persisted_value == 64000, (
+                    f"Autosave PUT response should echo the persisted Max "
+                    f"Context Tokens value 64000, got {persisted_value}"
+                )
+
+            with allure.step(
+                "Step 7 — Restore Max Context Tokens to its original value "
+                "(read in Step 3) and blur; verify the autosave PUT returns "
+                "200 (leaves the shared ${TEST_USER} account as found)"
+            ):
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.type_max_context_tokens_raw(str(original_max_tokens))
+                restore_response = put_info.value
+                assert restore_response.status == 200, (
+                    f"Restoring Max Context Tokens to {original_max_tokens} "
+                    f"should autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got "
+                    f"{restore_response.status}"
+                )
+                _ = get_info.value
+        finally:
+            # Safety net (not a case step — no allure.step): if a mid-flow
+            # assertion failed before Step 7 restored the value, restore it
+            # here so the shared ${TEST_USER} account doesn't stay polluted
+            # for this or a sibling settings-user-profile test. No-op if
+            # Step 7 already succeeded (value already matches the original).
+            # Guard against ValueError: a failure right after Step 4 can
+            # leave the field on the empty string ("abc" filtered to
+            # nothing), which get_max_context_tokens()'s int() coercion
+            # cannot parse — treat that as "needs restoring" rather than
+            # letting the cleanup itself raise and mask the real failure.
+            try:
+                current_max_tokens = profile.get_max_context_tokens()
+            except ValueError:
+                current_max_tokens = None
+            if current_max_tokens != original_max_tokens:
+                logger.info(
+                    "Cleanup: restoring Max Context Tokens to %d after test failure",
+                    original_max_tokens,
+                )
+                profile.type_max_context_tokens_raw(str(original_max_tokens))

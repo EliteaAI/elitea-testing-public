@@ -332,6 +332,54 @@ class UserProfileSettingsPage(BasePage):
             logger.warning("Max context tokens shows %d after set, expected %d — autosave may be delayed", actual, value)
         logger.info("Max context tokens set to %d", value)
 
+    def type_max_context_tokens_raw(self, text: str) -> None:
+        """Type *text* verbatim into Max Context Tokens and blur (Tab).
+
+        Sibling of :meth:`set_target_summary_tokens` for the same reasons
+        (ELITEA-2391): unlike :meth:`set_max_context_tokens`, this method:
+
+        - accepts a raw ``str`` instead of forcing ``str(int)``, so it can
+          type genuinely non-numeric input (e.g. ``"abc"``, ``"-100"``) that
+          :meth:`set_max_context_tokens`'s ``int``-typed signature cannot
+          express;
+        - does NOT call :meth:`wait_for_autosave` — that wait is a
+          best-effort networkidle wait that falls back to a fixed 1s sleep
+          on timeout (see its docstring) and so cannot reliably distinguish
+          "PUT fired" from "PUT did not fire". Max Context Tokens has
+          client-side validation (min 1000, required) that BLOCKS the
+          autosave submit for invalid input
+          (``useFormikAutoSaveOnBlur`` calls ``validateForm()`` before
+          ``submitForm()`` and returns early on errors) — so whether a PUT
+          fires at all depends on the value. Callers own their own
+          ``page.expect_response(...)`` (value expected to pass validation)
+          or a bounded absence check (value expected to fail validation)
+          around this call, matching the wrap-the-call pattern already used
+          throughout ``test_context_management_toggle.py``.
+
+        Do NOT modify :meth:`set_max_context_tokens` itself — it is used
+        unchanged by ``test_context_management_toggle_enables_disables_fields``
+        (ELITEA-2374); this is a sibling method, not a behavioural change to
+        the shared one.
+
+        Args:
+            text: Raw text to type verbatim. May be non-numeric or contain a
+                minus sign — this method does not validate, clamp, or
+                coerce it, by design (the caller is testing the browser's
+                own client-side filtering/validation).
+        """
+        logger.info("Typing raw text into max context tokens: %r", text)
+        field = self.max_context_tokens_input
+
+        # Clear the field and type the new value character by character —
+        # reliably triggers React's onChange for MUI inputs (fill() does not).
+        field.click()
+        field.fill("")
+        field.type(text, delay=50)
+
+        # Press Tab to blur — this is what triggers useFormikAutoSaveOnBlur's
+        # validate-then-maybe-submit flow.
+        field.press("Tab")
+
     # ------------------------------------------------------------------
     # Automatic Summarization helpers
     #
