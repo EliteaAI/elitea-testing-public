@@ -44,11 +44,12 @@ Nothing in an AFS is true because it is written down. Two mechanical duties:
   normal viewport. Confirming the CLARIFICATION-vs-bug classification is
   internally consistent is NOT confirming its premise is true.
 
-## Seen 8×
+## Seen 9×
 
 - PR #698/ELITEA-2132 R2 — step-3 row marked `asserted` for 3 clauses; code asserted 2 (never the DOM position the case's own text required).
 - PR #693/ELITEA-2095 — row cited "console-error check (Axis 2)"; grep found zero `page.on("console"` in test or page object. Same PR: a page-object method's ambient-data dependency never listed in Test Data.
 - PR #639/ELITEA-1839 R2 — round-1 fix corrected the one named breadcrumb row, left 3 siblings identically wrong; R3's whole-map sweep found a 4th.
+- PR #1275/ELITEA-2453 — Coverage Map row for case step 8 ("MESSAGES: shows list representation in Before/After") disposed `already-covered-elsewhere`, citing `test_pipeline_run_details_state_before_after.py` (ELITEA-2452) steps 6/8. The cited assertions (`messages_before != messages_after`, `messages_after` non-empty) prove change + non-emptiness but never parse/shape-check the value as a list/array — unlike this SAME PR's own `custom_list` check (step 11: `json.loads` + `isinstance(list)`), which is what "list representation" actually means elsewhere in the identical AFS. The claimed clause ("list representation") was never the one asserted by the covering spec — a cross-spec instance of the same partial-overclaim pattern, not just within-spec.
 - …plus 5 earlier occurrence(s) — full per-case detail in the source entries below.
 
 See also: afs_amendment_narrates_some_changes_leaves_others_unswept.md ·
