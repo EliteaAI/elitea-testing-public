@@ -33,6 +33,7 @@
 - [AFS "pre-existing testid" can be uncommitted](afs_pre_existing_testid_claim_can_be_uncommitted_worktree_only.md) — check `git status`/`git log` in EliteaUI, not just the live DOM
 - [MUI Menu trigger click can silently no-op](secrets_row_actions_menu_click_needs_react_props_invoke.md) — .click()/force/el.click() all fail; invoke React onClick prop directly
 - [Testid provenance: check timestamps](testid_provenance_claim_verify_commit_timestamp_vs_afs.md) — diff testid commit vs AFS commit before claiming "predates session"/"drift"
+- [PROVENANCE "on-main" needs both refs](afs_on_main_provenance_claim_needs_two_ref_grep.md) — grep origin/main AND origin/automation/testids; same-day claim isn't exempt
 - [a11y `[active]` = focus, not selection](playwright_active_marker_is_focus_not_selection.md) — never assert it as "selected"; add data-selected instead
 - [Shared-state cleanup must soft-assert](cleanup_verification_on_shared_state_must_soft_assert.md) — logger.error-only lets a failed cleanup pollute the shared baseline silently
 - [MUI icon auto-testid is dev-build-only](mui_icon_auto_testid_is_dev_build_only_never_locate_on_it.md) — never locate on it; add a real data-testid prop on the icon call site instead
