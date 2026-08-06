@@ -399,6 +399,45 @@ class UserProfileSettingsPage(BasePage):
         logger.info("Target summary tokens raw value: %r", raw)
         return int(raw)
 
+    def set_target_summary_tokens(self, value: int) -> None:
+        """Type *value* into the Target Summary Tokens input and blur (Tab).
+
+        Uses keyboard events (click + fill("") + type) instead of fill()
+        alone to correctly trigger React's onChange handler on MUI form
+        fields — same rationale as :meth:`set_max_context_tokens`.
+
+        Unlike :meth:`set_max_context_tokens`, this method does NOT wait
+        for an autosave round-trip: Target Summary Tokens has client-side
+        min/max validation (100-4096, ``VALIDATION_LIMITS.MAX_TOKENS`` in
+        ``src/[fsd]/widgets/context-budget/lib/constants.js``) that BLOCKS
+        the autosave submit when the typed value is out of range
+        (``useFormikAutoSaveOnBlur`` calls ``validateForm()`` before
+        ``submitForm()`` and returns early on errors) — so whether a PUT
+        fires at all depends on the value. Callers own their own
+        ``page.expect_response(...)`` context manager (value expected to
+        pass validation) or a bounded absence check (value expected to
+        fail validation) around this call, matching the wrap-the-call
+        pattern already used throughout this test file's autosave
+        assertions.
+
+        Args:
+            value: New target summary tokens value to type. May be
+                out-of-range — this method does not validate or clamp it,
+                by design (the caller is testing the validation itself).
+        """
+        logger.info("Setting target summary tokens to %d", value)
+        field = self.target_summary_tokens_input
+
+        # Clear the field and type the new value character by character —
+        # reliably triggers React's onChange for MUI inputs (fill() does not).
+        field.click()
+        field.fill("")
+        field.type(str(value), delay=50)
+
+        # Press Tab to blur — this is what triggers useFormikAutoSaveOnBlur's
+        # validate-then-maybe-submit flow.
+        field.press("Tab")
+
     def wait_for_autosave(self, timeout: int = 5000) -> None:
         """Wait for the autosave network request to complete.
 
