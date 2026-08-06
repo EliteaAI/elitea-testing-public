@@ -207,3 +207,140 @@ class TestContextManagementToggle:
             if not profile.is_context_management_enabled():
                 logger.info("Cleanup: restoring Context Management to ON after test failure")
                 profile.enable_context_management()
+
+    def test_automatic_summarization_toggle_enables_disables_own_fields(self, page):
+        """Toggling Automatic Summarization OFF disables its own fields; ON re-enables them (ELITEA-2377).
+
+        Distinct observable from ``test_context_management_toggle_enables_disables_fields``
+        (ELITEA-2374): that test drives the *parent* Context Management toggle
+        and observes the Automatic Summarization sub-section mount/unmount as
+        a unit from the OUTSIDE. This test drives the Automatic Summarization
+        toggle itself and observes its own two children (Summarization
+        Instructions, Target Summary Tokens) — a DIFFERENT disable mechanism:
+        a real ``disabled`` prop (``MemorySummarization.jsx``), not a
+        conditional unmount. Fields stay mounted; assert
+        ``to_be_disabled()`` / ``to_be_enabled()``, never ``to_have_count(0)``.
+
+        AFS: test-specs/settings-user-profile/
+        lextend_automatic-summarization-toggle-enables-disables-fields_ELITEA-2377.md
+        """
+        profile = UserProfileSettingsPage(page)
+
+        with allure.step(
+            "Step 1 — Navigate to Settings -> Memory and verify the Context "
+            "Management section is visible"
+        ):
+            profile.navigate_to_profile()
+            expect(profile.context_management_section).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+        with allure.step(
+            "Step 2 — Ensure Context Management is enabled (precondition — "
+            "Automatic Summarization is unreachable while it's OFF)"
+        ):
+            if profile.is_context_management_enabled():
+                logger.info("Context Management already ON — precondition satisfied, no click needed")
+            else:
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.enable_context_management()
+                assert put_info.value.status == 200, (
+                    f"Turning Context Management ON (precondition) should "
+                    f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+                )
+                _ = get_info.value
+
+        with allure.step(
+            "Step 3 — Verify the Automatic Summarization toggle is present; "
+            "if OFF, turn it ON first (precondition for the rest of the flow)"
+        ):
+            expect(profile.automatic_summarization_toggle).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            if profile.is_automatic_summarization_enabled():
+                logger.info("Automatic Summarization already ON — precondition satisfied, no click needed")
+            else:
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.enable_automatic_summarization()
+                assert put_info.value.status == 200, (
+                    f"Turning Automatic Summarization ON (precondition) should "
+                    f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+                )
+                _ = get_info.value
+
+        with allure.step(
+            "Step 4 — With the toggle ON, verify Summarization Instructions "
+            "and Target Summary Tokens are visible and enabled"
+        ):
+            expect(profile.summarization_instructions_textarea).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(profile.summarization_instructions_textarea).to_be_enabled()
+            expect(profile.target_summary_tokens_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(profile.target_summary_tokens_input).to_be_enabled()
+
+        with allure.step(
+            "Step 5 — Read the current Target Summary Tokens value and assert "
+            "it is a non-empty positive integer; store for the step-8 round-trip check"
+        ):
+            original_target_tokens = profile.get_target_summary_tokens()
+            assert original_target_tokens > 0, (
+                f"Target Summary Tokens should be a positive integer, got {original_target_tokens}"
+            )
+
+        try:
+            with allure.step(
+                "Step 6 — Click the Automatic Summarization toggle OFF; "
+                "verify the autosave PUT returns 200"
+            ):
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.disable_automatic_summarization()
+                autosave_response = put_info.value
+                assert autosave_response.status == 200, (
+                    f"Toggling Automatic Summarization OFF should autosave via "
+                    f"PUT {AUTOSAVE_PUT_PATH} -> 200, got {autosave_response.status}"
+                )
+                _ = get_info.value
+                assert not profile.is_automatic_summarization_enabled(), (
+                    "Toggle should read OFF/unchecked after the click"
+                )
+
+            with allure.step(
+                "Step 7 — Verify Summarization Instructions and Target Summary "
+                "Tokens become disabled (real `disabled` prop, NOT unmounted — "
+                "both fields stay present in the DOM)"
+            ):
+                expect(profile.summarization_instructions_textarea).to_be_disabled()
+                expect(profile.target_summary_tokens_input).to_be_disabled()
+
+            with allure.step(
+                "Step 8 — Click the Automatic Summarization toggle back ON; "
+                "verify the autosave PUT returns 200, both fields re-enable, "
+                "and Target Summary Tokens' value equals the original read in "
+                "step 5 (state preserved, not reset)"
+            ):
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.enable_automatic_summarization()
+                autosave_response = put_info.value
+                assert autosave_response.status == 200, (
+                    f"Toggling Automatic Summarization back ON should autosave via "
+                    f"PUT {AUTOSAVE_PUT_PATH} -> 200, got {autosave_response.status}"
+                )
+                _ = get_info.value
+
+                expect(profile.summarization_instructions_textarea).to_be_enabled()
+                expect(profile.target_summary_tokens_input).to_be_enabled()
+
+                restored_target_tokens = profile.get_target_summary_tokens()
+                assert restored_target_tokens == original_target_tokens, (
+                    f"Target Summary Tokens should be preserved across the "
+                    f"disable/enable cycle: expected {original_target_tokens}, "
+                    f"got {restored_target_tokens}"
+                )
+        finally:
+            # Safety net (not a case step — no allure.step): if a mid-flow
+            # assertion failed after step 6 left the toggle OFF, restore it
+            # ON so the shared ${TEST_USER} account doesn't stay polluted
+            # for this or a sibling settings-user-profile test. No-op if
+            # already ON (step 8 succeeded normally).
+            if not profile.is_automatic_summarization_enabled():
+                logger.info("Cleanup: restoring Automatic Summarization to ON after test failure")
+                profile.enable_automatic_summarization()
