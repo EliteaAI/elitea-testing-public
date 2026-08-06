@@ -25,6 +25,7 @@
 - [Isolated-defect assert can ship GREEN](isolated_defect_can_ship_green.md) — verify its logic by hand, not colour
 - [EL-5708 broke indexes_tab](indexes_tab_removed_by_el5708_toolkit_detail_page_stale.md) — count_config_tabs fails
 - [Workflow gate stall = false blocked](workflow_gate_stall_gives_false_blocked_lead_runs_gate_directly.md) — check journal.jsonl, run gate yourself
+- [Gate hard-fail vs soft-stall](workflow_gate_hard_failure_vs_soft_stall_different_recovery.md) — StructuredOutput never called → plain resume works
 - [Long gate Bash calls get infra-killed](long_running_gate_bash_calls_get_infra_killed.md) — retry on 0 FAILED, don't diagnose red
 - [Case→issue mapping isn't in the snapshot](tms_case_to_issue_mapping_not_in_snapshot.md) — capture at intake; strict `[Automate][ELITEA-<id>]` match, not bare-ID
 - [Testid provenance: bulk not per-case](testid_provenance_bulk_check_for_multi_case_closure.md) — one dump+diff for the whole wave; `+`-lines only
