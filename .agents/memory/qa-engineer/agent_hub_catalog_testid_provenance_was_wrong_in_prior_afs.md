@@ -1,27 +1,39 @@
 ---
-name: Agent Hub catalog testid provenance was wrong in a prior AFS
-description: ELITEA-2354's "on-main (pre-existing)" claim for catalog testids was false as of 2026-08-06 — re-verify, don't copy
+name: AFS "on-main" testid provenance claims keep turning out false — re-verify every time
+description: two confirmed cases (Agent Hub catalog, Run History row) where a dated "on-main ✓" AFS claim was false — never inherit, always fresh-fetch+grep
 type: feedback
 ---
 
-During ELITEA-2363 analysis (2026-08-06), a fresh `git fetch origin` +
-`git grep` against `origin/main` in `../EliteaUI` showed that
-`catalog-page-heading`, `catalog-search-input`, and `catalog-agent-card-{id}`
-do **NOT** exist on `origin/main` — `EliteaCatalog.jsx` there has no
-`data-testid` on the heading or search `TextField` at all, and a grep for
-`catalog-agent-card-` returns zero hits. All three ARE on
-`origin/automation/testids`.
+**Confirmed twice now — this is a pattern, not a one-off.**
 
-This directly contradicts `test-specs/agent-hub/l3_agent-hub-like-agent-from-list-view_ELITEA-2354.md`
-§ Concrete Handles, which lists all three as "on-main ✓ (pre-existing,
-ELITEA-2075)". Whether that claim was wrong when made, or `main` was
-reset/force-pushed since, wasn't root-caused (out of scope for the case).
+1. **ELITEA-2363 analysis (2026-08-06):** a fresh `git fetch origin` + `git grep`
+   against `origin/main` in `../EliteaUI` showed `catalog-page-heading`,
+   `catalog-search-input`, and `catalog-agent-card-{id}` do **NOT** exist on
+   `origin/main` — contradicting
+   `test-specs/agent-hub/l3_agent-hub-like-agent-from-list-view_ELITEA-2354.md`
+   § Concrete Handles, which listed all three as "on-main ✓ (pre-existing,
+   ELITEA-2075)". All three were only on `origin/automation/testids`.
+2. **ELITEA-1876 review (2026-08-07, PR #1283):** the AFS
+   (`test-specs/agents/lextend_run-history-list-shows-timestamp-and-version-duration_ELITEA-1876.md`)
+   claimed `run-history-list-item` was "on-main ✓ (pre-existing, reused as-is
+   — verified via `git fetch origin` + `git grep`... origin/main, 2026-08-06)".
+   A fresh fetch+grep at review time found **zero** matches anywhere on
+   `origin/main` (HEAD `8195b5af`, 2026-08-06T13:25) — the testid (added
+   alongside `data-selected` as part of ELITEA-1877's implementation) exists
+   only on `origin/automation/testids` (HEAD `cc327ec9`, later the same day).
+   The claimed verification command, run fresh, contradicted the AFS's own
+   dated claim from the SAME day.
+
+Neither case was root-caused (stale claim at write time vs. main moving/
+resetting after) — and it doesn't matter which: the point is a dated
+"verified" stamp in an AFS is not load-bearing on its own.
 
 Lesson: this is exactly the fresh-ground-truth rule in
-`.agents/role-overrides.md` doing its job — a prior AFS's PROVENANCE column
-is a claim to re-verify, not a fact to inherit. Any future case touching the
-Agent Hub / Catalog surface (`/elitea-catalog`): re-run the fetch+grep
-yourself before citing any of this surface's testids as on-main; don't
-propagate this or any other prior file's claim forward. Full correction
-recorded in `test-specs/agent-hub/_surface.md` (top section) and in
-ELITEA-2363's own AFS.
+`.agents/role-overrides.md` doing its job — a PROVENANCE column (in ANY
+AFS, written by anyone, on any surface, however recently dated) is a claim
+to re-verify with your OWN fresh `git fetch origin` + `git grep` against
+`origin/main`, never a fact to inherit or cite forward. This applies as
+much to a reviewer checking an implementer's/analyst's claim as to an
+analyst reusing a neighbour AFS. Don't let "verified 2026-08-06" read as
+"still true" — check it yourself, every time, regardless of how fresh the
+date looks.
