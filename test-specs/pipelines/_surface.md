@@ -883,3 +883,33 @@ is a legitimate empty state, not an error state).
   `PipelineAPI.get_pipeline()` — `instructions` unchanged post-attempt), it
   isn't a silent partial persist.
   Full detail: `l3_pipeline-yaml-editor-invalid-syntax_ELITEA-2068.md`.
+
+## Run Details panel (RunStateNode/RunStateDialog) — implementation notes
+
+**Resolved/added during ELITEA-2450 implementation:**
+- Testids added (`EliteaAI/EliteaUI@fb66d978`, `automation/testids`): all 8
+  from this feature's AFS Concrete Handles — `pipeline-run-node-label`,
+  `pipeline-run-details-panel`, `pipeline-run-details-header`,
+  `pipeline-run-details-status-badge` (+ `data-status` mirroring
+  `data.status`), `pipeline-run-details-delete-button` (Completed-branch
+  only — the mutually-exclusive Stop-branch IconButton was left untagged,
+  this case only exercises Completed), `pipeline-run-details-close-button`,
+  `pipeline-run-details-timeline-section`, `pipeline-run-details-states-section`.
+  The last two wrap two pre-existing SIBLING `Box`es (header+Stepper /
+  header+accordion-list — NOT a single existing wrapper) in a new
+  `<Box sx={{ display: 'contents' }} data-testid="...">` — `display: contents`
+  keeps the wrapper out of `contentContainer`'s flex layout while still being
+  queryable; safe, no visual change, prettier/eslint clean.
+- **The timeline section's node-id text renders WITHOUT the YAML id's space**:
+  pipeline YAML `id: LLM 1` displays as `LLM1` in
+  `data.timeline[selectedStep]?.id` (confirmed live — concatenated section
+  text was `"Timeline step:LLM119:03:03"`, i.e. `"LLM1"` + timestamp
+  `"19:03:03"`, no separator between the two sibling `Typography` elements).
+  Assert `"LLM1" in text`, not `"LLM 1"`.
+- `FlowEditorConstants.PipelineStatus.Completed === 'Completed'` — the
+  `data-status` attribute value and the badge's visible text are both the
+  literal string `"Completed"` for a completed run (no case transform needed).
+- Confirmed live: the known `EliteaAI/elitea-testing-public#1267` Stepper
+  prop-leak console warning fires exactly once per panel open, matched
+  reliably by `"non-boolean attribute" in msg.text` alone (no location/stack
+  needed) — same idiom as `_is_known_defect_611`.

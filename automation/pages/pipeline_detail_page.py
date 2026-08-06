@@ -779,6 +779,58 @@ class PipelineDetailPage(PipelineFormPage):
     # label (matching what get_*_type() reads back); this map translates.
     TYPE_OPTION_VALUE_BY_LABEL = {"Fixed": "fixed", "F-String": "fstring", "Variable": "variable"}
 
+    # Run Details panel (RunStateNode/RunStateDialog — ELITEA-2450). Testids
+    # added via add-data-testid onto app JSX we own, not a #579 exception.
+    # The run node's clickable label above the Flow canvas — its accessible
+    # name is the tooltip text ("View details"), NOT the visible label
+    # ("Run N details"); locate by testid only, never by role/name.
+    run_node_label = LocatorDescriptor(
+        testid="pipeline-run-node-label",
+        description="Run node's clickable label above the Flow canvas (opens Run Details panel)"
+    )
+
+    run_details_panel = LocatorDescriptor(
+        testid="pipeline-run-details-panel",
+        description="Run Details panel root (RunStateDialog content) — scope anchor for panel-internal locators"
+    )
+
+    run_details_header = LocatorDescriptor(
+        testid="pipeline-run-details-header",
+        description='Run Details panel header text ("Run N details")'
+    )
+
+    # Status badge: testid = stable identity, state read via the `data-status`
+    # attribute mirroring RunStateDialog's `data.status` prop
+    # (.agents/testing.md "testid = stable identity; state via data-*" ruling).
+    run_details_status_badge = LocatorDescriptor(
+        testid="pipeline-run-details-status-badge",
+        description='Run Details panel status badge ("Completed"/etc.) — filter by data-status for state'
+    )
+
+    # Same-element conditional pair (Stop vs Delete IconButton, mutually
+    # exclusive branches) — this AFS only exercises the Completed -> Delete
+    # path, so only the Delete branch carries the testid (canon ruling #277
+    # shape (a): only the used branch is named).
+    run_details_delete_button = LocatorDescriptor(
+        testid="pipeline-run-details-delete-button",
+        description="Run Details panel delete-run icon button (Completed-status branch)"
+    )
+
+    run_details_close_button = LocatorDescriptor(
+        testid="pipeline-run-details-close-button",
+        description="Run Details panel close icon button"
+    )
+
+    run_details_timeline_section = LocatorDescriptor(
+        testid="pipeline-run-details-timeline-section",
+        description='Run Details panel "Timeline step" section (label + node id + stepper)'
+    )
+
+    run_details_states_section = LocatorDescriptor(
+        testid="pipeline-run-details-states-section",
+        description='Run Details panel "States" section (header + per-variable accordion list)'
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -3633,6 +3685,59 @@ class PipelineDetailPage(PipelineFormPage):
                 pass  # No confirmation dialog
             self.page.wait_for_timeout(1000)
             logger.info("Embedded chat cleared")
+
+    # ------------------------------------------------------------------
+    # Run Details panel (RunStateNode/RunStateDialog — ELITEA-2450)
+    # ------------------------------------------------------------------
+
+    def open_run_details_panel(self, timeout: int = 10000):
+        """Click the run node's label (above the Flow canvas) to open the
+        Run Details panel.
+
+        The run node becomes clickable only after the pipeline execution's
+        WebSocket-driven state reaches a terminal status — callers must wait
+        for the embedded chat response (``wait_for_embedded_chat_response``)
+        before calling this.
+
+        Args:
+            timeout: Maximum wait time for the run node label to appear.
+        """
+        logger.info("Opening Run Details panel")
+        self.run_node_label.wait_for(state="visible", timeout=timeout)
+        self.run_node_label.click()
+        self.run_details_panel.wait_for(state="visible", timeout=timeout)
+        logger.info("Run Details panel opened")
+
+    def close_run_details_panel(self, timeout: int = 5000):
+        """Click the Run Details panel's close icon button.
+
+        Args:
+            timeout: Maximum wait time for the panel to disappear.
+        """
+        logger.info("Closing Run Details panel")
+        self.run_details_close_button.click()
+        self.run_details_panel.wait_for(state="hidden", timeout=timeout)
+        logger.info("Run Details panel closed")
+
+    def get_run_details_header_text(self) -> str:
+        """Return the Run Details panel header text (e.g. "Run 1 details")."""
+        return (self.run_details_header.text_content() or "").strip()
+
+    def get_run_details_status(self) -> str:
+        """Return the Run Details panel's status badge value via `data-status`."""
+        return self.run_details_status_badge.get_attribute("data-status") or ""
+
+    def get_run_details_status_badge_text(self) -> str:
+        """Return the Run Details panel's status badge visible text (e.g. "Completed")."""
+        return (self.run_details_status_badge.text_content() or "").strip()
+
+    def get_run_details_timeline_section_text(self) -> str:
+        """Return the Run Details panel's Timeline step section text content."""
+        return (self.run_details_timeline_section.text_content() or "").strip()
+
+    def get_run_details_states_section_text(self) -> str:
+        """Return the Run Details panel's States section text content."""
+        return (self.run_details_states_section.text_content() or "").strip()
 
     # ------------------------------------------------------------------
     # Toolkit credential indicators (Enhancement #5114, Bug #5183)
