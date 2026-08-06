@@ -42,3 +42,20 @@ On the ELITEA-2352 run this took 3 `Workflow` invocations (1 initial + 2
 resumes) to get a clean final report, but only the LAST one did any real new
 work (~77s, one report-writer agent) — the first two resumes were essentially
 free cache replays that each made one more step succeed.
+
+## Seen 2×
+
+#945/ELITEA-2437 — shape 1 again, single `Workflow` call (no resume needed
+this time, the run just completed once). `report.json`'s only case carried
+`outcome: "blocked"`, note `"build failed: agent({schema}): subagent completed
+without calling StructuredOutput (after in-conversation nudge)"`, `gate: null`,
+`integration_branch: null` — yet the SAME case object also carried a real
+`afs` path, `branch`, and PR number, and the workflow's own agent list showed
+`review:ELITEA-2437` returning `APPROVED` and a `merge:` agent completing
+cleanly. Verified via git before trusting either half: the case branch was in
+fact merged into the batch trunk, the unit PR was MERGED. Only the gate phase
+had genuinely not run (`gate: null` was accurate, not stale) — ran it myself
+(3× independent green) before landing. Lesson holds: check git, not the
+outcome string; but add "gate: null may be accurate even when the rest of the
+case data is real" — don't assume a `blocked` outcome's null fields are ALL
+stale just because some of the case data survived intact.
