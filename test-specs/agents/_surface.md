@@ -270,3 +270,34 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   in a from-scratch `sync_playwright` script — skipping the redundant switch when already on the target
   project avoided it. Not confirmed as a real product defect (never reproduced through the normal pytest
   fixture chain, only this ad-hoc script) — flagging as a possible transit-path fragility, not filed.
+
+## Conversation starter chips in the EMBEDDED chat (Agent Detail page, ELITEA-1886 run, 2026-08-06)
+- **Two DIFFERENT React call sites render "starter chips in a chat area" — do not conflate them.**
+  Both use the same shared `EllipsisTextWithTooltip` (`src/components/ConversationStarters.jsx`):
+  1. `src/pages/NewChat/NewConversationView.jsx:1020` — the standalone `/chat/{id}` "start new
+     conversation" landing view (Agent Hub → Start Chat flow, ELITEA-2369). **Wired**:
+     `testId="chat-conversation-starter-tile"`, already backs `ChatPage.CHAT_STARTER_TILE`.
+  2. `src/pages/NewChat/ChatConversationStarters.jsx` — rendered by `ChatBox.jsx` (the EMBEDDED chat
+     mounted directly on `/agents/all/{id}` and other feature pages that host the same `ChatBox`).
+     **NOT wired** — confirmed via source read, no `testId` prop passed at all. This is the call site
+     ELITEA-1886 exercises. `automation/pages/chat_page.py` (lines 642-653) already documents this split
+     in a comment above `CHAT_STARTER_TILE`. **Testid needed**: `chat-conversation-starter-tile` (reuse
+     the literal — same visual/functional concept, the two call sites never co-render on one page) on
+     `ChatConversationStarters.jsx`'s `<EllipsisTextWithTooltip>` call — not yet added as of this run.
+- **Starter chips render live/reactively in the embedded chat as you type into the agent-form starter
+  fields — before Save.** Same live-preview behavior already documented for the welcome message
+  (see the welcome-message section above / ELITEA-1885) — not a defect, just don't mistake the pre-Save
+  preview for the persisted-state proof point.
+- **Clicking a chip is pre-fill-ONLY, never auto-send.** `ChatBox.jsx`'s `onSendConversationStarter`
+  (line ~1853) does `setHasStarterBeenSent(true)` + `chatInput.current.setValue(starter)` — no send call.
+  The chip row disappears immediately on click (`hasStarterBeenSent` flips permanently true, hiding
+  `conversation_starters={hasStarterBeenSent || isTheUserChattingNow ? [] : conversationStarters}`,
+  lines 2359-2362) regardless of whether the pre-filled message is ever actually sent. An explicit
+  `chat-send-button` click is required afterward to get an actual agent response — same decomposition
+  ELITEA-2369's test already uses for the sibling `/chat/{id}` flow (click tile → assert input → click
+  Send → wait for response).
+- Confirmed live end-to-end this run (agent id 6732, `elitea-1736-conversation-agent` — a shared fixture
+  agent; starters added+removed again to leave it clean): 2 starters via
+  `agent-conversation-starter-add`/`agent-conversation-starter-input` → `agent-save-button` (`201`) →
+  chips visible pre-message → click chip → `chat-message-input` pre-filled → `chat-send-button` → real,
+  contextually-relevant agent response, zero console errors, zero 4xx/5xx throughout.
