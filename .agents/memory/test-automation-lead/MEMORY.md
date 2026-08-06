@@ -41,3 +41,4 @@
 - [Blast-radius red doesn't block gate verdict](blast_radius_red_does_not_block_gate_verdict.md) — trust `gate.verdict`; route unrelated blast-radius failures as their own untriaged issue
 - [Workflow resume needs args too](workflow_resume_requires_args_too.md) — `{scriptPath, resumeFromRunId}` alone throws "args required"; always resend the same `args`
 - [Blast-radius can go UNOBSERVED](gate_blast_radius_can_go_unobserved_lead_must_complete_it.md) — a timed-out run isn't a red one; lead must actually re-run it before landing
+- [Report-writer agent can refuse the disk write](report_writer_agent_can_refuse_disk_write.md) — check `.agents/automation/<slug>/report.json` actually exists (and isn't clipped) after every batch; write it yourself if not
