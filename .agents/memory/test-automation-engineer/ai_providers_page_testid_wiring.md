@@ -51,3 +51,48 @@ combined call plus DOM absence is the practical evidence ceiling there.
 
 Testid commits: `EliteaAI/EliteaUI@5119ba70` (page title, 7 section headers,
 config card), `EliteaAI/EliteaUI@ff547e50` (selects).
+
+## ELITEA-2397 additions (LLM tier mutation flow)
+
+- The `-combobox` suffix `SelectDisplayProps` auto-derives is the actual
+  clickable/readable node — a plain `expect(outer_field).to_be_visible()`
+  works on the outer testid, but reading the SELECTED text or clicking to
+  open the dropdown must go through the `-combobox` suffixed field, not the
+  outer one.
+- `ConfigurationCard.jsx`'s `statusText` Typography renders `displayName` +
+  `statusText` + any tier-badge Typography as SIBLING children with **no
+  whitespace separator** in the concatenated `textContent`
+  (`"GPT-5.4OK • Shared"`, `"GPT-5.4OK • Shared High-Tier"`). An anchored
+  `^name$` regex `.filter(has_text=...)` on the outer
+  `ai-provider-configuration-card` testid therefore NEVER matches — confirmed
+  live, this is what timed out the first test run. Fix: added a dedicated
+  `ai-provider-configuration-card-name` testid on the `displayName`
+  Typography alone (`EliteaAI/EliteaUI@e1ea650c`), then scope the outer card
+  via `.filter(has=<name-locator>)` (`AIProvidersPage.card_for_model()`).
+  Generalizes: any card/row component that concatenates multiple dynamic text
+  fields into one Typography sibling group needs its OWN name-only testid for
+  exact-match identification — the outer container testid alone is only good
+  for substring/count checks.
+- Tier badge testid `ai-provider-configuration-badge`
+  (`EliteaAI/EliteaUI@4213b6c8`) is on THREE separate JSX nodes
+  (`isDefault`/`isHighTier`/`isLowTier`, independently-conditional booleans,
+  not a ternary on one element) — canon ruling #277 (same-element
+  conditional pair) does not apply; this is just the same static-repeated-
+  value pattern as the card testid itself.
+- The `POST /configurations/models/{project_id}` save call's body is
+  `{name, target_project_id, section}` where `section` is `"llm"` (Default) /
+  `"llm_high_tier"` / `"llm_low_tier"` — confirmed via
+  `EliteaUI/src/api/configurations.js`'s `setProjectDefaultModel` mutation +
+  `ConfigurationsPanel.jsx`'s `onChangeDefaultModel(...)` call sites. No
+  nullable/clear payload shape exists anywhere in that file — a tier that
+  starts UNSET (no value) cannot be programmatically cleared via this
+  endpoint, and the MUI dropdown itself offers no blank option either. A test
+  that must restore an originally-unset tier has no UI-only or documented
+  API-only path back to "unset" as of 2026-08-06.
+- Every tier's CURRENT value + the full candidate option list is derivable
+  from the `section=llm` GET response body alone (`default_model_name`/
+  `high_tier_default_model_name`/`low_tier_default_model_name` +
+  `*_project_id` counterparts at the top level; each `items[]` entry carries
+  `name`/`project_id`/`display_name`/`high_tier`/`low_tier`) — no need to
+  read the DOM/hidden textbox to construct a `select-option-{name}<<>>
+  {project_id}` testid target.
