@@ -3,7 +3,7 @@
 Handle cache for live-confirmed handles/quirks on the Agent detail page
 (`/agents/all/{id}?viewMode=owner`) — VERSION area + Run History + LLM Model Settings dialog.
 Not a substitute for execution — verify a handle as you use it. One writer at a time; last
-confirmed by: qa-engineer analyst, ELITEA-1876 run.
+confirmed by: qa-engineer analyst, ELITEA-1878/1879 run.
 
 ## VERSION selector (all pre-existing, confirmed live repeatedly across ELITEA-1888/1889/1892/1890/1891)
 - `agent-version-selector-trigger` — combobox trigger, text = current version name only (no date/status).
@@ -165,6 +165,40 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 - Fixture-agent gotcha: use `AgentAPI.create_agent()`'s default `_default_llm_settings()` (temperature=null,
   reasoning_effort="medium") — already avoids the #524 400 gotcha, no override needed for a disposable
   Skill-attachment fixture agent.
+
+## Tags field (ELITEA-1878/1879 run, 2026-08-06)
+- Combobox accessible name "Tags", part of the same shared `ApplicationEditForm.jsx`
+  → `TagEditor.jsx` → `AutoCompleteDropDown.jsx` component the Pipeline form uses
+  (`pipeline_form_page.py`'s `pipeline-tags-input`/`pipeline-tags-chip`). **Agent
+  branch has NO testids today** — `ApplicationEditForm.jsx:182-183` sets
+  `inputTestId`/`chipTestId` to `undefined` for the non-pipeline (Agent) case,
+  by explicit design ("canon #511 scope discipline: no case exercises Agent's
+  Tags yet" — that comment is now stale as of this run).
+- `AutoCompleteDropDown.jsx` already supports `chipTestId`/`chipDeleteTestId` as
+  **either a static string or a function of the option** (`typeof x === 'function'
+  ? x(option) : x`, lines 213-214 / 240-249) — the Pipeline form only uses the
+  static-string form (one shared testid for every chip), but the Agent
+  implementation should use the function form (`option => \`agent-tags-chip-${option.name}\``)
+  since a case that must verify TWO specific tags (ELITEA-1878) or delete ONE
+  specific tag among several (ELITEA-1879) needs per-tag addressability, not just
+  "N chips exist." See ELITEA-1878/1879 AFS for the full testid-needed table.
+- Interaction: click the Tags input, `press_sequentially(tag_name)`, `Enter` commits
+  it as a chip — pure client-side Formik state (`TagEditor`'s `onChangeTags` →
+  `formik.setFieldValue('version_details.tags', ...)`), no network request until
+  Save. Chip renders as `role="button"` with an `img` delete icon inside
+  (clicking either the chip or its delete icon removes it via `onDelete`).
+- Save (`agent-save-button`) → `PUT .../application/prompt_lib/{proj}/{id}` → `201`,
+  persists `version_details.tags`. Reload (`GET` same endpoint) correctly reflects
+  the saved tag set — confirmed live, both add-two-tags and remove-one-tag-keep-
+  the-other round trips work with no functional defect.
+- **Tags-autocomplete option-list fetch**: `GET /elitea_core/tags/prompt_lib/{proj}?...&entity_coverage=application`
+  fires on field mount (project-wide existing-tag suggestions) — irrelevant to
+  freeSolo-typed new tags, noted for completeness only.
+- **manual_test_agent (id 5189) was used for this run's live exploration and Save
+  was clicked repeatedly** (unlike ELITEA-1873's Discard exploration, which never
+  saved) — fully reverted to zero tags before handoff; confirmed via a final
+  reload. Future analysts reusing this shared agent for other UI-only checks:
+  its Tags field should read empty as of 2026-08-06.
 
 ## Discard flow (ELITEA-1873 run, 2026-08-06)
 - `discard-button` (tab-bar) IS wired up live on the Agent detail page —
