@@ -41,3 +41,18 @@ See also qa-engineer's `surface_digest_can_stay_wrong_after_afs_call_site_correc
 (same incident, reviewer side) — `_surface.md` is a 4th triangulation
 artifact the reviewer contract doesn't name (TMS case / AFS / implementation
 are the three it does), so it's easy for both sides to forget it exists.
+
+## Recurred (ELITEA-2450, PR #1269, fix round 1 → round 2)
+
+Same failure shape, different trigger: round 1 fixed a stale ALL-CAPS
+"TIMELINE STEP"/"STATES" paraphrase (presented as confirmed-live fact) in
+FOUR spots inside the AFS, but not in `test-specs/pipelines/_surface.md`'s
+"Body composition" bullet — added in the SAME original commit, carrying the
+identical wrong paraphrase, never re-grepped. Reviewer caught it as a
+separate round-2 blocker. **Generalization: it isn't only call-site/
+component corrections that need the `_surface.md` grep — ANY confirmed-live
+text/fact correction the AFS receives should trigger the same
+`grep -n "<the stale quoted text>" test-specs/<feature>/_surface.md` check,
+same dispatch, before calling the fix done.** A `_surface.md` section and
+its sibling AFS are very likely to share the same drift when both were
+authored in one original commit.
