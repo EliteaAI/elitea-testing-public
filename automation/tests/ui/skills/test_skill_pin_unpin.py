@@ -19,7 +19,7 @@ from pages.skills_list_page import SkillsListPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p3, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p2, pytest.mark.regression]
 
 
 class TestSkillPinUnpin:
@@ -30,7 +30,7 @@ class TestSkillPinUnpin:
         "skills/ELITEA-2435_skill-pin-unpin-flow.md",
         "onetest-ai Test Case link",
     )
-    @pytest.mark.p3
+    @pytest.mark.p2
     def test_skill_pin_moves_to_top_and_unpin_reverts(self, page, skill_api):
         """Pinning a skill (via the detail-page menu) moves it to the top of
         the list; unpinning (same menu) reverts it."""
