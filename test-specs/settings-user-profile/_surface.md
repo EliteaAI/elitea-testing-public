@@ -118,3 +118,43 @@ Tokens = `10000`, Preserve Recent Messages = `5`, Target Summary Tokens =
 "default" value in a new test; read-and-compare instead (see
 `l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md`
 § Blocked Steps for the worked example).
+
+## Target Summary Tokens — min/max validation (ELITEA-2378 session, 2026-08-06)
+
+Client-side Yup validation exists and is confirmed live. Source:
+`VALIDATION_LIMITS.MAX_TOKENS = { MIN: 100, MAX: 4096 }`
+(`EliteaUI/src/[fsd]/widgets/context-budget/lib/constants.js`), consumed by
+`profileValidationSchema.summary_llm_settings.max_tokens` in
+`src/[fsd]/features/settings/lib/helpers/profile.helpers.js` — the schema
+that actually governs `/settings/memory` (NOT the sibling
+`contextStrategyValidationSchema` in `context-budget/lib/validation.js`,
+which is the chat-side Context Budget widget's own copy of the same limits —
+don't confuse the two files, they duplicate the same `VALIDATION_LIMITS`
+import but are wired to different Formik forms).
+
+- Value below 100 (e.g. `99`) → input gets `aria-invalid="true"`, helper
+  text "Target tokens must be at least 100". **No autosave PUT fires** —
+  `useFormikAutoSaveOnBlur`'s `attemptSubmit()` runs `validateForm()` first
+  and skips `submitForm()` when errors exist.
+- Value above 4096 (e.g. `4097`) → `aria-invalid="true"`, helper text
+  "Target tokens cannot exceed 4,096" (comma-formatted via
+  `.toLocaleString()`). No autosave PUT.
+- Value in range (e.g. `200`) → no error, autosave PUT fires and the
+  response body echoes the new value:
+  `default_summarization.target_summary_tokens`.
+- The helper-text `<p>` carrying the error message has **no testid** —
+  MUI's `FormHelperText`, rendered via `TextField`'s `helperText` prop in
+  `MemorySummarization.jsx`. Assert the boundary via `aria-invalid` on the
+  already-testid'd `target-summary-tokens-input` instead (state via a
+  standard ARIA attribute, not a state-switched testid — compliant).
+  Exact message text needs `testid needed: target-summary-tokens-error-text`
+  (add via `FormHelperTextProps={{ 'data-testid': ... }}` on the
+  `StyledInputEnhancer` — prop plumbing confirmed to exist in `InputBase.jsx`)
+  if a future case wants to assert message text specifically.
+- **Contradicts open bug #1129** ("numeric fields don't autosave when
+  typed"): typing a VALID value (`200`) into Target Summary Tokens and
+  blurring DID autosave successfully this session (PUT → 200, value
+  echoed). Commented on #1129 with the evidence rather than closing it —
+  may be field-specific (Max Context Tokens / Preserve Recent Messages
+  untested this session) or a partial fix since filing. Don't assume #1129
+  reproduces for Target Summary Tokens specifically without re-checking.
