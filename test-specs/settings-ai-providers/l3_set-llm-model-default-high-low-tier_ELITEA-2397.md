@@ -241,10 +241,35 @@ it does not need a new one.
 | Low-tier selector (trigger) | `AIProvidersPage.llms_low_tier_selector` (`ai-providers-section-llms-low-tier-model-selector`) | on `automation/testids` — reuse |
 | Selector's clickable combobox (opens the listbox) | `[data-testid="{selector-testid}-combobox"]` — confirmed live: the shared `Select.SingleSelect` component auto-derives this suffix from the testid already threaded onto the field | pre-existing shared-component convention, confirmed live 2026-08-06 |
 | Dropdown option (dynamic, per model) | `[data-testid="select-option-{model_id}<<>>{value}"]` — e.g. `select-option-gpt-5.4<<>>1`, `select-option-eu.anthropic.claude-sonnet-4-5-20250929-v1:0<<>>1` | pre-existing shared-`Select` convention (NOT added by 2392 — confirmed present on the shared component before this case), confirmed live 2026-08-06 — dynamic testid, template as a class constant per `.agents/testing.md` § Locator policy: `SELECT_OPTION = '[data-testid="select-option-{}"]'`, format with the model's own testid-suffix value (readable from the selector's own hidden `textbox` value, e.g. `gpt-5.4<<>>1`) |
-| Configuration card (generic, repeated per card) | `AIProvidersPage.CONFIGURATION_CARD_SELECTOR` (`ai-provider-configuration-card`) | on `automation/testids` — reuse; scope to one model via `.filter(has=page.get_by_text(model_name, exact=True))`, same pattern `ChatPage.CHAT_STARTER_TILE` already uses (`.filter(has_text=...)`) |
-| Tier badge on a card ("Default" / "High-Tier" / "Low-Tier" text) | **needs-adding**: `data-testid="ai-provider-configuration-badge"` on all three conditional `Typography` blocks in `ConfigurationCard.jsx` (`isDefault`/`isHighTier`/`isLowTier`) — generic, repeated-per-badge value, same pattern as the card testid itself; distinguish which badge by its own text content ("Default"/"High-Tier"/"Low-Tier"), scoped inside the already-filtered card locator above | needs-adding |
+| Configuration card (generic, repeated per card) | `AIProvidersPage.CONFIGURATION_CARD_SELECTOR` (`ai-provider-configuration-card`) | on `automation/testids` — reuse; **amended during implementation** — see `card_for_model()` row below, plain `.filter(has_text=...)` on this testid alone cannot exact-match (see § Implementer amendment) |
+| Tier badge on a card ("Default" / "High-Tier" / "Low-Tier" text) | `AIProvidersPage.TIER_BADGE_SELECTOR` (`ai-provider-configuration-badge`) — added on all three conditional `Typography` blocks in `ConfigurationCard.jsx` (`isDefault`/`isHighTier`/`isLowTier`) | **added this implementation**, `EliteaAI/EliteaUI@4213b6c8` — on `automation/testids` |
+| Card display-name (exact-match anchor) | `AIProvidersPage.CARD_NAME_SELECTOR` (`ai-provider-configuration-card-name`) — added on the `displayName` `Typography` alone, used via `AIProvidersPage.card_for_model()`'s `.filter(has=...)` | **added this implementation** (not anticipated by the original AFS handles table — see § Implementer amendment), `EliteaAI/EliteaUI@e1ea650c` — on `automation/testids` |
 | New-chat model selector | `ChatPage.model_selector` (`model-selector-button`) — existing, `automation/pages/chat_page.py:133` | pre-existing, reuse — `get_selected_model()` method already returns its text |
 | New-chat navigation | `ChatPage.navigate_to_chat()` (`/chat`) | pre-existing, reuse |
+
+### Implementer amendment (2026-08-06, ELITEA-2397 implementation)
+
+The original handles table proposed scoping a model's card via
+`.filter(has=page.get_by_text(model_name, exact=True))` directly on
+`CONFIGURATION_CARD_SELECTOR`. **This does not work as written**: the card's
+`displayName` + `statusText` + tier-badge Typography render as SIBLING
+elements with no whitespace separator in the concatenated text content (e.g.
+`"GPT-5.4OK • Shared"`), so an exact-match filter tested against the whole
+card's text never matches (confirmed live — the first test run of this
+implementation timed out on a badge visibility wait because zero cards
+matched). Resolved by adding a dedicated `ai-provider-configuration-card-name`
+testid on the `displayName` Typography alone and filtering the outer card via
+`.filter(has=<name-locator>)` instead — see
+`AIProvidersPage.card_for_model()`. Full write-up:
+`test-specs/settings-ai-providers/_surface.md` § "Resolved/added during
+ELITEA-2397 implementation".
+
+Also confirmed live: the dropdown option's runtime value (`SELECT_OPTION`
+template argument) does **not** require reading the selector's hidden
+textbox — it's derivable directly from the `section=llm` GET response body
+(`items[].name` + `items[].project_id`, filtered by `items[].high_tier`/
+`items[].low_tier` for those two tiers). See
+`AIProvidersPage.pick_alternative_llm_model()` and the `_surface.md` note.
 
 ## Network Behavior
 - `POST /api/v2/configurations/models/{project_id}` — fires on EVERY tier
