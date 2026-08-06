@@ -2963,6 +2963,19 @@ class AgentDetailPage(AgentFormPage):
         """
         return self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).count()
 
+    def get_run_history_item_texts(self) -> list[str]:
+        """Return the full rendered text of every Run History row (ELITEA-1876).
+
+        Each ``run-history-list-item`` row renders its Date, Version, and
+        Duration columns as plain child ``<Typography>`` text nodes
+        (``RunHistoryTooltipCell.jsx``) — no per-cell testid is needed, the
+        row's own text already exposes all three.
+
+        Returns:
+            List of each row's full text content, in current display order.
+        """
+        return self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).all_text_contents()
+
     @action("Select Run History item")
     def select_run_history_item(self, index: int, timeout: int = 10000):
         """Click the Run History row at *index* (0 = most recent — default
@@ -2998,7 +3011,7 @@ class AgentDetailPage(AgentFormPage):
         row.wait_for(state="visible", timeout=timeout)
         return row.get_attribute("data-selected") == "true"
 
-    def get_run_history_chat_messages_text(self) -> str:
+    def get_run_history_chat_messages_text(self, timeout: int = 10000) -> str:
         """Return the concatenated text of every message in the Run History
         panel's chat (the selected row's conversation).
 
@@ -3008,11 +3021,24 @@ class AgentDetailPage(AgentFormPage):
         confirmed live: only one instance of ``chat-message-list`` exists on
         the page while History is open (the main embedded chat is unmounted).
 
+        Waits (bounded by *timeout*) for at least one message item to render
+        before reading — ``select_run_history_item()`` only awaits the
+        conversation-detail GET response, which can resolve slightly ahead of
+        React committing the message list, producing a transient "" read.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first message
+                item to appear before giving up and reading whatever is present.
+
         Returns:
             Joined text of all ``chat-message-item`` elements, or "" if none
-            are present yet.
+            render within *timeout*.
         """
         messages = self._embedded_chat_messages()
+        try:
+            messages.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            logger.warning("No Run History chat message rendered within %dms", timeout)
         count = messages.count()
         if count == 0:
             return ""
