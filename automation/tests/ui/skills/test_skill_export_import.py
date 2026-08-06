@@ -557,3 +557,106 @@ class TestSkillExportImportNonBaseVersion:
                 )
             finally:
                 console_messages.stop()
+
+
+# A static, purpose-built fixture (frontmatter has `description`/`tags` but
+# no `name` key) — no live entity ever exists for this case, so unlike the
+# round-trip tests above it needs no export step and no cleanup fixture.
+FIXTURE_MISSING_FRONTMATTER = (
+    Path(__file__).resolve().parents[4] / "test-data" / "skills" / "missing-name-frontmatter.md"
+)
+
+
+class TestSkillImportMissingFrontmatter:
+    """Import a `.md` file whose frontmatter is missing a required field (ELITEA-2438).
+
+    Verifies the client-side validation error path (``useSkillImport.hooks.js``
+    ``stageFile()``) — distinct from the valid-file round trips above: no
+    "Import parameters" dialog appears, an error toast names the missing
+    field(s), and no Skill entity or `skill_import` network request is ever
+    created/fired.
+
+    See test-specs/skills/l3_import-skill-missing-frontmatter_ELITEA-2438.md
+    """
+
+    @allure.issue("ELITEA-2438", "onetest-ai Test Case link")
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_import_skill_missing_frontmatter_shows_validation_error(self, page, skill_api):
+        """Upload a .md file missing the required `name` frontmatter key.
+
+        Steps (see AFS for full detail):
+        1. Navigate to Skills list; capture baseline skill count/IDs.
+        2. Click Import, select the fixture file; native file chooser opens.
+        3. Complete the upload; verify NO "Import parameters" dialog appears,
+           and an error toast shows a message naming the missing fields.
+        4. Verify no Skill was created (API IDs unchanged) and no
+           `skill_import` network request fired at all.
+        """
+        list_page = SkillsListPage(page)
+        fixture_path = FIXTURE_MISSING_FRONTMATTER
+        assert fixture_path.exists(), f"Test fixture missing on disk: {fixture_path}"
+
+        # ------------------------------------------------------------------
+        # Step 1 — Navigate to Skills list; capture baseline skill IDs
+        # ------------------------------------------------------------------
+        with allure.step("Step 1 — Navigate to Skills list; capture baseline skill IDs"):
+            list_page.navigate()
+            assert list_page.import_button.is_visible(), (
+                "Import button should be visible in the Skills list toolbar"
+            )
+            ids_before = {s["id"] for s in skill_api.list_skills().get("rows", [])}
+
+        console_messages = list_page.capture_console_errors()
+        import_requests = list_page.capture_requests_matching("skill_import")
+        try:
+            # ------------------------------------------------------------------
+            # Step 2 — Click Import; select the fixture file (file chooser)
+            # ------------------------------------------------------------------
+            with allure.step("Step 2 — Click Import; select fixture file via native chooser"):
+                list_page.upload_skill_file(str(fixture_path))
+
+            # ------------------------------------------------------------------
+            # Step 3 — Verify no Import dialog appears; error toast is shown
+            # ------------------------------------------------------------------
+            with allure.step(
+                "Step 3 — Verify no Import dialog appears; error toast names missing fields"
+            ):
+                toast_text = list_page.get_toast_text("error", timeout=UI_ELEMENT_TIMEOUT)
+                expected_message = (
+                    f'The [{fixture_path.name}] is missing required metadata: '
+                    'frontmatter must contain "name" and "description".'
+                )
+                assert toast_text == expected_message, (
+                    f"Expected error toast to name the missing fields, "
+                    f"expected: {expected_message!r}, got: {toast_text!r}"
+                )
+
+                assert not list_page.has_visible_dialog(timeout=500), (
+                    "No 'Import parameters' dialog should appear for an "
+                    "invalid file — the upload is rejected before that stage"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 4 — Verify no Skill created; no skill_import request fired
+            # ------------------------------------------------------------------
+            with allure.step(
+                "Step 4 — Verify no Skill created; no skill_import network request fired"
+            ):
+                ids_after = {s["id"] for s in skill_api.list_skills().get("rows", [])}
+                assert ids_after == ids_before, (
+                    f"No new Skill should be created by a rejected import: "
+                    f"before={sorted(ids_before)}, after={sorted(ids_after)}"
+                )
+                assert len(import_requests) == 0, (
+                    f"No 'skill_import' network request should fire for an invalid "
+                    f"file — validation happens entirely client-side, "
+                    f"got: {list(import_requests)}"
+                )
+                assert not console_messages, (
+                    f"Expected no console errors during the rejected-import flow, "
+                    f"got: {console_messages}"
+                )
+        finally:
+            import_requests.stop()
+            console_messages.stop()

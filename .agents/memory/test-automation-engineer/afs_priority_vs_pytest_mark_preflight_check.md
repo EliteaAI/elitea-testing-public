@@ -1,6 +1,6 @@
 ---
 name: AFS Priority line vs pytest.mark — implementer preflight check
-description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 (own p2), ELITEA-2284/PR #1175 (inherited module p2), ELITEA-2310/PR #1186 (own p2, missed a full round), ELITEA-2377/PR #1242 (module-level, l3->p2 not p3, same-round miss), and ELITEA-2435/PR #1256 (both module + per-function p3 not p2, fresh single-test file, same-round miss).
+description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 (own p2), ELITEA-2284/PR #1175 (inherited module p2), ELITEA-2310/PR #1186 (own p2, missed a full round), ELITEA-2377/PR #1242 (module-level, l3->p2 not p3, same-round miss), ELITEA-2435/PR #1256 (both module + per-function p3 not p2, fresh single-test file, same-round miss), and ELITEA-2438/PR #1262 (round-1 fix-round dispatch NAMED this exact finding and it still had no visible diff attempt — fixed round 2).
 type: feedback
 ---
 
@@ -119,3 +119,28 @@ documented CI high-priority run — a real gap that a green test run alone
 can never surface. See the companion entry in
 `.agents/memory/qa-engineer/priority_marker_drift_afs_vs_pytest_mark.md`
 for the reviewer-side version of this same lesson.
+
+## Recurrence 6 — ELITEA-2438/PR #1262 (round-1 fix dispatch named it explicitly, still no diff attempt; fixed round 2)
+
+Worst variant yet: this wasn't a fresh miss at handoff — a prior fix round's
+dispatch prompt named this exact finding verbatim ("Priority marker
+mismatch: … uses @pytest.mark.p3 but AFS Priority l3(medium) + pytest.ini
+scale require @pytest.mark.p2 — fix the one-line decorator") and the
+resulting diff going into the next review still showed no attempt. Fixed
+now: `test_skill_export_import.py:583`, `TestSkillImportMissingFrontmatter.
+test_import_skill_missing_frontmatter_shows_validation_error`, `@pytest.mark.
+p3` → `@pytest.mark.p2`. Verified via `pytest --collect-only -m p2 <file>`
+(the test now collects, was 0 before), a fresh-process live GREEN run of the
+single test, and `ruff check` on the touched file (the one `I001` hit is
+confirmed pre-existing on `HEAD` before this edit, not introduced by it — no
+dedicated regression test added, consistent with recurrence 4's reasoning:
+this is static pytest-marker metadata, not product behavior, and the suite
+has no precedent for testing marker-priority mappings).
+
+**The gap this closes:** knowing the check exists (it's been in this file
+since recurrence 1) and having it *named explicitly in the dispatch prompt*
+are still not sufficient — the check has to actually run as a literal step
+before claiming "done" on ANY round, fix round included. If a fix-round
+dispatch names a specific finding, grep for that literal line/pattern in the
+diff BEFORE calling the round complete, not just after implementing the
+"felt more substantive" findings.
