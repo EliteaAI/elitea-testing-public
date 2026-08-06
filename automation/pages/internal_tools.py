@@ -32,6 +32,9 @@ class ChatInternalTool(str, Enum):
     # Python code execution environment
     PYTHON_SANDBOX = "Python Sandbox"
 
+    # Interactive user input request
+    ASK_USER = "Ask User"
+
     # Multi-agent collaboration mode
     SWARM_MODE = "Swarm Mode"
 
@@ -67,6 +70,9 @@ class AgentInternalTool(str, Enum):
     # Python code execution environment
     PYTHON_SANDBOX = "Python sandbox"
 
+    # Interactive user input request
+    ASK_USER = "Ask User"
+
     # Multi-agent collaboration mode
     SWARM_MODE = "Swarm Mode"
 
@@ -89,6 +95,7 @@ INTERNAL_TOOL_TESTIDS = {
     AgentInternalTool.DATA_ANALYSIS: "internal-tool-data-analysis",
     AgentInternalTool.PLANNER: "internal-tool-planner",
     AgentInternalTool.PYTHON_SANDBOX: "internal-tool-python-sandbox",
+    AgentInternalTool.ASK_USER: "internal-tool-ask-user",
     AgentInternalTool.SWARM_MODE: "internal-tool-swarm-mode",
     AgentInternalTool.SMART_TOOLS: "internal-tool-smart-selection",
 }
