@@ -344,3 +344,185 @@ class TestContextManagementToggle:
             if not profile.is_automatic_summarization_enabled():
                 logger.info("Cleanup: restoring Automatic Summarization to ON after test failure")
                 profile.enable_automatic_summarization()
+
+    def test_target_summary_tokens_range_validation(self, page):
+        """Target Summary Tokens rejects values outside [100, 4096] client-side (ELITEA-2378).
+
+        Distinct observable from ``test_automatic_summarization_toggle_enables_disables_own_fields``
+        (ELITEA-2377): that test drives the Automatic Summarization toggle and
+        observes Target Summary Tokens' visible/enabled state as a SIDE EFFECT
+        of the toggle. This test drives Target Summary Tokens' OWN value and
+        observes its client-side min/max range validation (100-4096 — Yup
+        schema ``profileValidationSchema.summary_llm_settings.max_tokens`` in
+        ``src/[fsd]/features/settings/lib/helpers/profile.helpers.js``,
+        limits sourced from ``VALIDATION_LIMITS.MAX_TOKENS`` in
+        ``src/[fsd]/widgets/context-budget/lib/constants.js``): an out-of-range
+        value flips ``aria-invalid="true"`` and BLOCKS the autosave submit
+        (``useFormikAutoSaveOnBlur`` calls ``validateForm()`` before
+        ``submitForm()`` and returns early on errors); an in-range value
+        autosaves normally.
+
+        AFS: test-specs/settings-user-profile/
+        lextend_target-summary-tokens-range-validation_ELITEA-2378.md
+        """
+        profile = UserProfileSettingsPage(page)
+
+        with allure.step(
+            "Step 1 — Navigate to Settings -> Memory and verify the Context "
+            "Management section is visible"
+        ):
+            profile.navigate_to_profile()
+            expect(profile.context_management_section).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+        with allure.step(
+            "Step 2 — Ensure Context Management is enabled (precondition — "
+            "Target Summary Tokens is unreachable while it's OFF)"
+        ):
+            if profile.is_context_management_enabled():
+                logger.info("Context Management already ON — precondition satisfied, no click needed")
+            else:
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.enable_context_management()
+                assert put_info.value.status == 200, (
+                    f"Turning Context Management ON (precondition) should "
+                    f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+                )
+                _ = get_info.value
+
+        with allure.step(
+            "Step 3 — Ensure Automatic Summarization is enabled (precondition "
+            "— Target Summary Tokens is disabled while it's OFF)"
+        ):
+            expect(profile.automatic_summarization_toggle).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            if profile.is_automatic_summarization_enabled():
+                logger.info("Automatic Summarization already ON — precondition satisfied, no click needed")
+            else:
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.enable_automatic_summarization()
+                assert put_info.value.status == 200, (
+                    f"Turning Automatic Summarization ON (precondition) should "
+                    f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+                )
+                _ = get_info.value
+
+        with allure.step(
+            "Step 4 — Verify Target Summary Tokens is visible and enabled; "
+            "read its current value and store for the final restore step"
+        ):
+            expect(profile.target_summary_tokens_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(profile.target_summary_tokens_input).to_be_enabled()
+            original_target_tokens = profile.get_target_summary_tokens()
+            assert original_target_tokens > 0, (
+                f"Target Summary Tokens should be a positive integer, got {original_target_tokens}"
+            )
+
+        try:
+            with allure.step(
+                "Step 5 — Set Target Summary Tokens to 99 (below the minimum "
+                "of 100) and blur; verify the field is flagged invalid and no "
+                "autosave PUT fires"
+            ):
+                put_seen: list[Response] = []
+
+                def _capture_put(response: Response) -> None:
+                    if _is_autosave_put_response(response):
+                        put_seen.append(response)
+
+                page.on("response", _capture_put)
+                try:
+                    profile.set_target_summary_tokens(99)
+                    expect(profile.target_summary_tokens_input).to_have_attribute(
+                        "aria-invalid", "true", timeout=UI_ELEMENT_TIMEOUT
+                    )
+                    # Bounded negative wait: there is no positive condition to
+                    # wait on for "this did NOT happen" — validateForm() gates
+                    # submitForm() synchronously on blur, so 2s comfortably
+                    # exceeds any debounce/validation cycle observed live
+                    # without inflating runtime. See AFS Automation Hints.
+                    page.wait_for_timeout(2_000)
+                finally:
+                    page.remove_listener("response", _capture_put)
+                assert not put_seen, (
+                    f"Setting Target Summary Tokens to 99 (below minimum) "
+                    f"should be blocked by client-side validation — no PUT "
+                    f"{AUTOSAVE_PUT_PATH} should fire, but saw {len(put_seen)}"
+                )
+
+            with allure.step(
+                "Step 6 — Set Target Summary Tokens to 4097 (above the "
+                "maximum of 4096) and blur; verify the field is flagged "
+                "invalid and no autosave PUT fires"
+            ):
+                put_seen = []
+
+                def _capture_put(response: Response) -> None:
+                    if _is_autosave_put_response(response):
+                        put_seen.append(response)
+
+                page.on("response", _capture_put)
+                try:
+                    profile.set_target_summary_tokens(4097)
+                    expect(profile.target_summary_tokens_input).to_have_attribute(
+                        "aria-invalid", "true", timeout=UI_ELEMENT_TIMEOUT
+                    )
+                    page.wait_for_timeout(2_000)  # see Step 5's rationale
+                finally:
+                    page.remove_listener("response", _capture_put)
+                assert not put_seen, (
+                    f"Setting Target Summary Tokens to 4097 (above maximum) "
+                    f"should be blocked by client-side validation — no PUT "
+                    f"{AUTOSAVE_PUT_PATH} should fire, but saw {len(put_seen)}"
+                )
+
+            with allure.step(
+                "Step 7 — Set Target Summary Tokens to 200 (in range) and "
+                "blur; verify no invalid state, autosave PUT fires -> 200, "
+                "and the response body echoes the persisted value"
+            ):
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.set_target_summary_tokens(200)
+                autosave_response = put_info.value
+                assert autosave_response.status == 200, (
+                    f"Setting Target Summary Tokens to 200 (in range) should "
+                    f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {autosave_response.status}"
+                )
+                _ = get_info.value
+                expect(profile.target_summary_tokens_input).not_to_have_attribute(
+                    "aria-invalid", "true", timeout=UI_ELEMENT_TIMEOUT
+                )
+                persisted_value = autosave_response.json()["default_summarization"]["target_summary_tokens"]
+                assert persisted_value == 200, (
+                    f"Autosave PUT response should echo the persisted Target "
+                    f"Summary Tokens value 200, got {persisted_value}"
+                )
+
+            with allure.step(
+                "Step 8 — Restore Target Summary Tokens to its original "
+                "value (read in Step 4) and blur; verify the autosave PUT "
+                "returns 200 (leaves the shared ${TEST_USER} account as found)"
+            ):
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.set_target_summary_tokens(original_target_tokens)
+                restore_response = put_info.value
+                assert restore_response.status == 200, (
+                    f"Restoring Target Summary Tokens to {original_target_tokens} "
+                    f"should autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got "
+                    f"{restore_response.status}"
+                )
+                _ = get_info.value
+        finally:
+            # Safety net (not a case step — no allure.step): if a mid-flow
+            # assertion failed before Step 8 restored the value, restore it
+            # here so the shared ${TEST_USER} account doesn't stay polluted
+            # for this or a sibling settings-user-profile test. No-op if
+            # Step 8 already succeeded (value already matches the original).
+            if profile.get_target_summary_tokens() != original_target_tokens:
+                logger.info(
+                    "Cleanup: restoring Target Summary Tokens to %d after test failure",
+                    original_target_tokens,
+                )
+                profile.set_target_summary_tokens(original_target_tokens)
