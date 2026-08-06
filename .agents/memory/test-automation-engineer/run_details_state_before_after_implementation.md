@@ -20,11 +20,26 @@ type: feedback
   `StateItemView`'s two call sites), landing on the fullscreen `IconButton`:
   `pipeline-run-details-state-expand-before-{variable}` / `-after-{variable}`.
 - `PipelineStateViewModal.jsx` (zero testids before this case): root testid
-  goes directly on `<Dialog data-testid="pipeline-run-details-value-modal">`
-  — confirmed working live (same MUI-forwards-to-root-wrapper mechanism as
+  goes directly on `<Dialog data-testid={testId}>` — confirmed working live
+  (same MUI-forwards-to-root-wrapper mechanism as
   `basemodal_data_testid_lands_on_wrapper...md`). Header on `DialogTitle`
   (`-header`), close `IconButton` (`-close-button`), `DialogContent`
   (`-content`).
+  **CORRECTED in fix round 1 (EliteaUI@0f55411b):** the FIRST-round
+  implementation hardcoded these 4 as literal strings directly in
+  `PipelineStateViewModal.jsx` (`src/components/`), on the AFS's own
+  "single consumer, so it's fine" reasoning. Reviewer flagged it — there is
+  **no single-consumer carve-out** in the PR #581 shared-component ruling
+  (`.agents/testing.md` § Locator policy / `.agents/role-overrides.md`
+  § Reviewer slot). Fixed by adding 4 props (`testId`, `headerTestId`,
+  `closeButtonTestId`, `contentTestId`, all `undefined` by default) and
+  threading the literal values from `RunStateDialog.jsx`'s call site —
+  mirroring the `StateItemViewHeader`/`BasicAccordion` pattern already used
+  in the SAME original commit, which is the tell: don't trust "this one's
+  different" reasoning inside an AFS when the same diff already shows the
+  compliant shape elsewhere. Apply the caller-prop pattern to EVERY
+  `src/components/`/`src/[fsd]/shared/` testid up front — never reach for
+  "only one consumer today" as a reason to hardcode.
 
 ## `create_pipeline_with_nodes` — fstring task + chained LLM->LLM confirmed live
 
