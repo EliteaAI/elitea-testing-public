@@ -2,7 +2,63 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-04 (ELITEA-2040 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-06 (ELITEA-2450 analysis).
+
+## Run Details panel (`RunStateNode`/`RunStateDialog`) — opened after pipeline execution (confirmed live, 2026-08-06, ELITEA-2450)
+
+- **The click target is NOT "in chat history"** — a case-text trap (filed
+  `EliteaAI/elitea-testing-public#1268`). Executing a pipeline via the
+  embedded chat renders a separate `RunStateNode` element **above the Flow
+  canvas** (next to the Flow/Yaml toggle and "Add node" button —
+  `RunStateNodeGroup.jsx` → `RunStateNode.jsx`), showing a status icon +
+  `"Run N details"` label + a delete icon. The embedded chat's own message
+  list only ever contains the user message + AI response — confirmed live
+  via full-page snapshot, zero run-related content there.
+- **Accessible name ≠ visible text, same trap class as
+  `pipeline-state-add-variable-button`**: the run label's Playwright
+  accessible name is the Tooltip text `"View details"`, NOT the rendered
+  `"Run N details"` text a human reads. Never `get_by_role("button", {name:
+  ...})` here.
+- **Data source is Socket.IO only — no REST endpoint backs the panel.**
+  Confirmed via `browser_network_requests`: execute→open-panel produces only
+  `socket.io/?EIO=4…` polling exchanges, no dedicated GET for
+  run/timeline/state. `useRunEvent.hooks.js` derives everything client-side
+  from socket events, held in `FlowEditor` local state, threaded down as
+  `data`/`yamlJsonObject.state` props. Tests must wait on the DOM (the
+  existing `wait_for_embedded_chat_response()` helper), never poll an
+  endpoint for "run complete."
+- **Panel header composition (confirmed live, exact structure)**: `"Run N
+  details"` title, a `"Completed"`/etc. status badge (text content IS the
+  status — use a `data-status` attribute for state, per the testid=stable-
+  identity ruling, not a per-status testid), a Delete-or-Stop icon
+  (same-element conditional pair, canon ruling #277 — only one branch mounts
+  based on `data.status`), and a Close icon (`CollapseIcon` — visually a
+  "compress" glyph). **There is no separate expand/fullscreen toggle in the
+  header** (case-text drift, filed in the same `#1268` clarification as the
+  chat-history trap above) — the dialog is already sized responsively (90%
+  of the editor viewport) on open. A genuine `FullscreenOutlinedIcon` DOES
+  exist, but scoped per-STATES-row (`StateItemViewHeader`'s Before/After
+  expand icons), not in the panel header.
+- **Body composition**: a "TIMELINE STEP: {node id}" line + a `Stepper`
+  (one filled circle + `HH:mm:ss` timestamp per timeline entry — one entry
+  for a single-node pipeline), then a "STATES" section with one accordion
+  row per pipeline state variable (`input`/`messages` for a plain
+  `pipeline_with_llm_id` pipeline), each expandable to Before/After value
+  boxes with their own per-value expand (fullscreen) icons.
+- **Testid gap — the ENTIRE feature has zero testids.** Confirmed via
+  `grep -rn "data-testid"` across `RunStateNode.jsx`, `RunStateNodeGroup.jsx`,
+  `RunStateDialog.jsx` — no hits at all. 8 testids needed for
+  ELITEA-2450's own scope (run-node label, panel root, header, status badge,
+  delete button, close button, timeline section, states section); finer
+  per-timeline-step and per-state-variable testids are sibling cases'
+  concern (ELITEA-2451/2452/2453/2454, tracked as `#959`/`#960`/`#961`/`#962`).
+- **Known product defect (MINOR, filed `#1267`, sibling of `#611`)**: opening
+  the panel logs one React console warning — the Timeline Stepper's
+  `ProcessConnector` wrapper spreads unfiltered MUI-injected boolean props
+  (`{...rest}`, likely `last`/`active`/`completed`) onto a raw DOM `<div>`.
+  Cosmetic only — panel renders and functions correctly. Don't assert a
+  blanket "zero console errors" through the panel-open step for this flow;
+  scope around this one known signature.
 
 ## LLM/HITL node Type+Value field — `Variable` Type swaps the Value field's WIDGET, not just its behaviour (confirmed live, 2026-08-04, ELITEA-2040)
 
