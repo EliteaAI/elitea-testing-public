@@ -364,6 +364,27 @@ class AgentHubPage(BasePage):
                 return app
         return None
 
+    @staticmethod
+    def find_unliked_application(applications: list[dict]) -> dict | None:
+        """Return the first application dict (as returned by
+        :meth:`navigate_and_capture_applications`) whose ``is_liked`` field is
+        falsy (the CURRENT user has not liked it), or ``None`` if none
+        currently qualify (ELITEA-2365).
+
+        Distinct from :meth:`find_zero_like_application` (ELITEA-2354, which
+        filters on a TOTAL like count of 0): this case only needs an agent
+        the test's own user hasn't liked yet — its total like count from
+        other users is irrelevant to the cross-tab-propagation claim under
+        test. The bulk applications response includes an ``is_liked``
+        boolean per row (source: ``Like.jsx``'s ``const { id, name, likes =
+        0, is_liked = false, cardType } = data;`` — the same field the app
+        itself reads to render the heart icon's state).
+        """
+        for app in applications:
+            if not app.get("is_liked", False):
+                return app
+        return None
+
     def get_like_button(self, application_id: int):
         """Return the Locator for the like button (heart icon + count) on the
         agent card matching *application_id* (ELITEA-2354)."""
@@ -424,6 +445,33 @@ class AgentHubPage(BasePage):
         ) as response_info:
             button.click()
         return response_info.value
+
+    @action("Reload Agent Hub and capture the refreshed My Liked response")
+    def reload_and_capture_my_liked(self, timeout: int = 15000) -> dict:
+        """Reload the Catalog page and capture the My-Liked-specific bulk
+        response (``GET /public_applications/prompt_lib/...my_liked=true...``
+        — the same query-param signature :meth:`navigate_and_capture_applications`
+        excludes when isolating the "all applications" response) fired on the
+        page's initial mount (ELITEA-2365) — proves a full reload actually
+        re-fetches cross-tab like state from the backend rather than merely
+        re-rendering stale client cache, which is the actual product claim
+        under test (Tab A has no live subscription to Tab B's mutation).
+
+        Returns the parsed JSON response body (contains ``rows``).
+        """
+
+        def _is_my_liked_response(response):
+            return (
+                "/public_applications/prompt_lib/" in response.url
+                and response.request.method == "GET"
+                and "my_liked" in response.url
+            )
+
+        with self.page.expect_response(_is_my_liked_response, timeout=timeout) as response_info:
+            self.page.reload(wait_until="networkidle", timeout=timeout)
+        self.wait_for_page_load(timeout=timeout)
+        logger.info("Agent Hub reloaded; My Liked response re-fetched")
+        return response_info.value.json()
 
     @action("Search Catalog by agent name")
     def search(self, query: str, timeout: int = 15000):

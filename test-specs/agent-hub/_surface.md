@@ -3,7 +3,30 @@
 Handle cache for live-confirmed handles/quirks on the Agent Hub / Catalog
 surface (`/elitea-catalog`). Not a substitute for execution — verify a handle
 as you use it. One writer at a time; last confirmed by: qa-engineer (analyst
-slot), ELITEA-2363, 2026-08-06.
+slot), ELITEA-2365, 2026-08-06.
+
+## "My Liked" section reload icon — SAME drift as #1212, confirmed on this category too (ELITEA-2365)
+- ELITEA-2365's case text claims a reload/refresh (↻) icon renders next to
+  the "My Liked" section header. **Confirmed absent**, same as #1212's
+  "Business Analyst" instance — `AgentCategorySection.jsx` is the SAME shared
+  component for every category (including "My Liked"), and its
+  `headerContainer` renders only a `Typography`, zero icon elements,
+  regardless of which category is being rendered. **Do not re-file** — this
+  is the identical component/root-cause #1212 already tracks; cite it.
+- **Cross-tab My-Liked sync works, via a full page reload** (the only actual
+  refresh mechanism on this surface — no manual UI trigger exists anywhere,
+  confirmed both here and by #1212). Confirmed live, two tabs sharing one
+  `BrowserContext` (`page.context.new_page()`): liking an agent in Tab B
+  (`POST .../social/like/... => 201`) is NOT reflected in Tab A's already-
+  rendered "My Liked" section until Tab A does its own fresh fetch — a full
+  `page.goto()`/`reload_and_wait()` triggers that fetch and the agent then
+  appears with the matching count.
+- **The "My Liked" filter-rail chip's selected state does NOT survive a full
+  page reload** — it is client-only UI state, no URL param. Confirmed live:
+  after `page.goto('/elitea-catalog')`, the chip reset to unselected and the
+  unfiltered default view rendered; `click_category_filter_chip("My Liked")`
+  had to be called again post-reload before re-reading the section. Any test
+  that reloads mid-flow while relying on a category filter must re-select it.
 
 ## ⚠️ PROVENANCE CORRECTION (2026-08-06, ELITEA-2363) — prior "on-main ✓" claims for this surface's core testids are WRONG as of today
 
