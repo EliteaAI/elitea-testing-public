@@ -156,8 +156,32 @@ class AgentFormPage(BasePage):
 
     discard_button = LocatorDescriptor(
         testid="discard-button",
-        fallback=lambda page: page.get_by_role("button", name="Discard"),
-        description="Discard changes button"
+        description="Discard changes button (tab-bar) — ApplicationTabBar.jsx, "
+        "shared between the Agent and Pipeline detail pages. Rendered "
+        "unconditionally; only `disabled` toggles with form dirtiness. "
+        "Confirmed live on the Agent detail page (ELITEA-1873) — the "
+        "`fallback=` that used to sit here was dead code (LocatorDescriptor "
+        "never invokes it when a testid is set), same pattern already fixed "
+        "on `PipelineFormPage.discard_button`.",
+    )
+
+    # ------------------------------------------------------------------
+    # Discard confirmation modal (ApplicationTabBar.jsx's `Button.DiscardButton`
+    # → `Modal.BaseModal`). Testids added via `add-data-testid` for ELITEA-1873
+    # — the modal and its confirm button previously carried NO testid (the
+    # call site didn't thread `DiscardButton`'s `modalDataTestId`/
+    # `confirmButtonDataTestId` props, even though `BaseModal` already
+    # supports them — same threading-gap shape as the credential flow's
+    # `CredentialsTabBar.jsx` fix, ELITEA-1971). Shared component → generic
+    # names, matching the pre-existing generic `discard-button`.
+    # ------------------------------------------------------------------
+    discard_confirm_modal = LocatorDescriptor(
+        testid="discard-confirm-modal",
+        description="Discard confirmation modal (BaseModal) — shared Agent/Pipeline tab bar",
+    )
+    discard_confirm_button = LocatorDescriptor(
+        testid="discard-confirm-button",
+        description="Discard button inside the confirmation modal",
     )
 
     save_as_version_button = LocatorDescriptor(
@@ -364,6 +388,36 @@ class AgentFormPage(BasePage):
             True if Save button is enabled, False otherwise.
         """
         return self.save_button.is_enabled()
+
+    def is_discard_enabled(self) -> bool:
+        """Check if the Discard button is enabled (form is dirty).
+
+        Returns:
+            True if Discard button is enabled, False otherwise.
+        """
+        return self.discard_button.is_enabled()
+
+    @action("Click discard")
+    def click_discard(self, timeout: int = 5000) -> None:
+        """Click the tab-bar Discard button, opening the confirmation modal.
+
+        Args:
+            timeout: Maximum wait time for the modal to become visible.
+        """
+        logger.info("Clicking Discard")
+        self.discard_button.click()
+        self.discard_confirm_modal.wait_for(state="visible", timeout=timeout)
+
+    @action("Confirm discard")
+    def confirm_discard(self, timeout: int = 5000) -> None:
+        """Click Discard inside the confirmation modal and wait for it to close.
+
+        Args:
+            timeout: Maximum wait time for the modal to close.
+        """
+        self.discard_confirm_button.click()
+        self.discard_confirm_modal.wait_for(state="detached", timeout=timeout)
+        logger.info("Discard confirmed")
 
     @action("Click cancel")
     def click_cancel(self, timeout: int = 5000):
