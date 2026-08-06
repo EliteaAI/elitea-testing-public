@@ -50,7 +50,7 @@ Presence is proven by reading the construction site. One grep shape never suffic
   `=` anywhere on the line. Use `[Tt]estId[:=]|testid[:=]` instead of
   `testid.*=.*$t` to cover both separators.
 
-## Seen 9×
+## Seen 10×
 
 - #26/ELITEA-1735 — `slotProps` object literal + ternary; literal grep said no/no while the test ran green.
 - #62/#66/#128/#162 — runtime-composed: `${id}-menu-button`, `${columnTestIdPrefix}-…`, `buttonTestId` forwarding, MUI `SelectDisplayProps`.
@@ -61,6 +61,7 @@ Presence is proven by reading the construction site. One grep shape never suffic
 - #477/ELITEA-2040 — case-only stage-2 filter false-negatived `valueFieldTestId: '…'` (object-literal key, capital T) on both `main` and `automation/testids`; `-i` fixed it.
 - #812/ELITEA-2304 — `${dataTestId}-combobox` (`SingleSelect.jsx`'s `SelectDisplayProps`) false-negatived 2 of 8 testids on `automation/testids`; traced to the shared Select component source before concluding "gap".
 - #818/ELITEA-2310 — colon-separated object-literal (`ANALYTICS_TABS` array: `{ label: 'Overview', testid: 'analytics-tab-overview' }`) false-negatived 7 of 17 testids on `automation/testids` (the `.*=.*` alternation needs an `=` that a colon never provides); widened filter fixed it before the closure record was posted.
+- #961/ELITEA-2453 — same case-only-filter shape as #477: `testId: \`pipeline-run-details-state-row-${variable}\`` (template-literal prop, capital `I`) false-negatived on BOTH `main` and `automation/testids` for one of 8 testids until `-i` was added; the other 7 (simple `LocatorDescriptor` string testids) matched fine either way, which is what made the one silent miss easy to almost not notice.
 
 See also: promotability_grep_false_negative.md ·
 promotability_grep_false_positive_prefix.md ·
