@@ -301,3 +301,35 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   `agent-conversation-starter-add`/`agent-conversation-starter-input` → `agent-save-button` (`201`) →
   chips visible pre-message → click chip → `chat-message-input` pre-filled → `chat-send-button` → real,
   contextually-relevant agent response, zero console errors, zero 4xx/5xx throughout.
+
+**Resolved/added during ELITEA-1886 implementation (2026-08-07):**
+- **Testid added.** `testId="chat-conversation-starter-tile"` is now wired on
+  `ChatConversationStarters.jsx`'s `<EllipsisTextWithTooltip>` call (EliteaAI/EliteaUI
+  `automation/testids`, commit `afb48435`), reusing the literal already backing
+  `ChatPage.CHAT_STARTER_TILE`. `AgentDetailPage` now carries the mirror-shape
+  `CHAT_STARTER_TILE` constant + `get_chat_starter_tiles()` / `click_chat_starter_tile()`
+  (same duplicated-field pattern the class already uses for `chat_message_input` /
+  `chat_send_button` — two distinct routes, same testid literal by design, not a
+  page-object violation).
+- **`reasoning_effort: "none"` payload agents do NOT reliably complete an actual chat
+  predict round trip** — distinct from the `#524` temperature/reasoning_effort 400,
+  which is about agent *creation/save*, not *chatting*. Live-probed against the shared
+  fixture agent 6732 (model: Anthropic Claude 4.5 Sonnet) vs. a disposable
+  `reasoning_effort: "none"` / `model_name: gpt-5.2` agent: on the `"none"` agent,
+  clicking `chat-send-button` left the composer populated with the pre-filled starter
+  text and produced **no** `POST .../conversations/prompt_lib/{project}` at all (silent
+  client-side no-op, zero console/network errors — nothing to catch). Switching the
+  disposable agent to plain `AgentAPI.create_agent()` (which uses `_default_llm_settings()`:
+  `reasoning_effort: "medium"`, `temperature: null` — the documented "matches UI default"
+  shape, same one `test_agent_embedded_chat_send_message.py` already uses successfully)
+  fixed it immediately. **Implementer takeaway:** the `reasoning_effort: "none"` payload
+  shape (`test_agent_remove_variable.py`'s pattern) is safe ONLY for save/reload-only
+  tests that never exercise a real predict; any test that sends a chat message and
+  expects a response should use plain `create_agent()` instead.
+- **`agent-conversation-starter-counter` renders for at most ONE field at a time** — it's
+  gated on `isFocused(...)` in `ConversationStarters.jsx`, so when starter field 2 is
+  focused, `conversation_starter_counter` (the LocatorDescriptor collection) has exactly
+  one element in the DOM, always at `.nth(0)` — NOT `.nth(1)`, regardless of which
+  starter's counter it actually belongs to. Query with `index=0` for whichever field is
+  currently focused (matches the existing single-field usage pattern in
+  `test_agent_character_limits.py`).

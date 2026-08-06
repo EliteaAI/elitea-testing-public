@@ -144,6 +144,16 @@ class AgentDetailPage(AgentFormPage):
     CHAT_ARTIFACT_FILE_LIST_SELECTOR = '[data-testid="chat-artifact-file-list"]'
     CHAT_ARTIFACT_FILE_CARD_SELECTOR = '[data-testid="chat-artifact-file-card"]'
     CHAT_ANSWER_CONTENT_SELECTOR = '[data-testid="chat-answer-content"]'
+    # Embedded-chat conversation-starter tile (ELITEA-1886) — this page's own
+    # call site of the shared EllipsisTextWithTooltip, ChatConversationStarters.jsx,
+    # mounted inside the embedded ChatBox on THIS route (/agents/all/{id}). Same
+    # literal as ChatPage.CHAT_STARTER_TILE (ELITEA-2369's standalone /chat/{id}
+    # landing-view call site, NewConversationView.jsx) by deliberate reuse — the
+    # two call sites never render on the same page simultaneously, so there is
+    # no collision risk in sharing the testid (AFS ELITEA-1886 Concrete Handles).
+    # Static testid, one per rendered tile; select a specific tile via
+    # .filter(has_text=...), same idiom as ChatPage.click_chat_starter_tile().
+    CHAT_STARTER_TILE = '[data-testid="chat-conversation-starter-tile"]'
     # Agent-only child (TTS read-out button) and its non-last/last-message
     # sibling testid — scoped, per-message-item lookups used by
     # get_last_chat_message_agent_markers() (ELITEA-1885) to distinguish an
@@ -2427,6 +2437,28 @@ class AgentDetailPage(AgentFormPage):
             Integer count of message items currently in the chat.
         """
         return self._embedded_chat_messages().count()
+
+    def get_chat_starter_tiles(self):
+        """Return the Locator matching ALL rendered embedded-chat conversation
+        starter tiles (ELITEA-1886) — use ``.count()`` to verify the configured
+        starter chips render before any message is sent.
+        """
+        return self.page.locator(self.CHAT_STARTER_TILE)
+
+    @action("Click a conversation starter tile in the embedded chat")
+    def click_chat_starter_tile(self, match_text: str, timeout: int = 10000) -> str:
+        """Click the embedded-chat starter tile whose text CONTAINS *match_text*
+        (ELITEA-1886) — resolves via ``CHAT_STARTER_TILE`` + ``.filter(has_text=...)``,
+        same idiom as :meth:`ChatPage.click_chat_starter_tile`. Returns the
+        tile's own full (stripped) text at click time, so callers can assert
+        the composer was populated with the SAME text actually clicked rather
+        than a hardcoded literal.
+        """
+        tile = self.page.locator(self.CHAT_STARTER_TILE).filter(has_text=match_text)
+        tile.first.wait_for(state="visible", timeout=timeout)
+        starter_text = (tile.first.text_content() or "").strip()
+        tile.first.click()
+        return starter_text
 
     def get_last_chat_message_agent_markers(self) -> tuple[bool, bool, bool]:
         """Return agent/user code-path markers for the last (or only) message.
