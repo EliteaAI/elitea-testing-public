@@ -1,6 +1,6 @@
 ---
-name: AFS "confirmed live, exact match" claim can contradict the AFS's OWN Concrete Handles table
-description: PR #1269/ELITEA-2450 — AFS Step 8 quoted case-style ALL-CAPS text ("TIMELINE STEP: LLM1", "STATES section header") as "confirmed live, exact match", while the SAME AFS's Concrete Handles table (a few sections later) correctly quotes the JSX source as sentence-case ("Timeline step:", "States"). The narrative section was never corrected to match the table it sits beside.
+name: AFS "confirmed live, exact match" claim can contradict the AFS's OWN Concrete Handles table — and the drift can live in a companion doc too
+description: PR #1269/ELITEA-2450 — ALL-CAPS "TIMELINE STEP"/"STATES" paraphrase shipped as fact in the AFS narrative AND, unfixed by round 1, in _surface.md's "Body composition" bullet — same PR, same drift, different file. Sweep every doc the PR touches, not just the AFS.
 type: feedback
 ---
 
@@ -42,10 +42,36 @@ later table in the same AFS that also touches the same element — a
 same-document contradiction is a free, cheap catch that needs no live
 verification of your own; the AFS already contains the disproof.
 
-## Verdict
+## Round 1 fix, and what it missed
 
-CHANGES_REQUESTED (single blocking item) — mechanical grep clean, testids
-compliant, all clarifications/defects properly filed and referenced,
-per-step assertions present; only the AFS Step 8 / Coverage Map wording
-needs a same-PR docs fix to match its own Concrete Handles table and the
-confirmed-live text.
+The fix round amended exactly the 4 spots the blocking finding named
+(`l3_run-details-open-panel-after-execution_ELITEA-2450.md` — Step 8
+narrative, Expected Final State, Coverage Map row, Concrete Handles cells)
+and correctly matched them to the sentence-case source text. It did **not**
+touch `test-specs/pipelines/_surface.md`, whose "Run Details panel...
+(confirmed live...)" section — added in the SAME original commit as the
+AFS — has its own "Body composition" bullet still reading `a "TIMELINE
+STEP: {node id}" line ... then a "STATES" section`, i.e. the identical
+ALL-CAPS-as-fact drift, unaddressed. Round 2 caught it by re-running the
+"grep this quote against every place in the PR that also touches this
+element" check against `_surface.md`, not just the AFS file named in the
+original finding.
+
+## The generalizable technique, extended
+
+When a fix round's dispatch scopes the blocking item to specific
+`file:line`s, that scope is a pointer to where the finding was FIRST
+noticed, not a boundary on where the underlying drift lives. A PR that adds
+both an AFS and an `_surface.md` digest entry for the same feature in one
+commit is very likely to have written the same paraphrase into both — check
+every doc-shaped file the PR touches for the same quoted string, not only
+the one path the round-1 dispatch named.
+
+## Verdict history
+
+- Round 1: CHANGES_REQUESTED (single blocking item, AFS-file only) —
+  mechanical grep clean, testids compliant, all clarifications/defects
+  properly filed and referenced, per-step assertions present.
+- Round 2 (re-review): AFS file confirmed fixed and internally consistent;
+  found the identical drift surviving in `_surface.md`, unaddressed by
+  round 1 — CHANGES_REQUESTED again, new item, small mechanical fix.
