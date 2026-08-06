@@ -639,6 +639,19 @@ class ChatPage(BasePage):
         )
     )
 
+    # Chat-area conversation-starter tile (NewConversationView.jsx's call site
+    # onto the shared EllipsisTextWithTooltip, ELITEA-2369 — the new-
+    # conversation landing view this case's flow actually renders through,
+    # confirmed via live exploration; NOT ChatConversationStarters.jsx, a
+    # different call site consumed only by the embedded ChatBox.jsx surface)
+    # — static testid, one per rendered tile; select a specific tile via
+    # .filter(has_text=...) (same idiom as PARTICIPANT_ROW_PREFIX above). Only
+    # this call site is wired (a caller-supplied `testId` prop, per the shared-
+    # component testid discipline) — ChatConversationStarters.jsx's own call
+    # site of the same shared component is intentionally left unwired (out of
+    # this case's executed code path, canon ruling #511).
+    CHAT_STARTER_TILE = '[data-testid="chat-conversation-starter-tile"]'
+
     # ------------------------------------------------------------------
     # HITL sensitive-action authorization card — direct toolkit call, no
     # agent (ELITEA-2211..2214). Same underlying ChatHitlActions.jsx
@@ -1447,7 +1460,23 @@ class ChatPage(BasePage):
         text = self._extract_message_body(last_msg)
         logger.info(f"Last message: {text[:50]}...")
         return text
-        
+
+    def get_message_text_at(self, index: int) -> str:
+        """Get the text content of the message body at *index* (ELITEA-2369).
+
+        Unlike :meth:`get_last_message_text`, this reads a SPECIFIC message
+        position rather than whichever message is currently last — needed
+        right after Send, where a transient AI placeholder message (e.g.
+        "Waking the agent…") can already render at ``initial_count + 1``
+        before the reply arrives, making ``.last`` race-prone for reading
+        back the user's OWN just-sent message at ``initial_count``.
+        """
+        message = self.messages_container.nth(index)
+        text = self._extract_message_body(message)
+        logger.info(f"Message at index {index}: {text[:50]}...")
+        return text
+
+
     def wait_for_ai_response(self, initial_count: int = 0, timeout: int = 60000):
         """Wait for the AI to fully respond after sending a message.
 
@@ -1737,11 +1766,35 @@ class ChatPage(BasePage):
         
     def is_send_button_enabled(self) -> bool:
         """Check if send button is enabled.
-        
+
         Returns:
             True if send button is enabled
         """
         return self.send_button.is_enabled()
+
+    def get_chat_starter_tiles(self):
+        """Return the Locator matching ALL rendered chat-area conversation
+        starter tiles (ELITEA-2369) — use ``.count()`` to verify "clickable
+        suggestion tiles" render in the chat area.
+        """
+        return self.page.locator(self.CHAT_STARTER_TILE)
+
+    @action("Click a conversation starter tile in the chat area")
+    def click_chat_starter_tile(self, match_text: str, timeout: int = 10000) -> str:
+        """Click the chat-area starter tile whose text CONTAINS *match_text*
+        (ELITEA-2369) — resolves via ``CHAT_STARTER_TILE`` +
+        ``.filter(has_text=...)``, same idiom as
+        :meth:`get_participant_row_by_name`. Returns the tile's own full
+        (stripped) text at click time, so callers can assert the composer
+        was populated with the SAME text actually clicked rather than a
+        hardcoded literal (the live starter text uses a typographic
+        apostrophe the case text doesn't — AFS § Test Data).
+        """
+        tile = self.page.locator(self.CHAT_STARTER_TILE).filter(has_text=match_text)
+        tile.first.wait_for(state="visible", timeout=timeout)
+        starter_text = (tile.first.text_content() or "").strip()
+        tile.first.click()
+        return starter_text
         
     @action("Clear chat history")
     def clear_chat_history(self):

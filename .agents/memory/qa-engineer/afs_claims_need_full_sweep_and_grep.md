@@ -58,4 +58,8 @@ elitea_1808_coverage_map_handle_drift_from_own_test_step_prose.md ·
 coverage_map_row_can_partially_overclaim_one_clause.md ·
 afs_axis2_claim_needs_grep_not_just_row_presence.md ·
 afs_grouped_exception_claims_need_per_row_verification.md ·
-elitea_1808_reverse_masking_needs_live_reverification_not_trust.md
+elitea_1808_reverse_masking_needs_live_reverification_not_trust.md ·
+surface_digest_can_stay_wrong_after_afs_call_site_correction.md (the sweep
+extends past the AFS itself — `test-specs/<feature>/_surface.md` is a
+SEPARATE file carrying the same class of claim, and it is not one of the
+reviewer contract's three named triangulation artifacts, so it drifts silently)

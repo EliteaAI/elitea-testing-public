@@ -30,3 +30,26 @@ add `page.wait_for_timeout(1000)` immediately before
 distinguishes "agentDetails loaded" from "still null" for a no-starters agent
 (both render identical empty-state text), so a fixed wait is the documented,
 declared workaround — not defect masking.
+
+## Addendum (ELITEA-2369): the SAME `agentDetails`-not-yet-committed race also empties the modal's CHAT STARTERS section — not just the Start Chat click
+
+`AgentModal.jsx`'s CHAT STARTERS section reads
+`agentDetails?.version_details?.conversation_starters` — ONLY the async
+fetch state, no synchronous `agent`-prop fallback. Reading the section
+immediately after `open_agent_by_name()` returns (which waits on the
+network response + `modal_show_instructions_link` visible — NEITHER is
+sufficient here, `modal_show_instructions_link` renders unconditionally)
+can read a false "No predefined chat starters – just type your request to
+begin." empty state for an agent that DOES have starters configured
+(confirmed live: `AgentHubPage.get_modal_starter_items()` returned 0 for
+"API Testing Buddy", which the API confirms has 4). Welcome Message text
+comes from the same `agentDetails` state, committed together, so it's
+equally affected.
+
+**Fix for any case reading the modal's CHAT STARTERS or Welcome Message
+sections:** wait for a REAL starter item (or non-empty welcome text) to
+render before reading — e.g. `AgentHubPage.get_modal_starter_items().first
+.wait_for(state="visible", timeout=...)` — rather than trusting
+`modal_show_instructions_link`'s visibility alone. (For a genuinely
+no-starters agent, this wait doesn't apply — that case asserts the
+empty-state copy directly, as ELITEA-2368 already does.)

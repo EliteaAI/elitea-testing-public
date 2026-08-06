@@ -129,6 +129,33 @@ component's copy of the same two testid strings only exists on
 `automation/testids` (added via a dedicated commit,
 EliteaAI/EliteaUI@7ecc041d) — `main` has never seen it.
 
+## Addendum (ELITEA-2369, implementer's OWN new-testid work order): the AFS can name the wrong CALL SITE for a shared-component testid prop, not just the wrong existing testid
+
+A third variant — this time on a `testid needed:` work order the AFS asked
+the implementer to add, not a "reuse this existing testid" claim. The AFS's
+Concrete Handles table named `src/pages/NewChat/ChatConversationStarters.jsx`
+as the call site to wire a new `testId` prop onto the shared
+`EllipsisTextWithTooltip` component (`src/components/ConversationStarters.jsx`),
+for "starter tiles shown in the chat area right after Start Chat, before any
+message is sent." That component genuinely imports `EllipsisTextWithTooltip`
+— but live exploration (adding the testid, running the test, getting a
+0-match timeout) showed this case's ACTUAL flow renders through a DIFFERENT
+component, `src/pages/NewChat/NewConversationView.jsx` (the "Hello,
+{user}! What can I do for you today?" landing view), which ALSO imports
+`EllipsisTextWithTooltip` directly. `ChatConversationStarters.jsx` turned out
+to be consumed only by `src/[fsd]/features/chat/ui/chat-box/ChatBox.jsx` — an
+embedded/agent-participant chat surface this case never reaches.
+
+**How this was caught:** the testid was correctly ADDED (compiled, served by
+Vite, confirmed via `curl localhost:5173/src/...` showing the new prop), but
+the test still timed out waiting for it — 0 matches on a screen that
+visibly showed the 4 starter tiles in the screenshot. That mismatch (visible
+tiles, zero testid matches) is the signal: the RIGHT visual element is
+rendering, through a component OTHER than the one that got the testid.
+`grep -rln "ChatConversationStarters" src --include="*.jsx"` showed only
+`ChatBox.jsx` as a consumer — confirming this was a different flow, not a
+caching/HMR issue.
+
 This is the identical failure mode as the original lesson above
 ("the testid string exists somewhere ≠ it exists for the component you're
 testing"), just discovered through promotability/provenance verification
