@@ -75,3 +75,14 @@ the one path the round-1 dispatch named.
 - Round 2 (re-review): AFS file confirmed fixed and internally consistent;
   found the identical drift surviving in `_surface.md`, unaddressed by
   round 1 — CHANGES_REQUESTED again, new item, small mechanical fix.
+- Round 3 (re-review, this pass): `_surface.md`'s "Body composition" bullet
+  now reads the confirmed sentence-case text ("Timeline step:" label + node
+  id concatenated no-separator, "States" section header), source-verified
+  against `RunStateDialog.jsx:277`/`:452` in the commit message itself.
+  Whitespace-diffed the EliteaUI testid commit (`fb66d978`) against
+  `origin/main` — pure testid additions + two wrapper `Box`es (`display:
+  contents`), zero logic changes; same-element conditional pair (Stop/
+  Delete) correctly tags only the used Delete branch (canon #277 shape a).
+  Mechanical grep on the full base...branch diff: 0 hits. APPROVED — no
+  drift left in AFS, `_surface.md`, or the implementation; all three now
+  agree with the live JSX source.
