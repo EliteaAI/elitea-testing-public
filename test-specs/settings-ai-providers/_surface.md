@@ -39,8 +39,44 @@ in practice for the current shared project.
 
 ## Live data observed (Private project / id 399, 2026-08-06)
 - LLMs: 11 configs. Default `Anthropic Claude 4.5 Sonnet`, Low-tier
-  `GPT-5.4-mini`, High-tier unset. Grouped by provider (OpenAI/Anthropic/
+  `GPT-5.4-mini`, High-tier unset (**as of the ELITEA-2392 session — see the
+  ELITEA-2397 note below: this session's own exploration left High-tier set
+  to `GPT-5.2` on the shared project, could not be reverted via UI**).
+  Grouped by provider (OpenAI/Anthropic/
   Azure AI Foundry — `GROUP_ORDER` in `ConfigurationSection.jsx`).
+
+## Tier selectors are LIVE-EDITABLE, no Save button (ELITEA-2397, 2026-08-06)
+Clicking a tier selector (`ai-providers-section-llms-{default|high-tier|low-tier}-model-selector-combobox`)
+opens a `listbox` of model options (dynamic testid, pre-existing shared
+`Select.SingleSelect` convention, NOT added by 2392: `[data-testid="select-option-{model_id}<<>>{value}"]`,
+e.g. `select-option-gpt-5.4<<>>1`). Selecting an option immediately fires
+`POST /api/v2/configurations/models/{project_id}` (200, body
+`{"result": "success"}`) — no separate Save action — and the section's card
+list re-renders from the follow-on GET refetch: the newly-selected model's
+`ConfigurationCard` gains a "Default"/"High-Tier"/"Low-Tier" badge, the
+previously-assigned model's card loses it, all confirmed live within the
+same render pass (no manual reload needed). Badge testid: **needs-adding**
+(`ConfigurationCard.jsx`'s three conditional `isDefault`/`isHighTier`/
+`isLowTier` `Typography` blocks currently carry none).
+
+**No "clear"/unset option exists in the dropdown** — confirmed live, the
+`listbox` only ever lists selectable models, never a blank/"None" entry.
+Once a tier has a value there is no UI-only way back to "unset". A test
+that finds a tier already unset (High-tier, as of this note) cannot restore
+that exact state via the UI after selecting something else — needs an API
+route or a documented limitation; see the ELITEA-2397 AFS § Cleanup.
+
+**Only the Default tier feeds the plain `/chat` new-conversation model
+selector** (`model-selector-button`) — confirmed live end-to-end (changing
+Default to `GPT-5.4` changed a brand-new `/chat` composer's selector text to
+`GPT-5.4`). High-tier and Low-tier do NOT: grepping `EliteaUI/src` for every
+consumer of `high_tier_default_model_name`/`low_tier_default_model_name`
+found Low-tier used ONLY by the chat canvas's Mermaid "Quick Fix" AI-assist
+action (`src/components/MermaidDiagramOutput/mermaidQuickFixModel.helpers.js`)
+and High-tier used by **no frontend code at all** outside the AI Providers
+settings display itself. Filed as a case-text clarification:
+EliteaAI/elitea-testing-public#1253 (don't assume tier-parity with Default
+for any future case touching these selectors).
 - Embedding Models: 3 configs, default `text-embedding-3-small`.
 - Vector Storage: 0 configs — section absent.
 - Image Generation: 3 configs, default `gpt-image-1`.
