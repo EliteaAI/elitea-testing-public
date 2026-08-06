@@ -39,12 +39,16 @@
   of the editor viewport) on open. A genuine `FullscreenOutlinedIcon` DOES
   exist, but scoped per-STATES-row (`StateItemViewHeader`'s Before/After
   expand icons), not in the panel header.
-- **Body composition**: a "TIMELINE STEP: {node id}" line + a `Stepper`
-  (one filled circle + `HH:mm:ss` timestamp per timeline entry — one entry
-  for a single-node pipeline), then a "STATES" section with one accordion
-  row per pipeline state variable (`input`/`messages` for a plain
-  `pipeline_with_llm_id` pipeline), each expandable to Before/After value
-  boxes with their own per-value expand (fullscreen) icons.
+- **Body composition (fix round 2, ELITEA-2450: corrected from a stale
+  ALL-CAPS paraphrase presented as confirmed-live fact — source-verified
+  against `RunStateDialog.jsx:277`/`:452`, both sentence case)**: a
+  `"Timeline step:"` label immediately followed by the node id with no
+  separator (renders e.g. `Timeline step:LLM1`) + a `Stepper` (one filled
+  circle + `HH:mm:ss` timestamp per timeline entry — one entry for a
+  single-node pipeline), then a `"States"` section header with one
+  accordion row per pipeline state variable (`input`/`messages` for a
+  plain `pipeline_with_llm_id` pipeline), each expandable to Before/After
+  value boxes with their own per-value expand (fullscreen) icons.
 - **Testid gap — the ENTIRE feature has zero testids.** Confirmed via
   `grep -rn "data-testid"` across `RunStateNode.jsx`, `RunStateNodeGroup.jsx`,
   `RunStateDialog.jsx` — no hits at all. 8 testids needed for
