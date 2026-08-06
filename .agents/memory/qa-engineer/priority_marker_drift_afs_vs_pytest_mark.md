@@ -108,3 +108,26 @@ compiled `pytest.mark.p*`/`pytestmark` every time, sibling or not; a solo
 fresh AFS drifts just as easily as an extended one. Flagged CHANGES_REQUESTED
 (one-line fix: `pytest.mark.p2` → `pytest.mark.p1` in the module-level
 `pytestmark` list).
+
+## Recurrence variant (PR #1242/ELITEA-2377, 2026-08-06) — module marker wrong for BOTH cases from the outset, not exposed by a priority difference
+
+Fourth occurrence, a new sub-shape: `test_context_management_toggle.py`'s
+module-level `pytestmark` carries `pytest.mark.p3` (low). The covering test
+(ELITEA-2374) AND the new extend-existing sibling (ELITEA-2377) **both**
+have TMS case `priority: medium` (l3) — unlike the ELITEA-2284 variant, this
+isn't "a second, differently-prioritized case lands in the file" exposing a
+marker that was correct for the first case; the marker (`p3`) was **already
+wrong for the first case** when ELITEA-2374 merged, and the second case just
+inherits/perpetuates the same error. Confirmed against convention via a
+clean, unambiguous sibling: `test_secret_delete_via_three_dot_menu.py`
+(ELITEA-2338, case `priority: medium`, AFS `l3`) compiles to
+`pytest.mark.p2` — l3(medium)→p2 holds. **Check extended again**: even when
+a module-level marker is *internally consistent* across every case sharing
+the file (no priority drift to compare against a sibling), it can still be
+wrong against the suite-wide `l{n}→p{n-1}` convention — verify against an
+**external** sibling test in a different file/feature with the same case
+priority, not just against the file's own existing test. Flagged
+CHANGES_REQUESTED even though the root cause predates this PR (inherited
+from the already-merged ELITEA-2374 test) — the fix is a live, CI-relevant
+correctness gap for the case THIS PR delivers (a `-m p2` selection run
+silently misses it), so it's in scope regardless of origin.

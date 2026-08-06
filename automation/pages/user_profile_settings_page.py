@@ -98,6 +98,22 @@ class UserProfileSettingsPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # Automatic Summarization — Summarization Instructions / Target Summary
+    # Tokens fields (own children of the Automatic Summarization toggle,
+    # nested inside MemorySummarization.jsx)
+    # ------------------------------------------------------------------
+
+    summarization_instructions_textarea = LocatorDescriptor(
+        testid="summarization-instructions-textarea",
+        description="Multiline textarea for custom Summarization instructions.",
+    )
+
+    target_summary_tokens_input = LocatorDescriptor(
+        testid="target-summary-tokens-input",
+        description="Numeric input for Target Summary Tokens.",
+    )
+
+    # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
@@ -315,6 +331,73 @@ class UserProfileSettingsPage(BasePage):
         if actual != value:
             logger.warning("Max context tokens shows %d after set, expected %d — autosave may be delayed", actual, value)
         logger.info("Max context tokens set to %d", value)
+
+    # ------------------------------------------------------------------
+    # Automatic Summarization helpers
+    #
+    # Unlike the parent Context Management toggle (conditional UNMOUNT of its
+    # children — see class docstring), the Automatic Summarization toggle
+    # DISABLES its own children instead: MemorySummarization.jsx sets
+    # `disabled={isSummarizationDisabled}` (where
+    # `isSummarizationDisabled = !context_enabled || !enable_summarization`)
+    # on the Summarization Instructions / Target Summary Tokens fields. They
+    # stay mounted in the DOM and are asserted via `to_be_disabled()` /
+    # `to_be_enabled()`, not `to_have_count(0)`.
+    # ------------------------------------------------------------------
+
+    def is_automatic_summarization_enabled(self) -> bool:
+        """Return True if the Automatic Summarization toggle is currently ON.
+
+        Same ``Mui-checked`` class-attribute check as
+        ``is_context_management_enabled()`` — see that method's docstring
+        for why ``is_checked()`` cannot be used directly on this element.
+
+        Returns:
+            True if the switch is checked (automatic summarization enabled).
+        """
+        class_attr = self.automatic_summarization_toggle.get_attribute("class") or ""
+        checked = "Mui-checked" in class_attr
+        logger.info("Automatic summarization enabled: %s", checked)
+        return checked
+
+    def enable_automatic_summarization(self) -> None:
+        """Enable Automatic Summarization if it is not already enabled.
+
+        Clicks the toggle only when it is currently OFF. After clicking,
+        waits for the autosave network round-trip to settle.
+        """
+        if not self.is_automatic_summarization_enabled():
+            logger.info("Enabling automatic summarization toggle")
+            self.automatic_summarization_toggle.click()
+            self.wait_for_autosave()
+        else:
+            logger.info("Automatic summarization already enabled — no action taken")
+
+    def disable_automatic_summarization(self) -> None:
+        """Disable Automatic Summarization if it is not already disabled.
+
+        Clicks the toggle only when it is currently ON. After clicking,
+        waits for the autosave network round-trip to settle.
+        """
+        if self.is_automatic_summarization_enabled():
+            logger.info("Disabling automatic summarization toggle")
+            self.automatic_summarization_toggle.click()
+            self.wait_for_autosave()
+        else:
+            logger.info("Automatic summarization already disabled — no action taken")
+
+    def get_target_summary_tokens(self) -> int:
+        """Return the current value of the Target Summary Tokens input.
+
+        Returns:
+            Current target summary tokens as an integer.
+
+        Raises:
+            ValueError: If the field contains a non-numeric value.
+        """
+        raw = self.target_summary_tokens_input.input_value()
+        logger.info("Target summary tokens raw value: %r", raw)
+        return int(raw)
 
     def wait_for_autosave(self, timeout: int = 5000) -> None:
         """Wait for the autosave network request to complete.
