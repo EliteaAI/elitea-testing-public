@@ -48,6 +48,57 @@ analyst); update in place, don't append duplicate entries.
   oldest of 10 skills, moved from last to first on pin).
   Full details: `test-specs/skills/l3_skill-pin-unpin-flow_ELITEA-2435.md`.
 
+## VERSION dropdown — set-as-default (ELITEA-2437) — `SkillTabBar.jsx` (`skill-version-select`)
+
+**Distinct from the entity-level "Pin to top" flow above** — same "pin"
+visual language, unrelated mechanism. This is per-*version* default-setting
+within one skill, not per-*skill* list pinning.
+
+- Trigger: `data-testid="skill-version-select"` (`SkillTabBar.jsx`) — the
+  live clickable `role=combobox` node inside it resolves as
+  `[data-testid="skill-version-select-combobox"]`.
+- Dropdown options: `data-testid="version-option-{name}"` (existing
+  `VERSION_OPTION` template, shared by skill/agent/pipeline consumers via
+  `buildVersionOption()` in `entities/version/lib/helpers/version.helpers.jsx`).
+- Current-default row: static `data-testid="version-option-pin-icon"`
+  (**confirmed live, existing testid** — unconditional whenever
+  `defaultVersionID === id`, no hover needed).
+- Non-default/non-published row: hover-revealed "set as default" icon
+  button — **CONFIRMED LIVE GAP, no `data-testid`.** Only a non-unique CSS
+  `id="show-on-hover"` (styling-only, not a valid handle). Clicking it opens
+  a `SetDefaultVersionDialog` ("Set as default?") confirmation dialog.
+  Fix: add a name-keyed dynamic testid in `version.helpers.jsx`, e.g.
+  `data-testid={`version-option-set-default-${name}`}` — mirrors the
+  sibling `version-option-{name}` convention in the same function. Shared
+  by skill/agent/pipeline consumers; not yet fixed for any of them as of
+  this run (ELITEA-2437 analysis).
+- Confirm dialog's "Set as a default" button — **CONFIRMED LIVE GAP for the
+  Skill flow only.** `SetDefaultVersionDialog.jsx` already supports an
+  optional `confirmButtonTestId` prop (forwarded to the button), and the
+  **Agent** flow already wires it
+  (`useSetDefaultVersion.hooks.jsx:104` →
+  `confirmButtonTestId="agent-set-default-version-confirm-button"`) — but
+  `EditSkill.jsx`'s call site (line ~271) never passes it. One-line fix:
+  add `confirmButtonTestId="skill-set-default-version-confirm-button"` at
+  that call site, copying the Agent precedent exactly.
+- Endpoint: `PATCH /api/v2/elitea_core/skill_default_version/prompt_lib/
+  {project_id}/{skill_id}` → `200 OK`.
+- Confirmation toast: reuses the app-wide `toast-message` testid (same one
+  `save_as_version()` waits on for "Version created"). Exact text confirmed
+  live: **"Default version has been set successfully"**.
+- After confirming, the newly-default version's dropdown row gains
+  `version-option-pin-icon` and the option list re-sorts it to the top
+  (all `buildVersionOption` consumers sort `defaultVersionID` first) — a
+  second, data-independent confirmation signal beyond the toast.
+- The VERSION dropdown's own collapsed-trigger summary (`SkillTabBar.jsx`'s
+  `renderVersionValue`) also renders its own small pin glyph next to the
+  default version's name — **no testid on this one either**, but out of
+  scope for ELITEA-2437 since the toast + list-level `version-option-pin-icon`
+  already satisfy the case's pass criterion (only what a test's own code
+  path touches gets a testid request, per `.agents/testing.md` § Locator
+  policy).
+  Full details: `test-specs/skills/l3_skill-version-dropdown-set-default_ELITEA-2437.md`.
+
 ## Build with AI (skill creation) — `/skills/create` → `GenerateSkillModal`
 
 - Modal shell (`GenerateEntityModal.jsx`) is shared with the Agent "Build

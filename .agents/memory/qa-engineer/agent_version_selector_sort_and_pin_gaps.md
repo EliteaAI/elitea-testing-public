@@ -18,8 +18,21 @@ Confirmed live + via code-read (`EliteaUI/src/[fsd]/entities/version/ui/VersionS
   last position once a *different* version is explicitly re-pinned via "Set as a default". Any case
   that asserts "base appears last" needs to sequence that assertion AFTER re-pinning something else, or
   it will fail non-deterministically depending on the agent's freshness.
-- **Two testid gaps in the pin flow** (both confirmed absent via live `.inner_html()` inspection,
-  neither closed as of 2026-08-02):
+- **UPDATE 2026-08-06 (ELITEA-2437 analysis)**: both gaps below are now CLOSED for the **Agent** flow —
+  confirmed live via source read of current `version.helpers.jsx` /
+  `useSetDefaultVersion.hooks.jsx`: `version-option-pin-icon` is landed (unconditional on the
+  default-version row), and `agent-set-default-version-confirm-button` is landed and wired. **But a THIRD
+  gap this 2026-08-02 entry never called out is still open, for ALL consumers (agent/skill/pipeline)**:
+  the *clickable* "set as default" hover icon on a NON-default row (`version.helpers.jsx`'s
+  `<Box id="show-on-hover" onClick={() => handleSetDefaultVersion(id)}>` wrapping a bare `<PinIcon />`)
+  has NO testid at all — only a non-unique CSS `id="show-on-hover"` used purely for the hover-reveal
+  styling. This is the ACTUAL trigger a test must click to change the default version; the
+  `version-option-pin-icon` testid only marks the *already-default* row, it isn't clickable/actionable.
+  Full writeup + the Skill-side confirm-button gap (Skill's `EditSkill.jsx` never wires
+  `confirmButtonTestId`, unlike Agent):
+  `test-specs/skills/l3_skill-version-dropdown-set-default_ELITEA-2437.md`.
+- **Two testid gaps in the pin flow, as they stood on 2026-08-02** (historical — see UPDATE above for
+  current state):
   1. The pin `<svg>` icon rendered inside each `version-option-{name}` dropdown option
      (`version.helpers.jsx`'s `buildVersionOption` -> `IconBlock`) has no testid of its own — only the
      option's own `version-option-{name}` wrapper does. Scoped fix: chain a new
