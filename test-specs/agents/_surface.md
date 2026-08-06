@@ -49,6 +49,28 @@ EliteaAI/elitea-testing-public#1091 for the full write-up.
   item can lag the true server state for a beat); `select_version_by_name()` / `wait_for_publish_status_menuitem()`
   on `AgentDetailPage` already harden against it with retry+reload+API-tie-breaker patterns.
 
+## LLM model catalog contents (project `Private`/399, ELITEA-1882 run, 2026-08-06)
+- `GET /api/v2/configurations/models/399?include_shared=true` → `total: 11` — full
+  live inventory (name/display_name): `eu.anthropic.claude-sonnet-4-5-20250929-v1:0`
+  "Anthropic Claude 4.5 Sonnet" (default), `eu.anthropic.claude-sonnet-4-6` "Anthropic
+  Claude 4.6 Sonnet", `eu.anthropic.claude-haiku-4-5-20251001-v1:0` "Anthropic Claude
+  Haiku 4.5", `global.anthropic.claude-sonnet-5` "Anthropic Sonnet 5",
+  `claude-sonnet-4-5` "Azure Claude Sonnet 4.5", `claude-sonnet-4-6` "Azure Claude
+  Sonnet 4.6", `claude-sonnet-5` "Azure Claude Sonnet 5", `gpt-5-mini` "GPT-5 mini"
+  (low-tier default), `gpt-5.2` "GPT-5.2" (high-tier default), `gpt-5.4` "GPT-5.4",
+  `gpt-5.4-mini` "GPT-5.4-mini". OpenAI entries carry NO vendor prefix in
+  `display_name` (unlike Anthropic/Azure, which are all vendor-prefixed) — match
+  `"GPT-5 mini"` literally, not `"OpenAI GPT-5 mini"`.
+- **No `GPT-4.1` anywhere in the catalog** — confirmed twice independently (this run,
+  and the `settings-ai-providers/_surface.md` capture the day before on the same
+  project). A TMS case naming `GPT-4.1` as an available model is stale — the
+  platform's OpenAI lineup has moved to the GPT-5 family. Filed as clarification
+  [EliteaAI/elitea-testing-public#1285](https://github.com/EliteaAI/elitea-testing-public/issues/1285).
+  Don't assume this list is exhaustive-forever — re-verify live per case, this is a
+  handle cache not a frozen catalog.
+- `model-selector-option-{name}` dynamic testid (added ELITEA-1881) covers ALL 11
+  entries, OpenAI included — no new testid work needed for OpenAI-model cases.
+
 ## LLM Model Settings dialog (gear icon, ELITEA-1880 run, 2026-08-02)
 - Trigger: gear-icon button next to `model-selector-button`/`model-selector-name`, `aria-label="model settings menu"`.
   **No testid** — `LLMModelSelector.jsx` default-variant `ButtonGroup` branch (the widget's `field` variant has an
