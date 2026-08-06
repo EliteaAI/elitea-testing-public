@@ -103,6 +103,17 @@ SHARED ``DeleteEntityModal.jsx`` component, whose testids
 (``delete-confirm-dialog`` / ``delete-confirm-name-input`` /
 ``delete-confirm-button``) already exist app-wide — same repo precedent as
 ``personal_tokens_page.py``'s own declaration of this shared modal.
+
+Locator provenance (ELITEA-2347, edit-value flow / name-field-readonly): zero
+new testids needed — every handle this case touches (``secret-actions-menu-
+edit-value``, ``secret-value-input``, ``secret-name-input``, ``secret-name-
+cell``, ``secret-row-save-button``) already existed on ``automation/testids``
+from ELITEA-2336/2338. The Name field's "read-only" behaviour for an
+EXISTING row has no element to add a testid to: ``SecretsTable.jsx``'s
+``renderNameCell`` guard is literally ``if (isEditing && row.isNew)`` — an
+existing row's Name column renders the SAME ``secret-name-cell`` static-text
+element it shows in view mode, never a ``secret-name-input``. Confirmed live
+this session (AFS § Concrete Handles).
 """
 
 import logging
@@ -262,6 +273,12 @@ class SecretsPage(BasePage):
     # step 3) — chaining a `[data-testid=` selector off an already-scoped
     # row locator, per .agents/testing.md § Locator policy.
     SECRET_NAME_INPUT_SELECTOR = '[data-testid="secret-name-input"]'
+    # Used to scope the Value input to ONE specific row — needed for the
+    # edit-value flow (ELITEA-2347), where multiple rows could theoretically
+    # coexist on the page even though only one is ever actually in edit mode;
+    # chaining a `[data-testid=` selector off an already-scoped row locator,
+    # same sanctioned pattern as SECRET_NAME_INPUT_SELECTOR above.
+    SECRET_VALUE_INPUT_SELECTOR = '[data-testid="secret-value-input"]'
     # Used to scope the row-actions (three-dot) button to ONE specific row —
     # chaining a `[data-testid=` selector off an already-scoped row locator
     # (ELITEA-2338), same sanctioned pattern as the selectors above.
@@ -406,6 +423,23 @@ class SecretsPage(BasePage):
         """Return the masked-value-cell Locator scoped within *row*."""
         return row.locator(self.SECRET_VALUE_CELL_SELECTOR)
 
+    def get_row_value_input(self, row):
+        """Return the Value input Locator scoped within *row* — the row's
+        Value column while it is in edit mode (create-row OR edit-value
+        flow, ELITEA-2347 step 4). Scoped chaining off an already-testid-
+        scoped row locator, same sanctioned pattern as
+        :meth:`get_row_name_input`."""
+        return row.locator(self.SECRET_VALUE_INPUT_SELECTOR)
+
+    def get_row_name_input(self, row):
+        """Return the Name input Locator scoped within *row* — expected to
+        be ABSENT (count 0) when editing an EXISTING row's value (ELITEA-2347
+        step 5): ``renderNameCell``'s guard is ``if (isEditing && row.isNew)``,
+        so only a brand-new (``isNew``) row ever renders this input; an
+        existing row's Name column stays the same static-text cell
+        (``secret-name-cell``) shown in view mode."""
+        return row.locator(self.SECRET_NAME_INPUT_SELECTOR)
+
     def get_pagination_text(self) -> str:
         """Return the pagination range text, e.g. "1 - 10 of 104"."""
         return (self.pagination_info.text_content() or "").strip()
@@ -473,6 +507,91 @@ class SecretsPage(BasePage):
         is ever open at a time, so this is unambiguous page-wide."""
         items = self.page.locator(self.SECRET_ACTIONS_MENU_ITEM_PREFIX_SELECTOR)
         return items.all_text_contents()
+
+    def click_edit_value_menu_item(self, row, timeout: int = UI_ELEMENT_TIMEOUT):
+        """Click the 'Edit value' actions-menu item to enter edit mode for
+        *row*; wait for the edit-open GET
+        (``/secrets/secret/default/{project_id}/{name}``) to resolve AND for
+        *row*'s Value input to become visible (ELITEA-2347 step 3).
+
+        Returns the Playwright ``Response`` for the edit-open GET —
+        side-channel proof this fires (same endpoint/method the row-level
+        eye-icon reveal uses, ELITEA-2343). Its plaintext result is fetched
+        then discarded, never displayed: confirmed in source
+        (``SecretsTable.jsx``'s wrapped ``handleEditClick``) and live (the
+        Value input renders EMPTY, not pre-filled — see
+        :meth:`get_row_value_input`).
+        """
+
+        def _is_edit_open_response(response) -> bool:
+            return (
+                SECRET_DELETE_URL_SUBSTRING in response.url
+                and response.request.method == "GET"
+            )
+
+        with self.page.expect_response(
+            _is_edit_open_response, timeout=timeout
+        ) as resp_info:
+            self.actions_menu_edit_value.click()
+        expect(self.get_row_value_input(row)).to_be_visible(timeout=timeout)
+        return resp_info.value
+
+    def fill_edit_value(self, row, new_value: str) -> None:
+        """Type *new_value* into *row*'s Value input (edit-value mode) —
+        MUI needs keyboard events for React onChange, per
+        .claude/rules/mui-patterns.md (ELITEA-2347 step 6)."""
+        value_input = self.get_row_value_input(row)
+        value_input.click()
+        value_input.press_sequentially(new_value, delay=20)
+
+    def save_edit_value(self, timeout: int = UI_ELEMENT_TIMEOUT):
+        """Click the checkmark (✓) icon to persist an edit-value change;
+        wait for the PUT ``.../secret/default/{project_id}/{name}`` to
+        resolve (ELITEA-2347 step 6).
+
+        Returns a ``(Response, dict | None)`` tuple: the Playwright
+        ``Response`` (side-channel proof of server-side persistence) and
+        the request's parsed JSON body.
+
+        DECLARED IMPROVISATION — reads the body via a temporary
+        ``page.route()`` interceptor (reading ``route.request.post_data_json``
+        inside the handler, then ``route.continue_()``) rather than
+        ``response.request.post_data_json`` / ``Page.expect_request``.
+        Confirmed live this session (headed AND headless, this project's
+        actual Chromium 149): both of the latter reliably return ``None``
+        for this endpoint's PUT even though ``content-length: 34`` proves a
+        body was sent — a CDP-level limitation for this fetch-dispatched
+        request where Playwright's post-hoc ``postData`` read arrives too
+        late for the buffer, not specific to this project's product code.
+        Interception reads the body BEFORE the request leaves the browser,
+        which is unaffected. No sanctioned canon pattern covers Playwright
+        request-body capture in this project yet — flagged for the lead per
+        `.agents/role-overrides.md` § Declared-improvisation protocol.
+        """
+
+        def _is_edit_save_response(response) -> bool:
+            return (
+                SECRET_DELETE_URL_SUBSTRING in response.url
+                and response.request.method == "PUT"
+            )
+
+        captured: dict = {}
+        route_pattern = "**/secrets/secret/default/**"
+
+        def _capture_put_body(route):
+            if route.request.method == "PUT":
+                captured["post_data_json"] = route.request.post_data_json
+            route.continue_()
+
+        self.page.route(route_pattern, _capture_put_body)
+        try:
+            with self.page.expect_response(
+                _is_edit_save_response, timeout=timeout
+            ) as resp_info:
+                self.save_button.click()
+        finally:
+            self.page.unroute(route_pattern, _capture_put_body)
+        return resp_info.value, captured.get("post_data_json")
 
     def click_hide_menu_item(self) -> None:
         """Click the 'Hide' actions-menu item and wait for the shared
