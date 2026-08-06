@@ -62,7 +62,30 @@ substantively succeeded — GATE_SCHEMA's 3-value verdict enum (`green`/`red`/
 (same steps 1-4 above); do not resume the workflow (same cached-result trap
 as the stall variant) and do not treat `merged-ungated` as broken.
 
-## Seen 2×
+## Seen 3×
+
+#852/ELITEA-2344 — report: `gate.verdict: "not-run"`, `runs: 1`, outcome
+`merged-ungated` — but NOT the zero-eligible-specs variant: the batch had
+one new spec (the case's own, sanctioned-RED by design on OPEN #1203) plus
+4 pre-existing blast-radius specs, and the gate agent's `failures[]` listed
+all 5 with the matching signature after exactly 1 run, then stopped instead
+of continuing to run 2 and 3. So `not-run` here means "found the sanctioned
+signature but didn't complete the N-of-3 loop before returning" — a third
+shape distinct from both `red`/`runs:1` (§ Rule) and the zero-eligible-specs
+`not-run`/`runs:0` (§ A third variant). Lead ran 3 independent invocations
+of the case's own spec personally (identical #1203 signature all 3, only
+the occurrence count varied — 25/21/20), confirmed #1203 still OPEN, then
+ran the 4 blast-radius specs once together (4/4 same established signature,
+verified pre-existing on `automation/base` by grepping the already-merged
+spec files, not something this batch introduced). Also caught a testid
+closure trap while verifying promotability: a testid string
+(`secrets-add-button`) existed on `main` via an unrelated file that
+happened to share the string (an interactive-tours constants list), not
+via the button's actual wiring — the presence grep correctly said "no" on
+`main` while a naive `-S` SHA search would have falsely suggested it was
+already promoted. Opened + merged the trunk→base PR (#1228) personally,
+TMS back-written, closure record posted (with the testid-string-collision
+caveat spelled out), card → Ready.
 
 #845/ELITEA-2337 — report: `gate.verdict: "red"`, `runs: 1`,
 `cases[0].outcome: "blocked"`. Both the covering test and the new
