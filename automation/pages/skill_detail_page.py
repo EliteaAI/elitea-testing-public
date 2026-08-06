@@ -547,6 +547,13 @@ class SkillDetailPage(SkillFormPage):
         testid (ELITEA-1738 testid rework — set in ``buildVersionOption()``,
         shared by every version-selector consumer, not just this page).
 
+        Confirms the switch by polling the selector's own displayed text
+        rather than trusting ``wait_for_network`` alone — a race observed
+        during ELITEA-2440 automation: the option ``click()`` and the
+        network-idle wait can both resolve before MUI's ``onChange``
+        re-render actually lands, so a caller reading the selector text
+        immediately afterward can still see the previous version.
+
         Args:
             version_name: The version name to select (e.g. ``"base"``).
             timeout: Maximum wait time in milliseconds.
@@ -557,7 +564,19 @@ class SkillDetailPage(SkillFormPage):
         option.wait_for(state="visible", timeout=timeout)
         option.click()
         self.wait_for_network(timeout=5000)
-        logger.info("Switched to version: %r", version_name)
+
+        deadline = time.time() + timeout / 1000
+        while time.time() < deadline:
+            current = self.get_version_selector_value()
+            if current == version_name:
+                logger.info("Switched to version: %r", version_name)
+                return
+            self.page.wait_for_timeout(200)
+
+        raise RuntimeError(
+            f"VERSION selector did not update to {version_name!r} within "
+            f"{timeout}ms (still showing {self.get_version_selector_value()!r})"
+        )
 
     def open_version_selector(self):
         """Click the VERSION dropdown trigger to open the options list."""

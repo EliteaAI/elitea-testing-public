@@ -211,3 +211,59 @@ Distinct from the valid-import round trip (ELITEA-1737/1738, above the
   the page-header "Skills: N" stat unchanged (`11` before/after in this
   run) and zero `skill_import` network calls.
   Full details: `test-specs/skills/l3_import-skill-missing-frontmatter_ELITEA-2438.md`.
+
+## Test panel + version instructions (ELITEA-2440) — SkillTestPanel reflects the currently selected version
+
+- **Confirmed live: no testid gaps anywhere in this flow** — create form,
+  Save As Version dialog, VERSION dropdown, test panel input/send/response,
+  and the delete-confirmation dialog are all already testid'd.
+- Create-skill form (`/skills/create`): `skill-name-input-field` /
+  `skill-description-input-field` / `skill-instructions-editor-content` /
+  `skill-save-button`. Save navigates straight to
+  `/skills/all/{skillId}` — **no separate creation-confirmation toast**;
+  navigation itself is the confirmation signal (matches
+  `test_skill_management.py::TestCreateSkill`).
+  Create endpoint: `POST /api/v2/elitea_core/skills/prompt_lib/{project}` →
+  `201 Created`.
+- **`save_as_version(name)` saves the CURRENT (possibly just-edited)
+  instructions-editor content as the new version — `base`'s own stored
+  instructions are untouched.** To make a version whose instructions differ
+  from `base`, call `fill_instructions(new_text)` BEFORE
+  `save_as_version(name)`, not after. Endpoint:
+  `POST /api/v2/elitea_core/skill/prompt_lib/{project}/{skillId}` →
+  `201 Created`. Toast text confirmed live: `Version "{name}" created`
+  (exact match, no variation seen). **`save_as_version()` auto-navigates to
+  the newly-created version** — the URL gains the new version's id segment
+  immediately, so a subsequent explicit `switch_version(name)` to the
+  version you just created is a confirmed-live no-op (safe to call anyway
+  for 1:1 step-fidelity with a TMS case, just doesn't change any state).
+- Switching versions (`switch_version(name)` / clicking a
+  `version-option-{name}` row) re-fetches
+  `GET /api/v2/elitea_core/skill/prompt_lib/{project}/{skillId}/{versionId}`
+  → `200 OK`, and the instructions-editor content updates to that version's
+  stored instructions (confirmed both directions: `v1`'s edited text and
+  `base`'s original text both reload correctly after switching away and
+  back).
+- SkillTestPanel correctly runs against the **currently selected version's**
+  instructions, not a stale/cached one — confirmed live with a minimal
+  "Always say X" instruction pair (`base`="Always say BASE",
+  `v1`="Always say V1"): sending the identical prompt
+  ("What should you say?") on each version returned the bare word `"V1"`
+  or `"BASE"` respectively, exact match, no other content. Test panel
+  testids used: `chat-message-input` / `chat-send-button` (both already
+  wired inline in `SkillDetailPage.send_test_message()`) and
+  `skill-test-last-response` (`get_last_test_response()`).
+- Delete-skill flow (used for this run's cleanup, already
+  `SkillDetailPage.delete_skill_via_menu()`): overflow menu
+  (`skill-controls-menu-button` → `skill-delete-menu-item`) opens a
+  type-to-confirm dialog (`delete-confirm-name-input`, must match the
+  skill's exact name to enable `delete-confirm-button`). Delete endpoint:
+  `DELETE /api/v2/elitea_core/skill/prompt_lib/{project}/{skillId}` →
+  `204 No Content`. **Gotcha:** deleting a skill while its detail page is
+  still mid-refetch produces one benign `404` console error on the
+  now-stale in-flight `GET .../skill/.../{skillId}/{versionId}` request —
+  harmless (fires after the entity is already gone), not a product defect,
+  but don't be alarmed if a post-delete console-error check catches it;
+  scope the console-error assertion to the case's own steps, not through
+  cleanup.
+  Full details: `test-specs/skills/l3_test-panel-uses-selected-skill-version-instructions_ELITEA-2440.md`.
