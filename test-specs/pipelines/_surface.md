@@ -967,3 +967,50 @@ is a legitimate empty state, not an error state).
   the Before/After value boxes and their expand icons (`StateItemView`/
   `StateItemViewHeader`), which need NEW `testId`-prop plumbing added.
   Full handle table: `l3_run-details-state-before-after-per-node_ELITEA-2452.md`.
+
+## Run Details panel — Multiple typed custom state variables (confirmed live, 2026-08-06, ELITEA-2453)
+
+- **KNOWN DEFECT, filed `EliteaAI/elitea-testing-public#1274`**: an LLM node with
+  `structured_output: true` fails at execution — raw backend error surfaced directly
+  in the chat response (`Error: sequence item 0: expected str instance, dict found`)
+  — whenever its `output` mapping combines the built-in `messages` variable together
+  with `list`/`dict`-typed custom state variables. Isolated via a live A/B: identical
+  pipeline with `output: [custom_text, custom_num, custom_list, custom_json, messages]`
+  failed; the SAME pipeline with `messages` removed from `output` (custom vars
+  unchanged) succeeded cleanly. Any test needing structured-output custom variables
+  populated must exclude `messages` from that node's `output` list.
+- **`PipelineAPI.create_pipeline()` (generic, pre-existing) already supports a raw
+  `state:` block** in its `instructions` YAML param — no new API method needed for a
+  fixture that seeds custom typed state variables + a node in one call. Confirmed
+  live: `state: {custom_text: {type: str}, custom_num: {type: number}, custom_list:
+  {type: list}, custom_json: {type: dict}}` at the top level, sibling to `entry_point`/
+  `nodes`, round-trips correctly (visible in the STATE panel and the node's Output
+  select options). `create_pipeline_with_nodes()` does NOT support this (only
+  `entry_point`+`nodes`) — use `create_pipeline()` directly for any fixture needing
+  pre-seeded custom state.
+- **Run Details STATES row "uppercase" display is CSS-only, not DOM text.**
+  `RunStateDialog.jsx`'s per-variable accordion rows use `BasicAccordion`'s
+  `uppercase` prop (default `true`, not overridden here) → `text-transform: uppercase`
+  on the `StyledTypography` title. The actual `el.textContent` is the RAW variable
+  name (lowercase, e.g. `"custom_json"`), confirmed via `browser_evaluate`
+  (`getComputedStyle(el).textTransform === "uppercase"` while `el.textContent ===
+  "custom_json"`). A test asserting the case's "displayed uppercase" wording must
+  check the CSS property or accept the lowercase testid/text — `to_have_text` against
+  the uppercase-looking string will NOT match the real DOM text.
+- **Type-specific `After` value rendering is exactly `JSON.stringify`'s native
+  type-preserving output** — no custom per-type renderer in `StateItemView`.
+  Confirmed live, 4 distinct custom variables in the SAME panel simultaneously:
+  `str` → quoted (`"state initialized"`), `number` → bare numeral (`42`, no quotes),
+  `list` → bracketed JSON array (`["alpha","beta","gamma"]`), `dict` (display label
+  "Json") → braced JSON object (`{"status":"ok","version":1}`). This directly proves
+  case ELITEA-2453's steps 9-12 (String/Number/List/Json each render distinctly).
+- **Accordion rows are independently expandable, non-exclusive** — expanding all 4
+  custom-variable rows in sequence left all 4 visibly expanded simultaneously (not a
+  single-open accordion). Confirms case step 13 ("each variable individually
+  expandable") directly.
+- **Informational, not filed**: a single-node structured-output pipeline's Run
+  Details timeline shows TWO entries both labeled with the same node id (e.g. `LLM1`
+  at two different timestamps ~2s apart), not one — not investigated further (no
+  case step requires exactly 1 timeline entry); worth a closer look if a future case
+  needs to assert exact timeline-entry counts for a structured-output node.
+  Full handle table + fixture recipe: `l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md`.
