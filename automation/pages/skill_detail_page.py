@@ -49,6 +49,18 @@ class SkillDetailPage(SkillFormPage):
         description="Skill controls overflow menu button"
     )
 
+    # Overflow menu — SKILL-scoped pin/unpin toggle item ("Pin to top" /
+    # "Unpin from top"). Testid added via add-data-testid for ELITEA-2435
+    # (see test-specs/skills/l3_skill-pin-unpin-flow_ELITEA-2435.md,
+    # Concrete Handles) — SkillControls.jsx's pinMenuItem spread never set a
+    # `key`, unlike its sibling delete-skill item, so DotMenu.jsx's
+    # `testId: item.key` convention rendered `data-testid={undefined}`; same
+    # one-line fix shape already landed for Credentials (EliteaAI/EliteaUI#569).
+    pin_toggle_menuitem = LocatorDescriptor(
+        testid="pin-toggle-skill-menuitem",
+        description="Pin/Unpin toggle menu item inside the three-dot menu",
+    )
+
     # Overflow menu — VERSION-scoped Export item (distinct from the
     # SKILL-scoped items further down the same menu)
     export_version_menu_item = LocatorDescriptor(
@@ -310,6 +322,27 @@ class SkillDetailPage(SkillFormPage):
         logger.info("Opening skill actions menu")
         self.controls_menu_button.evaluate("el => el.click()")
         self.page.get_by_test_id("skill-delete-menu-item").wait_for(state="visible", timeout=5000)
+
+    def get_pin_toggle_menu_label(self) -> str:
+        """Return the pin-toggle menu item's current text ("Pin to top" / "Unpin from top")."""
+        return self.pin_toggle_menuitem.text_content() or ""
+
+    @action("Toggle skill pin via detail menu")
+    def click_pin_toggle_menu_item(self):
+        """Click the pin-toggle menu item and wait for the underlying
+        ``POST``/``DELETE .../social/pin/prompt_lib/{project}/skill/{id}``
+        response, per the AFS's wait-on-network-response guidance (no fixed sleep).
+
+        Returns:
+            The matched Playwright ``Response``.
+        """
+        skill_id = self.get_skill_id()
+        pattern = "/social/pin/prompt_lib/"
+        with self.page.expect_response(
+            lambda r: pattern in r.url and r.url.rstrip("/").endswith(f"/skill/{skill_id}")
+        ) as response_info:
+            self.pin_toggle_menuitem.click()
+        return response_info.value
 
     @action("Delete skill via menu")
     def delete_skill_via_menu(self, skill_name: str, timeout: int = 10000):
