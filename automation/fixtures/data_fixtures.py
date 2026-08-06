@@ -205,6 +205,76 @@ def pipeline_with_llm_id(pipeline_api: PipelineAPI, request):
         logger.warning("Failed to delete LLM pipeline %s: %s", pid, exc)
 
 
+def build_two_llm_nodes() -> list[dict]:
+    """Build the ``LLM 1 -> LLM 2 -> END`` node list for ELITEA-2452.
+
+    LLM 1 WRITES to ``messages`` (its ``output`` mapping); LLM 2 writes to
+    nothing. The pipeline's two DEFAULT state variables (``input``,
+    ``messages`` — no custom variable needed) exercise both observables the
+    case requires: ``messages`` is modified at LLM 1 (not at LLM 2);
+    ``input`` is populated once at pipeline entry and never modified again.
+    Exact shape confirmed live this session (AFS ``l3_run-details-state-
+    before-after-per-node_ELITEA-2452.md`` § Test Data, pipelines 7681/7682).
+    """
+    return [
+        {
+            "id": "LLM 1",
+            "type": "llm",
+            "input": [],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": "You are a helpful assistant."},
+                "task": {"type": "fstring", "value": "User asked: {input}"},
+            },
+            "output": ["messages"],
+            "structured_output": False,
+            "transition": "LLM 2",
+        },
+        {
+            "id": "LLM 2",
+            "type": "llm",
+            "input": ["messages"],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": "Reply with just OK."},
+                "task": {"type": "fstring", "value": "Ack: {messages}"},
+            },
+            "output": [],
+            "structured_output": False,
+            "transition": "END",
+        },
+    ]
+
+
+@pytest.fixture
+def pipeline_with_two_llm_nodes_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``LLM 1 -> LLM 2 -> END`` (2 nodes, 2 default state
+    variables) before the test and delete it afterwards. Satisfies the
+    ELITEA-2452 precondition (2+ nodes, 2+ state variables, one node writes
+    to a variable and one does not — see :func:`build_two_llm_nodes`).
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2452_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created 2-LLM-node pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_two_llm_nodes(),
+    )
+    pid = pipeline["id"]
+    logger.info("Created 2-LLM-node pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted 2-LLM-node pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete 2-LLM-node pipeline %s: %s", pid, exc)
+
+
 @pytest.fixture
 def github_credential(credential_api: CredentialAPI, request):
     """Create a GitHub API credential and yield its metadata.

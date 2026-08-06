@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-06 (ELITEA-2450 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-06 (ELITEA-2452 analysis).
 
 ## Run Details panel (`RunStateNode`/`RunStateDialog`) — opened after pipeline execution (confirmed live, 2026-08-06, ELITEA-2450)
 
@@ -917,3 +917,53 @@ is a legitimate empty state, not an error state).
   prop-leak console warning fires exactly once per panel open, matched
   reliably by `"non-boolean attribute" in msg.text` alone (no location/stack
   needed) — same idiom as `_is_known_defect_611`.
+
+## Run Details panel — State Before/After per node (confirmed live, 2026-08-06, ELITEA-2452)
+
+- **KNOWN DEFECT, filed `EliteaAI/elitea-testing-public#1271`**: the panel's
+  "Before" value for the FIRST timeline step (`selectedStep === 0`) is a
+  hardcoded literal `''` (`RunStateDialog.jsx`: `selectedStep ?
+  data.timeline[selectedStep - 1].state[variable] : ''`) — it never reads
+  the variable's actual pre-run value, even when the variable has a
+  non-empty starting default (STATE panel's "Add default value" feature,
+  ELITEA-2042). Confirmed live: a `seed_var` pre-set to
+  `'PRESET_DEFAULT_VALUE'`, untouched by the only node in a 1-node
+  pipeline, showed Before=`""`/After=`"PRESET_DEFAULT_VALUE"` — a false
+  "modified" read. **Any test asserting "unmodified variable ⇒
+  Before=After" must use a NON-FIRST timeline step** (works correctly for
+  `selectedStep > 0`, confirmed live) — never the pipeline's first node.
+- **Default-selected timeline step on panel open is the LAST step, not
+  index 0**, for an already-`Completed` run — confirmed live on 2
+  independent 2-node executions (pipelines 7681/7682). Don't assert
+  `selectedStep === 0` on open; explicitly click the desired step before
+  reading Before/After.
+- **`input`'s Before→After transition at the FIRST node is NOT caused by
+  that node's own `input`/`output` mapping** — `input` is the pipeline's
+  chat-message variable, populated at pipeline entry (concurrent with the
+  first node's execution), independent of whether that node references
+  `input` in its config at all. Don't assert "the node's output mapping
+  caused this" in a test comment for `input` specifically; it's accurate
+  for `messages` (explicit `output: [messages]`) but not for `input`.
+- **Accordion row auto-expand**: `BasicAccordion`'s `defaultExpanded={!index}`
+  means only the FIRST state-variable row (list index 0, typically `input`)
+  starts expanded; every other row (`messages`, any custom variable) starts
+  collapsed and needs an explicit click on its header to reveal Before/After.
+- **Step-select / row-expand / fullscreen-open are pure client-side
+  re-renders — zero new network activity.** Confirmed via
+  `browser_network_requests`: no new requests after the initial
+  run-completion Socket.IO exchange, across timeline-step clicks, accordion
+  expands, and fullscreen-modal opens. Wait via `expect(locator).to_be_visible()`
+  after each click (state updates are still React-async), not a network wait.
+- **Fullscreen value modal (`PipelineStateViewModal.jsx`, `src/components/`)
+  has ZERO testids** — confirmed via `grep -n "data-testid"`, no hits. Its
+  heading shows ONLY the variable name (`selectedState.name`), NOT which
+  direction (Before/After) was expanded — informational only, not filed as
+  a defect (the case never requires the modal to distinguish direction).
+- **Dynamic per-variable testid plumbing already exists for the accordion
+  row** — `BasicAccordion.jsx`'s `items[].testId` prop is ALREADY threaded
+  to `StyledAccordionSummary`'s `data-testid` (line 67); `RunStateDialog.jsx`
+  just needs to pass `testId: `pipeline-run-details-state-row-${variable}``
+  in its `items` array — no new shared-component plumbing required, unlike
+  the Before/After value boxes and their expand icons (`StateItemView`/
+  `StateItemViewHeader`), which need NEW `testId`-prop plumbing added.
+  Full handle table: `l3_run-details-state-before-after-per-node_ELITEA-2452.md`.

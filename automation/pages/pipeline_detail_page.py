@@ -831,6 +831,46 @@ class PipelineDetailPage(PipelineFormPage):
         description='Run Details panel "States" section (header + per-variable accordion list)'
     )
 
+    # Run Details panel — State Before/After per node (ELITEA-2452). Testids
+    # added via add-data-testid, EliteaAI/EliteaUI@2b40e5a6 (app JSX we own,
+    # not a #579 exception).
+
+    # Dynamic (runtime-parameterized) testid — one per timeline stepper dot,
+    # keyed by list INDEX (not node id — a looped pipeline could revisit the
+    # same node id more than once in one timeline). Class-level template
+    # constant per .agents/testing.md § Locator policy.
+    RUN_DETAILS_TIMELINE_STEP = '[data-testid="pipeline-run-details-timeline-step-{}"]'
+
+    # Dynamic (runtime-parameterized) testid — one accordion-row header per
+    # state variable in the STATES section.
+    RUN_DETAILS_STATE_ROW = '[data-testid="pipeline-run-details-state-row-{}"]'
+
+    # Dynamic (runtime-parameterized) testids — Before/After value boxes and
+    # their fullscreen/expand icon buttons, one pair per state variable.
+    RUN_DETAILS_STATE_VALUE_BEFORE = '[data-testid="pipeline-run-details-state-value-before-{}"]'
+    RUN_DETAILS_STATE_VALUE_AFTER = '[data-testid="pipeline-run-details-state-value-after-{}"]'
+    RUN_DETAILS_STATE_EXPAND_BEFORE = '[data-testid="pipeline-run-details-state-expand-before-{}"]'
+    RUN_DETAILS_STATE_EXPAND_AFTER = '[data-testid="pipeline-run-details-state-expand-after-{}"]'
+
+    # Fullscreen value modal (PipelineStateViewModal.jsx) — feature-scoped
+    # literal testids (single consumer, RunStateDialog.jsx).
+    run_details_value_modal = LocatorDescriptor(
+        testid="pipeline-run-details-value-modal",
+        description="Fullscreen value modal root (opened by a Before/After expand icon)"
+    )
+    run_details_value_modal_header = LocatorDescriptor(
+        testid="pipeline-run-details-value-modal-header",
+        description="Fullscreen value modal heading (shows the variable name only, not Before/After)"
+    )
+    run_details_value_modal_close_button = LocatorDescriptor(
+        testid="pipeline-run-details-value-modal-close-button",
+        description="Fullscreen value modal close (X) button"
+    )
+    run_details_value_modal_content = LocatorDescriptor(
+        testid="pipeline-run-details-value-modal-content",
+        description="Fullscreen value modal body — the complete, unclipped JSON.stringify'd value"
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -3738,6 +3778,102 @@ class PipelineDetailPage(PipelineFormPage):
     def get_run_details_states_section_text(self) -> str:
         """Return the Run Details panel's States section text content."""
         return (self.run_details_states_section.text_content() or "").strip()
+
+    # ------------------------------------------------------------------
+    # Run Details panel — State Before/After per node (ELITEA-2452)
+    # ------------------------------------------------------------------
+
+    def get_run_details_state_row_locator(self, variable: str) -> Locator:
+        """Return the Locator for *variable*'s accordion-row header in the STATES section."""
+        return self.page.locator(self.RUN_DETAILS_STATE_ROW.format(variable))
+
+    def get_run_details_state_value_locator(self, variable: str, direction: str) -> Locator:
+        """Return the Locator for *variable*'s Before or After value box.
+
+        Args:
+            variable: State variable name (e.g. "messages").
+            direction: ``"before"`` or ``"after"``.
+        """
+        template = (
+            self.RUN_DETAILS_STATE_VALUE_BEFORE if direction == "before" else self.RUN_DETAILS_STATE_VALUE_AFTER
+        )
+        return self.page.locator(template.format(variable))
+
+    def select_run_details_timeline_step(self, index: int, timeout: int = 10000):
+        """Click the timeline stepper dot at *index* to select that run step.
+
+        Args:
+            index: Zero-based index into the run's timeline (0 = first
+                executed node).
+            timeout: Maximum wait time for the step control to appear.
+        """
+        logger.info("Selecting Run Details timeline step %d", index)
+        step = self.page.locator(self.RUN_DETAILS_TIMELINE_STEP.format(index))
+        step.wait_for(state="visible", timeout=timeout)
+        step.click()
+
+    def get_run_details_selected_timeline_step_id(self) -> str:
+        """Return the "Timeline step:" label's currently-selected node id.
+
+        The label and the node id render as sibling Typography elements with
+        no separator between them (confirmed live, ELITEA-2450) — the raw
+        text is returned as-is; callers substring-match the expected node id.
+        """
+        return self.get_run_details_timeline_section_text()
+
+    def expand_run_details_state_row(self, variable: str, timeout: int = 10000):
+        """Click the accordion header for *variable* in the STATES section to
+        expand it (a no-op if already expanded — MUI accordion click toggles,
+        so only call this on a collapsed row).
+
+        Args:
+            variable: State variable name (e.g. "messages").
+            timeout: Maximum wait time for the row to appear.
+        """
+        logger.info("Expanding Run Details state row %r", variable)
+        row = self.page.locator(self.RUN_DETAILS_STATE_ROW.format(variable))
+        row.wait_for(state="visible", timeout=timeout)
+        row.click()
+
+    def get_run_details_state_before_value(self, variable: str, timeout: int = 10000) -> str:
+        """Return the Before value box's text for *variable* (row must be expanded)."""
+        box = self.page.locator(self.RUN_DETAILS_STATE_VALUE_BEFORE.format(variable))
+        box.wait_for(state="visible", timeout=timeout)
+        return (box.text_content() or "").strip()
+
+    def get_run_details_state_after_value(self, variable: str, timeout: int = 10000) -> str:
+        """Return the After value box's text for *variable* (row must be expanded)."""
+        box = self.page.locator(self.RUN_DETAILS_STATE_VALUE_AFTER.format(variable))
+        box.wait_for(state="visible", timeout=timeout)
+        return (box.text_content() or "").strip()
+
+    def open_run_details_state_value_fullscreen(
+        self, variable: str, direction: str, timeout: int = 10000
+    ):
+        """Click the fullscreen/expand icon on *variable*'s Before or After
+        value box, opening the value modal (``PipelineStateViewModal.jsx``).
+
+        Args:
+            variable: State variable name (e.g. "messages").
+            direction: ``"before"`` or ``"after"``.
+            timeout: Maximum wait time for the icon and the resulting modal.
+        """
+        template = (
+            self.RUN_DETAILS_STATE_EXPAND_BEFORE
+            if direction == "before"
+            else self.RUN_DETAILS_STATE_EXPAND_AFTER
+        )
+        logger.info("Opening Run Details fullscreen value modal (%s, %s)", variable, direction)
+        icon = self.page.locator(template.format(variable))
+        icon.wait_for(state="visible", timeout=timeout)
+        icon.click()
+        self.run_details_value_modal.wait_for(state="visible", timeout=timeout)
+
+    def close_run_details_value_modal(self, timeout: int = 5000):
+        """Click the fullscreen value modal's close (X) button."""
+        logger.info("Closing Run Details fullscreen value modal")
+        self.run_details_value_modal_close_button.click()
+        self.run_details_value_modal.wait_for(state="hidden", timeout=timeout)
 
     # ------------------------------------------------------------------
     # Toolkit credential indicators (Enhancement #5114, Bug #5183)
