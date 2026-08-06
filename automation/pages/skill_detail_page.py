@@ -115,11 +115,49 @@ class SkillDetailPage(SkillFormPage):
         description="VERSION selector (base ⇄ named-version switcher)"
     )
 
+    # "Set as default?" confirmation dialog — Skill flow. Wired via
+    # add-data-testid for ELITEA-2437 (SetDefaultVersionDialog.jsx already
+    # accepted an optional confirmButtonTestId prop; EditSkill.jsx's call
+    # site never passed it before this).
+    set_default_version_confirm_button = LocatorDescriptor(
+        testid="skill-set-default-version-confirm-button",
+        description='"Set as default?" dialog — confirm ("Set as a default") button'
+    )
+
     # Dynamic (runtime-parameterized) testid for a VERSION-selector option,
     # keyed by version name — set in buildVersionOption() (EliteaUI
     # version.helpers.jsx), shared by every version selector consumer
     # (skill/agent/pipeline), not just this page.
     VERSION_OPTION = '[data-testid="version-option-{}"]'
+
+    # Scoped sub-selector for the pin icon rendered INSIDE a version option
+    # (ELITEA-1738 rework, pre-existing testid). Only rendered on the option
+    # whose id equals the skill's default version — chain off the
+    # already-testid'd VERSION_OPTION.format(name) parent, never a
+    # page-level handle. Same shape as AgentDetailPage.VERSION_OPTION_PIN_ICON.
+    VERSION_OPTION_PIN_ICON = '[data-testid="version-option-pin-icon"]'
+
+    # Pin/"set as default" hover control on a non-default, non-published
+    # version's dropdown row — dynamic (name-keyed) testid added via
+    # add-data-testid for ELITEA-2437 (EliteaUI version.helpers.jsx's
+    # `<Box id="show-on-hover" onClick={... handleSetDefaultVersion(id)}>`
+    # had no testid at all before this). Rendered as a descendant of the
+    # MenuItem carrying VERSION_OPTION's testid (SingleSelectMenuItem.jsx
+    # renders `option.icon` inside that MenuItem) — always scope this
+    # under a VERSION_OPTION locator, never look it up page-wide.
+    VERSION_OPTION_SET_DEFAULT = '[data-testid="version-option-set-default-{}"]'
+
+    # Any-version-option selector for reading the VERSION dropdown's full
+    # option ORDER — excludes both VERSION_OPTION_PIN_ICON and
+    # VERSION_OPTION_SET_DEFAULT, whose testids also start with the
+    # `version-option-` prefix but live on nested non-option children, not
+    # the option MenuItem itself. Purely testid-keyed (no role/CSS-structure
+    # dependency); mirrors AgentDetailPage.VERSION_OPTION_ANY (ELITEA-1891).
+    VERSION_OPTION_ANY = (
+        '[data-testid^="version-option-"]'
+        ':not([data-testid="version-option-pin-icon"])'
+        ':not([data-testid^="version-option-set-default-"])'
+    )
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -520,3 +558,149 @@ class SkillDetailPage(SkillFormPage):
         option.click()
         self.wait_for_network(timeout=5000)
         logger.info("Switched to version: %r", version_name)
+
+    def open_version_selector(self):
+        """Click the VERSION dropdown trigger to open the options list."""
+        self.version_selector.click()
+
+    def is_version_option_visible(self, version_name: str, timeout: int = 5000) -> bool:
+        """Check whether a version is present in the open VERSION dropdown.
+
+        LOCATOR: dynamic ``version-option-{version_name}`` testid (see
+        ``VERSION_OPTION`` above) — call after :meth:`open_version_selector`.
+
+        Args:
+            version_name: Exact version name (e.g. ``"base"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        option = self.page.locator(self.VERSION_OPTION.format(version_name))
+        try:
+            option.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def is_version_option_pinned(self, version_name: str) -> bool:
+        """Check whether a version option in the open VERSION dropdown shows
+        the static default-pin icon (i.e. it is the skill's current default
+        version).
+
+        LOCATOR: scoped sub-selector chained off the already-testid'd
+        ``VERSION_OPTION.format(version_name)`` parent — see
+        ``VERSION_OPTION_PIN_ICON`` above. Call after
+        :meth:`open_version_selector`.
+
+        Args:
+            version_name: Exact version name (e.g. ``"base"``).
+        """
+        option = self.page.locator(self.VERSION_OPTION.format(version_name))
+        return option.locator(self.VERSION_OPTION_PIN_ICON).count() > 0
+
+    def _hover_version_option(self, version_name: str, timeout: int = 5000):
+        """Scroll/hover a version option's row to reveal its hover-gated
+        "set as default" control, and return the option's own locator.
+
+        Call after :meth:`open_version_selector`.
+        """
+        option = self.page.locator(self.VERSION_OPTION.format(version_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.hover()
+        self.page.wait_for_timeout(300)  # hover-reveal CSS transition (#show-on-hover)
+        return option
+
+    def is_version_option_set_default_control_visible(
+        self, version_name: str, timeout: int = 5000
+    ) -> bool:
+        """Hover the named version's row and check whether its hover-revealed
+        "set as default" pin control (``VERSION_OPTION_SET_DEFAULT``, added
+        via add-data-testid for ELITEA-2437) becomes visible.
+
+        Call after :meth:`open_version_selector`.
+
+        Args:
+            version_name: The non-default version's name (e.g. ``"ver_1"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        option = self._hover_version_option(version_name, timeout=timeout)
+        control = option.locator(self.VERSION_OPTION_SET_DEFAULT.format(version_name))
+        try:
+            control.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @action("Click set-as-default on a version option")
+    def click_version_option_set_default(self, version_name: str, timeout: int = 5000):
+        """Hover the named version's row and click its "set as default" pin
+        control, opening the "Set as default?" confirmation dialog.
+
+        Call after :meth:`open_version_selector`.
+
+        Args:
+            version_name: The non-default version's name to set as default
+                (e.g. ``"ver_1"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking set-as-default for version: %r", version_name)
+        option = self._hover_version_option(version_name, timeout=timeout)
+        control = option.locator(self.VERSION_OPTION_SET_DEFAULT.format(version_name))
+        control.wait_for(state="visible", timeout=timeout)
+        control.click()
+
+    @action("Confirm set-as-default in the confirmation dialog")
+    def confirm_set_default_version(self, timeout: int = 10000):
+        """Click the "Set as default?" dialog's confirm button
+        (``skill-set-default-version-confirm-button``, added via
+        add-data-testid for ELITEA-2437), waiting for the underlying
+        ``PATCH .../skill_default_version/...`` response and the
+        confirmation toast — mirrors :meth:`save_as_version`'s existing
+        network-wait pattern instead of a fixed sleep.
+
+        Call after :meth:`click_version_option_set_default`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the
+            ``skill_default_version`` PATCH.
+        """
+        self.set_default_version_confirm_button.wait_for(state="visible", timeout=timeout)
+
+        with self.page.expect_response(
+            lambda r: "/skill_default_version/prompt_lib/" in r.url and r.request.method == "PATCH"
+        ) as response_info:
+            self.set_default_version_confirm_button.click()
+
+        self.version_toast_message.wait_for(state="visible", timeout=timeout)
+        self.wait_for_network(timeout=5000)
+        logger.info("Confirmed set-as-default — PATCH status=%s", response_info.value.status)
+        return response_info.value
+
+    def get_version_option_order(self, timeout: int = 5000) -> list[str]:
+        """Return the VERSION dropdown's option names, in DOM (visual) order.
+
+        LOCATOR: ``VERSION_OPTION_ANY`` (excludes the nested pin-icon and
+        set-default-control testids, which also start with the
+        ``version-option-`` prefix, so they're never mistaken for options
+        themselves). Reads each matched element's own ``data-testid``
+        attribute and strips the ``version-option-`` prefix — mirrors
+        ``AgentDetailPage.get_version_option_order()`` (ELITEA-1891). Call
+        after :meth:`open_version_selector`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first option.
+
+        Returns:
+            Version names in the order they're rendered, e.g.
+            ``["ver_1", "base"]`` once ``ver_1`` is the default.
+        """
+        options = self.page.locator(self.VERSION_OPTION_ANY)
+        options.first.wait_for(state="visible", timeout=timeout)
+        count = options.count()
+        prefix = "version-option-"
+        names: list[str] = []
+        for i in range(count):
+            testid = options.nth(i).get_attribute("data-testid") or ""
+            names.append(testid[len(prefix):] if testid.startswith(prefix) else testid)
+        return names
