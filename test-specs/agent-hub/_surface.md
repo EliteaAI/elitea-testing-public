@@ -21,6 +21,32 @@ slot), ELITEA-2369, 2026-08-06.
   `ChatConversationStarters.jsx`'s call site for now (canon #511: only the
   code path a test actually executes); `NewConversationView.jsx`'s own
   call site is a DIFFERENT case's job.
+  **[CORRECTION, ELITEA-2369 implementer fix round 2 — the bullet above names
+  the WRONG call site, do not follow it]** This original bullet has it
+  backwards. ELITEA-2369's own live flow (Catalog → modal → "Start Chat" →
+  brand-new conversation, before any message is sent) renders its starter
+  tiles via `src/pages/NewChat/NewConversationView.jsx` — which imports
+  `EllipsisTextWithTooltip` directly and does NOT go through
+  `ChatConversationStarters.jsx` at all. `ChatConversationStarters.jsx` is a
+  DIFFERENT call site, consumed only by
+  `src/[fsd]/features/chat/ui/chat-box/ChatBox.jsx`'s embedded/
+  agent-participant chat surface — a not-yet-analysed flow ELITEA-2369 never
+  reaches. Per canon #511 ("touches" = the code path THIS test actually
+  executes), the shipped `testId="chat-conversation-starter-tile"` prop is
+  wired at `NewConversationView.jsx`'s call site ONLY — confirmed via a fresh
+  `git fetch origin` + `git grep "chat-conversation-starter-tile"
+  origin/automation/testids -- src/`, exactly one hit
+  (`NewConversationView.jsx:1020`); `ChatConversationStarters.jsx`'s call site
+  remains unwired, same as this bullet intended, just for the opposite of the
+  reason it states. (Full history: the AFS's own "wrong component identified"
+  amendment + the fix-round-1 "leftover orphan wiring" amendment in
+  `l3_agent-hub-start-conversation-with-starters_ELITEA-2369.md` § Known
+  Defects — a first implementer pass wired BOTH call sites simultaneously by
+  mistake, review caught the orphan, fix round 1 reverted it down to the one
+  correct site.) Any future case that DOES analyse the `ChatBox.jsx` embedded
+  surface will need its own testid wiring at `ChatConversationStarters.jsx`'s
+  call site — that work is still undone, this correction only fixes which
+  site is ALREADY wired.
 - **Clicking a starter tile POPULATES the composer, does not auto-send**
   (`onSendConversationStarter` → `chatInput.current.setValue(starter)`) —
   confirmed live: input field receives the full starter text, send button
