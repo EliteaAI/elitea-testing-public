@@ -171,3 +171,43 @@ Existing `open_actions_menu()` (JS-click bypass, waits on
 `skill-delete-menu-item`) is reused to open the overflow menu for the
 pin-toggle flow — no new "open menu" method needed. Test:
 `automation/tests/ui/skills/test_skill_pin_unpin.py`.
+
+## Import — invalid-file validation error (ELITEA-2438) — `useSkillImport.hooks.js`
+
+Distinct from the valid-import round trip (ELITEA-1737/1738, above the
+`Concrete Handles` sections of those AFS — not duplicated here).
+
+- Uploading a `.md` file whose frontmatter block IS present but is
+  **missing `name` and/or `description`** never opens the "Import
+  parameters" dialog. Instead `stageFile()`
+  (`useSkillImport.hooks.js:31-63`) shows an error toast and returns
+  before the import mutation is ever called — **confirmed live: zero
+  `POST .../skill_import/...` requests fire**, validation is 100%
+  client-side.
+- Error toast reuses the app-wide `toast-alert` (root, carries
+  `data-severity="error"`) / `toast-message` (text) testids — **both
+  pre-existing, no new testid needed.** `SkillsListPage` currently only
+  exposes `import_success_toast_message` (unscoped `toast-message`); it
+  does NOT yet have the `toast_alert` / `TOAST_ALERT_SEVERITY` /
+  `get_toast_alert(severity)` trio that `ChatPage`
+  (`automation/pages/chat_page.py:965-972,1946-1955`) and
+  `PipelineDetailPage` already have — implementer should copy that
+  pattern onto `SkillsListPage` verbatim rather than add a new testid.
+- Exact live message text: `The [<filename>.md] is missing required
+  metadata: frontmatter must contain "name" and "description".` — names
+  the uploaded filename and both required keys verbatim.
+- **`SkillsListPage.import_skill()` is NOT reusable for the invalid-file
+  path** — it unconditionally calls `Dialog.wait_for(...)` after upload,
+  which times out when no dialog appears. A separate upload-only method
+  (click Import + handle file chooser + set file, no dialog wait) is
+  needed so both valid- and invalid-file tests can share the upload step.
+- Distinct, out-of-scope adjacent case: a `.md` file that doesn't start
+  with a valid `---` frontmatter block at all (vs. one that has a
+  frontmatter block missing a required key) hits a different parser path
+  (`importWizardParser.helpers.js:20-24`) and shows a differently-worded
+  `Not supported file [<filename>]: <parser error>` toast — not the same
+  code path, not covered by ELITEA-2438.
+- No skill entity is ever created by the invalid-file path — confirmed via
+  the page-header "Skills: N" stat unchanged (`11` before/after in this
+  run) and zero `skill_import` network calls.
+  Full details: `test-specs/skills/l3_import-skill-missing-frontmatter_ELITEA-2438.md`.

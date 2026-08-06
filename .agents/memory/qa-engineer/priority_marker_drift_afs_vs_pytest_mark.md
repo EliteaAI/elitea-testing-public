@@ -132,6 +132,34 @@ from the already-merged ELITEA-2374 test) — the fix is a live, CI-relevant
 correctness gap for the case THIS PR delivers (a `-m p2` selection run
 silently misses it), so it's in scope regardless of origin.
 
+## Recurrence variant (PR #1262/ELITEA-2438, 2026-08-06) — implementer likely pattern-matched off a pre-existing WRONG sibling in the same file
+
+Sixth occurrence, same `l3(medium)→p3` mis-mapping, but with a new twist:
+the new test (`test_import_skill_missing_frontmatter_shows_validation_error`,
+class `TestSkillImportMissingFrontmatter`) was appended to
+`test_skill_export_import.py` — a file that ALREADY contains a pre-existing,
+unfixed instance of this exact bug: `TestSkillImportNonBaseVersion.
+test_import_skill_non_base_version` (ELITEA-1738) has AFS `Priority: l3
+(medium, per case)` — byte-identical wording to ELITEA-2438's own AFS line —
+and compiles to `@pytest.mark.p3`, also wrong (should be `p2`), but never
+caught because no prior review diffed it against pytest.ini's scale (it
+predates this recurring-bug check's discovery). The FIRST test in the same
+file, `TestSkillExportImport.test_export_and_import_skill_base_version`
+(ELITEA-1737, same `l3 (medium, per case)` wording), correctly compiles to
+`p2` — so the file has one right and one wrong example of the identical
+label, and the new (third) test copied the wrong one.
+
+**Check extended once more**: when a same-file sibling exists, don't assume
+"matches an existing test in this file" is sufficient verification — a file
+can carry its OWN pre-existing unfixed instance of this bug. Compare against
+pytest.ini's scale + the AFS's own `Priority:` line directly, every time,
+even when a same-file precedent is available; a matching neighbor may itself
+be wrong. Flagged CHANGES_REQUESTED (round 1, static review, one-line fix:
+`test_skill_export_import.py`'s new `@pytest.mark.p3` → `@pytest.mark.p2`
+on the ELITEA-2438 test only — did not expand scope to also fix the
+pre-existing ELITEA-1738 instance, which is out of this PR's diff; flagged
+separately as a non-blocking pre-existing-debt note instead).
+
 ## Recurrence variant (PR #1256/ELITEA-2435, 2026-08-06) — brand-new file, both module `pytestmark` AND per-function decorator wrong
 
 Fifth occurrence, same `l3(medium)→p3` mis-mapping as recurrence 4, but a
