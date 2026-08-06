@@ -79,23 +79,28 @@
    toggle — the dialog is already sized responsively (90% of the editor
    viewport) the moment it opens, so there is no "restore" affordance to
    pair with it. A genuine `FullscreenOutlinedIcon` expand control DOES
-   exist live, but it is scoped to each STATES row's Before/After value box
+   exist live, but it is scoped to each States row's Before/After value box
    (`StateItemViewHeader`), not the panel header. This AFS asserts what is
    actually present: header = [status badge, delete icon, close icon];
    per-state-value expand icons live inside the States section (step 8).
-8. Verify the panel contains a TIMELINE STEP section and a STATES section.
-   **Expected — confirmed live, exact match**: a "TIMELINE STEP: {node id}"
-   line (rendered `TIMELINE STEP: LLM1` for this pipeline's single-node run)
-   followed by a stepper (one filled circle + timestamp per timeline entry —
-   one entry, `18:45:09`, for this single-node pipeline); then a "STATES"
-   section header followed by one accordion row per pipeline state variable
+8. Verify the panel contains a Timeline step section and a States section.
+   **Expected — confirmed live** (amended during ELITEA-2450 implementation
+   fix round 1: the ALL-CAPS "TIMELINE STEP"/"STATES" wording below was this
+   AFS's own paraphrase, not the literal rendered text — source-verified
+   against `RunStateDialog.jsx:277` (`Timeline step:`) and `:452` (`States`),
+   both sentence case): a `"Timeline step:"` label immediately followed by
+   the node id with no separator (renders `Timeline step:LLM1` for this
+   pipeline's single-node run — confirmed live) followed by a stepper (one
+   filled circle + timestamp per timeline entry — one entry, `18:45:09`, for
+   this single-node pipeline); then a `"States"` section header followed by
+   one accordion row per pipeline state variable
    (`input`, `messages` for this pipeline), each expandable to show
    Before/After value boxes with their own per-value expand icons.
 
 ## Expected Final State
 The Run Details panel is open and displays: header `"Run N details"`,
-`"Completed"` status badge, delete icon, close icon, a TIMELINE STEP section,
-and a STATES section — all confirmed live and asserted above.
+`"Completed"` status badge, delete icon, close icon, a Timeline step section,
+and a States section — all confirmed live and asserted above.
 
 ## Coverage Map
 
@@ -110,7 +115,7 @@ and a STATES section — all confirmed live and asserted above.
 | Step 5: "Completed" green badge next to header | Action completes without error | Step 5 | Step 5 | covered — exact match |
 | Step 6: Trash (delete) icon button | Action completes without error | Step 6 | Step 6 | covered |
 | Step 7: Expand/fullscreen button | Action completes without error | Step 7 | Step 7 | **covered, with CLARIFICATION** — header's second icon is a Close button, not a fullscreen toggle; the genuine expand/fullscreen controls are per-state-value, inside the States section. Filed: `EliteaAI/elitea-testing-public#1268`. |
-| Step 8: Panel contains TIMELINE STEP section and STATES section | Condition holds as described | Step 8 | Step 8 | covered — exact match |
+| Step 8: Panel contains TIMELINE STEP section and STATES section | Condition holds as described | Step 8 | Step 8 | **covered, with CLARIFICATION** — case text is ALL-CAPS ("TIMELINE STEP"/"STATES"); confirmed-live text is sentence case (`"Timeline step:"` / `"States"`, source-verified against `RunStateDialog.jsx:277`/`:452`); the assertions check the sentence-case literal text, not the case's paraphrase. |
 
 ### Axis 2 — Assertions beyond the case
 
@@ -132,8 +137,8 @@ and a STATES section — all confirmed live and asserted above.
 | Panel status badge ("Completed"/etc.) | `testid needed: pipeline-run-details-status-badge`; state read via a `data-status="{completed\|error\|in_progress\|stopped}"` attribute on the SAME testid (per `.agents/testing.md` "testid = stable identity; state via `data-*`" ruling — do NOT request per-status testid variants) | **needs-adding.** Source: `RunStateDialog.jsx`'s `RunStatus` component — text content IS the status (`{status}` rendered directly), so a `data-status` attribute mirroring `data.status` is the compliant shape, not a testid keyed to the specific status word. | none needed |
 | Panel delete/stop icon button | `testid needed: pipeline-run-details-delete-button` (single testid; the Stop-vs-Delete branch is a same-element conditional pair per canon ruling #277 — only one branch renders at a time depending on `data.status`, so ONE testid on whichever `IconButton` is mounted is compliant; no `data-*` state suffix needed since the icon inside, not the testid, encodes which mode) | **needs-adding.** Source: `RunStateDialog.jsx` — `onDelete`/`onStop` `IconButton`s, mutually exclusive branches, neither has a testid. This case only exercises the `Completed` → Delete branch. | none needed |
 | Panel close icon button | `testid needed: pipeline-run-details-close-button` | **needs-adding.** Source: `RunStateDialog.jsx` — `onClose` `IconButton` (`CollapseIcon`), no testid. Confirmed live: clicking it removes the `role="dialog"` node from a fresh snapshot. | none needed |
-| Timeline step section (label + stepper) | `testid needed: pipeline-run-details-timeline-section` | **needs-adding.** Source: `RunStateDialog.jsx` — the `Box` wrapping `"Timeline step:"` + `Stepper`, no testid. Text content (`TIMELINE STEP: LLM1` for this pipeline) is sufficient for this case's assertion depth; per-step granularity is a sibling case's concern (ELITEA-2451, "Timeline Steps Display" — out of scope here). | none needed |
-| States section (header + accordion list) | `testid needed: pipeline-run-details-states-section` | **needs-adding.** Source: `RunStateDialog.jsx` — the `Box` wrapping the `"States"` `Typography` + the `variables.map(...)` accordion list, no testid. Per-variable/per-value granularity (Before/After boxes, their own expand icons) is a sibling case's concern (ELITEA-2452, "State Before/After per Node" — out of scope here); this case only needs the section's presence. | none needed |
+| Timeline step section (label + stepper) | `testid needed: pipeline-run-details-timeline-section` | **needs-adding.** Source: `RunStateDialog.jsx:277` — the `Box` wrapping `"Timeline step:"` (literal, sentence case) + `Stepper`, no testid. Text content renders `Timeline step:LLM1` (label and node id concatenated with no separator) for this pipeline — sufficient for this case's assertion depth; per-step granularity is a sibling case's concern (ELITEA-2451, "Timeline Steps Display" — out of scope here). | none needed |
+| States section (header + accordion list) | `testid needed: pipeline-run-details-states-section` | **needs-adding.** Source: `RunStateDialog.jsx:452` — the `Box` wrapping the `"States"` `Typography` (literal, sentence case) + the `variables.map(...)` accordion list, no testid. Per-variable/per-value granularity (Before/After boxes, their own expand icons) is a sibling case's concern (ELITEA-2452, "State Before/After per Node" — out of scope here); this case only needs the section's presence. | none needed |
 
 ## Network Behavior
 - Pipeline execution and the run's Timeline/States data arrive **entirely
