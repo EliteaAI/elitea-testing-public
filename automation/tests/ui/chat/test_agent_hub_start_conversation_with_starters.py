@@ -25,7 +25,12 @@ landing view this case's flow actually renders through, confirmed via live
 exploration (AFS Known Defects amendment corrects the AFS's original,
 mistaken call site). Its sibling call site in ``ChatConversationStarters.jsx``
 (consumed only by the embedded ``ChatBox.jsx`` surface) is a different,
-not-yet-analysed flow and is intentionally left unwired per canon ruling #511).
+not-yet-analysed flow and is intentionally left unwired per canon ruling #511.
+(Fix round 1: review caught an orphan copy of this testId still wired on
+``ChatConversationStarters.jsx`` from the original, since-corrected commit —
+removed in EliteaAI/EliteaUI@ae2c30b1; re-verified via fresh ``git grep``
+against ``origin/automation/testids`` that only the ``NewConversationView.jsx``
+call site carries it now — see AFS Known Defects, fix-round-1 amendment.)
 
 Case-text drifts (CLARIFICATION, already tracked, not re-filed — AFS §
 Known Defects Found): "CONVERSATION STARTERS" / "Start conversation" ->
