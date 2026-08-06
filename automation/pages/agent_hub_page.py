@@ -175,6 +175,12 @@ class AgentHubPage(BasePage):
     MODAL_LIKE_BUTTON = '[data-testid="catalog-agent-modal-like-button"]'
     MODAL_LIKE_BUTTON_LIKED_STATE = '[data-testid="catalog-agent-modal-like-button"][data-liked="{}"]'
 
+    # Individual starter item inside the modal's CHAT STARTERS section
+    # (AgentConversationStarterItem.jsx, ELITEA-2369) — static testid, one per
+    # rendered item; disambiguate a specific starter via .filter(has_text=...)
+    # (same idiom as PARTICIPANT_ROW_PREFIX / AGENT_CARD_PREFIX above).
+    MODAL_STARTER_ITEM = '[data-testid="catalog-agent-modal-starter-item"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -303,6 +309,13 @@ class AgentHubPage(BasePage):
         precedent as :meth:`is_agent_liked` for the card-list like button.
         """
         return self.page.locator(self.MODAL_LIKE_BUTTON).get_attribute("data-liked") or ""
+
+    def get_modal_starter_items(self):
+        """Return the Locator matching ALL rendered starter items inside the
+        preview modal's CHAT STARTERS section (ELITEA-2369) — use
+        ``.count()`` to verify "multiple options" render.
+        """
+        return self.page.locator(self.MODAL_STARTER_ITEM)
 
     @action("Click Start Chat in the agent preview modal")
     def click_start_chat(self, timeout: int = 10000):
