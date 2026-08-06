@@ -66,6 +66,23 @@ HIDE; hide asserts HIDE -> SHOW). See
 for the full MUI-internals finding and this case's AFS § Concrete Handles
 for the original reasoning.
 
+Locator provenance (ELITEA-2344, hide flow): the AFS specced the hide-
+confirmation dialog's body text as **"testid needed"** (``alert-dialog-content``)
+on the SHARED, generic ``src/components/AlertDialog.jsx`` component's
+``StyledDialogContentText`` — confirmed live and in source to carry zero
+``data-testid`` at analysis time (only an ``id="alert-dialog-description"``
+ARIA id, not a valid locator basis per this project's testid-only policy).
+This implementation session added it directly on the JSX node (same shape as
+the pre-existing ``alert-dialog-confirm-button`` a few lines below it),
+committed onto ``automation/testids`` as ``EliteaAI/EliteaUI@6a4e4f22`` — "add
+data-testid for shared AlertDialog content text". Being generic/shared (not
+scoped to secrets — 4+ other call sites confirmed via `git grep`), it becomes
+available to every other feature using ``AlertDialog`` the moment it lands.
+The confirm button (``alert-dialog-confirm-button``) was already generic and
+pre-existing — declared here per the same shared-modal precedent as
+``delete_confirm_dialog`` below (each page object that triggers a shared
+dialog declares its own ``LocatorDescriptor`` for it).
+
 Locator provenance (ELITEA-2338, delete flow): the AFS correctly specced all
 four row-actions testids as **"testid needed"** — ``SecretsTable.jsx``'s
 three-dot ``IconButton`` (lines 511-518) and ``SecretActionsMenu.jsx``'s three
@@ -108,6 +125,10 @@ SECRETS_LIST_URL_SUBSTRING = "/secrets/secrets/default/"
 # collides with SECRETS_LIST_URL_SUBSTRING above:
 # `/secrets/secret/default/{project_id}/{name}` (DELETE).
 SECRET_DELETE_URL_SUBSTRING = "/secrets/secret/default/"
+# Hide mutation endpoint — distinct URL shape from both of the above: no
+# singular/plural "secret(s)" segment at all, just `/secrets/hide/...`.
+# `/secrets/hide/default/{project_id}/{name}` (POST).
+SECRET_HIDE_URL_SUBSTRING = "/secrets/hide/default/"
 
 
 class SecretsPage(BasePage):
@@ -182,6 +203,21 @@ class SecretsPage(BasePage):
         testid="secret-actions-menu-delete",
         description='"Delete" menu item — SecretActionsMenu, opens the '
         "shared delete-confirmation modal on click.",
+    )
+
+    # Hide-confirmation dialog (shared AlertDialog.jsx) — testids already
+    # exist (ELITEA-2344 added alert_dialog_content; alert_dialog_confirm_button
+    # was already generic/pre-existing). Same shared-dialog-declared-per-page-
+    # object precedent as delete_confirm_dialog below.
+    alert_dialog_content = LocatorDescriptor(
+        testid="alert-dialog-content",
+        description="Hide-confirmation dialog body text (shared AlertDialog "
+        "component, generic — not secrets-specific).",
+    )
+    alert_dialog_confirm_button = LocatorDescriptor(
+        testid="alert-dialog-confirm-button",
+        description="Hide-confirmation dialog's confirm button (shared "
+        "AlertDialog component, generic — text is 'Hide' for this flow).",
     )
 
     # Delete-confirmation modal (shared DeleteEntityModal.jsx) — testids
@@ -437,6 +473,40 @@ class SecretsPage(BasePage):
         is ever open at a time, so this is unambiguous page-wide."""
         items = self.page.locator(self.SECRET_ACTIONS_MENU_ITEM_PREFIX_SELECTOR)
         return items.all_text_contents()
+
+    def click_hide_menu_item(self) -> None:
+        """Click the 'Hide' actions-menu item and wait for the shared
+        AlertDialog confirmation dialog's body text to appear (AFS step 4)."""
+        self.actions_menu_hide.click()
+        expect(self.alert_dialog_content).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+    def get_hide_confirm_text(self) -> str:
+        """Return the hide-confirmation dialog's body text content (AFS step 5)."""
+        return (self.alert_dialog_content.text_content() or "").strip()
+
+    def confirm_hide(self, timeout: int = UI_ELEMENT_TIMEOUT):
+        """Click the hide-confirmation dialog's confirm ('Hide') button; wait
+        for the hide POST to resolve AND for the subsequent list-GET refetch,
+        concurrently (both fire from the same click).
+
+        Returns the Playwright ``Response`` for the hide POST (side-channel
+        proof of server-side persistence, per AFS step 6 — no success toast
+        text was confirmed for this flow, so this is the stable proof)."""
+
+        def _is_hide_response(response) -> bool:
+            return (
+                SECRET_HIDE_URL_SUBSTRING in response.url
+                and response.request.method == "POST"
+            )
+
+        with (
+            self.page.expect_response(_is_hide_response, timeout=timeout) as hide_info,
+            self.page.expect_response(
+                self._is_secrets_list_response, timeout=timeout
+            ),
+        ):
+            self.alert_dialog_confirm_button.click()
+        return hide_info.value
 
     def click_delete_menu_item(self) -> None:
         """Click the 'Delete' actions-menu item and wait for the shared
