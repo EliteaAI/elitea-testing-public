@@ -1123,6 +1123,212 @@ class TestAgentActions:
                 except Exception as cleanup_exc:
                     print(f"Warning: Failed to cleanup agent {aid}: {cleanup_exc}")
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1878_add-and-save-multiple-tags-both-persist-after-reload.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_add_multiple_tags_persist_after_reload(self, page, agent_api):
+        """Add two tags to an agent, save, reload, and verify both persist
+        (ELITEA-1878).
+
+        Uses a dedicated, disposable agent created via
+        ``AgentAPI.create_agent_full()`` (not the shared ``agent_id``
+        fixture) — same #524 workaround as ``test_edit_agent_instructions``.
+        The payload's seeded ``tags: []`` (``_build_dedicated_agent_payload``)
+        gives the test a known, empty starting Tags field, matching the
+        case's own precondition.
+
+        Tags input/chip testids (``agent-tags-input`` /
+        ``agent-tags-chip-{name}``) were added for this case via
+        ``add-data-testid`` — ``ApplicationEditForm.jsx``'s ``TagEditor`` call
+        site previously left them ``undefined`` on the Agent branch (only the
+        Pipeline branch exercised Tags before this case, canon #511 scope
+        discipline). Chip testids are dynamic (parameterized by tag name) so
+        each committed chip is independently addressable.
+        """
+        TAG_1 = "regression_test"
+        TAG_2 = "automation"
+
+        with allure.step("Precondition — create a dedicated disposable agent"):
+            agent_name = f"elitea-1878-tags-{uuid.uuid4().hex[:8]}"[:32]
+            agent = agent_api.create_agent_full(_build_dedicated_agent_payload(agent_name))
+            agent_id = agent["id"]
+
+        detail_page = AgentDetailPage(page)
+        console_messages = []
+        page.on(
+            "console",
+            lambda msg: console_messages.append(msg)
+            if msg.type in ("error", "warning") and not _is_known_defect_538(msg)
+            else None,
+        )
+        save_requests = detail_page.capture_requests_matching(
+            "application/prompt_lib", method="PUT"
+        )
+
+        try:
+            with allure.step("Step 1 — Navigate to the agent detail page"):
+                detail_page.navigate(agent_id)
+                expect(detail_page.tags_input).to_be_visible()
+                expect(detail_page.get_tag_chip(TAG_1)).to_have_count(0)
+                expect(detail_page.get_tag_chip(TAG_2)).to_have_count(0)
+
+            with allure.step(f'Step 2 — Add tag "{TAG_1}" and tag "{TAG_2}"'):
+                detail_page.add_tag(TAG_1)
+                detail_page.add_tag(TAG_2)
+                expect(detail_page.get_tag_chip(TAG_1)).to_be_visible()
+                expect(detail_page.get_tag_chip(TAG_2)).to_be_visible()
+
+            with allure.step("Step 3 — Click Save"):
+                detail_page.click_save(timeout=FORM_SAVE_TIMEOUT)
+                _wait_for_resolved_save_count(page, save_requests, expected_count=1)
+                save_responses = [r for r in save_requests if r["status"] is not None]
+                assert save_responses and save_responses[-1]["status"] == 201, (
+                    f"PUT application/prompt_lib/... should return 201, captured: {save_requests!r}"
+                )
+
+            with allure.step("Step 4 — Reload the page (full navigation)"):
+                detail_page.reload_and_wait(timeout=NAVIGATION_TIMEOUT)
+
+            with allure.step(
+                f'Step 5 — Verify both "{TAG_1}" and "{TAG_2}" tags are shown '
+                "in the Tags field, in the order they were added"
+            ):
+                tag_1_chip = detail_page.get_tag_chip(TAG_1)
+                tag_2_chip = detail_page.get_tag_chip(TAG_2)
+                expect(tag_1_chip).to_be_visible()
+                expect(tag_2_chip).to_be_visible()
+
+                box_1 = tag_1_chip.bounding_box()
+                box_2 = tag_2_chip.bounding_box()
+                assert box_1 and box_2 and box_1["x"] < box_2["x"], (
+                    f'Tag "{TAG_1}" chip should render before "{TAG_2}" '
+                    f"(chip order preserved after reload), got x positions "
+                    f"{box_1} / {box_2}"
+                )
+
+            with allure.step(
+                "Side-channel check — no console errors/warnings across the flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors/warnings while adding/saving tags: "
+                    f"{[m.text for m in console_messages]}"
+                )
+        finally:
+            with allure.step("Cleanup — delete the dedicated agent"):
+                try:
+                    agent_api.delete_agent(agent_id)
+                except Exception as cleanup_exc:
+                    print(f"Warning: Failed to cleanup agent {agent_id}: {cleanup_exc}")
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1879_remove-a-tag-from-agent-removal-persists-after-reload.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_remove_tag_from_agent_persists_after_reload(self, page, agent_api):
+        """Remove one of two saved tags, save, reload, and verify the
+        removed tag is gone while the remaining tag stays intact
+        (ELITEA-1879).
+
+        Uses a dedicated, disposable agent via ``AgentAPI.create_agent_full()``,
+        pre-seeded with 2 tags already saved via the creation payload's
+        ``version_details.tags`` (matching the case's own precondition — "an
+        agent with at least one saved tag exists"). Seeding 2 tags (rather
+        than 1) lets the test prove BOTH halves of the case's Expected
+        Result: the removed tag is gone AND the remaining tag is intact —
+        a 1-tag seed could only prove removal.
+
+        Chip delete-icon testid (``agent-tags-chip-delete-{name}``) was
+        added for this case via ``add-data-testid`` alongside ELITEA-1878's
+        ``agent-tags-input``/``agent-tags-chip-{name}`` — this is the first
+        case exercising tag removal, so `chipDeleteTestId` is wired only on
+        the Agent branch (canon #511 scope discipline).
+        """
+        KEEP_TAG = "keep_this_tag"
+        REMOVE_TAG = "remove_this_tag"
+
+        with allure.step(
+            "Precondition — create a dedicated agent pre-seeded with 2 saved tags"
+        ):
+            agent_name = f"elitea-1879-tags-{uuid.uuid4().hex[:8]}"[:32]
+            payload = _build_dedicated_agent_payload(agent_name)
+            payload["versions"][0]["tags"] = [{"name": KEEP_TAG}, {"name": REMOVE_TAG}]
+            agent = agent_api.create_agent_full(payload)
+            agent_id = agent["id"]
+
+        detail_page = AgentDetailPage(page)
+        console_messages = []
+        page.on(
+            "console",
+            lambda msg: console_messages.append(msg)
+            if msg.type in ("error", "warning") and not _is_known_defect_538(msg)
+            else None,
+        )
+        save_requests = detail_page.capture_requests_matching(
+            "application/prompt_lib", method="PUT"
+        )
+
+        try:
+            with allure.step(
+                "Step 1 — Navigate to the agent detail page with saved tags"
+            ):
+                detail_page.navigate(agent_id)
+                expect(detail_page.get_tag_chip(KEEP_TAG)).to_be_visible()
+                expect(detail_page.get_tag_chip(REMOVE_TAG)).to_be_visible()
+
+            with allure.step(f'Step 2 — Click the X on tag "{REMOVE_TAG}" to remove it'):
+                detail_page.remove_tag(REMOVE_TAG)
+
+            with allure.step(
+                "Step 3 — Verify the removed tag chip disappears; the "
+                "remaining tag is unaffected (no PUT fired by the delete "
+                "click alone — only Save persists it)"
+            ):
+                expect(detail_page.get_tag_chip(REMOVE_TAG)).to_have_count(0)
+                expect(detail_page.get_tag_chip(KEEP_TAG)).to_be_visible()
+                assert not save_requests, (
+                    "Removing a tag chip (before Save) should not fire a PUT "
+                    f"request, captured: {save_requests!r}"
+                )
+
+            with allure.step("Step 4 — Click Save"):
+                detail_page.click_save(timeout=FORM_SAVE_TIMEOUT)
+                _wait_for_resolved_save_count(page, save_requests, expected_count=1)
+                save_responses = [r for r in save_requests if r["status"] is not None]
+                assert save_responses and save_responses[-1]["status"] == 201, (
+                    f"PUT application/prompt_lib/... should return 201, captured: {save_requests!r}"
+                )
+
+            with allure.step("Step 5 — Reload the page (full navigation)"):
+                detail_page.reload_and_wait(timeout=NAVIGATION_TIMEOUT)
+
+            with allure.step(
+                "Step 6 — Verify the removed tag is absent and the "
+                "remaining tag is intact (still a functioning chip, not a "
+                "stale/orphaned node)"
+            ):
+                expect(detail_page.get_tag_chip(REMOVE_TAG)).to_have_count(0)
+                expect(detail_page.get_tag_chip(KEEP_TAG)).to_be_visible()
+                expect(detail_page.get_tag_chip_delete_icon(KEEP_TAG)).to_be_visible()
+
+            with allure.step(
+                "Side-channel check — no console errors/warnings across the flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors/warnings while removing/saving a tag: "
+                    f"{[m.text for m in console_messages]}"
+                )
+        finally:
+            with allure.step("Cleanup — delete the dedicated agent"):
+                try:
+                    agent_api.delete_agent(agent_id)
+                except Exception as cleanup_exc:
+                    print(f"Warning: Failed to cleanup agent {agent_id}: {cleanup_exc}")
+
 
 class TestAgentExecution:
     """Agent execution — instructions field alone does not prevent execution (ELITEA-1897).

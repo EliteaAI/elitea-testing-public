@@ -8,12 +8,12 @@ Handles: /agents/create and /agents/all/{id} (edit mode)
 
 import logging
 import re
-from playwright.sync_api import Page
+
+from playwright.sync_api import Locator, Page
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
-
 
 logger = logging.getLogger("elitea.pages.agent_form")
 
@@ -188,6 +188,25 @@ class AgentFormPage(BasePage):
         testid="agent-save-as-version-button",
         description="Save as new version button"
     )
+
+    # ------------------------------------------------------------------
+    # Tags (ELITEA-1878, ELITEA-1879). Testid-only, threaded via
+    # ApplicationEditForm.jsx's TagEditor call site (Agent branch,
+    # `isFromPipeline` ternary) onto the shared TagEditor/AutoCompleteDropDown
+    # component's `inputTestId`/`chipTestId`/`chipDeleteTestId` props — same
+    # mechanism as PipelineFormPage.tags_input/tags_chip, but the Agent
+    # branch's chip testids are dynamic (parameterized by tag name) rather
+    # than static, so each committed chip stays independently addressable.
+    # See `.agents/testing.md`'s dynamic-testid class-constant pattern.
+    # ------------------------------------------------------------------
+    tags_input = LocatorDescriptor(
+        testid="agent-tags-input",
+        description="Tags Autocomplete input field (real <input>, MUI TextField)",
+    )
+
+    # Dynamic (runtime-parameterized) testid templates.
+    AGENT_TAGS_CHIP = '[data-testid="agent-tags-chip-{}"]'
+    AGENT_TAGS_CHIP_DELETE = '[data-testid="agent-tags-chip-delete-{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -364,6 +383,22 @@ class AgentFormPage(BasePage):
         """Read the current value of the Welcome Message field."""
         return self.welcome_message_input.input_value()
 
+    def get_tag_chip(self, tag_name: str) -> Locator:
+        """Return the locator for a single committed tag chip by tag name.
+
+        Args:
+            tag_name: The tag's text (used to build the dynamic testid).
+        """
+        return self.page.locator(self.AGENT_TAGS_CHIP.format(tag_name))
+
+    def get_tag_chip_delete_icon(self, tag_name: str) -> Locator:
+        """Return the locator for a tag chip's delete icon by tag name.
+
+        Args:
+            tag_name: The tag's text (used to build the dynamic testid).
+        """
+        return self.page.locator(self.AGENT_TAGS_CHIP_DELETE.format(tag_name))
+
     # ------------------------------------------------------------------
     # Actions
     # ------------------------------------------------------------------
@@ -380,6 +415,41 @@ class AgentFormPage(BasePage):
         logger.info("Clicking Save")
         self.save_button.evaluate("el => el.click()")
         self.wait_for_network(timeout=timeout)
+
+    @action("Add tag")
+    def add_tag(self, tag_name: str, timeout: int = 5000):
+        """Type a tag into the Tags combobox and commit it with Enter.
+
+        Pure client-side Formik state before Save — confirmed live (AFS
+        ELITEA-1878): no debounce/delay needed, the chip renders immediately
+        after Enter.
+
+        Args:
+            tag_name: Tag text to type and commit.
+            timeout: Maximum wait time for the input to be visible.
+        """
+        logger.info("Adding tag '%s'", tag_name)
+        self.tags_input.wait_for(state="visible", timeout=timeout)
+        self.tags_input.click()
+        self.tags_input.press_sequentially(tag_name, delay=20)
+        self.tags_input.press("Enter")
+
+    @action("Remove tag")
+    def remove_tag(self, tag_name: str, timeout: int = 5000):
+        """Click a tag chip's delete icon, removing it from the field.
+
+        Pure client-side Formik state — confirmed live (AFS ELITEA-1879): no
+        network request fires from this click alone, only on the subsequent
+        Save.
+
+        Args:
+            tag_name: The tag's text (used to build the dynamic testid).
+            timeout: Maximum wait time for the chip's delete icon to be visible.
+        """
+        logger.info("Removing tag '%s'", tag_name)
+        delete_icon = self.get_tag_chip_delete_icon(tag_name)
+        delete_icon.wait_for(state="visible", timeout=timeout)
+        delete_icon.click()
 
     def is_save_enabled(self) -> bool:
         """Check if the Save button is enabled.
