@@ -27,7 +27,9 @@ NOT re-verified here -- both are already covered by
 custom variables in a `structured_output: true` node's `output` mapping is a
 CONFIRMED product defect (`EliteaAI/elitea-testing-public#1274`); this test's
 fixture deliberately excludes `messages` from `output` to route around it
-(see `pipeline_with_typed_state_vars_id`).
+(see `pipeline_with_typed_state_vars_id`). Step 8's "list representation" is
+asserted by a real shape check (`isinstance(json.loads(after_value), list)`)
+in that spec's Step 8 block, not merely by visibility/non-emptiness.
 
 Zero new testids -- every handle this case touches (STATE panel, LLM node
 Output-select/structured-output-toggle, Run Details panel/timeline/state-row/

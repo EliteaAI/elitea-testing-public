@@ -156,13 +156,24 @@
    structured output enabled"; combining `messages` in that SAME node's `output`
    under `structured_output: true` is the confirmed-broken combination
    (`EliteaAI/elitea-testing-public#1274`). `messages`' list-of-LangChain-message-object
-   rendering (`StateItemView`, same component) is ALREADY covered by
-   `l3_run-details-state-before-after-per-node_ELITEA-2452.md` (steps 6/8, a
-   2-node pipeline where `messages` is populated via a plain `output: [messages]`
-   mapping WITHOUT `structured_output`). This AFS's own step 11 covers the list-type
-   observable this case actually needs distinguished (String vs Number vs List vs
-   Json) via `custom_list` instead — a genuine `list` type, distinct from
-   `messages`' LangChain-object-array special case.
+   rendering (`StateItemView`, same component) is covered by
+   `l3_run-details-state-before-after-per-node_ELITEA-2452.md`, a 2-node pipeline
+   where `messages` is populated via a plain `output: [messages]` mapping WITHOUT
+   `structured_output`. **Amended (fix round, 2026-08-06):** the original citation
+   to that AFS's "steps 6/8" was inaccurate — those steps only assert box
+   visibility and Before≠After/non-emptiness, never a list/array SHAPE check, so
+   the "list representation" observable this case's own step 8 names was not
+   actually asserted anywhere in the suite. Closed by adding a real shape
+   assertion to that spec's Step 8 block (`json.loads(messages_after)` +
+   `isinstance(..., list)` + non-empty), confirmed live: `messages`' After value
+   is `["content='...' ...", "content='...' ..."]` — a genuine JSON array of
+   stringified LangChain message objects. See
+   `automation/tests/ui/pipelines/test_pipeline_run_details_state_before_after.py`
+   Step 8 (the new shape-check block, immediately after the existing
+   Before≠After assertion). This AFS's own step 11 additionally covers the
+   list-type observable this case's OWN scope needs distinguished (String vs
+   Number vs List vs Json) via `custom_list` — a genuine `list` type, distinct
+   from `messages`' LangChain-object-array special case.
 9. CUSTOM_TEXT: shows string values.
    **Expected — confirmed live, exact match**: `custom_text` row's After value
    (`pipeline-run-details-state-value-after-custom_text`, reused testid mechanism
@@ -213,7 +224,7 @@ representation (quoted string / bare number / bracketed array / braced object).
 | Step 5: All state variables in STATES section, uppercase | Condition holds | Step 5 | Step 5 | covered — **CLARIFICATION**: "uppercase" is a CSS `text-transform`, not the DOM text content (which is lowercase); assert accordingly |
 | Step 6: Expand each variable | Action completes | Steps 6+13 | Steps 6, 13 | covered |
 | Step 7: INPUT shows string value | Field accepts input, displays value | N/A this session — see step 7 note | `l3_run-details-state-before-after-per-node_ELITEA-2452.md` steps 6-7 | already-covered-elsewhere (str-type rendering via `input`, not re-verified — this AFS proves the SAME rendering mechanism via `custom_text`, step 9) |
-| Step 8: MESSAGES shows list representation | Action completes | N/A this session — see Known Defects | `l3_run-details-state-before-after-per-node_ELITEA-2452.md` steps 6/8 | already-covered-elsewhere (list-of-message-object rendering via `messages` in a NON-structured-output node; this case's own structured-output + `messages` combination is a CONFIRMED DEFECT, `#1274` — routed around, not asserted as working) |
+| Step 8: MESSAGES shows list representation | Action completes | N/A this session — see Known Defects | `test_pipeline_run_details_state_before_after.py` Step 8 (`isinstance(json.loads(messages_after), list)` shape assertion, added fix round 2026-08-06) | already-covered-elsewhere (list-of-message-object rendering via `messages` in a NON-structured-output node, now with a real list/array SHAPE assertion, not just visibility/diff; this case's own structured-output + `messages` combination is a CONFIRMED DEFECT, `#1274` — routed around, not asserted as working) |
 | Step 9: CUSTOM_TEXT shows string values | Action completes | Step 9 | Step 9 | covered |
 | Step 10: CUSTOM_NUM shows numeric values | Action completes | Step 10 | Step 10 | covered |
 | Step 11: CUSTOM_LIST shows list/array representation | Action completes | Step 11 | Step 11 | covered |
