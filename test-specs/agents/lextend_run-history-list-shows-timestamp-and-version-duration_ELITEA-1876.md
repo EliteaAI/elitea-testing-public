@@ -134,15 +134,18 @@ run but is now stale).
 
 | Element | Recommended Locator | PROVENANCE | Fallback |
 |---|---|---|---|
-| Run history list item (row, full text incl. Date/Version/Duration) | Reuses `AgentDetailPage.RUN_HISTORY_LIST_ITEM_SELECTOR` = `'[data-testid="run-history-list-item"]'` (pre-existing, from ELITEA-1877) — no new testid needed; Date/Version/Duration are plain child `<Typography>` text nodes inside the SAME row element (`RunHistoryTooltipCell.jsx`), so the row's own `text_content()`/`all_text_contents()` already exposes all three | on-main ✓ (pre-existing, reused as-is — verified via `cd ../EliteaUI && git fetch origin` + `git grep -- 'run-history-list-item' origin/main -- src/`, 2026-08-06) | none — testid only |
+| Run history list item (row, full text incl. Date/Version/Duration) | Reuses `AgentDetailPage.RUN_HISTORY_LIST_ITEM_SELECTOR` = `'[data-testid="run-history-list-item"]'` (pre-existing, from ELITEA-1877) — no new testid needed; Date/Version/Duration are plain child `<Typography>` text nodes inside the SAME row element (`RunHistoryTooltipCell.jsx`), so the row's own `text_content()`/`all_text_contents()` already exposes all three | on `automation/testids` only — **NOT yet on `origin/main`** (awaiting human promotion; testid lives in `src/[fsd]/entities/run-history/ui/RunHistoryList/RunHistoryListItem.jsx`). Re-verified 2026-08-07 via `cd ../EliteaUI && git fetch origin` + `git grep -- 'run-history-list-item' origin/main -- src/` (0 hits, exit 1) and `git grep -- 'run-history-list-item' origin/automation/testids -- src/` (1 hit, exit 0). The prior `on-main ✓` claim (dated 2026-08-06) was false — corrected during ELITEA-1876 fix round 1. | none — testid only |
 
 **No new testid work is required for this extension** — per-row text is already
 addressable through the existing row-level testid; adding per-cell testids for
 Date/Version/Duration would violate the "scope = only what the test touches, don't
 over-testid" rule for no functional gain (`.agents/role-overrides.md`).
 
-**PROVENANCE freshness:** verified via `cd ../EliteaUI && git fetch origin` +
-`git grep` against `origin/main`, 2026-08-06.
+**PROVENANCE freshness:** re-verified via `cd ../EliteaUI && git fetch origin` +
+`git grep` against **both** `origin/main` and `origin/automation/testids`, 2026-08-07
+(fix round 1 — corrects the 2026-08-06 false `on-main ✓` claim; see closure-record
+implication: this case is NOT deployed-env-promotable until a human cherry-picks
+`run-history-list-item` from `automation/testids` to `main`).
 
 ## Network Behavior
 - None new — reuses ELITEA-1877's `GET /elitea_core/conversations/prompt_lib/{projectId}?source=agent&...`
