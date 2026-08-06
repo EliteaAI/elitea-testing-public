@@ -29,6 +29,7 @@ from pages.agents_list_page import AgentsListPage
 from pages.agent_form_page import AgentFormPage
 from pages.agent_detail_page import AgentDetailPage
 from pages.internal_tools import InternalTool
+from playwright.sync_api import expect
 import allure
 
 pytestmark = [pytest.mark.ui, pytest.mark.agents]
@@ -789,6 +790,130 @@ class TestAgentActions:
                     "(the known dev-only #538 'Maximum update depth exceeded' "
                     "warning is already filtered, so this is something else): "
                     f"{[m.text for m in console_messages]}"
+                )
+        finally:
+            with allure.step("Cleanup — delete the dedicated agent"):
+                try:
+                    agent_api.delete_agent(agent_id)
+                except Exception as cleanup_exc:
+                    print(f"Warning: Failed to cleanup agent {agent_id}: {cleanup_exc}")
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1873_discard-changes-resets-all-unsaved-edits.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p0
+    @pytest.mark.regression
+    def test_discard_changes_reverts_all_unsaved_edits(self, page, agent_api):
+        """Editing Name, Description, and Instructions without saving, then
+        clicking Discard and confirming the Warning dialog, reverts all three
+        fields to their previously saved values (ELITEA-1873).
+
+        Uses a dedicated, disposable agent created via
+        ``AgentAPI.create_agent_full()`` (not the shared ``agent_id`` fixture)
+        for the same reason as ``test_edit_agent_instructions`` — the
+        fixture's plain ``create_agent()`` call currently 400s against the
+        DEV backend (https://github.com/EliteaAI/elitea-testing-public/issues/524).
+
+        The Discard confirmation modal and its confirm button previously
+        carried no testid at all (``ApplicationTabBar.jsx`` never threaded
+        ``DiscardButton``'s ``modalDataTestId``/``confirmButtonDataTestId``
+        props, even though ``BaseModal`` already supported them — same
+        threading-gap shape ELITEA-1971 fixed for the credential Discard
+        flow). Added via ``add-data-testid`` for this case:
+        ``discard-confirm-modal`` / ``discard-confirm-button`` (generic
+        names — the tab bar is shared between the Agent and Pipeline detail
+        pages, so a feature-scoped name would misrepresent the shared
+        component, matching the pre-existing generic ``discard-button``).
+        """
+        with allure.step("Precondition — create a dedicated disposable agent"):
+            agent_name = f"elitea-1873-discard-{uuid.uuid4().hex[:8]}"[:32]
+            payload = _build_dedicated_agent_payload(agent_name)
+            payload["description"] = "Auto-created for ELITEA-1873 discard-changes test"
+            agent = agent_api.create_agent_full(payload)
+            agent_id = agent["id"]
+            original_name = agent_name
+            original_description = payload["description"]
+            original_instructions = SEED_INSTRUCTIONS
+
+        detail_page = AgentDetailPage(page)
+        try:
+            with allure.step(
+                "Step 1 — Navigate to the agent detail page and note the "
+                "current saved values of Name, Description, and Instructions"
+            ):
+                detail_page.navigate(agent_id)
+                assert detail_page.get_name() == original_name, (
+                    "Name field should show the agent's saved name"
+                )
+                assert detail_page.get_description() == original_description, (
+                    "Description field should show the agent's saved description"
+                )
+                assert detail_page.get_instructions() == original_instructions, (
+                    "Instructions field should show the agent's saved instructions"
+                )
+                assert not detail_page.is_discard_enabled(), (
+                    "Discard should start disabled before any edit"
+                )
+
+            with allure.step(
+                "Step 2 — Modify Name, Description, and Instructions to "
+                "different values without saving"
+            ):
+                # Short, fixed value (not derived from original_name via a
+                # suffix) — the Name field enforces the same 32-char max the
+                # API does (ELITEA-1888 AFS), so appending "-EDITED" to an
+                # already-near-limit generated name silently truncates.
+                new_name = "Discard-Test-Edited-Name"
+                new_description = "Edited description before discard"
+                detail_page.update_text_field("name", new_name)
+                detail_page.update_text_field("description", new_description)
+                detail_page.update_text_field("instructions", NEW_INSTRUCTIONS)
+
+                assert detail_page.get_name() == new_name, (
+                    "Name field should reflect the unsaved edit"
+                )
+                assert detail_page.get_description() == new_description, (
+                    "Description field should reflect the unsaved edit"
+                )
+                assert detail_page.get_instructions() == NEW_INSTRUCTIONS, (
+                    "Instructions field should reflect the unsaved edit"
+                )
+                assert detail_page.is_discard_enabled(), (
+                    "Discard should become enabled once the form is dirty"
+                )
+                assert detail_page.is_save_enabled(), (
+                    "Save should also become enabled once the form is dirty"
+                )
+
+            with allure.step(
+                "Step 3 — Click Discard and accept the confirmation dialog"
+            ):
+                detail_page.click_discard(timeout=UI_ELEMENT_TIMEOUT)
+                assert detail_page.discard_confirm_modal.is_visible(), (
+                    "Discard confirmation modal should be visible after clicking Discard"
+                )
+                detail_page.confirm_discard(timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step(
+                "Step 4 — Verify Name, Description, and Instructions all "
+                "reverted to their previously saved values"
+            ):
+                expect(detail_page.name_input).to_have_value(
+                    original_name, timeout=UI_ELEMENT_TIMEOUT
+                )
+                expect(detail_page.description_input).to_have_value(
+                    original_description, timeout=UI_ELEMENT_TIMEOUT
+                )
+                expect(detail_page.instructions_input).to_have_value(
+                    original_instructions, timeout=UI_ELEMENT_TIMEOUT
+                )
+                assert not detail_page.is_discard_enabled(), (
+                    "Discard should return to disabled after a successful discard"
+                )
+                assert not detail_page.is_save_enabled(), (
+                    "Save should return to disabled after a successful discard "
+                    "— no unsaved modifications should remain"
                 )
         finally:
             with allure.step("Cleanup — delete the dedicated agent"):
