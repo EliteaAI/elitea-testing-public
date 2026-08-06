@@ -131,3 +131,24 @@ CHANGES_REQUESTED even though the root cause predates this PR (inherited
 from the already-merged ELITEA-2374 test) — the fix is a live, CI-relevant
 correctness gap for the case THIS PR delivers (a `-m p2` selection run
 silently misses it), so it's in scope regardless of origin.
+
+## Recurrence variant (PR #1256/ELITEA-2435, 2026-08-06) — brand-new file, both module `pytestmark` AND per-function decorator wrong
+
+Fifth occurrence, same `l3(medium)→p3` mis-mapping as recurrence 4, but a
+fresh single-test file (not extend-existing, no sibling in the same file to
+compare against) — closest in shape to recurrence 3. AFS
+`l3_skill-pin-unpin-flow_ELITEA-2435.md` states `Priority: l3 (case
+frontmatter: medium, case body header also says medium — no drift)`.
+`test_skill_pin_unpin.py` declares **both** the module-level `pytestmark`
+list (`pytest.mark.p3`) and a **redundant per-function** `@pytest.mark.p3`
+decorator on the single test — both wrong, should be `p2`. Confirmed against
+convention with an 11-sibling sweep of `test-specs/skills/l3_*.md` vs their
+compiled `automation/tests/ui/skills/*.py` markers: 11/13 `l3(medium)`
+skills cases compile to `p2` with zero exceptions among directly-comparable
+ones. Flagged CHANGES_REQUESTED (round 1, static review — no fix visible
+yet). **Nothing new to extend in the check itself** — this is pure repeat
+volume (5th hit in ~2 weeks) confirming the gap is systemic, not a one-off:
+the implementer's own preflight check
+(`.agents/memory/test-automation-engineer/afs_priority_vs_pytest_mark_preflight_check.md`)
+documents the exact grep to run BEFORE handoff, and this PR shows it still
+isn't being run reliably pre-handoff, only caught at review.
