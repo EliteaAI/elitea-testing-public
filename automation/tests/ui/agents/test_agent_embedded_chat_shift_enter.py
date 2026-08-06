@@ -19,6 +19,7 @@ import allure
 import pytest
 from pages.agent_detail_page import AgentDetailPage
 from playwright.sync_api import Page, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 pytestmark = [pytest.mark.ui, pytest.mark.agents]
 
@@ -33,11 +34,12 @@ AGENT_INSTRUCTIONS = "You are a helpful assistant. Reply concisely."
 LINE_1 = "First line"
 LINE_2 = "Second line"
 
-# Brief, deliberate window after Shift+Enter to let a WOULD-BE wrongful
-# submission's network call/message render manifest before asserting its
-# absence — there is no condition-wait primitive for proving a negative
-# (per `.agents/testing.md` "no sleeps" rule's own exception: a genuinely
-# unavoidable case, documented here rather than a bare arbitrary wait).
+# Timeout budget for the Step 3 negative-existence wait (see below) — the
+# window a WOULD-BE wrongful submission has to attach a new chat-message-item
+# before we accept that Shift+Enter correctly sent nothing. Not a sleep: it
+# backs a `Locator.wait_for()` call, a framework-native polling wait that
+# resolves EARLY (failing fast) if a message does appear, and only runs out
+# the full window on the expected/passing path.
 NEGATIVE_ASSERTION_WINDOW_MS = 1500
 
 
@@ -87,11 +89,29 @@ class TestAgentEmbeddedChatShiftEnter:
             ):
                 detail_page.chat_message_input.press_sequentially(LINE_1, delay=10)
                 detail_page.chat_message_input.press("Shift+Enter")
-                page.wait_for_timeout(NEGATIVE_ASSERTION_WINDOW_MS)
                 assert "\n" in detail_page.chat_message_input.input_value(), (
                     "Chat input should contain a literal newline after Shift+Enter, "
                     f"got: {detail_page.chat_message_input.input_value()!r}"
                 )
+
+                # Prove the negative (no message submitted) with a framework
+                # wait, not a raw sleep: Locator.wait_for() polls for the
+                # chat-message-item slot a wrongful submit WOULD populate.
+                # It resolves EARLY — failing fast — if that item attaches,
+                # and raises TimeoutError (expected/caught below) only when
+                # nothing arrives within the window. Per the AFS's Network
+                # Behavior section, Shift+Enter fires no network request at
+                # all (purely client-side textarea state), so this wait
+                # exists solely to catch a hypothetical regression, not to
+                # await a real async operation.
+                would_be_next_message = detail_page.chat_message_item.nth(
+                    baseline_count
+                )
+                with pytest.raises(PlaywrightTimeoutError):
+                    would_be_next_message.wait_for(
+                        state="attached", timeout=NEGATIVE_ASSERTION_WINDOW_MS
+                    )
+
                 assert detail_page.get_chat_message_count() == baseline_count, (
                     "No message should have been submitted by Shift+Enter — "
                     f"count changed from {baseline_count} to "
