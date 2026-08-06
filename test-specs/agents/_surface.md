@@ -3,7 +3,7 @@
 Handle cache for live-confirmed handles/quirks on the Agent detail page
 (`/agents/all/{id}?viewMode=owner`) — VERSION area + Run History + LLM Model Settings dialog.
 Not a substitute for execution — verify a handle as you use it. One writer at a time; last
-confirmed by: qa-engineer analyst, ELITEA-1880 run.
+confirmed by: qa-engineer analyst, ELITEA-1876 run.
 
 ## VERSION selector (all pre-existing, confirmed live repeatedly across ELITEA-1888/1889/1892/1890/1891)
 - `agent-version-selector-trigger` — combobox trigger, text = current version name only (no date/status).
@@ -101,13 +101,27 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   `chat-message-item` (both on-main ✓, pre-existing) work unchanged inside the History panel too
   (confirmed live). Don't add a wrapper testid just to "scope" it — only one instance of
   `chat-message-list` exists on the page while History is open (the main embedded chat is unmounted).
-- **Confirmed defect (filed EliteaAI/elitea-testing-public#1093, MINOR, doesn't block ELITEA-1877):**
-  no UI way to close/exit Run History once opened. `RunHistoryContainer` accepts an `onClose` prop
-  (`ConfigurationTab.jsx` passes `handleCloseHistory`) but never renders anything that calls it —
-  `header`/`iconClose` styles are defined but never applied in the JSX. The button that opened History
-  (`pipeline-history-tab`) unmounts along with the rest of `ConfigurationRightContent`, so re-clicking
-  it is impossible without navigating away. Only exits: "Restore chat" on a row's overflow menu, or
-  leaving the page.
+- **STALE — #1093 now appears FIXED (re-verified live, ELITEA-1876 run, 2026-08-06):**
+  the ELITEA-1877 note below described `EliteaAI/elitea-testing-public#1093` (no UI way to
+  close/exit Run History) as confirmed-open. Re-checked live this run
+  (`manual_test_agent`, agent id 5189): `RunHistoryContainer.jsx` now renders a wired
+  `aria-label="close run history"` `IconButton` whenever `onClose` is passed, and clicking it
+  correctly closes the panel and restores the Configuration form + embedded chat. Flagged for
+  a human to verify/close #1093 — not re-opened, not re-filed. *(Original note, kept for
+  history: "no UI way to close/exit Run History once opened... only exits: 'Restore chat' on a
+  row's overflow menu, or leaving the page" — no longer accurate.)*
+- **Row content = exactly 3 columns, no conversation preview (ELITEA-1876 run, 2026-08-06,
+  live + code confirmed):** each `run-history-list-item` row renders **Date** (format
+  `dd-MM-yyyy, hh:mm a`, e.g. `17-07-2026, 05:57 PM`) + **Version** (agent version name,
+  e.g. `base`) + **Duration** (e.g. `9.33 s`) — `RunHistoryList.jsx`'s `tableHeaderItems`
+  literally is `['Date', 'Version', 'Duration']`. There is NO first-message/title preview
+  anywhere in the row — that content only ever appears in the right-hand `RunHistoryChat`
+  panel after a row is clicked. A case expecting a per-row "preview (first message or
+  title)" is describing a different (ChatGPT-sidebar-style) design than what's implemented;
+  treat as case-text drift, not a defect — filed as clarification
+  `EliteaAI/elitea-testing-public#1282`. All three columns are readable from the row's own
+  `text_content()` — no per-cell testid needed, `RUN_HISTORY_LIST_ITEM_SELECTOR` already
+  exposes them.
 - Test-data trick to get 2 distinct run-history entries for one agent without 2 agents/sessions: send a
   message (conversation A persists server-side) → click **Clear chat** (`chat_clear_button` —
   `ChatBox.jsx` `onClickClearChat`, `isAgentsPage` branch starts a fresh **local, unsaved**
@@ -115,6 +129,15 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   conversation B). Both now list as separate Run History rows.
 - Endpoints: list = `GET /elitea_core/conversations/prompt_lib/{projectId}?source=agent&entity_name=application&entity_meta_id={agentId}&...`;
   detail (on row click) = `GET /elitea_core/conversation/prompt_lib/{projectId}/{conversationId}`.
+- **Possible flakiness in ELITEA-1877's existing merged test (observed, not investigated,
+  2026-08-06):** 2 consecutive clean `pytest` re-runs of
+  `test_select_past_run_loads_chat_messages` both FAILED, with 2 different signatures — once
+  empty text in the selected historical run's detail panel, once the embedded chat's "last
+  message" not containing the just-sent message text. Looks like AI-response/timing
+  flakiness in the message-content assertions, unrelated to the row-level Date/Version/
+  Duration content this digest entry and ELITEA-1876's AFS document. Flagging for whoever
+  next touches this spec / the next hardening gate — not chased further here (out of
+  ELITEA-1876's scope).
 
 ## "+ Skill → Create new" round-trip from the Agent editor (ELITEA-1999 run, 2026-08-02)
 - `agent-add-skill-button` → `UnifiedDropdown` popper → "Create new" item (plus-icon, label "Create new")
