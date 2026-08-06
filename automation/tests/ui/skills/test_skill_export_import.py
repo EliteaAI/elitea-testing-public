@@ -580,7 +580,7 @@ class TestSkillImportMissingFrontmatter:
     """
 
     @allure.issue("ELITEA-2438", "onetest-ai Test Case link")
-    @pytest.mark.p3
+    @pytest.mark.p2
     @pytest.mark.regression
     def test_import_skill_missing_frontmatter_shows_validation_error(self, page, skill_api):
         """Upload a .md file missing the required `name` frontmatter key.
