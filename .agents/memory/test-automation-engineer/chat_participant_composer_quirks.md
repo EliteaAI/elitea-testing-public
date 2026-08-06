@@ -51,3 +51,22 @@ embedded chat), localhost:5173:
   case needs a repro-rate estimate for this specific surface.
 - Full AFS: `test-specs/skills/l3_interact-with-skills-from-conversation_ELITEA-1736.md`.
   Test: `automation/tests/ui/skills/test_skill_conversation_interaction.py`.
+
+## Addendum (ELITEA-2369): the SAME "Waking the agent…" placeholder also races `ChatPage.get_last_message_text()` (`.last`), not just `wait_for_message_content_stable`
+
+A distinct manifestation, same root cause. Right after clicking Send,
+`ChatPage.get_last_message_text()` (which always reads `messages_container.last`)
+can read the transient "Waking\xa0the\xa0agent…" placeholder instead of the
+user's own just-sent message — the placeholder already occupies the LAST
+slot before the user message settles into its final position, or before the
+DOM finishes its post-send reflow. Confirmed live: reading `.last`
+immediately after `wait_for_message_count(initial_count + 1)` returned
+`'Waking\xa0the\xa0agent…'` instead of the sent text.
+
+**Fix: don't use `.last` to read back a message you just sent** — read the
+SPECIFIC index instead. Added `ChatPage.get_message_text_at(index)`
+(`messages_container.nth(index)` + `_extract_message_body`). Use
+`get_message_text_at(initial_count)` for "what did I just send", and
+reserve `get_last_message_text()` for reading the AI's reply AFTER
+`wait_for_ai_response()` has already resolved (well past the placeholder
+window).
