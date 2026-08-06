@@ -5,6 +5,49 @@ Confirmed handles/quirks from live runs on `http://localhost:5173`
 don't take it on faith. One writer at a time (whoever is the active
 analyst); update in place, don't append duplicate entries.
 
+## Pin/unpin — `/skills/all` list + `/skills/all/{id}` detail overflow menu
+
+- List-view "Pin to top" / "Unpin from top" icon button (`PinButton.jsx`,
+  shared across entity types via `DataTableRow.jsx`) — **confirmed live,
+  PRE-EXISTING testid**: `data-testid="skill-pin-toggle-button-{id}"`
+  (`getPinTestIdSlug()` maps skill cards → `'skill'`). Appears to have
+  landed generically for all entity types when `EliteaAI/EliteaUI#569`
+  fixed the credential-specific gap (ELITEA-1974) — no separate
+  `add-data-testid` round-trip needed for this element.
+- Detail page → three-dot overflow menu button:
+  `data-testid="skill-controls-menu-button"` (`SkillControls.jsx`'s
+  `anchorButtonProps`) — pre-existing, already wired as
+  `SkillDetailPage.controls_menu_button`.
+- Detail page → pin-toggle menu item ("Pin to top" / "Unpin from top",
+  `usePinMenu.hooks.jsx` rendered via `DotMenu`'s `BasicMenuItem`) —
+  **CONFIRMED LIVE GAP, no `data-testid`.** `SkillControls.jsx`'s
+  `menuItems` array spreads `pinMenuItem` with no `key:` field (unlike the
+  sibling `delete-skill` item), and `DotMenu.jsx` derives
+  `testId: item.key` per entry — no key ⇒ no testid. Same shape as the
+  credential case's pre-#569 gap. Fix: add `key: 'pin-toggle-skill'` to the
+  spread → produces `data-testid="pin-toggle-skill-menuitem"` via
+  `DotMenu`'s `${testId}-menuitem` convention. Not yet fixed as of this run
+  (ELITEA-2435 analysis) — implementer work via `add-data-testid`.
+- Pin endpoint: `POST /api/v2/social/pin/prompt_lib/{project_id}/skill/{id}`
+  → `201 Created`. Unpin: `DELETE` same path → `204 No Content`. (Note the
+  path segment is `skill`, not `configuration` as for credentials —
+  `PinEntityType.Skill` drives this.)
+- List response (`GET .../elitea_core/skills/prompt_lib/{project}/...`)
+  carries `is_pinned: bool` per row — usable for a data-level assertion
+  alongside the visual one.
+- `usePin()` for Skills runs the **local-state branch** (no `formikContext`
+  passed from `EditSkill.jsx`'s `<SkillControls initialPinned={data?.is_pinned}>`),
+  unlike Credentials which drives `isPinned` off Formik values. No dead-prop
+  typo bug here (unlike the harmless Cyrillic-`ш` one documented in
+  ELITEA-1974's AFS for `CredentialsControls.jsx`) — confirmed functionally
+  correct live both ways.
+- **Gotcha:** pinning a skill that's already the list's newest/topmost item
+  (sorted `created_at desc`) produces no visible reordering — only the
+  icon/menu-label flips. To prove actual reordering, pin/observe a
+  **bottom-ranked** skill instead (confirmed live: `changelog-editor`, the
+  oldest of 10 skills, moved from last to first on pin).
+  Full details: `test-specs/skills/l3_skill-pin-unpin-flow_ELITEA-2435.md`.
+
 ## Build with AI (skill creation) — `/skills/create` → `GenerateSkillModal`
 
 - Modal shell (`GenerateEntityModal.jsx`) is shared with the Agent "Build
