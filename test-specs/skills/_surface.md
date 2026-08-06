@@ -101,3 +101,22 @@ analyst); update in place, don't append duplicate entries.
   backend (redirects through a Keycloac forward-auth path with no
   `Access-Control-Allow-Origin`); use the UI delete flow or the API client
   instead.
+
+**Resolved/added during ELITEA-2435 implementation:** the AFS-flagged
+`pin-toggle-skill-menuitem` testid gap is now landed —
+`SkillControls.jsx`'s `pinMenuItem` spread got the same one-line `key`
+fix already used for Credentials (`{ ...pinMenuItem, key:
+'pin-toggle-skill' }`, matching `EliteaAI/EliteaUI#569`'s shape), pushed
+to `automation/testids` (commit `292fcd02`). `SkillDetailPage` now exposes
+`pin_toggle_menuitem` (`LocatorDescriptor(testid="pin-toggle-skill-menuitem")`)
++ `get_pin_toggle_menu_label()` / `click_pin_toggle_menu_item()` (waits on
+`POST`/`DELETE .../social/pin/prompt_lib/{project}/skill/{id}`, mirrors
+`CredentialDetailPage`'s pin-toggle methods). `SkillsListPage` gained the
+list-row pin toggle (pre-existing testid, no gap): `SKILL_PIN_TOGGLE_BUTTON`
+template + `pin_toggle_button()` / `get_pin_toggle_label()` /
+`click_pin_toggle()`, plus `click_skill_card(name)` (was missing — no prior
+skills-list page object exposed a click-through-to-detail method by name).
+Existing `open_actions_menu()` (JS-click bypass, waits on
+`skill-delete-menu-item`) is reused to open the overflow menu for the
+pin-toggle flow — no new "open menu" method needed. Test:
+`automation/tests/ui/skills/test_skill_pin_unpin.py`.
