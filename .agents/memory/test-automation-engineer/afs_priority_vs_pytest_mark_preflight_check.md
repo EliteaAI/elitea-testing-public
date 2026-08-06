@@ -1,8 +1,26 @@
 ---
 name: AFS Priority line vs pytest.mark — implementer preflight check
-description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 (own p2), ELITEA-2284/PR #1175 (inherited module p2), and ELITEA-2310/PR #1186 (own p2, missed a full round).
+description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 (own p2), ELITEA-2284/PR #1175 (inherited module p2), ELITEA-2310/PR #1186 (own p2, missed a full round), and ELITEA-2377/PR #1242 (module-level, l3->p2 not p3, same-round miss).
 type: feedback
 ---
+
+## Recurrence 4 — ELITEA-2377/PR #1242 (module-level pytestmark, low-vs-medium direction)
+
+Same lesson, another direction: module-level `pytestmark` for
+`test_context_management_toggle.py` (covering both the pre-existing
+ELITEA-2374 test and the ELITEA-2377 `extend-existing` addition) carried
+`pytest.mark.p3` (low) while both cases' AFS `Priority: l3` maps to `p2`
+(medium) per `pytest.ini`'s own documented scale (`p2: Priority 2
+(medium)`). Reviewer flagged it in round 1 with no visible fix attempt in
+the diff — the exact recurrence-3 failure mode repeating. Fixed in round 2
+by editing the single module-level `pytestmark` list (one line) plus its
+docstring comment — since it's module-level, one edit satisfied both
+covering cases at once. No dedicated regression test exists or was added
+for this class of finding: it's static pytest-marker metadata, not product
+behavior, and this suite has no precedent for testing marker-priority
+mappings (checked `automation/tests/unit/`, `conftest.py` — none). The
+mechanical proof-of-fix instead: `pytest --collect-only -m p2 <file>`
+collecting the previously-`p3` tests confirms the marker actually flipped.
 
 ## Recurrence 3 — ELITEA-2310/PR #1186 (finding raised R1, no fix attempt visible until R2)
 
