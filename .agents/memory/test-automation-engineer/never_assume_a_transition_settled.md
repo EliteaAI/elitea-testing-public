@@ -54,6 +54,20 @@ not signals.
    `AssertionError` on the second failure, never silent. Both
    `navigate_to_bucket()` and `navigate_to_bucket_folder()` are guarded — use
    them, don't roll your own `navigate()`.
+5. **A URL-substring predicate matching SEVERAL concurrently-firing requests
+   resolves on whichever settles first, not "the one you meant."** Catalog
+   mount/clear fires 3 requests sharing `/public_applications/prompt_lib/`
+   (bulk all-applications, Trending, My-Liked) — a generic
+   `expect_response(lambda r: substring in r.url)` can return on the fast
+   Trending/My-Liked call while the bulk call (the one that actually
+   repopulates the grid you're about to read) is still in flight;
+   `wait_for_network()` afterwards doesn't reliably save you either. Fix:
+   add the same distinguishing filter the mount-time reader already uses
+   (exclude the other calls' unique params), and back it with a retrying
+   `expect(locator).to_have_count(...)` on the thing you actually read next
+   — don't trust "a matching response resolved" to mean "the DOM I'm about
+   to read reflects it." Full detail:
+   generic_expect_response_predicate_can_match_wrong_parallel_request.md
 
 **Two structural rules that pre-empt all four:**
 
@@ -82,6 +96,7 @@ hang. Keep planted markers short.
 - ELITEA-1808 / PR #643 — hover-gated wait condition; `capture_requests_matching()` status `None`. Addenda: ELITEA-1826 (defer-the-read), ELITEA-2114/#696 (register before Setup).
 - ELITEA-2090 / PR #682 — `send_message(use_enter=True)` raced the `/chat/{id}` nav.
 - ELITEA-2312 / PR #1189 — `wait_for_network()` called mid-test after the page had already reached `networkidle` once resolved instantly, ignoring a search-input `.fill()`'s about-to-fire request; fixed with `expect_response` (cache-miss) + a loading-indicator-testid wait (cache-hit-safe).
+- ELITEA-2363 / PR #1230 — `AgentHubPage.clear_search()`'s generic `expect_response` predicate resolved on the parallel Trending/My-Liked call instead of the bulk all-applications call; content grid still showed the pre-clear filtered set when read right after. Fixed with a distinguishing filter + `wait_for_agent_card_count()`.
 - …plus 4 earlier occurrence(s) — full per-case detail in the source entries below.
 
 See also: console_capture_read_races_async_dispatch.md (rule-3 variant — a
