@@ -40,3 +40,27 @@ Discovered while analysing ELITEA-1737 (Import Skill Base Version, localhost:517
   button — must scope by dialog when asserting) creates a new skill with a
   fresh unique ID and shows toast "Skill imported successfully."
 - Full AFS: `test-specs/skills/l3_import_skill_base_version_ELITEA-1737.md`.
+
+**Discovered while analysing ELITEA-2438 (missing-frontmatter validation
+error, localhost:5173):**
+
+- Uploading a `.md` file whose frontmatter block IS present but lacks
+  `name`/`description` never opens the "Import parameters" dialog — instead
+  shows an error toast and returns before the import mutation is called
+  (confirmed live: zero `skill_import` network requests). Validation is
+  100% client-side (`useSkillImport.hooks.js::stageFile()`). Message:
+  `The [<filename>.md] is missing required metadata: frontmatter must
+  contain "name" and "description".`
+- Reuses the app-wide `toast-alert` (root, `data-severity="error"`) /
+  `toast-message` testids — both pre-existing, no new testid needed.
+  `SkillsListPage.import_skill()` is NOT reusable for this path: it
+  unconditionally waits on the dialog after upload and will time out.
+  `ChatPage`/`PipelineDetailPage` already have the `toast_alert` +
+  `TOAST_ALERT_SEVERITY` + `get_toast_alert(severity)` trio;
+  `SkillsListPage` doesn't yet — copy the pattern rather than add a new
+  testid.
+- A file with NO `---` frontmatter block at all (vs. one with a
+  frontmatter block missing a key) hits a different parser path
+  (`importWizardParser.helpers.js`) with a differently-worded `Not
+  supported file […]` toast — distinct code path, not the same case.
+- Full AFS: `test-specs/skills/l3_import-skill-missing-frontmatter_ELITEA-2438.md`.
