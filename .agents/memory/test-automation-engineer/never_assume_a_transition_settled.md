@@ -96,7 +96,7 @@ hang. Keep planted markers short.
 - ELITEA-1808 / PR #643 — hover-gated wait condition; `capture_requests_matching()` status `None`. Addenda: ELITEA-1826 (defer-the-read), ELITEA-2114/#696 (register before Setup).
 - ELITEA-2090 / PR #682 — `send_message(use_enter=True)` raced the `/chat/{id}` nav.
 - ELITEA-2312 / PR #1189 — `wait_for_network()` called mid-test after the page had already reached `networkidle` once resolved instantly, ignoring a search-input `.fill()`'s about-to-fire request; fixed with `expect_response` (cache-miss) + a loading-indicator-testid wait (cache-hit-safe).
-- ELITEA-2363 / PR #1230 — `AgentHubPage.clear_search()`'s generic `expect_response` predicate resolved on the parallel Trending/My-Liked call instead of the bulk all-applications call; content grid still showed the pre-clear filtered set when read right after. Fixed with a distinguishing filter + `wait_for_agent_card_count()`.
+- ELITEA-2363 / PR #1230 — `AgentHubPage.clear_search()`'s generic `expect_response` predicate resolved on the parallel Trending/My-Liked call instead of the bulk all-applications call; content grid still showed the pre-clear filtered set when read right after. Fixed with a distinguishing filter + `wait_for_agent_card_count()`. Related, same PR's fix round: waiting for DOM card count == the bulk response's raw row count is ALSO wrong on this page — see agent_hub_catalog_per_category_display_cap.md (a different bug in the same neighborhood: right response, wrong metric to compare it against).
 - …plus 4 earlier occurrence(s) — full per-case detail in the source entries below.
 
 See also: console_capture_read_races_async_dispatch.md (rule-3 variant — a
