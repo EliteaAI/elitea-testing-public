@@ -3,7 +3,56 @@
 Handle cache for live-confirmed handles/quirks on the Agent Hub / Catalog
 surface (`/elitea-catalog`). Not a substitute for execution — verify a handle
 as you use it. One writer at a time; last confirmed by: qa-engineer (analyst
-slot), ELITEA-2356, 2026-08-05.
+slot), ELITEA-2363, 2026-08-06.
+
+## ⚠️ PROVENANCE CORRECTION (2026-08-06, ELITEA-2363) — prior "on-main ✓" claims for this surface's core testids are WRONG as of today
+
+A fresh `git fetch origin` + `git grep` against `origin/main` (this session) shows
+**`catalog-page-heading`, `catalog-search-input`, and `catalog-agent-card-{id}` do
+NOT exist on `origin/main`** — `EliteaCatalog.jsx` on `main` has no `data-testid` on
+the heading or the search `TextField` at all, and a `git grep` for
+`catalog-agent-card-` against `origin/main -- src/` returns zero hits. All three
+ARE present on `origin/automation/testids`. This directly contradicts the
+ELITEA-2354 AFS's Concrete Handles table, which lists all three as
+"on-main ✓ (pre-existing, ELITEA-2075)". Whether that claim was wrong when made or
+`main` was reset/force-pushed since is out of scope to root-cause here — **any
+future analyst/lead/closure-record on this surface: re-verify with a fresh fetch
+before citing ANY of this surface's testids as "on-main"; do not propagate the
+ELITEA-2354 file's claim forward.** This digest's own per-testid provenance notes
+below (marked "pre-existing, ELITEA-2075/2075") should likewise be treated as
+NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
+
+## Catalog search bar (`catalog-search-input`) — real-time, debounced, no clear button (ELITEA-2363)
+- Typing alone filters the list — confirmed live AND via source
+  (`EliteaCatalog.jsx`'s `TextField.onChange` is the ONLY wiring; no
+  `onKeyDown`/Enter handler, no adjacent submit/search-icon button in the JSX).
+  Debounce is 300ms (`AgentsTab.jsx`'s `useDebounceValue(query, 300)`) — exactly
+  ONE `GET .../public_applications/prompt_lib/?query=<term>&...` fires per typing
+  burst, regardless of how many characters were typed, ~300ms after the last
+  keystroke. `AgentHubPage.search(query)` already encodes this wait correctly
+  (`press_sequentially` + `expect_response`) — reuse it, don't reinvent.
+- Match is **case-insensitive substring**, server-side (query sent lowercase
+  matched titles with capitalized "Story").
+- **No clear/X button exists** — confirmed absent via source (`EliteaCatalog.jsx`'s
+  `TextField` has no `InputProps` endAdornment at all, plain MUI `TextField`).
+  "Clear the search field" (case text, this family) means select-all + Backspace,
+  NOT `fill("")` (per `.claude/rules/mui-patterns.md`, `fill()` skips the React
+  `onChange`, so the debounced `query` state — and the rendered list — would never
+  update). Clearing re-fires the identical 3-request pattern seen on initial page
+  mount (bulk `query=`, Trending, My Liked) — confirmed live, restores the exact
+  original card/category set.
+- Category sections with zero matches are removed from the DOM entirely (not
+  hidden/greyed) when filtered — confirmed live (5 of 7 categories vanished when
+  filtering on "story", all 7 returned on clear).
+- No testid needed for search/filter/clear — `catalog-search-input` +
+  `AGENT_CARD_PREFIX` already cover everything this behavior needs. One NEW page-
+  object method is needed though: `clear_search()` (select-all+Backspace,
+  network-response-aware) — didn't exist before this dispatch.
+- **"No results" state has NO testid** (`Category.NoResultsMessage.jsx`, renders
+  "No agents found" / "Try adjusting your search terms" via
+  `AgentsTab.jsx`'s `noResultsTitle`/`noResultsDescription` props) — not needed for
+  ELITEA-2363 (the case's own search term always matches ≥1 agent), but flag for
+  any future sibling case that specifically tests a zero-match search term.
 
 ## Agent detail modal (`AgentModal.jsx`) — mostly untested, only 3 of ~10 fields have testids
 - Opened by clicking any Catalog agent card; content-ready signal is the
