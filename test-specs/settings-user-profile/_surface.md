@@ -64,6 +64,19 @@ Note: `Switch.BaseSwitch` for Automatic Summarization ALSO has its own
 practice — the component unmounts before that prop ever matters, since it's
 nested inside the same `{isEnabled && ...}` block one level up.
 
+**Automatic Summarization's OWN toggle uses a DIFFERENT disable mechanism
+than its parent (confirmed live, ELITEA-2377 session, 2026-08-06).** The
+Automatic Summarization toggle disabling its own two children
+(Summarization Instructions textarea, Target Summary Tokens input) is a real
+`disabled` prop, NOT a conditional unmount — `MemorySummarization.jsx`:
+`isSummarizationDisabled = !values.context_enabled || !values.enable_summarization`,
+applied as `disabled={isSummarizationDisabled}` on both `Input.StyledInputEnhancer`
+fields. Confirmed via live DOM inspection: clicking `automatic-summarization-toggle`
+OFF leaves both fields present in the DOM with the HTML `disabled` attribute
+set (`to_be_disabled()` is the correct assertion), unlike the parent
+Context Management toggle's unmount (`to_have_count(0)`). Don't assume the
+whole `/settings/memory` page uses one disable mechanism — it's per-toggle.
+
 ## Testids — provenance (as of this session)
 
 | Testid | On `main`? | On `automation/testids`? |
@@ -72,12 +85,13 @@ nested inside the same `{isEnabled && ...}` block one level up.
 | `context-management-toggle` | yes | yes |
 | `max-context-tokens-input` | yes | yes |
 | `context-editing-toggle` | yes | yes |
-| `preserve-recent-messages-input` | **no** | yes — added this session, `EliteaAI/EliteaUI@b8155bda` |
-| `automatic-summarization-toggle` | **no** | yes — added this session, `EliteaAI/EliteaUI@b8155bda` |
+| `preserve-recent-messages-input` | **no** | yes — added ELITEA-2374 session, `EliteaAI/EliteaUI@b8155bda` |
+| `automatic-summarization-toggle` | **no** | yes — added ELITEA-2374 session, `EliteaAI/EliteaUI@b8155bda` |
+| `summarization-instructions-textarea` | **no** | yes — added ELITEA-2377 session, `EliteaAI/EliteaUI@be73caea` |
+| `target-summary-tokens-input` | **no** | yes — added ELITEA-2377 session, `EliteaAI/EliteaUI@be73caea` (verified unique — a differently-scoped `context-modal-target-summary-tokens-input` exists in the unrelated chat-side Context Budget widget, `ContextStrategySummarization.jsx`) |
 
-Still missing testids (not yet needed by any case as of this session —
-add when a case actually touches them, per scope discipline): Summarization
-instructions textbox, Target Summary Tokens textbox.
+All testids referenced by cases through this session are now on
+`automation/testids`; none yet on `main` (awaiting human promotion).
 
 ## Autosave
 
