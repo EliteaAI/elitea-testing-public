@@ -30,8 +30,17 @@ Testids for this feature (timeline-step-{index}, state-row-{variable},
 state-value-before/after-{variable}, state-expand-before/after-{variable},
 value-modal + header/close-button/content) did not exist before this case
 and were added via `add-data-testid`, EliteaAI/EliteaUI@2b40e5a6.
+
+Step 8 also asserts `messages`' After value is a genuine JSON ARRAY (not
+merely non-empty/non-identical) -- this is the citation target for
+ELITEA-2453's case step 8 ("MESSAGES: shows list representation"), which
+cannot be exercised directly in ELITEA-2453's own structured-output
+pipeline (see `EliteaAI/elitea-testing-public#1274`). Confirmed live: the
+value is a `JSON.stringify`d array of stringified LangChain message
+objects, e.g. `["content='...' ...", "content='...' ..."]`.
 """
 
+import json
 import logging
 
 import allure
@@ -135,6 +144,16 @@ def test_run_details_state_before_after_per_node(page, pipeline_with_two_llm_nod
             f"got identical value {messages_before!r}"
         )
         assert messages_after, "'messages' After value should be non-empty (LLM1 wrote a response into it)"
+
+        # Shape check (ELITEA-2453 case step 8 citation target): `messages` renders
+        # as a genuine JSON ARRAY, not merely a non-empty/non-identical opaque
+        # string. Each element is the string repr of a LangChain message object.
+        parsed_messages_after = json.loads(messages_after)
+        assert isinstance(parsed_messages_after, list), (
+            f"'messages' After value should render as a JSON array (list representation), "
+            f"got {type(parsed_messages_after).__name__}: {messages_after!r}"
+        )
+        assert len(parsed_messages_after) > 0, "'messages' After value should be a non-empty array"
 
     with allure.step("Step 7 — Unmodified variable (input @ LLM2): Before equals After"):
         # Deliberately the SECOND timeline step, not the first -- known defect

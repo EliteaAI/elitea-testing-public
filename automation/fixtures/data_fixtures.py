@@ -275,6 +275,81 @@ def pipeline_with_two_llm_nodes_id(pipeline_api: PipelineAPI, request):
         logger.warning("Failed to delete 2-LLM-node pipeline %s: %s", pid, exc)
 
 
+_TYPED_STATE_VARS_INSTRUCTIONS = """\
+entry_point: LLM 1
+state:
+  custom_text:
+    type: str
+  custom_num:
+    type: number
+  custom_list:
+    type: list
+  custom_json:
+    type: dict
+nodes:
+  - id: LLM 1
+    type: llm
+    input: []
+    input_mapping:
+      chat_history:
+        type: fixed
+        value: []
+      system:
+        type: fixed
+        value: 'You populate structured state variables. Always return values for
+          custom_text (a short string), custom_num (a number), custom_list (a list
+          of 3 short strings), and custom_json (a small JSON object with 2 keys).'
+      task:
+        type: fstring
+        value: '{input}'
+    output: [custom_text, custom_num, custom_list, custom_json]
+    structured_output: true
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_with_typed_state_vars_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with 4 CUSTOM state variables of 4 distinct types
+    (``custom_text``/str, ``custom_num``/number, ``custom_list``/list,
+    ``custom_json``/dict) plus the 2 built-in ``input``/``messages``
+    variables, and a single LLM node with ``structured_output: true`` whose
+    ``output`` mapping writes to all 4 custom variables. Satisfies the
+    ELITEA-2453 precondition. Deletes the pipeline afterwards.
+
+    Built via the GENERIC :meth:`PipelineAPI.create_pipeline` (raw YAML
+    ``instructions`` string) rather than :meth:`create_pipeline_with_nodes`,
+    which has no ``state:`` support -- confirmed live, AFS
+    ``l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md``
+    § Preconditions.
+
+    CRITICAL: ``messages`` is deliberately NOT included in this node's
+    ``output`` list. Combining ``messages`` with `dict`/`list`-typed custom
+    variables in a ``structured_output: true`` node's ``output`` mapping is a
+    CONFIRMED product defect (``EliteaAI/elitea-testing-public#1274``) that
+    makes the run fail with a raw backend error instead of populating state.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2453_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline(
+        name=name,
+        description=f"Auto-created typed-state-vars pipeline for test {request.node.name}",
+        instructions=_TYPED_STATE_VARS_INSTRUCTIONS,
+    )
+    pid = pipeline["id"]
+    logger.info("Created typed-state-vars pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted typed-state-vars pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete typed-state-vars pipeline %s: %s", pid, exc)
+
+
 @pytest.fixture
 def github_credential(credential_api: CredentialAPI, request):
     """Create a GitHub API credential and yield its metadata.
