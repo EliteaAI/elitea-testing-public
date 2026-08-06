@@ -143,6 +143,38 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   reasoning_effort="medium") — already avoids the #524 400 gotcha, no override needed for a disposable
   Skill-attachment fixture agent.
 
+## Discard flow (ELITEA-1873 run, 2026-08-06)
+- `discard-button` (tab-bar) IS wired up live on the Agent detail page —
+  re-confirmed via DOM probe (`document.querySelector('[data-testid="discard-button"]')`),
+  disabled by default, enabled once `isFormDirtyExcluding` is true. This
+  **contradicts a prior implementer note** on
+  `automation/tests/ui/agents/test_agent_save_as_version.py` (ELITEA-1888)
+  claiming the testid was "confirmed absent from the DOM" — that note is now
+  stale (left as-is, not this case's file to touch); the testid is present
+  and correctly wired today.
+- The confirmation modal (MUI "Warning", "Are you sure you want to discard
+  changes?") and its Discard confirm button carried **zero testids** prior
+  to this run — `ApplicationTabBar.jsx`'s `<Button.DiscardButton
+  dataTestId="discard-button">` call site never threaded `DiscardButton`'s
+  `modalDataTestId`/`confirmButtonDataTestId` props through to
+  `Modal.BaseModal`, even though `BaseModal` already supports both (same
+  threading-gap shape ELITEA-1971 fixed for `CredentialsTabBar.jsx`).
+  **Resolved during ELITEA-1873 implementation:** added
+  `modalDataTestId="discard-confirm-modal"` +
+  `confirmButtonDataTestId="discard-confirm-button"` to `ApplicationTabBar.jsx`
+  (generic names — this component is SHARED between `EditApplication.jsx`
+  (Agents) and `EditPipeline.jsx` (Pipelines), confirmed via `git grep`, so a
+  feature-scoped name would misrepresent it, matching the pre-existing
+  generic `discard-button`). Live-confirmed via HMR: both testids render
+  correctly, and the full edit→discard→revert round trip works for Name,
+  Description, and Instructions (single-field AND simultaneous three-field
+  edits both tested). EliteaUI commit `EliteaAI/EliteaUI@cc327ec9` on
+  `automation/testids` (pushed).
+- `discardApplicationChanges` (`useDiscardApplicationChanges.js`) is a pure
+  client-side Formik `resetForm()` — no network request fires on discard
+  (source-confirmed). Don't look for a PUT/GET to assert against for the
+  discard action itself, unlike Save.
+
 ## Build with AI from the in-chat "+ Create New Agent" canvas (ELITEA-1920 run, 2026-08-02)
 - The canvas (`AgentCanvasPage`, ELITEA-2166) renders the exact same `CreateAgentForm.jsx` as
   `/agents/create`, confirmed to include the SAME `GenerateAgentButton`/`generate-agent-open-button` —
