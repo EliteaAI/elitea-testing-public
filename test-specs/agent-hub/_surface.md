@@ -3,7 +3,44 @@
 Handle cache for live-confirmed handles/quirks on the Agent Hub / Catalog
 surface (`/elitea-catalog`). Not a substitute for execution — verify a handle
 as you use it. One writer at a time; last confirmed by: qa-engineer (analyst
-slot), ELITEA-2365, 2026-08-06.
+slot), ELITEA-2368, 2026-08-06.
+
+## Catalog → chat continuation (Start Chat → send → reply) — all handles pre-existing (ELITEA-2368)
+- Clicking "Start Chat" in the modal redirects to `/chat`, then to
+  `/chat/{conversation_id}?name=...` once the first message auto-names the
+  conversation. `ChatPage` already covers the ENTIRE chat-side continuation —
+  confirmed live, zero new testids needed: `new_conversation_greeting`
+  (`chat-new-conversation-greeting`, "Hello, {user}! What can I do for you
+  today?"), `switch_participant_button` (`chat-switch-participant-button`,
+  the composer's agent-name chip) + `chat_version_selector_trigger`
+  (`chat-version-selector-trigger`, the version chip — **two SEPARATE
+  adjacent elements, not one combined "AgentName vX.X" chip** — a dedicated
+  sibling case, [ELITEA-2362/#870](https://github.com/EliteaAI/elitea-testing-public/issues/870),
+  exists specifically to explore this and is not yet analysed; future
+  analyst there: this is your target, don't re-discover the split),
+  `expand_participants_panel_via_toggle()` + `get_participant_row_by_name()`
+  (expanded Participants panel shows an "Agents" heading + the participant
+  row), `message_input`/`send_button`/`is_send_button_enabled()`,
+  `answer_thought_accordion` ("Thought for N secs"), `wait_for_ai_response()`,
+  `is_conversation_in_group(conv_id, "today")` (sidebar grouping),
+  `wait_for_context_budget_panel()` + `wait_for_context_budget_messages_count()`
+  (Context Budget — **absent entirely pre-send**, appears only once ≥1
+  message sent, confirmed live: went from no indicator at all to "2%" /
+  "239 / 10 000 tokens" / Messages: "2" / Summaries: "0" after one
+  exchange). Cleanup precedent (ELITEA-2075): parse `conv_id` from
+  `page.url` (`r"/chat/(\d+)"`), delete via
+  `ConversationAPI.delete_conversation(conv_id)` in a `finally` block.
+
+## "Business Analyst" (id 31) ALSO satisfies the "no starters/no welcome message" precondition (ELITEA-2368)
+- Not just "User Story Creator" (id 172, used by ELITEA-2356/2365's
+  explorations) — "Business Analyst" (id 31, 8 likes, the literal "e.g."
+  example named in the ELITEA-2350..2370+ case family's own text for THIS
+  specific sub-case) confirmed live to also show "No predefined chat
+  starters" / "No welcome message set" in its preview modal. Any
+  case needing a no-starters agent example that must ALSO match its own
+  case text's literal "e.g." name can check that agent directly rather than
+  assuming a substitution note is required — confirmed generic across at
+  least these two agents.
 
 ## "My Liked" section reload icon — SAME drift as #1212, confirmed on this category too (ELITEA-2365)
 - ELITEA-2365's case text claims a reload/refresh (↻) icon renders next to
