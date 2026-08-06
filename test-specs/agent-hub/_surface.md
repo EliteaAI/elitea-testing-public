@@ -3,7 +3,69 @@
 Handle cache for live-confirmed handles/quirks on the Agent Hub / Catalog
 surface (`/elitea-catalog`). Not a substitute for execution — verify a handle
 as you use it. One writer at a time; last confirmed by: qa-engineer (analyst
-slot), ELITEA-2368, 2026-08-06.
+slot), ELITEA-2369, 2026-08-06.
+
+## Conversation-starter tiles — TWO real testid gaps (ELITEA-2369)
+- **Modal's starter list items** (`AgentConversationStarterItem.jsx`, inside
+  `catalog-agent-modal-chat-starters-section`) carry ZERO testid — confirmed
+  via source, only `onClick`/hover wiring. Feature-scoped (agent-hub only),
+  not shared — a hardcoded static testid on the item root is fine. Not yet
+  added as of this dispatch.
+- **Chat-area starter tiles** (`ChatConversationStarters.jsx` → the SHARED
+  `EllipsisTextWithTooltip` in `src/components/ConversationStarters.jsx`,
+  also used by `NewConversationView.jsx`'s pre-chat composer) carry ZERO
+  testid — confirmed via source AND live (had to fall back to a raw
+  `.MuiBox-root.css-vjd7yg` CSS-class locator during this exploration, NOT
+  an acceptable shipped locator). Being shared, the fix is a caller-supplied
+  `testId` prop, not a hardcode inside `ConversationStarters.jsx` — wire only
+  `ChatConversationStarters.jsx`'s call site for now (canon #511: only the
+  code path a test actually executes); `NewConversationView.jsx`'s own
+  call site is a DIFFERENT case's job.
+  **[CORRECTION, ELITEA-2369 implementer fix round 2 — the bullet above names
+  the WRONG call site, do not follow it]** This original bullet has it
+  backwards. ELITEA-2369's own live flow (Catalog → modal → "Start Chat" →
+  brand-new conversation, before any message is sent) renders its starter
+  tiles via `src/pages/NewChat/NewConversationView.jsx` — which imports
+  `EllipsisTextWithTooltip` directly and does NOT go through
+  `ChatConversationStarters.jsx` at all. `ChatConversationStarters.jsx` is a
+  DIFFERENT call site, consumed only by
+  `src/[fsd]/features/chat/ui/chat-box/ChatBox.jsx`'s embedded/
+  agent-participant chat surface — a not-yet-analysed flow ELITEA-2369 never
+  reaches. Per canon #511 ("touches" = the code path THIS test actually
+  executes), the shipped `testId="chat-conversation-starter-tile"` prop is
+  wired at `NewConversationView.jsx`'s call site ONLY — confirmed via a fresh
+  `git fetch origin` + `git grep "chat-conversation-starter-tile"
+  origin/automation/testids -- src/`, exactly one hit
+  (`NewConversationView.jsx:1020`); `ChatConversationStarters.jsx`'s call site
+  remains unwired, same as this bullet intended, just for the opposite of the
+  reason it states. (Full history: the AFS's own "wrong component identified"
+  amendment + the fix-round-1 "leftover orphan wiring" amendment in
+  `l3_agent-hub-start-conversation-with-starters_ELITEA-2369.md` § Known
+  Defects — a first implementer pass wired BOTH call sites simultaneously by
+  mistake, review caught the orphan, fix round 1 reverted it down to the one
+  correct site.) Any future case that DOES analyse the `ChatBox.jsx` embedded
+  surface will need its own testid wiring at `ChatConversationStarters.jsx`'s
+  call site — that work is still undone, this correction only fixes which
+  site is ALREADY wired.
+- **Clicking a starter tile POPULATES the composer, does not auto-send**
+  (`onSendConversationStarter` → `chatInput.current.setValue(starter)`) —
+  confirmed live: input field receives the full starter text, send button
+  transitions from absent to enabled, nothing is sent until the user clicks
+  Send. Matches case text for both ELITEA-2369 (modal-starters agent) and any
+  future sibling exercising the same click.
+- **Starter tiles do NOT disappear immediately after a populate-click** — they
+  only vanish once `isTheUserChattingNow` flips true (i.e. once an actual
+  send + AI-streaming response starts), and REAPPEAR once streaming finishes
+  (confirmed live: visible before send, hidden during the ~38s "thinking"
+  window, visible again after the reply completed). Not a defect — no case
+  text requires either hidden or visible at the populate-click step, but
+  future analysts on this surface: don't assert either transient state as if
+  it were guaranteed, assert only what your own case's text requires.
+- **"API Testing Buddy" (id 34)** is a confirmed live example of an agent
+  WITH conversation starters + a configured welcome message (4 starters,
+  matches the case-family's own "e.g." example verbatim) — pairs with the
+  existing "Business Analyst"/"User Story Creator" no-starters examples
+  already in this digest, for any future sibling needing either precondition.
 
 ## Catalog → chat continuation (Start Chat → send → reply) — all handles pre-existing (ELITEA-2368)
 - Clicking "Start Chat" in the modal redirects to `/chat`, then to
