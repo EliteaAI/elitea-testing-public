@@ -2,7 +2,43 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-07 (ELITEA-2026 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-07 (ELITEA-2023 analysis).
+
+## Dashboard search — typing alone does NOT filter the grid; Enter/send-icon required (confirmed live, 2026-08-07, ELITEA-2023)
+
+- **`PipelinesListPage.search()` (as merged) never actually filters the
+  dashboard grid.** It only does `search_input.fill(query)` — no Enter, no
+  send-icon click. Per `SearchBar.jsx` (shared by Pipelines/Agents/MCP/
+  Credentials/Toolkits/Skills): typing only updates local state + opens a
+  real, API-backed **suggestions popover** (`SuggestionList.jsx`, 500ms
+  debounce); the grid-narrowing dispatch (`onSearch()`) fires ONLY on
+  `Enter` or a click on `data-testid="search-send-button"`. Confirmed live:
+  typed "YAML" + waited past debounce → grid unchanged (still 11 pipelines);
+  pressed Enter → grid narrowed to exactly 1 (`autotest_YAML_search_probe`).
+  This means `test_search_pipeline_by_name`/`test_search_pipeline_no_results`
+  (merged, `test_pipeline_management.py::TestSearchPipeline`) pass via the
+  suggestions popover, not the grid filter — real grid-filter coverage is
+  new (see `lextend_pipeline-dashboard-search-filter-and-clear_ELITEA-2023.md`).
+  Sibling pages already fixed this correctly — reuse their pattern:
+  `automation/pages/mcp_list_page.py::search()` (types, `press("Enter")`,
+  waits network + ~1.5s settle) / `credentials_list_page.py`.
+- **`search-clear-button` testid exists but has no `PipelinesListPage` field
+  yet** — confirmed live (`page.getByTestId('search-clear-button')`
+  resolves). Add `search_clear_button = LocatorDescriptor(testid="search-clear-button")`.
+- **No sibling of the MCP/#585 · Credentials/#551 "clear-from-zero-match
+  redirects to /create" defect on Pipelines** — reproduced the identical
+  trigger (search a term with zero matches → empty state → click Clear) and
+  the Pipelines dashboard correctly restores the full grid, stays on
+  `/pipelines/all`. Confirmed clean; don't assume it needs fixing too.
+- **Search-input placeholder**: exactly `Let's find something amazing!`
+  (confirmed via live accessibility snapshot, matches `SearchBar.jsx`
+  literal and the merged `search_input` LocatorDescriptor's dead `fallback=`
+  string — testid `pipeline-search-input` is what actually resolves).
+- **Case-text drift filed**: `EliteaAI/elitea-testing-public#1302` —
+  ELITEA-2023 Steps 3–4 imply live-as-you-type filtering; live product
+  needs explicit Enter/send-icon activation (same `SearchBar.jsx` mechanism
+  as ELITEA-2162's `#1114` clarification for the Chats search folder-list
+  behavior — recurring pattern across every dashboard using this component).
 
 ## YAML editor view — line numbers, copy button, `state:` key precondition (confirmed live, 2026-08-07, ELITEA-2026)
 
