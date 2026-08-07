@@ -1959,13 +1959,23 @@ class AgentDetailPage(AgentFormPage):
         while time.time() < deadline:
             try:
                 # Try to get content from skill-test-last-response (preferred)
+                # This testid only appears when the answer block is rendered
                 if self.skill_test_last_response.count() > 0:
                     current = self.skill_test_last_response.last.text_content() or ""
                 else:
-                    # Fallback to full message text
-                    current = messages.last.text_content() or ""
+                    # testid not present yet — answer block not rendered
+                    # Keep waiting instead of falling back to metadata-polluted text
+                    logger.debug("skill-test-last-response not present yet, waiting...")
+                    self.page.wait_for_timeout(300)
+                    continue
             except Exception:
                 current = ""
+
+            # Skip if content is empty (answer block exists but no text yet)
+            if not current.strip():
+                logger.debug("Answer block present but empty, waiting...")
+                self.page.wait_for_timeout(300)
+                continue
 
             # Skip if still showing loading message
             is_loading = any(phrase in current for phrase in loading_phrases)
