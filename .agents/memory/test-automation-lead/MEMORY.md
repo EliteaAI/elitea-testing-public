@@ -20,7 +20,7 @@
 - [Review-round rulings](review_round_rulings.md) — full re-check each round; verdict recorded; R2 cap by class
 - [Testid-usage extraction scope](testid_usage_scope.md) — grep all of automation/; trace the test's own call chain
 - [AFS gate rulings](afs_gate_rulings.md) — the AFS itself can be wrong: locators, provenance, status header
-- [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 3× violated; conflicts are dispatched
+- [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 5× violated; conflicts are dispatched, always, even at sync-time
 - [#524 blocks ALL agent creation](blocker_524_blocks_all_agent_creation.md) — still OPEN; kills the agent_id fixture
 - [Isolated-defect assert can ship GREEN](isolated_defect_can_ship_green.md) — verify its logic by hand, not colour
 - [EL-5708 broke indexes_tab](indexes_tab_removed_by_el5708_toolkit_detail_page_stale.md) — count_config_tabs fails
