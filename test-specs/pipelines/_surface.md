@@ -2,8 +2,41 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-07 (ELITEA-2020 combined
-> analysis/implementation).
+> place, don't append duplicate entries. Last updated: 2026-08-07 (ELITEA-2002 analysis).
+
+## Save As Version (`agent-save-as-version-button` + dialog) works on Pipelines exactly like Agents (confirmed live, 2026-08-07, ELITEA-2002)
+
+- **`ApplicationTabBar.jsx` (which renders `SaveNewVersionButton.jsx`) is shared by
+  `EditPipeline.jsx` too** — same shared component `AgentDetailPage` already wires as
+  `save_as_version_button`/`create_version_*` fields. Confirmed live end-to-end on a
+  pipeline detail page: `agent-save-as-version-button` (enabled only when the form is
+  dirty — e.g. after adding a canvas node via `pipeline-add-node-button` →
+  `pipeline-add-node-menu-item-llm`), `agent-version-dialog-name-input`,
+  `agent-version-dialog-save-button` (disabled while Name is empty), and the dynamic
+  `[data-testid="version-option-{name}"]` (`VERSION_OPTION` template, same mechanism as
+  `AgentDetailPage.VERSION_OPTION`) all resolve and behave identically to the Agents
+  side. **`PipelineDetailPage` has none of these as fields yet** (only
+  `version_selector`/`get_version_display()` for READING existed before this session) —
+  zero `add-data-testid` work needed, purely a page-object-generator gap; port
+  `AgentDetailPage`'s method shapes (`open_save_as_version_dialog()`,
+  `confirm_new_version()`, `select_version_by_name()`, etc.) rather than reinventing.
+- **Switching versions swaps canvas node state independently per version** — confirmed
+  live: added 1 LLM node (`[data-testid^="rf__node-LLM"]`, sanctioned #579 ReactFlow
+  wrapper handle) → Save As Version as `v1_test` → switch to `base` → 0 LLM nodes on
+  canvas → switch back to `v1_test` → 1 LLM node again, config intact. No leakage either
+  direction. The VERSION selector's URL also changes its version-id path segment
+  (`/pipelines/all/{pipeline_id}/{version_id}`) on every switch/create — a second,
+  independent signal beyond the trigger's `textContent`, cheap to assert alongside it.
+- **`discard-button` IS live-wired on the Pipeline detail page** (present, correctly
+  reflects dirty state) — a divergence from the digest's existing Agents note that this
+  same testid is NOT rendered on `AgentDetailPage` (pre-existing, unrelated gap noted
+  there, not this session's concern).
+- **Seeding for a clean baseline**: `PipelineAPI.create_pipeline()` (zero-node, real
+  empty `pipeline_settings`) loads with Save/Save-As-Version/Discard all correctly
+  **disabled** — confirmed live. Reconfirms the existing "Seeding gotcha" entry below
+  (avoid `create_pipeline_with_nodes()` for any case needing a clean dirty-state
+  baseline) from the version-flow angle specifically.
+- Full flow, handles, and page-object gap list: `l2_create-pipeline-version_ELITEA-2002.md`.
 
 ## Sidebar "+" create control and the VERSION selector (confirmed live, 2026-08-07, ELITEA-2020)
 
