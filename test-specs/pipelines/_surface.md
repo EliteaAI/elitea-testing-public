@@ -1100,3 +1100,37 @@ is a legitimate empty state, not an error state).
   case step requires exactly 1 timeline entry); worth a closer look if a future case
   needs to assert exact timeline-entry counts for a structured-output node.
   Full handle table + fixture recipe: `l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md`.
+
+## Pipelines dashboard — Search grid filter/clear (confirmed live, 2026-08-07, ELITEA-2023)
+
+**Resolved/added during ELITEA-2023 implementation:**
+- **`PipelinesListPage.pipeline_exists_in_list()` (legacy raw `text="..."` locator)
+  does NOT reliably match a card name while the dashboard's active search is
+  highlighting the matched substring.** Card.jsx's highlight renders the name
+  split across nested `<span>` fragments (e.g. `<span>autotest_</span><span
+  class="css-...">YAML</span><span>_search_...</span>`). `element.textContent`
+  concatenates correctly (`"autotest_YAML_search_..."`), but Playwright's exact
+  `text="..."` locator engine (`:text-is()`) does **not** match the parent on
+  that concatenated text in the split-node case — confirmed via a live
+  reproduction (`page.locator('text="<exact-name>"').count()` → `0` against the
+  identical page state where `el.textContent` was correct). This is a Playwright
+  quirk, not a DOM/app bug. **Fix:** added `PipelinesListPage.entity_card_name`
+  (`LocatorDescriptor(testid="entity-card-name")`, the same shared `Card.jsx`
+  testid used by `AgentsListPage`/`CredentialsListPage`/`McpListPage`/
+  `SkillsListPage`) + `get_card_names()`, which reads each card's own
+  `.text_content()` directly — robust to the split-node highlighting. Use
+  `get_card_names()` (membership check) instead of `pipeline_exists_in_list()`
+  whenever the grid may be in a filtered/highlighted state; `pipeline_exists_in_list()`
+  remains correct for unfiltered/baseline and absence checks (no highlighting
+  present there).
+- **`PipelinesListPage.search()`/`clear_search()` were fill-only (no Enter, no
+  Clear-icon click)** — confirmed the AFS's finding live: typing alone only opens
+  the suggestions popover, never narrows the dashboard grid; the actual filter
+  dispatch fires only on Enter or the send-icon click (shared `SearchBar.jsx`).
+  Both methods now mirror `McpListPage.search()`/`clear_search()` — click + Enter
+  for search, a new `search_clear_button` (`testid="search-clear-button"`) click
+  for clear. The two pre-existing `TestSearchPipeline` tests
+  (`test_search_pipeline_by_name`, `test_search_pipeline_no_results`) still pass
+  unchanged after this fix — confirmed green alongside the new test in the same
+  local run (determinism is the merge gate's job, not repeated local runs).
+  Full handle table + AFS: `lextend_pipeline-dashboard-search-filter-and-clear_ELITEA-2023.md`.
