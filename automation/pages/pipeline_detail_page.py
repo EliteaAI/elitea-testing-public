@@ -53,6 +53,28 @@ class PipelineDetailPage(PipelineFormPage):
         description="Copy pipeline ID button"
     )
 
+    # Information accordion root (agent-information-section, shared with the
+    # Agent detail page). Confirmed live (ELITEA-2020): expanded by default
+    # on a freshly created pipeline's detail page — no click needed to reveal
+    # "Pipeline ID:"/"Version ID:"/"Pipeline:" rows.
+    information_section = LocatorDescriptor(
+        testid="agent-information-section",
+        description="Information accordion (Pipeline ID / Version ID / Pipeline link rows)",
+    )
+
+    # VERSION selector in the entity tab bar (ApplicationVersionSelect.jsx,
+    # shared with Agents). The testid reaches the DOM via a `testId` PROP
+    # (`testId="agent-version-selector-trigger"`), not a literal
+    # `data-testid=` string in source — confirmed live via DOM query
+    # (ELITEA-2020). Two testids render: the outer non-interactive wrapper
+    # (`agent-version-selector-trigger`) and the actual `role="combobox"`
+    # element whose text content is the version name — this field targets
+    # the latter, which is what `get_version_display()` reads.
+    version_selector = LocatorDescriptor(
+        testid="agent-version-selector-trigger-combobox",
+        description="VERSION selector combobox — text content is the current version name (e.g. 'base')",
+    )
+
     flow_view_button = LocatorDescriptor(
         testid="pipeline-flow-view",
         fallback=lambda page: page.locator('button[value="flow"]'),
@@ -981,6 +1003,15 @@ class PipelineDetailPage(PipelineFormPage):
             Pipeline ID as string.
         """
         return self.copy_id_button.text_content().strip()
+
+    def get_version_display(self) -> str:
+        """Read the VERSION selector's currently displayed version name.
+
+        Returns:
+            Version name text (e.g. ``"base"``) as shown in the entity tab
+            bar's VERSION combobox.
+        """
+        return (self.version_selector.text_content() or "").strip()
 
     # ------------------------------------------------------------------
     # Tabs

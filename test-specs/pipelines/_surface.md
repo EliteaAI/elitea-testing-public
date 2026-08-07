@@ -29,6 +29,15 @@
   name, e.g. `base`). Confirmed both on `main` already — no `add-data-testid`
   needed. Shared component — same one Agents' detail page uses (`_surface.md`
   doesn't need a duplicate Agents entry; behavior is identical).
+- **Name field has a hard 32-char cap (`MAX_NAME_LENGTH`,
+  `src/common/constants.js`), and typing beyond it silently truncates
+  rather than erroring** — confirmed live: `pressSequentially`/`type()` of a
+  41-char name left the field holding exactly the first 32 chars, no
+  validation message. Same root cause as the `pipeline_id` fixture's own
+  `[:32]` truncation noted in the ELITEA-2023 AFS, but this one bites ANY
+  manually-generated name, not just the fixture. Keep generated pipeline
+  names ≤32 chars total (e.g. `autotest_pipe_min_<8hex>` = 27 chars) —
+  don't assume a longer descriptive prefix + suffix is safe.
 - **Information section confirmed reachable without an explicit expand
   click** — `agent-information-section`'s accordion renders
   `Mui-expanded`/open by default on a freshly created pipeline's detail page
