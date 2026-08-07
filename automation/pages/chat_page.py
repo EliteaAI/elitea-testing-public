@@ -1083,8 +1083,26 @@ class ChatPage(BasePage):
 
     folder_name_confirm_button = LocatorDescriptor(
         testid="chat-folder-name-confirm-button",
-        description="Checkmark (confirm) icon next to the folder-name editor input.",
+        description=(
+            "Checkmark (confirm) icon next to the folder-name editor input. "
+            "Carries a data-disabled=\"true\"/\"false\" attribute (added "
+            "ELITEA-2458) reflecting FolderItem.jsx's isFolderSaveEnabled "
+            "state — testid identity is unchanged, only a sibling state "
+            "attribute is new, per the testid=identity/state=data-* policy. "
+            "Read via is_folder_name_confirm_enabled()."
+        ),
     )
+
+    # Confirm-button validation tooltip content — ADDED ELITEA-2458 (the
+    # MUI Tooltip wrapping folder_name_confirm_button had no testid on its
+    # popper content before this; only reachable via the ambient
+    # role="tooltip" landmark or the wrapping Box's inconsistent
+    # accessible name, see that AFS's Axis-2 note). Only mounts once the
+    # confirm button is hovered/focused AND the name is currently invalid
+    # (FolderItem.jsx's title prop is '' when valid, so MUI renders no
+    # popper at all in that state) — read via
+    # get_folder_name_confirm_tooltip_text().
+    FOLDER_NAME_CONFIRM_TOOLTIP_CONTENT = '[data-testid="chat-folder-name-confirm-tooltip-content"]'
 
     folder_name_cancel_button = LocatorDescriptor(
         testid="chat-folder-name-cancel-button",
@@ -1115,6 +1133,15 @@ class ChatPage(BasePage):
     # test, per the team's testid-scope ruling (testids go only on elements
     # a test actually touches).
     FOLDER_MENU_DELETE_ITEM = '[data-testid="chat-folder-menu-delete-menuitem"]'
+
+    # Folder dot-menu "Rename" item — ADDED ELITEA-2458 (had never carried a
+    # testid, unlike Delete above which was added-then-regressed-then-
+    # re-added — see #1309; Rename's history is clean, first testid ever).
+    # Same DotMenu/BasicMenuItem `key` -> `{key}-menuitem` mechanism as
+    # FOLDER_MENU_DELETE_ITEM and ConversationItem.jsx's own
+    # chat-conversation-menu-rename sibling. Only "rename" was keyed —
+    # Pin remains untouched (this case's test never opens Pin).
+    FOLDER_MENU_RENAME_ITEM = '[data-testid="chat-folder-menu-rename-menuitem"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -5852,3 +5879,72 @@ class ChatPage(BasePage):
         self.delete_confirm_button.click()
         self.wait_for_network(timeout=timeout)
         logger.info("Folder %s deleted via menu", folder_id)
+
+    @action("Open folder rename editor")
+    def open_folder_rename_editor(self, folder_id: str | int, timeout: int = 5000):
+        """Open a folder's inline rename editor via its scoped 3-dot menu -> Rename.
+
+        Mirrors ``delete_folder_via_menu()``'s hover-then-open pattern
+        (ELITEA-2458): hover ``FOLDER_ICON`` inside the folder's own row to
+        reveal the dot-menu (NOT the outer ``FOLDER_ITEM`` row — hovering
+        the row lands inside the body once expanded, see that method's
+        docstring), scope the shared, non-unique ``CONVERSATION_MENU_BUTTON``
+        testid to ``.first`` within the folder's row, click it — but targets
+        the NEW ``FOLDER_MENU_RENAME_ITEM`` testid instead of Delete.
+        Unlike ``FOLDER_MENU_DELETE_ITEM`` (currently dead — regressed,
+        tracked in #1309, NOT this case's scope), the Rename testid is
+        fresh and functional. Waits for ``folder_name_input`` to become
+        visible before returning — the same shared editor ``FolderItem.jsx``
+        renders for both the create-new-folder and rename-existing-folder
+        flows.
+
+        Args:
+            folder_id: Numeric folder id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening rename editor for folder %s via 3-dot menu", folder_id)
+        item = self.get_folder_item(folder_id)
+        item.locator(self.FOLDER_ICON).hover()
+        menu_button = item.locator(self.CONVERSATION_MENU_BUTTON).first
+        menu_button.wait_for(state="visible", timeout=timeout)
+        menu_button.click(force=True)
+
+        rename_item = self.page.locator(self.FOLDER_MENU_RENAME_ITEM)
+        rename_item.wait_for(state="visible", timeout=timeout)
+        rename_item.click()
+
+        self.folder_name_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Rename editor opened for folder %s", folder_id)
+
+    def is_folder_name_confirm_enabled(self) -> bool:
+        """Return True if ``folder_name_confirm_button`` is currently clickable.
+
+        Reads the ``data-disabled`` attribute added to the (pre-existing)
+        ``chat-folder-name-confirm-button`` testid this implementation
+        (ELITEA-2458) — the button's identity/testid is unchanged, only a
+        sibling state attribute is new, per the project's
+        testid=identity/state=data-* policy. Polarity-neutral name:
+        ``True`` = clickable/active (``data-disabled == "false"``).
+        """
+        value = self.folder_name_confirm_button.get_attribute("data-disabled")
+        return value == "false"
+
+    def get_folder_name_confirm_tooltip_text(self, timeout: int = 3000) -> str:
+        """Hover the confirm button and read its validation-tooltip text.
+
+        MUI's ``Tooltip`` content only mounts on hover/focus — hovers
+        first. Returns ``""`` (never ``None``) when no tooltip appears
+        within *timeout*, which is the EXPECTED outcome for every
+        valid-name state (``FolderItem.jsx``'s ``title={isFolderNameValid
+        ? '' : ...}`` — MUI renders no popper at all for an empty title,
+        regardless of whether the name also changed), not a failure.
+        """
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+        self.folder_name_confirm_button.hover()
+        tooltip = self.page.locator(self.FOLDER_NAME_CONFIRM_TOOLTIP_CONTENT)
+        try:
+            tooltip.wait_for(state="visible", timeout=timeout)
+            return tooltip.text_content() or ""
+        except PlaywrightTimeoutError:
+            return ""
