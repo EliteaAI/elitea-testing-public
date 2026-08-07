@@ -177,7 +177,7 @@ from the unrelated, confirmed-different defect #1127).
 | 3 Attach a sub-agent that has an MCP configured | Sub-agent is selected | step 3 | step 3: popper closes, toast confirms, PATCH .../application_relation/... → 201 | asserted, with data substitution *(no "EliteaMCPAgent" fixture exists — created `autotest_nested_mcp_subagent` with `autotest_mcp_run_tool` attached)* |
 | 4 Verify sub-agent appears in tools list with version selector (e.g. "base" dropdown) | Sub-agent is listed with version selector | step 4 | step 4: `agent-toolkit-card` text + version menu opens showing "base" | asserted, testid gap flagged *(version selector has zero `data-testid` — see § Concrete Handles)* |
 | 5 Save ParentAgent | Operation completes successfully | step 5 | step 5: `agent-save-button.disabled === true`, attach already persisted at step 3 | clarification *(attach is auto-save; same #530-pattern Save-stays-disabled behavior, now confirmed for the Agent tool type too — cite, don't re-file)* |
-| 6 Execute ParentAgent — verify it can invoke the sub-agent which uses MCP tools | ParentAgent executes and invokes the sub-agent | step 6 | step 6: nested `autotest_nested_mcp_subagent` `<h3>` inside `chat-answer-thought-accordion` | asserted |
+| 6 Execute ParentAgent — verify it can invoke the sub-agent which uses MCP tools | ParentAgent executes and invokes the sub-agent | step 6 | step 6: nested `chat-answer-nested-agent-accordion-summary-autotest_nested_mcp_subagent` testid appears/expands inside `chat-answer-thought-accordion` *(superseded the originally-documented `<h3>` text-match — see § Concrete Handles amendment)* | asserted |
 | 7 Verify response references MCP tool output from nested agent | Response includes output from the MCP tool | step 7 | step 7: `chat-answer-tool-chip` = `"autotest_mcp_run_tool: read_wiki_structure (autotest_nested_mcp_subagent)"` + final answer text contains `"MCP_TOOL_OUTPUT:"` + real wiki-structure content | asserted |
 | Expected Final State: parent returns response including nested MCP tool output | — | step 7 | step 7 | asserted |
 
@@ -239,7 +239,7 @@ from the unrelated, confirmed-different defect #1127).
 | Chat message input | `LocatorDescriptor(testid="chat-message-input")` (existing, `ChatPage`) | on-main ✓ | none |
 | Chat message list | `LocatorDescriptor(testid="chat-message-list")` (existing, `ChatPage`) | on-main ✓ | none |
 | Answer's outer thought accordion | `LocatorDescriptor(testid="chat-answer-thought-accordion")` (existing, added by the ELITEA-2211..2215 batch) | on-`automation/testids` only (awaiting human promotion to main) | none |
-| Nested sub-agent accordion heading | **No dedicated testid** — the nested accordion's `<h3>` text equals the invoked agent's exact name; scope via `chat-answer-thought-accordion >> h3` text match (confirmed live shape; a future `add-data-testid` pass could add a dynamic `chat-answer-nested-agent-accordion-{agent_name}` if per-name addressing beyond text-match is needed — not required for this case since only one nested agent is ever attached) | n/a (element carries no testid by design today) | none — testid-only policy honored via a scoped text match under the existing parent testid, not a free-floating raw handle |
+| Nested sub-agent accordion summary/details | **Superseded during implementation — see Amendment below.** `LocatorDescriptor`-style dynamic testids `chat-answer-nested-agent-accordion-summary-{agent_name}` / `-details-{agent_name}` (new, added via `add-data-testid` to `SubAgentAccordion.jsx`, keyed by the invoked sub-agent's exact name), wired as `AgentDetailPage.NESTED_AGENT_ACCORDION_SUMMARY` / `NESTED_AGENT_ACCORDION_DETAILS` class-level template constants and consumed via `expand_nested_agent_accordion()` / `get_nested_agent_accordion_details()`. This project's testid-only mechanical review gate does not accept the h3-text-match shape this row originally proposed as a fallback — the AFS's own text ("not required for this case") framed it as optional, but the reviewer checklist has no carve-out for "optional," so a dedicated testid was added instead. | on-`automation/testids` only (EliteaAI/EliteaUI@6b520f74, awaiting human promotion to main) | none — testid-only policy honored via a real dynamic testid, not a text-match scoped under a parent testid |
 | Model chip(s) inside the (possibly nested) accordion | `LocatorDescriptor(testid="chat-answer-model-chip")` (existing, added by the ELITEA-2211..2215 batch) | on-`automation/testids` only (awaiting human promotion to main) | none |
 | Tool-call chip inside the (possibly nested) accordion | `LocatorDescriptor(testid="chat-answer-tool-chip")` (existing, added by the ELITEA-2211..2215 batch); text shape for a NESTED agent's own tool call is `"{toolkit}: {tool} ({originating_agent_name})"` vs. a top-level call's `"{toolkit}: {tool}"` (no suffix) — confirmed live, distinguish by suffix presence, not by DOM depth alone | on-`automation/testids` only (awaiting human promotion to main) | none |
 | Final answer text container | scoped inside the accordion, DOM-order-after the chip row (same established pattern ELITEA-2215's AFS already documents — no dedicated testid observed there either) | n/a | none |
@@ -287,12 +287,17 @@ None.
   flow itself.
 - New page-object work needed: (a) `add-data-testid` pass for the
   version-selector trigger/menu (§ Concrete Handles gap), (b) a helper to
-  read the nested-agent accordion's chip contents — e.g.
-  `ChatPage.get_nested_agent_tool_chips(agent_name)` that scopes into
-  `chat-answer-thought-accordion >> h3:has-text(agent_name)`'s parent
-  accordion, expands it if collapsed, and returns the `chat-answer-tool-chip`
-  / `chat-answer-model-chip` texts inside — generalizes beyond this one case
-  to any future "nested agent's own tool call" assertion.
+  read the nested-agent accordion's chip contents. **Implemented as a
+  dedicated testid pair, not the h3-text-match this bullet originally
+  suggested** — see the Concrete Handles amendment: `add-data-testid` added
+  `chat-answer-nested-agent-accordion-summary/details-{agent_name}` to
+  `SubAgentAccordion.jsx`, and `AgentDetailPage.expand_nested_agent_accordion(agent_name)`
+  / `get_nested_agent_accordion_details(agent_name)` /
+  `get_nested_agent_tool_chip_texts(agent_name, toolkit_name=...)` /
+  `get_nested_agent_model_chip_texts(agent_name)` scope into it, expand if
+  collapsed, and return the `chat-answer-tool-chip` / `chat-answer-model-chip`
+  texts inside — generalizes beyond this one case to any future "nested
+  agent's own tool call" assertion.
 - **`#524` (agent-create 400 on API path) did NOT fire via this run's UI-form
   agent creation** — both fixture agents saved cleanly through
   `agent-save-button`. If the implementer prefers an `AgentAPI`-created
@@ -339,3 +344,17 @@ nested_agent_attach_and_accordion_quirks.md`):
   same class as the message-wording note already in § Axis 2). Assert a
   real, repo-specific content marker (e.g. a real wiki section name) instead;
   treat the literal prefix's presence as an informational/soft signal only.
+- **Nested sub-agent accordion locator: testid added, superseding the
+  originally-documented `<h3>` text-match** (§ Concrete Handles row + Coverage
+  Map row 6, both amended above; fix-round-1 correction — this bullet was
+  missing from the original amendment list). The AFS's own Concrete Handles
+  row flagged the text-match shape as merely a "confirmed live shape" with a
+  dynamic testid as an optional future enhancement ("not required for this
+  case"); this project's testid-only mechanical review gate does not accept
+  a raw `>> h3` text-match as a compliant locator regardless of "optional"
+  framing, so `add-data-testid` was run against `SubAgentAccordion.jsx`
+  during implementation, adding `chat-answer-nested-agent-accordion-summary-
+  {agent_name}` / `-details-{agent_name}` (`EliteaAI/EliteaUI@6b520f74` on
+  `automation/testids`, awaiting human promotion to `main`). Consumed via
+  `AgentDetailPage.expand_nested_agent_accordion()` /
+  `get_nested_agent_accordion_details()`.
