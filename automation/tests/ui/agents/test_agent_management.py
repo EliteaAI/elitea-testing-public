@@ -29,6 +29,7 @@ from pages.agents_list_page import AgentsListPage
 from pages.agent_form_page import AgentFormPage
 from pages.agent_detail_page import AgentDetailPage
 from pages.internal_tools import InternalTool
+from playwright.sync_api import expect
 import allure
 
 pytestmark = [pytest.mark.ui, pytest.mark.agents]
@@ -288,6 +289,23 @@ def _is_known_defect_538(msg) -> bool:
         "Maximum update depth exceeded" in text
         and "setState inside useEffect" in text
     )
+
+
+# Known defect #554 (already filed, unrelated) — an RTK-Query timing race in
+# EliteaUI/src/api/toolkits.js's `toolkitTypes` endpoint fires before
+# `useSelectedProjectId()` resolves, building the URL with an empty projectId
+# segment (".../toolkits/prompt_lib/") which 404s. Intermittent (client-side
+# race, not deterministic) and unrelated to the Tags save/reload flows this
+# filter is applied to — surfaced non-deterministically on the batch's own
+# hardening-gate runs (elitea-testing-public#1277). SAME filter technique
+# already established in test_credential_search_by_name.py /
+# test_credential_create.py / test_agent_publish_unpublish_version.py —
+# matched on msg.location.url containing the toolkits endpoint path, NOT a
+# blanket "any 404" filter, so an unrelated 404 from a genuinely different
+# resource still surfaces as a real, unexpected failure.
+def _is_known_554_warning(msg) -> bool:
+    location_url = (msg.location or {}).get("url", "")
+    return "404" in msg.text and "elitea_core/toolkits/prompt_lib/" in location_url
 
 
 class TestCreateAgent:
@@ -798,6 +816,130 @@ class TestAgentActions:
                     print(f"Warning: Failed to cleanup agent {agent_id}: {cleanup_exc}")
 
     @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1873_discard-changes-resets-all-unsaved-edits.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p0
+    @pytest.mark.regression
+    def test_discard_changes_reverts_all_unsaved_edits(self, page, agent_api):
+        """Editing Name, Description, and Instructions without saving, then
+        clicking Discard and confirming the Warning dialog, reverts all three
+        fields to their previously saved values (ELITEA-1873).
+
+        Uses a dedicated, disposable agent created via
+        ``AgentAPI.create_agent_full()`` (not the shared ``agent_id`` fixture)
+        for the same reason as ``test_edit_agent_instructions`` — the
+        fixture's plain ``create_agent()`` call currently 400s against the
+        DEV backend (https://github.com/EliteaAI/elitea-testing-public/issues/524).
+
+        The Discard confirmation modal and its confirm button previously
+        carried no testid at all (``ApplicationTabBar.jsx`` never threaded
+        ``DiscardButton``'s ``modalDataTestId``/``confirmButtonDataTestId``
+        props, even though ``BaseModal`` already supported them — same
+        threading-gap shape ELITEA-1971 fixed for the credential Discard
+        flow). Added via ``add-data-testid`` for this case:
+        ``discard-confirm-modal`` / ``discard-confirm-button`` (generic
+        names — the tab bar is shared between the Agent and Pipeline detail
+        pages, so a feature-scoped name would misrepresent the shared
+        component, matching the pre-existing generic ``discard-button``).
+        """
+        with allure.step("Precondition — create a dedicated disposable agent"):
+            agent_name = f"elitea-1873-discard-{uuid.uuid4().hex[:8]}"[:32]
+            payload = _build_dedicated_agent_payload(agent_name)
+            payload["description"] = "Auto-created for ELITEA-1873 discard-changes test"
+            agent = agent_api.create_agent_full(payload)
+            agent_id = agent["id"]
+            original_name = agent_name
+            original_description = payload["description"]
+            original_instructions = SEED_INSTRUCTIONS
+
+        detail_page = AgentDetailPage(page)
+        try:
+            with allure.step(
+                "Step 1 — Navigate to the agent detail page and note the "
+                "current saved values of Name, Description, and Instructions"
+            ):
+                detail_page.navigate(agent_id)
+                assert detail_page.get_name() == original_name, (
+                    "Name field should show the agent's saved name"
+                )
+                assert detail_page.get_description() == original_description, (
+                    "Description field should show the agent's saved description"
+                )
+                assert detail_page.get_instructions() == original_instructions, (
+                    "Instructions field should show the agent's saved instructions"
+                )
+                assert not detail_page.is_discard_enabled(), (
+                    "Discard should start disabled before any edit"
+                )
+
+            with allure.step(
+                "Step 2 — Modify Name, Description, and Instructions to "
+                "different values without saving"
+            ):
+                # Short, fixed value (not derived from original_name via a
+                # suffix) — the Name field enforces the same 32-char max the
+                # API does (ELITEA-1888 AFS), so appending "-EDITED" to an
+                # already-near-limit generated name silently truncates.
+                new_name = "Discard-Test-Edited-Name"
+                new_description = "Edited description before discard"
+                detail_page.update_text_field("name", new_name)
+                detail_page.update_text_field("description", new_description)
+                detail_page.update_text_field("instructions", NEW_INSTRUCTIONS)
+
+                assert detail_page.get_name() == new_name, (
+                    "Name field should reflect the unsaved edit"
+                )
+                assert detail_page.get_description() == new_description, (
+                    "Description field should reflect the unsaved edit"
+                )
+                assert detail_page.get_instructions() == NEW_INSTRUCTIONS, (
+                    "Instructions field should reflect the unsaved edit"
+                )
+                assert detail_page.is_discard_enabled(), (
+                    "Discard should become enabled once the form is dirty"
+                )
+                assert detail_page.is_save_enabled(), (
+                    "Save should also become enabled once the form is dirty"
+                )
+
+            with allure.step(
+                "Step 3 — Click Discard and accept the confirmation dialog"
+            ):
+                detail_page.click_discard(timeout=UI_ELEMENT_TIMEOUT)
+                assert detail_page.discard_confirm_modal.is_visible(), (
+                    "Discard confirmation modal should be visible after clicking Discard"
+                )
+                detail_page.confirm_discard(timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step(
+                "Step 4 — Verify Name, Description, and Instructions all "
+                "reverted to their previously saved values"
+            ):
+                expect(detail_page.name_input).to_have_value(
+                    original_name, timeout=UI_ELEMENT_TIMEOUT
+                )
+                expect(detail_page.description_input).to_have_value(
+                    original_description, timeout=UI_ELEMENT_TIMEOUT
+                )
+                expect(detail_page.instructions_input).to_have_value(
+                    original_instructions, timeout=UI_ELEMENT_TIMEOUT
+                )
+                assert not detail_page.is_discard_enabled(), (
+                    "Discard should return to disabled after a successful discard"
+                )
+                assert not detail_page.is_save_enabled(), (
+                    "Save should return to disabled after a successful discard "
+                    "— no unsaved modifications should remain"
+                )
+        finally:
+            with allure.step("Cleanup — delete the dedicated agent"):
+                try:
+                    agent_api.delete_agent(agent_id)
+                except Exception as cleanup_exc:
+                    print(f"Warning: Failed to cleanup agent {agent_id}: {cleanup_exc}")
+
+    @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1885_welcome-message-is-shown-as-agent-bubble-before-first-user-message.md",
         "onetest-ai Test Case link",
     )
@@ -997,6 +1139,216 @@ class TestAgentActions:
                     agent_api.delete_agent(aid)
                 except Exception as cleanup_exc:
                     print(f"Warning: Failed to cleanup agent {aid}: {cleanup_exc}")
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1878_add-and-save-multiple-tags-both-persist-after-reload.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_add_multiple_tags_persist_after_reload(self, page, agent_api):
+        """Add two tags to an agent, save, reload, and verify both persist
+        (ELITEA-1878).
+
+        Uses a dedicated, disposable agent created via
+        ``AgentAPI.create_agent_full()`` (not the shared ``agent_id``
+        fixture) — same #524 workaround as ``test_edit_agent_instructions``.
+        The payload's seeded ``tags: []`` (``_build_dedicated_agent_payload``)
+        gives the test a known, empty starting Tags field, matching the
+        case's own precondition.
+
+        Tags input/chip testids (``agent-tags-input`` /
+        ``agent-tags-chip-{name}``) were added for this case via
+        ``add-data-testid`` — ``ApplicationEditForm.jsx``'s ``TagEditor`` call
+        site previously left them ``undefined`` on the Agent branch (only the
+        Pipeline branch exercised Tags before this case, canon #511 scope
+        discipline). Chip testids are dynamic (parameterized by tag name) so
+        each committed chip is independently addressable.
+        """
+        TAG_1 = "regression_test"
+        TAG_2 = "automation"
+
+        with allure.step("Precondition — create a dedicated disposable agent"):
+            agent_name = f"elitea-1878-tags-{uuid.uuid4().hex[:8]}"[:32]
+            agent = agent_api.create_agent_full(_build_dedicated_agent_payload(agent_name))
+            agent_id = agent["id"]
+
+        detail_page = AgentDetailPage(page)
+        console_messages = []
+        page.on(
+            "console",
+            lambda msg: console_messages.append(msg)
+            if msg.type in ("error", "warning")
+            and not _is_known_defect_538(msg)
+            and not _is_known_554_warning(msg)
+            else None,
+        )
+        save_requests = detail_page.capture_requests_matching(
+            "application/prompt_lib", method="PUT"
+        )
+
+        try:
+            with allure.step("Step 1 — Navigate to the agent detail page"):
+                detail_page.navigate(agent_id)
+                expect(detail_page.tags_input).to_be_visible()
+                expect(detail_page.get_tag_chip(TAG_1)).to_have_count(0)
+                expect(detail_page.get_tag_chip(TAG_2)).to_have_count(0)
+
+            with allure.step(f'Step 2 — Add tag "{TAG_1}" and tag "{TAG_2}"'):
+                detail_page.add_tag(TAG_1)
+                detail_page.add_tag(TAG_2)
+                expect(detail_page.get_tag_chip(TAG_1)).to_be_visible()
+                expect(detail_page.get_tag_chip(TAG_2)).to_be_visible()
+
+            with allure.step("Step 3 — Click Save"):
+                detail_page.click_save(timeout=FORM_SAVE_TIMEOUT)
+                _wait_for_resolved_save_count(page, save_requests, expected_count=1)
+                save_responses = [r for r in save_requests if r["status"] is not None]
+                assert save_responses and save_responses[-1]["status"] == 201, (
+                    f"PUT application/prompt_lib/... should return 201, captured: {save_requests!r}"
+                )
+
+            with allure.step("Step 4 — Reload the page (full navigation)"):
+                detail_page.reload_and_wait(timeout=NAVIGATION_TIMEOUT)
+
+            with allure.step(
+                f'Step 5 — Verify both "{TAG_1}" and "{TAG_2}" tags are shown '
+                "in the Tags field, in the order they were added"
+            ):
+                tag_1_chip = detail_page.get_tag_chip(TAG_1)
+                tag_2_chip = detail_page.get_tag_chip(TAG_2)
+                expect(tag_1_chip).to_be_visible()
+                expect(tag_2_chip).to_be_visible()
+
+                box_1 = tag_1_chip.bounding_box()
+                box_2 = tag_2_chip.bounding_box()
+                assert box_1 and box_2 and box_1["x"] < box_2["x"], (
+                    f'Tag "{TAG_1}" chip should render before "{TAG_2}" '
+                    f"(chip order preserved after reload), got x positions "
+                    f"{box_1} / {box_2}"
+                )
+
+            with allure.step(
+                "Side-channel check — no console errors/warnings across the flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors/warnings while adding/saving tags: "
+                    f"{[m.text for m in console_messages]}"
+                )
+        finally:
+            with allure.step("Cleanup — delete the dedicated agent"):
+                try:
+                    agent_api.delete_agent(agent_id)
+                except Exception as cleanup_exc:
+                    print(f"Warning: Failed to cleanup agent {agent_id}: {cleanup_exc}")
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1879_remove-a-tag-from-agent-removal-persists-after-reload.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_remove_tag_from_agent_persists_after_reload(self, page, agent_api):
+        """Remove one of two saved tags, save, reload, and verify the
+        removed tag is gone while the remaining tag stays intact
+        (ELITEA-1879).
+
+        Uses a dedicated, disposable agent via ``AgentAPI.create_agent_full()``,
+        pre-seeded with 2 tags already saved via the creation payload's
+        ``version_details.tags`` (matching the case's own precondition — "an
+        agent with at least one saved tag exists"). Seeding 2 tags (rather
+        than 1) lets the test prove BOTH halves of the case's Expected
+        Result: the removed tag is gone AND the remaining tag is intact —
+        a 1-tag seed could only prove removal.
+
+        Chip delete-icon testid (``agent-tags-chip-delete-{name}``) was
+        added for this case via ``add-data-testid`` alongside ELITEA-1878's
+        ``agent-tags-input``/``agent-tags-chip-{name}`` — this is the first
+        case exercising tag removal, so `chipDeleteTestId` is wired only on
+        the Agent branch (canon #511 scope discipline).
+        """
+        KEEP_TAG = "keep_this_tag"
+        REMOVE_TAG = "remove_this_tag"
+
+        with allure.step(
+            "Precondition — create a dedicated agent pre-seeded with 2 saved tags"
+        ):
+            agent_name = f"elitea-1879-tags-{uuid.uuid4().hex[:8]}"[:32]
+            payload = _build_dedicated_agent_payload(agent_name)
+            payload["versions"][0]["tags"] = [{"name": KEEP_TAG}, {"name": REMOVE_TAG}]
+            agent = agent_api.create_agent_full(payload)
+            agent_id = agent["id"]
+
+        detail_page = AgentDetailPage(page)
+        console_messages = []
+        page.on(
+            "console",
+            lambda msg: console_messages.append(msg)
+            if msg.type in ("error", "warning")
+            and not _is_known_defect_538(msg)
+            and not _is_known_554_warning(msg)
+            else None,
+        )
+        save_requests = detail_page.capture_requests_matching(
+            "application/prompt_lib", method="PUT"
+        )
+
+        try:
+            with allure.step(
+                "Step 1 — Navigate to the agent detail page with saved tags"
+            ):
+                detail_page.navigate(agent_id)
+                expect(detail_page.get_tag_chip(KEEP_TAG)).to_be_visible()
+                expect(detail_page.get_tag_chip(REMOVE_TAG)).to_be_visible()
+
+            with allure.step(f'Step 2 — Click the X on tag "{REMOVE_TAG}" to remove it'):
+                detail_page.remove_tag(REMOVE_TAG)
+
+            with allure.step(
+                "Step 3 — Verify the removed tag chip disappears; the "
+                "remaining tag is unaffected (no PUT fired by the delete "
+                "click alone — only Save persists it)"
+            ):
+                expect(detail_page.get_tag_chip(REMOVE_TAG)).to_have_count(0)
+                expect(detail_page.get_tag_chip(KEEP_TAG)).to_be_visible()
+                assert not save_requests, (
+                    "Removing a tag chip (before Save) should not fire a PUT "
+                    f"request, captured: {save_requests!r}"
+                )
+
+            with allure.step("Step 4 — Click Save"):
+                detail_page.click_save(timeout=FORM_SAVE_TIMEOUT)
+                _wait_for_resolved_save_count(page, save_requests, expected_count=1)
+                save_responses = [r for r in save_requests if r["status"] is not None]
+                assert save_responses and save_responses[-1]["status"] == 201, (
+                    f"PUT application/prompt_lib/... should return 201, captured: {save_requests!r}"
+                )
+
+            with allure.step("Step 5 — Reload the page (full navigation)"):
+                detail_page.reload_and_wait(timeout=NAVIGATION_TIMEOUT)
+
+            with allure.step(
+                "Step 6 — Verify the removed tag is absent and the "
+                "remaining tag is intact (still a functioning chip, not a "
+                "stale/orphaned node)"
+            ):
+                expect(detail_page.get_tag_chip(REMOVE_TAG)).to_have_count(0)
+                expect(detail_page.get_tag_chip(KEEP_TAG)).to_be_visible()
+                expect(detail_page.get_tag_chip_delete_icon(KEEP_TAG)).to_be_visible()
+
+            with allure.step(
+                "Side-channel check — no console errors/warnings across the flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors/warnings while removing/saving a tag: "
+                    f"{[m.text for m in console_messages]}"
+                )
+        finally:
+            with allure.step("Cleanup — delete the dedicated agent"):
+                try:
+                    agent_api.delete_agent(agent_id)
+                except Exception as cleanup_exc:
+                    print(f"Warning: Failed to cleanup agent {agent_id}: {cleanup_exc}")
 
 
 class TestAgentExecution:

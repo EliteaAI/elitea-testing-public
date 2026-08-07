@@ -13,6 +13,7 @@
 - [Sanctioned-RED traps](sanctioned_red_soft_assert_traps.md) — soft_failures not expect.soft; RED isn't guaranteed
 - [An assertion can prove the wrong fact](assertion_proves_the_wrong_fact.md) — invert-check passes, claim still false
 - [Agent fixtures that will chat](reasoning_effort_none_breaks_embedded_chat.md) — reasoning_effort:"none" 500s chat
+- [Proving a negative w/o sleep](proving_a_negative_without_wait_for_timeout.md) — `Locator.wait_for()` + `pytest.raises(TimeoutError)`, never wait_for_timeout
 - [post_data_json is None](playwright_post_data_json_none_use_route_interception.md) — use page.route() to read a request body, not response.request
 - [Testid lands on the MUI wrapper](testid_lands_on_mui_wrapper_not_input.md) — relocate via inputProps/slotProps
 - [Entity-card scoping](entity_card_scoping_pattern.md) — shared Card.jsx already has entity-card/-name; check first
@@ -32,8 +33,12 @@
 - [AFS "pre-existing testid" can be uncommitted](afs_pre_existing_testid_claim_can_be_uncommitted_worktree_only.md) — check `git status`/`git log` in EliteaUI, not just the live DOM
 - [MUI Menu trigger click can silently no-op](secrets_row_actions_menu_click_needs_react_props_invoke.md) — .click()/force/el.click() all fail; invoke React onClick prop directly
 - [Testid provenance: check timestamps](testid_provenance_claim_verify_commit_timestamp_vs_afs.md) — diff testid commit vs AFS commit before claiming "predates session"/"drift"
+- [PROVENANCE "on-main" needs both refs](afs_on_main_provenance_claim_needs_two_ref_grep.md) — grep origin/main AND origin/automation/testids; same-day claim isn't exempt
 - [a11y `[active]` = focus, not selection](playwright_active_marker_is_focus_not_selection.md) — never assert it as "selected"; add data-selected instead
 - [Shared-state cleanup must soft-assert](cleanup_verification_on_shared_state_must_soft_assert.md) — logger.error-only lets a failed cleanup pollute the shared baseline silently
 - [MUI icon auto-testid is dev-build-only](mui_icon_auto_testid_is_dev_build_only_never_locate_on_it.md) — never locate on it; add a real data-testid prop on the icon call site instead
 - [is_visible(timeout=) does not poll](locator_is_visible_timeout_kwarg_does_not_poll.md) — one-shot read, kwarg ignored; use .wait_for(state="visible") to actually wait
 - [Catalog Start Chat needs extra wait (#1043)](catalog_start_chat_1043_needs_extra_wait.md) — open_agent_by_name()'s wait alone isn't enough; add wait_for_timeout(1000) before click_start_chat()
+- [reasoning_effort:"none" agent silently no-ops chat send](reasoning_effort_none_agent_silently_no_ops_chat_send.md) — use plain create_agent() for any test that actually sends a message
+- [Nested agent attach/accordion quirks](nested_agent_attach_and_accordion_quirks.md) — attach_agent_by_testid() over attach_agent(); expect_response() over capture_requests_matching(); two tool-chips share one testid
+- [wait_for_chat_response header text false-stable](wait_for_chat_response_header_text_false_stable.md) — low-effort agents: header/thought-accordion text can lock in as "stable" before the answer renders
