@@ -168,17 +168,30 @@ spec's existing image_generation/data_analysis pattern), so no additional state 
 All testid-only, all pre-existing `LocatorDescriptor` fields or class constants on `ChatPage` —
 no new testids required for this case.
 
+**Provenance correction (implementer fix round 1, 2026-08-07):** the table below originally
+marked all 10 rows `on-main ✓` without a fresh grep. A reviewer fresh-session pass and this
+fix round's own re-verification (`cd ../EliteaUI && git fetch origin`, then
+`git grep -in -- "<testid>" origin/main -- src/` vs `origin/automation/testids -- src/`, both
+case-insensitively matching `data-testid`/`testId`) found only **3 of 10** genuinely on `main`;
+the other **7** exist only on `automation/testids` (awaiting human cherry-pick). This matches
+the reviewer's independent finding
+(`.agents/memory/qa-engineer/afs_claims_need_full_sweep_and_grep.md`, 10th occurrence). The
+whole `modules-toggle-{}` dynamic-testid mechanism (`PlusChatButton.jsx` `slotProps: { input:
+{ 'data-testid': \`modules-toggle-${tool.name}\` } }`) does not exist on `main` at all — not
+just the new `ask_user` entry — so every toggle testid this test (and the already-merged
+ELITEA-2162 spec before it) depends on is testids-only right now.
+
 | Element | Testid | Provenance | Notes |
 |---|---|---|---|
-| Attach Files menuitem | `chat-attach-menuitem-button` | on-main ✓ | `ChatPage.attach_files_button` |
-| Modules menuitem | `internal-tools-menuitem` | on-main ✓ | `ChatPage.internal_tools_menuitem` |
-| Agents menuitem | `agents-menuitem` | on-main ✓ | `ChatPage.agents_menuitem` |
-| Pipelines menuitem | `pipelines-menuitem` | on-main ✓ | `ChatPage.pipelines_menuitem` |
-| Toolkits menuitem | `toolkits-menuitem` | on-main ✓ | `ChatPage.toolkits_menuitem` |
-| MCPs menuitem | `mcps-menuitem` | on-main ✓ | `ChatPage.mcps_menuitem` |
-| Module toggle switch, "Ask User" (new, ×1) | `modules-toggle-ask_user` | on-main ✓ (live-confirmed 2026-08-07) | Uses existing `MODULES_TOGGLE_SWITCH` template constant; only `MODULE_TOGGLE_ORDER` tuple needs the new `("ask_user", "Ask User")` entry, inserted between `pyodide` and `swarm` per live DOM order |
+| Attach Files menuitem | `chat-attach-menuitem-button` | on-`automation/testids` only (awaiting human promotion to main) | `ChatPage.attach_files_button` |
+| Modules menuitem | `internal-tools-menuitem` | on-main ✓ | `ChatPage.internal_tools_menuitem` — `PlusChatButton.jsx` `data-testid={key === SUBMENU_KEYS.INTERNAL_TOOLS ? 'internal-tools-menuitem' : undefined}` |
+| Agents menuitem | `agents-menuitem` | on-`automation/testids` only (awaiting human promotion to main) | `ChatPage.agents_menuitem` |
+| Pipelines menuitem | `pipelines-menuitem` | on-`automation/testids` only (awaiting human promotion to main) | `ChatPage.pipelines_menuitem` |
+| Toolkits menuitem | `toolkits-menuitem` | on-`automation/testids` only (awaiting human promotion to main) | `ChatPage.toolkits_menuitem` |
+| MCPs menuitem | `mcps-menuitem` | on-`automation/testids` only (awaiting human promotion to main) | `ChatPage.mcps_menuitem` |
+| Module toggle switch, "Ask User" (new, ×1) | `modules-toggle-ask_user` | on-`automation/testids` only (awaiting human promotion to main) — the entire `modules-toggle-{}` template mechanism is testids-only, not just this entry | Uses existing `MODULES_TOGGLE_SWITCH` template constant; only `MODULE_TOGGLE_ORDER` tuple needs the new `("ask_user", "Ask User")` entry, inserted between `pyodide` and `swarm` per live DOM order |
 | Success/error toast text | `toast-message` | on-main ✓ | `ChatPage.toast_message` — text content only, no severity attribute |
-| Toast severity root | `toast-alert` | on-main ✓ | `ChatPage.toast_alert` / `get_toast_alert(severity)` / `TOAST_ALERT_SEVERITY` (pre-existing) — `data-severity` (`success`/`error`) confirmed live via `ToastProvider.jsx`/`Toast.jsx`, state via `data-*` on a stable testid, per locator policy |
+| Toast severity root | `toast-alert` | on-`automation/testids` only (awaiting human promotion to main) | `ChatPage.toast_alert` / `get_toast_alert(severity)` / `TOAST_ALERT_SEVERITY` (pre-existing) — `data-severity` (`success`/`error`) confirmed live via `ToastProvider.jsx`/`Toast.jsx`, state via `data-*` on a stable testid, per locator policy |
 | Message composer input | `chat-message-input` | on-main ✓ | `ChatPage.message_input` |
 
 ## Network Behavior

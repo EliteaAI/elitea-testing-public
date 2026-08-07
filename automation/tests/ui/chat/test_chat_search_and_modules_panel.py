@@ -132,10 +132,16 @@ class TestChatSearchAndModulesPanel:
                 "Step 6b (ELITEA-2464 extension) — Verify each toggle displays "
                 "its current on/off state"
             ):
-                initial_states = {
-                    tool_key: chat.is_module_toggle_checked(tool_key)
-                    for tool_key, _ in chat.MODULE_TOGGLE_ORDER
-                }
+                initial_states = {}
+                for tool_key, _ in chat.MODULE_TOGGLE_ORDER:
+                    actual_checked = chat.is_module_toggle_checked(tool_key)
+                    displayed_checked = chat.is_module_toggle_visually_checked(tool_key)
+                    assert displayed_checked == actual_checked, (
+                        f"{tool_key} toggle's displayed (visual) state should match "
+                        f"its actual checked state — displayed={displayed_checked}, "
+                        f"actual={actual_checked}"
+                    )
+                    initial_states[tool_key] = actual_checked
                 logger.info("Modules panel initial toggle states: %s", initial_states)
 
             with allure.step("Step 7 — Toggle Image creation on then off; verify state + toast each time"):

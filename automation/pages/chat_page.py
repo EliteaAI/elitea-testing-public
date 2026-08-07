@@ -3546,6 +3546,36 @@ class ChatPage(BasePage):
         """
         return self.get_module_toggle_switch(tool_key).is_checked()
 
+    def is_module_toggle_visually_checked(self, tool_key: str) -> bool:
+        """Return whether a Modules-panel toggle switch's VISUAL indicator
+        shows it as checked (ELITEA-2464, case step 6 — "verify each toggle
+        displays its current on/off state").
+
+        MUI applies a ``Mui-checked`` CSS class to the switch's ancestor
+        ``<span class="MuiSwitch-switchBase">`` — a rendering signal
+        independent of the native ``<input>`` element's own ``.checked``
+        DOM property (which ``is_module_toggle_checked()`` reads). Both
+        derive from the same React ``checked`` prop but are two separately
+        rendered DOM signals, so comparing them makes "the toggle displays
+        its current state" a real, falsifiable check (a regression where
+        the visual class stops tracking the underlying state would be
+        caught) rather than reading ``is_checked()`` against itself.
+        Live-confirmed 2026-08-07: toggling the switch flips
+        ``input.checked`` and the ancestor's ``Mui-checked`` class
+        together, from `false`/absent to `true`/present.
+
+        Uses ``evaluate()`` on the testid-anchored switch locator to read
+        the ancestor's class list — not a new selector/locator (mui-patterns.md
+        precedent, e.g. ``chat_messages_scroll_container.evaluate(...)``).
+
+        Args:
+            tool_key: Internal tool key — see MODULE_TOGGLE_ORDER.
+        """
+        switch = self.get_module_toggle_switch(tool_key)
+        return switch.evaluate(
+            "el => el.closest('.MuiSwitch-switchBase')?.classList.contains('Mui-checked') ?? false"
+        )
+
     def get_module_toggle_count(self) -> int:
         """Count visible Modules-panel toggle switches (testid-based)."""
         return self.get_module_toggle_switches().count()
