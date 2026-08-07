@@ -65,13 +65,33 @@ class PipelineDetailPage(PipelineFormPage):
     # VERSION selector in the entity tab bar (ApplicationVersionSelect.jsx,
     # shared with Agents). The testid reaches the DOM via a `testId` PROP —
     # ApplicationVersionSelect.jsx:228 passes `testId="agent-version-
-    # selector-trigger"` down to VersionSelect.jsx, which applies it as a
-    # SINGLE `data-testid={testId}` on the SingleSelect root (that root
-    # itself carries `role="combobox"` — same element, not two). There is
-    # NO `-combobox`-suffixed testid anywhere in EliteaUI (repo-wide grep,
-    # 2026-08-07 review fix, ELITEA-2020) — the prior claim of "two testids
-    # render" was fabricated. Matches AgentDetailPage.version_selector_trigger,
-    # which reads this exact shared component the same way.
+    # selector-trigger"` down to VersionSelect.jsx -> SingleSelect.jsx,
+    # which applies `data-testid={dataTestId}` on the SingleSelect root AND
+    # (via `SelectDisplayProps`) a second, template-suffixed
+    # `data-testid="agent-version-selector-trigger-combobox"` on the nested
+    # MUI-internal `role="combobox"` display div — two distinct DOM nodes,
+    # one inside the other. That `-combobox` variant IS real (re-confirmed
+    # live 2026-08-07, review fix round 2; `SingleSelect.jsx:661`'s
+    # `SelectDisplayProps={dataTestId ? { 'data-testid': ${dataTestId}-combobox } : undefined}`)
+    # — but it's constructed at RENDER TIME from a template literal, so the
+    # concatenated string never appears literally in source and a plain
+    # `git grep` for it returns zero hits by construction, not because it
+    # doesn't exist. It's also ref-specific: present on `automation/testids`
+    # only (that `SelectDisplayProps` line isn't yet on `main` as of
+    # 2026-08-07) — a "needs-adding to main" / "on-automation/testids only"
+    # PROVENANCE case, not a non-existent testid.
+    # This field deliberately still uses the NO-suffix testid
+    # (`agent-version-selector-trigger`) for a reason unrelated to
+    # existence: it's confirmed on BOTH `main` and `automation/testids`,
+    # and DOM `textContent` on the outer wrapper already includes the inner
+    # `-combobox` div's text — reading it here returns "base" without
+    # needing the inner node at all. Matches
+    # AgentDetailPage.version_selector_trigger, which reads this exact
+    # shared component the same way. (History: round-1 review wrongly
+    # called the `-combobox` variant "fabricated" / "zero hits on both
+    # main and automation/testids" — corrected 2026-08-07, review fix
+    # round 2; see .agents/memory/test-automation-engineer/
+    # afs_testid_can_name_a_real_but_wrong_component.md.)
     version_selector = LocatorDescriptor(
         testid="agent-version-selector-trigger",
         description="VERSION selector — text content is the current version name (e.g. 'base')",

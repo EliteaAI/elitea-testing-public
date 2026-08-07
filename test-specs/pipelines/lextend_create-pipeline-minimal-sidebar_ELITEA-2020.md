@@ -107,10 +107,15 @@ None of these three exist as assertions anywhere else in
   implemented and unmodified).
 - VERSION selector shows the visible text `base` for a freshly created
   pipeline (confirmed live via the `agent-version-selector-trigger` testid's
-  `textContent` — **corrected 2026-08-07, review fix round 1**: the
-  originally-recorded `agent-version-selector-trigger-combobox` testid does
-  not exist anywhere in EliteaUI; see Concrete Handles table below for the
-  source trace).
+  `textContent` — **corrected 2026-08-07, review fix round 1, then
+  round 1's "fabricated" verdict itself corrected 2026-08-07, review fix
+  round 2**: the originally-recorded `agent-version-selector-trigger-combobox`
+  testid is REAL (`SingleSelect.jsx:661`'s `SelectDisplayProps` template
+  literal), just not yet promoted to `main` (present on
+  `automation/testids` only) and unreachable by a literal-string grep
+  because it's template-constructed at render time. The page-object choice
+  of the no-suffix testid is correct regardless — see Concrete Handles table
+  below for the full trace).
 - No console errors observed across the whole create→save→verify flow.
 
 ## Coverage Map
@@ -157,7 +162,7 @@ Locator policy for this project is **testid-only** — see
 | Save button | `agent-save-button` | `PipelineFormPage.save_button` (existing) | on-main ✓ |
 | Information section (accordion root) | `agent-information-section` | **not yet a field on `PipelineDetailPage`** — implementer adds `information_section = LocatorDescriptor(testid="agent-information-section")` | on-main ✓ (`_surface.md` § Confirmed testids; confirmed live this session via DOM query) |
 | Pipeline ID (copy button, text content = the id) | `copy-id` | `PipelineDetailPage.copy_id_button` + `get_pipeline_id()` (existing, unmodified) | on-main ✓ |
-| VERSION selector (shows "base") | `agent-version-selector-trigger` | **not yet a field on `PipelineDetailPage`** — implementer adds `version_selector = LocatorDescriptor(testid="agent-version-selector-trigger")` + a `get_version_display() -> str` getter | on-main ✓ (`ApplicationVersionSelect.jsx:228`, `testId="agent-version-selector-trigger"` prop → `VersionSelect.jsx:176` applies it as a single `data-testid` on the `SingleSelect` root, which already carries `role="combobox"` itself — same shared entity-tab-bar component `AgentDetailPage.version_selector_trigger` also reads. **Corrected 2026-08-07, review fix round 1**: the originally-recorded `agent-version-selector-trigger-combobox` "inner combobox" testid does not exist — repo-wide `git grep` returns zero hits on `main`/`automation/testids`; there is only ONE element, ONE testid.) |
+| VERSION selector (shows "base") | `agent-version-selector-trigger` | **not yet a field on `PipelineDetailPage`** — implementer adds `version_selector = LocatorDescriptor(testid="agent-version-selector-trigger")` + a `get_version_display() -> str` getter | on-main ✓ (`ApplicationVersionSelect.jsx:228`, `testId="agent-version-selector-trigger"` prop → `VersionSelect.jsx:176`/`SingleSelect.jsx` applies `data-testid={dataTestId}` on the `SingleSelect` root AND, via `SelectDisplayProps`, a second `data-testid="agent-version-selector-trigger-combobox"` on the nested MUI-internal `role="combobox"` display div — same shared entity-tab-bar component `AgentDetailPage.version_selector_trigger` also reads. **Corrected 2026-08-07, review fix round 1, then re-corrected round 2**: round 1 called the `-combobox` variant "does not exist" from a zero-hit literal-string grep; that grep can't find a template-constructed string (`` `${dataTestId}-combobox` ``, `SingleSelect.jsx:661`) and the variant IS real — but ref-specific: **`needs-adding to main` / on `automation/testids` only** (0 hits on `main`, 1 hit on `automation/testids` for `git grep -- "-combobox" -- src/`, re-verified with a fresh `git fetch origin` on both). The page object still correctly uses the no-suffix `agent-version-selector-trigger`, on-main ✓ on both refs, unrelated to the `-combobox` variant's existence.) |
 
 No `add-data-testid` work needed — every handle this AFS touches already
 exists on `main`. This case is a pure page-object wiring + new-test gap, not

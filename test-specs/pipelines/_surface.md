@@ -23,19 +23,36 @@
   selector` finds nothing; grep for the prop name
   (`testId="agent-version-selector-trigger"`) instead, same caveat as the
   MCP-node testids and the closure-record two-stage-grep note.
-  **CORRECTION (2026-08-07, review fix round 1):** the prior claim on this
-  line — "renders TWO testids, `agent-version-selector-trigger` (outer
-  wrapper) + `agent-version-selector-trigger-combobox` (inner combobox)" —
-  was **fabricated**; a repo-wide `git grep` for the literal string
-  `agent-version-selector-trigger-combobox` returns **zero hits** on both
-  `main` and `automation/testids`. Source trace: `VersionSelect.jsx:176`
-  applies the prop as a SINGLE `data-testid={testId}` on the `SingleSelect`
-  root (that root already carries `role="combobox"` itself — same element,
-  not two; `SingleSelect.jsx` has no `-combobox`-suffix derivation anywhere).
-  Only `agent-version-selector-trigger` exists — confirmed on `main` — no
-  `add-data-testid` needed. Shared component — same one Agents' detail page
-  uses via `AgentDetailPage.version_selector_trigger` (`_surface.md` doesn't
-  need a duplicate Agents entry; behavior is identical).
+  **CORRECTION (2026-08-07, review fix round 1) — ITSELF CORRECTED (2026-08-07,
+  review fix round 2):** round 1 claimed the original "renders TWO testids,
+  `agent-version-selector-trigger` (outer wrapper) +
+  `agent-version-selector-trigger-combobox` (inner combobox)" line was
+  **fabricated**, based on a literal-string `git grep` for
+  `agent-version-selector-trigger-combobox` returning zero hits on both
+  `main` and `automation/testids`. **That "fabricated" verdict was itself
+  wrong.** The `-combobox` variant IS real: `SingleSelect.jsx:661`
+  (`../EliteaUI`, `automation/testids` ref) applies
+  `SelectDisplayProps={dataTestId ? { 'data-testid': \`${dataTestId}-combobox\` } : undefined}`
+  — a template literal MUI spreads onto the nested `role="combobox"` display
+  div (a real, different DOM node from the outer wrapper `data-testid`).
+  The literal-string grep is the wrong check for a template-constructed
+  testid: the concatenated string never appears verbatim in source, so it
+  ALWAYS greps to zero regardless of whether the mechanism exists — the
+  correct check is `git grep -n -- "-combobox" <ref> -- src/`, which finds
+  the `SelectDisplayProps` line. Ref-specific: **0 hits on `main`, 1 hit on
+  `automation/testids`** (re-verified 2026-08-07 with a fresh `git fetch
+  origin` on both refs) — `needs-adding to main` / `on-automation/testids
+  only`, not non-existent.
+  **The page-object choice is unaffected**: `version_selector` still uses
+  the NO-suffix `agent-version-selector-trigger` testid, because it's
+  confirmed on BOTH refs and DOM `textContent` on the outer wrapper already
+  includes the inner `-combobox` div's text (returns "base" either way) —
+  not because the suffixed variant doesn't exist. Full trace:
+  `.agents/memory/test-automation-engineer/
+  afs_testid_can_name_a_real_but_wrong_component.md` (ELITEA-2020 addenda).
+  Shared component — same one Agents' detail page uses via
+  `AgentDetailPage.version_selector_trigger` (`_surface.md` doesn't need a
+  duplicate Agents entry; behavior is identical).
 - **Name field has a hard 32-char cap (`MAX_NAME_LENGTH`,
   `src/common/constants.js`), and typing beyond it silently truncates
   rather than erroring** — confirmed live: `pressSequentially`/`type()` of a
