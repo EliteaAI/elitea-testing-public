@@ -43,6 +43,20 @@ resumes) to get a clean final report, but only the LAST one did any real new
 work (~77s, one report-writer agent) — the first two resumes were essentially
 free cache replays that each made one more step succeed.
 
+## Seen a 3rd time (2026-08-07, #1277 agents-batch1, ELITEA-1882)
+
+Same shape as ELITEA-2437 below, no resume needed — the run completed once.
+`report.json`'s ELITEA-1882 row: `outcome: "blocked"`, note `"build failed:
+agent({schema}): subagent completed without calling StructuredOutput"`, but
+also carried a real `afs`, `branch`, and `pr` number, and the workflow's own
+agent list showed `implement:ELITEA-1882` → `built`, `review:ELITEA-1882` →
+`APPROVED`. Only `merge:ELITEA-1882`'s dispatch lacked a `resultPreview` (its
+`lastToolName` was `Bash`, not `StructuredOutput`). Verified via git before
+trusting the "blocked" label: `git show origin/<trunk>:<the new spec file>`
+found it PRESENT on the trunk, and `gh pr view <unit-pr> --json state` showed
+`MERGED`. The merge had actually landed — only its own structured-return call
+failed to fire. Treated the case as merged (not blocked) for gating purposes.
+
 ## Seen 2×
 
 #945/ELITEA-2437 — shape 1 again, single `Workflow` call (no resume needed
