@@ -2950,14 +2950,32 @@ class AgentDetailPage(AgentFormPage):
 
         while time.time() < deadline:
             try:
-                # Try to get content from skill-test-last-response (preferred)
+                # Read ONLY from skill-test-last-response — never fall back to
+                # the raw <li> text. ApplicationAnswer.jsx renders the header
+                # (participant name, "to"/"Message" reply-to text, relative
+                # timestamp) and the "Thought for Ns" accordion OUTSIDE the
+                # `Answer` element that carries this testid, and both of
+                # those can go static (and pass a naive stability check)
+                # before the real answer body starts streaming — the
+                # "...toMessage less than a minute ago Thought for less than
+                # a second..." false-stable signature. Treating "testid not
+                # yet rendered" as content is exactly what let that header
+                # text masquerade as a stabilized response.
                 if self.skill_test_last_response.count() > 0:
                     current = self.skill_test_last_response.last.text_content() or ""
                 else:
-                    # Fallback to full message text
-                    current = messages.last.text_content() or ""
+                    current = ""
             except Exception:
                 current = ""
+
+            if not current:
+                # Not ready yet (testid absent, or Answer rendered with no
+                # content inside it). Reset the stability window instead of
+                # letting an empty/absent read masquerade as "unchanged".
+                last_content = ""
+                stable_start = time.time()
+                self.page.wait_for_timeout(300)
+                continue
 
             # Skip if still showing loading message
             is_loading = any(phrase in current for phrase in loading_phrases)
@@ -2966,14 +2984,7 @@ class AgentDetailPage(AgentFormPage):
                 self.page.wait_for_timeout(300)
                 continue
 
-            # Skip if content looks like metadata (no actual answer yet)
-            # Real answers are longer and don't contain "toMessage" pattern
-            if current and len(current) < 100 and "toMessage" in current:
-                logger.debug("Content appears to be metadata, waiting: %r", current[:80])
-                self.page.wait_for_timeout(300)
-                continue
-
-            if current and current == last_content:
+            if current == last_content:
                 if (time.time() - stable_start) * 1000 >= stable_duration_ms:
                     logger.info("Embedded chat response stabilized (%d chars)", len(current))
                     return
