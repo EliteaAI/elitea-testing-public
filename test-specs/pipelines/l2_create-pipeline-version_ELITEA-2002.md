@@ -37,12 +37,19 @@
 1. Precondition-setup — create a dedicated pipeline via `PipelineAPI.create_pipeline()`, navigate
    to its detail page (`/pipelines/all/{id}?destTab=configuration&viewMode=owner`).
    - **Verify**: VERSION selector (`agent-version-selector-trigger`) shows `"base"`; Save
-     (`agent-save-button`), Save As Version (`agent-save-as-version-button`), and Discard
-     (`discard-button`) are all disabled (clean baseline).
+     (`agent-save-button`) and Discard (`discard-button`) are disabled (clean baseline);
+     Save As Version (`agent-save-as-version-button`) is **enabled** — corrected during
+     implementation (2026-08-07): `ApplicationTabBar.jsx` (source read) passes
+     `SaveNewVersionButton` no `disabled` prop, so it is never gated on form dirtiness —
+     it stays available at any time (only mid-request state disables it), unlike Save/
+     Discard. Re-verified live on a fresh zero-node pipeline (immediate + after a 3s
+     settle). See `test-specs/pipelines/_surface.md`'s 2026-08-07 CORRECTION bullet.
 2. Click the canvas "Add node" button (`pipeline-add-node-button`) → click the "LLM" menu item
    (`pipeline-add-node-menu-item-llm`).
-   - **Verify**: exactly one `[data-testid^="rf__node-LLM"]` element renders on canvas; Save and
-     Save As Version both become enabled (dirty state).
+   - **Verify**: exactly one `[data-testid^="rf__node-LLM"]` element renders on canvas; Save
+     becomes enabled (dirty state). (Save As Version was already enabled per the corrected
+     step 1 baseline — not re-asserted here as a "becomes enabled" transition; it remains
+     enabled through this step.)
 3. Click "Save As Version" (`agent-save-as-version-button`).
    - **Verify**: the "Create version" dialog opens — Name input (`agent-version-dialog-name-input`)
      visible, Save button (`agent-version-dialog-save-button`) disabled while Name is empty.
@@ -97,9 +104,12 @@ the same "seed via API, exercise the case's actual behavior via UI" pattern
 
 **Axis 2 — Analyst additions**
 
-- `step 1` asserts Save/Save-As-Version/Discard start disabled — *added: confirms the clean
-  API-seeded baseline before the dirty-state assertions in step 2 are meaningful (same
-  "seeding gotcha" the digest already flags for a different pipeline case).*
+- `step 1` asserts Save/Discard start disabled and Save As Version starts **enabled** —
+  *added: confirms the clean API-seeded baseline before the dirty-state assertions in
+  step 2 are meaningful (same "seeding gotcha" the digest already flags for a different
+  pipeline case). Corrected during implementation (2026-08-07) — Save As Version is
+  NOT dirty-gated (see step 1's note and the digest CORRECTION); asserting it enabled at
+  baseline is still a meaningful guard, just not a "becomes enabled on edit" one.*
 - `step 3` asserts the dialog's Save button is disabled while Name is empty — *added: a stable,
   cheap guard on the dialog's own validation, confirmed live this session, that the case text
   doesn't explicitly ask for but that guards the precondition for successfully typing "v1_test".*

@@ -18,6 +18,7 @@ from contextlib import contextmanager
 
 from components.mui import Dialog, Popper
 from playwright.sync_api import Locator, Page
+from utils.actions import action
 
 from .locator_descriptor import LocatorDescriptor
 from .pipeline_form_page import PipelineFormPage
@@ -96,6 +97,50 @@ class PipelineDetailPage(PipelineFormPage):
         testid="agent-version-selector-trigger",
         description="VERSION selector — text content is the current version name (e.g. 'base')",
     )
+
+    # Version ID (ApplicationInformation.jsx — shared with Agents, rendered
+    # via PipelineConfigurationForm.jsx whenever `versionId !== undefined`,
+    # confirmed live 2026-08-07, ELITEA-2002 exploration: `copy-version-id`
+    # resolves and reads the version's numeric id, e.g. "8311"). Second,
+    # independent signal alongside the URL's version-id path segment for
+    # confirming a version switch/create actually landed.
+    copy_version_id_button = LocatorDescriptor(
+        testid="copy-version-id",
+        description="Version ID text (Information accordion)",
+    )
+
+    # --- Version management (Save As Version / VERSION selector, ELITEA-2002).
+    # `save_as_version_button` itself is inherited from PipelineFormPage.
+    # Same shared components AgentDetailPage's version-management fields
+    # already wire (SaveNewVersionButton.jsx, ApplicationVersionSelect.jsx,
+    # BaseModal.jsx) — confirmed live end-to-end on a pipeline detail page,
+    # zero add-data-testid work needed.
+    create_version_name_input = LocatorDescriptor(
+        testid="agent-version-dialog-name-input",
+        description='"Create version" dialog — Name field',
+    )
+    create_version_save_button = LocatorDescriptor(
+        testid="agent-version-dialog-save-button",
+        description='"Create version" dialog — confirm ("Save") button; '
+        "disabled until Name is non-empty",
+    )
+    create_version_cancel_button = LocatorDescriptor(
+        testid="agent-version-dialog-cancel-button",
+        description='"Create version" dialog — Cancel button (not exercised by '
+        "any current pipeline case — field added for parity with "
+        "AgentDetailPage, no call site wires it)",
+    )
+    create_version_close_button = LocatorDescriptor(
+        testid="agent-version-dialog-close-button",
+        description='"Create version" dialog — X close button (not exercised by '
+        "any current pipeline case — field added for parity with "
+        "AgentDetailPage, no call site wires it)",
+    )
+
+    # Dynamic (runtime-parameterized) testid for a VERSION-selector option,
+    # keyed by version name — same `version-option-{}` template shared by
+    # every version selector consumer; see also AgentDetailPage.VERSION_OPTION.
+    VERSION_OPTION = '[data-testid="version-option-{}"]'
 
     flow_view_button = LocatorDescriptor(
         testid="pipeline-flow-view",
@@ -1036,6 +1081,242 @@ class PipelineDetailPage(PipelineFormPage):
         return (self.version_selector.text_content() or "").strip()
 
     # ------------------------------------------------------------------
+    # Version management (Save As Version / VERSION selector, ELITEA-2002)
+    #
+    # Ports AgentDetailPage's proven method shapes onto the pipeline detail
+    # page — same shared components (SaveNewVersionButton.jsx,
+    # ApplicationVersionSelect.jsx, version.helpers.jsx's `version-option-{}`
+    # mechanism), confirmed live end-to-end this session (2026-08-07).
+    #
+    # URL shape (confirmed live, differs slightly from the Agent case this
+    # was ported from): navigating directly to a pipeline's detail page
+    # (``navigate()``) resolves the "base" version WITHOUT a version-id path
+    # segment (``/pipelines/all/{pipeline_id}?viewMode=owner``) — the app's
+    # own default, not something a test can rely on reproducing after an
+    # explicit switch. Creating a new version, or explicitly selecting ANY
+    # version (including "base") from the open dropdown, always appends the
+    # version-id path segment (``/pipelines/all/{pipeline_id}/{version_id}``).
+    # So the durable cross-check is the version-ID VALUE (read via
+    # ``copy_version_id_button``/``get_version_id()``), not the presence of
+    # a path segment.
+    # ------------------------------------------------------------------
+
+    def get_version_id(self) -> str:
+        """Read the Version ID from the Information section.
+
+        Returns:
+            Version ID as string (e.g. ``"8311"``).
+        """
+        return self.copy_version_id_button.text_content().strip()
+
+    @action("Open the Create version dialog")
+    def open_save_as_version_dialog(self, timeout: int = 10000):
+        """Click "Save As Version" and wait for the "Create version" dialog.
+
+        Uses ``save_as_version_button`` (inherited from PipelineFormPage).
+        Split from :meth:`confirm_new_version` so callers can assert on
+        the dialog's just-opened state (e.g. Save disabled while Name is
+        empty) before typing a name.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening the Create version dialog")
+        self.save_as_version_button.click()
+        Dialog.wait_for(self.page, timeout=timeout)
+
+    @action("Confirm the new pipeline version")
+    def confirm_new_version(self, version_name: str, timeout: int = 10000):
+        """Type the version name into the open "Create version" dialog and confirm.
+
+        Call after :meth:`open_save_as_version_dialog`. Types via
+        ``press_sequentially`` (MUI/React onChange requirement —
+        `.claude/rules/mui-patterns.md`), clicks the dialog's Save button,
+        and waits for the dialog to close and for the URL to gain a new
+        version-id path segment (mirrors
+        ``AgentDetailPage.confirm_new_version()``'s wait strategy). The app
+        also appends a transient ``isFromCreation=true`` query param that
+        self-strips once the new version has loaded; this method does not
+        assert on it directly.
+
+        Args:
+            version_name: Name for the new version (e.g. ``"v1_test"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Confirming new pipeline version: %r", version_name)
+        previous_version_id = self.get_version_id()
+
+        self.create_version_name_input.click()
+        self.create_version_name_input.press_sequentially(version_name, delay=50)
+
+        self.create_version_save_button.click()
+        Dialog.wait_for_hidden(self.page, timeout=timeout)
+
+        self.page.wait_for_function(
+            "prevId => window.location.pathname.split('/').filter(Boolean).pop() !== prevId",
+            arg=previous_version_id,
+            timeout=timeout,
+        )
+        self.wait_for_network(timeout=5000)
+
+        # The URL's version-id segment updates before the VERSION selector's
+        # displayed text re-renders (same race documented on the Agent
+        # sibling) — poll the trigger's own text rather than sleeping.
+        self.page.wait_for_function(
+            """name => {
+                const el = document.querySelector('[data-testid="agent-version-selector-trigger"]');
+                return !!el && el.innerText.trim() === name;
+            }""",
+            arg=version_name,
+            timeout=timeout,
+        )
+        logger.info(
+            "New pipeline version %r created — URL: %s", version_name, self.page.url
+        )
+
+    @action("Save current edits as a new pipeline version")
+    def save_as_version(self, version_name: str, timeout: int = 10000):
+        """Click "Save As Version", fill the Name field, and confirm.
+
+        Convenience wrapper combining :meth:`open_save_as_version_dialog`
+        and :meth:`confirm_new_version` for callers that don't need to
+        assert on the dialog's intermediate state.
+
+        Args:
+            version_name: Name for the new version (e.g. ``"v1_test"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.open_save_as_version_dialog(timeout=timeout)
+        self.confirm_new_version(version_name, timeout=timeout)
+
+    def open_version_selector(self):
+        """Click the VERSION dropdown trigger to open the options list."""
+        self.version_selector.click()
+
+    def is_version_option_visible(self, version_name: str, timeout: int = 5000) -> bool:
+        """Check whether a version is present in the open VERSION dropdown.
+
+        LOCATOR: dynamic ``version-option-{version_name}`` testid (see
+        ``VERSION_OPTION`` above) — call after ``open_version_selector()``.
+
+        Args:
+            version_name: Exact version name (e.g. ``"base"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        option = self.page.locator(self.VERSION_OPTION.format(version_name))
+        try:
+            option.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def close_versions_menu(self):
+        """Close the open VERSION dropdown by pressing Escape."""
+        self.page.keyboard.press("Escape")
+
+    @action("Select a version by name from the VERSION dropdown")
+    def select_version_by_name(
+        self, version_name: str, timeout: int = 10000, attempts: int = 2
+    ) -> str:
+        """Open the VERSION dropdown, click the named option, and wait for
+        the VERSION trigger text, the Information panel's version-id, and
+        the URL's version-id path segment to all converge on that version,
+        returning its numeric id.
+
+        Each attempt is a full select+reload CYCLE — mirrors
+        ``AgentDetailPage.select_version_by_name()``'s proven shape (issue
+        #614-style staleness workaround), NOT a simplified single-poll.
+        Confirmed live (ELITEA-2002 implementation, 2026-08-07) that a
+        single DOM-only poll is NOT sufficient here even though the wait
+        condition checks THREE signals together: the VERSION trigger's text
+        can flip to the target name a beat before the Information panel's
+        version-id / URL catch up, and — critically — that panel/URL pair
+        can be transiently self-consistent (equal to EACH OTHER) while both
+        still show the PREVIOUS version's id, satisfying a same-value check
+        without actually being on the target version yet. A single browser
+        reload forces the Information panel and URL routing to both refetch
+        fresh from the server, clearing that staleness (same reasoning as
+        the Agent sibling, just triggered by a different flow — Save As
+        Version / dropdown switch here, Publish there).
+
+        Args:
+            version_name: Exact version name to select, e.g. ``"base"``.
+            timeout: Maximum wait time in milliseconds, per wait condition.
+            attempts: Number of full select+reload cycles to try.
+
+        Returns:
+            The selected version's numeric id, read from the Information
+            panel once trigger text / Information-panel id / URL agree
+            AND survive a reload.
+
+        Raises:
+            AssertionError: if the three signals never converge (and stay
+                converged post-reload) after ``attempts`` full cycles.
+        """
+        logger.info("Selecting pipeline version %r from the VERSION dropdown", version_name)
+
+        version_id_matches_js = """name => {
+            const trigger = document.querySelector('[data-testid="agent-version-selector-trigger"]');
+            const versionIdEl = document.querySelector('[data-testid="copy-version-id"]');
+            if (!trigger || trigger.innerText.trim() !== name) return false;
+            if (!versionIdEl) return false;
+            const currentId = versionIdEl.innerText.trim();
+            if (!currentId) return false;
+            const seg = window.location.pathname.split('/').filter(Boolean).pop();
+            return seg === currentId;
+        }"""
+
+        last_exc: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            self.open_version_selector()
+            option = self.page.locator(self.VERSION_OPTION.format(version_name))
+            option.wait_for(state="visible", timeout=timeout)
+            option.click()
+
+            try:
+                self.page.wait_for_function(
+                    version_id_matches_js, arg=version_name, timeout=timeout
+                )
+            except Exception as exc:  # noqa: BLE001 - retried below, re-raised with context above
+                last_exc = exc
+                logger.warning(
+                    "select_version_by_name: VERSION trigger/id/URL never "
+                    "agreed on %r pre-reload (attempt %d/%d) — retrying",
+                    version_name, attempt, attempts,
+                )
+                continue
+
+            # Belt-and-braces: force a fresh server refetch — clears the
+            # transient self-consistent-but-stale state described above.
+            self.page.reload(wait_until="domcontentloaded")
+            try:
+                self.page.wait_for_function(
+                    version_id_matches_js, arg=version_name, timeout=timeout
+                )
+            except Exception as exc:  # noqa: BLE001 - retried below, re-raised with context above
+                last_exc = exc
+                logger.warning(
+                    "select_version_by_name: VERSION trigger/id/URL never "
+                    "agreed on %r post-reload (attempt %d/%d) — retrying "
+                    "the full select+reload cycle",
+                    version_name, attempt, attempts,
+                )
+                continue
+
+            selected_version_id = self.get_version_id()
+            logger.info(
+                "Pipeline version %r selected — id=%s (URL: %s)",
+                version_name, selected_version_id, self.page.url,
+            )
+            return selected_version_id
+
+        raise AssertionError(
+            f"select_version_by_name: VERSION trigger/Information-panel id/"
+            f"URL never converged on {version_name!r} after {attempts} full "
+            f"select+reload attempts — last error: {last_exc}"
+        )
+
+    # ------------------------------------------------------------------
     # Tabs
     # ------------------------------------------------------------------
 
@@ -1586,6 +1867,40 @@ class PipelineDetailPage(PipelineFormPage):
         from playwright.sync_api import expect
 
         expect(self.page.locator(".react-flow__node")).to_have_count(expected_count, timeout=timeout)
+
+    def wait_for_node_type_count(
+        self, node_type: str, expected_count: int, timeout: int = 10000
+    ) -> None:
+        """Poll until the canvas has exactly *expected_count* nodes of *node_type*.
+
+        Added for ELITEA-2002. Unlike :meth:`wait_for_node_count` (which
+        counts EVERY ``.react-flow__node``), this scopes to a single node
+        TYPE's own CSS class (``.react-flow__node-{css_type}``, same
+        type→class mapping :meth:`wait_for_node_on_canvas` already uses) —
+        the correct handle for "how many nodes of THIS type are on canvas",
+        needed because ReactFlow always renders a synthetic END node
+        (confirmed live: a fresh zero-configured-node pipeline from
+        ``PipelineAPI.create_pipeline()`` shows one ``.react-flow__node``
+        for END before any node is ever added), so
+        :meth:`wait_for_node_count`'s total would be off-by-one for any
+        type-specific "how many LLM nodes" check.
+
+        Sanctioned #579 exception (third-party widget subtree): ReactFlow's
+        per-node CSS class is library-internal DOM (outside ``EliteaUI/src``),
+        not app JSX — no testid can be placed on it directly. Scoped under
+        the testid-anchored ``canvas_wrapper`` (``rf__wrapper``) parent, per
+        the exception's discipline — not a free-floating page-level handle.
+
+        Args:
+            node_type: The node type name (case-insensitive), e.g. "llm".
+            expected_count: The exact count to wait for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        from playwright.sync_api import expect
+
+        css_type = node_type.lower().replace(" ", "_")
+        selector = f".react-flow__node-{css_type}"
+        expect(self.canvas_wrapper.locator(selector)).to_have_count(expected_count, timeout=timeout)
 
     def get_node_ids(self) -> list[str]:
         """Return the data-id values of all nodes on the canvas.
