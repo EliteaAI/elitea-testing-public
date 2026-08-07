@@ -326,6 +326,40 @@ class AgentDetailPage(AgentFormPage):
     # at once for the same version.
     publish_version_menuitem = LocatorDescriptor(testid="publish-version-menuitem")
     unpublish_version_menuitem = LocatorDescriptor(testid="unpublish-version-menuitem")
+    # VERSION-group "Share" menuitem (ELITEA-1898 — pre-existing testid, no
+    # EliteaUI change needed). Same `DotMenu.jsx` `testId: item.key` ->
+    # `data-testid={testId}-menuitem` mechanism as the menuitems above
+    # (`key: 'share-version'` in `ApplicationControls.jsx`'s
+    # `useCopyLinkMenu()`). Copies a VERSION-specific link (the URL contains
+    # a trailing version-id path segment).
+    share_version_menuitem = LocatorDescriptor(testid="share-version-menuitem")
+    # AGENT-group "Share" menuitem — SAME mechanism, `key: 'share-agent'`.
+    # Copies a generic, version-less agent link (no trailing version-id
+    # segment). Kept here as the negative-control target for ELITEA-1898's
+    # URL-shape contrast — both items are literally labelled "Share" and are
+    # visually identical, so accidentally clicking this one instead of
+    # `share_version_menuitem` is a very plausible mistake (AFS Axis 2).
+    share_agent_menuitem = LocatorDescriptor(testid="share-agent-menuitem")
+
+    # --- App-wide toast (Toast.jsx, src/components/Toast.jsx) — shared
+    # component, testids pre-exist and need no EliteaUI change (same
+    # component already used by ChatPage.toast_alert/toast_message and
+    # PipelineDetailPage.toast_alert/toast_message; ELITEA-1898 is the first
+    # case to need it on the Agent detail page, per existing repo precedent
+    # of each page object declaring its own field for this shared
+    # component). ---
+    toast_alert = LocatorDescriptor(
+        testid="toast-alert",
+        description="App-wide toast Alert root; carries data-severity (info/warning/error/success).",
+    )
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide toast message text body.",
+    )
+    # Severity-scoped toast alert selector — testid identity + data-severity
+    # state filter, the compliant shape for a state-dependent assertion
+    # (mirrors ChatPage.TOAST_ALERT_SEVERITY / PipelineDetailPage.TOAST_ALERT_SEVERITY).
+    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
 
     # --- Fork wizard (ELITEA-1893) — shares the ImportWizardModal dialog
     # family with the Agents-list Import flow (AgentsListPage's
@@ -3549,6 +3583,59 @@ class AgentDetailPage(AgentFormPage):
             f"status staleness — caller must independently confirm via the "
             f"API before treating this as the known defect) — last error: "
             f"{last_exc}"
+        )
+
+    def wait_for_version_trigger_and_id(
+        self, version_name: str, version_id: str, timeout: int = 10000
+    ) -> None:
+        """Wait until the VERSION selector trigger AND the Information
+        panel's version-id both agree with the given ``(version_name,
+        version_id)`` pair.
+
+        Same client-state race documented on :meth:`confirm_new_version`
+        ("the URL's version-id segment updates before the VERSION
+        selector's displayed text re-renders — a race, not a fixed delay")
+        and :meth:`select_version_by_name` (the three-way
+        trigger/version-id/URL convergence check) — this is the two-way
+        (trigger, version-id) form for a caller that already trusts the URL
+        (e.g. a fresh tab opened by navigating directly to a
+        version-specific copied link, ELITEA-1898) and only needs the
+        CLIENT-SIDE render state to catch up post-navigation.
+
+        LOCATOR: polls ``agent-version-selector-trigger`` and
+        ``copy-version-id`` via ``document.querySelector`` inside the
+        predicate — ``wait_for_function`` executes in-page JS, which cannot
+        reference a Playwright ``Locator`` directly, so the two testids
+        (also the ``version_selector_trigger`` / ``copy_version_id_button``
+        ``LocatorDescriptor`` fields above) are inlined as literal
+        ``[data-testid="…"]`` strings here rather than duplicated as a
+        second selector elsewhere.
+
+        Args:
+            version_name: Expected VERSION-selector trigger text, e.g.
+                ``"v1-test"``.
+            version_id: Expected version id, as rendered by
+                ``copy-version-id`` (i.e. :meth:`get_version_id`'s value).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.page.wait_for_function(
+            """([name, expectedId]) => {
+                const trigger = document.querySelector(
+                    '[data-testid="agent-version-selector-trigger"]'
+                );
+                const versionIdEl = document.querySelector(
+                    '[data-testid="copy-version-id"]'
+                );
+                if (!trigger || trigger.innerText.trim() !== name) return false;
+                if (!versionIdEl) return false;
+                return versionIdEl.innerText.trim() === expectedId;
+            }""",
+            arg=[version_name, version_id],
+            timeout=timeout,
+        )
+        logger.info(
+            "VERSION trigger/version-id converged on name=%r id=%r",
+            version_name, version_id,
         )
 
     def wait_for_publish_status_menuitem(

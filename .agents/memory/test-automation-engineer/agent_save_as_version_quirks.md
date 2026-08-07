@@ -81,6 +81,21 @@ already uses — declared separately per class, not inherited, since
    `create_agent_full()` + `reasoning_effort: "none"` pattern instead of
    either.
 
+6. **Same trigger-vs-panel race also fires on a FRESH page load (not just
+   same-page navigation) — ELITEA-1898 (Copy version link).** Opening a
+   copied `/agents/all/{id}/{versionId}` URL in a brand-new tab (even
+   through the `ProjectSwitcher` hard-reload redirect hop the leading
+   `/{projectId}` prefix triggers) shows `agent-version-selector-trigger`'s
+   text settle on the correct version NAME before `copy-version-id`'s text
+   settles on the matching version ID — asserting `get_version_id()` right
+   after `expect(version_selector_trigger).to_have_text(name)` passes can
+   read the PREVIOUS version's id (observed: off-by-one id, 1/1 local runs).
+   Fix: poll both together via one `page.wait_for_function` (trigger text
+   AND `copy-version-id` text both equal their expected values) before
+   reading either — same shape as `select_version_by_name()`'s own 3-way
+   convergence check, just without the URL-segment leg (a full page load
+   already guarantees the URL is correct by the time JS runs).
+
 ## Where
 
 - `automation/pages/agent_detail_page.py` — version-management locators +
