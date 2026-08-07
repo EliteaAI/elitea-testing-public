@@ -40,11 +40,18 @@ and the `open_save_as_version_dialog()`/`confirm_new_version()`/
    `wait_for_node_count(expected_count)` (which count EVERY
    `.react-flow__node`) off-by-one for any "how many nodes of TYPE X"
    check — e.g. after adding 1 LLM node, total count is 2 (END + LLM), not
-   1. Use the new `wait_for_node_type_count(node_type, expected_count)`
-   instead (type-scoped via `.react-flow__node-{css_type}`, same mapping
-   `wait_for_node_on_canvas()` already uses, scoped under `canvas_wrapper`
-   per the #579 sanctioned-exception discipline) for any type-specific
-   count assertion.
+   1. Use `wait_for_node_type_count(node_type, expected_count)` instead —
+   type-scoped via the `rf__node-{display_prefix}` testid PREFIX
+   (`RF_NODE_TESTID_PREFIX` + `NODE_TYPE_DISPLAY_PREFIX` class constants),
+   scoped under `canvas_wrapper`. **Do NOT reach for the
+   `.react-flow__node-{css_type}` CSS class here** — that was fix-round-1's
+   review finding: a testid IS available for node-presence checks (the AFS's
+   own Concrete Handles table names `[data-testid^="rf__node-LLM"]`
+   specifically), so #579's "testid can't be placed" exception doesn't apply
+   and the CSS class is the wrong rung. `NODE_TYPE_DISPLAY_PREFIX` casing is
+   app-assigned per type (LLM/HITL/MCP upper-case, Router/Decision/Toolkit
+   title-case) and NOT a mechanical transform of `node_type` — an unconfirmed
+   type raises `ValueError` rather than guessing.
 
 3. **`select_version_by_name()` needs the SAME reload-based belt-and-braces
    cycle `AgentDetailPage`'s method already uses — a simplified single
