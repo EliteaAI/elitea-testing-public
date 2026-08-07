@@ -2,7 +2,42 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-07 (ELITEA-2023 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-07 (ELITEA-2020 combined
+> analysis/implementation).
+
+## Sidebar "+" create control and the VERSION selector (confirmed live, 2026-08-07, ELITEA-2020)
+
+- **`sidebar-create-button`** (the shared `CreateEntityButton.jsx`, same
+  testid already wired on `AgentsListPage`/`ToolkitsListPage`/
+  `CredentialsListPage`/`ChatPage`) is exactly the "+" control next to the
+  "Pipeline" label the case describes — confirmed live: while on
+  `/pipelines/all`, the button's `currentLabel` resolves to "Pipeline" (per
+  `RouteToLabelMap`) and clicking it navigates straight to
+  `/pipelines/create?viewMode=owner` (no dropdown, per
+  `isSimpleCreateRoute`). Not yet a `PipelinesListPage` field — added this
+  session (`sidebar_create_button` + `click_create_pipeline()`).
+- **VERSION selector on the pipeline detail page**: `data-testid` is
+  threaded via a `testId` PROP (`ApplicationVersionSelect.jsx:228`,
+  `testId="agent-version-selector-trigger"`), NOT a literal `data-testid=`
+  string — a bare-substring `git grep` for `data-testid.*agent-version-
+  selector` finds nothing; grep for the prop name
+  (`testId="agent-version-selector-trigger"`) instead, same caveat as the
+  MCP-node testids and the closure-record two-stage-grep note. Renders TWO
+  testids: `agent-version-selector-trigger` (outer `MuiInputBase` wrapper,
+  not directly interactive) and `agent-version-selector-trigger-combobox`
+  (the actual `role="combobox"` element whose text content is the version
+  name, e.g. `base`). Confirmed both on `main` already — no `add-data-testid`
+  needed. Shared component — same one Agents' detail page uses (`_surface.md`
+  doesn't need a duplicate Agents entry; behavior is identical).
+- **Information section confirmed reachable without an explicit expand
+  click** — `agent-information-section`'s accordion renders
+  `Mui-expanded`/open by default on a freshly created pipeline's detail page
+  (same as the ADVANCED section note elsewhere in this digest). "Pipeline
+  ID:" sits next to the pre-existing `copy-id` button
+  (`PipelineDetailPage.copy_id_button`/`get_pipeline_id()`, unmodified,
+  confirmed still correct); a sibling "Version ID:" / `copy-version-id`-style
+  button also exists in the same section (not needed by ELITEA-2020, noted
+  for any future case that touches Version ID specifically).
 
 ## Dashboard search — typing alone does NOT filter the grid; Enter/send-icon required (confirmed live, 2026-08-07, ELITEA-2023)
 
