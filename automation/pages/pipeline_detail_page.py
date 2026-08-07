@@ -63,16 +63,18 @@ class PipelineDetailPage(PipelineFormPage):
     )
 
     # VERSION selector in the entity tab bar (ApplicationVersionSelect.jsx,
-    # shared with Agents). The testid reaches the DOM via a `testId` PROP
-    # (`testId="agent-version-selector-trigger"`), not a literal
-    # `data-testid=` string in source — confirmed live via DOM query
-    # (ELITEA-2020). Two testids render: the outer non-interactive wrapper
-    # (`agent-version-selector-trigger`) and the actual `role="combobox"`
-    # element whose text content is the version name — this field targets
-    # the latter, which is what `get_version_display()` reads.
+    # shared with Agents). The testid reaches the DOM via a `testId` PROP —
+    # ApplicationVersionSelect.jsx:228 passes `testId="agent-version-
+    # selector-trigger"` down to VersionSelect.jsx, which applies it as a
+    # SINGLE `data-testid={testId}` on the SingleSelect root (that root
+    # itself carries `role="combobox"` — same element, not two). There is
+    # NO `-combobox`-suffixed testid anywhere in EliteaUI (repo-wide grep,
+    # 2026-08-07 review fix, ELITEA-2020) — the prior claim of "two testids
+    # render" was fabricated. Matches AgentDetailPage.version_selector_trigger,
+    # which reads this exact shared component the same way.
     version_selector = LocatorDescriptor(
-        testid="agent-version-selector-trigger-combobox",
-        description="VERSION selector combobox — text content is the current version name (e.g. 'base')",
+        testid="agent-version-selector-trigger",
+        description="VERSION selector — text content is the current version name (e.g. 'base')",
     )
 
     flow_view_button = LocatorDescriptor(

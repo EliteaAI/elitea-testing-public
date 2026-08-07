@@ -106,8 +106,11 @@ None of these three exist as assertions anywhere else in
   (confirmed live, matches `PipelineDetailPage.get_pipeline_id()`, already
   implemented and unmodified).
 - VERSION selector shows the visible text `base` for a freshly created
-  pipeline (confirmed live via the `agent-version-selector-trigger-combobox`
-  testid's `textContent`).
+  pipeline (confirmed live via the `agent-version-selector-trigger` testid's
+  `textContent` — **corrected 2026-08-07, review fix round 1**: the
+  originally-recorded `agent-version-selector-trigger-combobox` testid does
+  not exist anywhere in EliteaUI; see Concrete Handles table below for the
+  source trace).
 - No console errors observed across the whole create→save→verify flow.
 
 ## Coverage Map
@@ -154,7 +157,7 @@ Locator policy for this project is **testid-only** — see
 | Save button | `agent-save-button` | `PipelineFormPage.save_button` (existing) | on-main ✓ |
 | Information section (accordion root) | `agent-information-section` | **not yet a field on `PipelineDetailPage`** — implementer adds `information_section = LocatorDescriptor(testid="agent-information-section")` | on-main ✓ (`_surface.md` § Confirmed testids; confirmed live this session via DOM query) |
 | Pipeline ID (copy button, text content = the id) | `copy-id` | `PipelineDetailPage.copy_id_button` + `get_pipeline_id()` (existing, unmodified) | on-main ✓ |
-| VERSION selector (shows "base") | `agent-version-selector-trigger-combobox` (outer non-interactive wrapper: `agent-version-selector-trigger`) | **not yet a field on `PipelineDetailPage`** — implementer adds `version_selector = LocatorDescriptor(testid="agent-version-selector-trigger-combobox")` + a `get_version_display() -> str` getter | on-main ✓ (confirmed live via DOM query: `ApplicationVersionSelect.jsx:228`, `testId="agent-version-selector-trigger"` prop, shared component also used by Agents — same shared entity-tab-bar component, reused for Pipelines) |
+| VERSION selector (shows "base") | `agent-version-selector-trigger` | **not yet a field on `PipelineDetailPage`** — implementer adds `version_selector = LocatorDescriptor(testid="agent-version-selector-trigger")` + a `get_version_display() -> str` getter | on-main ✓ (`ApplicationVersionSelect.jsx:228`, `testId="agent-version-selector-trigger"` prop → `VersionSelect.jsx:176` applies it as a single `data-testid` on the `SingleSelect` root, which already carries `role="combobox"` itself — same shared entity-tab-bar component `AgentDetailPage.version_selector_trigger` also reads. **Corrected 2026-08-07, review fix round 1**: the originally-recorded `agent-version-selector-trigger-combobox` "inner combobox" testid does not exist — repo-wide `git grep` returns zero hits on `main`/`automation/testids`; there is only ONE element, ONE testid.) |
 
 No `add-data-testid` work needed — every handle this AFS touches already
 exists on `main`. This case is a pure page-object wiring + new-test gap, not

@@ -172,3 +172,41 @@ record verification exists to catch). Caught this round by a fresh
 reviewer session re-deriving provenance from scratch rather than trusting
 the original implementer's claim — the same "verify importers/owners, not
 just string existence" muscle, applied one level up the stack.
+
+## Addendum (ELITEA-2020 fix round 1, PR #1305, reviewer Finding 1): a variant strain — the testid doesn't exist AT ALL, not even for the wrong component
+
+A fourth variant, one notch worse than the others: `PipelineDetailPage
+.version_selector` was wired to `agent-version-selector-trigger-combobox`,
+claimed in the AFS/`_surface.md`/page-object docstring as "confirmed live,
+renders TWO testids — the outer wrapper (`agent-version-selector-trigger`)
+and an inner `-combobox`-suffixed one on the actual `role="combobox"`
+element." Both the AFS and the digest treated this as `on-main ✓`. It was
+**wholly fabricated** — not a wrong-component mix-up, a wrong-STRING
+invention. `git grep -n "agent-version-selector-trigger-combobox"
+origin/main -- src/` (and `origin/automation/testids`) returns **zero
+hits**, whole repo. Source trace: `ApplicationVersionSelect.jsx:228` passes
+`testId="agent-version-selector-trigger"` → `VersionSelect.jsx:176` applies
+it as a SINGLE `data-testid={testId}` on the `SingleSelect` root — that
+root already carries `role="combobox"` natively (MUI `<Select>`), so "outer
+wrapper vs inner combobox" was never two elements to begin with. There is
+no `-combobox`-suffix derivation logic anywhere in `SingleSelect.jsx`.
+
+**What made this catchable without a live DOM check**: `AgentDetailPage`
+already reads this exact shared component via `version_selector_trigger`
+(testid `agent-version-selector-trigger`, no suffix) — merged, exercised
+across ELITEA-1888/1889/1890/1891/1892. Any claim of a second,
+differently-suffixed testid on the SAME shared component should have been
+cross-checked against the sibling page object that already uses it, before
+trusting a "confirmed live via DOM query" note at face value. The
+reviewer caught this statically (no browser) purely from the grep +
+source trace — proving the "two testids render" claim never needed a live
+session to falsify, only the discipline of grepping the SPECIFIC literal
+string claimed, not just the base testid.
+
+**Fix habit, restated once more**: when an AFS/digest claims a shared
+component "renders N testids" with a specific literal string per element,
+grep EACH literal string individually — `git grep -n
+"<exact-string>" origin/main -- src/` per string, not one grep for a
+prefix that happens to match several. A prefix match (`agent-version-
+selector-trigger*`) would have "confirmed" the fabricated suffix too by
+matching the real base testid as a substring hit.

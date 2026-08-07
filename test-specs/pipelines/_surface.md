@@ -22,13 +22,20 @@
   string — a bare-substring `git grep` for `data-testid.*agent-version-
   selector` finds nothing; grep for the prop name
   (`testId="agent-version-selector-trigger"`) instead, same caveat as the
-  MCP-node testids and the closure-record two-stage-grep note. Renders TWO
-  testids: `agent-version-selector-trigger` (outer `MuiInputBase` wrapper,
-  not directly interactive) and `agent-version-selector-trigger-combobox`
-  (the actual `role="combobox"` element whose text content is the version
-  name, e.g. `base`). Confirmed both on `main` already — no `add-data-testid`
-  needed. Shared component — same one Agents' detail page uses (`_surface.md`
-  doesn't need a duplicate Agents entry; behavior is identical).
+  MCP-node testids and the closure-record two-stage-grep note.
+  **CORRECTION (2026-08-07, review fix round 1):** the prior claim on this
+  line — "renders TWO testids, `agent-version-selector-trigger` (outer
+  wrapper) + `agent-version-selector-trigger-combobox` (inner combobox)" —
+  was **fabricated**; a repo-wide `git grep` for the literal string
+  `agent-version-selector-trigger-combobox` returns **zero hits** on both
+  `main` and `automation/testids`. Source trace: `VersionSelect.jsx:176`
+  applies the prop as a SINGLE `data-testid={testId}` on the `SingleSelect`
+  root (that root already carries `role="combobox"` itself — same element,
+  not two; `SingleSelect.jsx` has no `-combobox`-suffix derivation anywhere).
+  Only `agent-version-selector-trigger` exists — confirmed on `main` — no
+  `add-data-testid` needed. Shared component — same one Agents' detail page
+  uses via `AgentDetailPage.version_selector_trigger` (`_surface.md` doesn't
+  need a duplicate Agents entry; behavior is identical).
 - **Name field has a hard 32-char cap (`MAX_NAME_LENGTH`,
   `src/common/constants.js`), and typing beyond it silently truncates
   rather than erroring** — confirmed live: `pressSequentially`/`type()` of a
