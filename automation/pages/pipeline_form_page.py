@@ -61,6 +61,24 @@ class PipelineFormPage(BasePage):
         "to pass DiscardButton's `dataTestId` prop instead of `data-testid`.",
     )
 
+    # "Save As Version" button (SaveNewVersionButton.jsx, rendered via
+    # ApplicationTabBar.jsx — the same shared component AgentFormPage.
+    # save_as_version_button already wires; EditPipeline.jsx reuses
+    # ApplicationTabBar.jsx too). Confirmed live end-to-end on a pipeline
+    # detail page (ELITEA-2002 implementation, 2026-08-07): NOT dirtiness-
+    # gated — `ApplicationTabBar.jsx` (source read) passes `SaveNewVersionButton`
+    # no `disabled` prop, so its own `disabled={isSavingNewVersion || disabled}`
+    # only ever reflects mid-request state, never form dirtiness. Unlike
+    # save_button/discard_button, it stays enabled on a clean, zero-edit form
+    # (re-verified live on a fresh zero-node pipeline, immediate + after a 3s
+    # settle) — see `test-specs/pipelines/_surface.md`'s 2026-08-07 CORRECTION
+    # bullet. Zero add-data-testid work needed — the testid already reaches
+    # the DOM via the shared component.
+    save_as_version_button = LocatorDescriptor(
+        testid="agent-save-as-version-button",
+        description="Save current edits as a new pipeline version button",
+    )
+
     # Tags combobox (ELITEA-2021). Testid-only, added via add-data-testid onto
     # the shared TagEditor/AutoCompleteDropDown component's `inputTestId`/
     # `chipTestId` hooks (ApplicationEditForm.jsx, pipeline branch only —
@@ -362,3 +380,18 @@ class PipelineFormPage(BasePage):
             self.discard_button.is_visible()
             and self.discard_button.is_enabled()
         )
+
+    def is_save_as_version_enabled(self) -> bool:
+        """Check if the Save As Version button is enabled.
+
+        Unlike :meth:`is_save_enabled` (form-dirtiness-gated), Save As
+        Version is NOT dirtiness-gated — confirmed live (ELITEA-2002
+        implementation, 2026-08-07): `ApplicationTabBar.jsx` passes
+        `SaveNewVersionButton` no `disabled` prop, so it stays enabled on a
+        clean form and only disables mid-request (`isSavingNewVersion`). See
+        the `save_as_version_button` field docstring / CORRECTION note.
+
+        Returns:
+            True if Save As Version is enabled, False otherwise.
+        """
+        return self.save_as_version_button.is_enabled()

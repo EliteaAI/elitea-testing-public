@@ -32,10 +32,44 @@
   same testid is NOT rendered on `AgentDetailPage` (pre-existing, unrelated gap noted
   there, not this session's concern).
 - **Seeding for a clean baseline**: `PipelineAPI.create_pipeline()` (zero-node, real
-  empty `pipeline_settings`) loads with Save/Save-As-Version/Discard all correctly
-  **disabled** — confirmed live. Reconfirms the existing "Seeding gotcha" entry below
-  (avoid `create_pipeline_with_nodes()` for any case needing a clean dirty-state
-  baseline) from the version-flow angle specifically.
+  empty `pipeline_settings`) loads with Save/Discard correctly **disabled** — confirmed
+  live. Reconfirms the existing "Seeding gotcha" entry below (avoid
+  `create_pipeline_with_nodes()` for any case needing a clean dirty-state baseline) from
+  the version-flow angle specifically. **See the CORRECTION below on Save As Version's
+  OWN enabled state — it does NOT join Save/Discard in this disabled baseline.**
+  **CORRECTION (2026-08-07, ELITEA-2002 implementation) — "Save As Version enabled
+  only when the form is dirty" (two bullets above, and the original "Save/Save-As-
+  Version/Discard all correctly disabled" baseline claim just above) is FALSE for
+  `agent-save-as-version-button`.** Re-verified live against a fresh zero-node pipeline
+  (`ApplicationTabBar.jsx` source read + live DOM check, both agree): `ApplicationTabBar.jsx`
+  renders `<SaveNewVersionButton onSuccess={onSuccess} />` with **no `disabled` prop
+  passed at all** — `SaveNewVersionButton.jsx`'s own `disabled={isSavingNewVersion ||
+  disabled}` therefore only ever reflects `isSavingNewVersion` (a mid-request state),
+  never form dirtiness. Confirmed on a clean, zero-node pipeline immediately after
+  navigate (and again after a 3s settle, to rule out a load-race): Save = disabled,
+  Discard = disabled, **Save As Version = enabled**. This is a shared-component fact
+  (`ApplicationTabBar.jsx` is the same component `AgentDetailPage` wires), not a
+  pipeline-only quirk — `test_agent_save_as_version.py` never actually asserted the
+  pre-edit disabled state either (only "enabled once dirty", which stays true — dirty
+  is a superset of "always enabled", so that assertion doesn't contradict this). The
+  correct clean-baseline assertion is: Save disabled, Discard disabled, **Save As
+  Version enabled** (available at any time, not gated on dirtiness) — see
+  `l2_create-pipeline-version_ELITEA-2002.md` for the corrected AFS text and
+  `test_pipeline_create_version.py` for the corrected assertions.
+- **Resolved during ELITEA-2002 implementation (2026-08-07) — version-switch needs the
+  SAME reload-based belt-and-braces `select_version_by_name()` already uses on
+  `AgentDetailPage`, not a simplified single-poll.** A single DOM-only poll (trigger
+  text == target name AND Information-panel version-id == URL's version-id path
+  segment) is NOT sufficient: the VERSION trigger's text can flip to the target name a
+  beat before the Information panel's version-id / URL catch up, and that panel/URL
+  pair can be transiently self-consistent (equal to EACH OTHER) while BOTH still show
+  the PREVIOUS version's id — satisfying the same-value check without actually being on
+  the target version yet (observed live: switching to "base" resolved the poll while
+  `copy-version-id` and the URL segment both still read the just-created `v1_test`
+  version's id). `PipelineDetailPage.select_version_by_name()` now ports the Agent
+  method's full select+reload-cycle shape (2 attempts) to force a fresh server refetch,
+  which clears it. Not the Agent-specific #614 Publish bug (different trigger flow —
+  dropdown switch here, not Publish) but the same underlying staleness class.
 - Full flow, handles, and page-object gap list: `l2_create-pipeline-version_ELITEA-2002.md`.
 
 ## Sidebar "+" create control and the VERSION selector (confirmed live, 2026-08-07, ELITEA-2020)
