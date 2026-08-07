@@ -1,0 +1,3 @@
+WARNING  elitea.pages.pipeline_detail:pipeline_detail_page.py:1257 Embedded chat response did not stabilise within timeout
+WARNING  elitea.pages.pipeline_detail:pipeline_detail_page.py:1257 Embedded chat response did not stabilise within timeout
+WARNING  elitea.pages.pipeline_detail:pipeline_detail_page.py:1257 Embedded chat response did not stabilise within timeout
