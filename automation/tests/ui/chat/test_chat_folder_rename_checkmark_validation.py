@@ -312,14 +312,15 @@ class TestChatFolderRenameCheckmarkValidation:
                 )
 
         finally:
-            # AFS § Cleanup CAUTION: ChatPage.delete_folder_via_menu() /
-            # FOLDER_MENU_DELETE_ITEM currently target a DEAD testid
-            # (regressed, tracked in
-            # EliteaAI/elitea-testing-public#1309, NOT this case's own
-            # scope to fix) — wrapped in try/except per the existing
-            # pattern so a cleanup failure never fails the test itself.
-            # A silently-failed cleanup here is expected and NOT evidence
-            # this case's OWN assertions are wrong.
+            # AFS § Cleanup CAUTION: FOLDER_MENU_DELETE_ITEM (the dot-menu
+            # "Delete" item) is a DEAD testid on EliteaUI (regressed,
+            # tracked in EliteaAI/elitea-testing-public#1309, NOT this
+            # case's own scope to fix). delete_folder_via_menu() now falls
+            # back to a direct API delete when that testid doesn't appear
+            # (see its own docstring), so cleanup succeeds via that path
+            # while #1309 stays open — this try/except remains only as a
+            # last-resort net for a genuinely unreachable API (e.g. a dead
+            # backend), not because cleanup is expected to silently no-op.
             if folder_id:
                 try:
                     chat.delete_folder_via_menu(folder_id, timeout=UI_ELEMENT_TIMEOUT)
@@ -498,10 +499,103 @@ class TestChatFolderRenameCheckmarkValidation:
 
         finally:
             # Same caution as test_folder_rename_checkmark_validation's own
-            # cleanup: delete_folder_via_menu() targets a DEAD testid
-            # (regression #1309, NOT this case's scope, reconfirmed dead
-            # during ELITEA-2459 exploration) — wrapped so a cleanup
-            # failure never fails the test itself.
+            # cleanup: FOLDER_MENU_DELETE_ITEM is a DEAD testid (regression
+            # #1309, NOT this case's scope, reconfirmed dead during
+            # ELITEA-2459 exploration). delete_folder_via_menu() now falls
+            # back to a direct API delete when that testid doesn't appear,
+            # so cleanup succeeds via that path while #1309 stays open —
+            # this try/except remains only as a last-resort net.
+            if folder_id:
+                try:
+                    chat.delete_folder_via_menu(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                    logger.info("Cleaned up folder %s", folder_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder %s: %s", folder_id, exc)
+
+
+class TestChatFolderDeleteApiFallbackRegression:
+    """Regression coverage for the ``ChatPage.delete_folder_via_api()``
+    cleanup fallback added to ``delete_folder_via_menu()``
+    (EliteaAI/elitea-testing-public#1309).
+
+    Root cause this guards against: ``delete_folder_via_menu()``'s dot-menu
+    "Delete" item testid (``FOLDER_MENU_DELETE_ITEM``) has regressed dead on
+    EliteaUI three times; every call site uses the method purely for
+    cleanup wrapped in a bare ``try``/``except``, so the timeout was
+    swallowed silently and cleanup never happened — #1309 confirmed 19
+    "New folder"/"New folder6" folders leaked into the shared DEV project
+    this way, making every subsequent folder-list refetch progressively
+    more fragile. The fix added an API-delete fallback; THIS test exercises
+    ``delete_folder_via_api()`` directly, independent of whether #1309 is
+    fixed upstream or not, so a regression in the fallback's own request
+    (wrong URL, wrong auth, or a response check that doesn't actually
+    verify deletion) is caught even once the dot-menu path stops needing it.
+    """
+
+    @pytest.mark.p2
+    def test_delete_folder_via_api_actually_removes_the_folder(self, page):
+        """``delete_folder_via_api()`` must make the folder actually
+        disappear server-side — not just return without raising.
+
+        A regression that reproduces the ORIGINAL #1309 failure mode (an
+        exception silently swallowed, or a "success" response that isn't
+        checked) must fail this test: the ground truth is a full page
+        RELOAD re-reading the folder list from the server, not the absence
+        of a raised exception.
+        """
+        chat = ChatPage(page)
+        folder_id = None
+
+        try:
+            with allure.step(
+                "Step 1 — Seed a folder to delete via the API fallback"
+            ):
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                chat.click_create_folder_button(timeout=UI_ELEMENT_TIMEOUT)
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "POST",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as create_response_info:
+                    chat.set_folder_name("APIFallbackDeleteRegressionTest")
+                    chat.folder_name_confirm_button.click()
+                create_response = create_response_info.value
+                assert create_response.status == 201, (
+                    "Seed folder POST should resolve 201, got "
+                    f"{create_response.status} for {create_response.url}"
+                )
+                folder_id = create_response.json().get("id")
+                assert folder_id is not None, (
+                    "Seed folder response should include a real 'id', got: "
+                    f"{create_response.json()!r}"
+                )
+                chat.folder_name_input.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+                chat.get_folder_item(folder_id).wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                logger.info("Seeded folder %s for API-fallback delete regression test", folder_id)
+
+            with allure.step(
+                "Step 2 — Call delete_folder_via_api() directly (bypassing "
+                "the UI dot-menu entirely)"
+            ):
+                chat.delete_folder_via_api(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step(
+                "Step 3 — Reload and verify the folder is GONE via a fresh "
+                "server-backed read (ground truth, not just 'no exception')"
+            ):
+                page.reload()
+                chat.wait_for_page_load()
+                expect(chat.get_folder_item(folder_id)).to_have_count(
+                    0, timeout=UI_ELEMENT_TIMEOUT
+                )
+                # Deletion succeeded — don't attempt it again in `finally`.
+                folder_id = None
+        finally:
+            # Best-effort net only: if Step 2/3 itself failed (the folder
+            # was never actually deleted), fall back to the dot-menu path
+            # so this test doesn't ALSO leak a folder while proving the
+            # leak-prevention fix.
             if folder_id:
                 try:
                     chat.delete_folder_via_menu(folder_id, timeout=UI_ELEMENT_TIMEOUT)
