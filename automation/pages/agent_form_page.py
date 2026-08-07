@@ -371,6 +371,25 @@ class AgentFormPage(BasePage):
         """Read the current value of the Name field."""
         return self.name_input.input_value()
 
+    def is_name_invalid(self, timeout: int = 5000) -> bool:
+        """Return whether the Name field is currently flagged invalid (ELITEA-1900).
+
+        Reads the ``aria-invalid`` attribute of the already testid-anchored
+        :attr:`name_input` — same "read an attribute of an existing
+        testid-anchored locator" shape as
+        :meth:`ArtifactsPage.is_bucket_name_invalid`. No new testid needed.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the field itself
+                to be visible before reading its attribute.
+
+        Returns:
+            True if ``aria-invalid="true"``, False otherwise (including
+            ``"false"`` or the attribute being absent).
+        """
+        self.name_input.wait_for(state="visible", timeout=timeout)
+        return self.name_input.get_attribute("aria-invalid") == "true"
+
     def get_description(self) -> str:
         """Read the current value of the Description field."""
         return self.description_input.input_value()
