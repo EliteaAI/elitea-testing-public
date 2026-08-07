@@ -304,26 +304,34 @@ class ChatPage(BasePage):
     )
 
     # ------------------------------------------------------------------
-    # Modules panel toggle switches (ELITEA-2162) — 7 fixed tool keys wired
-    # in PlusChatButton.jsx's renderSubmenuContent(); testid first added in
-    # EliteaAI/EliteaUI@386245c9 via inputProps, which MUI v7's <Switch>
-    # silently drops (resolved 0 elements) — the working implementation is
-    # EliteaAI/EliteaUI@e22e9881, which moves the testid to slotProps.input.
-    # Cherry-pick e22e9881 (not 386245c9 alone) for this testid to render.
-    # Template per the dynamic-testid convention
+    # Modules panel toggle switches (ELITEA-2162) — 8 fixed tool keys wired
+    # in PlusChatButton.jsx's renderSubmenuContent() (originally 7; "Ask
+    # User"/ask_user added to the live product after ELITEA-2162's
+    # analysis — see MODULE_TOGGLE_ORDER note, ELITEA-2464); testid first
+    # added in EliteaAI/EliteaUI@386245c9 via inputProps, which MUI v7's
+    # <Switch> silently drops (resolved 0 elements) — the working
+    # implementation is EliteaAI/EliteaUI@e22e9881, which moves the testid
+    # to slotProps.input. Cherry-pick e22e9881 (not 386245c9 alone) for
+    # this testid to render. Template per the dynamic-testid convention
     # (.agents/testing.md § Locator policy). Stable keys confirmed live against
     # src/[fsd]/shared/lib/constants/internalTools.constants.js.
     # ------------------------------------------------------------------
     MODULES_TOGGLE_SWITCH = '[data-testid="modules-toggle-{}"]'
     MODULES_TOGGLE_SWITCH_PREFIX = '[data-testid^="modules-toggle-"]'
 
-    # (tool_key, accessible name) — DOM/case order, live-confirmed.
+    # (tool_key, accessible name) — DOM/case order, live-confirmed. "ask_user"
+    # ("Ask User") added 2026-08-07 (ELITEA-2464 exploration) — live product
+    # change post-dating ELITEA-2162's original 7-entry analysis (2026-08-03);
+    # see EliteaAI/elitea-testing-public#1293. Inserted in its live DOM
+    # position (between pyodide and swarm) — the 7 original entries are
+    # otherwise unchanged.
     MODULE_TOGGLE_ORDER = (
         ("image_generation", "Image creation"),
         ("data_analysis", "Data Analysis"),
         ("internal_mcp", "Agents & Pipeline Builder"),
         ("planner", "Planner"),
         ("pyodide", "Python Sandbox"),
+        ("ask_user", "Ask User"),
         ("swarm", "Swarm Mode"),
         ("lazy_tools_mode", "Smart Tool Selection"),
     )
@@ -3537,6 +3545,36 @@ class ChatPage(BasePage):
             tool_key: Internal tool key — see MODULE_TOGGLE_ORDER.
         """
         return self.get_module_toggle_switch(tool_key).is_checked()
+
+    def is_module_toggle_visually_checked(self, tool_key: str) -> bool:
+        """Return whether a Modules-panel toggle switch's VISUAL indicator
+        shows it as checked (ELITEA-2464, case step 6 — "verify each toggle
+        displays its current on/off state").
+
+        MUI applies a ``Mui-checked`` CSS class to the switch's ancestor
+        ``<span class="MuiSwitch-switchBase">`` — a rendering signal
+        independent of the native ``<input>`` element's own ``.checked``
+        DOM property (which ``is_module_toggle_checked()`` reads). Both
+        derive from the same React ``checked`` prop but are two separately
+        rendered DOM signals, so comparing them makes "the toggle displays
+        its current state" a real, falsifiable check (a regression where
+        the visual class stops tracking the underlying state would be
+        caught) rather than reading ``is_checked()`` against itself.
+        Live-confirmed 2026-08-07: toggling the switch flips
+        ``input.checked`` and the ancestor's ``Mui-checked`` class
+        together, from `false`/absent to `true`/present.
+
+        Uses ``evaluate()`` on the testid-anchored switch locator to read
+        the ancestor's class list — not a new selector/locator (mui-patterns.md
+        precedent, e.g. ``chat_messages_scroll_container.evaluate(...)``).
+
+        Args:
+            tool_key: Internal tool key — see MODULE_TOGGLE_ORDER.
+        """
+        switch = self.get_module_toggle_switch(tool_key)
+        return switch.evaluate(
+            "el => el.closest('.MuiSwitch-switchBase')?.classList.contains('Mui-checked') ?? false"
+        )
 
     def get_module_toggle_count(self) -> int:
         """Count visible Modules-panel toggle switches (testid-based)."""

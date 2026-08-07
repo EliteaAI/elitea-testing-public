@@ -47,3 +47,19 @@ without re-running it yourself.
    case is not deployed-env-promotable until the testid is cherry-picked to
    `main` — the lead's closure record inherits this, don't make them
    re-derive it.
+
+## Seen again (ELITEA-2464, PR #1294, fix round 1, 2026-08-07)
+
+7 of 10 rows in the Concrete Handles table claimed `on-main ✓` without a
+fresh grep. Re-verification found only 3 genuinely on `main`
+(`internal-tools-menuitem`, `toast-message`, `chat-message-input`); the
+other 7 — including the ENTIRE `modules-toggle-{}` dynamic-testid template
+mechanism (`PlusChatButton.jsx`'s `slotProps: { input: { 'data-testid':
+\`modules-toggle-${tool.name}\` } }`), not just the new `ask_user` entry —
+exist only on `automation/testids`. Lesson refined: when a dynamic/templated
+testid is involved, grep the TEMPLATE STRING itself (e.g. `modules-toggle-`),
+not just one instantiated value — the mechanism can be entirely
+testids-only even when the underlying data/tool-key it parameterizes over
+is already on `main` (the `ask_user` tool key string was on `main` in
+`internalTools.constants.js`; its testid wiring was not — two different
+promotion states easy to conflate).
