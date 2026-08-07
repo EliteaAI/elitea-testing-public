@@ -85,3 +85,26 @@ updated, diff scoped to exactly the one changed id. Lesson refined: reading
 this entry in the abstract isn't enough to stop the habit — before EVERY
 `build_index` call, actually check the call for a `repo:` key and delete it,
 don't rely on remembering "I know about this bug already."
+
+**Confirmed a 5th time, #966/ELITEA-2458 (2026-08-08):** same habit, same
+`repo:`-qualified call, same stale "N cases indexed" success with the sibling
+clone's `index.json` mtime predating the call. This time I ALSO found the
+throwaway clone still had a **dangling uncommitted diff from a much earlier
+session** (`index.json`/`reports/coverage.md`, unrelated to this case) sitting
+on top of a `main` that was itself several commits behind `origin/main` —
+confirming the workspace accumulates drift across sessions whenever a `repo:`
+call is made, not just within one. **Recovery when you've already dirtied
+`~/.onetest-workspaces/<owner>/<name>` this way** (rather than deleting it):
+```bash
+cd ~/.onetest-workspaces/<owner>/<name>
+git checkout -- .                    # discard stray uncommitted diff — regenerable
+git fetch origin && git reset --hard origin/main   # catch up to what you actually pushed
+```
+then call `build_index` (zero args, from the sibling clone context as always)
+and re-verify with `grep -A5 '"id": "<CASE-ID>"' index.json` in the **real**
+sibling before trusting the message. If the throwaway clone produced the
+correct write (its own `git status`/`git diff` shows the expected single-entry
+change), commit + push **from that workspace**, then `git pull --ff-only` the
+real sibling clone back in sync — don't hand-edit `index.json` twice in two
+places. Five confirmed recurrences now — this is not a rare trap, it is the
+default outcome of typing the argument that looks correct.
