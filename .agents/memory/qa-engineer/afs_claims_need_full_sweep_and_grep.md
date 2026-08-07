@@ -44,8 +44,24 @@ Nothing in an AFS is true because it is written down. Two mechanical duties:
   normal viewport. Confirming the CLARIFICATION-vs-bug classification is
   internally consistent is NOT confirming its premise is true.
 
-## Seen 9×
+## Seen 10×
 
+- PR #1294/ELITEA-2464 — Concrete Handles table marked **7 of 9** rows
+  `on-main ✓` (`chat-attach-menuitem-button`, `agents-menuitem`,
+  `pipelines-menuitem`, `toolkits-menuitem`, `mcps-menuitem`, `toast-alert`,
+  and the entire `modules-toggle-{}` family incl. the new `ask_user`) — a
+  fresh `git grep -- "<testid>" origin/main -- src/` (per
+  `.agents/role-overrides.md` § Analyst slot's mandatory fresh-fetch
+  provenance rule) found **zero** matches for all 7 on `origin/main`; they
+  exist only on `origin/automation/testids`. Only 3 rows
+  (`internal-tools-menuitem`, `toast-message`, `chat-message-input`) were
+  genuinely on main. The covering ELITEA-2162 AFS never claimed provenance
+  for these 6 handles at all (2464 is the first AFS to touch them) — so
+  this wasn't inherited staleness, it was an unverified claim written fresh.
+  A `PROVENANCE` column is exactly the same species of claim as a Coverage
+  Map "asserted" cell: written down ≠ true, grep it against the actual ref
+  before trusting it (and definitely before it feeds a closure record's
+  promotability row).
 - PR #698/ELITEA-2132 R2 — step-3 row marked `asserted` for 3 clauses; code asserted 2 (never the DOM position the case's own text required).
 - PR #693/ELITEA-2095 — row cited "console-error check (Axis 2)"; grep found zero `page.on("console"` in test or page object. Same PR: a page-object method's ambient-data dependency never listed in Test Data.
 - PR #639/ELITEA-1839 R2 — round-1 fix corrected the one named breadcrumb row, left 3 siblings identically wrong; R3's whole-map sweep found a 4th.
