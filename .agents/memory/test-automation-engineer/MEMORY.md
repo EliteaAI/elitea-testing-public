@@ -45,3 +45,4 @@
 - [Search highlighting breaks exact text= locators](search_highlight_breaks_exact_text_locator.md) — read entity-card-name testid + .text_content() instead, on any entity-card list page
 - [Name field 32-char silent truncation](pipeline_agent_name_field_32char_silent_truncation.md) — agent-name-input caps at 32, no error; keep generated names ≤32 chars
 - [Save As Version is never dirty-gated](pipeline_save_as_version_quirks.md) — don't assert it disabled at baseline; ReactFlow always renders a synthetic END node too
+- [Signal-parity claims need an assertion diff](afs_signal_parity_claim_needs_assertion_diff.md) — "same N-signal pattern" prose ≠ same assert list; diff them
