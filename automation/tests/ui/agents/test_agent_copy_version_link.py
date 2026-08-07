@@ -181,6 +181,22 @@ class TestAgentCopyVersionLink:
             # run's writeText() monkey-patch workaround.
             page.context.grant_permissions(["clipboard-read", "clipboard-write"])
 
+        # Collects "error"-type console messages across the full
+        # select-version -> open-menu -> copy -> navigate-to-copied-URL
+        # round trip (AFS Axis 2: "Zero console errors ... confirmed clean
+        # via browser_console_messages(level='error')") — scoped to
+        # "error" only (not "warning"), matching what the AFS actually
+        # verified live, per the sibling-test precedent in
+        # test_agent_llm_selector_openai_models.py. The listener is
+        # attached to the ORIGINAL tab here; Step 6 attaches the same
+        # collector to the fresh tab it opens, since the copied-URL
+        # navigation the AFS's round trip covers happens there.
+        console_issues = []
+        page.on(
+            "console",
+            lambda msg: console_issues.append(msg) if msg.type == "error" else None,
+        )
+
         try:
             with allure.step(
                 f"Step 1 — Select the named version {VERSION_NAME!r} from the "
@@ -263,6 +279,10 @@ class TestAgentCopyVersionLink:
                 "immediate assert right after goto())"
             ):
                 new_page = page.context.new_page()
+                new_page.on(
+                    "console",
+                    lambda msg: console_issues.append(msg) if msg.type == "error" else None,
+                )
                 try:
                     new_detail_page = AgentDetailPage(new_page)
                     new_page.goto(version_share_url, wait_until="domcontentloaded")
@@ -274,21 +294,11 @@ class TestAgentCopyVersionLink:
                     # and .confirm_new_version()'s "URL updates before the
                     # trigger re-renders" note) — wait for BOTH to agree
                     # rather than asserting right after the trigger text alone
-                    # settles.
-                    new_page.wait_for_function(
-                        """([name, expectedId]) => {
-                            const trigger = document.querySelector(
-                                '[data-testid="agent-version-selector-trigger"]'
-                            );
-                            const versionIdEl = document.querySelector(
-                                '[data-testid="copy-version-id"]'
-                            );
-                            if (!trigger || trigger.innerText.trim() !== name) return false;
-                            if (!versionIdEl) return false;
-                            return versionIdEl.innerText.trim() === expectedId;
-                        }""",
-                        arg=[VERSION_NAME, str(version_id)],
-                        timeout=NAVIGATION_TIMEOUT,
+                    # settles. Delegated to the page object (rather than
+                    # inlining the raw testid-string wait_for_function here)
+                    # so the two testids stay defined in exactly one file.
+                    new_detail_page.wait_for_version_trigger_and_id(
+                        VERSION_NAME, str(version_id), timeout=NAVIGATION_TIMEOUT
                     )
                     assert new_detail_page.get_name() == agent_name, (
                         "Copied URL should open the SAME agent it was copied from"
@@ -299,6 +309,17 @@ class TestAgentCopyVersionLink:
                     )
                 finally:
                     new_page.close()
+
+            with allure.step(
+                "Step 7 — Verify zero console errors across the full "
+                "select-version -> open-menu -> copy -> navigate-to-copied-URL "
+                "round trip (AFS Axis 2)"
+            ):
+                assert not console_issues, (
+                    "Expected no console errors across the select-version -> "
+                    "open-menu -> copy -> navigate-to-copied-URL round trip, "
+                    f"got: {[(m.type, m.text) for m in console_issues]}"
+                )
         finally:
             with allure.step("Cleanup — delete the dedicated agent"):
                 try:

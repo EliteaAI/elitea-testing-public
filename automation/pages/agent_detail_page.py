@@ -3585,6 +3585,59 @@ class AgentDetailPage(AgentFormPage):
             f"{last_exc}"
         )
 
+    def wait_for_version_trigger_and_id(
+        self, version_name: str, version_id: str, timeout: int = 10000
+    ) -> None:
+        """Wait until the VERSION selector trigger AND the Information
+        panel's version-id both agree with the given ``(version_name,
+        version_id)`` pair.
+
+        Same client-state race documented on :meth:`confirm_new_version`
+        ("the URL's version-id segment updates before the VERSION
+        selector's displayed text re-renders — a race, not a fixed delay")
+        and :meth:`select_version_by_name` (the three-way
+        trigger/version-id/URL convergence check) — this is the two-way
+        (trigger, version-id) form for a caller that already trusts the URL
+        (e.g. a fresh tab opened by navigating directly to a
+        version-specific copied link, ELITEA-1898) and only needs the
+        CLIENT-SIDE render state to catch up post-navigation.
+
+        LOCATOR: polls ``agent-version-selector-trigger`` and
+        ``copy-version-id`` via ``document.querySelector`` inside the
+        predicate — ``wait_for_function`` executes in-page JS, which cannot
+        reference a Playwright ``Locator`` directly, so the two testids
+        (also the ``version_selector_trigger`` / ``copy_version_id_button``
+        ``LocatorDescriptor`` fields above) are inlined as literal
+        ``[data-testid="…"]`` strings here rather than duplicated as a
+        second selector elsewhere.
+
+        Args:
+            version_name: Expected VERSION-selector trigger text, e.g.
+                ``"v1-test"``.
+            version_id: Expected version id, as rendered by
+                ``copy-version-id`` (i.e. :meth:`get_version_id`'s value).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.page.wait_for_function(
+            """([name, expectedId]) => {
+                const trigger = document.querySelector(
+                    '[data-testid="agent-version-selector-trigger"]'
+                );
+                const versionIdEl = document.querySelector(
+                    '[data-testid="copy-version-id"]'
+                );
+                if (!trigger || trigger.innerText.trim() !== name) return false;
+                if (!versionIdEl) return false;
+                return versionIdEl.innerText.trim() === expectedId;
+            }""",
+            arg=[version_name, version_id],
+            timeout=timeout,
+        )
+        logger.info(
+            "VERSION trigger/version-id converged on name=%r id=%r",
+            version_name, version_id,
+        )
+
     def wait_for_publish_status_menuitem(
         self, expect_unpublish: bool, timeout: int = 10000, attempts: int = 4
     ) -> None:
