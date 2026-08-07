@@ -108,3 +108,13 @@ change), commit + push **from that workspace**, then `git pull --ff-only` the
 real sibling clone back in sync — don't hand-edit `index.json` twice in two
 places. Five confirmed recurrences now — this is not a rare trap, it is the
 default outcome of typing the argument that looks correct.
+
+**Confirmed a 6th time, #967/ELITEA-2459 (2026-08-08):** same habit again —
+first call passed `repo:`, got the clean "2789 cases indexed" message, and
+`ls -la index.json` in the sibling clone showed the mtime predating the call
+(no `git diff`). Re-ran with zero args: real write, mtime updated, `git diff`
+scoped to exactly the one changed entry (`status`/`execution_type`/
+`automation_test_id`). No new recovery details this time — same fix, same
+verification. Six confirmed recurrences: stop reading this as "unlikely to
+hit me" — budget the mtime/git-diff check as a mandatory step of every
+`build_index` call, full stop, not a thing to remember to remember.
