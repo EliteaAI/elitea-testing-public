@@ -44,3 +44,4 @@
 - [wait_for_chat_response header text false-stable](wait_for_chat_response_header_text_false_stable.md) — low-effort agents: header/thought-accordion text can lock in as "stable" before the answer renders
 - [Search highlighting breaks exact text= locators](search_highlight_breaks_exact_text_locator.md) — read entity-card-name testid + .text_content() instead, on any entity-card list page
 - [Name field 32-char silent truncation](pipeline_agent_name_field_32char_silent_truncation.md) — agent-name-input caps at 32, no error; keep generated names ≤32 chars
+- [Save As Version is never dirty-gated](pipeline_save_as_version_quirks.md) — don't assert it disabled at baseline; ReactFlow always renders a synthetic END node too
