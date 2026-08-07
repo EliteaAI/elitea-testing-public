@@ -134,6 +134,22 @@ class AgentDetailPage(AgentFormPage):
     toolkit_reload_button = LocatorDescriptor(testid="toolkit-reload-button")
     toolkit_open_button = LocatorDescriptor(testid="toolkit-open-button")
 
+    # Agent/Pipeline-type tool card's version selector (ELITEA-1951 — added
+    # via add-data-testid to AgentPipelineVersionSelector.jsx; zero
+    # data-testid existed on this component before). Dynamic, keyed by
+    # `tool.id` (the attached-tool relation id) — same class-constant +
+    # `.format()` pattern as VERSION_OPTION/VARIABLE_ROW above. The `_ANY`
+    # variants enumerate the trigger/menu when `tool.id` isn't known in
+    # advance (this case attaches exactly one Agent-type tool, so `.first`
+    # on the ANY selector is unambiguous — same idiom as
+    # SKILL_VERSION_OPTION_ANY_SELECTOR).
+    AGENT_TOOL_VERSION_SELECTOR_TRIGGER = '[data-testid="agent-tool-version-selector-trigger-{}"]'
+    AGENT_TOOL_VERSION_SELECTOR_MENU = '[data-testid="agent-tool-version-selector-menu-{}"]'
+    AGENT_TOOL_VERSION_OPTION = '[data-testid="agent-tool-version-option-{}-{}"]'
+    AGENT_TOOL_VERSION_SELECTOR_TRIGGER_ANY = '[data-testid^="agent-tool-version-selector-trigger-"]'
+    AGENT_TOOL_VERSION_SELECTOR_MENU_ANY = '[data-testid^="agent-tool-version-selector-menu-"]'
+    AGENT_TOOL_VERSION_OPTION_ANY = '[data-testid^="agent-tool-version-option-"]'
+
     # --- Selectors for scoped use (inside parent locators) ---
     # BannerMessage component always uses "credential-warning-banner" testid
     # Distinguish by aria-label content instead
@@ -144,6 +160,27 @@ class AgentDetailPage(AgentFormPage):
     CHAT_ARTIFACT_FILE_LIST_SELECTOR = '[data-testid="chat-artifact-file-list"]'
     CHAT_ARTIFACT_FILE_CARD_SELECTOR = '[data-testid="chat-artifact-file-card"]'
     CHAT_ANSWER_CONTENT_SELECTOR = '[data-testid="chat-answer-content"]'
+    # Outer "Thought for <n> secs" reasoning/tool accordion + its chip-row
+    # children (existing testids, ELITEA-2211..2215 batch — same shared
+    # ApplicationThinkView.jsx/ActionView.jsx components ChatPage's
+    # standalone /chat surface renders through; this page's own scoped
+    # string constants per the established CHAT_ANSWER_CONTENT_SELECTOR
+    # precedent above, since the embedded chat panel is a distinct DOM
+    # scope from ChatPage's LocatorDescriptor fields for the same testids).
+    CHAT_ANSWER_THOUGHT_ACCORDION_SELECTOR = '[data-testid="chat-answer-thought-accordion"]'
+    CHAT_ANSWER_MODEL_CHIP_SELECTOR = '[data-testid="chat-answer-model-chip"]'
+    CHAT_ANSWER_TOOL_CHIP_SELECTOR = '[data-testid="chat-answer-tool-chip"]'
+    # Nested sub-agent accordion (ELITEA-1951 — added via add-data-testid to
+    # SubAgentAccordion.jsx, which previously carried zero data-testid).
+    # Dynamic, keyed by the invoked sub-agent's exact name (matches the
+    # component's `name` prop, `ApplicationThinkView.jsx`'s
+    # `displayName = subEntry?.name || childError?.name || instanceKey`).
+    # `_SUMMARY` is the clickable AccordionSummary (reads `aria-expanded`
+    # directly, MUI forwards it to the root button element); `_DETAILS`
+    # scopes the model/tool chip lookups to THIS nested accordion only,
+    # avoiding a collision with the parent's own top-level chips.
+    NESTED_AGENT_ACCORDION_SUMMARY = '[data-testid="chat-answer-nested-agent-accordion-summary-{}"]'
+    NESTED_AGENT_ACCORDION_DETAILS = '[data-testid="chat-answer-nested-agent-accordion-details-{}"]'
     # Embedded-chat conversation-starter tile (ELITEA-1886) — this page's own
     # call site of the shared EllipsisTextWithTooltip, ChatConversationStarters.jsx,
     # mounted inside the embedded ChatBox on THIS route (/agents/all/{id}). Same
@@ -1439,6 +1476,44 @@ class AgentDetailPage(AgentFormPage):
         self.wait_for_network(timeout=timeout)
         logger.info("Agent '%s' attached as a sub-agent tool", agent_name)
 
+    @action("Attach agent (testid-scoped selection)")
+    def attach_agent_by_testid(self, agent_name: str, timeout: int = 10000):
+        """Attach another Agent as a sub-agent tool, selecting it via the
+        ``toolkit-menu-item`` testid instead of :meth:`attach_agent`'s raw
+        ``li[role="menuitem"]:has-text(...)`` CSS selection (ELITEA-1951).
+
+        Additive sibling to :meth:`attach_agent` — added because
+        :meth:`attach_agent` (via ``Popper.select_menuitem``) was found, during
+        this case's implementation, to intermittently fail on a real Playwright
+        mouse-simulated ``.click()``: the item visibly highlights (hover state)
+        and its overflow tooltip (``TypographyWithConditionalTooltip``, shown
+        for a truncated agent name) renders, but the click never reaches the
+        underlying ``<li>`` — no attach request fires (or the backend rejects
+        a stale reference) and the popper never closes. A raw JS
+        ``element.click()`` and a testid-scoped Playwright ``.click()`` both
+        landed reliably in the SAME scenario, so the likely cause is a MUI
+        Tooltip-portal overlay intercepting the mouse-simulated click's
+        computed coordinates specifically when the tooltip is showing — not
+        reproducible via a role-based or testid-scoped locator in the same
+        live testing. ``Popper.select_menuitem`` itself is NOT modified — it
+        has other merged callers relying on its current behavior unchanged
+        (`.claude/rules/page-objects.md` § shared-caller files); this method
+        mirrors :meth:`Popper.select_menuitem_by_testid`'s existing (ELITEA-1735)
+        testid-scoped pattern instead, applied here to the Agent picker (whose
+        items already carry ``toolkit-menu-item`` via the shared
+        ``UnifiedDropdown`` component, confirmed live — no new testid needed).
+
+        Args:
+            agent_name: Exact name of the Agent to attach as a sub-agent tool.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Attaching agent '%s' as a sub-agent tool (testid-scoped)", agent_name)
+        popper = self.open_agent_picker(timeout=timeout)
+        Popper.select_menuitem_by_testid(popper, agent_name, self.page, timeout=timeout)
+        self.page.wait_for_timeout(1000)
+        self.wait_for_network(timeout=timeout)
+        logger.info("Agent '%s' attached as a sub-agent tool (testid-scoped)", agent_name)
+
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit is attached to the agent.
 
@@ -1459,6 +1534,45 @@ class AgentDetailPage(AgentFormPage):
             return True
         except Exception:
             return False
+
+    @action("Open tool version selector")
+    def open_tool_version_selector(self, timeout: int = 10000) -> Locator:
+        """Open the version selector menu on the (single) attached
+        Agent/Pipeline-type tool card (ELITEA-1951).
+
+        Assumes exactly one Agent/Pipeline-type tool is attached — this
+        case's flow — so the `_ANY`-suffixed trigger selector's `.first` is
+        unambiguous (`tool.id` isn't known client-side in advance; same
+        idiom as ``SKILL_VERSION_OPTION_ANY_SELECTOR``).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator of the opened version-selector menu (scoped via
+            ``AGENT_TOOL_VERSION_SELECTOR_MENU_ANY``).
+        """
+        trigger = self.page.locator(self.AGENT_TOOL_VERSION_SELECTOR_TRIGGER_ANY).first
+        trigger.wait_for(state="visible", timeout=timeout)
+        trigger.click()
+        menu = self.page.locator(self.AGENT_TOOL_VERSION_SELECTOR_MENU_ANY).first
+        menu.wait_for(state="visible", timeout=timeout)
+        return menu
+
+    def get_tool_version_selector_trigger_text(self, timeout: int = 10000) -> str:
+        """Return the (single) attached tool card's version-selector trigger text.
+
+        E.g. "base" for a sub-agent whose only version is "base".
+        """
+        trigger = self.page.locator(self.AGENT_TOOL_VERSION_SELECTOR_TRIGGER_ANY).first
+        trigger.wait_for(state="visible", timeout=timeout)
+        return (trigger.text_content() or "").strip()
+
+    def get_tool_version_option_texts(self, timeout: int = 10000) -> list[str]:
+        """Return the text of every option row in the (already-open) version menu."""
+        options = self.page.locator(self.AGENT_TOOL_VERSION_OPTION_ANY)
+        options.first.wait_for(state="visible", timeout=timeout)
+        return [(options.nth(i).text_content() or "").strip() for i in range(options.count())]
 
     @action("Remove toolkit")
     def remove_toolkit(self, toolkit_name: str, timeout: int = 10000):
@@ -2994,6 +3108,129 @@ class AgentDetailPage(AgentFormPage):
         if messages.count() == 0:
             return ""
         return (messages.last.text_content() or "").strip()
+
+    def get_outer_thought_accordion(self, timeout: int = 10000) -> Locator:
+        """Return the last embedded-chat message's outer "Thought for Ns"
+        accordion (``chat-answer-thought-accordion``, existing testid,
+        ELITEA-2211..2215 batch).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        accordion = self._embedded_chat_messages().last.locator(
+            self.CHAT_ANSWER_THOUGHT_ACCORDION_SELECTOR
+        )
+        accordion.wait_for(state="visible", timeout=timeout)
+        return accordion
+
+    @action("Expand nested sub-agent accordion")
+    def expand_nested_agent_accordion(self, agent_name: str, timeout: int = 10000) -> Locator:
+        """Expand the nested sub-agent accordion for *agent_name* inside the
+        last message's outer thought accordion (ELITEA-1951).
+
+        LOCATOR: ``NESTED_AGENT_ACCORDION_SUMMARY`` — a testid added via
+        ``add-data-testid`` to ``SubAgentAccordion.jsx``, keyed by the exact
+        invoked sub-agent name. Idempotent: does nothing if already expanded
+        (reads ``aria-expanded`` first, MUI forwards it to the summary's
+        root element).
+
+        Args:
+            agent_name: Exact name of the invoked sub-agent.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The summary Locator (post-expansion).
+        """
+        self.get_outer_thought_accordion(timeout=timeout)
+        summary = self.page.locator(self.NESTED_AGENT_ACCORDION_SUMMARY.format(agent_name))
+        summary.wait_for(state="visible", timeout=timeout)
+        if summary.get_attribute("aria-expanded") != "true":
+            summary.click()
+            self.page.wait_for_timeout(300)  # accordion expand transition
+        return summary
+
+    def get_nested_agent_accordion_details(self, agent_name: str, timeout: int = 10000) -> Locator:
+        """Return the (expanded) nested sub-agent accordion's details container.
+
+        Scoped via ``NESTED_AGENT_ACCORDION_DETAILS`` — expands the
+        accordion first if it isn't already (details unmount from the DOM
+        while collapsed, per ``SubAgentAccordion.jsx``'s
+        ``slotProps={{transition: {unmountOnExit: true}}}``).
+
+        Args:
+            agent_name: Exact name of the invoked sub-agent.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.expand_nested_agent_accordion(agent_name, timeout=timeout)
+        details = self.page.locator(self.NESTED_AGENT_ACCORDION_DETAILS.format(agent_name))
+        details.wait_for(state="visible", timeout=timeout)
+        return details
+
+    def get_nested_agent_tool_chip_locator(
+        self, agent_name: str, toolkit_name: str | None = None, timeout: int = 10000
+    ) -> Locator:
+        """Return the Locator for ``chat-answer-tool-chip`` elements inside the
+        nested sub-agent accordion for *agent_name*.
+
+        **Two DISTINCT chips share this testid inside the same details
+        container** (confirmed live, ELITEA-1951 implementation) — DOM order:
+        (1) the PARENT's own "called this agent as a tool" chip, text is just
+        the bare agent name (never changes — it's not a toolkit/tool call, so
+        there is no "{toolkit}: {tool}" segment to fill in); (2) the
+        sub-agent's OWN nested MCP tool-call chip, text
+        "{toolkit}: {tool} ({agent})". Pass *toolkit_name* to filter to
+        chip (2) specifically — omitting it (or using ``.first``) risks
+        matching chip (1) instead, which is a real implementation mistake
+        this case's own AFS didn't flag (its documented DOM order didn't
+        mention chip (1) as living inside the details container too).
+
+        Returns the LOCATOR, not read text — the chip's final "{toolkit}: {tool}
+        ({agent})" text fills in progressively while the sub-agent's own tool
+        call resolves (a bare ``.text_content()`` right after visibility can
+        catch an in-flight intermediate render). Callers should poll for the
+        expected text via ``expect(locator.first).to_contain_text(...)``
+        before reading it.
+
+        Args:
+            agent_name: Exact name of the invoked sub-agent.
+            toolkit_name: If given, filter to the chip whose text contains
+                this toolkit name (disambiguates from the agent-name-only chip).
+            timeout: Maximum wait time in milliseconds.
+        """
+        details = self.get_nested_agent_accordion_details(agent_name, timeout=timeout)
+        chips = details.locator(self.CHAT_ANSWER_TOOL_CHIP_SELECTOR)
+        if toolkit_name:
+            chips = chips.filter(has_text=toolkit_name)
+        return chips
+
+    def get_nested_agent_tool_chip_texts(
+        self, agent_name: str, toolkit_name: str | None = None, timeout: int = 10000
+    ) -> list[str]:
+        """Return the text of every ``chat-answer-tool-chip`` inside the
+        nested sub-agent accordion for *agent_name* — pass *toolkit_name* to
+        filter to the sub-agent's own MCP tool-call chip specifically (see
+        :meth:`get_nested_agent_tool_chip_locator`'s docstring: TWO chips
+        share this testid, only one of them is a toolkit/tool call).
+
+        Reads a snapshot of CURRENT text — callers that need the tool call's
+        FINAL, settled text should poll via
+        :meth:`get_nested_agent_tool_chip_locator` + ``expect(...).to_contain_text()``
+        first (see that method's docstring for why).
+        """
+        chips = self.get_nested_agent_tool_chip_locator(
+            agent_name, toolkit_name=toolkit_name, timeout=timeout
+        )
+        chips.first.wait_for(state="visible", timeout=timeout)
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
+    def get_nested_agent_model_chip_texts(self, agent_name: str, timeout: int = 10000) -> list[str]:
+        """Return the text of every ``chat-answer-model-chip`` inside the
+        nested sub-agent accordion for *agent_name*.
+        """
+        details = self.get_nested_agent_accordion_details(agent_name, timeout=timeout)
+        chips = details.locator(self.CHAT_ANSWER_MODEL_CHIP_SELECTOR)
+        chips.first.wait_for(state="visible", timeout=timeout)
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
 
     # ------------------------------------------------------------------
     # Run History panel (ELITEA-1877)
