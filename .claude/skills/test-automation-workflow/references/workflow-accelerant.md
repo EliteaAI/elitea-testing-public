@@ -550,11 +550,14 @@ gradient, and each step up needs more care:
      way-of-work is a scope statement, not an implementation detail.
 
    **Cases are not the only shape.** Atomic fixes, batched fixes, framework
-   improvements, a suite-health sweep all fit the same skeleton — only the
-   investigation step differs (reproduce a failure rather than execute a
-   case); build → review → integrate → gate is unchanged, and the outcome
-   vocabulary already covers it. `batch-stabilize` is the shipped instance of
-   that variation; copy its shape rather than inventing a new one.
+   improvements, a suite-health sweep, a tech-debt batch all fit the same
+   skeleton — only the investigation step differs (reproduce a failure or
+   read the code rather than execute a case); build → review → integrate →
+   gate is unchanged, and the outcome vocabulary already covers it. Each
+   non-case unit carries a [tech-task brief](tech-task-brief.md) where the
+   AFS would be — the reviewer's triangulation artifact and the gate's run
+   set. `batch-stabilize` is the shipped instance of that variation; copy
+   its shape rather than inventing a new one.
 
    Two authoring mistakes are common enough to name, because neither fails
    loudly:

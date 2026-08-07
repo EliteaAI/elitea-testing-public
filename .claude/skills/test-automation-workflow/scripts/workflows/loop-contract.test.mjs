@@ -106,7 +106,7 @@ test('every workflow tells every worker to run long jobs in the foreground', () 
 test('the gate slots carry the rule, not just the implementers', () => {
   // batch-build's gate + batch-campaign's mini-gate each state it inline.
   const gateBuild = build.slice(build.indexOf('Hardening gate for batch'));
-  assert.match(gateBuild.slice(0, 4000), /FOREGROUND_RULE/);
+  assert.match(gateBuild.slice(0, 5500), /FOREGROUND_RULE/);
   const miniGate = campaign.slice(campaign.indexOf('Mini-gate for the campaign foundation'));
   assert.match(miniGate.slice(0, 3000), /FOREGROUND_RULE/);
 });

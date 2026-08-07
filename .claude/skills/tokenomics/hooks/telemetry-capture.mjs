@@ -41,6 +41,7 @@ const IDLE_GAP_MS = 30 * 60 * 1000;   // same active-time rule as efficiency-aud
 const PROMPT_MAX_CHARS = 200;
 const PROMPT_MAX_COUNT = 100;
 const LIVE_GRACE_MS = 2 * 60 * 1000;  // a transcript touched this recently is likely still running
+const RECAPTURE_MARGIN_MS = 5 * 60 * 1000; // source-file growth beyond the recorded end that means "the session continued"
 export const USD_PER_CREDIT = 0.01;   // GitHub's published AI-credit conversion
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -753,6 +754,14 @@ export function ensureSink(otel, env = process.env) {
  * Bounded to `max` new captures per invocation unless `all` (a first run after
  * install can face a month of history; a hook must stay quick). Skips
  * transcripts modified in the last 2 minutes — likely still running.
+ *
+ * A session already in the ledger is NOT frozen at its first snapshot: when
+ * its source file has grown past the recorded end (+margin) — a resumed /
+ * continued session that spent more after capture — it is re-parsed, and a
+ * superseding line is appended if the new `endedAt` actually advanced (the
+ * same guard the direct-capture path uses, so a stale re-parse never appends
+ * a duplicate). The report side keeps the latest line per `host:id`
+ * (team-report `dedupLines`), so totals follow the session's real life.
  */
 export function sweep(repo, { config, user, all = false, env = process.env, now = Date.now() } = {}) {
   const cfg = config ?? loadConfig(repo);
@@ -762,36 +771,58 @@ export function sweep(repo, { config, user, all = false, env = process.env, now 
   let captured = 0, skipped = 0;
   const budgetLeft = () => captured < max;
 
+  // Append only when the parsed line's end actually advanced past what the
+  // ledger already has — a grown-but-stale re-parse (mtime bumped, no new
+  // spend) must not write a duplicate row.
+  const appendIfNewer = (key, line, mtime) => {
+    const knownEnd = known.get(key);
+    const thisEnd = line.endedAt ? Date.parse(line.endedAt) : 0;
+    known.set(key, Math.max(mtime, thisEnd));
+    if (knownEnd !== undefined && thisEnd <= knownEnd) return false;
+    appendLine(repo, me, line);
+    captured++;
+    return true;
+  };
+
   // Claude: this repo's project dir(s) — top-level *.jsonl are the sessions.
   for (const projDir of claudeProjectDirs(repo, env)) {
     let files;
     try { files = readdirSync(projDir).filter((f) => f.endsWith('.jsonl')); } catch { continue; }
     for (const f of files.sort()) {
       const id = basename(f, '.jsonl');
-      if (known.has(`claude:${id}`)) continue;
-      if (!budgetLeft()) { skipped++; continue; }
       const full = join(projDir, f);
+      let mtime;
+      try { mtime = statSync(full).mtimeMs; } catch { continue; }
+      if (now - mtime < LIVE_GRACE_MS) continue; // likely live
+      const knownEnd = known.get(`claude:${id}`);
+      if (knownEnd !== undefined && mtime <= knownEnd + RECAPTURE_MARGIN_MS) continue; // captured, no growth since
+      if (!budgetLeft()) { skipped++; continue; }
       try {
-        if (now - statSync(full).mtimeMs < LIVE_GRACE_MS) continue; // likely live
         const line = captureClaudeSession(repo, full, id, { config: cfg, user: me });
-        if (line) { appendLine(repo, me, line); known.set(`claude:${id}`, 0); captured++; }
+        if (line) appendIfNewer(`claude:${id}`, line, mtime);
       } catch { /* one bad transcript never stops the sweep */ }
     }
   }
 
   // Copilot: pooled store, cwd-filtered by a bounded head probe before parsing.
+  // No live-grace here — captureCopilotSession returns null until the stream
+  // carries a session.shutdown, and a resumed session writes a NEW shutdown
+  // (last one wins), which is exactly what the growth re-capture picks up.
   for (const root of copilotRoots(repo, env)) {
     let ids;
     try { ids = readdirSync(root); } catch { continue; }
     for (const id of ids.sort()) {
-      if (known.has(`copilot:${id}`)) continue;
       const eventsPath = join(root, id, 'events.jsonl');
       if (!existsSync(eventsPath)) continue;
+      let mtime;
+      try { mtime = statSync(eventsPath).mtimeMs; } catch { continue; }
+      const knownEnd = known.get(`copilot:${id}`);
+      if (knownEnd !== undefined && mtime <= knownEnd + RECAPTURE_MARGIN_MS) continue; // captured, no growth since
       if (!sameCwdOrUnder(firstCwdOfEvents(eventsPath), repo)) continue;
       if (!budgetLeft()) { skipped++; continue; }
       try {
         const line = captureCopilotSession(repo, eventsPath, id, { config: cfg, user: me });
-        if (line) { appendLine(repo, me, line); known.set(`copilot:${id}`, 0); captured++; }
+        if (line) appendIfNewer(`copilot:${id}`, line, mtime);
       } catch { /* ditto */ }
     }
   }
@@ -800,9 +831,7 @@ export function sweep(repo, { config, user, all = false, env = process.env, now 
   // hash's workspace.json (both directions — the workspace may be the repo, a
   // subfolder, or a parent monorepo folder). These files have no completion
   // marker, so a session captured mid-life is simply RE-captured once the file
-  // grows (mtime newer than the recorded end) — the report's latest-wins dedup
-  // keeps the final line.
-  const VSCODE_RECAPTURE_MARGIN_MS = 5 * 60 * 1000;
+  // grows (mtime newer than the recorded end) — same growth rule as above.
   for (const root of vscodeStorageRoots(repo, env, cfg)) {
     let hashes;
     try { hashes = readdirSync(root); } catch { continue; }
@@ -821,7 +850,7 @@ export function sweep(repo, { config, user, all = false, env = process.env, now 
         try { mtime = statSync(full).mtimeMs; } catch { continue; }
         if (now - mtime < LIVE_GRACE_MS) continue; // likely mid-chat
         const knownEnd = known.get(key);
-        if (knownEnd !== undefined && mtime <= knownEnd + VSCODE_RECAPTURE_MARGIN_MS) continue; // no growth
+        if (knownEnd !== undefined && mtime <= knownEnd + RECAPTURE_MARGIN_MS) continue; // no growth
         if (!budgetLeft()) { skipped++; continue; }
         try {
           const line = captureVsCodeSession(repo, full, id, { config: cfg, user: me });

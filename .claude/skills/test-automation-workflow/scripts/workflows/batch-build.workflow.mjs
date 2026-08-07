@@ -1268,7 +1268,7 @@ if (!ANALYZE_ONLY && !SKIP_GATE && merged.length) {
     // by BLAST RADIUS rather than running the whole suite: a full suite is
     // hours, and the specs that can plausibly break are the ones that share the
     // code this batch touched.
-    `THEN, ONCE (not ${GATE_N}×), run the specs this batch could have BROKEN. Find them mechanically, do not guess: \`git diff --name-only ${BASE}...${gateBranch}\` and keep the NON-spec files (page objects, fixtures, helpers, config); the affected specs are the ones importing them. If the batch only ADDED spec files and touched nothing shared, there is no blast radius and this run is unnecessary — say so in notes. A red here is a REGRESSION and belongs in failures[] like any other, flagged in notes as pre-existing-code rather than new-code. ` +
+    `THEN, ONCE (not ${GATE_N}×), run the specs this batch could have BROKEN. Scope by what CHANGED, not what was touched. Read the non-spec diff (\`git diff ${BASE}...${gateBranch}\` — page objects, fixtures, helpers, config) HUNK BY HUNK: a hunk that only ADDS something new (a method, a locator, a constant nothing existing calls) has NO blast radius — new code cannot break a spec that never calls it; a hunk that MODIFIES or deletes something that existed names an impacted symbol (the hunk header shows the enclosing function), and the impacted specs are the ones that REACH that symbol — search by symbol name, one hop through shared helpers — NEVER every spec importing the file (import-level selection has over-run 5-10x live and stalled the gate). Import shuffles and formatting churn are no-ops. Run the impacted set once, selected by node-id/spec, never by directory. All hunks additive: there is no blast radius and this run is unnecessary — say so in notes. A modified symbol in a base class or fixture that everything reaches makes the big set REAL — report its size and estimated runtime in notes and let the lead decide run-vs-sample rather than silently burning the hour. A red here is a REGRESSION and belongs in failures[] like any other, flagged in notes as pre-existing-code rather than new-code. ` +
     'Report both scopes in notes: how many specs the N× run covered, and how many the regression run covered. ' +
     `When you are done, LEAVE THE TREE ON ${gateBranch} — \`git checkout ${gateBranch}\` after the script's detached run — because the next step assumes it is there. ` +
     'On red: read the runner\'s STRUCTURED report (JSON/HTML) for per-spec verdicts rather than log-diving, and return one failures[] entry per failing spec with its failure signature and, where the spec names them, the case ids it covers. ' +
@@ -1288,12 +1288,15 @@ if (!ANALYZE_ONLY && !SKIP_GATE && merged.length) {
     // A green gate proves the specs it COUNTED. A case carrying a red-by-design
     // test was deliberately excluded from that count, so the gate says nothing
     // about it — reporting it `automated` would claim proof the run never had.
-    // It is blocked on its ticket, and re-enters a batch when the product ships.
+    // Nor is it `blocked`: its red is pre-declared on a ticket, it merged with
+    // the batch, and it re-enters when the product ships — that is its own
+    // terminal outcome, `merged-sanctioned-red`, so audits stop reading a
+    // deliberate, ticketed red as an unproven or failed unit.
     let autoCount = 0
     for (const id of integratedIds) {
       const red = OUTCOME[id]._expectedRed
       if (red?.length) {
-        record(id, { outcome: 'blocked', note: `red by design pending ${red.map((r) => r.ticket).join(', ')} — the gate ran it but could not count it; re-enter once the product ships` })
+        record(id, { outcome: 'merged-sanctioned-red', note: `red by design pending ${red.map((r) => r.ticket).join(', ')} — the gate ran it but could not count it; merged with the batch, re-enter once the product ships` })
         continue
       }
       record(id, { outcome: 'automated', gate: { runs: gate.runs, seconds: gate.seconds ?? [] } })

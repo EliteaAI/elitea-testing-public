@@ -102,7 +102,7 @@ assertion across rows, or a case id with no row, is `CHANGES_REQUESTED`.
 2. **AFS** at `test-specs/<feature>/l*_<id>.md` — the analyst's translation of (1).
 3. **Implementation** — the PR diff, the spec, the page-object changes.
 
-This triangle governs pipeline PRs born from a case. For a **case-less audit** — legacy or AI-generated tests with no TMS provenance — review against § Standing reviewer checks and record the missing upstream contract as a finding; don't refuse the review for lack of a case.
+This triangle governs pipeline PRs born from a case. For a **technical unit** — tech-debt, a migration, a config or reporting fix dispatched on a [tech-task brief](tech-task-brief.md) — the triangle holds with substitutions: **source item ↔ brief ↔ diff**. The brief sits where the AFS sits, its acceptance criteria are ticked the way Coverage Map rows are (every criterion demonstrably met in the diff, or `CHANGES_REQUESTED`), and its **Out of scope** section is the drift check — a diff touching what the brief excluded is scope creep to flag, not initiative to reward. For a **case-less audit** — legacy or AI-generated tests with no TMS provenance and no brief — review against § Standing reviewer checks and record the missing upstream contract as a finding; don't refuse the review for lack of a case.
 
 A reviewer who looks only at AFS ↔ implementation is doing half the job — they miss the class of bug where the AFS itself drifted from the TMS case. Three failure modes, three responses:
 

@@ -123,10 +123,19 @@ are never priced by estimate.
 
 - **A hard-killed Claude session** misses its SessionEnd; the next capture's
   sweep picks it up from disk (bounded by transcript retention).
-- **Forked/resumed sessions** replay their parent's records; a fork's line can
-  double-count replayed tokens. The ledger's grain is honest-per-session, not
-  forensically deduped across forks — efficiency-audit on live transcripts is
-  the precision tool while they exist.
+- **A continued session updates its line — on every host.** A session that
+  spends more after its first capture (resumed, `--continue`d, or simply
+  ended again with more context and tool calls) is re-captured once its
+  source file grows past the recorded end: SessionEnd firing again appends a
+  superseding line directly, and the sweep re-checks known sessions for
+  growth (never appending unless the parsed end actually advanced). The
+  report's latest-wins dedup keeps the final line, so totals follow the
+  session's whole life, not its first snapshot.
+- **Forked sessions** (a NEW session id replaying the parent's records) are
+  the remaining caveat: the fork's line can double-count replayed tokens.
+  The ledger's grain is honest-per-session, not forensically deduped across
+  forks — efficiency-audit on live transcripts is the precision tool while
+  they exist.
 - **Copilot parent-session roles need CLI ≥1.0.63** (the `subagent.selected`
   event, verified live). Sessions from older CLIs carry `role: null` —
   attribute those by user/branch, or by their named sub-agent roles.
@@ -134,9 +143,9 @@ are never priced by estimate.
   is git. If the org later wants Langfuse/OTel dashboards, export the JSONL —
   the format is sink-agnostic by design.
 - **VS Code sidebar sessions have no completion marker** — a session captured
-  mid-life is re-captured once its file grows past the recorded end; the
-  report's latest-wins dedup keeps the final line. Files from extensions
-  <0.57.0 carry tokens but no `copilotCredits` → honest tokens-only lines.
+  mid-life is re-captured via the same growth rule as above. Files from
+  extensions <0.57.0 carry tokens but no `copilotCredits` → honest
+  tokens-only lines.
   The sweep searches every VS Code variant/OS location (the discovery matrix
   in [`references/otel-roadmap.md`](references/otel-roadmap.md)); Windows and
   WSL/`vscode-server` paths are designed in but still need one live

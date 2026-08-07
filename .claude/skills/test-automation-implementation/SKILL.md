@@ -40,6 +40,8 @@ Missing context → flag the gap; don't fabricate defaults.
 - Conditional: `defect-found` — only under the Phase 1 gate table's conditions (the defect is filed and the remaining flow is automatable); otherwise it ends at the orchestrator.
 - Refuse: `already-covered` (no implementation needed — traceability AFS only), `blocked`, `un-automatable`, `out-of-scope-by-author`.
 
+**Brief-driven dispatch (work that isn't a case).** The orchestrator may dispatch this slot on a [tech-task brief](../test-automation-workflow/references/tech-task-brief.md) instead of an AFS — a technical unit (tech-debt, a stable-handle migration, a config or reporting fix) with no TMS case behind it. Same loop, three substitutions: Phase 1 absorbs the brief (scope, out-of-scope, acceptance criteria) instead of walking a Coverage Map — a brief missing a required section goes back to the orchestrator naming the section, the same move as `needs-analyst-rerun` aimed at the brief's author; Phase 2 explores by reproducing the failure or reading the code the brief names; Phase 4 runs the brief's **Verification** set (its blast-radius specs) green once locally instead of a new spec. Everything else — Hard Rules, context economy, retry budget, Run Report, return contract — applies unchanged. The dispatch passes the brief path where the AFS path would go, and adjacent debt spotted mid-build returns as a finding, never as silent scope widening.
+
 **Per-case parameters** (caller provides at dispatch time):
 
 - TMS case ID

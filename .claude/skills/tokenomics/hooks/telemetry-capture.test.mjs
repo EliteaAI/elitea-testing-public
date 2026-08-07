@@ -204,8 +204,11 @@ test('sweep: harvests unknown sessions, skips known ids, respects maxSweep and l
     writeClaudeFixture(claudeRoot, id, { withSub: false });
     utimesSync(join(claudeRoot, `${id}.jsonl`), old, old);
   }
-  // s-c is already in the ledger — must be skipped.
-  appendLine(repo, 'tester', { v: 1, host: 'claude', id: 's-c', endedAt: '2026-07-30T10:40:00Z' });
+  // s-c is fully captured (ledger end == transcript end) and its file hasn't
+  // grown past that end + margin — must be skipped without a re-parse.
+  appendLine(repo, 'tester', { v: 1, host: 'claude', id: 's-c', endedAt: '2026-07-30T10:40:10Z' });
+  const cDate = new Date('2026-07-30T10:41:00Z');
+  utimesSync(join(claudeRoot, 's-c.jsonl'), cDate, cDate);
   // s-d looks live (fresh mtime) — must be deferred.
   writeClaudeFixture(claudeRoot, 's-d', { withSub: false });
 
@@ -217,6 +220,66 @@ test('sweep: harvests unknown sessions, skips known ids, respects maxSweep and l
   assert.equal(r2.captured, 1); // the remaining old one; s-c known, s-d live
   const ids = readRecords(ledgerPath(repo, 'tester')).map((l) => l.id).sort();
   assert.deepEqual(ids, ['s-a', 's-b', 's-c']);
+});
+
+test('sweep: re-captures a claude session that continued after its first capture', () => {
+  const repo = tmp();
+  const claudeRoot = tmp();
+  writeClaudeFixture(claudeRoot, 's-grow', { withSub: false });
+  // First capture happened mid-life: ledger end 10:02, but the transcript now
+  // runs to 10:40:10 and the file was written well past end + margin.
+  appendLine(repo, 'tester', { v: 1, host: 'claude', id: 's-grow', endedAt: '2026-07-30T10:02:00Z' });
+  const grown = new Date('2026-07-30T10:45:00Z');
+  utimesSync(join(claudeRoot, 's-grow.jsonl'), grown, grown);
+
+  const env = { TOKENOMICS_CLAUDE_ROOT: claudeRoot };
+  const r1 = sweep(repo, { config: CFG, user: 'tester', env });
+  assert.equal(r1.captured, 1, 'grown transcript is re-captured');
+  const lines = readRecords(ledgerPath(repo, 'tester')).filter((l) => l.id === 's-grow');
+  assert.equal(lines.length, 2, 'superseding line appended, old one kept (reports dedup latest-wins)');
+  assert.equal(lines[1].endedAt, '2026-07-30T10:40:10.000Z');
+  assert.deepEqual(lines[1].tokens, { input: 300, output: 100, cacheRead: 2000, cacheWrite: 100 });
+
+  // No further growth: mtime (10:45) is inside the new end (10:40:10) + margin.
+  const r2 = sweep(repo, { config: CFG, user: 'tester', env });
+  assert.equal(r2.captured, 0, 'no growth since the re-capture → nothing appended');
+});
+
+test('sweep: re-captures a resumed Copilot session after its second shutdown', () => {
+  const repo = tmp();
+  const copRoot = tmp();
+  mkdirSync(join(copRoot, 'cop-grow'), { recursive: true });
+  const events = join(copRoot, 'cop-grow', 'events.jsonl');
+  writeFileSync(events, jsonl(copilotEvents({ cwd: repo })));
+  const env = { TOKENOMICS_CLAUDE_ROOT: tmp(), TOKENOMICS_COPILOT_ROOT: copRoot };
+  const r1 = sweep(repo, { config: CFG, user: 'tester', env });
+  assert.equal(r1.captured, 1);
+
+  // The session is resumed: more events land and a SECOND shutdown carries the
+  // updated billed totals (last shutdown wins).
+  appendFileSync(events, jsonl([
+    { type: 'assistant.message', timestamp: '2026-07-30T09:29:00Z', data: {} },
+    {
+      type: 'session.shutdown', timestamp: '2026-07-30T09:30:00Z',
+      data: {
+        totalNanoAiu: 30000000000,
+        modelMetrics: { 'gpt-5': { usage: { inputTokens: 9000, outputTokens: 700, cacheReadTokens: 100, cacheWriteTokens: 10 } } },
+      },
+    },
+  ]));
+  const grown = new Date('2026-07-30T09:35:00Z');
+  utimesSync(events, grown, grown);
+
+  const r2 = sweep(repo, { config: CFG, user: 'tester', env });
+  assert.equal(r2.captured, 1, 'resumed session re-captured after growth');
+  const lines = readRecords(ledgerPath(repo, 'tester')).filter((l) => l.id === 'cop-grow');
+  assert.equal(lines.length, 2);
+  assert.ok(Math.abs(lines[1].costUsd - 30 * USD_PER_CREDIT) < 1e-9, 'cost follows the latest billed figure');
+  assert.equal(lines[1].tokens.input, 8000, '9000 session − 1000 sub-agent');
+  assert.equal(lines[1].endedAt, '2026-07-30T09:30:00.000Z');
+
+  const r3 = sweep(repo, { config: CFG, user: 'tester', env });
+  assert.equal(r3.captured, 0, 'stable after the re-capture');
 });
 
 test('main: direct capture appends once, re-run with unchanged transcript is a no-op', () => {

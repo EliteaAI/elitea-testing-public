@@ -1,7 +1,7 @@
 ---
 name: session-retrospective
 description: Use when asked to run a retrospective, mine past sessions, or improve the team from what already happened — turning prior Claude Code conversations and sub-agent sessions into proposed memory and workflow updates. Used by scout.
-compatibility: Requires Node 18+. **Claude Code:** reads ~/.claude/projects/<encoded-cwd>/*.jsonl plus each session's subagents/ tree. **GitHub Copilot:** pass `--host copilot` (auto-detected when Claude has nothing for the project) — reads ~/.copilot/session-state/*/events.jsonl, also $COPILOT_HOME and a repo-local ./.copilot. The analysis is identical on both: copilot-events.mjs transcodes Copilot's event stream into the same records, so signals, sub-agent summaries and dispatch fingerprints work unchanged.
+compatibility: "Requires Node 18+. **Claude Code:** reads ~/.claude/projects/<encoded-cwd>/*.jsonl plus each session's subagents/ tree. **GitHub Copilot:** pass `--host copilot` (auto-detected when Claude has nothing for the project) — reads ~/.copilot/session-state/*/events.jsonl, also $COPILOT_HOME and a repo-local ./.copilot. The analysis is identical on both: copilot-events.mjs transcodes Copilot's event stream into the same records, so signals, sub-agent summaries and dispatch fingerprints work unchanged."
 license: Apache-2.0
 metadata:
   authors:
