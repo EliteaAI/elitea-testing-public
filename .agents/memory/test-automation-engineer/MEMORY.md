@@ -40,3 +40,4 @@
 - [is_visible(timeout=) does not poll](locator_is_visible_timeout_kwarg_does_not_poll.md) — one-shot read, kwarg ignored; use .wait_for(state="visible") to actually wait
 - [Catalog Start Chat needs extra wait (#1043)](catalog_start_chat_1043_needs_extra_wait.md) — open_agent_by_name()'s wait alone isn't enough; add wait_for_timeout(1000) before click_start_chat()
 - [reasoning_effort:"none" agent silently no-ops chat send](reasoning_effort_none_agent_silently_no_ops_chat_send.md) — use plain create_agent() for any test that actually sends a message
+- [Nested agent attach/accordion quirks](nested_agent_attach_and_accordion_quirks.md) — attach_agent_by_testid() over attach_agent(); expect_response() over capture_requests_matching(); two tool-chips share one testid
