@@ -291,6 +291,23 @@ def _is_known_defect_538(msg) -> bool:
     )
 
 
+# Known defect #554 (already filed, unrelated) — an RTK-Query timing race in
+# EliteaUI/src/api/toolkits.js's `toolkitTypes` endpoint fires before
+# `useSelectedProjectId()` resolves, building the URL with an empty projectId
+# segment (".../toolkits/prompt_lib/") which 404s. Intermittent (client-side
+# race, not deterministic) and unrelated to the Tags save/reload flows this
+# filter is applied to — surfaced non-deterministically on the batch's own
+# hardening-gate runs (elitea-testing-public#1277). SAME filter technique
+# already established in test_credential_search_by_name.py /
+# test_credential_create.py / test_agent_publish_unpublish_version.py —
+# matched on msg.location.url containing the toolkits endpoint path, NOT a
+# blanket "any 404" filter, so an unrelated 404 from a genuinely different
+# resource still surfaces as a real, unexpected failure.
+def _is_known_554_warning(msg) -> bool:
+    location_url = (msg.location or {}).get("url", "")
+    return "404" in msg.text and "elitea_core/toolkits/prompt_lib/" in location_url
+
+
 class TestCreateAgent:
     """Create Agent (P0): create via UI, verify in list and via API."""
 
@@ -1161,7 +1178,9 @@ class TestAgentActions:
         page.on(
             "console",
             lambda msg: console_messages.append(msg)
-            if msg.type in ("error", "warning") and not _is_known_defect_538(msg)
+            if msg.type in ("error", "warning")
+            and not _is_known_defect_538(msg)
+            and not _is_known_554_warning(msg)
             else None,
         )
         save_requests = detail_page.capture_requests_matching(
@@ -1265,7 +1284,9 @@ class TestAgentActions:
         page.on(
             "console",
             lambda msg: console_messages.append(msg)
-            if msg.type in ("error", "warning") and not _is_known_defect_538(msg)
+            if msg.type in ("error", "warning")
+            and not _is_known_defect_538(msg)
+            and not _is_known_554_warning(msg)
             else None,
         )
         save_requests = detail_page.capture_requests_matching(

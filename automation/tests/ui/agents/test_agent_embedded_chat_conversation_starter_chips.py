@@ -68,6 +68,31 @@ def _is_save_response(response: Response) -> bool:
     )
 
 
+# Known defect #554 (already filed, unrelated) — an RTK-Query timing race in
+# EliteaUI/src/api/toolkits.js's `toolkitTypes` endpoint fires before
+# `useSelectedProjectId()` resolves, building the URL with an empty
+# projectId segment (".../toolkits/prompt_lib/") which 404s. Intermittent
+# (client-side race, not deterministic) and unrelated to the conversation-
+# starter-chips flow this filter is applied to — applied defensively (this
+# test navigates a full agent-detail page load, the same trigger condition
+# #554 documents as reproducible on "any page render"), matching the
+# batch's own hardening-gate findings (elitea-testing-public#1277). SAME
+# filter technique already established in test_credential_search_by_name.py
+# / test_agent_publish_unpublish_version.py — matched on msg.location.url
+# containing the toolkits endpoint path, NOT a blanket "any 404" filter, so
+# an unrelated 404 from a genuinely different resource still surfaces as a
+# real, unexpected failure.
+#
+# NOTE: applied at the assertion site (below), not inside
+# ``AgentDetailPage.capture_console_errors()`` — that helper is shared
+# base_page.py code with 30+ callers across the whole suite, well outside
+# this batch's scope; filtering only the collected list here keeps the
+# change additive and confined to this file.
+def _is_known_554_toolkits_404(msg) -> bool:
+    location_url = (msg.location or {}).get("url", "")
+    return "404" in msg.text and "elitea_core/toolkits/prompt_lib/" in location_url
+
+
 class TestConversationStarterChipsVisibleAndClickable:
     """Conversation starter chips visible before any message + clickable
     (ELITEA-1886, p2)."""
@@ -215,8 +240,12 @@ class TestConversationStarterChipsVisibleAndClickable:
                 response_text = detail_page.get_last_chat_response_text()
                 assert response_text != "", "Agent response should be non-empty"
 
-            assert not console_errors, (
-                f"Unexpected console errors during the run: {[m.text for m in console_errors]}"
+            unexpected_console_errors = [
+                m for m in console_errors if not _is_known_554_toolkits_404(m)
+            ]
+            assert not unexpected_console_errors, (
+                "Unexpected console errors during the run: "
+                f"{[m.text for m in unexpected_console_errors]}"
             )
             assert not failed_responses, f"Unexpected 4xx/5xx responses: {failed_responses}"
         finally:

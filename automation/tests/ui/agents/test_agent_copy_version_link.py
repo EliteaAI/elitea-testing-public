@@ -134,6 +134,25 @@ def _version_id_segment(url: str, agent_id) -> str | None:
     return segment or None
 
 
+# Known defect #554 (already filed, unrelated) — an RTK-Query timing race in
+# EliteaUI/src/api/toolkits.js's `toolkitTypes` endpoint fires before
+# `useSelectedProjectId()` resolves, building the URL with an empty
+# projectId segment (".../toolkits/prompt_lib/") which 404s. Intermittent
+# (client-side race, not deterministic) and unrelated to the copy-version-
+# link flow this filter is applied to — applied defensively (this test
+# navigates full agent-detail page loads, the same trigger condition #554
+# documents as reproducible on "any page render"), matching the batch's own
+# hardening-gate findings (elitea-testing-public#1277). SAME filter
+# technique already established in test_credential_search_by_name.py /
+# test_agent_publish_unpublish_version.py — matched on msg.location.url
+# containing the toolkits endpoint path, NOT a blanket "any 404" filter, so
+# an unrelated 404 from a genuinely different resource still surfaces as a
+# real, unexpected failure.
+def _is_known_554_toolkits_404(msg) -> bool:
+    location_url = (msg.location or {}).get("url", "")
+    return "404" in msg.text and "elitea_core/toolkits/prompt_lib/" in location_url
+
+
 class TestAgentCopyVersionLink:
     """Copy version link produces a version-specific URL (ELITEA-1898, l2/p2)."""
 
@@ -194,7 +213,9 @@ class TestAgentCopyVersionLink:
         console_issues = []
         page.on(
             "console",
-            lambda msg: console_issues.append(msg) if msg.type == "error" else None,
+            lambda msg: console_issues.append(msg)
+            if msg.type == "error" and not _is_known_554_toolkits_404(msg)
+            else None,
         )
 
         try:
@@ -281,7 +302,9 @@ class TestAgentCopyVersionLink:
                 new_page = page.context.new_page()
                 new_page.on(
                     "console",
-                    lambda msg: console_issues.append(msg) if msg.type == "error" else None,
+                    lambda msg: console_issues.append(msg)
+                    if msg.type == "error" and not _is_known_554_toolkits_404(msg)
+                    else None,
                 )
                 try:
                     new_detail_page = AgentDetailPage(new_page)
