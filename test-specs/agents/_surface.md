@@ -379,3 +379,21 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   [EliteaAI/elitea-testing-public#1288](https://github.com/EliteaAI/elitea-testing-public/issues/1288)
   — sibling of [#1218](https://github.com/EliteaAI/elitea-testing-public/issues/1218) (ELITEA-2356, same
   "Copy Link" → "Share" pattern, different surface: Agent Hub modal overflow menu).
+
+## Create Agent form (`/agents/create`, ELITEA-1900 run, 2026-08-07)
+- `agent-name-input` / `agent-description-input` / `agent-save-button` all pre-existing on **main**
+  AND `automation/testids` — confirmed via `git grep` this run, no testid work needed for this area.
+- Name field enforces `MAX_NAME_LENGTH = 32` (`EliteaUI/src/common/constants.js:66`) via the native
+  HTML `maxlength` attribute on `agent-name-input` (`CreateAgentForm.jsx:135`) — purely client-side,
+  synchronous, no network round-trip. Confirmed both via `fill()` (bulk truncation) and real
+  keystroke-by-keystroke typing past the boundary (extra chars silently rejected, value stays fixed).
+  **No length-based validation error exists for Name at all** — only the `required`-empty case sets
+  `formik.errors.name`; `aria-invalid` stays `"false"` all the way up to and at the 32-char limit.
+- Name field's character counter (`Text.CharacterCounter`, `CreateAgentForm.jsx:139-146`) shows
+  "0 characters left" at the boundary but has **no `data-testid`** wired at this call site — the
+  shared `CharacterCounter.jsx` component DOES support a `dataTestId` prop
+  (`EliteaUI/src/[fsd]/shared/ui/text/CharacterCounter.jsx:12,20`), so it's a threading gap, not a
+  missing-capability gap. Not needed for length/error assertions (use `aria-invalid` on the input
+  itself instead) — only add a testid here if a future case needs to assert the counter text directly.
+- Save button gating is independent per-field: disabled until BOTH Name and Description are non-empty
+  (both `required`); Name being at-limit (32/32) does not itself disable Save.
