@@ -6,7 +6,9 @@ URL: /pipelines/all
 """
 
 import logging
+
 from playwright.sync_api import Page
+
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
 
@@ -48,6 +50,23 @@ class PipelinesListPage(BasePage):
         testid="pipeline-card-view",
         fallback=lambda page: page.locator('[aria-label="Card list view"] button'),
         description="Switch to card view button"
+    )
+
+    # Shared SearchBar.jsx component testid (also used by MCP/Credentials/
+    # Skills/Toolkits list pages) — same generic testid, ELITEA-2023 AFS
+    # Concrete Handles.
+    search_clear_button = LocatorDescriptor(
+        testid="search-clear-button",
+        description="Search clear (X) icon — shared SearchBar, generic testid",
+    )
+
+    # Shared Card.jsx component testid (also used by Agents/Credentials/Mcp/
+    # Skills list pages — see AgentsListPage.entity_card_name for the
+    # identical collection-locator pattern) — collection locator, one per
+    # visible pipeline card.
+    entity_card_name = LocatorDescriptor(
+        testid="entity-card-name",
+        description="Pipeline card name (title) — collection locator, one per visible card",
     )
 
     def __init__(self, page: Page):
@@ -119,16 +138,59 @@ class PipelinesListPage(BasePage):
         except Exception:
             return False
 
+    def get_card_names(self, timeout: int = 5000) -> list[str]:
+        """Return the exact name text of every currently visible pipeline card.
+
+        Reads each card's own ``text_content()`` off the ``entity-card-name``
+        testid rather than matching a raw ``text="..."`` selector (as
+        :meth:`pipeline_exists_in_list` does) — needed because an active
+        search highlights the matched substring by splitting the name across
+        nested ``<span>`` fragments (shared ``Card.jsx``/highlight component);
+        confirmed live (ELITEA-2023 implementer Phase 2) that Playwright's
+        exact ``text="..."`` locator engine does NOT match the parent
+        element's concatenated text in that split-node case, even though
+        ``element.textContent`` is correct — a Playwright quirk, not a DOM
+        issue. Use this (with an ``in``/``==`` check) instead of
+        :meth:`pipeline_exists_in_list` when the grid may be in a filtered
+        (highlighted) state.
+
+        Args:
+            timeout: How long to wait for at least one card to render before
+                concluding the grid is empty.
+
+        Returns:
+            List of card name strings (empty list if no cards are visible).
+        """
+        try:
+            self.entity_card_name.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return []
+        return [self.entity_card_name.nth(i).text_content() or "" for i in range(self.entity_card_name.count())]
+
     def search(self, query: str):
-        """Type a search query and wait for results.
+        """Type *query* into the search box and press Enter (explicit-activation
+        control — typing alone does NOT filter the dashboard grid, per live
+        source read of shared ``SearchBar.jsx``: ``onChange`` only updates
+        local input state and opens the suggestions popover, the actual
+        filter dispatch (``onSearch()`` -> redux ``setQuery``) fires only from
+        ``onKeyDown === 'Enter'`` or the send-icon click. Mirrors
+        ``McpListPage.search()`` / ``CredentialsListPage.search()`` — same
+        shared component (ELITEA-2023 AFS § Extension target).
+
+        Filtering here is client-side against an already-fetched pipeline
+        list (no new XHR observed firing on Enter — ELITEA-2023 AFS §
+        Network Behavior), so this waits for network-idle plus a short
+        settle instead of a response predicate.
 
         Args:
             query: Text to search for.
         """
         logger.info("Searching pipelines for: %s", query)
-        self.search_input.wait_for(state="visible")
-        self.search_input.fill(query)
-        self.wait_for_search_results()
+        self.search_input.click()
+        self.search_input.press_sequentially(query, delay=20)
+        self.search_input.press("Enter")
+        self.wait_for_network()
+        self.page.wait_for_timeout(1000)  # MUI/React filter re-render settle
 
     def search_and_wait_for_results(self, query: str, timeout: int = 5000):
         """Type a search query and wait for results to update.
@@ -142,9 +204,10 @@ class PipelinesListPage(BasePage):
         self.search(query)
 
     def clear_search(self):
-        """Clear the pipelines search box and wait for results."""
-        self.search_input.fill("")
-        self.wait_for_search_results()
+        """Click the search box's Clear (X) icon and wait for the list to settle."""
+        self.search_clear_button.click()
+        self.wait_for_network()
+        self.page.wait_for_timeout(1000)  # MUI/React filter re-render settle
 
     # ------------------------------------------------------------------
     # View switching

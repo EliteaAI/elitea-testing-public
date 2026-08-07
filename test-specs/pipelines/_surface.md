@@ -2,7 +2,43 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-07 (ELITEA-2026 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-07 (ELITEA-2023 analysis).
+
+## Dashboard search — typing alone does NOT filter the grid; Enter/send-icon required (confirmed live, 2026-08-07, ELITEA-2023)
+
+- **`PipelinesListPage.search()` (as merged) never actually filters the
+  dashboard grid.** It only does `search_input.fill(query)` — no Enter, no
+  send-icon click. Per `SearchBar.jsx` (shared by Pipelines/Agents/MCP/
+  Credentials/Toolkits/Skills): typing only updates local state + opens a
+  real, API-backed **suggestions popover** (`SuggestionList.jsx`, 500ms
+  debounce); the grid-narrowing dispatch (`onSearch()`) fires ONLY on
+  `Enter` or a click on `data-testid="search-send-button"`. Confirmed live:
+  typed "YAML" + waited past debounce → grid unchanged (still 11 pipelines);
+  pressed Enter → grid narrowed to exactly 1 (`autotest_YAML_search_probe`).
+  This means `test_search_pipeline_by_name`/`test_search_pipeline_no_results`
+  (merged, `test_pipeline_management.py::TestSearchPipeline`) pass via the
+  suggestions popover, not the grid filter — real grid-filter coverage is
+  new (see `lextend_pipeline-dashboard-search-filter-and-clear_ELITEA-2023.md`).
+  Sibling pages already fixed this correctly — reuse their pattern:
+  `automation/pages/mcp_list_page.py::search()` (types, `press("Enter")`,
+  waits network + ~1.5s settle) / `credentials_list_page.py`.
+- **`search-clear-button` testid exists but has no `PipelinesListPage` field
+  yet** — confirmed live (`page.getByTestId('search-clear-button')`
+  resolves). Add `search_clear_button = LocatorDescriptor(testid="search-clear-button")`.
+- **No sibling of the MCP/#585 · Credentials/#551 "clear-from-zero-match
+  redirects to /create" defect on Pipelines** — reproduced the identical
+  trigger (search a term with zero matches → empty state → click Clear) and
+  the Pipelines dashboard correctly restores the full grid, stays on
+  `/pipelines/all`. Confirmed clean; don't assume it needs fixing too.
+- **Search-input placeholder**: exactly `Let's find something amazing!`
+  (confirmed via live accessibility snapshot, matches `SearchBar.jsx`
+  literal and the merged `search_input` LocatorDescriptor's dead `fallback=`
+  string — testid `pipeline-search-input` is what actually resolves).
+- **Case-text drift filed**: `EliteaAI/elitea-testing-public#1302` —
+  ELITEA-2023 Steps 3–4 imply live-as-you-type filtering; live product
+  needs explicit Enter/send-icon activation (same `SearchBar.jsx` mechanism
+  as ELITEA-2162's `#1114` clarification for the Chats search folder-list
+  behavior — recurring pattern across every dashboard using this component).
 
 ## YAML editor view — line numbers, copy button, `state:` key precondition (confirmed live, 2026-08-07, ELITEA-2026)
 
@@ -1064,3 +1100,37 @@ is a legitimate empty state, not an error state).
   case step requires exactly 1 timeline entry); worth a closer look if a future case
   needs to assert exact timeline-entry counts for a structured-output node.
   Full handle table + fixture recipe: `l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md`.
+
+## Pipelines dashboard — Search grid filter/clear (confirmed live, 2026-08-07, ELITEA-2023)
+
+**Resolved/added during ELITEA-2023 implementation:**
+- **`PipelinesListPage.pipeline_exists_in_list()` (legacy raw `text="..."` locator)
+  does NOT reliably match a card name while the dashboard's active search is
+  highlighting the matched substring.** Card.jsx's highlight renders the name
+  split across nested `<span>` fragments (e.g. `<span>autotest_</span><span
+  class="css-...">YAML</span><span>_search_...</span>`). `element.textContent`
+  concatenates correctly (`"autotest_YAML_search_..."`), but Playwright's exact
+  `text="..."` locator engine (`:text-is()`) does **not** match the parent on
+  that concatenated text in the split-node case — confirmed via a live
+  reproduction (`page.locator('text="<exact-name>"').count()` → `0` against the
+  identical page state where `el.textContent` was correct). This is a Playwright
+  quirk, not a DOM/app bug. **Fix:** added `PipelinesListPage.entity_card_name`
+  (`LocatorDescriptor(testid="entity-card-name")`, the same shared `Card.jsx`
+  testid used by `AgentsListPage`/`CredentialsListPage`/`McpListPage`/
+  `SkillsListPage`) + `get_card_names()`, which reads each card's own
+  `.text_content()` directly — robust to the split-node highlighting. Use
+  `get_card_names()` (membership check) instead of `pipeline_exists_in_list()`
+  whenever the grid may be in a filtered/highlighted state; `pipeline_exists_in_list()`
+  remains correct for unfiltered/baseline and absence checks (no highlighting
+  present there).
+- **`PipelinesListPage.search()`/`clear_search()` were fill-only (no Enter, no
+  Clear-icon click)** — confirmed the AFS's finding live: typing alone only opens
+  the suggestions popover, never narrows the dashboard grid; the actual filter
+  dispatch fires only on Enter or the send-icon click (shared `SearchBar.jsx`).
+  Both methods now mirror `McpListPage.search()`/`clear_search()` — click + Enter
+  for search, a new `search_clear_button` (`testid="search-clear-button"`) click
+  for clear. The two pre-existing `TestSearchPipeline` tests
+  (`test_search_pipeline_by_name`, `test_search_pipeline_no_results`) still pass
+  unchanged after this fix — confirmed green alongside the new test in the same
+  local run (determinism is the merge gate's job, not repeated local runs).
+  Full handle table + AFS: `lextend_pipeline-dashboard-search-filter-and-clear_ELITEA-2023.md`.
