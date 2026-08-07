@@ -5860,6 +5860,16 @@ class ChatPage(BasePage):
         regardless of expand state or content — degrading to the same
         single match ELITEA-2132's original (empty-folder) usage always saw.
 
+        Falls back to :meth:`delete_folder_via_api` when the dot-menu
+        "Delete" item (``FOLDER_MENU_DELETE_ITEM``) doesn't appear within
+        *timeout*. That testid has regressed to dead THREE times on
+        EliteaUI (tracked in ``EliteaAI/elitea-testing-public#1309``); every
+        caller of this method uses it purely for cleanup, wrapped in its own
+        ``try``/``except`` — so a swallowed timeout here silently never
+        deletes the folder, and #1309 confirmed 19 folders leaked into the
+        shared DEV project this way. The fallback keeps cleanup actually
+        working while #1309 (a product-side regression) stays open.
+
         Args:
             folder_id: Numeric folder id.
             timeout: Maximum wait time in milliseconds.
@@ -5872,13 +5882,85 @@ class ChatPage(BasePage):
         menu_button.click(force=True)
 
         delete_item = self.page.locator(self.FOLDER_MENU_DELETE_ITEM)
-        delete_item.wait_for(state="visible", timeout=timeout)
+        try:
+            delete_item.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            logger.warning(
+                "Folder %s: dot-menu 'Delete' item (FOLDER_MENU_DELETE_ITEM) "
+                "did not appear within %sms — testid regressed dead again "
+                "(EliteaAI/elitea-testing-public#1309); falling back to "
+                "API delete",
+                folder_id,
+                timeout,
+            )
+            # Close the still-open dot-menu before falling back, so it
+            # doesn't linger over subsequent page interactions.
+            try:
+                self.page.keyboard.press("Escape")
+            except Exception:
+                pass
+            self.delete_folder_via_api(folder_id, timeout=timeout)
+            logger.info("Folder %s deleted via API fallback", folder_id)
+            return
         delete_item.click()
 
         self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
         self.delete_confirm_button.click()
         self.wait_for_network(timeout=timeout)
         logger.info("Folder %s deleted via menu", folder_id)
+
+    @action("Delete folder via API")
+    def delete_folder_via_api(
+        self, folder_id: str | int, project_id: str | int | None = None, timeout: int = 10000,
+    ):
+        """Delete a folder directly via the REST API, bypassing the UI dot-menu.
+
+        Calls the same ``DELETE /elitea_core/folder/prompt_lib/{project_id}/{id}``
+        endpoint EliteaUI's own ``deleteFolder`` RTK-Query mutation uses
+        (``conversationList.api.js``), through ``self.page.request`` —
+        Playwright's ``APIRequestContext`` bound to this page's browser
+        context, so it reuses whatever session cookies already authenticate
+        the UI when there are any.
+
+        Auth fallback mirrors ``ConversationAPI``/``AgentAPI``
+        (``api/client.py``): on localhost the EliteaUI dev server
+        authenticates via ``VITE_DEV_TOKEN``, not real Keycloak cookies (see
+        ``fixtures/api_fixtures.py``'s ``_browser_cookies`` docstring) — a
+        cookie-only request 400s there. When this page's browser context
+        carries no cookies, the request instead sends
+        ``Authorization: Bearer <ELITEA_API_TOKEN>``.
+
+        Used as the ``delete_folder_via_menu()`` cleanup fallback (see that
+        method's docstring, ``EliteaAI/elitea-testing-public#1309``); safe to
+        call directly for API-first cleanup too.
+
+        Args:
+            folder_id: Numeric folder id.
+            project_id: Project id (defaults to ``settings.elitea_project_id``).
+            timeout: Maximum wait time in milliseconds for the DELETE response.
+
+        Raises:
+            RuntimeError: if the API responds with a non-2xx status. Unlike
+                ``delete_folder_via_menu()``, this method is NOT internally
+                try/except-guarded — callers that want best-effort cleanup
+                should wrap the call themselves (matching the existing
+                pattern at every current call site).
+        """
+        project = project_id if project_id is not None else settings.elitea_project_id
+        url = (
+            f"{settings.elitea_api_base.rstrip('/')}"
+            f"/elitea_core/folder/prompt_lib/{project}/{folder_id}"
+        )
+        headers = {}
+        if not self.page.context.cookies() and settings.elitea_api_token:
+            headers["Authorization"] = f"Bearer {settings.elitea_api_token}"
+        logger.debug("DELETE folder %s (API) %s", folder_id, url)
+        response = self.page.request.delete(url, headers=headers, timeout=timeout)
+        if not response.ok:
+            raise RuntimeError(
+                f"API delete of folder {folder_id} failed: "
+                f"{response.status} {response.text()}"
+            )
 
     @action("Open folder rename editor")
     def open_folder_rename_editor(self, folder_id: str | int, timeout: int = 5000):

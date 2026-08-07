@@ -81,6 +81,27 @@ confirmer: ELITEA-2086/2087/2088, 2026-08-03).
   needed (unlike the `toolkit-field-bucket-info-tooltip-content` precedent,
   which needed a prop threaded through several layers — this one's simpler).
 
+**Resolved/confirmed during ELITEA-2459 implementation (extends the section
+above, does not supersede any of it):** live-drove two ADDITIONAL invalid-name
+scenarios beyond ELITEA-2458's own {empty, 2-char, unchanged, 3-char-changed}
+set — a name with unsupported special characters (`"Folder$$%%"`) and a name
+whose first character is a space (`" ValidRest"`, otherwise fully valid).
+Both behaved identically to the already-documented invalid states: same
+`data-disabled="true"` on `chat-folder-name-confirm-button`, same exact
+`FolderNameWarningMessage` tooltip text (verbatim match, not just prefix),
+same network-silent no-op click (zero new PUT requests). Confirmed this is
+ONE static tooltip message shown for ANY regex-failure reason (length,
+change-state, charset, or first-character) — `FolderItem.jsx` does not
+differentiate WHY `isFolderNameValid` is false. Also **reconfirmed live**
+that `chat-folder-menu-delete-menuitem` is still dead (issue #1309,
+unresolved as of this session) — `document.querySelector` returns `null`
+for it even though the visible "Delete" menuitem/confirmation dialog still
+function by text/role (i.e. the UI-level Delete flow works, only the
+specific testid used by `delete_folder_via_menu()` is missing — same
+symptom already documented above, now reverified on a fresh session/date).
+No new testids or page-object changes were needed for ELITEA-2459 — every
+handle ELITEA-2458 added was reused verbatim and all resolved correctly.
+
 ## Table/diagram/code canvas editing — the "Edit table"/"Edit diagram" family (ELITEA-2086/2087/2088)
 - **Entire component tree has ZERO `data-testid` anywhere** — confirmed via
   full-file reads + `git grep -c "data-testid\|testId"` returning 0 on both

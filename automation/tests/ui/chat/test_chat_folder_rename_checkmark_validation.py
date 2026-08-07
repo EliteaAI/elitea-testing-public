@@ -312,14 +312,290 @@ class TestChatFolderRenameCheckmarkValidation:
                 )
 
         finally:
-            # AFS § Cleanup CAUTION: ChatPage.delete_folder_via_menu() /
-            # FOLDER_MENU_DELETE_ITEM currently target a DEAD testid
-            # (regressed, tracked in
-            # EliteaAI/elitea-testing-public#1309, NOT this case's own
-            # scope to fix) — wrapped in try/except per the existing
-            # pattern so a cleanup failure never fails the test itself.
-            # A silently-failed cleanup here is expected and NOT evidence
-            # this case's OWN assertions are wrong.
+            # AFS § Cleanup CAUTION: FOLDER_MENU_DELETE_ITEM (the dot-menu
+            # "Delete" item) is a DEAD testid on EliteaUI (regressed,
+            # tracked in EliteaAI/elitea-testing-public#1309, NOT this
+            # case's own scope to fix). delete_folder_via_menu() now falls
+            # back to a direct API delete when that testid doesn't appear
+            # (see its own docstring), so cleanup succeeds via that path
+            # while #1309 stays open — this try/except remains only as a
+            # last-resort net for a genuinely unreachable API (e.g. a dead
+            # backend), not because cleanup is expected to silently no-op.
+            if folder_id:
+                try:
+                    chat.delete_folder_via_menu(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                    logger.info("Cleaned up folder %s", folder_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder %s: %s", folder_id, exc)
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2459_chat-folder-rename-validation-tooltip-for-invalid-input-and.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p1
+    def test_folder_rename_checkmark_special_chars_and_leading_space_invalid(self, page):
+        """ELITEA-2459 — two additional invalid-name scenarios beyond the
+        ones test_folder_rename_checkmark_validation (ELITEA-2458) already
+        covers: (a) a name containing unsupported special characters, and
+        (b) a name whose FIRST character is a space (otherwise valid /
+        long-enough). Both are asserted, via the SAME data-disabled /
+        tooltip / no-op mechanism, to be just as inactive as the
+        empty / 2-char / unchanged states ELITEA-2458 already exercises —
+        proving ConversationNameRegExp's charset and first-character
+        exclusions, not just its length/change gate.
+
+        Spec: test-specs/chat-interface/lextend_folder-rename-tooltip-special-chars-and-space-first-char_ELITEA-2459.md
+
+        No product defects found — both scenarios were executed live and
+        matched FolderItem.jsx's ConversationNameRegExp logic exactly (same
+        static FolderNameWarningMessage tooltip regardless of WHICH regex
+        clause failed).
+
+        Both no-op-click checks use the SAME THREE-independent-signal
+        pattern test_folder_rename_checkmark_validation established
+        (editor stays open — compound: folder_name_input stays visible AND
+        get_folder_item(folder_id) resolves to ZERO elements — input value
+        unchanged, no PUT fires), matching this file's Axis-2 precedent
+        that a single signal could pass even if some other unintended
+        side effect fired.
+        """
+        chat = ChatPage(page)
+        folder_id = None
+        seed_name = "ELITEA2459RenameTest"
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        put_requests = []
+
+        def _on_request(request):
+            if request.method == "PUT" and "/folder/prompt_lib/" in request.url:
+                put_requests.append(request.url)
+
+        page.on("request", _on_request)
+
+        try:
+            with allure.step(
+                "Step 1 — Seed a folder, open its rename editor via the dot-menu"
+            ):
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                chat.click_create_folder_button(timeout=UI_ELEMENT_TIMEOUT)
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "POST",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as create_response_info:
+                    chat.set_folder_name(seed_name)
+                    chat.folder_name_confirm_button.click()
+                create_response = create_response_info.value
+                assert create_response.status == 201, (
+                    "Seed folder POST should resolve 201, got "
+                    f"{create_response.status} for {create_response.url}"
+                )
+                folder_id = create_response.json().get("id")
+                assert folder_id is not None, (
+                    "Seed folder response should include a real 'id', got: "
+                    f"{create_response.json()!r}"
+                )
+                chat.folder_name_input.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+                chat.get_folder_item(folder_id).wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                logger.info("Seeded folder %s named %r", folder_id, seed_name)
+
+                chat.open_folder_rename_editor(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step(
+                'Step 2 — Type unsupported special characters ("Folder$$%%"); '
+                "verify invalid state, exact tooltip, and no-op click"
+            ):
+                chat.set_folder_name("Folder$$%%")
+                assert chat.folder_name_input.input_value() == "Folder$$%%", (
+                    "Input should show 'Folder$$%%' verbatim"
+                )
+                assert not chat.is_folder_name_confirm_enabled(), (
+                    'chat-folder-name-confirm-button should carry '
+                    'data-disabled="true" for a name with unsupported '
+                    "special characters"
+                )
+                tooltip_text = chat.get_folder_name_confirm_tooltip_text(timeout=UI_ELEMENT_TIMEOUT)
+                assert tooltip_text == VALIDATION_TOOLTIP_TEXT, (
+                    f"Validation tooltip text mismatch — got: {tooltip_text!r}"
+                )
+
+                puts_before = len(put_requests)
+                chat.folder_name_confirm_button.click()
+                page.wait_for_timeout(300)
+                assert chat.folder_name_input.is_visible(), (
+                    "Editor should stay open after clicking the inactive checkmark"
+                )
+                assert chat.folder_name_input.input_value() == "Folder$$%%", (
+                    "Input should remain unchanged by the no-op click"
+                )
+                assert chat.get_folder_item(folder_id).count() == 0, (
+                    f"Folder {folder_id} should NOT re-render as an "
+                    "accordion row — that would mean edit mode exited "
+                    "unexpectedly (FolderAccordion.jsx only mounts when "
+                    "NOT editing)"
+                )
+                assert len(put_requests) == puts_before, (
+                    "No PUT to the folder endpoint should fire on an "
+                    f"inactive-checkmark click, saw: {put_requests[puts_before:]}"
+                )
+
+            with allure.step(
+                'Step 3 — Type a leading space (" ValidRest"); verify '
+                "invalid state, exact tooltip, and no-op click, despite an "
+                "otherwise fully valid remainder"
+            ):
+                chat.set_folder_name(" ValidRest")
+                assert chat.folder_name_input.input_value() == " ValidRest", (
+                    "Input should show ' ValidRest' verbatim — the leading "
+                    "space is accepted by the field itself"
+                )
+                assert not chat.is_folder_name_confirm_enabled(), (
+                    'chat-folder-name-confirm-button should carry '
+                    'data-disabled="true" for a name starting with a '
+                    "space, even though every subsequent character is "
+                    "individually valid and the length is within range"
+                )
+                tooltip_text = chat.get_folder_name_confirm_tooltip_text(timeout=UI_ELEMENT_TIMEOUT)
+                assert tooltip_text == VALIDATION_TOOLTIP_TEXT, (
+                    f"Validation tooltip text mismatch — got: {tooltip_text!r}"
+                )
+
+                puts_before = len(put_requests)
+                chat.folder_name_confirm_button.click()
+                page.wait_for_timeout(300)
+                assert chat.folder_name_input.is_visible(), (
+                    "Editor should stay open after clicking the inactive checkmark"
+                )
+                assert chat.folder_name_input.input_value() == " ValidRest", (
+                    "Input should remain unchanged by the no-op click"
+                )
+                assert chat.get_folder_item(folder_id).count() == 0, (
+                    f"Folder {folder_id} should NOT re-render as an "
+                    "accordion row — that would mean edit mode exited "
+                    "unexpectedly (FolderAccordion.jsx only mounts when "
+                    "NOT editing)"
+                )
+                assert len(put_requests) == puts_before, (
+                    "No PUT to the folder endpoint should fire on an "
+                    f"inactive-checkmark click, saw: {put_requests[puts_before:]}"
+                )
+
+            with allure.step(
+                "Side-channel check — no unexpected console errors across "
+                "the full flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors during folder rename "
+                    f"validation: {[m.text for m in console_messages]!r}"
+                )
+
+        finally:
+            # Same caution as test_folder_rename_checkmark_validation's own
+            # cleanup: FOLDER_MENU_DELETE_ITEM is a DEAD testid (regression
+            # #1309, NOT this case's scope, reconfirmed dead during
+            # ELITEA-2459 exploration). delete_folder_via_menu() now falls
+            # back to a direct API delete when that testid doesn't appear,
+            # so cleanup succeeds via that path while #1309 stays open —
+            # this try/except remains only as a last-resort net.
+            if folder_id:
+                try:
+                    chat.delete_folder_via_menu(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                    logger.info("Cleaned up folder %s", folder_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder %s: %s", folder_id, exc)
+
+
+class TestChatFolderDeleteApiFallbackRegression:
+    """Regression coverage for the ``ChatPage.delete_folder_via_api()``
+    cleanup fallback added to ``delete_folder_via_menu()``
+    (EliteaAI/elitea-testing-public#1309).
+
+    Root cause this guards against: ``delete_folder_via_menu()``'s dot-menu
+    "Delete" item testid (``FOLDER_MENU_DELETE_ITEM``) has regressed dead on
+    EliteaUI three times; every call site uses the method purely for
+    cleanup wrapped in a bare ``try``/``except``, so the timeout was
+    swallowed silently and cleanup never happened — #1309 confirmed 19
+    "New folder"/"New folder6" folders leaked into the shared DEV project
+    this way, making every subsequent folder-list refetch progressively
+    more fragile. The fix added an API-delete fallback; THIS test exercises
+    ``delete_folder_via_api()`` directly, independent of whether #1309 is
+    fixed upstream or not, so a regression in the fallback's own request
+    (wrong URL, wrong auth, or a response check that doesn't actually
+    verify deletion) is caught even once the dot-menu path stops needing it.
+    """
+
+    @pytest.mark.p2
+    def test_delete_folder_via_api_actually_removes_the_folder(self, page):
+        """``delete_folder_via_api()`` must make the folder actually
+        disappear server-side — not just return without raising.
+
+        A regression that reproduces the ORIGINAL #1309 failure mode (an
+        exception silently swallowed, or a "success" response that isn't
+        checked) must fail this test: the ground truth is a full page
+        RELOAD re-reading the folder list from the server, not the absence
+        of a raised exception.
+        """
+        chat = ChatPage(page)
+        folder_id = None
+
+        try:
+            with allure.step(
+                "Step 1 — Seed a folder to delete via the API fallback"
+            ):
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                chat.click_create_folder_button(timeout=UI_ELEMENT_TIMEOUT)
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "POST",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as create_response_info:
+                    chat.set_folder_name("APIFallbackDeleteRegressionTest")
+                    chat.folder_name_confirm_button.click()
+                create_response = create_response_info.value
+                assert create_response.status == 201, (
+                    "Seed folder POST should resolve 201, got "
+                    f"{create_response.status} for {create_response.url}"
+                )
+                folder_id = create_response.json().get("id")
+                assert folder_id is not None, (
+                    "Seed folder response should include a real 'id', got: "
+                    f"{create_response.json()!r}"
+                )
+                chat.folder_name_input.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+                chat.get_folder_item(folder_id).wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                logger.info("Seeded folder %s for API-fallback delete regression test", folder_id)
+
+            with allure.step(
+                "Step 2 — Call delete_folder_via_api() directly (bypassing "
+                "the UI dot-menu entirely)"
+            ):
+                chat.delete_folder_via_api(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step(
+                "Step 3 — Reload and verify the folder is GONE via a fresh "
+                "server-backed read (ground truth, not just 'no exception')"
+            ):
+                page.reload()
+                chat.wait_for_page_load()
+                expect(chat.get_folder_item(folder_id)).to_have_count(
+                    0, timeout=UI_ELEMENT_TIMEOUT
+                )
+                # Deletion succeeded — don't attempt it again in `finally`.
+                folder_id = None
+        finally:
+            # Best-effort net only: if Step 2/3 itself failed (the folder
+            # was never actually deleted), fall back to the dot-menu path
+            # so this test doesn't ALSO leak a folder while proving the
+            # leak-prevention fix.
             if folder_id:
                 try:
                     chat.delete_folder_via_menu(folder_id, timeout=UI_ELEMENT_TIMEOUT)
