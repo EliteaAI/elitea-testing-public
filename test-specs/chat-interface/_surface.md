@@ -861,3 +861,17 @@ sibling and should follow the identical pattern).
   fires on EVERY toolkit-type-picker render (Toolkit AND MCP creation,
   chat-canvas AND standalone) — filter it the same way `test_edit_instructions`
   filters its own known #538 noise.
+
+**Resolved/added during ELITEA-2464 implementation (2026-08-07):** the Modules
+panel documented above (ELITEA-2162 section) now renders **8** toggles, not 7 —
+live-confirmed a new **"Ask User"** toggle (`data-testid="modules-toggle-ask_user"`,
+tool key `ask_user`) between "Python Sandbox" and "Swarm Mode". Both ELITEA-2162's
+merged spec and ELITEA-2464's case text predate it (product change, not a defect —
+filed as clarification EliteaAI/elitea-testing-public#1293).
+`ChatPage.MODULE_TOGGLE_ORDER` was extended with the new entry in its live DOM
+position (additive; the 7 pre-existing entries are unchanged) so the covering
+spec's dynamic `len(MODULE_TOGGLE_ORDER)` count assertion stays correct. The
+plus-menu's full top-level item list was also live-confirmed this session (non-Team
+project): exactly 6 items in DOM order — Attach Files, Modules, Agents, Pipelines,
+Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
+`invite_users_menuitem` docstring).
