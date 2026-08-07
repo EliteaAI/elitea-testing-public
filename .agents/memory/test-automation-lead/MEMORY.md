@@ -46,3 +46,5 @@
 - [Trunk→base PR can use a stale head](trunk_to_base_pr_can_use_stale_head_missing_report_commit.md) — `gh pr create` right after completion can miss the report-writer's own commit; verify `gh pr view --json files` includes report.json post-merge
 - [Large-batch gate: scope by node-id, not file](large_batch_gate_scope_by_nodeid_not_file.md) — file-level scope sweeps in unrelated pre-existing flaky siblings
 - [Gate red moving between tests = check tracker first](gate_red_recurring_on_different_tests_check_tracker_before_diagnosing.md) — same signature, different tests = shared/infra cause; grep `gh issue list` before diagnosing
+- [Sync conflict = main's component-extraction refactor](sync_conflict_caused_by_main_component_extraction_refactor.md) — check for a new sibling file before assuming a real testid conflict
+- [Dead testid= relying on fallback=](locator_descriptor_testid_can_be_dead_relying_on_fallback.md) — zero grep hits on BOTH refs means the locator never really used its testid
