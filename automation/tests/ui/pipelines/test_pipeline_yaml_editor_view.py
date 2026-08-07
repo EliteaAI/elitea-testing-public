@@ -64,6 +64,15 @@ def test_pipeline_yaml_editor_view(page, pipeline_with_custom_state_var_id):
         assert first_gutter_text == "1", (
             f"First gutter line number should be '1', got {first_gutter_text!r}"
         )
+        # Don't hardcode an absolute expected line count (the exact YAML
+        # serialization is an implementation detail that will drift) — assert
+        # the gutter's element count matches get_yaml_content()'s own line
+        # count instead (AFS Automation Hints).
+        content_line_count = len(pipeline_page.get_yaml_content().split("\n"))
+        assert gutter_count == content_line_count, (
+            f"Gutter line-number count ({gutter_count}) should match the "
+            f"editor's actual line count ({content_line_count})"
+        )
 
     with allure.step('Step 5 — "Copy yaml code to clipboard" button is visible'):
         assert pipeline_page.copy_yaml_button.is_visible(), (
