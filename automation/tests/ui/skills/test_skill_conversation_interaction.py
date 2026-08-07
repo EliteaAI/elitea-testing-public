@@ -129,8 +129,8 @@ class TestInteractWithSkillsFromConversation:
                 form_page.wait_for_form_load()
                 form_page.fill_form(
                     name=AGENT_NAME,
-                    description="ELITEA-1736 automation agent — skill-from-conversation interaction",
-                    instructions="You are a helpful assistant.",
+                    description="General purpose test assistant for automation",
+                    instructions="You are a helpful assistant. Answer questions naturally and conversationally.",
                 )
                 form_page.wait_for_form_validation()
                 assert form_page.is_save_enabled(), (
