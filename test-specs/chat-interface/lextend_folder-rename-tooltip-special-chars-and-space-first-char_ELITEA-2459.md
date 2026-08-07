@@ -88,7 +88,12 @@ just the length/change gate.
    rename editor via the dot-menu Rename item (mirrors the covering spec's
    own Step 1 — `chat.open_folder_rename_editor(folder_id)`).
    - **Verify**: the inline editor opens — `chat-folder-name-input` is
-     visible and pre-filled with the seeded name.
+     visible (asserted directly by this test). The pre-fill-with-seeded-name
+     behavior is `open_folder_rename_editor()`'s own contract, already
+     independently asserted by the covering spec's own Step 1
+     (`test_folder_rename_checkmark_validation`, same class, same
+     page-object method) — not re-asserted here to avoid duplicating that
+     proof; observed live during exploration to hold for this seed too.
 2. Clear the input and type `"Folder$$%%"`.
    - **Verify**: the input shows `"Folder$$%%"` verbatim (the field accepts
      the characters — no client-side input-blocking on keystroke, confirmed
@@ -145,22 +150,27 @@ just the length/change gate.
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
 | Precondition: user logged in | — | Setup | `auth_state` fixture | asserted |
-| 1 Navigate to Chats, hover folder, click 3-dot icon, click Edit | Target page/section loads | AFS step 1 | step 1: editor opens, pre-filled | asserted |
+| 1 Navigate to Chats, hover folder, click 3-dot icon, click Edit | Target page/section loads | AFS step 1 | step 1: editor opens — `chat-folder-name-input` visible (asserted directly). Pre-fill-with-seeded-name is `open_folder_rename_editor()`'s own contract, already independently asserted by the covering ELITEA-2458 spec's own Step 1 (same method, same class) — not re-asserted here | already-covered *(editor-opens visibility only is directly asserted; pre-fill inherited from the covering spec)* |
 | 2 Clear name, type unsupported special characters (e.g. "Folder$$%%") | Action completes, expected UI state | AFS step 2 | step 2: input shows the typed value | asserted |
 | 3 Verify tooltip appears with the exact validation message | Condition holds | AFS step 2 | step 2: hover -> exact tooltip text | asserted |
-| 4 Verify checkmark icon is disabled and clicking it has no effect | Condition holds | AFS step 2 | step 2: `data-disabled="true"` + click no-op (no PUT, editor stays open, value unchanged) | asserted *(decomposed: state + behavior)* |
+| 4 Verify checkmark icon is disabled and clicking it has no effect | Condition holds | AFS step 2 | step 2: `data-disabled="true"` + click no-op (no PUT, editor stays open, value unchanged, `get_folder_item(folder_id).count() == 0`) | asserted *(decomposed: state + behavior, THREE-signal no-op per covering spec's pattern)* |
 | 5 Clear the name and press Space as the first character | Action completes, expected UI state | AFS step 3 | step 3: input shows `" ValidRest"` (space + valid remainder, so the SPECIFIC "space-led" claim is isolated from the already-covered "unsupported charset" claim) | asserted |
-| 6 Verify space is not accepted as first character and checkmark remains inactive | Condition holds | AFS step 3 | step 3: `data-disabled="true"` + tooltip + click no-op | asserted *(decomposed: state + tooltip + behavior)* |
+| 6 Verify space is not accepted as first character and checkmark remains inactive | Condition holds | AFS step 3 | step 3: `data-disabled="true"` + tooltip + click no-op (`get_folder_item(folder_id).count() == 0` included) | asserted *(decomposed: state + tooltip + behavior, THREE-signal no-op per covering spec's pattern)* |
 | Expected Final State (prose): "space is not accepted as first character, checkmark stays inactive" | — | step 3 | covered by the row above | asserted |
 | Pass/Fail: "All steps complete without errors" | — | all steps | console-check after every interaction (Axis 2) | asserted |
 
 Disposition key: `asserted` / `already-covered` / `clarification` / `blocked`
-/ `out-of-scope`. All rows `asserted` — both case scenarios were executable
-and confirmed live this session, no blockers, no reverse-masking (the case's
-claims match `FolderItem.jsx`'s actual `ConversationNameRegExp` logic
-exactly, confirmed both via source read — inherited unchanged from
-ELITEA-2458's AFS — and via fresh live execution of THESE TWO specific
-inputs, not just the ones ELITEA-2458 already tried).
+/ `out-of-scope`. All rows `asserted` except row 1 (`already-covered` —
+editor-opens visibility is asserted directly by this test, but the
+pre-fill-with-seeded-name behavior is `open_folder_rename_editor()`'s own
+contract, already independently proven by the covering ELITEA-2458 spec's
+own Step 1 assertion on the same method; re-asserting it here would
+duplicate that proof rather than add new coverage). Both case scenarios
+were executable and confirmed live this session, no blockers, no
+reverse-masking (the case's claims match `FolderItem.jsx`'s actual
+`ConversationNameRegExp` logic exactly, confirmed both via source read —
+inherited unchanged from ELITEA-2458's AFS — and via fresh live execution of
+THESE TWO specific inputs, not just the ones ELITEA-2458 already tried).
 
 ### Axis 2 — Analyst additions
 
@@ -175,10 +185,11 @@ inputs, not just the ones ELITEA-2458 already tried).
   the space alone is sufficient to invalidate.*
 - Both steps assert the click-has-no-effect claim via the same
   THREE-independent-signal pattern the covering spec established (editor
-  stays open, input value unchanged, no PUT fires) — *added, matching
-  precedent: consistency with the covering spec's own Axis-2 reasoning
-  (a single signal could pass even if some other unintended side effect
-  fired).*
+  stays open — compound: `folder_name_input` visible AND
+  `get_folder_item(folder_id).count() == 0`, input value unchanged, no PUT
+  fires) — *added, matching precedent: consistency with the covering
+  spec's own Axis-2 reasoning (a single signal could pass even if some
+  other unintended side effect fired).*
 - Both steps assert the exact tooltip text (not a substring) — *added:
   confirms the SAME static warning constant renders regardless of which
   regex clause failed (charset vs. first-character vs, per the covering
@@ -352,6 +363,12 @@ def test_folder_rename_checkmark_special_chars_and_leading_space_invalid(self, p
             assert chat.folder_name_input.input_value() == "Folder$$%%", (
                 "Input should remain unchanged by the no-op click"
             )
+            assert chat.get_folder_item(folder_id).count() == 0, (
+                f"Folder {folder_id} should NOT re-render as an "
+                "accordion row — that would mean edit mode exited "
+                "unexpectedly (FolderAccordion.jsx only mounts when "
+                "NOT editing)"
+            )
             assert len(put_requests) == puts_before, (
                 "No PUT to the folder endpoint should fire on an "
                 f"inactive-checkmark click, saw: {put_requests[puts_before:]}"
@@ -386,6 +403,12 @@ def test_folder_rename_checkmark_special_chars_and_leading_space_invalid(self, p
             )
             assert chat.folder_name_input.input_value() == " ValidRest", (
                 "Input should remain unchanged by the no-op click"
+            )
+            assert chat.get_folder_item(folder_id).count() == 0, (
+                f"Folder {folder_id} should NOT re-render as an "
+                "accordion row — that would mean edit mode exited "
+                "unexpectedly (FolderAccordion.jsx only mounts when "
+                "NOT editing)"
             )
             assert len(put_requests) == puts_before, (
                 "No PUT to the folder endpoint should fire on an "

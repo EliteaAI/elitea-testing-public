@@ -349,6 +349,14 @@ class TestChatFolderRenameCheckmarkValidation:
         matched FolderItem.jsx's ConversationNameRegExp logic exactly (same
         static FolderNameWarningMessage tooltip regardless of WHICH regex
         clause failed).
+
+        Both no-op-click checks use the SAME THREE-independent-signal
+        pattern test_folder_rename_checkmark_validation established
+        (editor stays open — compound: folder_name_input stays visible AND
+        get_folder_item(folder_id) resolves to ZERO elements — input value
+        unchanged, no PUT fires), matching this file's Axis-2 precedent
+        that a single signal could pass even if some other unintended
+        side effect fired.
         """
         chat = ChatPage(page)
         folder_id = None
@@ -427,6 +435,12 @@ class TestChatFolderRenameCheckmarkValidation:
                 assert chat.folder_name_input.input_value() == "Folder$$%%", (
                     "Input should remain unchanged by the no-op click"
                 )
+                assert chat.get_folder_item(folder_id).count() == 0, (
+                    f"Folder {folder_id} should NOT re-render as an "
+                    "accordion row — that would mean edit mode exited "
+                    "unexpectedly (FolderAccordion.jsx only mounts when "
+                    "NOT editing)"
+                )
                 assert len(put_requests) == puts_before, (
                     "No PUT to the folder endpoint should fire on an "
                     f"inactive-checkmark click, saw: {put_requests[puts_before:]}"
@@ -461,6 +475,12 @@ class TestChatFolderRenameCheckmarkValidation:
                 )
                 assert chat.folder_name_input.input_value() == " ValidRest", (
                     "Input should remain unchanged by the no-op click"
+                )
+                assert chat.get_folder_item(folder_id).count() == 0, (
+                    f"Folder {folder_id} should NOT re-render as an "
+                    "accordion row — that would mean edit mode exited "
+                    "unexpectedly (FolderAccordion.jsx only mounts when "
+                    "NOT editing)"
                 )
                 assert len(put_requests) == puts_before, (
                     "No PUT to the folder endpoint should fire on an "
