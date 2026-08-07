@@ -305,3 +305,37 @@ None.
 - The chat-execution steps (6–7) are the flow's slow part (~40s observed) —
   budget accordingly and use `wait_for` on the final answer text rather than
   a fixed sleep, per `.claude/rules/ui-tests.md`.
+
+**Amended/added during ELITEA-1951 implementation** (Phase 2 amend-in-PR;
+full write-up in `.agents/memory/test-automation-engineer/
+nested_agent_attach_and_accordion_quirks.md`):
+- `AgentDetailPage.attach_agent(agent_name)` (cited above as sufficient for
+  steps 2-3) was found to intermittently fail to click the target menu item
+  for this specific sub-agent name (item highlights/hovers, popper never
+  closes, no attach request fires or the backend rejects a stale reference)
+  — a MUI Tooltip-portal overlay intercepting the raw CSS-located click's
+  computed coordinates on a truncated name. Use the new additive
+  `AgentDetailPage.attach_agent_by_testid(agent_name)` instead (testid-scoped
+  selection via the already-existing `Popper.select_menuitem_by_testid()`);
+  `attach_agent()` itself is unchanged.
+- The step-7 network-persistence check should use `page.expect_response()`
+  around the attach action, not `capture_requests_matching()` — the latter's
+  manual request/response-listener pattern was observed to miss the response
+  event for this specific PATCH (request captured, `status` stayed `None`
+  forever) despite the attach genuinely succeeding server-side.
+- The nested accordion's `chat-answer-tool-chip` testid is **shared by TWO
+  distinct elements** inside the same details container: the parent's own
+  "called this agent as a tool" chip (bare agent name, DOM-first) and the
+  sub-agent's OWN nested MCP tool-call chip (`"{toolkit}: {tool} ({agent})"`,
+  DOM-second). A bare `.first` reads the wrong one. Filter by the MCP
+  toolkit's name to target the real tool-call chip.
+- Case-text drift (CLARIFICATION, not a defect): step 7's proof that the
+  parent's response includes "MCP tool output from the nested agent" should
+  NOT hinge on the sub-agent's own instructed `"MCP_TOOL_OUTPUT:"` prefix
+  surviving the parent's "verbatim, unmodified" relay literally — confirmed
+  live across multiple runs that the real, non-hallucinated tool content
+  reaches the final answer every time, but the LLM doesn't always preserve
+  that exact literal marker (ordinary instruction-following non-determinism,
+  same class as the message-wording note already in § Axis 2). Assert a
+  real, repo-specific content marker (e.g. a real wiki section name) instead;
+  treat the literal prefix's presence as an informational/soft signal only.
