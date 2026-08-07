@@ -333,3 +333,49 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   starter's counter it actually belongs to. Query with `index=0` for whichever field is
   currently focused (matches the existing single-field usage pattern in
   `test_agent_character_limits.py`).
+
+## "Share" (Copy Link) — Agent Actions overflow menu (ELITEA-1898 run, 2026-08-06/07)
+- **No standalone "Copy Link" button exists** — the case-text label doesn't match the live UI. The
+  three-dot `agent-actions-menu-button` overflow menu has **two separate "Share" items** (both built
+  from `useCopyLinkMenu({ label: 'Share', ... })` in `CopyLinkToEntityButton.jsx`, which overrides the
+  hook's own default label "Copy link" — `ApplicationControls.jsx`):
+  - `share-version-menuitem` (VERSION group) — copies `.../agents/all/{agentId}/{versionId}?viewMode=owner&name=...`
+    (version id as its own trailing path segment). **This is the one ELITEA-1898 needs.**
+  - `share-agent-menuitem` (AGENT group) — copies `.../agents/all/{agentId}?viewMode=owner&name=...`
+    (no version segment at all). Visually identical label "Share" — easy mis-click target for automation,
+    use as a negative control when asserting the version segment is specifically attributable to the
+    VERSION-group action.
+  - Both testids derive from `DotMenu.jsx`'s `testId: item.key` mechanism (same mechanism backing
+    `publish-version-menuitem`/`unpublish-version-menuitem`/`set-as-a-default-menuitem` — no new EliteaUI
+    work needed for either).
+- **Visual confirmation is a toast, not a tooltip/icon-change** — the menu closes immediately on click
+  (`DotMenu.jsx`'s `withClose(item.onClick)`), so the icon-swap behavior `CopyLinkToEntityButton`'s
+  standalone icon-button variant has is never observable through this menu-item path. Toast text: "The
+  link has been copied to the clipboard." (`toast-message`/`toast-alert[data-severity="info"]`, pre-existing
+  app-wide shared testids — NOT yet fields on `AgentDetailPage`, add them there, no EliteaUI work needed).
+- **Copied link carries a leading `/{projectId}` segment** (`useProjectEntityLink`'s `projectPath` =
+  `PROJECT_ID_URL_PREFIX + route`, e.g. `http://localhost:5173/399/agents/all/7598/7820?...`). This
+  segment is NOT itself a matched app route — a catch-all `/:projectId/*` route
+  (`ProtectedRoutes.jsx`) renders `<ProjectSwitcher/>`, which validates the id against the user's
+  project list, switches the selected project, strips the `/{projectId}` prefix, and does a **hard
+  `window.location.replace()`** reload at the stripped path. Cross-cutting (affects every
+  `useProjectEntityLink`-based Share link on any entity type, not just Agents) and pre-existing —
+  confirmed live, not a defect. **Automation implication:** after navigating to any copied
+  Share/copy-link URL, wait for a real page-load signal (e.g. `VERSION:` combobox text), never assert
+  immediately post-`goto()` — there's an extra hard-reload hop in between.
+- **Route param name is `version`, not `versionId`** — despite `BLOCK_NAV_PATTERNS`' string literal
+  `${RouteDefinitions.ApplicationsDetail}/:versionId` implying otherwise, the actual nested route
+  registered in `ProtectedRoutes.jsx` (for any path ending `/:agentId` or `/:skillId`) is
+  `path=":version"`. `VersionSelect.jsx` defensively reads `urlParams.version || urlParams.versionId`
+  to cover both. Confirms navigating directly to a version-suffixed URL DOES select that specific
+  version (`getVersionDetailQuery` fires off `versionFromParams` on mount) — not just cosmetic.
+- **Clipboard read via Playwright MCP's `navigator.clipboard.readText()` can hang** on a permission
+  prompt in this environment (observed this run, had to abort after idle timeout). Workaround used:
+  monkey-patch `navigator.clipboard.writeText` via `page.evaluate()` BEFORE the click, capture the
+  copied string into a `window` variable. For a real pytest fixture, prefer
+  `context.grant_permissions(["clipboard-read", "clipboard-write"])` before the click instead (avoids
+  the interactive-prompt hang entirely — the standard Playwright pattern).
+- Filed as CLARIFICATION (case-text drift, not a defect):
+  [EliteaAI/elitea-testing-public#1288](https://github.com/EliteaAI/elitea-testing-public/issues/1288)
+  — sibling of [#1218](https://github.com/EliteaAI/elitea-testing-public/issues/1218) (ELITEA-2356, same
+  "Copy Link" → "Share" pattern, different surface: Agent Hub modal overflow menu).
