@@ -326,6 +326,40 @@ class AgentDetailPage(AgentFormPage):
     # at once for the same version.
     publish_version_menuitem = LocatorDescriptor(testid="publish-version-menuitem")
     unpublish_version_menuitem = LocatorDescriptor(testid="unpublish-version-menuitem")
+    # VERSION-group "Share" menuitem (ELITEA-1898 — pre-existing testid, no
+    # EliteaUI change needed). Same `DotMenu.jsx` `testId: item.key` ->
+    # `data-testid={testId}-menuitem` mechanism as the menuitems above
+    # (`key: 'share-version'` in `ApplicationControls.jsx`'s
+    # `useCopyLinkMenu()`). Copies a VERSION-specific link (the URL contains
+    # a trailing version-id path segment).
+    share_version_menuitem = LocatorDescriptor(testid="share-version-menuitem")
+    # AGENT-group "Share" menuitem — SAME mechanism, `key: 'share-agent'`.
+    # Copies a generic, version-less agent link (no trailing version-id
+    # segment). Kept here as the negative-control target for ELITEA-1898's
+    # URL-shape contrast — both items are literally labelled "Share" and are
+    # visually identical, so accidentally clicking this one instead of
+    # `share_version_menuitem` is a very plausible mistake (AFS Axis 2).
+    share_agent_menuitem = LocatorDescriptor(testid="share-agent-menuitem")
+
+    # --- App-wide toast (Toast.jsx, src/components/Toast.jsx) — shared
+    # component, testids pre-exist and need no EliteaUI change (same
+    # component already used by ChatPage.toast_alert/toast_message and
+    # PipelineDetailPage.toast_alert/toast_message; ELITEA-1898 is the first
+    # case to need it on the Agent detail page, per existing repo precedent
+    # of each page object declaring its own field for this shared
+    # component). ---
+    toast_alert = LocatorDescriptor(
+        testid="toast-alert",
+        description="App-wide toast Alert root; carries data-severity (info/warning/error/success).",
+    )
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide toast message text body.",
+    )
+    # Severity-scoped toast alert selector — testid identity + data-severity
+    # state filter, the compliant shape for a state-dependent assertion
+    # (mirrors ChatPage.TOAST_ALERT_SEVERITY / PipelineDetailPage.TOAST_ALERT_SEVERITY).
+    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
 
     # --- Fork wizard (ELITEA-1893) — shares the ImportWizardModal dialog
     # family with the Agents-list Import flow (AgentsListPage's
