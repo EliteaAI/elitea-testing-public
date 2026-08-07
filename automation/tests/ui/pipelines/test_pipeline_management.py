@@ -23,13 +23,14 @@ Usage:
     pytest test_pipeline_management.py -v -m p0
 """
 
+import uuid
 from urllib.parse import urlparse
 
-import pytest
-from pages.pipelines_list_page import PipelinesListPage
-from pages.pipeline_form_page import PipelineFormPage
-from pages.pipeline_detail_page import PipelineDetailPage
 import allure
+import pytest
+from pages.pipeline_detail_page import PipelineDetailPage
+from pages.pipeline_form_page import PipelineFormPage
+from pages.pipelines_list_page import PipelinesListPage
 
 pytestmark = [pytest.mark.ui, pytest.mark.pipelines]
 
@@ -368,6 +369,114 @@ class TestSearchPipeline:
             assert not list_page.pipeline_exists_in_list(
                 "zzzz_nonexistent_pipeline_12345", timeout=3000,
             ), "Non-existent pipeline should not appear in results"
+
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2023_pipeline-dashboard-search.md", "onetest-ai Test Case link")
+    @pytest.mark.p1
+    def test_search_placeholder_and_dashboard_grid_filters_and_clears(self, page, pipeline_api):
+        """ELITEA-2023: search filters the dashboard grid (not just the
+        suggestions popover) and Clear restores the full, unfiltered list.
+
+        Unlike ``test_search_pipeline_by_name``/``test_search_pipeline_no_results``
+        above (which exercise the suggestions popover via the old fill-only
+        ``search()``), this asserts the actual grid-narrowing filter, which
+        activates only on Enter — see ``PipelinesListPage.search()`` docstring.
+        """
+        console_errors = []
+        page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+
+        with allure.step("Step 1 — Create a pipeline whose name contains 'YAML' via API"):
+            yaml_pipeline_name = f"autotest_YAML_search_{uuid.uuid4().hex[:6]}"
+            pipeline = pipeline_api.create_pipeline(
+                name=yaml_pipeline_name,
+                description="ELITEA-2023 dashboard search filter/clear test",
+            )
+            pipeline_id = pipeline["id"]
+
+        try:
+            with allure.step(
+                "Step 2 — Navigate to Pipelines dashboard; verify full list loads "
+                "including the 'YAML' pipeline and a non-matching pipeline"
+            ):
+                existing_rows = pipeline_api.list_pipelines().get("rows", [])
+                non_matching_name = next(
+                    row["name"]
+                    for row in existing_rows
+                    if "yaml" not in row.get("name", "").lower()
+                )
+
+                list_page = PipelinesListPage(page)
+                list_page.navigate()
+
+                assert list_page.pipeline_exists_in_list(yaml_pipeline_name, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Newly created pipeline '{yaml_pipeline_name}' should be visible on the dashboard"
+                )
+                assert list_page.pipeline_exists_in_list(non_matching_name, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Pre-existing pipeline '{non_matching_name}' should be visible on the dashboard"
+                )
+
+            with allure.step(
+                "Step 3 — Verify the search textbox placeholder reads "
+                "\"Let's find something amazing!\""
+            ):
+                placeholder = list_page.search_input.get_attribute("placeholder")
+                assert placeholder == "Let's find something amazing!", (
+                    f"Search placeholder should read \"Let's find something amazing!\", got {placeholder!r}"
+                )
+
+            with allure.step("Step 4 — Type 'YAML' into the search box and press Enter"):
+                list_page.search("YAML")
+                assert list_page.search_input.input_value() == "YAML", (
+                    "Search input should contain 'YAML' after typing"
+                )
+
+            with allure.step(
+                "Step 5 — Verify the dashboard grid narrows to only pipelines "
+                "matching 'YAML' (both directions)"
+            ):
+                # get_card_names(), not pipeline_exists_in_list(): the active
+                # search highlights "YAML" by splitting the card name across
+                # nested <span> fragments, and Playwright's exact text="..."
+                # locator (used by pipeline_exists_in_list) does not match
+                # the parent's concatenated text in that split-node case
+                # (confirmed live, ELITEA-2023 implementer Phase 2 — see
+                # PipelinesListPage.get_card_names() docstring).
+                filtered_names = list_page.get_card_names(timeout=UI_ELEMENT_TIMEOUT)
+                assert yaml_pipeline_name in filtered_names, (
+                    f"Filtered grid should still show matching pipeline '{yaml_pipeline_name}', "
+                    f"got {filtered_names}"
+                )
+                assert non_matching_name not in filtered_names, (
+                    f"Filtered grid should hide non-matching pipeline '{non_matching_name}', "
+                    f"got {filtered_names}"
+                )
+
+            with allure.step("Step 6 — Click the search Clear (X) icon"):
+                list_page.clear_search()
+                assert list_page.search_input.input_value() == "", (
+                    "Search input should be empty after clicking Clear"
+                )
+
+            with allure.step(
+                "Step 7 — Verify the full pipeline list is restored and the "
+                "URL stays on /pipelines/all"
+            ):
+                assert list_page.pipeline_exists_in_list(yaml_pipeline_name, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Cleared grid should show '{yaml_pipeline_name}' again"
+                )
+                assert list_page.pipeline_exists_in_list(non_matching_name, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Cleared grid should show previously-hidden '{non_matching_name}' again"
+                )
+                parsed_url = urlparse(page.url)
+                assert parsed_url.path.endswith("/pipelines/all"), (
+                    f"Page should stay on /pipelines/all after Clear, got {page.url!r}"
+                )
+
+            with allure.step("Side-channel check (Axis 2) — no console errors across the flow"):
+                assert not console_errors, (
+                    f"Unexpected console errors: {[m.text for m in console_errors]}"
+                )
+        finally:
+            pipeline_api.delete_pipeline(pipeline_id)
 
 
 class TestPipelineIsolation:
