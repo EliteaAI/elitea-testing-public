@@ -1868,6 +1868,25 @@ class PipelineDetailPage(PipelineFormPage):
 
         expect(self.page.locator(".react-flow__node")).to_have_count(expected_count, timeout=timeout)
 
+    # ReactFlow assigns each node's default display-name prefix per node TYPE
+    # (e.g. an LLM node is labelled "LLM 1", "LLM 2", ...), and that label is
+    # what its `rf__node-{label}` testid is built from (ReactFlow's own testid
+    # convention — sanctioned #579 third-party-widget exception, library-
+    # injected, not app-authored). Casing is app-assigned and NOT a mechanical
+    # transform of `node_type` (acronym types are upper-cased, word types are
+    # title-cased) — confirmed live across this suite's per-node-type AFS's:
+    # LLM (ELITEA-2004/2002), HITL (ELITEA-2014), MCP (ELITEA-1954/2037),
+    # Router (ELITEA-2033), Decision (ELITEA-2034), Toolkit (ELITEA-2010).
+    NODE_TYPE_DISPLAY_PREFIX = {
+        "llm": "LLM",
+        "hitl": "HITL",
+        "mcp": "MCP",
+        "router": "Router",
+        "decision": "Decision",
+        "toolkit": "Toolkit",
+    }
+    RF_NODE_TESTID_PREFIX = '[data-testid^="rf__node-{}"]'
+
     def wait_for_node_type_count(
         self, node_type: str, expected_count: int, timeout: int = 10000
     ) -> None:
@@ -1875,31 +1894,45 @@ class PipelineDetailPage(PipelineFormPage):
 
         Added for ELITEA-2002. Unlike :meth:`wait_for_node_count` (which
         counts EVERY ``.react-flow__node``), this scopes to a single node
-        TYPE's own CSS class (``.react-flow__node-{css_type}``, same
-        type→class mapping :meth:`wait_for_node_on_canvas` already uses) —
-        the correct handle for "how many nodes of THIS type are on canvas",
-        needed because ReactFlow always renders a synthetic END node
+        TYPE — the correct handle for "how many nodes of THIS type are on
+        canvas", needed because ReactFlow always renders a synthetic END node
         (confirmed live: a fresh zero-configured-node pipeline from
         ``PipelineAPI.create_pipeline()`` shows one ``.react-flow__node``
         for END before any node is ever added), so
         :meth:`wait_for_node_count`'s total would be off-by-one for any
         type-specific "how many LLM nodes" check.
 
-        Sanctioned #579 exception (third-party widget subtree): ReactFlow's
-        per-node CSS class is library-internal DOM (outside ``EliteaUI/src``),
-        not app JSX — no testid can be placed on it directly. Scoped under
-        the testid-anchored ``canvas_wrapper`` (``rf__wrapper``) parent, per
-        the exception's discipline — not a free-floating page-level handle.
+        Locates via the ``rf__node-{display_prefix}`` testid PREFIX
+        (:data:`RF_NODE_TESTID_PREFIX`, ``starts_with`` match — the AFS's
+        recommended handle, ``[data-testid^="rf__node-LLM"]`` for LLM), not
+        the ``.react-flow__node-{css_type}`` CSS class: the testid is
+        available (sanctioned #579 exception — library-injected DOM, not
+        app-authored, but still exposed as ``data-testid``) and a raw CSS
+        class is not the correct rung when a testid can be used. Scoped
+        under the testid-anchored ``canvas_wrapper`` (``rf__wrapper``)
+        parent, per the exception's discipline — not a free-floating
+        page-level handle. A numeric suffix (``LLM 1`` vs ``LLM 2``) is
+        assigned by the app, hence the prefix match rather than an exact id.
 
         Args:
             node_type: The node type name (case-insensitive), e.g. "llm".
+                Must be a key of :data:`NODE_TYPE_DISPLAY_PREFIX` — raises
+                ``ValueError`` for an unconfirmed type rather than guessing
+                a display-name casing that could silently locate nothing.
             expected_count: The exact count to wait for.
             timeout: Maximum wait time in milliseconds.
         """
         from playwright.sync_api import expect
 
-        css_type = node_type.lower().replace(" ", "_")
-        selector = f".react-flow__node-{css_type}"
+        display_prefix = self.NODE_TYPE_DISPLAY_PREFIX.get(node_type.lower())
+        if display_prefix is None:
+            raise ValueError(
+                f"wait_for_node_type_count: no confirmed rf__node-* testid "
+                f"display-name prefix for node_type={node_type!r}. Confirm it "
+                f"live (see ELITEA-2002 AFS's Concrete Handles table for the "
+                f"pattern) and add it to NODE_TYPE_DISPLAY_PREFIX."
+            )
+        selector = self.RF_NODE_TESTID_PREFIX.format(display_prefix)
         expect(self.canvas_wrapper.locator(selector)).to_have_count(expected_count, timeout=timeout)
 
     def get_node_ids(self) -> list[str]:
