@@ -2,9 +2,84 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2086/2087/2088,
-2026-08-03 (supersedes nothing below — new section, other sections unchanged;
-previous confirmer: ELITEA-2075, 2026-08-03).
+a time; last confirmed by: qa-engineer analyst, ELITEA-2458, 2026-08-07
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: ELITEA-2086/2087/2088, 2026-08-03).
+
+## Folder rename editor — checkmark enable/disable logic + a11y-snapshot gotcha (ELITEA-2458)
+- **Full validation logic, read from `FolderItem.jsx` source** (grounds every
+  assertion, don't re-derive): `isFolderNameValid = ConversationNameRegExp.test(folderName)`
+  where `ConversationNameRegExp = /^[a-zA-Z0-9_[\].()][a-zA-Z0-9_[\].() -]{2,63}$/`
+  (3–64 chars total). `isFolderSaveEnabled = isFolderNameValid && (isNewFolder
+  || folderName !== name)` — for an EXISTING folder (rename, not create) this
+  means BOTH valid AND changed are required to activate the checkmark.
+  Tooltip `title={isFolderNameValid ? '' : FolderNameWarningMessage}` — shows
+  ONLY when the regex fails (empty, 1–2 chars, bad first-char, bad charset),
+  NEVER for "valid but unchanged". Exact tooltip copy (`src/common/constants.js:97`,
+  `FolderNameWarningMessage`): `"The folder name should be 3 to 64 characters
+  long. It can include letters (a-z, A-Z), numbers (0-9), underscores (_),
+  brackets ([]), parentheses (()), dots (.), hyphen(-), and spaces. Please
+  note that the first character should not be a space."`
+- **The confirm checkmark has NO `data-*` state attribute today** — only a
+  CSS `fill` color (bright=active/dim=inactive via `theme.palette.icon.fill.default`
+  vs `.disabled`) and `cursor` (`pointer` vs `default`). Confirmed via full
+  source read: `onClick={isFolderSaveEnabled ? handler : null}` on a plain
+  `Box`, no `disabled`/`aria-disabled` anywhere. Any case asserting this
+  button's active/inactive state needs a NEW `data-disabled`/`data-enabled`
+  attribute added (`needs-adding`, not yet done as of ELITEA-2458).
+- **Accessibility-snapshot gotcha, confirmed live (4 states compared
+  side-by-side: empty / 2-char / unchanged-valid / 3-char-changed):** the
+  confirm `Box`'s representation in a Playwright `browser_snapshot` CHANGES
+  with state. Invalid-name states (empty, "AB") → element appears WITH the
+  tooltip text as its accessible name (MUI wires non-empty `title` as
+  accessible-name source). Valid-name states (unchanged OR 3-char-changed) →
+  `title=''`, no accessible-name attribute, element is either a bare
+  unlabeled `generic` (only distinguishable from the adjacent Cancel button
+  by DOM position) or PRUNED FROM THE SNAPSHOT ENTIRELY when `cursor` isn't
+  `pointer` (the inactive-but-valid "unchanged" state specifically — this bit
+  once caused a real accidental misclick onto the Cancel button during manual
+  exploration, since only ONE non-textbox `generic` showed up where two
+  should have existed). **Only `page.locator('[data-testid="chat-folder-name-confirm-button"]')`
+  resolved correctly in all 4 states** — role/label/text locators are not
+  just against this project's policy here, they are functionally unreliable.
+  Same likely applies to the sibling Cancel button (untested — not exercised
+  by ELITEA-2458's case steps).
+- **`set_folder_name()`'s documented "append not replace" race is real and
+  currently causing visible data pollution** — confirmed live: the shared DEV
+  project's folder list carries a `"New folder6New folder"` artifact,
+  matching exactly the failure mode `ChatPage.set_folder_name()`'s own
+  docstring warns about (a bare `Control+a` losing the race against React's
+  re-render of the default value). Always use `.clear()` after focus, per
+  that method's existing implementation — don't hand-roll a `Control+a`-only
+  clear for any new folder/conversation-name editing code.
+- **REGRESSION, filed EliteaAI/elitea-testing-public#1309**: the folder
+  dot-menu "Delete" item's `key: 'chat-folder-menu-delete'` (→ testid
+  `chat-folder-menu-delete-menuitem` via `DotMenu`'s `item.key` mechanism) has
+  been added and lost TWICE in `EliteaUI` history (`de154cc2` added it,
+  `8147d5c1`'s own commit message says it re-added a testid "lost by an
+  earlier main merge", then `6bec1451` — "Fix rename conversation block
+  behaviour" — dropped it a second time). **Absent from both `main` and
+  `automation/testids` HEAD as of 2026-08-07.** This silently breaks
+  `ChatPage.delete_folder_via_menu()`'s cleanup in `test_folder_creation.py`
+  and `test_move_conversation_to_folder.py` (swallowed by their own
+  `try`/`except`) — confirmed 19 leaked "New folder"/"New folder6" folders
+  sitting in the shared DEV project as a result. **Do not assume
+  `FOLDER_MENU_DELETE_ITEM`/`delete_folder_via_menu()` work** until #1309 is
+  confirmed fixed — check the ticket before reusing either as a pattern.
+- **The Rename dot-menu item has NEVER had a testid** (not a regression, a
+  gap — Pin also has none, out of scope unless a future case touches it).
+  `DotMenu`/`BasicMenuItem`'s mechanism (`testId={item.key}` →
+  `data-testid={testId}-menuitem`) is generic and battle-tested (same
+  mechanism powers `chat-conversation-menu-rename-menuitem` on
+  `ConversationItem.jsx`'s sibling items) — adding `key: 'chat-folder-menu-rename'`
+  to `FolderItem.jsx`'s menuItems array is a one-line, low-risk addition.
+- **Tooltip content has no testid** — `@/ComponentsLib/Tooltip` (the specific
+  Tooltip wrapper `FolderItem.jsx` uses, distinct from `@/[fsd]/shared/ui`'s
+  Tooltip used elsewhere in the Folders feature) is a thin MUI `Tooltip`
+  spread-through wrapper; `slotProps={{ popper: { 'data-testid': '...' } }}`
+  can be set directly at the call site with no shared-component change
+  needed (unlike the `toolkit-field-bucket-info-tooltip-content` precedent,
+  which needed a prop threaded through several layers — this one's simpler).
 
 ## Table/diagram/code canvas editing — the "Edit table"/"Edit diagram" family (ELITEA-2086/2087/2088)
 - **Entire component tree has ZERO `data-testid` anywhere** — confirmed via

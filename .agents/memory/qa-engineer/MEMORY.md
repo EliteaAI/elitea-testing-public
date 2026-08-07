@@ -28,3 +28,4 @@
 - [AI Providers tier selectors](ai_providers_tier_selectors_no_clear_and_no_chat_parity.md) — no unset in UI, only Default feeds chat model
 - [structured_output+messages+dict/list crash](structured_output_messages_dict_list_crash.md) — #1274; never combine in one node's output
 - [Mechanical grep misses JS-string raw selectors](mechanical_grep_misses_js_string_raw_selectors.md) — grep `wait_for_function`/`evaluate` JS payloads separately for `data-testid=`
+- [Empty-title Tooltip breaks a11y snapshot](folder_confirm_button_state_absent_from_ax_snapshot.md) — `title={cond?'':text}` elements vanish/mislabel in browser_snapshot; testid-only is load-bearing, not just policy
