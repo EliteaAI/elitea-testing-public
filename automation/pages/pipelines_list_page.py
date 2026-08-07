@@ -69,6 +69,18 @@ class PipelinesListPage(BasePage):
         description="Pipeline card name (title) — collection locator, one per visible card",
     )
 
+    # Shared CreateEntityButton.jsx testid (also used by Agents/Toolkits/
+    # Credentials/Chat list pages — see ToolkitsListPage.sidebar_create_button
+    # for the identical pattern). Confirmed live (ELITEA-2020 implementer
+    # Phase 2 exploration): while on the Pipelines dashboard, this control's
+    # label resolves to "Pipeline" (CreateEntityButton.jsx's currentLabel via
+    # RouteToLabelMap) and clicking it navigates directly to
+    # /pipelines/create?viewMode=owner (no dropdown — isSimpleCreateRoute).
+    sidebar_create_button = LocatorDescriptor(
+        testid="sidebar-create-button",
+        description="'+ Pipeline' create button in the sidebar (generic, shared across list pages)",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -86,6 +98,21 @@ class PipelinesListPage(BasePage):
         """Navigate to the create pipeline page."""
         super().navigate("/pipelines/create?viewMode=owner")
         logger.info("Navigated to create pipeline page")
+
+    def click_create_pipeline(self, timeout: int = 15000) -> None:
+        """Click the sidebar '+' control and wait for the create form's URL.
+
+        Mirrors ``ToolkitsListPage.click_create_toolkit()`` — same shared
+        ``sidebar-create-button`` testid (ELITEA-2020 case Step 2: "Click the
+        '+' button next to 'Pipeline' label in the sidebar header area").
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the URL to
+                reflect the create form.
+        """
+        self.sidebar_create_button.click()
+        self.page.wait_for_url("**/pipelines/create*", timeout=timeout)
+        logger.info("Clicked sidebar '+ Pipeline' — now at %s", self.page.url)
 
     # ------------------------------------------------------------------
     # Wait methods

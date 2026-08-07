@@ -172,3 +172,82 @@ record verification exists to catch). Caught this round by a fresh
 reviewer session re-deriving provenance from scratch rather than trusting
 the original implementer's claim — the same "verify importers/owners, not
 just string existence" muscle, applied one level up the stack.
+
+## Addendum (ELITEA-2020 fix round 1, PR #1305, reviewer Finding 1) — SUPERSEDED, see round-2 correction below
+
+A fourth variant was claimed here, one notch worse than the others: that
+`PipelineDetailPage.version_selector`'s originally-recorded
+`agent-version-selector-trigger-combobox` testid was **wholly fabricated**
+— not a wrong-component mix-up, a wrong-STRING invention — on the strength
+of `git grep -n "agent-version-selector-trigger-combobox" origin/main --
+src/` (and `origin/automation/testids`) returning **zero hits**, whole
+repo, and a source trace claiming `SingleSelect.jsx` has "no `-combobox`-
+suffix derivation logic anywhere."
+
+**This verdict was itself wrong — corrected 2026-08-07, review fix round 2
+(reviewer re-review + implementer fix-round-2 cross-check).** The
+`-combobox` variant IS real:
+`SingleSelect.jsx:661` (`../EliteaUI`, `automation/testids` ref) reads
+`SelectDisplayProps={dataTestId ? { 'data-testid': \`${dataTestId}-combobox\` } : undefined}`
+— a genuine second `data-testid`, applied via MUI's `SelectDisplayProps`
+prop onto the nested `role="combobox"` display div (confirmed against
+`node_modules/@mui/material/Select/SelectInput.js:472,486` — a different
+DOM node from the outer wrapper). The shared component really does render
+TWO `data-testid`-bearing elements, one nested in the other — the
+*original* AFS claim ("renders TWO testids") was accurate all along.
+
+**Why the round-1 grep still returned zero hits despite the testid being
+real — this is the actual, corrected lesson**: `` `${dataTestId}-combobox` ``
+is a template literal evaluated at RENDER TIME, so the fully-concatenated
+string `agent-version-selector-trigger-combobox` NEVER appears as a literal
+anywhere in source. Grepping for the exact concatenated string is checking
+the wrong thing — it will read as "zero hits, doesn't exist" for ANY
+dynamically-suffixed testid, real or not. The correct check is to grep for
+the *mechanism* or the literal suffix fragment instead:
+`git grep -n -- "-combobox" <ref> -- src/` (the substring `-combobox` DOES
+appear literally in the template) or `git grep -n "SelectDisplayProps"
+<ref> -- src/`. This is the exact "dynamic testid" shape
+`.agents/testing.md` § Locator policy already documents for data-
+parameterized testids — just parameterized by the BASE TESTID rather than
+by test data, which is why a plain literal-string check missed it.
+
+**And the finding is ref-specific, not absolute**: `git grep -n --
+"-combobox" origin/automation/testids -- src/` → 1 hit
+(`SingleSelect.jsx:661`). `git grep -n -- "-combobox" origin/main -- src/`
+→ 0 hits (re-verified 2026-08-07 with a fresh `git fetch origin` on both
+refs, round 2). The `SelectDisplayProps` line is on `automation/testids`
+only, not yet promoted to `main` — a `needs-adding`→`on-automation/testids
+only (awaiting human promotion to main)` PROVENANCE case
+(`.agents/role-overrides.md` § Analyst slot), not a non-existent testid.
+"Zero hits on both `main` and `automation/testids`" (as round 1 claimed)
+was also simply false as a factual matter, independent of the template
+issue — a single `git grep` across "both refs" collapsed into one claim
+without pasting each ref's output separately is exactly the anti-pattern
+the closure-record two-stage-grep discipline exists to catch.
+
+**Why `agent-version-selector-trigger` (no suffix) was still the right
+fix, for a different reason than round 1 gave**: `AgentDetailPage` already
+reads this exact shared component via `version_selector_trigger` (no
+suffix) — merged, exercised across ELITEA-1888/1889/1890/1891/1892 — and
+that testid is confirmed on BOTH `main` and `automation/testids`, unlike
+the `-combobox` variant. DOM `textContent` on the outer wrapper already
+includes the inner `-combobox` div's descendant text, so reading the
+no-suffix testid returns "base" correctly either way. The page-object
+OUTCOME from round 1 was correct; only its stated JUSTIFICATION
+("fabricated", "does not exist", "zero hits on both refs") was false —
+and that false justification shipped into 4 permanent artifacts (this
+memory entry, the AFS, `_surface.md`, and the page-object docstring) as
+verified fact, exactly the "improvisation declared but the AFS/digest
+never actually corrected to the TRUE state" failure this file's own
+"Addendum (docs-only fix round, PR #710)" above warns about — except here
+the correction itself, not just the omission, was the defect.
+
+**Fix habit, restated for THIS specific failure mode**: before declaring a
+claimed testid "fabricated" / "does not exist" from a grep-zero-hits
+result, ask whether the claimed string could be a `<base>-<suffix>` or
+`<prefix>-<base>` TEMPLATE CONSTRUCTION rather than a literal — if so,
+grep for the KNOWN-REAL base string plus the suffix/prefix fragment or a
+template-construction pattern (`` `${ ``, `SelectDisplayProps`, or the
+project's documented dynamic-testid mechanisms), not just the exact
+concatenated form — and check EACH ref separately, pasting both outputs,
+never collapsing "checked both, zero on either" into one unverified claim.

@@ -43,3 +43,4 @@
 - [Nested agent attach/accordion quirks](nested_agent_attach_and_accordion_quirks.md) — attach_agent_by_testid() over attach_agent(); expect_response() over capture_requests_matching(); two tool-chips share one testid
 - [wait_for_chat_response header text false-stable](wait_for_chat_response_header_text_false_stable.md) — low-effort agents: header/thought-accordion text can lock in as "stable" before the answer renders
 - [Search highlighting breaks exact text= locators](search_highlight_breaks_exact_text_locator.md) — read entity-card-name testid + .text_content() instead, on any entity-card list page
+- [Name field 32-char silent truncation](pipeline_agent_name_field_32char_silent_truncation.md) — agent-name-input caps at 32, no error; keep generated names ≤32 chars

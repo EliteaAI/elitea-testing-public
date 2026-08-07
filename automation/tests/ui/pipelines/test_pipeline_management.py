@@ -23,6 +23,7 @@ Usage:
     pytest test_pipeline_management.py -v -m p0
 """
 
+import re
 import uuid
 from urllib.parse import urlparse
 
@@ -171,6 +172,93 @@ class TestCreatePipeline:
             assert not form_page.is_save_enabled(), (
                 "Save should be disabled without description"
             )
+
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2020_create-pipeline-minimal.md", "onetest-ai Test Case link")
+    @pytest.mark.p0
+    def test_create_pipeline_minimal_via_sidebar_button(self, page, pipeline_api):
+        """ELITEA-2020: Create a pipeline via the sidebar '+' control, with only
+        the required Name + Description fields, and verify the resulting
+        pipeline gets a unique numeric ID (URL + Information section) and
+        defaults to the "base" VERSION.
+
+        Extends TestCreatePipeline (test-specs/pipelines/lextend_create-
+        pipeline-minimal-sidebar_ELITEA-2020.md) — additive to
+        test_create_pipeline_via_ui, which navigates via a direct URL instead
+        of the sidebar control and never asserts the Information section or
+        VERSION selector.
+        """
+        # Name field has a 32-char cap (MAX_NAME_LENGTH, ApplicationEditForm.jsx) —
+        # confirmed live: a longer name silently truncates rather than erroring.
+        pipeline_name = f"autotest_pipe_min_{uuid.uuid4().hex[:8]}"
+        pipeline_desc = "Automated test pipeline"
+
+        with allure.step("Step 1 — Navigate to Pipelines dashboard"):
+            list_page = PipelinesListPage(page)
+            list_page.navigate()
+
+        with allure.step("Step 2 — Click the sidebar '+' next to 'Pipeline' and verify the create form opens"):
+            list_page.click_create_pipeline()
+            url_path = urlparse(page.url).path
+            assert url_path == "/pipelines/create", (
+                f"Sidebar '+' should navigate to the create form, got: {page.url}"
+            )
+            form_page = PipelineFormPage(page)
+            form_page.wait_for_page_load()
+
+        with allure.step("Step 3 — Fill Name field"):
+            form_page.name_input.click()
+            form_page.name_input.type(pipeline_name)
+            assert form_page.get_name() == pipeline_name, (
+                "Name field should hold the typed value"
+            )
+
+        with allure.step("Step 4 — Fill Description field"):
+            form_page.description_input.click()
+            form_page.description_input.type(pipeline_desc)
+            assert form_page.get_description() == pipeline_desc, (
+                "Description field should hold the typed value"
+            )
+
+        with allure.step("Step 5 — Verify Save button is enabled"):
+            form_page.wait_for_form_validation()
+            assert form_page.is_save_enabled(), (
+                "Save button should be enabled once Name and Description are filled"
+            )
+
+        with allure.step("Step 6 — Click Save"):
+            form_page.click_save(timeout=FORM_SAVE_TIMEOUT)
+
+        with allure.step("Step 7 — Verify URL includes the new numeric pipeline ID"):
+            detail_page = PipelineDetailPage(page)
+            detail_page.wait_for_detail_page_load()
+            url_path = urlparse(page.url).path
+            match = re.match(r"^/pipelines/all/(\d+)$", url_path)
+            assert match, f"URL should include a numeric pipeline ID, got: {page.url}"
+            url_pipeline_id = match.group(1)
+
+        pipeline_id_str = None
+        try:
+            with allure.step("Step 8 — Verify 'Pipeline ID:' in the Information section, numeric, matching the URL"):
+                detail_page.information_section.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                pipeline_id_str = detail_page.get_pipeline_id()
+                assert pipeline_id_str.isdigit(), (
+                    f"Pipeline ID in the Information section should be numeric, got: {pipeline_id_str!r}"
+                )
+                assert pipeline_id_str == url_pipeline_id, (
+                    f"Information section Pipeline ID ({pipeline_id_str}) should match "
+                    f"the URL's pipeline ID ({url_pipeline_id})"
+                )
+
+            with allure.step("Step 9 — Verify VERSION selector defaults to 'base'"):
+                assert detail_page.get_version_display() == "base", (
+                    "VERSION selector should default to 'base' on a freshly created pipeline"
+                )
+        finally:
+            if pipeline_id_str:
+                try:
+                    pipeline_api.delete_pipeline(int(pipeline_id_str))
+                except Exception as cleanup_exc:
+                    print(f"[WARN] Failed to delete pipeline {pipeline_id_str}: {cleanup_exc}")
 
 
 class TestEditPipeline:
