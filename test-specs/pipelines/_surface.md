@@ -2,7 +2,57 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-06 (ELITEA-2452 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-07 (ELITEA-2026 analysis).
+
+## YAML editor view — line numbers, copy button, `state:` key precondition (confirmed live, 2026-08-07, ELITEA-2026)
+
+- **`state:` key requires a CUSTOM state variable — `input`/`messages` alone
+  never produce it.** Confirmed both directions: a plain
+  `pipeline_with_llm_id`-shaped pipeline's Yaml view shows ONLY
+  `entry_point:`/`nodes:` (zero `state:` key, verified via
+  `[data-testid="pipeline-yaml-editor"].textContent`); the identical shape
+  plus an explicit `state:` block in `PipelineAPI.create_pipeline()`'s
+  `instructions` param round-trips a `state:` section correctly. Filed as a
+  clarification (case-text drift, not a defect):
+  `EliteaAI/elitea-testing-public#1299` — any case whose Test Data implies
+  "any pipeline with nodes" guarantees a `state:` keyword must instead seed
+  a custom state var explicitly (same `instructions`-param technique
+  ELITEA-2453's fixture uses).
+- **Line-number gutter has ZERO testid, but IS a sanctioned #579 exception**
+  — confirmed live via `document.querySelector('.cm-gutters')` →
+  `data-testid: null`, AND confirmed the gutter is a DOM descendant of the
+  `pipeline-yaml-editor` testid parent (`editorTestidEl.contains(gutter)` →
+  `true`). Scoped raw handle: `.cm-gutters .cm-lineNumbers .cm-gutterElement`
+  chained off `yaml_editor`, same precedent/shape as the existing
+  `YAML_LINE_SELECTOR = ".cm-line"` class constant — add a sibling constant
+  rather than a new page-object field.
+- **"Copy yaml code to clipboard" button has NO testid** — only
+  `aria-label="Copy yaml code to clipboard"` (confirmed via a full
+  `document.querySelectorAll('button')` grep). Genuine `add-data-testid` gap,
+  not previously flagged by another case. Recommend `pipeline-yaml-copy-button`.
+- **Copy click produces the SAME shared `toast-alert` component every other
+  page already uses** (`data-testid="toast-alert"`, `data-severity="info"`,
+  text `"The code has been copied to the clipboard."`) — `PipelineDetailPage.
+  get_toast_alert("info")` / `get_toast_text()` already exist and work
+  unmodified, no new plumbing needed. Toast auto-dismisses fast (~1-2s
+  observed) — wait for it immediately after the click, not a step later.
+- **`navigator.clipboard.readText()` unprivileged HANGS INDEFINITELY, no
+  error, no timeout** — confirmed live (ad-hoc MCP scratch session, no
+  `context` fixture): a bare `page.evaluate(() =>
+  navigator.clipboard.readText())` silently stalled the calling tool for the
+  full idle timeout; the browser page itself stayed fully responsive
+  throughout (confirmed via a snapshot immediately after recovery) — this is
+  a permission-prompt stall, not a crash. **BUT the real pytest `context`
+  fixture (`automation/conftest.py:281`) already grants
+  `permissions=["clipboard-read", "clipboard-write"]` suite-wide** — so
+  inside an actual test this call is safe and resolves immediately (see
+  role memory `clipboard_read_hangs_without_permission_grant.md`, from
+  ELITEA-2280). Only ad-hoc/scratch sessions need the explicit
+  `context.grant_permissions(...)` workaround.
+- **Toggling Flow⇄Yaml and clicking Copy are both pure client-side
+  operations** — zero network requests for either, confirmed via
+  `browser_network_requests` across both probe pipelines. Zero console
+  errors/warnings throughout.
 
 ## Run Details panel (`RunStateNode`/`RunStateDialog`) — opened after pipeline execution (confirmed live, 2026-08-06, ELITEA-2450)
 

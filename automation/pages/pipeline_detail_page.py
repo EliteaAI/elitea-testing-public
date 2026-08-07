@@ -108,6 +108,33 @@ class PipelineDetailPage(PipelineFormPage):
     # yaml_lines above never resolved any elements).
     YAML_LINE_SELECTOR = ".cm-line"
 
+    # Sanctioned #579 exception (third-party editor library internal render
+    # nodes), sibling to YAML_LINE_SELECTOR above: CodeMirror's line-number
+    # gutter (".cm-gutters .cm-lineNumbers .cm-gutterElement") has no
+    # data-testid anywhere in the DOM (confirmed live via
+    # document.querySelector('.cm-gutters') -> data-testid: null,
+    # ELITEA-2026 exploration) — library-internal render, not app JSX.
+    # Scoped raw selector under the testid-anchored yaml_editor parent
+    # (confirmed live: editorTestidEl.contains(gutter) === true).
+    #
+    # ":visible" is REQUIRED (confirmed live, ELITEA-2026): CodeMirror
+    # renders a hidden, zero-height "spacer" gutterElement FIRST in DOM
+    # order (style="height: 0px; visibility: hidden; pointer-events: none;")
+    # whose text is a measurement placeholder (e.g. "99" — sized to reserve
+    # gutter width for the largest expected line-number digit count), NOT
+    # line 1's actual number. Without the visibility filter, .nth(0) reads
+    # that spacer instead of the first real line-number element.
+    YAML_GUTTER_LINE_SELECTOR = ".cm-gutters .cm-lineNumbers .cm-gutterElement:visible"
+
+    # "Copy yaml code to clipboard" icon button, above the editor next to the
+    # Flow/Yaml toggle group (EditorPanel.jsx). New testid added for
+    # ELITEA-2026 — the button previously carried only an
+    # aria-label/tooltip title, no data-testid.
+    copy_yaml_button = LocatorDescriptor(
+        testid="pipeline-yaml-copy-button",
+        description="Copy yaml code to clipboard icon button (visible only in YAML view)",
+    )
+
     # App-wide toast (Toast.jsx, src/components/Toast.jsx) — shared component,
     # testids pre-exist and need no EliteaUI change (confirmed live, ELITEA-2068).
     # Each page object declares its own field for this shared component per
@@ -1208,6 +1235,19 @@ class PipelineDetailPage(PipelineFormPage):
         if line_count == 0:
             return self.yaml_editor.text_content() or ""
         return "\n".join(lines.nth(i).text_content() or "" for i in range(line_count))
+
+    def get_yaml_gutter_line_numbers(self):
+        """Return the CodeMirror line-number gutter locator.
+
+        Scoped under the testid-anchored ``yaml_editor`` parent via
+        ``YAML_GUTTER_LINE_SELECTOR`` (sanctioned #579 exception — see that
+        constant's docstring). Callers use ``.count()`` / ``.nth(i)``.
+        """
+        return self.yaml_editor.locator(self.YAML_GUTTER_LINE_SELECTOR)
+
+    def click_copy_yaml_button(self) -> None:
+        """Click the "Copy yaml code to clipboard" icon button (YAML view only)."""
+        self.copy_yaml_button.click()
 
     def edit_yaml_line(self, current_line_text: str, new_line_text: str) -> None:
         """Replace one line of the YAML CodeMirror editor with *new_line_text*.

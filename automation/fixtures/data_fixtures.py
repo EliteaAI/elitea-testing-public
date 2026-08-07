@@ -350,6 +350,71 @@ def pipeline_with_typed_state_vars_id(pipeline_api: PipelineAPI, request):
         logger.warning("Failed to delete typed-state-vars pipeline %s: %s", pid, exc)
 
 
+_CUSTOM_STATE_VAR_INSTRUCTIONS = """\
+entry_point: LLM 1
+state:
+  custom_text:
+    type: str
+nodes:
+  - id: LLM 1
+    type: llm
+    input: []
+    input_mapping:
+      chat_history:
+        type: fixed
+        value: []
+      system:
+        type: fixed
+        value: ''
+      task:
+        type: fixed
+        value: ''
+    output: []
+    structured_output: false
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_with_custom_state_var_id(pipeline_api: PipelineAPI, request):
+    """Create a minimal pipeline with ONE custom state variable (``custom_text``,
+    type ``str``) plus a single LLM node and an ``entry_point``. Deletes the
+    pipeline afterwards.
+
+    Satisfies the ELITEA-2026 precondition (pipeline with ≥1 node AND ≥1
+    CUSTOM state variable). NOT the same as :func:`pipeline_with_llm_id` —
+    that fixture's YAML has no ``state:`` key at all (confirmed live, AFS
+    ``l2_pipeline-yaml-editor-view_ELITEA-2026.md`` § Preconditions clarifies
+    that the case's own "any pipeline with nodes" wording does not, by
+    itself, guarantee a ``state:`` key in the rendered YAML — only an
+    explicit custom variable does).
+
+    Built via the GENERIC :meth:`PipelineAPI.create_pipeline` (raw YAML
+    ``instructions`` string), the same shape as
+    :func:`pipeline_with_typed_state_vars_id` but with a single variable —
+    that fixture's 4-variable recipe is unnecessarily rich for this case.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2026_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline(
+        name=name,
+        description=f"Auto-created custom-state-var pipeline for test {request.node.name}",
+        instructions=_CUSTOM_STATE_VAR_INSTRUCTIONS,
+    )
+    pid = pipeline["id"]
+    logger.info("Created custom-state-var pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted custom-state-var pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete custom-state-var pipeline %s: %s", pid, exc)
+
+
 @pytest.fixture
 def github_credential(credential_api: CredentialAPI, request):
     """Create a GitHub API credential and yield its metadata.
