@@ -1,9 +1,67 @@
 # Agents surface — exploration digest
 
 Handle cache for live-confirmed handles/quirks on the Agent detail page
-(`/agents/all/{id}?viewMode=owner`) — VERSION area + Run History + LLM Model Settings dialog.
+(`/agents/all/{id}?viewMode=owner`) — VERSION area + Run History + LLM Model Settings dialog +
+Tools section's Agent/Pipeline sub-tool version selector + nested-agent chat execution.
 Not a substitute for execution — verify a handle as you use it. One writer at a time; last
-confirmed by: qa-engineer analyst, ELITEA-1878/1879 run.
+confirmed by: qa-engineer analyst, ELITEA-1951 run (2026-08-07).
+
+## Attached Agent/Pipeline tool card — version selector (ELITEA-1951 run, 2026-08-07)
+- Rendered by `EliteaUI/src/pages/Applications/Components/Tools/AgentPipelineVersionSelector.jsx`
+  inside `ToolCard.jsx`, for any tool whose `tool.type === 'application'` (i.e. an attached
+  sub-agent OR sub-pipeline). **Zero `data-testid` anywhere in this file** — confirmed via source
+  read, not just live DOM. Testid gap: `agent-tool-version-selector-trigger-{tool_id}` (dynamic,
+  mirrors `SKILL_VERSION_TRIGGER_SELECTOR`'s templated-constant pattern) on the `.version-text`
+  clickable `Box`, plus `agent-tool-version-selector-menu-{tool_id}` / `agent-tool-version-option-{tool_id}-{version_id}`
+  on the MUI `Menu`/`MenuItem`s.
+- Live behavior confirmed: trigger text = the tool's currently-bound version name (e.g. `"base"`
+  for a fresh sub-agent with only one version); clicking it opens a `Menu` with a "Versions"
+  header + one `MenuItem` per version, checkmark on the selected one. Card's own testid
+  (`agent-toolkit-card`) is shared unchanged with Toolkit/MCP cards — confirmed the SAME
+  component renders Agent-type sub-tools too, `.filter(has_text=sub_agent_name)` finds it.
+- Attach endpoint for Agent/Pipeline-type tools is **`PATCH
+  .../elitea_core/application_relation/prompt_lib/{project}/{app_id}/{version_id}` → 201**,
+  DISTINCT from Toolkit/MCP's `PATCH .../tool/prompt_lib/{project}/{tool_id}`. Version-switch
+  (clicking a different `MenuItem`) uses `useUpdateApplicationRelationMutation` — same endpoint,
+  atomic single-call switch (source comment cites issue #5716: avoids a delete-then-add race that
+  could orphan the tool on a rejected switch).
+
+## Nested-agent invocation in chat — chip vs. accordion representation (ELITEA-1951 run, 2026-08-07)
+- When a parent agent invokes an attached sub-agent as a tool, the response's
+  `chat-answer-thought-accordion` (existing testid, ELITEA-2211..2215 batch) shows the
+  invocation as EITHER a flat `chat-answer-tool-chip` reading the sub-agent's bare name, OR a
+  nested expandable accordion (an `<h3>` whose text is the sub-agent's exact name) — confirmed
+  live that **which shape renders depends on whether the invoked sub-agent itself made a further
+  tool call**: no further call → flat chip; sub-agent called its own tool → nested accordion.
+  Don't hardcode either shape as fixed — check for the accordion first, fall back to the chip.
+- Inside the nested accordion (once expanded — starts collapsed, `aria-expanded="false"`):
+  `chat-answer-model-chip` → `chat-answer-tool-chip` → `chat-answer-model-chip`, i.e. the
+  sub-agent's own reasoning-then-tool-call-then-completion chain, all pre-existing testids
+  (ELITEA-2211..2215 batch). A NESTED agent's own tool-call chip text carries a suffix the
+  top-level shape doesn't: `"{toolkit}: {tool} ({originating_agent_name})"` vs. top-level's
+  `"{toolkit}: {tool}"` — `ActionView.jsx`'s title-builder appends the originating agent's name
+  in parens when the call happened inside a nested agent context. Use the suffix to
+  disambiguate a nested tool call from a top-level one, not DOM depth alone (DOM depth is
+  reliable too, but the text shape is the more direct, spec-legible assertion).
+- **Message-wording is determinism-critical for BOTH invocation and the sub-agent's own tool
+  use** — same finding class as ELITEA-2211 vs. ELITEA-2215 (chat-interface surface). A vague
+  parent-facing message ("Please help me with this task.") produced zero invocation at all; a
+  message naming the sub-agent but not its tool's required parameter invoked the sub-agent but
+  the sub-agent then silently skipped its own configured MCP tool and answered generically; only
+  a message naming the sub-agent, its tool, AND the tool's required parameter reliably produced
+  the full chain, repeatably. This is normal LLM behavior given ambiguous input — NOT the same
+  defect as #1127 (chat-interface's tool-call-intent-leaks-as-raw-text bug), which was never
+  observed here (every non-invoking response was a well-formed, normal conversational reply).
+  Automation exercising a nested-agent-invokes-tool flow should always use a fully-specified
+  message, never rely on the agent inferring missing parameters.
+- Round-trip time for a 2-level nested tool-call chain (parent → sub-agent → sub-agent's MCP
+  tool → parent relays) was observed up to ~40s ("Thought for 40 secs") — budget a 60s+ final-
+  answer wait for this shape, more than a flat single-tool-call flow needs.
+- Fixture agents left in project `399` after this run (reusable, `autotest_`-prefixed):
+  `autotest_nested_mcp_subagent` (id `7827`, has `autotest_mcp_run_tool` MCP attached,
+  instructed to always call `read_wiki_structure`) and `autotest_nested_mcp_parentagent`
+  (id `7828`, instructed to always invoke the sub-agent). Both created via the UI form —
+  `#524`'s temperature+reasoning_effort 400 did NOT fire on this path.
 
 ## VERSION selector (all pre-existing, confirmed live repeatedly across ELITEA-1888/1889/1892/1890/1891)
 - `agent-version-selector-trigger` — combobox trigger, text = current version name only (no date/status).
