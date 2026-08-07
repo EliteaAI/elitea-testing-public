@@ -87,8 +87,12 @@ No additional test data beyond what the covering spec's `conv_name`/`conv_id` al
    visible with exactly 6 top-level items in DOM order — Attach Files
    (`chat-attach-menuitem-button`), Modules (`internal-tools-menuitem`), Agents
    (`agents-menuitem`), Pipelines (`pipelines-menuitem`), Toolkits (`toolkits-menuitem`), MCPs
-   (`mcps-menuitem`) — all pre-existing testid-based `LocatorDescriptor` fields on `ChatPage`,
-   confirmed live via `get_open_plus_menu_item_count()` returning 6 in this (non-Team) project.
+   (`mcps-menuitem`) — all pre-existing testid-based `LocatorDescriptor` fields on `ChatPage`.
+   The 6 items are asserted individually by visibility; the pre-existing
+   `get_open_plus_menu_item_count()` helper additionally corroborates 5 of them
+   (it is scoped to the shared `-menuitem` testid SUFFIX, which
+   `chat-attach-menuitem-button` does not match — a distinct naming convention
+   for that one control, live-confirmed returns 5 not 6 during implementation).
 2. **Extends existing Step 6** (`verify_module_toggle_order()`): once `MODULE_TOGGLE_ORDER` is
    corrected (8 entries), this pre-existing method call already asserts all 8 switches visible,
    correctly named, in DOM order — no new page-object method needed, only the data fix above.
@@ -101,11 +105,15 @@ No additional test data beyond what the covering spec's `conv_name`/`conv_id` al
    `data_analysis`): assert the checked state flips each click
    (`is_module_toggle_checked(tool_key)` before/after), assert `toast_message` becomes visible with
    text `"Modules configuration updated"` (lowercase — same clarification as issue #1115), AND
-   **assert `toast_message` carries `data-severity="success"`** (new — satisfies case step 10 "no
-   error messages shown" as a positive, stable-attribute check per `.agents/testing.md`'s
+   **assert the toast alert's severity is `success`** via the pre-existing
+   `get_toast_alert("success")` / `TOAST_ALERT_SEVERITY` mechanism (testid `toast-alert` +
+   `data-severity` state filter — NOT on the `toast-message` testid itself, which is a plain text
+   `Box` child with no severity attribute of its own; corrected during implementation from an
+   earlier draft of this AFS that conflated the two) — satisfies case step 10 "no error messages
+   shown" as a positive, stable-attribute check per `.agents/testing.md`'s
    testid+`data-*`-state-filter pattern; `ToastProvider.jsx` sets `severity: 'error'` only via
-   `toastError`, so asserting `success` on the SAME `toast-message` element is a genuine negative
-   check on the error path, not a tautology).
+   `toastError`, so asserting `success` on `toast-alert` is a genuine negative check on the error
+   path, not a tautology.
 4. **Extends existing Step 9** (close panel via outside click): after
    `get_module_toggle_switches()` count reaches 0, **new** — assert `chat.message_input`
    (`chat-message-input`, pre-existing testid) is visible AND enabled, satisfying the case's step
@@ -118,7 +126,7 @@ No additional test data beyond what the covering spec's `conv_name`/`conv_id` al
 - The Modules panel shows all 8 currently-live toggles (not 7 — see Overlap check finding), each
   with a readable current on/off state.
 - Every one of the 8 toggles flips state and shows the `"Modules configuration updated"` toast
-  with `data-severity="success"` when clicked — no error-severity toast at any point.
+  and the toast alert's `data-severity="success"` when clicked (via `toast-alert`, not `toast-message`) — no error-severity toast at any point.
 - Closing the panel (outside click) restores the plain conversation view: 0 toggle switches
   remain AND the message composer is visible and enabled again.
 
@@ -138,13 +146,13 @@ No additional test data beyond what the covering spec's `conv_name`/`conv_id` al
 | 7 Click toggle for each module one by one, on and off | Control responds | covering spec steps 7–8 (2 of 8) + new step 3 (remaining 6) | both | asserted |
 | 8 Verify state changes correctly for each toggle | Condition holds | covering spec steps 7–8 + new step 3 | both | asserted |
 | 9 Verify "Modules configuration Updated" after each toggle | Condition holds | covering spec steps 7–8 + new step 3 | both | asserted *(clarification — actual text lowercase "updated", same as issue #1115, not re-filed)* |
-| 10 Verify no error messages shown | Condition holds | new step 3 | new step 3: `toast_message` `data-severity="success"` per toggle | asserted |
+| 10 Verify no error messages shown | Condition holds | new step 3 | new step 3: `toast-alert` `data-severity="success"` per toggle (via `get_toast_alert("success")`) | asserted |
 | 11 Close panel, verify main conversation view restored | Action completes, expected UI state | covering spec step 9 (switch count 0) + new step 4 (`message_input` visible/enabled) | both | asserted |
 | Expected Final State: main view restored | — | covering spec step 9 + new step 4 | — | asserted (composite) |
 
 **Axis 2 — Analyst additions**
 
-- New step 3 asserts `toast_message`'s `data-severity` attribute (not just its text) — *added:
+- New step 3 asserts the `toast-alert` element's `data-severity` attribute (not just `toast-message`'s text) — *added:
   this is the only way to make case step 10 ("no error messages") a real, falsifiable assertion
   rather than an implicit absence-of-failure; a genuinely broken toggle that silently fired an
   error toast with reused wording would otherwise slip through.*
@@ -169,7 +177,8 @@ no new testids required for this case.
 | Toolkits menuitem | `toolkits-menuitem` | on-main ✓ | `ChatPage.toolkits_menuitem` |
 | MCPs menuitem | `mcps-menuitem` | on-main ✓ | `ChatPage.mcps_menuitem` |
 | Module toggle switch, "Ask User" (new, ×1) | `modules-toggle-ask_user` | on-main ✓ (live-confirmed 2026-08-07) | Uses existing `MODULES_TOGGLE_SWITCH` template constant; only `MODULE_TOGGLE_ORDER` tuple needs the new `("ask_user", "Ask User")` entry, inserted between `pyodide` and `swarm` per live DOM order |
-| Success/error toast | `toast-message` | on-main ✓ | `ChatPage.toast_message`; `data-severity` attribute (`success`/`error`) confirmed live via `ToastProvider.jsx` — state via `data-*` on a stable testid, per locator policy |
+| Success/error toast text | `toast-message` | on-main ✓ | `ChatPage.toast_message` — text content only, no severity attribute |
+| Toast severity root | `toast-alert` | on-main ✓ | `ChatPage.toast_alert` / `get_toast_alert(severity)` / `TOAST_ALERT_SEVERITY` (pre-existing) — `data-severity` (`success`/`error`) confirmed live via `ToastProvider.jsx`/`Toast.jsx`, state via `data-*` on a stable testid, per locator policy |
 | Message composer input | `chat-message-input` | on-main ✓ | `ChatPage.message_input` |
 
 ## Network Behavior

@@ -304,26 +304,34 @@ class ChatPage(BasePage):
     )
 
     # ------------------------------------------------------------------
-    # Modules panel toggle switches (ELITEA-2162) — 7 fixed tool keys wired
-    # in PlusChatButton.jsx's renderSubmenuContent(); testid first added in
-    # EliteaAI/EliteaUI@386245c9 via inputProps, which MUI v7's <Switch>
-    # silently drops (resolved 0 elements) — the working implementation is
-    # EliteaAI/EliteaUI@e22e9881, which moves the testid to slotProps.input.
-    # Cherry-pick e22e9881 (not 386245c9 alone) for this testid to render.
-    # Template per the dynamic-testid convention
+    # Modules panel toggle switches (ELITEA-2162) — 8 fixed tool keys wired
+    # in PlusChatButton.jsx's renderSubmenuContent() (originally 7; "Ask
+    # User"/ask_user added to the live product after ELITEA-2162's
+    # analysis — see MODULE_TOGGLE_ORDER note, ELITEA-2464); testid first
+    # added in EliteaAI/EliteaUI@386245c9 via inputProps, which MUI v7's
+    # <Switch> silently drops (resolved 0 elements) — the working
+    # implementation is EliteaAI/EliteaUI@e22e9881, which moves the testid
+    # to slotProps.input. Cherry-pick e22e9881 (not 386245c9 alone) for
+    # this testid to render. Template per the dynamic-testid convention
     # (.agents/testing.md § Locator policy). Stable keys confirmed live against
     # src/[fsd]/shared/lib/constants/internalTools.constants.js.
     # ------------------------------------------------------------------
     MODULES_TOGGLE_SWITCH = '[data-testid="modules-toggle-{}"]'
     MODULES_TOGGLE_SWITCH_PREFIX = '[data-testid^="modules-toggle-"]'
 
-    # (tool_key, accessible name) — DOM/case order, live-confirmed.
+    # (tool_key, accessible name) — DOM/case order, live-confirmed. "ask_user"
+    # ("Ask User") added 2026-08-07 (ELITEA-2464 exploration) — live product
+    # change post-dating ELITEA-2162's original 7-entry analysis (2026-08-03);
+    # see EliteaAI/elitea-testing-public#1293. Inserted in its live DOM
+    # position (between pyodide and swarm) — the 7 original entries are
+    # otherwise unchanged.
     MODULE_TOGGLE_ORDER = (
         ("image_generation", "Image creation"),
         ("data_analysis", "Data Analysis"),
         ("internal_mcp", "Agents & Pipeline Builder"),
         ("planner", "Planner"),
         ("pyodide", "Python Sandbox"),
+        ("ask_user", "Ask User"),
         ("swarm", "Swarm Mode"),
         ("lazy_tools_mode", "Smart Tool Selection"),
     )
