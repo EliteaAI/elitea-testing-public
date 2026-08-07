@@ -2968,10 +2968,11 @@ class AgentDetailPage(AgentFormPage):
             except Exception:
                 current = ""
 
-            if not current:
+            if not current.strip():
                 # Not ready yet (testid absent, or Answer rendered with no
                 # content inside it). Reset the stability window instead of
                 # letting an empty/absent read masquerade as "unchanged".
+                logger.debug("skill-test-last-response not present or empty, waiting...")
                 last_content = ""
                 stable_start = time.time()
                 self.page.wait_for_timeout(300)
