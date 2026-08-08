@@ -26,6 +26,25 @@ confirmed by: qa-engineer analyst, ELITEA-1951 run (2026-08-07).
   atomic single-call switch (source comment cites issue #5716: avoids a delete-then-add race that
   could orphan the tool on a rejected switch).
 
+## Build with AI (GenerateAgentModal) — modal-open + static-controls confirmation (ELITEA-1905 run, 2026-08-08)
+- Navigating to `/agents/create?viewMode=owner` and clicking
+  `generate-agent-open-button` (in the General accordion section header,
+  right after the Tags field) opens `dialog [active]` with heading "Build
+  with AI". Confirmed live, all pre-existing testids (no `add-data-testid`
+  needed): `generate-agent-prompt-input` (textarea, accessible-named
+  "Describe your agent's goal, key tasks, and preferred tone or behavior."),
+  `generate-agent-submit-button` (label **"Generate Draft"**, NOT "Generate
+  agent" — rendered `[disabled]` by default, `disabled={!description.trim()}`
+  in `GenerateEntityModal.jsx:213`, enables once the prompt is non-empty),
+  `generate-agent-cancel-button`, `generate-agent-close-button` (X icon).
+  Zero console errors on open. No network call fires until Generate is
+  clicked with a non-empty prompt (`generate_application_draft` endpoint).
+- **Button-label mismatch is a recurring case-text drift class** for this
+  modal family — TMS case text tends to say "Generate agent"/"Generate";
+  the live label is always "Generate Draft" (shared `GenerateEntityModal.jsx`
+  across Agent/Skill Build-with-AI). Check case wording against the live
+  label before asserting `inner_text()` equality.
+
 ## Nested-agent invocation in chat — chip vs. accordion representation (ELITEA-1951 run, 2026-08-07)
 - When a parent agent invokes an attached sub-agent as a tool, the response's
   `chat-answer-thought-accordion` (existing testid, ELITEA-2211..2215 batch) shows the
@@ -100,6 +119,33 @@ EliteaAI/elitea-testing-public#1091 for the full write-up.
   explicitly re-select the new version by name afterward, never trust the URL to land there.
 - AI validation gate needs: non-empty Tags + substantive (non-trivial) Instructions to pass on the first
   attempt — seed both directly in the agent-creation API payload to avoid throwaway `422` round-trips.
+
+## Build with AI (GenerateAgentModal) — review-form Name field, 32-char validation (ELITEA-1913 run, 2026-08-08)
+- `generate-agent-review-name-input` (`GenerateAgentReviewForm.jsx`, existing `LocatorDescriptor`) enforces
+  `MAX_NAME_LENGTH=32` via `validateAgentDraft()` (`agentDraftValidation.helpers.js`) — `helperText`/`error` on the
+  field ("Name must be 32 characters or less") + `generate-agent-approve-button` disabled while invalid; both clear
+  at exactly 32 chars. `aria-invalid` on the EXISTING `review_name_input` locator is a testid-free, compliant way to
+  read the invalid state — no new handle needed for that half.
+- **`Input.InputBase` (`EliteaUI/src/[fsd]/shared/ui/input/InputBase.jsx`) silently drops any `slotProps` the
+  CALLER passes** — confirmed via source read, not guesswork. It destructures only `inputProps` from its own props
+  (line 85), builds its OWN internal `slotProps` object (line 260-277, `htmlInput: inputProps` etc.), and spreads
+  that AFTER `{...leftProps}` on `<MuiTextField>` (line 257 vs 260) — JSX later-prop-wins means any `slotProps` the
+  caller passed (landing in `leftProps` since it's not explicitly destructured) is fully overwritten. This is why
+  `GenerateAgentReviewForm.jsx`'s `slotProps={{ htmlInput: { maxLength: MAX_NAME_LENGTH } }}` on the Name field has
+  ZERO effect — live-confirmed (`el.maxLength === -1`, no native attribute at all; 40 real keystrokes all land in
+  the DOM value, no truncation). **Any `Input.InputBase` caller relying on `slotProps` passthrough is affected, not
+  just this field** — a broader latent gap, out of scope to fix here (doesn't affect ELITEA-1913's own Pass
+  criteria — the JS-validation path is independent and correct) but worth knowing before assuming `slotProps` works
+  through this wrapper. The FIX pattern for adding testids to slots THIS way: a NEW prop `InputBase` itself
+  explicitly destructures (matching its existing `tooltipTestId`/`tooltipContentTestId` pattern) threaded into its
+  own internal `slotProps` construction — never a caller-passed raw `slotProps`.
+- **Reconciles, doesn't contradict, ELITEA-1993's Skill-form finding** (`daily/2026-08-02.md`): the SKILL review
+  form's Name field (`GenerateSkillReviewForm.jsx`) calls MUI's raw `<TextField slotProps={{htmlInput:{maxLength}}}>`
+  DIRECTLY (no `Input.InputBase` wrapper) — so its `maxLength` DOES reach the DOM and DOES truncate natively (both
+  `.fill()` and keystrokes, confirmed that run). Two different components, two different outcomes — not a
+  contradiction. Skill form's error-text testid precedent: `generate-skill-review-name-helper-text` (via
+  `slotProps.formHelperText`, EliteaUI commit `8e78723b`) — naming convention this AFS's `needs-adding` recommendation
+  for the Agent form mirrors (`generate-agent-review-name-helper-text`).
 
 ## Known defects reproduced (not new, don't re-file)
 - #611 — Publish-wizard Stepper leaks MUI boolean props onto `<svg>`, 4 console warnings, cosmetic only.
@@ -455,3 +501,178 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   itself instead) — only add a testid here if a future case needs to assert the counter text directly.
 - Save button gating is independent per-field: disabled until BOTH Name and Description are non-empty
   (both `required`); Name being at-limit (32/32) does not itself disable Save.
+
+## "Build with AI" open button — placement + RBAC gating (ELITEA-1903 run, 2026-08-08)
+- `generate-agent-open-button` (existing `LocatorDescriptor` field, `generate_agent_modal_page.py`)
+  is **not** inside a "creation tab bar" despite the case text — live-confirmed it renders as a
+  pill button pinned to the top-right of the **General accordion section's header row** (same row
+  as the "GENERAL" chevron/title), separate from the top page-level `tablist` that holds the single
+  "New Agent" tab. Case-text location drift, not a product defect — the button itself is genuinely
+  present/visible. See `EliteaUI/src/[fsd]/features/agent/ui/generate-agent-modal/GenerateAgentButton.jsx`.
+- **The button's visibility IS permission-gated, confirmed at the source**:
+  `GenerateEntityButton.jsx` does `if (!checkPermission(permission)) return null;` — for the agent
+  variant `permission={PERMISSIONS.applications.update}` = `'models.applications.application.update'`
+  (`common/constants.js`). No permission ⇒ the button is absent from the DOM entirely (not just
+  disabled). `useCheckPermission` reads `state.user.permissions` (or `publicPermissions` for the
+  public project), populated from `GET /api/v2/auth/permissions/prompt_lib/{project_id}` on
+  project switch/login. This is the mechanism ELITEA-1903 is actually testing.
+- **`${TEST_USER}` is admin-equivalent in every project checked** — live-confirmed
+  `models.applications.application.update` present in the permissions response for BOTH project
+  `399` (Private, owner) and `400` ("UI Testing" team project) — the latter also carries
+  `configuration.roles.roles.create/edit/delete` + `configuration.users.users.create/edit/delete`,
+  i.e. TEST_USER is project-admin there too, not merely a member. No project this account belongs
+  to exercises a non-admin role.
+- **No editor-role login path exists locally** — `.env.test` defines only `TEST_USER_EMAIL/PASSWORD`
+  (§ Roles & sample users has no editor credential key). Settings → Users on project 400 DOES list
+  an `editor`-role row (`elitea-batch-edit-test2-45c8fb8d@example.com`) and a `viewer`-role row
+  (`elitea-batch-edit-test2-70fda701@example.com`), but both are leftover pending-invite fixtures
+  from an unrelated prior batch-edit-user-role test (`Last login: "-"`, never accepted) — no known
+  password, not usable as a live login. Self-downgrading TEST_USER's own role via the "Edit user
+  role" action was considered and rejected: project 400 is shared test data another merged suite
+  relies on for a fixed 2-user/role shape (`admin_users_page.py` docstring, ELITEA-2292), and an
+  editor role may lack `configuration.users.users.edit` needed to self-restore back to admin —
+  no safe, verified rollback. **Testability gap, not a product question**: automating the editor
+  half needs either a dedicated `EDITOR_TEST_USER_EMAIL`/`PASSWORD` fixture (real Keycloak account,
+  fixed editor role in a stable project) or an accepted API-level permissions-endpoint proxy.
+
+## Build with AI — plain-approve (no suggested resources) network contract (ELITEA-1914 run, 2026-08-08)
+- A draft generated from a plain, non-resource-implying prompt renders **zero** "Suggested
+  {Category}:" sections (`generate-agent-resource-section-*` never appears), and clicking
+  **"Create Agent"** fires **only** `POST /api/v2/elitea_core/applications/prompt_lib/{project}`
+  → `201` — no `PATCH .../tool/...`, `PATCH .../application_relation/...`, or `GET`/`PATCH
+  .../skill/...` calls fire at all. **`GenerateAgentModalPage.click_approve_and_wait_for_creation()`
+  and `click_approve_and_wait_for_skill_creation()` (`generate_agent_modal_page.py:262-342`) will
+  hang/timeout on a plain-approve draft** — both enter all their `expect_response` waits in one
+  `with` block, unconditionally. A plain-approve test needs a narrower helper that waits only on
+  the base create POST.
+- The UI auto-navigates to `/agents/all/{id}?destTab=configuration&name=...&viewMode=owner`
+  immediately on the `201` — always carries `viewMode=owner` and the created name, confirmed live.
+- **Gotcha (filed as elitea-testing-public#1316, sibling of #638):** a bare hard-navigation to
+  `/agents/all/{id}` with **no** `?viewMode=owner` query param (i.e. NOT the app's own
+  auto-navigation — a fresh page load / typed URL) can silently render a **different, unrelated**
+  agent's data when the numeric id collides between the private (`application`) and public
+  (`public_application`) id spaces (`useViewMode.js`'s fallback can resolve to `Public` on a hard
+  reload before the real project is restored). Never hard-navigate to a bare agent detail URL in a
+  test — always drive there via an in-app click (or include `?viewMode=owner` explicitly) if a
+  test genuinely needs a direct deep link.
+- `AgentsListPage.agent_exists_in_list(name)` (`agents_list_page.py:263-279`, pre-existing) is the
+  handle for asserting a newly-created agent appears in `/agents/all` — no Build-with-AI test used
+  it before ELITEA-1914.
+
+## Build with AI — edited review-form values persist into the created agent (ELITEA-1912 run, 2026-08-08)
+- Editing all 5 review-form fields (Name/Description/Instructions/Welcome
+  Message/first Chat-starter, via the existing `.click()`+`.fill()` on their
+  testid-only locators) and THEN clicking "Create Agent" produces a created
+  agent whose detail-page fields carry the EDITED values, not the original
+  generated-draft values — live-confirmed end-to-end (real `applications`
+  POST → 201, no mocking of the create step). No functional defect.
+- The auto-navigation URL's `name` query param already reflects the edited
+  name (`?...&name=<edited>&viewMode=owner`), an early live signal usable
+  before the detail page even finishes mounting.
+- Same network contract as ELITEA-1914's plain-approve finding above: only
+  `generate_application_draft` + `applications` POSTs fire, no relation
+  calls — editing the fields first doesn't change which calls fire.
+- Welcome Message and the first Chat-starter both have a SECOND,
+  independent confirmation channel beyond the detail-page form field: the
+  embedded chat panel on the created agent's own page renders the edited
+  Welcome Message as its greeting text, and the edited starter as a
+  clickable starter tile — useful as an extra assertion if a test wants
+  UI-rendered confirmation, not just `input_value()`.
+- `AgentDetailPage`'s "Delete agent" flow needs the typed-name confirm
+  dialog: `agent-actions-menu-button` → `delete-agent-menuitem` → type the
+  exact agent name into `delete-confirm-name-input` (enables
+  `delete-confirm-button`, disabled until the typed name matches) →
+  confirm. Redirects to `/agents/create` on success.
+
+## Build with AI — Cancel click from the prompt step (ELITEA-1917 run, 2026-08-08)
+- **Don't confuse `generate-agent-open-button` with `agent-form-icon-button`.**
+  Both sit near the "General" accordion's top area but are unrelated: the
+  Magic Wand ("Build with AI") trigger is the accordion header's
+  `summaryAction` (`CreateAgentForm.jsx:106`, right of the "General" title,
+  same row as the chevron); `agent-form-icon-button` is the agent
+  avatar/icon-picker sitting directly beside the Name field
+  (`CreateAgentForm.jsx:111`). Clicking the icon-picker produces no modal —
+  confirmed live this run after an initial mis-click on it did nothing.
+- Clicking `generate-agent-cancel-button` (footer "Cancel", input step)
+  closes the modal **immediately, no confirmation/"discard changes?"
+  interstitial** — the `generate-agent-modal` dialog is fully removed from
+  the DOM (not merely hidden), even with a non-empty, never-submitted
+  prompt already typed. Confirmed live: zero network calls to either
+  `generate_application_draft` or `applications/prompt_lib` (POST) fire
+  anywhere in an open→type→cancel sequence, and the outer New Agent form's
+  own Name/Description fields (`agent-name-input`/`agent-description-input`)
+  are untouched by anything typed into the modal's prompt textarea — the two
+  are entirely separate inputs, no bleed-through either direction. This was
+  the suite's first `.click()` on `cancel_button` — ELITEA-1905 had only
+  ever asserted `.is_visible()` on it.
+
+## Build with AI (GenerateAgentModal) — REVIEW step has NO "Cancel" button (ELITEA-1918 run, 2026-08-08)
+- `GenerateEntityModal.jsx`'s `renderActions()` renders a genuinely different
+  button set per step — NOT a fixed Cancel+Generate/Approve pair. INPUT step:
+  "Cancel" (`generate-agent-cancel-button`) + "Generate Draft"
+  (ELITEA-1917's territory). **REVIEW step: only "Back to prompt"
+  (`generate-agent-back-button`, ELITEA-1919's separate case) + "Create Agent"
+  (`generate-agent-approve-button`) — no Cancel button exists here at all.**
+  Confirmed both by source (lines 173-198 vs 201-224) and live accessibility
+  snapshot of the open review-step dialog (footer = exactly those two
+  buttons).
+- The only review-step control that closes the modal without creating an
+  agent is the modal header's **X ("Close") icon**
+  (`generate-agent-close-button`, `Modal.BaseModal`'s `closeButtonTestId`) —
+  confirmed via source (`BaseModal.jsx:154`, `onClick={onClose}`) that it
+  calls the EXACT SAME `handleClose()` the INPUT-step Cancel button calls:
+  same abort/reset/close semantics, no confirmation interstitial, even with
+  a fully-populated draft (5 fields + starters) about to be discarded.
+  `close_button` had been `.click()`ed once before (ELITEA-1913, end-of-test
+  cleanup only, zero assertions) — ELITEA-1918 is the first test to actually
+  assert what it does.
+- Filed as CLARIFICATION (case-text drift — case says "Click Cancel", no
+  such control exists on this step):
+  [EliteaAI/elitea-testing-public#1318](https://github.com/EliteaAI/elitea-testing-public/issues/1318).
+- Live-confirmed this run: a real (unmocked) `generate_application_draft`
+  call reliably produces a usable draft within existing timeout constants
+  (no need to mock for this shape of case) — generated "Billing Support
+  Agent" from a billing-support prompt, 4 chat starters, all real AI output.
+
+## Build with AI — Suggested Resources have NO client-side display cap (ELITEA-1910 run, 2026-08-08)
+- **`ResourceSuggestions.jsx` renders every item in its `items` array unconditionally**
+  (`items.map(...)`, no `.slice()`/count guard) — confirmed by source grep across
+  `ResourceSuggestions.jsx`, `GenerateAgentReviewForm.jsx`, and `GenerateAgentModal.jsx` (only
+  unrelated `MAX_*` constants exist, for name/description/welcome-message/conversation-starter
+  fields). **Live-reproduced**: mocking `generate_application_draft` with 7 `suggested_skills`
+  items rendered all 7 `[data-testid^="generate-agent-resource-item-skill-"]` cards, not 5. Filed
+  as `EliteaAI/elitea-testing-public#1317` (frontend gap; backend response schema is undocumented
+  in `/shared/openapi/?all=true`, so whether the backend itself ever sends >5 is unverified from
+  this repo — no prior live exploration, ELITEA-1907/1911 included, ever observed >2 suggestions
+  per category). Applies to **all five** suggestion categories (toolkit/mcp/pipeline/agent/skill)
+  — one shared component, one root cause.
+- **Real suggestion counts cannot be reliably driven past ~2 via live fixtures** (LLM
+  relevance-matching, per ELITEA-1907/1911's own precondition audits) — testing any cap/count
+  boundary on this surface needs the `mock_generate_success()` route-mocking technique
+  (`GenerateEntityModalPageBase`, already sanctioned for ELITEA-1907/1915), not live fixture
+  creation. Don't burn fixture-creation effort trying to coax >5 real Skills/Toolkits into
+  suggestion relevance — it's nondeterministic and the mock answers deterministically in one call.
+
+## Build with AI — "Back to prompt" (`back_button`) confirmed: pure client-side state reset, prompt preserved (ELITEA-1919 run, 2026-08-08)
+- **`generate-agent-back-button` had never been `.click()`ed anywhere in the suite before this
+  run** — only `.is_visible()`-checked (`TestAgentBuildWithAICreationFailureRecovery`, asserting
+  the review step's action buttons survive a creation failure). ELITEA-1918's AFS explicitly
+  disclaimed covering it. Confirms genuinely unexercised territory.
+- **Source-level mechanism** (`GenerateEntityModal.jsx`'s `handleBack()`, lines 85-89): resets
+  `step` to `STEPS.INPUT` and `draftData` to `null`, and calls `resetGenerate()` — but **never**
+  calls `setDescription('')`. The sibling `handleClose()` (INPUT-step Cancel + review-step X icon,
+  per ELITEA-1917/1918) DOES clear `description`. This asymmetry is exactly why "Back to prompt"
+  preserves the typed text while Cancel/Close discard it — a deliberate design choice, confirmed
+  by reading both functions side by side, not inferred from behavior alone.
+- **Live-confirmed, full round trip**: opened modal → typed a prompt → real (unmocked)
+  `generate_application_draft` call → reached review step (draft "Ticket Summary Verifier") →
+  clicked `back_button` → modal returned to the INPUT step with the EXACT original prompt text
+  still in `generate-agent-prompt-input` (character-for-character), `back_button`/
+  `approve_button`/all review-form field testids (`generate-agent-review-name-input` etc.) fully
+  removed from the DOM (not merely hidden — `renderContent()` re-renders a different branch).
+- **Zero network side effect from the Back click itself**: `browser_network_requests` filtered to
+  `generate_application_draft`/`applications/prompt_lib` showed the identical 1-vs-0 split before
+  and after clicking Back (the 1 being Step 1's own Generate) — `handleBack()` is purely
+  client-side, confirmed both by source and by network capture.
+- **Console**: only the pre-existing, documented `disableUnderline` baseline warning
+  (ELITEA-1906/1913/1916/1918) — unchanged by the Back click, no new errors.

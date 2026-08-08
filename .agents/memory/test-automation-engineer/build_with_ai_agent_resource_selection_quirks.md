@@ -65,4 +65,23 @@ time a single button click is known (from the AFS's Network Behavior section
 or live exploration) to fire more than one call whose responses the test
 needs to assert on individually.
 
-(from ELITEA-1909)
+## Confirmed-twice flake: `test_selected_suggested_resources_attached_and_non_selected_absent` (ELITEA-1909)
+
+Running the full `TestAgentBuildWithAISelectedResourcesAttached` class turns up
+this pre-existing test failing deterministically on `assert
+modal.is_resource_section_visible("agent")` — `"Suggested Agents:"` section
+doesn't render, i.e. the live suggestion engine isn't surfacing the
+`github_relevant_agents` fixture agents as relevant for this run. Confirmed
+independently in **two separate implementer sessions** (ELITEA-1914's build,
+and ELITEA-1908's build) that this is NOT caused by either diff: both PRs are
+pure-additive to files/methods that test never touches, and the failure
+reproduces identically running that ONE test in total isolation. Root cause is
+live-LLM/suggestion-engine non-determinism (same class of gap as the open bug
+`EliteaAI/elitea-testing-public#1081` — project 400's suggestion engine not
+reliably surfacing fixture-created candidates), not a regression. If you see
+this exact assertion fail while running the covering class for an
+`extend-existing` PR in this file: re-run the failing test in isolation first
+— if it fails identically alone, it's this known flake, not your change; note
+it in the Run Report and move on rather than debugging your own diff.
+
+(from ELITEA-1909, confirmed recurring via ELITEA-1914 and ELITEA-1908)

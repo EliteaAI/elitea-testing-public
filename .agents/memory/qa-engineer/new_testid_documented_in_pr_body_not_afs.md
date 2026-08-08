@@ -26,3 +26,17 @@ testid string doesn't appear anywhere in the AFS's Concrete Handles table —
 exactly the drift `reviewer-contract.md` § Standing checks ("AFS amendments")
 means to catch, even when the PR body/commit message documents it well. A
 narrative writeup is not an AFS docs commit.
+
+**Recurred: ELITEA-1906 (branch `tests/1906-build-with-ai-draft-from-nl-description`,
+batch #1298).** AFS's Concrete Handles table + "Summary for the implementer"
+line asked for exactly 2 new testids; implementer found live that case Step
+9's own Verify clause (Chat-starters section header visible) had no table
+row at all, and added a 3rd (`generate-agent-review-starters-header`,
+EliteaUI@b6761c42). Extremely well documented in the implementer's own daily
+log AND a brand-new memory entry of theirs — but `test-specs/agents/l2_build-
+with-ai-draft-generated-from-natural-language-description_ELITEA-1906.md`
+itself was never touched in the PR diff. Same shape as the #1219 case:
+excellent PR-side narrative is not a substitute for the AFS docs commit the
+next reader of that AFS actually needs. Caught at review (`CHANGES_REQUESTED`)
+via `git diff <trunk>...<branch> -- test-specs/` coming back empty against a
+diff that clearly adds a new testid.
