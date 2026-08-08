@@ -60,6 +60,15 @@ count, while soft-asserting the card-count cap itself, a live-verified,
 deterministic product defect (all 7 items render uncapped) filed as
 EliteaAI/elitea-testing-public#1317.
 
+Covers ELITEA-1913: the review form's Name field (`generate-agent-review-
+name-input`) enforces MAX_NAME_LENGTH=32 via client-side JS validation
+(`validateAgentDraft()`), NOT a native `maxlength` clamp (distinct from the
+regular Create Agent form's `agent-name-input`, ELITEA-1900) — typing past
+32 characters is accepted into the DOM (no truncation) and triggers
+`aria-invalid="true"` plus a visible "Name must be 32 characters or less"
+error message and a disabled "Create Agent" button; trimming back to
+exactly 32 characters clears both and re-enables the button.
+
 Spec: test-specs/agents/l2_build-with-ai-generation-failure-retry_ELITEA-1915.md
 Spec: test-specs/agents/l2_build-with-ai-generated-draft-suggested-resources_ELITEA-1907.md
 Spec: test-specs/agents/l2_build-with-ai-selected-suggested-resources-attached-to-created-agent_ELITEA-1909.md
@@ -69,6 +78,7 @@ Spec: test-specs/agents/l2_build-with-ai-draft-generated-from-natural-language-d
 Spec: test-specs/agents/lextend_build-with-ai-approve-creates-agent-and-navigates-to-agent-menu_ELITEA-1914.md
 Spec: test-specs/agents/lextend_build-with-ai-suggested-resources-require-explicit-selection_ELITEA-1908.md
 Spec: test-specs/agents/lextend_build-with-ai-suggested-skills-section-shown-with-up-to-5-skills_ELITEA-1910.md
+Spec: test-specs/agents/l2_build-with-ai-agent-name-validation-enforces-32-character-maximum_ELITEA-1913.md
 Covers: GenerateAgentModal (GenerateEntityModal.jsx via GenerateAgentModal.jsx)
 
 Markers:
@@ -1629,3 +1639,138 @@ class TestAgentBuildWithAIDraftFieldPopulation:
                     logger.info("Deleted created agent %s", created_agent_id)
                 except Exception as exc:
                     logger.warning("Failed to delete created agent %s during teardown: %s", created_agent_id, exc)
+
+
+class TestAgentBuildWithAIReviewNameValidation:
+    """Build with AI (P2): the review form's Name field enforces
+    MAX_NAME_LENGTH=32 via client-side JS validation — typing past the
+    limit shows an error message and disables "Create Agent"; trimming
+    back to exactly 32 characters clears both (ELITEA-1913)."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agents/build_with_ai/ELITEA-1913_build-with-ai-agent-name-validation-enforces-32-character-maximum.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_review_name_validation_enforces_32_character_maximum(self, page):
+        """Typing more than 32 characters into the review-form Name field is
+        accepted into the DOM (no native truncation, unlike the regular
+        Create Agent form's Name field — ELITEA-1900), and triggers
+        `aria-invalid="true"` + a visible "Name must be 32 characters or
+        less" error + a disabled "Create Agent" button. Trimming back to
+        exactly 32 characters clears the error and re-enables the button."""
+        list_page = AgentsListPage(page)
+        modal = GenerateAgentModalPage(page)
+        draft = FIELD_POPULATION_DRAFT_PAYLOAD
+
+        # ------------------------------------------------------------------
+        # Step 1 (case) — Generate a draft; review form renders with the
+        # Name field populated and interactable
+        # ------------------------------------------------------------------
+        with allure.step("Step 1 — Generate a draft and reach the review form"):
+            list_page.navigate_to_create()
+            modal.open_modal()
+            modal.fill_prompt(FIELD_POPULATION_PROMPT_TEXT)
+            modal.mock_generate_success(draft)
+
+            with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+                modal.generate_button.click()
+
+            response = response_info.value
+            assert response.status == 200, (
+                f"Expected the mocked generate-draft request to succeed, got {response.status}"
+            )
+            modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+
+            assert modal.review_name_input.is_visible(), (
+                "Review-form Name field should be visible and interactable once the review form renders"
+            )
+            assert modal.get_review_name() == draft["name"], (
+                "Review-form Name field should be pre-populated with the generated draft's name "
+                "before this test starts editing it"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 2 (case) — Edit Name to an over-limit (40-char) value via real
+        # keystrokes, NOT .fill() — this field has no native maxlength clamp
+        # (unlike agent-name-input/ELITEA-1900), so real typing is the
+        # faithful simulation of the case's "edit the Name field" step
+        # ------------------------------------------------------------------
+        with allure.step("Step 2 — Edit Name to 40 characters (over the 32-char limit)"):
+            over_limit_name = "A" * 40
+            # select_text() + Backspace, not press("Control+a") — this
+            # InputBase-backed field has the same MUI select-all quirk
+            # documented in credential_form_fields.py/credential_create_page.py:
+            # Control+a moves the caret to position 0 without selecting, so
+            # subsequent typing PREPENDS instead of replacing (live-confirmed
+            # this run — a first attempt landed 70 chars, not 40).
+            modal.review_name_input.click()
+            modal.review_name_input.select_text()
+            modal.review_name_input.press("Backspace")
+            modal.review_name_input.press_sequentially(over_limit_name, delay=10)
+
+            assert modal.get_review_name() == over_limit_name, (
+                "Name field's DOM value should reach the full 40 typed characters — this field has no "
+                "native maxlength clamp (unlike agent-name-input/ELITEA-1900), so nothing truncates it "
+                f"client-side, expected length 40, got {len(modal.get_review_name())}"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 3 (case) — Validation message shown for the over-limit Name
+        # ------------------------------------------------------------------
+        with allure.step("Step 3 — Verify the validation message is shown"):
+            assert modal.is_review_name_invalid(), (
+                'Review-form Name field should carry aria-invalid="true" once its value exceeds 32 characters'
+            )
+            assert modal.review_name_helper_text_visible(), (
+                "Name field's validation helper text should be rendered once the field is invalid"
+            )
+            assert modal.get_review_name_helper_text() == "Name must be 32 characters or less", (
+                "Name field's helper text should read the exact validation message, "
+                f"got {modal.get_review_name_helper_text()!r}"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 4 (case) — "Create Agent" button is disabled while invalid
+        # ------------------------------------------------------------------
+        with allure.step('Step 4 — Verify the "Create Agent" button is disabled'):
+            assert not modal.approve_button.is_enabled(), (
+                '"Create Agent" button should be disabled while the Name field is over the 32-char limit'
+            )
+
+        # ------------------------------------------------------------------
+        # Step 5 (case) — Trim the Name to exactly 32 characters
+        # ------------------------------------------------------------------
+        with allure.step("Step 5 — Trim the Name to exactly 32 characters"):
+            exactly_32_name = over_limit_name[:32]
+            assert len(exactly_32_name) == 32, "Test data guard: expected an exactly-32-character string"
+
+            modal.review_name_input.click()
+            modal.review_name_input.select_text()
+            modal.review_name_input.press("Backspace")
+            modal.review_name_input.press_sequentially(exactly_32_name, delay=10)
+
+            assert modal.get_review_name() == exactly_32_name, (
+                "Name field's DOM value should reflect the trimmed, exactly-32-character name, "
+                f"got length {len(modal.get_review_name())}"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 6 (case) — Validation error clears, "Create Agent" re-enables
+        # ------------------------------------------------------------------
+        with allure.step("Step 6 — Verify the validation error clears and the button becomes active"):
+            assert not modal.is_review_name_invalid(), (
+                'Review-form Name field should no longer carry aria-invalid="true" at exactly 32 characters'
+            )
+            assert not modal.review_name_helper_text_visible(), (
+                "Name field's validation helper text should no longer be rendered at exactly 32 characters"
+            )
+            assert modal.approve_button.is_enabled(), (
+                '"Create Agent" button should re-enable once the Name field is exactly 32 characters'
+            )
+
+        # No product state to clean up — the test never clicks "Create Agent"
+        # to completion (see AFS Cleanup); close the modal to leave a clean state.
+        modal.close_button.click()
