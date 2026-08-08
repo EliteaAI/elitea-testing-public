@@ -2,7 +2,67 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2016 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2019 analysis).
+
+## Canvas Zoom/Pan/Fit-View — pure client-side ReactFlow viewport state, deterministic Fit View, zero new testids (confirmed live, 2026-08-08, ELITEA-2019)
+
+Confirmed live via TWO independent browser sessions (Playwright MCP on a 5-node
+Decision+3-Printer pipeline id 8401, and CDP/`browser-verify` on the same pipeline
+at a controlled 1400x1000 viewport — cross-checked, both agree):
+
+- **Zoom In/Out and Fit View are already wired via the existing `canvas_controls`
+  testid (`rf__controls`) + `fit_canvas_view()` pattern** — the individual buttons
+  (`button[title="Zoom In"/"Zoom Out"/"Fit View"]`) are ReactFlow's OWN `Controls`
+  component (`@xyflow/react`, rendered directly by `FlowEditor.jsx`), #579
+  sanctioned third-party-widget exception, same provenance `fit_canvas_view()`
+  already documents. **Pre-existing raw `zoom_in()`/`zoom_out()` methods near the
+  bottom of `pipeline_detail_page.py` use an UNSCOPED `self.page.locator(...)`**
+  (tracked tech debt, not scoped under `canvas_controls`) — do not reuse them for
+  new work; add `canvas_controls`-scoped siblings instead (mirrors
+  `fit_canvas_view()` exactly).
+- **The ReactFlow viewport transform (`translate(Xpx, Ypx) scale(S)`, inline style
+  on `.react-flow__viewport`) is the ground-truth signal for both zoom and pan** —
+  confirmed live: one Zoom In click on a Fit-View baseline of `scale(0.206152)`
+  produced `scale(0.247382)` (Playwright MCP session; default viewport); a probed
+  node's `getBoundingClientRect()` grew from 97.1x87.8px to 116.5x105.4px in lockstep.
+  Zoom Out symmetrically decreases scale and clamps at ReactFlow's default `minZoom`
+  (observed `scale(0.1)`, Zoom Out button then `disabled` — not asserted by
+  ELITEA-2019, noted for awareness).
+- **Pan tracks the mouse drag delta EXACTLY (px-perfect), and only via REAL/CDP-level
+  mouse events — synthetic JS-dispatched `PointerEvent`s (`dispatchEvent`) do
+  NOTHING.** Confirmed on the CDP session: a drag of (+100, +150) screen px on
+  `.react-flow__pane` moved the viewport transform from `translate(12.9193px,
+  348.199px)` to `translate(112.919px, 498.199px)` — an exact match — and the same
+  probed node's bounding box shifted by the identical (+100, +150). A prior attempt
+  dispatching synthetic `PointerEvent`s via `page.evaluate()` (mousedown/move/up
+  sequence, `isPrimary: true`) produced **zero** transform change — confirmed
+  twice — because they are untrusted events and ReactFlow's pane-drag handler (like
+  most real drag implementations) does not react to them. **Automation
+  implication**: the implementer's `pan_canvas()` page-object method MUST use
+  Playwright's real `page.mouse.move/down/up` (same technique the existing
+  `move_node()`/`connect_nodes()` already use for node drags) — never
+  `page.evaluate()`-dispatched synthetic pointer events.
+- **Fit View is FULLY DETERMINISTIC for a static node layout** — clicking it a
+  second time, after an intervening Zoom In + pan away, restored the EXACT same
+  transform (`translate(12.9193px, 348.199px) scale(0.118012)`) the first Fit View
+  click produced. This makes an exact-transform-match assertion viable for "returns
+  to all-nodes-visible state" (step 7), stronger than a qualitative visibility check
+  alone.
+- **"All nodes visible" is verifiable purely via existing testids** — every node's
+  bounding box (via the existing `RF_NODE_TESTID`/`RF_NODE_TESTID_PREFIX` #579-
+  sanctioned class constants) fully contained within `canvas_wrapper`'s
+  (`rf__wrapper`) bounding box, confirmed live on all 5 nodes of the Decision
+  pipeline immediately after Fit View. No new testid needed anywhere in this flow —
+  `canvas_wrapper`, `canvas_controls`, and `RF_NODE_TESTID` already existed before
+  this session.
+- **Zoom/pan/Fit-View fire ZERO network requests** — confirmed via console+network
+  capture across the whole sequence on both sessions: pure client-side CSS
+  `transform` state on `.react-flow__viewport`, not part of `pipeline_settings`
+  (not persisted — a reload resets to the default Fit View). Distinct from node
+  CONFIGURATION changes elsewhere in this suite, which DO trigger
+  `PUT .../application/prompt_lib/{project}/{id}` on Save.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-canvas-zoom-and-pan_ELITEA-2019.md`.
 
 ## Decision node execution/routing — entry-point mechanism, Input-variable requirement, and Printer's real output field (confirmed live, 2026-08-08, ELITEA-2016)
 
