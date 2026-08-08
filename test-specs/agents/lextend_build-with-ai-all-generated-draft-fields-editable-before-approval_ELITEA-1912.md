@@ -230,6 +230,28 @@ what the live product does.
   noted here only so the implementer isn't surprised by it and doesn't
   mistake it for a regression this case introduced.
 
+**Amended during implementation (ELITEA-1912, `test_edited_fields_persist_after_approve`):**
+the literal `"<generated name> [edited]"` suffix convention for the Name field
+(as used verbatim by ELITEA-1906's covering test) breaks the Create Agent
+button's enablement for this case's specific draft: `MAX_NAME_LENGTH = 32`
+(`EliteaUI/src/common/constants.js`, enforced by
+`validateAgentDraft()`/`agentDraftValidation.helpers.js`) rejects
+`"JIRA Ticket Description Writer [edited]"` (39 chars, generated name is
+already 30 chars) — `isDraftValid` goes `false` and
+`generate-agent-approve-button` stays `disabled`, live-confirmed this run
+(button click timed out with `element is not enabled`). ELITEA-1906's own
+test never clicked Approve, so it never exercised this validation path. The
+implementation uses a short, standalone literal (`"Edited Agent Name
+[1912]"`, 25 chars) for the Name field instead — still unambiguously
+distinct from the generated name (satisfying the case's "not the original
+generated value" pass criterion) and within the 32-char cap. The other 4
+fields (Description/Instructions/Welcome Message/first Chat starter) keep
+the `"<generated value> [edited]"` suffix convention verbatim — their
+validation ceilings (2304/none/768/768 chars respectively) have ample
+headroom at these draft lengths. Future reuse of the Name-suffix convention
+in this file should budget for `MAX_NAME_LENGTH = 32` against whatever
+generated name the mocked/live draft actually returns.
+
 ## Cleanup
 1. Created "JIRA Ticket Writer [EDITED-1912]" agent (id `157`, this run) —
    deleted via the UI's "Delete agent" menu action + typed-name confirmation
