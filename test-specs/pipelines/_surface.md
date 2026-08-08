@@ -2,7 +2,47 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2024 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2013 analysis).
+
+## Pipeline tags — Categories.jsx tag filter panel + CardTagSectionItem chips are FULLY shared with Skills, zero new testid work (confirmed live, 2026-08-08, ELITEA-2013)
+
+The Pipelines dashboard's right-side "Tags" panel (`PrivatePipelinesList.jsx` →
+`RightInfoPanel.jsx` → `Categories.jsx`, same component tree for the
+`cardContentType !== ApplicationAdmin` case that every non-admin private
+pipeline view uses) is the identical shared component
+`SkillsListPage`'s tag filter already drives (ELITEA-1740). Confirmed by
+source read AND live DOM: `Categories.jsx` hardcodes
+`data-testid={\`tags-panel-chip-${name}\`}` (line 336) and
+`data-testid="tags-panel-clear-all"` (line 299) directly — entity-agnostic,
+no per-caller prop gating. Same for card-level tag chips:
+`CardTagSectionItem.jsx` hardcodes `entity-card-tag-chip`/
+`entity-card-tag-overflow` (line 22), rendered by the shared `Card.jsx` for
+Pipelines exactly as for Skills.
+
+- **`PipelinesListPage` has NO tag-filter methods yet** (unlike
+  `SkillsListPage`) — this is pure page-object-plumbing work for whoever
+  implements ELITEA-2013, not testid work. Mirror
+  `SkillsListPage.filter_by_tag()`/`clear_tag_filter()`/`get_card_tags()`
+  (`automation/pages/skills_list_page.py:127-141,230-265,519-578`)
+  line-for-line; only the grid-refetch URL substring changes:
+  `/elitea_core/applications/prompt_lib/` (pipelines, `agents_type=pipeline`)
+  vs `/elitea_core/skills/prompt_lib/` (skills).
+- **Tag input/chip on the create/edit form** (`pipeline-tags-input`/
+  `pipeline-tags-chip`, pre-existing from ELITEA-2021) confirmed live and
+  reused as-is — `PipelineFormPage.add_tag()` (type + Enter) already exists
+  and is sufficient for BOTH new and pre-existing-tag-by-exact-name cases;
+  no `select_existing_tag()` analog is needed for Pipelines (unlike Skills'
+  `SkillFormPage.select_existing_tag()`) because `TagEditor.jsx`'s
+  `handleOnChangeTags` transparently reuses an existing tag id on exact-name
+  match regardless of whether it was typed or clicked from the dropdown.
+- **No `getOptionTestId` wired for the Pipeline branch's Tags autocomplete
+  dropdown** (`ApplicationEditForm.jsx:174-188` only threads `inputTestId`/
+  `chipTestId`, not `getOptionTestId` — unlike some other consumers of the
+  shared `AutoCompleteDropDown.jsx`). Not a gap for THIS case (type+Enter
+  reuse covers it, see above) — would be a genuine testid-needed escalation
+  only if a future case specifically needs to click an existing-tag option
+  out of the dropdown listbox for Pipelines.
+- Full case detail: `test-specs/pipelines/l2_pipeline-tags-add-and-filter_ELITEA-2013.md`.
 
 ## Dashboard view toggle (Card vs Table) — `entity-card-name` count + `?view=` URL param are the layout-format proof, no new testid needed (confirmed live, 2026-08-08, ELITEA-2024)
 

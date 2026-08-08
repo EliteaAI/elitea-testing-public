@@ -1,8 +1,24 @@
 ---
 name: Skills list tag filter quirks
-description: Skills-list page-header "Tags" panel IS a working, separate filter mechanism (unlike the broken name-search box, issue #44); tags= numeric-id query param; no testids on chip/Clear-all
+description: Categories.jsx "Tags" panel IS a working filter, SHARED verbatim across Skills/Pipelines (entity-agnostic testids, zero per-entity testid work)
 type: feedback
 ---
+
+**UPDATE 2026-08-08 (ELITEA-2013 analysis):** the "no testid on chip/Clear-all"
+bullet below is STALE — the ELITEA-1740 rework added
+`tags-panel-chip-{name}` (dynamic) and `tags-panel-clear-all` (static),
+hardcoded directly in the shared `Categories.jsx` (lines 336/299) and
+`CardTagSectionItem.jsx` (line 22, `entity-card-tag-chip`/
+`entity-card-tag-overflow` for card-level tag chips) — confirmed live.
+**These are entity-agnostic: confirmed working verbatim for Pipelines too**
+(`PrivatePipelinesList.jsx` → `RightInfoPanel.jsx` → `Categories.jsx`, same
+component tree), with ZERO new EliteaUI testid work needed. Before assuming
+a new "tag filter" case on any entity (Agents, Toolkits, MCPs, Credentials)
+needs `add-data-testid` work, check whether that entity's list page already
+renders `Categories.jsx`/`RightInfoPanel.jsx` — if so, the testids are
+already there; only page-object methods (`filter_by_tag`/`clear_tag_filter`/
+`get_card_tags`, mirror `SkillsListPage`) are missing.
+See `test-specs/pipelines/l2_pipeline-tags-add-and-filter_ELITEA-2013.md`.
 
 Discovered while analysing ELITEA-1740 (Search Skills by Tag, localhost:5173):
 
