@@ -1878,8 +1878,25 @@ class TestAgentBuildWithAICreationFailureRecovery:
             # ------------------------------------------------------------------
             with allure.step('Step 2 — Click "Create Agent"; simulate a creation API failure'):
                 modal.mock_create_failure(SIMULATED_CREATE_ERROR_MESSAGE, status=500)
-                create_response = modal.click_approve_and_wait_for_agent_created()
 
+                with modal.expect_create_response() as create_info:
+                    modal.approve_button.click()
+
+                    # Transient "Creating..." / isApproving in-flight state —
+                    # proves mock_create_failure()'s delay_ms window is
+                    # genuinely observable, not just a param that happens to
+                    # exist (GenerateEntityModal.jsx:189,193-194; AFS
+                    # Coverage Map row 1). Asserted here, before the `with`
+                    # block exits and awaits the mocked (delayed) response.
+                    assert modal.approve_button.text_content() == "Creating...", (
+                        'Approve button should read "Creating..." while the mocked create '
+                        "request is in flight"
+                    )
+                    assert not modal.approve_button.is_enabled(), (
+                        "Approve button should be disabled while the mocked create request is in flight"
+                    )
+
+                create_response = create_info.value
                 assert create_response.status == 500, (
                     f"Expected the mocked create-application request to resolve 500, got {create_response.status}"
                 )

@@ -451,6 +451,37 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
         return create_response
 
     # ------------------------------------------------------------------
+    # Create Agent — response-only wait, for callers that need to make
+    # interim assertions WHILE the request is in flight (ELITEA-1916).
+    # Mirrors GenerateEntityModalPageBase.expect_generate_response(): the
+    # `with` block only starts waiting on `__exit__`, so a caller can
+    # click, then assert transient state (e.g. the "Creating..." label /
+    # disabled state), all before the response is awaited.
+    # ------------------------------------------------------------------
+
+    def expect_create_response(self, timeout: int = 15000):
+        """Context manager: yields Playwright's response-info handle for
+        the base-agent CREATE call (POST .../applications/prompt_lib/{id}),
+        resolved once the block exits.
+
+        Usage::
+
+            with modal.expect_create_response() as response_info:
+                modal.approve_button.click()
+                # interim assertions while the (possibly mocked/delayed)
+                # request is in flight, e.g. the transient "Creating..."
+                # button state
+            response = response_info.value
+        """
+        return self.page.expect_response(
+            lambda response: (
+                "/elitea_core/applications/prompt_lib/" in response.url
+                and response.request.method == "POST"
+            ),
+            timeout=timeout,
+        )
+
+    # ------------------------------------------------------------------
     # Network mocking — create-application endpoint (ELITEA-1916)
     # ------------------------------------------------------------------
 
