@@ -81,9 +81,17 @@ id `6754`, base version, project `Private`/399.)
      a blocking direct `readText()` call). The implementer should reuse this
      exact pattern (see § Automation Hints) rather than re-deriving it or
      re-attempting the direct-call approach that hung here.
-6. Close the menu by pressing `Escape`. **Verify**: the menu closes — confirmed
-   live, `[data-testid="agent-actions-menu"]` becomes absent from the DOM
-   immediately after `Escape` (case Step 6).
+6. **Re-open** the menu (click `actions_menu_button` again — Step 4's click on
+   `share_agent_menuitem` already closed it, since `DotMenu.jsx`'s
+   `withClose` fires on every item click), then close it by pressing
+   `Escape`. **Verify**: the menu closes — confirmed live,
+   `[data-testid="agent-actions-menu"]` becomes absent from the DOM
+   immediately after `Escape` (case Step 6). **Amended (implementer, fix
+   round 1):** the original wording pressed `Escape` directly after Step 4/5
+   without re-opening the menu first; since the menu was already closed by
+   Step 4's click, that assertion could never fail even if Escape-to-close
+   regressed — it was not actually covering case Step 6. The re-open makes
+   the assertion exercise real behavior.
 
 ## Expected Results
 - Three-dot menu opens showing the VERSION and PIPELINE groups described
@@ -107,7 +115,7 @@ id `6754`, base version, project `Private`/399.)
 | 3 Verify menu opens with options: Export, Fork (may be disabled), Copy link, Pin to top, Delete, Delete version (when on non-base version) | All listed options are visible in the menu | step 3 | per-item `LocatorDescriptor` visibility checks (7 items) | asserted — **mapped onto live labels/groups, "Copy link" → PIPELINE-group "Share"; CLARIFICATION filed (#1337), not a defect** |
 | 4 Click "Copy link" | Copy link action is triggered | step 4 | click on `share_agent_menuitem` | asserted |
 | 5 Verify link is copied to clipboard (toast notification or clipboard content) | Toast notification appears or clipboard contains the pipeline URL | step 5 | toast text assertion (live-confirmed) + clipboard content assertion (pattern reused from ELITEA-1898, not itself live-confirmed this session — see step 5 note) | asserted (toast) / **pattern-reuse, not directly reconfirmed (clipboard read hung in MCP browser)** |
-| 6 Close menu | Menu closes | step 6 | `agent-actions-menu` absent after `Escape` | asserted |
+| 6 Close menu | Menu closes | step 6 | menu re-opened via `actions_menu_button`, then `agent-actions-menu` absent after `Escape` | asserted — re-open added (fix round 1) so the assertion exercises real Escape-to-close behavior instead of an already-closed menu |
 | Expected Final State: menu displays all expected actions; Copy link copies with user feedback | — | steps 3–5 | steps 3–5 | asserted |
 | Pass/Fail: all steps complete without errors; menu shows all options; Copy link copies with feedback | — | all steps | all steps + console-error check | asserted |
 

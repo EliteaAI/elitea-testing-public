@@ -3,7 +3,14 @@
 Opens the pipeline detail page's three-dot Actions menu, verifies every
 expected item is present across its two groups (VERSION / PIPELINE), clicks
 the PIPELINE-group "Share" item (functionally the case's "Copy link"),
-verifies the toast + clipboard content, then closes the menu with Escape.
+verifies the toast + clipboard content, then RE-OPENS the menu and closes it
+with Escape.
+
+Step 6 re-opens the menu before pressing Escape (review fix round 1): the
+Step 4 click already closes the menu (``DotMenu.jsx``'s ``withClose`` fires
+on every item click), so pressing Escape against an already-closed menu
+would never actually exercise Escape-to-close — the assertion would pass
+even if that behavior regressed.
 
 Case-text drift, filed as CLARIFICATION (NOT a product defect — reverse-
 masking guard applies): the case's Step 3/4 wording names a standalone
@@ -165,7 +172,22 @@ def test_pipeline_three_dot_menu_actions(page, pipeline_api):
                 f"Copied URL should contain the pipeline's path, got {copied_url!r}"
             )
 
-        with allure.step("Step 6 — Close the menu by pressing Escape; verify it closes"):
+        with allure.step(
+            "Step 6 — Close the menu by pressing Escape; verify it closes"
+        ):
+            # Step 4's click already closed the menu (DotMenu.jsx's
+            # `withClose` fires on every item click), so an Escape press here
+            # would be asserting against an already-closed menu — the
+            # assertion could never fail even if Escape-to-close regressed.
+            # Re-open the menu first so this step exercises the actual
+            # Escape-to-close behavior the case asks for (review finding,
+            # fix round 1).
+            detail_page.actions_menu_button.click()
+            detail_page.actions_menu.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            assert detail_page.actions_menu.is_visible(), (
+                "Actions menu should be re-open before exercising the Escape-close assertion"
+            )
+
             page.keyboard.press("Escape")
             detail_page.actions_menu.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
             assert detail_page.actions_menu.count() == 0 or not detail_page.actions_menu.is_visible(), (
