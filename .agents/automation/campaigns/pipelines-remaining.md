@@ -25,9 +25,12 @@
   variant); lead still ran an independent from-scratch N=3 + both sanctioned-REDs 3x each per standing
   practice. TMS back-written (9 cases + 1 already-covered pointer), closure comment posted, campaign
   card updated.
-  wave-03 through wave-07 (37 cases) — PLANNED, not yet launched (see Plan)
-- Campaign totals so far: 18/55 terminal — 17 automated (2 sanctioned-RED: ELITEA-2047 vs #1327,
-  ELITEA-2051 vs #570) + 1 already-covered (ELITEA-2063). 37/55 remaining across wave-03..07
+  **wave-03-yaml-decision-trigger (5 cases) LANDED** — elitea-testing-public#1350, merged `7d79ad45`,
+  5/5 automated (0 sanctioned-RED). Report bug found+fixed (ELITEA-2027 falsely marked blocked by the
+  workflow despite being genuinely merged — see Log). TMS back-written, closure comment posted.
+  wave-04 through wave-07 (32 cases) — PLANNED, not yet launched (see Plan)
+- Campaign totals so far: 23/55 terminal — 22 automated (2 sanctioned-RED: ELITEA-2047 vs #1327,
+  ELITEA-2051 vs #570) + 1 already-covered (ELITEA-2063). 32/55 remaining across wave-04..07
 - **Operator directive 2026-08-08T13:42:41Z: "Proceed with all waves till you complete."** — running
   wave-02..07 sequentially without further per-wave checkpoints; only stopping early for a real blocker
   (question/bug protocol).
@@ -164,3 +167,21 @@ lead before launching wave-01).
   between waves this time). Launching wave-03 next.
 - 2026-08-08T20:05 wave-03-yaml-decision-trigger (5 cases) launched. **Run ID: wf_308e801c-d83**
   (task w18hrprzc). Polling in-turn for completion.
+- 2026-08-09T01:52 wave-03 workflow completed (~5.7h wall clock, 19 agents, 2.91M tokens, 856 tool
+  calls). Gate green 3/3 (286/281/282s), no sanctioned-RED this wave. **Report bug found and fixed:**
+  the workflow's own final report wrongly marked ELITEA-2027 `blocked` ("subagent completed without
+  calling StructuredOutput") despite it having ALREADY built, been reviewed APPROVED, and merged
+  (confirmed via `git log` — commit 57fa9244 — AND a genuinely merged PR #1344, AND the extended test
+  function present + green in the lead's own gate runs). Root cause not fully diagnosed (likely a
+  stale/duplicate re-analysis dispatch whose failure overwrote the real outcome in the report's case
+  list) — corrected `report.json` by hand before proceeding, all 5/5 marked `automated`. **Also found:**
+  wave-01 and wave-02's report.json/report.md were never committed to git (`.agents/automation/` is
+  gitignored by default; case snapshots + campaign card were force-added but the wave reports were
+  missed) — fixed retroactively, all 3 waves' reports now committed (matches the `approved-top10`
+  precedent of committing report artifacts). Lead ran independent N=3 gate on the 5 green specs (9
+  collected tests) — 9 passed every run (279.8/279.5/278.8s). Blast radius: only
+  `pipeline_detail_page.py` touched, 0 removed lines, purely additive — no separate spec needed. PR
+  elitea-testing-public#1350 merged (`7d79ad45`). TMS back-written (5 cases, Form C, self-checked
+  against the lead's own JUnit output incl. re-confirming ELITEA-2027's test really passes). Testid
+  provenance: 1 new commit (28dbc5e4, ELITEA-2041) — file differs from main, not promoted yet. Closure
+  comment posted on #1297. Card stays In Progress. Launching wave-04 next.
