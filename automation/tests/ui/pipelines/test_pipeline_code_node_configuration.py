@@ -38,7 +38,7 @@ _OUTPUT_VARIABLE = "result"
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"
-    "ELITEA-2009_pipeline-code-node-configuration.md",
+    "ELITEA-2009_configure-code-node.md",
     "onetest-ai Test Case link",
 )
 def test_code_node_configuration_and_persistence(page, pipeline_id):
