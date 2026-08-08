@@ -120,6 +120,33 @@ EliteaAI/elitea-testing-public#1091 for the full write-up.
 - AI validation gate needs: non-empty Tags + substantive (non-trivial) Instructions to pass on the first
   attempt — seed both directly in the agent-creation API payload to avoid throwaway `422` round-trips.
 
+## Build with AI (GenerateAgentModal) — review-form Name field, 32-char validation (ELITEA-1913 run, 2026-08-08)
+- `generate-agent-review-name-input` (`GenerateAgentReviewForm.jsx`, existing `LocatorDescriptor`) enforces
+  `MAX_NAME_LENGTH=32` via `validateAgentDraft()` (`agentDraftValidation.helpers.js`) — `helperText`/`error` on the
+  field ("Name must be 32 characters or less") + `generate-agent-approve-button` disabled while invalid; both clear
+  at exactly 32 chars. `aria-invalid` on the EXISTING `review_name_input` locator is a testid-free, compliant way to
+  read the invalid state — no new handle needed for that half.
+- **`Input.InputBase` (`EliteaUI/src/[fsd]/shared/ui/input/InputBase.jsx`) silently drops any `slotProps` the
+  CALLER passes** — confirmed via source read, not guesswork. It destructures only `inputProps` from its own props
+  (line 85), builds its OWN internal `slotProps` object (line 260-277, `htmlInput: inputProps` etc.), and spreads
+  that AFTER `{...leftProps}` on `<MuiTextField>` (line 257 vs 260) — JSX later-prop-wins means any `slotProps` the
+  caller passed (landing in `leftProps` since it's not explicitly destructured) is fully overwritten. This is why
+  `GenerateAgentReviewForm.jsx`'s `slotProps={{ htmlInput: { maxLength: MAX_NAME_LENGTH } }}` on the Name field has
+  ZERO effect — live-confirmed (`el.maxLength === -1`, no native attribute at all; 40 real keystrokes all land in
+  the DOM value, no truncation). **Any `Input.InputBase` caller relying on `slotProps` passthrough is affected, not
+  just this field** — a broader latent gap, out of scope to fix here (doesn't affect ELITEA-1913's own Pass
+  criteria — the JS-validation path is independent and correct) but worth knowing before assuming `slotProps` works
+  through this wrapper. The FIX pattern for adding testids to slots THIS way: a NEW prop `InputBase` itself
+  explicitly destructures (matching its existing `tooltipTestId`/`tooltipContentTestId` pattern) threaded into its
+  own internal `slotProps` construction — never a caller-passed raw `slotProps`.
+- **Reconciles, doesn't contradict, ELITEA-1993's Skill-form finding** (`daily/2026-08-02.md`): the SKILL review
+  form's Name field (`GenerateSkillReviewForm.jsx`) calls MUI's raw `<TextField slotProps={{htmlInput:{maxLength}}}>`
+  DIRECTLY (no `Input.InputBase` wrapper) — so its `maxLength` DOES reach the DOM and DOES truncate natively (both
+  `.fill()` and keystrokes, confirmed that run). Two different components, two different outcomes — not a
+  contradiction. Skill form's error-text testid precedent: `generate-skill-review-name-helper-text` (via
+  `slotProps.formHelperText`, EliteaUI commit `8e78723b`) — naming convention this AFS's `needs-adding` recommendation
+  for the Agent form mirrors (`generate-agent-review-name-helper-text`).
+
 ## Known defects reproduced (not new, don't re-file)
 - #611 — Publish-wizard Stepper leaks MUI boolean props onto `<svg>`, 4 console warnings, cosmetic only.
 - #614 — post-Publish/re-pin client-side status staleness (VERSION trigger, overflow-menu Publish/Unpublish
