@@ -49,3 +49,5 @@
 - [Sync conflict = main's component-extraction refactor](sync_conflict_caused_by_main_component_extraction_refactor.md) — check for a new sibling file before assuming a real testid conflict
 - [Dead testid= relying on fallback=](locator_descriptor_testid_can_be_dead_relying_on_fallback.md) — zero grep hits on BOTH refs means the locator never really used its testid
 - [Scoping-only card: Ready = deliverable posted](scoping_only_card_ready_means_deliverable_posted_not_merged_test.md) — "list X, don't automate yet" cards skip the merged-test/closure-record checklist entirely
+- [Verify local vs origin before merging](verify_local_vs_origin_before_merging_case_branch.md) — `merge origin/<branch>` can silently no-op if the implementer never pushed
+- [zsh doesn't word-split unquoted $VAR](zsh_unquoted_var_no_word_split.md) — multi-node-id/multi-branch loops need heredoc file + `while read`, not `$VAR`/`mapfile`
