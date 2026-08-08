@@ -1933,3 +1933,37 @@ Information-panel Version ID all agree on `base`'s original id.
   sequencing race worth a soft-assert/comment in the implemented test rather than
   ignoring. Full network sequence + AFS:
   `test-specs/pipelines/l2_delete-pipeline-version-falls-back-to-base_ELITEA-2003.md`.
+
+## Fork wizard — full live-confirmed handle map (ELITEA-2051, 2026-08-08)
+
+Executed the FULL Fork flow (menu → wizard → target-project select → confirm →
+complete → navigate → cleanup) for a Pipeline, not just menu-item visibility
+(ELITEA-2049 only confirmed the menuitem exists). Source `Pipeline UI Testing`
+(id 4, project `UI Testing`/400) → forked into `Private`/399 → new id `8243`.
+Every Fork-wizard testid is **shared verbatim with the Agent-entity Fork flow**
+(`ImportWizardModal`/`IWModal*` component family — same testids ELITEA-1893's
+AFS documented for Agents, all reconfirmed live here for Pipelines): the
+literal `agent-` prefix in these testids is naming tech debt, NOT
+entity-scoped — do not expect a `pipeline-` variant for any of these:
+
+| Element | Testid | Notes |
+|---|---|---|
+| Fork menuitem (entity-scoped, unlike the rest) | `pipeline-actions-fork-menuitem` | the ONE Fork-flow testid that IS entity-scoped (`ForkEntityButton.jsx`'s `FORK_MENU_ITEM_KEY_BY_ENTITY` map) |
+| Fork wizard dialog (pre-fork / post-fork) | `agent-import-preview-dialog` / `agent-import-complete-dialog` | same container swaps testid in place |
+| Wizard Project selector trigger | `agent-import-wizard-project-select-combobox` | shared with Agent Fork |
+| Wizard project dropdown option | `select-option-{projectId}` | numeric, project-id-keyed |
+| Main-entity preview name / toggle | `agent-import-preview-name` / `agent-import-preview-card-toggle` | toggle count() == number of entity cards |
+| **Pipeline Diagram mermaid preview (Pipeline-only, no Agent equivalent)** | `chat-mermaid-diagram-svg-container` | showed "Diagram syntax error detected" for THIS session's source pipeline — not filed (not isolated as a general defect vs this pipeline's own data) — see AFS § Known Defects |
+| Fork confirm button | `agent-fork-confirm-button` | same component regardless of entity — `IWModalForkButton.jsx`'s `forkFuncMap` has no `pipelines` key; pipelines are backend-classified as `agents`/`agent_type=pipeline`, dispatched via the same `forkAgent` mutation |
+| Fork-complete list (entity-keyed) | `agent-import-complete-list-pipelines` | the **pipelines** variant of `agent-import-complete-list-{entityKey}` — confirms the family ELITEA-1893's AFS predicted but never itself confirmed |
+| "Got it" button | `agent-import-complete-got-it-button` | drives navigation into the target project, onto the forked pipeline |
+| **"Forked from" link — Pipelines LIST page card (Card view)** | **none — testid needed** | `<a aria-label="Forked from - Original pipeline" href=".../pipelines/all/{sourceId}/{sourceVersionId}?viewMode=owner">`, no `data-testid`. Source: `EliteaUI/src/components/Fork/IconLinkWithToolTip.jsx` (SHARED — also used by `DataTableNameCell`/`DataTableRow` for Table view, and by Agents/Skills list cards, not just Pipelines). **This is the element the case text's "dashboard card" step actually names** — do not confuse with the next row. |
+| Forked-pipeline DETAIL page — "Forked from:" row (Information accordion) | none observed | inside `agent-information-section`; a SEPARATE, also-correct rendering of the same fact — NOT what the case's "dashboard card" step means |
+| Network — fork data-fetch (menu click, before target selected) | `GET /elitea_core/export_import/prompt_lib/{sourceProject}/{sourceId}?fork=true&follow_version_ids={versionId}` → 200 | populates the wizard preview |
+| Network — fork confirm | `POST /elitea_core/fork/prompt_lib/{targetProjectId}` → 201 | body: `{main_entity:'agents', applications:[...]}` |
+
+**Known defect #570 (validateDOMNesting `<p>`-in-`<p>` on the Fork/Import Complete
+dialog) reproduces for Pipeline Fork too** (1/1 this session) — same root cause,
+same filed issue, not re-filed.
+
+Full AFS: `test-specs/pipelines/l2_pipeline-fork-to-different-project_ELITEA-2051.md`.
