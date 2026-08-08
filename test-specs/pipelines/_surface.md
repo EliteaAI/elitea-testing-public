@@ -2140,3 +2140,41 @@ Network: `POST /api/v2/social/pin/prompt_lib/{project}/application/{id}` → `20
 docstring already notes for CRUD).
 
 Full AFS: `test-specs/pipelines/l2_pipeline-dashboard-pin-to-top_ELITEA-2025.md`.
+
+## Flow → YAML sync + `wait_for_node_on_canvas()` same-type collision (confirmed live, 2026-08-08, ELITEA-2029)
+
+- **`wait_for_node_on_canvas(node_type)` resolves via `.first` — wrong node
+  when the canvas already has another node of that same type.** Its
+  selector is `.react-flow__node-{type}` `.first` (DOM/document order), so
+  on `pipeline_with_llm_id` (already has an "LLM 1" node), adding a SECOND
+  LLM node and calling `wait_for_node_on_canvas("llm")` returns `"LLM 1"`
+  (the pre-existing node), not the real new node id (`"LLM 2"`). Its only
+  other existing caller (ELITEA-2030's test) adds to an EMPTY canvas, where
+  `.first` happens to be correct — this collision doesn't show up there.
+  **Reliable pattern for a non-empty starting canvas:** snapshot
+  `get_node_ids()` before the add, snapshot again after, take the set
+  difference — still call `wait_for_node_on_canvas(type, …)` first (to
+  settle/wait for the DOM attach), just don't trust its return value as the
+  new node's id when the canvas wasn't empty beforehand. Not filed as a
+  page-object defect (its one real caller is unaffected); flag if a second
+  case hits the same collision.
+- **Add-node menu is testid-based and preferred over the legacy raw-handle
+  `add_node()`:** `get_add_node_menu_items()` (opens the menu) +
+  `select_add_node_menu_item("llm", …)` (internal type key, not display
+  label) — added ELITEA-2030, confirmed working live here too. `add_node()`
+  itself remains valid pre-existing tech debt for tests that already use it
+  (#25/#42), but a NEW test should use the testid-based pair.
+- **A freshly-added, unconnected second node has NO `transition:` key at
+  all in its YAML entry** — distinct from the entry-point/only-node default
+  (`transition: END` always present, per the "Node config via YAML" note
+  above). Confirmed live: `pipeline_with_llm_id` + one UI-added LLM node,
+  read via `get_yaml_content()` before any Save — the new node's YAML block
+  ends after `structured_output: false`, no `transition:` line, until it's
+  wired to a target or the user connects/saves it.
+- **Adding a node, switching Yaml⇄Flow view, and reading YAML content are
+  all client-side — zero network requests**, confirmed live (matches
+  ELITEA-2030's own Network Behavior note for add-node; extends it to
+  cover the view-switch + read too, same as ELITEA-2028's YAML-edit
+  direction already established for the reverse flow).
+
+Full AFS: `test-specs/pipelines/l2_flow-to-yaml-sync_ELITEA-2029.md`.
