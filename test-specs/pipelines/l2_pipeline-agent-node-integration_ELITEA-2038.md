@@ -162,7 +162,12 @@
   silently breaking.*
 - No console-error assertion was in the original case text; added it throughout as a side-channel check —
   standard practice per this project's `test-case-analysis` skill; zero console errors were observed
-  across the whole flow this session.
+  across the whole flow this session. **Corrected during ELITEA-2038 fix round 1:** the listener
+  (registered before Step 0) stays attached across `page.goto()` in Step 12, but the implementation
+  initially never re-asserted `console_errors` after the reload — an error introduced only by the
+  reload/hydration path would have silently escaped detection. Step 12 now asserts `not console_errors`
+  as its last check, so the "throughout" claim is now actually enforced end-to-end (attach → node add →
+  save → reload), not just through Step 11.
 
 ## Cleanup
 
@@ -181,7 +186,7 @@
 
 | Element | Recommended Locator | Provenance | Fallback |
 |---|---|---|---|
-| Add-Agent button (Tools section) | `agent_add_agent_button` / `[data-testid="agent-add-agent-button"]` — pre-existing, shared with agent forms (already an `AgentDetailPage` field, newly ported to `PipelineDetailPage`) | **on-main** | none needed |
+| Add-Agent button (Tools section) | `agent_add_agent_button` / `[data-testid="agent-add-agent-button"]` — pre-existing, shared with agent forms (already an `AgentDetailPage` field, newly ported to `PipelineDetailPage`) | **on-automation/testids only (`main:no`)** — corrected during ELITEA-2038 fix round 1: `git log -S'"agent-add-agent-button"' origin/automation/testids` finds the sole originating commit `EliteaAI/EliteaUI@ce74cd40` (ELITEA-1887); `git merge-base --is-ancestor ce74cd40 origin/main` returns false, and `git grep 'agent-add-agent-button' origin/main -- src/` is empty — the testid has never reached `main`. Awaiting human cherry-pick. | none needed |
 | Tools-section container | `[data-testid="agent-toolkits-section"]` | **on-main** | none needed |
 | Attached agent card (shared) | `[data-testid="agent-toolkit-card"]` | **on-main** | none needed |
 | Agent-in-search-popper option | `toolkit-menu-item` testid (same `UnifiedDropdown` mechanism as Toolkit/MCP pickers) | **on-main** | none needed |

@@ -246,3 +246,10 @@ def test_agent_node_fresh_attach(page, pipeline_id, agent_id, agent_api):
         assert pipeline_page.get_agent_node_input_mapping_value() == _TASK_VALUE, (
             "TASK Value should persist after reload"
         )
+        # The console listener registered before Step 0 stays attached across
+        # page.goto() (same Page object, navigation doesn't unsubscribe
+        # listeners) — but the test previously never re-checked the list
+        # after the reload, so an error introduced only by the reload/
+        # hydration path (e.g. a rehydration crash reading the persisted
+        # node config) would silently escape detection. Re-assert here.
+        assert not console_errors, f"Reload should not introduce console errors: {console_errors}"
