@@ -52,6 +52,14 @@ at least one item per category) and from ELITEA-1914 (whose plain draft
 never renders any suggestion at all) — the first test in this file to
 assert a combined, all-category zero with resources genuinely on offer.
 
+Covers ELITEA-1910: extends ELITEA-1907's coverage of the "SUGGESTED SKILLS"
+section to a 7-item mocked payload (2 over the case's stated cap of 5) —
+proves the section still renders and sampled cards (first/middle/last)
+still show correct name/description/unselected-by-default at a larger item
+count, while soft-asserting the card-count cap itself, a live-verified,
+deterministic product defect (all 7 items render uncapped) filed as
+EliteaAI/elitea-testing-public#1317.
+
 Spec: test-specs/agents/l2_build-with-ai-generation-failure-retry_ELITEA-1915.md
 Spec: test-specs/agents/l2_build-with-ai-generated-draft-suggested-resources_ELITEA-1907.md
 Spec: test-specs/agents/l2_build-with-ai-selected-suggested-resources-attached-to-created-agent_ELITEA-1909.md
@@ -60,6 +68,7 @@ Spec: test-specs/agents/lextend_build-with-ai-modal-contains-prompt-generate-can
 Spec: test-specs/agents/l2_build-with-ai-draft-generated-from-natural-language-description_ELITEA-1906.md
 Spec: test-specs/agents/lextend_build-with-ai-approve-creates-agent-and-navigates-to-agent-menu_ELITEA-1914.md
 Spec: test-specs/agents/lextend_build-with-ai-suggested-resources-require-explicit-selection_ELITEA-1908.md
+Spec: test-specs/agents/lextend_build-with-ai-suggested-skills-section-shown-with-up-to-5-skills_ELITEA-1910.md
 Covers: GenerateAgentModal (GenerateEntityModal.jsx via GenerateAgentModal.jsx)
 
 Markers:
@@ -207,6 +216,49 @@ SUGGESTED_RESOURCES_DRAFT_PAYLOAD = {
         }
     ],
     "suggested_skills": [],
+}
+
+# ELITEA-1910 — prompt text (mocked response, no specific wording required
+# per the AFS's Test Data table).
+SUGGESTED_SKILLS_CAP_PROMPT_TEXT = (
+    "An agent that uses several specialized skills to manage repository workflows"
+)
+
+# Mocked generate_application_draft response for ELITEA-1910 — 7 suggested
+# Skills (2 more than the case's stated cap of 5), per the AFS's Test Data.
+# Other suggested_* arrays are left empty (same narrowing technique
+# FIELD_POPULATION_DRAFT_PAYLOAD uses below) to keep the DOM surface focused
+# on the Skills section this case cares about.
+#
+# Per the AFS's live-verified finding (Known Defects Found #1, filed as
+# EliteaAI/elitea-testing-public#1317): ResourceSuggestions.jsx renders every
+# item in `items` unconditionally — no `.slice(0, 5)`/count guard exists in
+# ResourceSuggestions.jsx, GenerateAgentReviewForm.jsx, or
+# GenerateAgentModal.jsx. All 7 mocked items are therefore expected to render.
+SUGGESTED_SKILLS_CAP_PROBE_PAYLOAD = {
+    "name": "Repository Workflow Manager",
+    "description": "An agent that uses several specialized skills to manage repository workflows.",
+    "instructions": "You are an agent that manages repository workflows using several specialized skills.",
+    "welcome_message": "Hi! I can help manage your repository workflows.",
+    "conversation_starters": [
+        "List open pull requests",
+        "Summarize recent commits",
+        "Check CI status",
+        "Draft a release changelog",
+    ],
+    "suggested_toolkits": [],
+    "suggested_mcp": [],
+    "suggested_pipelines": [],
+    "suggested_agents": [],
+    "suggested_skills": [
+        {
+            "id": i,
+            "type": "skill",
+            "name": f"Repo Skill {i}",
+            "description": f"Specialized skill #{i} for repository workflow management.",
+        }
+        for i in range(1, 8)
+    ],
 }
 
 # ELITEA-1906 — verbatim prompt per the case's Test Data table.
@@ -522,6 +574,134 @@ class TestAgentBuildWithAISuggestedResources:
             )
             assert not modal.is_resource_checked("pipeline", 202), (
                 "Pipeline suggestion should not be pre-selected"
+            )
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agents/build_with_ai/ELITEA-1910_build-with-ai-suggested-skills-section-shown-with-up-to-5-skills.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_suggested_skills_section_capped_at_5_skills(self, page):
+        """Suggested Skills section renders for a mocked 7-item
+        `suggested_skills` payload; sampled cards show correct name and
+        description and are unselected by default. The card-count cap
+        ("never more than 5", the case's stated Pass criterion) is asserted
+        via `expect.soft()` — it is a live-verified, deterministic product
+        defect (all 7 items render, not capped at 5), filed as
+        EliteaAI/elitea-testing-public#1317. See AFS:
+        test-specs/agents/lextend_build-with-ai-suggested-skills-section-shown-with-up-to-5-skills_ELITEA-1910.md
+        """
+        list_page = AgentsListPage(page)
+        modal = GenerateAgentModalPage(page)
+        # pytest-native soft-assertion equivalent (matches this file's/this
+        # suite's existing `soft_failures` + trailing `pytest.fail()` pattern
+        # — see test_agent_publish_unpublish_version.py / Known defect #611 —
+        # not Playwright JS's `expect.soft()`, which this Python project
+        # doesn't have available).
+        soft_failures: list[str] = []
+
+        # ------------------------------------------------------------------
+        # Step 1 — Open modal, submit description implying Skill use
+        # ------------------------------------------------------------------
+        with allure.step("Step 1 — Open modal, submit description implying Skill use"):
+            list_page.navigate_to_create()
+            modal.open_modal()
+            modal.fill_prompt(SUGGESTED_SKILLS_CAP_PROMPT_TEXT)
+
+            assert modal.get_prompt_value() == SUGGESTED_SKILLS_CAP_PROMPT_TEXT, (
+                "Prompt textarea should contain exactly the entered text"
+            )
+            assert modal.is_generate_enabled(), (
+                "Generate button should be enabled once a non-empty description is entered"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 2 — Mock a 7-item suggested_skills response, Generate, wait
+        # for the review form
+        # ------------------------------------------------------------------
+        with allure.step("Step 2 — Mock a 7-item suggested_skills response, Generate, wait for review form"):
+            modal.mock_generate_success(SUGGESTED_SKILLS_CAP_PROBE_PAYLOAD)
+
+            with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+                modal.generate_button.click()
+                modal.wait_for_loading_visible(timeout=LOADING_STATE_TIMEOUT)
+
+            response = response_info.value
+            assert response.status == 200, (
+                f"Expected the generate-draft request to succeed, got {response.status}"
+            )
+            response_body = response.json()
+            assert len(response_body["suggested_skills"]) == 7, (
+                "generate-draft response should carry all 7 mocked suggested Skills through unchanged"
+            )
+
+            modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+
+        # ------------------------------------------------------------------
+        # Step 3 — Verify the "SUGGESTED SKILLS" section is present
+        # ------------------------------------------------------------------
+        with allure.step('Step 3 — Verify the "SUGGESTED SKILLS" section is present'):
+            assert modal.is_resource_section_visible("skill"), (
+                'The "Suggested Skills:" section should be present when suggested_skills is non-empty'
+            )
+
+        # ------------------------------------------------------------------
+        # Step 4 — Verify the rendered card count never exceeds 5
+        #
+        # Known defect: EliteaAI/elitea-testing-public#1317 — ResourceSuggestions.jsx
+        # renders every item in `items` unconditionally (no `.slice(0, 5)`/count
+        # guard anywhere in ResourceSuggestions.jsx, GenerateAgentReviewForm.jsx,
+        # or GenerateAgentModal.jsx). Deterministic, single-cause, isolated to
+        # this one check (steps 5/6 below still run and assert meaningfully
+        # against the same 7-card render) — sanctioned RED per
+        # .agents/testing.md § Merge gate's analysis-time entry
+        # (ELITEA-1965/#557). Asserted as expect.soft() so the rest of the
+        # test still executes and reports its own pass/fail independently.
+        # ------------------------------------------------------------------
+        with allure.step("Step 4 — Verify the rendered Skill card count never exceeds 5"):
+            rendered_count = modal.count_resource_items("skill")
+            # Known defect: EliteaAI/elitea-testing-public#1317
+            if rendered_count > 5:
+                soft_failures.append(
+                    "Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1317: "
+                    "Suggested Skills section should render at most 5 cards for a "
+                    f"7-item mocked payload, got {rendered_count}"
+                )
+
+        # ------------------------------------------------------------------
+        # Step 5 — Verify sampled Skill cards (first/middle/last: ids 1, 4, 7)
+        # show correct name and description
+        # ------------------------------------------------------------------
+        with allure.step("Step 5 — Verify sampled Skill cards show correct name and description"):
+            for item_id in (1, 4, 7):
+                expected_name = f"Repo Skill {item_id}"
+                expected_description = f"Specialized skill #{item_id} for repository workflow management."
+                assert modal.get_resource_name_text("skill", item_id) == expected_name, (
+                    f"Skill suggestion card {item_id} should display the resource's name"
+                )
+                assert modal.resource_description_exists("skill", item_id), (
+                    f"Skill suggestion card {item_id} should render a description element"
+                )
+                assert modal.get_resource_description_text("skill", item_id) == expected_description, (
+                    f"Skill suggestion card {item_id} should display the resource's description"
+                )
+
+        # ------------------------------------------------------------------
+        # Step 6 — Verify sampled Skill cards are unselected by default
+        # ------------------------------------------------------------------
+        with allure.step("Step 6 — Verify sampled Skill cards are unselected by default"):
+            for item_id in (1, 4, 7):
+                assert not modal.is_resource_checked("skill", item_id), (
+                    f"Skill suggestion card {item_id} should not be pre-selected"
+                )
+
+        if soft_failures:
+            pytest.fail(
+                "Soft assertion(s) failed (known isolated product defect, "
+                "not test/infrastructure — steps 1/2/3/5/6 above passed "
+                "cleanly):\n" + "\n".join(soft_failures)
             )
 
 

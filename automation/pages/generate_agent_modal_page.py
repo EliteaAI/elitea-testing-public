@@ -152,6 +152,13 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
     RESOURCE_CHECKBOX = '[data-testid="generate-agent-resource-checkbox-{}-{}"]'
     RESOURCE_NAME = '[data-testid="generate-agent-resource-name-{}-{}"]'
     RESOURCE_DESCRIPTION = '[data-testid="generate-agent-resource-description-{}-{}"]'
+    # Prefix-match variant of RESOURCE_ITEM — added for ELITEA-1910, to count
+    # every rendered card for a category regardless of item id (the cap-of-5
+    # check has no single known id to target). Same class-level dynamic-testid
+    # convention as the other RESOURCE_* templates (.agents/testing.md §
+    # Locator policy) — `^=` prefix match on the shared
+    # `generate-agent-resource-item-{entityType}-{id}` naming scheme.
+    RESOURCE_ITEM_PREFIX = '[data-testid^="generate-agent-resource-item-{}-"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -206,6 +213,16 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
     def get_resource_item(self, entity_type: str, item_id) -> Locator:
         """Locator for one suggestion card (`SuggestionItem.jsx`)."""
         return self.page.locator(self.RESOURCE_ITEM.format(entity_type, item_id))
+
+    def count_resource_items(self, entity_type: str) -> int:
+        """Count every rendered suggestion card for ``entity_type``,
+        regardless of item id (prefix match on ``RESOURCE_ITEM_PREFIX``).
+
+        Added for ELITEA-1910 (Suggested Skills cap-of-5 check) — unlike
+        ``get_resource_item``, which targets one known id, this counts the
+        full rendered set to check against a category's expected maximum.
+        """
+        return self.page.locator(self.RESOURCE_ITEM_PREFIX.format(entity_type)).count()
 
     def get_resource_name_text(self, entity_type: str, item_id) -> str:
         """The suggestion card's name text."""
