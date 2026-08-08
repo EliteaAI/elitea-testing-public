@@ -1778,6 +1778,14 @@ class PipelineDetailPage(PipelineFormPage):
         Opens the menu, clicks "Delete pipeline", types the pipeline name
         into the confirmation dialog, and clicks Delete.
 
+        Does NOT wait for the post-delete dashboard redirect — whether that
+        redirect happens is a known-defect-affected behavior (EliteaAI/
+        elitea-testing-public#1332: the app's `navigate(-1)` redirect is a
+        browser-history no-op when the detail page was reached via direct
+        navigation, which is exactly how this method's callers reach it).
+        Callers that need to assert/react to the redirect do so themselves
+        (see `test_delete_pipeline_via_ui_menu`, ELITEA-2022).
+
         Args:
             timeout: Maximum wait time for delete operation.
         """

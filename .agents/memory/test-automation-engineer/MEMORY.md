@@ -52,3 +52,4 @@
 - [MUI SingleSelect auto-id ≠ #579](mui_simple_select_auto_id_is_not_a_579_exception.md) — `#simple-select-<Label>` is app-owned (accepts data-testid), not library-internal
 - [CustomHandle testId ≠ #579](custom_handle_testid_prop_not_579_exception.md) — `.react-flow__handle` accepts a `testId` prop; not library-internal DOM
 - [Pipeline YAML tab truncates](pipeline_yaml_tab_truncates_use_api_not_dom.md) — long docs cut off silently; use `pipeline_api.get_pipeline()` not the DOM (#1025)
+- [Delete-menu redirect needs real history](delete_menu_redirect_navigate_minus_one_needs_history.md) — navigate(-1) no-ops after page.goto(); soft-assert + #1332

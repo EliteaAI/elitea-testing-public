@@ -32,6 +32,7 @@ import pytest
 from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipeline_form_page import PipelineFormPage
 from pages.pipelines_list_page import PipelinesListPage
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 pytestmark = [pytest.mark.ui, pytest.mark.pipelines]
 
@@ -387,9 +388,30 @@ class TestDeletePipeline:
                 pass
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2022_delete-pipeline.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_delete_pipeline_via_ui_menu(self, page, pipeline_api):
-        """Create a pipeline, delete via the UI three-dot menu, and verify removal."""
+        """Create a pipeline, delete via the UI three-dot menu, and verify removal.
+
+        Extends coverage for ELITEA-2022 (test-specs/pipelines/lextend_delete-
+        pipeline-via-actions-menu_ELITEA-2022.md) — additive Step 4 assertion
+        that the app auto-redirects to the Pipelines dashboard as a direct
+        consequence of the delete action (previously this test drove its own
+        navigation afterward, masking the redirect entirely).
+
+        **Known product defect (step 4, sanctioned RED):** the redirect
+        (`navigate(-1)` in EliteaUI's `useDeleteApplication`) is a browser-
+        history no-op when the detail page was reached via direct navigation
+        — exactly this test's own setup (Step 2: `detail_page.navigate(pid)`,
+        a `page.goto()`, no prior in-app history entry). Confirmed live via
+        Playwright MCP (8s poll, no redirect, 0 console errors). Filed as
+        `EliteaAI/elitea-testing-public#1332`. Per `.agents/testing.md` §
+        Merge gate's analysis-time exception, Step 4's redirect assertion is
+        `soft_failures`-tagged `# Known defect: #1332`; Step 5 (pipeline
+        actually gone) is unaffected and stays a hard assertion — it reaches
+        the dashboard itself since the redirect can't be relied on while
+        #1332 stays open.
+        """
         with allure.step("Step 1 — Create pipeline via API"):
             pipeline = pipeline_api.create_pipeline(
                 name="autotest_delete_ui_pipe",
@@ -406,11 +428,42 @@ class TestDeletePipeline:
             with allure.step("Step 3 — Delete pipeline via three-dot menu"):
                 detail_page.delete_pipeline_via_menu(timeout=NAVIGATION_TIMEOUT)
 
-            with allure.step("Step 4 — Verify pipeline removed from dashboard"):
+            soft_failures = []
+            with allure.step(
+                "Step 4 — Verify automatic redirect to Pipelines dashboard. KNOWN "
+                "DEFECT — sanctioned RED (EliteaAI/elitea-testing-public#1332): "
+                "navigate(-1) no-ops when the detail page was reached via direct "
+                "navigation, so the app never leaves the deleted pipeline's stale "
+                "detail route"
+            ):
+                try:
+                    page.wait_for_url(
+                        lambda url: urlparse(url).path.rstrip("/").endswith("/pipelines/all"),
+                        timeout=8000,
+                    )
+                except PlaywrightTimeoutError:
+                    soft_failures.append(
+                        "Known defect https://github.com/EliteaAI/elitea-testing-public/"
+                        f"issues/1332: expected auto-redirect to the Pipelines dashboard "
+                        f"after delete, but the URL stayed at {page.url!r}"
+                    )
+
+            with allure.step("Step 5 — Verify pipeline removed from dashboard"):
                 list_page = PipelinesListPage(page)
-                list_page.navigate()
+                if not urlparse(page.url).path.rstrip("/").endswith("/pipelines/all"):
+                    # Redirect known-broken (#1332) — reach the dashboard
+                    # explicitly so this step's own assertion (pipeline
+                    # actually gone) still runs and isn't masked by the
+                    # redirect defect above.
+                    list_page.navigate()
                 assert not list_page.pipeline_exists_in_list("autotest_delete_ui_pipe", timeout=3000), (
                     "Pipeline 'autotest_delete_ui_pipe' should be gone after UI deletion"
+                )
+
+            if soft_failures:
+                pytest.fail(
+                    "Soft assertion(s) failed (sanctioned RED — known defect #1332, redirect):\n"
+                    + "\n".join(soft_failures)
                 )
         finally:
             try:

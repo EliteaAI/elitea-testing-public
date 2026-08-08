@@ -129,6 +129,12 @@ the new assertion at the marked point; steps 1–5 already pass unmodified.)
   console errors. This is the assertion the covering spec is currently
   missing.
 
+**AMENDED (implementation time):** this expected result is asserted, but is
+currently **sanctioned RED** — see § Known Defects Found During Exploration.
+The redirect does not fire under this test's own (realistic, established)
+setup; filed as `EliteaAI/elitea-testing-public#1332`. Step 7 (pipeline
+absence) is independently confirmed and stays green.
+
 ## Coverage Map
 
 **Axis 1 — Case coverage**
@@ -188,40 +194,85 @@ extension; only a new assertion line in the test.
   `200`).
 
 ## Known Defects Found During Exploration
-None. Case text matches live behavior exactly on all 7 steps — this is a
-pure coverage-gap extension (missing assertion in an already-merged spec),
-not a product defect or case-text drift.
+
+**AMENDED during implementation (ELITEA-2022, batch `pipelines-remaining-w2`
+— `test-automation-engineer`).** The analyst's live check (single manual
+session) observed the auto-redirect working, but the exact automated setup
+(pipeline created via API, then `detail_page.navigate(pid)` — a `page.goto()`
+with no prior in-app browser-history entry) reproduces a **genuine,
+deterministic product defect**: the redirect never fires.
+
+- **Root cause (source-confirmed):** `useDeleteApplication` (EliteaUI
+  `src/pages/Applications/Components/Applications/DeleteApplicationButton.jsx`)
+  wires the redirect to the success toast's `onCloseToast` → `navigate(-1)`
+  (React Router "go back one history entry"). When the detail page was reached
+  via direct navigation, there is no prior entry to go back to, so
+  `navigate(-1)` is a no-op and the app is left on the deleted pipeline's
+  stale detail route indefinitely.
+- **Confirmed live via Playwright MCP** (polled `location.href` every 1s for
+  8s post-delete, on a probe pipeline reached identically to the covering
+  test's own setup): URL never changed from
+  `/pipelines/all/{id}?viewMode=owner&name=...`; DELETE returned `204`; 0
+  console errors — a silent dead-end, not a visible error.
+  ```
+  DELETE /api/v2/elitea_core/application/prompt_lib/399/8227 => 204 No Content
+  t=1s..8s: location.href stays at .../pipelines/all/8227?viewMode=owner&name=...
+  ```
+- **Filed:** `EliteaAI/elitea-testing-public#1332`.
+- **Classification:** isolated (per `.agents/testing.md` § Merge gate's
+  analysis-time exception) — the DELETE itself succeeds cleanly and the
+  pipeline is genuinely gone server-side; only the redirect assertion (case
+  Step 6) is affected. Step 7 (pipeline absent from the dashboard list) is
+  independently verifiable by reaching the dashboard explicitly, and stays a
+  hard assertion.
+- **Case-text note:** the case's Step 6 expected result ("Browser navigates to
+  the Pipelines dashboard") is NOT case-text drift — it is the correct,
+  intended behavior per the product code's own design intent (a redirect
+  after delete). The defect is that the implementation (`navigate(-1)`) fails
+  to deliver it under this reachable, realistic condition. No case-text
+  amendment needed.
 
 ## Blocked Steps
-None.
+None. (Automation proceeds per the analysis-time sanctioned-RED exception —
+Step 6's assertion is soft-tagged with the known defect; all other steps
+automate and verify cleanly.)
 
 ## Automation Hints
 - Framework: Playwright + pytest (confirmed, matches covering spec).
-- Extend `test_delete_pipeline_via_ui_menu` in-place (or add a sibling
-  method in `TestDeletePipeline`, e.g.
-  `test_delete_pipeline_via_ui_menu_redirects_to_dashboard`, if the team
-  prefers not to touch an already-green test) with the Step 6 assertion:
+- Extend `test_delete_pipeline_via_ui_menu` in-place with the Step 4/5
+  assertions (implemented shape — differs from the original plan below: the
+  redirect check is a bounded `page.wait_for_url(...)` wrapped in
+  `soft_failures` + `# Known defect: #1332`, since the naive immediate
+  `page.url` check this AFS originally proposed doesn't hold — see the
+  amendment above. Step 5 reaches the dashboard explicitly when the redirect
+  didn't happen, so its own assertion isn't masked by the known defect):
   ```python
   with allure.step("Step 3 — Delete pipeline via three-dot menu"):
       detail_page.delete_pipeline_via_menu(timeout=NAVIGATION_TIMEOUT)
 
-  with allure.step("Step 4 — Verify automatic redirect to Pipelines dashboard"):
-      # NEW — assert BEFORE any manual navigation
-      assert page.url.rstrip("/").endswith("/pipelines/all"), (
-          f"Expected auto-redirect to the Pipelines dashboard after delete, "
-          f"got: {page.url}"
-      )
+  soft_failures = []
+  with allure.step("Step 4 — Verify automatic redirect to Pipelines dashboard. "
+                    "KNOWN DEFECT — sanctioned RED (#1332)"):
+      try:
+          page.wait_for_url(
+              lambda url: urlparse(url).path.rstrip("/").endswith("/pipelines/all"),
+              timeout=8000,
+          )
+      except PlaywrightTimeoutError:
+          soft_failures.append(f"Known defect #1332: ... got {page.url!r}")
 
   with allure.step("Step 5 — Verify pipeline removed from dashboard"):
       list_page = PipelinesListPage(page)
-      # no list_page.navigate() here — already on the dashboard per the
-      # assertion above; navigating would mask a redirect regression
+      if not urlparse(page.url).path.rstrip("/").endswith("/pipelines/all"):
+          list_page.navigate()  # #1332 open — reach the dashboard explicitly
       assert not list_page.pipeline_exists_in_list("autotest_delete_ui_pipe", timeout=3000), (
           "Pipeline 'autotest_delete_ui_pipe' should be gone after UI deletion"
       )
+
+  if soft_failures:
+      pytest.fail("Soft assertion(s) failed (sanctioned RED — known defect #1332):\n"
+                  + "\n".join(soft_failures))
   ```
-  Note the removed `list_page.navigate()` call — keeping it would silently
-  re-mask the exact gap this extension closes.
 - `settings.app_base_url` / `APP_PREFIX` handling: on localhost `APP_PREFIX`
   is empty, so the URL ends `/pipelines/all`; on a deployed env it would be
   `/app/pipelines/all`. Use a suffix-match assertion (`.endswith(...)` or
