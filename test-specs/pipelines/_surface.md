@@ -2,7 +2,33 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2047 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2022 analysis).
+
+## Delete pipeline via three-dot menu — auto-redirect confirmed correct; existing merged spec masks the redirect assertion by navigating manually (confirmed live, 2026-08-08, ELITEA-2022)
+
+`test_delete_pipeline_via_ui_menu` (`test_pipeline_management.py:391`, merged to
+`origin/automation/base`) already drives the full delete flow correctly (three-dot
+menu → "Delete pipeline" → type-to-confirm dialog → `DELETE .../application/
+prompt_lib/{project}/{id}` → `204`), but its own Step 4 calls
+`list_page.navigate()` instead of asserting the app's automatic redirect — so a
+future regression to the auto-redirect would go undetected. Live-reconfirmed this
+session: after clicking the confirm dialog's "Delete" button, the URL transitions
+on its own from `/pipelines/all/{id}?...` to `/pipelines/all` with zero manual
+navigation and zero console errors. Classified `extend-existing`, not a defect —
+see `test-specs/pipelines/lextend_delete-pipeline-via-actions-menu_ELITEA-2022.md`
+for the gap assertion + exact patch shape.
+
+**Testid gotcha for "Delete pipeline"**: the PIPELINE-group menu item's testid is
+`delete-agent-menuitem`, NOT `delete-pipeline-menuitem` — `ApplicationControls.jsx`
+reuses one shared `deleteApplicationMenuItem` object (key `delete-agent`) for both
+Agent and Pipeline entities; only the visible label switches
+(`Delete ${isFromPipeline ? 'pipeline' : 'agent'}`). Confirmed live via
+`page.getByTestId('delete-agent-menuitem')` resolving correctly on a pipeline
+detail page. Both `open_actions_menu()` and `delete_pipeline_via_menu()` in
+`PipelineDetailPage` still use bounding-box/text-role fallbacks internally
+(pre-existing tech debt, unchanged by this case) despite the real testids
+existing and resolving correctly — same situation ELITEA-2003's AFS already
+flagged for the three-dot button itself.
 
 ## Interrupt before/after — pause works, plain-chat resume is a CONFIRMED DEFECT (`#1327`), pipeline-level YAML field (confirmed live, 2026-08-08, ELITEA-2047)
 
