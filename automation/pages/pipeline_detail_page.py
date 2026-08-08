@@ -453,6 +453,26 @@ class PipelineDetailPage(PipelineFormPage):
         testid="pipeline-printer-node-final-message-input",
         description="Printer node's Final Message field"
     )
+    # Fix round 1 (ELITEA-2039 review): these two testids are NEVER rendered by
+    # PrinterNode.jsx — confirmed via source, it renders no
+    # `FlowEditorSelect.InputSelect`/`OutputSelect` at all (unlike Code/LLM/
+    # State-modifier, which pass `dataTestId="pipeline-<type>-node-input-select"`
+    # / `-output-select` to those components — see e.g. `code_node_input_select`
+    # above). Declared here ONLY as the absence-assertion handle, same pattern
+    # as `chat_hitl_edit_button`/`toolkit_card` elsewhere in this file: a
+    # testid-scoped `LocatorDescriptor` whose `.count()` proves the element
+    # doesn't render, replacing a raw `#simple-select-Input`/`#simple-select-
+    # Output` DOM query (MUI auto-generated ids on an app-owned component —
+    # NOT a #579 exception; `add-data-testid`'s own convention names what a
+    # real Input/Output select on this node type WOULD carry if one existed).
+    printer_node_input_select = LocatorDescriptor(
+        testid="pipeline-printer-node-input-select",
+        description="Printer node's would-be Input state-variable select — not rendered; absence-only handle"
+    )
+    printer_node_output_select = LocatorDescriptor(
+        testid="pipeline-printer-node-output-select",
+        description="Printer node's would-be Output state-variable select — not rendered; absence-only handle"
+    )
 
     # State modifier node inline config (ELITEA-2035). Testid-only, added via
     # add-data-testid — StateModifierNode.jsx call sites only. Unlike Code/LLM,
@@ -2148,28 +2168,6 @@ class PipelineDetailPage(PipelineFormPage):
             """(nodeId) => {
                 const node = document.querySelector(`[data-id="${nodeId}"]`);
                 return node ? node.querySelectorAll('.react-flow__handle').length : 0;
-            }""",
-            node_id,
-        )
-
-    def get_node_state_var_select_count(self, node_id: str) -> int:
-        """Return how many Input/Output state-variable comboboxes render on the node with *node_id*.
-
-        Locates via the pre-existing (duplicated-across-node-types) DOM ids
-        ``#simple-select-Input``/``#simple-select-Output`` — same tech-debt
-        class already documented elsewhere in this file (e.g.
-        :attr:`code_node_input_select` uses the testid'd equivalent once
-        wired). Used ONLY to confirm ABSENCE (count == 0) for node types
-        like Printer that render neither select at all (ELITEA-2039).
-
-        Args:
-            node_id: The data-id of the node (e.g. ``"Printer 1"``).
-        """
-        return self.page.evaluate(
-            """(nodeId) => {
-                const node = document.querySelector(`[data-id="${nodeId}"]`);
-                if (!node) return -1;
-                return node.querySelectorAll('#simple-select-Input, #simple-select-Output').length;
             }""",
             node_id,
         )

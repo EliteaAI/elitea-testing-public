@@ -123,9 +123,11 @@ def test_printer_node_configuration_and_persistence(page, pipeline_id):
     with allure.step(
         "Step 8 — Note: Printer node has only Output handle (no Input combobox visible in panel)"
     ):
-        input_select_count = pipeline_page.get_node_state_var_select_count(printer_node_id)
-        assert input_select_count == 0, (
-            "Printer node should render zero Input/Output state-variable comboboxes"
+        assert pipeline_page.printer_node_input_select.count() == 0, (
+            "Printer node should render zero Input state-variable comboboxes"
+        )
+        assert pipeline_page.printer_node_output_select.count() == 0, (
+            "Printer node should render zero Output state-variable comboboxes"
         )
         handle_count_after_reload = pipeline_page.get_node_handle_count(printer_node_id)
         assert handle_count_after_reload == 2, (

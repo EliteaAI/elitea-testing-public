@@ -152,6 +152,27 @@ in the AFS, not because the case text was wrong.
 | Add-node "+" button / menu item | `[data-testid="pipeline-add-node-button"]`, `[data-testid="pipeline-add-node-menu-item-printer"]` | **on-`automation/testids` only** (awaiting human promotion to `main`) — pre-existing (ELITEA-2018/2030); used directly by this session's live exploration. `PipelineDetailPage.add_node("Printer")` already drives this via its existing approach — no page-object change needed. | n/a |
 | Pipeline Save button | `[data-testid="agent-save-button"]` | **on-main ✓** — confirmed present, already wired as `PipelineFormPage.save_button`; confirmed live firing `PUT .../application/prompt_lib/{project}/{pipeline_id}` → 201 (via Save-and-Discard round trip in this session; the actual persisted-Save + reload round trip is left to the implementer's test run since this analysis session used Discard to avoid mutating a shared probe pipeline). | none needed |
 
+**Amended during implementation, fix round 1 (review finding — raw DOM handle):**
+step 8's absence check originally queried the live DOM for `#simple-select-Input`/
+`#simple-select-Output` via `page.evaluate()` (this was this AFS's own original
+"Concrete Handles" recommendation, written during the combined analyst+implementer
+session). Reviewer flagged it: those are MUI-auto-generated ids on an app-owned
+`Select.SingleSelect` component (not ReactFlow/CodeMirror-class library-internal
+DOM), so it doesn't qualify for the #579 sanctioned-exception — the component
+already supports a real `data-testid` (passed as `dataTestId` by every OTHER node
+type that renders it — see `code_node_input_select` etc.), it's just that
+`PrinterNode.jsx` never renders `FlowEditorSelect.InputSelect`/`OutputSelect` at
+all, so there is no live element to put a testid on this session. The technique
+now uses two testid-scoped `LocatorDescriptor` fields
+(`printer_node_input_select` / `printer_node_output_select`, testids
+`pipeline-printer-node-input-select` / `pipeline-printer-node-output-select` —
+same naming convention every other node type's Input/Output select testid
+follows) and asserts `.count() == 0` on each, matching the codebase's existing
+testid-based absence-assertion pattern (`chat_hitl_edit_button.count() == 0`,
+`toolkit_card.count() == 0`). The assertion target is unchanged (Printer renders
+zero Input/Output state-variable comboboxes) — only the verification handle
+changed, per Phase 2's amend-in-place rule (technique, not scope).
+
 ## Network Behavior
 - `POST .../elitea_core/applications/prompt_lib/{project}` — pipeline creation (step 0's prerequisite, if not using the `pipeline_id` fixture).
 - `PUT .../elitea_core/application/prompt_lib/{project}/{pipeline_id}` — fires on Save click (step 6); persists the Printer node's full config (`input_mapping.printer` object with `type`/`value`, plus `final_message`) as part of the pipeline's YAML `instructions` field. Confirmed live pattern (via source + this suite's other pipeline-node AFSes): returns **201 Created**.
