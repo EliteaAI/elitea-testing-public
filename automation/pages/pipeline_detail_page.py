@@ -474,6 +474,29 @@ class PipelineDetailPage(PipelineFormPage):
         description="Printer node's would-be Output state-variable select — not rendered; absence-only handle"
     )
 
+    # Fix round 2 (ELITEA-2039 review): the Printer node's two ReactFlow
+    # connection handles ARE app-owned — `CustomHandle.jsx` forwards a
+    # `testId` prop straight to `data-testid` on the underlying `<Handle>`
+    # (EliteaAI/EliteaUI `src/[fsd]/features/pipelines/flow-editor/ui/nodes/
+    # CustomHandle.jsx:104-111`), so a testid CAN be placed — NOT a #579
+    # library-internal-DOM exception (that class only covers nodes a library
+    # renders with no app hook at all, e.g. ReactFlow's own `rf__wrapper`
+    # internals). `PrinterNode.jsx`'s two `CustomHandle` call sites now pass
+    # `testId="pipeline-printer-node-target-handle"` /
+    # `testId="pipeline-printer-node-source-handle"` (EliteaAI/EliteaUI@b65756af
+    # on `automation/testids`, awaiting human promotion to `main`) — same
+    # `testId` mechanism `pipeline-decision-node-output-handle` already uses
+    # on `NormalDecisionNode.jsx`. Page-wide, same "single Printer node on
+    # canvas" assumption as `printer_node_type_select` et al. above.
+    printer_node_target_handle = LocatorDescriptor(
+        testid="pipeline-printer-node-target-handle",
+        description="Printer node's target (Input) ReactFlow connection handle"
+    )
+    printer_node_source_handle = LocatorDescriptor(
+        testid="pipeline-printer-node-source-handle",
+        description="Printer node's source (Output) ReactFlow connection handle"
+    )
+
     # State modifier node inline config (ELITEA-2035). Testid-only, added via
     # add-data-testid — StateModifierNode.jsx call sites only. Unlike Code/LLM,
     # this node type has NO Interrupt/Structured-output controls (confirmed via
@@ -2153,24 +2176,31 @@ class PipelineDetailPage(PipelineFormPage):
         return ids
 
     def get_node_handle_count(self, node_id: str) -> int:
-        """Return the number of ReactFlow connection handles on the node with *node_id*.
+        """Return the number of ReactFlow connection handles on the Printer node with *node_id*.
 
-        Counts ``.react-flow__handle`` descendants (library-injected DOM,
-        sanctioned #579 exception, same class of handle :meth:`get_node_count`
-        already uses) — useful for confirming a node type's connection-point
-        inventory (e.g. the Printer node's target+source pair, ELITEA-2039)
-        independent of any state-var select testid that node type may lack.
+        Fix round 2 (ELITEA-2039 review): counts via the Printer node's two
+        dedicated handle testids (:attr:`printer_node_target_handle` /
+        :attr:`printer_node_source_handle`) instead of a raw
+        ``.react-flow__handle`` DOM query. ``CustomHandle.jsx`` forwards a
+        ``testId`` prop straight to ``data-testid`` — the element is
+        app-owned, not library-internal DOM, so it does NOT qualify for the
+        #579 sanctioned exception; a real testid belongs here, same as every
+        other testid-scoped connection handle in this suite
+        (``pipeline-decision-node-output-handle``).
+
+        Currently confirms the Printer node's connection-point inventory
+        (target+source pair) specifically — this method has no callers
+        outside the Printer node test. Extending it to other node types
+        requires wiring a ``testId`` on their ``CustomHandle`` calls first
+        (none carry one yet).
 
         Args:
-            node_id: The data-id of the node (e.g. ``"Printer 1"``).
+            node_id: The data-id of the node (e.g. ``"Printer 1"``) — kept in
+                the signature for call-site clarity even though the testid
+                locators below are page-wide (single-Printer-node-on-canvas
+                assumption, same as :attr:`printer_node_type_select` et al.).
         """
-        return self.page.evaluate(
-            """(nodeId) => {
-                const node = document.querySelector(`[data-id="${nodeId}"]`);
-                return node ? node.querySelectorAll('.react-flow__handle').length : 0;
-            }""",
-            node_id,
-        )
+        return self.printer_node_target_handle.count() + self.printer_node_source_handle.count()
 
     def wait_for_node_on_canvas(
         self, node_type: str, *, timeout: int = 10000,

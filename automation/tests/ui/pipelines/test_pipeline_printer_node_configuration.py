@@ -67,6 +67,17 @@ def test_printer_node_configuration_and_persistence(page, pipeline_id):
         assert pipeline_page.printer_node_final_message_input.is_visible(), (
             "Final Message field should be visible inline"
         )
+        # Regression guard (fix round 2, ELITEA-2039 review): assert the two
+        # dedicated handle testids directly, not just the aggregate count —
+        # a testid-only assertion is what actually catches a regression
+        # where CustomHandle's `testId` prop gets dropped from PrinterNode.jsx
+        # (an aggregate .react-flow__handle DOM count wouldn't notice).
+        assert pipeline_page.printer_node_target_handle.is_visible(), (
+            "Printer node's target (Input) connection handle should be visible via its testid"
+        )
+        assert pipeline_page.printer_node_source_handle.is_visible(), (
+            "Printer node's source (Output) connection handle should be visible via its testid"
+        )
         handle_count = pipeline_page.get_node_handle_count(printer_node_id)
         assert handle_count == 2, (
             f"Printer node should expose exactly 2 ReactFlow connection handles "
