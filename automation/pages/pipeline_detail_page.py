@@ -179,6 +179,56 @@ class PipelineDetailPage(PipelineFormPage):
         description='Three-dot menu — VERSION-group "Delete" item.',
     )
 
+    # --- Actions menu (ELITEA-2049 AFS Concrete Handles) — the menu
+    # container plus the remaining VERSION/PIPELINE-group items not yet
+    # covered by fields above. All pre-existing, on-main testids — zero
+    # EliteaUI change needed for these five (mirrors AgentDetailPage's
+    # equivalent fields, same shared-component testid family).
+    actions_menu = LocatorDescriptor(
+        testid="agent-actions-menu",
+        description='Three-dot actions menu container ([role="menu"]).',
+    )
+    # VERSION-group "Share" — copies a VERSION-specific link (URL carries a
+    # trailing version-id path segment). NOT the case's "Copy link" target —
+    # see `share_agent_menuitem` below. Negative-control pair, same shape
+    # already documented by AgentDetailPage (ELITEA-1898).
+    share_version_menuitem = LocatorDescriptor(
+        testid="share-version-menuitem",
+        description='Three-dot menu — VERSION-group "Share" item (version-specific link).',
+    )
+    # VERSION-group "Fork". Gotcha: DIFFERENT testid from Agent's
+    # `agent-actions-fork-menuitem` — `ForkEntityButton.jsx`'s
+    # `FORK_MENU_ITEM_KEY_BY_ENTITY` map resolves the key per `entity_name`
+    # (`pipelines` -> `pipeline-actions-fork`). Do not reuse the Agent value.
+    fork_menuitem = LocatorDescriptor(
+        testid="pipeline-actions-fork-menuitem",
+        description='Three-dot menu — VERSION-group "Fork" item.',
+    )
+    # PIPELINE-group "Share" — THIS is the case's "Copy link" step (case-text
+    # drift, CLARIFICATION EliteaAI/elitea-testing-public#1337). Gotcha (same
+    # as Agent's ELITEA-1898): the testid key is the literal `share-agent`,
+    # not renamed per entity — `ApplicationControls.jsx` reuses it for both
+    # Agent and Pipeline entities.
+    share_agent_menuitem = LocatorDescriptor(
+        testid="share-agent-menuitem",
+        description='Three-dot menu — PIPELINE-group "Share" item (generic pipeline link; '
+        "functionally the case's \"Copy link\").",
+    )
+    delete_agent_menuitem = LocatorDescriptor(
+        testid="delete-agent-menuitem",
+        description='Three-dot menu — PIPELINE-group "Delete pipeline" item.',
+    )
+    # PIPELINE-group "Pin to top" — added via `add-data-testid`
+    # (EliteaAI/EliteaUI@f83557e4, ELITEA-2049): threaded an optional `key`
+    # param through the shared `usePinMenu()` hook (default `undefined`,
+    # preserving the other 3 untouched callers — Skill/Toolkits/Credentials
+    # controls) so `ApplicationControls.jsx` can supply
+    # `key: 'pipeline-actions-pin-to-top'` for this call site only.
+    pin_to_top_menuitem = LocatorDescriptor(
+        testid="pipeline-actions-pin-to-top-menuitem",
+        description='Three-dot menu — PIPELINE-group "Pin to top" item.',
+    )
+
     # Shared Modal.DeleteEntityModal component (same testid family already
     # wired by artifacts_page.py/secrets_page.py/chat_page.py/etc. for
     # THEIR OWN delete flows) — new fields here for the pipeline-version
