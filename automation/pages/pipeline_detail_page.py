@@ -367,6 +367,37 @@ class PipelineDetailPage(PipelineFormPage):
         description="LLM node's 'Structured output' switch (CommonInterruptSettings.jsx)"
     )
 
+    # Code node inline config (ELITEA-2009). Testid-only, added via
+    # add-data-testid — CodeNode.jsx call sites only (SimpleLLMInputs is
+    # shared with LLM/Printer nodes, which stay untagged — untested node
+    # types stay untagged, .agents/testing.md § Locator policy). Page-wide
+    # (not scoped to a specific node container): correct as long as a test
+    # only has a single Code node on canvas.
+    code_node_type_select = LocatorDescriptor(
+        testid="pipeline-code-node-type-select",
+        description="Code node's CODE section Type select (inline on canvas card)"
+    )
+    code_node_value = LocatorDescriptor(
+        testid="pipeline-code-node-value",
+        description="Code node's CODE section Value field (Python code textarea)"
+    )
+    code_node_input_select = LocatorDescriptor(
+        testid="pipeline-code-node-input-select",
+        description="Code node's tool-agnostic Input state-variable select"
+    )
+    code_node_output_select = LocatorDescriptor(
+        testid="pipeline-code-node-output-select",
+        description="Code node's tool-agnostic Output state-variable select"
+    )
+    code_node_interrupt_after_toggle = LocatorDescriptor(
+        testid="pipeline-code-node-interrupt-after-toggle",
+        description="Code node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
+    )
+    code_node_structured_output_toggle = LocatorDescriptor(
+        testid="pipeline-code-node-structured-output-toggle",
+        description="Code node's 'Structured output' switch (CommonInterruptSettings.jsx)"
+    )
+
     # Entry-point Trigger select (ELITEA-2005/06/07/08 testid prep, first
     # consumed here) — TriggerTypeSelector.jsx renders this unconditionally
     # for whichever node is the pipeline's current entry point, regardless of
@@ -3138,6 +3169,102 @@ class PipelineDetailPage(PipelineFormPage):
     def get_llm_node_output_value(self) -> str:
         """Read the LLM node's currently-selected Output display text."""
         text = (self.llm_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    # ------------------------------------------------------------------
+    # Code node inline config (ELITEA-2009)
+    # ------------------------------------------------------------------
+    #
+    # Single CODE section (variableName="code" on the shared
+    # SimpleLLMInputItem component) — unlike the LLM node's 3-section
+    # SYSTEM/TASK/CHAT HISTORY dispatch, no section-name parameter is
+    # needed here. Reuses the same generic helpers
+    # (``_fill_node_field_value``, ``_select_multi_select_option_and_close``,
+    # ``_wait_for_open_popovers_closed``) the LLM node methods above use.
+
+    def get_code_node_type(self, timeout: int = 5000) -> str:
+        """Read the Code node's CODE section Type select current value."""
+        self.code_node_type_select.wait_for(state="visible", timeout=timeout)
+        # MUI's empty-select rendering is a zero-width space (U+200B), not
+        # an empty string — same gotcha as get_llm_node_section_type.
+        text = (self.code_node_type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_code_node_type(self, type_value: str, timeout: int = 5000) -> None:
+        """Open the CODE section's Type select and choose *type_value* (Fixed/F-String/Variable).
+
+        Args:
+            type_value: Option display text, e.g. ``"Fixed"``.
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.code_node_type_select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def fill_code_node_value(self, value: str, timeout: int = 5000) -> None:
+        """Fill the CODE section's Value field (Python code textarea).
+
+        Plain MUI textarea (``Input.InputBase``/``AIAssistantInput``) — NOT
+        CodeMirror/Monaco despite the component receiving ``language="python"``
+        internally, which only affects the SEPARATE full-screen AI Assistant
+        modal (confirmed live, ELITEA-2009, same pattern as the Router node's
+        ``language="jinja"`` Condition field). Uses click + press_sequentially
+        — MUI/React fields need real keyboard events for onChange to fire
+        (.claude/rules/mui-patterns.md). Multi-line text (embedded ``\\n``)
+        is typed correctly via ``press_sequentially``, confirmed live.
+
+        Args:
+            value: The Python code to type (may be multi-line).
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self._fill_node_field_value(self.code_node_value, value, timeout=timeout)
+
+    def get_code_node_value(self) -> str:
+        """Read the CODE section's Value field current content."""
+        return self.code_node_value.input_value()
+
+    def open_code_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the Code node's Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.code_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_code_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Input dropdown and select *variable_name*."""
+        self.open_code_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_code_node_input_value(self) -> str:
+        """Read the Code node's currently-selected Input display text."""
+        text = (self.code_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_code_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the Code node's Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.code_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_code_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Output dropdown and select *variable_name*.
+
+        Args:
+            variable_name: Must already be a pipeline state variable (Output,
+                like Input, only lists EXISTING state vars — it is not a
+                freeform/creatable field; add a custom variable via
+                :meth:`add_state_variable` first if *variable_name* isn't
+                one of the built-in ``input``/``messages`` vars — confirmed
+                live, ELITEA-2009).
+        """
+        self.open_code_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_code_node_output_value(self) -> str:
+        """Read the Code node's currently-selected Output display text."""
+        text = (self.code_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
 
     def is_node_interrupt_before_toggle_visible(self, node_id: str, timeout: int = 5000) -> bool:
