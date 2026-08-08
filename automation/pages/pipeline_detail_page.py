@@ -316,6 +316,39 @@ class PipelineDetailPage(PipelineFormPage):
         description="MCP node's 'Structured output' switch (CommonInterruptSettings.jsx)"
     )
 
+    # Agent node inline config fields (ELITEA-2038). Testid-only, added via
+    # add-data-testid — AgentNode.jsx is its own component (not a
+    # BaseToolNode.jsx caller), so these carry a local
+    # AGENT_NODE_TESTID_PREFIX constant rather than a shared
+    # TEST_ID_PREFIX_BY_NODE_TYPE map entry. No `optionalHeadingTestId`/
+    # `structuredOutputTestId` were wired — the Agent node's INPUT MAPPING
+    # only ever renders ONE required field (TASK), never an optional
+    # section, and CommonInterruptSettings.jsx never renders Structured
+    # output here at all (AgentNode.jsx passes showStructuredOutput=false)
+    # — confirmed live, ELITEA-2038 analysis session. Page-wide (not scoped
+    # to a specific node container): correct as long as a test only has a
+    # single Agent node on canvas.
+    agent_node_agent_select = LocatorDescriptor(
+        testid="pipeline-agent-node-agent-select",
+        description="Agent node's Agent select (inline on the ReactFlow canvas card)"
+    )
+    agent_node_input_select = LocatorDescriptor(
+        testid="pipeline-agent-node-input-select",
+        description="Agent node's tool-agnostic Input state-variable select"
+    )
+    agent_node_output_select = LocatorDescriptor(
+        testid="pipeline-agent-node-output-select",
+        description="Agent node's tool-agnostic Output state-variable select"
+    )
+    agent_node_input_mapping_required_heading = LocatorDescriptor(
+        testid="pipeline-agent-node-input-mapping-heading",
+        description="Agent node's 'Input mapping (required 1)' accordion heading (always TASK)"
+    )
+    agent_node_interrupt_after_toggle = LocatorDescriptor(
+        testid="pipeline-agent-node-interrupt-after-toggle",
+        description="Agent node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
+    )
+
     # LLM node inline config (ELITEA-2004). Testid-only, added via
     # add-data-testid — LLMNode.jsx call sites only (SimpleLLMInputs is
     # shared with Code/Printer nodes, which stay untagged — untested node
@@ -875,6 +908,15 @@ class PipelineDetailPage(PipelineFormPage):
         description='"+ Toolkit" button in the TOOLS section (ToolMenu.jsx)'
     )
 
+    # "+ Agent" button (ELITEA-2038). Testid already exists in the DOM on
+    # `main` (ToolMenu.jsx, same shared component — ported from
+    # AgentDetailPage.add_agent_button) — only missing here since
+    # PipelineDetailPage previously had no Agent-attach field.
+    add_agent_button = LocatorDescriptor(
+        testid="agent-add-agent-button",
+        description='"+ Agent" button in the TOOLS section (ToolMenu.jsx)'
+    )
+
     # General/Welcome/Chat-starters fields (ELITEA-2021). These testids exist
     # in the DOM on `main` already (shared AgentInput/ConversationStarters
     # components, confirmed via ELITEA-2021 AFS provenance check) but had no
@@ -947,6 +989,13 @@ class PipelineDetailPage(PipelineFormPage):
     # Same mechanism, gated to nodeType==custom in DefaultNode.jsx (ELITEA-2036).
     CUSTOM_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-custom-node-input-mapping-value-{}"]'
     CUSTOM_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-custom-node-input-mapping-type-{}"]'
+
+    # Same mechanism (ELITEA-2038) — Agent node's INPUT MAPPING only ever has
+    # ONE key ("task"), but the class-level template constant is kept for
+    # consistency with every other node type's Input-mapping fields and to
+    # stay greppable by the coverage tooling.
+    AGENT_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-agent-node-input-mapping-value-{}"]'
+    AGENT_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-agent-node-input-mapping-type-{}"]'
 
     # Select-dropdown option pattern shared by Toolkit/Tool/Input/Output
     # selects (SingleSelectMenuItem.jsx: `select-option-{value}`) — confirmed
@@ -2944,6 +2993,129 @@ class PipelineDetailPage(PipelineFormPage):
         return text.strip()
 
     # ------------------------------------------------------------------
+    # Agent node inline config (ELITEA-2038)
+    # ------------------------------------------------------------------
+
+    def get_agent_node_agent_value(self, timeout: int = 5000) -> str:
+        """Read the Agent node's currently-selected Agent display text."""
+        self.agent_node_agent_select.wait_for(state="visible", timeout=timeout)
+        text = (self.agent_node_agent_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_agent_node_agent(self, agent_name: str, timeout: int = 5000) -> None:
+        """Open the Agent node's Agent dropdown and select *agent_name*.
+
+        Args:
+            agent_name: The attached agent's display name (matches
+                ``select-option-{agent_name}``).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.agent_node_agent_select.click(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(agent_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def open_agent_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the Agent node's tool-agnostic Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.agent_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_agent_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Agent node's Input dropdown and select *variable_name*.
+
+        Multi-select (``role="listbox" aria-multiselectable="true"``, same as
+        the sibling LLM/MCP/Toolkit node Input fields) — doesn't auto-close,
+        so this closes it via Escape same as the sibling node methods.
+        """
+        self.open_agent_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_agent_node_input_value(self) -> str:
+        """Read the Agent node's currently-selected Input display text."""
+        text = (self.agent_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_agent_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the Agent node's tool-agnostic Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.agent_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_agent_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Agent node's Output dropdown and select *variable_name*."""
+        self.open_agent_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_agent_node_output_value(self) -> str:
+        """Read the Agent node's currently-selected Output display text."""
+        text = (self.agent_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def is_agent_node_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:
+        """Check whether the Agent node's "Input mapping (required N)" accordion is visible.
+
+        Args:
+            required_count: Expected N in the accordion title (always 1 —
+                the Agent node's schema has exactly one required key, TASK).
+            timeout: Maximum wait time.
+        """
+        heading = self.agent_node_input_mapping_required_heading
+        try:
+            heading.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (required {required_count})"
+
+    def get_agent_node_input_mapping_type(self, param_name: str = "task", timeout: int = 5000) -> str:
+        """Read the current Type select display value of the TASK Input-mapping row.
+
+        Args:
+            param_name: The mapping key's raw schema name — always ``"task"``
+                for the Agent node (default provided for readability at call
+                sites; kept parameterized for consistency with the sibling
+                node-type methods rather than hardcoded).
+            timeout: Maximum wait time for the select to be visible.
+        """
+        type_select = self.page.locator(self.AGENT_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        type_select.wait_for(state="visible", timeout=timeout)
+        text = (type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def get_agent_node_input_mapping_value(self, param_name: str = "task", timeout: int = 5000) -> str:
+        """Read the current value of the TASK Input-mapping "Value" field.
+
+        Args:
+            param_name: The mapping key's raw schema name — always ``"task"``.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        field = self.page.locator(self.AGENT_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        return field.input_value()
+
+    def fill_agent_node_input_mapping_value(
+        self, value: str, param_name: str = "task", timeout: int = 5000
+    ) -> None:
+        """Fill the TASK Input-mapping "Value" field.
+
+        Uses click + press_sequentially — MUI/React fields need real keyboard
+        events for onChange to fire (.claude/rules/mui-patterns.md).
+
+        Args:
+            value: The F-String text to type (e.g. containing ``{normalized_issue}``).
+            param_name: The mapping key's raw schema name — always ``"task"``.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        field = self.page.locator(self.AGENT_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        field.click()
+        field.press("Control+a")
+        field.press("Delete")
+        field.press_sequentially(value, delay=20)
+
+    # ------------------------------------------------------------------
     # LLM node inline config (ELITEA-2004)
     # ------------------------------------------------------------------
 
@@ -3988,6 +4160,65 @@ class PipelineDetailPage(PipelineFormPage):
         """
         logger.info("Selecting toolkit '%s' in popper", toolkit_name)
         Popper.select_menuitem_by_testid(popper, toolkit_name, self.page, timeout=timeout)
+
+    def open_agent_popper(self, timeout: int = 10000) -> Locator:
+        """Open the TOOLS section's "+ Agent" popper without selecting anything.
+
+        Mirrors :meth:`open_mcp_popper` (ELITEA-1955) / :meth:`open_toolkit_popper`
+        (ELITEA-2021), ported from ``AgentDetailPage.open_agent_picker``
+        (ELITEA-1887) — ``ApplicationTools.jsx``/``ToolMenu.jsx`` is the same
+        shared component on both Agent and Pipeline detail forms, and the
+        picker's rows carry the same ``toolkit-menu-item`` testid (confirmed
+        live, ELITEA-2038 analysis session).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator of the visible MUI popper (see ``components.mui.Popper``).
+        """
+        logger.info("Opening TOOLS section '+ Agent' popper")
+        self.ensure_toolkits_section_visible(timeout=timeout)
+        self.add_agent_button.wait_for(state="visible", timeout=timeout)
+        self.add_agent_button.click(force=True)
+        return Popper.wait_for(self.page, timeout=timeout)
+
+    def select_agent_in_popper(
+        self, popper: Locator, agent_name: str, project_id: str, timeout: int = 10000
+    ) -> dict:
+        """Select *agent_name* in an already-open "+ Agent" popper.
+
+        Unlike the Toolkit picker (:meth:`select_toolkit_in_popper`, defers to
+        Save) and like the MCP picker (:meth:`select_mcp_in_popper`), the Agent
+        attach auto-persists immediately on selection — but via a DIFFERENT
+        endpoint (``useAgentPipelineAssociation.hooks.js``'s
+        ``updateApplicationRelation`` mutation, not the ``/tool/prompt_lib/``
+        PATCH the Toolkit/MCP pickers use). Confirmed live (ELITEA-2038 analysis
+        session): selecting an agent fires
+        ``PATCH .../application_relation/prompt_lib/{project}/{agent_id}/{agent_version_id}``,
+        `201 Created`. Waits on that response itself (not a fixed timeout),
+        same discipline as :meth:`select_mcp_in_popper`.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_agent_popper`.
+            agent_name: Exact name of the Agent to attach.
+            project_id: Project id, used to scope the attach response URL match.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the ``201 Created`` attach PATCH response.
+        """
+        logger.info("Selecting agent '%s' in popper", agent_name)
+        with self.page.expect_response(
+            lambda r: f"/application_relation/prompt_lib/{project_id}/" in r.url
+            and r.request.method == "PATCH"
+            and r.status == 201,
+            timeout=timeout,
+        ) as response_info:
+            Popper.select_menuitem_by_testid(popper, agent_name, self.page, timeout=timeout)
+
+        logger.info("Agent '%s' attached", agent_name)
+        return response_info.value.json()
 
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit/MCP card is attached in the TOOLS section.
