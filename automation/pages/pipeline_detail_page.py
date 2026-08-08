@@ -2095,13 +2095,10 @@ class PipelineDetailPage(PipelineFormPage):
                 f"Could not parse forked Pipeline ID from URL: {self.page.url}"
             )
         forked_pipeline_id = int(match.group(1))
-        self.page.wait_for_function(
-            """(expected) => {
-                const el = document.querySelector('[data-testid="copy-id"]');
-                return !!el && el.textContent.trim() === expected;
-            }""",
-            arg=str(forked_pipeline_id),
-            timeout=timeout,
+        from playwright.sync_api import expect
+
+        expect(self.copy_id_button).to_have_text(
+            str(forked_pipeline_id), timeout=timeout
         )
         logger.info(
             "Fork complete — navigated to forked pipeline id=%d (%s)",
