@@ -2,7 +2,47 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2035 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2036 combined
+> analysis+implementation).
+
+## Custom node — SAME component tree as Toolkit node + a unique raw-JSON dual view (confirmed live, 2026-08-08, ELITEA-2036)
+
+`DefaultNode.jsx` renders BOTH the `custom` and `defaultType` node types
+(`FlowEditor.jsx`'s `nodeTypes` map) — confirmed via source. For `custom`
+specifically, the rendered fields are the EXACT same component tree
+`BaseToolNode.jsx` uses for the Toolkit/MCP nodes: `ToolSelect` (Toolkit
+select) → conditional `Tool` `SingleSelect` (absent from DOM until a
+Toolkit with `selected_tools` is chosen) → `FlowEditorSelect.InputSelect` →
+`FlowEditorSelect.OutputSelect` → `FlowEditorSettings.InputMapping`
+(Type+Value per parameter, REQUIRED/OPTIONAL accordions once a Tool is
+selected) → `FlowEditorSettings.CommonInterruptSettings` (Interrupt
+before/after, Structured output). **Additionally**, Custom uniquely renders
+`FlowEditorSettings.CustomNodeInput` at the bottom — a raw-JSON CodeMirror
+view/editor of the node's own full YAML body (id/type/description/settings/
+input_mapping/...), present on NO other node type in this suite. Same
+always-expanded-inline pattern (no click-to-open) as every other node type.
+
+- **Precondition case-text drift, same class as Toolkit/Router nodes.** The
+  case ELITEA-2036 doesn't mention attaching a toolkit as a precondition,
+  but "Type + Value for input mapping" is unreachable until a Toolkit (with
+  `selected_tools`) is attached to TOOLS and selected in the node — same
+  two-stage reveal already documented for ELITEA-2010 (Toolkit node) and
+  ELITEA-2033 (Router node). Filed as a CLARIFICATION in the AFS, not a bug.
+- **Zero testids existed on `DefaultNode.jsx`/`CustomNodeInput.jsx` before
+  this session** — added a `TEST_ID_PREFIX_BY_NODE_TYPE` map (mirrors
+  `BaseToolNode.jsx`'s, gated to `type === 'custom'`) wiring 8
+  ALREADY-SUPPORTED props (`data-testid` on `ToolSelect`/`SingleSelect`,
+  `dataTestId` on `InputSelect`/`OutputSelect`, 4 props on `InputMapping`, 2
+  on `CommonInterruptSettings`) — zero shared-component changes needed. The
+  raw-JSON view needed ONE new prop (`contentTestId`, forwarded to
+  `Field.CodeMirrorEditor`'s pre-existing `contentTestId` support — same
+  mechanism as `toolkit-raw-json-editor-content`/`skill-instructions-editor-content`
+  elsewhere in the codebase). Full testid list: `test-specs/pipelines/l2_pipeline-custom-node-configuration_ELITEA-2036.md`
+  § Concrete Handles.
+- **Raw-JSON view reading convention**: `text_content()` on the
+  `[data-testid="pipeline-custom-node-json-editor-content"]` `.cm-content`
+  div, NOT `input_value()` — CodeMirror is not a native input/textarea,
+  same convention as this project's other CodeMirror-content-reading code.
 
 ## State modifier node — inline config panel, zero Interrupt/Structured-output controls (confirmed live, 2026-08-08, ELITEA-2035)
 

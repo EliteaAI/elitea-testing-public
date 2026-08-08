@@ -48,3 +48,4 @@
 - [Save As Version is never dirty-gated](pipeline_save_as_version_quirks.md) — don't assert it disabled at baseline; ReactFlow always renders a synthetic END node too
 - [Signal-parity claims need an assertion diff](afs_signal_parity_claim_needs_assertion_diff.md) — "same N-signal pattern" prose ≠ same assert list; diff them
 - [Page-object API delete needs Bearer fallback on localhost](page_object_api_delete_needs_bearer_fallback_on_localhost.md) — self.page.request has no cookies there; 400s silently without it
+- [Pipeline node types can share a component tree](pipeline_custom_node_shares_toolkit_node_component_tree.md) — check BaseToolNode/DefaultNode family before assuming from-scratch testid work
