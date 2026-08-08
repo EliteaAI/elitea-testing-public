@@ -2,7 +2,69 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2027 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2016 analysis).
+
+## Decision node execution/routing — entry-point mechanism, Input-variable requirement, and Printer's real output field (confirmed live, 2026-08-08, ELITEA-2016)
+
+Full end-to-end live probe: Decision node + 3 Printer branches, wired through to `END`,
+saved, reloaded, and actually EXECUTED via the embedded chat (first live execution of a
+Decision node's routing anywhere in this suite — ELITEA-2034 only proved static
+configuration/edge persistence, never ran the pipeline). Full case detail:
+`test-specs/pipelines/l2_pipeline-decision-node-multi-branch-execution_ELITEA-2016.md`.
+
+- **A Decision node can only become the pipeline's `entry_point` by being the FIRST node
+  added to a new pipeline.** Confirmed via source
+  (`EliteaUI/src/[fsd]/features/pipelines/flow-editor/ui/nodes/BaseNode/NodeCardHeader.jsx`,
+  the node header's `menuItems`): the "Make entrypoint" per-node menu action is
+  **unconditionally excluded for Decision (and legacy Condition) node types** — Router and
+  every other node type keep it. `PipelineDetailPage.make_node_entrypoint()` silently has
+  NO effect on a Decision node (the menu item it looks for doesn't exist). Use
+  `get_entrypoint_node_id()` to assert entry-point instead, and always add the Decision
+  node BEFORE any other node when a case needs it to be the entry point. Filed as
+  [EliteaAI/elitea-testing-public#1347](https://github.com/EliteaAI/elitea-testing-public/issues/1347).
+- **The Decision node's `Input` combobox must include the built-in `input` state variable
+  for classification/routing to work AT ALL** — this is NOT the same requirement ELITEA-2034
+  documented (that case wired specific custom state vars because its *prompt text*
+  referenced them by name). Here, even with a prompt that only needs the raw chat message,
+  omitting `input` from the Input combobox makes the underlying LLM tool-call return
+  `content: '{}'`, `tool_calls: []` — the pipeline run completes at the Decision node
+  without ever executing a branch, with NO error surfaced anywhere in the UI. Confirmed via
+  3 repeated identical runs without `input` wired (always `{}`) vs. correct routing on every
+  run once `select_decision_node_input_variables(["input"])` was added.
+- **Printer's "Final Message" field is NOT what renders in the chat response — "Value" is.**
+  `input_mapping.printer.value` (the PRINTER section's Value field, Type=Fixed) is what
+  gets printed; `final_message` is a separate, unrelated field. A test asserting "which
+  branch fired" via chat text must set Value, not Final Message (confirmed live: Final-Message-only
+  setup produced `{}` even with correct routing).
+- **Multi-turn continuation resumes at the last-reached node, not back at Decision.** A
+  Printer node with `transition: END` pauses for acknowledgement (per the platform's own
+  docs); sending a second, differently-classified message in the SAME chat conversation does
+  NOT re-invoke Decision's classification — the run's "Run details" Timeline step reads e.g.
+  `bug_responder_reset` and reuses the FIRST classification. A test proving differential
+  routing (two categories → two different branches) must clear the chat
+  (`[aria-label="clear the chat"]`, no existing page-object method) between messages.
+- **Edge testid shape change across save/reload, reconfirmed with this case's own edges**
+  (same phenomenon ELITEA-2034 first documented): pre-save
+  `rf__edge-xy-edge__Decision 1nodes-bug_respondertarget` / `rf__edge-xy-edge__Decision
+  1default_output-ENDtarget` → post-reload `rf__edge-xy-edge__Decision 1---bug_responder`
+  (nodes-handle edges drop the `nodes`/`target` suffixes) / `rf__edge-xy-edge__Decision
+  1default_output---END` (keeps `default_output`, drops `target`). Also newly observed:
+  branch→END edges use the END node's literal internal id `EliteAPipelineEnd` post-reload
+  (`rf__edge-xy-edge__bug_responder---EliteAPipelineEnd`), not the `END` id used everywhere
+  else in this suite's edge assertions — a case asserting a branch→END edge post-reload
+  needs this exact string, not `edge_exists()`'s looser prefix match (which still works,
+  since it substring-matches).
+- **`printer_node_value`/`printer_node_final_message_input` LocatorDescriptors are
+  page-wide** (ELITEA-2039's own docstring already flags this as "correct only while a test
+  has a single Printer node") — this case is the FIRST with three simultaneous Printer
+  nodes on canvas; the existing unscoped helper methods need a `node_id`-scoped variant
+  before use here (see the AFS's Concrete Handles table for the exact fix).
+- **The in-page conversation-detail fetch (`GET .../conversation/prompt_lib/{project}/
+  {conversation_id}`, used by the "Run details" dialog) redirects to a `dev.elitea.ai` OIDC
+  login and fails with a CORS error on localhost** — confirmed live via a console error
+  capture. The "Run details" dialog itself still renders fully (Timeline/States/Messages
+  panels populate from a different source), so this doesn't block reading run state through
+  the UI, only a raw REST call to that specific endpoint.
 
 ## Node config via YAML — exact serialization shapes confirmed live, incl. a CHAT HISTORY value-type nuance (confirmed live, 2026-08-08, ELITEA-2027)
 
