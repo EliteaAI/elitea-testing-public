@@ -88,10 +88,14 @@ detail page's three-dot menu → Delete pipeline confirmation dialog.)
    carries this run's `regression` tag) (case Step 5).
 6. Clear the filter again (`clear_tag_filter()`). **Verify** — confirmed
    live: URL reverts to bare `/pipelines/all` (no `tags` query param); the
-   full unfiltered pipeline count is restored (dashboard's own "Pipelines: N"
-   counter in the right panel returns to its pre-filter value; both
-   disposable pipelines plus every other pre-existing pipeline are visible
-   again) (case Step 6).
+   full unfiltered pipeline count is restored — both disposable pipelines
+   plus every other pre-existing pipeline are visible again, proven by
+   `get_card_names()` (testid-backed `entity-card-name`) returning to the
+   exact same set captured at Step 3 before any filter was applied (case
+   Step 6). **Amended during implementation** — see § Known Defects Found
+   During Exploration #3: the "Pipelines: N" widget originally proposed as
+   the count-restored proof does not reflect grid/filter state at all, so
+   `get_card_names()` set-equality is the real assertion target instead.
 7. **Side-channel check** — zero console errors across the whole
    create → filter → filter → clear flow (confirmed live this session:
    `browser_console_messages` — 0 errors at every checkpoint).
@@ -117,7 +121,7 @@ detail page's three-dot menu → Delete pipeline confirmation dialog.)
 | 3 Navigate to Pipelines dashboard | Dashboard loads with all pipelines visible | step 3 | `pipeline_exists_in_list()` for both names + card tag chips (`entity-card-tag-chip`) | asserted |
 | 4 Filter by tag "smoke" — verify only "tagged_pipe_1" appears | Only "tagged_pipe_1" is shown | step 4 | `filter_by_tag("smoke")` → `get_card_names() == [pipeline_1_name]` + URL `?tags[]=smoke` | asserted |
 | 5 Filter by tag "regression" — verify both pipelines appear | Both pipelines are shown | step 5 | `clear_tag_filter()` then `filter_by_tag("regression")` → `get_card_names()` contains both | asserted |
-| 6 Remove tag filter — verify all pipelines are listed | All pipelines are visible without filtering | step 6 | `clear_tag_filter()` → URL has no `tags` param, dashboard count restored | asserted |
+| 6 Remove tag filter — verify all pipelines are listed | All pipelines are visible without filtering | step 6 | `clear_tag_filter()` → URL has no `tags` param + `get_card_names()` set-equal to the Step-3 pre-filter baseline (dashboard count restored) | asserted |
 | Expected Final State: tag filtering correctly narrows/restores the list | — | steps 4–6 | steps 4–6 | asserted |
 | Pass/Fail: all steps complete without errors; filters correctly include/exclude | — | all steps | all steps + console-error check | asserted |
 
@@ -236,6 +240,27 @@ entity-agnostic testids.
    functional impact — filtered by the implementer's console-error listener
    the same way `test_skill_tag_filter.py` does, so it doesn't mask a real
    regression on this or future runs.
+3. **"Pipelines: N" widget does NOT reflect grid/filter state — Coverage Map
+   row 6 corrected (implementer fix-round-1, live DOM investigation).** This
+   analyst session's Step 6 wording assumed a "dashboard's own 'Pipelines: N'
+   counter in the right panel" that tracks the filtered grid. Live
+   investigation (navigate to `/pipelines/all`, walk the DOM for the text
+   node) found the element: a floating "Test Bot" card in the bottom-right
+   corner, showing `Pipelines: 12` — but it carries **no `data-testid`**, and
+   confirmed live that clicking the `automation` tag filter (grid narrowing
+   from 12 cards to 2) left this widget's count unchanged at `12` — i.e. it
+   is a static per-project total unrelated to the Tags filter panel
+   entirely, not the "returns to its pre-filter value" signal the case Step
+   6 wording implied. Not a product defect (the widget isn't claimed
+   anywhere to track the filtered grid); this is case-text/AFS drift,
+   corrected per the reverse-masking guard rather than asserted against a
+   testid-less, filter-unrelated element. **Fix:** the "dashboard count
+   restored" proof is now `get_card_names()` (testid-backed
+   `entity-card-name`) returning the exact same set of pipeline names at
+   Step 6 as the baseline captured at Step 3, before any filter was ever
+   applied — this is what "the full unfiltered pipeline count is restored"
+   actually means for case Step 6, and it uses an existing, already-audited
+   testid-only handle. See `test_pipeline_tags_add_and_filter.py` Step 3/6.
 
 ## Blocked Steps
 None. All 6 case steps automate cleanly against the live product. No

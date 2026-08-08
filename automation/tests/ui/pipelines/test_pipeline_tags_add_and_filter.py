@@ -159,6 +159,16 @@ def test_pipeline_tags_add_and_filter(page, pipeline_api):
                 f"Pipeline 2's card should show tags {{{tag_regression!r}, {tag_integration!r}}}, "
                 f"got: {pipeline_2_card_tags!r}"
             )
+            # Baseline snapshot of the FULL unfiltered grid (both disposable
+            # pipelines plus every other pre-existing pipeline), captured via
+            # the testid-backed `get_card_names()` (`entity-card-name`) —
+            # Step 6 asserts the grid returns to exactly this set after the
+            # filter is cleared, which is the real "dashboard count restored"
+            # proof (case Step 6's own expected result). See AFS Known
+            # Defects Found During Exploration #3 for why this replaces the
+            # AFS's originally-envisioned "Pipelines: N" widget as the
+            # assertion target.
+            unfiltered_card_names = list_page.get_card_names()
 
         with allure.step(
             "Step 4 — Filter by tag 'smoke' — verify only 'tagged_pipe_1' "
@@ -188,7 +198,8 @@ def test_pipeline_tags_add_and_filter(page, pipeline_api):
 
         with allure.step(
             "Step 6 — Remove tag filter — verify URL reverts and all "
-            "pipelines (including both disposable ones) are listed again"
+            "pipelines (including both disposable ones) are listed again, "
+            "with the dashboard's full pipeline count restored"
         ):
             list_page.clear_tag_filter(timeout=UI_ELEMENT_TIMEOUT)
             assert "tags" not in parse_qs(urlparse(page.url).query), (
@@ -199,6 +210,17 @@ def test_pipeline_tags_add_and_filter(page, pipeline_api):
             )
             assert list_page.pipeline_exists_in_list(pipeline_2_name), (
                 f"{pipeline_2_name!r} should be visible again after clearing the filter"
+            )
+            # "Dashboard count restored": the full unfiltered grid (captured
+            # in Step 3, before any filter was ever applied) must come back
+            # exactly — same pipelines, same count — proving the clear
+            # action restores state rather than just dropping the two
+            # disposables back in.
+            restored_card_names = list_page.get_card_names()
+            assert sorted(restored_card_names) == sorted(unfiltered_card_names), (
+                "Clearing the filter should restore the exact pre-filter pipeline "
+                f"list; expected {sorted(unfiltered_card_names)!r}, got "
+                f"{sorted(restored_card_names)!r}"
             )
 
         with allure.step("Step 7 — Verify no console errors during the whole create/filter flow"):
