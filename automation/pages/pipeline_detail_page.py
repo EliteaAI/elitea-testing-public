@@ -316,6 +316,39 @@ class PipelineDetailPage(PipelineFormPage):
         description="MCP node's 'Structured output' switch (CommonInterruptSettings.jsx)"
     )
 
+    # Agent node inline config fields (ELITEA-2038). Testid-only, added via
+    # add-data-testid — AgentNode.jsx is its own component (not a
+    # BaseToolNode.jsx caller), so these carry a local
+    # AGENT_NODE_TESTID_PREFIX constant rather than a shared
+    # TEST_ID_PREFIX_BY_NODE_TYPE map entry. No `optionalHeadingTestId`/
+    # `structuredOutputTestId` were wired — the Agent node's INPUT MAPPING
+    # only ever renders ONE required field (TASK), never an optional
+    # section, and CommonInterruptSettings.jsx never renders Structured
+    # output here at all (AgentNode.jsx passes showStructuredOutput=false)
+    # — confirmed live, ELITEA-2038 analysis session. Page-wide (not scoped
+    # to a specific node container): correct as long as a test only has a
+    # single Agent node on canvas.
+    agent_node_agent_select = LocatorDescriptor(
+        testid="pipeline-agent-node-agent-select",
+        description="Agent node's Agent select (inline on the ReactFlow canvas card)"
+    )
+    agent_node_input_select = LocatorDescriptor(
+        testid="pipeline-agent-node-input-select",
+        description="Agent node's tool-agnostic Input state-variable select"
+    )
+    agent_node_output_select = LocatorDescriptor(
+        testid="pipeline-agent-node-output-select",
+        description="Agent node's tool-agnostic Output state-variable select"
+    )
+    agent_node_input_mapping_required_heading = LocatorDescriptor(
+        testid="pipeline-agent-node-input-mapping-heading",
+        description="Agent node's 'Input mapping (required 1)' accordion heading (always TASK)"
+    )
+    agent_node_interrupt_after_toggle = LocatorDescriptor(
+        testid="pipeline-agent-node-interrupt-after-toggle",
+        description="Agent node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
+    )
+
     # LLM node inline config (ELITEA-2004). Testid-only, added via
     # add-data-testid — LLMNode.jsx call sites only (SimpleLLMInputs is
     # shared with Code/Printer nodes, which stay untagged — untested node
@@ -365,6 +398,127 @@ class PipelineDetailPage(PipelineFormPage):
     llm_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-llm-node-structured-output-toggle",
         description="LLM node's 'Structured output' switch (CommonInterruptSettings.jsx)"
+    )
+
+    # Code node inline config (ELITEA-2009). Testid-only, added via
+    # add-data-testid — CodeNode.jsx call sites only (SimpleLLMInputs is
+    # shared with LLM/Printer nodes, which stay untagged — untested node
+    # types stay untagged, .agents/testing.md § Locator policy). Page-wide
+    # (not scoped to a specific node container): correct as long as a test
+    # only has a single Code node on canvas.
+    code_node_type_select = LocatorDescriptor(
+        testid="pipeline-code-node-type-select",
+        description="Code node's CODE section Type select (inline on canvas card)"
+    )
+    code_node_value = LocatorDescriptor(
+        testid="pipeline-code-node-value",
+        description="Code node's CODE section Value field (Python code textarea)"
+    )
+    code_node_input_select = LocatorDescriptor(
+        testid="pipeline-code-node-input-select",
+        description="Code node's tool-agnostic Input state-variable select"
+    )
+    code_node_output_select = LocatorDescriptor(
+        testid="pipeline-code-node-output-select",
+        description="Code node's tool-agnostic Output state-variable select"
+    )
+    code_node_interrupt_after_toggle = LocatorDescriptor(
+        testid="pipeline-code-node-interrupt-after-toggle",
+        description="Code node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
+    )
+    code_node_structured_output_toggle = LocatorDescriptor(
+        testid="pipeline-code-node-structured-output-toggle",
+        description="Code node's 'Structured output' switch (CommonInterruptSettings.jsx)"
+    )
+
+    # Printer node inline config (ELITEA-2039). Testid-only, added via
+    # add-data-testid — PrinterNode.jsx call sites only (SimpleLLMInputs is
+    # shared with LLM/Code nodes, which stay untagged — untested node types
+    # stay untagged, .agents/testing.md § Locator policy). Page-wide (not
+    # scoped to a specific node container): correct as long as a test only
+    # has a single Printer node on canvas. Unlike Code/LLM, the Printer node
+    # has NO Input/Output state-var selects and NO Interrupt/Structured-
+    # output controls at all — confirmed via source (`PrinterNode.jsx`
+    # renders only SimpleLLMInputs + the Final Message AIAssistantInput,
+    # plus the two ReactFlow target/source connection handles).
+    printer_node_type_select = LocatorDescriptor(
+        testid="pipeline-printer-node-type-select",
+        description="Printer node's PRINTER section Type select (inline on canvas card)"
+    )
+    printer_node_value = LocatorDescriptor(
+        testid="pipeline-printer-node-value",
+        description="Printer node's PRINTER section Value field (f-string/text textarea)"
+    )
+    printer_node_final_message_input = LocatorDescriptor(
+        testid="pipeline-printer-node-final-message-input",
+        description="Printer node's Final Message field"
+    )
+    # Fix round 1 (ELITEA-2039 review): these two testids are NEVER rendered by
+    # PrinterNode.jsx — confirmed via source, it renders no
+    # `FlowEditorSelect.InputSelect`/`OutputSelect` at all (unlike Code/LLM/
+    # State-modifier, which pass `dataTestId="pipeline-<type>-node-input-select"`
+    # / `-output-select` to those components — see e.g. `code_node_input_select`
+    # above). Declared here ONLY as the absence-assertion handle, same pattern
+    # as `chat_hitl_edit_button`/`toolkit_card` elsewhere in this file: a
+    # testid-scoped `LocatorDescriptor` whose `.count()` proves the element
+    # doesn't render, replacing a raw `#simple-select-Input`/`#simple-select-
+    # Output` DOM query (MUI auto-generated ids on an app-owned component —
+    # NOT a #579 exception; `add-data-testid`'s own convention names what a
+    # real Input/Output select on this node type WOULD carry if one existed).
+    printer_node_input_select = LocatorDescriptor(
+        testid="pipeline-printer-node-input-select",
+        description="Printer node's would-be Input state-variable select — not rendered; absence-only handle"
+    )
+    printer_node_output_select = LocatorDescriptor(
+        testid="pipeline-printer-node-output-select",
+        description="Printer node's would-be Output state-variable select — not rendered; absence-only handle"
+    )
+
+    # Fix round 2 (ELITEA-2039 review): the Printer node's two ReactFlow
+    # connection handles ARE app-owned — `CustomHandle.jsx` forwards a
+    # `testId` prop straight to `data-testid` on the underlying `<Handle>`
+    # (EliteaAI/EliteaUI `src/[fsd]/features/pipelines/flow-editor/ui/nodes/
+    # CustomHandle.jsx:104-111`), so a testid CAN be placed — NOT a #579
+    # library-internal-DOM exception (that class only covers nodes a library
+    # renders with no app hook at all, e.g. ReactFlow's own `rf__wrapper`
+    # internals). `PrinterNode.jsx`'s two `CustomHandle` call sites now pass
+    # `testId="pipeline-printer-node-target-handle"` /
+    # `testId="pipeline-printer-node-source-handle"` (EliteaAI/EliteaUI@b65756af
+    # on `automation/testids`, awaiting human promotion to `main`) — same
+    # `testId` mechanism `pipeline-decision-node-output-handle` already uses
+    # on `NormalDecisionNode.jsx`. Page-wide, same "single Printer node on
+    # canvas" assumption as `printer_node_type_select` et al. above.
+    printer_node_target_handle = LocatorDescriptor(
+        testid="pipeline-printer-node-target-handle",
+        description="Printer node's target (Input) ReactFlow connection handle"
+    )
+    printer_node_source_handle = LocatorDescriptor(
+        testid="pipeline-printer-node-source-handle",
+        description="Printer node's source (Output) ReactFlow connection handle"
+    )
+
+    # State modifier node inline config (ELITEA-2035). Testid-only, added via
+    # add-data-testid — StateModifierNode.jsx call sites only. Unlike Code/LLM,
+    # this node type has NO Interrupt/Structured-output controls (confirmed via
+    # source — StateModifierNode.jsx renders only Jinja Template + Variables to
+    # clean + Input + Output). Page-wide (not scoped to a specific node
+    # container): correct as long as a test only has a single State modifier
+    # node on canvas.
+    state_modifier_node_template = LocatorDescriptor(
+        testid="pipeline-state-modifier-node-template-input",
+        description="State modifier node's Jinja Template field (plain textarea, not CodeMirror)"
+    )
+    state_modifier_node_variables_to_clean_select = LocatorDescriptor(
+        testid="pipeline-state-modifier-node-variables-to-clean-select",
+        description="State modifier node's 'Variables to clean' tool-agnostic state-variable select"
+    )
+    state_modifier_node_input_select = LocatorDescriptor(
+        testid="pipeline-state-modifier-node-input-select",
+        description="State modifier node's tool-agnostic Input state-variable select"
+    )
+    state_modifier_node_output_select = LocatorDescriptor(
+        testid="pipeline-state-modifier-node-output-select",
+        description="State modifier node's tool-agnostic Output state-variable select"
     )
 
     # Entry-point Trigger select (ELITEA-2005/06/07/08 testid prep, first
@@ -425,6 +579,58 @@ class PipelineDetailPage(PipelineFormPage):
     toolkit_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-toolkit-node-structured-output-toggle",
         description="Toolkit node's 'Structured output' switch (CommonInterruptSettings.jsx)"
+    )
+
+    # Custom node inline config (ELITEA-2036). Testid-only, added via
+    # add-data-testid — DefaultNode.jsx's own TEST_ID_PREFIX_BY_NODE_TYPE map
+    # (mirrors BaseToolNode.jsx's map used by the Toolkit/MCP nodes) covers
+    # only 'custom' (the 'defaultType' node type sharing this same component
+    # stays untagged, .agents/testing.md § Locator policy). Page-wide (not
+    # scoped to a specific node container): correct as long as a test only
+    # has a single Custom node on canvas.
+    custom_node_toolkit_select = LocatorDescriptor(
+        testid="pipeline-custom-node-toolkit-select",
+        description="Custom node's Toolkit select (inline on the ReactFlow canvas card)"
+    )
+    custom_node_tool_select = LocatorDescriptor(
+        testid="pipeline-custom-node-tool-select",
+        description=(
+            "Custom node's Tool select — conditionally rendered, absent from "
+            "the DOM entirely until a Toolkit with >=1 selected_tools is chosen"
+        )
+    )
+    custom_node_input_select = LocatorDescriptor(
+        testid="pipeline-custom-node-input-select",
+        description="Custom node's tool-agnostic Input state-variable select"
+    )
+    custom_node_output_select = LocatorDescriptor(
+        testid="pipeline-custom-node-output-select",
+        description="Custom node's tool-agnostic Output state-variable select"
+    )
+    custom_node_input_mapping_required_heading = LocatorDescriptor(
+        testid="pipeline-custom-node-input-mapping-heading",
+        description="Custom node's 'Input mapping (required N)' accordion heading"
+    )
+    custom_node_input_mapping_optional_heading = LocatorDescriptor(
+        testid="pipeline-custom-node-input-mapping-optional-heading",
+        description="Custom node's 'Input mapping (optional N)' accordion heading"
+    )
+    custom_node_interrupt_after_toggle = LocatorDescriptor(
+        testid="pipeline-custom-node-interrupt-after-toggle",
+        description="Custom node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
+    )
+    custom_node_structured_output_toggle = LocatorDescriptor(
+        testid="pipeline-custom-node-structured-output-toggle",
+        description="Custom node's 'Structured output' switch (CommonInterruptSettings.jsx)"
+    )
+    custom_node_json_editor_content = LocatorDescriptor(
+        testid="pipeline-custom-node-json-editor-content",
+        description=(
+            "Custom node's raw-JSON CodeMirror editor content (.cm-content) — "
+            "CustomNodeInput.jsx, the node's full YAML body (id/type/description/"
+            "settings/input_mapping/...) as editable JSON. Read via text_content(), "
+            "not input_value() (CodeMirror is not a native <input>/<textarea>)."
+        )
     )
 
     # HITL node inline config (ELITEA-2014). Testid-only, added via
@@ -768,6 +974,15 @@ class PipelineDetailPage(PipelineFormPage):
         description='"+ Toolkit" button in the TOOLS section (ToolMenu.jsx)'
     )
 
+    # "+ Agent" button (ELITEA-2038). Testid already exists in the DOM on
+    # `main` (ToolMenu.jsx, same shared component — ported from
+    # AgentDetailPage.add_agent_button) — only missing here since
+    # PipelineDetailPage previously had no Agent-attach field.
+    add_agent_button = LocatorDescriptor(
+        testid="agent-add-agent-button",
+        description='"+ Agent" button in the TOOLS section (ToolMenu.jsx)'
+    )
+
     # General/Welcome/Chat-starters fields (ELITEA-2021). These testids exist
     # in the DOM on `main` already (shared AgentInput/ConversationStarters
     # components, confirmed via ELITEA-2021 AFS provenance check) but had no
@@ -836,6 +1051,17 @@ class PipelineDetailPage(PipelineFormPage):
     # BaseToolNode.jsx (ELITEA-2010).
     TOOLKIT_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-toolkit-node-input-mapping-value-{}"]'
     TOOLKIT_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-toolkit-node-input-mapping-type-{}"]'
+
+    # Same mechanism, gated to nodeType==custom in DefaultNode.jsx (ELITEA-2036).
+    CUSTOM_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-custom-node-input-mapping-value-{}"]'
+    CUSTOM_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-custom-node-input-mapping-type-{}"]'
+
+    # Same mechanism (ELITEA-2038) — Agent node's INPUT MAPPING only ever has
+    # ONE key ("task"), but the class-level template constant is kept for
+    # consistency with every other node type's Input-mapping fields and to
+    # stay greppable by the coverage tooling.
+    AGENT_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-agent-node-input-mapping-value-{}"]'
+    AGENT_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-agent-node-input-mapping-type-{}"]'
 
     # Select-dropdown option pattern shared by Toolkit/Tool/Input/Output
     # selects (SingleSelectMenuItem.jsx: `select-option-{value}`) — confirmed
@@ -1886,6 +2112,11 @@ class PipelineDetailPage(PipelineFormPage):
         "toolkit": "Toolkit",
     }
     RF_NODE_TESTID_PREFIX = '[data-testid^="rf__node-{}"]'
+    # Exact-id sibling of RF_NODE_TESTID_PREFIX — for callers that already
+    # hold a specific node's internal id (e.g. from wait_for_node_on_canvas())
+    # and need to re-locate that SAME node, not "any node of this type".
+    # Same ReactFlow-injected `rf__node-{id}` testid, same #579 provenance.
+    RF_NODE_TESTID = '[data-testid="rf__node-{}"]'
 
     def wait_for_node_type_count(
         self, node_type: str, expected_count: int, timeout: int = 10000
@@ -1948,6 +2179,33 @@ class PipelineDetailPage(PipelineFormPage):
             if nid:
                 ids.append(nid)
         return ids
+
+    def get_node_handle_count(self, node_id: str) -> int:
+        """Return the number of ReactFlow connection handles on the Printer node with *node_id*.
+
+        Fix round 2 (ELITEA-2039 review): counts via the Printer node's two
+        dedicated handle testids (:attr:`printer_node_target_handle` /
+        :attr:`printer_node_source_handle`) instead of a raw
+        ``.react-flow__handle`` DOM query. ``CustomHandle.jsx`` forwards a
+        ``testId`` prop straight to ``data-testid`` — the element is
+        app-owned, not library-internal DOM, so it does NOT qualify for the
+        #579 sanctioned exception; a real testid belongs here, same as every
+        other testid-scoped connection handle in this suite
+        (``pipeline-decision-node-output-handle``).
+
+        Currently confirms the Printer node's connection-point inventory
+        (target+source pair) specifically — this method has no callers
+        outside the Printer node test. Extending it to other node types
+        requires wiring a ``testId`` on their ``CustomHandle`` calls first
+        (none carry one yet).
+
+        Args:
+            node_id: The data-id of the node (e.g. ``"Printer 1"``) — kept in
+                the signature for call-site clarity even though the testid
+                locators below are page-wide (single-Printer-node-on-canvas
+                assumption, same as :attr:`printer_node_type_select` et al.).
+        """
+        return self.printer_node_target_handle.count() + self.printer_node_source_handle.count()
 
     def wait_for_node_on_canvas(
         self, node_type: str, *, timeout: int = 10000,
@@ -2833,6 +3091,129 @@ class PipelineDetailPage(PipelineFormPage):
         return text.strip()
 
     # ------------------------------------------------------------------
+    # Agent node inline config (ELITEA-2038)
+    # ------------------------------------------------------------------
+
+    def get_agent_node_agent_value(self, timeout: int = 5000) -> str:
+        """Read the Agent node's currently-selected Agent display text."""
+        self.agent_node_agent_select.wait_for(state="visible", timeout=timeout)
+        text = (self.agent_node_agent_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_agent_node_agent(self, agent_name: str, timeout: int = 5000) -> None:
+        """Open the Agent node's Agent dropdown and select *agent_name*.
+
+        Args:
+            agent_name: The attached agent's display name (matches
+                ``select-option-{agent_name}``).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.agent_node_agent_select.click(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(agent_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def open_agent_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the Agent node's tool-agnostic Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.agent_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_agent_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Agent node's Input dropdown and select *variable_name*.
+
+        Multi-select (``role="listbox" aria-multiselectable="true"``, same as
+        the sibling LLM/MCP/Toolkit node Input fields) — doesn't auto-close,
+        so this closes it via Escape same as the sibling node methods.
+        """
+        self.open_agent_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_agent_node_input_value(self) -> str:
+        """Read the Agent node's currently-selected Input display text."""
+        text = (self.agent_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_agent_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the Agent node's tool-agnostic Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.agent_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_agent_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Agent node's Output dropdown and select *variable_name*."""
+        self.open_agent_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_agent_node_output_value(self) -> str:
+        """Read the Agent node's currently-selected Output display text."""
+        text = (self.agent_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def is_agent_node_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:
+        """Check whether the Agent node's "Input mapping (required N)" accordion is visible.
+
+        Args:
+            required_count: Expected N in the accordion title (always 1 —
+                the Agent node's schema has exactly one required key, TASK).
+            timeout: Maximum wait time.
+        """
+        heading = self.agent_node_input_mapping_required_heading
+        try:
+            heading.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (required {required_count})"
+
+    def get_agent_node_input_mapping_type(self, param_name: str = "task", timeout: int = 5000) -> str:
+        """Read the current Type select display value of the TASK Input-mapping row.
+
+        Args:
+            param_name: The mapping key's raw schema name — always ``"task"``
+                for the Agent node (default provided for readability at call
+                sites; kept parameterized for consistency with the sibling
+                node-type methods rather than hardcoded).
+            timeout: Maximum wait time for the select to be visible.
+        """
+        type_select = self.page.locator(self.AGENT_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        type_select.wait_for(state="visible", timeout=timeout)
+        text = (type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def get_agent_node_input_mapping_value(self, param_name: str = "task", timeout: int = 5000) -> str:
+        """Read the current value of the TASK Input-mapping "Value" field.
+
+        Args:
+            param_name: The mapping key's raw schema name — always ``"task"``.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        field = self.page.locator(self.AGENT_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        return field.input_value()
+
+    def fill_agent_node_input_mapping_value(
+        self, value: str, param_name: str = "task", timeout: int = 5000
+    ) -> None:
+        """Fill the TASK Input-mapping "Value" field.
+
+        Uses click + press_sequentially — MUI/React fields need real keyboard
+        events for onChange to fire (.claude/rules/mui-patterns.md).
+
+        Args:
+            value: The F-String text to type (e.g. containing ``{normalized_issue}``).
+            param_name: The mapping key's raw schema name — always ``"task"``.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        field = self.page.locator(self.AGENT_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        field.click()
+        field.press("Control+a")
+        field.press("Delete")
+        field.press_sequentially(value, delay=20)
+
+    # ------------------------------------------------------------------
     # LLM node inline config (ELITEA-2004)
     # ------------------------------------------------------------------
 
@@ -3125,9 +3506,29 @@ class PipelineDetailPage(PipelineFormPage):
         return text.strip()
 
     def open_llm_node_output_select(self, timeout: int = 5000) -> None:
-        """Open the LLM node's Output dropdown."""
+        """Open the LLM node's Output dropdown.
+
+        Clicks near the field's right edge (where the dropdown arrow icon
+        renders) rather than its geometric center. A plain center click is
+        fine while the field is empty or holds 0-1 chips, but once 3+
+        variables are selected the rendered chips occupy enough width that
+        the bounding box's center point can land ON a chip's own delete
+        ("x") icon instead of the field background — clicking there removes
+        that chip instead of opening the dropdown (confirmed live,
+        ELITEA-2045: selecting a 3rd/4th Output variable via a center click
+        silently failed to open the popover at all, with the chip count
+        frozen at 2). The right-edge offset is safe for any chip count —
+        chips are left-aligned and the arrow icon area is never covered.
+        """
         self._wait_for_open_popovers_closed(timeout=timeout)
-        self.llm_node_output_select.click(timeout=timeout)
+        self.llm_node_output_select.wait_for(state="visible", timeout=timeout)
+        box = self.llm_node_output_select.bounding_box()
+        if box:
+            self.llm_node_output_select.click(
+                position={"x": max(box["width"] - 12, 1), "y": box["height"] / 2}, timeout=timeout
+            )
+        else:
+            self.llm_node_output_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
     def select_llm_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
@@ -3138,6 +3539,270 @@ class PipelineDetailPage(PipelineFormPage):
     def get_llm_node_output_value(self) -> str:
         """Read the LLM node's currently-selected Output display text."""
         text = (self.llm_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    # ------------------------------------------------------------------
+    # Code node inline config (ELITEA-2009)
+    # ------------------------------------------------------------------
+    #
+    # Single CODE section (variableName="code" on the shared
+    # SimpleLLMInputItem component) — unlike the LLM node's 3-section
+    # SYSTEM/TASK/CHAT HISTORY dispatch, no section-name parameter is
+    # needed here. Reuses the same generic helpers
+    # (``_fill_node_field_value``, ``_select_multi_select_option_and_close``,
+    # ``_wait_for_open_popovers_closed``) the LLM node methods above use.
+
+    def get_code_node_type(self, timeout: int = 5000) -> str:
+        """Read the Code node's CODE section Type select current value."""
+        self.code_node_type_select.wait_for(state="visible", timeout=timeout)
+        # MUI's empty-select rendering is a zero-width space (U+200B), not
+        # an empty string — same gotcha as get_llm_node_section_type.
+        text = (self.code_node_type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_code_node_type(self, type_value: str, timeout: int = 5000) -> None:
+        """Open the CODE section's Type select and choose *type_value* (Fixed/F-String/Variable).
+
+        Args:
+            type_value: Option display text, e.g. ``"Fixed"``.
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.code_node_type_select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def fill_code_node_value(self, value: str, timeout: int = 5000) -> None:
+        """Fill the CODE section's Value field (Python code textarea).
+
+        Plain MUI textarea (``Input.InputBase``/``AIAssistantInput``) — NOT
+        CodeMirror/Monaco despite the component receiving ``language="python"``
+        internally, which only affects the SEPARATE full-screen AI Assistant
+        modal (confirmed live, ELITEA-2009, same pattern as the Router node's
+        ``language="jinja"`` Condition field). Uses click + press_sequentially
+        — MUI/React fields need real keyboard events for onChange to fire
+        (.claude/rules/mui-patterns.md). Multi-line text (embedded ``\\n``)
+        is typed correctly via ``press_sequentially``, confirmed live.
+
+        Args:
+            value: The Python code to type (may be multi-line).
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self._fill_node_field_value(self.code_node_value, value, timeout=timeout)
+
+    def get_code_node_value(self) -> str:
+        """Read the CODE section's Value field current content."""
+        return self.code_node_value.input_value()
+
+    def open_code_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the Code node's Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.code_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_code_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Input dropdown and select *variable_name*."""
+        self.open_code_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_code_node_input_value(self) -> str:
+        """Read the Code node's currently-selected Input display text."""
+        text = (self.code_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_code_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the Code node's Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.code_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_code_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Output dropdown and select *variable_name*.
+
+        Args:
+            variable_name: Must already be a pipeline state variable (Output,
+                like Input, only lists EXISTING state vars — it is not a
+                freeform/creatable field; add a custom variable via
+                :meth:`add_state_variable` first if *variable_name* isn't
+                one of the built-in ``input``/``messages`` vars — confirmed
+                live, ELITEA-2009).
+        """
+        self.open_code_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_code_node_output_value(self) -> str:
+        """Read the Code node's currently-selected Output display text."""
+        text = (self.code_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    # ------------------------------------------------------------------
+    # Printer node inline config (ELITEA-2039)
+    # ------------------------------------------------------------------
+    #
+    # Single PRINTER section (variableName="printer" on the shared
+    # SimpleLLMInputItem component) plus a standalone Final Message field
+    # (AIAssistantInput, NOT part of SimpleLLMInputs). No Input/Output
+    # state-var selects and no Interrupt/Structured-output controls exist
+    # on this node type (confirmed via source + live DOM — see class-level
+    # docstring above). Reuses the same generic helpers
+    # (``_fill_node_field_value``, ``_wait_for_open_popovers_closed``) the
+    # LLM/Code node methods above use.
+
+    def get_printer_node_type(self, timeout: int = 5000) -> str:
+        """Read the Printer node's PRINTER section Type select current value."""
+        self.printer_node_type_select.wait_for(state="visible", timeout=timeout)
+        # MUI's empty-select rendering is a zero-width space (U+200B), not
+        # an empty string — same gotcha as get_code_node_type.
+        text = (self.printer_node_type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_printer_node_type(self, type_value: str, timeout: int = 5000) -> None:
+        """Open the PRINTER section's Type select and choose *type_value* (Fixed/F-String/Variable).
+
+        Args:
+            type_value: Option display text, e.g. ``"F-String"``.
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.printer_node_type_select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def fill_printer_node_value(self, value: str, timeout: int = 5000) -> None:
+        """Fill the PRINTER section's Value field.
+
+        Plain MUI textarea (``Input.InputBase``/``AIAssistantInput``) — same
+        shape as the Code node's CODE Value field. Uses click +
+        press_sequentially — MUI/React fields need real keyboard events for
+        onChange to fire (.claude/rules/mui-patterns.md). Embedded literal
+        ``\\n`` characters (as opposed to real newlines) are typed and read
+        back correctly, confirmed live.
+
+        Args:
+            value: The f-string/text value to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self._fill_node_field_value(self.printer_node_value, value, timeout=timeout)
+
+    def get_printer_node_value(self) -> str:
+        """Read the PRINTER section's Value field current content."""
+        return self.printer_node_value.input_value()
+
+    def fill_printer_node_final_message(self, value: str, timeout: int = 5000) -> None:
+        """Fill the Printer node's Final Message field.
+
+        Plain MUI textarea (``Input.InputBase``/``AIAssistantInput``), a
+        standalone field outside ``SimpleLLMInputs`` — confirmed live.
+
+        Args:
+            value: The final-message text to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self._fill_node_field_value(self.printer_node_final_message_input, value, timeout=timeout)
+
+    def get_printer_node_final_message(self) -> str:
+        """Read the Printer node's Final Message field current content."""
+        return self.printer_node_final_message_input.input_value()
+
+    def fill_state_modifier_node_template(self, value: str, timeout: int = 5000) -> None:
+        """Fill the State modifier node's Jinja Template field.
+
+        Plain MUI textarea (``Input.InputBase``/``AIAssistantInput``, ``onInput``
+        handler) — NOT CodeMirror/Monaco despite the component receiving
+        ``language="jinja"`` internally, which only affects the SEPARATE
+        full-screen AI Assistant modal (confirmed live, ELITEA-2035, same
+        pattern already documented for the Router/Decision/Code node Jinja/
+        AIAssistantInput fields). Uses click + press_sequentially — MUI/React
+        fields need real keyboard events for onChange to fire
+        (.claude/rules/mui-patterns.md). Multi-line text (embedded ``\\n``)
+        types and reads back correctly, confirmed live.
+
+        Args:
+            value: The Jinja template text to type (may be multi-line).
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self._fill_node_field_value(self.state_modifier_node_template, value, timeout=timeout)
+
+    def get_state_modifier_node_template(self) -> str:
+        """Read the State modifier node's Jinja Template field current content."""
+        return self.state_modifier_node_template.input_value()
+
+    def open_state_modifier_node_variables_to_clean_select(self, timeout: int = 5000) -> None:
+        """Open the State modifier node's 'Variables to clean' dropdown.
+
+        Despite the case text describing this as an "expandable section", it
+        is the SAME tool-agnostic multi-select component as Input/Output
+        (``FlowEditorSelect.InputSelect``, ``inputFieldName="variables_to_clean"``)
+        — confirmed live, ELITEA-2035: no accordion/expand affordance exists,
+        it is a plain combobox that opens a dropdown like every other
+        Input/Output select in this node family.
+        """
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.state_modifier_node_variables_to_clean_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_state_modifier_node_variables_to_clean_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the 'Variables to clean' dropdown and select *variable_name*."""
+        self.open_state_modifier_node_variables_to_clean_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_state_modifier_node_variables_to_clean_value(self) -> str:
+        """Read the State modifier node's currently-selected 'Variables to clean' display text."""
+        text = (self.state_modifier_node_variables_to_clean_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_state_modifier_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the State modifier node's Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.state_modifier_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_state_modifier_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Input dropdown and select *variable_name*.
+
+        Args:
+            variable_name: Must already be a pipeline state variable — the
+                built-in ``input``/``messages``, or a custom variable added
+                via :meth:`add_state_variable` first (confirmed live,
+                ELITEA-2035: this select, like Code/Decision's Input, only
+                lists EXISTING state vars, it is not a freeform/creatable
+                field).
+        """
+        self.open_state_modifier_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_state_modifier_node_input_value(self) -> str:
+        """Read the State modifier node's currently-selected Input display text."""
+        text = (self.state_modifier_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_state_modifier_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the State modifier node's Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.state_modifier_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_state_modifier_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Output dropdown and select *variable_name*.
+
+        Args:
+            variable_name: Must already be a pipeline state variable (Output,
+                like Input, only lists EXISTING state vars — it is not a
+                freeform/creatable field; add a custom variable via
+                :meth:`add_state_variable` first if *variable_name* isn't
+                one of the built-in ``input``/``messages`` vars — confirmed
+                live, ELITEA-2035).
+        """
+        self.open_state_modifier_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_state_modifier_node_output_value(self) -> str:
+        """Read the State modifier node's currently-selected Output display text."""
+        text = (self.state_modifier_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
 
     def is_node_interrupt_before_toggle_visible(self, node_id: str, timeout: int = 5000) -> bool:
@@ -3364,6 +4029,168 @@ class PipelineDetailPage(PipelineFormPage):
         return text.strip()
 
     # ------------------------------------------------------------------
+    # Custom node inline config (ELITEA-2036)
+    #
+    # Same shape as the Toolkit node's methods above — DefaultNode.jsx (the
+    # Custom node's renderer) shares the exact Toolkit/Tool/Input/Output/
+    # Input-mapping/CommonInterruptSettings component tree with
+    # BaseToolNode.jsx (the Toolkit/MCP nodes' renderer), just gated to
+    # nodeType==custom instead of ==toolkit. It additionally renders a raw
+    # JSON view/editor of the node's own YAML body (CustomNodeInput.jsx),
+    # covered separately below.
+    # ------------------------------------------------------------------
+
+    def get_custom_node_toolkit_value(self, timeout: int = 5000) -> str:
+        """Read the Custom node's currently-selected Toolkit display text."""
+        self.custom_node_toolkit_select.wait_for(state="visible", timeout=timeout)
+        text = (self.custom_node_toolkit_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def get_custom_node_tool_value(self, timeout: int = 5000) -> str:
+        """Read the Custom node's currently-selected Tool display text.
+
+        Returns empty string both when no tool is selected AND when the Tool
+        select isn't rendered at all yet (conditionally rendered — see
+        ``custom_node_tool_select``).
+        """
+        try:
+            self.custom_node_tool_select.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        text = (self.custom_node_tool_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def is_custom_node_tool_select_visible(self, timeout: int = 2000) -> bool:
+        """Check whether the Custom node's Tool select is rendered at all.
+
+        Used to assert the absence of the Tool select before a Toolkit is
+        selected — same two-stage-reveal contract already enforced for the
+        Toolkit node (ELITEA-2010).
+        """
+        try:
+            self.custom_node_tool_select.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def open_custom_node_toolkit_select(self, timeout: int = 5000) -> None:
+        """Open the Custom node's Toolkit dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.custom_node_toolkit_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_custom_node_toolkit(self, toolkit_name: str, timeout: int = 5000) -> None:
+        """Open the Toolkit dropdown and select *toolkit_name*."""
+        self.open_custom_node_toolkit_select(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(toolkit_name))
+        option.click(timeout=timeout)
+
+    def open_custom_node_tool_select(self, timeout: int = 5000) -> None:
+        """Open the Custom node's Tool dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.custom_node_tool_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_custom_node_tool(self, tool_name: str, timeout: int = 5000) -> None:
+        """Open the Tool dropdown and select *tool_name*."""
+        self.open_custom_node_tool_select(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(tool_name))
+        option.click(timeout=timeout)
+
+    def is_custom_node_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:
+        """Check whether the Custom node's "Input mapping (required N)" accordion is visible."""
+        heading = self.custom_node_input_mapping_required_heading
+        try:
+            heading.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (required {required_count})"
+
+    def is_custom_node_input_mapping_optional_section_visible(self, optional_count: int, timeout: int = 5000) -> bool:
+        """Check whether the Custom node's "Input mapping (optional N)" accordion is visible."""
+        heading = self.custom_node_input_mapping_optional_heading
+        try:
+            heading.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (optional {optional_count})"
+
+    def get_custom_node_input_mapping_type(self, param_name: str, timeout: int = 5000) -> str:
+        """Read the current Type select value of an Input-mapping row."""
+        type_select = self.page.locator(self.CUSTOM_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        type_select.wait_for(state="visible", timeout=timeout)
+        text = (type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_custom_node_input_mapping_type(self, param_name: str, type_value: str, timeout: int = 5000) -> None:
+        """Open an Input-mapping row's Type select and choose *type_value*."""
+        type_select = self.page.locator(self.CUSTOM_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        type_select.scroll_into_view_if_needed(timeout=timeout)
+        type_select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def get_custom_node_input_mapping_value(self, param_name: str, timeout: int = 5000) -> str:
+        """Read the current value of an Input-mapping "Value" field."""
+        field = self.page.locator(self.CUSTOM_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        return field.input_value()
+
+    def fill_custom_node_input_mapping_value(self, param_name: str, value: str, timeout: int = 5000) -> None:
+        """Fill an Input-mapping "Value" field for a fixed/f-string tool parameter."""
+        field = self.page.locator(self.CUSTOM_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        self._fill_node_field_value(field, value, timeout=timeout)
+
+    def open_custom_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the Custom node's Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.custom_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_custom_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Input dropdown and select *variable_name*."""
+        self.open_custom_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_custom_node_input_value(self) -> str:
+        """Read the Custom node's currently-selected Input display text."""
+        text = (self.custom_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_custom_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the Custom node's Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.custom_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_custom_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Output dropdown and select *variable_name*."""
+        self.open_custom_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_custom_node_output_value(self) -> str:
+        """Read the Custom node's currently-selected Output display text."""
+        text = (self.custom_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def get_custom_node_json_editor_text(self, timeout: int = 5000) -> str:
+        """Read the Custom node's raw-JSON editor content as plain text.
+
+        The field is a CodeMirror ``.cm-content`` div (not a native
+        input/textarea), so ``text_content()`` is used — not
+        ``input_value()`` (see ``custom_node_json_editor_content``
+        docstring, same #579-adjacent discipline already documented for
+        this project's other CodeMirror-backed fields).
+        """
+        self.custom_node_json_editor_content.wait_for(state="visible", timeout=timeout)
+        return self.custom_node_json_editor_content.text_content() or ""
+
+    # ------------------------------------------------------------------
     # TOOLS section — MCP attach (ELITEA-1955)
     # ------------------------------------------------------------------
 
@@ -3522,6 +4349,65 @@ class PipelineDetailPage(PipelineFormPage):
         """
         logger.info("Selecting toolkit '%s' in popper", toolkit_name)
         Popper.select_menuitem_by_testid(popper, toolkit_name, self.page, timeout=timeout)
+
+    def open_agent_popper(self, timeout: int = 10000) -> Locator:
+        """Open the TOOLS section's "+ Agent" popper without selecting anything.
+
+        Mirrors :meth:`open_mcp_popper` (ELITEA-1955) / :meth:`open_toolkit_popper`
+        (ELITEA-2021), ported from ``AgentDetailPage.open_agent_picker``
+        (ELITEA-1887) — ``ApplicationTools.jsx``/``ToolMenu.jsx`` is the same
+        shared component on both Agent and Pipeline detail forms, and the
+        picker's rows carry the same ``toolkit-menu-item`` testid (confirmed
+        live, ELITEA-2038 analysis session).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator of the visible MUI popper (see ``components.mui.Popper``).
+        """
+        logger.info("Opening TOOLS section '+ Agent' popper")
+        self.ensure_toolkits_section_visible(timeout=timeout)
+        self.add_agent_button.wait_for(state="visible", timeout=timeout)
+        self.add_agent_button.click(force=True)
+        return Popper.wait_for(self.page, timeout=timeout)
+
+    def select_agent_in_popper(
+        self, popper: Locator, agent_name: str, project_id: str, timeout: int = 10000
+    ) -> dict:
+        """Select *agent_name* in an already-open "+ Agent" popper.
+
+        Unlike the Toolkit picker (:meth:`select_toolkit_in_popper`, defers to
+        Save) and like the MCP picker (:meth:`select_mcp_in_popper`), the Agent
+        attach auto-persists immediately on selection — but via a DIFFERENT
+        endpoint (``useAgentPipelineAssociation.hooks.js``'s
+        ``updateApplicationRelation`` mutation, not the ``/tool/prompt_lib/``
+        PATCH the Toolkit/MCP pickers use). Confirmed live (ELITEA-2038 analysis
+        session): selecting an agent fires
+        ``PATCH .../application_relation/prompt_lib/{project}/{agent_id}/{agent_version_id}``,
+        `201 Created`. Waits on that response itself (not a fixed timeout),
+        same discipline as :meth:`select_mcp_in_popper`.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_agent_popper`.
+            agent_name: Exact name of the Agent to attach.
+            project_id: Project id, used to scope the attach response URL match.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the ``201 Created`` attach PATCH response.
+        """
+        logger.info("Selecting agent '%s' in popper", agent_name)
+        with self.page.expect_response(
+            lambda r: f"/application_relation/prompt_lib/{project_id}/" in r.url
+            and r.request.method == "PATCH"
+            and r.status == 201,
+            timeout=timeout,
+        ) as response_info:
+            Popper.select_menuitem_by_testid(popper, agent_name, self.page, timeout=timeout)
+
+        logger.info("Agent '%s' attached", agent_name)
+        return response_info.value.json()
 
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit/MCP card is attached in the TOOLS section.
@@ -3807,6 +4693,53 @@ class PipelineDetailPage(PipelineFormPage):
 
         logger.info("Connected %s -> %s", source_node_id, target_node_id)
 
+    def move_node(self, node_id: str, dx: int, dy: int, timeout: int = 5000) -> None:
+        """Drag *node_id* by (*dx*, *dy*) screen pixels to reposition it on the canvas.
+
+        Added for ELITEA-2047: ReactFlow spawns newly-added nodes at the
+        same default canvas position every time (confirmed live — two
+        back-to-back ``add_node()`` calls with no drag in between placed
+        the second node fully overlapping the first), so ``connect_nodes()``
+        cannot compute a valid drag path between two nodes whose handles
+        sit on top of each other. Drags from the node's own bounding-box
+        header area (a few px below its top edge, clear of inner form
+        fields) — ReactFlow's default node-drag interaction, not a
+        connection-handle drag.
+
+        Locates via the exact ``rf__node-{id}`` testid (:data:`RF_NODE_TESTID`
+        — same ReactFlow-injected #579 provenance as
+        :data:`RF_NODE_TESTID_PREFIX`, confirmed live to mirror the node's
+        internal id 1:1, e.g. ``rf__node-Printer 1``), not the pre-existing
+        ``[data-id="..."]`` raw-attribute pattern used elsewhere in this file
+        (tracked tech debt — #25/#42, not precedent for new code).
+
+        Args:
+            node_id: Internal id of the node to move (e.g. "Printer 1").
+            dx: Horizontal offset in pixels (positive = right).
+            dy: Vertical offset in pixels (positive = down).
+            timeout: Maximum wait time for the node to be visible.
+        """
+        node = self.page.locator(self.RF_NODE_TESTID.format(node_id))
+        node.wait_for(state="visible", timeout=timeout)
+        box = node.bounding_box()
+        if not box:
+            raise ValueError(f"Could not get bounding box for node {node_id!r}")
+        sx, sy = box["x"] + box["width"] / 2, box["y"] + 12
+
+        self.page.mouse.move(sx, sy)
+        self.page.wait_for_timeout(100)
+        self.page.mouse.down()
+        self.page.wait_for_timeout(100)
+
+        steps = 15
+        for i in range(1, steps + 1):
+            self.page.mouse.move(sx + dx * i / steps, sy + dy * i / steps)
+            self.page.wait_for_timeout(30)
+
+        self.page.mouse.up()
+        self.page.wait_for_timeout(300)
+        logger.info("Moved node %s by (%d, %d)", node_id, dx, dy)
+
     def get_edge_count(self) -> int:
         """Return the number of edges (connections) on the canvas.
 
@@ -3928,6 +4861,37 @@ class PipelineDetailPage(PipelineFormPage):
         if locator.count() == 0:
             raise ValueError(f"No edge found from '{source_id}' to '{target_id}'")
         return locator.first
+
+    # CustomEdge.jsx's EdgeLabelRenderer label — added for ELITEA-2047
+    # (`EliteaAI/EliteaUI@94d190c9`, `data-testid={`pipeline-edge-label-${id}`}`
+    # on the shared edge-label Typography). Keyed by the SAME internal
+    # source/target ids as EDGE_TESTID (confirmed live: the ReactFlow edge
+    # `id` prop CustomEdge receives is the exact `xy-edge__{source}---{target}`
+    # string, matching `EDGE_TESTID`'s middle segment) — one template, reused
+    # for both the edge itself and its label, not a second ad-hoc pattern.
+    EDGE_LABEL = '[data-testid="pipeline-edge-label-xy-edge__{}---{}"]'
+
+    def get_edge_label_locator(self, source_id: str, target_id: str) -> Locator:
+        """Return the Locator for the *source_id* -> *target_id* edge's label pill.
+
+        Renders only when the edge has a non-empty ``data.label`` — e.g. the
+        `"interrupt"` pill CustomEdge.jsx shows on the edge immediately after
+        an `interrupt_after`/`interrupt_before`-configured node, or a
+        Router/Decision/HITL edge's route name. Empty/absent otherwise
+        (``.count() == 0``), not just invisible.
+
+        Args:
+            source_id: Internal source node id exactly as it appears in the
+                edge's data-testid (e.g. "Code 1").
+            target_id: Internal target node id exactly as it appears in the
+                edge's data-testid (e.g. "Printer 1").
+
+        Returns:
+            Locator matching the edge label's
+            ``[data-testid="pipeline-edge-label-xy-edge__{source}---{target}"]``
+            element (count 0 if the edge currently has no label).
+        """
+        return self.page.locator(self.EDGE_LABEL.format(source_id, target_id))
 
     def wait_for_edge(self, source_id: str, target_id: str, timeout: int = 10000) -> None:
         """Poll (not an instant read) until the exact edge testid appears in the DOM.

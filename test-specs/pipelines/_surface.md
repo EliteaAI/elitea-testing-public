@@ -2,7 +2,315 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-07 (ELITEA-2002 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2047 analysis).
+
+## Interrupt before/after — pause works, plain-chat resume is a CONFIRMED DEFECT (`#1327`), pipeline-level YAML field (confirmed live, 2026-08-08, ELITEA-2047)
+
+`interrupt_before`/`interrupt_after` (`CommonInterruptSettings.jsx`, every node type
+sharing it — LLM/Code/MCP/Toolkit/Custom/Decision/Agent, NOT the HITL **node type**) is
+a genuine LangGraph-checkpoint feature, distinct from HITL's dedicated
+approve/edit/reject resume wiring (ELITEA-2015, `#1103`). Confirmed on pipeline id 8159
+(`Code 1 -> Printer 1 -> END`):
+
+- **YAML shape — pipeline-level, NOT per-node.** `interrupt_after` is a TOP-LEVEL
+  pipeline YAML key holding a list of node ids (`entry_point: Code 1\ninterrupt_after:\n
+  - Code 1\nnodes:\n  ...`), unlike `structured_output` which nests under the node.
+  Don't assert `nodes[0].interrupt_after` — it isn't there.
+- **Disabled-state gating (same `CommonInterruptSettings.jsx` logic already documented
+  for every node type)**: "Interrupt before" disabled while the node is the entry
+  point; "Interrupt after" disabled while the node has no outgoing transition
+  (`transition: END` or none) — a LONE freshly-added node always has both disabled; a
+  real 2-node pipeline with an edge is required to exercise "Interrupt after".
+- **Pause DOES work correctly, live-confirmed**: executing via embedded chat runs the
+  interrupted node, THEN pauses — `interrupt` pill on the canvas edge right after the
+  node; the WHOLE node config panel goes `disabled`/locked; chat header shows a
+  "Run is in progress" spinner + clickable "Run N details" + "Stop run"; chat
+  auto-posts *"How to proceed? To resume the pipeline - type anything..."*.
+- **Resume via plain chat is BROKEN — `EliteaAI/elitea-testing-public#1327`,
+  reproduced independently in TWO sessions** (an earlier `test-automation-engineer`
+  implementation attempt, then this analysis session, same pipeline). Sending a plain
+  message (e.g. `"continue"`) — the UI's OWN advertised instruction — does NOT resume:
+  it spawns a **second, distinct Run History entry** (different duration — i.e. a new
+  run, not a resumed one) rather than continuing the checkpointed run; the SAME "How to
+  proceed?" hint re-appears verbatim; Printer 1 never executes; the `interrupt` pill and
+  locked panel persist. "Run is in progress"/"Stop run" vanish from the header (a
+  half-cleanup, neither a clean resume nor a clean failure). Zero console errors —
+  silent behavioral defect, not a crash. **Distinct from `#1103`** (that's HITL-node-
+  specific `chat_continue_predict{hitl_resume:true, hitl_action}`; this toggle has no
+  action buttons at all, only the "type anything" text hint, and that hint doesn't work).
+- **Testid gaps (not yet added)**: the "Run is in progress" header banner, the "Run N
+  details" trigger label, the "Stop run" button, and the `interrupt` canvas edge pill
+  all have ZERO `data-testid` — confirmed via live DOM/innerText checks, no stable
+  selector isolated beyond coarse text/accessible-name matching this session. Left as
+  gaps for whichever implementer needs them (recommended names in the AFS's Concrete
+  Handles table) rather than guessed/added blind.
+- **WebSocket-frame capture not attempted this session** — `PipelineDetailPage.
+  capture_websocket_frames()` (pytest-fixture-level, same pattern as ELITEA-2015's HITL
+  test) can't be retrofitted onto an already-open Playwright-MCP browser session; the
+  implementer automating step 8's soft-assert doesn't strictly need it (DOM/Run-History
+  evidence is sufficient), but a future deep-dive into WHY resume fails (never sends a
+  resume-shaped frame vs. sends one the backend ignores) should use it.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-interrupt-before-after-toggles_ELITEA-2047.md`.
+
+## Structured output toggle — default disabled, correctly persists both directions through save + reload, YAML matches (confirmed live, 2026-08-08, ELITEA-2046)
+
+Confirmed live end-to-end on the LLM node's `pipeline-llm-node-structured-output-toggle`
+(chosen as the representative instance — the toggle is wired via the same shared
+`CommonInterruptSettings.jsx` component on every node type that renders it: LLM/Code/
+MCP/Toolkit/Custom, per the existing digest entries below): a freshly-added node's
+toggle reads `checked === false` before any interaction (no click needed to observe the
+default); click → `checked === true` → Save (`PUT .../application/prompt_lib/{project}/{id}`
+→ `201`) → full page reload (canonical URL, per the ELITEA-1954 404-on-bare-URL gotcha) →
+toggle still `checked === true`; click again → `checked === false` → Save → reload →
+still `checked === false`. YAML's `structured_output` field matched at both checkpoints
+(`true` then `false`) — read directly via the on-screen `pipeline-yaml-editor` tab, NOT
+`pipeline_api.get_pipeline()`: this single-node, no-extra-fields pipeline's YAML is only
+19 lines, well under the ~32-34-line truncation threshold documented below for `#1025`
+(confirmed live — no truncation observed at either state), so the API-readback workaround
+ELITEA-2045's 40-line document needed does not apply here. No product defect — case text
+matched live behavior exactly on all 5 steps. Full flow + page-object gap list (none — zero
+new testids needed): `test-specs/pipelines/l2_pipeline-structured-output-toggle-persistence_ELITEA-2046.md`.
+
+## LLM node Output multi-select drops a selection if you don't close-then-reopen between picks (confirmed live, 2026-08-08, ELITEA-2045)
+
+Selecting more than one variable in the LLM node's Output combobox **inside a
+single open popover** silently drops selections beyond the first one or two —
+confirmed live this session: `name` then `age` (still inside one open/close
+cycle, immediately back-to-back) registered correctly, but adding `hobbies`
+immediately after in the SAME open popover did not register at all (the Save
+payload's `output:` list came back with only `[name, age]` until `hobbies`/
+`metadata` were each selected in their OWN open→select→Escape→reopen cycle).
+This matches (and reconfirms) the existing `_select_multi_select_option_and_close()`
+helper's own docstring warning — **the fix is already the default behavior of
+`select_llm_node_output_variable(name)`, which performs one full open/select/
+close cycle per call**; the bug only bites a caller who manually opens the
+popover once and clicks multiple `select-option-*` targets before closing.
+Automation implication: always call `select_llm_node_output_variable(name)`
+once per variable, never batch clicks inside one manually-held-open popover.
+
+## Pipeline YAML tab silently truncates long documents — reconfirmed on a DIFFERENT node/pipeline shape (2026-08-08, ELITEA-2045, `EliteaAI/elitea-testing-public#1025`)
+
+Already filed during ELITEA-2010 (Toolkit node, 41-line document, cutoff at
+line 32) — reproduced again this session on a single-LLM-node pipeline with
+4 typed custom output variables + `structured_output: true` (40-line
+document, cutoff at line 34, i.e. right after `output:\n      - name`,
+before `- age`/`- hobbies`/`- metadata`/`structured_output: true`/
+`transition: END`). Confirmed **display-only**: the PUT-save response body's
+`version_details.instructions` field has the full, correct YAML; only the
+`pipeline-yaml-editor` CodeMirror DOM (and thus `get_yaml_content()`) is
+truncated. `.cm-scroller.scrollHeight === .cm-scroller.clientHeight` in both
+cases — the editor believes there's nothing more to scroll to, so there is
+**no UI-reachable workaround** (confirmed: resizing the browser viewport
+taller, e.g. 1400×2200, makes the full document render — the root cause is
+viewport-height-driven, not a hard line-count cap). **Automation
+implication, reconfirmed**: for any pipeline whose full node YAML is likely
+to exceed ~32-34 rendered lines at a normal test viewport, verify content via
+`pipeline_api.get_pipeline(pipeline_id)["version_details"]["instructions"]`
+(parsed with `yaml.safe_load`) instead of `switch_to_yaml_view()` +
+`get_yaml_content()` — the same pattern `test_pipeline_yaml_editor_invalid_syntax.py`
+(ELITEA-2068) and `test_pipeline_advanced.py` already use for server-truth
+readback. Full case detail:
+`test-specs/pipelines/l2_llm-node-structured-output-state-variables_ELITEA-2045.md`.
+
+## Printer node — SimpleLLMInputs (PRINTER section) + standalone Final Message field, NO Input/Output selects, NO Interrupt/Structured-output controls (confirmed live, 2026-08-08, ELITEA-2039)
+
+`PrinterNode.jsx` renders the SAME shared `FlowEditorSettings.SimpleLLMInputs`
+component as the Code node (single mapping key `printer`, default
+`{type: 'fixed', value: ''}` via `usePrinterInputMapping.js`) plus a
+standalone `AIAssistantInput` for `final_message` — confirmed via source AND
+live DOM. **Unlike every other configurable node type in this suite
+(LLM/Code/HITL/MCP/Toolkit/Router/Decision/State-modifier/Custom/Agent),
+Printer has NO `FlowEditorSelect.InputSelect`/`OutputSelect` and NO
+`FlowEditorSettings.CommonInterruptSettings` at all** — confirmed via source
+read (`PrinterNode.jsx` imports neither) and live DOM (`#simple-select-Input`/
+`#simple-select-Output` both resolve to 0 matches inside the node; no
+"Interrupt"/"Structured output" substrings in the node's text content). Only
+the two generic ReactFlow `CustomHandle` connection points (`target` top,
+`source` bottom) exist — the case's own step 8 wording ("Printer node has
+only Output handle (no Input combobox visible in panel)") already correctly
+anticipates this, no case-text drift.
+
+- **Zero testids existed on `PrinterNode.jsx` before this session** — added a
+  `PRINTER_NODE_INPUT_TEST_IDS` map (same shape as `CODE_NODE_INPUT_TEST_IDS`
+  in `CodeNode.jsx`, ELITEA-2009) wiring `testIdsByKey={{printer: {...}}}` on
+  the `SimpleLLMInputs` call site, plus `inputProps={{'data-testid': ...}}`
+  directly on the `AIAssistantInput` call site for Final Message (MUI
+  `TextField`'s `htmlInput` slot — the "needs `inputProps`, not a bare
+  `data-testid` prop" pattern already documented elsewhere in this digest for
+  the Webhook/Schedule modal fields) — `EliteaAI/EliteaUI@955f88b9` on
+  `automation/testids`.
+- **Type select's 3 options are Fixed/F-String/Variable, default `Fixed`** —
+  same `TYPE_OPTION_VALUE_BY_LABEL` mechanism as every other SimpleLLMInputs
+  call site in this suite, confirmed live.
+- **PRINTER Value and Final Message are both plain MUI textareas, NOT
+  CodeMirror** — confirmed live via `tagName === 'TEXTAREA'`, same pattern as
+  every other `AIAssistantInput`/`SimpleLLMInputItem` field in this suite.
+  Embedded literal `\n` (backslash+n, not a real newline) types and reads
+  back exactly via `press_sequentially()`, same convention as the Code node's
+  Python-code Value field.
+- **Save + full page reload correctly persists** PRINTER Type, Value, and
+  Final Message (confirmed live round-trip this session, zero console errors
+  at every checkpoint). Same `PUT .../application/prompt_lib/{project}/{id}`
+  → 201 mechanism as every other pipeline-node-configuration case in this
+  family.
+- Full flow, handles, and page-object gap list:
+  `test-specs/pipelines/l2_pipeline-printer-node-configuration_ELITEA-2039.md`.
+
+**Resolved/added during ELITEA-2039 fix round 2 implementation:** the two
+generic `CustomHandle` connection points (target/source, line 21 above) also
+now carry real testids — `CustomHandle.jsx` (EliteaUI
+`src/[fsd]/features/pipelines/flow-editor/ui/nodes/CustomHandle.jsx:104-111`)
+forwards a `testId` prop straight to `data-testid`, so this is an app-owned
+hook, NOT a #579 library-internal-DOM exception (round-1 code incorrectly
+treated `.react-flow__handle` as the sanctioned class `get_node_count()` uses
+for the ReactFlow node-container CSS class — that class has no such hook,
+these handles do). `PrinterNode.jsx`'s two `CustomHandle` call sites now pass
+`testId="pipeline-printer-node-target-handle"` /
+`testId="pipeline-printer-node-source-handle"` —
+`EliteaAI/EliteaUI@b65756af` on `automation/testids` (awaiting human
+promotion to `main`). Same mechanism `NormalDecisionNode.jsx` already uses
+for `pipeline-decision-node-output-handle`. Any future node type wiring a
+`CustomHandle` testid should follow this same `testId` prop, not a raw DOM
+query.
+
+## Agent node — own component (NOT a `BaseToolNode.jsx` caller), single-select-as-toolkit, TASK-only input mapping, DIFFERENT attach endpoint (confirmed live, 2026-08-08, ELITEA-2038)
+
+`AgentNode.jsx` is its OWN standalone component — unlike Toolkit/MCP (which
+share `BaseToolNode.jsx`'s `TEST_ID_PREFIX_BY_NODE_TYPE` map), it renders its
+own JSX tree directly: `FlowEditorSelect.ToolSelect` (label "Agent",
+`filterTypes: tool => tool.type === ToolTypes.application.value`) →
+`FlowEditorSelect.InputSelect` → `FlowEditorSelect.OutputSelect` →
+`FlowEditorSettings.InputMapping` (gated `{!isOrphan && ...}`, same
+two-stage-reveal as Toolkit/MCP) → `FlowEditorSettings.CommonInterruptSettings`
+with `showStructuredOutput={false}` (so Structured output NEVER renders for
+this node type — permanent, not a testid gap). Confirmed live: **zero testids
+existed on this component before this session** — added a local
+`AGENT_NODE_TESTID_PREFIX = 'pipeline-agent-node'` constant (same shape as
+`BaseToolNode.jsx`'s prefix, but as a standalone const since AgentNode has no
+map to key into) wiring 6 fields (Agent select, Input/Output selects,
+Input-mapping value/type/required-heading, Interrupt-after toggle) —
+`EliteaAI/EliteaUI@2859a9d0` on `automation/testids`.
+
+- **Attaching an Agent to the Tools section uses a DIFFERENT endpoint from
+  Toolkit/MCP**, despite sharing the same `ToolMenu.jsx` UI and the same
+  `toolkit-menu-item`-testid popper rows. Toolkit/MCP attach fires
+  `PATCH .../tool/prompt_lib/{project}/`; Agent attach fires
+  `PATCH .../application_relation/prompt_lib/{project}/{agent_id}/{agent_version_id}`
+  (`useAgentPipelineAssociation.hooks.js`'s `updateApplicationRelation`
+  mutation) — confirmed via source read AND live network capture, both
+  return `201 Created` and both auto-persist immediately on popper
+  selection (same *behavior*, different *mechanism* — a test asserting the
+  wrong endpoint string would silently never resolve its
+  `page.expect_response()` wait and time out instead of failing fast on a
+  wrong assertion).
+- **The Agent-as-tool's Input-mapping schema has exactly ONE required key,
+  `task` (displayed "Task"), and ZERO optional keys** — confirmed live:
+  "Input mapping (required 1)" renders with no sibling "optional" accordion.
+  Its Type select's **default value is already "F-String"** (`fstring`), NOT
+  "Fixed" like every sibling node's tool-parameter Input-mapping fields —
+  confirmed live via DOM read before any interaction. A case describing "set
+  Type to F-String" is describing the pre-existing default, not an action;
+  document as a clarification, don't treat as a defect.
+- **Same custom-state-var precondition as every other node-config case in
+  this family** (Code/2009, State modifier/2035, Custom/2036, MCP/2037):
+  Input/Output combos list only `input`/`messages` on a fresh pipeline —
+  variables the case's Test Data table implies as pre-existing must be added
+  via the STATE panel's "+" control first (`add_state_variable()`).
+- **Save + full page reload correctly persists** Agent selection, Input (both
+  multi-select variables), Output, and TASK Type+Value (confirmed live
+  round-trip this session, zero console errors at every checkpoint). Same
+  `PUT .../application/prompt_lib/{project}/{id}` → `201` mechanism as every
+  other pipeline-node-configuration case in this family.
+- Full flow, handles, and page-object gap list:
+  `test-specs/pipelines/l2_pipeline-agent-node-integration_ELITEA-2038.md`.
+
+## Custom node — SAME component tree as Toolkit node + a unique raw-JSON dual view (confirmed live, 2026-08-08, ELITEA-2036)
+
+`DefaultNode.jsx` renders BOTH the `custom` and `defaultType` node types
+(`FlowEditor.jsx`'s `nodeTypes` map) — confirmed via source. For `custom`
+specifically, the rendered fields are the EXACT same component tree
+`BaseToolNode.jsx` uses for the Toolkit/MCP nodes: `ToolSelect` (Toolkit
+select) → conditional `Tool` `SingleSelect` (absent from DOM until a
+Toolkit with `selected_tools` is chosen) → `FlowEditorSelect.InputSelect` →
+`FlowEditorSelect.OutputSelect` → `FlowEditorSettings.InputMapping`
+(Type+Value per parameter, REQUIRED/OPTIONAL accordions once a Tool is
+selected) → `FlowEditorSettings.CommonInterruptSettings` (Interrupt
+before/after, Structured output). **Additionally**, Custom uniquely renders
+`FlowEditorSettings.CustomNodeInput` at the bottom — a raw-JSON CodeMirror
+view/editor of the node's own full YAML body (id/type/description/settings/
+input_mapping/...), present on NO other node type in this suite. Same
+always-expanded-inline pattern (no click-to-open) as every other node type.
+
+- **Precondition case-text drift, same class as Toolkit/Router nodes.** The
+  case ELITEA-2036 doesn't mention attaching a toolkit as a precondition,
+  but "Type + Value for input mapping" is unreachable until a Toolkit (with
+  `selected_tools`) is attached to TOOLS and selected in the node — same
+  two-stage reveal already documented for ELITEA-2010 (Toolkit node) and
+  ELITEA-2033 (Router node). Filed as a CLARIFICATION in the AFS, not a bug.
+- **Zero testids existed on `DefaultNode.jsx`/`CustomNodeInput.jsx` before
+  this session** — added a `TEST_ID_PREFIX_BY_NODE_TYPE` map (mirrors
+  `BaseToolNode.jsx`'s, gated to `type === 'custom'`) wiring 8
+  ALREADY-SUPPORTED props (`data-testid` on `ToolSelect`/`SingleSelect`,
+  `dataTestId` on `InputSelect`/`OutputSelect`, 4 props on `InputMapping`, 2
+  on `CommonInterruptSettings`) — zero shared-component changes needed. The
+  raw-JSON view needed ONE new prop (`contentTestId`, forwarded to
+  `Field.CodeMirrorEditor`'s pre-existing `contentTestId` support — same
+  mechanism as `toolkit-raw-json-editor-content`/`skill-instructions-editor-content`
+  elsewhere in the codebase). Full testid list: `test-specs/pipelines/l2_pipeline-custom-node-configuration_ELITEA-2036.md`
+  § Concrete Handles.
+- **Raw-JSON view reading convention**: `text_content()` on the
+  `[data-testid="pipeline-custom-node-json-editor-content"]` `.cm-content`
+  div, NOT `input_value()` — CodeMirror is not a native input/textarea,
+  same convention as this project's other CodeMirror-content-reading code.
+
+## State modifier node — inline config panel, zero Interrupt/Structured-output controls (confirmed live, 2026-08-08, ELITEA-2035)
+
+Same always-expanded-inline pattern as every other node type. Node body, in
+DOM order (confirmed via source, `StateModifierNode.jsx`): Trigger (only if
+entry point) → **Jinja Template** (`AIAssistantInput`, `label="Jinja
+Template"`, `name="template"`, `language="jinja"` — same "language prop ≠
+CodeMirror" trap already documented 3× for this node family, plain textarea
+confirmed live via `fill()`) → **Variables to clean** (`FlowEditorSelect.InputSelect`,
+`inputFieldName="variables_to_clean"`) → **Input** (`FlowEditorSelect.InputSelect`,
+`inputFieldName="input"`) → **Output** (`FlowEditorSelect.OutputSelect`,
+`outputFieldName="output"`). Unlike Code/LLM, this node type has **NO**
+`CommonInterruptSettings`/structured-output controls at all — confirmed via
+source, no such import/usage in `StateModifierNode.jsx`.
+
+- **"Variables to clean" is NOT an expandable/accordion section — case-text
+  drift, filed as a CLARIFICATION.** It is the exact SAME
+  `FlowEditorSelect.InputSelect` component as Input, just a different
+  `inputFieldName`/`label` — a plain multi-select combobox, confirmed live
+  via DOM inspection (no accordion, no expand icon, no collapsed state
+  anywhere in the node body). The case's step 4 ("Expand 'Variables to
+  clean' section (if applicable)") describes a mechanism that doesn't
+  exist; the AFS instead asserts the field is present and openable as a
+  dropdown. Same class of finding as the Decision-outputs/Routes
+  clarifications already filed for sibling pipeline-node cases.
+- **Zero testids anywhere inside the node body before this session**
+  (confirmed via `git grep` for `state-modifier`/`state_modifier` on
+  `automation/testids` — only non-UI hits: i18n prompt-template key, node
+  type constant, icon import, palette color). Added this session:
+  `pipeline-state-modifier-node-template-input` (on `AIAssistantInput`'s
+  `inputProps`, same mechanism as the Decision AFS's Description field),
+  `pipeline-state-modifier-node-variables-to-clean-select` /
+  `-input-select` / `-output-select` (on the 3 `FlowEditorSelect` call
+  sites' pre-existing `dataTestId` prop — zero new component code, matches
+  the Code/Decision node testid-plumbing pattern exactly).
+- **State variables are NOT built-in** — same pattern as every other node
+  type in this family (Decision/Code/Router): a fresh pipeline's Input/
+  Output combos on the State modifier node list only `input`/`messages`
+  until custom vars are added via the `STATE` panel's "+" control. The
+  case's own Test Data table names `issue_details` (Input) and
+  `normalized_issue` (Output) as if pre-existing; live-confirmed neither is
+  built-in.
+- **Save + full page reload correctly persists** Jinja Template text,
+  Input, and Output (confirmed live round-trip this session, zero console
+  errors at every checkpoint). `PUT .../application/prompt_lib/{project}/{id}`
+  returns 201, same as every other pipeline-node-configuration case in this
+  family.
+- Full flow, handles, and page-object gap list: `l2_pipeline-state-modifier-node-configuration_ELITEA-2035.md`.
 
 ## Save As Version (`agent-save-as-version-button` + dialog) works on Pipelines exactly like Agents (confirmed live, 2026-08-07, ELITEA-2002)
 
@@ -697,6 +1005,79 @@ before/after → Structured output.
   .../application/prompt_lib/{project}/{id}` → `201`. Zero console errors, zero
   failed requests, across every run.
 
+## Code node — inline config panel, single CODE section (confirmed live, 2026-08-08, ELITEA-2009)
+
+Same always-expanded-inline pattern as every other node type. Shares the SAME
+`SimpleLLMInputs`/`SimpleLLMInputItem` components as the LLM node
+(ELITEA-2004), but with exactly ONE input-mapping key (`code`, not
+system/task/chat_history) — `useCodeInputMapping.js`'s `getDefaultCodeInputMapping()`
+returns `{ code: { type: 'fixed', value: '' } }`.
+
+- **Node body, in DOM order**: Trigger (only if entry point) → **CODE**
+  section (Type select + Value field) → **Input** (tool-agnostic state-var
+  multi-select) → **Output** (same) → Interrupt before/after → Structured
+  output. Matches the case text's step-3 list EXACTLY, no case-text drift on
+  section presence — confirmed live via full node `innerText` dump.
+- **CODE section's displayed heading is CSS-uppercased "Code", not a
+  literal "CODE" string** — `Chip.HeadingChip label={capitalizeFirstChar(variableName.replaceAll('_',
+  ' '))}` renders `variableName="code"` as `"Code"`; the visual all-caps is
+  `text-transform` styling. Same pattern as every other `SimpleLLMInputItem`
+  section heading (SYSTEM/TASK/CHAT HISTORY on the LLM node render "System"/
+  "Task"/"Chat history" as literal text content too).
+- **Value field is a plain MUI textarea (`#code-value`, stable unique DOM
+  id), NOT CodeMirror/Monaco** — despite `SimpleLLMInputItem.jsx` passing
+  `language="python"` when `variableName.toLowerCase() === 'code'` (and Type
+  ∈ {fixed, fstring}). Confirmed via source (`AIAssistantInput.jsx`: `language`
+  only feeds `detectedLanguage`/`specifiedLanguage`, consumed ONLY by the
+  separate full-screen `AIAssistantModal`, never by the inline
+  `Input.InputBase`/`StyledInputEnhancer` field itself) AND live DOM
+  (`document.querySelector('#code-value').tagName === 'TEXTAREA'`). Same
+  "language prop ≠ CodeMirror" trap already documented for the Router node's
+  `Condition` field (`language="jinja"`) and the Decision node's
+  `Description` field — a THIRD confirmed instance of this pattern in this
+  node-type family. Multi-line text (embedded `\n`) types and reads back
+  correctly via `press_sequentially()`/`.input_value()` — no CodeMirror
+  per-line-scoping technique needed.
+- **Output combobox uses the SAME `useInputOptions()` hook as Input** — both
+  `InputSelect.jsx` and `OutputSelect.jsx` only ever list EXISTING pipeline
+  state variables (`input`/`messages` on a fresh pipeline); neither is a
+  freeform/creatable field. A case wanting to set Output to a
+  not-yet-existing name (e.g. `result`) must first create it as a custom
+  state variable via the `STATE` panel's "+" control
+  (`open_state_panel()` + `add_state_variable(name)`, pre-existing methods
+  from ELITEA-2034, reused unmodified) — confirmed live: the Output option
+  list was `["input", "messages"]` before creating `result`, and
+  `["input", "messages", "result"]` (with a live `select-option-result`)
+  immediately after. Same "state vars not built-in" pattern already
+  documented for the Decision node's Input select (ELITEA-2034) — this is
+  now confirmed on THREE separate node types' Input/Output-family selects.
+- **Interrupt before/after disabled-state**: Interrupt before is `disabled`
+  while the Code node is the pipeline's entry point (true for the first node
+  on an empty pipeline); Interrupt after is `disabled` while the node's
+  `transition` is `END` (also true for a single freshly-added node with no
+  outgoing edge) — identical `CommonInterruptSettings.jsx` logic already
+  confirmed for every other node type in this family.
+- **Testid gap — zero testids anywhere inside the node body before this
+  session** (only `node-menu-menu-button` + the unconditional dynamic
+  `pipeline-node-interrupt-before-toggle-{node_id}` + the entry-point
+  Trigger select pre-existed). **Closed in this session**: `dataTestId`/
+  `testIdsByKey`/`interruptAfterTestId`/`structuredOutputTestId` props wired
+  at `CodeNode.jsx`'s call sites (all prop plumbing already existed
+  generically, same mechanism ELITEA-2004 used for the LLM node) —
+  `pipeline-code-node-type-select`, `pipeline-code-node-value`,
+  `pipeline-code-node-input-select`, `pipeline-code-node-output-select`,
+  `pipeline-code-node-interrupt-after-toggle`,
+  `pipeline-code-node-structured-output-toggle`. Single commit
+  `EliteaAI/EliteaUI@92fc6ec4` on `automation/testids` (awaiting human
+  promotion to `main`). No further `add-data-testid` work needed for this
+  node type's config fields.
+- Save persists everything correctly; full-reload round-trip confirmed for
+  CODE (Type+Value), Input, and Output. Save returns `PUT
+  .../application/prompt_lib/{project}/{id}` → `201`. Zero console
+  errors/warnings, zero failed requests, across every checkpoint.
+- Full flow, handles, and page-object gap list:
+  `l2_pipeline-code-node-configuration_ELITEA-2009.md`.
+
 ## MCP node — inline config panel, CONDITIONALLY rendered (confirmed live, 2026-08-04, ELITEA-2037)
 
 Same always-expanded-inline pattern as every other node type. Shares the SAME
@@ -1269,3 +1650,58 @@ is a legitimate empty state, not an error state).
   unchanged after this fix — confirmed green alongside the new test in the same
   local run (determinism is the merge gate's job, not repeated local runs).
   Full handle table + AFS: `lextend_pipeline-dashboard-search-filter-and-clear_ELITEA-2023.md`.
+
+## Interrupt before/after toggles — implementation-time facts (ELITEA-2047, 2026-08-08)
+
+**Resolved/added during ELITEA-2047 implementation:**
+
+- **Two back-to-back `add_node()` calls place the second node fully
+  overlapping the first** — ReactFlow spawns every freshly-added node at the
+  SAME default canvas position (confirmed live via screenshot: Printer 1
+  landed directly on top of Code 1, handles inaccessible to
+  `connect_nodes()`'s bounding-box-based drag). Added
+  `PipelineDetailPage.move_node(node_id, dx, dy)` — a generic drag-to-
+  reposition helper (locates via the exact `rf__node-{id}` testid, new
+  class constant `RF_NODE_TESTID`) — call it on the second node BEFORE
+  `fit_view()` + `connect_nodes()` whenever two UI-added nodes need
+  connecting. `dx=450, dy=100` (horizontal separation, clear of the taller
+  Code node's expanded height) was sufficient; a smaller vertical-only
+  offset (`dy=250`) was NOT (Code node's filled Value field makes it too
+  tall).
+- **A drag-created (pre-Save) edge's testid carries the ReactFlow
+  source/target HANDLE ids as a suffix, with NO `---` separator** —
+  confirmed live: `rf__edge-xy-edge__Code 1source-Printer 1target`, not the
+  clean post-reload `rf__edge-xy-edge__Code 1---Printer 1` shape
+  `EDGE_TESTID`/`wait_for_edge()` expect. Use `wait_for_edge_present()`
+  (already existed for this exact reason — see its own Decision-node
+  docstring) for any edge-existence wait BEFORE Save; `wait_for_edge()`
+  only becomes valid after Save + a reload re-parses the pipeline from its
+  saved YAML.
+- **The "interrupt" edge-label pill (`CustomEdge.jsx`'s `EdgeLabelRenderer`
+  `Typography`, rendering `data.label`) had NO testid** — this is APP JSX,
+  not ReactFlow-internal (it just happens to render inside the `rf__wrapper`
+  subtree via a portal), so the AFS's proposed #579 third-party exception
+  did not apply. Added `data-testid={`pipeline-edge-label-${id}`}` (same
+  `id` prop as the edge's own `EDGE_TESTID`, confirmed live to match 1:1),
+  `EliteaAI/EliteaUI@94d190c9` on `automation/testids`. New
+  `PipelineDetailPage.EDGE_LABEL` constant + `get_edge_label_locator()`.
+  This same label renders route names on Router/Decision/HITL edges too —
+  the testid is generic, not interrupt-specific.
+- **The AFS's "Chat auto-posts a distinct 'How to proceed?...' hint message"
+  claim does NOT reproduce** — re-checked on a fresh pipeline (2 independent
+  test runs + a manual probe on the AFS's own exploration pipeline, id
+  8159) with a further 10s settle wait beyond normal response
+  stabilisation: the chat shows exactly 2 messages (trigger + Code 1's
+  execution-result bubble), never a 3rd hint bubble. Not a defect — the
+  pause mechanism itself (edge pill, locked config panel, run-in-progress
+  node label) is unaffected and was NOT asserted via this hint text in the
+  shipped test. See the AFS's own Step 6 for the full correction.
+- **Config-panel "locked while paused" verification differs by field type**:
+  the Value textarea and the Interrupt-after/Structured-output Switches
+  expose a real native `disabled` HTML attribute (readable via
+  `.is_disabled()`); the Type/Input/Output MUI Selects do NOT — they only
+  gain the `Mui-disabled` CSS class (no `disabled`/`aria-disabled`
+  attribute), so `.is_disabled()` on those returns a false negative. Assert
+  via `"Mui-disabled" in locked_select.get_attribute("class")` instead
+  (established pattern elsewhere in this suite, e.g.
+  `test_pipeline_edge_deletion.py`'s `edge.get_attribute("class")` check).
