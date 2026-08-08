@@ -26,6 +26,25 @@ confirmed by: qa-engineer analyst, ELITEA-1951 run (2026-08-07).
   atomic single-call switch (source comment cites issue #5716: avoids a delete-then-add race that
   could orphan the tool on a rejected switch).
 
+## Build with AI (GenerateAgentModal) — modal-open + static-controls confirmation (ELITEA-1905 run, 2026-08-08)
+- Navigating to `/agents/create?viewMode=owner` and clicking
+  `generate-agent-open-button` (in the General accordion section header,
+  right after the Tags field) opens `dialog [active]` with heading "Build
+  with AI". Confirmed live, all pre-existing testids (no `add-data-testid`
+  needed): `generate-agent-prompt-input` (textarea, accessible-named
+  "Describe your agent's goal, key tasks, and preferred tone or behavior."),
+  `generate-agent-submit-button` (label **"Generate Draft"**, NOT "Generate
+  agent" — rendered `[disabled]` by default, `disabled={!description.trim()}`
+  in `GenerateEntityModal.jsx:213`, enables once the prompt is non-empty),
+  `generate-agent-cancel-button`, `generate-agent-close-button` (X icon).
+  Zero console errors on open. No network call fires until Generate is
+  clicked with a non-empty prompt (`generate_application_draft` endpoint).
+- **Button-label mismatch is a recurring case-text drift class** for this
+  modal family — TMS case text tends to say "Generate agent"/"Generate";
+  the live label is always "Generate Draft" (shared `GenerateEntityModal.jsx`
+  across Agent/Skill Build-with-AI). Check case wording against the live
+  label before asserting `inner_text()` equality.
+
 ## Nested-agent invocation in chat — chip vs. accordion representation (ELITEA-1951 run, 2026-08-07)
 - When a parent agent invokes an attached sub-agent as a tool, the response's
   `chat-answer-thought-accordion` (existing testid, ELITEA-2211..2215 batch) shows the
