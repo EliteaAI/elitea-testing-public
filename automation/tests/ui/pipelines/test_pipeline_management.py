@@ -32,6 +32,7 @@ import pytest
 from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipeline_form_page import PipelineFormPage
 from pages.pipelines_list_page import PipelinesListPage
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 pytestmark = [pytest.mark.ui, pytest.mark.pipelines]
 
@@ -82,9 +83,17 @@ class TestPipelineDashboard:
             )
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2024_pipeline-dashboard-view-toggle-card-vs-table.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_view_toggle_table_and_card(self, page):
-        """Dashboard should support switching between table and card views."""
+        """Dashboard should support switching between table and card views.
+
+        Extended for ELITEA-2024 (AFS:
+        test-specs/pipelines/lextend_pipeline-dashboard-view-toggle-default-and-layout_ELITEA-2024.md)
+        with default-state (Step 3) and actual-rendered-layout (Steps 5 & 7)
+        assertions — the original ELITEA-0855 coverage (button visibility +
+        button aria-pressed state) is unchanged.
+        """
         with allure.step("Step 1 — Navigate to pipelines dashboard"):
             list_page = PipelinesListPage(page)
             list_page.navigate()
@@ -93,16 +102,36 @@ class TestPipelineDashboard:
             assert list_page.table_view_button.is_visible(), "Table view button should exist"
             assert list_page.card_view_button.is_visible(), "Card view button should exist"
 
-        with allure.step("Step 3 — Switch to table view"):
+        with allure.step("Step 3 — Verify default view is Card list view"):
+            assert list_page.is_card_view_active(), (
+                "Card list view should be the active/default view on fresh load"
+            )
+            assert not list_page.is_table_view_active(), (
+                "Table view should NOT be active on fresh load"
+            )
+
+        with allure.step("Step 4 — Switch to table view"):
             list_page.switch_to_table_view()
             assert list_page.is_table_view_active(), (
                 "Table view toggle should be active after switching to table view"
             )
 
-        with allure.step("Step 4 — Switch back to card view"):
+        with allure.step("Step 5 — Verify layout actually changed to table format"):
+            assert "view=table" in page.url, f"Expected ?view=table in URL, got {page.url!r}"
+            assert list_page.entity_card_name.count() == 0, (
+                "No card elements (entity-card-name) should render while in table view"
+            )
+
+        with allure.step("Step 6 — Switch back to card view"):
             list_page.switch_to_card_view()
             assert list_page.is_card_view_active(), (
                 "Card view toggle should be active after switching to card view"
+            )
+
+        with allure.step("Step 7 — Verify layout returned to card grid format"):
+            assert "view=cards" in page.url, f"Expected ?view=cards in URL, got {page.url!r}"
+            assert list_page.get_card_names(), (
+                "Card elements (entity-card-name) should render again after switching to card view"
             )
 
 
@@ -387,9 +416,30 @@ class TestDeletePipeline:
                 pass
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0850_pipeline-edit-and-delete-operations.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2022_delete-pipeline.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_delete_pipeline_via_ui_menu(self, page, pipeline_api):
-        """Create a pipeline, delete via the UI three-dot menu, and verify removal."""
+        """Create a pipeline, delete via the UI three-dot menu, and verify removal.
+
+        Extends coverage for ELITEA-2022 (test-specs/pipelines/lextend_delete-
+        pipeline-via-actions-menu_ELITEA-2022.md) — additive Step 4 assertion
+        that the app auto-redirects to the Pipelines dashboard as a direct
+        consequence of the delete action (previously this test drove its own
+        navigation afterward, masking the redirect entirely).
+
+        **Known product defect (step 4, sanctioned RED):** the redirect
+        (`navigate(-1)` in EliteaUI's `useDeleteApplication`) is a browser-
+        history no-op when the detail page was reached via direct navigation
+        — exactly this test's own setup (Step 2: `detail_page.navigate(pid)`,
+        a `page.goto()`, no prior in-app history entry). Confirmed live via
+        Playwright MCP (8s poll, no redirect, 0 console errors). Filed as
+        `EliteaAI/elitea-testing-public#1332`. Per `.agents/testing.md` §
+        Merge gate's analysis-time exception, Step 4's redirect assertion is
+        `soft_failures`-tagged `# Known defect: #1332`; Step 5 (pipeline
+        actually gone) is unaffected and stays a hard assertion — it reaches
+        the dashboard itself since the redirect can't be relied on while
+        #1332 stays open.
+        """
         with allure.step("Step 1 — Create pipeline via API"):
             pipeline = pipeline_api.create_pipeline(
                 name="autotest_delete_ui_pipe",
@@ -406,11 +456,42 @@ class TestDeletePipeline:
             with allure.step("Step 3 — Delete pipeline via three-dot menu"):
                 detail_page.delete_pipeline_via_menu(timeout=NAVIGATION_TIMEOUT)
 
-            with allure.step("Step 4 — Verify pipeline removed from dashboard"):
+            soft_failures = []
+            with allure.step(
+                "Step 4 — Verify automatic redirect to Pipelines dashboard. KNOWN "
+                "DEFECT — sanctioned RED (EliteaAI/elitea-testing-public#1332): "
+                "navigate(-1) no-ops when the detail page was reached via direct "
+                "navigation, so the app never leaves the deleted pipeline's stale "
+                "detail route"
+            ):
+                try:
+                    page.wait_for_url(
+                        lambda url: urlparse(url).path.rstrip("/").endswith("/pipelines/all"),
+                        timeout=8000,
+                    )
+                except PlaywrightTimeoutError:
+                    soft_failures.append(
+                        "Known defect https://github.com/EliteaAI/elitea-testing-public/"
+                        f"issues/1332: expected auto-redirect to the Pipelines dashboard "
+                        f"after delete, but the URL stayed at {page.url!r}"
+                    )
+
+            with allure.step("Step 5 — Verify pipeline removed from dashboard"):
                 list_page = PipelinesListPage(page)
-                list_page.navigate()
+                if not urlparse(page.url).path.rstrip("/").endswith("/pipelines/all"):
+                    # Redirect known-broken (#1332) — reach the dashboard
+                    # explicitly so this step's own assertion (pipeline
+                    # actually gone) still runs and isn't masked by the
+                    # redirect defect above.
+                    list_page.navigate()
                 assert not list_page.pipeline_exists_in_list("autotest_delete_ui_pipe", timeout=3000), (
                     "Pipeline 'autotest_delete_ui_pipe' should be gone after UI deletion"
+                )
+
+            if soft_failures:
+                pytest.fail(
+                    "Soft assertion(s) failed (sanctioned RED — known defect #1332, redirect):\n"
+                    + "\n".join(soft_failures)
                 )
         finally:
             try:

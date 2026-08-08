@@ -2,7 +2,256 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2047 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2013 analysis).
+
+## Pipeline tags — Categories.jsx tag filter panel + CardTagSectionItem chips are FULLY shared with Skills, zero new testid work (confirmed live, 2026-08-08, ELITEA-2013)
+
+The Pipelines dashboard's right-side "Tags" panel (`PrivatePipelinesList.jsx` →
+`RightInfoPanel.jsx` → `Categories.jsx`, same component tree for the
+`cardContentType !== ApplicationAdmin` case that every non-admin private
+pipeline view uses) is the identical shared component
+`SkillsListPage`'s tag filter already drives (ELITEA-1740). Confirmed by
+source read AND live DOM: `Categories.jsx` hardcodes
+`data-testid={\`tags-panel-chip-${name}\`}` (line 336) and
+`data-testid="tags-panel-clear-all"` (line 299) directly — entity-agnostic,
+no per-caller prop gating. Same for card-level tag chips:
+`CardTagSectionItem.jsx` hardcodes `entity-card-tag-chip`/
+`entity-card-tag-overflow` (line 22), rendered by the shared `Card.jsx` for
+Pipelines exactly as for Skills.
+
+- **`PipelinesListPage` has NO tag-filter methods yet** (unlike
+  `SkillsListPage`) — this is pure page-object-plumbing work for whoever
+  implements ELITEA-2013, not testid work. Mirror
+  `SkillsListPage.filter_by_tag()`/`clear_tag_filter()`/`get_card_tags()`
+  (`automation/pages/skills_list_page.py:127-141,230-265,519-578`)
+  line-for-line; only the grid-refetch URL substring changes:
+  `/elitea_core/applications/prompt_lib/` (pipelines, `agents_type=pipeline`)
+  vs `/elitea_core/skills/prompt_lib/` (skills).
+- **Tag input/chip on the create/edit form** (`pipeline-tags-input`/
+  `pipeline-tags-chip`, pre-existing from ELITEA-2021) confirmed live and
+  reused as-is — `PipelineFormPage.add_tag()` (type + Enter) already exists
+  and is sufficient for BOTH new and pre-existing-tag-by-exact-name cases;
+  no `select_existing_tag()` analog is needed for Pipelines (unlike Skills'
+  `SkillFormPage.select_existing_tag()`) because `TagEditor.jsx`'s
+  `handleOnChangeTags` transparently reuses an existing tag id on exact-name
+  match regardless of whether it was typed or clicked from the dropdown.
+- **No `getOptionTestId` wired for the Pipeline branch's Tags autocomplete
+  dropdown** (`ApplicationEditForm.jsx:174-188` only threads `inputTestId`/
+  `chipTestId`, not `getOptionTestId` — unlike some other consumers of the
+  shared `AutoCompleteDropDown.jsx`). Not a gap for THIS case (type+Enter
+  reuse covers it, see above) — would be a genuine testid-needed escalation
+  only if a future case specifically needs to click an existing-tag option
+  out of the dropdown listbox for Pipelines.
+- Full case detail: `test-specs/pipelines/l2_pipeline-tags-add-and-filter_ELITEA-2013.md`.
+
+## Dashboard view toggle (Card vs Table) — `entity-card-name` count + `?view=` URL param are the layout-format proof, no new testid needed (confirmed live, 2026-08-08, ELITEA-2024)
+
+`PipelinesListPage.table_view_button`/`card_view_button` (testids
+`pipeline-table-view`/`pipeline-card-view`, wired in `Pipelines.jsx` on the
+shared `ViewToggle.jsx` component — same component Agents/MCPs/etc. use with
+their own testid overrides) both resolve correctly live and are **on
+`automation/testids` but NOT yet on `main`** (fresh `git fetch origin` this
+session: `git grep` hit on `origin/automation/testids` only, at
+`src/pages/Pipelines/Pipelines.jsx:274-275`).
+
+- **Default view is Card list view** — confirmed live: fresh `/pipelines/all`
+  load renders the Card list view button `[pressed]` (`aria-pressed="true"`),
+  Table view button unpressed. `PipelinesListPage` has NO method asserting
+  this default state — `is_card_view_active()`/`is_table_view_active()` exist
+  but the merged test (`test_view_toggle_table_and_card`,
+  `test_pipeline_management.py:87`) never calls them before its first click.
+- **View state lives in the URL, not just component state**: `ViewToggle.jsx`
+  writes `SearchParams.View` (`?view=table`/`?view=cards`) via
+  `useSetUrlSearchParams`; `useIsTableView.js` reads it back
+  (`searchParams.get(SearchParams.View) === ViewOptions.Table`) to drive
+  `CardList.jsx`'s `shouldRenderTable` ternary between `DataTable` (table) and
+  `DataCards` (card grid). Pure client-side, no XHR fires on toggle click.
+- **Strongest layout-format proof, testid-only, no new testid work**: the
+  `entity-card-name` testid (`Card.jsx:210`, existing `LocatorDescriptor`
+  field) is rendered ONLY by the card-view `Card` component — `DataTable`
+  (table view) never renders it. Confirmed live:
+  `document.querySelectorAll('[data-testid="entity-card-name"]').length` was
+  `12` in card view (matching the 12 visible pipelines) and dropped to `0`
+  immediately after switching to table view, back to `12` on switching back.
+  Combine with the `?view=table`/`?view=cards` URL param for a
+  belt-and-braces layout assertion — neither needs a new testid.
+- **Testid gap that's genuinely NOT needed for this case** (flag for a future
+  table-specific case only): table view's column headers ("Name &
+  Description"/"Authors"/"Created"/"Actions", `GridTableHeader.jsx`) carry NO
+  `data-testid` for Pipelines — `DataTable.jsx` only passes
+  `columnTestIdPrefix` for `isMCPs`, `undefined` otherwise. The
+  `entity-card-name`-absence + URL-param combo above is sufficient without it.
+- Full gap analysis + exact patch: `test-specs/pipelines/lextend_pipeline-dashboard-view-toggle-default-and-layout_ELITEA-2024.md`.
+
+## Three-dot Actions menu — full live-confirmed testid map, both groups (confirmed live, 2026-08-08, ELITEA-2049)
+
+Full DOM query of `[data-testid="agent-actions-menu"] [role="menuitem"]` on a
+pipeline detail page (`FullDetailsPipe_probe2`, id 6754, base version). Two
+groups, both rendered by the SAME shared `ApplicationControls.jsx` component
+Agent detail pages use — testid keys mostly carry the literal `agent`/`share-agent`
+naming regardless of entity type (tech debt, not a bug):
+
+| Group | Label | Testid | Notes |
+|---|---|---|---|
+| VERSION | Set as a default | `set-as-a-default-menuitem` | disabled (always, for the currently-open version) |
+| VERSION | Export | `agent-actions-export-menuitem` | shared Agent/Pipeline testid |
+| VERSION | Share (version-specific link) | `share-version-menuitem` | shared testid, NOT case-text's "Copy link" target |
+| VERSION | Fork | `pipeline-actions-fork-menuitem` | **entity-scoped** — differs from Agent's `agent-actions-fork-menuitem` (`ForkEntityButton.jsx`'s `FORK_MENU_ITEM_KEY_BY_ENTITY` map) |
+| VERSION | Delete ("Delete version") | `delete-version-menuitem` | disabled while open version is `base` |
+| PIPELINE | Share (generic link — **this is "Copy link"**) | `share-agent-menuitem` | same literal key as Agent's PIPELINE-analog item — testid does NOT rename per entity |
+| PIPELINE | Pin to top | **none — testid gap** | `usePinMenu.hooks.jsx`'s menu-item object has no `key` field at all (only shared hook without one); needs an optional `key` param threaded from each of its 4 callers (`ApplicationControls`/`SkillControls`/`ToolkitsControls`/`CredentialsControls`) — see AFS for the exact minimal-scope fix |
+| PIPELINE | Delete pipeline | `delete-agent-menuitem` | same testid as Agent's "Delete agent" — only the LABEL switches per `isFromPipeline` |
+
+**Case-text drift, 3rd occurrence of the same pattern**: no case that says
+"Copy link" as a menu-item label will ever find one literally — it's always
+"Share" (`useCopyLinkMenu({ label: 'Share', ... })` overrides the hook's own
+default `'Copy link'` label at every call site observed so far). Filed as a
+sibling clarification each time a new surface hits it: #1288 (Agent Detail),
+#1218 (Agent Hub modal), #1337 (Pipeline Detail, this session) — all
+cross-linked. If a 4th surface hits this (e.g. Skill/Toolkit/Credential
+three-dot menus), the same treatment applies: sibling, not duplicate, cross-link.
+
+**Clipboard-read via MCP browser hangs — use the pytest pattern instead.** A
+raw `page.evaluate("async () => await navigator.clipboard.readText()")` call
+through the Playwright MCP browser (no test-context permission grant, no
+interactive-dialog handler) hung indefinitely (~30 min) waiting on a
+permission prompt that can never resolve outside a real Playwright test
+process. The suite's own established pattern — `page.context.grant_permissions
+(["clipboard-read","clipboard-write"])` once, then `page.wait_for_function
+("async () => { const t = await navigator.clipboard.readText(); return
+t.length > 0; }")` — works fine inside pytest (already proven by
+`test_agent_copy_version_link.py`, ELITEA-1898) because the test-context
+permission grant pre-authorizes it; there is no equivalent MCP-side grant
+call. Don't reattempt the direct call in a future MCP exploration session —
+confirm toast text/visibility live instead, and defer clipboard-content
+verification to the implementer's pytest run.
+
+## Pipeline Export — downloaded `.pipeline.md` frontmatter shape confirmed on TWO pipelines; no `nodes`/`state` verified by the existing spec (confirmed live, 2026-08-08, ELITEA-2050)
+
+Extends `test_pipeline_import_via_file.py` (ELITEA-2012) rather than a fresh spec — that
+test already exports+downloads+parses the file but only asserts `name`/`description`/
+`agent_type`/`conversation_starters`, never `nodes`/`entry_point`/`pipeline_settings`.
+Details + exact gap patch: `test-specs/pipelines/lextend_pipeline-export-verify-structure_ELITEA-2050.md`.
+
+- **Export top-level YAML shape depends on whether the pipeline has any non-END node.**
+  A pipeline with only an `END` node (`FullDetailsPipe_probe2`, id 6754) exports WITHOUT
+  a top-level `entry_point`/`nodes` key at all — only `pipeline_settings.nodes` (canvas,
+  containing just the `END` entry) is present. A pipeline with a real node (LLM, per
+  ELITEA-2012's own pipeline) exports WITH `entry_point: <node id>` and a top-level
+  `nodes:` list (each entry: `id`/`type`/`input`/`input_mapping`/`output`/`transition`).
+  Any case asserting "nodes" in the export must use a pipeline with a real node — an
+  empty/bare pipeline makes a "non-empty nodes list" assertion meaningless.
+- **No literal `state` top-level key exists anywhere in the export** — confirmed via
+  source read (`EliteaUI/src/pages/Common/Components/useExport.js`: pipelines/
+  applications export is a server-rendered `GET .../export_import/prompt_lib/{project}/{id}
+  ?format=md` fetch, blob-downloaded client-side, no client "state" concept at all). A
+  case asking to verify "state" in the export should be read as `pipeline_settings`
+  (canvas nodes/edges/positions) — the closest structural analogue — not a literal key
+  match.
+- **Case-text drift "JSON file" reconfirmed on a SECOND TMS case (ELITEA-2050) via the
+  SAME underlying mechanism** as ELITEA-2012's already-filed
+  [#1334](https://github.com/EliteaAI/elitea-testing-public/issues/1334) — commented on
+  the existing issue rather than filing a duplicate (same object: `useExport.js`'s
+  `doExport` hard-codes `format=md` for `pipelines`/`applications`, no `format=json` path
+  exists at all).
+
+## Pipeline Import via File — Export downloads Markdown (not JSON), Import shares Agent/Skill's ImportWizardModal wholesale, one new testid needed (confirmed live, 2026-08-08, ELITEA-2012)
+
+Full round trip (create → export → delete → import → verify → execute) confirmed live end-to-end,
+no product defect. Details in `test-specs/pipelines/l2_pipeline-import-via-file_ELITEA-2012.md`.
+
+- **Export format is Markdown YAML-frontmatter (`.pipeline.md`), never JSON** — the case text
+  says "JSON file downloads"; live product's `ExportApplicationButton.jsx` always calls
+  `doExport({ format: ExportFormat.MD })()` (same for Agents). Filed as case-text drift:
+  `EliteaAI/elitea-testing-public#1334`. Filename pattern:
+  `<slugified-pipeline-name>.pipeline.md`. Content is a `---`-fenced YAML block:
+  `name`/`description`/`model`/`max_tokens`/`agent_type: pipeline`/`step_limit`/
+  `conversation_starters`/`entry_point`/`nodes` (each with `input_mapping`/`output`/
+  `transition`)/`pipeline_settings` (canvas edges + node positions).
+- **Import (`useImport.hooks.js`) accepts ONLY `.md`/`.zip`** (`fileInput.accept =
+  '.md,.zip,text/markdown,application/zip'`) — exactly what Export produces, so the round trip
+  works even though the case's "JSON" wording doesn't match. Import button click
+  (`ToolbarImportButton.jsx`'s `openFileDialog`) opens a native OS file chooser DIRECTLY, no
+  intermediate menu — same pattern as `AgentsListPage.import_agent()`.
+- **Testid gap — `pipelines-import-button` needed.** `ToolbarImportButton.jsx` already accepts
+  an optional `testId` prop and forwards it to `data-testid`; the Agents call site
+  (`src/pages/Applications/Applications.jsx:113`) already wires
+  `testId="agents-import-button"` (ELITEA-1795, EliteaUI draft PR #552) but the Pipelines call site
+  (`src/pages/Pipelines/Pipelines.jsx:272`, `<ToolbarImportButton />`) passes NO prop at all —
+  confirmed on both `origin/main` and `origin/automation/testids`. Low-risk mechanical fix:
+  thread `testId="pipelines-import-button"`, same mechanism.
+- **Everything downstream of the click already works for pipelines with ZERO new testid work** —
+  the Import parameters preview dialog, its confirm button, and the Import Complete dialog +
+  "Got it" button are the SAME shared `ImportWizardModal`/`IWModal*` component tree Agent and
+  Skill import already use (`agent-import-preview-dialog`, `agent-import-confirm-button`,
+  `agent-import-complete-dialog`, `agent-import-complete-got-it-button` — all `agent-` prefixed
+  by existing convention despite being entity-agnostic). Confirmed live: used all four directly
+  with zero add-data-testid work.
+- **Pipeline-specific addition to the shared preview dialog**: a "Pipeline Diagram" section
+  (Start → {node names} → END, mermaid-like) that the Agent import preview does NOT render (Agent
+  shows Skills/Nested-entities cards instead). Not required by any of ELITEA-2012's assertions
+  (text fields + post-import canvas state suffice) — no testid added, per the "touches" scoping
+  rule.
+- **Execution gotcha, NOT an import defect**: an LLM node with Task field left at its default
+  (`Type=Fixed`, empty Value) 400s on chat send
+  (`"messages.0: user messages must have non-empty content"`) — reproduced BEFORE any
+  export/import involvement (same config existed on the original pipeline). Fixed by mapping
+  `Type=Variable, Value=input` via the existing shared `select-option-{}` dynamic-testid
+  convention. Any pipeline case that needs a working chat execution assertion must configure the
+  LLM node's Task field this way — not an import-specific requirement.
+- **Minor, already-tracked, non-blocking**: the Import Complete dialog's `IWModalSucceedContent.jsx`
+  emits a benign React `validateDOMNesting` (`<div>` in `<p>`) console warning — tracked at
+  `EliteaAI/elitea-testing-public#570` (originally filed against Agent/Skill import); this session
+  added a comment confirming it also fires for Pipeline import (same shared component, no new
+  issue filed).
+- **Delete pipeline via three-dot menu** reused for cleanup — `delete-agent-menuitem` (NOT
+  `delete-pipeline-menuitem`, per the existing gotcha below) + auto-redirect to `/pipelines/all`
+  reconfirmed live.
+
+**Resolved/added during ELITEA-2012 implementation (2026-08-08):** `pipelines-import-button`
+testid added — `EliteaAI/EliteaUI@257cd359` on `automation/testids` (awaiting human promotion to
+`main`). `test_pipeline_import_via_file.py` (full create → export → delete → import → verify →
+execute round trip) green on first local run — confirmed live, matches this digest entry exactly:
+the auto-redirect after delete DOES fire correctly when the detail page was reached entirely via
+in-app SPA navigation (dashboard → "+ Pipeline" → Save → detail page), unlike ELITEA-2022's own
+test (`test_delete_pipeline_via_ui_menu`, sanctioned-RED #1332) whose setup reaches the detail page
+via a direct `page.goto()` (no prior in-app history entry) — the redirect defect is specifically a
+browser-history no-op, not a general product break. **Confirmed via source read:** the shared
+`IWModalEntityCard.jsx`/`IWModalEntityCardWrapper.jsx` preview-dialog fields (Type/Description/
+Chat-starters/Step-limit) carry NO `data-testid` at this call site (the wrapper's `subtitleTestId`
+prop is unwired here) — full config-equivalence verification was done on the imported pipeline's
+detail page (UI fields + `pipeline_api.get_pipeline()` API readback for node structure) instead of
+inside the preview dialog; see the AFS's own implementer-amendment note on Step 5 for detail. New
+page-object surface: `PipelinesListPage.import_pipeline()`/`confirm_pipeline_import()`/
+`confirm_import_complete()` (mirrors `AgentsListPage`'s import trio) + `PipelineDetailPage.
+export_pipeline_via_menu_and_download()` (testid-based, `page.expect_download()` — distinct from
+the pre-existing raw-handle `export_pipeline_via_menu()`, left unmodified for its own caller).
+
+## Delete pipeline via three-dot menu — auto-redirect confirmed correct; existing merged spec masks the redirect assertion by navigating manually (confirmed live, 2026-08-08, ELITEA-2022)
+
+`test_delete_pipeline_via_ui_menu` (`test_pipeline_management.py:391`, merged to
+`origin/automation/base`) already drives the full delete flow correctly (three-dot
+menu → "Delete pipeline" → type-to-confirm dialog → `DELETE .../application/
+prompt_lib/{project}/{id}` → `204`), but its own Step 4 calls
+`list_page.navigate()` instead of asserting the app's automatic redirect — so a
+future regression to the auto-redirect would go undetected. Live-reconfirmed this
+session: after clicking the confirm dialog's "Delete" button, the URL transitions
+on its own from `/pipelines/all/{id}?...` to `/pipelines/all` with zero manual
+navigation and zero console errors. Classified `extend-existing`, not a defect —
+see `test-specs/pipelines/lextend_delete-pipeline-via-actions-menu_ELITEA-2022.md`
+for the gap assertion + exact patch shape.
+
+**Testid gotcha for "Delete pipeline"**: the PIPELINE-group menu item's testid is
+`delete-agent-menuitem`, NOT `delete-pipeline-menuitem` — `ApplicationControls.jsx`
+reuses one shared `deleteApplicationMenuItem` object (key `delete-agent`) for both
+Agent and Pipeline entities; only the visible label switches
+(`Delete ${isFromPipeline ? 'pipeline' : 'agent'}`). Confirmed live via
+`page.getByTestId('delete-agent-menuitem')` resolving correctly on a pipeline
+detail page. Both `open_actions_menu()` and `delete_pipeline_via_menu()` in
+`PipelineDetailPage` still use bounding-box/text-role fallbacks internally
+(pre-existing tech debt, unchanged by this case) despite the real testids
+existing and resolving correctly — same situation ELITEA-2003's AFS already
+flagged for the three-dot button itself.
 
 ## Interrupt before/after — pause works, plain-chat resume is a CONFIRMED DEFECT (`#1327`), pipeline-level YAML field (confirmed live, 2026-08-08, ELITEA-2047)
 
@@ -1705,3 +1954,142 @@ is a legitimate empty state, not an error state).
   via `"Mui-disabled" in locked_select.get_attribute("class")` instead
   (established pattern elsewhere in this suite, e.g.
   `test_pipeline_edge_deletion.py`'s `edge.get_attribute("class")` check).
+
+## Delete pipeline version via three-dot menu — falls back to base cleanly; one benign console 400 (confirmed live, 2026-08-08, ELITEA-2003)
+
+The VERSION-group "Delete" menu item (`delete-version-menuitem`, under the SAME
+`agent-actions-menu-button` three-dot menu `delete_pipeline_via_menu()` already uses
+for whole-pipeline delete — `ApplicationControls.jsx`, shared by Agents AND
+Pipelines via `isFromPipeline`) deletes only the currently-open NON-base version and
+correctly falls back the app to `base` — confirmed live end-to-end: create
+`ver_to_delete` via Save As Version → open actions menu → click `delete-version-
+menuitem` → `Modal.DeleteEntityModal` confirm dialog (`delete-confirm-dialog` /
+`delete-confirm-message` / `delete-confirm-button` / `delete-confirm-cancel-button`)
+→ click Delete → `DELETE .../version/prompt_lib/{project}/{pipeline}/{version}` →
+`200` → VERSION dropdown no longer lists the deleted version, selector/URL/
+Information-panel Version ID all agree on `base`'s original id.
+
+- **`agent-actions-menu-button` is a REAL testid, on `origin/main` already** — the
+  existing `PipelineDetailPage.open_actions_menu()` uses a bounding-box JS hack
+  instead (`pipeline_detail_page.py:1606-1634`, predates this session) but doesn't
+  need to: `DotMenu.jsx:354` renders `data-testid={id ? \`${id}-menu-button\` :
+  undefined}` and `ApplicationControls.jsx:233` passes `id="agent-actions"` →
+  `agent-actions-menu-button` resolves cleanly via Playwright's `getByTestId` (self-
+  confirmed this session). **Bare-substring `git grep "actions-menu-button"` gives a
+  FALSE NEGATIVE** here (it's a template literal, not a literal string) — verify by
+  reading `DotMenu.jsx`'s template directly, same two-stage-grep caveat
+  `workflow.md`'s closure-record section already documents for other testids.
+- **The VERSION-group "Delete" item is DISABLED when the open version is `base`**
+  (`ApplicationControls.jsx`'s `disableDelete`: gates on `default_version_id` match
+  OR `name === LATEST_VERSION_NAME` i.e. `'base'`) — confirmed via source
+  (`VersionDelete.jsx` also returns `null` outright for `type='button'` in that
+  case). Not exercised this session (case always deletes a non-base version) — a
+  future case could assert the disabled state directly.
+- **Delete triggers a `check_version_in_use` GET first** (before the confirm dialog
+  even renders): `{in_use: false}` (this session's case — a fresh, unreferenced
+  version) shows the simple `Modal.DeleteEntityModal`; `{in_use: true}` would instead
+  show `AgentDetails.VersionReplacementModal` (source-read only, not exercised) —
+  worth a dedicated future case for the in-use/referenced-version path.
+- **`delete-confirm-dialog`/`delete-confirm-message`/`delete-confirm-button`/
+  `delete-confirm-cancel-button` (shared `DeleteEntityModal.jsx`) are on
+  `automation/testids` only, NOT yet on `origin/main`** — confirmed via fresh
+  `git fetch origin` + direct file read of `origin/main`'s `DeleteEntityModal.jsx`
+  (only `delete-confirm-name-input` exists there; the other four attributes are
+  testids-branch-only). Several ALREADY-MERGED page objects
+  (`artifacts_page.py`, `secrets_page.py`, `chat_page.py`, `personal_tokens_page.py`,
+  `mcp_form_page.py`, `admin_users_page.py`) already reference this same testid
+  family for their OWN delete flows — this is pre-existing, not a gap introduced by
+  this case. `delete-version-menuitem` itself (`ApplicationControls.jsx`'s
+  `key: 'delete-version'` + `DotMenu.jsx`'s `testId: item.key` mechanism) IS already
+  on `origin/main`, unlike the confirm-dialog testids.
+- **Known defect, filed
+  [EliteaAI/elitea-testing-public#1330](https://github.com/EliteaAI/elitea-testing-public/issues/1330):**
+  after the `DELETE` succeeds, the client fires exactly one stale `GET` against the
+  just-deleted version id (`400 {"error": "Application[{id}] version[{deleted_id}]
+  not found"}`, visible in `browser_console_messages`) before settling on the
+  fallback `base` version — deterministic 1/1 this session, benign (final UI state
+  is always correct, no toast/visible error), but a genuine client-side state-
+  sequencing race worth a soft-assert/comment in the implemented test rather than
+  ignoring. Full network sequence + AFS:
+  `test-specs/pipelines/l2_delete-pipeline-version-falls-back-to-base_ELITEA-2003.md`.
+
+## Fork wizard — full live-confirmed handle map (ELITEA-2051, 2026-08-08)
+
+Executed the FULL Fork flow (menu → wizard → target-project select → confirm →
+complete → navigate → cleanup) for a Pipeline, not just menu-item visibility
+(ELITEA-2049 only confirmed the menuitem exists). Source `Pipeline UI Testing`
+(id 4, project `UI Testing`/400) → forked into `Private`/399 → new id `8243`.
+Every Fork-wizard testid is **shared verbatim with the Agent-entity Fork flow**
+(`ImportWizardModal`/`IWModal*` component family — same testids ELITEA-1893's
+AFS documented for Agents, all reconfirmed live here for Pipelines): the
+literal `agent-` prefix in these testids is naming tech debt, NOT
+entity-scoped — do not expect a `pipeline-` variant for any of these:
+
+| Element | Testid | Notes |
+|---|---|---|
+| Fork menuitem (entity-scoped, unlike the rest) | `pipeline-actions-fork-menuitem` | the ONE Fork-flow testid that IS entity-scoped (`ForkEntityButton.jsx`'s `FORK_MENU_ITEM_KEY_BY_ENTITY` map) |
+| Fork wizard dialog (pre-fork / post-fork) | `agent-import-preview-dialog` / `agent-import-complete-dialog` | same container swaps testid in place |
+| Wizard Project selector trigger | `agent-import-wizard-project-select-combobox` | shared with Agent Fork |
+| Wizard project dropdown option | `select-option-{projectId}` | numeric, project-id-keyed |
+| Main-entity preview name / toggle | `agent-import-preview-name` / `agent-import-preview-card-toggle` | toggle count() == number of entity cards |
+| **Pipeline Diagram mermaid preview (Pipeline-only, no Agent equivalent)** | `chat-mermaid-diagram-svg-container` | showed "Diagram syntax error detected" for THIS session's source pipeline — not filed (not isolated as a general defect vs this pipeline's own data) — see AFS § Known Defects |
+| Fork confirm button | `agent-fork-confirm-button` | same component regardless of entity — `IWModalForkButton.jsx`'s `forkFuncMap` has no `pipelines` key; pipelines are backend-classified as `agents`/`agent_type=pipeline`, dispatched via the same `forkAgent` mutation |
+| Fork-complete list (entity-keyed) | `agent-import-complete-list-pipelines` | the **pipelines** variant of `agent-import-complete-list-{entityKey}` — confirms the family ELITEA-1893's AFS predicted but never itself confirmed |
+| "Got it" button | `agent-import-complete-got-it-button` | drives navigation into the target project, onto the forked pipeline |
+| **"Forked from" link — Pipelines LIST page card (Card view)** | **none — testid needed** | `<a aria-label="Forked from - Original pipeline" href=".../pipelines/all/{sourceId}/{sourceVersionId}?viewMode=owner">`, no `data-testid`. Source: `EliteaUI/src/components/Fork/IconLinkWithToolTip.jsx` (SHARED — also used by `DataTableNameCell`/`DataTableRow` for Table view, and by Agents/Skills list cards, not just Pipelines). **This is the element the case text's "dashboard card" step actually names** — do not confuse with the next row. |
+| Forked-pipeline DETAIL page — "Forked from:" row (Information accordion) | none observed | inside `agent-information-section`; a SEPARATE, also-correct rendering of the same fact — NOT what the case's "dashboard card" step means |
+| Network — fork data-fetch (menu click, before target selected) | `GET /elitea_core/export_import/prompt_lib/{sourceProject}/{sourceId}?fork=true&follow_version_ids={versionId}` → 200 | populates the wizard preview |
+| Network — fork confirm | `POST /elitea_core/fork/prompt_lib/{targetProjectId}` → 201 | body: `{main_entity:'agents', applications:[...]}` |
+
+**Known defect #570 (validateDOMNesting `<p>`-in-`<p>` on the Fork/Import Complete
+dialog) reproduces for Pipeline Fork too** (1/1 this session) — same root cause,
+same filed issue, not re-filed.
+
+Full AFS: `test-specs/pipelines/l2_pipeline-fork-to-different-project_ELITEA-2051.md`.
+
+## Pipelines dashboard — card "Pin to top" toggle, distinct from ELITEA-2049's detail-page menu item (confirmed live, 2026-08-08, ELITEA-2025)
+
+**Two completely different "Pin to top" surfaces exist for Pipelines — do not
+conflate them:**
+1. **Dashboard card hover icon** (this entry) — a standalone `PinButton.jsx`
+   icon button rendered directly on each `Card.jsx` (visible on hover or when
+   already pinned), driven by the `usePin()` hook. **Has a working testid.**
+2. **Pipeline detail page's three-dot Actions menu item** — a menu item inside
+   `DotMenu.jsx`, driven by the SEPARATE `usePinMenu.hooks.jsx` hook, which has
+   **no testid at all** (see `l2_pipeline-three-dot-menu-actions_ELITEA-2049.md`
+   § Concrete Handles — that gap is real and still open; unrelated to this entry).
+
+**Dashboard card testid, confirmed live**: `pipelineall-pin-toggle-button-{id}`
+(`[data-testid]` on the `IconButton` inside `PinButton.jsx`) — on
+`automation/testids` only (origin `EliteaAI/EliteaUI@b54bc281`, "[EL-1974] add
+data-testid for credential pin/unpin controls"), **NOT yet on `main`**
+(`git grep -- "pin-toggle-button" origin/main -- src/` → 0 hits this session).
+The `pipelineall` prefix is a naming-convention leak, not a functional issue:
+`PinButton.jsx`'s local `getPinTestIdSlug()` has no `isPipelineCard` branch, so
+it falls through to `String(entityType).toLowerCase()` on
+`ContentType.PipelineAll` (`'PipelineAll'` → `'pipelineall'`). Stable and
+unique for the `/pipelines/all` dashboard specifically — **but a DIFFERENT
+pipeline card view (Top/Latest/Trending/Draft/etc.) would get a DIFFERENT
+testid for the SAME pipeline**, since none of those `ContentType.Pipeline*`
+values route through `isPipelineCard` either. Untested by ELITEA-2025 (scoped
+to `/pipelines/all` only); a future case touching another pipeline card view
+should re-verify before assuming this same testid shape.
+
+**Reorder timing is ASYMMETRIC — confirmed live, 3 pin/unpin cycles this
+session**: pinning re-sorts the grid **instantly, client-side, no reload
+needed**. Unpinning does **not** — the just-unpinned card stays at the top of
+the grid (even though its own button label flips back to "Pin to top"
+immediately) until a fresh navigate/re-fetch happens. This is the SAME shape
+the merged `test_credential_pin_unpin.py` already codifies (its Step 7b
+explicitly re-navigates before asserting the reverted order) — evidently a
+platform-wide `usePin`/social-pin-endpoint behavior, not a pipeline-specific
+one. Any future pin/unpin test on any entity should follow the same
+re-navigate-before-asserting-reverted-order shape; asserting order immediately
+after an unpin click will flakily fail against genuinely-correct behavior.
+
+Network: `POST /api/v2/social/pin/prompt_lib/{project}/application/{id}` → `201`
+(pin), `DELETE .../application/{id}` → `204` (unpin) — pipelines share the
+`application` API path segment with agents (same as `PipelineAPI`'s own
+docstring already notes for CRUD).
+
+Full AFS: `test-specs/pipelines/l2_pipeline-dashboard-pin-to-top_ELITEA-2025.md`.

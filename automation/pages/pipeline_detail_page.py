@@ -142,6 +142,171 @@ class PipelineDetailPage(PipelineFormPage):
     # every version selector consumer; see also AgentDetailPage.VERSION_OPTION.
     VERSION_OPTION = '[data-testid="version-option-{}"]'
 
+    # --- Version deletion (ELITEA-2003) — three-dot menu's VERSION-group
+    # "Delete" item + its SIMPLE confirm modal. Distinct from
+    # `delete_pipeline_via_menu`'s PIPELINE-group "Delete pipeline" item
+    # (role-based text match, type-to-confirm dialog): this targets a
+    # DIFFERENT menu item and a DIFFERENT (non-typing) confirm modal.
+    #
+    # `actions_menu_button` uses the testid directly (confirmed live —
+    # `${id}-menu-button` template in DotMenu.jsx with `id="agent-actions"`
+    # passed from ApplicationControls.jsx) rather than the legacy
+    # bounding-box `open_actions_menu()` hack — new code resolves the most
+    # stable, semantic handle available (locator policy Hard Rule 6); the
+    # existing hack is left unmodified (additive-only) for its own callers.
+    actions_menu_button = LocatorDescriptor(
+        testid="agent-actions-menu-button",
+        description="Three-dot actions menu trigger (header bar).",
+    )
+
+    # PIPELINE-group "Export" menu item (ELITEA-2012 AFS Concrete Handles) —
+    # a real, on-main testid, confirmed live-resolving for a pipeline detail
+    # page. New field distinct from the pre-existing raw-handle
+    # `export_pipeline_via_menu()` method (`get_by_role("menuitem",
+    # name="Export")`, no download capture) — that method's own caller
+    # (`test_pipeline_advanced.py`) is left unmodified per the additive-only
+    # contract; this field backs the NEW `export_pipeline_via_menu_and_download()`.
+    export_menuitem = LocatorDescriptor(
+        testid="agent-actions-export-menuitem",
+        description='Three-dot menu — "Export" item (shared Agent/Pipeline testid).',
+    )
+
+    # VERSION-group "Delete" menu item — disabled when the currently open
+    # version is "base" (ApplicationControls.jsx's `disableDelete`); not
+    # exercised by this case (always deletes the non-base ver_to_delete).
+    delete_version_menuitem = LocatorDescriptor(
+        testid="delete-version-menuitem",
+        description='Three-dot menu — VERSION-group "Delete" item.',
+    )
+
+    # --- Actions menu (ELITEA-2049 AFS Concrete Handles) — the menu
+    # container plus the remaining VERSION/PIPELINE-group items not yet
+    # covered by fields above. All pre-existing, on-main testids — zero
+    # EliteaUI change needed for these five (mirrors AgentDetailPage's
+    # equivalent fields, same shared-component testid family).
+    actions_menu = LocatorDescriptor(
+        testid="agent-actions-menu",
+        description='Three-dot actions menu container ([role="menu"]).',
+    )
+    # VERSION-group "Share" — copies a VERSION-specific link (URL carries a
+    # trailing version-id path segment). NOT the case's "Copy link" target —
+    # see `share_agent_menuitem` below. Negative-control pair, same shape
+    # already documented by AgentDetailPage (ELITEA-1898).
+    share_version_menuitem = LocatorDescriptor(
+        testid="share-version-menuitem",
+        description='Three-dot menu — VERSION-group "Share" item (version-specific link).',
+    )
+    # VERSION-group "Fork". Gotcha: DIFFERENT testid from Agent's
+    # `agent-actions-fork-menuitem` — `ForkEntityButton.jsx`'s
+    # `FORK_MENU_ITEM_KEY_BY_ENTITY` map resolves the key per `entity_name`
+    # (`pipelines` -> `pipeline-actions-fork`). Do not reuse the Agent value.
+    fork_menuitem = LocatorDescriptor(
+        testid="pipeline-actions-fork-menuitem",
+        description='Three-dot menu — VERSION-group "Fork" item.',
+    )
+    # PIPELINE-group "Share" — THIS is the case's "Copy link" step (case-text
+    # drift, CLARIFICATION EliteaAI/elitea-testing-public#1337). Gotcha (same
+    # as Agent's ELITEA-1898): the testid key is the literal `share-agent`,
+    # not renamed per entity — `ApplicationControls.jsx` reuses it for both
+    # Agent and Pipeline entities.
+    share_agent_menuitem = LocatorDescriptor(
+        testid="share-agent-menuitem",
+        description='Three-dot menu — PIPELINE-group "Share" item (generic pipeline link; '
+        "functionally the case's \"Copy link\").",
+    )
+    delete_agent_menuitem = LocatorDescriptor(
+        testid="delete-agent-menuitem",
+        description='Three-dot menu — PIPELINE-group "Delete pipeline" item.',
+    )
+    # PIPELINE-group "Pin to top" — added via `add-data-testid`
+    # (EliteaAI/EliteaUI@f83557e4, ELITEA-2049): threaded an optional `key`
+    # param through the shared `usePinMenu()` hook (default `undefined`,
+    # preserving the other 3 untouched callers — Skill/Toolkits/Credentials
+    # controls) so `ApplicationControls.jsx` can supply
+    # `key: 'pipeline-actions-pin-to-top'` for this call site only.
+    pin_to_top_menuitem = LocatorDescriptor(
+        testid="pipeline-actions-pin-to-top-menuitem",
+        description='Three-dot menu — PIPELINE-group "Pin to top" item.',
+    )
+
+    # Shared Modal.DeleteEntityModal component (same testid family already
+    # wired by artifacts_page.py/secrets_page.py/chat_page.py/etc. for
+    # THEIR OWN delete flows) — new fields here for the pipeline-version
+    # delete flow, per the project's one-class-per-file convention.
+    delete_confirm_dialog = LocatorDescriptor(
+        testid="delete-confirm-dialog",
+        description="Delete-version confirmation dialog.",
+    )
+    delete_confirm_message = LocatorDescriptor(
+        testid="delete-confirm-message",
+        description="Delete-version confirmation dialog — message text.",
+    )
+    delete_confirm_button = LocatorDescriptor(
+        testid="delete-confirm-button",
+        description="Delete-version confirmation dialog — confirm (Delete) button.",
+    )
+
+    # --- Fork wizard (ELITEA-2051) — shares the ImportWizardModal dialog
+    # family with AgentDetailPage's own Fork fields (ELITEA-1893) and
+    # PipelinesListPage's Import fields (ELITEA-2012): same shared component
+    # tree, same testids, all confirmed live for the Pipeline entity by the
+    # ELITEA-2051 AFS. Re-declared here (not inherited) because Fork is
+    # triggered from THIS page's actions menu. The dialog container swaps
+    # its own testid in place from "agent-import-preview-dialog" (pre-fork)
+    # to "agent-import-complete-dialog" (post-fork) — do not assert a single
+    # fixed testid persisting across the fork action. ---
+    fork_wizard_dialog = LocatorDescriptor(
+        testid="agent-import-preview-dialog",
+        description="Fork wizard 'Fork parameters' dialog (pre-fork state)",
+    )
+    fork_complete_dialog = LocatorDescriptor(
+        testid="agent-import-complete-dialog",
+        description="Fork wizard 'Fork Complete' dialog (post-fork state — "
+                     "same container as fork_wizard_dialog, testid swaps)",
+    )
+    fork_main_entity_name = LocatorDescriptor(
+        testid="agent-import-preview-name",
+        description="Fork wizard — Main entity card's name",
+    )
+    # Every rendered entity-preview card (Main entity + each nested
+    # dependency, if any) carries this SAME toggle testid — count() is a
+    # direct, testid-based proxy for "how many entity cards are showing",
+    # used to confirm no "Nested entities" section renders for a
+    # dependency-free source pipeline (AFS Axis 2).
+    fork_entity_card_toggle = LocatorDescriptor(
+        testid="agent-import-preview-card-toggle",
+        description="Fork wizard — 'Show details' toggle, one per rendered "
+                     "entity-preview card",
+    )
+    # Same shared ProjectSelect DOM node AgentDetailPage.fork_project_select_trigger
+    # resolves (see that field's comment for the full state-conditional-testid
+    # history) — confirmed live resolving on the Pipeline Fork wizard too
+    # (ELITEA-2051 AFS Concrete Handles).
+    fork_project_select_trigger = LocatorDescriptor(
+        testid="agent-import-wizard-project-select",
+        description="Fork wizard — target Project selector trigger (shared "
+                     "with the Import wizard's own use of the same "
+                     "ProjectSelect DOM node)",
+    )
+    fork_confirm_button = LocatorDescriptor(
+        testid="agent-fork-confirm-button",
+        description="Fork wizard — 'Fork' confirm button (shared "
+                     "IWModalForkButton.jsx component/testid — literal "
+                     "'agent-' prefix is naming tech debt, not entity-scoped)",
+    )
+    # The PIPELINES variant of the shared `agent-import-complete-list-{entityKey}`
+    # family — matches PipelinesListPage.import_complete_pipelines_list's
+    # existing testid exactly (same shared component reused by both Import
+    # and Fork).
+    fork_complete_pipelines_list = LocatorDescriptor(
+        testid="agent-import-complete-list-pipelines",
+        description="Fork Complete dialog — forked Pipelines name list",
+    )
+    fork_complete_got_it_button = LocatorDescriptor(
+        testid="agent-import-complete-got-it-button",
+        description="Fork Complete dialog — 'Got it' confirm/navigate button",
+    )
+
     flow_view_button = LocatorDescriptor(
         testid="pipeline-flow-view",
         fallback=lambda page: page.locator('button[value="flow"]'),
@@ -1542,6 +1707,102 @@ class PipelineDetailPage(PipelineFormPage):
             f"select+reload attempts — last error: {last_exc}"
         )
 
+    def get_version_option_count(self, version_name: str) -> int:
+        """Count matching options for ``version_name`` in the open VERSION
+        dropdown.
+
+        Uses the same ``VERSION_OPTION`` dynamic-testid template as
+        :meth:`is_version_option_visible` — call after
+        :meth:`open_version_selector`. Distinct from
+        ``is_version_option_visible`` (which WAITS for presence, i.e. is
+        for asserting an option IS there): this reads the current count
+        immediately, for asserting ABSENCE after a deletion — a deleted
+        option never becomes visible, so waiting for it would just burn
+        the whole timeout instead of failing fast.
+
+        Args:
+            version_name: Exact version name (e.g. ``"ver_to_delete"``).
+
+        Returns:
+            Number of matching options currently in the DOM (0 or 1).
+        """
+        return self.page.locator(self.VERSION_OPTION.format(version_name)).count()
+
+    # ------------------------------------------------------------------
+    # Version deletion (ELITEA-2003)
+    # ------------------------------------------------------------------
+
+    @action("Open the delete-version confirmation dialog via the three-dot menu")
+    def open_delete_version_dialog(self, timeout: int = 10000):
+        """Open the three-dot actions menu and click the VERSION-group
+        "Delete" item, waiting for the confirmation dialog to appear.
+
+        Split from :meth:`confirm_delete_version` so callers can assert on
+        the dialog's just-opened state (e.g. the message text) before
+        confirming — same split shape as
+        :meth:`open_save_as_version_dialog`/:meth:`confirm_new_version`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening the delete-version confirmation dialog")
+        self.dismiss_banner_if_present()
+        self.actions_menu_button.click()
+        self.delete_version_menuitem.wait_for(state="visible", timeout=timeout)
+        self.delete_version_menuitem.click()
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+
+    @action("Confirm the pending pipeline version deletion")
+    def confirm_delete_version(self, timeout: int = 10000):
+        """Click the delete-confirm dialog's confirm button and wait for
+        it to close.
+
+        Call after :meth:`open_delete_version_dialog`. Note: confirming
+        triggers a stale refetch of the just-deleted version's own
+        endpoint (a transient, visible 400 — tracked as a known,
+        non-blocking defect: EliteaAI/elitea-testing-public#1330) before
+        the pipeline settles on "base" — see
+        :meth:`wait_for_fallback_to_base`, which callers should use to
+        wait out that settle rather than asserting immediately here.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Confirming pipeline version deletion")
+        self.delete_confirm_button.click()
+        self.delete_confirm_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("Pipeline version deletion confirmed")
+
+    def wait_for_fallback_to_base(self, timeout: int = 10000) -> str:
+        """Wait for the pipeline to fall back to displaying "base" after
+        its currently open (non-base) version is deleted, then return
+        base's version id.
+
+        The fallback is asynchronous (see the known-defect note on
+        :meth:`confirm_delete_version`): the VERSION selector's own text
+        is the fastest-updating of the three cross-check signals (mirrors
+        :meth:`confirm_new_version`'s wait strategy), so this polls the
+        trigger text first, then reads the settled version id from the
+        Information panel once network activity quiesces.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The "base" version's numeric id, read from the Information
+            panel after the fallback settles.
+        """
+        self.page.wait_for_function(
+            """() => {
+                const el = document.querySelector('[data-testid="agent-version-selector-trigger"]');
+                return !!el && el.innerText.trim() === 'base';
+            }""",
+            timeout=timeout,
+        )
+        self.wait_for_network(timeout=5000)
+        logger.info("Pipeline fell back to 'base' — URL: %s", self.page.url)
+        return self.get_version_id()
+
     # ------------------------------------------------------------------
     # Tabs
     # ------------------------------------------------------------------
@@ -1640,6 +1901,14 @@ class PipelineDetailPage(PipelineFormPage):
         Opens the menu, clicks "Delete pipeline", types the pipeline name
         into the confirmation dialog, and clicks Delete.
 
+        Does NOT wait for the post-delete dashboard redirect — whether that
+        redirect happens is a known-defect-affected behavior (EliteaAI/
+        elitea-testing-public#1332: the app's `navigate(-1)` redirect is a
+        browser-history no-op when the detail page was reached via direct
+        navigation, which is exactly how this method's callers reach it).
+        Callers that need to assert/react to the redirect do so themselves
+        (see `test_delete_pipeline_via_ui_menu`, ELITEA-2022).
+
         Args:
             timeout: Maximum wait time for delete operation.
         """
@@ -1685,6 +1954,157 @@ class PipelineDetailPage(PipelineFormPage):
         self.wait_for_network(timeout=timeout)
         logger.info("Pipeline exported via menu")
         return True
+
+    @action("Export pipeline via menu and capture the download")
+    def export_pipeline_via_menu_and_download(self, timeout: int = 15000):
+        """Export the current pipeline via the three-dot menu and return the download.
+
+        Testid-based (``actions_menu_button``/``export_menuitem`` — both
+        real, on-main testids, ELITEA-2012 AFS Concrete Handles), and
+        captures the triggered download via ``page.expect_download()`` —
+        unlike the pre-existing ``export_pipeline_via_menu`` (raw
+        ``get_by_role("menuitem", name="Export")``, no download capture),
+        which is left unmodified for its own caller
+        (``test_pipeline_advanced.py``) per the additive-only contract.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The Playwright ``Download`` object for the exported
+            ``.pipeline.md`` file.
+        """
+        logger.info("Exporting pipeline via menu (testid-based, download capture)")
+        self.dismiss_banner_if_present()
+        self.actions_menu_button.click()
+        self.export_menuitem.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.export_menuitem.click()
+        download = download_info.value
+        logger.info(
+            "Pipeline exported — download suggested_filename=%s", download.suggested_filename,
+        )
+        return download
+
+    # ------------------------------------------------------------------
+    # Fork wizard (ELITEA-2051) — testid-based flow. Distinct from the
+    # legacy `fork_pipeline_via_menu()` below (role/text-based, no wizard
+    # support) — that method is left unmodified for its own callers per
+    # the additive-only contract; these are the new testid-anchored methods
+    # mirroring AgentDetailPage's Fork wizard methods (ELITEA-1893).
+    # ------------------------------------------------------------------
+
+    @action("Open Fork wizard menu")
+    def open_fork_wizard_menu(self, timeout: int = 10000):
+        """Open the three-dot actions menu (testid-based click) and wait
+        for the VERSION-group "Fork" menuitem to become visible.
+
+        Split from :meth:`confirm_fork` (mirrors AgentDetailPage's
+        open_actions_menu()/fork_menuitem split) so callers can assert on
+        the menu's just-opened state before clicking Fork.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening actions menu (testid-based) to reach Fork")
+        self.dismiss_banner_if_present()
+        self.actions_menu_button.click()
+        self.actions_menu.wait_for(state="visible", timeout=timeout)
+        self.fork_menuitem.wait_for(state="visible", timeout=timeout)
+
+    @action("Open Fork wizard")
+    def open_fork_wizard(self, timeout: int = 10000):
+        """Click the VERSION-group "Fork" menuitem and wait for the Fork
+        wizard's "Fork parameters" dialog to open.
+
+        Call after :meth:`open_fork_wizard_menu`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking Fork menuitem")
+        self.fork_menuitem.click()
+        self.fork_wizard_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Fork wizard dialog visible")
+
+    @action("Select Fork target project")
+    def select_fork_target_project(self, project_id: int, timeout: int = 10000):
+        """Open the Fork wizard's Project selector and pick a target project.
+
+        LOCATOR: ``fork_project_select_trigger`` opens the dropdown; the
+        option is resolved via the shared dynamic ``select-option-{id}``
+        testid (``SELECT_OPTION`` — same template already used throughout
+        this page for MUI single-select dropdowns).
+
+        Args:
+            project_id: Numeric id of the target project.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting Fork target project id=%d", project_id)
+        self.fork_project_select_trigger.click()
+        option = self.page.locator(self.SELECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        logger.info("Fork target project id=%d selected", project_id)
+
+    @action("Confirm Fork")
+    def confirm_fork(self, timeout: int = 15000):
+        """Click the Fork wizard's "Fork" confirm button.
+
+        Waits for the dialog to re-render in place as the "Fork Complete"
+        dialog (same ``ImportWizardModal`` container — its testid swaps
+        once the fork operation succeeds; see class-level note on
+        ``fork_wizard_dialog``/``fork_complete_dialog``).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Confirming Fork")
+        self.fork_confirm_button.click()
+        self.fork_complete_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Fork Complete dialog visible")
+
+    @action("Confirm Fork complete (Got it)")
+    def confirm_fork_complete(self, timeout: int = 15000) -> int:
+        """Click "Got it" on the Fork Complete dialog.
+
+        Auto-navigates to the newly forked Pipeline's own detail page
+        (inside the target project). Parses and returns the forked
+        Pipeline's numeric ID from the resulting URL, then waits for the
+        Information section's own Pipeline ID display to catch up — the
+        "Got it" transition is a client-side SPA navigation (component
+        stays mounted), so the ``copy-id`` testid can briefly still show
+        the PREVIOUSLY-viewed pipeline's id/other stale text after the URL
+        has already changed; callers reading ``get_pipeline_id()``
+        immediately after this method would otherwise race that refetch
+        (confirmed live, ELITEA-2051 implementer Phase 4).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The forked Pipeline's numeric ID.
+        """
+        self.fork_complete_got_it_button.click()
+        self.page.wait_for_url(re.compile(r".*/pipelines/all/\d+"), timeout=timeout)
+        self.wait_for_network(timeout=5000)
+
+        match = re.search(r"/pipelines/all/(\d+)", self.page.url)
+        if not match:
+            raise ValueError(
+                f"Could not parse forked Pipeline ID from URL: {self.page.url}"
+            )
+        forked_pipeline_id = int(match.group(1))
+        from playwright.sync_api import expect
+
+        expect(self.copy_id_button).to_have_text(
+            str(forked_pipeline_id), timeout=timeout
+        )
+        logger.info(
+            "Fork complete — navigated to forked pipeline id=%d (%s)",
+            forked_pipeline_id, self.page.url,
+        )
+        return forked_pipeline_id
 
     def fork_pipeline_via_menu(self, timeout: int = 10000) -> bool:
         """Fork (duplicate) the pipeline via the three-dot menu.

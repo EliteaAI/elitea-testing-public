@@ -6,8 +6,9 @@ URL: /pipelines/all
 """
 
 import logging
+import re
 
-from playwright.sync_api import Page
+from playwright.sync_api import Locator, Page, Response
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -69,6 +70,39 @@ class PipelinesListPage(BasePage):
         description="Pipeline card name (title) — collection locator, one per visible card",
     )
 
+    # Shared Card.jsx outer wrapper testid (also used by Agents/Credentials/
+    # Skills list pages — see SkillsListPage.skill_card for the identical
+    # per-card scoping pattern, ELITEA-2013 AFS Concrete Handles). Scopes
+    # per-card queries (e.g. that card's own tag chips) without an
+    # xpath-ancestor/CSS-class hack. Collection locator, one per visible card.
+    entity_card = LocatorDescriptor(
+        testid="entity-card",
+        description="Pipeline card outer container — scopes per-card queries",
+    )
+
+    # "Clear all" button in the page-header Tags filter panel
+    # (Categories.jsx) — only rendered while a tag filter is active. Same
+    # shared component/testid as SkillsListPage.tags_panel_clear_all
+    # (ELITEA-1740), confirmed live for the Pipelines dashboard (ELITEA-2013
+    # AFS Concrete Handles).
+    tags_panel_clear_all = LocatorDescriptor(
+        testid="tags-panel-clear-all",
+        description=(
+            "\"Clear all\" button in the page-header Tags filter panel "
+            "(Categories.jsx) — only rendered while a tag filter is active."
+        ),
+    )
+
+    # Dynamic (runtime-parameterized) testid template — Tags filter panel's
+    # per-tag chip (Categories.jsx StyledChip), same shared component as
+    # SkillsListPage.TAGS_PANEL_CHIP. See ``filter_by_tag()``.
+    TAGS_PANEL_CHIP = '[data-testid="tags-panel-chip-{}"]'
+
+    # Scoped sub-selector — a pipeline card's own (non-overflow) tag chip.
+    # Same shared CardTagSectionItem.jsx testid as SkillsListPage.CARD_TAG_CHIP.
+    # See ``get_card_tags()``.
+    CARD_TAG_CHIP = '[data-testid="entity-card-tag-chip"]'
+
     # Shared CreateEntityButton.jsx testid (also used by Agents/Toolkits/
     # Credentials/Chat list pages — see ToolkitsListPage.sidebar_create_button
     # for the identical pattern). Confirmed live (ELITEA-2020 implementer
@@ -80,6 +114,91 @@ class PipelinesListPage(BasePage):
         testid="sidebar-create-button",
         description="'+ Pipeline' create button in the sidebar (generic, shared across list pages)",
     )
+
+    # -- Import (ELITEA-2012) -- ``ToolbarImportButton.jsx`` threaded with
+    # ``testId="pipelines-import-button"`` at the Pipelines call site
+    # (EliteaAI/EliteaUI@257cd359 on automation/testids) — the ONE new
+    # testid this case's AFS calls for. Everything downstream of the click
+    # reuses the SAME shared ``ImportWizardModal``/``IWModal*`` testids
+    # Agent import already wires (AgentsListPage.import_* fields) — Agent/
+    # Skill/Pipeline import all route through one component tree, zero
+    # additional testid work needed (AFS Concrete Handles / Automation Hints).
+    import_button = LocatorDescriptor(
+        testid="pipelines-import-button",
+        description="Import pipeline button in the Pipelines list page toolbar",
+    )
+
+    import_preview_dialog = LocatorDescriptor(
+        testid="agent-import-preview-dialog",
+        description="'Import parameters' preview dialog (shared Agent/Skill/Pipeline component)",
+    )
+
+    import_preview_name = LocatorDescriptor(
+        testid="agent-import-preview-name",
+        description="Import preview — the Main entity (Pipeline) name",
+    )
+
+    import_confirm_button = LocatorDescriptor(
+        testid="agent-import-confirm-button",
+        description="'Import parameters' dialog's scoped Import (confirm) button",
+    )
+
+    import_complete_dialog = LocatorDescriptor(
+        testid="agent-import-complete-dialog",
+        description="'Import Complete' success dialog",
+    )
+
+    import_complete_pipelines_list = LocatorDescriptor(
+        testid="agent-import-complete-list-pipelines",
+        description="'Import Complete' dialog — imported Pipelines name list",
+    )
+
+    import_complete_got_it_button = LocatorDescriptor(
+        testid="agent-import-complete-got-it-button",
+        description="'Import Complete' dialog's 'Got it' confirm/navigate button",
+    )
+
+    # Sidebar project switcher (ELITEA-2051) — same shared testid already
+    # wired by ChatPage.project_selector_trigger / AnalyticsPage's own field
+    # (identical shared sidebar component); NEW field on this page (AFS
+    # Concrete Handles).
+    project_selector_trigger = LocatorDescriptor(
+        testid="project-selector-trigger-combobox",
+        description="Sidebar project switcher trigger (shows current project name)",
+    )
+
+    # Dynamic (runtime-parameterized) testid for a project-switcher dropdown
+    # option, keyed by numeric project id — same shared SingleSelectMenuItem
+    # family already used elsewhere on this page (import_* dialogs reuse the
+    # identical component tree) and by ChatPage.SELECT_OPTION /
+    # AgentDetailPage.FORK_PROJECT_OPTION.
+    SELECT_OPTION = '[data-testid="select-option-{}"]'
+
+    # "Forked from" attribution icon-link (ELITEA-2051) — shared
+    # IconLinkWithToolTip.jsx component (also rendered by Table view's
+    # DataTableRow), rendered on a card ONLY when that pipeline is itself a
+    # fork. Collection locator, one per card showing the attribution.
+    # Testid gap closed via add-data-testid (EliteaAI/EliteaUI@467fed43,
+    # ELITEA-2051 AFS Concrete Handles) — the component previously rendered
+    # no data-testid at all; fixed with a generic value (mirrors the
+    # existing entity-card-name sibling testid) since the component is
+    # shared across Agents/Skills/Pipelines.
+    entity_card_forked_from_link = LocatorDescriptor(
+        testid="entity-card-forked-from-link",
+        description="'Forked from' icon-link on a card — collection locator, "
+                     "present only on cards for forked entities",
+    )
+
+    # Dynamic (runtime-parameterized) testid for a pipeline card's "Pin to
+    # top"/"Unpin from top" icon button, keyed by numeric pipeline id — same
+    # shared PinButton.jsx widget CredentialsListPage.PIN_TOGGLE_BUTTON
+    # already wires (ELITEA-1974), confirmed live for this page (ELITEA-2025
+    # AFS Concrete Handles): the Pipelines dashboard passes
+    # cardContentType=ContentType.PipelineAll ('PipelineAll') into
+    # PinButton.jsx's getPinTestIdSlug(), which lowercases it to
+    # 'pipelineall' (no dedicated isPipelineCard branch — cosmetic naming
+    # quirk, not a functional issue; see AFS Concrete Handles note).
+    PIN_TOGGLE_BUTTON = '[data-testid="pipelineall-pin-toggle-button-{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -98,6 +217,49 @@ class PipelinesListPage(BasePage):
         """Navigate to the create pipeline page."""
         super().navigate("/pipelines/create?viewMode=owner")
         logger.info("Navigated to create pipeline page")
+
+    def switch_project(self, project_id: str, timeout: int = 10000) -> None:
+        """Switch the active project via the sidebar project selector.
+
+        Opens the ``project_selector_trigger`` combobox and clicks the
+        option matching *project_id*, resolved via the dynamic
+        ``SELECT_OPTION`` template — same shared SingleSelectMenuItem
+        pattern as ``ChatPage.switch_project()`` /
+        ``AgentDetailPage.select_fork_target_project()`` (different UI
+        surface, same underlying DOM component).
+
+        Args:
+            project_id: Numeric id of the target project (string or
+                int-like).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Switching active project to id=%s", project_id)
+        self.project_selector_trigger.click()
+        option = self.page.locator(self.SELECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Switched to project id=%s", project_id)
+
+    def open_pipeline_by_name(self, name: str, timeout: int = 10000) -> None:
+        """Click a pipeline card (Card list view) by its exact name and wait
+        for the click to register.
+
+        LOCATOR: filters the ``entity_card_name`` collection locator by
+        visible text, then clicks it — clicking anywhere inside a card's
+        clickable region navigates to the entity's detail page (shared
+        ``Card.jsx``'s ``handleCardClick``). Does NOT wait for the detail
+        page itself to finish loading — callers use
+        ``PipelineDetailPage.wait_for_detail_page_load()`` for that.
+
+        Args:
+            name: Exact pipeline name to match the card by.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening pipeline card: %s", name)
+        card = self.entity_card_name.filter(has_text=name).first
+        card.wait_for(state="visible", timeout=timeout)
+        card.click()
 
     def click_create_pipeline(self, timeout: int = 15000) -> None:
         """Click the sidebar '+' control and wait for the create form's URL.
@@ -194,6 +356,134 @@ class PipelinesListPage(BasePage):
             return []
         return [self.entity_card_name.nth(i).text_content() or "" for i in range(self.entity_card_name.count())]
 
+    def get_card_tags(self, pipeline_name: str) -> list[str]:
+        """Return the tag chip texts currently rendered on a specific pipeline's card.
+
+        LOCATOR: each tag chip carries its own ``entity-card-tag-chip``
+        testid, set on ``CardTagSectionItem``'s root element (rendered via
+        ``CardTagSection.jsx``) — distinct from the "+N" overflow badge,
+        which carries ``entity-card-tag-overflow`` instead. Scoped to the
+        specific card via the ``entity-card`` container testid on
+        ``Card.jsx``'s outer wrapper, filtered to the card whose
+        ``entity-card-name`` matches ``pipeline_name`` — so two cards
+        can't cross-contaminate each other's tags. Mirrors
+        ``SkillsListPage.get_card_tags()`` (ELITEA-1740) — same shared
+        component tree, confirmed live for the Pipelines dashboard
+        (ELITEA-2013 AFS Concrete Handles).
+
+        Args:
+            pipeline_name: The pipeline's exact name shown on its card
+                (case-insensitive substring match, consistent with
+                :meth:`pipeline_exists_in_list`).
+
+        Returns:
+            List of tag text strings currently rendered on that card, in
+            display order. Empty list if the card isn't found.
+        """
+        card_name = self.entity_card_name.filter(
+            has_text=re.compile(re.escape(pipeline_name), re.IGNORECASE)
+        ).first
+        if card_name.count() == 0:
+            return []
+        card = self.entity_card.filter(has=card_name).first
+        tag_labels = card.locator(self.CARD_TAG_CHIP)
+        return [
+            (tag_labels.nth(i).text_content() or "").strip()
+            for i in range(tag_labels.count())
+        ]
+
+    def filter_by_tag(self, tag_name: str, timeout: int = 10000):
+        """Click a tag chip in the page-header "Tags" filter panel.
+
+        LOCATOR: the Tags-panel chip (``StyledChip`` in
+        ``EliteaUI/src/components/Categories.jsx``) carries a dynamic
+        ``tags-panel-chip-{name}`` testid via the :attr:`TAGS_PANEL_CHIP`
+        template constant. Mirrors ``SkillsListPage.filter_by_tag()``
+        (ELITEA-1740) — same shared component, different grid-refetch URL
+        substring (``applications`` vs ``skills``, confirmed live via
+        ELITEA-2025's Network Behavior — ELITEA-2013 AFS).
+
+        Waits for the grid-fetching endpoint
+        (``GET .../elitea_core/applications/prompt_lib/{project}?...``) to
+        re-fire with the new ``tags=<id>`` query param before returning —
+        the URL updates synchronously via React Router, but the grid
+        re-render depends on the API round trip.
+
+        Args:
+            tag_name: Tag chip text to click (e.g. ``"smoke"``).
+            timeout: Maximum wait time in milliseconds for the grid response.
+        """
+        logger.info("Filtering pipelines by tag: %r", tag_name)
+        with self.page.expect_response(
+            lambda r: "/elitea_core/applications/prompt_lib/" in r.url
+            and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            self.page.locator(self.TAGS_PANEL_CHIP.format(tag_name)).click()
+        # The response resolving doesn't guarantee the grid has re-rendered
+        # yet (RTK Query → Redux store → React re-render is one more tick) —
+        # see SkillsListPage.filter_by_tag() docstring for the identical gotcha.
+        self.wait_for_network(timeout=5000)
+        self.page.wait_for_timeout(300)
+        logger.info("Tag filter applied: %r — URL: %s", tag_name, self.page.url)
+
+    def clear_tag_filter(self, timeout: int = 10000):
+        """Click "Clear all" in the Tags filter panel to reset the filter.
+
+        LOCATOR: "Clear all" (``Tooltip`` wrapping an ``IconButton`` in
+        ``Categories.jsx``) carries a static ``tags-panel-clear-all``
+        testid — only rendered while a tag filter is active. Mirrors
+        ``SkillsListPage.clear_tag_filter()`` (ELITEA-1740).
+
+        Waits for the grid-fetching endpoint to re-fire with the ``tags``
+        param cleared before returning.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the grid response.
+        """
+        logger.info("Clearing tag filter")
+        with self.page.expect_response(
+            lambda r: "/elitea_core/applications/prompt_lib/" in r.url
+            and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            self.tags_panel_clear_all.click()
+        # See filter_by_tag() docstring — grid re-render lags the response.
+        self.wait_for_network(timeout=5000)
+        self.page.wait_for_timeout(300)
+        logger.info("Tag filter cleared — URL: %s", self.page.url)
+
+    def pin_toggle_button(self, pipeline_id) -> Locator:
+        """Return the card's "Pin to top"/"Unpin from top" icon button for *pipeline_id*.
+
+        Mirrors ``CredentialsListPage.pin_toggle_button`` (ELITEA-1974) —
+        same shared ``PinButton.jsx`` widget, dynamic testid keyed by id.
+        """
+        return self.page.locator(self.PIN_TOGGLE_BUTTON.format(pipeline_id))
+
+    def get_pin_toggle_label(self, pipeline_id) -> str:
+        """Return the button's current accessible label ("Pin to top" / "Unpin from top").
+
+        Read as an attribute off the already-testid-located button — not used
+        as a locator strategy (testid-only policy, .agents/testing.md).
+        """
+        return self.pin_toggle_button(pipeline_id).get_attribute("aria-label") or ""
+
+    def click_pin_toggle(self, pipeline_id) -> Response:
+        """Click the card's pin/unpin button and wait for the underlying
+        ``POST``/``DELETE .../social/pin/prompt_lib/{project}/application/{id}``
+        response, per the AFS's wait-on-network-response guidance (no fixed sleep).
+
+        Returns:
+            The matched Playwright ``Response``.
+        """
+        pattern = "/social/pin/prompt_lib/"
+        with self.page.expect_response(
+            lambda r: pattern in r.url and r.url.rstrip("/").endswith(f"/application/{pipeline_id}")
+        ) as response_info:
+            self.pin_toggle_button(pipeline_id).click()
+        return response_info.value
+
     def search(self, query: str):
         """Type *query* into the search box and press Enter (explicit-activation
         control — typing alone does NOT filter the dashboard grid, per live
@@ -281,3 +571,79 @@ class PipelinesListPage(BasePage):
         except Exception:
             classes = self.card_view_button.get_attribute("class") or ""
             return "selected" in classes.lower() or "active" in classes.lower()
+
+    # ------------------------------------------------------------------
+    # Import (ELITEA-2012)
+    # ------------------------------------------------------------------
+
+    def import_pipeline(self, file_path: str, timeout: int = 10000):
+        """Import a Pipeline from an exported ``.pipeline.md`` file.
+
+        Clicks the page-toolbar Import button (``pipelines-import-button``
+        data-testid — added via ``add-data-testid``, threading
+        ``ToolbarImportButton``'s existing ``testId`` prop, same mechanism
+        Agents already uses for ``agents-import-button``). Clicking it opens
+        a native OS file chooser directly (no intermediate menu) — mirrors
+        ``AgentsListPage.import_agent()``.
+
+        Handles the file chooser and waits for the "Import parameters"
+        preview dialog (``agent-import-preview-dialog`` — shared Agent/
+        Skill/Pipeline component) to render. Does NOT click the dialog's own
+        Import (confirm) button — call :meth:`confirm_pipeline_import`
+        separately once the preview has been verified.
+
+        Args:
+            file_path: Absolute path to the exported ``.pipeline.md`` file.
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Importing pipeline from file: %s", file_path)
+        with self.page.expect_file_chooser() as fc_info:
+            self.import_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(file_path)
+
+        self.import_preview_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Import parameters dialog visible")
+
+    def confirm_pipeline_import(self, timeout: int = 15000):
+        """Click the "Import parameters" dialog's scoped Import (confirm) button.
+
+        Resolved via the ``agent-import-confirm-button`` data-testid —
+        distinct from the page-toolbar Import button's own
+        ``pipelines-import-button`` testid, so no dialog-scoping is needed.
+        Confirming transitions to the "Import Complete" success dialog
+        (handled by :meth:`confirm_import_complete`), not directly to the
+        new Pipeline's detail page.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the success dialog.
+        """
+        logger.info("Confirming pipeline import")
+        self.import_confirm_button.click()
+        self.import_complete_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Import Complete dialog visible")
+
+    def confirm_import_complete(self, timeout: int = 15000) -> int:
+        """Click "Got it" on the "Import Complete" success dialog.
+
+        Auto-navigates to the newly imported Pipeline's detail page. Parses
+        and returns the new Pipeline's numeric ID from the resulting URL.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the navigation.
+
+        Returns:
+            The imported Pipeline's numeric ID.
+        """
+        self.import_complete_got_it_button.click()
+        self.page.wait_for_url(re.compile(r".*/pipelines/all/\d+"), timeout=timeout)
+        self.wait_for_network(timeout=5000)
+
+        match = re.search(r"/pipelines/all/(\d+)", self.page.url)
+        if not match:
+            raise ValueError(
+                f"Could not parse imported Pipeline ID from URL: {self.page.url}"
+            )
+        pipeline_id = int(match.group(1))
+        logger.info("Import complete — navigated to pipeline id=%d", pipeline_id)
+        return pipeline_id

@@ -35,3 +35,29 @@ When a diff's `wait_for_function`/`evaluate` calls contain multi-line JS
 string literals, grep those payloads separately for
 `data-testid=` / `querySelector` — the standard grep will silently pass
 a real violation.
+
+## Refinement (ELITEA-2051, PR #1339): the precedent has a boundary — condition count
+
+`PipelineDetailPage.confirm_fork_complete()` (a page-object method, not a
+spec file — so it superficially matches the "legitimate PAGE-OBJECT-internal
+precedent" carve-out above) added `page.wait_for_function()` +
+`document.querySelector('[data-testid="copy-id"]')` to poll for the
+post-navigation `copy-id` text to settle to the new pipeline's id — even
+though `copy_id_button` already exists as a `LocatorDescriptor` field on
+the SAME class.
+
+The carve-out does NOT cover this case: `agent_detail_page.py`'s cited
+precedent is a genuine **three-way convergence** (trigger-text + version-id
++ URL) that plain locator polling can't express in one wait. This new
+instance is a **single condition** (one field's text equals one expected
+string) — textbook `expect(locator).to_have_text(expected, timeout=...)`
+territory. Verdict: CHANGES_REQUESTED — raw JS is legitimate only for the
+genuinely-multi-condition case; a single-condition wait against an existing
+`LocatorDescriptor` field must use Playwright's native polling assertion
+instead of re-deriving the same testid as a fresh JS string.
+
+**Reviewer test going forward:** when a `wait_for_function`/`evaluate` hit
+also has a class-level `LocatorDescriptor` field for the same testid,
+ask "does this predicate combine 2+ independent conditions?" — one
+condition → block, native `expect()` replaces it; 2+ genuinely independent
+conditions → the established precedent applies, approve.

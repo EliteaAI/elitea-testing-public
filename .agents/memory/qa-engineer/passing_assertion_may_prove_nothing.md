@@ -1,6 +1,6 @@
 ---
 name: Assertion honesty — an assertion can pass without proving its claim
-description: "There is an expect() at this step" is not "this step fails when the product is broken." Eight shapes where a real assertion is present and still vacuous, and the one question that catches all of them.
+description: "There is an expect() at this step" is not "this step fails when the product is broken." Nine shapes where a real assertion is present and still vacuous, and the one question that catches all of them.
 type: feedback
 ---
 
@@ -59,6 +59,19 @@ per-step-assertion gate is literally satisfied.
    added later in the same test (post-search, post-clear) is a tell: if step
    N's read needed a `wait_for_X_count`, step 1's read of the same collection
    needs one too, even though nothing forced it to fail yet.
+9. **Relative-diff-only, no absolute baseline check.** A round-trip/preserve
+   case ("field X survives export→import", "config survives fork/copy")
+   captures the ORIGINAL value only to diff it against the COPY later —
+   `assert copy[x] == original[x]` — and never independently asserts the
+   original value was itself correct. If the baseline was already wrong (a
+   node never wired to END, a default that never got set), the diff still
+   passes because both sides carry the identical wrong value. Whenever the
+   AFS Coverage Map names a step-1 observable ("canvas shows node wired to
+   END") that ends up captured only for a later relative comparison, that
+   observable needs its OWN absolute assertion at capture time, in addition
+   to the equality check downstream — the two questions ("is the original
+   right" vs "did the copy preserve it") are both real and neither implies
+   the other.
 
 ## Seen 8×
 
@@ -69,6 +82,7 @@ per-step-assertion gate is literally satisfied.
 - PR #675/ELITEA-1835 — every allure step `passed` while the test was correctly sanctioned-RED from a soft assert.
 - PR #682/ELITEA-2090 — GA3's race fixed to polling; GA1's bare `is_disabled()` on the same button safe only via `click_create_conversation()`'s internal 1 s sleep.
 - PR #1230/ELITEA-2363 — Step 4 filters captured `public_applications` requests down to `query=="story"` before asserting `len()==1`; a broken debounce firing one request per keystroke would still leave exactly one entry with the final query value, so the "single debounced request" claim (the AFS's own Axis-2 addition) goes unverified. Same PR, Step 1: `get_visible_agent_card_names()` read right after `navigate()` (which only waits on `page_heading`, not the bulk applications fetch) — the identical async-render race the implementer had *just* fixed for `clear_search()` (steps 5/6 use `wait_for_agent_card_count[_not]`), left unfixed on the baseline read those two steps compare against.
+- PR #1335/ELITEA-2012 — `test_pipeline_import_via_file.py` step 1 captures `original_yaml`'s LLM-node `transition` purely to diff against the imported copy at step 7 (`imported_llm_node["transition"] == original_llm_node["transition"]`); the AFS Coverage Map names "canvas node wiring" as asserted AT step 1, but no absolute check (`== "END"`) exists — a creation-time wiring regression would round-trip identically and stay invisible.
 
 See also: positional_assertion_wrong_comparison_target_survives_invert_sanity_check.md ·
 purpose_built_handle_asserted_visible_not_text_elitea2114.md ·
