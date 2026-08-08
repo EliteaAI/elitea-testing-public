@@ -6,6 +6,7 @@ URL: /pipelines/all
 """
 
 import logging
+import re
 
 from playwright.sync_api import Page
 
@@ -79,6 +80,49 @@ class PipelinesListPage(BasePage):
     sidebar_create_button = LocatorDescriptor(
         testid="sidebar-create-button",
         description="'+ Pipeline' create button in the sidebar (generic, shared across list pages)",
+    )
+
+    # -- Import (ELITEA-2012) -- ``ToolbarImportButton.jsx`` threaded with
+    # ``testId="pipelines-import-button"`` at the Pipelines call site
+    # (EliteaAI/EliteaUI@257cd359 on automation/testids) — the ONE new
+    # testid this case's AFS calls for. Everything downstream of the click
+    # reuses the SAME shared ``ImportWizardModal``/``IWModal*`` testids
+    # Agent import already wires (AgentsListPage.import_* fields) — Agent/
+    # Skill/Pipeline import all route through one component tree, zero
+    # additional testid work needed (AFS Concrete Handles / Automation Hints).
+    import_button = LocatorDescriptor(
+        testid="pipelines-import-button",
+        description="Import pipeline button in the Pipelines list page toolbar",
+    )
+
+    import_preview_dialog = LocatorDescriptor(
+        testid="agent-import-preview-dialog",
+        description="'Import parameters' preview dialog (shared Agent/Skill/Pipeline component)",
+    )
+
+    import_preview_name = LocatorDescriptor(
+        testid="agent-import-preview-name",
+        description="Import preview — the Main entity (Pipeline) name",
+    )
+
+    import_confirm_button = LocatorDescriptor(
+        testid="agent-import-confirm-button",
+        description="'Import parameters' dialog's scoped Import (confirm) button",
+    )
+
+    import_complete_dialog = LocatorDescriptor(
+        testid="agent-import-complete-dialog",
+        description="'Import Complete' success dialog",
+    )
+
+    import_complete_pipelines_list = LocatorDescriptor(
+        testid="agent-import-complete-list-pipelines",
+        description="'Import Complete' dialog — imported Pipelines name list",
+    )
+
+    import_complete_got_it_button = LocatorDescriptor(
+        testid="agent-import-complete-got-it-button",
+        description="'Import Complete' dialog's 'Got it' confirm/navigate button",
     )
 
     def __init__(self, page: Page):
@@ -281,3 +325,79 @@ class PipelinesListPage(BasePage):
         except Exception:
             classes = self.card_view_button.get_attribute("class") or ""
             return "selected" in classes.lower() or "active" in classes.lower()
+
+    # ------------------------------------------------------------------
+    # Import (ELITEA-2012)
+    # ------------------------------------------------------------------
+
+    def import_pipeline(self, file_path: str, timeout: int = 10000):
+        """Import a Pipeline from an exported ``.pipeline.md`` file.
+
+        Clicks the page-toolbar Import button (``pipelines-import-button``
+        data-testid — added via ``add-data-testid``, threading
+        ``ToolbarImportButton``'s existing ``testId`` prop, same mechanism
+        Agents already uses for ``agents-import-button``). Clicking it opens
+        a native OS file chooser directly (no intermediate menu) — mirrors
+        ``AgentsListPage.import_agent()``.
+
+        Handles the file chooser and waits for the "Import parameters"
+        preview dialog (``agent-import-preview-dialog`` — shared Agent/
+        Skill/Pipeline component) to render. Does NOT click the dialog's own
+        Import (confirm) button — call :meth:`confirm_pipeline_import`
+        separately once the preview has been verified.
+
+        Args:
+            file_path: Absolute path to the exported ``.pipeline.md`` file.
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Importing pipeline from file: %s", file_path)
+        with self.page.expect_file_chooser() as fc_info:
+            self.import_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(file_path)
+
+        self.import_preview_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Import parameters dialog visible")
+
+    def confirm_pipeline_import(self, timeout: int = 15000):
+        """Click the "Import parameters" dialog's scoped Import (confirm) button.
+
+        Resolved via the ``agent-import-confirm-button`` data-testid —
+        distinct from the page-toolbar Import button's own
+        ``pipelines-import-button`` testid, so no dialog-scoping is needed.
+        Confirming transitions to the "Import Complete" success dialog
+        (handled by :meth:`confirm_import_complete`), not directly to the
+        new Pipeline's detail page.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the success dialog.
+        """
+        logger.info("Confirming pipeline import")
+        self.import_confirm_button.click()
+        self.import_complete_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Import Complete dialog visible")
+
+    def confirm_import_complete(self, timeout: int = 15000) -> int:
+        """Click "Got it" on the "Import Complete" success dialog.
+
+        Auto-navigates to the newly imported Pipeline's detail page. Parses
+        and returns the new Pipeline's numeric ID from the resulting URL.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the navigation.
+
+        Returns:
+            The imported Pipeline's numeric ID.
+        """
+        self.import_complete_got_it_button.click()
+        self.page.wait_for_url(re.compile(r".*/pipelines/all/\d+"), timeout=timeout)
+        self.wait_for_network(timeout=5000)
+
+        match = re.search(r"/pipelines/all/(\d+)", self.page.url)
+        if not match:
+            raise ValueError(
+                f"Could not parse imported Pipeline ID from URL: {self.page.url}"
+            )
+        pipeline_id = int(match.group(1))
+        logger.info("Import complete — navigated to pipeline id=%d", pipeline_id)
+        return pipeline_id

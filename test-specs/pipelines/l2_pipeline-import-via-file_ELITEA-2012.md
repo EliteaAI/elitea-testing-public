@@ -67,6 +67,21 @@
      matching, a "Pipeline Diagram" preview (Start → LLM 1 → END), Chat starters matching, and
      "Other: Step Limit: 25" matching. Click the dialog's "Import" (confirm) button
      (`agent-import-confirm-button`, existing shared testid).
+     **Implementer amendment (Phase 2 exploration, ELITEA-2012 implementation):** confirmed via
+     source read (`IWModalEntityCard.jsx`/`IWModalEntityCardWrapper.jsx`) that the Type/
+     Description/Chat-starters/Step-limit fields inside this shared dialog carry NO `data-testid`
+     at this call site (the wrapper supports an unwired `subtitleTestId` prop; the Description/
+     Chat-starters/Step-limit `Typography` nodes have no testid hook at all) — only the dialog
+     itself and the Main-entity-name title (`agent-import-preview-name`) are testid-backed. Per
+     this AFS's own "zero additional testid work needed" scoping and the suite's established
+     pattern for this exact shared dialog (`test_import_agent_valid_md_file.py`, ELITEA-1901,
+     which likewise asserts only dialog + Main-entity-name in the preview and defers full field
+     verification to the post-import detail page), the implementation asserts dialog rendering +
+     Main entity name here and verifies Description/Chat-starters/Step-limit/node-structure
+     equivalence on the imported pipeline's detail page instead (Step 7) — via UI fields plus
+     `pipeline_api.get_pipeline()` API readback for node structure, which is also the more durable
+     check per this AFS's own Automation Hints. Same case requirement (config preserved), verified
+     via the testid-backed, durable handle instead of untestid-able dialog-internal DOM text.
 6. Verify imported pipeline has a new unique ID.
    - **Verify**: the "Import Complete" dialog (`agent-import-complete-dialog`, shared testid)
      shows "1 pipelines: <name>"; click "Got it" (`agent-import-complete-got-it-button`) navigates
