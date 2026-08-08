@@ -70,3 +70,35 @@ specific `inputProps`-vs-`slotProps` split — other MUI-direct usages (e.g. the
 Skill review form's plain `<TextField slotProps={{ htmlInput: {...} }} />`)
 work exactly as expected, since there's no custom wrapper discarding the prop.
 Check which component a field uses before assuming the fix pattern transfers.
+
+## Extension confirmed (ELITEA-1913, 2026-08-08): the correct way to add a
+NEW slotProps sub-key through this wrapper
+
+The fix pattern generalizes cleanly: to get a testid onto a sub-element
+`InputBase` builds into its OWN internal `slotProps` (e.g. `formHelperText`
+for the MUI `FormHelperText`/helper-text node), add a NEW explicitly-
+destructured prop to `InputBase`'s own prop list (same treatment as
+`tooltipTestId`/`tooltipContentTestId`), then wire it into the internal
+`slotProps` object construction (`InputBase.jsx` ~line 260-277):
+
+```jsx
+// destructure list
+tooltipTestId,
+tooltipContentTestId,
+helperTextTestId,   // NEW
+
+// internal slotProps object
+slotProps={{
+  input: { ... },
+  htmlInput: inputProps,
+  formHelperText: { 'data-testid': helperTextTestId },   // NEW
+  inputLabel: { ... },
+}}
+```
+
+Then at the ONE call site the case touches:
+`helperTextTestId="generate-agent-review-name-helper-text"` on
+`GenerateAgentReviewForm.jsx`'s Name field. **Do NOT** try
+`slotProps={{ formHelperText: {...} }}` from the caller — that's exactly the
+silently-discarded shape this entry documents. Live-confirmed 2/2 local runs:
+`aria-invalid` + the helper-text testid + `is_enabled()` all read correctly.
