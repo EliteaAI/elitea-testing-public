@@ -3501,9 +3501,29 @@ class PipelineDetailPage(PipelineFormPage):
         return text.strip()
 
     def open_llm_node_output_select(self, timeout: int = 5000) -> None:
-        """Open the LLM node's Output dropdown."""
+        """Open the LLM node's Output dropdown.
+
+        Clicks near the field's right edge (where the dropdown arrow icon
+        renders) rather than its geometric center. A plain center click is
+        fine while the field is empty or holds 0-1 chips, but once 3+
+        variables are selected the rendered chips occupy enough width that
+        the bounding box's center point can land ON a chip's own delete
+        ("x") icon instead of the field background — clicking there removes
+        that chip instead of opening the dropdown (confirmed live,
+        ELITEA-2045: selecting a 3rd/4th Output variable via a center click
+        silently failed to open the popover at all, with the chip count
+        frozen at 2). The right-edge offset is safe for any chip count —
+        chips are left-aligned and the arrow icon area is never covered.
+        """
         self._wait_for_open_popovers_closed(timeout=timeout)
-        self.llm_node_output_select.click(timeout=timeout)
+        self.llm_node_output_select.wait_for(state="visible", timeout=timeout)
+        box = self.llm_node_output_select.bounding_box()
+        if box:
+            self.llm_node_output_select.click(
+                position={"x": max(box["width"] - 12, 1), "y": box["height"] / 2}, timeout=timeout
+            )
+        else:
+            self.llm_node_output_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
     def select_llm_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:

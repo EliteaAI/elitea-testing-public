@@ -1,8 +1,21 @@
 ---
 name: AFS Priority line vs pytest.mark — implementer preflight check
-description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 (own p2), ELITEA-2284/PR #1175 (inherited module p2), ELITEA-2310/PR #1186 (own p2, missed a full round), ELITEA-2377/PR #1242 (module-level, l3->p2 not p3, same-round miss), ELITEA-2435/PR #1256 (both module + per-function p3 not p2, fresh single-test file, same-round miss), and ELITEA-2438/PR #1262 (round-1 fix-round dispatch NAMED this exact finding and it still had no visible diff attempt — fixed round 2).
+description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 (own p2), ELITEA-2284/PR #1175 (inherited module p2), ELITEA-2310/PR #1186 (own p2, missed a full round), ELITEA-2377/PR #1242 (module-level, l3->p2 not p3, same-round miss), ELITEA-2435/PR #1256 (both module + per-function p3 not p2, fresh single-test file, same-round miss), ELITEA-2438/PR #1262 (round-1 fix-round dispatch NAMED this exact finding and it still had no visible diff attempt — fixed round 2), and ELITEA-2045/PR #1325 (own p2 not p1, l2/high, no fix attempt visible into round 1 review — fixed round 1's own fix-round dispatch).
 type: feedback
 ---
+
+## Recurrence 7 — ELITEA-2045/PR #1325 (own p2 not p1, no fix attempt visible into round 1's own review)
+
+Same lesson, recurrence-3 shape again: `test_pipeline_llm_structured_output_state_variables.py`
+declared module-level `pytest.mark.p2` while its own AFS `Priority: l2 (high)`
+maps to `p1` — confirmed against two l2/high siblings already in the same
+`tests/ui/pipelines/` directory (`test_pipeline_llm_node_system_task_chat_history_config.py`
+ELITEA-2004, `test_pipeline_yaml_flow_sync.py` ELITEA-2028 — both `p1`). Reviewer
+flagged it going into round 1's own review with no visible fix attempt. Fixed in
+the round-1 fix dispatch: one-line `pytestmark` edit, re-ran the spec green once
+(`1 passed in 42.56s`), no other diff. Nothing new about the mechanism — logging
+the 7th hit because the entry's own index line undercounts recurrences past #6
+and a compaction pass should collapse these into a count, not read every narrative.
 
 ## Recurrence 5 — ELITEA-2435/PR #1256 (fresh single-test file, module AND per-function both wrong, same-round miss)
 
