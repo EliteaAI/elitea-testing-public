@@ -2,7 +2,116 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2013 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2016 analysis).
+
+## Decision node execution/routing — entry-point mechanism, Input-variable requirement, and Printer's real output field (confirmed live, 2026-08-08, ELITEA-2016)
+
+Full end-to-end live probe: Decision node + 3 Printer branches, wired through to `END`,
+saved, reloaded, and actually EXECUTED via the embedded chat (first live execution of a
+Decision node's routing anywhere in this suite — ELITEA-2034 only proved static
+configuration/edge persistence, never ran the pipeline). Full case detail:
+`test-specs/pipelines/l2_pipeline-decision-node-multi-branch-execution_ELITEA-2016.md`.
+
+- **A Decision node can only become the pipeline's `entry_point` by being the FIRST node
+  added to a new pipeline.** Confirmed via source
+  (`EliteaUI/src/[fsd]/features/pipelines/flow-editor/ui/nodes/BaseNode/NodeCardHeader.jsx`,
+  the node header's `menuItems`): the "Make entrypoint" per-node menu action is
+  **unconditionally excluded for Decision (and legacy Condition) node types** — Router and
+  every other node type keep it. `PipelineDetailPage.make_node_entrypoint()` silently has
+  NO effect on a Decision node (the menu item it looks for doesn't exist). Use
+  `get_entrypoint_node_id()` to assert entry-point instead, and always add the Decision
+  node BEFORE any other node when a case needs it to be the entry point. Filed as
+  [EliteaAI/elitea-testing-public#1347](https://github.com/EliteaAI/elitea-testing-public/issues/1347).
+- **The Decision node's `Input` combobox must include the built-in `input` state variable
+  for classification/routing to work AT ALL** — this is NOT the same requirement ELITEA-2034
+  documented (that case wired specific custom state vars because its *prompt text*
+  referenced them by name). Here, even with a prompt that only needs the raw chat message,
+  omitting `input` from the Input combobox makes the underlying LLM tool-call return
+  `content: '{}'`, `tool_calls: []` — the pipeline run completes at the Decision node
+  without ever executing a branch, with NO error surfaced anywhere in the UI. Confirmed via
+  3 repeated identical runs without `input` wired (always `{}`) vs. correct routing on every
+  run once `select_decision_node_input_variables(["input"])` was added.
+- **Printer's "Final Message" field is NOT what renders in the chat response — "Value" is.**
+  `input_mapping.printer.value` (the PRINTER section's Value field, Type=Fixed) is what
+  gets printed; `final_message` is a separate, unrelated field. A test asserting "which
+  branch fired" via chat text must set Value, not Final Message (confirmed live: Final-Message-only
+  setup produced `{}` even with correct routing).
+- **Multi-turn continuation resumes at the last-reached node, not back at Decision.** A
+  Printer node with `transition: END` pauses for acknowledgement (per the platform's own
+  docs); sending a second, differently-classified message in the SAME chat conversation does
+  NOT re-invoke Decision's classification — the run's "Run details" Timeline step reads e.g.
+  `bug_responder_reset` and reuses the FIRST classification. A test proving differential
+  routing (two categories → two different branches) must clear the chat
+  (`[aria-label="clear the chat"]`, no existing page-object method) between messages.
+- **Edge testid shape change across save/reload, reconfirmed with this case's own edges**
+  (same phenomenon ELITEA-2034 first documented): pre-save
+  `rf__edge-xy-edge__Decision 1nodes-bug_respondertarget` / `rf__edge-xy-edge__Decision
+  1default_output-ENDtarget` → post-reload `rf__edge-xy-edge__Decision 1---bug_responder`
+  (nodes-handle edges drop the `nodes`/`target` suffixes) / `rf__edge-xy-edge__Decision
+  1default_output---END` (keeps `default_output`, drops `target`). Also newly observed:
+  branch→END edges use the END node's literal internal id `EliteAPipelineEnd` post-reload
+  (`rf__edge-xy-edge__bug_responder---EliteAPipelineEnd`), not the `END` id used everywhere
+  else in this suite's edge assertions — a case asserting a branch→END edge post-reload
+  needs this exact string, not `edge_exists()`'s looser prefix match (which still works,
+  since it substring-matches).
+- **`printer_node_value`/`printer_node_final_message_input` LocatorDescriptors are
+  page-wide** (ELITEA-2039's own docstring already flags this as "correct only while a test
+  has a single Printer node") — this case is the FIRST with three simultaneous Printer
+  nodes on canvas; the existing unscoped helper methods need a `node_id`-scoped variant
+  before use here (see the AFS's Concrete Handles table for the exact fix).
+- **The in-page conversation-detail fetch (`GET .../conversation/prompt_lib/{project}/
+  {conversation_id}`, used by the "Run details" dialog) redirects to a `dev.elitea.ai` OIDC
+  login and fails with a CORS error on localhost** — confirmed live via a console error
+  capture. The "Run details" dialog itself still renders fully (Timeline/States/Messages
+  panels populate from a different source), so this doesn't block reading run state through
+  the UI, only a raw REST call to that specific endpoint.
+
+## Node config via YAML — exact serialization shapes confirmed live, incl. a CHAT HISTORY value-type nuance (confirmed live, 2026-08-08, ELITEA-2027)
+
+Full live probe of a fresh pipeline's YAML view, from a bare/untouched LLM node through a fully
+configured one (SYSTEM Fixed/"Act as helper", TASK F-String/"{input}", CHAT HISTORY Fixed/"[]",
+Input=[input], Output=[output1] where `output1` is a freshly-created custom state variable). Case
+detail + exact gap patch: `test-specs/pipelines/lextend_pipeline-node-config-verified-via-yaml_ELITEA-2027.md`.
+
+- **`state:` top-level key only appears once at least one CUSTOM state variable exists.** A bare
+  pipeline with only the built-in `input`/`messages` vars has NO `state:` key in its YAML at all —
+  confirmed live (matches `test_pipeline_yaml_editor_view.py`'s fixture, which deliberately uses
+  `pipeline_with_custom_state_var_id` rather than a bare pipeline, for exactly this reason). Any
+  case asserting `state:` content needs at least one custom variable added first (STATE panel's
+  `add_state_variable()`, already proven by ELITEA-2042).
+- **A lone, freshly-added, unconfigured LLM node's default YAML** (no Save needed to observe —
+  reflects live in-memory `yamlJsonObject` state):
+  ```yaml
+  entry_point: LLM 1
+  nodes:
+    - id: LLM 1
+      type: llm
+      input: []
+      input_mapping:
+        chat_history: {type: fixed, value: []}
+        system: {type: fixed, value: ''}
+        task: {type: fixed, value: ''}
+      output: []
+      structured_output: false
+      transition: END
+  ```
+  `transition: END` is present even for a single node with no outgoing edge — a lone node is
+  simultaneously the entry point and the terminal node. Default Type for ALL THREE of SYSTEM/TASK/
+  CHAT HISTORY is `fixed` (matches the UI's own default).
+- **CHAT HISTORY's YAML `value` is an empty LIST (`[]`), not the string `"[]"`, when the field
+  holds exactly the two characters `[]`** — confirmed via a controlled probe: typing `[]` (valid
+  YAML flow-sequence syntax) into the Value textarea and saving serializes to `value: []`
+  (unquoted; `yaml.safe_load()` parses this as an empty Python `list`), while typing a
+  non-YAML-parseable control string (`[][]`) serializes to `value: '[][]'` (quoted; parses as a
+  `str`). The backend does not force a string type here — it round-trips whatever was typed as
+  YAML, and `"[]"` happens to double as valid YAML for an empty list. **Not a defect** — a
+  case/test asserting this field's value must compare against the empty list `[]`, not the string
+  `"[]"`, per the reverse-masking guard (assert the live contract, not the case's literal wording).
+- **A custom state variable IS selectable as a node's Output**, not just Input (ELITEA-2042 only
+  proved Input) — confirmed live: `select-option-output1` appears in the Output select's popover
+  once the STATE panel's `output1` variable exists, identical `select-option-{value}` mechanism.
+- **No new testids needed anywhere in this flow** — STATE panel, LLM node fields, Output select,
+  YAML view toggle/editor all reuse pre-existing testids from ELITEA-2004/2026/2042.
 
 ## Pipeline tags — Categories.jsx tag filter panel + CardTagSectionItem chips are FULLY shared with Skills, zero new testid work (confirmed live, 2026-08-08, ELITEA-2013)
 
@@ -1040,6 +1149,20 @@ flow-editor/ui/settings/TriggerTypeSelector.jsx` + `PipelineWebhookModal.jsx` +
   Type"` to `Checkbox.RadioButtonGroup`, which does not consume/render a `label` prop at all — the
   Mode radio group has no visible heading. Locate by the two option labels ("Default"/"Advanced")
   instead.
+
+**Added/resolved during ELITEA-2041 implementation (2026-08-08):** confirmed live that the Trigger
+control is EXCLUSIVE to the entry-point node's own card — a non-entry node's card (Code, Printer;
+tried 2 types) renders zero "Trigger" DOM content at all, on an UNSAVED canvas (no Save needed —
+`isEntrypoint` is driven purely by client-side canvas state, not the saved YAML, unlike the
+Chat-Message-only RESTRICTION logic documented above which IS save-gated). Also confirmed the
+`ApplicationInformation.jsx` Information section's own "Trigger:" row reads from the SAME
+`useGetPipelineTriggerQuery` hook as the node-level combobox (one shared data source) and is
+subject to the identical async-population gap (absent on first paint, present ~1–2s later — wait
+for visibility, never read immediately). That row had NO testid; added
+`information-trigger-row` (`EliteaAI/EliteaUI@28dbc5e4`) on the row's wrapping `<Box>`. **DOM
+textContent has no space between label and value** (`"Trigger:Chat Message"`, not `"Trigger: Chat
+Message"` — the visual gap is CSS `flex gap`, not a text character) — assert the no-space form.
+Full detail: `test-specs/pipelines/lextend_pipeline-entry-point-trigger-shown-only-on-entry-node_ELITEA-2041.md`.
 
 ## YAML editor ⇄ Flow canvas sync (confirmed live, 2026-08-03, ELITEA-2028)
 
@@ -2093,3 +2216,41 @@ Network: `POST /api/v2/social/pin/prompt_lib/{project}/application/{id}` → `20
 docstring already notes for CRUD).
 
 Full AFS: `test-specs/pipelines/l2_pipeline-dashboard-pin-to-top_ELITEA-2025.md`.
+
+## Flow → YAML sync + `wait_for_node_on_canvas()` same-type collision (confirmed live, 2026-08-08, ELITEA-2029)
+
+- **`wait_for_node_on_canvas(node_type)` resolves via `.first` — wrong node
+  when the canvas already has another node of that same type.** Its
+  selector is `.react-flow__node-{type}` `.first` (DOM/document order), so
+  on `pipeline_with_llm_id` (already has an "LLM 1" node), adding a SECOND
+  LLM node and calling `wait_for_node_on_canvas("llm")` returns `"LLM 1"`
+  (the pre-existing node), not the real new node id (`"LLM 2"`). Its only
+  other existing caller (ELITEA-2030's test) adds to an EMPTY canvas, where
+  `.first` happens to be correct — this collision doesn't show up there.
+  **Reliable pattern for a non-empty starting canvas:** snapshot
+  `get_node_ids()` before the add, snapshot again after, take the set
+  difference — still call `wait_for_node_on_canvas(type, …)` first (to
+  settle/wait for the DOM attach), just don't trust its return value as the
+  new node's id when the canvas wasn't empty beforehand. Not filed as a
+  page-object defect (its one real caller is unaffected); flag if a second
+  case hits the same collision.
+- **Add-node menu is testid-based and preferred over the legacy raw-handle
+  `add_node()`:** `get_add_node_menu_items()` (opens the menu) +
+  `select_add_node_menu_item("llm", …)` (internal type key, not display
+  label) — added ELITEA-2030, confirmed working live here too. `add_node()`
+  itself remains valid pre-existing tech debt for tests that already use it
+  (#25/#42), but a NEW test should use the testid-based pair.
+- **A freshly-added, unconnected second node has NO `transition:` key at
+  all in its YAML entry** — distinct from the entry-point/only-node default
+  (`transition: END` always present, per the "Node config via YAML" note
+  above). Confirmed live: `pipeline_with_llm_id` + one UI-added LLM node,
+  read via `get_yaml_content()` before any Save — the new node's YAML block
+  ends after `structured_output: false`, no `transition:` line, until it's
+  wired to a target or the user connects/saves it.
+- **Adding a node, switching Yaml⇄Flow view, and reading YAML content are
+  all client-side — zero network requests**, confirmed live (matches
+  ELITEA-2030's own Network Behavior note for add-node; extends it to
+  cover the view-switch + read too, same as ELITEA-2028's YAML-edit
+  direction already established for the reverse flow).
+
+Full AFS: `test-specs/pipelines/l2_flow-to-yaml-sync_ELITEA-2029.md`.

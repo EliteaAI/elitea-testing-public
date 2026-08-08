@@ -63,6 +63,20 @@ class PipelineDetailPage(PipelineFormPage):
         description="Information accordion (Pipeline ID / Version ID / Pipeline link rows)",
     )
 
+    # Information section's "Trigger:" row (ELITEA-2041). Confirmed live:
+    # rendered by ApplicationInformation.jsx only once `isPipeline &&
+    # triggerData?.type` (an RTK-Query GET that does not always settle
+    # synchronously with page load — same class of timing gap as
+    # trigger_select's own combobox text, see its class docstring above).
+    # Added via add-data-testid, EliteaAI/EliteaUI@28dbc5e4. Text content is
+    # the concatenated label+value with NO literal space ("Trigger:Chat
+    # Message") — confirmed live; the row's flex `gap` CSS is visual only,
+    # not a text node.
+    information_trigger_row = LocatorDescriptor(
+        testid="information-trigger-row",
+        description="Information section's Trigger row (label+value, e.g. 'Trigger:Chat Message')",
+    )
+
     # VERSION selector in the entity tab bar (ApplicationVersionSelect.jsx,
     # shared with Agents). The testid reaches the DOM via a `testId` PROP —
     # ApplicationVersionSelect.jsx:228 passes `testId="agent-version-
@@ -421,6 +435,18 @@ class PipelineDetailPage(PipelineFormPage):
         description="Embedded chat send button"
     )
 
+    # ELITEA-2016: pre-existing `data-testid="chat-clear-button"` on
+    # ClearChatButton.jsx (EliteaAI/EliteaUI@2d98830a, already on `main` —
+    # confirmed via `git grep` before this AFS's exploration), rendered by
+    # ChatPanel.jsx (the pipeline embedded chat) via the shared
+    # `ChatButton.ClearChatButton` component. No add-data-testid work
+    # needed — the AFS's Concrete Handles table flagged this as "no
+    # existing page-object method", not "no existing testid".
+    chat_clear_button = LocatorDescriptor(
+        testid="chat-clear-button",
+        description="Embedded chat 'Clear the chat' button — starts a fresh conversation in place"
+    )
+
     # MCP node inline config fields (ELITEA-1954). Testid-only, added via
     # add-data-testid — BaseToolNode.jsx only sets these when nodeType is
     # "mcp" (untested node types stay untagged, .agents/testing.md §
@@ -614,6 +640,17 @@ class PipelineDetailPage(PipelineFormPage):
         testid="pipeline-printer-node-value",
         description="Printer node's PRINTER section Value field (f-string/text textarea)"
     )
+
+    # Scoped sub-selector for the SAME "pipeline-printer-node-value" testid,
+    # used by fill_printer_node_value_for_node()/get_printer_node_value_for_node()
+    # (ELITEA-2016) — needed once >1 Printer node is on canvas simultaneously,
+    # since the field above is page-wide by design (see class docstring
+    # above) and would first-match-ambiguous. Class-level string constant
+    # per .agents/testing.md § Locator policy scoped-selector convention —
+    # chained off RF_NODE_TESTID (the sanctioned #579 ReactFlow-injected
+    # `rf__node-{id}` container `move_node()` already uses for per-node
+    # scoping), not a second ad-hoc pattern.
+    PRINTER_NODE_VALUE_TESTID = '[data-testid="pipeline-printer-node-value"]'
     printer_node_final_message_input = LocatorDescriptor(
         testid="pipeline-printer-node-final-message-input",
         description="Printer node's Final Message field"
@@ -994,6 +1031,15 @@ class PipelineDetailPage(PipelineFormPage):
         testid="pipeline-entry-point-trigger-select",
         description="Entry-point node's Trigger select (Chat Message/Schedule/Webhook)"
     )
+
+    # Scoped sub-selector for the SAME "pipeline-entry-point-trigger-select"
+    # testid, used by is_trigger_visible_for_node() (ELITEA-2041) — needed to
+    # assert the Trigger control's ABSENCE on a specific non-entry node while
+    # multiple nodes coexist on canvas, since the field above is page-wide by
+    # design (see docstring above). Class-level string constant per
+    # .agents/testing.md § Locator policy scoped-selector convention —
+    # chained off RF_NODE_TESTID, same mechanism as PRINTER_NODE_VALUE_TESTID.
+    TRIGGER_SELECT_TESTID = '[data-testid="pipeline-entry-point-trigger-select"]'
 
     trigger_schedule_edit_button = LocatorDescriptor(
         testid="pipeline-entry-point-trigger-schedule-edit-button",
@@ -2771,6 +2817,31 @@ class PipelineDetailPage(PipelineFormPage):
         self.trigger_select.wait_for(state="visible", timeout=timeout)
         return (self.trigger_select.text_content() or "").strip()
 
+    def get_trigger_control_count_for_node(self, node_id: str) -> int:
+        """Count the Trigger control(s) rendered inside a SPECIFIC node's own card.
+
+        Scoping-gap fix (ELITEA-2041): :attr:`trigger_select` is page-wide by
+        design (single-entry-point-node assumption, per its class-level
+        docstring) — insufficient to assert the Trigger control's ABSENCE on
+        one particular non-entry node while other nodes coexist on canvas.
+        Scopes via the ReactFlow-injected ``rf__node-{id}`` container
+        (:data:`RF_NODE_TESTID`) as the parent, then :data:`TRIGGER_SELECT_TESTID`
+        within it — same mechanism as
+        :meth:`get_printer_node_value_for_node`.
+
+        Args:
+            node_id: The data-id of the node to scope the check to.
+
+        Returns:
+            0 if the node is not the entry point (no Trigger control renders
+            there); 1 if it is.
+        """
+        return (
+            self.page.locator(self.RF_NODE_TESTID.format(node_id))
+            .locator(self.TRIGGER_SELECT_TESTID)
+            .count()
+        )
+
     def open_trigger_select(self, timeout: int = 10000, entry_point_node_id: str | None = None) -> None:
         """Open the entry-point node's Trigger dropdown.
 
@@ -4111,6 +4182,39 @@ class PipelineDetailPage(PipelineFormPage):
     def get_printer_node_value(self) -> str:
         """Read the PRINTER section's Value field current content."""
         return self.printer_node_value.input_value()
+
+    def fill_printer_node_value_for_node(self, node_id: str, value: str, timeout: int = 5000) -> None:
+        """Fill the Value field of the SPECIFIC Printer node *node_id*.
+
+        Scoping-gap fix (ELITEA-2016): :meth:`fill_printer_node_value` /
+        :attr:`printer_node_value` are page-wide by design (single-Printer-
+        node-on-canvas assumption, per the class-level docstring above) —
+        first-match-ambiguous once more than one Printer node exists
+        simultaneously. Scopes via the ReactFlow-injected ``rf__node-{id}``
+        container (:data:`RF_NODE_TESTID`) as the parent, then the
+        :data:`PRINTER_NODE_VALUE_TESTID` testid within it.
+
+        Args:
+            node_id: The data-id of the target Printer node (e.g. the
+                renamed id from :meth:`edit_node_name`).
+            value: The f-string/text value to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        value_field = self.page.locator(self.RF_NODE_TESTID.format(node_id)).locator(
+            self.PRINTER_NODE_VALUE_TESTID
+        )
+        self._fill_node_field_value(value_field, value, timeout=timeout)
+
+    def get_printer_node_value_for_node(self, node_id: str) -> str:
+        """Read the Value field content of the SPECIFIC Printer node *node_id*.
+
+        Sibling of :meth:`fill_printer_node_value_for_node` — see its
+        docstring for the scoping-gap rationale.
+        """
+        value_field = self.page.locator(self.RF_NODE_TESTID.format(node_id)).locator(
+            self.PRINTER_NODE_VALUE_TESTID
+        )
+        return value_field.input_value()
 
     def fill_printer_node_final_message(self, value: str, timeout: int = 5000) -> None:
         """Fill the Printer node's Final Message field.
@@ -5512,6 +5616,25 @@ class PipelineDetailPage(PipelineFormPage):
         # Last fallback: all text from the message
         text = ai_msg.text_content() or ""
         return text.strip()
+
+    def clear_chat(self, timeout: int = 10000) -> None:
+        """Click the embedded chat's 'Clear the chat' button to start a fresh conversation.
+
+        Added for ELITEA-2016: a Printer node with ``transition: END``
+        pauses for acknowledgement rather than re-entering the pipeline, so
+        sending a SECOND, differently-classified message in the SAME
+        conversation resumes at the branch chosen by the FIRST message
+        instead of re-invoking the Decision node (confirmed live — the
+        ``Run details`` dialog's Timeline literally reads
+        ``<branch>_reset`` for the resumed turn). A test proving
+        differential routing (a second category routes to a DIFFERENT
+        branch) must clear the chat between messages.
+
+        Args:
+            timeout: Maximum wait time for the button to be clickable.
+        """
+        self.chat_clear_button.click(timeout=timeout)
+        self.page.wait_for_timeout(300)
 
     def find_message_containing(self, text: str) -> bool:
         """Return True if any embedded chat message contains *text*.

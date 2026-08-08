@@ -13,6 +13,12 @@ promoted to entry point.
 This case's own Webhook/Schedule steps stay intentionally shallow (open ->
 default -> Apply -> persisted); the modals' own field internals are
 ELITEA-2006 (Webhook)/ELITEA-2007 (Schedule)'s job, not re-litigated here.
+
+Also covers TMS ELITEA-2041 (extend-existing, second test function below):
+verifies the Trigger control is EXCLUSIVE to the entry-point node's own card
+(absent on every non-entry node, tried for 2 node types simultaneously) and
+that the Information section's own "Trigger:" row mirrors the entry node's
+current selection.
 """
 
 import logging
@@ -208,5 +214,91 @@ def test_entry_point_trigger_types_persist(page, pipeline_with_llm_id):
 
     assert not console_errors, (
         f"Configuring entry-point triggers should not introduce console errors: "
+        f"{[m.text for m in console_errors]}"
+    )
+
+
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+    "automated-full-regression-ui/pipelines/"
+    "ELITEA-2041_pipeline-entry-point-trigger-shown-only-on-entry-node.md",
+    "onetest-ai Test Case link",
+)
+def test_entry_point_trigger_shown_only_on_entry_point_node(page, pipeline_with_llm_id):
+    """Trigger control renders ONLY on the entry-point node; Information section mirrors it.
+
+    TMS: ELITEA-2041
+    (test-specs/pipelines/lextend_pipeline-entry-point-trigger-shown-only-on-entry-node_ELITEA-2041.md)
+    """
+    console_errors = []
+    page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+
+    with allure.step("Step 1 — Navigate to the fresh pipeline; verify the LLM entry node has a Trigger control"):
+        pipeline_page = _navigate_to_canvas(page, pipeline_with_llm_id)
+        llm_node_id = pipeline_page.wait_for_node_on_canvas("llm", timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_entrypoint_node_id() == llm_node_id, (
+            f"'{llm_node_id}' should be the pipeline's single entry-point node"
+        )
+        assert pipeline_page.get_trigger_control_count_for_node(llm_node_id) == 1, (
+            "The entry-point LLM node's own card should render exactly one Trigger control"
+        )
+
+    with allure.step(
+        "Step 2 — Add a Code node (non-entry); verify entry point unchanged and its own "
+        "card shows NO Trigger control"
+    ):
+        # No click needed to "open" either node's panel (AFS Coverage Map row 2/4
+        # CLARIFICATION): NodeCard.jsx renders every node fully expanded by default
+        # (isExpanded initial state True) -- clicking the header TOGGLES expand/
+        # collapse, which would risk hiding the very field this step observes.
+        pipeline_page.add_node("Code")
+        code_node_id = pipeline_page.wait_for_node_on_canvas("code", timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_entrypoint_node_id() == llm_node_id, (
+            "Adding a non-entry node should not change the pipeline's entry point"
+        )
+        assert pipeline_page.get_trigger_control_count_for_node(code_node_id) == 0, (
+            "The non-entry Code node's own card should render NO Trigger control"
+        )
+
+    with allure.step(
+        "Step 3 — Add a Printer node too (LLM -> Code -> Printer, matching the case's own "
+        "example); verify it ALSO has no Trigger control"
+    ):
+        pipeline_page.add_node("Printer")
+        printer_node_id = pipeline_page.wait_for_node_on_canvas("printer", timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_trigger_control_count_for_node(printer_node_id) == 0, (
+            "The non-entry Printer node's own card should render NO Trigger control"
+        )
+
+    with allure.step(
+        "Step 4 — With all 3 nodes present, re-verify the LLM entry node still shows exactly "
+        "one Trigger control, and it is the ONLY one on the whole canvas"
+    ):
+        assert pipeline_page.get_trigger_control_count_for_node(llm_node_id) == 1, (
+            "The entry-point LLM node's Trigger control should survive unaffected by its "
+            "non-entry siblings coexisting on the same canvas"
+        )
+        assert pipeline_page.trigger_select.count() == 1, (
+            "Exactly one Trigger control should exist across all 3 nodes -- the entry "
+            "point's own"
+        )
+
+    with allure.step(
+        'Step 5 — Verify the Information section shows "Trigger:<value>" matching the entry '
+        "node's own current Trigger selection"
+    ):
+        entry_trigger_value = pipeline_page.get_trigger_type_value()
+        expect(pipeline_page.information_trigger_row).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+        # Declared improvisation (role-overrides.md reverse-masking guard,
+        # confirmed live this session): the row's DOM textContent concatenates
+        # label+value with NO literal space ("Trigger:Chat Message") -- the
+        # visual gap is CSS flex `gap`, not a text character. Assert the live-
+        # contract string, not a "Trigger: <value>" (space) reading.
+        expect(pipeline_page.information_trigger_row).to_have_text(
+            f"Trigger:{entry_trigger_value}", timeout=UI_ELEMENT_TIMEOUT
+        )
+
+    assert not console_errors, (
+        f"Verifying Trigger-control exclusivity should not introduce console errors: "
         f"{[m.text for m in console_errors]}"
     )
