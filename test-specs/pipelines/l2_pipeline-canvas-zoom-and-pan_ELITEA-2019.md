@@ -31,8 +31,8 @@
      `canvas_wrapper` (`rf__wrapper`) bounding box (new helper
      `all_nodes_within_viewport()` — see Concrete Handles).
 3. Zoom in using the canvas Zoom In control.
-   - **Verify**: canvas scale increases (new `get_canvas_zoom_scale()`
-     compared before/after) AND a node's rendered bounding-box area increases
+   - **Verify**: canvas scale increases (new `get_canvas_viewport_transform()`
+     `["scale"]` compared before/after) AND a node's rendered bounding-box area increases
      (`get_node_bounding_box(node_id)` before/after on the same node) —
      confirmed live this session: scale 0.206152 -> 0.247382, Decision-node
      box 97.1x87.8px -> 116.5x105.4px on one Zoom In click.
@@ -87,7 +87,7 @@
 ### Axis 2 — Analyst additions
 
 - step 3/step 7 assert the exact numeric `scale`/`translate` values (via
-  `get_canvas_zoom_scale()`/viewport transform), not just "nodes look
+  `get_canvas_viewport_transform()`), not just "nodes look
   bigger"/"looks fit" — *added: confirmed live that Fit View is fully
   deterministic for a static node layout (returns the identical transform
   both times), which makes an exact-match assertion possible and a much
@@ -101,7 +101,14 @@
   the whole zoom/pan/fit-view sequence — *added: confirmed live these are
   pure client-side ReactFlow viewport operations (no XHR/fetch fires); a
   regression that accidentally triggers a save/persist call on viewport
-  change would be a real, novel defect this guards against.*
+  change would be a real, novel defect this guards against.* **Implemented
+  in R1 fix round** (`capture_console_errors()` +
+  `capture_requests_matching("prompt_lib")`, both `BasePage` methods,
+  registered right after the step-2 baseline so the canvas's own
+  initial-load fetch is excluded, asserted cumulatively at steps 3, 5, and 7)
+  — R1's shipped diff omitted this clause entirely despite the claim above;
+  see `.agents/memory/qa-engineer/afs_claims_need_full_sweep_and_grep.md`
+  (ELITEA-2019 entry) for the review finding.
 
 ## Cleanup
 1. `pipeline_api.delete_pipeline(pid)` — handled by the `pipeline_llm_code_end`
@@ -116,7 +123,7 @@
 | Fit View button | `PipelineDetailPage.fit_canvas_view()` (existing method — already scopes `button[title="Fit View"]` under `canvas_controls`, #579 sanctioned exception) | — |
 | Zoom In / Zoom Out buttons | **NEW** `PipelineDetailPage.zoom_in_canvas()` / `zoom_out_canvas()` — same pattern as `fit_canvas_view()`: `self.canvas_controls.locator('button[title="Zoom In"]'/'button[title="Zoom Out"]').click()`, #579 sanctioned exception (ReactFlow's own `Controls` component, no app testid placeable on the individual button — confirmed via source, `EliteaUI/src/[fsd]/features/pipelines/flow-editor/ui/FlowEditor.jsx` renders the third-party `@xyflow/react` `Controls` component directly). **Do NOT reuse the pre-existing raw `zoom_in()`/`zoom_out()` methods at the bottom of `pipeline_detail_page.py`** (`self.page.locator('button[title="..."]')`, unscoped, tracked tech debt) — they are page-level, not scoped to `canvas_controls`, and would fail the reviewer's mechanical grep as a new raw handle if a NEW call site were added referencing them; the new scoped methods are additive, existing raw ones are left untouched. | — |
 | Canvas pane (pan target) | **NEW** `PipelineDetailPage.pan_canvas(dx, dy)` — drags via `self.canvas_wrapper.locator(".react-flow__pane")`'s bounding box (#579 sanctioned exception, same class the pre-existing `_deselect_all()` already uses page-level — this new method scopes it under `canvas_wrapper` instead, per the "parent must have a real testid" discipline), starting from a point inset 15% from the wrapper's top-left corner (empty after Fit View's default padding, confirmed live) and using `page.mouse.move/down/up` in interpolated steps — same technique as the existing `move_node()`. | — |
-| Canvas viewport transform (scale + translate, for numeric assertions) | **NEW** `PipelineDetailPage.get_canvas_zoom_scale()` / `get_canvas_pan_offset()` — read `self.canvas_wrapper.locator(".react-flow__viewport")`'s `style` attribute (#579 sanctioned exception, ReactFlow-injected inline style, no app testid possible on a CSS transform value) and regex-parse `translate(<tx>px, <ty>px) scale(<s>)`. Confirmed live shape this session (both browsers, different viewport sizes): `translate(Npx, Mpx) scale(S)`. | — |
+| Canvas viewport transform (scale + translate, for numeric assertions) | **NEW** `PipelineDetailPage.get_canvas_viewport_transform()` — read `self.canvas_wrapper.locator(".react-flow__viewport")`'s `style` attribute (#579 sanctioned exception, ReactFlow-injected inline style, no app testid possible on a CSS transform value) and regex-parse `translate(<tx>px, <ty>px) scale(<s>)` into a single `{"tx": float, "ty": float, "scale": float}` dict (one method, not the two originally proposed — `get_canvas_zoom_scale()`/`get_canvas_pan_offset()` were the analyst's planned split; the implementer shipped one combined getter instead, since scale+translate parse off the same style string in one regex pass — amended here to match, per Rule 11/Phase 2 amend-in-PR). Confirmed live shape this session (both browsers, different viewport sizes): `translate(Npx, Mpx) scale(S)`. | — |
 | Node bounding box (size + position, for zoom/pan proof) | **NEW** `PipelineDetailPage.get_node_bounding_box(node_id)` — `self.page.locator(self.RF_NODE_TESTID.format(node_id)).bounding_box()` (existing `RF_NODE_TESTID` class constant, #579 sanctioned exception, already used internally by `move_node()`) exposed as a public getter; none existed before this case. | — |
 | "All nodes visible" check | **NEW** `PipelineDetailPage.all_nodes_within_viewport()` — for every id in `get_node_ids()`, `get_node_bounding_box(id)` must be fully contained within `canvas_wrapper.bounding_box()` (with a small tolerance, confirmed live via containment check on all 5 nodes of a Decision+3-Printer-branch pipeline after Fit View). | — |
 | Node count | `PipelineDetailPage.get_node_count()` (existing) | — |
@@ -157,9 +164,11 @@
 - Fixture: `pipeline_llm_code_end` (existing, `automation/fixtures/data_fixtures.py`)
   — reused unmodified.
 - Page object: `automation/pages/pipeline_detail_page.py`. Six NEW methods
-  needed (all listed in Concrete Handles above): `zoom_in_canvas()`,
-  `zoom_out_canvas()`, `pan_canvas(dx, dy)`, `get_canvas_zoom_scale()`,
-  `get_canvas_pan_offset()`, `get_node_bounding_box(node_id)`,
+  shipped (all listed in Concrete Handles above): `zoom_in_canvas()`,
+  `zoom_out_canvas()`, `pan_canvas(dx, dy)`, `get_canvas_viewport_transform()`
+  (combined scale+translate getter — replaces the two originally-planned
+  `get_canvas_zoom_scale()`/`get_canvas_pan_offset()` split; amended here per
+  Rule 11/Phase 2 amend-in-PR), `get_node_bounding_box(node_id)`,
   `all_nodes_within_viewport()` — all additive, all scoped through existing
   testid `LocatorDescriptor`s (`canvas_wrapper`/`canvas_controls`) or the
   existing `RF_NODE_TESTID` #579-sanctioned class constant. Zero new
