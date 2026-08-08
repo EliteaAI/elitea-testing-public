@@ -1705,3 +1705,61 @@ is a legitimate empty state, not an error state).
   via `"Mui-disabled" in locked_select.get_attribute("class")` instead
   (established pattern elsewhere in this suite, e.g.
   `test_pipeline_edge_deletion.py`'s `edge.get_attribute("class")` check).
+
+## Delete pipeline version via three-dot menu — falls back to base cleanly; one benign console 400 (confirmed live, 2026-08-08, ELITEA-2003)
+
+The VERSION-group "Delete" menu item (`delete-version-menuitem`, under the SAME
+`agent-actions-menu-button` three-dot menu `delete_pipeline_via_menu()` already uses
+for whole-pipeline delete — `ApplicationControls.jsx`, shared by Agents AND
+Pipelines via `isFromPipeline`) deletes only the currently-open NON-base version and
+correctly falls back the app to `base` — confirmed live end-to-end: create
+`ver_to_delete` via Save As Version → open actions menu → click `delete-version-
+menuitem` → `Modal.DeleteEntityModal` confirm dialog (`delete-confirm-dialog` /
+`delete-confirm-message` / `delete-confirm-button` / `delete-confirm-cancel-button`)
+→ click Delete → `DELETE .../version/prompt_lib/{project}/{pipeline}/{version}` →
+`200` → VERSION dropdown no longer lists the deleted version, selector/URL/
+Information-panel Version ID all agree on `base`'s original id.
+
+- **`agent-actions-menu-button` is a REAL testid, on `origin/main` already** — the
+  existing `PipelineDetailPage.open_actions_menu()` uses a bounding-box JS hack
+  instead (`pipeline_detail_page.py:1606-1634`, predates this session) but doesn't
+  need to: `DotMenu.jsx:354` renders `data-testid={id ? \`${id}-menu-button\` :
+  undefined}` and `ApplicationControls.jsx:233` passes `id="agent-actions"` →
+  `agent-actions-menu-button` resolves cleanly via Playwright's `getByTestId` (self-
+  confirmed this session). **Bare-substring `git grep "actions-menu-button"` gives a
+  FALSE NEGATIVE** here (it's a template literal, not a literal string) — verify by
+  reading `DotMenu.jsx`'s template directly, same two-stage-grep caveat
+  `workflow.md`'s closure-record section already documents for other testids.
+- **The VERSION-group "Delete" item is DISABLED when the open version is `base`**
+  (`ApplicationControls.jsx`'s `disableDelete`: gates on `default_version_id` match
+  OR `name === LATEST_VERSION_NAME` i.e. `'base'`) — confirmed via source
+  (`VersionDelete.jsx` also returns `null` outright for `type='button'` in that
+  case). Not exercised this session (case always deletes a non-base version) — a
+  future case could assert the disabled state directly.
+- **Delete triggers a `check_version_in_use` GET first** (before the confirm dialog
+  even renders): `{in_use: false}` (this session's case — a fresh, unreferenced
+  version) shows the simple `Modal.DeleteEntityModal`; `{in_use: true}` would instead
+  show `AgentDetails.VersionReplacementModal` (source-read only, not exercised) —
+  worth a dedicated future case for the in-use/referenced-version path.
+- **`delete-confirm-dialog`/`delete-confirm-message`/`delete-confirm-button`/
+  `delete-confirm-cancel-button` (shared `DeleteEntityModal.jsx`) are on
+  `automation/testids` only, NOT yet on `origin/main`** — confirmed via fresh
+  `git fetch origin` + direct file read of `origin/main`'s `DeleteEntityModal.jsx`
+  (only `delete-confirm-name-input` exists there; the other four attributes are
+  testids-branch-only). Several ALREADY-MERGED page objects
+  (`artifacts_page.py`, `secrets_page.py`, `chat_page.py`, `personal_tokens_page.py`,
+  `mcp_form_page.py`, `admin_users_page.py`) already reference this same testid
+  family for their OWN delete flows — this is pre-existing, not a gap introduced by
+  this case. `delete-version-menuitem` itself (`ApplicationControls.jsx`'s
+  `key: 'delete-version'` + `DotMenu.jsx`'s `testId: item.key` mechanism) IS already
+  on `origin/main`, unlike the confirm-dialog testids.
+- **Known defect, filed
+  [EliteaAI/elitea-testing-public#1330](https://github.com/EliteaAI/elitea-testing-public/issues/1330):**
+  after the `DELETE` succeeds, the client fires exactly one stale `GET` against the
+  just-deleted version id (`400 {"error": "Application[{id}] version[{deleted_id}]
+  not found"}`, visible in `browser_console_messages`) before settling on the
+  fallback `base` version — deterministic 1/1 this session, benign (final UI state
+  is always correct, no toast/visible error), but a genuine client-side state-
+  sequencing race worth a soft-assert/comment in the implemented test rather than
+  ignoring. Full network sequence + AFS:
+  `test-specs/pipelines/l2_delete-pipeline-version-falls-back-to-base_ELITEA-2003.md`.
