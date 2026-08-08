@@ -1,7 +1,7 @@
 # Campaign: pipelines-remaining
 
 ## State
-- Stage: waves (wave-01 launching)
+- Stage: waves (wave-01 LANDED, wave-02 through wave-07 pending)
 - Conductor: none — plain sequential `batch-build` waves (foundation is null and already evidenced;
   per `campaign-planning.md` § When NOT to run a campaign, the full conductor apparatus is skipped)
 - Operator checkpoint: **substituted** — factory/unattended mode has no interactive `AskUserQuestion`.
@@ -15,8 +15,11 @@
   pipeline cases already automated per prior campaigns incl. `approved-next50`)
 - Foundation surfaces CLAIMED: none (no foundation stage)
 - Heads analyzed: none (skipped — no foundation stage)
-- Waves: wave-01-node-type-configs (8 cases) — launching
-  wave-02 through wave-07 — PLANNED, not yet launched (see Plan)
+- Waves: **wave-01-node-type-configs (8 cases) LANDED** — elitea-testing-public#1329, merged `0206a8ef`,
+  8/8 automated (1 sanctioned-RED: ELITEA-2047 vs #1327, deterministic 3/3), TMS back-written (8 cases,
+  Form C), closure comment posted on #1297, campaign card updated.
+  wave-02 through wave-07 (47 cases) — PLANNED, not yet launched (see Plan)
+- Campaign totals so far: 8/55 automated (7 clean-green + 1 sanctioned-RED-with-linked-defect), 47/55 remaining
 
 ## Source
 
@@ -96,3 +99,32 @@ lead before launching wave-01).
 - 2026-08-08 wave-01-node-type-configs (8 cases) launched via batch-build.workflow.mjs, slug
   `pipelines-remaining-w1`, base `origin/automation/base`. **Run ID: wf_7fe2d036-b85** (task wylsub2n4).
   Polling in-turn for completion.
+- 2026-08-08 wave-01 workflow completed (~5.5h wall clock, 43 agents, 7.37M tokens, 2391 tool calls).
+  All 8 units built/reviewed/merged onto `tests/batch-pipelines-remaining-w1` cleanly (0 conflicts).
+  Internal gate STALLED mid-run (verdict `not-run`, 1/3 green confirmed + run 2/3 left mid-flight per its
+  own notes) — all 8 cases returned as `merged-ungated`, the known non-failure "gate never finished"
+  outcome. Recovered per protocol: found run 2/3's leftover background log already green
+  (`/tmp/gate_run2.log`, 7/7 passed), then ran my OWN fresh independent gate (testing.md § Merge gate —
+  N=3 separate lead-run invocations): run 1/3 7 passed (226.06s), 2/3 7 passed (231.43s), 3/3 7 passed
+  (229.09s) — all green. Sanctioned-RED spec (ELITEA-2047 vs open defect #1327) run 3× separately by the
+  lead — identical deterministic failure all 3 runs, matching the linked ticket exactly (soft-assertion
+  aggregation, no masking). Blast radius: 1 pre-existing spec
+  (test_pipeline_llm_node_system_task_chat_history_config.py) calls the one non-additive page-object
+  change (open_llm_node_output_select click-position fix) — ran once, 2/2 green, no regression.
+  PR elitea-testing-public#1329 opened + squash-merged (`0206a8ef`). TMS back-written for all 8 cases
+  (Form C, self-checked against real JUnit output from the lead's own gate runs — all 8 MATCH).
+  onetest index.json rebuilt (2789 cases). Testid provenance: 7 testid commits on
+  EliteaAI/EliteaUI@automation/testids (92fc6ec4 ELITEA-2009, 4195321f ELITEA-2035, d8afe3b0 ELITEA-2036,
+  2859a9d0 ELITEA-2038, 955f88b9+b65756af ELITEA-2039, 94d190c9 ELITEA-2047 — no new testid needed for
+  2045/2046, reused existing generic structured-output-toggle mechanism) — verified via fresh
+  `git fetch origin` + per-file diff (`git diff origin/main origin/automation/testids -- <file>`, more
+  reliable than literal-string grep here since several testids are runtime-composed via
+  `` `${PREFIX}-suffix` `` template literals, e.g. AgentNode.jsx's `AGENT_NODE_TESTID_PREFIX`,
+  DefaultNode.jsx's `TEST_ID_PREFIX_BY_NODE_TYPE`): all 6 touched component files differ from
+  `origin/main` — **none of this wave's testids are on `main` yet**, all pushed to `automation/testids`
+  only, awaiting human cherry-pick.
+  Defects: filed #1327 (Interrupt-after resume path, confirmed 2/2, sanctioned-RED); reconfirmed
+  (not newly filed) #1025 and #1274 as not-applicable/already-tracked during analysis. No new duplicate
+  filings.
+  Closure comment posted on #1297. Card → `Ready`. 8 unit branches deleted (squash-merge auto-delete);
+  batch trunk `tests/batch-pipelines-remaining-w1` deleted with the PR merge.
