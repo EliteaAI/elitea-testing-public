@@ -507,3 +507,27 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   no safe, verified rollback. **Testability gap, not a product question**: automating the editor
   half needs either a dedicated `EDITOR_TEST_USER_EMAIL`/`PASSWORD` fixture (real Keycloak account,
   fixed editor role in a stable project) or an accepted API-level permissions-endpoint proxy.
+
+## Build with AI — plain-approve (no suggested resources) network contract (ELITEA-1914 run, 2026-08-08)
+- A draft generated from a plain, non-resource-implying prompt renders **zero** "Suggested
+  {Category}:" sections (`generate-agent-resource-section-*` never appears), and clicking
+  **"Create Agent"** fires **only** `POST /api/v2/elitea_core/applications/prompt_lib/{project}`
+  → `201` — no `PATCH .../tool/...`, `PATCH .../application_relation/...`, or `GET`/`PATCH
+  .../skill/...` calls fire at all. **`GenerateAgentModalPage.click_approve_and_wait_for_creation()`
+  and `click_approve_and_wait_for_skill_creation()` (`generate_agent_modal_page.py:262-342`) will
+  hang/timeout on a plain-approve draft** — both enter all their `expect_response` waits in one
+  `with` block, unconditionally. A plain-approve test needs a narrower helper that waits only on
+  the base create POST.
+- The UI auto-navigates to `/agents/all/{id}?destTab=configuration&name=...&viewMode=owner`
+  immediately on the `201` — always carries `viewMode=owner` and the created name, confirmed live.
+- **Gotcha (filed as elitea-testing-public#1316, sibling of #638):** a bare hard-navigation to
+  `/agents/all/{id}` with **no** `?viewMode=owner` query param (i.e. NOT the app's own
+  auto-navigation — a fresh page load / typed URL) can silently render a **different, unrelated**
+  agent's data when the numeric id collides between the private (`application`) and public
+  (`public_application`) id spaces (`useViewMode.js`'s fallback can resolve to `Public` on a hard
+  reload before the real project is restored). Never hard-navigate to a bare agent detail URL in a
+  test — always drive there via an in-app click (or include `?viewMode=owner` explicitly) if a
+  test genuinely needs a direct deep link.
+- `AgentsListPage.agent_exists_in_list(name)` (`agents_list_page.py:263-279`, pre-existing) is the
+  handle for asserting a newly-created agent appears in `/agents/all` — no Build-with-AI test used
+  it before ELITEA-1914.
