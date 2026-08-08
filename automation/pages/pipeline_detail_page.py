@@ -421,6 +421,18 @@ class PipelineDetailPage(PipelineFormPage):
         description="Embedded chat send button"
     )
 
+    # ELITEA-2016: pre-existing `data-testid="chat-clear-button"` on
+    # ClearChatButton.jsx (EliteaAI/EliteaUI@2d98830a, already on `main` —
+    # confirmed via `git grep` before this AFS's exploration), rendered by
+    # ChatPanel.jsx (the pipeline embedded chat) via the shared
+    # `ChatButton.ClearChatButton` component. No add-data-testid work
+    # needed — the AFS's Concrete Handles table flagged this as "no
+    # existing page-object method", not "no existing testid".
+    chat_clear_button = LocatorDescriptor(
+        testid="chat-clear-button",
+        description="Embedded chat 'Clear the chat' button — starts a fresh conversation in place"
+    )
+
     # MCP node inline config fields (ELITEA-1954). Testid-only, added via
     # add-data-testid — BaseToolNode.jsx only sets these when nodeType is
     # "mcp" (untested node types stay untagged, .agents/testing.md §
@@ -614,6 +626,17 @@ class PipelineDetailPage(PipelineFormPage):
         testid="pipeline-printer-node-value",
         description="Printer node's PRINTER section Value field (f-string/text textarea)"
     )
+
+    # Scoped sub-selector for the SAME "pipeline-printer-node-value" testid,
+    # used by fill_printer_node_value_for_node()/get_printer_node_value_for_node()
+    # (ELITEA-2016) — needed once >1 Printer node is on canvas simultaneously,
+    # since the field above is page-wide by design (see class docstring
+    # above) and would first-match-ambiguous. Class-level string constant
+    # per .agents/testing.md § Locator policy scoped-selector convention —
+    # chained off RF_NODE_TESTID (the sanctioned #579 ReactFlow-injected
+    # `rf__node-{id}` container `move_node()` already uses for per-node
+    # scoping), not a second ad-hoc pattern.
+    PRINTER_NODE_VALUE_TESTID = '[data-testid="pipeline-printer-node-value"]'
     printer_node_final_message_input = LocatorDescriptor(
         testid="pipeline-printer-node-final-message-input",
         description="Printer node's Final Message field"
@@ -4112,6 +4135,39 @@ class PipelineDetailPage(PipelineFormPage):
         """Read the PRINTER section's Value field current content."""
         return self.printer_node_value.input_value()
 
+    def fill_printer_node_value_for_node(self, node_id: str, value: str, timeout: int = 5000) -> None:
+        """Fill the Value field of the SPECIFIC Printer node *node_id*.
+
+        Scoping-gap fix (ELITEA-2016): :meth:`fill_printer_node_value` /
+        :attr:`printer_node_value` are page-wide by design (single-Printer-
+        node-on-canvas assumption, per the class-level docstring above) —
+        first-match-ambiguous once more than one Printer node exists
+        simultaneously. Scopes via the ReactFlow-injected ``rf__node-{id}``
+        container (:data:`RF_NODE_TESTID`) as the parent, then the
+        :data:`PRINTER_NODE_VALUE_TESTID` testid within it.
+
+        Args:
+            node_id: The data-id of the target Printer node (e.g. the
+                renamed id from :meth:`edit_node_name`).
+            value: The f-string/text value to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        value_field = self.page.locator(self.RF_NODE_TESTID.format(node_id)).locator(
+            self.PRINTER_NODE_VALUE_TESTID
+        )
+        self._fill_node_field_value(value_field, value, timeout=timeout)
+
+    def get_printer_node_value_for_node(self, node_id: str) -> str:
+        """Read the Value field content of the SPECIFIC Printer node *node_id*.
+
+        Sibling of :meth:`fill_printer_node_value_for_node` — see its
+        docstring for the scoping-gap rationale.
+        """
+        value_field = self.page.locator(self.RF_NODE_TESTID.format(node_id)).locator(
+            self.PRINTER_NODE_VALUE_TESTID
+        )
+        return value_field.input_value()
+
     def fill_printer_node_final_message(self, value: str, timeout: int = 5000) -> None:
         """Fill the Printer node's Final Message field.
 
@@ -5512,6 +5568,25 @@ class PipelineDetailPage(PipelineFormPage):
         # Last fallback: all text from the message
         text = ai_msg.text_content() or ""
         return text.strip()
+
+    def clear_chat(self, timeout: int = 10000) -> None:
+        """Click the embedded chat's 'Clear the chat' button to start a fresh conversation.
+
+        Added for ELITEA-2016: a Printer node with ``transition: END``
+        pauses for acknowledgement rather than re-entering the pipeline, so
+        sending a SECOND, differently-classified message in the SAME
+        conversation resumes at the branch chosen by the FIRST message
+        instead of re-invoking the Decision node (confirmed live — the
+        ``Run details`` dialog's Timeline literally reads
+        ``<branch>_reset`` for the resumed turn). A test proving
+        differential routing (a second category routes to a DIFFERENT
+        branch) must clear the chat between messages.
+
+        Args:
+            timeout: Maximum wait time for the button to be clickable.
+        """
+        self.chat_clear_button.click(timeout=timeout)
+        self.page.wait_for_timeout(300)
 
     def find_message_containing(self, text: str) -> bool:
         """Return True if any embedded chat message contains *text*.
