@@ -2,7 +2,60 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2022 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2012 analysis).
+
+## Pipeline Import via File — Export downloads Markdown (not JSON), Import shares Agent/Skill's ImportWizardModal wholesale, one new testid needed (confirmed live, 2026-08-08, ELITEA-2012)
+
+Full round trip (create → export → delete → import → verify → execute) confirmed live end-to-end,
+no product defect. Details in `test-specs/pipelines/l2_pipeline-import-via-file_ELITEA-2012.md`.
+
+- **Export format is Markdown YAML-frontmatter (`.pipeline.md`), never JSON** — the case text
+  says "JSON file downloads"; live product's `ExportApplicationButton.jsx` always calls
+  `doExport({ format: ExportFormat.MD })()` (same for Agents). Filed as case-text drift:
+  `EliteaAI/elitea-testing-public#1334`. Filename pattern:
+  `<slugified-pipeline-name>.pipeline.md`. Content is a `---`-fenced YAML block:
+  `name`/`description`/`model`/`max_tokens`/`agent_type: pipeline`/`step_limit`/
+  `conversation_starters`/`entry_point`/`nodes` (each with `input_mapping`/`output`/
+  `transition`)/`pipeline_settings` (canvas edges + node positions).
+- **Import (`useImport.hooks.js`) accepts ONLY `.md`/`.zip`** (`fileInput.accept =
+  '.md,.zip,text/markdown,application/zip'`) — exactly what Export produces, so the round trip
+  works even though the case's "JSON" wording doesn't match. Import button click
+  (`ToolbarImportButton.jsx`'s `openFileDialog`) opens a native OS file chooser DIRECTLY, no
+  intermediate menu — same pattern as `AgentsListPage.import_agent()`.
+- **Testid gap — `pipelines-import-button` needed.** `ToolbarImportButton.jsx` already accepts
+  an optional `testId` prop and forwards it to `data-testid`; the Agents call site
+  (`src/pages/Applications/Applications.jsx:113`) already wires
+  `testId="agents-import-button"` (ELITEA-1795, EliteaUI draft PR #552) but the Pipelines call site
+  (`src/pages/Pipelines/Pipelines.jsx:272`, `<ToolbarImportButton />`) passes NO prop at all —
+  confirmed on both `origin/main` and `origin/automation/testids`. Low-risk mechanical fix:
+  thread `testId="pipelines-import-button"`, same mechanism.
+- **Everything downstream of the click already works for pipelines with ZERO new testid work** —
+  the Import parameters preview dialog, its confirm button, and the Import Complete dialog +
+  "Got it" button are the SAME shared `ImportWizardModal`/`IWModal*` component tree Agent and
+  Skill import already use (`agent-import-preview-dialog`, `agent-import-confirm-button`,
+  `agent-import-complete-dialog`, `agent-import-complete-got-it-button` — all `agent-` prefixed
+  by existing convention despite being entity-agnostic). Confirmed live: used all four directly
+  with zero add-data-testid work.
+- **Pipeline-specific addition to the shared preview dialog**: a "Pipeline Diagram" section
+  (Start → {node names} → END, mermaid-like) that the Agent import preview does NOT render (Agent
+  shows Skills/Nested-entities cards instead). Not required by any of ELITEA-2012's assertions
+  (text fields + post-import canvas state suffice) — no testid added, per the "touches" scoping
+  rule.
+- **Execution gotcha, NOT an import defect**: an LLM node with Task field left at its default
+  (`Type=Fixed`, empty Value) 400s on chat send
+  (`"messages.0: user messages must have non-empty content"`) — reproduced BEFORE any
+  export/import involvement (same config existed on the original pipeline). Fixed by mapping
+  `Type=Variable, Value=input` via the existing shared `select-option-{}` dynamic-testid
+  convention. Any pipeline case that needs a working chat execution assertion must configure the
+  LLM node's Task field this way — not an import-specific requirement.
+- **Minor, already-tracked, non-blocking**: the Import Complete dialog's `IWModalSucceedContent.jsx`
+  emits a benign React `validateDOMNesting` (`<div>` in `<p>`) console warning — tracked at
+  `EliteaAI/elitea-testing-public#570` (originally filed against Agent/Skill import); this session
+  added a comment confirming it also fires for Pipeline import (same shared component, no new
+  issue filed).
+- **Delete pipeline via three-dot menu** reused for cleanup — `delete-agent-menuitem` (NOT
+  `delete-pipeline-menuitem`, per the existing gotcha below) + auto-redirect to `/pipelines/all`
+  reconfirmed live.
 
 ## Delete pipeline via three-dot menu — auto-redirect confirmed correct; existing merged spec masks the redirect assertion by navigating manually (confirmed live, 2026-08-08, ELITEA-2022)
 
