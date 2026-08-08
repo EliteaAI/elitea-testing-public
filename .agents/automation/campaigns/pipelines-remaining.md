@@ -93,3 +93,6 @@ lead before launching wave-01).
 - 2026-08-08 Planner dispatched (qa-engineer) over the 55 snapshots — returned the 7-wave plan above.
   Lead verified 55/55 coverage programmatically, no dupes/gaps. Self-approved (operator checkpoint
   substitution documented above under State).
+- 2026-08-08 wave-01-node-type-configs (8 cases) launched via batch-build.workflow.mjs, slug
+  `pipelines-remaining-w1`, base `origin/automation/base`. **Run ID: wf_7fe2d036-b85** (task wylsub2n4).
+  Polling in-turn for completion.
