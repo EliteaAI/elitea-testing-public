@@ -222,3 +222,20 @@ correct shape (Rule 7 — reuse before create, applied at the spec level).
   only contract, `.agents/testing.md` / skill Hard Rule 3).
 - `helpers._navigate_to_canvas(page, pipeline_id)` is the existing shared
   navigation helper — reuse it, don't re-navigate manually.
+
+**Resolved during ELITEA-2057 implementation (Phase 2 amend-in-PR, 2 fix
+rounds):**
+1. The Toggle-Interactivity round-trip delta assertion needed `abs=6.0`
+   (not `abs=1.0`, unlike `get_canvas_viewport_transform()`'s px-perfect
+   pan/zoom matches) — a NODE drag (via `move_node`) absorbs a few px into
+   ReactFlow's own node-drag-activation threshold before 1:1 tracking
+   starts (observed 56px delivered for a 60px request); this is a real,
+   distinct-from-pan-canvas interaction detail, not flakiness — see
+   `_surface.md`.
+2. Step 7 (Toggle cards size)'s "expanded" baseline must be established via
+   `auto_arrange_canvas()`, NOT a plain `fit_canvas_view()` — Toggle cards
+   size internally calls the SAME `onReLayout` (position recompute)
+   Auto-arrange uses, so a baseline captured on manually-dragged positions
+   (left over from step 6) doesn't share a basis with the post-toggle
+   measurements. Full root-cause writeup: `_surface.md`
+   § Toggle cards size.

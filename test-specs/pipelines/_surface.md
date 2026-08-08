@@ -98,11 +98,33 @@ pipeline (id 8401, Decision + 3 Printer branches) the ELITEA-2019 session probed
   fresh drag helper that samples the bounding-box center. With `move_node`,
   confirmed live: interactivity OFF → zero displacement; ON → exact-delta
   displacement, in either order, fully reversible.
-- **Toggle cards size is a deterministic boolean round-trip** — one click
+- **Toggle cards size is a deterministic boolean round-trip, BUT it
+  RE-LAYOUTS node POSITIONS too, not just card visuals** — one click
   collapses EVERY node's rendered height (confirmed live: a Decision node
   went 87.8px → 9.5px), a second click restores the EXACT original height.
-  Backed by `FlowEditor.jsx`'s `expandAll` state + `onExpandAll` (also
-  triggers `onReLayout` + a delayed `fitView()`).
+  Backed by `FlowEditor.jsx`'s `expandAll` state + `onExpandAll`, which also
+  calls `onReLayout` (recomputes ALL node positions, same function
+  Auto-arrange uses) + a delayed `fitView()` — it is NOT a pure
+  resize-in-place. **Test-methodology consequence (confirmed live during
+  ELITEA-2057 implementation, 2 fix rounds):** if a node was manually
+  dragged (e.g. an interactivity probe) before the FIRST toggle click, a
+  plain `fit_canvas_view()` baseline does NOT land on the same basis the
+  post-toggle measurements will be on — the round-trip "restore exact
+  height" assertion produced a false mismatch (232.9px vs 251.2px, then
+  304.0px vs 251.2px on a second plain-Fit-View attempt) because Fit View
+  alone fits whatever positions are CURRENTLY on screen, while the toggle's
+  own `onReLayout` recomputes positions from scratch. Fix: call
+  `auto_arrange_canvas()` (not `fit_canvas_view()`) to establish the
+  "expanded" baseline before the first Toggle-cards-size click — this puts
+  the canvas on the SAME `onReLayout`-computed basis every subsequent
+  toggle/re-arrange call in the test will also land on, making the
+  round-trip exact. (`FlowEditor.jsx`'s `onReLayout(specifiedExpandAll)`
+  also has a latent `specifiedExpandAll || expandAll` falsy-OR: when
+  transitioning expanded→compact, `specifiedExpandAll` is `false`, and
+  `false || expandAll` silently falls through to the STALE `expandAll`
+  closure value instead — not confirmed as a visible product defect this
+  session, noted for a future analyst who touches node SPACING/positions
+  specifically during a compact-mode transition.)
 - **Auto-arrange is fully deterministic for a static graph — same
   determinism class as Fit View (ELITEA-2019)**: dragging a node away from
   its auto-arranged position (via `move_node`, from the header strip) and
