@@ -81,6 +81,18 @@ Interrupt-after-not-disabled precondition documented above.
        clickable "Run N details" label + a "Stop run" button.
      - Chat auto-posts, as its own message: *"How to proceed? To resume the
        pipeline - type anything..."*
+       **Implementer correction (Phase 2/4, reverse-masking guard —
+       `.agents/testing.md` § Merge gate): NOT reproduced.** Re-checked live
+       on a FRESH pipeline (2 independent test runs, plus a manual probe on
+       this AFS's own exploration pipeline id 8159) — the embedded chat
+       shows exactly 2 messages after the trigger send (the user's message +
+       Code 1's execution-result bubble), even after a further 10s settle
+       wait. No separate "How to proceed?" bubble ever appears. Not filed as
+       a defect (the interrupt mechanism itself is unaffected — the pill,
+       locked panel, and run-in-progress indicator all appear correctly);
+       the case's own wording ("UI indicates pipeline is paused") is already
+       satisfied by those signals without this specific hint text, so the
+       shipped test does not assert it.
      - Printer 1 does NOT execute yet (no Printer output bubble).
 7. Verify interrupt state shown in UI.
    - **Verify**: same observations as step 6's pause assertions (the `interrupt`
@@ -119,10 +131,17 @@ Interrupt-after-not-disabled precondition documented above.
   confirmed via reload + YAML read) as the **pipeline-level**
   `interrupt_after:` list field (not a per-node nested field).
 - Executing the pipeline correctly PAUSES after the interrupted node — the
-  canvas shows an `interrupt` edge pill, the node's config panel locks, and
-  the chat header shows an in-progress run indicator + a "How to proceed?"
-  resume hint. This part of the case (steps 1-7) has **no product defect** —
-  it matches the case text exactly.
+  canvas shows an `interrupt` edge pill and the node's config panel locks
+  (both asserted in the shipped test). Live exploration also observed an
+  in-progress run indicator in the chat header (spinner/"Run N
+  details"/"Stop run"), but **this is not asserted in the shipped test** —
+  no `data-testid` exists on it (open gap, § Concrete Handles), so the pill
+  + locked panel carry the pause assertion instead. The case's own "How to
+  proceed?" resume-hint wording did **not** reproduce live (Test Steps step
+  6 correction) and is asserted nowhere. This part of the case (steps 1-7)
+  has **no product defect** — the pause mechanism itself matches the case
+  text exactly, only the two cosmetic UI-signal details above were corrected
+  post-exploration.
 - **Resuming via the UI's own advertised "type anything" instruction does
   NOT work** (step 8) — `EliteaAI/elitea-testing-public#1327`, sanctioned
   RED per the Merge gate's analysis-time exception.
@@ -139,7 +158,7 @@ Interrupt-after-not-disabled precondition documented above.
 | 3 Locate "Interrupt after" switch | visible | step 3 | step 3: visibility + NOT-disabled (has outgoing edge) | asserted |
 | 4 Toggle "Interrupt after" to enabled | switch enabled | step 4 | step 4: `to_be_checked(True)` | asserted |
 | 5 Save pipeline | saves without errors | step 5 | step 5: no console errors, 201, reload + YAML round-trip | asserted |
-| 6 Execute — verify pauses after node | pause after Code 1 | step 6 | step 6: chat execution bubble, interrupt pill, locked panel, run-in-progress header, resume-hint message | asserted — no case-text drift, live UI matches exactly |
+| 6 Execute — verify pauses after node | pause after Code 1 | step 6 | step 6: chat execution bubble (`execution_info`/`Execution time` text), interrupt edge pill (`expect(...).to_have_text("interrupt")`), locked config panel (Value field + Interrupt-after/Structured-output switches `is_disabled()`, Type/Input/Output selects carry `Mui-disabled`) | asserted, WITH TWO CORRECTIONS (implementer, fix round 1 — reconciling this row with what actually shipped, confirmed via `grep` on `test_pipeline_interrupt_before_after_toggles.py`): **(a)** the "run-in-progress header" (spinner/"Run N details"/"Stop run") is NOT asserted in the shipped test — it remains the OPEN TESTID GAP documented in § Concrete Handles (no `data-testid` on that banner); the pause is instead proven via the interrupt edge pill + locked config panel, which the test treats as the stronger, testid-backed signals. **(b)** the "resume-hint message" ("How to proceed?...") is also NOT asserted — per the Test Steps step 6 "Implementer correction" note above, it was re-confirmed NOT to reproduce live, so no assertion for it exists or should exist. |
 | 7 Verify interrupt state shown in UI | UI indicates paused | step 7 | step 7: same UI signals as step 6 (re-stated per case's own step split) | asserted |
 | 8 Resume execution — verify pipeline completes | pipeline resumes and completes | step 8 | step 8: `expect.soft()` assertions, currently FAILING | **DEFECT — `EliteaAI/elitea-testing-public#1327`. Case's own Fail criteria ("execution cannot resume") is met live — this is a confirmed product bug, not case-text drift.** |
 | Expected Final State: toggle pauses execution, UI shows state, resumes successfully | — | steps 6-8 | steps 6-8 | steps 6-7 pass; step 8 is the confirmed defect |
@@ -205,10 +224,10 @@ Interrupt-after-not-disabled precondition documented above.
 | Embedded chat input / send | `chat-message-input` (testid) | **on-main ✓** — confirmed live (`page.getByTestId('chat-message-input')`); already wired via `PipelineDetailPage.send_message_in_embedded_chat()`. | none needed |
 | Embedded chat message list | `ul.MuiList-root li.MuiListItem-root` | **CSS, pre-existing pattern** — already wired via `PipelineDetailPage._embedded_chat_messages()` / `get_embedded_chat_last_message()`; used to confirm the Code-1 execution bubble and the "How to proceed?" resume-hint bubble text this session. | none needed |
 | Run details panel / status badge | `pipeline-run-details-panel` / `pipeline-run-details-status-badge` (with `data-status` attribute) | **pre-existing** — already wired as `PipelineDetailPage.run_details_panel` / `run_details_status_badge`, `open_run_details_panel()` / `get_run_details_status()`. Not yet exercised live this session (used the header's own text instead — see gaps below) but the implementer should prefer these for step 6/7's pause assertion where possible. | none needed |
-| **GAP — "Run is in progress" header banner** | none | **Testid gap.** Confirmed live via `document.body.innerText.includes('Run is in progress')` — no `data-testid` on this element or its progressbar. Recommend `pipeline-run-in-progress-banner`. | text-content check (used this session) |
+| **GAP — "Run is in progress" header banner** | none | **Testid gap — still open.** Confirmed live via `document.body.innerText.includes('Run is in progress')` — no `data-testid` on this element or its progressbar. Recommend `pipeline-run-in-progress-banner`. **Not used in the shipped test** (fix round 1 reconciliation, cf. Coverage Map row 6): the pause is asserted via the interrupt edge pill + locked config panel instead, both of which have real testids already. | text-content check (used during exploration only, not shipped) |
 | **GAP — "Run N details" clickable label** | none | **Testid gap.** Confirmed live (`"View details": "Run 1 details"` accessible name in the a11y snapshot) — no testid. Recommend `pipeline-run-details-open-button` (distinct from the panel's own `pipeline-run-details-panel` which is the DIALOG, not the trigger). | accessible-name text match (used this session: `"Run 1 details"`, though the number increments per run — match by prefix `"Run"` + suffix `"details"`, not the literal string) |
 | **GAP — "Stop run" button** | none | **Testid gap.** Confirmed live (accessible name `"Stop run"`) — no testid. Recommend `pipeline-stop-run-button`. | accessible-name text match |
-| **GAP — `interrupt` edge pill** | none | **Testid gap.** Confirmed live via full-canvas `innerText` containing the literal string `"interrupt"` positioned between the two `<img>` edge-path elements in the ReactFlow SVG layer — could not isolate a stable per-edge selector via a quick DOM walk (see analysis notes); the implementer should re-derive via `page.locator('.react-flow__edge-label', {hasText: 'interrupt'})` or similar and, if genuinely un-testid-able (ReactFlow-internal edge-label rendering, same class as the #579 third-party-widget exception), document that explicitly rather than adding one. | full-canvas `innerText.includes('interrupt')` (used this session as a coarse signal — a real implementation needs a scoped locator, not a whole-page substring check) |
+| **`interrupt` edge pill — CLOSED (implementer, add-data-testid)** | `pipeline-edge-label-xy-edge__{source}---{target}` | **Testid added this implementation** — `EliteaAI/EliteaUI@94d190c9` on `automation/testids`. The pill is app JSX (`CustomEdge.jsx`'s `EdgeLabelRenderer` `Typography`, rendering `data.label` — NOT ReactFlow-internal despite sitting inside the `rf__wrapper` subtree), so the #579 third-party exception the AFS proposed does NOT apply; added `data-testid={`pipeline-edge-label-${id}`}` directly, keyed by the SAME internal `xy-edge__{source}---{target}` id `EDGE_TESTID` already uses for the edge itself (confirmed live: CustomEdge's `id` prop IS that exact string). New page-object constant `PipelineDetailPage.EDGE_LABEL` + `get_edge_label_locator(source_id, target_id)`. | none needed — real testid now exists |
 | Pipeline-level `interrupt_after` YAML field | top-level list key: `interrupt_after:\n  - {node_id}` | **confirmed live, this session** — read via `get_yaml_content()` on pipeline id 8159: `entry_point: Code 1\ninterrupt_after:\n  - Code 1\nnodes:\n  ...`. **NOT a per-node nested field** (unlike `structured_output`, which nests under the node) — implementer must assert against the pipeline-level YAML root, not `nodes[0].interrupt_after`. | n/a — this IS the source-of-truth field |
 
 ## Network Behavior
@@ -264,13 +283,25 @@ automated as a sanctioned-RED soft-assertion tied to the filed defect.
   ~32-34-line truncation threshold documented for
   `EliteaAI/elitea-testing-public#1025`, so the on-screen tab is safe to
   read directly (no `pipeline_api.get_pipeline()` workaround needed).
-- **Wait strategy for step 6's pause**: wait for the Code-1 execution
-  bubble to appear in the embedded chat (`wait_for_embedded_chat_response`,
-  pre-existing) THEN additionally wait for the "How to proceed?" hint
-  bubble (a SECOND, separate chat message) before asserting the pause is
-  fully settled — sending the trigger message and asserting immediately
-  raced ahead of the pause state during this exploration; allow up to
-  ~15s total (observed: ~9-10s from send to the hint bubble appearing).
+- **Wait strategy for step 6's pause (CORRECTED, fix round 1 — reconciling
+  with what actually shipped):** the original guidance below (wait for the
+  Code-1 execution bubble, THEN additionally wait for a "How to proceed?"
+  hint bubble) does NOT match the shipped test, because the hint bubble was
+  re-confirmed NOT to reproduce live (see Test Steps step 6's "Implementer
+  correction" and Coverage Map row 6). The shipped synchronization point is
+  instead the **interrupt edge pill**: wait for the Code-1 execution bubble
+  via `wait_for_embedded_chat_response` (pre-existing), THEN
+  `expect(pipeline_page.get_edge_label_locator(...)).to_have_text("interrupt",
+  timeout=PAUSE_TIMEOUT)` — a real Playwright web-first assertion (not a
+  sleep) that blocks until the pause has actually landed, confirmed reliable
+  at up to 60s. Original (superseded) guidance, kept for context only: wait
+  for the Code-1 execution bubble to appear in the embedded chat
+  (`wait_for_embedded_chat_response`, pre-existing) THEN additionally wait
+  for the "How to proceed?" hint bubble (a SECOND, separate chat message)
+  before asserting the pause is fully settled — sending the trigger message
+  and asserting immediately raced ahead of the pause state during this
+  exploration; allow up to ~15s total (observed: ~9-10s from send to the
+  hint bubble appearing).
 - **Step 8's assertion shape**: don't hard-fail the whole test on the
   resume defect. Use `expect.soft()` (or the project's equivalent soft-
   failure aggregation, per `.agents/testing.md` § Merge gate's closed-set

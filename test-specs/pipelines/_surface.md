@@ -1650,3 +1650,58 @@ is a legitimate empty state, not an error state).
   unchanged after this fix — confirmed green alongside the new test in the same
   local run (determinism is the merge gate's job, not repeated local runs).
   Full handle table + AFS: `lextend_pipeline-dashboard-search-filter-and-clear_ELITEA-2023.md`.
+
+## Interrupt before/after toggles — implementation-time facts (ELITEA-2047, 2026-08-08)
+
+**Resolved/added during ELITEA-2047 implementation:**
+
+- **Two back-to-back `add_node()` calls place the second node fully
+  overlapping the first** — ReactFlow spawns every freshly-added node at the
+  SAME default canvas position (confirmed live via screenshot: Printer 1
+  landed directly on top of Code 1, handles inaccessible to
+  `connect_nodes()`'s bounding-box-based drag). Added
+  `PipelineDetailPage.move_node(node_id, dx, dy)` — a generic drag-to-
+  reposition helper (locates via the exact `rf__node-{id}` testid, new
+  class constant `RF_NODE_TESTID`) — call it on the second node BEFORE
+  `fit_view()` + `connect_nodes()` whenever two UI-added nodes need
+  connecting. `dx=450, dy=100` (horizontal separation, clear of the taller
+  Code node's expanded height) was sufficient; a smaller vertical-only
+  offset (`dy=250`) was NOT (Code node's filled Value field makes it too
+  tall).
+- **A drag-created (pre-Save) edge's testid carries the ReactFlow
+  source/target HANDLE ids as a suffix, with NO `---` separator** —
+  confirmed live: `rf__edge-xy-edge__Code 1source-Printer 1target`, not the
+  clean post-reload `rf__edge-xy-edge__Code 1---Printer 1` shape
+  `EDGE_TESTID`/`wait_for_edge()` expect. Use `wait_for_edge_present()`
+  (already existed for this exact reason — see its own Decision-node
+  docstring) for any edge-existence wait BEFORE Save; `wait_for_edge()`
+  only becomes valid after Save + a reload re-parses the pipeline from its
+  saved YAML.
+- **The "interrupt" edge-label pill (`CustomEdge.jsx`'s `EdgeLabelRenderer`
+  `Typography`, rendering `data.label`) had NO testid** — this is APP JSX,
+  not ReactFlow-internal (it just happens to render inside the `rf__wrapper`
+  subtree via a portal), so the AFS's proposed #579 third-party exception
+  did not apply. Added `data-testid={`pipeline-edge-label-${id}`}` (same
+  `id` prop as the edge's own `EDGE_TESTID`, confirmed live to match 1:1),
+  `EliteaAI/EliteaUI@94d190c9` on `automation/testids`. New
+  `PipelineDetailPage.EDGE_LABEL` constant + `get_edge_label_locator()`.
+  This same label renders route names on Router/Decision/HITL edges too —
+  the testid is generic, not interrupt-specific.
+- **The AFS's "Chat auto-posts a distinct 'How to proceed?...' hint message"
+  claim does NOT reproduce** — re-checked on a fresh pipeline (2 independent
+  test runs + a manual probe on the AFS's own exploration pipeline, id
+  8159) with a further 10s settle wait beyond normal response
+  stabilisation: the chat shows exactly 2 messages (trigger + Code 1's
+  execution-result bubble), never a 3rd hint bubble. Not a defect — the
+  pause mechanism itself (edge pill, locked config panel, run-in-progress
+  node label) is unaffected and was NOT asserted via this hint text in the
+  shipped test. See the AFS's own Step 6 for the full correction.
+- **Config-panel "locked while paused" verification differs by field type**:
+  the Value textarea and the Interrupt-after/Structured-output Switches
+  expose a real native `disabled` HTML attribute (readable via
+  `.is_disabled()`); the Type/Input/Output MUI Selects do NOT — they only
+  gain the `Mui-disabled` CSS class (no `disabled`/`aria-disabled`
+  attribute), so `.is_disabled()` on those returns a false negative. Assert
+  via `"Mui-disabled" in locked_select.get_attribute("class")` instead
+  (established pattern elsewhere in this suite, e.g.
+  `test_pipeline_edge_deletion.py`'s `edge.get_attribute("class")` check).
