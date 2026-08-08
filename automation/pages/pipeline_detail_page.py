@@ -2112,6 +2112,11 @@ class PipelineDetailPage(PipelineFormPage):
         "toolkit": "Toolkit",
     }
     RF_NODE_TESTID_PREFIX = '[data-testid^="rf__node-{}"]'
+    # Exact-id sibling of RF_NODE_TESTID_PREFIX — for callers that already
+    # hold a specific node's internal id (e.g. from wait_for_node_on_canvas())
+    # and need to re-locate that SAME node, not "any node of this type".
+    # Same ReactFlow-injected `rf__node-{id}` testid, same #579 provenance.
+    RF_NODE_TESTID = '[data-testid="rf__node-{}"]'
 
     def wait_for_node_type_count(
         self, node_type: str, expected_count: int, timeout: int = 10000
@@ -4688,6 +4693,53 @@ class PipelineDetailPage(PipelineFormPage):
 
         logger.info("Connected %s -> %s", source_node_id, target_node_id)
 
+    def move_node(self, node_id: str, dx: int, dy: int, timeout: int = 5000) -> None:
+        """Drag *node_id* by (*dx*, *dy*) screen pixels to reposition it on the canvas.
+
+        Added for ELITEA-2047: ReactFlow spawns newly-added nodes at the
+        same default canvas position every time (confirmed live — two
+        back-to-back ``add_node()`` calls with no drag in between placed
+        the second node fully overlapping the first), so ``connect_nodes()``
+        cannot compute a valid drag path between two nodes whose handles
+        sit on top of each other. Drags from the node's own bounding-box
+        header area (a few px below its top edge, clear of inner form
+        fields) — ReactFlow's default node-drag interaction, not a
+        connection-handle drag.
+
+        Locates via the exact ``rf__node-{id}`` testid (:data:`RF_NODE_TESTID`
+        — same ReactFlow-injected #579 provenance as
+        :data:`RF_NODE_TESTID_PREFIX`, confirmed live to mirror the node's
+        internal id 1:1, e.g. ``rf__node-Printer 1``), not the pre-existing
+        ``[data-id="..."]`` raw-attribute pattern used elsewhere in this file
+        (tracked tech debt — #25/#42, not precedent for new code).
+
+        Args:
+            node_id: Internal id of the node to move (e.g. "Printer 1").
+            dx: Horizontal offset in pixels (positive = right).
+            dy: Vertical offset in pixels (positive = down).
+            timeout: Maximum wait time for the node to be visible.
+        """
+        node = self.page.locator(self.RF_NODE_TESTID.format(node_id))
+        node.wait_for(state="visible", timeout=timeout)
+        box = node.bounding_box()
+        if not box:
+            raise ValueError(f"Could not get bounding box for node {node_id!r}")
+        sx, sy = box["x"] + box["width"] / 2, box["y"] + 12
+
+        self.page.mouse.move(sx, sy)
+        self.page.wait_for_timeout(100)
+        self.page.mouse.down()
+        self.page.wait_for_timeout(100)
+
+        steps = 15
+        for i in range(1, steps + 1):
+            self.page.mouse.move(sx + dx * i / steps, sy + dy * i / steps)
+            self.page.wait_for_timeout(30)
+
+        self.page.mouse.up()
+        self.page.wait_for_timeout(300)
+        logger.info("Moved node %s by (%d, %d)", node_id, dx, dy)
+
     def get_edge_count(self) -> int:
         """Return the number of edges (connections) on the canvas.
 
@@ -4809,6 +4861,37 @@ class PipelineDetailPage(PipelineFormPage):
         if locator.count() == 0:
             raise ValueError(f"No edge found from '{source_id}' to '{target_id}'")
         return locator.first
+
+    # CustomEdge.jsx's EdgeLabelRenderer label — added for ELITEA-2047
+    # (`EliteaAI/EliteaUI@94d190c9`, `data-testid={`pipeline-edge-label-${id}`}`
+    # on the shared edge-label Typography). Keyed by the SAME internal
+    # source/target ids as EDGE_TESTID (confirmed live: the ReactFlow edge
+    # `id` prop CustomEdge receives is the exact `xy-edge__{source}---{target}`
+    # string, matching `EDGE_TESTID`'s middle segment) — one template, reused
+    # for both the edge itself and its label, not a second ad-hoc pattern.
+    EDGE_LABEL = '[data-testid="pipeline-edge-label-xy-edge__{}---{}"]'
+
+    def get_edge_label_locator(self, source_id: str, target_id: str) -> Locator:
+        """Return the Locator for the *source_id* -> *target_id* edge's label pill.
+
+        Renders only when the edge has a non-empty ``data.label`` — e.g. the
+        `"interrupt"` pill CustomEdge.jsx shows on the edge immediately after
+        an `interrupt_after`/`interrupt_before`-configured node, or a
+        Router/Decision/HITL edge's route name. Empty/absent otherwise
+        (``.count() == 0``), not just invisible.
+
+        Args:
+            source_id: Internal source node id exactly as it appears in the
+                edge's data-testid (e.g. "Code 1").
+            target_id: Internal target node id exactly as it appears in the
+                edge's data-testid (e.g. "Printer 1").
+
+        Returns:
+            Locator matching the edge label's
+            ``[data-testid="pipeline-edge-label-xy-edge__{source}---{target}"]``
+            element (count 0 if the edge currently has no label).
+        """
+        return self.page.locator(self.EDGE_LABEL.format(source_id, target_id))
 
     def wait_for_edge(self, source_id: str, target_id: str, timeout: int = 10000) -> None:
         """Poll (not an instant read) until the exact edge testid appears in the DOM.

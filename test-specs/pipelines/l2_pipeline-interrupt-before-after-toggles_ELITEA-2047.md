@@ -81,6 +81,18 @@ Interrupt-after-not-disabled precondition documented above.
        clickable "Run N details" label + a "Stop run" button.
      - Chat auto-posts, as its own message: *"How to proceed? To resume the
        pipeline - type anything..."*
+       **Implementer correction (Phase 2/4, reverse-masking guard —
+       `.agents/testing.md` § Merge gate): NOT reproduced.** Re-checked live
+       on a FRESH pipeline (2 independent test runs, plus a manual probe on
+       this AFS's own exploration pipeline id 8159) — the embedded chat
+       shows exactly 2 messages after the trigger send (the user's message +
+       Code 1's execution-result bubble), even after a further 10s settle
+       wait. No separate "How to proceed?" bubble ever appears. Not filed as
+       a defect (the interrupt mechanism itself is unaffected — the pill,
+       locked panel, and run-in-progress indicator all appear correctly);
+       the case's own wording ("UI indicates pipeline is paused") is already
+       satisfied by those signals without this specific hint text, so the
+       shipped test does not assert it.
      - Printer 1 does NOT execute yet (no Printer output bubble).
 7. Verify interrupt state shown in UI.
    - **Verify**: same observations as step 6's pause assertions (the `interrupt`
@@ -208,7 +220,7 @@ Interrupt-after-not-disabled precondition documented above.
 | **GAP — "Run is in progress" header banner** | none | **Testid gap.** Confirmed live via `document.body.innerText.includes('Run is in progress')` — no `data-testid` on this element or its progressbar. Recommend `pipeline-run-in-progress-banner`. | text-content check (used this session) |
 | **GAP — "Run N details" clickable label** | none | **Testid gap.** Confirmed live (`"View details": "Run 1 details"` accessible name in the a11y snapshot) — no testid. Recommend `pipeline-run-details-open-button` (distinct from the panel's own `pipeline-run-details-panel` which is the DIALOG, not the trigger). | accessible-name text match (used this session: `"Run 1 details"`, though the number increments per run — match by prefix `"Run"` + suffix `"details"`, not the literal string) |
 | **GAP — "Stop run" button** | none | **Testid gap.** Confirmed live (accessible name `"Stop run"`) — no testid. Recommend `pipeline-stop-run-button`. | accessible-name text match |
-| **GAP — `interrupt` edge pill** | none | **Testid gap.** Confirmed live via full-canvas `innerText` containing the literal string `"interrupt"` positioned between the two `<img>` edge-path elements in the ReactFlow SVG layer — could not isolate a stable per-edge selector via a quick DOM walk (see analysis notes); the implementer should re-derive via `page.locator('.react-flow__edge-label', {hasText: 'interrupt'})` or similar and, if genuinely un-testid-able (ReactFlow-internal edge-label rendering, same class as the #579 third-party-widget exception), document that explicitly rather than adding one. | full-canvas `innerText.includes('interrupt')` (used this session as a coarse signal — a real implementation needs a scoped locator, not a whole-page substring check) |
+| **`interrupt` edge pill — CLOSED (implementer, add-data-testid)** | `pipeline-edge-label-xy-edge__{source}---{target}` | **Testid added this implementation** — `EliteaAI/EliteaUI@94d190c9` on `automation/testids`. The pill is app JSX (`CustomEdge.jsx`'s `EdgeLabelRenderer` `Typography`, rendering `data.label` — NOT ReactFlow-internal despite sitting inside the `rf__wrapper` subtree), so the #579 third-party exception the AFS proposed does NOT apply; added `data-testid={`pipeline-edge-label-${id}`}` directly, keyed by the SAME internal `xy-edge__{source}---{target}` id `EDGE_TESTID` already uses for the edge itself (confirmed live: CustomEdge's `id` prop IS that exact string). New page-object constant `PipelineDetailPage.EDGE_LABEL` + `get_edge_label_locator(source_id, target_id)`. | none needed — real testid now exists |
 | Pipeline-level `interrupt_after` YAML field | top-level list key: `interrupt_after:\n  - {node_id}` | **confirmed live, this session** — read via `get_yaml_content()` on pipeline id 8159: `entry_point: Code 1\ninterrupt_after:\n  - Code 1\nnodes:\n  ...`. **NOT a per-node nested field** (unlike `structured_output`, which nests under the node) — implementer must assert against the pipeline-level YAML root, not `nodes[0].interrupt_after`. | n/a — this IS the source-of-truth field |
 
 ## Network Behavior
