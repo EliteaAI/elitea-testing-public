@@ -51,5 +51,6 @@
 - [Scoping-only card: Ready = deliverable posted](scoping_only_card_ready_means_deliverable_posted_not_merged_test.md) — "list X, don't automate yet" cards skip the merged-test/closure-record checklist entirely
 - [Promotability grep has 3 false-negative modes](promotability_grep_must_be_component_scoped_and_catch_prop_template_testids.md) — reused name/other component, prop/template, fully-composed `${PREFIX}-suffix` (needs file-diff, not grep)
 - [Factory-mode Workflow wait = TaskOutput poll loop](factory_mode_workflow_wait_is_taskoutput_poll_loop_not_turn_end.md) — never end the turn for a Workflow() call; loop `block=true, timeout=600000` in-turn instead
+- [Report can falsely say "blocked" on an already-merged case](report_case_outcome_can_falsely_say_blocked_for_an_already_merged_case.md) — cross-check git log + gh pr view before accepting any non-automated outcome; also: commit every wave's report.json/report.md
 - [Verify local vs origin before merging](verify_local_vs_origin_before_merging_case_branch.md) — `merge origin/<branch>` can silently no-op if the implementer never pushed
 - [zsh doesn't word-split unquoted $VAR](zsh_unquoted_var_no_word_split.md) — multi-node-id/multi-branch loops need heredoc file + `while read`, not `$VAR`/`mapfile`
