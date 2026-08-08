@@ -19,6 +19,10 @@ satisfies this case's precondition), then:
 
 Zoom/pan/Fit-View are pure client-side ReactFlow viewport state — confirmed
 live no network request fires for any of them (see AFS Network Behavior).
+Steps 3/5/7 assert zero console errors and zero `prompt_lib`-related network
+requests across the whole zoom -> pan -> Fit-View sequence (AFS Axis 2) —
+capture starts right after the step-2 baseline is established so the initial
+canvas navigation's own (expected) fetch doesn't false-positive the check.
 """
 
 import allure
@@ -33,6 +37,11 @@ UI_ELEMENT_TIMEOUT = 10_000
 # transform/bounding-box shift (confirmed live: ReactFlow pans px-perfectly).
 PAN_DX = 100
 PAN_DY = 80
+# Pipeline persist/fetch endpoints all share this segment (e.g.
+# .../application/prompt_lib/{project}/{id}, .../tool/prompt_lib/{project}/,
+# .../applications/prompt_lib/{project}) — a single substring catches any
+# accidental save/persist/refetch call the viewport ops must never trigger.
+PIPELINE_NETWORK_SUBSTRING = "prompt_lib"
 
 
 @allure.issue(
@@ -61,6 +70,14 @@ def test_canvas_zoom_pan_and_fit_view(page, pipeline_llm_code_end):
         baseline_transform = pipeline_page.get_canvas_viewport_transform()
         baseline_box = pipeline_page.get_node_bounding_box(probe_node_id)
 
+        # Registered right after the step-2 baseline (not before) so the
+        # canvas's own initial-load fetch isn't counted — from here on,
+        # zoom/pan/Fit-View are pure client-side viewport ops (AFS Network
+        # Behavior) and must fire neither console errors nor pipeline
+        # network requests. Checked cumulatively at steps 3, 5 and 7.
+        console_errors = pipeline_page.capture_console_errors()
+        viewport_op_requests = pipeline_page.capture_requests_matching(PIPELINE_NETWORK_SUBSTRING)
+
     with allure.step("Step 3/4 — Zoom in, verify canvas scale and node size both increase"):
         pipeline_page.zoom_in_canvas(timeout=UI_ELEMENT_TIMEOUT)
         zoomed_transform = pipeline_page.get_canvas_viewport_transform()
@@ -75,6 +92,11 @@ def test_canvas_zoom_pan_and_fit_view(page, pipeline_llm_code_end):
         assert zoomed_area > baseline_area, (
             f"Node {probe_node_id!r} should appear larger after Zoom In: "
             f"{baseline_area:.1f}px^2 -> {zoomed_area:.1f}px^2"
+        )
+        assert not console_errors, f"Zoom In should not introduce console errors: {list(console_errors)}"
+        assert not viewport_op_requests, (
+            "Zoom In is a pure client-side viewport transform — expected zero "
+            f"pipeline network requests, got: {list(viewport_op_requests)}"
         )
 
     with allure.step(
@@ -108,6 +130,11 @@ def test_canvas_zoom_pan_and_fit_view(page, pipeline_llm_code_end):
         assert node_dy == pytest.approx(PAN_DY, abs=1.0), (
             f"Node {probe_node_id!r} y-position should shift by the same drag delta, got {node_dy:.1f}px"
         )
+        assert not console_errors, f"Panning should not introduce console errors: {list(console_errors)}"
+        assert not viewport_op_requests, (
+            "Panning is a pure client-side viewport transform — expected zero "
+            f"pipeline network requests, got: {list(viewport_op_requests)}"
+        )
 
     with allure.step(
         "Step 7 — Click Fit View again, verify canvas returns to the all-nodes-visible state"
@@ -130,3 +157,12 @@ def test_canvas_zoom_pan_and_fit_view(page, pipeline_llm_code_end):
             f"Fit View should be deterministic — translate-y should return to the original "
             f"{baseline_transform['ty']}, got {restored_transform['ty']}"
         )
+        assert not console_errors, (
+            f"Zoom/pan/Fit-View sequence should not introduce console errors: {list(console_errors)}"
+        )
+        assert not viewport_op_requests, (
+            "Zoom/pan/Fit-View sequence is pure client-side viewport state — "
+            f"expected zero pipeline network requests, got: {list(viewport_op_requests)}"
+        )
+        console_errors.stop()
+        viewport_op_requests.stop()
