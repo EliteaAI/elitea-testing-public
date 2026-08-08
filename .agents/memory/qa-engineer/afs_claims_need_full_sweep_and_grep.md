@@ -87,6 +87,17 @@ Nothing in an AFS is true because it is written down. Two mechanical duties:
   testid GAPs (never closed this implementation) — so the Coverage Map row
   contradicts the AFS's own gap list one section down, the exact
   document-internal-consistency failure this entry's Remedy #2 calls out.
+- PR #1351/ELITEA-2019 (Pipeline Canvas — Zoom and Pan) — AFS's own Axis 2
+  ("Analyst additions") explicitly claimed: "step 3/5/7 assert zero console
+  errors and zero new network requests during the whole zoom/pan/fit-view
+  sequence." Grepped the shipped test (`test_pipeline_canvas_zoom_and_pan.py`)
+  and the whole diff for `console`/`network`/`request`: only one hit, a
+  docstring comment restating the AFS's separate Network Behavior note — zero
+  actual `page.on("console"`/`browser_console_messages`/network-count
+  assertions anywhere. Same species as PR #693/ELITEA-2095 below: an Axis-2
+  "assert zero console errors" claim with no corresponding code. The rest of
+  the AFS (7/7 Coverage Map rows) was faithfully implemented; this was the
+  one Axis-2 clause that never made it into the diff.
 - …plus 5 earlier occurrence(s) — full per-case detail in the source entries below.
 
 See also: afs_amendment_narrates_some_changes_leaves_others_unswept.md ·
