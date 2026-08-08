@@ -2,7 +2,36 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2012 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2050 analysis).
+
+## Pipeline Export — downloaded `.pipeline.md` frontmatter shape confirmed on TWO pipelines; no `nodes`/`state` verified by the existing spec (confirmed live, 2026-08-08, ELITEA-2050)
+
+Extends `test_pipeline_import_via_file.py` (ELITEA-2012) rather than a fresh spec — that
+test already exports+downloads+parses the file but only asserts `name`/`description`/
+`agent_type`/`conversation_starters`, never `nodes`/`entry_point`/`pipeline_settings`.
+Details + exact gap patch: `test-specs/pipelines/lextend_pipeline-export-verify-structure_ELITEA-2050.md`.
+
+- **Export top-level YAML shape depends on whether the pipeline has any non-END node.**
+  A pipeline with only an `END` node (`FullDetailsPipe_probe2`, id 6754) exports WITHOUT
+  a top-level `entry_point`/`nodes` key at all — only `pipeline_settings.nodes` (canvas,
+  containing just the `END` entry) is present. A pipeline with a real node (LLM, per
+  ELITEA-2012's own pipeline) exports WITH `entry_point: <node id>` and a top-level
+  `nodes:` list (each entry: `id`/`type`/`input`/`input_mapping`/`output`/`transition`).
+  Any case asserting "nodes" in the export must use a pipeline with a real node — an
+  empty/bare pipeline makes a "non-empty nodes list" assertion meaningless.
+- **No literal `state` top-level key exists anywhere in the export** — confirmed via
+  source read (`EliteaUI/src/pages/Common/Components/useExport.js`: pipelines/
+  applications export is a server-rendered `GET .../export_import/prompt_lib/{project}/{id}
+  ?format=md` fetch, blob-downloaded client-side, no client "state" concept at all). A
+  case asking to verify "state" in the export should be read as `pipeline_settings`
+  (canvas nodes/edges/positions) — the closest structural analogue — not a literal key
+  match.
+- **Case-text drift "JSON file" reconfirmed on a SECOND TMS case (ELITEA-2050) via the
+  SAME underlying mechanism** as ELITEA-2012's already-filed
+  [#1334](https://github.com/EliteaAI/elitea-testing-public/issues/1334) — commented on
+  the existing issue rather than filing a duplicate (same object: `useExport.js`'s
+  `doExport` hard-codes `format=md` for `pipelines`/`applications`, no `format=json` path
+  exists at all).
 
 ## Pipeline Import via File — Export downloads Markdown (not JSON), Import shares Agent/Skill's ImportWizardModal wholesale, one new testid needed (confirmed live, 2026-08-08, ELITEA-2012)
 

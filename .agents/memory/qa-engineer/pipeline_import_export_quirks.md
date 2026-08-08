@@ -34,3 +34,14 @@ Confirmed live 2026-08-08 (ELITEA-2012 analysis), `http://localhost:5173`.
 - Minor already-tracked cosmetic issue: Import Complete dialog's `IWModalSucceedContent.jsx` has
   a benign `validateDOMNesting` (`<div>` in `<p>`) console warning, same across Agent/Skill/
   Pipeline import — `elitea-testing-public#570`.
+- **Export top-level YAML shape depends on whether the pipeline has a real (non-END) node**
+  (confirmed live 2026-08-08, ELITEA-2050, on TWO independently-created pipelines): a
+  node-less pipeline (only `END`) exports with NO top-level `entry_point`/`nodes` key at
+  all — only `pipeline_settings.nodes` (canvas) lists the `END` entry. A pipeline with a
+  real node exports WITH `entry_point: <id>` + a top-level `nodes:` list (per-node
+  `type`/`input_mapping`/`output`/`transition`). There is NO literal top-level `state` key
+  anywhere (confirmed via `useExport.js` source read — pure server-rendered `?format=md`
+  fetch, no client "state" concept); a case asking to verify "state" in an export maps onto
+  `pipeline_settings`, not a literal key. Any case-text drift about "JSON file downloads" on
+  a NEW TMS case is the SAME underlying pattern as `#1334` (same object: `useExport.js`'s
+  `doExport` hard-codes `format=md`, no JSON path exists) — comment on `#1334`, don't refile.
