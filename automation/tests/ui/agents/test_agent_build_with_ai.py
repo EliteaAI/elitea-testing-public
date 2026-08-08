@@ -396,6 +396,32 @@ CANCEL_FROM_REVIEW_DRAFT_PAYLOAD = {
     "suggested_skills": [],
 }
 
+# ELITEA-1919 — verbatim prompt per the AFS's Test Data table. This case's
+# Step 4 assertion depends on reading this EXACT text back after "Back to
+# prompt" is clicked, so it is a dedicated constant this test owns the
+# identity of (mirrors CANCEL_PROMPT_TEXT / CANCEL_FROM_REVIEW_PROMPT_TEXT
+# naming), not reused from another case.
+BACK_TO_PROMPT_PROMPT_TEXT = (
+    "An agent that helps summarize customer support tickets for ELITEA-1919 back-to-prompt verification."
+)
+
+# Mocked generate_application_draft response for ELITEA-1919 — same
+# minimal-shape technique CANCEL_FROM_REVIEW_DRAFT_PAYLOAD uses. This
+# case's Pass criteria never assert on the draft's specific field values,
+# only on its absence from the DOM after "Back to prompt" is clicked.
+BACK_TO_PROMPT_DRAFT_PAYLOAD = {
+    "name": "ELITEA-1919 Back To Prompt Draft",
+    "description": "A draft used to test back-to-prompt state-preservation behavior.",
+    "instructions": "You are a test agent for ELITEA-1919.",
+    "welcome_message": "Hi, testing back to prompt.",
+    "conversation_starters": ["Starter one", "Starter two"],
+    "suggested_toolkits": [],
+    "suggested_mcp": [],
+    "suggested_pipelines": [],
+    "suggested_agents": [],
+    "suggested_skills": [],
+}
+
 
 class TestAgentBuildWithAIGenerationFailureRetry:
     """Build with AI (P2): generation failure shows error, prompt is
@@ -2312,4 +2338,123 @@ class TestAgentBuildWithAICancelFromReviewStep:
         finally:
             modal.clear_generate_mock()
             console_capture.stop()
+            create_requests.stop()
+
+
+class TestAgentBuildWithAIBackToPromptFromReviewStep:
+    """Build with AI (P2): clicking "Back to prompt" (``back_button``) on
+    the REVIEW step (after a draft has been generated) returns the modal
+    to the INPUT step — review-form fields and the review-step action row
+    removed from the DOM, not merely hidden — while preserving the exact
+    previously-typed prompt text and firing no new network request
+    (ELITEA-1919).
+
+    ``handleBack()`` (``GenerateEntityModal.jsx``) resets ``step`` back to
+    ``STEPS.INPUT`` and discards ``draftData``, but — unlike the sibling
+    ``handleClose()`` that ``TestAgentBuildWithAICancelFromReviewStep``
+    (ELITEA-1918) exercises — never calls ``setDescription('')``: the
+    prompt text state deliberately survives. See the ELITEA-1919 AFS
+    Triangulation section.
+
+    ``back_button`` was previously only ``.is_visible()``-checked
+    (``TestAgentBuildWithAICreationFailureRecovery``), never ``.click()``ed
+    anywhere in the suite — this is the first test to exercise what that
+    control actually does."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agents/build_with_ai/ELITEA-1919_build-with-ai-back-to-prompt-returns-to-input-step-preserves-text.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_back_to_prompt_returns_to_input_step_and_preserves_prompt_text(self, page):
+        """Clicking "Back to prompt" from the review step returns the modal
+        to the input step, preserves the exact prompt text, shows no
+        leaked draft data, and fires no new network request."""
+        list_page = AgentsListPage(page)
+        modal = GenerateAgentModalPage(page)
+
+        # Side-channel captures spanning the whole
+        # open -> type -> generate -> back sequence (AFS Expected Results /
+        # Axis 2) — started before Step 1 so nothing fired during
+        # modal-open itself is missed.
+        console_capture = modal.capture_console_errors()
+        draft_requests = modal.capture_requests_matching(
+            "/elitea_core/generate_application_draft/", method="POST"
+        )
+        create_requests = modal.capture_requests_matching(
+            "/elitea_core/applications/prompt_lib/", method="POST"
+        )
+
+        modal.mock_generate_success(BACK_TO_PROMPT_DRAFT_PAYLOAD)
+
+        try:
+            with allure.step("Step 1 — Generate a draft and reach the review form"):
+                list_page.navigate_to_create()
+                modal.open_modal()
+                modal.fill_prompt(BACK_TO_PROMPT_PROMPT_TEXT)
+
+                assert modal.get_prompt_value() == BACK_TO_PROMPT_PROMPT_TEXT, (
+                    "Prompt textarea should contain exactly the entered text"
+                )
+
+                with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+                    modal.generate_button.click()
+                assert response_info.value.status == 200, (
+                    "Mocked generate-draft response should resolve 200 to reach the review step"
+                )
+                modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+
+                assert modal.get_review_name() == BACK_TO_PROMPT_DRAFT_PAYLOAD["name"], (
+                    "Review form should display the generated draft's name before Back discards it"
+                )
+                assert len(draft_requests) == 1, (
+                    f"Exactly one generate-draft call should have fired to reach the review step, "
+                    f"got: {list(draft_requests)}"
+                )
+
+            with allure.step("Step 2 — Click 'Back to prompt'"):
+                modal.back_button.click()
+
+            with allure.step("Step 3 — Verify the modal returns to the prompt input step"):
+                modal.wait_for_input_step(timeout=NAVIGATION_TIMEOUT)
+                assert modal.back_button.count() == 0, (
+                    "'Back to prompt' button should be fully removed from the DOM after Back, "
+                    "not merely hidden — the review-step action row is gone entirely"
+                )
+                assert modal.approve_button.count() == 0, (
+                    "'Create Agent' button should be fully removed from the DOM after Back"
+                )
+
+            with allure.step("Step 4 — Verify the previously entered prompt text is preserved"):
+                assert modal.get_prompt_value() == BACK_TO_PROMPT_PROMPT_TEXT, (
+                    "Prompt textarea should show the exact original text after Back — no "
+                    "truncation, no whitespace drift, no residual draft text appended"
+                )
+
+            with allure.step("Step 5 — Verify no draft data leaks into the prompt step UI"):
+                assert modal.review_name_input.count() == 0, (
+                    "Review-form Name field should be fully removed from the DOM after Back — "
+                    "no leaked draft data reachable via direct DOM query"
+                )
+
+            with allure.step(
+                "Step 6 — Verify no new network requests and no unexpected console errors"
+            ):
+                assert len(draft_requests) == 1, (
+                    "Back click itself must not fire a new generate-draft call — still exactly "
+                    f"the one from Step 1, got: {list(draft_requests)}"
+                )
+                assert not create_requests, (
+                    f"Back click must never fire the base-agent CREATE call, got: {list(create_requests)}"
+                )
+                unexpected_errors = [
+                    m.text for m in console_capture if "disableUnderline" not in m.text
+                ]
+                assert not unexpected_errors, f"Unexpected console errors: {unexpected_errors!r}"
+        finally:
+            modal.clear_generate_mock()
+            console_capture.stop()
+            draft_requests.stop()
             create_requests.stop()
