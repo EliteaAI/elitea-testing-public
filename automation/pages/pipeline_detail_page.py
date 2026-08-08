@@ -398,6 +398,30 @@ class PipelineDetailPage(PipelineFormPage):
         description="Code node's 'Structured output' switch (CommonInterruptSettings.jsx)"
     )
 
+    # State modifier node inline config (ELITEA-2035). Testid-only, added via
+    # add-data-testid — StateModifierNode.jsx call sites only. Unlike Code/LLM,
+    # this node type has NO Interrupt/Structured-output controls (confirmed via
+    # source — StateModifierNode.jsx renders only Jinja Template + Variables to
+    # clean + Input + Output). Page-wide (not scoped to a specific node
+    # container): correct as long as a test only has a single State modifier
+    # node on canvas.
+    state_modifier_node_template = LocatorDescriptor(
+        testid="pipeline-state-modifier-node-template-input",
+        description="State modifier node's Jinja Template field (plain textarea, not CodeMirror)"
+    )
+    state_modifier_node_variables_to_clean_select = LocatorDescriptor(
+        testid="pipeline-state-modifier-node-variables-to-clean-select",
+        description="State modifier node's 'Variables to clean' tool-agnostic state-variable select"
+    )
+    state_modifier_node_input_select = LocatorDescriptor(
+        testid="pipeline-state-modifier-node-input-select",
+        description="State modifier node's tool-agnostic Input state-variable select"
+    )
+    state_modifier_node_output_select = LocatorDescriptor(
+        testid="pipeline-state-modifier-node-output-select",
+        description="State modifier node's tool-agnostic Output state-variable select"
+    )
+
     # Entry-point Trigger select (ELITEA-2005/06/07/08 testid prep, first
     # consumed here) — TriggerTypeSelector.jsx renders this unconditionally
     # for whichever node is the pipeline's current entry point, regardless of
@@ -3265,6 +3289,103 @@ class PipelineDetailPage(PipelineFormPage):
     def get_code_node_output_value(self) -> str:
         """Read the Code node's currently-selected Output display text."""
         text = (self.code_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def fill_state_modifier_node_template(self, value: str, timeout: int = 5000) -> None:
+        """Fill the State modifier node's Jinja Template field.
+
+        Plain MUI textarea (``Input.InputBase``/``AIAssistantInput``, ``onInput``
+        handler) — NOT CodeMirror/Monaco despite the component receiving
+        ``language="jinja"`` internally, which only affects the SEPARATE
+        full-screen AI Assistant modal (confirmed live, ELITEA-2035, same
+        pattern already documented for the Router/Decision/Code node Jinja/
+        AIAssistantInput fields). Uses click + press_sequentially — MUI/React
+        fields need real keyboard events for onChange to fire
+        (.claude/rules/mui-patterns.md). Multi-line text (embedded ``\\n``)
+        types and reads back correctly, confirmed live.
+
+        Args:
+            value: The Jinja template text to type (may be multi-line).
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self._fill_node_field_value(self.state_modifier_node_template, value, timeout=timeout)
+
+    def get_state_modifier_node_template(self) -> str:
+        """Read the State modifier node's Jinja Template field current content."""
+        return self.state_modifier_node_template.input_value()
+
+    def open_state_modifier_node_variables_to_clean_select(self, timeout: int = 5000) -> None:
+        """Open the State modifier node's 'Variables to clean' dropdown.
+
+        Despite the case text describing this as an "expandable section", it
+        is the SAME tool-agnostic multi-select component as Input/Output
+        (``FlowEditorSelect.InputSelect``, ``inputFieldName="variables_to_clean"``)
+        — confirmed live, ELITEA-2035: no accordion/expand affordance exists,
+        it is a plain combobox that opens a dropdown like every other
+        Input/Output select in this node family.
+        """
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.state_modifier_node_variables_to_clean_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_state_modifier_node_variables_to_clean_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the 'Variables to clean' dropdown and select *variable_name*."""
+        self.open_state_modifier_node_variables_to_clean_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_state_modifier_node_variables_to_clean_value(self) -> str:
+        """Read the State modifier node's currently-selected 'Variables to clean' display text."""
+        text = (self.state_modifier_node_variables_to_clean_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_state_modifier_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the State modifier node's Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.state_modifier_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_state_modifier_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Input dropdown and select *variable_name*.
+
+        Args:
+            variable_name: Must already be a pipeline state variable — the
+                built-in ``input``/``messages``, or a custom variable added
+                via :meth:`add_state_variable` first (confirmed live,
+                ELITEA-2035: this select, like Code/Decision's Input, only
+                lists EXISTING state vars, it is not a freeform/creatable
+                field).
+        """
+        self.open_state_modifier_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_state_modifier_node_input_value(self) -> str:
+        """Read the State modifier node's currently-selected Input display text."""
+        text = (self.state_modifier_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_state_modifier_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the State modifier node's Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.state_modifier_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_state_modifier_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Output dropdown and select *variable_name*.
+
+        Args:
+            variable_name: Must already be a pipeline state variable (Output,
+                like Input, only lists EXISTING state vars — it is not a
+                freeform/creatable field; add a custom variable via
+                :meth:`add_state_variable` first if *variable_name* isn't
+                one of the built-in ``input``/``messages`` vars — confirmed
+                live, ELITEA-2035).
+        """
+        self.open_state_modifier_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_state_modifier_node_output_value(self) -> str:
+        """Read the State modifier node's currently-selected Output display text."""
+        text = (self.state_modifier_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
 
     def is_node_interrupt_before_toggle_visible(self, node_id: str, timeout: int = 5000) -> bool:
