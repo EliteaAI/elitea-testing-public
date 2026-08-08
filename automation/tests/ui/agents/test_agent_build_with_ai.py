@@ -31,12 +31,22 @@ first test in this file to read the Welcome Message / Chat-starter fields at
 all (their `data-testid`s were added for this case; see the AFS Concrete
 Handles).
 
+Covers ELITEA-1914: extends ELITEA-1909/1911's create+navigate coverage to
+the ungated, no-resource-selection path — approving a plain draft (no
+suggested resources rendered at all) creates the agent via the base-create
+POST only (no toolkit/agent/skill relation calls), auto-navigates to the
+created agent's detail page with the draft's content carried over and the
+Skills counter reading zero, and the new agent is visible back on the
+Agents list — the one step (post-creation Agents-list verification) not
+exercised by any prior Build-with-AI test in this file.
+
 Spec: test-specs/agents/l2_build-with-ai-generation-failure-retry_ELITEA-1915.md
 Spec: test-specs/agents/l2_build-with-ai-generated-draft-suggested-resources_ELITEA-1907.md
 Spec: test-specs/agents/l2_build-with-ai-selected-suggested-resources-attached-to-created-agent_ELITEA-1909.md
 Spec: test-specs/agents/lextend_build-with-ai-selected-suggested-skills-attached-to-created-agent_ELITEA-1911.md
 Spec: test-specs/agents/lextend_build-with-ai-modal-contains-prompt-generate-cancel-controls_ELITEA-1905.md
 Spec: test-specs/agents/l2_build-with-ai-draft-generated-from-natural-language-description_ELITEA-1906.md
+Spec: test-specs/agents/lextend_build-with-ai-approve-creates-agent-and-navigates-to-agent-menu_ELITEA-1914.md
 Covers: GenerateAgentModal (GenerateEntityModal.jsx via GenerateAgentModal.jsx)
 
 Markers:
@@ -100,6 +110,14 @@ RETRY_DRAFT_PAYLOAD = {
 
 # ELITEA-1907 — verbatim prompt per the case's Test Data table.
 SUGGESTED_RESOURCES_PROMPT_TEXT = "An agent that queries GitHub and runs Jira updates"
+
+# ELITEA-1914 — a deliberately generic/non-resource-implying prompt (per the
+# AFS's Test Data) so no "Suggested {Category}:" section renders at all —
+# the negative control that distinguishes the plain-approve path from
+# ELITEA-1909/1911's positive-attachment scenarios.
+NO_RESOURCES_PROMPT_TEXT = (
+    "Create a simple agent that summarizes long text documents into concise bullet-point summaries."
+)
 
 # Mocked generate_application_draft response for ELITEA-1907.
 #
@@ -855,6 +873,112 @@ class TestAgentBuildWithAISelectedResourcesAttached:
                 assert not not_selected_calls, (
                     f"No GET/PATCH .../skill/prompt_lib/.../{not_selected_skill['id']} call should ever fire "
                     f"for the deliberately-unselected Skill, got: {not_selected_calls}"
+                )
+        finally:
+            if created_agent_id is not None:
+                try:
+                    agent_api.delete_agent(created_agent_id)
+                    logger.info("Deleted created agent %s", created_agent_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete created agent %s during teardown: %s", created_agent_id, exc)
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agents/build_with_ai/ELITEA-1914_build-with-ai-approve-creates-agent-and-navigates-to-agent-menu.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_approve_with_no_resources_creates_agent_and_appears_in_list(self, page, agent_api):
+        """Approving a plain draft — no suggested resources rendered at all —
+        creates the agent via the base-create POST only (no toolkit/agent/
+        skill relation calls), auto-navigates to the created agent's detail
+        page with the draft's content carried over and the Skills counter
+        reading zero, and the new agent is visible back on the Agents list.
+        Extends this class's create+navigate coverage (ELITEA-1909/1911) to
+        the ungated, no-resource-selection path (ELITEA-1914) — a distinct
+        network contract that click_approve_and_wait_for_creation()/
+        click_approve_and_wait_for_skill_creation() would hang on, since
+        neither association call ever fires for a plain draft (see
+        GenerateAgentModalPage.click_approve_and_wait_for_agent_created())."""
+        list_page = AgentsListPage(page)
+        modal = GenerateAgentModalPage(page)
+
+        created_agent_id = None
+        try:
+            # ------------------------------------------------------------------
+            # Step 1 (case) — Generate a draft from a plain, non-resource-
+            # implying prompt; review form populates with no "Suggested
+            # {Category}:" sections rendered at all
+            # ------------------------------------------------------------------
+            with allure.step("Step 1 — Generate a plain draft implying no resources"):
+                list_page.navigate_to_create()
+                modal.open_modal()
+                modal.fill_prompt(NO_RESOURCES_PROMPT_TEXT)
+
+                assert modal.get_prompt_value() == NO_RESOURCES_PROMPT_TEXT, (
+                    "Prompt textarea should contain exactly the entered text"
+                )
+
+                response = modal.click_generate_and_wait_for_response(
+                    timeout=LIVE_GENERATE_RESPONSE_TIMEOUT
+                )
+                assert response.status == 200, (
+                    f"Expected the generate-draft request to succeed, got {response.status}"
+                )
+                modal.wait_for_review_form()
+
+                for entity_type in ("toolkit", "mcp", "pipeline", "agent", "skill"):
+                    assert not modal.is_resource_section_visible(entity_type), (
+                        f'No "Suggested {entity_type.capitalize()}:" section should render for a '
+                        "plain, non-resource-implying prompt"
+                    )
+
+                draft_name = modal.get_review_name()
+
+            # ------------------------------------------------------------------
+            # Step 2 (case) — Click "Create Agent"; only the base-create POST
+            # fires (no toolkit/agent/skill relation calls)
+            # ------------------------------------------------------------------
+            with allure.step('Step 2 — Click "Create Agent"'):
+                create_response = modal.click_approve_and_wait_for_agent_created()
+
+                assert create_response.status == 201, (
+                    f"Expected the base-agent create call to resolve 201, got {create_response.status}"
+                )
+                created_agent_id = create_response.json()["id"]
+
+            # ------------------------------------------------------------------
+            # Steps 3-4 (case) — agent is created without errors, and the
+            # user is auto-navigated to the created Agent's detail page with
+            # the draft's content carried over and zero resources attached
+            # ------------------------------------------------------------------
+            detail_page = AgentDetailPage(page)
+            with allure.step("Step 3-4 — Verify agent creation and navigation to the Agent detail page"):
+                page.wait_for_url(f"**/agents/all/{created_agent_id}**")
+                detail_page.wait_for_page_load()
+
+                assert f"/agents/all/{created_agent_id}" in page.url, (
+                    f"Expected to land on the created agent's detail page, got {page.url}"
+                )
+                assert detail_page.get_name() == draft_name, (
+                    "Detail page Name field should carry over the generated draft's name verbatim, "
+                    f"expected {draft_name!r}, got {detail_page.get_name()!r}"
+                )
+                counter_text = detail_page.get_skills_counter_text()
+                assert counter_text.startswith("0/"), (
+                    "Skills counter should read '0/N skills added.' for a plain draft with no "
+                    f"resources attached, got {counter_text!r}"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 5 (case) — Navigate to the Agents list; the new Agent
+            # appears there
+            # ------------------------------------------------------------------
+            with allure.step("Step 5 — Verify the new Agent appears in the Agents list"):
+                list_page.navigate()
+                assert list_page.agent_exists_in_list(draft_name), (
+                    f"Newly created agent {draft_name!r} should be visible in the Agents list"
                 )
         finally:
             if created_agent_id is not None:
