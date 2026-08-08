@@ -162,3 +162,5 @@ lead before launching wave-01).
   — all 4 touched component files differ from `main`, none promoted yet. Closure comment posted on
   #1297. Card stays In Progress (operator directive is running-until-complete — no Ready checkpoint
   between waves this time). Launching wave-03 next.
+- 2026-08-08T20:05 wave-03-yaml-decision-trigger (5 cases) launched. **Run ID: wf_308e801c-d83**
+  (task w18hrprzc). Polling in-turn for completion.
