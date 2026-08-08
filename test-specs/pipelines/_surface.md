@@ -2006,3 +2006,50 @@ dialog) reproduces for Pipeline Fork too** (1/1 this session) — same root caus
 same filed issue, not re-filed.
 
 Full AFS: `test-specs/pipelines/l2_pipeline-fork-to-different-project_ELITEA-2051.md`.
+
+## Pipelines dashboard — card "Pin to top" toggle, distinct from ELITEA-2049's detail-page menu item (confirmed live, 2026-08-08, ELITEA-2025)
+
+**Two completely different "Pin to top" surfaces exist for Pipelines — do not
+conflate them:**
+1. **Dashboard card hover icon** (this entry) — a standalone `PinButton.jsx`
+   icon button rendered directly on each `Card.jsx` (visible on hover or when
+   already pinned), driven by the `usePin()` hook. **Has a working testid.**
+2. **Pipeline detail page's three-dot Actions menu item** — a menu item inside
+   `DotMenu.jsx`, driven by the SEPARATE `usePinMenu.hooks.jsx` hook, which has
+   **no testid at all** (see `l2_pipeline-three-dot-menu-actions_ELITEA-2049.md`
+   § Concrete Handles — that gap is real and still open; unrelated to this entry).
+
+**Dashboard card testid, confirmed live**: `pipelineall-pin-toggle-button-{id}`
+(`[data-testid]` on the `IconButton` inside `PinButton.jsx`) — on
+`automation/testids` only (origin `EliteaAI/EliteaUI@b54bc281`, "[EL-1974] add
+data-testid for credential pin/unpin controls"), **NOT yet on `main`**
+(`git grep -- "pin-toggle-button" origin/main -- src/` → 0 hits this session).
+The `pipelineall` prefix is a naming-convention leak, not a functional issue:
+`PinButton.jsx`'s local `getPinTestIdSlug()` has no `isPipelineCard` branch, so
+it falls through to `String(entityType).toLowerCase()` on
+`ContentType.PipelineAll` (`'PipelineAll'` → `'pipelineall'`). Stable and
+unique for the `/pipelines/all` dashboard specifically — **but a DIFFERENT
+pipeline card view (Top/Latest/Trending/Draft/etc.) would get a DIFFERENT
+testid for the SAME pipeline**, since none of those `ContentType.Pipeline*`
+values route through `isPipelineCard` either. Untested by ELITEA-2025 (scoped
+to `/pipelines/all` only); a future case touching another pipeline card view
+should re-verify before assuming this same testid shape.
+
+**Reorder timing is ASYMMETRIC — confirmed live, 3 pin/unpin cycles this
+session**: pinning re-sorts the grid **instantly, client-side, no reload
+needed**. Unpinning does **not** — the just-unpinned card stays at the top of
+the grid (even though its own button label flips back to "Pin to top"
+immediately) until a fresh navigate/re-fetch happens. This is the SAME shape
+the merged `test_credential_pin_unpin.py` already codifies (its Step 7b
+explicitly re-navigates before asserting the reverted order) — evidently a
+platform-wide `usePin`/social-pin-endpoint behavior, not a pipeline-specific
+one. Any future pin/unpin test on any entity should follow the same
+re-navigate-before-asserting-reverted-order shape; asserting order immediately
+after an unpin click will flakily fail against genuinely-correct behavior.
+
+Network: `POST /api/v2/social/pin/prompt_lib/{project}/application/{id}` → `201`
+(pin), `DELETE .../application/{id}` → `204` (unpin) — pipelines share the
+`application` API path segment with agents (same as `PipelineAPI`'s own
+docstring already notes for CRUD).
+
+Full AFS: `test-specs/pipelines/l2_pipeline-dashboard-pin-to-top_ELITEA-2025.md`.
