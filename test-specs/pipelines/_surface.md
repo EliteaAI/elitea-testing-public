@@ -1150,6 +1150,20 @@ flow-editor/ui/settings/TriggerTypeSelector.jsx` + `PipelineWebhookModal.jsx` +
   Mode radio group has no visible heading. Locate by the two option labels ("Default"/"Advanced")
   instead.
 
+**Added/resolved during ELITEA-2041 implementation (2026-08-08):** confirmed live that the Trigger
+control is EXCLUSIVE to the entry-point node's own card — a non-entry node's card (Code, Printer;
+tried 2 types) renders zero "Trigger" DOM content at all, on an UNSAVED canvas (no Save needed —
+`isEntrypoint` is driven purely by client-side canvas state, not the saved YAML, unlike the
+Chat-Message-only RESTRICTION logic documented above which IS save-gated). Also confirmed the
+`ApplicationInformation.jsx` Information section's own "Trigger:" row reads from the SAME
+`useGetPipelineTriggerQuery` hook as the node-level combobox (one shared data source) and is
+subject to the identical async-population gap (absent on first paint, present ~1–2s later — wait
+for visibility, never read immediately). That row had NO testid; added
+`information-trigger-row` (`EliteaAI/EliteaUI@28dbc5e4`) on the row's wrapping `<Box>`. **DOM
+textContent has no space between label and value** (`"Trigger:Chat Message"`, not `"Trigger: Chat
+Message"` — the visual gap is CSS `flex gap`, not a text character) — assert the no-space form.
+Full detail: `test-specs/pipelines/lextend_pipeline-entry-point-trigger-shown-only-on-entry-node_ELITEA-2041.md`.
+
 ## YAML editor ⇄ Flow canvas sync (confirmed live, 2026-08-03, ELITEA-2028)
 
 - **`yaml_view_button`/`flow_view_button`/`yaml_editor` testids all work as
