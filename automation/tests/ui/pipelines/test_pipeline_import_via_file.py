@@ -2,6 +2,9 @@
 
 TMS: ELITEA-2012
 (test-specs/pipelines/l2_pipeline-import-via-file_ELITEA-2012.md)
+Also covers ELITEA-2050 (Pipeline — Export, verify downloaded file's
+structural content: nodes/entry_point/pipeline_settings — extend-existing,
+test-specs/pipelines/lextend_pipeline-export-verify-structure_ELITEA-2050.md).
 
 Creates a pipeline (name/description/chat starter/LLM node) via UI, exports
 it via the three-dot menu (downloads a ``.pipeline.md`` Markdown file — the
@@ -34,6 +37,7 @@ check per the AFS's own Automation Hints (API readback preferred over DOM).
 """
 
 import logging
+import re
 import tempfile
 import uuid
 from pathlib import Path
@@ -79,6 +83,13 @@ def _slug_chars(text: str) -> str:
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2012_pipeline-import-via-file.md",
     "onetest-ai Test Case link",
+)
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+    "automated-full-regression-ui/pipelines/ELITEA-2050_pipeline-export.md",
+    "onetest-ai Test Case link (also covers ELITEA-2050 — export downloaded file's "
+    "structural content, nodes/entry_point/pipeline_settings, see "
+    "test-specs/pipelines/lextend_pipeline-export-verify-structure_ELITEA-2050.md)",
 )
 @pytest.mark.p2
 def test_pipeline_import_via_file(page, pipeline_api):
@@ -199,7 +210,16 @@ def test_pipeline_import_via_file(page, pipeline_api):
             )
 
             raw_content = download_path.read_text(encoding="utf-8")
-            parts = raw_content.split("---", 2)
+            # ELITEA-2050 infrastructure fix: a bare `raw_content.split("---", 2)`
+            # (pre-existing) corrupts parsing here — node/edge ids embed a literal
+            # "---" substring (e.g. "xy-edge__LLM 1---EliteAPipelineEnd", confirmed
+            # live), so a naive string split truncates the YAML mid-document,
+            # silently dropping pipeline_settings.nodes. YAML frontmatter delimiters
+            # are only valid on their OWN line, so split on line-anchored "---"
+            # instead. This didn't affect ELITEA-2012's original assertions (all of
+            # them target fields that appear before pipeline_settings in the
+            # document) but blocks ELITEA-2050's pipeline_settings.nodes check below.
+            parts = re.split(r"(?m)^---\s*$", raw_content, maxsplit=2)
             assert len(parts) == 3, (
                 f"Expected YAML frontmatter delimited by '---', got: {raw_content[:200]!r}"
             )
@@ -215,6 +235,37 @@ def test_pipeline_import_via_file(page, pipeline_api):
             assert frontmatter.get("conversation_starters") == [chat_starter], (
                 "Exported frontmatter conversation_starters should match, got: "
                 f"{frontmatter.get('conversation_starters')!r}"
+            )
+
+            # ELITEA-2050 gap assertions (extend-existing —
+            # test-specs/pipelines/lextend_pipeline-export-verify-structure_ELITEA-2050.md):
+            # case Step 4 explicitly requires "nodes" and "state" in the exported
+            # structure; the assertions above only covered name/description/
+            # agent_type/conversation_starters. No literal top-level "state" key
+            # exists (confirmed via source read of useExport.js — server-rendered
+            # YAML, no client "state" concept); the case's "state" wording maps
+            # onto pipeline_settings (canvas nodes/edges/positions).
+            nodes = frontmatter.get("nodes")
+            assert isinstance(nodes, list) and len(nodes) > 0, (
+                f"Exported frontmatter should contain a non-empty 'nodes' list, got: {nodes!r}"
+            )
+            llm_nodes = [n for n in nodes if n.get("type") == "llm"]
+            assert len(llm_nodes) == 1 and llm_nodes[0].get("id"), (
+                "Exported frontmatter should contain exactly one LLM node with a "
+                f"non-empty id, got nodes: {nodes!r}"
+            )
+            assert frontmatter.get("entry_point") == llm_nodes[0]["id"], (
+                "Exported frontmatter entry_point should match the LLM node's id, got: "
+                f"{frontmatter.get('entry_point')!r} vs node id {llm_nodes[0]['id']!r}"
+            )
+            pipeline_settings = frontmatter.get("pipeline_settings")
+            assert (
+                isinstance(pipeline_settings, dict)
+                and isinstance(pipeline_settings.get("nodes"), list)
+                and len(pipeline_settings["nodes"]) >= 2
+            ), (
+                "Exported frontmatter pipeline_settings.nodes should list at least "
+                f"the LLM node + END, got: {pipeline_settings!r}"
             )
 
         with allure.step(
