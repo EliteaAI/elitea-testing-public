@@ -1497,3 +1497,135 @@ class TestAgentBuildWithAIDraftFieldPopulation:
             assert modal.get_review_starter_value(0) == edited_starter, (
                 "First Chat-starter input should reflect the newly typed text — proves it is genuinely editable"
             )
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agents/build_with_ai/ELITEA-1912_build-with-ai-all-generated-draft-fields-editable-before-approval.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_edited_fields_persist_after_approve(self, page, agent_api):
+        """ELITEA-1912: extends this class's ELITEA-1906 coverage (draft
+        fields are pre-populated and editable) into the one half it never
+        exercises — clicking "Create Agent" after editing all 5 fields, then
+        verifying the CREATED agent reflects the EDITED values, not the
+        original generated draft's values. Reuses the same generate+edit
+        setup ELITEA-1906's own test already proves (identical testids,
+        identical edit mechanism), then continues into the genuinely new
+        approve + created-agent-read sequence this suite has never covered."""
+        list_page = AgentsListPage(page)
+        modal = GenerateAgentModalPage(page)
+        draft = FIELD_POPULATION_DRAFT_PAYLOAD
+
+        created_agent_id = None
+        try:
+            # ------------------------------------------------------------------
+            # Step 1 (case) — Generate a draft; review form renders fully
+            # populated (already covered by ELITEA-1906 — not re-asserted here)
+            # ------------------------------------------------------------------
+            with allure.step("Step 1 — Generate a draft and reach the review form"):
+                list_page.navigate_to_create()
+                modal.open_modal()
+                modal.fill_prompt(FIELD_POPULATION_PROMPT_TEXT)
+                modal.mock_generate_success(draft)
+
+                with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+                    modal.generate_button.click()
+
+                response = response_info.value
+                assert response.status == 200, (
+                    f"Expected the mocked generate-draft request to succeed, got {response.status}"
+                )
+                modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+
+            # ------------------------------------------------------------------
+            # Steps 2-6, 10 (case) — Edit all 5 fields (Name, Description,
+            # Instructions, Welcome Message, first Chat starter). Editability
+            # itself is already covered by ELITEA-1906's Step 10 — only the
+            # edited values are retained here so Steps 7-8 can assert against
+            # them (per this case's own AFS Coverage Map).
+            # ------------------------------------------------------------------
+            with allure.step("Step 2-6, 10 — Edit all 5 review-form fields"):
+                # Name uses a short, standalone literal rather than the
+                # "<generated name> [edited]" suffix convention ELITEA-1906's
+                # test uses: MAX_NAME_LENGTH=32 (agentDraftValidation.helpers.js)
+                # rejects the draft (isDraftValid=false, disabling the Create
+                # Agent button) once the generated 30-char name gains any
+                # suffix — a real validation constraint, live-confirmed this
+                # run (see AFS amendment). Description/Instructions/Welcome
+                # Message/Starter have no comparable ceiling at these lengths,
+                # so the suffix convention is kept for them.
+                edited_name = "Edited Agent Name [1912]"
+                modal.review_name_input.click()
+                modal.review_name_input.fill(edited_name)
+
+                edited_description = f"{draft['description']} [edited]"
+                modal.review_description_input.click()
+                modal.review_description_input.fill(edited_description)
+
+                edited_instructions = f"{draft['instructions']} [edited]"
+                modal.review_instructions_input.click()
+                modal.review_instructions_input.fill(edited_instructions)
+
+                edited_welcome_message = f"{draft['welcome_message']} [edited]"
+                modal.review_welcome_message_input.click()
+                modal.review_welcome_message_input.fill(edited_welcome_message)
+
+                edited_starter = f"{draft['conversation_starters'][0]} [edited]"
+                first_starter = modal.get_review_starter(0)
+                first_starter.click()
+                first_starter.fill(edited_starter)
+
+            # ------------------------------------------------------------------
+            # Step 7 (case) — Click "Create Agent"; the base-create POST fires
+            # with the EDITED values and resolves 201 (genuinely new coverage)
+            # ------------------------------------------------------------------
+            with allure.step('Step 7 — Click "Create Agent"'):
+                create_response = modal.click_approve_and_wait_for_agent_created()
+
+                assert create_response.status == 201, (
+                    f"Expected the agent-create call to resolve 201, got {create_response.status}"
+                )
+                created_agent_id = create_response.json()["id"]
+
+            # ------------------------------------------------------------------
+            # Step 8 (case) — Open the created Agent and verify ALL 5 edited
+            # fields persisted — this case's core, previously-unproven claim
+            # ------------------------------------------------------------------
+            detail_page = AgentDetailPage(page)
+            with allure.step("Step 8 — Verify the created agent reflects the edited field values"):
+                page.wait_for_url(f"**/agents/all/{created_agent_id}**")
+                detail_page.wait_for_page_load()
+
+                assert f"/agents/all/{created_agent_id}" in page.url, (
+                    f"Expected to land on the created agent's detail page, got {page.url}"
+                )
+                assert detail_page.get_name() == edited_name, (
+                    "Created agent's Name should carry the EDITED value, not the generated draft's, "
+                    f"expected {edited_name!r}, got {detail_page.get_name()!r}"
+                )
+                assert detail_page.get_description() == edited_description, (
+                    "Created agent's Description should carry the EDITED value, not the generated draft's, "
+                    f"expected {edited_description!r}, got {detail_page.get_description()!r}"
+                )
+                assert detail_page.get_instructions() == edited_instructions, (
+                    "Created agent's Instructions should carry the EDITED value, not the generated draft's, "
+                    f"expected {edited_instructions!r}, got {detail_page.get_instructions()!r}"
+                )
+                assert detail_page.get_welcome_message() == edited_welcome_message, (
+                    "Created agent's Welcome Message should carry the EDITED value, not the generated draft's, "
+                    f"expected {edited_welcome_message!r}, got {detail_page.get_welcome_message()!r}"
+                )
+                first_starter_value = detail_page.conversation_starter_inputs.nth(0).input_value()
+                assert first_starter_value == edited_starter, (
+                    "Created agent's first Chat starter should carry the EDITED value, not the generated "
+                    f"draft's, expected {edited_starter!r}, got {first_starter_value!r}"
+                )
+        finally:
+            if created_agent_id is not None:
+                try:
+                    agent_api.delete_agent(created_agent_id)
+                    logger.info("Deleted created agent %s", created_agent_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete created agent %s during teardown: %s", created_agent_id, exc)
