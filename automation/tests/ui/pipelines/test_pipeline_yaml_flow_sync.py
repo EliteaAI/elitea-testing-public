@@ -25,6 +25,7 @@ import logging
 
 import allure
 import pytest
+import yaml
 from config import settings
 from pages.pipeline_detail_page import PipelineDetailPage
 
@@ -168,6 +169,130 @@ def test_yaml_edit_transition_syncs_to_flow_canvas_and_enables_save(page, pipeli
             "Discard should have been disabled at the clean post-setup baseline, before the YAML edit"
         )
         assert pipeline_page.is_save_enabled(), "Save should be enabled after the YAML-editor-driven edit"
+
+    assert not console_errors, f"No console errors expected at any step: {console_errors}"
+    assert not failed_requests, f"No failed network requests expected at any step: {failed_requests}"
+
+
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+    "automated-full-regression-ui/pipelines/"
+    "ELITEA-2067_pipeline-yaml-editor-edit-and-save.md",
+    "onetest-ai Test Case link",
+)
+def test_yaml_edit_persists_after_save_and_reload(page, pipeline_with_llm_id):
+    """A YAML `output:` edit reflects in the Flow node config, enables Save, and survives reload.
+
+    TMS: ELITEA-2067
+    (test-specs/pipelines/lextend_pipeline-yaml-editor-edit-and-save_ELITEA-2067.md)
+
+    Extends the YAML<->Flow sync coverage this file already establishes (ELITEA-2028) one stage
+    further: that test proves a YAML edit reflects on the canvas AND enables Save, but never
+    clicks Save nor reloads. This test edits a different field (the LLM node's `output:` list,
+    the case's own worked example — "change a node's output variable name"), verifies the change
+    reflected in the node's own inline config panel (not the canvas edge), then clicks Save and
+    reloads to prove the edit round-trips through a full browser reload, not just in-memory
+    client state.
+
+    The `pipeline_with_llm_id` fixture (single LLM node -> END, `output: []`, never saved in this
+    session) is ALREADY the clean baseline this case needs — unlike ELITEA-2028's own test, no
+    second node / prior Save is required to establish a disabled Save/Discard starting point.
+    """
+    project_id = str(settings.elitea_project_id)
+    pipeline_page = PipelineDetailPage(page)
+
+    # Registered before step 1 so console errors / failed requests from every step (the edit,
+    # view switches, save, reload) are captured — AFS Expected Results require "zero console
+    # errors, zero failed network requests, throughout".
+    console_errors = []
+    page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+    failed_requests = []
+    page.on("response", lambda resp: failed_requests.append(resp) if resp.status >= 400 else None)
+
+    pipeline_page.navigate(pipeline_with_llm_id)
+    pipeline_page.wait_for_canvas()
+    canonical_url = page.url  # captured for the step-7 reload (ELITEA-1954 404-on-bare-URL gotcha)
+
+    with allure.step("Step 1 — Open the pipeline; switch to Yaml view"):
+        assert pipeline_page.is_flow_view_active(timeout=UI_ELEMENT_TIMEOUT), (
+            "Pipeline detail page should default to the Flow view"
+        )
+        pipeline_page.switch_to_yaml_view()
+        pipeline_page.yaml_editor.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.yaml_editor.is_visible(), "YAML CodeMirror editor should become visible"
+
+        # Captured here (post-navigate, before the edit) so step 5 can prove the
+        # disabled->enabled transition is CAUSED by the YAML edit, not a pre-existing
+        # always-on dirty state (mirrors ELITEA-2028's own proven pattern).
+        save_enabled_before_edit = pipeline_page.is_save_enabled()
+        discard_enabled_before_edit = pipeline_page.is_discard_enabled()
+        pre_edit_yaml = pipeline_page.get_yaml_content()
+        assert "output: []" in pre_edit_yaml, (
+            f"Before the edit, the LLM node's output should be the fixture's empty list: {pre_edit_yaml!r}"
+        )
+
+    with allure.step(
+        "Step 2/3 — Click into the editor and make a valid edit: change the LLM node's "
+        "output variable from [] to [messages]"
+    ):
+        # Step 2 ("click into the editor, cursor placed") has no independent DOM signal to assert
+        # against beyond the edit itself succeeding — folded into edit_yaml_line()'s own
+        # click+Home+Shift+End sequence (AFS Coverage Map row 2 disposition).
+        pipeline_page.edit_yaml_line("output: []", "output: [messages]")
+
+        post_edit_yaml = pipeline_page.get_yaml_content()
+        assert "output: [messages]" in post_edit_yaml, (
+            f"YAML content should contain the new output variable after the edit: {post_edit_yaml!r}"
+        )
+        assert "output: []" not in post_edit_yaml, (
+            f"The old empty-output value should be gone, not merely appended alongside: {post_edit_yaml!r}"
+        )
+
+    with allure.step("Step 4 — Switch to Flow view; verify the change is reflected in node configuration"):
+        pipeline_page.switch_to_flow_view()
+        assert pipeline_page.is_flow_view_active(timeout=UI_ELEMENT_TIMEOUT), (
+            "Flow view (ReactFlow canvas) should become visible after switching back"
+        )
+        assert pipeline_page.get_llm_node_output_value() == "messages", (
+            "The LLM node's inline Output field should reflect the YAML-editor-driven change"
+        )
+
+    with allure.step(
+        "Step 5 — Verify Save becomes enabled, confirming the disabled->enabled transition "
+        "caused by the YAML edit (not a pre-existing always-on dirty state)"
+    ):
+        assert not save_enabled_before_edit, (
+            "Save should have been disabled at the clean pre-edit baseline"
+        )
+        assert not discard_enabled_before_edit, (
+            "Discard should have been disabled at the clean pre-edit baseline"
+        )
+        assert pipeline_page.is_save_enabled(), "Save should be enabled after the YAML-editor-driven edit"
+
+    with allure.step("Step 6 — Click Save; verify the pipeline saves without errors"):
+        save_response = pipeline_page.save_and_wait_for_update(
+            project_id, pipeline_with_llm_id, timeout=SAVE_RESPONSE_TIMEOUT
+        )
+        assert save_response is not None, "Save should return the persisted pipeline version"
+
+    with allure.step("Step 7 — Reload; switch to Yaml view; verify the edit persisted"):
+        page.goto(canonical_url)
+        pipeline_page.wait_for_detail_page_load()
+        pipeline_page.wait_for_canvas()
+
+        pipeline_page.switch_to_yaml_view()
+        pipeline_page.yaml_editor.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        post_reload_yaml = pipeline_page.get_yaml_content()
+        # Parsed, not a literal-string match against what was TYPED: the server round-trips the
+        # flow-style `output: [messages]` this test typed back as standard block-style YAML
+        # (`output:\n  - messages`) — confirmed live this session, correct/expected YAML
+        # serialization behavior, not a defect (reverse-masking guard — assert the live contract,
+        # not the input's literal shape).
+        post_reload_parsed = yaml.safe_load(post_reload_yaml)
+        llm_node = next(n for n in post_reload_parsed["nodes"] if n["id"] == "LLM 1")
+        assert llm_node["output"] == ["messages"], (
+            f"The output edit should still be present after a full page reload, got: {llm_node['output']!r}"
+        )
 
     assert not console_errors, f"No console errors expected at any step: {console_errors}"
     assert not failed_requests, f"No failed network requests expected at any step: {failed_requests}"
