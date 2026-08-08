@@ -606,6 +606,34 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   the suite's first `.click()` on `cancel_button` — ELITEA-1905 had only
   ever asserted `.is_visible()` on it.
 
+## Build with AI (GenerateAgentModal) — REVIEW step has NO "Cancel" button (ELITEA-1918 run, 2026-08-08)
+- `GenerateEntityModal.jsx`'s `renderActions()` renders a genuinely different
+  button set per step — NOT a fixed Cancel+Generate/Approve pair. INPUT step:
+  "Cancel" (`generate-agent-cancel-button`) + "Generate Draft"
+  (ELITEA-1917's territory). **REVIEW step: only "Back to prompt"
+  (`generate-agent-back-button`, ELITEA-1919's separate case) + "Create Agent"
+  (`generate-agent-approve-button`) — no Cancel button exists here at all.**
+  Confirmed both by source (lines 173-198 vs 201-224) and live accessibility
+  snapshot of the open review-step dialog (footer = exactly those two
+  buttons).
+- The only review-step control that closes the modal without creating an
+  agent is the modal header's **X ("Close") icon**
+  (`generate-agent-close-button`, `Modal.BaseModal`'s `closeButtonTestId`) —
+  confirmed via source (`BaseModal.jsx:154`, `onClick={onClose}`) that it
+  calls the EXACT SAME `handleClose()` the INPUT-step Cancel button calls:
+  same abort/reset/close semantics, no confirmation interstitial, even with
+  a fully-populated draft (5 fields + starters) about to be discarded.
+  `close_button` had been `.click()`ed once before (ELITEA-1913, end-of-test
+  cleanup only, zero assertions) — ELITEA-1918 is the first test to actually
+  assert what it does.
+- Filed as CLARIFICATION (case-text drift — case says "Click Cancel", no
+  such control exists on this step):
+  [EliteaAI/elitea-testing-public#1318](https://github.com/EliteaAI/elitea-testing-public/issues/1318).
+- Live-confirmed this run: a real (unmocked) `generate_application_draft`
+  call reliably produces a usable draft within existing timeout constants
+  (no need to mock for this shape of case) — generated "Billing Support
+  Agent" from a billing-support prompt, 4 chat starters, all real AI output.
+
 ## Build with AI — Suggested Resources have NO client-side display cap (ELITEA-1910 run, 2026-08-08)
 - **`ResourceSuggestions.jsx` renders every item in its `items` array unconditionally**
   (`items.map(...)`, no `.slice()`/count guard) — confirmed by source grep across
