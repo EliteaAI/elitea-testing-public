@@ -40,6 +40,18 @@ Skills counter reading zero, and the new agent is visible back on the
 Agents list — the one step (post-creation Agents-list verification) not
 exercised by any prior Build-with-AI test in this file.
 
+Covers ELITEA-1908: extends ELITEA-1909/1911's create+navigate coverage to
+a full, combined-across-categories zero-selection path — a draft with
+suggested Toolkit/MCP/Pipeline/Agent resources ALL rendered simultaneously
+(cards visible, checkboxes present) is approved with literally zero boxes
+checked, proving (a) no toolkit/agent-relation/skill relation call fires at
+all — not even for one item, across any category — and (b) the created
+agent's Tools section and Skills counter both confirm zero attachments
+across every category. Distinct from ELITEA-1909/1911 (which always select
+at least one item per category) and from ELITEA-1914 (whose plain draft
+never renders any suggestion at all) — the first test in this file to
+assert a combined, all-category zero with resources genuinely on offer.
+
 Spec: test-specs/agents/l2_build-with-ai-generation-failure-retry_ELITEA-1915.md
 Spec: test-specs/agents/l2_build-with-ai-generated-draft-suggested-resources_ELITEA-1907.md
 Spec: test-specs/agents/l2_build-with-ai-selected-suggested-resources-attached-to-created-agent_ELITEA-1909.md
@@ -47,6 +59,7 @@ Spec: test-specs/agents/lextend_build-with-ai-selected-suggested-skills-attached
 Spec: test-specs/agents/lextend_build-with-ai-modal-contains-prompt-generate-cancel-controls_ELITEA-1905.md
 Spec: test-specs/agents/l2_build-with-ai-draft-generated-from-natural-language-description_ELITEA-1906.md
 Spec: test-specs/agents/lextend_build-with-ai-approve-creates-agent-and-navigates-to-agent-menu_ELITEA-1914.md
+Spec: test-specs/agents/lextend_build-with-ai-suggested-resources-require-explicit-selection_ELITEA-1908.md
 Covers: GenerateAgentModal (GenerateEntityModal.jsx via GenerateAgentModal.jsx)
 
 Markers:
@@ -979,6 +992,164 @@ class TestAgentBuildWithAISelectedResourcesAttached:
                 list_page.navigate()
                 assert list_page.agent_exists_in_list(draft_name), (
                     f"Newly created agent {draft_name!r} should be visible in the Agents list"
+                )
+        finally:
+            if created_agent_id is not None:
+                try:
+                    agent_api.delete_agent(created_agent_id)
+                    logger.info("Deleted created agent %s", created_agent_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete created agent %s during teardown: %s", created_agent_id, exc)
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agents/build_with_ai/ELITEA-1908_build-with-ai-suggested-resources-require-explicit-selection.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_zero_selection_across_categories_attaches_nothing(self, page, agent_api):
+        """Generating a draft with suggested resources rendered across
+        multiple categories simultaneously (Toolkit, MCP, Pipeline, Agent)
+        and clicking "Create Agent" with literally zero boxes checked
+        creates the agent via the base-create POST alone — no toolkit/
+        agent-relation/pipeline-relation/mcp-relation call ever fires, for
+        any category — and the created agent's Tools section and Skills
+        counter both confirm zero attachments across every category
+        (ELITEA-1908). Distinct from this class's per-item selective
+        coverage (ELITEA-1909/1911, which always select at least one item)
+        and from ELITEA-1914's ungated no-resources-rendered-at-all path —
+        this is the first test to assert a COMBINED all-category zero with
+        resources genuinely on offer."""
+        list_page = AgentsListPage(page)
+        modal = GenerateAgentModalPage(page)
+
+        created_agent_id = None
+        try:
+            # ------------------------------------------------------------------
+            # Step 1 (case) — Generate a draft with Toolkit/MCP/Pipeline/Agent
+            # suggestions all rendered (mocked — see AFS Preconditions:
+            # project 400 cannot reliably reproduce multi-category live
+            # suggestions, same gap ELITEA-1906/1907/1915 already resolve
+            # this way)
+            # ------------------------------------------------------------------
+            with allure.step("Step 1 — Generate a draft with suggested Toolkits/MCP/Pipelines/Agents rendered"):
+                list_page.navigate_to_create()
+                modal.open_modal()
+                modal.fill_prompt(SUGGESTED_RESOURCES_PROMPT_TEXT)
+
+                assert modal.get_prompt_value() == SUGGESTED_RESOURCES_PROMPT_TEXT, (
+                    "Prompt textarea should contain exactly the entered text"
+                )
+
+                modal.mock_generate_success(SUGGESTED_RESOURCES_DRAFT_PAYLOAD)
+                response = modal.click_generate_and_wait_for_response(timeout=GENERATE_RESPONSE_TIMEOUT)
+                assert response.status == 200, (
+                    f"Expected the mocked generate-draft request to succeed, got {response.status}"
+                )
+                modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+
+                assert modal.is_resource_section_visible("toolkit"), (
+                    'The "Suggested Toolkits:" section should be present (mocked payload)'
+                )
+                assert modal.is_resource_section_visible("mcp"), (
+                    'The "Suggested MCP:" section should be present (mocked payload)'
+                )
+                assert modal.is_resource_section_visible("pipeline"), (
+                    'The "Suggested Pipelines:" section should be present (mocked payload)'
+                )
+                assert modal.is_resource_section_visible("agent"), (
+                    'The "Suggested Agents:" section should be present (mocked payload)'
+                )
+
+            # ------------------------------------------------------------------
+            # Step 2 (case) — do NOT select any suggested resource; explicit
+            # re-check immediately before approve, across all four rendered
+            # categories (the gap ELITEA-1907 only checks at generation time)
+            # ------------------------------------------------------------------
+            with allure.step("Step 2 — Verify no suggested resource is selected, across every rendered category"):
+                assert not modal.is_resource_checked("toolkit", 101), (
+                    "Toolkit suggestion should remain unchecked — this test never selects it"
+                )
+                assert not modal.is_resource_checked("mcp", 3), (
+                    "MCP suggestion should remain unchecked — this test never selects it"
+                )
+                assert not modal.is_resource_checked("pipeline", 202), (
+                    "Pipeline suggestion should remain unchecked — this test never selects it"
+                )
+                assert not modal.is_resource_checked("agent", 303), (
+                    "Agent suggestion should remain unchecked — this test never selects it"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 3 (case) — Click "Approve"/"Create Agent" with zero
+            # selections; verify no relation call fires for ANY category —
+            # GenerateAgentModal.jsx's associateToolkits/associateApplications/
+            # associateSkills each guard on `if (!versionId || !items.length)
+            # return;` (lines ~121/140/179), so an empty selection Set means
+            # none of these callbacks ever call the underlying association
+            # API, regardless of how many resources were rendered
+            # ------------------------------------------------------------------
+            with allure.step('Step 3 — Click "Create Agent"; verify no relation call fires for any category'):
+                toolkit_requests = modal.capture_requests_matching("/elitea_core/tool/prompt_lib/")
+                relation_requests = modal.capture_requests_matching("/elitea_core/application_relation/prompt_lib/")
+                skill_requests = modal.capture_requests_matching("/elitea_core/skill/prompt_lib/")
+
+                create_response = modal.click_approve_and_wait_for_agent_created()
+
+                assert create_response.status == 201, (
+                    f"Expected the base-agent create call to resolve 201, got {create_response.status}"
+                )
+                created_agent_id = create_response.json()["id"]
+
+                assert not toolkit_requests, (
+                    "No .../tool/prompt_lib/... call should fire for a zero-selection approve, "
+                    f"got: {list(toolkit_requests)}"
+                )
+                assert not relation_requests, (
+                    "No .../application_relation/prompt_lib/... call should fire for a zero-selection "
+                    f"approve (covers both nested Agent and Pipeline suggestions), got: {list(relation_requests)}"
+                )
+                assert not skill_requests, (
+                    "No .../skill/prompt_lib/... call should fire for a zero-selection approve, "
+                    f"got: {list(skill_requests)}"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 4 (case) — Open the created Agent
+            # ------------------------------------------------------------------
+            detail_page = AgentDetailPage(page)
+            with allure.step("Step 4 — Verify the created Agent detail page is displayed"):
+                page.wait_for_url(f"**/agents/all/{created_agent_id}**")
+                detail_page.wait_for_page_load()
+                assert f"/agents/all/{created_agent_id}" in page.url, (
+                    f"Expected to land on the created agent's detail page, got {page.url}"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 5 (case) — Verify no Toolkits/Agents/Pipelines/MCPs
+            # attached, across every category (Toolkit/MCP/Agent share the
+            # same ToolCard.jsx/agent-toolkit-card component; Pipeline
+            # attaches via the same application_relation mechanism as nested
+            # Agent — see AFS Concrete Handles / Axis 2 flag)
+            # ------------------------------------------------------------------
+            with allure.step("Step 5 — Verify no Toolkits, Agents, Pipelines, or MCPs were attached"):
+                assert not detail_page.is_toolkit_attached("GitHub Toolkit"), (
+                    "Suggested Toolkit should NOT appear in the Tools section — it was never selected"
+                )
+                assert not detail_page.is_toolkit_attached("Remote Github"), (
+                    "Suggested MCP should NOT appear in the Tools section — it was never selected"
+                )
+                assert not detail_page.is_toolkit_attached("Jira Triage Agent"), (
+                    "Suggested nested Agent should NOT appear in the Tools section — it was never selected"
+                )
+                assert not detail_page.is_toolkit_attached("Jira Update Pipeline"), (
+                    "Suggested Pipeline should NOT appear in the Tools section — it was never selected"
+                )
+                counter_text = detail_page.get_skills_counter_text()
+                assert counter_text.startswith("0/"), (
+                    "Skills counter should read '0/N skills added.' — the mock payload's "
+                    f"suggested_skills is empty and none was selected, got {counter_text!r}"
                 )
         finally:
             if created_agent_id is not None:
