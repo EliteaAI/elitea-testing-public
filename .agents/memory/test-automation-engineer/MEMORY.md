@@ -49,3 +49,4 @@
 - [Signal-parity claims need an assertion diff](afs_signal_parity_claim_needs_assertion_diff.md) — "same N-signal pattern" prose ≠ same assert list; diff them
 - [Page-object API delete needs Bearer fallback on localhost](page_object_api_delete_needs_bearer_fallback_on_localhost.md) — self.page.request has no cookies there; 400s silently without it
 - [Pipeline node types can share a component tree](pipeline_custom_node_shares_toolkit_node_component_tree.md) — check BaseToolNode/DefaultNode family before assuming from-scratch testid work
+- [MUI SingleSelect auto-id ≠ #579](mui_simple_select_auto_id_is_not_a_579_exception.md) — `#simple-select-<Label>` is app-owned (accepts data-testid), not library-internal
