@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-07 (ELITEA-2002 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2009 analysis).
 
 ## Save As Version (`agent-save-as-version-button` + dialog) works on Pipelines exactly like Agents (confirmed live, 2026-08-07, ELITEA-2002)
 
@@ -696,6 +696,79 @@ before/after → Structured output.
   SYSTEM/TASK/CHAT HISTORY (Type+Value) and Input/Output. Save returns `PUT
   .../application/prompt_lib/{project}/{id}` → `201`. Zero console errors, zero
   failed requests, across every run.
+
+## Code node — inline config panel, single CODE section (confirmed live, 2026-08-08, ELITEA-2009)
+
+Same always-expanded-inline pattern as every other node type. Shares the SAME
+`SimpleLLMInputs`/`SimpleLLMInputItem` components as the LLM node
+(ELITEA-2004), but with exactly ONE input-mapping key (`code`, not
+system/task/chat_history) — `useCodeInputMapping.js`'s `getDefaultCodeInputMapping()`
+returns `{ code: { type: 'fixed', value: '' } }`.
+
+- **Node body, in DOM order**: Trigger (only if entry point) → **CODE**
+  section (Type select + Value field) → **Input** (tool-agnostic state-var
+  multi-select) → **Output** (same) → Interrupt before/after → Structured
+  output. Matches the case text's step-3 list EXACTLY, no case-text drift on
+  section presence — confirmed live via full node `innerText` dump.
+- **CODE section's displayed heading is CSS-uppercased "Code", not a
+  literal "CODE" string** — `Chip.HeadingChip label={capitalizeFirstChar(variableName.replaceAll('_',
+  ' '))}` renders `variableName="code"` as `"Code"`; the visual all-caps is
+  `text-transform` styling. Same pattern as every other `SimpleLLMInputItem`
+  section heading (SYSTEM/TASK/CHAT HISTORY on the LLM node render "System"/
+  "Task"/"Chat history" as literal text content too).
+- **Value field is a plain MUI textarea (`#code-value`, stable unique DOM
+  id), NOT CodeMirror/Monaco** — despite `SimpleLLMInputItem.jsx` passing
+  `language="python"` when `variableName.toLowerCase() === 'code'` (and Type
+  ∈ {fixed, fstring}). Confirmed via source (`AIAssistantInput.jsx`: `language`
+  only feeds `detectedLanguage`/`specifiedLanguage`, consumed ONLY by the
+  separate full-screen `AIAssistantModal`, never by the inline
+  `Input.InputBase`/`StyledInputEnhancer` field itself) AND live DOM
+  (`document.querySelector('#code-value').tagName === 'TEXTAREA'`). Same
+  "language prop ≠ CodeMirror" trap already documented for the Router node's
+  `Condition` field (`language="jinja"`) and the Decision node's
+  `Description` field — a THIRD confirmed instance of this pattern in this
+  node-type family. Multi-line text (embedded `\n`) types and reads back
+  correctly via `press_sequentially()`/`.input_value()` — no CodeMirror
+  per-line-scoping technique needed.
+- **Output combobox uses the SAME `useInputOptions()` hook as Input** — both
+  `InputSelect.jsx` and `OutputSelect.jsx` only ever list EXISTING pipeline
+  state variables (`input`/`messages` on a fresh pipeline); neither is a
+  freeform/creatable field. A case wanting to set Output to a
+  not-yet-existing name (e.g. `result`) must first create it as a custom
+  state variable via the `STATE` panel's "+" control
+  (`open_state_panel()` + `add_state_variable(name)`, pre-existing methods
+  from ELITEA-2034, reused unmodified) — confirmed live: the Output option
+  list was `["input", "messages"]` before creating `result`, and
+  `["input", "messages", "result"]` (with a live `select-option-result`)
+  immediately after. Same "state vars not built-in" pattern already
+  documented for the Decision node's Input select (ELITEA-2034) — this is
+  now confirmed on THREE separate node types' Input/Output-family selects.
+- **Interrupt before/after disabled-state**: Interrupt before is `disabled`
+  while the Code node is the pipeline's entry point (true for the first node
+  on an empty pipeline); Interrupt after is `disabled` while the node's
+  `transition` is `END` (also true for a single freshly-added node with no
+  outgoing edge) — identical `CommonInterruptSettings.jsx` logic already
+  confirmed for every other node type in this family.
+- **Testid gap — zero testids anywhere inside the node body before this
+  session** (only `node-menu-menu-button` + the unconditional dynamic
+  `pipeline-node-interrupt-before-toggle-{node_id}` + the entry-point
+  Trigger select pre-existed). **Closed in this session**: `dataTestId`/
+  `testIdsByKey`/`interruptAfterTestId`/`structuredOutputTestId` props wired
+  at `CodeNode.jsx`'s call sites (all prop plumbing already existed
+  generically, same mechanism ELITEA-2004 used for the LLM node) —
+  `pipeline-code-node-type-select`, `pipeline-code-node-value`,
+  `pipeline-code-node-input-select`, `pipeline-code-node-output-select`,
+  `pipeline-code-node-interrupt-after-toggle`,
+  `pipeline-code-node-structured-output-toggle`. Single commit
+  `EliteaAI/EliteaUI@92fc6ec4` on `automation/testids` (awaiting human
+  promotion to `main`). No further `add-data-testid` work needed for this
+  node type's config fields.
+- Save persists everything correctly; full-reload round-trip confirmed for
+  CODE (Type+Value), Input, and Output. Save returns `PUT
+  .../application/prompt_lib/{project}/{id}` → `201`. Zero console
+  errors/warnings, zero failed requests, across every checkpoint.
+- Full flow, handles, and page-object gap list:
+  `l2_pipeline-code-node-configuration_ELITEA-2009.md`.
 
 ## MCP node — inline config panel, CONDITIONALLY rendered (confirmed live, 2026-08-04, ELITEA-2037)
 
