@@ -115,6 +115,30 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
         description="Review-form Instructions field (editable before creation)",
     )
 
+    # Welcome Message field — added for ELITEA-1906 (GenerateAgentReviewForm.jsx
+    # had ZERO data-testid on this field before; see the ELITEA-1906 AFS Concrete
+    # Handles). Wired the identical way as Name/Description/Instructions above.
+    review_welcome_message_input = LocatorDescriptor(
+        testid="generate-agent-review-welcome-message-input",
+        description="Review-form Welcome Message field (editable before creation)",
+    )
+
+    # "Chat starters:" section header — added for ELITEA-1906 (case Step 9
+    # requires verifying the section header is visible; the header carried no
+    # testid before this case).
+    review_starters_header = LocatorDescriptor(
+        testid="generate-agent-review-starters-header",
+        description='"Chat starters:" section header (only rendered when conversation_starters is non-empty)',
+    )
+
+    # ------------------------------------------------------------------
+    # Review-form Chat-starter inputs (dynamic, per index) — added for
+    # ELITEA-1906. Per this project's dynamic-testid convention
+    # (.agents/testing.md § Locator policy), a class-level template constant;
+    # never build these inline in a method or in a test/spec file.
+    # ------------------------------------------------------------------
+    REVIEW_STARTER_INPUT = '[data-testid="generate-agent-review-starter-input-{}"]'
+
     # ------------------------------------------------------------------
     # Suggested Resources (review step) — dynamic testids templated per
     # entityType (and item id where applicable), per this project's
@@ -150,6 +174,19 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
     def get_review_instructions(self) -> str:
         """Return the current value of the review-form Instructions field."""
         return self.review_instructions_input.input_value()
+
+    def get_review_welcome_message(self) -> str:
+        """Return the current value of the review-form Welcome Message field."""
+        return self.review_welcome_message_input.input_value()
+
+    def get_review_starter(self, index: int) -> Locator:
+        """Locator for the review-form Chat-starter input at ``index``
+        (0-based, matching ``conversation_starters`` array order)."""
+        return self.page.locator(self.REVIEW_STARTER_INPUT.format(index))
+
+    def get_review_starter_value(self, index: int) -> str:
+        """Return the current value of the Chat-starter input at ``index``."""
+        return self.get_review_starter(index).input_value()
 
     # ------------------------------------------------------------------
     # Suggested Resources — getters
