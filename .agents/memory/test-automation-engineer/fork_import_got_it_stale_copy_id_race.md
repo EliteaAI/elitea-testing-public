@@ -25,15 +25,21 @@ source pipeline's own id).
 from the URL:
 
 ```python
-self.page.wait_for_function(
-    """(expected) => {
-        const el = document.querySelector('[data-testid="copy-id"]');
-        return !!el && el.textContent.trim() === expected;
-    }""",
-    arg=str(forked_pipeline_id),
-    timeout=timeout,
-)
+from playwright.sync_api import expect
+
+expect(self.copy_id_button).to_have_text(str(forked_pipeline_id), timeout=timeout)
 ```
+
+(Round-1 review fix, ELITEA-2051: the FIRST version used a raw
+`page.wait_for_function()` with a `document.querySelector('[data-testid="copy-id"]')`
+JS string — same observable, but it duplicated the existing `copy_id_button`
+`LocatorDescriptor` field via a method-body-constructed selector, and it
+survived the self-check + round-1 review because the standard mechanical
+grep only matches Python `.locator(`/`get_by_*` calls, not selectors embedded
+in a JS string. See `mechanical_grep_misses_js_string_embedded_selectors.md`.
+`expect().to_have_text()` is both the policy-compliant AND the simpler form —
+prefer it over `wait_for_function` whenever the condition is a plain
+Playwright assertion.)
 
 This makes the method's own return value trustworthy — callers no longer
 need to add their own settle-wait before reading ID/Version-ID fields.

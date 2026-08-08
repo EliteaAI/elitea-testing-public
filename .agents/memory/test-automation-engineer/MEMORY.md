@@ -54,3 +54,4 @@
 - [Pipeline YAML tab truncates](pipeline_yaml_tab_truncates_use_api_not_dom.md) — long docs cut off silently; use `pipeline_api.get_pipeline()` not the DOM (#1025)
 - [Fork/Import "Got it" stale copy-id race](fork_import_got_it_stale_copy_id_race.md) — poll copy-id text to settle before reading id right after Got it
 - [Delete-menu redirect needs real history](delete_menu_redirect_navigate_minus_one_needs_history.md) — navigate(-1) no-ops after page.goto(); soft-assert + #1332
+- [Mechanical grep misses JS-string selectors](mechanical_grep_misses_js_string_embedded_selectors.md) — grep querySelector too on any wait_for_function/evaluate diff
