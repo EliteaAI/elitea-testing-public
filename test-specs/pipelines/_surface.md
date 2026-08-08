@@ -3,7 +3,7 @@
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
 > place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2039 combined
-> analysis+implementation).
+> analysis+implementation; appended 2026-08-08 during ELITEA-2039 fix round 2).
 
 ## Printer node — SimpleLLMInputs (PRINTER section) + standalone Final Message field, NO Input/Output selects, NO Interrupt/Structured-output controls (confirmed live, 2026-08-08, ELITEA-2039)
 
@@ -48,6 +48,23 @@ anticipates this, no case-text drift.
   family.
 - Full flow, handles, and page-object gap list:
   `test-specs/pipelines/l2_pipeline-printer-node-configuration_ELITEA-2039.md`.
+
+**Resolved/added during ELITEA-2039 fix round 2 implementation:** the two
+generic `CustomHandle` connection points (target/source, line 21 above) also
+now carry real testids — `CustomHandle.jsx` (EliteaUI
+`src/[fsd]/features/pipelines/flow-editor/ui/nodes/CustomHandle.jsx:104-111`)
+forwards a `testId` prop straight to `data-testid`, so this is an app-owned
+hook, NOT a #579 library-internal-DOM exception (round-1 code incorrectly
+treated `.react-flow__handle` as the sanctioned class `get_node_count()` uses
+for the ReactFlow node-container CSS class — that class has no such hook,
+these handles do). `PrinterNode.jsx`'s two `CustomHandle` call sites now pass
+`testId="pipeline-printer-node-target-handle"` /
+`testId="pipeline-printer-node-source-handle"` —
+`EliteaAI/EliteaUI@b65756af` on `automation/testids` (awaiting human
+promotion to `main`). Same mechanism `NormalDecisionNode.jsx` already uses
+for `pipeline-decision-node-output-handle`. Any future node type wiring a
+`CustomHandle` testid should follow this same `testId` prop, not a raw DOM
+query.
 
 ## Agent node — own component (NOT a `BaseToolNode.jsx` caller), single-select-as-toolkit, TASK-only input mapping, DIFFERENT attach endpoint (confirmed live, 2026-08-08, ELITEA-2038)
 

@@ -431,6 +431,72 @@ class PipelineDetailPage(PipelineFormPage):
         description="Code node's 'Structured output' switch (CommonInterruptSettings.jsx)"
     )
 
+    # Printer node inline config (ELITEA-2039). Testid-only, added via
+    # add-data-testid — PrinterNode.jsx call sites only (SimpleLLMInputs is
+    # shared with LLM/Code nodes, which stay untagged — untested node types
+    # stay untagged, .agents/testing.md § Locator policy). Page-wide (not
+    # scoped to a specific node container): correct as long as a test only
+    # has a single Printer node on canvas. Unlike Code/LLM, the Printer node
+    # has NO Input/Output state-var selects and NO Interrupt/Structured-
+    # output controls at all — confirmed via source (`PrinterNode.jsx`
+    # renders only SimpleLLMInputs + the Final Message AIAssistantInput,
+    # plus the two ReactFlow target/source connection handles).
+    printer_node_type_select = LocatorDescriptor(
+        testid="pipeline-printer-node-type-select",
+        description="Printer node's PRINTER section Type select (inline on canvas card)"
+    )
+    printer_node_value = LocatorDescriptor(
+        testid="pipeline-printer-node-value",
+        description="Printer node's PRINTER section Value field (f-string/text textarea)"
+    )
+    printer_node_final_message_input = LocatorDescriptor(
+        testid="pipeline-printer-node-final-message-input",
+        description="Printer node's Final Message field"
+    )
+    # Fix round 1 (ELITEA-2039 review): these two testids are NEVER rendered by
+    # PrinterNode.jsx — confirmed via source, it renders no
+    # `FlowEditorSelect.InputSelect`/`OutputSelect` at all (unlike Code/LLM/
+    # State-modifier, which pass `dataTestId="pipeline-<type>-node-input-select"`
+    # / `-output-select` to those components — see e.g. `code_node_input_select`
+    # above). Declared here ONLY as the absence-assertion handle, same pattern
+    # as `chat_hitl_edit_button`/`toolkit_card` elsewhere in this file: a
+    # testid-scoped `LocatorDescriptor` whose `.count()` proves the element
+    # doesn't render, replacing a raw `#simple-select-Input`/`#simple-select-
+    # Output` DOM query (MUI auto-generated ids on an app-owned component —
+    # NOT a #579 exception; `add-data-testid`'s own convention names what a
+    # real Input/Output select on this node type WOULD carry if one existed).
+    printer_node_input_select = LocatorDescriptor(
+        testid="pipeline-printer-node-input-select",
+        description="Printer node's would-be Input state-variable select — not rendered; absence-only handle"
+    )
+    printer_node_output_select = LocatorDescriptor(
+        testid="pipeline-printer-node-output-select",
+        description="Printer node's would-be Output state-variable select — not rendered; absence-only handle"
+    )
+
+    # Fix round 2 (ELITEA-2039 review): the Printer node's two ReactFlow
+    # connection handles ARE app-owned — `CustomHandle.jsx` forwards a
+    # `testId` prop straight to `data-testid` on the underlying `<Handle>`
+    # (EliteaAI/EliteaUI `src/[fsd]/features/pipelines/flow-editor/ui/nodes/
+    # CustomHandle.jsx:104-111`), so a testid CAN be placed — NOT a #579
+    # library-internal-DOM exception (that class only covers nodes a library
+    # renders with no app hook at all, e.g. ReactFlow's own `rf__wrapper`
+    # internals). `PrinterNode.jsx`'s two `CustomHandle` call sites now pass
+    # `testId="pipeline-printer-node-target-handle"` /
+    # `testId="pipeline-printer-node-source-handle"` (EliteaAI/EliteaUI@b65756af
+    # on `automation/testids`, awaiting human promotion to `main`) — same
+    # `testId` mechanism `pipeline-decision-node-output-handle` already uses
+    # on `NormalDecisionNode.jsx`. Page-wide, same "single Printer node on
+    # canvas" assumption as `printer_node_type_select` et al. above.
+    printer_node_target_handle = LocatorDescriptor(
+        testid="pipeline-printer-node-target-handle",
+        description="Printer node's target (Input) ReactFlow connection handle"
+    )
+    printer_node_source_handle = LocatorDescriptor(
+        testid="pipeline-printer-node-source-handle",
+        description="Printer node's source (Output) ReactFlow connection handle"
+    )
+
     # State modifier node inline config (ELITEA-2035). Testid-only, added via
     # add-data-testid — StateModifierNode.jsx call sites only. Unlike Code/LLM,
     # this node type has NO Interrupt/Structured-output controls (confirmed via
@@ -2109,6 +2175,33 @@ class PipelineDetailPage(PipelineFormPage):
                 ids.append(nid)
         return ids
 
+    def get_node_handle_count(self, node_id: str) -> int:
+        """Return the number of ReactFlow connection handles on the Printer node with *node_id*.
+
+        Fix round 2 (ELITEA-2039 review): counts via the Printer node's two
+        dedicated handle testids (:attr:`printer_node_target_handle` /
+        :attr:`printer_node_source_handle`) instead of a raw
+        ``.react-flow__handle`` DOM query. ``CustomHandle.jsx`` forwards a
+        ``testId`` prop straight to ``data-testid`` — the element is
+        app-owned, not library-internal DOM, so it does NOT qualify for the
+        #579 sanctioned exception; a real testid belongs here, same as every
+        other testid-scoped connection handle in this suite
+        (``pipeline-decision-node-output-handle``).
+
+        Currently confirms the Printer node's connection-point inventory
+        (target+source pair) specifically — this method has no callers
+        outside the Printer node test. Extending it to other node types
+        requires wiring a ``testId`` on their ``CustomHandle`` calls first
+        (none carry one yet).
+
+        Args:
+            node_id: The data-id of the node (e.g. ``"Printer 1"``) — kept in
+                the signature for call-site clarity even though the testid
+                locators below are page-wide (single-Printer-node-on-canvas
+                assumption, same as :attr:`printer_node_type_select` et al.).
+        """
+        return self.printer_node_target_handle.count() + self.printer_node_source_handle.count()
+
     def wait_for_node_on_canvas(
         self, node_type: str, *, timeout: int = 10000,
     ) -> str:
@@ -3518,6 +3611,77 @@ class PipelineDetailPage(PipelineFormPage):
         """Read the Code node's currently-selected Output display text."""
         text = (self.code_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
+
+    # ------------------------------------------------------------------
+    # Printer node inline config (ELITEA-2039)
+    # ------------------------------------------------------------------
+    #
+    # Single PRINTER section (variableName="printer" on the shared
+    # SimpleLLMInputItem component) plus a standalone Final Message field
+    # (AIAssistantInput, NOT part of SimpleLLMInputs). No Input/Output
+    # state-var selects and no Interrupt/Structured-output controls exist
+    # on this node type (confirmed via source + live DOM — see class-level
+    # docstring above). Reuses the same generic helpers
+    # (``_fill_node_field_value``, ``_wait_for_open_popovers_closed``) the
+    # LLM/Code node methods above use.
+
+    def get_printer_node_type(self, timeout: int = 5000) -> str:
+        """Read the Printer node's PRINTER section Type select current value."""
+        self.printer_node_type_select.wait_for(state="visible", timeout=timeout)
+        # MUI's empty-select rendering is a zero-width space (U+200B), not
+        # an empty string — same gotcha as get_code_node_type.
+        text = (self.printer_node_type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_printer_node_type(self, type_value: str, timeout: int = 5000) -> None:
+        """Open the PRINTER section's Type select and choose *type_value* (Fixed/F-String/Variable).
+
+        Args:
+            type_value: Option display text, e.g. ``"F-String"``.
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.printer_node_type_select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def fill_printer_node_value(self, value: str, timeout: int = 5000) -> None:
+        """Fill the PRINTER section's Value field.
+
+        Plain MUI textarea (``Input.InputBase``/``AIAssistantInput``) — same
+        shape as the Code node's CODE Value field. Uses click +
+        press_sequentially — MUI/React fields need real keyboard events for
+        onChange to fire (.claude/rules/mui-patterns.md). Embedded literal
+        ``\\n`` characters (as opposed to real newlines) are typed and read
+        back correctly, confirmed live.
+
+        Args:
+            value: The f-string/text value to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self._fill_node_field_value(self.printer_node_value, value, timeout=timeout)
+
+    def get_printer_node_value(self) -> str:
+        """Read the PRINTER section's Value field current content."""
+        return self.printer_node_value.input_value()
+
+    def fill_printer_node_final_message(self, value: str, timeout: int = 5000) -> None:
+        """Fill the Printer node's Final Message field.
+
+        Plain MUI textarea (``Input.InputBase``/``AIAssistantInput``), a
+        standalone field outside ``SimpleLLMInputs`` — confirmed live.
+
+        Args:
+            value: The final-message text to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self._fill_node_field_value(self.printer_node_final_message_input, value, timeout=timeout)
+
+    def get_printer_node_final_message(self) -> str:
+        """Read the Printer node's Final Message field current content."""
+        return self.printer_node_final_message_input.input_value()
 
     def fill_state_modifier_node_template(self, value: str, timeout: int = 5000) -> None:
         """Fill the State modifier node's Jinja Template field.

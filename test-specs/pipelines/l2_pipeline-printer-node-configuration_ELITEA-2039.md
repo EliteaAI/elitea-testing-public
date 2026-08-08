@@ -151,6 +151,52 @@ in the AFS, not because the case text was wrong.
 | Final Message field | `[data-testid="pipeline-printer-node-final-message-input"]` | **added — `EliteaAI/EliteaUI@955f88b9` on `automation/testids`** (awaiting human promotion to `main`). Wired directly via `inputProps={{'data-testid': 'pipeline-printer-node-final-message-input'}}` on the `AIAssistantInput` call site (MUI `TextField`'s `htmlInput` slot — same "needs `inputProps`, not a bare `data-testid` prop" pattern already documented for the Webhook/Schedule modal fields elsewhere in this digest). Confirmed live: typed `Type 'ok' to end`, read back via `.value`, matched exactly; underlying element is a plain `<textarea>`. | none needed |
 | Add-node "+" button / menu item | `[data-testid="pipeline-add-node-button"]`, `[data-testid="pipeline-add-node-menu-item-printer"]` | **on-`automation/testids` only** (awaiting human promotion to `main`) — pre-existing (ELITEA-2018/2030); used directly by this session's live exploration. `PipelineDetailPage.add_node("Printer")` already drives this via its existing approach — no page-object change needed. | n/a |
 | Pipeline Save button | `[data-testid="agent-save-button"]` | **on-main ✓** — confirmed present, already wired as `PipelineFormPage.save_button`; confirmed live firing `PUT .../application/prompt_lib/{project}/{pipeline_id}` → 201 (via Save-and-Discard round trip in this session; the actual persisted-Save + reload round trip is left to the implementer's test run since this analysis session used Discard to avoid mutating a shared probe pipeline). | none needed |
+| Printer node target (Input) connection handle | `[data-testid="pipeline-printer-node-target-handle"]` | **added — `EliteaAI/EliteaUI@b65756af` on `automation/testids`** (awaiting human promotion to `main`), fix round 2. Wired `testId="pipeline-printer-node-target-handle"` on `PrinterNode.jsx`'s target `CustomHandle` call site — `CustomHandle.jsx` forwards `testId` straight to `data-testid` on the underlying `<Handle>`, same mechanism `pipeline-decision-node-output-handle` uses on `NormalDecisionNode.jsx`. Confirmed live via `.is_visible()`. | none needed |
+| Printer node source (Output) connection handle | `[data-testid="pipeline-printer-node-source-handle"]` | **added — `EliteaAI/EliteaUI@b65756af` on `automation/testids`** (awaiting human promotion to `main`), fix round 2. Same mechanism, source `CustomHandle` call site. Confirmed live via `.is_visible()`. | none needed |
+
+**Amended during implementation, fix round 2 (review finding — raw DOM handle
+count, connection handles):** step 2/step 8's "2 ReactFlow connection handles"
+check originally queried the live DOM for `.react-flow__handle` via
+`page.evaluate()` (this AFS's own original "Concrete Handles" recommendation,
+line 51/111 above). Reviewer flagged it: `CustomHandle.jsx` (EliteaUI
+`src/[fsd]/features/pipelines/flow-editor/ui/nodes/CustomHandle.jsx:104-111`)
+already forwards a `testId` prop straight to `data-testid` on the underlying
+`<Handle>` — an app-owned hook, not library-internal DOM — so it does NOT
+qualify for the #579 sanctioned exception (that class is reserved for nodes a
+third-party library renders with no app-authored hook at all, e.g. ReactFlow's
+own `rf__wrapper` internals). `PrinterNode.jsx`'s two `CustomHandle` call sites
+now pass `testId="pipeline-printer-node-target-handle"` /
+`testId="pipeline-printer-node-source-handle"` (`EliteaAI/EliteaUI@b65756af`
+on `automation/testids`, awaiting human promotion to `main`) — same mechanism
+`pipeline-decision-node-output-handle` already uses on `NormalDecisionNode.jsx`.
+`PipelineDetailPage.get_node_handle_count()` now sums two testid-scoped
+`LocatorDescriptor` fields (`printer_node_target_handle` /
+`printer_node_source_handle`) instead of the raw DOM query; the test also
+asserts `.is_visible()` on each directly (a testid-only regression guard the
+aggregate count alone wouldn't provide). The assertion target is unchanged
+(Printer node exposes exactly 2 connection handles) — only the verification
+handle changed, per Phase 2's amend-in-place rule (technique, not scope).
+
+**Amended during implementation, fix round 1 (review finding — raw DOM handle):**
+step 8's absence check originally queried the live DOM for `#simple-select-Input`/
+`#simple-select-Output` via `page.evaluate()` (this was this AFS's own original
+"Concrete Handles" recommendation, written during the combined analyst+implementer
+session). Reviewer flagged it: those are MUI-auto-generated ids on an app-owned
+`Select.SingleSelect` component (not ReactFlow/CodeMirror-class library-internal
+DOM), so it doesn't qualify for the #579 sanctioned-exception — the component
+already supports a real `data-testid` (passed as `dataTestId` by every OTHER node
+type that renders it — see `code_node_input_select` etc.), it's just that
+`PrinterNode.jsx` never renders `FlowEditorSelect.InputSelect`/`OutputSelect` at
+all, so there is no live element to put a testid on this session. The technique
+now uses two testid-scoped `LocatorDescriptor` fields
+(`printer_node_input_select` / `printer_node_output_select`, testids
+`pipeline-printer-node-input-select` / `pipeline-printer-node-output-select` —
+same naming convention every other node type's Input/Output select testid
+follows) and asserts `.count() == 0` on each, matching the codebase's existing
+testid-based absence-assertion pattern (`chat_hitl_edit_button.count() == 0`,
+`toolkit_card.count() == 0`). The assertion target is unchanged (Printer renders
+zero Input/Output state-variable comboboxes) — only the verification handle
+changed, per Phase 2's amend-in-place rule (technique, not scope).
 
 ## Network Behavior
 - `POST .../elitea_core/applications/prompt_lib/{project}` — pipeline creation (step 0's prerequisite, if not using the `pipeline_id` fixture).
