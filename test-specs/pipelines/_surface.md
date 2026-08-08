@@ -2,7 +2,50 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2050 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2049 analysis).
+
+## Three-dot Actions menu — full live-confirmed testid map, both groups (confirmed live, 2026-08-08, ELITEA-2049)
+
+Full DOM query of `[data-testid="agent-actions-menu"] [role="menuitem"]` on a
+pipeline detail page (`FullDetailsPipe_probe2`, id 6754, base version). Two
+groups, both rendered by the SAME shared `ApplicationControls.jsx` component
+Agent detail pages use — testid keys mostly carry the literal `agent`/`share-agent`
+naming regardless of entity type (tech debt, not a bug):
+
+| Group | Label | Testid | Notes |
+|---|---|---|---|
+| VERSION | Set as a default | `set-as-a-default-menuitem` | disabled (always, for the currently-open version) |
+| VERSION | Export | `agent-actions-export-menuitem` | shared Agent/Pipeline testid |
+| VERSION | Share (version-specific link) | `share-version-menuitem` | shared testid, NOT case-text's "Copy link" target |
+| VERSION | Fork | `pipeline-actions-fork-menuitem` | **entity-scoped** — differs from Agent's `agent-actions-fork-menuitem` (`ForkEntityButton.jsx`'s `FORK_MENU_ITEM_KEY_BY_ENTITY` map) |
+| VERSION | Delete ("Delete version") | `delete-version-menuitem` | disabled while open version is `base` |
+| PIPELINE | Share (generic link — **this is "Copy link"**) | `share-agent-menuitem` | same literal key as Agent's PIPELINE-analog item — testid does NOT rename per entity |
+| PIPELINE | Pin to top | **none — testid gap** | `usePinMenu.hooks.jsx`'s menu-item object has no `key` field at all (only shared hook without one); needs an optional `key` param threaded from each of its 4 callers (`ApplicationControls`/`SkillControls`/`ToolkitsControls`/`CredentialsControls`) — see AFS for the exact minimal-scope fix |
+| PIPELINE | Delete pipeline | `delete-agent-menuitem` | same testid as Agent's "Delete agent" — only the LABEL switches per `isFromPipeline` |
+
+**Case-text drift, 3rd occurrence of the same pattern**: no case that says
+"Copy link" as a menu-item label will ever find one literally — it's always
+"Share" (`useCopyLinkMenu({ label: 'Share', ... })` overrides the hook's own
+default `'Copy link'` label at every call site observed so far). Filed as a
+sibling clarification each time a new surface hits it: #1288 (Agent Detail),
+#1218 (Agent Hub modal), #1337 (Pipeline Detail, this session) — all
+cross-linked. If a 4th surface hits this (e.g. Skill/Toolkit/Credential
+three-dot menus), the same treatment applies: sibling, not duplicate, cross-link.
+
+**Clipboard-read via MCP browser hangs — use the pytest pattern instead.** A
+raw `page.evaluate("async () => await navigator.clipboard.readText()")` call
+through the Playwright MCP browser (no test-context permission grant, no
+interactive-dialog handler) hung indefinitely (~30 min) waiting on a
+permission prompt that can never resolve outside a real Playwright test
+process. The suite's own established pattern — `page.context.grant_permissions
+(["clipboard-read","clipboard-write"])` once, then `page.wait_for_function
+("async () => { const t = await navigator.clipboard.readText(); return
+t.length > 0; }")` — works fine inside pytest (already proven by
+`test_agent_copy_version_link.py`, ELITEA-1898) because the test-context
+permission grant pre-authorizes it; there is no equivalent MCP-side grant
+call. Don't reattempt the direct call in a future MCP exploration session —
+confirm toast text/visibility live instead, and defer clipboard-content
+verification to the implementer's pytest run.
 
 ## Pipeline Export — downloaded `.pipeline.md` frontmatter shape confirmed on TWO pipelines; no `nodes`/`state` verified by the existing spec (confirmed live, 2026-08-08, ELITEA-2050)
 
