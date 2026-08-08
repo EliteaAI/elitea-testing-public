@@ -2,7 +2,46 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2049 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2024 analysis).
+
+## Dashboard view toggle (Card vs Table) — `entity-card-name` count + `?view=` URL param are the layout-format proof, no new testid needed (confirmed live, 2026-08-08, ELITEA-2024)
+
+`PipelinesListPage.table_view_button`/`card_view_button` (testids
+`pipeline-table-view`/`pipeline-card-view`, wired in `Pipelines.jsx` on the
+shared `ViewToggle.jsx` component — same component Agents/MCPs/etc. use with
+their own testid overrides) both resolve correctly live and are **on
+`automation/testids` but NOT yet on `main`** (fresh `git fetch origin` this
+session: `git grep` hit on `origin/automation/testids` only, at
+`src/pages/Pipelines/Pipelines.jsx:274-275`).
+
+- **Default view is Card list view** — confirmed live: fresh `/pipelines/all`
+  load renders the Card list view button `[pressed]` (`aria-pressed="true"`),
+  Table view button unpressed. `PipelinesListPage` has NO method asserting
+  this default state — `is_card_view_active()`/`is_table_view_active()` exist
+  but the merged test (`test_view_toggle_table_and_card`,
+  `test_pipeline_management.py:87`) never calls them before its first click.
+- **View state lives in the URL, not just component state**: `ViewToggle.jsx`
+  writes `SearchParams.View` (`?view=table`/`?view=cards`) via
+  `useSetUrlSearchParams`; `useIsTableView.js` reads it back
+  (`searchParams.get(SearchParams.View) === ViewOptions.Table`) to drive
+  `CardList.jsx`'s `shouldRenderTable` ternary between `DataTable` (table) and
+  `DataCards` (card grid). Pure client-side, no XHR fires on toggle click.
+- **Strongest layout-format proof, testid-only, no new testid work**: the
+  `entity-card-name` testid (`Card.jsx:210`, existing `LocatorDescriptor`
+  field) is rendered ONLY by the card-view `Card` component — `DataTable`
+  (table view) never renders it. Confirmed live:
+  `document.querySelectorAll('[data-testid="entity-card-name"]').length` was
+  `12` in card view (matching the 12 visible pipelines) and dropped to `0`
+  immediately after switching to table view, back to `12` on switching back.
+  Combine with the `?view=table`/`?view=cards` URL param for a
+  belt-and-braces layout assertion — neither needs a new testid.
+- **Testid gap that's genuinely NOT needed for this case** (flag for a future
+  table-specific case only): table view's column headers ("Name &
+  Description"/"Authors"/"Created"/"Actions", `GridTableHeader.jsx`) carry NO
+  `data-testid` for Pipelines — `DataTable.jsx` only passes
+  `columnTestIdPrefix` for `isMCPs`, `undefined` otherwise. The
+  `entity-card-name`-absence + URL-param combo above is sufficient without it.
+- Full gap analysis + exact patch: `test-specs/pipelines/lextend_pipeline-dashboard-view-toggle-default-and-layout_ELITEA-2024.md`.
 
 ## Three-dot Actions menu — full live-confirmed testid map, both groups (confirmed live, 2026-08-08, ELITEA-2049)
 

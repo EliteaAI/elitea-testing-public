@@ -34,3 +34,4 @@
 - [#579 claim needs source check](579_claim_check_component_already_forwards_testid_prop.md) — verify component doesn't already forward a testId prop before accepting "library-internal"
 - [DotMenu click already closes menu](dot_menu_click_already_closes_menu_before_escape_step.md) — a later "Escape closes it" step asserts on an already-closed menu
 - [Confirmed-live ≠ on-main](confirmed_live_is_not_on_main_provenance_check.md) — dev server serves automation/testids; git grep origin/main separately
+- [View toggle layout proof](view_toggle_layout_proof_is_entity_card_name_absence_plus_url_param.md) — table headers have no testid; use entity-card-name count + ?view= param
