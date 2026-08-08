@@ -482,6 +482,58 @@ class PipelineDetailPage(PipelineFormPage):
         description="Toolkit node's 'Structured output' switch (CommonInterruptSettings.jsx)"
     )
 
+    # Custom node inline config (ELITEA-2036). Testid-only, added via
+    # add-data-testid — DefaultNode.jsx's own TEST_ID_PREFIX_BY_NODE_TYPE map
+    # (mirrors BaseToolNode.jsx's map used by the Toolkit/MCP nodes) covers
+    # only 'custom' (the 'defaultType' node type sharing this same component
+    # stays untagged, .agents/testing.md § Locator policy). Page-wide (not
+    # scoped to a specific node container): correct as long as a test only
+    # has a single Custom node on canvas.
+    custom_node_toolkit_select = LocatorDescriptor(
+        testid="pipeline-custom-node-toolkit-select",
+        description="Custom node's Toolkit select (inline on the ReactFlow canvas card)"
+    )
+    custom_node_tool_select = LocatorDescriptor(
+        testid="pipeline-custom-node-tool-select",
+        description=(
+            "Custom node's Tool select — conditionally rendered, absent from "
+            "the DOM entirely until a Toolkit with >=1 selected_tools is chosen"
+        )
+    )
+    custom_node_input_select = LocatorDescriptor(
+        testid="pipeline-custom-node-input-select",
+        description="Custom node's tool-agnostic Input state-variable select"
+    )
+    custom_node_output_select = LocatorDescriptor(
+        testid="pipeline-custom-node-output-select",
+        description="Custom node's tool-agnostic Output state-variable select"
+    )
+    custom_node_input_mapping_required_heading = LocatorDescriptor(
+        testid="pipeline-custom-node-input-mapping-heading",
+        description="Custom node's 'Input mapping (required N)' accordion heading"
+    )
+    custom_node_input_mapping_optional_heading = LocatorDescriptor(
+        testid="pipeline-custom-node-input-mapping-optional-heading",
+        description="Custom node's 'Input mapping (optional N)' accordion heading"
+    )
+    custom_node_interrupt_after_toggle = LocatorDescriptor(
+        testid="pipeline-custom-node-interrupt-after-toggle",
+        description="Custom node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
+    )
+    custom_node_structured_output_toggle = LocatorDescriptor(
+        testid="pipeline-custom-node-structured-output-toggle",
+        description="Custom node's 'Structured output' switch (CommonInterruptSettings.jsx)"
+    )
+    custom_node_json_editor_content = LocatorDescriptor(
+        testid="pipeline-custom-node-json-editor-content",
+        description=(
+            "Custom node's raw-JSON CodeMirror editor content (.cm-content) — "
+            "CustomNodeInput.jsx, the node's full YAML body (id/type/description/"
+            "settings/input_mapping/...) as editable JSON. Read via text_content(), "
+            "not input_value() (CodeMirror is not a native <input>/<textarea>)."
+        )
+    )
+
     # HITL node inline config (ELITEA-2014). Testid-only, added via
     # add-data-testid — HITLNode.jsx call sites only (untested node types
     # stay untagged, .agents/testing.md § Locator policy). Page-wide (not
@@ -891,6 +943,10 @@ class PipelineDetailPage(PipelineFormPage):
     # BaseToolNode.jsx (ELITEA-2010).
     TOOLKIT_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-toolkit-node-input-mapping-value-{}"]'
     TOOLKIT_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-toolkit-node-input-mapping-type-{}"]'
+
+    # Same mechanism, gated to nodeType==custom in DefaultNode.jsx (ELITEA-2036).
+    CUSTOM_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-custom-node-input-mapping-value-{}"]'
+    CUSTOM_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-custom-node-input-mapping-type-{}"]'
 
     # Select-dropdown option pattern shared by Toolkit/Tool/Input/Output
     # selects (SingleSelectMenuItem.jsx: `select-option-{value}`) — confirmed
@@ -3610,6 +3666,168 @@ class PipelineDetailPage(PipelineFormPage):
         """Read the Toolkit node's currently-selected Output display text."""
         text = (self.toolkit_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
+
+    # ------------------------------------------------------------------
+    # Custom node inline config (ELITEA-2036)
+    #
+    # Same shape as the Toolkit node's methods above — DefaultNode.jsx (the
+    # Custom node's renderer) shares the exact Toolkit/Tool/Input/Output/
+    # Input-mapping/CommonInterruptSettings component tree with
+    # BaseToolNode.jsx (the Toolkit/MCP nodes' renderer), just gated to
+    # nodeType==custom instead of ==toolkit. It additionally renders a raw
+    # JSON view/editor of the node's own YAML body (CustomNodeInput.jsx),
+    # covered separately below.
+    # ------------------------------------------------------------------
+
+    def get_custom_node_toolkit_value(self, timeout: int = 5000) -> str:
+        """Read the Custom node's currently-selected Toolkit display text."""
+        self.custom_node_toolkit_select.wait_for(state="visible", timeout=timeout)
+        text = (self.custom_node_toolkit_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def get_custom_node_tool_value(self, timeout: int = 5000) -> str:
+        """Read the Custom node's currently-selected Tool display text.
+
+        Returns empty string both when no tool is selected AND when the Tool
+        select isn't rendered at all yet (conditionally rendered — see
+        ``custom_node_tool_select``).
+        """
+        try:
+            self.custom_node_tool_select.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        text = (self.custom_node_tool_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def is_custom_node_tool_select_visible(self, timeout: int = 2000) -> bool:
+        """Check whether the Custom node's Tool select is rendered at all.
+
+        Used to assert the absence of the Tool select before a Toolkit is
+        selected — same two-stage-reveal contract already enforced for the
+        Toolkit node (ELITEA-2010).
+        """
+        try:
+            self.custom_node_tool_select.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def open_custom_node_toolkit_select(self, timeout: int = 5000) -> None:
+        """Open the Custom node's Toolkit dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.custom_node_toolkit_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_custom_node_toolkit(self, toolkit_name: str, timeout: int = 5000) -> None:
+        """Open the Toolkit dropdown and select *toolkit_name*."""
+        self.open_custom_node_toolkit_select(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(toolkit_name))
+        option.click(timeout=timeout)
+
+    def open_custom_node_tool_select(self, timeout: int = 5000) -> None:
+        """Open the Custom node's Tool dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.custom_node_tool_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_custom_node_tool(self, tool_name: str, timeout: int = 5000) -> None:
+        """Open the Tool dropdown and select *tool_name*."""
+        self.open_custom_node_tool_select(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(tool_name))
+        option.click(timeout=timeout)
+
+    def is_custom_node_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:
+        """Check whether the Custom node's "Input mapping (required N)" accordion is visible."""
+        heading = self.custom_node_input_mapping_required_heading
+        try:
+            heading.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (required {required_count})"
+
+    def is_custom_node_input_mapping_optional_section_visible(self, optional_count: int, timeout: int = 5000) -> bool:
+        """Check whether the Custom node's "Input mapping (optional N)" accordion is visible."""
+        heading = self.custom_node_input_mapping_optional_heading
+        try:
+            heading.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (optional {optional_count})"
+
+    def get_custom_node_input_mapping_type(self, param_name: str, timeout: int = 5000) -> str:
+        """Read the current Type select value of an Input-mapping row."""
+        type_select = self.page.locator(self.CUSTOM_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        type_select.wait_for(state="visible", timeout=timeout)
+        text = (type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_custom_node_input_mapping_type(self, param_name: str, type_value: str, timeout: int = 5000) -> None:
+        """Open an Input-mapping row's Type select and choose *type_value*."""
+        type_select = self.page.locator(self.CUSTOM_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        type_select.scroll_into_view_if_needed(timeout=timeout)
+        type_select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def get_custom_node_input_mapping_value(self, param_name: str, timeout: int = 5000) -> str:
+        """Read the current value of an Input-mapping "Value" field."""
+        field = self.page.locator(self.CUSTOM_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        return field.input_value()
+
+    def fill_custom_node_input_mapping_value(self, param_name: str, value: str, timeout: int = 5000) -> None:
+        """Fill an Input-mapping "Value" field for a fixed/f-string tool parameter."""
+        field = self.page.locator(self.CUSTOM_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        self._fill_node_field_value(field, value, timeout=timeout)
+
+    def open_custom_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the Custom node's Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.custom_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_custom_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Input dropdown and select *variable_name*."""
+        self.open_custom_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_custom_node_input_value(self) -> str:
+        """Read the Custom node's currently-selected Input display text."""
+        text = (self.custom_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_custom_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the Custom node's Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.custom_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_custom_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Output dropdown and select *variable_name*."""
+        self.open_custom_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_custom_node_output_value(self) -> str:
+        """Read the Custom node's currently-selected Output display text."""
+        text = (self.custom_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def get_custom_node_json_editor_text(self, timeout: int = 5000) -> str:
+        """Read the Custom node's raw-JSON editor content as plain text.
+
+        The field is a CodeMirror ``.cm-content`` div (not a native
+        input/textarea), so ``text_content()`` is used — not
+        ``input_value()`` (see ``custom_node_json_editor_content``
+        docstring, same #579-adjacent discipline already documented for
+        this project's other CodeMirror-backed fields).
+        """
+        self.custom_node_json_editor_content.wait_for(state="visible", timeout=timeout)
+        return self.custom_node_json_editor_content.text_content() or ""
 
     # ------------------------------------------------------------------
     # TOOLS section — MCP attach (ELITEA-1955)
