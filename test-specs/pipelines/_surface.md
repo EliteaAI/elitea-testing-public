@@ -64,6 +64,65 @@ at a controlled 1400x1000 viewport — cross-checked, both agree):
 - Full flow, handles, and Coverage Map:
   `test-specs/pipelines/l2_pipeline-canvas-zoom-and-pan_ELITEA-2019.md`.
 
+## Canvas Control Panel — all 6 buttons are ONE `canvas_controls` render tree; Zoom Out was an unused pre-existing method; Toggle Interactivity/cards-size/Auto-arrange are deterministic round-trips (confirmed live, 2026-08-08, ELITEA-2057)
+
+Confirmed live via Playwright MCP + CDP (`browser_run_code_unsafe`) on the SAME
+pipeline (id 8401, Decision + 3 Printer branches) the ELITEA-2019 session probed:
+
+- **`canvas_controls` (`rf__controls`) wraps ALL 6 buttons, not just
+  Zoom/Fit-View** — `FlowEditor.jsx`'s `StyledControls` is `styled(Controls)`
+  from `@xyflow/react`; ReactFlow's OWN 4 default buttons (Zoom In, Zoom Out,
+  Fit View, Toggle Interactivity — each with a real `title`/`aria-label` DOM
+  attribute) render first, followed by 2 app-code children appended in the
+  SAME component via `ControlButton` (Toggle cards size → `onExpandAll`,
+  Auto-arrange → `onReLayout`). Confirmed via `outerHTML` dump: the two
+  app-code buttons have NO `title`/`aria-label` on the `<button>` itself —
+  the accessible name lives on the wrapping MUI Tooltip `<span
+  aria-label="...">` instead. Locators: `button[title="Toggle
+  Interactivity"]` vs `span[aria-label="Toggle cards size"] button` /
+  `span[aria-label="Auto-arrange"] button`, all scoped under
+  `canvas_controls`.
+- **Zoom Out (`zoom_out_canvas()`) existed since ELITEA-2019 but no test
+  ever calls it** — confirmed by reading the merged `test_canvas_zoom_pan_and_fit_view`
+  (only `zoom_in_canvas()` is invoked). A real, un-flagged coverage gap
+  until ELITEA-2057 closed it.
+- **Toggle Interactivity is a real drag lock/unlock, but the drag-test
+  methodology has a false-negative trap**: dragging via a node's MID-BODY
+  coordinates on a Printer-type node (mostly `Value`/`Final Message` text
+  inputs) silently fails to move the node regardless of interactivity state
+  — the mouse-down lands on an `<input>`/`<textarea>`, not the ReactFlow
+  node wrapper. Zero displacement then looks identical to "interactivity is
+  off" but isn't. The existing `move_node()` (`pipeline_detail_page.py`,
+  added ELITEA-2047) already avoids this — it drags from the node's header
+  strip (`box.y + 12`) — so REUSE it for interactivity probes; don't build a
+  fresh drag helper that samples the bounding-box center. With `move_node`,
+  confirmed live: interactivity OFF → zero displacement; ON → exact-delta
+  displacement, in either order, fully reversible.
+- **Toggle cards size is a deterministic boolean round-trip** — one click
+  collapses EVERY node's rendered height (confirmed live: a Decision node
+  went 87.8px → 9.5px), a second click restores the EXACT original height.
+  Backed by `FlowEditor.jsx`'s `expandAll` state + `onExpandAll` (also
+  triggers `onReLayout` + a delayed `fitView()`).
+- **Auto-arrange is fully deterministic for a static graph — same
+  determinism class as Fit View (ELITEA-2019)**: dragging a node away from
+  its auto-arranged position (via `move_node`, from the header strip) and
+  then clicking Auto-arrange moves it back to the EXACT same bounding box
+  it started at (px-perfect match on both x/y), not merely "some
+  rearrangement". `onReLayout` recomputes positions via a deterministic
+  layout algorithm, not randomization.
+- **Zero network requests, zero console errors** for Zoom Out, Toggle
+  Interactivity, Toggle cards size, and Auto-arrange — same pure-client-side
+  class already documented for Zoom In/Pan/Fit-View above.
+- **Dragging a node (e.g. via `move_node`, used as the interactivity/
+  auto-arrange probe) DOES flip the pipeline's Save/Discard dirty state**
+  (confirmed live) — unlike viewport zoom/pan, which don't. Not asserted by
+  ELITEA-2057 (no Save performed), noted for the next analyst who touches
+  node-drag + Save/Discard together.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/lextend_pipeline-canvas-control-panel_ELITEA-2057.md`
+  (extends `test_pipeline_canvas_zoom_and_pan.py` — see that file for the
+  new `test_canvas_control_panel_*` test).
+
 ## Decision node execution/routing — entry-point mechanism, Input-variable requirement, and Printer's real output field (confirmed live, 2026-08-08, ELITEA-2016)
 
 Full end-to-end live probe: Decision node + 3 Printer branches, wired through to `END`,
