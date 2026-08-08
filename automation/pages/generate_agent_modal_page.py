@@ -22,6 +22,7 @@ Skill "Build with AI" flow via ``GenerateEntityModalPageBase`` — see
 ``generate_skill_modal_page.py`` for the sibling entity page object.
 """
 
+import json
 import logging
 
 from playwright.sync_api import Locator, Page
@@ -39,6 +40,15 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
     # The sole endpoint the modal calls to generate a draft
     # (GenerateAgentModal.jsx -> generateAgentDraftApi.js).
     GENERATE_DRAFT_ROUTE = "**/elitea_core/generate_application_draft/**"
+
+    # The base-agent CREATE endpoint (GenerateAgentModal.jsx:227 ->
+    # useApplicationCreateMutation / api/applications.js's `applicationCreate`
+    # mutation). Added for ELITEA-1916. The SAME URL also serves the
+    # Agents-list GET queries (`applicationList`/`totalApplications` in
+    # applications.js) — mock_create_failure() below scopes its handler to
+    # POST only (route.continue_() for everything else) so a GET while the
+    # mock is installed passes through untouched.
+    CREATE_APPLICATION_ROUTE = "**/elitea_core/applications/prompt_lib/**"
 
     open_button = LocatorDescriptor(
         testid="generate-agent-open-button",
@@ -89,6 +99,27 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
         testid="generate-agent-approve-button",
         description="Create Agent button (review step)"
     )
+
+    # --- App-wide toast (Toast.jsx, src/components/Toast.jsx) — shared
+    # component, testids pre-exist and need no EliteaUI change (same
+    # component already used by AgentDetailPage.toast_alert/toast_message,
+    # ChatPage.toast_alert/toast_message, PipelineDetailPage.toast_alert/
+    # toast_message; ELITEA-1916 is the first Build-with-AI-flow case to
+    # need it — the base-create failure path surfaces its error via this
+    # toast, not an inline modal alert, unlike the generate-draft failure
+    # path's `error_alert` above). ---
+    toast_alert = LocatorDescriptor(
+        testid="toast-alert",
+        description="App-wide toast Alert root; carries data-severity (info/warning/error/success).",
+    )
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide toast message text body.",
+    )
+    # Severity-scoped toast alert selector — testid identity + data-severity
+    # state filter, the compliant shape for a state-dependent assertion
+    # (mirrors AgentDetailPage.TOAST_ALERT_SEVERITY / ChatPage.TOAST_ALERT_SEVERITY).
+    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
 
     # ------------------------------------------------------------------
     # Review-form field access (Name / Description / Instructions) —
@@ -418,3 +449,48 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
         create_response = create_info.value
         logger.info("Create Agent (no resources): create=%d", create_response.status)
         return create_response
+
+    # ------------------------------------------------------------------
+    # Network mocking — create-application endpoint (ELITEA-1916)
+    # ------------------------------------------------------------------
+
+    def mock_create_failure(
+        self,
+        error_message: str,
+        status: int = 500,
+        delay_ms: int = 300,
+    ):
+        """Install a route mock that fails the base-agent CREATE call
+        (POST .../applications/prompt_lib/{project_id}).
+
+        Scoped to POST only — the same URL also serves the Agents-list GET
+        queries, which are passed through via ``route.continue_()``.
+
+        Args:
+            error_message: Body ``error`` field — surfaced verbatim by
+                ``GenerateEntityModal.jsx``'s ``handleApprove`` catch block
+                (``toastError(buildErrorMessage(err))``), via an app-wide
+                toast (NOT the inline ``error_alert`` the generate-draft
+                failure path uses).
+            status: HTTP status to fulfill with.
+            delay_ms: Artificial latency before fulfilling, so the transient
+                "Creating..." (``isApproving``) state is reliably observable.
+        """
+        def handler(route):
+            if route.request.method != "POST":
+                route.continue_()
+                return
+            self.page.wait_for_timeout(delay_ms)
+            route.fulfill(
+                status=status,
+                content_type="application/json",
+                body=json.dumps({"error": error_message}),
+            )
+
+        self.page.route(self.CREATE_APPLICATION_ROUTE, handler)
+        logger.info("Mocked create-application failure: status=%d error=%r", status, error_message)
+
+    def clear_create_mock(self):
+        """Remove any route mock on the create-application endpoint."""
+        self.page.unroute(self.CREATE_APPLICATION_ROUTE)
+        logger.info("Cleared create-application route mock")

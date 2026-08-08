@@ -69,6 +69,15 @@ regular Create Agent form's `agent-name-input`, ELITEA-1900) — typing past
 error message and a disabled "Create Agent" button; trimming back to
 exactly 32 characters clears both and re-enables the button.
 
+Covers ELITEA-1916: a CREATE-time failure (mocked 500 on the base-create
+POST, distinct from ELITEA-1915's generate-draft-time failure — no existing
+test in this file exercises the create endpoint failing) surfaces an
+app-wide toast (not an inline form alert — see the ELITEA-1916 AFS Known
+Defects #1 for the case-text-drift classification), leaves the modal open
+on the review step with every field/starter untouched, re-enables "Create
+Agent", and a second (real, unmocked) click against the live backend
+succeeds and creates the agent.
+
 Spec: test-specs/agents/l2_build-with-ai-generation-failure-retry_ELITEA-1915.md
 Spec: test-specs/agents/l2_build-with-ai-generated-draft-suggested-resources_ELITEA-1907.md
 Spec: test-specs/agents/l2_build-with-ai-selected-suggested-resources-attached-to-created-agent_ELITEA-1909.md
@@ -79,6 +88,7 @@ Spec: test-specs/agents/lextend_build-with-ai-approve-creates-agent-and-navigate
 Spec: test-specs/agents/lextend_build-with-ai-suggested-resources-require-explicit-selection_ELITEA-1908.md
 Spec: test-specs/agents/lextend_build-with-ai-suggested-skills-section-shown-with-up-to-5-skills_ELITEA-1910.md
 Spec: test-specs/agents/l2_build-with-ai-agent-name-validation-enforces-32-character-maximum_ELITEA-1913.md
+Spec: test-specs/agents/l2_build-with-ai-creation-failure-stays-on-review-step-for-correction_ELITEA-1916.md
 Covers: GenerateAgentModal (GenerateEntityModal.jsx via GenerateAgentModal.jsx)
 
 Markers:
@@ -112,6 +122,13 @@ GENERATE_RESPONSE_TIMEOUT = 15000
 LOADING_STATE_TIMEOUT = 3000
 REVIEW_FORM_TIMEOUT = 15000
 
+# ELITEA-1916 — the failure toast is transient (MUI Snackbar autoHideDuration,
+# live-confirmed by the AFS), so this must be short enough that the assertion
+# genuinely catches it "immediately after the mocked response resolves" per
+# the AFS Concrete Handles / Automation Hints wait-strategy note, not a
+# tolerant fallback timeout.
+TOAST_VISIBLE_TIMEOUT = 5000
+
 # ELITEA-1909's generate-draft call is a real (non-mocked) LLM call, unlike
 # ELITEA-1915/1907's mocked responses — a longer, more generous timeout
 # avoids flaking on ordinary LLM-latency variance.
@@ -139,6 +156,36 @@ RETRY_DRAFT_PAYLOAD = {
         "Summarize today's incoming tickets",
     ],
 }
+
+# ELITEA-1916 — verbatim prompt per the case's Test Data table. Content is
+# not asserted by this case, only that the review form is reached.
+CREATE_FAILURE_PROMPT_TEXT = "Create a simple test agent for ELITEA-1916 creation-failure recovery."
+
+# Mocked generate_application_draft response for ELITEA-1916 — matches the
+# AFS's Test Data payload exactly (same shape as RETRY_DRAFT_PAYLOAD /
+# FIELD_POPULATION_DRAFT_PAYLOAD above). Suggested-resource arrays are
+# deliberately empty to keep the DOM surface focused on the create-failure/
+# retry mechanics (AFS Test Data + Axis 2 — resource-selection persistence
+# across a create failure is a distinct, uncovered observable, not asserted
+# here).
+CREATE_FAILURE_DRAFT_PAYLOAD = {
+    "name": "ELITEA-1916 Draft Agent",
+    "description": "A draft used to test create-failure recovery.",
+    "instructions": "You are a test agent for ELITEA-1916.",
+    "welcome_message": "Hi, testing creation failure recovery.",
+    "conversation_starters": ["Starter one", "Starter two"],
+    "suggested_toolkits": [],
+    "suggested_mcp": [],
+    "suggested_pipelines": [],
+    "suggested_agents": [],
+    "suggested_skills": [],
+}
+
+# Simulated creation-failure response body for ELITEA-1916 — same message-
+# carrying-verbatim technique SIMULATED_ERROR_MESSAGE (ELITEA-1915) uses,
+# chosen because it live-proves the backend's `error` field reaches the
+# user via buildErrorMessage(err) -> err?.data?.error (AFS Test Data).
+SIMULATED_CREATE_ERROR_MESSAGE = "Simulated creation failure for ELITEA-1916"
 
 # ELITEA-1907 — verbatim prompt per the case's Test Data table.
 SUGGESTED_RESOURCES_PROMPT_TEXT = "An agent that queries GitHub and runs Jira updates"
@@ -1774,3 +1821,176 @@ class TestAgentBuildWithAIReviewNameValidation:
         # No product state to clean up — the test never clicks "Create Agent"
         # to completion (see AFS Cleanup); close the modal to leave a clean state.
         modal.close_button.click()
+
+
+class TestAgentBuildWithAICreationFailureRecovery:
+    """Build with AI (P2): a CREATE-time failure surfaces an app-wide toast,
+    leaves the modal open on the review step with all data preserved, and a
+    retry (the same "Create Agent" button, no separate retry affordance)
+    succeeds once the mock is cleared and the request reaches the real
+    backend (ELITEA-1916). Distinct from
+    TestAgentBuildWithAIGenerationFailureRetry.
+    test_generation_failure_shows_error_and_allows_retry (ELITEA-1915),
+    which mocks the generate-DRAFT call and never clicks Approve at all —
+    this is the first test in this file to exercise the base-agent CREATE
+    call failing."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agents/build_with_ai/ELITEA-1916_build-with-ai-creation-failure-stays-on-review-step-for-correction.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_creation_failure_stays_on_review_step_and_retry_succeeds(self, page, agent_api):
+        """A mocked 500 on the base-create POST surfaces an app-wide error
+        toast (not an inline form alert — see the ELITEA-1916 AFS Known
+        Defects #1), leaves the review form open with every field/starter
+        intact, re-enables "Create Agent", and a second, real (unmocked)
+        click succeeds and creates the agent."""
+        list_page = AgentsListPage(page)
+        modal = GenerateAgentModalPage(page)
+        draft = CREATE_FAILURE_DRAFT_PAYLOAD
+
+        created_agent_id = None
+        try:
+            # ------------------------------------------------------------------
+            # Step 1 (case) — Generate a draft; reach the review form
+            # ------------------------------------------------------------------
+            with allure.step("Step 1 — Generate a draft and reach the review form"):
+                list_page.navigate_to_create()
+                modal.open_modal()
+                modal.fill_prompt(CREATE_FAILURE_PROMPT_TEXT)
+                modal.mock_generate_success(draft)
+
+                with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+                    modal.generate_button.click()
+
+                response = response_info.value
+                assert response.status == 200, (
+                    f"Expected the mocked generate-draft request to succeed, got {response.status}"
+                )
+                modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+
+            # ------------------------------------------------------------------
+            # Steps 1-2 (case) — Click "Create Agent"; the mocked creation
+            # API call fails
+            # ------------------------------------------------------------------
+            with allure.step('Step 2 — Click "Create Agent"; simulate a creation API failure'):
+                modal.mock_create_failure(SIMULATED_CREATE_ERROR_MESSAGE, status=500)
+                create_response = modal.click_approve_and_wait_for_agent_created()
+
+                assert create_response.status == 500, (
+                    f"Expected the mocked create-application request to resolve 500, got {create_response.status}"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 3 (case) — A clear, actionable error message is shown.
+            # Per the AFS Known Defects #1: the live mechanism is an
+            # app-wide TOAST (Toast.jsx), not an inline/embedded form
+            # message — asserted here against the LIVE contract per the
+            # reverse-masking guard (case-text drift is a documented
+            # clarification, not a product defect).
+            # ------------------------------------------------------------------
+            with allure.step("Step 3 — Verify a clear error toast is displayed"):
+                modal.toast_alert.wait_for(state="visible", timeout=TOAST_VISIBLE_TIMEOUT)
+
+                assert modal.toast_alert.get_attribute("data-severity") == "error", (
+                    "Toast alert should carry data-severity=\"error\" for a creation failure"
+                )
+                assert (modal.toast_message.text_content() or "").strip() == SIMULATED_CREATE_ERROR_MESSAGE, (
+                    "Toast message should surface the backend's error message verbatim, "
+                    f"got: {modal.toast_message.text_content()!r}"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 4 (case) — User remains on the review/edit step; no
+            # unwanted navigation occurs
+            # ------------------------------------------------------------------
+            with allure.step("Step 4 — Verify the modal stays open on the review step"):
+                assert modal.modal.is_visible(), (
+                    "Build with AI modal should still be present after a creation failure"
+                )
+                assert modal.back_button.is_visible() and modal.approve_button.is_visible(), (
+                    "Modal should still show the review step's action buttons after a creation failure "
+                    "(not reverted to the input/prompt step)"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 5 (case) — All previously entered/generated data is
+            # preserved on the form
+            # ------------------------------------------------------------------
+            with allure.step("Step 5 — Verify all draft data is still present"):
+                assert modal.get_review_name() == draft["name"], (
+                    "Review-form Name should still read the generated draft's value after a creation failure"
+                )
+                assert modal.get_review_description() == draft["description"], (
+                    "Review-form Description should still read the generated draft's value after a "
+                    "creation failure"
+                )
+                assert modal.get_review_instructions() == draft["instructions"], (
+                    "Review-form Instructions should still read the generated draft's value after a "
+                    "creation failure"
+                )
+                assert modal.get_review_welcome_message() == draft["welcome_message"], (
+                    "Review-form Welcome Message should still read the generated draft's value after a "
+                    "creation failure"
+                )
+                for index, starter in enumerate(draft["conversation_starters"]):
+                    assert modal.get_review_starter_value(index) == starter, (
+                        f"Review-form Chat-starter #{index} should still read the generated draft's value "
+                        "after a creation failure"
+                    )
+
+            # ------------------------------------------------------------------
+            # Step 6 (case) — Correct the issue (clear the mock), click
+            # "Create Agent" again; the SAME button, no separate retry
+            # control; the agent is created successfully against the real
+            # (unmocked) backend
+            # ------------------------------------------------------------------
+            detail_page = AgentDetailPage(page)
+            with allure.step('Step 6 — Retry "Create Agent"; verify it succeeds'):
+                assert modal.approve_button.is_enabled(), (
+                    '"Create Agent" button should be re-enabled after a failed creation attempt'
+                )
+
+                modal.clear_create_mock()
+                create_response = modal.click_approve_and_wait_for_agent_created()
+
+                assert create_response.status == 201, (
+                    f"Expected the retried (real) create-application request to succeed, "
+                    f"got {create_response.status}"
+                )
+                created_agent_id = create_response.json()["id"]
+
+                page.wait_for_url(f"**/agents/all/{created_agent_id}**")
+                detail_page.wait_for_page_load()
+
+                assert f"/agents/all/{created_agent_id}" in page.url, (
+                    f"Expected to land on the created agent's detail page, got {page.url}"
+                )
+                assert detail_page.get_name() == draft["name"], (
+                    "Detail page Name field should carry over the generated draft's name verbatim, "
+                    f"expected {draft['name']!r}, got {detail_page.get_name()!r}"
+                )
+                assert detail_page.get_description() == draft["description"], (
+                    "Detail page Description field should carry over the generated draft's value verbatim"
+                )
+                assert detail_page.get_instructions() == draft["instructions"], (
+                    "Detail page Instructions field should carry over the generated draft's value verbatim"
+                )
+                assert detail_page.get_welcome_message() == draft["welcome_message"], (
+                    "Detail page Welcome Message field should carry over the generated draft's value verbatim"
+                )
+                counter_text = detail_page.get_skills_counter_text()
+                assert counter_text.startswith("0/"), (
+                    "Skills counter should read '0/N skills added.' for a plain (no suggested-skill-selection) "
+                    f"draft, got {counter_text!r}"
+                )
+        finally:
+            if created_agent_id is not None:
+                try:
+                    agent_api.delete_agent(created_agent_id)
+                    logger.info("Deleted created agent %s", created_agent_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete created agent %s during teardown: %s", created_agent_id, exc)
