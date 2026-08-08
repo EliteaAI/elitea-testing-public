@@ -18,10 +18,17 @@ resource type — a selected suggested Skill is attached to the created
 agent's SKILLS section (a distinct accordion/network contract from the
 Toolkit/Agent flow), and a non-selected suggested Skill is absent.
 
+Covers ELITEA-1905: extends ELITEA-1915's Step 1 (open modal, enter
+description) with standalone, message-carrying visibility assertions for
+the prompt input, Generate button, and Cancel button — closing the one
+genuine gap left by the covering tests (`cancel_button` was previously
+never referenced by any test's executed code path).
+
 Spec: test-specs/agents/l2_build-with-ai-generation-failure-retry_ELITEA-1915.md
 Spec: test-specs/agents/l2_build-with-ai-generated-draft-suggested-resources_ELITEA-1907.md
 Spec: test-specs/agents/l2_build-with-ai-selected-suggested-resources-attached-to-created-agent_ELITEA-1909.md
 Spec: test-specs/agents/lextend_build-with-ai-selected-suggested-skills-attached-to-created-agent_ELITEA-1911.md
+Spec: test-specs/agents/lextend_build-with-ai-modal-contains-prompt-generate-cancel-controls_ELITEA-1905.md
 Covers: GenerateAgentModal (GenerateEntityModal.jsx via GenerateAgentModal.jsx)
 
 Markers:
@@ -188,6 +195,20 @@ class TestAgentBuildWithAIGenerationFailureRetry:
         with allure.step("Step 1 — Open modal, enter description"):
             list_page.navigate_to_create()
             modal.open_modal()
+
+            # --- ELITEA-1905 gap fill: modal-contents assertions -------------
+            # (modal-open itself is already covered by ELITEA-1903's dedicated
+            # test — see test_agent_build_with_ai_role_visibility.py)
+            assert modal.prompt_input.is_visible(), (
+                "Natural-language prompt input should be visible in the Build with AI modal"
+            )
+            assert modal.generate_button.is_visible(), (
+                "Generate button should be visible in the Build with AI modal"
+            )
+            assert modal.cancel_button.is_visible(), (
+                "Cancel button should be visible in the Build with AI modal"
+            )
+            # -------------------------------------------------------------------
 
             assert not modal.is_generate_enabled(), (
                 "Generate button should be disabled while the prompt is empty"
