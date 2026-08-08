@@ -55,3 +55,4 @@
 - [Fork/Import "Got it" stale copy-id race](fork_import_got_it_stale_copy_id_race.md) — poll copy-id text to settle before reading id right after Got it
 - [Delete-menu redirect needs real history](delete_menu_redirect_navigate_minus_one_needs_history.md) — navigate(-1) no-ops after page.goto(); soft-assert + #1332
 - [Mechanical grep misses JS-string selectors](mechanical_grep_misses_js_string_embedded_selectors.md) — grep querySelector too on any wait_for_function/evaluate diff
+- [Fixed-value YAML field types by content](chat_history_value_field_serializes_as_yaml_list_not_string.md) — typed "[]" parses as list not str; assert live type, not case wording
