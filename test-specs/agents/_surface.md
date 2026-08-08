@@ -455,3 +455,36 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   itself instead) — only add a testid here if a future case needs to assert the counter text directly.
 - Save button gating is independent per-field: disabled until BOTH Name and Description are non-empty
   (both `required`); Name being at-limit (32/32) does not itself disable Save.
+
+## "Build with AI" open button — placement + RBAC gating (ELITEA-1903 run, 2026-08-08)
+- `generate-agent-open-button` (existing `LocatorDescriptor` field, `generate_agent_modal_page.py`)
+  is **not** inside a "creation tab bar" despite the case text — live-confirmed it renders as a
+  pill button pinned to the top-right of the **General accordion section's header row** (same row
+  as the "GENERAL" chevron/title), separate from the top page-level `tablist` that holds the single
+  "New Agent" tab. Case-text location drift, not a product defect — the button itself is genuinely
+  present/visible. See `EliteaUI/src/[fsd]/features/agent/ui/generate-agent-modal/GenerateAgentButton.jsx`.
+- **The button's visibility IS permission-gated, confirmed at the source**:
+  `GenerateEntityButton.jsx` does `if (!checkPermission(permission)) return null;` — for the agent
+  variant `permission={PERMISSIONS.applications.update}` = `'models.applications.application.update'`
+  (`common/constants.js`). No permission ⇒ the button is absent from the DOM entirely (not just
+  disabled). `useCheckPermission` reads `state.user.permissions` (or `publicPermissions` for the
+  public project), populated from `GET /api/v2/auth/permissions/prompt_lib/{project_id}` on
+  project switch/login. This is the mechanism ELITEA-1903 is actually testing.
+- **`${TEST_USER}` is admin-equivalent in every project checked** — live-confirmed
+  `models.applications.application.update` present in the permissions response for BOTH project
+  `399` (Private, owner) and `400` ("UI Testing" team project) — the latter also carries
+  `configuration.roles.roles.create/edit/delete` + `configuration.users.users.create/edit/delete`,
+  i.e. TEST_USER is project-admin there too, not merely a member. No project this account belongs
+  to exercises a non-admin role.
+- **No editor-role login path exists locally** — `.env.test` defines only `TEST_USER_EMAIL/PASSWORD`
+  (§ Roles & sample users has no editor credential key). Settings → Users on project 400 DOES list
+  an `editor`-role row (`elitea-batch-edit-test2-45c8fb8d@example.com`) and a `viewer`-role row
+  (`elitea-batch-edit-test2-70fda701@example.com`), but both are leftover pending-invite fixtures
+  from an unrelated prior batch-edit-user-role test (`Last login: "-"`, never accepted) — no known
+  password, not usable as a live login. Self-downgrading TEST_USER's own role via the "Edit user
+  role" action was considered and rejected: project 400 is shared test data another merged suite
+  relies on for a fixed 2-user/role shape (`admin_users_page.py` docstring, ELITEA-2292), and an
+  editor role may lack `configuration.users.users.edit` needed to self-restore back to admin —
+  no safe, verified rollback. **Testability gap, not a product question**: automating the editor
+  half needs either a dedicated `EDITOR_TEST_USER_EMAIL`/`PASSWORD` fixture (real Keycloak account,
+  fixed editor role in a stable project) or an accepted API-level permissions-endpoint proxy.
