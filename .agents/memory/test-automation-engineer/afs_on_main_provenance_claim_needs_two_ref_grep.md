@@ -63,3 +63,17 @@ testids-only even when the underlying data/tool-key it parameterizes over
 is already on `main` (the `ask_user` tool key string was on `main` in
 `internalTools.constants.js`; its testid wiring was not — two different
 promotion states easy to conflate).
+
+## Seen again (ELITEA-2038, PR #1323, fix round 1, 2026-08-08)
+
+`agent-add-agent-button` was claimed `on-main` on the strength of "it's a
+pre-existing field already used by `AgentDetailPage`, just newly ported to
+`PipelineDetailPage`" — plausible reasoning, still wrong. Re-verify found
+`git log -S'"agent-add-agent-button"' origin/automation/testids` has exactly
+one hit (`EliteaAI/EliteaUI@ce74cd40`, ELITEA-1887); `git merge-base
+--is-ancestor ce74cd40 origin/main` → false; `git grep 'agent-add-agent-button'
+origin/main -- src/` → empty. "Already used elsewhere in this repo's page
+objects" is not evidence of `main` presence — a testid can be wired,
+committed, and reused across several `PipelineDetailPage`/`AgentDetailPage`
+methods while still living only on `automation/testids`. Always run the
+two-ref grep per-testid, never infer promotion state from reuse.

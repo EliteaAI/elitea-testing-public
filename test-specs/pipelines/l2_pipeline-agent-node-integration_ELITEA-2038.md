@@ -132,7 +132,7 @@
 | 3 Select an existing agent from the picker | Agent is selected | step 3 | step 3: option clicked + 201 attach response | asserted |
 | 4 Verify agent appears in Tools list under Agent sub-tab | Agent listed under the Agent sub-tab | step 4 | step 4: `agent-toolkit-card` presence + name | asserted — **CLARIFICATION, same root cause as `#1149`/sibling `#530`: no "sub-tab" exists live, one flat list. Not re-filed.** |
 | 5 Add node → select "Agent" | Agent node added to canvas | step 5 | step 5: `rf__node-Agent 1` present | asserted |
-| 6 Verify Agent node panel shows: Agent dropdown, Input, Output, INPUT MAPPING (REQUIRED 1) with TASK (Type+Value), Interrupt before/after switches | All listed sections present | steps 6–7 | step 6: static sections present pre-Agent-select + absence of Structured output; step 7: Input-mapping section present post-Agent-select | asserted — **split across pre/post-select states, same two-stage-reveal pattern as sibling node types; documented, not a defect.** |
+| 6 Verify Agent node panel shows: Agent dropdown, Input, Output, INPUT MAPPING (REQUIRED 1) with TASK (Type+Value), Interrupt before/after switches | All listed sections present | steps 6–7 | step 6: static sections present pre-Agent-select + absence of INPUT MAPPING; step 7: Input-mapping section present post-Agent-select | asserted — **split across pre/post-select states, same two-stage-reveal pattern as sibling node types; documented, not a defect. The permanent absence of a "Structured output" switch (case text doesn't mention it either) is documented in the test's docstring/comments rather than code-asserted — no testid exists for it by design (`showStructuredOutput=false`), and no compliant testid-only locator exists to assert its absence against per `.agents/testing.md` § Locator policy.** |
 | 7 Select attached agent from "Agent" dropdown | Agent selected in dropdown | step 7 | step 7: combobox value | asserted |
 | 8 Set Input combobox — add "normalized_issue", "kb_results" | Both variables added | step 8 (+ Step 0 setup) | step 8: combobox chips | asserted |
 | 9 Set Output combobox — add "triage_summary" | "triage_summary" added | step 9 (+ Step 0 setup) | step 9: combobox value | asserted |
@@ -147,18 +147,27 @@
 - Step 0 (setup) creates the 3 custom state variables ahead of the case's own step 1 — *added because the
   case's Test Data table implies they pre-exist, but live behavior requires them to be created first
   (same pattern as every sibling node-config case in this family).*
-- Step 6 additionally asserts the **absence** of the INPUT MAPPING section before an Agent is selected,
-  AND the **permanent absence** of a Structured output switch for this node type (`to_have_count(0)` /
-  not-in-DOM checks) — *added because a naive implementation might assert only the post-configuration
-  state and silently miss verifying the empty/gated state, which is exactly what a future regression
-  (e.g. INPUT MAPPING rendering before an Agent is chosen) needs to be caught by.*
+- Step 6 additionally asserts the **absence** of the INPUT MAPPING section before an Agent is selected
+  (`is_agent_node_input_mapping_section_visible()` returning `False`) — *added because a naive
+  implementation might assert only the post-configuration state and silently miss verifying the
+  empty/gated state, which is exactly what a future regression (e.g. INPUT MAPPING rendering before an
+  Agent is chosen) needs to be caught by.* The **permanent absence of a Structured output switch** is
+  documented (docstring + inline comment) rather than code-asserted — no testid was wired for it
+  (`showStructuredOutput=false` in `AgentNode.jsx`, confirmed source + live DOM), and asserting its
+  absence in-test would require a non-testid locator, which `.agents/testing.md` § Locator policy
+  forbids adding.
 - Step 3 additionally asserts the specific attach endpoint (`/application_relation/prompt_lib/`, NOT
   `/tool/prompt_lib/`) — *added because this is a genuine implementation divergence from the sibling
   Toolkit/MCP pickers that share the same UI component; a regression guard here catches either endpoint
   silently breaking.*
 - No console-error assertion was in the original case text; added it throughout as a side-channel check —
   standard practice per this project's `test-case-analysis` skill; zero console errors were observed
-  across the whole flow this session.
+  across the whole flow this session. **Corrected during ELITEA-2038 fix round 1:** the listener
+  (registered before Step 0) stays attached across `page.goto()` in Step 12, but the implementation
+  initially never re-asserted `console_errors` after the reload — an error introduced only by the
+  reload/hydration path would have silently escaped detection. Step 12 now asserts `not console_errors`
+  as its last check, so the "throughout" claim is now actually enforced end-to-end (attach → node add →
+  save → reload), not just through Step 11.
 
 ## Cleanup
 
@@ -177,7 +186,7 @@
 
 | Element | Recommended Locator | Provenance | Fallback |
 |---|---|---|---|
-| Add-Agent button (Tools section) | `agent_add_agent_button` / `[data-testid="agent-add-agent-button"]` — pre-existing, shared with agent forms (already an `AgentDetailPage` field, newly ported to `PipelineDetailPage`) | **on-main** | none needed |
+| Add-Agent button (Tools section) | `agent_add_agent_button` / `[data-testid="agent-add-agent-button"]` — pre-existing, shared with agent forms (already an `AgentDetailPage` field, newly ported to `PipelineDetailPage`) | **on-automation/testids only (`main:no`)** — corrected during ELITEA-2038 fix round 1: `git log -S'"agent-add-agent-button"' origin/automation/testids` finds the sole originating commit `EliteaAI/EliteaUI@ce74cd40` (ELITEA-1887); `git merge-base --is-ancestor ce74cd40 origin/main` returns false, and `git grep 'agent-add-agent-button' origin/main -- src/` is empty — the testid has never reached `main`. Awaiting human cherry-pick. | none needed |
 | Tools-section container | `[data-testid="agent-toolkits-section"]` | **on-main** | none needed |
 | Attached agent card (shared) | `[data-testid="agent-toolkit-card"]` | **on-main** | none needed |
 | Agent-in-search-popper option | `toolkit-menu-item` testid (same `UnifiedDropdown` mechanism as Toolkit/MCP pickers) | **on-main** | none needed |

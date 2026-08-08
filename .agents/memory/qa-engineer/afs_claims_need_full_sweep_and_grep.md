@@ -66,6 +66,16 @@ Nothing in an AFS is true because it is written down. Two mechanical duties:
 - PR #693/ELITEA-2095 — row cited "console-error check (Axis 2)"; grep found zero `page.on("console"` in test or page object. Same PR: a page-object method's ambient-data dependency never listed in Test Data.
 - PR #639/ELITEA-1839 R2 — round-1 fix corrected the one named breadcrumb row, left 3 siblings identically wrong; R3's whole-map sweep found a 4th.
 - PR #1275/ELITEA-2453 — Coverage Map row for case step 8 ("MESSAGES: shows list representation in Before/After") disposed `already-covered-elsewhere`, citing `test_pipeline_run_details_state_before_after.py` (ELITEA-2452) steps 6/8. The cited assertions (`messages_before != messages_after`, `messages_after` non-empty) prove change + non-emptiness but never parse/shape-check the value as a list/array — unlike this SAME PR's own `custom_list` check (step 11: `json.loads` + `isinstance(list)`), which is what "list representation" actually means elsewhere in the identical AFS. The claimed clause ("list representation") was never the one asserted by the covering spec — a cross-spec instance of the same partial-overclaim pattern, not just within-spec.
+- PR #1323/ELITEA-2038 — Concrete Handles PROVENANCE row for `agent-add-agent-button`
+  claimed `on-main` despite the AFS's own header asserting a fresh `git fetch` +
+  dual-ref `git grep` was run. `git log -S'"agent-add-agent-button"' origin/automation/testids`
+  found the sole introducing commit (`ce74cd40`, ELITEA-1887) and
+  `git merge-base --is-ancestor ce74cd40 origin/main` returned false — the
+  testid has never reached `main`. The other 3 rows in the same table
+  (`agent-toolkits-section`, `agent-toolkit-card`, `agent-save-button`) were
+  correctly `on-main`, so this wasn't a wholesale skip of the check, just one
+  stale/wrong row slipping through — same lesson as #1294: verify EVERY row,
+  not a sample.
 - …plus 5 earlier occurrence(s) — full per-case detail in the source entries below.
 
 See also: afs_amendment_narrates_some_changes_leaves_others_unswept.md ·
