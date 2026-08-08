@@ -83,9 +83,17 @@ class TestPipelineDashboard:
             )
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2024_pipeline-dashboard-view-toggle-card-vs-table.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_view_toggle_table_and_card(self, page):
-        """Dashboard should support switching between table and card views."""
+        """Dashboard should support switching between table and card views.
+
+        Extended for ELITEA-2024 (AFS:
+        test-specs/pipelines/lextend_pipeline-dashboard-view-toggle-default-and-layout_ELITEA-2024.md)
+        with default-state (Step 3) and actual-rendered-layout (Steps 5 & 7)
+        assertions — the original ELITEA-0855 coverage (button visibility +
+        button aria-pressed state) is unchanged.
+        """
         with allure.step("Step 1 — Navigate to pipelines dashboard"):
             list_page = PipelinesListPage(page)
             list_page.navigate()
@@ -94,16 +102,36 @@ class TestPipelineDashboard:
             assert list_page.table_view_button.is_visible(), "Table view button should exist"
             assert list_page.card_view_button.is_visible(), "Card view button should exist"
 
-        with allure.step("Step 3 — Switch to table view"):
+        with allure.step("Step 3 — Verify default view is Card list view"):
+            assert list_page.is_card_view_active(), (
+                "Card list view should be the active/default view on fresh load"
+            )
+            assert not list_page.is_table_view_active(), (
+                "Table view should NOT be active on fresh load"
+            )
+
+        with allure.step("Step 4 — Switch to table view"):
             list_page.switch_to_table_view()
             assert list_page.is_table_view_active(), (
                 "Table view toggle should be active after switching to table view"
             )
 
-        with allure.step("Step 4 — Switch back to card view"):
+        with allure.step("Step 5 — Verify layout actually changed to table format"):
+            assert "view=table" in page.url, f"Expected ?view=table in URL, got {page.url!r}"
+            assert list_page.entity_card_name.count() == 0, (
+                "No card elements (entity-card-name) should render while in table view"
+            )
+
+        with allure.step("Step 6 — Switch back to card view"):
             list_page.switch_to_card_view()
             assert list_page.is_card_view_active(), (
                 "Card view toggle should be active after switching to card view"
+            )
+
+        with allure.step("Step 7 — Verify layout returned to card grid format"):
+            assert "view=cards" in page.url, f"Expected ?view=cards in URL, got {page.url!r}"
+            assert list_page.get_card_names(), (
+                "Card elements (entity-card-name) should render again after switching to card view"
             )
 
 
