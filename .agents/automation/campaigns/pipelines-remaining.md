@@ -18,8 +18,12 @@
 - Waves: **wave-01-node-type-configs (8 cases) LANDED** — elitea-testing-public#1329, merged `0206a8ef`,
   8/8 automated (1 sanctioned-RED: ELITEA-2047 vs #1327, deterministic 3/3), TMS back-written (8 cases,
   Form C), closure comment posted on #1297, campaign card updated.
-  wave-02 through wave-07 (47 cases) — PLANNED, not yet launched (see Plan)
+  **wave-02-lifecycle-dashboard-version (10 cases) launching** — Run ID: wf_101d0ba3-47f (task wgcf6elq8).
+  wave-03 through wave-07 (37 cases) — PLANNED, not yet launched (see Plan)
 - Campaign totals so far: 8/55 automated (7 clean-green + 1 sanctioned-RED-with-linked-defect), 47/55 remaining
+- **Operator directive 2026-08-08T13:42:41Z: "Proceed with all waves till you complete."** — running
+  wave-02..07 sequentially without further per-wave checkpoints; only stopping early for a real blocker
+  (question/bug protocol).
 
 ## Source
 
