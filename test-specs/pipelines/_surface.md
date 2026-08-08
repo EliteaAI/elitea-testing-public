@@ -2,7 +2,55 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2009 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2035 analysis).
+
+## State modifier node — inline config panel, zero Interrupt/Structured-output controls (confirmed live, 2026-08-08, ELITEA-2035)
+
+Same always-expanded-inline pattern as every other node type. Node body, in
+DOM order (confirmed via source, `StateModifierNode.jsx`): Trigger (only if
+entry point) → **Jinja Template** (`AIAssistantInput`, `label="Jinja
+Template"`, `name="template"`, `language="jinja"` — same "language prop ≠
+CodeMirror" trap already documented 3× for this node family, plain textarea
+confirmed live via `fill()`) → **Variables to clean** (`FlowEditorSelect.InputSelect`,
+`inputFieldName="variables_to_clean"`) → **Input** (`FlowEditorSelect.InputSelect`,
+`inputFieldName="input"`) → **Output** (`FlowEditorSelect.OutputSelect`,
+`outputFieldName="output"`). Unlike Code/LLM, this node type has **NO**
+`CommonInterruptSettings`/structured-output controls at all — confirmed via
+source, no such import/usage in `StateModifierNode.jsx`.
+
+- **"Variables to clean" is NOT an expandable/accordion section — case-text
+  drift, filed as a CLARIFICATION.** It is the exact SAME
+  `FlowEditorSelect.InputSelect` component as Input, just a different
+  `inputFieldName`/`label` — a plain multi-select combobox, confirmed live
+  via DOM inspection (no accordion, no expand icon, no collapsed state
+  anywhere in the node body). The case's step 4 ("Expand 'Variables to
+  clean' section (if applicable)") describes a mechanism that doesn't
+  exist; the AFS instead asserts the field is present and openable as a
+  dropdown. Same class of finding as the Decision-outputs/Routes
+  clarifications already filed for sibling pipeline-node cases.
+- **Zero testids anywhere inside the node body before this session**
+  (confirmed via `git grep` for `state-modifier`/`state_modifier` on
+  `automation/testids` — only non-UI hits: i18n prompt-template key, node
+  type constant, icon import, palette color). Added this session:
+  `pipeline-state-modifier-node-template-input` (on `AIAssistantInput`'s
+  `inputProps`, same mechanism as the Decision AFS's Description field),
+  `pipeline-state-modifier-node-variables-to-clean-select` /
+  `-input-select` / `-output-select` (on the 3 `FlowEditorSelect` call
+  sites' pre-existing `dataTestId` prop — zero new component code, matches
+  the Code/Decision node testid-plumbing pattern exactly).
+- **State variables are NOT built-in** — same pattern as every other node
+  type in this family (Decision/Code/Router): a fresh pipeline's Input/
+  Output combos on the State modifier node list only `input`/`messages`
+  until custom vars are added via the `STATE` panel's "+" control. The
+  case's own Test Data table names `issue_details` (Input) and
+  `normalized_issue` (Output) as if pre-existing; live-confirmed neither is
+  built-in.
+- **Save + full page reload correctly persists** Jinja Template text,
+  Input, and Output (confirmed live round-trip this session, zero console
+  errors at every checkpoint). `PUT .../application/prompt_lib/{project}/{id}`
+  returns 201, same as every other pipeline-node-configuration case in this
+  family.
+- Full flow, handles, and page-object gap list: `l2_pipeline-state-modifier-node-configuration_ELITEA-2035.md`.
 
 ## Save As Version (`agent-save-as-version-button` + dialog) works on Pipelines exactly like Agents (confirmed live, 2026-08-07, ELITEA-2002)
 
