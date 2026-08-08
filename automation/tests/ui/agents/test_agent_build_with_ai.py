@@ -78,6 +78,16 @@ on the review step with every field/starter untouched, re-enables "Create
 Agent", and a second (real, unmocked) click against the live backend
 succeeds and creates the agent.
 
+Covers ELITEA-1917: clicking "Cancel" on the prompt step (before ever
+generating) closes the modal entirely (dialog removed from the DOM), leaves
+the underlying New Agent form's Name/Description fields empty/untouched, and
+fires neither the generate-draft call nor the base-agent create call — the
+first test in this file (and the suite) to `.click()` `cancel_button`
+(ELITEA-1905 only asserted its visibility). Standalone test, not spliced
+into ELITEA-1915's covering test, because clicking Cancel there would
+terminate that test's own flow before it reaches its own Step 2 — see the
+ELITEA-1917 AFS Triangulation section.
+
 Spec: test-specs/agents/l2_build-with-ai-generation-failure-retry_ELITEA-1915.md
 Spec: test-specs/agents/l2_build-with-ai-generated-draft-suggested-resources_ELITEA-1907.md
 Spec: test-specs/agents/l2_build-with-ai-selected-suggested-resources-attached-to-created-agent_ELITEA-1909.md
@@ -89,6 +99,7 @@ Spec: test-specs/agents/lextend_build-with-ai-suggested-resources-require-explic
 Spec: test-specs/agents/lextend_build-with-ai-suggested-skills-section-shown-with-up-to-5-skills_ELITEA-1910.md
 Spec: test-specs/agents/l2_build-with-ai-agent-name-validation-enforces-32-character-maximum_ELITEA-1913.md
 Spec: test-specs/agents/l2_build-with-ai-creation-failure-stays-on-review-step-for-correction_ELITEA-1916.md
+Spec: test-specs/agents/l2_build-with-ai-cancel-from-prompt-step-closes-modal-without-creating-agent_ELITEA-1917.md
 Covers: GenerateAgentModal (GenerateEntityModal.jsx via GenerateAgentModal.jsx)
 
 Markers:
@@ -107,6 +118,7 @@ import allure
 import pytest
 
 from pages.agent_detail_page import AgentDetailPage
+from pages.agent_form_page import AgentFormPage
 from pages.agents_list_page import AgentsListPage
 from pages.generate_agent_modal_page import GenerateAgentModalPage
 
@@ -351,6 +363,11 @@ FIELD_POPULATION_DRAFT_PAYLOAD = {
     "suggested_agents": [],
     "suggested_skills": [],
 }
+
+# ELITEA-1917 — verbatim-in-spirit prompt per the case's Test Data table
+# ("Any description text (not submitted)"). Content is never asserted —
+# Cancel is clicked before Generate, so no draft is ever requested.
+CANCEL_PROMPT_TEXT = "A customer support agent that answers billing questions."
 
 
 class TestAgentBuildWithAIGenerationFailureRetry:
@@ -2011,3 +2028,117 @@ class TestAgentBuildWithAICreationFailureRecovery:
                     logger.info("Deleted created agent %s", created_agent_id)
                 except Exception as exc:
                     logger.warning("Failed to delete created agent %s during teardown: %s", created_agent_id, exc)
+
+
+class TestAgentBuildWithAICancelFromPromptStep:
+    """Build with AI (P2): clicking "Cancel" on the prompt step (before ever
+    generating) closes the modal entirely, leaves the underlying New Agent
+    form's Name/Description fields empty/untouched, and fires neither the
+    generate-draft call nor the base-agent create call (ELITEA-1917).
+    Standalone test — see the ELITEA-1917 AFS Triangulation section for why
+    this can't be spliced into TestAgentBuildWithAIGenerationFailureRetry.
+    test_generation_failure_shows_error_and_allows_retry (ELITEA-1915):
+    clicking Cancel there would terminate that test's own flow before it
+    ever reaches its own Step 2. The first test in this file (and the
+    suite) to actually `.click()` `cancel_button` — ELITEA-1905 only
+    asserted its visibility."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agents/build_with_ai/ELITEA-1917_build-with-ai-cancel-from-prompt-step-closes-modal.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_cancel_from_prompt_step_closes_modal_without_creating_agent(self, page):
+        """Cancel on the prompt step closes the modal, leaves the New Agent
+        form empty/untouched, and fires neither the generate-draft nor the
+        create-agent network call."""
+        list_page = AgentsListPage(page)
+        modal = GenerateAgentModalPage(page)
+        form_page = AgentFormPage(page)
+
+        # Setup (not a case step): snapshot the Agents-list card names
+        # BEFORE this test's Step 1, per AFS Step 6's secondary,
+        # case-literal check (the primary, deterministic check is the
+        # network-absence assertion below).
+        list_page.navigate()
+        agent_names_before = list_page.get_agent_card_names()
+
+        # Side-channel captures spanning the whole open -> type -> cancel
+        # sequence (AFS Expected Results / Axis 2) — started before Step 1
+        # so nothing fired during modal-open itself is missed.
+        console_capture = modal.capture_console_errors()
+        create_requests = modal.capture_requests_matching(
+            "/elitea_core/applications/prompt_lib/", method="POST"
+        )
+        draft_requests = modal.capture_requests_matching(
+            "/elitea_core/generate_application_draft/", method="POST"
+        )
+
+        try:
+            with allure.step("Step 1 — Open modal, enter description"):
+                list_page.navigate_to_create()
+
+                assert form_page.name_input.input_value() == "", (
+                    "New Agent form's Name field should be empty before opening Build with AI"
+                )
+                assert form_page.description_input.input_value() == "", (
+                    "New Agent form's Description field should be empty before opening Build with AI"
+                )
+
+                modal.open_modal()
+                modal.fill_prompt(CANCEL_PROMPT_TEXT)
+
+                assert modal.get_prompt_value() == CANCEL_PROMPT_TEXT, (
+                    "Prompt textarea should contain exactly the entered text"
+                )
+
+            with allure.step("Step 2 — Click Cancel without generating"):
+                modal.cancel_button.click()
+
+            with allure.step("Step 3 — Verify the modal closes"):
+                modal.modal.wait_for(state="hidden", timeout=NAVIGATION_TIMEOUT)
+                assert modal.modal.count() == 0, (
+                    "Build with AI modal dialog should be fully removed from the DOM after Cancel, "
+                    "not merely hidden/inert"
+                )
+
+            with allure.step("Step 4 — Verify the New Agent form is still shown with empty/untouched fields"):
+                assert form_page.name_input.input_value() == "", (
+                    "New Agent form's Name field should remain empty after cancelling Build with AI"
+                )
+                assert form_page.description_input.input_value() == "", (
+                    "New Agent form's Description field should remain empty after cancelling Build with AI"
+                )
+
+            with allure.step("Step 5 — Verify no new Agent was created"):
+                # Primary, deterministic check — no draft is ever requested
+                # (Cancel is clicked before Generate), so there is no
+                # generated name to search the Agents list for; the
+                # network-absence check is the only sound proof.
+                assert not create_requests, (
+                    "No base-agent CREATE call should ever fire after Cancel, "
+                    f"got: {list(create_requests)}"
+                )
+                assert not draft_requests, (
+                    "No generate-draft call should ever fire after Cancel, "
+                    f"got: {list(draft_requests)}"
+                )
+
+                # Secondary, case-literal echo of the same fact.
+                list_page.navigate()
+                agent_names_after = list_page.get_agent_card_names()
+                assert agent_names_after == agent_names_before, (
+                    "Agents list should be unchanged after cancelling Build with AI, "
+                    f"before={agent_names_before!r}, after={agent_names_after!r}"
+                )
+
+            with allure.step("Step 6 — Verify zero console errors across the full open->type->cancel sequence"):
+                assert not console_capture, (
+                    f"Unexpected console errors: {[m.text for m in console_capture]!r}"
+                )
+        finally:
+            console_capture.stop()
+            create_requests.stop()
+            draft_requests.stop()
