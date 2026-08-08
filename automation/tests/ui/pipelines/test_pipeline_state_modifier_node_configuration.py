@@ -70,6 +70,12 @@ def test_state_modifier_node_configuration_and_persistence(page, pipeline_id):
         pipeline_page.open_state_panel(timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.add_state_variable(_INPUT_VARIABLE, timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.add_state_variable(_OUTPUT_VARIABLE, timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_state_variable_name_text(_INPUT_VARIABLE, timeout=UI_ELEMENT_TIMEOUT) == (
+            _INPUT_VARIABLE
+        ), "STATE panel should list 'issue_details' as a custom state variable after it's added"
+        assert pipeline_page.get_state_variable_name_text(_OUTPUT_VARIABLE, timeout=UI_ELEMENT_TIMEOUT) == (
+            _OUTPUT_VARIABLE
+        ), "STATE panel should list 'normalized_issue' as a custom state variable after it's added"
         # Close the drawer — it overlaps the canvas and would intercept the
         # State modifier node's own inline field clicks in later steps
         # (same gotcha already documented for the Decision/Router/Code node AFSes).
