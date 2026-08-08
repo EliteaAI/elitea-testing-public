@@ -185,3 +185,5 @@ lead before launching wave-01).
   against the lead's own JUnit output incl. re-confirming ELITEA-2027's test really passes). Testid
   provenance: 1 new commit (28dbc5e4, ELITEA-2041) — file differs from main, not promoted yet. Closure
   comment posted on #1297. Card stays In Progress. Launching wave-04 next.
+- 2026-08-09T02:05 wave-04-canvas-editor-controls (6 cases) launched. **Run ID: wf_b5ca8d13-d14**
+  (task wcukzt24q). Polling in-turn for completion.
