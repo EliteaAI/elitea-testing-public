@@ -30,3 +30,4 @@
 - [Mechanical grep misses JS-string raw selectors](mechanical_grep_misses_js_string_raw_selectors.md) — grep `wait_for_function`/`evaluate` JS payloads separately for `data-testid=`
 - [Empty-title Tooltip breaks a11y snapshot](folder_confirm_button_state_absent_from_ax_snapshot.md) — `title={cond?'':text}` elements vanish/mislabel in browser_snapshot; testid-only is load-bearing, not just policy
 - [No non-admin test-user exists](no_non_admin_test_user_credential_exists.md) — TEST_USER is admin everywhere; RBAC cases need a flagged gap, not a role hunt
+- [Console-check window gap](console_assertion_window_gap.md) — assert must be LAST or later steps go unchecked
