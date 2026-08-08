@@ -584,6 +584,28 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   `delete-confirm-button`, disabled until the typed name matches) →
   confirm. Redirects to `/agents/create` on success.
 
+## Build with AI — Cancel click from the prompt step (ELITEA-1917 run, 2026-08-08)
+- **Don't confuse `generate-agent-open-button` with `agent-form-icon-button`.**
+  Both sit near the "General" accordion's top area but are unrelated: the
+  Magic Wand ("Build with AI") trigger is the accordion header's
+  `summaryAction` (`CreateAgentForm.jsx:106`, right of the "General" title,
+  same row as the chevron); `agent-form-icon-button` is the agent
+  avatar/icon-picker sitting directly beside the Name field
+  (`CreateAgentForm.jsx:111`). Clicking the icon-picker produces no modal —
+  confirmed live this run after an initial mis-click on it did nothing.
+- Clicking `generate-agent-cancel-button` (footer "Cancel", input step)
+  closes the modal **immediately, no confirmation/"discard changes?"
+  interstitial** — the `generate-agent-modal` dialog is fully removed from
+  the DOM (not merely hidden), even with a non-empty, never-submitted
+  prompt already typed. Confirmed live: zero network calls to either
+  `generate_application_draft` or `applications/prompt_lib` (POST) fire
+  anywhere in an open→type→cancel sequence, and the outer New Agent form's
+  own Name/Description fields (`agent-name-input`/`agent-description-input`)
+  are untouched by anything typed into the modal's prompt textarea — the two
+  are entirely separate inputs, no bleed-through either direction. This was
+  the suite's first `.click()` on `cancel_button` — ELITEA-1905 had only
+  ever asserted `.is_visible()` on it.
+
 ## Build with AI — Suggested Resources have NO client-side display cap (ELITEA-1910 run, 2026-08-08)
 - **`ResourceSuggestions.jsx` renders every item in its `items` array unconditionally**
   (`items.map(...)`, no `.slice()`/count guard) — confirmed by source grep across
