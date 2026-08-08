@@ -2,8 +2,49 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2039 combined
-> analysis+implementation; appended 2026-08-08 during ELITEA-2039 fix round 2).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2045 combined
+> analysis+implementation).
+
+## LLM node Output multi-select drops a selection if you don't close-then-reopen between picks (confirmed live, 2026-08-08, ELITEA-2045)
+
+Selecting more than one variable in the LLM node's Output combobox **inside a
+single open popover** silently drops selections beyond the first one or two —
+confirmed live this session: `name` then `age` (still inside one open/close
+cycle, immediately back-to-back) registered correctly, but adding `hobbies`
+immediately after in the SAME open popover did not register at all (the Save
+payload's `output:` list came back with only `[name, age]` until `hobbies`/
+`metadata` were each selected in their OWN open→select→Escape→reopen cycle).
+This matches (and reconfirms) the existing `_select_multi_select_option_and_close()`
+helper's own docstring warning — **the fix is already the default behavior of
+`select_llm_node_output_variable(name)`, which performs one full open/select/
+close cycle per call**; the bug only bites a caller who manually opens the
+popover once and clicks multiple `select-option-*` targets before closing.
+Automation implication: always call `select_llm_node_output_variable(name)`
+once per variable, never batch clicks inside one manually-held-open popover.
+
+## Pipeline YAML tab silently truncates long documents — reconfirmed on a DIFFERENT node/pipeline shape (2026-08-08, ELITEA-2045, `EliteaAI/elitea-testing-public#1025`)
+
+Already filed during ELITEA-2010 (Toolkit node, 41-line document, cutoff at
+line 32) — reproduced again this session on a single-LLM-node pipeline with
+4 typed custom output variables + `structured_output: true` (40-line
+document, cutoff at line 34, i.e. right after `output:\n      - name`,
+before `- age`/`- hobbies`/`- metadata`/`structured_output: true`/
+`transition: END`). Confirmed **display-only**: the PUT-save response body's
+`version_details.instructions` field has the full, correct YAML; only the
+`pipeline-yaml-editor` CodeMirror DOM (and thus `get_yaml_content()`) is
+truncated. `.cm-scroller.scrollHeight === .cm-scroller.clientHeight` in both
+cases — the editor believes there's nothing more to scroll to, so there is
+**no UI-reachable workaround** (confirmed: resizing the browser viewport
+taller, e.g. 1400×2200, makes the full document render — the root cause is
+viewport-height-driven, not a hard line-count cap). **Automation
+implication, reconfirmed**: for any pipeline whose full node YAML is likely
+to exceed ~32-34 rendered lines at a normal test viewport, verify content via
+`pipeline_api.get_pipeline(pipeline_id)["version_details"]["instructions"]`
+(parsed with `yaml.safe_load`) instead of `switch_to_yaml_view()` +
+`get_yaml_content()` — the same pattern `test_pipeline_yaml_editor_invalid_syntax.py`
+(ELITEA-2068) and `test_pipeline_advanced.py` already use for server-truth
+readback. Full case detail:
+`test-specs/pipelines/l2_llm-node-structured-output-state-variables_ELITEA-2045.md`.
 
 ## Printer node — SimpleLLMInputs (PRINTER section) + standalone Final Message field, NO Input/Output selects, NO Interrupt/Structured-output controls (confirmed live, 2026-08-08, ELITEA-2039)
 
