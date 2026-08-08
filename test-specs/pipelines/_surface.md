@@ -2,7 +2,54 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2013 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2027 analysis).
+
+## Node config via YAML — exact serialization shapes confirmed live, incl. a CHAT HISTORY value-type nuance (confirmed live, 2026-08-08, ELITEA-2027)
+
+Full live probe of a fresh pipeline's YAML view, from a bare/untouched LLM node through a fully
+configured one (SYSTEM Fixed/"Act as helper", TASK F-String/"{input}", CHAT HISTORY Fixed/"[]",
+Input=[input], Output=[output1] where `output1` is a freshly-created custom state variable). Case
+detail + exact gap patch: `test-specs/pipelines/lextend_pipeline-node-config-verified-via-yaml_ELITEA-2027.md`.
+
+- **`state:` top-level key only appears once at least one CUSTOM state variable exists.** A bare
+  pipeline with only the built-in `input`/`messages` vars has NO `state:` key in its YAML at all —
+  confirmed live (matches `test_pipeline_yaml_editor_view.py`'s fixture, which deliberately uses
+  `pipeline_with_custom_state_var_id` rather than a bare pipeline, for exactly this reason). Any
+  case asserting `state:` content needs at least one custom variable added first (STATE panel's
+  `add_state_variable()`, already proven by ELITEA-2042).
+- **A lone, freshly-added, unconfigured LLM node's default YAML** (no Save needed to observe —
+  reflects live in-memory `yamlJsonObject` state):
+  ```yaml
+  entry_point: LLM 1
+  nodes:
+    - id: LLM 1
+      type: llm
+      input: []
+      input_mapping:
+        chat_history: {type: fixed, value: []}
+        system: {type: fixed, value: ''}
+        task: {type: fixed, value: ''}
+      output: []
+      structured_output: false
+      transition: END
+  ```
+  `transition: END` is present even for a single node with no outgoing edge — a lone node is
+  simultaneously the entry point and the terminal node. Default Type for ALL THREE of SYSTEM/TASK/
+  CHAT HISTORY is `fixed` (matches the UI's own default).
+- **CHAT HISTORY's YAML `value` is an empty LIST (`[]`), not the string `"[]"`, when the field
+  holds exactly the two characters `[]`** — confirmed via a controlled probe: typing `[]` (valid
+  YAML flow-sequence syntax) into the Value textarea and saving serializes to `value: []`
+  (unquoted; `yaml.safe_load()` parses this as an empty Python `list`), while typing a
+  non-YAML-parseable control string (`[][]`) serializes to `value: '[][]'` (quoted; parses as a
+  `str`). The backend does not force a string type here — it round-trips whatever was typed as
+  YAML, and `"[]"` happens to double as valid YAML for an empty list. **Not a defect** — a
+  case/test asserting this field's value must compare against the empty list `[]`, not the string
+  `"[]"`, per the reverse-masking guard (assert the live contract, not the case's literal wording).
+- **A custom state variable IS selectable as a node's Output**, not just Input (ELITEA-2042 only
+  proved Input) — confirmed live: `select-option-output1` appears in the Output select's popover
+  once the STATE panel's `output1` variable exists, identical `select-option-{value}` mechanism.
+- **No new testids needed anywhere in this flow** — STATE panel, LLM node fields, Output select,
+  YAML view toggle/editor all reuse pre-existing testids from ELITEA-2004/2026/2042.
 
 ## Pipeline tags — Categories.jsx tag filter panel + CardTagSectionItem chips are FULLY shared with Skills, zero new testid work (confirmed live, 2026-08-08, ELITEA-2013)
 
