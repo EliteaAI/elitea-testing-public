@@ -2,8 +2,27 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2045 combined
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2046 combined
 > analysis+implementation).
+
+## Structured output toggle — default disabled, correctly persists both directions through save + reload, YAML matches (confirmed live, 2026-08-08, ELITEA-2046)
+
+Confirmed live end-to-end on the LLM node's `pipeline-llm-node-structured-output-toggle`
+(chosen as the representative instance — the toggle is wired via the same shared
+`CommonInterruptSettings.jsx` component on every node type that renders it: LLM/Code/
+MCP/Toolkit/Custom, per the existing digest entries below): a freshly-added node's
+toggle reads `checked === false` before any interaction (no click needed to observe the
+default); click → `checked === true` → Save (`PUT .../application/prompt_lib/{project}/{id}`
+→ `201`) → full page reload (canonical URL, per the ELITEA-1954 404-on-bare-URL gotcha) →
+toggle still `checked === true`; click again → `checked === false` → Save → reload →
+still `checked === false`. YAML's `structured_output` field matched at both checkpoints
+(`true` then `false`) — read directly via the on-screen `pipeline-yaml-editor` tab, NOT
+`pipeline_api.get_pipeline()`: this single-node, no-extra-fields pipeline's YAML is only
+19 lines, well under the ~32-34-line truncation threshold documented below for `#1025`
+(confirmed live — no truncation observed at either state), so the API-readback workaround
+ELITEA-2045's 40-line document needed does not apply here. No product defect — case text
+matched live behavior exactly on all 5 steps. Full flow + page-object gap list (none — zero
+new testids needed): `test-specs/pipelines/l2_pipeline-structured-output-toggle-persistence_ELITEA-2046.md`.
 
 ## LLM node Output multi-select drops a selection if you don't close-then-reopen between picks (confirmed live, 2026-08-08, ELITEA-2045)
 
