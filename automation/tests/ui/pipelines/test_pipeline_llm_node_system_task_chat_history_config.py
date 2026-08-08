@@ -14,6 +14,7 @@ import logging
 
 import pytest
 import allure
+import yaml
 
 from pages.pipeline_detail_page import PipelineDetailPage
 from config import settings
@@ -338,4 +339,196 @@ def test_llm_node_system_type_walks_fixed_fstring_variable(page, pipeline_id):
         )
         assert pipeline_page.get_llm_node_section_variable_value("system") == "input", (
             "SYSTEM Value should persist as 'input' after reload"
+        )
+
+
+_YAML_SYSTEM_VALUE = "Act as helper"
+_YAML_TASK_VALUE = "{input}"
+_YAML_CHAT_HISTORY_VALUE = "[]"
+_YAML_OUTPUT_VARIABLE = "output1"
+
+
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+    "automated-full-regression-ui/pipelines/"
+    "ELITEA-2027_pipeline-verify-node-configuration-via-yaml.md",
+    "onetest-ai Test Case link",
+)
+def test_llm_node_config_verified_via_yaml(page, pipeline_id):
+    """Configure an LLM node fully, then verify every field via the parsed YAML view.
+
+    TMS: ELITEA-2027 — extend-existing over this file's ELITEA-2004 test
+    (test-specs/pipelines/
+    lextend_pipeline-node-config-verified-via-yaml_ELITEA-2027.md).
+    Establishes YAML-based verification (parse the pipeline's YAML view and
+    assert field values) as a working, reusable technique for validating
+    node configuration end-to-end, instead of re-reading individual UI
+    fields — the case's own stated purpose. Reuses ELITEA-2004's LLM node
+    config methods and ELITEA-2042's state-panel / yaml.safe_load() pattern.
+    Does not modify either existing test above.
+    """
+    project_id = str(settings.elitea_project_id)
+    pipeline_page = PipelineDetailPage(page)
+
+    # Registered before Step 1 so console errors from every step are
+    # captured — AFS Expected Results require "no console errors at any step".
+    console_errors = []
+    page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+
+    with allure.step("Step 1 — Navigate to the pipeline; verify configuration panel + canvas load"):
+        pipeline_page.navigate(pipeline_id)
+        pipeline_page.dismiss_banner_if_present()
+        pipeline_page.wait_for_canvas()
+        assert pipeline_page.configuration_tab.is_visible(), (
+            "Configuration panel (General section) should be visible after navigating"
+        )
+
+    with allure.step(
+        f"Step 2 — Add a custom state variable {_YAML_OUTPUT_VARIABLE!r} via the STATE panel"
+    ):
+        pipeline_page.open_state_panel(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.add_state_variable(_YAML_OUTPUT_VARIABLE, timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_state_variable_name_text(
+            _YAML_OUTPUT_VARIABLE, timeout=UI_ELEMENT_TIMEOUT
+        ) == _YAML_OUTPUT_VARIABLE, (
+            f"{_YAML_OUTPUT_VARIABLE!r} should appear in the STATE panel's variable list"
+        )
+        pipeline_page.close_state_panel(timeout=UI_ELEMENT_TIMEOUT)
+
+    with allure.step('Step 3 — Add an LLM node via the canvas "+" menu; verify it appears'):
+        pipeline_page.add_node("LLM")
+        node_id = pipeline_page.wait_for_node_on_canvas("llm", timeout=UI_ELEMENT_TIMEOUT)
+        assert node_id, "LLM node should be present on the canvas with a non-empty data-id"
+
+    with allure.step("Step 4 — SYSTEM: Type already 'Fixed' by default; fill Value"):
+        assert pipeline_page.get_llm_node_section_type("system", timeout=UI_ELEMENT_TIMEOUT) == "Fixed", (
+            "SYSTEM Type should default to 'Fixed' with no action needed"
+        )
+        pipeline_page.fill_llm_node_section_value("system", _YAML_SYSTEM_VALUE)
+        assert pipeline_page.get_llm_node_section_value("system") == _YAML_SYSTEM_VALUE, (
+            "SYSTEM Value field should reflect the typed text"
+        )
+
+    with allure.step("Step 5 — TASK: switch Type to F-String; fill Value"):
+        pipeline_page.select_llm_node_section_type("task", "F-String", timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_llm_node_section_type("task") == "F-String", (
+            "TASK Type select should show 'F-String' after selection"
+        )
+        pipeline_page.fill_llm_node_section_value("task", _YAML_TASK_VALUE)
+        assert pipeline_page.get_llm_node_section_value("task") == _YAML_TASK_VALUE, (
+            "TASK Value field should reflect the typed f-string text"
+        )
+
+    with allure.step("Step 6 — CHAT HISTORY: Type already 'Fixed' by default; fill Value"):
+        assert pipeline_page.get_llm_node_section_type(
+            "chat_history", timeout=UI_ELEMENT_TIMEOUT
+        ) == "Fixed", "CHAT HISTORY Type should default to 'Fixed' with no action needed"
+        pipeline_page.fill_llm_node_section_value("chat_history", _YAML_CHAT_HISTORY_VALUE)
+        assert pipeline_page.get_llm_node_section_value("chat_history") == _YAML_CHAT_HISTORY_VALUE, (
+            "CHAT HISTORY Value field should reflect the typed text"
+        )
+
+    with allure.step("Step 7 — Set Input to 'input' and Output to the new custom variable"):
+        pipeline_page.select_llm_node_input_variable("input", timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_llm_node_input_value() == "input", (
+            "Input select should show 'input' after selection"
+        )
+        pipeline_page.select_llm_node_output_variable(_YAML_OUTPUT_VARIABLE, timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_llm_node_output_value() == _YAML_OUTPUT_VARIABLE, (
+            f"Output select should show {_YAML_OUTPUT_VARIABLE!r} after selection"
+        )
+
+    with allure.step("Step 8 — Structured output toggle is unchecked (case's own default)"):
+        assert not pipeline_page.llm_node_structured_output_toggle.is_checked(), (
+            "Structured output toggle should be unchecked by default"
+        )
+
+    with allure.step("Step 9 — Save; verify 201 + no console errors"):
+        save_response = pipeline_page.save_and_wait_for_update(
+            project_id, pipeline_id, timeout=SAVE_RESPONSE_TIMEOUT
+        )
+        assert save_response is not None, "Save should return the persisted pipeline version"
+        assert not console_errors, f"Save should not introduce console errors: {console_errors}"
+
+    with allure.step(
+        "Step 10 — Switch to Yaml view; parse content; verify state/entry_point/nodes[] fields"
+    ):
+        pipeline_page.switch_to_yaml_view()
+        pipeline_page.yaml_editor.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        yaml_text = pipeline_page.get_yaml_content()
+        parsed = yaml.safe_load(yaml_text)
+
+        # Case step 4 — state section.
+        state_section = parsed.get("state") or {}
+        assert state_section.get("input", {}).get("type") == "str", (
+            f"YAML state.input.type should be 'str', got: {state_section.get('input')!r}"
+        )
+        assert state_section.get("messages", {}).get("type") == "list", (
+            f"YAML state.messages.type should be 'list', got: {state_section.get('messages')!r}"
+        )
+        assert state_section.get(_YAML_OUTPUT_VARIABLE, {}).get("type") == "str", (
+            f"YAML state.{_YAML_OUTPUT_VARIABLE}.type should be 'str', "
+            f"got: {state_section.get(_YAML_OUTPUT_VARIABLE)!r}"
+        )
+
+        # Case step 5 — entry_point matches the LLM node's own id.
+        assert parsed.get("entry_point") == node_id, (
+            f"YAML entry_point should equal the LLM node's id {node_id!r}, "
+            f"got: {parsed.get('entry_point')!r}"
+        )
+
+        # Case step 6 — nodes[] contains the LLM node with every configured field.
+        nodes = parsed.get("nodes") or []
+        llm_nodes = [n for n in nodes if n.get("id") == node_id]
+        assert len(llm_nodes) == 1, (
+            f"YAML nodes[] should contain exactly one entry with id {node_id!r}, got: {nodes!r}"
+        )
+        node = llm_nodes[0]
+
+        assert node.get("type") == "llm", f"YAML node.type should be 'llm', got: {node.get('type')!r}"
+        assert node.get("input") == ["input"], (
+            f"YAML node.input should be ['input'], got: {node.get('input')!r}"
+        )
+
+        input_mapping = node.get("input_mapping") or {}
+        assert input_mapping.get("system") == {"type": "fixed", "value": _YAML_SYSTEM_VALUE}, (
+            f"YAML node.input_mapping.system should be "
+            f"{{'type': 'fixed', 'value': {_YAML_SYSTEM_VALUE!r}}}, got: {input_mapping.get('system')!r}"
+        )
+        task_mapping = input_mapping.get("task") or {}
+        assert task_mapping.get("type") == "fstring", (
+            f"YAML node.input_mapping.task.type should be 'fstring', got: {task_mapping.get('type')!r}"
+        )
+        assert _YAML_TASK_VALUE in (task_mapping.get("value") or ""), (
+            f"YAML node.input_mapping.task.value should contain {_YAML_TASK_VALUE!r}, "
+            f"got: {task_mapping.get('value')!r}"
+        )
+        chat_history_mapping = input_mapping.get("chat_history") or {}
+        assert chat_history_mapping.get("type") == "fixed", (
+            f"YAML node.input_mapping.chat_history.type should be 'fixed', "
+            f"got: {chat_history_mapping.get('type')!r}"
+        )
+        # Live-contract nuance (AFS Axis 2 CLARIFICATION): the two-character
+        # text "[]" is also valid YAML flow-sequence syntax for an empty
+        # list, and the backend does not force a string type here — it
+        # round-trips whatever was typed as YAML. yaml.safe_load() therefore
+        # parses this field as an empty Python list, NOT the string "[]".
+        # Asserting the live representation per the reverse-masking guard.
+        assert chat_history_mapping.get("value") == [], (
+            f"YAML node.input_mapping.chat_history.value should parse as an empty list "
+            f"(live YAML serialization of the typed '[]'), got: {chat_history_mapping.get('value')!r}"
+        )
+
+        assert node.get("output") == [_YAML_OUTPUT_VARIABLE], (
+            f"YAML node.output should be [{_YAML_OUTPUT_VARIABLE!r}], got: {node.get('output')!r}"
+        )
+        assert node.get("structured_output") is False, (
+            f"YAML node.structured_output should be False, got: {node.get('structured_output')!r}"
+        )
+        assert node.get("transition") == "END", (
+            f"YAML node.transition should be 'END', got: {node.get('transition')!r}"
+        )
+
+        assert not console_errors, (
+            f"No step should introduce console errors through the whole flow: {console_errors}"
         )
