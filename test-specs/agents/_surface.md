@@ -531,3 +531,22 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 - `AgentsListPage.agent_exists_in_list(name)` (`agents_list_page.py:263-279`, pre-existing) is the
   handle for asserting a newly-created agent appears in `/agents/all` — no Build-with-AI test used
   it before ELITEA-1914.
+
+## Build with AI — Suggested Resources have NO client-side display cap (ELITEA-1910 run, 2026-08-08)
+- **`ResourceSuggestions.jsx` renders every item in its `items` array unconditionally**
+  (`items.map(...)`, no `.slice()`/count guard) — confirmed by source grep across
+  `ResourceSuggestions.jsx`, `GenerateAgentReviewForm.jsx`, and `GenerateAgentModal.jsx` (only
+  unrelated `MAX_*` constants exist, for name/description/welcome-message/conversation-starter
+  fields). **Live-reproduced**: mocking `generate_application_draft` with 7 `suggested_skills`
+  items rendered all 7 `[data-testid^="generate-agent-resource-item-skill-"]` cards, not 5. Filed
+  as `EliteaAI/elitea-testing-public#1317` (frontend gap; backend response schema is undocumented
+  in `/shared/openapi/?all=true`, so whether the backend itself ever sends >5 is unverified from
+  this repo — no prior live exploration, ELITEA-1907/1911 included, ever observed >2 suggestions
+  per category). Applies to **all five** suggestion categories (toolkit/mcp/pipeline/agent/skill)
+  — one shared component, one root cause.
+- **Real suggestion counts cannot be reliably driven past ~2 via live fixtures** (LLM
+  relevance-matching, per ELITEA-1907/1911's own precondition audits) — testing any cap/count
+  boundary on this surface needs the `mock_generate_success()` route-mocking technique
+  (`GenerateEntityModalPageBase`, already sanctioned for ELITEA-1907/1915), not live fixture
+  creation. Don't burn fixture-creation effort trying to coax >5 real Skills/Toolkits into
+  suggestion relevance — it's nondeterministic and the mock answers deterministically in one call.
