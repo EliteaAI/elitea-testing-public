@@ -24,11 +24,19 @@ the prompt input, Generate button, and Cancel button — closing the one
 genuine gap left by the covering tests (`cancel_button` was previously
 never referenced by any test's executed code path).
 
+Covers ELITEA-1906: the review form's Name, Description, Instructions,
+Welcome Message, and Conversation-starter fields are all pre-populated with
+the generated draft's values AND remain editable before agent creation — the
+first test in this file to read the Welcome Message / Chat-starter fields at
+all (their `data-testid`s were added for this case; see the AFS Concrete
+Handles).
+
 Spec: test-specs/agents/l2_build-with-ai-generation-failure-retry_ELITEA-1915.md
 Spec: test-specs/agents/l2_build-with-ai-generated-draft-suggested-resources_ELITEA-1907.md
 Spec: test-specs/agents/l2_build-with-ai-selected-suggested-resources-attached-to-created-agent_ELITEA-1909.md
 Spec: test-specs/agents/lextend_build-with-ai-selected-suggested-skills-attached-to-created-agent_ELITEA-1911.md
 Spec: test-specs/agents/lextend_build-with-ai-modal-contains-prompt-generate-cancel-controls_ELITEA-1905.md
+Spec: test-specs/agents/l2_build-with-ai-draft-generated-from-natural-language-description_ELITEA-1906.md
 Covers: GenerateAgentModal (GenerateEntityModal.jsx via GenerateAgentModal.jsx)
 
 Markers:
@@ -167,6 +175,40 @@ SUGGESTED_RESOURCES_DRAFT_PAYLOAD = {
             "description": "Triages incoming Jira tickets and assigns them to the right team.",
         }
     ],
+    "suggested_skills": [],
+}
+
+# ELITEA-1906 — verbatim prompt per the case's Test Data table.
+FIELD_POPULATION_PROMPT_TEXT = "An agent that helps write concise JIRA ticket descriptions"
+
+# Mocked generate_application_draft response for ELITEA-1906 — matches the
+# AFS's Test Data payload exactly. Content is plausibly aligned with the
+# prompt's intent (a live, unmocked reference call during analysis returned a
+# semantically-matching draft — see the AFS's Test Data section) so the
+# assertions genuinely exercise "the UI renders the generated draft content",
+# not just "the UI renders some non-empty string". Suggested-resource arrays
+# are deliberately empty — ResourceSuggestions.jsx renders null for an empty
+# category (already asserted by ELITEA-1907) — keeping the DOM surface
+# focused on the 5 core fields this case cares about.
+FIELD_POPULATION_DRAFT_PAYLOAD = {
+    "name": "JIRA Ticket Description Writer",
+    "description": "Helps users turn rough notes into concise, well-structured JIRA ticket descriptions.",
+    "instructions": (
+        "You are a helpful assistant that writes concise, well-structured JIRA ticket descriptions "
+        "from rough notes, bug reports, or feature ideas. Keep descriptions compact, use bullet "
+        "points where helpful, and include acceptance criteria when relevant."
+    ),
+    "welcome_message": (
+        "Hi! I can help you write clear, concise JIRA ticket descriptions. Paste your notes to get started."
+    ),
+    "conversation_starters": [
+        "Turn these notes into a concise JIRA ticket description",
+        "Write a bug ticket description from this issue report",
+    ],
+    "suggested_toolkits": [],
+    "suggested_mcp": [],
+    "suggested_pipelines": [],
+    "suggested_agents": [],
     "suggested_skills": [],
 }
 
@@ -821,3 +863,162 @@ class TestAgentBuildWithAISelectedResourcesAttached:
                     logger.info("Deleted created agent %s", created_agent_id)
                 except Exception as exc:
                     logger.warning("Failed to delete created agent %s during teardown: %s", created_agent_id, exc)
+
+
+class TestAgentBuildWithAIDraftFieldPopulation:
+    """Build with AI (P2): the generated draft's Name, Description,
+    Instructions, Welcome Message, and Conversation-starter fields are all
+    pre-populated with the generated values and remain editable before agent
+    creation (ELITEA-1906)."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "agents/build_with_ai/ELITEA-1906_build-with-ai-agent-draft-generated-from-natural-language-description.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_draft_fields_prepopulated_and_editable(self, page):
+        """Submitting a natural-language description populates all 5 review-
+        form fields (Name, Description, Instructions, Welcome Message, and
+        the Chat-starter inputs) with the generated draft's values, and every
+        one of those fields remains editable before "Create Agent" is
+        clicked."""
+        list_page = AgentsListPage(page)
+        modal = GenerateAgentModalPage(page)
+        draft = FIELD_POPULATION_DRAFT_PAYLOAD
+
+        # ------------------------------------------------------------------
+        # Step 1 — Open the GenerateAgentModal
+        # ------------------------------------------------------------------
+        with allure.step("Step 1 — Open the GenerateAgentModal"):
+            list_page.navigate_to_create()
+            modal.open_modal()
+
+            assert modal.modal.is_visible(), "Build with AI modal should be visible"
+            assert modal.prompt_input.is_visible(), "Prompt input should be visible once the modal opens"
+
+        # ------------------------------------------------------------------
+        # Step 2 — Enter the natural-language description
+        # ------------------------------------------------------------------
+        with allure.step("Step 2 — Enter the natural-language description"):
+            modal.fill_prompt(FIELD_POPULATION_PROMPT_TEXT)
+
+            assert modal.get_prompt_value() == FIELD_POPULATION_PROMPT_TEXT, (
+                "Prompt textarea should contain exactly the entered text"
+            )
+            assert modal.is_generate_enabled(), (
+                "Generate button should become enabled once the prompt is non-empty"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 3 — Click "Generate Draft"; loading state shown while the
+        # (artificially delayed) mocked request is in flight
+        # ------------------------------------------------------------------
+        with allure.step('Step 3 — Click "Generate Draft"; verify the loading state is shown'):
+            modal.mock_generate_success(draft)
+
+            with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+                modal.generate_button.click()
+                modal.wait_for_loading_visible(timeout=LOADING_STATE_TIMEOUT)
+
+            response = response_info.value
+            assert response.status == 200, (
+                f"Expected the mocked generate-draft request to succeed, got {response.status}"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 4 — Wait for generation to complete; modal transitions to the
+        # review/edit form
+        # ------------------------------------------------------------------
+        with allure.step("Step 4 — Wait for generation to complete and the review form to render"):
+            modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+
+        # ------------------------------------------------------------------
+        # Step 5 — Review form pre-populated with Name
+        # ------------------------------------------------------------------
+        with allure.step("Step 5 — Verify the review-form Name field is pre-populated"):
+            assert modal.get_review_name() == draft["name"], (
+                "Review-form Name field should be pre-populated with the generated draft's name"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 6 — Review form pre-populated with Description
+        # ------------------------------------------------------------------
+        with allure.step("Step 6 — Verify the review-form Description field is pre-populated"):
+            assert modal.get_review_description() == draft["description"], (
+                "Review-form Description field should be pre-populated with the generated draft's description"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 7 — Review form pre-populated with Instructions
+        # ------------------------------------------------------------------
+        with allure.step("Step 7 — Verify the review-form Instructions field is pre-populated"):
+            assert modal.get_review_instructions() == draft["instructions"], (
+                "Review-form Instructions field should be pre-populated with the generated draft's instructions"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 8 — Review form pre-populated with Welcome Message
+        # ------------------------------------------------------------------
+        with allure.step("Step 8 — Verify the review-form Welcome Message field is pre-populated"):
+            assert modal.get_review_welcome_message() == draft["welcome_message"], (
+                "Review-form Welcome Message field should be pre-populated with the generated draft's welcome message"
+            )
+
+        # ------------------------------------------------------------------
+        # Step 9 — Review form pre-populated with Conversation starters
+        # ------------------------------------------------------------------
+        with allure.step("Step 9 — Verify the review-form Chat starters are pre-populated"):
+            assert modal.review_starters_header.is_visible(), (
+                'The "Chat starters:" section header should be visible when conversation_starters is non-empty'
+            )
+            for i, starter_text in enumerate(draft["conversation_starters"]):
+                assert modal.get_review_starter_value(i) == starter_text, (
+                    f"Chat-starter input #{i} should be pre-populated with the generated draft's "
+                    f"conversation_starters[{i}]"
+                )
+
+        # ------------------------------------------------------------------
+        # Step 10 — All fields editable before approval
+        # ------------------------------------------------------------------
+        with allure.step("Step 10 — Verify all 5 fields are editable"):
+            # Native-element testid wiring (inputProps={'data-testid': ...}) makes
+            # a plain click()+fill() React-correct here — the same pattern
+            # fill_prompt() already relies on for the prompt textarea; no
+            # press_sequentially() workaround needed (see AFS Automation Hints).
+            edited_name = f"{draft['name']} [edited]"
+            modal.review_name_input.click()
+            modal.review_name_input.fill(edited_name)
+            assert modal.get_review_name() == edited_name, (
+                "Name field should reflect the newly typed text — proves it is genuinely editable"
+            )
+
+            edited_description = f"{draft['description']} [edited]"
+            modal.review_description_input.click()
+            modal.review_description_input.fill(edited_description)
+            assert modal.get_review_description() == edited_description, (
+                "Description field should reflect the newly typed text — proves it is genuinely editable"
+            )
+
+            edited_instructions = f"{draft['instructions']} [edited]"
+            modal.review_instructions_input.click()
+            modal.review_instructions_input.fill(edited_instructions)
+            assert modal.get_review_instructions() == edited_instructions, (
+                "Instructions field should reflect the newly typed text — proves it is genuinely editable"
+            )
+
+            edited_welcome_message = f"{draft['welcome_message']} [edited]"
+            modal.review_welcome_message_input.click()
+            modal.review_welcome_message_input.fill(edited_welcome_message)
+            assert modal.get_review_welcome_message() == edited_welcome_message, (
+                "Welcome Message field should reflect the newly typed text — proves it is genuinely editable"
+            )
+
+            edited_starter = f"{draft['conversation_starters'][0]} [edited]"
+            first_starter = modal.get_review_starter(0)
+            first_starter.click()
+            first_starter.fill(edited_starter)
+            assert modal.get_review_starter_value(0) == edited_starter, (
+                "First Chat-starter input should reflect the newly typed text — proves it is genuinely editable"
+            )

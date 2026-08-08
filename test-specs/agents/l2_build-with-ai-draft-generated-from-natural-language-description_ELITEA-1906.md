@@ -236,7 +236,7 @@ makes the same observable deterministic for CI.
 | 6 Review form pre-populated with Description | Description field has a generated value | step 6 | step 6: `get_review_description() == mocked payload description` | asserted |
 | 7 Review form pre-populated with Instructions | Instructions field has generated content | step 7 | step 7: `get_review_instructions() == mocked payload instructions` | asserted |
 | 8 Review form pre-populated with Welcome message | Welcome message field has a generated value | step 8 | step 8: new getter against new testid == mocked payload `welcome_message` | asserted (implementer adds testid + getter) |
-| 9 Review form pre-populated with Conversation starters | Conversation starters field has generated suggestions | step 9 | step 9: per-starter-input getter == mocked payload `conversation_starters[i]` | asserted (implementer adds dynamic testid + getter) |
+| 9 Review form pre-populated with Conversation starters | Conversation starters field has generated suggestions | step 9 | step 9: `"Chat starters:"` section header (`generate-agent-review-starters-header`) visible + per-starter-input getter == mocked payload `conversation_starters[i]` | asserted (implementer adds dynamic testid + getter, plus a static testid for the section header) |
 | 10 All fields editable before approval | all pre-populated fields can be edited | step 10 | step 10: type into each of the 5 fields, re-read value, confirm it reflects the edit | asserted |
 
 ### Axis 2 — Analyst additions
@@ -303,17 +303,21 @@ makes the same observable deterministic for CI.
 | Review-form Instructions input | `generate-agent-review-instructions-input` — existing `LocatorDescriptor.review_instructions_input` | n/a — already present |
 | Review-form **Welcome Message** input (`GenerateAgentReviewForm.jsx:162-187`) | **testid needed** — source-confirmed ZERO `inputProps`/`data-testid` on this `Input.InputBase` (unlike Name/Description/Instructions, which already carry one). Suggested name: `generate-agent-review-welcome-message-input`, wired the identical way as the Name field: `inputProps={{ 'data-testid': 'generate-agent-review-welcome-message-input' }}` | `page.get_by_label("Welcome Message")` — exploration only, not for automated tests per locator policy |
 | Review-form **Chat starter** inputs (`GenerateAgentReviewForm.jsx:193-221`, one per array index) | **testid needed** — source-confirmed ZERO testid on the per-index `Input.InputBase`. Per this project's dynamic-testid convention (`.agents/testing.md` § Locator policy), suggested class-level template: `generate-agent-review-starter-input-{}` → `generate-agent-review-starter-input-0`, `-1`, … wired via `inputProps={{ 'data-testid': \`generate-agent-review-starter-input-${index}\` }}` | n/a — exploration confirmed the section/inputs exist via accessibility snapshot only (no stable non-testid handle for a specific index; siblings are visually identical) |
+| Chat starters section header (`"Chat starters:"` label, `GenerateAgentReviewForm.jsx`) | **testid needed** — Step 9's Verify clause requires confirming the section header is visible; no `data-testid` existed on it. Added: `generate-agent-review-starters-header` (`EliteaAI/EliteaUI@b6761c42`) | n/a — exploration confirmed the header text via accessibility snapshot only |
 | "Back to prompt" / "Create Agent" buttons | `generate-agent-back-button` / `generate-agent-approve-button` — existing `LocatorDescriptor`s, used only for `wait_for_review_form()` in this case | n/a — already present |
 
-**Summary for the implementer / `add-data-testid`:** 2 new testids needed,
-both additive `inputProps` wiring on already-testid'd sibling fields in the
-same component (`GenerateAgentReviewForm.jsx`) — mechanically identical to
-the existing Name/Description/Instructions wiring, so low risk. Scope
-discipline per `.agents/role-overrides.md`: only the Welcome Message input
-and as many starter-input indices as this test's mocked payload actually
-uses (2, matching the Test Data payload above) need testids — do NOT
-blanket-wire all `MAX_CONVERSATION_STARTERS` (4) index slots if only 2 are
-exercised by this test's own code path.
+**Summary for the implementer / `add-data-testid`:** 3 new testids needed —
+the Welcome Message input, the per-index Chat-starter inputs, and the Chat
+starters section header (`generate-agent-review-starters-header`,
+needed for Step 9's "section header visible" Verify clause), all additive
+`inputProps`/`data-testid` wiring in the same component
+(`GenerateAgentReviewForm.jsx`) — mechanically identical to the existing
+Name/Description/Instructions wiring, so low risk. Scope discipline per
+`.agents/role-overrides.md`: only the Welcome Message input, as many
+starter-input indices as this test's mocked payload actually uses (2,
+matching the Test Data payload above), and the one section header need
+testids — do NOT blanket-wire all `MAX_CONVERSATION_STARTERS` (4) index
+slots if only 2 are exercised by this test's own code path.
 
 ## Network Behavior
 - `POST /api/v2/elitea_core/generate_application_draft/prompt_lib/{project_id}`
