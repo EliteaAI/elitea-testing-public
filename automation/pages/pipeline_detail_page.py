@@ -142,6 +142,48 @@ class PipelineDetailPage(PipelineFormPage):
     # every version selector consumer; see also AgentDetailPage.VERSION_OPTION.
     VERSION_OPTION = '[data-testid="version-option-{}"]'
 
+    # --- Version deletion (ELITEA-2003) — three-dot menu's VERSION-group
+    # "Delete" item + its SIMPLE confirm modal. Distinct from
+    # `delete_pipeline_via_menu`'s PIPELINE-group "Delete pipeline" item
+    # (role-based text match, type-to-confirm dialog): this targets a
+    # DIFFERENT menu item and a DIFFERENT (non-typing) confirm modal.
+    #
+    # `actions_menu_button` uses the testid directly (confirmed live —
+    # `${id}-menu-button` template in DotMenu.jsx with `id="agent-actions"`
+    # passed from ApplicationControls.jsx) rather than the legacy
+    # bounding-box `open_actions_menu()` hack — new code resolves the most
+    # stable, semantic handle available (locator policy Hard Rule 6); the
+    # existing hack is left unmodified (additive-only) for its own callers.
+    actions_menu_button = LocatorDescriptor(
+        testid="agent-actions-menu-button",
+        description="Three-dot actions menu trigger (header bar).",
+    )
+
+    # VERSION-group "Delete" menu item — disabled when the currently open
+    # version is "base" (ApplicationControls.jsx's `disableDelete`); not
+    # exercised by this case (always deletes the non-base ver_to_delete).
+    delete_version_menuitem = LocatorDescriptor(
+        testid="delete-version-menuitem",
+        description='Three-dot menu — VERSION-group "Delete" item.',
+    )
+
+    # Shared Modal.DeleteEntityModal component (same testid family already
+    # wired by artifacts_page.py/secrets_page.py/chat_page.py/etc. for
+    # THEIR OWN delete flows) — new fields here for the pipeline-version
+    # delete flow, per the project's one-class-per-file convention.
+    delete_confirm_dialog = LocatorDescriptor(
+        testid="delete-confirm-dialog",
+        description="Delete-version confirmation dialog.",
+    )
+    delete_confirm_message = LocatorDescriptor(
+        testid="delete-confirm-message",
+        description="Delete-version confirmation dialog — message text.",
+    )
+    delete_confirm_button = LocatorDescriptor(
+        testid="delete-confirm-button",
+        description="Delete-version confirmation dialog — confirm (Delete) button.",
+    )
+
     flow_view_button = LocatorDescriptor(
         testid="pipeline-flow-view",
         fallback=lambda page: page.locator('button[value="flow"]'),
@@ -1541,6 +1583,102 @@ class PipelineDetailPage(PipelineFormPage):
             f"URL never converged on {version_name!r} after {attempts} full "
             f"select+reload attempts — last error: {last_exc}"
         )
+
+    def get_version_option_count(self, version_name: str) -> int:
+        """Count matching options for ``version_name`` in the open VERSION
+        dropdown.
+
+        Uses the same ``VERSION_OPTION`` dynamic-testid template as
+        :meth:`is_version_option_visible` — call after
+        :meth:`open_version_selector`. Distinct from
+        ``is_version_option_visible`` (which WAITS for presence, i.e. is
+        for asserting an option IS there): this reads the current count
+        immediately, for asserting ABSENCE after a deletion — a deleted
+        option never becomes visible, so waiting for it would just burn
+        the whole timeout instead of failing fast.
+
+        Args:
+            version_name: Exact version name (e.g. ``"ver_to_delete"``).
+
+        Returns:
+            Number of matching options currently in the DOM (0 or 1).
+        """
+        return self.page.locator(self.VERSION_OPTION.format(version_name)).count()
+
+    # ------------------------------------------------------------------
+    # Version deletion (ELITEA-2003)
+    # ------------------------------------------------------------------
+
+    @action("Open the delete-version confirmation dialog via the three-dot menu")
+    def open_delete_version_dialog(self, timeout: int = 10000):
+        """Open the three-dot actions menu and click the VERSION-group
+        "Delete" item, waiting for the confirmation dialog to appear.
+
+        Split from :meth:`confirm_delete_version` so callers can assert on
+        the dialog's just-opened state (e.g. the message text) before
+        confirming — same split shape as
+        :meth:`open_save_as_version_dialog`/:meth:`confirm_new_version`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening the delete-version confirmation dialog")
+        self.dismiss_banner_if_present()
+        self.actions_menu_button.click()
+        self.delete_version_menuitem.wait_for(state="visible", timeout=timeout)
+        self.delete_version_menuitem.click()
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+
+    @action("Confirm the pending pipeline version deletion")
+    def confirm_delete_version(self, timeout: int = 10000):
+        """Click the delete-confirm dialog's confirm button and wait for
+        it to close.
+
+        Call after :meth:`open_delete_version_dialog`. Note: confirming
+        triggers a stale refetch of the just-deleted version's own
+        endpoint (a transient, visible 400 — tracked as a known,
+        non-blocking defect: EliteaAI/elitea-testing-public#1330) before
+        the pipeline settles on "base" — see
+        :meth:`wait_for_fallback_to_base`, which callers should use to
+        wait out that settle rather than asserting immediately here.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Confirming pipeline version deletion")
+        self.delete_confirm_button.click()
+        self.delete_confirm_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("Pipeline version deletion confirmed")
+
+    def wait_for_fallback_to_base(self, timeout: int = 10000) -> str:
+        """Wait for the pipeline to fall back to displaying "base" after
+        its currently open (non-base) version is deleted, then return
+        base's version id.
+
+        The fallback is asynchronous (see the known-defect note on
+        :meth:`confirm_delete_version`): the VERSION selector's own text
+        is the fastest-updating of the three cross-check signals (mirrors
+        :meth:`confirm_new_version`'s wait strategy), so this polls the
+        trigger text first, then reads the settled version id from the
+        Information panel once network activity quiesces.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The "base" version's numeric id, read from the Information
+            panel after the fallback settles.
+        """
+        self.page.wait_for_function(
+            """() => {
+                const el = document.querySelector('[data-testid="agent-version-selector-trigger"]');
+                return !!el && el.innerText.trim() === 'base';
+            }""",
+            timeout=timeout,
+        )
+        self.wait_for_network(timeout=5000)
+        logger.info("Pipeline fell back to 'base' — URL: %s", self.page.url)
+        return self.get_version_id()
 
     # ------------------------------------------------------------------
     # Tabs
