@@ -8,7 +8,7 @@ URL: /pipelines/all
 import logging
 import re
 
-from playwright.sync_api import Page
+from playwright.sync_api import Locator, Page, Response
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -155,6 +155,17 @@ class PipelinesListPage(BasePage):
         description="'Forked from' icon-link on a card — collection locator, "
                      "present only on cards for forked entities",
     )
+
+    # Dynamic (runtime-parameterized) testid for a pipeline card's "Pin to
+    # top"/"Unpin from top" icon button, keyed by numeric pipeline id — same
+    # shared PinButton.jsx widget CredentialsListPage.PIN_TOGGLE_BUTTON
+    # already wires (ELITEA-1974), confirmed live for this page (ELITEA-2025
+    # AFS Concrete Handles): the Pipelines dashboard passes
+    # cardContentType=ContentType.PipelineAll ('PipelineAll') into
+    # PinButton.jsx's getPinTestIdSlug(), which lowercases it to
+    # 'pipelineall' (no dedicated isPipelineCard branch — cosmetic naming
+    # quirk, not a functional issue; see AFS Concrete Handles note).
+    PIN_TOGGLE_BUTTON = '[data-testid="pipelineall-pin-toggle-button-{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -311,6 +322,37 @@ class PipelinesListPage(BasePage):
         except Exception:
             return []
         return [self.entity_card_name.nth(i).text_content() or "" for i in range(self.entity_card_name.count())]
+
+    def pin_toggle_button(self, pipeline_id) -> Locator:
+        """Return the card's "Pin to top"/"Unpin from top" icon button for *pipeline_id*.
+
+        Mirrors ``CredentialsListPage.pin_toggle_button`` (ELITEA-1974) —
+        same shared ``PinButton.jsx`` widget, dynamic testid keyed by id.
+        """
+        return self.page.locator(self.PIN_TOGGLE_BUTTON.format(pipeline_id))
+
+    def get_pin_toggle_label(self, pipeline_id) -> str:
+        """Return the button's current accessible label ("Pin to top" / "Unpin from top").
+
+        Read as an attribute off the already-testid-located button — not used
+        as a locator strategy (testid-only policy, .agents/testing.md).
+        """
+        return self.pin_toggle_button(pipeline_id).get_attribute("aria-label") or ""
+
+    def click_pin_toggle(self, pipeline_id) -> Response:
+        """Click the card's pin/unpin button and wait for the underlying
+        ``POST``/``DELETE .../social/pin/prompt_lib/{project}/application/{id}``
+        response, per the AFS's wait-on-network-response guidance (no fixed sleep).
+
+        Returns:
+            The matched Playwright ``Response``.
+        """
+        pattern = "/social/pin/prompt_lib/"
+        with self.page.expect_response(
+            lambda r: pattern in r.url and r.url.rstrip("/").endswith(f"/application/{pipeline_id}")
+        ) as response_info:
+            self.pin_toggle_button(pipeline_id).click()
+        return response_info.value
 
     def search(self, query: str):
         """Type *query* into the search box and press Enter (explicit-activation
