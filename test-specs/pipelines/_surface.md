@@ -57,6 +57,25 @@ no product defect. Details in `test-specs/pipelines/l2_pipeline-import-via-file_
   `delete-pipeline-menuitem`, per the existing gotcha below) + auto-redirect to `/pipelines/all`
   reconfirmed live.
 
+**Resolved/added during ELITEA-2012 implementation (2026-08-08):** `pipelines-import-button`
+testid added — `EliteaAI/EliteaUI@257cd359` on `automation/testids` (awaiting human promotion to
+`main`). `test_pipeline_import_via_file.py` (full create → export → delete → import → verify →
+execute round trip) green on first local run — confirmed live, matches this digest entry exactly:
+the auto-redirect after delete DOES fire correctly when the detail page was reached entirely via
+in-app SPA navigation (dashboard → "+ Pipeline" → Save → detail page), unlike ELITEA-2022's own
+test (`test_delete_pipeline_via_ui_menu`, sanctioned-RED #1332) whose setup reaches the detail page
+via a direct `page.goto()` (no prior in-app history entry) — the redirect defect is specifically a
+browser-history no-op, not a general product break. **Confirmed via source read:** the shared
+`IWModalEntityCard.jsx`/`IWModalEntityCardWrapper.jsx` preview-dialog fields (Type/Description/
+Chat-starters/Step-limit) carry NO `data-testid` at this call site (the wrapper's `subtitleTestId`
+prop is unwired here) — full config-equivalence verification was done on the imported pipeline's
+detail page (UI fields + `pipeline_api.get_pipeline()` API readback for node structure) instead of
+inside the preview dialog; see the AFS's own implementer-amendment note on Step 5 for detail. New
+page-object surface: `PipelinesListPage.import_pipeline()`/`confirm_pipeline_import()`/
+`confirm_import_complete()` (mirrors `AgentsListPage`'s import trio) + `PipelineDetailPage.
+export_pipeline_via_menu_and_download()` (testid-based, `page.expect_download()` — distinct from
+the pre-existing raw-handle `export_pipeline_via_menu()`, left unmodified for its own caller).
+
 ## Delete pipeline via three-dot menu — auto-redirect confirmed correct; existing merged spec masks the redirect assertion by navigating manually (confirmed live, 2026-08-08, ELITEA-2022)
 
 `test_delete_pipeline_via_ui_menu` (`test_pipeline_management.py:391`, merged to

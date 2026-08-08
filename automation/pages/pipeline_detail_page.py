@@ -159,6 +159,18 @@ class PipelineDetailPage(PipelineFormPage):
         description="Three-dot actions menu trigger (header bar).",
     )
 
+    # PIPELINE-group "Export" menu item (ELITEA-2012 AFS Concrete Handles) —
+    # a real, on-main testid, confirmed live-resolving for a pipeline detail
+    # page. New field distinct from the pre-existing raw-handle
+    # `export_pipeline_via_menu()` method (`get_by_role("menuitem",
+    # name="Export")`, no download capture) — that method's own caller
+    # (`test_pipeline_advanced.py`) is left unmodified per the additive-only
+    # contract; this field backs the NEW `export_pipeline_via_menu_and_download()`.
+    export_menuitem = LocatorDescriptor(
+        testid="agent-actions-export-menuitem",
+        description='Three-dot menu — "Export" item (shared Agent/Pipeline testid).',
+    )
+
     # VERSION-group "Delete" menu item — disabled when the currently open
     # version is "base" (ApplicationControls.jsx's `disableDelete`); not
     # exercised by this case (always deletes the non-base ver_to_delete).
@@ -1831,6 +1843,37 @@ class PipelineDetailPage(PipelineFormPage):
         self.wait_for_network(timeout=timeout)
         logger.info("Pipeline exported via menu")
         return True
+
+    @action("Export pipeline via menu and capture the download")
+    def export_pipeline_via_menu_and_download(self, timeout: int = 15000):
+        """Export the current pipeline via the three-dot menu and return the download.
+
+        Testid-based (``actions_menu_button``/``export_menuitem`` — both
+        real, on-main testids, ELITEA-2012 AFS Concrete Handles), and
+        captures the triggered download via ``page.expect_download()`` —
+        unlike the pre-existing ``export_pipeline_via_menu`` (raw
+        ``get_by_role("menuitem", name="Export")``, no download capture),
+        which is left unmodified for its own caller
+        (``test_pipeline_advanced.py``) per the additive-only contract.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The Playwright ``Download`` object for the exported
+            ``.pipeline.md`` file.
+        """
+        logger.info("Exporting pipeline via menu (testid-based, download capture)")
+        self.dismiss_banner_if_present()
+        self.actions_menu_button.click()
+        self.export_menuitem.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.export_menuitem.click()
+        download = download_info.value
+        logger.info(
+            "Pipeline exported — download suggested_filename=%s", download.suggested_filename,
+        )
+        return download
 
     def fork_pipeline_via_menu(self, timeout: int = 10000) -> bool:
         """Fork (duplicate) the pipeline via the three-dot menu.
