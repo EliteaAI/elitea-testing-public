@@ -125,6 +125,37 @@ class PipelinesListPage(BasePage):
         description="'Import Complete' dialog's 'Got it' confirm/navigate button",
     )
 
+    # Sidebar project switcher (ELITEA-2051) — same shared testid already
+    # wired by ChatPage.project_selector_trigger / AnalyticsPage's own field
+    # (identical shared sidebar component); NEW field on this page (AFS
+    # Concrete Handles).
+    project_selector_trigger = LocatorDescriptor(
+        testid="project-selector-trigger-combobox",
+        description="Sidebar project switcher trigger (shows current project name)",
+    )
+
+    # Dynamic (runtime-parameterized) testid for a project-switcher dropdown
+    # option, keyed by numeric project id — same shared SingleSelectMenuItem
+    # family already used elsewhere on this page (import_* dialogs reuse the
+    # identical component tree) and by ChatPage.SELECT_OPTION /
+    # AgentDetailPage.FORK_PROJECT_OPTION.
+    SELECT_OPTION = '[data-testid="select-option-{}"]'
+
+    # "Forked from" attribution icon-link (ELITEA-2051) — shared
+    # IconLinkWithToolTip.jsx component (also rendered by Table view's
+    # DataTableRow), rendered on a card ONLY when that pipeline is itself a
+    # fork. Collection locator, one per card showing the attribution.
+    # Testid gap closed via add-data-testid (EliteaAI/EliteaUI@467fed43,
+    # ELITEA-2051 AFS Concrete Handles) — the component previously rendered
+    # no data-testid at all; fixed with a generic value (mirrors the
+    # existing entity-card-name sibling testid) since the component is
+    # shared across Agents/Skills/Pipelines.
+    entity_card_forked_from_link = LocatorDescriptor(
+        testid="entity-card-forked-from-link",
+        description="'Forked from' icon-link on a card — collection locator, "
+                     "present only on cards for forked entities",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -142,6 +173,49 @@ class PipelinesListPage(BasePage):
         """Navigate to the create pipeline page."""
         super().navigate("/pipelines/create?viewMode=owner")
         logger.info("Navigated to create pipeline page")
+
+    def switch_project(self, project_id: str, timeout: int = 10000) -> None:
+        """Switch the active project via the sidebar project selector.
+
+        Opens the ``project_selector_trigger`` combobox and clicks the
+        option matching *project_id*, resolved via the dynamic
+        ``SELECT_OPTION`` template — same shared SingleSelectMenuItem
+        pattern as ``ChatPage.switch_project()`` /
+        ``AgentDetailPage.select_fork_target_project()`` (different UI
+        surface, same underlying DOM component).
+
+        Args:
+            project_id: Numeric id of the target project (string or
+                int-like).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Switching active project to id=%s", project_id)
+        self.project_selector_trigger.click()
+        option = self.page.locator(self.SELECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Switched to project id=%s", project_id)
+
+    def open_pipeline_by_name(self, name: str, timeout: int = 10000) -> None:
+        """Click a pipeline card (Card list view) by its exact name and wait
+        for the click to register.
+
+        LOCATOR: filters the ``entity_card_name`` collection locator by
+        visible text, then clicks it — clicking anywhere inside a card's
+        clickable region navigates to the entity's detail page (shared
+        ``Card.jsx``'s ``handleCardClick``). Does NOT wait for the detail
+        page itself to finish loading — callers use
+        ``PipelineDetailPage.wait_for_detail_page_load()`` for that.
+
+        Args:
+            name: Exact pipeline name to match the card by.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening pipeline card: %s", name)
+        card = self.entity_card_name.filter(has_text=name).first
+        card.wait_for(state="visible", timeout=timeout)
+        card.click()
 
     def click_create_pipeline(self, timeout: int = 15000) -> None:
         """Click the sidebar '+' control and wait for the create form's URL.
