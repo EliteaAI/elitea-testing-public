@@ -2,8 +2,52 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2038 combined
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2039 combined
 > analysis+implementation).
+
+## Printer node — SimpleLLMInputs (PRINTER section) + standalone Final Message field, NO Input/Output selects, NO Interrupt/Structured-output controls (confirmed live, 2026-08-08, ELITEA-2039)
+
+`PrinterNode.jsx` renders the SAME shared `FlowEditorSettings.SimpleLLMInputs`
+component as the Code node (single mapping key `printer`, default
+`{type: 'fixed', value: ''}` via `usePrinterInputMapping.js`) plus a
+standalone `AIAssistantInput` for `final_message` — confirmed via source AND
+live DOM. **Unlike every other configurable node type in this suite
+(LLM/Code/HITL/MCP/Toolkit/Router/Decision/State-modifier/Custom/Agent),
+Printer has NO `FlowEditorSelect.InputSelect`/`OutputSelect` and NO
+`FlowEditorSettings.CommonInterruptSettings` at all** — confirmed via source
+read (`PrinterNode.jsx` imports neither) and live DOM (`#simple-select-Input`/
+`#simple-select-Output` both resolve to 0 matches inside the node; no
+"Interrupt"/"Structured output" substrings in the node's text content). Only
+the two generic ReactFlow `CustomHandle` connection points (`target` top,
+`source` bottom) exist — the case's own step 8 wording ("Printer node has
+only Output handle (no Input combobox visible in panel)") already correctly
+anticipates this, no case-text drift.
+
+- **Zero testids existed on `PrinterNode.jsx` before this session** — added a
+  `PRINTER_NODE_INPUT_TEST_IDS` map (same shape as `CODE_NODE_INPUT_TEST_IDS`
+  in `CodeNode.jsx`, ELITEA-2009) wiring `testIdsByKey={{printer: {...}}}` on
+  the `SimpleLLMInputs` call site, plus `inputProps={{'data-testid': ...}}`
+  directly on the `AIAssistantInput` call site for Final Message (MUI
+  `TextField`'s `htmlInput` slot — the "needs `inputProps`, not a bare
+  `data-testid` prop" pattern already documented elsewhere in this digest for
+  the Webhook/Schedule modal fields) — `EliteaAI/EliteaUI@955f88b9` on
+  `automation/testids`.
+- **Type select's 3 options are Fixed/F-String/Variable, default `Fixed`** —
+  same `TYPE_OPTION_VALUE_BY_LABEL` mechanism as every other SimpleLLMInputs
+  call site in this suite, confirmed live.
+- **PRINTER Value and Final Message are both plain MUI textareas, NOT
+  CodeMirror** — confirmed live via `tagName === 'TEXTAREA'`, same pattern as
+  every other `AIAssistantInput`/`SimpleLLMInputItem` field in this suite.
+  Embedded literal `\n` (backslash+n, not a real newline) types and reads
+  back exactly via `press_sequentially()`, same convention as the Code node's
+  Python-code Value field.
+- **Save + full page reload correctly persists** PRINTER Type, Value, and
+  Final Message (confirmed live round-trip this session, zero console errors
+  at every checkpoint). Same `PUT .../application/prompt_lib/{project}/{id}`
+  → 201 mechanism as every other pipeline-node-configuration case in this
+  family.
+- Full flow, handles, and page-object gap list:
+  `test-specs/pipelines/l2_pipeline-printer-node-configuration_ELITEA-2039.md`.
 
 ## Agent node — own component (NOT a `BaseToolNode.jsx` caller), single-select-as-toolkit, TASK-only input mapping, DIFFERENT attach endpoint (confirmed live, 2026-08-08, ELITEA-2038)
 
