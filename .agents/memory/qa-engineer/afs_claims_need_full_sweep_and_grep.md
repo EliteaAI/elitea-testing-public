@@ -76,6 +76,17 @@ Nothing in an AFS is true because it is written down. Two mechanical duties:
   correctly `on-main`, so this wasn't a wholesale skip of the check, just one
   stale/wrong row slipping through — same lesson as #1294: verify EVERY row,
   not a sample.
+- PR #1328/ELITEA-2047 — Coverage Map step-6 row's "Asserted where" cell listed
+  "run-in-progress header" among the pause signals covered, mirroring the AFS's
+  own Step 6 "Verify" bullet (chat header shows a "Run is in progress" spinner +
+  "Run N details" + "Stop run"). Grepped the shipped test for any of those three
+  strings, `banner`, or `run_details`: zero hits — the shipped assertions cover
+  the chat execution bubble, the `interrupt` edge-label pill, and the config
+  panel's disabled state, but never the header banner at all. The AFS's own
+  Concrete Handles table correctly lists all three header elements as open
+  testid GAPs (never closed this implementation) — so the Coverage Map row
+  contradicts the AFS's own gap list one section down, the exact
+  document-internal-consistency failure this entry's Remedy #2 calls out.
 - …plus 5 earlier occurrence(s) — full per-case detail in the source entries below.
 
 See also: afs_amendment_narrates_some_changes_leaves_others_unswept.md ·
