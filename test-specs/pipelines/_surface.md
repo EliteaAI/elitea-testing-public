@@ -2,8 +2,56 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2046 combined
-> analysis+implementation).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2047 analysis).
+
+## Interrupt before/after — pause works, plain-chat resume is a CONFIRMED DEFECT (`#1327`), pipeline-level YAML field (confirmed live, 2026-08-08, ELITEA-2047)
+
+`interrupt_before`/`interrupt_after` (`CommonInterruptSettings.jsx`, every node type
+sharing it — LLM/Code/MCP/Toolkit/Custom/Decision/Agent, NOT the HITL **node type**) is
+a genuine LangGraph-checkpoint feature, distinct from HITL's dedicated
+approve/edit/reject resume wiring (ELITEA-2015, `#1103`). Confirmed on pipeline id 8159
+(`Code 1 -> Printer 1 -> END`):
+
+- **YAML shape — pipeline-level, NOT per-node.** `interrupt_after` is a TOP-LEVEL
+  pipeline YAML key holding a list of node ids (`entry_point: Code 1\ninterrupt_after:\n
+  - Code 1\nnodes:\n  ...`), unlike `structured_output` which nests under the node.
+  Don't assert `nodes[0].interrupt_after` — it isn't there.
+- **Disabled-state gating (same `CommonInterruptSettings.jsx` logic already documented
+  for every node type)**: "Interrupt before" disabled while the node is the entry
+  point; "Interrupt after" disabled while the node has no outgoing transition
+  (`transition: END` or none) — a LONE freshly-added node always has both disabled; a
+  real 2-node pipeline with an edge is required to exercise "Interrupt after".
+- **Pause DOES work correctly, live-confirmed**: executing via embedded chat runs the
+  interrupted node, THEN pauses — `interrupt` pill on the canvas edge right after the
+  node; the WHOLE node config panel goes `disabled`/locked; chat header shows a
+  "Run is in progress" spinner + clickable "Run N details" + "Stop run"; chat
+  auto-posts *"How to proceed? To resume the pipeline - type anything..."*.
+- **Resume via plain chat is BROKEN — `EliteaAI/elitea-testing-public#1327`,
+  reproduced independently in TWO sessions** (an earlier `test-automation-engineer`
+  implementation attempt, then this analysis session, same pipeline). Sending a plain
+  message (e.g. `"continue"`) — the UI's OWN advertised instruction — does NOT resume:
+  it spawns a **second, distinct Run History entry** (different duration — i.e. a new
+  run, not a resumed one) rather than continuing the checkpointed run; the SAME "How to
+  proceed?" hint re-appears verbatim; Printer 1 never executes; the `interrupt` pill and
+  locked panel persist. "Run is in progress"/"Stop run" vanish from the header (a
+  half-cleanup, neither a clean resume nor a clean failure). Zero console errors —
+  silent behavioral defect, not a crash. **Distinct from `#1103`** (that's HITL-node-
+  specific `chat_continue_predict{hitl_resume:true, hitl_action}`; this toggle has no
+  action buttons at all, only the "type anything" text hint, and that hint doesn't work).
+- **Testid gaps (not yet added)**: the "Run is in progress" header banner, the "Run N
+  details" trigger label, the "Stop run" button, and the `interrupt` canvas edge pill
+  all have ZERO `data-testid` — confirmed via live DOM/innerText checks, no stable
+  selector isolated beyond coarse text/accessible-name matching this session. Left as
+  gaps for whichever implementer needs them (recommended names in the AFS's Concrete
+  Handles table) rather than guessed/added blind.
+- **WebSocket-frame capture not attempted this session** — `PipelineDetailPage.
+  capture_websocket_frames()` (pytest-fixture-level, same pattern as ELITEA-2015's HITL
+  test) can't be retrofitted onto an already-open Playwright-MCP browser session; the
+  implementer automating step 8's soft-assert doesn't strictly need it (DOM/Run-History
+  evidence is sufficient), but a future deep-dive into WHY resume fails (never sends a
+  resume-shaped frame vs. sends one the backend ignores) should use it.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-interrupt-before-after-toggles_ELITEA-2047.md`.
 
 ## Structured output toggle — default disabled, correctly persists both directions through save + reload, YAML matches (confirmed live, 2026-08-08, ELITEA-2046)
 
