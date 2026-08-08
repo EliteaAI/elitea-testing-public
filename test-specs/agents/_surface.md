@@ -652,3 +652,27 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   (`GenerateEntityModalPageBase`, already sanctioned for ELITEA-1907/1915), not live fixture
   creation. Don't burn fixture-creation effort trying to coax >5 real Skills/Toolkits into
   suggestion relevance — it's nondeterministic and the mock answers deterministically in one call.
+
+## Build with AI — "Back to prompt" (`back_button`) confirmed: pure client-side state reset, prompt preserved (ELITEA-1919 run, 2026-08-08)
+- **`generate-agent-back-button` had never been `.click()`ed anywhere in the suite before this
+  run** — only `.is_visible()`-checked (`TestAgentBuildWithAICreationFailureRecovery`, asserting
+  the review step's action buttons survive a creation failure). ELITEA-1918's AFS explicitly
+  disclaimed covering it. Confirms genuinely unexercised territory.
+- **Source-level mechanism** (`GenerateEntityModal.jsx`'s `handleBack()`, lines 85-89): resets
+  `step` to `STEPS.INPUT` and `draftData` to `null`, and calls `resetGenerate()` — but **never**
+  calls `setDescription('')`. The sibling `handleClose()` (INPUT-step Cancel + review-step X icon,
+  per ELITEA-1917/1918) DOES clear `description`. This asymmetry is exactly why "Back to prompt"
+  preserves the typed text while Cancel/Close discard it — a deliberate design choice, confirmed
+  by reading both functions side by side, not inferred from behavior alone.
+- **Live-confirmed, full round trip**: opened modal → typed a prompt → real (unmocked)
+  `generate_application_draft` call → reached review step (draft "Ticket Summary Verifier") →
+  clicked `back_button` → modal returned to the INPUT step with the EXACT original prompt text
+  still in `generate-agent-prompt-input` (character-for-character), `back_button`/
+  `approve_button`/all review-form field testids (`generate-agent-review-name-input` etc.) fully
+  removed from the DOM (not merely hidden — `renderContent()` re-renders a different branch).
+- **Zero network side effect from the Back click itself**: `browser_network_requests` filtered to
+  `generate_application_draft`/`applications/prompt_lib` showed the identical 1-vs-0 split before
+  and after clicking Back (the 1 being Step 1's own Generate) — `handleBack()` is purely
+  client-side, confirmed both by source and by network capture.
+- **Console**: only the pre-existing, documented `disableUnderline` baseline warning
+  (ELITEA-1906/1913/1916/1918) — unchanged by the Back click, no new errors.
