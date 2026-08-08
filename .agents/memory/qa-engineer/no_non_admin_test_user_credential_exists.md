@@ -30,23 +30,39 @@ switch to.** Before spending exploration time hunting for a role-switch mechanis
 1. Check Settings → Users on project `400` — it DOES sometimes list `editor`/`viewer`
    rows, but as of 2026-08-08 these were unusable leftover pending-invite fixtures
    from an unrelated test (`Last login: "-"`, never accepted, no known password) — a
-   row existing in the table is not the same as a usable login.
+   row existing in the table is not the same as a usable login. **Confirmed dead
+   end, not just unexplored (ELITEA-1904 run, same day):** the row's "Actions" cell
+   offers only "Edit user role" and "Delete user" — no "Resend invite" / "Reset
+   password" / any action that could mint a password for that row. `invite_users()`
+   in `admin_users_page.py` is the only invite path and it produces the same
+   unaccepted-row shape. There is no UI escape hatch here; stop checking it per case.
 2. Do NOT self-downgrade `${TEST_USER}`'s own role via "Edit user role" to test the
    lower-privilege view. Project `400` is shared test data another merged suite
    depends on for a fixed user/role shape (`automation/pages/admin_users_page.py`
    docstring, ELITEA-2292's precondition) — there is no verified way to safely
    restore admin afterward if the downgraded role lacks `configuration.users.
    users.edit`.
-3. If no genuine non-admin credential turns up, this is a **test-data gap**, not a
-   blocker for the WHOLE case: automate the admin-role half fully (it's real
-   coverage of the RBAC-gating mechanism itself — e.g. `checkPermission(...)` source
-   read + live admin-visible assertion), and put the non-admin half in § Blocked
-   Steps with a concrete unblock ask (a dedicated `EDITOR_TEST_USER_EMAIL/PASSWORD`
-   fixture, or an accepted API-level permissions-endpoint proxy). Classify
-   `ready-for-automation`, not `blocked` — SKILL.md reserves `blocked` for when
-   nothing meaningful can be automated at all.
+3. If no genuine non-admin credential turns up: when the case still has an
+   admin-provable half (an RBAC case with a "visible for admin/editor" branch),
+   that's a **test-data gap, not a blocker for the WHOLE case** — automate the
+   admin-role half fully (real coverage of the gating mechanism itself, e.g.
+   `checkPermission(...)` source read + live admin-visible assertion), and put the
+   non-admin half in § Blocked Steps. Classify `ready-for-automation`. **But when the
+   case's entire premise IS the non-admin observable** (e.g. "button is NOT visible
+   for viewer" — nothing to prove from the admin side), there is no partial-coverage
+   path: classify `blocked` outright, per SKILL.md's reservation of `blocked` for
+   when nothing meaningful can be automated. Don't force a workaround just because a
+   sibling case in the same batch found a partial path — check whether an admin-side
+   half actually exists for *this* case before assuming it does.
+4. No API-level substitute exists either, for the same root cause: minting a token
+   for `GET /api/v2/auth/permissions/prompt_lib/{id}` under a viewer identity still
+   requires a working viewer login — the credential gap blocks both the UI path and
+   any API-only fallback equally.
 
-Worked example: `test-specs/agents/l2_build-with-ai-button-visible-for-admin-and-editor-roles_ELITEA-1903.md`.
+Worked examples: `test-specs/agents/l2_build-with-ai-button-visible-for-admin-and-editor-roles_ELITEA-1903.md`
+(`ready-for-automation`, admin half only) and
+`test-specs/agents/l2_build-with-ai-button-not-visible-for-viewer-role_ELITEA-1904.md`
+(`blocked` outright, no admin-side half — same underlying gap).
 
 ## See also
 
