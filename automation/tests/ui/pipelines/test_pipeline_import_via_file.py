@@ -106,6 +106,7 @@ def test_pipeline_import_via_file(page, pipeline_api):
     original_pipeline_id = None
     imported_pipeline_id = None
     original_yaml = None
+    original_llm_node = None
     original_step_limit = None
     download_path = None
 
@@ -162,6 +163,19 @@ def test_pipeline_import_via_file(page, pipeline_api):
             original_server = pipeline_api.get_pipeline(original_pipeline_id)
             original_yaml = yaml.safe_load(original_server["version_details"]["instructions"])
             original_step_limit = pipeline_page.get_step_limit()
+
+            # Independent, absolute proof of the canvas node wiring this step
+            # created — not just a value later diffed against the import
+            # (Step 7). A single-LLM-node pipeline's default (unedited)
+            # transition is the literal "END" (see
+            # test_pipeline_yaml_flow_sync.py / test_pipeline_edge_deletion.py /
+            # test_pipeline_yaml_editor_invalid_syntax.py for the same
+            # baseline, confirmed live).
+            original_llm_node = next(n for n in original_yaml["nodes"] if n["type"] == "llm")
+            assert original_llm_node["transition"] == "END", (
+                "Newly created LLM node should wire to END by default (no "
+                f"downstream node added), got: {original_llm_node['transition']!r}"
+            )
 
         with allure.step(
             "Step 2 — Export the pipeline via the three-dot menu; verify a "
@@ -296,7 +310,7 @@ def test_pipeline_import_via_file(page, pipeline_api):
             assert imported_yaml.get("entry_point") == original_yaml.get("entry_point"), (
                 "Imported pipeline's entry_point should match the original"
             )
-            original_llm_node = next(n for n in original_yaml["nodes"] if n["type"] == "llm")
+            # original_llm_node was extracted + independently asserted in Step 1
             imported_llm_node = next(n for n in imported_yaml["nodes"] if n["type"] == "llm")
             assert imported_llm_node["id"] == original_llm_node["id"], (
                 "Imported LLM node id/label should match the original"
