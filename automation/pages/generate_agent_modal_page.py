@@ -105,6 +105,17 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
         description="Review-form Name field (editable before creation)",
     )
 
+    # Name field's client-side validation helper text — added for ELITEA-1913
+    # (GenerateAgentReviewForm.jsx's Name field had zero data-testid on its
+    # MUI FormHelperText element before this case; see the ELITEA-1913 AFS
+    # Concrete Handles — threaded through Input.InputBase's new
+    # `helperTextTestId` prop, same pattern as `tooltipTestId`/
+    # `tooltipContentTestId` in that shared component).
+    review_name_helper_text = LocatorDescriptor(
+        testid="generate-agent-review-name-helper-text",
+        description="Review-form Name field's validation helper text (e.g. \"Name must be 32 characters or less\")",
+    )
+
     review_description_input = LocatorDescriptor(
         testid="generate-agent-review-description-input",
         description="Review-form Description field (editable before creation)",
@@ -173,6 +184,24 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
     def get_review_name(self) -> str:
         """Return the current value of the review-form Name field."""
         return self.review_name_input.input_value()
+
+    def is_review_name_invalid(self) -> bool:
+        """Whether the review-form Name field currently carries
+        `aria-invalid="true"` (added for ELITEA-1913 — the 32-char maximum
+        validation state)."""
+        return self.review_name_input.get_attribute("aria-invalid") == "true"
+
+    def review_name_helper_text_visible(self) -> bool:
+        """Whether the Name field's validation helper text element is
+        rendered at all (added for ELITEA-1913 — MUI's `FormHelperText`
+        only mounts when `helperText` is truthy)."""
+        return self.review_name_helper_text.count() > 0
+
+    def get_review_name_helper_text(self) -> str:
+        """Return the Name field's validation helper text content. Call
+        `review_name_helper_text_visible()` first — the element may not
+        exist (added for ELITEA-1913)."""
+        return self.review_name_helper_text.text_content() or ""
 
     def get_review_description(self) -> str:
         """Return the current value of the review-form Description field."""
