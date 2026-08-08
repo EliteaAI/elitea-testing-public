@@ -532,6 +532,31 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   handle for asserting a newly-created agent appears in `/agents/all` — no Build-with-AI test used
   it before ELITEA-1914.
 
+## Build with AI — edited review-form values persist into the created agent (ELITEA-1912 run, 2026-08-08)
+- Editing all 5 review-form fields (Name/Description/Instructions/Welcome
+  Message/first Chat-starter, via the existing `.click()`+`.fill()` on their
+  testid-only locators) and THEN clicking "Create Agent" produces a created
+  agent whose detail-page fields carry the EDITED values, not the original
+  generated-draft values — live-confirmed end-to-end (real `applications`
+  POST → 201, no mocking of the create step). No functional defect.
+- The auto-navigation URL's `name` query param already reflects the edited
+  name (`?...&name=<edited>&viewMode=owner`), an early live signal usable
+  before the detail page even finishes mounting.
+- Same network contract as ELITEA-1914's plain-approve finding above: only
+  `generate_application_draft` + `applications` POSTs fire, no relation
+  calls — editing the fields first doesn't change which calls fire.
+- Welcome Message and the first Chat-starter both have a SECOND,
+  independent confirmation channel beyond the detail-page form field: the
+  embedded chat panel on the created agent's own page renders the edited
+  Welcome Message as its greeting text, and the edited starter as a
+  clickable starter tile — useful as an extra assertion if a test wants
+  UI-rendered confirmation, not just `input_value()`.
+- `AgentDetailPage`'s "Delete agent" flow needs the typed-name confirm
+  dialog: `agent-actions-menu-button` → `delete-agent-menuitem` → type the
+  exact agent name into `delete-confirm-name-input` (enables
+  `delete-confirm-button`, disabled until the typed name matches) →
+  confirm. Redirects to `/agents/create` on success.
+
 ## Build with AI — Suggested Resources have NO client-side display cap (ELITEA-1910 run, 2026-08-08)
 - **`ResourceSuggestions.jsx` renders every item in its `items` array unconditionally**
   (`items.map(...)`, no `.slice()`/count guard) — confirmed by source grep across
