@@ -44,6 +44,7 @@
 - [wait_for_chat_response header text false-stable](wait_for_chat_response_header_text_false_stable.md) — low-effort agents: header/thought-accordion text can lock in as "stable" before the answer renders
 - [Search highlighting breaks exact text= locators](search_highlight_breaks_exact_text_locator.md) — read entity-card-name testid + .text_content() instead, on any entity-card list page
 - [Name field 32-char silent truncation](pipeline_agent_name_field_32char_silent_truncation.md) — agent-name-input caps at 32, no error; keep generated names ≤32 chars
+- [Build-with-AI review Name 32-char BLOCKS approve](build_with_ai_review_form_name_32char_validation_blocks_approve.md) — unlike above, disables Create Agent button, not silent
 - [Save As Version is never dirty-gated](pipeline_save_as_version_quirks.md) — don't assert it disabled at baseline; ReactFlow always renders a synthetic END node too
 - [Signal-parity claims need an assertion diff](afs_signal_parity_claim_needs_assertion_diff.md) — "same N-signal pattern" prose ≠ same assert list; diff them
 - [Page-object API delete needs Bearer fallback on localhost](page_object_api_delete_needs_bearer_fallback_on_localhost.md) — self.page.request has no cookies there; 400s silently without it
