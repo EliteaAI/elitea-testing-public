@@ -340,3 +340,35 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
             create_response.status, skill_get_response.status, skill_patch_response.status,
         )
         return create_response, skill_get_response, skill_patch_response
+
+    # ------------------------------------------------------------------
+    # Create Agent (review step -> created agent) with NO resources
+    # selected — ELITEA-1914. A plain draft (no suggested resources
+    # rendered at all — see the ELITEA-1914 AFS Test Steps) never fires
+    # any toolkit/agent-relation or skill GET/PATCH call, so waiting on
+    # them the way click_approve_and_wait_for_creation() /
+    # click_approve_and_wait_for_skill_creation() do would hang
+    # indefinitely (both enter every expect_response context manager in
+    # one `with` block). This helper waits ONLY on the base-agent create
+    # POST, matching the plain-approve flow's actual network contract.
+    # ------------------------------------------------------------------
+
+    @action("Click Create Agent (no resources)")
+    def click_approve_and_wait_for_agent_created(self, timeout: int = 15000):
+        """Click "Create Agent" and wait for the base-agent create (POST)
+        only — the correct wait for a plain draft with no suggested
+        resources selected (or none rendered at all), where no
+        toolkit/agent-relation or skill GET/PATCH call ever fires.
+
+        Returns:
+            The base-agent create response.
+        """
+        with self.page.expect_response(
+            lambda r: "/elitea_core/applications/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as create_info:
+            self.approve_button.click()
+
+        create_response = create_info.value
+        logger.info("Create Agent (no resources): create=%d", create_response.status)
+        return create_response
