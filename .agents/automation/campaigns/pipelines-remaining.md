@@ -18,9 +18,16 @@
 - Waves: **wave-01-node-type-configs (8 cases) LANDED** — elitea-testing-public#1329, merged `0206a8ef`,
   8/8 automated (1 sanctioned-RED: ELITEA-2047 vs #1327, deterministic 3/3), TMS back-written (8 cases,
   Form C), closure comment posted on #1297, campaign card updated.
-  **wave-02-lifecycle-dashboard-version (10 cases) launching** — Run ID: wf_101d0ba3-47f (task wgcf6elq8).
+  **wave-02-lifecycle-dashboard-version (10 cases) LANDED** — elitea-testing-public#1343, merged
+  `6e1b1128`. 8 clean-green + 1 sanctioned-RED (ELITEA-2051 vs #570) + 1 already-covered (ELITEA-2063,
+  dedup vs ELITEA-2002's spec, PR #1308). Internal gate this time produced a real verdict (green, 3/3,
+  found a SECOND undeclared sanctioned-RED itself — ELITEA-2022 vs #1332 — correctly per the closed-set
+  variant); lead still ran an independent from-scratch N=3 + both sanctioned-REDs 3x each per standing
+  practice. TMS back-written (9 cases + 1 already-covered pointer), closure comment posted, campaign
+  card updated.
   wave-03 through wave-07 (37 cases) — PLANNED, not yet launched (see Plan)
-- Campaign totals so far: 8/55 automated (7 clean-green + 1 sanctioned-RED-with-linked-defect), 47/55 remaining
+- Campaign totals so far: 18/55 terminal — 17 automated (2 sanctioned-RED: ELITEA-2047 vs #1327,
+  ELITEA-2051 vs #570) + 1 already-covered (ELITEA-2063). 37/55 remaining across wave-03..07
 - **Operator directive 2026-08-08T13:42:41Z: "Proceed with all waves till you complete."** — running
   wave-02..07 sequentially without further per-wave checkpoints; only stopping early for a real blocker
   (question/bug protocol).
@@ -132,3 +139,26 @@ lead before launching wave-01).
   filings.
   Closure comment posted on #1297. Card → `Ready`. 8 unit branches deleted (squash-merge auto-delete);
   batch trunk `tests/batch-pipelines-remaining-w1` deleted with the PR merge.
+- 2026-08-08T13:42 Operator: "Proceed with all waves till you complete." Card Approved → In Progress.
+  sync-base-branches re-run (all 3 branches still current, smoke 2/2 green). wave-02 launched
+  (10 cases), Run ID wf_101d0ba3-47f (task wgcf6elq8) written immediately.
+- 2026-08-08T20:00 wave-02 workflow completed (~5.7h wall clock, 48 agents, 7.78M tokens, 2157 tool
+  calls). This time the INTERNAL GATE completed with a real verdict (green, 3/3, 363/354/374s) —
+  no stall/recovery needed. It also self-discovered a SECOND sanctioned-RED not in the dispatch's
+  declared list (ELITEA-2022 vs new defect #1332, redirect no-op) while reading the spec diff, applied
+  the closed-set variant correctly, and flagged it explicitly for the lead. Lead still ran an
+  independent from-scratch gate per standing practice: N=3 on the green-required set (6 new files +
+  full test_pipeline_management.py minus the 1 deselected sanctioned-red test) — 21 passed/1 deselected
+  all 3 runs (357.9/349.6/352.6s); both sanctioned-RED specs (ELITEA-2051 vs #570, and
+  test_delete_pipeline_via_ui_menu vs #1332) run 3x separately each — identical deterministic failure
+  every time. Blast radius: reviewed diff of both touched page objects — purely additive (one benign
+  import-list expansion only), no separate blast-radius spec needed beyond what's already in the
+  green-required set. PR elitea-testing-public#1343 merged (`6e1b1128`). TMS back-written: 9 automated
+  cases (Form C, self-checked against the lead's own JUnit output — all MATCH after fixing one mapping
+  slip on first pass — ELITEA-2050 was initially miskeyed to the wrong test file, caught before
+  committing) + 1 already-covered pointer (ELITEA-2063 → ELITEA-2002's pre-existing test + its original
+  PR #1308, not this wave's PR). Testid provenance: 3 new commits on
+  EliteaAI/EliteaUI@automation/testids (467fed43 ELITEA-2051, f83557e4 ELITEA-2049, 257cd359 ELITEA-2012)
+  — all 4 touched component files differ from `main`, none promoted yet. Closure comment posted on
+  #1297. Card stays In Progress (operator directive is running-until-complete — no Ready checkpoint
+  between waves this time). Launching wave-03 next.
