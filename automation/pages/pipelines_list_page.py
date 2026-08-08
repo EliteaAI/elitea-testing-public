@@ -70,6 +70,39 @@ class PipelinesListPage(BasePage):
         description="Pipeline card name (title) — collection locator, one per visible card",
     )
 
+    # Shared Card.jsx outer wrapper testid (also used by Agents/Credentials/
+    # Skills list pages — see SkillsListPage.skill_card for the identical
+    # per-card scoping pattern, ELITEA-2013 AFS Concrete Handles). Scopes
+    # per-card queries (e.g. that card's own tag chips) without an
+    # xpath-ancestor/CSS-class hack. Collection locator, one per visible card.
+    entity_card = LocatorDescriptor(
+        testid="entity-card",
+        description="Pipeline card outer container — scopes per-card queries",
+    )
+
+    # "Clear all" button in the page-header Tags filter panel
+    # (Categories.jsx) — only rendered while a tag filter is active. Same
+    # shared component/testid as SkillsListPage.tags_panel_clear_all
+    # (ELITEA-1740), confirmed live for the Pipelines dashboard (ELITEA-2013
+    # AFS Concrete Handles).
+    tags_panel_clear_all = LocatorDescriptor(
+        testid="tags-panel-clear-all",
+        description=(
+            "\"Clear all\" button in the page-header Tags filter panel "
+            "(Categories.jsx) — only rendered while a tag filter is active."
+        ),
+    )
+
+    # Dynamic (runtime-parameterized) testid template — Tags filter panel's
+    # per-tag chip (Categories.jsx StyledChip), same shared component as
+    # SkillsListPage.TAGS_PANEL_CHIP. See ``filter_by_tag()``.
+    TAGS_PANEL_CHIP = '[data-testid="tags-panel-chip-{}"]'
+
+    # Scoped sub-selector — a pipeline card's own (non-overflow) tag chip.
+    # Same shared CardTagSectionItem.jsx testid as SkillsListPage.CARD_TAG_CHIP.
+    # See ``get_card_tags()``.
+    CARD_TAG_CHIP = '[data-testid="entity-card-tag-chip"]'
+
     # Shared CreateEntityButton.jsx testid (also used by Agents/Toolkits/
     # Credentials/Chat list pages — see ToolkitsListPage.sidebar_create_button
     # for the identical pattern). Confirmed live (ELITEA-2020 implementer
@@ -322,6 +355,103 @@ class PipelinesListPage(BasePage):
         except Exception:
             return []
         return [self.entity_card_name.nth(i).text_content() or "" for i in range(self.entity_card_name.count())]
+
+    def get_card_tags(self, pipeline_name: str) -> list[str]:
+        """Return the tag chip texts currently rendered on a specific pipeline's card.
+
+        LOCATOR: each tag chip carries its own ``entity-card-tag-chip``
+        testid, set on ``CardTagSectionItem``'s root element (rendered via
+        ``CardTagSection.jsx``) — distinct from the "+N" overflow badge,
+        which carries ``entity-card-tag-overflow`` instead. Scoped to the
+        specific card via the ``entity-card`` container testid on
+        ``Card.jsx``'s outer wrapper, filtered to the card whose
+        ``entity-card-name`` matches ``pipeline_name`` — so two cards
+        can't cross-contaminate each other's tags. Mirrors
+        ``SkillsListPage.get_card_tags()`` (ELITEA-1740) — same shared
+        component tree, confirmed live for the Pipelines dashboard
+        (ELITEA-2013 AFS Concrete Handles).
+
+        Args:
+            pipeline_name: The pipeline's exact name shown on its card
+                (case-insensitive substring match, consistent with
+                :meth:`pipeline_exists_in_list`).
+
+        Returns:
+            List of tag text strings currently rendered on that card, in
+            display order. Empty list if the card isn't found.
+        """
+        card_name = self.entity_card_name.filter(
+            has_text=re.compile(re.escape(pipeline_name), re.IGNORECASE)
+        ).first
+        if card_name.count() == 0:
+            return []
+        card = self.entity_card.filter(has=card_name).first
+        tag_labels = card.locator(self.CARD_TAG_CHIP)
+        return [
+            (tag_labels.nth(i).text_content() or "").strip()
+            for i in range(tag_labels.count())
+        ]
+
+    def filter_by_tag(self, tag_name: str, timeout: int = 10000):
+        """Click a tag chip in the page-header "Tags" filter panel.
+
+        LOCATOR: the Tags-panel chip (``StyledChip`` in
+        ``EliteaUI/src/components/Categories.jsx``) carries a dynamic
+        ``tags-panel-chip-{name}`` testid via the :attr:`TAGS_PANEL_CHIP`
+        template constant. Mirrors ``SkillsListPage.filter_by_tag()``
+        (ELITEA-1740) — same shared component, different grid-refetch URL
+        substring (``applications`` vs ``skills``, confirmed live via
+        ELITEA-2025's Network Behavior — ELITEA-2013 AFS).
+
+        Waits for the grid-fetching endpoint
+        (``GET .../elitea_core/applications/prompt_lib/{project}?...``) to
+        re-fire with the new ``tags=<id>`` query param before returning —
+        the URL updates synchronously via React Router, but the grid
+        re-render depends on the API round trip.
+
+        Args:
+            tag_name: Tag chip text to click (e.g. ``"smoke"``).
+            timeout: Maximum wait time in milliseconds for the grid response.
+        """
+        logger.info("Filtering pipelines by tag: %r", tag_name)
+        with self.page.expect_response(
+            lambda r: "/elitea_core/applications/prompt_lib/" in r.url
+            and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            self.page.locator(self.TAGS_PANEL_CHIP.format(tag_name)).click()
+        # The response resolving doesn't guarantee the grid has re-rendered
+        # yet (RTK Query → Redux store → React re-render is one more tick) —
+        # see SkillsListPage.filter_by_tag() docstring for the identical gotcha.
+        self.wait_for_network(timeout=5000)
+        self.page.wait_for_timeout(300)
+        logger.info("Tag filter applied: %r — URL: %s", tag_name, self.page.url)
+
+    def clear_tag_filter(self, timeout: int = 10000):
+        """Click "Clear all" in the Tags filter panel to reset the filter.
+
+        LOCATOR: "Clear all" (``Tooltip`` wrapping an ``IconButton`` in
+        ``Categories.jsx``) carries a static ``tags-panel-clear-all``
+        testid — only rendered while a tag filter is active. Mirrors
+        ``SkillsListPage.clear_tag_filter()`` (ELITEA-1740).
+
+        Waits for the grid-fetching endpoint to re-fire with the ``tags``
+        param cleared before returning.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the grid response.
+        """
+        logger.info("Clearing tag filter")
+        with self.page.expect_response(
+            lambda r: "/elitea_core/applications/prompt_lib/" in r.url
+            and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            self.tags_panel_clear_all.click()
+        # See filter_by_tag() docstring — grid re-render lags the response.
+        self.wait_for_network(timeout=5000)
+        self.page.wait_for_timeout(300)
+        logger.info("Tag filter cleared — URL: %s", self.page.url)
 
     def pin_toggle_button(self, pipeline_id) -> Locator:
         """Return the card's "Pin to top"/"Unpin from top" icon button for *pipeline_id*.

@@ -29,11 +29,19 @@
 - Use a shared `uuid.uuid4().hex[:8]` suffix per test run (mirrors
   `test_skill_tag_filter.py`'s pattern) so tag names don't collide with a
   pre-existing project tag of the same literal text across repeated runs —
-  e.g. `regression-<suffix>`, `smoke-<suffix>`, `integration-<suffix>`. This
+  e.g. `regression_<suffix>`, `smoke_<suffix>`, `integration_<suffix>`
+  (**underscore separator, NOT hyphen** — amended during implementation:
+  confirmed live that a hyphenated tag name silently fails to commit as a
+  chip. Root cause read from source, `EliteaUI/src/common/constants.js`:
+  `NormalTagNameInputRegExp = /^[\w,\s]+$/g` — `\w` allows letters, digits,
+  and underscore only; no hyphen. Typing a hyphenated tag and pressing Enter
+  leaves the Tags field with zero chips and no visible error, which would
+  otherwise silently no-op the case's own tag-add assertions). This
   analyst session used bare `e2013regression`/`e2013smoke`/`e2013integration`
-  for a one-off manual probe; the implementer's automated test should
-  uuid-suffix them for repeatability across CI runs (a stale `regression` tag
-  from run N would otherwise pollute run N+1's exact-membership assertions).
+  for a one-off manual probe; the implementer's automated test uuid-suffixes
+  them (underscore-separated) for repeatability across CI runs (a stale
+  `regression` tag from run N would otherwise pollute run N+1's
+  exact-membership assertions).
 - Confirmed live: typing a tag name that **exactly matches an existing
   project tag** and pressing Enter reuses that tag's existing id (TagEditor's
   `handleOnChangeTags`: `tagList.rows.find(t => t.name === tag.name) || tag`)
@@ -80,10 +88,14 @@ detail page's three-dot menu → Delete pipeline confirmation dialog.)
    carries this run's `regression` tag) (case Step 5).
 6. Clear the filter again (`clear_tag_filter()`). **Verify** — confirmed
    live: URL reverts to bare `/pipelines/all` (no `tags` query param); the
-   full unfiltered pipeline count is restored (dashboard's own "Pipelines: N"
-   counter in the right panel returns to its pre-filter value; both
-   disposable pipelines plus every other pre-existing pipeline are visible
-   again) (case Step 6).
+   full unfiltered pipeline count is restored — both disposable pipelines
+   plus every other pre-existing pipeline are visible again, proven by
+   `get_card_names()` (testid-backed `entity-card-name`) returning to the
+   exact same set captured at Step 3 before any filter was applied (case
+   Step 6). **Amended during implementation** — see § Known Defects Found
+   During Exploration #3: the "Pipelines: N" widget originally proposed as
+   the count-restored proof does not reflect grid/filter state at all, so
+   `get_card_names()` set-equality is the real assertion target instead.
 7. **Side-channel check** — zero console errors across the whole
    create → filter → filter → clear flow (confirmed live this session:
    `browser_console_messages` — 0 errors at every checkpoint).
@@ -109,7 +121,7 @@ detail page's three-dot menu → Delete pipeline confirmation dialog.)
 | 3 Navigate to Pipelines dashboard | Dashboard loads with all pipelines visible | step 3 | `pipeline_exists_in_list()` for both names + card tag chips (`entity-card-tag-chip`) | asserted |
 | 4 Filter by tag "smoke" — verify only "tagged_pipe_1" appears | Only "tagged_pipe_1" is shown | step 4 | `filter_by_tag("smoke")` → `get_card_names() == [pipeline_1_name]` + URL `?tags[]=smoke` | asserted |
 | 5 Filter by tag "regression" — verify both pipelines appear | Both pipelines are shown | step 5 | `clear_tag_filter()` then `filter_by_tag("regression")` → `get_card_names()` contains both | asserted |
-| 6 Remove tag filter — verify all pipelines are listed | All pipelines are visible without filtering | step 6 | `clear_tag_filter()` → URL has no `tags` param, dashboard count restored | asserted |
+| 6 Remove tag filter — verify all pipelines are listed | All pipelines are visible without filtering | step 6 | `clear_tag_filter()` → URL has no `tags` param + `get_card_names()` set-equal to the Step-3 pre-filter baseline (dashboard count restored) | asserted |
 | Expected Final State: tag filtering correctly narrows/restores the list | — | steps 4–6 | steps 4–6 | asserted |
 | Pass/Fail: all steps complete without errors; filters correctly include/exclude | — | all steps | all steps + console-error check | asserted |
 
@@ -200,10 +212,55 @@ for the pipelines vs skills network-URL substring.
   family as `PipelineAPI.delete_pipeline()`'s `DELETE .../application/{id}`).
 
 ## Known Defects Found During Exploration
-None. The case automates cleanly against the live product — tag creation,
-per-tag filtering (single-match and shared-tag two-match), and filter-clear
-all behave exactly as specced, using entirely pre-existing, entity-agnostic
-testids.
+None blocking. The case automates cleanly against the live product — tag
+creation, per-tag filtering (single-match and shared-tag two-match), and
+filter-clear all behave exactly as specced, using entirely pre-existing,
+entity-agnostic testids.
+
+**Amended during implementation (two findings, neither blocking):**
+1. **Tag-name charset constraint (implementer Phase 2 exploration).** The
+   shared `TagEditor`/`AutoCompleteDropDown` validates new tag names against
+   `NormalTagNameInputRegExp = /^[\w,\s]+$/g`
+   (`EliteaUI/src/common/constants.js`) — alphanumerics, underscore, comma,
+   whitespace only; **no hyphen**. A hyphenated uuid-suffixed tag name (as
+   originally specced in § Test Data) silently fails to commit as a chip —
+   zero chips render, Enter does nothing visible, no error surfaces. Fixed
+   by uuid-suffixing with an underscore separator instead
+   (`regression_<suffix>`) — see § Test Data amendment. Not filed as a
+   product defect: the underlying validation is intentional and documented
+   in the component's own help text ("Only alphanumeric characters, white
+   space, comma and underscore allowed"); this is a test-data-shape fix, not
+   a live-product/case-text drift.
+2. **Known, not-filed cosmetic React dev-mode console warning** — same as
+   already documented for Skills (ELITEA-1740 AFS Known Defects #2): a
+   single `Warning: Invalid value for prop 'sx' on <svg> tag` fires from
+   `TagEditor.jsx`'s shared `SvgCheckedIcon`/`ListItemIcon` when selecting/
+   re-typing an existing tag name from the Autocomplete dropdown (Pipeline
+   2's "regression" reuses Pipeline 1's tag). No user-visible symptom, no
+   functional impact — filtered by the implementer's console-error listener
+   the same way `test_skill_tag_filter.py` does, so it doesn't mask a real
+   regression on this or future runs.
+3. **"Pipelines: N" widget does NOT reflect grid/filter state — Coverage Map
+   row 6 corrected (implementer fix-round-1, live DOM investigation).** This
+   analyst session's Step 6 wording assumed a "dashboard's own 'Pipelines: N'
+   counter in the right panel" that tracks the filtered grid. Live
+   investigation (navigate to `/pipelines/all`, walk the DOM for the text
+   node) found the element: a floating "Test Bot" card in the bottom-right
+   corner, showing `Pipelines: 12` — but it carries **no `data-testid`**, and
+   confirmed live that clicking the `automation` tag filter (grid narrowing
+   from 12 cards to 2) left this widget's count unchanged at `12` — i.e. it
+   is a static per-project total unrelated to the Tags filter panel
+   entirely, not the "returns to its pre-filter value" signal the case Step
+   6 wording implied. Not a product defect (the widget isn't claimed
+   anywhere to track the filtered grid); this is case-text/AFS drift,
+   corrected per the reverse-masking guard rather than asserted against a
+   testid-less, filter-unrelated element. **Fix:** the "dashboard count
+   restored" proof is now `get_card_names()` (testid-backed
+   `entity-card-name`) returning the exact same set of pipeline names at
+   Step 6 as the baseline captured at Step 3, before any filter was ever
+   applied — this is what "the full unfiltered pipeline count is restored"
+   actually means for case Step 6, and it uses an existing, already-audited
+   testid-only handle. See `test_pipeline_tags_add_and_filter.py` Step 3/6.
 
 ## Blocked Steps
 None. All 6 case steps automate cleanly against the live product. No
