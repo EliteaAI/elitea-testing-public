@@ -2,8 +2,59 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2036 combined
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2038 combined
 > analysis+implementation).
+
+## Agent node — own component (NOT a `BaseToolNode.jsx` caller), single-select-as-toolkit, TASK-only input mapping, DIFFERENT attach endpoint (confirmed live, 2026-08-08, ELITEA-2038)
+
+`AgentNode.jsx` is its OWN standalone component — unlike Toolkit/MCP (which
+share `BaseToolNode.jsx`'s `TEST_ID_PREFIX_BY_NODE_TYPE` map), it renders its
+own JSX tree directly: `FlowEditorSelect.ToolSelect` (label "Agent",
+`filterTypes: tool => tool.type === ToolTypes.application.value`) →
+`FlowEditorSelect.InputSelect` → `FlowEditorSelect.OutputSelect` →
+`FlowEditorSettings.InputMapping` (gated `{!isOrphan && ...}`, same
+two-stage-reveal as Toolkit/MCP) → `FlowEditorSettings.CommonInterruptSettings`
+with `showStructuredOutput={false}` (so Structured output NEVER renders for
+this node type — permanent, not a testid gap). Confirmed live: **zero testids
+existed on this component before this session** — added a local
+`AGENT_NODE_TESTID_PREFIX = 'pipeline-agent-node'` constant (same shape as
+`BaseToolNode.jsx`'s prefix, but as a standalone const since AgentNode has no
+map to key into) wiring 6 fields (Agent select, Input/Output selects,
+Input-mapping value/type/required-heading, Interrupt-after toggle) —
+`EliteaAI/EliteaUI@2859a9d0` on `automation/testids`.
+
+- **Attaching an Agent to the Tools section uses a DIFFERENT endpoint from
+  Toolkit/MCP**, despite sharing the same `ToolMenu.jsx` UI and the same
+  `toolkit-menu-item`-testid popper rows. Toolkit/MCP attach fires
+  `PATCH .../tool/prompt_lib/{project}/`; Agent attach fires
+  `PATCH .../application_relation/prompt_lib/{project}/{agent_id}/{agent_version_id}`
+  (`useAgentPipelineAssociation.hooks.js`'s `updateApplicationRelation`
+  mutation) — confirmed via source read AND live network capture, both
+  return `201 Created` and both auto-persist immediately on popper
+  selection (same *behavior*, different *mechanism* — a test asserting the
+  wrong endpoint string would silently never resolve its
+  `page.expect_response()` wait and time out instead of failing fast on a
+  wrong assertion).
+- **The Agent-as-tool's Input-mapping schema has exactly ONE required key,
+  `task` (displayed "Task"), and ZERO optional keys** — confirmed live:
+  "Input mapping (required 1)" renders with no sibling "optional" accordion.
+  Its Type select's **default value is already "F-String"** (`fstring`), NOT
+  "Fixed" like every sibling node's tool-parameter Input-mapping fields —
+  confirmed live via DOM read before any interaction. A case describing "set
+  Type to F-String" is describing the pre-existing default, not an action;
+  document as a clarification, don't treat as a defect.
+- **Same custom-state-var precondition as every other node-config case in
+  this family** (Code/2009, State modifier/2035, Custom/2036, MCP/2037):
+  Input/Output combos list only `input`/`messages` on a fresh pipeline —
+  variables the case's Test Data table implies as pre-existing must be added
+  via the STATE panel's "+" control first (`add_state_variable()`).
+- **Save + full page reload correctly persists** Agent selection, Input (both
+  multi-select variables), Output, and TASK Type+Value (confirmed live
+  round-trip this session, zero console errors at every checkpoint). Same
+  `PUT .../application/prompt_lib/{project}/{id}` → `201` mechanism as every
+  other pipeline-node-configuration case in this family.
+- Full flow, handles, and page-object gap list:
+  `test-specs/pipelines/l2_pipeline-agent-node-integration_ELITEA-2038.md`.
 
 ## Custom node — SAME component tree as Toolkit node + a unique raw-JSON dual view (confirmed live, 2026-08-08, ELITEA-2036)
 
