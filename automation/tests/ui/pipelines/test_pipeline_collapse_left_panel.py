@@ -15,12 +15,19 @@ assertion about node type/count), then:
 4. Clicks the same toggle again -> asserts the panel returns to its EXACT
    original width and every section remounts (visible again).
 
-Collapse/expand is a pure client-side ``useState`` toggle (confirmed live via
-source read of ``GeneralFormPanel.jsx`` and a live browser probe — no XHR/
-fetch fires for either click) — the test asserts zero console errors and
-zero pipeline-persist network requests across the whole sequence, same
-"pure client-side operation" class as the canvas zoom/pan/control-panel
-cases in this suite (ELITEA-2019/2057).
+Collapse is a pure client-side ``useState`` toggle with zero network
+implications (confirmed live: unmounting a component fires no fetch).
+Expanding again REMOUNTS ``PipelineConfigurationForm`` — including the TOOLS
+section (``ApplicationTools``) — which legitimately refetches its own
+read-only supporting data (tags/tools/toolkits/applications lists) on
+mount; this is normal React remount behavior, not a persisted side effect
+of the toggle itself. The test therefore asserts zero console errors across
+the whole sequence, and zero pipeline-PERSIST (``PUT``) requests
+specifically (the meaningful guard: this purely-visual toggle must never
+trigger an accidental save) — same "pure client-side operation" class as
+the canvas zoom/pan/control-panel cases in this suite (ELITEA-2019/2057),
+narrowed to the PUT method once live evidence showed the remount's own GET
+refetches are expected, not a defect.
 """
 
 import allure
@@ -75,11 +82,12 @@ def test_collapse_and_expand_left_configuration_panel(page, pipeline_llm_code_en
         baseline_canvas_width = pipeline_page.canvas_wrapper.bounding_box(timeout=UI_ELEMENT_TIMEOUT)["width"]
 
         # Registered right after the step-1 baseline (not before) so the
-        # canvas's own initial-load fetch isn't counted — collapse/expand is
-        # a pure client-side toggle (AFS Network Behavior) and must fire
-        # neither console errors nor pipeline network requests.
+        # canvas's own initial-load fetch isn't counted. Collapse/expand
+        # must never fire console errors or a pipeline-PERSIST (PUT) call —
+        # expand's own read-only GET refetches (TOOLS section remount) are
+        # expected and NOT captured here (AFS Network Behavior).
         console_errors = pipeline_page.capture_console_errors()
-        toggle_requests = pipeline_page.capture_requests_matching(PIPELINE_NETWORK_SUBSTRING)
+        persist_requests = pipeline_page.capture_requests_matching(PIPELINE_NETWORK_SUBSTRING, method="PUT")
 
     with allure.step(
         "Step 3/4 — Click the collapse button, verify the panel shrinks and its sections unmount"
@@ -97,9 +105,9 @@ def test_collapse_and_expand_left_configuration_panel(page, pipeline_llm_code_en
                 f"Configuration section {name!r} should be unmounted (count 0) while the panel is collapsed"
             )
         assert not console_errors, f"Collapsing the panel should not introduce console errors: {list(console_errors)}"
-        assert not toggle_requests, (
-            "Collapsing the panel is a pure client-side toggle — expected zero "
-            f"pipeline network requests, got: {list(toggle_requests)}"
+        assert not persist_requests, (
+            "Collapsing the panel must never trigger a pipeline PUT (persist) call — "
+            f"got: {list(persist_requests)}"
         )
 
     with allure.step("Step 5 — Verify the canvas area expands to fill the freed space"):
@@ -121,11 +129,13 @@ def test_collapse_and_expand_left_configuration_panel(page, pipeline_llm_code_en
         )
 
         for name, locator in _config_sections(pipeline_page):
-            assert locator.first.is_visible(), f"Configuration section {name!r} should be visible again after expanding the panel"
+            assert locator.first.is_visible(), (
+                f"Configuration section {name!r} should be visible again after expanding the panel"
+            )
         assert not console_errors, f"Expanding the panel should not introduce console errors: {list(console_errors)}"
-        assert not toggle_requests, (
-            "Expanding the panel is a pure client-side toggle — expected zero "
-            f"pipeline network requests, got: {list(toggle_requests)}"
+        assert not persist_requests, (
+            "Expanding the panel must never trigger a pipeline PUT (persist) call "
+            f"(read-only GET refetches from the TOOLS section remount are expected) — got: {list(persist_requests)}"
         )
         console_errors.stop()
-        toggle_requests.stop()
+        persist_requests.stop()
