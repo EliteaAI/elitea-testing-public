@@ -200,3 +200,5 @@ lead before launching wave-01).
   #1297. Card stays In Progress. Launching wave-05 next.
 - 2026-08-09T04:45 wave-05-chat-panel (7 cases) launched. **Run ID: wf_0e4dae17-105** (task w41f7n4ly).
   Polling in-turn for completion.
+- 2026-08-09T04:48 Hard failure at 130s (task w41f7n4ly): triage agent never called StructuredOutput.
+  Verified nothing landed (no branches created). Resumed same runId, new task w99k1v4ic. Polling.
