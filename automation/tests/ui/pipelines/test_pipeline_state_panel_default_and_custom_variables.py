@@ -2,6 +2,8 @@
 
 TMS: ELITEA-2042
 (test-specs/pipelines/l2_pipeline-state-panel-default-and-custom-variables_ELITEA-2042.md)
+Also covers TMS: ELITEA-2044
+(test-specs/pipelines/lextend_pipeline-state-panel-delete-custom-variable_ELITEA-2044.md)
 
 Opens the STATE side panel on a fresh pipeline, verifies the two default
 immutable variables (`input`/`messages`) render name + a checked toggle with
@@ -25,6 +27,16 @@ Testids for the STATE panel's per-row controls (name label, toggle, delete,
 type-select button, and the type dropdown's 4 menu items) did not exist
 before this case and were added via `add-data-testid`,
 EliteaAI/EliteaUI@d120871f.
+
+`test_state_panel_delete_custom_variable` (ELITEA-2044, extend-existing —
+test-specs/pipelines/lextend_pipeline-state-panel-delete-custom-variable_ELITEA-2044.md)
+extends this file: it exercises the custom row's own delete (trash) button —
+which ELITEA-2042 deliberately left unexercised (only its ABSENCE on the
+default rows was in scope there) — confirms the row disappears with zero
+network requests and no confirmation dialog, that the default rows still
+render no delete control, and that the removal persists in the YAML `state:`
+section after Save. No new testid was needed; only a new page-object click
+method (`PipelineDetailPage.click_state_variable_delete`).
 """
 
 import logging
@@ -196,4 +208,79 @@ def test_state_panel_default_and_custom_variables(page, pipeline_id):
         assert option_testids == expected_option_testids, (
             f"LLM node's Input select should offer exactly {expected_option_testids!r}, got {option_testids!r}"
         )
+        assert not console_errors, f"No step should introduce console errors: {console_errors}"
+
+
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+    "automated-full-regression-ui/pipelines/"
+    "ELITEA-2044_pipeline-state-panel-delete-custom-variable.md",
+    "onetest-ai Test Case link",
+)
+@pytest.mark.p2
+def test_state_panel_delete_custom_variable(page, pipeline_id):
+    """STATE panel: a custom variable's delete button removes it; defaults stay immutable; removal persists in YAML."""
+    project_id = str(settings.elitea_project_id)
+    pipeline_page = PipelineDetailPage(page)
+
+    console_errors = []
+    page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+
+    with allure.step(f"Step 1 — Open a pipeline with a custom state variable ({_CUSTOM_VARIABLE_NAME!r})"):
+        pipeline_page.navigate(pipeline_id)
+        pipeline_page.wait_for_canvas()
+        pipeline_page.open_state_panel(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.add_state_variable(_CUSTOM_VARIABLE_NAME, timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_state_variable_name_text(_CUSTOM_VARIABLE_NAME, timeout=UI_ELEMENT_TIMEOUT) == (
+            _CUSTOM_VARIABLE_NAME
+        ), f"{_CUSTOM_VARIABLE_NAME!r} row should be present in the STATE panel before deletion"
+
+    with allure.step(f"Step 2 — Locate the trash icon (delete) button next to {_CUSTOM_VARIABLE_NAME!r}"):
+        assert pipeline_page.is_state_variable_delete_button_present(_CUSTOM_VARIABLE_NAME), (
+            f"Custom variable {_CUSTOM_VARIABLE_NAME!r} should render a delete (trash) control"
+        )
+
+    with allure.step("Step 3 — Click trash icon; verify the variable is removed from the panel"):
+        pipeline_page.click_state_variable_delete(_CUSTOM_VARIABLE_NAME, timeout=UI_ELEMENT_TIMEOUT)
+        assert not pipeline_page.is_state_variable_present(_CUSTOM_VARIABLE_NAME), (
+            f"{_CUSTOM_VARIABLE_NAME!r} should be removed from the STATE panel immediately after clicking delete"
+        )
+
+    with allure.step("Step 4 — Verify default 'input'/'messages' still render NO delete control"):
+        for variable_name in _DEFAULT_VARIABLES:
+            assert not pipeline_page.is_state_variable_delete_button_present(variable_name), (
+                f"Default variable {variable_name!r} should still render NO delete control "
+                "after a custom variable was added and removed"
+            )
+
+    with allure.step("Step 5 — Save the pipeline; verify no console errors and a 201 Created response"):
+        pipeline_page.close_state_panel(timeout=UI_ELEMENT_TIMEOUT)
+        save_response = pipeline_page.save_and_wait_for_update(
+            project_id, pipeline_id, timeout=SAVE_RESPONSE_TIMEOUT
+        )
+        assert save_response is not None, "Save should return the persisted pipeline version"
+        assert not console_errors, f"Save should not introduce console errors: {console_errors}"
+
+    with allure.step(
+        f"Step 6 — Switch to Yaml view; verify the 'state:' section no longer includes {_CUSTOM_VARIABLE_NAME!r}"
+    ):
+        pipeline_page.switch_to_yaml_view()
+        pipeline_page.yaml_editor.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        yaml_text = pipeline_page.get_yaml_content()
+        parsed = yaml.safe_load(yaml_text)
+        state_section = parsed.get("state") or {}
+
+        assert _CUSTOM_VARIABLE_NAME not in state_section, (
+            f"YAML state section should NOT include {_CUSTOM_VARIABLE_NAME!r} after deletion+save, "
+            f"got keys: {list(state_section)!r}"
+        )
+        assert state_section.get("input", {}).get("type") == "str", (
+            f"YAML state.input.type should still be 'str', got: {state_section.get('input')!r}"
+        )
+        assert state_section.get("messages", {}).get("type") == "list", (
+            f"YAML state.messages.type should still be 'list', got: {state_section.get('messages')!r}"
+        )
+
+        pipeline_page.switch_to_flow_view()
+        pipeline_page.wait_for_canvas()
         assert not console_errors, f"No step should introduce console errors: {console_errors}"

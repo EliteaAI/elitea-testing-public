@@ -38,7 +38,7 @@ re-run catches races. And a red rerun is triage input, not an automatic
 - **When a test's own comment names a race class and guards ONE transition,
   check every structurally identical transition** for the same guard.
 
-## Seen 6×
+## Seen 7×
 
 - PR #693/ELITEA-2095 R2 — 4 claimed-green sessions; 5 fresh runs gave 2 FAILED/3 PASSED: unpolled Context Budget read + missing `wait_for_generation_complete()` at one of two identical transitions.
 - PR #693/ELITEA-2095 R3 — 15 runs: 14 GREEN/1 RED; the red was an unattributable console 500 with a 123 s vs ~55 s duration outlier that never recurred across 8 instrumented follow-ups ⇒ APPROVED, non-blocking note.
@@ -46,6 +46,7 @@ re-run catches races. And a red rerun is triage input, not an automatic
 - PR #639/ELITEA-1839 — retry mitigation judged by reading its body, re-reading `Artifacts.jsx`, and 10 runs in which the race fired live once; the surviving finding was the un-amended AFS (#638 never reached it).
 - PR #670/ELITEA-1866 R3 — "the nit predates this PR" false (file created by the PR, 2 commits, both in-PR); re-running `ruff` over all touched files surfaced 2 more undisclosed-but-genuinely-pre-existing nits.
 - PR #630/ELITEA-1895 — mandatory rerun on a decorator-only diff caught an intermittent flake (Step 8 `get_name()` after a URL-only `verify_on_detail_page()`); out of the dedup claim's scope ⇒ approved, filed #631. Durable: `verify_on_detail_page()` is URL-only and is NOT a substitute for `wait_for_page_load()`.
+- PR #1369/ELITEA-2056 — PR body pasted the mandatory mechanical-grep self-check and claimed "→ 0 hits". Independently re-running the IDENTICAL command (`git diff <base>...HEAD -- automation/ | grep -nE '...\.locator\('`) against the merge-base-scoped diff produced 1 hit: `show_context_diagram_container.locator("svg")` — a raw CSS tag selector chained off a `LocatorDescriptor` field, inline in the SPEC file, not a page-object method. The codebase already has the correct sanctioned-#579 shape for this exact scenario (`ChatPage.MERMAID_NODE` class constant + `get_diagram_node_count()` page-object method) — the implementer didn't reuse it. Lesson: a implementer's pasted "0 hits" is a claim like any other Run Report line — re-run it yourself before trusting it, even (especially) when it's presented as pre-verified evidence.
 
 See also: reviewer_must_independently_rerun_not_trust_run_report_green.md ·
 independent_rerun_failure_needs_triage_not_auto_block.md ·

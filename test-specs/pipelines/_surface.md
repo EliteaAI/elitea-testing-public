@@ -2,7 +2,140 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2071 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2064 analysis).
+
+## Tools section "+ Pipeline" button — 4th ADD trigger, no testid before this session, same auto-persist mechanism as Agent attach (confirmed live, 2026-08-09, ELITEA-2064)
+
+`ToolMenu.jsx`'s Tools section (`agent-toolkits-section`) renders 4 independent ADD
+triggers — Toolkit, MCP, Agent, **Pipeline** — sharing one `UnifiedDropdown` popper
+component and one flat attached-item list (`agent-toolkit-card`), same "no sub-tab"
+root cause already documented for MCP (`#1149`) and Agent (`#530`) above.
+
+- **The "+ Pipeline" `BaseBtn` had ZERO attributes beyond `variant`/`startIcon`/
+  `disabled`/`onClick`** — no testid existed anywhere on it before this session
+  (confirmed via source read of `ToolMenu.jsx` lines ~638-660). Added
+  `data-testid="agent-add-pipeline-button"` this session, naming mirrors the
+  pre-existing sibling `agent-add-agent-button`/`agent-add-toolkit-button`/
+  `agent-add-mcp-button` (same shared component, same `agent-` prefix) —
+  `EliteaAI/EliteaUI@e2130cf4` on `automation/testids` (awaiting human promotion to
+  `main`).
+- **Selecting a pipeline in the popper auto-persists immediately via
+  `PATCH .../application_relation/prompt_lib/{project}/{pipeline_id}/{version_id}`
+  → `201`** — the SAME endpoint/mechanism the Agent picker uses
+  (`useAgentPipelineAssociation.hooks.js`'s `updateApplicationRelation`, called with
+  `isPipeline=true`; confirmed via source read of `ToolMenu.jsx`'s
+  `pipelineMenuItems` → `handleAssociateAgent(pipeline, true)`), **NOT** the
+  Toolkit/MCP picker's `PATCH .../tool/prompt_lib/{project}/` endpoint or the
+  Toolkit picker's defer-to-Save behavior. Confirmed live: attaching pipeline id
+  8676 (version 8938) to pipeline id 8675 (project 399) fired exactly
+  `PATCH .../application_relation/prompt_lib/399/8676/8938` → `201`.
+- **The pipeline's own `Save` button (`agent-save-button`) stays disabled after
+  the attach** — same behavior as the Agent-node Tools-section attach (ELITEA-2038):
+  the attach's own PATCH already persisted everything, so there is no local dirty
+  state left for Save to act on. A case describing "Save Pipeline A" after an attach
+  is describing an inert click, not a state-changing one — assert Save's disabled
+  state, don't click it.
+- **Popper rows share the same `toolkit-menu-item` testid** as every other
+  `UnifiedDropdown` popper (Toolkit/MCP/Agent/Pipeline) — confirmed via source
+  (`UnifiedDropdown.jsx:308,344`) and live click-through this session.
+- Full flow + page-object gap list:
+  `test-specs/pipelines/l2_pipeline-attach-pipeline-as-tool_ELITEA-2064.md`.
+
+## Information section "Show" link — new testid, opens a Mermaid modal (NOT navigation), deterministic console defect on single-node diagrams (confirmed live, 2026-08-09, ELITEA-2056)
+
+Confirmed live via `page.request` (Bearer `VITE_DEV_TOKEN`) + Playwright MCP against
+three disposable single-LLM-node probe pipelines (ids 8669/8670/8671, `instructions`
+YAML matching the `pipeline_with_llm_id` fixture exactly):
+
+- **The Information section's Pipeline ID / Version ID / Trigger rows all resolve
+  exactly as the ELITEA-2020/ELITEA-2041 digest entries already document** — no new
+  findings there. `copy-id` text == the pipeline's numeric id, `copy-version-id` text
+  == the version's numeric id, `information-trigger-row` text ==
+  `"Trigger:Chat Message"` (default trigger, no literal space — CSS flex `gap`, same
+  as ELITEA-2041's finding).
+- **Copy ID / Copy Version ID both fire a real `toastInfo` (info-severity `toast-alert`)
+  with DISTINCT wording** — confirmed live: `"The ID has been copied to the
+  clipboard."` for Copy ID, `"The Version ID has been copied to the clipboard."` for
+  Copy Version ID. Both are pure client-side `navigator.clipboard.writeText()` calls
+  (`CopyToClipboardButton.jsx`) — zero network requests, same class as the
+  ELITEA-2026 YAML-copy button.
+- **The "Pipeline: Show" link had NO testid anywhere** (`ApplicationInformation.jsx`,
+  the `showPipeline`-guarded block — same conditional shape as the pre-existing
+  `information-trigger-row`). Added `data-testid="pipeline-information-show-link"`
+  this session (`EliteaAI/EliteaUI@22184211`, `automation/testids`), confirmed live
+  via HMR immediately after push.
+- **Clicking "Show" does NOT navigate anywhere — it opens a `Dialog` modal**
+  (`StyledShowContextModal`, `contextLabel="Pipeline"`, `renderContextAsMermaid`)
+  rendering the pipeline's YAML as a Mermaid diagram. **Case-text drift** (not a
+  product defect, reverse-masking guard applies): ELITEA-2056's own step 9 says
+  "navigates to pipeline YAML or visual representation" — the product satisfies only
+  the "visual representation" branch, via a modal, not a route change. Assert the
+  modal + diagram, not a URL/navigation.
+- **The modal's Mermaid content is identifiable via the PRE-EXISTING
+  `chat-mermaid-diagram-svg-container` testid** — same shared
+  `MermaidDiagramOutput/DiagramOutput.jsx` component the chat surface already uses,
+  hardcoded testid inside the shared component (tracked naming tech debt per the
+  ELITEA-2053 chat-starters digest entry, NOT fixed here). Confirmed live: resolves
+  to exactly 1 element inside the opened dialog, containing 6 `<svg>` nodes for a
+  single-LLM-node pipeline. Cross-page duplication of the same testid literal across
+  `ChatPage`/`PipelineDetailPage` page objects is an established precedent already
+  (same pattern as `copy-id`/`copy-version-id`/`agent-information-section` duplicated
+  between `AgentDetailPage` and `PipelineDetailPage`).
+- **Deterministic (2/2) console defect on opening the Show-link modal for a
+  single-node pipeline** — `InvalidStateError: Failed to execute 'inverse' on
+  'SVGMatrix': The matrix is not invertible.`, thrown from `svg-pan-zoom`'s
+  `resetZoom` (`SvgPanZoom.zoomAtPoint` → `.zoom` → `.resetZoom` →
+  `DiagramOutput.jsx:298 renderDiagram`). The diagram still renders visually (SVG
+  present) — functionally non-blocking. Filed as
+  [`EliteaAI/elitea-testing-public#1368`](https://github.com/EliteaAI/elitea-testing-public/issues/1368),
+  a **sibling** of the pre-existing `#1045` (same `svg-pan-zoom` library, different
+  call site — #1045 is the in-chat Mermaid **canvas editor**, this is the read-only
+  **Show-link preview**). Any future case that opens this same modal on a
+  minimal/single-node pipeline should expect this error and soft-assert around it
+  with `# Known defect: #1368`, not assert zero console errors unscoped.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-information-section_ELITEA-2056.md`.
+
+## STATE panel — custom variable delete button: no confirm dialog, zero network on click (confirmed live, 2026-08-09, ELITEA-2044)
+
+The custom row's delete (trash) `IconButton` (`pipeline-state-variable-delete-{name}`, already
+added during ELITEA-2042's `add-data-testid` work — no new testid needed for ELITEA-2044) removes
+the row **immediately on click**, with **zero network requests and no confirmation dialog** —
+unlike pipeline/version delete (`DeleteEntityModal`, type-to-confirm). The removal is purely
+client-side editor state; it only persists once Save is clicked (`PUT
+.../application/prompt_lib/{project}/{pipeline_id}` → 201), and the post-save YAML `state:`
+section omits the deleted key entirely (assert by key ABSENCE, not by key count — MODULES-driven
+vars like `input_attachments`, ELITEA-2043, are an orthogonal source of extra keys). Confirmed
+live end-to-end (add `custom_output` → delete it → Save → Yaml view shows only `input`/`messages`)
+on pipeline id 8652. Full detail: `lextend_pipeline-state-panel-delete-custom-variable_ELITEA-2044.md`.
+
+## Attachments module auto-adds/removes an IMMUTABLE `input_attachments` (list) STATE var — instant, zero network, zero new testids (confirmed live, 2026-08-09, ELITEA-2043)
+
+Confirmed live via Playwright MCP on a fresh pipeline (id 8652): clicking the
+"Attachments" MODULES toggle (`agent-canvas-tools-toggle-attachments`) — the
+SAME switch ELITEA-2059 already documents — instantly adds/removes an
+`input_attachments` row in the STATE panel, with a checked toggle and NO
+delete button (same structural immutability as the built-in `input`/
+`messages` rows, ELITEA-2042). Zero Save, zero network requests, zero
+console errors, in either direction. All handles (STATE panel drawer/rows,
+MODULES toggle, Yaml view) already existed from prior cases — no
+`add-data-testid` work needed.
+
+- **Refinement to the ELITEA-2027 digest finding above** ("`state:`
+  top-level key only appears once at least one CUSTOM state variable
+  exists"): enabling Attachments also triggers the `state:` key to render
+  (with `input`/`messages` types now shown too, not just the newly-added
+  `input_attachments`) — even though `input_attachments` isn't a
+  user-added custom variable in the STATE-panel-`+`-button sense. **And the
+  key does NOT revert to fully absent after disabling Attachments again in
+  the same session** — after toggling off, the YAML still shows
+  `state: {input: {type: str}, messages: {type: list}}` rather than no
+  `state:` key at all. Not a defect (the case only needs
+  `input_attachments`'s absence, which holds) — but any assertion here
+  must check for the KEY's absence within `state`, not the whole `state`
+  section's absence, or it becomes session-order-dependent.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-state-panel-attachments-module_ELITEA-2043.md`.
 
 ## "Pipeline tabs" = real BROWSER tabs, not an in-app widget; project-name title suffix is NOT "Private" (confirmed live, 2026-08-09, ELITEA-2062)
 
@@ -1528,6 +1661,25 @@ fields despite the testid existing in the DOM: `agent-welcome-message-input`,
   forwards `data-testid` to the underlying textarea. Label text `"Notes"` is the only
   current handle.
 
+**Resolved during ELITEA-2021 implementation (2026-08-08) — both gaps above are
+CLOSED, this section is stale for them.** `pipeline-step-limit-input`,
+`pipeline-editor-notes-section`, `pipeline-editor-notes-input` all exist as
+`LocatorDescriptor` fields on `PipelineDetailPage` (`automation/pages/pipeline_detail_page.py:1388-1405`)
+and are on `automation/testids` (not yet on `main` — confirmed via fresh `git fetch
+origin` + `git grep`, 2026-08-09). `test_pipeline_create_full_details_persist.py`
+(merged to `origin/automation/base` @ `2ff0fc96`) already exercises the full
+fill→save→reload→persist round trip for both fields via `fill_step_limit()`/
+`get_step_limit()` and `fill_editor_notes()`/`get_editor_notes()`
+(`pipeline_detail_page.py:5588-5627`). **Confirmed during ELITEA-2054/ELITEA-2055
+analysis (2026-08-09): both cases are `already-covered` by that spec** — same
+fields, same Save→reload→re-read mechanism, only the literal step-limit digit
+string / notes text differ, which isn't a distinguishing observable. Traceability
+AFS: `lcovered_pipeline-advanced-step-limit-persist_ELITEA-2054.md` /
+`lcovered_pipeline-editor-notes-persist_ELITEA-2055.md`. A future case asking for
+either field's persistence again should dedup against
+`test_pipeline_create_full_details_persist.py` the same way, not re-derive from
+this now-stale gap list.
+
 ## HITL node — inline config panel (confirmed live, 2026-08-02, ELITEA-2014/2015)
 
 The Human-in-the-loop node (`HITLNode.jsx`) renders its ENTIRE config always
@@ -2846,3 +2998,36 @@ zero console errors).
 - Filed: [`elitea-testing-public#1363`](https://github.com/EliteaAI/elitea-testing-public/issues/1363).
   Full flow: `test-specs/pipelines/l2_pipeline-fullscreen-chat-mode_ELITEA-2071.md`
   (status `defect-found`).
+
+## Attachments MODULES toggle IS server-persisted across Save + reload; attach-button `disabled` attribute lags ~2s behind on the FIRST post-reload render — use auto-retrying assertions (confirmed live, 2026-08-09, ELITEA-2066)
+
+Confirmed live via Playwright MCP (disposable pipeline id 8663, created and
+deleted via UI): toggling `agent-canvas-tools-toggle-attachments` ON, Save,
+then a **hard reload** (`navigate()`, not a same-page re-check) shows the
+toggle's `checked` DOM property correctly `true` immediately — but the
+embedded chat's `chat-attach-button`'s `disabled` attribute can still read
+`true` for up to ~2s after that same reload, before syncing to match (settled
+`disabled=false` confirmed after a short wait). Same lag pattern in the OFF
+direction was NOT observed (disabling synced instantly on the live/unreloaded
+page — ELITEA-2059 already established this) but wasn't specifically
+re-tested post-reload for the OFF direction; treat the lag as a general
+post-reload-mount characteristic of this component pairing, not an ON-only
+quirk.
+
+- **Automation implication:** a one-shot `.is_disabled()` read taken
+  immediately after `wait_for_detail_page_load()`/`wait_for_canvas()` can
+  observe the WRONG (pre-sync) value and produce a flaky false-negative on an
+  otherwise-correct persistence assertion. Use Playwright's auto-retrying
+  `expect(locator).to_be_enabled(timeout=...)` /
+  `.to_be_disabled(timeout=...)` for any post-reload check of
+  `chat_attach_button` — it polls until the DOM settles, absorbing the lag
+  for free. The toggle's own `checked` property does NOT need this treatment
+  (reads correctly immediately).
+- **Not a defect** — the persisted VALUE was always correct on reload in
+  every observation; only the button's own attribute took a moment to catch
+  up. No console errors, zero extra network requests beyond the toggle's
+  existing zero-network-request behavior (ELITEA-2059/ELITEA-2043) and the
+  Save PUT itself.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/lextend_pipeline-modules-attachments-toggle-persists_ELITEA-2066.md`
+  (extends `automation/tests/ui/pipelines/test_pipeline_attach_files_in_chat.py`, ELITEA-2059).

@@ -134,6 +134,42 @@ class PipelineDetailPage(PipelineFormPage):
         description="Version ID text (Information accordion)",
     )
 
+    # Information accordion's "Pipeline: Show" link (ELITEA-2056). Rendered
+    # only when `showPipeline` is passed (ApplicationInformation.jsx),
+    # i.e. pipeline-only — same conditional shape as `information_trigger_row`
+    # above. Had NO testid before this session; added via add-data-testid,
+    # EliteaAI/EliteaUI@22184211. Clicking it opens a modal (NOT a
+    # navigation — confirmed live, see `_surface.md`) rendering the
+    # pipeline's YAML as a Mermaid diagram.
+    information_show_link = LocatorDescriptor(
+        testid="pipeline-information-show-link",
+        description='Information section\'s "Pipeline: Show" link — opens a '
+        "Mermaid-diagram preview modal of the pipeline's YAML",
+    )
+
+    # The Show-link modal's Mermaid diagram content. Reuses the PRE-EXISTING
+    # `chat-mermaid-diagram-svg-container` testid — hardcoded inside the
+    # shared `MermaidDiagramOutput/DiagramOutput.jsx` component that both
+    # Chat (`ChatPage.diagram_svg_container`) and this modal
+    # (`StyledShowContextModal` -> `MermaidDiagramOutput`) render through.
+    # No new testid needed; duplicating the literal across page objects for
+    # a shared-component testid is an established precedent here (same as
+    # `copy-id`/`copy-version-id`/`agent-information-section`, already
+    # duplicated between AgentDetailPage and PipelineDetailPage).
+    show_context_diagram_container = LocatorDescriptor(
+        testid="chat-mermaid-diagram-svg-container",
+        description="Mermaid diagram container inside the Show-link preview modal "
+        "(StyledShowContextModal) — shared testid, also used by ChatPage's own "
+        "mermaid canvas",
+    )
+
+    # Sanctioned #579 exception (third-party widget subtree — the SVG itself
+    # is Mermaid.js-rendered, not app JSX) — scoped raw selector (standard
+    # Mermaid CSS class) as a child of show_context_diagram_container. Mirrors
+    # ChatPage.MERMAID_NODE (chat_page.py) — same shared Mermaid rendering
+    # path, same sanctioned pattern, applied here per ELITEA-2056 review.
+    MERMAID_NODE = ".node"
+
     # --- Version management (Save As Version / VERSION selector, ELITEA-2002).
     # `save_as_version_button` itself is inherited from PipelineFormPage.
     # Same shared components AgentDetailPage's version-management fields
@@ -1319,6 +1355,18 @@ class PipelineDetailPage(PipelineFormPage):
         description="An attached toolkit/MCP card in the TOOLS section"
     )
 
+    # Scoped sub-selectors for a specific attached card (ELITEA-2065) — each
+    # is a raw testid selector, chained off a `toolkit_card`-scoped Locator
+    # at the call site, never a free-floating page-level handle, per
+    # `.agents/testing.md` § Locator policy's dynamic/scoped-selector
+    # convention. `TOOLKIT_CARD_DELETE_BUTTON` is on-main (`ToolCard.jsx`,
+    # already used by `AgentDetailPage.remove_toolkit`); the other two were
+    # added this session (`BaseCardBody.jsx`/`EnhancedCardToolActions.jsx`,
+    # on-`automation/testids` only — `EliteaAI/EliteaUI@c45f1611`).
+    TOOLKIT_CARD_DELETE_BUTTON = '[data-testid="agent-toolkit-delete-button"]'
+    TOOLKIT_CARD_TOOLS_TOGGLE = '[data-testid="toolkit-card-tools-toggle"]'
+    TOOLKIT_CARD_TOOL_ITEM = '[data-testid="toolkit-card-tool-item-{}"]'
+
     # "+ Toolkit" button (ELITEA-2021). Testid already exists in the DOM on
     # `main` (ToolMenu.jsx) and is already a field on AgentDetailPage — only
     # missing here since PipelineDetailPage previously had no Toolkit-attach
@@ -1335,6 +1383,18 @@ class PipelineDetailPage(PipelineFormPage):
     add_agent_button = LocatorDescriptor(
         testid="agent-add-agent-button",
         description='"+ Agent" button in the TOOLS section (ToolMenu.jsx)'
+    )
+
+    # "+ Pipeline" button (ELITEA-2064). Testid did NOT exist anywhere on this
+    # element before this session (ToolMenu.jsx's Pipeline BaseBtn had zero
+    # attributes beyond variant/startIcon/disabled/onClick) — added it this
+    # session, naming mirrors the sibling agent-add-agent-button/
+    # agent-add-toolkit-button/agent-add-mcp-button (same shared ToolMenu.jsx
+    # component, same "agent-" prefix convention) —
+    # EliteaAI/EliteaUI@e2130cf4 on `automation/testids`.
+    add_pipeline_button = LocatorDescriptor(
+        testid="agent-add-pipeline-button",
+        description='"+ Pipeline" button in the TOOLS section (ToolMenu.jsx)'
     )
 
     # TOOLS section MODULES toggle switches (ELITEA-2059) — dynamic per module
@@ -1713,6 +1773,34 @@ class PipelineDetailPage(PipelineFormPage):
             Version ID as string (e.g. ``"8311"``).
         """
         return self.copy_version_id_button.text_content().strip()
+
+    @action("Click the Information section's 'Show' link")
+    def click_information_show_link(self, timeout: int = 10000) -> None:
+        """Click the "Pipeline: Show" link and wait for its preview modal.
+
+        Opens ``StyledShowContextModal`` (NOT a navigation — confirmed live,
+        ELITEA-2056 exploration) rendering the pipeline's YAML as a Mermaid
+        diagram via ``show_context_diagram_container``. Waits for the
+        container itself AND for the diagram's Mermaid nodes to actually
+        render (mirrors ChatPage.wait_for_diagram_rendered, ELITEA-2088) —
+        the container becomes visible before Mermaid populates it, so a
+        node-count check right after only the container wait can race.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the diagram
+                container (and its first rendered node) to become visible.
+        """
+        self.information_show_link.click()
+        self.show_context_diagram_container.wait_for(state="visible", timeout=timeout)
+        self.show_context_diagram_container.locator(self.MERMAID_NODE).first.wait_for(
+            state="attached", timeout=timeout
+        )
+        logger.info("Information section 'Show' link opened the diagram preview modal")
+
+    def get_diagram_node_count(self) -> int:
+        """Return the number of Mermaid diagram node elements currently rendered
+        inside the Show-link preview modal (mirrors ChatPage.get_diagram_node_count)."""
+        return self.show_context_diagram_container.locator(self.MERMAID_NODE).count()
 
     @action("Open the Create version dialog")
     def open_save_as_version_dialog(self, timeout: int = 10000):
@@ -5418,6 +5506,62 @@ class PipelineDetailPage(PipelineFormPage):
         logger.info("Agent '%s' attached", agent_name)
         return response_info.value.json()
 
+    def open_pipeline_popper(self, timeout: int = 10000) -> Locator:
+        """Open the TOOLS section's "+ Pipeline" popper without selecting anything.
+
+        Mirrors :meth:`open_agent_popper` (ELITEA-2038) — ``ApplicationTools.jsx``/
+        ``ToolMenu.jsx`` is the same shared component, and the Pipeline picker's
+        rows carry the same ``toolkit-menu-item`` testid (confirmed live,
+        ELITEA-2064 analysis session).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator of the visible MUI popper (see ``components.mui.Popper``).
+        """
+        logger.info("Opening TOOLS section '+ Pipeline' popper")
+        self.ensure_toolkits_section_visible(timeout=timeout)
+        self.add_pipeline_button.wait_for(state="visible", timeout=timeout)
+        self.add_pipeline_button.click(force=True)
+        return Popper.wait_for(self.page, timeout=timeout)
+
+    def select_pipeline_in_popper(
+        self, popper: Locator, pipeline_name: str, project_id: str, timeout: int = 10000
+    ) -> dict:
+        """Select *pipeline_name* in an already-open "+ Pipeline" popper.
+
+        Same auto-persist mechanism and endpoint as :meth:`select_agent_in_popper`
+        — confirmed live (ELITEA-2064 analysis session) via source read of
+        ``ToolMenu.jsx``'s ``pipelineMenuItems``, which routes pipeline selection
+        through the SAME ``handleAssociateAgent(pipeline, true)`` call
+        (``useAgentPipelineAssociation.hooks.js``) the Agent picker uses — firing
+        ``PATCH .../application_relation/prompt_lib/{project}/{pipeline_id}/{version_id}``,
+        `201 Created`, NOT the Toolkit/MCP picker's ``/tool/prompt_lib/`` PATCH.
+        Waits on that response itself (not a fixed timeout), same discipline as
+        :meth:`select_agent_in_popper`/:meth:`select_mcp_in_popper`.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_pipeline_popper`.
+            pipeline_name: Exact name of the Pipeline to attach.
+            project_id: Project id, used to scope the attach response URL match.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the ``201 Created`` attach PATCH response.
+        """
+        logger.info("Selecting pipeline '%s' in popper", pipeline_name)
+        with self.page.expect_response(
+            lambda r: f"/application_relation/prompt_lib/{project_id}/" in r.url
+            and r.request.method == "PATCH"
+            and r.status == 201,
+            timeout=timeout,
+        ) as response_info:
+            Popper.select_menuitem_by_testid(popper, pipeline_name, self.page, timeout=timeout)
+
+        logger.info("Pipeline '%s' attached", pipeline_name)
+        return response_info.value.json()
+
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit/MCP card is attached in the TOOLS section.
 
@@ -5438,6 +5582,123 @@ class PipelineDetailPage(PipelineFormPage):
             return True
         except Exception:
             return False
+
+    @action("Expand a TOOLS-section card's attached-tools list")
+    def open_toolkit_card_tools(self, toolkit_name: str, timeout: int = 10000) -> None:
+        """Click a TOOLS-section card's "Show tools" toggle to reveal its tool list.
+
+        Only rendered when the attached toolkit/MCP has a non-empty
+        ``settings.selected_tools`` (``BaseCardBody.jsx`` — the card shows
+        its plain description text instead when empty; ``mcp_toolkit_with_tools``
+        always sets ``selected_tools`` at creation, so the toggle is present
+        for every MCP that fixture provisions). ELITEA-2065: the case's
+        "click the attached MCP entry to see its tools/details" step —
+        `toolkit-card-tools-toggle` is on-``automation/testids`` only,
+        added this session (``EliteaAI/EliteaUI@c45f1611``).
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card (scopes the
+                click to that specific card among possibly several attached).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Expanding tools list for TOOLS-section card '%s'", toolkit_name)
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        toggle = card.locator(self.TOOLKIT_CARD_TOOLS_TOGGLE)
+        toggle.wait_for(state="visible", timeout=timeout)
+        toggle.click()
+
+    def is_toolkit_card_tool_listed(
+        self, toolkit_name: str, tool_name: str, timeout: int = 5000
+    ) -> bool:
+        """Check whether *tool_name* is listed in an EXPANDED TOOLS-section card.
+
+        Call after :meth:`open_toolkit_card_tools`. `toolkit-card-tool-item-{tool}`
+        is on-``automation/testids`` only, added this session
+        (``EliteaAI/EliteaUI@c45f1611``, ``EnhancedCardToolActions.jsx``'s
+        ``ToolView``).
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card.
+            tool_name: Raw tool name (schema key, e.g. ``ask_question``).
+            timeout: How long to wait for the item to appear.
+
+        Returns:
+            True if the tool item is visible in the expanded card, False otherwise.
+        """
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        item = card.locator(self.TOOLKIT_CARD_TOOL_ITEM.format(tool_name))
+        try:
+            item.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @action("Remove a toolkit/MCP from the TOOLS section")
+    def remove_toolkit(self, toolkit_name: str, project_id: str, timeout: int = 10000) -> None:
+        """Remove a toolkit/MCP card from the pipeline's TOOLS section.
+
+        Ported from ``AgentDetailPage.remove_toolkit`` — same shared
+        ``ToolCard.jsx``/``DeleteEntityModal.jsx`` components, same
+        ``agent-toolkit-delete-button``/``delete-confirm-*`` testids
+        (both already on-main). Unlike the Agent-page port, this method
+        confirms via the page's own ``delete_confirm_button``/
+        ``delete_confirm_dialog`` fields (already wired here for the
+        pipeline-version-delete flow, ELITEA-2003) instead of the generic
+        ``Dialog`` component helper, since the exact testids are already
+        first-class fields on this page object. Also waits on the
+        disassociate PATCH itself (``useDisassociateToolkit.hooks.js`` /
+        ``api/toolkits.js``'s ``toolkitAssociate`` mutation, same
+        ``.../tool/prompt_lib/{project}/{toolkit}`` endpoint attach uses,
+        this time with ``has_relation: false``) rather than a fixed
+        timeout — mirrors :meth:`select_mcp_in_popper`'s hard-block pattern
+        so a future regression that stops firing this request fails the
+        step loudly instead of silently passing on the DOM-only wait alone.
+
+        Args:
+            toolkit_name: Name of the toolkit/MCP to remove.
+            project_id: Project id, used to scope the disassociate response URL match.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Removing toolkit/MCP '%s' from pipeline TOOLS section", toolkit_name)
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        card.scroll_into_view_if_needed()
+        # The delete button's reveal is a CSS `&:hover` rule scoped to the
+        # card's HEADER row only (`ToolCard.jsx` styles.cardHeader, fixed
+        # ~60px height) — a plain `card.hover()` targets the geometric
+        # center of the whole card, which lands OUTSIDE the header (and so
+        # never reveals the button) once the card is taller than the header
+        # alone, e.g. after :meth:`open_toolkit_card_tools` expanded its
+        # tool list below it. Hover a fixed offset near the top-left corner
+        # instead, so this works whether or not the card is expanded.
+        card.hover(position={"x": 10, "y": 10})
+
+        # No fixed sleep here: the CSS hover-reveal transition is covered by
+        # this wait_for's own polling — `state="visible"` re-checks until the
+        # transition completes (or fails loudly on a real regression) instead
+        # of gambling on a fixed 300ms guess.
+        delete_btn = card.locator(self.TOOLKIT_CARD_DELETE_BUTTON).first
+        delete_btn.wait_for(state="visible", timeout=5000)
+        # A coordinate-based force=True click can land on the (Tooltip-driven)
+        # invisible overlay above this icon instead of the button itself —
+        # confirmed live this session (the click reported success but no
+        # dialog opened). `evaluate("el => el.click()")` dispatches directly
+        # on the element, bypassing the overlay, per `.claude/rules/mui-
+        # patterns.md`'s "Use evaluate() ... for critical actions" guidance.
+        delete_btn.evaluate("el => el.click()")
+
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: f"/tool/prompt_lib/{project_id}/" in r.url and r.request.method == "PATCH",
+            timeout=timeout,
+        ):
+            self.delete_confirm_button.click()
+        self.delete_confirm_dialog.wait_for(state="hidden", timeout=timeout)
+
+        # Wait for the card itself to leave the DOM — React may defer the
+        # Formik state update/re-render past the dialog's own close.
+        card.wait_for(state="hidden", timeout=timeout)
 
     def save_and_wait_for_update(self, project_id: str, pipeline_id: int, timeout: int = 15000) -> dict:
         """Click Save and wait for the update PUT's 201 response.
@@ -7357,6 +7618,36 @@ class PipelineDetailPage(PipelineFormPage):
         the DOM at all — this is a structural guarantee, not a timing race.
         """
         return self.page.locator(self.STATE_VARIABLE_DELETE.format(name)).count() > 0
+
+    def click_state_variable_delete(self, name: str, timeout: int = 5000) -> None:
+        """Click a STATE panel row's delete (trash) button and wait for the row to be removed.
+
+        Testid-based (``STATE_VARIABLE_DELETE``, the same template constant
+        :meth:`is_state_variable_delete_button_present` already uses for its
+        ABSENCE check on default rows) — only present on non-default
+        (custom) rows per the same structural guarantee. Confirmed live
+        (ELITEA-2044): the click removes the row immediately, with ZERO
+        network requests and NO confirmation dialog (unlike pipeline/version
+        delete, which show a type-to-confirm ``DeleteEntityModal``) — the
+        removal is purely client-side editor state until Save. Waits on the
+        row's own name testid (``STATE_VARIABLE_NAME``) going ``hidden`` as
+        the completion signal, testid-only per .agents/testing.md § Locator
+        policy.
+        """
+        locator = self.page.locator(self.STATE_VARIABLE_DELETE.format(name))
+        locator.click(timeout=timeout)
+        self.page.locator(self.STATE_VARIABLE_NAME.format(name)).wait_for(state="hidden", timeout=timeout)
+
+    def is_state_variable_present(self, name: str) -> bool:
+        """Return whether a STATE panel row for *name* currently exists in the DOM.
+
+        Testid-based (``STATE_VARIABLE_NAME``) — used for its ABSENCE
+        (canon ruling #511 extension, absence assertions count as
+        references) to confirm a variable auto-added by a MODULES toggle
+        (e.g. ``input_attachments``, ELITEA-2043) is fully removed from the
+        STATE panel after the toggle is disabled again, not merely hidden.
+        """
+        return self.page.locator(self.STATE_VARIABLE_NAME.format(name)).count() > 0
 
     def click_state_variable_type_select(self, name: str, timeout: int = 5000) -> None:
         """Open a STATE panel row's type-selector dropdown.
