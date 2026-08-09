@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2062 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2071 analysis).
 
 ## "Pipeline tabs" = real BROWSER tabs, not an in-app widget; project-name title suffix is NOT "Private" (confirmed live, 2026-08-09, ELITEA-2062)
 
@@ -2814,3 +2814,35 @@ Confirmed live via Playwright MCP on the shared `test-pipeline` fixture (id 6938
 - **Zero console errors** across the full attach → send → response sequence.
 - Full flow, handles, and Coverage Map:
   `test-specs/pipelines/l2_pipeline-attach-files-in-chat_ELITEA-2059.md`.
+
+## Pipeline chat panel has NO fullscreen-mode toggle — feature-parity gap vs Agent/Skill/Toolkit-Index surfaces (confirmed live + source, 2026-08-09, ELITEA-2071)
+
+Confirmed live via Playwright MCP on pre-existing pipeline `probe-pipeline` (id
+6934): the chat panel header has **no fullscreen/expand button anywhere**.
+The only header icon is a **collapse** toggle (`ChatPanel.jsx`'s
+`onClickCollapsed`, `DoubleLeftIcon`/`DoubleRightIcon` `IconButton`, no
+testid on either `main` or `automation/testids`) that shrinks the chat panel
+itself to a ~28px strip — the opposite direction of "fullscreen," and it does
+**not** touch the left configuration panel (verified: clicking it live left
+every left-panel section — General/Tools/Welcome message/Chat
+starters/Advanced/Editor Notes/Information — fully visible and unchanged;
+zero console errors).
+
+- **Root cause (source, `EliteaAI/EliteaUI` `automation/testids`):** the
+  Agent/Skill/Toolkit-Index chat surfaces each wire a real
+  `FullScreenToggle` component (`src/components/Chat/FullScreenToggle.jsx`)
+  via genuine `useState`-backed `isFullScreenChat`/`setIsFullScreenChat`
+  (`Applications/ConfigurationTab.jsx:220`, `SkillTestPanel.jsx:67`,
+  `IndexChat.jsx:21`). The **Pipeline** surface's own
+  `Pipelines/Components/ConfigurationTab.jsx:205` only carries a hardcoded
+  **dead literal** `isFullScreenChat: false` in the settings object — no
+  state, no setter — and `ChatPanel.jsx` never imports `FullScreenToggle` at
+  all. Looks like a genuine feature-parity gap (stubbed but never wired for
+  Pipelines), not a case-authoring mistake.
+- **If this is ever fixed for Pipelines**, expect the implementation to
+  mirror the Agent surface's wiring closely — check `test-specs/agents/` for
+  a sibling fullscreen-chat AFS first (none existed as of this session)
+  before re-deriving handles.
+- Filed: [`elitea-testing-public#1363`](https://github.com/EliteaAI/elitea-testing-public/issues/1363).
+  Full flow: `test-specs/pipelines/l2_pipeline-fullscreen-chat-mode_ELITEA-2071.md`
+  (status `defect-found`).
