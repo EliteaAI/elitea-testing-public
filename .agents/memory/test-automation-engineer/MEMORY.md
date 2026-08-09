@@ -60,3 +60,4 @@
 - [Wave dispatch case-snapshot dir has no wave suffix](wave_dispatch_case_snapshot_dir_has_no_wave_suffix.md) — check `<campaign>/cases/` before `needs-analyst` on a missing `-w<N>` path
 - [Never amend after a failed husky commit](never_amend_after_a_failed_husky_commit_on_shared_branch.md) — a rejected commit-msg hook still leaves HEAD on someone else's commit; retry fresh, never `--amend`
 - [Toolkit-card delete: hover+overlay+autopersist](toolkit_card_delete_hover_overlay_and_autopersist.md) — header-scoped hover, evaluate-click, Save goes disabled after removal
+- [Open MUI Menu's backdrop intercepts outside clicks](mui_menu_stays_open_backdrop_intercepts_outside_clicks.md) — evaluate-click siblings outside the Paper; skip re-clicking an already-open toggle
