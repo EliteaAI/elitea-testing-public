@@ -847,6 +847,109 @@ def pipeline_code_node_elitea_client_user_info(pipeline_api: PipelineAPI, reques
         logger.warning("Failed to delete Code-node elitea_client user-info pipeline %s: %s", pid, exc)
 
 
+_CODE_NODE_INPUT_FILTERING_INSTRUCTIONS = """\
+entry_point: STATE_A
+state:
+  var_a:
+    type: str
+  var_b:
+    type: str
+  var_c:
+    type: str
+  result:
+    type: str
+nodes:
+  - id: STATE_A
+    type: state_modifier
+    template: 'AAA'
+    variables_to_clean: []
+    input: []
+    output: [var_a]
+    transition: STATE_B
+  - id: STATE_B
+    type: state_modifier
+    template: 'BBB'
+    variables_to_clean: []
+    input: []
+    output: [var_b]
+    transition: STATE_C
+  - id: STATE_C
+    type: state_modifier
+    template: 'CCC'
+    variables_to_clean: []
+    input: []
+    output: [var_c]
+    transition: CODE1
+  - id: CODE1
+    type: code
+    code:
+      type: fixed
+      value: |
+        available_keys = list(elitea_state.keys())
+        has_var_c = 'var_c' in elitea_state
+        result = f"Keys: {available_keys}, has_var_c: {has_var_c}"
+        {"result": result}
+    input: [var_a, var_b]
+    output: [result]
+    structured_output: true
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_code_node_input_filtering(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``STATE_A -> STATE_B -> STATE_C -> CODE1 -> END`` with
+    THREE custom state variables (``var_a``/``var_b``/``var_c``, all str) plus
+    a ``result`` output variable. The three ``state_modifier`` nodes (NOT LLM
+    nodes -- deterministic literals) give ``var_a``/``var_b``/``var_c`` the
+    fixed values ``'AAA'``/``'BBB'``/``'CCC'`` respectively, in that order,
+    before CODE1 runs. CODE1's own ``input:`` DELIBERATELY lists only
+    ``var_a``/``var_b`` -- ``var_c`` is excluded even though it was already
+    set by STATE_C earlier in the SAME run. CODE1 reads
+    ``list(elitea_state.keys())`` and checks ``'var_c' in elitea_state``,
+    writing both into ``result`` as its script's LAST statement, a bare
+    dict-literal expression (same confirmed-live-working convention as
+    :func:`pipeline_llm_reads_state_via_code` / :func:`pipeline_code_node_multi_var_dict_return`).
+
+    Satisfies the ELITEA-2449 precondition. Built via the GENERIC
+    :meth:`PipelineAPI.create_pipeline` (raw YAML ``instructions`` string),
+    same reason the sibling Code-node fixtures use it --
+    :meth:`create_pipeline_with_nodes` has no ``state:`` support. The explicit
+    ``transition:`` per node sidesteps the SAME disconnected-edge build-method
+    gotcha (``EliteaAI/elitea-testing-public#1384``) already documented for
+    ELITEA-2446/2447.
+
+    CONFIRMED LIVE (AFS
+    ``l3_code-node-input-filtering-selective-state-access_ELITEA-2449.md`` §
+    Test Data): ``elitea_state`` inside the Code node's sandbox contains ONLY
+    the variables listed in that node's own ``input:`` -- ``var_c``, though
+    declared in the pipeline's ``state:`` and written by STATE_C earlier in
+    THIS run, is completely absent from ``elitea_state.keys()``. ``var_c``'s
+    own Run Details row still shows a real Before/After value (``"CCC"``) --
+    that row's existence is orthogonal to whether CODE1 itself could read the
+    variable via ``elitea_state``.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2449_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline(
+        name=name,
+        description=f"Auto-created Code-node input-filtering pipeline for test {request.node.name}",
+        instructions=_CODE_NODE_INPUT_FILTERING_INSTRUCTIONS,
+    )
+    pid = pipeline["id"]
+    logger.info("Created Code-node input-filtering pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted Code-node input-filtering pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete Code-node input-filtering pipeline %s: %s", pid, exc)
+
+
 _PARENT_CHILD_STATE_SHARING_CHILD_INSTRUCTIONS = """\
 entry_point: CODE1
 state:

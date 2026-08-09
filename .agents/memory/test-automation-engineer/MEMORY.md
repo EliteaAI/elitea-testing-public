@@ -62,3 +62,4 @@
 - [Toolkit-card delete: hover+overlay+autopersist](toolkit_card_delete_hover_overlay_and_autopersist.md) — header-scoped hover, evaluate-click, Save goes disabled after removal
 - [Open MUI Menu's backdrop intercepts outside clicks](mui_menu_stays_open_backdrop_intercepts_outside_clicks.md) — evaluate-click siblings outside the Paper; skip re-clicking an already-open toggle
 - [Code node timeline label is 'pyodide'](pipeline_run_details_code_node_timeline_label_is_pyodide.md) — not the space-stripped id; LLM/Printer convention doesn't apply
+- [Re-selecting a pre-filled multi-select chip toggles it off](multi_select_reselect_on_prefilled_input_toggles_off.md) — verify YAML-preset Input/Output read-only, don't re-click select_*_variable()

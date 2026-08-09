@@ -122,6 +122,22 @@
    the SECOND call's `open_code_node_input_select()` reopens a genuinely-closed
    popover rather than toggling an already-open one shut. No gotcha here; the
    existing single-selection method composes cleanly for multi-selection.
+   - **IMPLEMENTER AMENDMENT (confirmed live during ELITEA-2449 automation):**
+     the "confirmed live" claim above holds ONLY when the Code node's Input
+     starts EMPTY (the standalone `autotest_2449_probe_uiselect` probe this
+     session used). It does NOT apply to the recommended fixture above, whose
+     YAML pre-sets `CODE1`'s `input: [var_a, var_b]` at pipeline CREATION —
+     re-invoking `select_code_node_input_variable("var_a")` /
+     `("var_b")` against an ALREADY-selected chip TOGGLES IT OFF (a plain
+     `option.click()` on a checked MUI multi-select MenuItem), which
+     empties the Input field instead of confirming it. Confirmed live: the
+     literal test run with those two calls against this fixture produced
+     `get_code_node_input_value() == ""`. The implementer's test therefore
+     treats step 3 as a READ-ONLY verification of the fixture's pre-set
+     state (no `select_code_node_input_variable()` calls), not an active
+     re-selection. This is a CLARIFICATION on the AFS's own automation
+     recommendation, not a product defect — the underlying multi-select
+     toggle behavior is correct MUI semantics.
    - **Verify**: `get_code_node_input_value()` — **IMPLEMENTER NOTE (confirmed
      live): for a TWO-variable selection this returns the chips' text
      CONCATENATED WITH NO SEPARATOR** — `"var_avar_b"`, not `"var_a, var_b"`
@@ -331,12 +347,22 @@ remains unexplained or unautomatable.
   with the raw YAML `instructions` string in this AFS's § Test Data — mirrors
   ELITEA-2447's `state_modifier`-chain pattern (deterministic literals, no LLM
   nondeterminism) combined with ELITEA-2446's create/yield/delete fixture shape.
-- **Multi-select Input flow, confirmed live and safe to use as-is**: call
-  `select_code_node_input_variable("var_a")` then
+- **Multi-select Input flow, confirmed live and safe to use as-is ON AN EMPTY
+  Input ONLY**: call `select_code_node_input_variable("var_a")` then
   `select_code_node_input_variable("var_b")` — each call's internal
   `_select_multi_select_option_and_close()` presses `Escape` and waits for the
   popover to fully close before returning, so the two calls compose cleanly
-  with no toggle-closed race. No new method needed.
+  with no toggle-closed race. No new method needed. **IMPLEMENTER AMENDMENT
+  (confirmed live during ELITEA-2449 automation):** with the recommended
+  fixture below, `CODE1`'s Input is ALREADY `[var_a, var_b]` at pipeline
+  creation (pre-set via YAML) — calling `select_code_node_input_variable()`
+  against an already-selected chip TOGGLES IT OFF, confirmed live
+  (`get_code_node_input_value()` returned `""` after both calls). The
+  implementer's test verifies step 3's pre-set state READ-ONLY instead
+  (`get_code_node_input_value()` substring checks with no prior `select_*`
+  calls); the two-call sequence documented here remains correct advice for a
+  Code node whose Input starts empty (e.g. a freshly-added node, as in
+  ELITEA-2009's own test).
 - **`get_code_node_input_value()` multi-selection display quirk**: confirmed
   live returns `"var_avar_b"` (chips concatenated, no separator) for a
   2-variable selection. Assert via substring/membership checks
