@@ -501,6 +501,20 @@ no product defect. Details in `test-specs/pipelines/l2_pipeline-import-via-file_
   `Type=Variable, Value=input` via the existing shared `select-option-{}` dynamic-testid
   convention. Any pipeline case that needs a working chat execution assertion must configure the
   LLM node's Task field this way — not an import-specific requirement.
+  **Refinement (2026-08-09, ELITEA-2059)**: this fix requires an explicit **Save**
+  (`agent-save-button`) to take effect at execution time — the live formik-state change alone is
+  NOT enough (confirmed: response stayed "I didn't receive any text or image" until Save was
+  clicked, on an otherwise-correctly-mapped Task field). This is DIFFERENT from module-level
+  toggles like "Attachments" (see below), which gate the chat UI's *availability* instantly with
+  no save needed — don't conflate the two when writing setup code. **Also model-specific**: even
+  with the Task fix + Save, the shared fixture `test-pipeline`'s (id 6938) DEFAULT chat model
+  (Anthropic Claude 4.5 Sonnet) still 400s on **every** message, attachment or not —
+  `"No fallback model group found for original model_group=1_eu.anthropic.claude-sonnet-4-5-...".`
+  This is a DEV-backend LLM-provider-routing gap for that one model, not attach/import-specific.
+  Switching to **GPT-5.2** (`pipelines.select_llm_model("GPT-5.2")`) works reliably.
+  `PipelineAPI.create_pipeline_with_llm_node()` already defaults to `settings.default_model_name`
+  = `"gpt-5.2"` (`automation/config.py:196`) — a FRESH pipeline created via that helper avoids
+  this gotcha entirely; only the shared UI fixture needs the manual model switch.
 - **Minor, already-tracked, non-blocking**: the Import Complete dialog's `IWModalSucceedContent.jsx`
   emits a benign React `validateDOMNesting` (`<div>` in `<p>`) console warning — tracked at
   `EliteaAI/elitea-testing-public#570` (originally filed against Agent/Skill import); this session
@@ -2707,3 +2721,59 @@ Confirmed live via Playwright MCP against a fresh pipeline (id `8580`,
   e.g. ELITEA-2017's streaming case).
 - Full flow, handles, and Coverage Map:
   `test-specs/pipelines/l2_pipeline-welcome-message-shown-before-first-input_ELITEA-2052.md`.
+
+## Attach Files in Chat — bare icon `AttachmentButton` call site (NO plus-menu), testid-less; module toggle is instant, Task-field fix needs Save (confirmed live, 2026-08-09, ELITEA-2059)
+
+Confirmed live via Playwright MCP on the shared `test-pipeline` fixture (id 6938):
+
+- **The pipeline's (and Agent's) embedded chat panel renders a DIFFERENT `AttachmentButton`
+  instance than the general Chat page.** ELITEA-2197/2200 (Chat-interface surface) exercise the
+  `showLabel` instance inside `PlusChatButton.jsx`'s Popper `MenuList`
+  (`testId="chat-attach-menuitem-button"`), reached via a "+" plus-menu button. The embedded
+  chat panel (`ChatPanel.jsx` → shared `ChatBox` → `NewChatInput.jsx`, `isAgentsPage=true`)
+  renders **no plus-menu button at all** — confirmed via
+  `document.querySelector('[data-testid="plus-menu-button"]')` returning `null` — and instead
+  renders the **bare, icon-only** `ChatButton.AttachmentButton` directly
+  (`NewChatInput.jsx:272-278`, the `!hideAttachments && !fromTheChat` branch). This bare instance
+  has **zero testid** (`data-testid` attribute is literally `null` on the live DOM node) — needs
+  `add-data-testid` work. Recommended name: `chat-attach-button` — this exact string was
+  previously DEAD/STALE on `ChatPage.attach_files_button` (ELITEA-2197 confirmed zero hits
+  anywhere in `EliteaUI/src`, since re-pointed to `chat-attach-menuitem-button`), freeing it for
+  the call site it always semantically described. `NewChatInput.jsx` is shared chat
+  infrastructure (used by both Agent and Pipeline embedded chat) — name carries no
+  `agent-`/`pipeline-` prefix.
+- **The "Attach Files (N left)" text is a TOOLTIP, not a rendered label**, at this call site
+  (`showLabel` is falsy here) — it's the accessible name via `AttachmentButton.jsx`'s
+  `processStatus` memo (`!showLabel` branch wraps the button in a `<Tooltip title={processStatus}>`).
+  Don't expect a visible `<Typography>` "Attach Files" + counter pair like the Popper's
+  `showLabel` variant renders — assert via `aria-label="attach files"` (static) and read the
+  tooltip/title text only if the counter value itself needs verifying.
+- **The "Attachments" MODULES switch (`agent-canvas-tools-toggle-attachments`) gates the attach
+  button's `disabled` state INSTANTLY, purely client-side, no Save required** — confirmed live:
+  toggling the switch flips the button from `disabled` to enabled with zero network requests,
+  before any Save click. This is `useAgentAttachments`'s `disableAttachments = !internal_tools
+  .includes('attachments')`, read straight from formik's live `version_details.meta.internal_tools`
+  — contrast this with the Task-field execution fix below, which DOES require Save. On
+  `automation/testids` only (`AgentInternalToolSwitch.jsx:108`), absent on `main` — confirmed via
+  `git fetch origin` + `git grep` both refs. `ApplicationTools.jsx` filters
+  `pipelineVisibleTools` to only the `attachments` tool for `isPipeline=true`, so this is the
+  ONLY Modules card a pipeline's Tools accordion ever shows.
+- **A bare `llm`-type node cannot extract an attached file's actual content** — only a path-like
+  reference reaches the model's text context. Confirmed live (model GPT-5.2, Task correctly
+  mapped `type=variable value=input`, pipeline saved): asking the model to quote the attached
+  file's exact text got "I can't access the contents of that attachment from here (I don't have
+  file-browsing access to attachments/…/elitea2059_testfile.txt)." — an honest, correct answer
+  given the node's wiring (its `Toolkits` field is `disabled` on this entry node), NOT an
+  Attach-Files defect. Any case whose Pass criteria require literal content processing (RAG-style
+  summarization etc.) needs an additional toolkit/artifact-reading node — out of scope for a
+  minimal "attach + send" assertion, which should assert response-without-error +
+  filename-acknowledgment instead of literal content-quoting.
+- **The chat's own DEFAULT model on this DEV backend 400s on every message** (see the amended
+  note under "Execution gotcha" above) — same root cause class as the ELITEA-2012 finding, now
+  confirmed to be model-specific (`Anthropic Claude 4.5 Sonnet` has no fallback model group
+  configured) rather than purely a Task-field issue. `GPT-5.2` works reliably; it's also
+  `settings.default_model_name`, so a freshly-`create_pipeline_with_llm_node`-created pipeline
+  sidesteps this without any extra model-switch step.
+- **Zero console errors** across the full attach → send → response sequence.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-attach-files-in-chat_ELITEA-2059.md`.
