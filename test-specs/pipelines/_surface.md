@@ -2,7 +2,20 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2043 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2044 analysis).
+
+## STATE panel — custom variable delete button: no confirm dialog, zero network on click (confirmed live, 2026-08-09, ELITEA-2044)
+
+The custom row's delete (trash) `IconButton` (`pipeline-state-variable-delete-{name}`, already
+added during ELITEA-2042's `add-data-testid` work — no new testid needed for ELITEA-2044) removes
+the row **immediately on click**, with **zero network requests and no confirmation dialog** —
+unlike pipeline/version delete (`DeleteEntityModal`, type-to-confirm). The removal is purely
+client-side editor state; it only persists once Save is clicked (`PUT
+.../application/prompt_lib/{project}/{pipeline_id}` → 201), and the post-save YAML `state:`
+section omits the deleted key entirely (assert by key ABSENCE, not by key count — MODULES-driven
+vars like `input_attachments`, ELITEA-2043, are an orthogonal source of extra keys). Confirmed
+live end-to-end (add `custom_output` → delete it → Save → Yaml view shows only `input`/`messages`)
+on pipeline id 8652. Full detail: `lextend_pipeline-state-panel-delete-custom-variable_ELITEA-2044.md`.
 
 ## Attachments module auto-adds/removes an IMMUTABLE `input_attachments` (list) STATE var — instant, zero network, zero new testids (confirmed live, 2026-08-09, ELITEA-2043)
 
