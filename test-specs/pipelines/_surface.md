@@ -1445,6 +1445,16 @@ pipeline id 8767, `afs_2451_probe2`, deleted at session end):
 - Full flow, handles, and Coverage Map:
   `test-specs/pipelines/l3_run-details-timeline-steps-display_ELITEA-2451.md`.
 
+**Resolved/added during ELITEA-2451 implementation:** both `needs-adding` gaps
+above landed via `add-data-testid`, `EliteaAI/EliteaUI@95b1eada` on
+`automation/testids` (not yet on `main` — human cherry-pick pending): the
+timeline-step dot's `data-status` (`"error"`/`"completed"`, mirroring
+`pipeline-run-details-status-badge`) and
+`pipeline-run-details-timeline-timestamp-{index}` on the per-step `Typography`.
+New fixture `pipeline_three_llm_chain` /
+`build_three_llm_chain_nodes()` added to `automation/fixtures/data_fixtures.py`
+(exact YAML shape as this section's probe pipeline).
+
 ## LLM/HITL node Type+Value field — `Variable` Type swaps the Value field's WIDGET, not just its behaviour (confirmed live, 2026-08-04, ELITEA-2040)
 
 - **`SimpleLLMInputItem.jsx`** (shared across LLM node's SYSTEM/TASK/CHAT HISTORY and HITL's

@@ -1658,6 +1658,16 @@ class PipelineDetailPage(PipelineFormPage):
     RUN_DETAILS_STATE_EXPAND_BEFORE = '[data-testid="pipeline-run-details-state-expand-before-{}"]'
     RUN_DETAILS_STATE_EXPAND_AFTER = '[data-testid="pipeline-run-details-state-expand-after-{}"]'
 
+    # Run Details panel — Timeline Steps Display (ELITEA-2451). Testid added
+    # via add-data-testid, EliteaAI/EliteaUI@95b1eada (app JSX we own, not a
+    # #579 exception): the per-step HH:mm:ss Typography had no handle before.
+    RUN_DETAILS_TIMELINE_TIMESTAMP = '[data-testid="pipeline-run-details-timeline-timestamp-{}"]'
+
+    # No new testid needed for the entry count — a prefix-selector constant
+    # over the ALREADY-EXISTING per-index dot testid (same mechanism as the
+    # pre-existing CHAT_ATTACHMENT_CHIP_PREFIX precedent).
+    RUN_DETAILS_TIMELINE_STEP_PREFIX = '[data-testid^="pipeline-run-details-timeline-step-"]'
+
     # Fullscreen value modal (PipelineStateViewModal.jsx) — feature-scoped
     # literal testids (single consumer, RunStateDialog.jsx).
     run_details_value_modal = LocatorDescriptor(
@@ -7085,6 +7095,70 @@ class PipelineDetailPage(PipelineFormPage):
         text is returned as-is; callers substring-match the expected node id.
         """
         return self.get_run_details_timeline_section_text()
+
+    # ------------------------------------------------------------------
+    # Run Details panel — Timeline Steps Display (ELITEA-2451)
+    # ------------------------------------------------------------------
+
+    def get_run_details_timeline_step_status(self, index: int, timeout: int = 10000) -> str:
+        """Return the timeline-step dot's `data-status` attribute at *index*.
+
+        `"completed"` for a successful run step, `"error"` when the run's
+        overall status is Error — the color is a SINGLE run-level flag applied
+        identically to every step (`ProcessStepIcon.jsx`), not computed per
+        step (AFS ELITEA-2451 step 4 mechanism note).
+
+        Args:
+            index: Zero-based index into the run's timeline.
+            timeout: Maximum wait time for the dot to appear.
+        """
+        dot = self.page.locator(self.RUN_DETAILS_TIMELINE_STEP.format(index))
+        dot.wait_for(state="visible", timeout=timeout)
+        return dot.get_attribute("data-status") or ""
+
+    def get_run_details_timeline_step_node_id(self, index: int, timeout: int = 10000) -> str:
+        """Return the timeline-step dot's hover node-id at *index*.
+
+        Reads the `aria-label` attribute MUI's Tooltip surfaces statically on
+        the trigger element (`title={step.id}`) — present even without a real
+        hover event. The node id renders WITHOUT the YAML id's space
+        (`"LLM 2"` -> `"LLM2"`), same as the Timeline label (ELITEA-2450).
+
+        Args:
+            index: Zero-based index into the run's timeline.
+            timeout: Maximum wait time for the dot to appear.
+        """
+        dot = self.page.locator(self.RUN_DETAILS_TIMELINE_STEP.format(index))
+        dot.wait_for(state="visible", timeout=timeout)
+        return dot.get_attribute("aria-label") or ""
+
+    def hover_run_details_timeline_step(self, index: int, timeout: int = 10000):
+        """Hover the timeline-step dot at *index* (behavioral fidelity with
+        the case's literal "on hover" wording — the node-id assertion itself
+        reads the static `aria-label`, not the rendered popup).
+
+        Args:
+            index: Zero-based index into the run's timeline.
+            timeout: Maximum wait time for the dot to appear.
+        """
+        dot = self.page.locator(self.RUN_DETAILS_TIMELINE_STEP.format(index))
+        dot.wait_for(state="visible", timeout=timeout)
+        dot.hover()
+
+    def get_run_details_timeline_step_timestamp(self, index: int, timeout: int = 10000) -> str:
+        """Return the `HH:mm:ss` timestamp text under the timeline-step dot at *index*.
+
+        Args:
+            index: Zero-based index into the run's timeline.
+            timeout: Maximum wait time for the timestamp element to appear.
+        """
+        timestamp = self.page.locator(self.RUN_DETAILS_TIMELINE_TIMESTAMP.format(index))
+        timestamp.wait_for(state="visible", timeout=timeout)
+        return (timestamp.text_content() or "").strip()
+
+    def get_run_details_timeline_step_count(self) -> int:
+        """Return the total number of timeline-step dots currently rendered."""
+        return self.page.locator(self.RUN_DETAILS_TIMELINE_STEP_PREFIX).count()
 
     def expand_run_details_state_row(self, variable: str, timeout: int = 10000):
         """Click the accordion header for *variable* in the STATES section to
