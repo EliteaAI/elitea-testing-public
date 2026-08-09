@@ -75,10 +75,20 @@ left byte-identical (additive-only contract).
      `is_discard_enabled() is False` immediately after navigation — same
      live-confirmed pattern `test_pipeline_create_version.py` step 1 already
      uses on the identical `pipeline_id` fixture.
-3. Modify the pipeline name (append " modified").
+3. Modify the pipeline name.
    - **Verify**: `get_name()` reflects the new value — *same action/
      assertion shape as the covering test's step 3, reused here because the
      button-state checks in steps 4/5 need this dirty state to exist.*
+   - **Resolved during implementation (2026-08-09):** the case's "e.g.,
+     append ' modified'" example does NOT work with this fixture — the
+     `pipeline_id` fixture names pipelines at exactly the name field's own
+     `maxLength=32` (`MAX_NAME_LENGTH`, `EliteaUI/src/common/constants.js`),
+     so appending any suffix is silently dropped by the browser's maxlength
+     enforcement and the field ends up unchanged (confirmed live: R1 failed
+     with `get_name()` still equal to the original 32-char name). Used a
+     fixed short literal (`"autotest_name_modified"`) instead — same
+     approach the pre-existing covering test's own step 3 already takes,
+     for the same reason.
 4. Verify Save button becomes enabled.
    - **Verify** (NEW): `is_save_enabled() is True` after the name edit —
      confirmed live this session (2026-08-09): flips true immediately
