@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2066 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2054/ELITEA-2055 analysis).
 
 ## STATE panel — custom variable delete button: no confirm dialog, zero network on click (confirmed live, 2026-08-09, ELITEA-2044)
 
@@ -1568,6 +1568,25 @@ fields despite the testid existing in the DOM: `agent-welcome-message-input`,
   `BasicAccordion` item never passes a `testId`, and `Input.StyledInputEnhancer` never
   forwards `data-testid` to the underlying textarea. Label text `"Notes"` is the only
   current handle.
+
+**Resolved during ELITEA-2021 implementation (2026-08-08) — both gaps above are
+CLOSED, this section is stale for them.** `pipeline-step-limit-input`,
+`pipeline-editor-notes-section`, `pipeline-editor-notes-input` all exist as
+`LocatorDescriptor` fields on `PipelineDetailPage` (`automation/pages/pipeline_detail_page.py:1388-1405`)
+and are on `automation/testids` (not yet on `main` — confirmed via fresh `git fetch
+origin` + `git grep`, 2026-08-09). `test_pipeline_create_full_details_persist.py`
+(merged to `origin/automation/base` @ `2ff0fc96`) already exercises the full
+fill→save→reload→persist round trip for both fields via `fill_step_limit()`/
+`get_step_limit()` and `fill_editor_notes()`/`get_editor_notes()`
+(`pipeline_detail_page.py:5588-5627`). **Confirmed during ELITEA-2054/ELITEA-2055
+analysis (2026-08-09): both cases are `already-covered` by that spec** — same
+fields, same Save→reload→re-read mechanism, only the literal step-limit digit
+string / notes text differ, which isn't a distinguishing observable. Traceability
+AFS: `lcovered_pipeline-advanced-step-limit-persist_ELITEA-2054.md` /
+`lcovered_pipeline-editor-notes-persist_ELITEA-2055.md`. A future case asking for
+either field's persistence again should dedup against
+`test_pipeline_create_full_details_persist.py` the same way, not re-derive from
+this now-stale gap list.
 
 ## HITL node — inline config panel (confirmed live, 2026-08-02, ELITEA-2014/2015)
 
