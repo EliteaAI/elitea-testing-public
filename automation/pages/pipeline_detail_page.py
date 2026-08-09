@@ -7358,6 +7358,25 @@ class PipelineDetailPage(PipelineFormPage):
         """
         return self.page.locator(self.STATE_VARIABLE_DELETE.format(name)).count() > 0
 
+    def click_state_variable_delete(self, name: str, timeout: int = 5000) -> None:
+        """Click a STATE panel row's delete (trash) button and wait for the row to be removed.
+
+        Testid-based (``STATE_VARIABLE_DELETE``, the same template constant
+        :meth:`is_state_variable_delete_button_present` already uses for its
+        ABSENCE check on default rows) — only present on non-default
+        (custom) rows per the same structural guarantee. Confirmed live
+        (ELITEA-2044): the click removes the row immediately, with ZERO
+        network requests and NO confirmation dialog (unlike pipeline/version
+        delete, which show a type-to-confirm ``DeleteEntityModal``) — the
+        removal is purely client-side editor state until Save. Waits on the
+        row's own name testid (``STATE_VARIABLE_NAME``) going ``hidden`` as
+        the completion signal, testid-only per .agents/testing.md § Locator
+        policy.
+        """
+        locator = self.page.locator(self.STATE_VARIABLE_DELETE.format(name))
+        locator.click(timeout=timeout)
+        self.page.locator(self.STATE_VARIABLE_NAME.format(name)).wait_for(state="hidden", timeout=timeout)
+
     def is_state_variable_present(self, name: str) -> bool:
         """Return whether a STATE panel row for *name* currently exists in the DOM.
 
