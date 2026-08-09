@@ -196,6 +196,21 @@
   in the popper), not a guaranteed alphabetical or declaration order; pinning
   exact order would make the test brittle to an incidental implementation
   detail, not a real regression.*
+  - **IMPLEMENTER AMENDMENT (found while running this test):** `get_code_node_output_value()`'s
+    returned text has **no separator character at all** between the selected
+    variables' names when 2+ are chipped (confirmed live: 3 selected vars
+    rendered as the literal string `"summarycounttags"`, not `"summary, count,
+    tags"` or `"summary,count,tags"`) — each variable renders as its own MUI
+    chip with no comma/whitespace text node between siblings, so
+    `.split(",")` silently produces a single-item set and fails the
+    order-independent comparison it was meant to enable. The compliant
+    order-independent check is therefore substring-membership + total-length
+    equality (`all(v in output_value for v in vars)` AND
+    `len(output_value) == sum(len(v) for v in vars)`), not a comma-split set
+    comparison — the length check is what keeps it a real assertion (catches
+    an extra/wrong variable) rather than a vacuous "contains" check. Same
+    technique applies to `get_code_node_input_value()` if a future case ever
+    selects 2+ Input variables.
 - **The dedicated fixture uses a `state_modifier` node (not an LLM node) to
   seed `summary`'s starting value** — *added: this makes `count`'s expected
   value (`3`, from `len("Draft summary text".split())`) a stable literal
