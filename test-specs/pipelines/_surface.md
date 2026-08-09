@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2044 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2066 analysis).
 
 ## STATE panel — custom variable delete button: no confirm dialog, zero network on click (confirmed live, 2026-08-09, ELITEA-2044)
 
@@ -2887,3 +2887,36 @@ zero console errors).
 - Filed: [`elitea-testing-public#1363`](https://github.com/EliteaAI/elitea-testing-public/issues/1363).
   Full flow: `test-specs/pipelines/l2_pipeline-fullscreen-chat-mode_ELITEA-2071.md`
   (status `defect-found`).
+
+## Attachments MODULES toggle IS server-persisted across Save + reload; attach-button `disabled` attribute lags ~2s behind on the FIRST post-reload render — use auto-retrying assertions (confirmed live, 2026-08-09, ELITEA-2066)
+
+Confirmed live via Playwright MCP (disposable pipeline id 8663, created and
+deleted via UI): toggling `agent-canvas-tools-toggle-attachments` ON, Save,
+then a **hard reload** (`navigate()`, not a same-page re-check) shows the
+toggle's `checked` DOM property correctly `true` immediately — but the
+embedded chat's `chat-attach-button`'s `disabled` attribute can still read
+`true` for up to ~2s after that same reload, before syncing to match (settled
+`disabled=false` confirmed after a short wait). Same lag pattern in the OFF
+direction was NOT observed (disabling synced instantly on the live/unreloaded
+page — ELITEA-2059 already established this) but wasn't specifically
+re-tested post-reload for the OFF direction; treat the lag as a general
+post-reload-mount characteristic of this component pairing, not an ON-only
+quirk.
+
+- **Automation implication:** a one-shot `.is_disabled()` read taken
+  immediately after `wait_for_detail_page_load()`/`wait_for_canvas()` can
+  observe the WRONG (pre-sync) value and produce a flaky false-negative on an
+  otherwise-correct persistence assertion. Use Playwright's auto-retrying
+  `expect(locator).to_be_enabled(timeout=...)` /
+  `.to_be_disabled(timeout=...)` for any post-reload check of
+  `chat_attach_button` — it polls until the DOM settles, absorbing the lag
+  for free. The toggle's own `checked` property does NOT need this treatment
+  (reads correctly immediately).
+- **Not a defect** — the persisted VALUE was always correct on reload in
+  every observation; only the button's own attribute took a moment to catch
+  up. No console errors, zero extra network requests beyond the toggle's
+  existing zero-network-request behavior (ELITEA-2059/ELITEA-2043) and the
+  Save PUT itself.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/lextend_pipeline-modules-attachments-toggle-persists_ELITEA-2066.md`
+  (extends `automation/tests/ui/pipelines/test_pipeline_attach_files_in_chat.py`, ELITEA-2059).

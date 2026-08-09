@@ -57,3 +57,4 @@
 - [Mechanical grep misses JS-string selectors](mechanical_grep_misses_js_string_embedded_selectors.md) — grep querySelector too on any wait_for_function/evaluate diff
 - [Fixed-value YAML field types by content](chat_history_value_field_serializes_as_yaml_list_not_string.md) — typed "[]" parses as list not str; assert live type, not case wording
 - [Dynamic Tooltip title + child's own aria-label = no clone](mui_tooltip_dynamic_title_needs_slotprops_testid_when_child_has_own_arialabel.md) — read via slotProps.tooltip testid, not aria-label
+- [Wave dispatch case-snapshot dir has no wave suffix](wave_dispatch_case_snapshot_dir_has_no_wave_suffix.md) — check `<campaign>/cases/` before `needs-analyst` on a missing `-w<N>` path
