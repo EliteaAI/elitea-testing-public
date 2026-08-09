@@ -125,6 +125,22 @@ def test_attach_files_in_chat(page, pipeline_with_variable_task_llm_id, tmp_path
         initial_count = pipeline_page.get_embedded_chat_message_count()
         pipeline_page.send_message_in_embedded_chat(_MESSAGE_TEXT, timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.wait_for_embedded_chat_message_count(initial_count + 1, timeout=UI_ELEMENT_TIMEOUT)
+
+        # Read the message at its FIXED index (not .last) — a transient AI
+        # "Waking the agent…" placeholder can already render at
+        # initial_count + 1 before the reply arrives, making .last race-prone
+        # for reading back the user's own just-sent message.
+        sent_message_text = pipeline_page.get_embedded_chat_message_full_text_at(initial_count)
+        assert _MESSAGE_TEXT in sent_message_text, (
+            f"Sent message bubble should show the typed text {_MESSAGE_TEXT!r}, "
+            f"got: {sent_message_text!r}"
+        )
+        sent_attachment_names = pipeline_page.get_embedded_chat_message_attachment_names_at(initial_count)
+        assert test_file.name in sent_attachment_names, (
+            f"Sent message bubble should show an attachment card for {test_file.name!r}, "
+            f"got attachment cards: {sent_attachment_names!r}"
+        )
+
         assert pipeline_page.get_embedded_chat_attachment_chip_count() == 0, (
             "Composer's attachment chip count should reset to 0 immediately after send "
             "(no residual chips left in the composer)"

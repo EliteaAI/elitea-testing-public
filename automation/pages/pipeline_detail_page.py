@@ -541,6 +541,19 @@ class PipelineDetailPage(PipelineFormPage):
     CHAT_ANSWER_CONTENT_SELECTOR = '[data-testid="chat-answer-content"]'
     CHAT_MESSAGE_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
 
+    # Attachment card rendered INSIDE a message bubble (ELITEA-2059 fix
+    # round). Pre-existing testid — same one `AgentDetailPage` already reads
+    # via `get_chat_artifact_file_names()` for AI-created artifact files
+    # (`NormalAttachment.jsx:147`, `data-testid="chat-artifact-file-card"`,
+    # `data-name={attachmentName}`). Confirmed via source read
+    # (`EliteaUI/src/components/Chat/NormalAttachment.jsx`) that the SAME
+    # component renders a user's OWN sent attachment inside
+    # `UserMessage.jsx`'s `MessageAttachmentList` — no wrapping
+    # `chat-artifact-file-list` container on that path (that wrapper is
+    # `ApplicationAnswer.jsx`-only), so the card is scoped directly off the
+    # message `<li>` here, not off a list container.
+    CHAT_ARTIFACT_FILE_CARD_SELECTOR = '[data-testid="chat-artifact-file-card"]'
+
     # Embedded-chat conversation-starter tile (ELITEA-2053) — this page's own
     # call site of the shared `ChatBox` component (`ChatPanel.jsx` mounts the
     # exact same `ChatBox` the Agent Detail page mounts, which renders
@@ -6246,6 +6259,65 @@ class PipelineDetailPage(PipelineFormPage):
         # Last fallback: all text from the message
         text = ai_msg.text_content() or ""
         return text.strip()
+
+    def get_embedded_chat_message_full_text_at(self, index: int) -> str:
+        """Return the RAW ``text_content()`` of the embedded-chat message
+        ``<li>`` at *index* (ELITEA-2059 fix round).
+
+        Reads a SPECIFIC position rather than ``.last`` — same race
+        ``ChatPage.get_message_text_at`` (ELITEA-2369) already documents and
+        avoids: right after Send, a transient AI placeholder ("Waking the
+        agent…") can already render at ``initial_count + 1`` before the
+        reply arrives, so ``.last`` is race-prone for reading back the
+        user's OWN just-sent message at ``initial_count`` — confirmed live
+        this fix round (a first attempt using ``.last`` intermittently read
+        the placeholder's text instead of the sent message).
+
+        Unlike :meth:`get_embedded_chat_last_message` (which extracts only
+        an AI response's answer body via ``div.css-xn5i2e``/``<p>`` tags —
+        wrong shape for a USER message, whose body renders as
+        ``UserMessage.jsx``'s ``.MuiTypography-bodyMedium`` spans instead),
+        this reads the entire message container's text via the EXISTING
+        ``_embedded_chat_messages()`` locator with no new selector
+        construction — sufficient for a substring-containment check (does
+        the just-sent bubble show the typed text) rather than an
+        exact-body extraction.
+
+        Returns:
+            Full raw text of the message ``<li>`` at *index*, or "" if no
+            message exists at that position.
+        """
+        messages = self._embedded_chat_messages()
+        if messages.count() <= index:
+            return ""
+        return (messages.nth(index).text_content() or "").strip()
+
+    def get_embedded_chat_message_attachment_names_at(self, index: int) -> list[str]:
+        """Return the filenames of ``chat-artifact-file-card`` attachment
+        cards rendered INSIDE the embedded-chat message ``<li>`` at *index*
+        (ELITEA-2059 fix round).
+
+        Confirmed via source read (``UserMessage.jsx`` -> ``MessageAttachmentList``
+        -> ``NormalAttachment.jsx``) that a user's own just-sent attachment
+        renders this SAME pre-existing testid/``data-name`` pair that
+        :meth:`AgentDetailPage.get_chat_artifact_file_names` already reads
+        for AI-created artifact files — no new testid needed, just a new
+        scoping call site (the message ``<li>`` directly, no
+        ``chat-artifact-file-list`` wrapper on this render path). Reads a
+        SPECIFIC index for the same reason as
+        :meth:`get_embedded_chat_message_full_text_at` — ``.last`` races
+        against the AI's transient placeholder message.
+
+        Returns:
+            List of attachment filenames (``data-name`` values), in DOM
+            order. Empty list if no message exists at *index* or it has no
+            attachment cards.
+        """
+        messages = self._embedded_chat_messages()
+        if messages.count() <= index:
+            return []
+        cards = messages.nth(index).locator(self.CHAT_ARTIFACT_FILE_CARD_SELECTOR)
+        return [cards.nth(i).get_attribute("data-name") or "" for i in range(cards.count())]
 
     def wait_for_embedded_chat_message_count(self, minimum: int, timeout: int = 10000) -> int:
         """Condition-wait until the embedded chat has at least *minimum* messages.
