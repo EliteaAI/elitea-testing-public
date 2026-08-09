@@ -2490,3 +2490,49 @@ append `?viewMode=owner`, so any test going through the page object is unaffecte
   absence assertions, static-width exact-match).
 
 Full AFS: `test-specs/pipelines/l2_pipeline-collapse-left-panel_ELITEA-2072.md`.
+
+## Embedded chat panel (`ChatPanel.jsx`) — shares components with the main `ChatPage` chat (ELITEA-2017)
+
+Confirmed live (2026-08-09): the pipeline detail page's embedded chat renders
+AI responses through the EXACT SAME component chain as the main conversation
+chat (`ApplicationAnswer.jsx`/`ActionView.jsx`/`RotatingMessages.jsx`) — the
+"Thought for `<n>` secs" accordion + model-chip pattern documented for regular
+chat in `test-specs/chat-interface/l2_streaming-response-progressive-display_ELITEA-2181.md`
+appears identically here (e.g. `GPT-5 mini (LLM1)` chip, same accordion shape).
+Practical consequence: the 6 testids ELITEA-2181 flagged `needs-adding` are
+ALREADY implemented (confirmed via `git grep` on both refs, 2026-08-09) —
+`chat-answer-thought-accordion`, `chat-answer-model-chip`,
+`chat-answer-loading-placeholder`, `chat-copy-button`, `chat-regenerate-button`,
+`chat-answer-pause-scroll-toggle` — on `automation/testids` only (not yet on
+`main`); they work for THIS surface too since localhost serves that branch.
+Any future embedded-chat case needing those elements should treat them as
+already-implemented-pending-promotion, not a fresh gap.
+
+- **Model selector on the embedded chat**: closed button/current-model text
+  resolves via `model-selector-name` testid (on-main ✓); open-dropdown options
+  via the dynamic `model-selector-option-{model-slug}` pattern (e.g.
+  `model-selector-option-gpt-5-mini`), on-main ✓, exact case-text match
+  confirmed for "GPT-5 mini". `PipelineDetailPage` has NO page-object field or
+  `select_model()` method for this yet — mirror `AgentDetailPage`'s existing
+  compliant pattern (`model_selector_button`/`model_selector_name` fields +
+  `MODEL_SELECTOR_OPTION_ANY_SELECTOR` class constant), NOT `ChatPage.model_selector`'s
+  (which carries a forbidden `fallback=` param — pre-existing tech debt, do
+  not copy).
+- **Message send**: `chat-message-input`/`chat-send-button` — same testids as
+  `ChatPage`, already wired on `PipelineDetailPage.chat_input`/`chat_send_button`.
+- **Progressive-text extraction**: `PipelineDetailPage.get_embedded_chat_last_message()`
+  (`pipeline_detail_page.py:5914`) is the direct analogue of `ChatPage`'s body-extraction
+  method — reuse for poll-and-compare progressive-streaming assertions (sample
+  ≥2s apart, assert growth, never shrinks). Internally falls back to a raw CSS
+  class selector (`div.css-xn5i2e`) — pre-existing tech debt, not to be extended.
+- **Observed once (not reproduced): "Token limit reached mid-response. Press
+  'Continue' to see more."** appeared mid-essay on one of two live runs asking
+  for a long response (~730 chars in, well past any reasonable 200-char
+  threshold). Not an error state (no console error, no failed request, no red
+  banner) — a deliberate continuation affordance, likely tied to the pipeline's
+  default/unconfigured LLM max-token budget. Does not reproduce every run (the
+  other run's essay completed naturally at ~1800 chars). Note for any future
+  case asserting FULL response completeness (not just a >200-char minimum):
+  this is a real, intermittent behavior to account for, not a flake to ignore.
+
+Full AFS: `test-specs/pipelines/l2_pipeline-execution-long-response-streaming_ELITEA-2017.md`.
