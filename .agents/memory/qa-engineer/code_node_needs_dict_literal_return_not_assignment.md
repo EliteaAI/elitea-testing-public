@@ -37,3 +37,17 @@ suite already does this). Filed as CLARIFICATION:
 
 Full writeup: `test-specs/pipelines/l3_code-node-read-elitea-state-variables_ELITEA-2446.md`,
 `test-specs/pipelines/_surface.md` § "Code node — execution & build-method gotchas".
+
+**Confirmed on a second, independent fixture (2026-08-09, ELITEA-2447, pipeline
+id 8816):** the SAME bare-dict-literal rule scales cleanly to a MULTI-key dict
+(`{'summary': ..., 'count': ..., 'tags': ...}`, 3 keys of 3 different types) —
+all 3 declared `output:` vars update correctly from ONE execution, no partial
+writes. Also new: a Code node's `output:` list MAY include a variable that is
+ALSO in that same node's `input:` list (`input: [summary]`, `output: [summary,
+count, tags]`) — no validation error, Run Details correctly attributes the
+update to the one node that both read and wrote it. And: a `state_modifier`
+node with a literal Jinja template (no variables) is a good deterministic way
+to seed a Code node's input value when the test needs a stable
+non-LLM-generated string (avoids `len(text.split())`-style assertions being
+LLM-nondeterministic). Full writeup:
+`test-specs/pipelines/l3_code-node-return-dict-multiple-state-vars_ELITEA-2447.md`.

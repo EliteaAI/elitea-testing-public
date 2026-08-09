@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2444 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2447 analysis).
 
 ## Run Details STATES panel — Before/After values are PER-TIMELINE-STEP, not run-level (confirmed live, 2026-08-09, ELITEA-2444)
 
@@ -3339,6 +3339,46 @@ quirk.
 - Full flow, handles, and Coverage Map:
   `test-specs/pipelines/lextend_pipeline-modules-attachments-toggle-persists_ELITEA-2066.md`
   (extends `automation/tests/ui/pipelines/test_pipeline_attach_files_in_chat.py`, ELITEA-2059).
+
+## Code node — multi-key dict return updates several state vars in one execution (confirmed live, 2026-08-09, ELITEA-2447)
+
+Direct follow-on to ELITEA-2446 (below) — same Code-node dict-literal-return
+mechanism, but with THREE state vars of THREE distinct types (`summary`/str,
+`count`/number, `tags`/list) written by ONE Code node in ONE execution, via a
+SINGLE bare dict literal with 3 keys as the script's last statement.
+Confirmed live (fixture pipeline id 8816, `STATE1(state_modifier) → CODE1(code)
+→ END`, deleted at session end):
+
+- **The case's own literal script text is ALREADY the confirmed-working form**
+  — unlike ELITEA-2446's case text (a plain assignment, silently broken), this
+  case's `data = elitea_state.get('summary', '') {'summary': ..., 'count':
+  ..., 'tags': ...}` ends with a bare 3-key dict literal and worked exactly
+  as written, first try. No case-text drift found on this case.
+- **A Code node's Output multi-select accepts a variable that is ALSO in that
+  same node's own `input` list** — `input: [summary]` and
+  `output: [summary, count, tags]` together, confirmed live: no validation
+  error, the combobox renders all 3 chips, and Run Details correctly shows
+  `summary` updated by the SAME node that also read it. New observation, not
+  previously documented for this node family.
+- **All three types render correctly under ONE `pyodide` timeline entry**:
+  `summary` (str) Before `"Draft summary text"` → After
+  `"Draft summary text [processed]"` (string concat); `count` (number) Before
+  `""` (empty — genuinely present, not missing, confirmed via
+  `browser_evaluate`) → After `"3"` (bare numeral, `len(...)` word count);
+  `tags` (list) Before `"[]"` → After `'["processed","automated"]'` (JSON
+  array). Reconfirms ELITEA-2453's per-type `JSON.stringify` rendering rules
+  on a Code node instead of an LLM node, and reconfirms ELITEA-2446's
+  `"pyodide"` timeline-label convention on a second, independent fixture.
+- **A `state_modifier` node (not an LLM node) is the recommended way to seed a
+  deterministic starting value for a variable a Code node will then process**
+  — a fixed Jinja template with no variables (`template: 'Draft summary
+  text'`, `output: [summary]`) sets the value literally, avoiding
+  LLM-response nondeterminism for any downstream assertion that depends on
+  the seeded value's exact content/length (here, `count = len(data.split())`).
+- Console: same already-filed `#1267` Stepper prop-leak warning reproduced,
+  no new defect.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l3_code-node-return-dict-multiple-state-vars_ELITEA-2447.md`.
 
 ## Code node — execution & build-method gotchas (confirmed live, 2026-08-09, ELITEA-2446)
 
