@@ -2,7 +2,44 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2056 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2064 analysis).
+
+## Tools section "+ Pipeline" button — 4th ADD trigger, no testid before this session, same auto-persist mechanism as Agent attach (confirmed live, 2026-08-09, ELITEA-2064)
+
+`ToolMenu.jsx`'s Tools section (`agent-toolkits-section`) renders 4 independent ADD
+triggers — Toolkit, MCP, Agent, **Pipeline** — sharing one `UnifiedDropdown` popper
+component and one flat attached-item list (`agent-toolkit-card`), same "no sub-tab"
+root cause already documented for MCP (`#1149`) and Agent (`#530`) above.
+
+- **The "+ Pipeline" `BaseBtn` had ZERO attributes beyond `variant`/`startIcon`/
+  `disabled`/`onClick`** — no testid existed anywhere on it before this session
+  (confirmed via source read of `ToolMenu.jsx` lines ~638-660). Added
+  `data-testid="agent-add-pipeline-button"` this session, naming mirrors the
+  pre-existing sibling `agent-add-agent-button`/`agent-add-toolkit-button`/
+  `agent-add-mcp-button` (same shared component, same `agent-` prefix) —
+  `EliteaAI/EliteaUI@e2130cf4` on `automation/testids` (awaiting human promotion to
+  `main`).
+- **Selecting a pipeline in the popper auto-persists immediately via
+  `PATCH .../application_relation/prompt_lib/{project}/{pipeline_id}/{version_id}`
+  → `201`** — the SAME endpoint/mechanism the Agent picker uses
+  (`useAgentPipelineAssociation.hooks.js`'s `updateApplicationRelation`, called with
+  `isPipeline=true`; confirmed via source read of `ToolMenu.jsx`'s
+  `pipelineMenuItems` → `handleAssociateAgent(pipeline, true)`), **NOT** the
+  Toolkit/MCP picker's `PATCH .../tool/prompt_lib/{project}/` endpoint or the
+  Toolkit picker's defer-to-Save behavior. Confirmed live: attaching pipeline id
+  8676 (version 8938) to pipeline id 8675 (project 399) fired exactly
+  `PATCH .../application_relation/prompt_lib/399/8676/8938` → `201`.
+- **The pipeline's own `Save` button (`agent-save-button`) stays disabled after
+  the attach** — same behavior as the Agent-node Tools-section attach (ELITEA-2038):
+  the attach's own PATCH already persisted everything, so there is no local dirty
+  state left for Save to act on. A case describing "Save Pipeline A" after an attach
+  is describing an inert click, not a state-changing one — assert Save's disabled
+  state, don't click it.
+- **Popper rows share the same `toolkit-menu-item` testid** as every other
+  `UnifiedDropdown` popper (Toolkit/MCP/Agent/Pipeline) — confirmed via source
+  (`UnifiedDropdown.jsx:308,344`) and live click-through this session.
+- Full flow + page-object gap list:
+  `test-specs/pipelines/l2_pipeline-attach-pipeline-as-tool_ELITEA-2064.md`.
 
 ## Information section "Show" link — new testid, opens a Mermaid modal (NOT navigation), deterministic console defect on single-node diagrams (confirmed live, 2026-08-09, ELITEA-2056)
 
