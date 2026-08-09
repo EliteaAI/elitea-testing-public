@@ -55,17 +55,35 @@ is internally consistent and is what this AFS automates literally.
    - **Verify**: exactly one new node appears; its data-id AND its
      rendered display name both equal `"LLM 1"`.
 3. Add a second LLM node via the Add Node menu.
-   - **Verify**: exactly one new node appears (total node count == 2); its
-     data-id AND rendered display name both equal `"LLM 2"` — the number
-     incremented from the first node of the same type.
+   - **Verify**: exactly one new node appears (total node count == 3 —
+     LLM 1, LLM 2, and the always-present synthetic `END` node that every
+     pipeline canvas renders even when "empty" of user-added nodes; see the
+     `get_node_count()` baseline note below); its data-id AND rendered
+     display name both equal `"LLM 2"` — the number incremented from the
+     first node of the same type.
 4. Add a Code node via the Add Node menu (different type, generalizing the
    case's own "any type" framing — Step 2 of the source case lists "LLM,
    Code, Printer" as example types).
-   - **Verify**: exactly one new node appears (total node count == 3); its
-     data-id AND rendered display name both equal `"Code 1"` — a fresh
-     type's counter starts at 1 independently of the LLM counter already
-     being at 2 (proves per-type numbering, not a single canvas-wide
-     counter).
+   - **Verify**: exactly one new node appears (total node count == 4 —
+     LLM 1, LLM 2, Code 1, and the synthetic `END` node); its data-id AND
+     rendered display name both equal `"Code 1"` — a fresh type's counter
+     starts at 1 independently of the LLM counter already being at 2
+     (proves per-type numbering, not a single canvas-wide counter).
+
+**`get_node_count()` baseline note (END-node offset):** `PipelineDetailPage
+.get_node_count()` counts every `.react-flow__node` element on canvas,
+which includes the synthetic `END` node the platform renders for every
+pipeline regardless of user-added nodes (confirmed:
+`test-specs/pipelines/_surface.md` — `transition: END` is present even for
+a lone node with no outgoing edge). So an "empty" pipeline per this case's
+Preconditions already has 1 node (`END`) before any Add-Node action, and
+the running total after N user-added nodes is N+1, not N. This AFS's Test
+Steps 3/4 and Coverage Map state the resulting totals as 3 and 4 (not the
+user-added-node counts 2 and 3) to match the actual assertion target and
+avoid re-litigating the offset at review; the shipped test's
+`get_node_count() == 3` / `== 4` assertions (with inline comments naming the
+`END` node) are correct as written — no test-code change follows from this
+note.
 
 ## Expected Results
 - Nodes of the same type are auto-named with an incrementing number
@@ -84,7 +102,7 @@ is internally consistent and is what this AFS automates literally.
 | 1 Open a pipeline with a configured node | pipeline open | step 1 | step 1: canvas wrapper visible (see Preconditions note — empty pipeline used, so the case's own literal "LLM 1" example holds) | asserted *(case-text note above — no gap)* |
 | 2 Select/add a node of any type (e.g. LLM) | node added | step 2 | step 2: node count +1, new id captured via before/after diff | asserted |
 | 3 Verify added node name is "&lt;Type&gt; number" (e.g. "LLM 1") | name follows pattern | step 2 | step 2: new node's id AND rendered name both == `"LLM 1"` | asserted |
-| 4 Select/add another node of the same type | second node added | step 3 | step 3: node count +1 (total 2), new id captured via diff | asserted |
+| 4 Select/add another node of the same type | second node added | step 3 | step 3: node count +1 (total 3 — LLM 1, LLM 2, and the always-present synthetic `END` node; see the `get_node_count()` baseline note under Test Steps), new id captured via diff | asserted |
 | 5 Verify node name increments (e.g. "LLM 2") | name increments | step 3 | step 3: new node's id AND rendered name both == `"LLM 2"` | asserted |
 | Objective: "any type" generality (case Step 2's own LLM/Code/Printer example types) | naming rule applies beyond one type | step 4 | step 4: new node's id AND rendered name both == `"Code 1"`, independent of the LLM counter | asserted |
 
