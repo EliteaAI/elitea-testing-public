@@ -34,3 +34,17 @@ sibling of pre-existing `#1045` (same library, different call site — #1045
 is the in-chat Mermaid canvas editor). Any future case opening this modal
 on a minimal pipeline should expect it and soft-assert with
 `# Known defect: #1368`, not assert zero console errors unscoped.
+
+**Fix round (review, ELITEA-2056 PR #1369):** the spec originally asserted
+`show_context_diagram_container.locator("svg").count() >= 1` — a raw
+selector chained off a `LocatorDescriptor` field in a spec file, not
+compliant. Mirrored `ChatPage`'s already-#579-sanctioned
+`MERMAID_NODE = ".node"` class constant + `get_diagram_node_count()` onto
+`PipelineDetailPage` instead. **Gotcha found while fixing:** the diagram
+container becomes `visible` before Mermaid actually populates it with
+`.node` elements — a `get_diagram_node_count()` call right after only the
+container-visible wait raced to 0. `click_information_show_link()` now also
+waits for `.locator(MERMAID_NODE).first` to reach `attached`, mirroring
+`ChatPage.wait_for_diagram_rendered` (ELITEA-2088). Any other caller of
+`show_context_diagram_container` in this modal should route through
+`click_information_show_link()` rather than re-deriving the wait.
