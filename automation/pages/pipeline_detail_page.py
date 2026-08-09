@@ -5673,8 +5673,11 @@ class PipelineDetailPage(PipelineFormPage):
         # tool list below it. Hover a fixed offset near the top-left corner
         # instead, so this works whether or not the card is expanded.
         card.hover(position={"x": 10, "y": 10})
-        self.page.wait_for_timeout(300)  # CSS hover transition reveals the delete button
 
+        # No fixed sleep here: the CSS hover-reveal transition is covered by
+        # this wait_for's own polling — `state="visible"` re-checks until the
+        # transition completes (or fails loudly on a real regression) instead
+        # of gambling on a fixed 300ms guess.
         delete_btn = card.locator(self.TOOLKIT_CARD_DELETE_BUTTON).first
         delete_btn.wait_for(state="visible", timeout=5000)
         # A coordinate-based force=True click can land on the (Tooltip-driven)
