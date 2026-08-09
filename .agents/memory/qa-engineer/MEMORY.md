@@ -40,3 +40,4 @@
 - [Pipeline execution needs Save + working model](pipeline_llm_execution_needs_save_and_working_model.md) — Task-fix needs Save; DEV's default Claude 4.5 400s, use gpt-5.2
 - [Title project suffix ≠ "Private"](browser_title_project_name_suffix_not_private.md) — capture project name dynamically, don't hardcode "Private" in page-title asserts
 - [allure.issue slug can drift](allure_issue_link_slug_can_drift_from_real_tms_filename.md) — verify the TMS URL resolves, don't trust a plausible-looking slug
+- [Pipeline clear_embedded_chat() is a no-op](pipeline_clear_embedded_chat_is_broken.md) — stale locator; call chat_clear_button testid directly

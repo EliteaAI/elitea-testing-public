@@ -2,7 +2,55 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2064 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2011 analysis).
+
+## Run History panel — Pipeline surface (SAME shared component as the Agent surface's ELITEA-1877, confirmed live, 2026-08-09, ELITEA-2011)
+
+The Pipeline detail page's embedded-chat "view run history" icon
+(`pipeline-history-tab`, `ViewRunHistoryButton.jsx`) opens the exact same
+`RunHistoryContainer`/`RunHistoryList`/`RunHistoryChat` stack already documented
+for Agents in `test-specs/agents/_surface.md` / `l2_run-history-select-past-run-loads-messages_ELITEA-1877.md`
+— `ConfigurationTab.jsx` wires it with `source={ParticipantEntityTypes.Pipeline}`,
+`entityId={applicationId}`. Confirmed live on pipeline ids 8757/8758/8759:
+
+- **`PipelineDetailPage.clear_embedded_chat()` is a silent no-op** — it clicks a
+  stale `[aria-label="Clear the chat history"]` locator matching zero elements
+  (the real button is `ClearChatButton.jsx`, `aria-label="clear the chat"`,
+  `data-testid="chat-clear-button"` — a correct `chat_clear_button`
+  `LocatorDescriptor` field already exists on the same page object but the method
+  ignores it). Confirmed twice: the broken method → only 1 run-history entry after
+  2 sent messages (both landed in one conversation); `self.chat_clear_button.click()`
+  directly → 2 distinct entries, as expected. **Any test needing to start a fresh
+  pipeline conversation must call `chat_clear_button` directly (or the method must
+  be fixed first) — do not trust `clear_embedded_chat()` as-is.**
+- **`run-history-list-item` (+ its `data-selected` state) is on
+  `automation/testids` only, NOT yet on `main`** (added during ELITEA-1877's
+  `add-data-testid` work — `EliteaAI/EliteaUI@a5a9d0f5` — shared component, so it
+  serves BOTH the Agent and Pipeline surfaces once promoted). Verified via
+  `git fetch origin` + `git grep -- "run-history-list-item" origin/main -- src/`
+  (no hit) vs `origin/automation/testids` (hit, `RunHistoryListItem.jsx:143`).
+- **`PipelineDetailPage` has NO run-history methods yet** (only a stale,
+  pre-shared-component `click_history_tab()`/`get_history_entries()` pair using
+  raw CSS selectors like `table tbody tr` / `[class*="version"]` — these predate
+  the current `ViewRunHistoryButton`/`RunHistoryContainer` implementation and
+  match nothing live; do not use them for this feature). Mirror
+  `AgentDetailPage`'s `open_run_history()` / `get_run_history_item_count()` /
+  `select_run_history_item(index)` / `get_run_history_chat_messages_text()`
+  almost verbatim — same shared component, same behavior confirmed live.
+- The history panel REPLACES the Configuration form + embedded chat entirely
+  (`ConfigurationTab.jsx`: `{showHistory && <RunHistoryContainer/>}` /
+  `{!showHistory && (...)}`, mutually exclusive) — not an overlay/modal.
+- The close (`X`, `aria-label="close run history"`) button IS wired and works on
+  the Pipeline surface too (same fix already observed for Agents, the
+  previously-filed `#1093`) — confirmed live: closing returns
+  `chat-message-input` etc. to the DOM. No testid on it yet (aria-label only);
+  not requested here since no dispatched case's steps touch it yet.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-run-history-panel-view-executions_ELITEA-2011.md`.
+- **Sibling case flag**: `ELITEA-2070` ("Pipeline — Run History Panel") in the same
+  wave-07 batch looks like the same feature from a slightly different case-text
+  angle (adds "can be closed" as an explicit step) — not resolved here, flagged
+  for whoever analyses it next.
 
 ## Tools section "+ Pipeline" button — 4th ADD trigger, no testid before this session, same auto-persist mechanism as Agent attach (confirmed live, 2026-08-09, ELITEA-2064)
 
