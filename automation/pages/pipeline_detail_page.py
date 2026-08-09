@@ -42,6 +42,17 @@ class PipelineDetailPage(PipelineFormPage):
         description="Configuration panel General section header (always visible, replaces old tab)"
     )
 
+    # Collapse/expand toggle for the left configuration panel (ELITEA-2072).
+    # `GeneralFormPanel.jsx` — same button serves both directions (icon swaps
+    # DoubleLeft/DoubleRight, testid is stable); confirmed live: collapsing
+    # unmounts `PipelineConfigurationForm` entirely (`{!collapsed && (...)}`),
+    # so the section testids below (toolkits_section etc.) disappear from the
+    # DOM rather than merely becoming hidden.
+    config_panel_collapse_button = LocatorDescriptor(
+        testid="pipeline-config-collapse-button",
+        description="Collapse/expand toggle at the top of the left configuration panel"
+    )
+
     history_tab = LocatorDescriptor(
         testid="pipeline-history-tab",
         fallback=lambda page: page.locator('[aria-label="view run history"]'),
@@ -1865,6 +1876,33 @@ class PipelineDetailPage(PipelineFormPage):
         self.page.wait_for_timeout(1000)
         self.wait_for_network(timeout=timeout)
         logger.info("Configuration tab opened")
+
+    def toggle_config_panel_collapse(self, timeout: int = 5000):
+        """Click the left configuration panel's collapse/expand toggle button.
+
+        One button, both directions (ELITEA-2072) — clicking it collapses
+        the panel to a thin 28px strip if expanded, or restores it to 320px
+        if collapsed.
+
+        Args:
+            timeout: Maximum wait time for the button to be actionable.
+        """
+        logger.info("Toggling configuration panel collapse state")
+        self.config_panel_collapse_button.click(timeout=timeout)
+
+    def get_config_panel_width(self, timeout: int = 5000) -> float:
+        """Return the left configuration panel's current rendered width in px.
+
+        Confirmed live (`GeneralFormPanel.jsx`): 320px expanded, 28px
+        collapsed — a static (not layout-dependent) pair of values, but the
+        test asserts the before/after relationship rather than hardcoding
+        them, per the project's relative-assertion convention.
+
+        Args:
+            timeout: Maximum wait time for the panel to be actionable.
+        """
+        box = self.configuration_tab.bounding_box(timeout=timeout)
+        return box["width"]
 
     def click_history_tab(self, timeout: int = 10000):
         """Click the History tab.

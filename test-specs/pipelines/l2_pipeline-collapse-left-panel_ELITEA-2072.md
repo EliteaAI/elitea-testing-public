@@ -64,8 +64,10 @@
 - Collapsing the panel measurably grows the canvas area's rendered width.
 - Clicking the same toggle again restores the panel to its exact original
   width and remounts every configuration section.
-- No console errors, no network requests fire for either click (pure
-  client-side React state — confirmed live, see Network Behavior).
+- No console errors fire for either click; no pipeline-PERSIST (`PUT`) call
+  fires for either click. **Amended per R1 implementation evidence:**
+  expanding the panel legitimately fires read-only `GET` refetches (the
+  TOOLS section remounting) — see Network Behavior.
 
 ## Coverage Map
 
@@ -83,16 +85,24 @@
 
 ### Axis 2 — Analyst additions
 
-- step 3/6 assert zero console errors and zero pipeline-persist network
-  requests (`prompt_lib` substring) across the whole collapse -> expand
+- step 3/6 assert zero console errors, and zero pipeline-PERSIST (`PUT`,
+  `prompt_lib` substring) requests, across the whole collapse -> expand
   sequence — *added: confirmed live via source read
   (`GeneralFormPanel.jsx`'s `onClickCollapsed` is pure `useState`, no API
-  call; `ConfigurationTab.jsx`'s `onCollapsed` callback only recomputes a
-  CSS `maxWidth` string) and via a live browser probe (no new console
-  entries after either click) — this is the same "pure client-side
-  operation" class as the canvas zoom/pan/control-panel cases in this
-  surface (ELITEA-2019/2057), and guards against a regression that
-  accidentally wires a persist call onto this purely visual toggle.*
+  call) — this is the same "pure client-side operation" class as the canvas
+  zoom/pan/control-panel cases in this surface (ELITEA-2019/2057), and
+  guards against a regression that accidentally wires a persist call onto
+  this purely visual toggle.* **Amended in R1 implementation** (Rule
+  11/Phase 2 amend-in-PR): the original claim was "zero network requests of
+  any kind" based on a console-only live probe; the FIRST test run surfaced
+  a real gap — expanding the panel fires 7 read-only `GET` requests
+  (`tags`/`tools`×2/`toolkits`/`applications`×2/`upload_icon`, all
+  `prompt_lib`-scoped) because remounting `PipelineConfigurationForm`
+  remounts the TOOLS section (`ApplicationTools`), which fetches its own
+  supporting lists on mount — normal React behavior, not a defect. The
+  assertion was narrowed to the `PUT` method specifically (the meaningful
+  guard: no accidental SAVE), matching what the code and the live run both
+  actually show.
 - step 7 additionally asserts the panel's width is an EXACT match
   (`pytest.approx`) to its step-1 baseline, not just "some non-collapsed
   width" — *added: confirmed live the round trip is deterministic (28px <->
@@ -118,12 +128,18 @@
 | Canvas wrapper (for the "canvas expands" observable) | `PipelineDetailPage.canvas_wrapper` (existing `LocatorDescriptor`, testid `rf__wrapper`) | — |
 
 ## Network Behavior
-- **None** — confirmed live via source read (`GeneralFormPanel.jsx`'s
-  `onClickCollapsed` is pure `useState`) and a live browser probe (no new
-  console entries, no XHR/fetch after either click). Collapsing/expanding
-  the panel is not persisted state — a page reload always restores the
-  expanded default (out of scope for this case's steps, noted for
-  awareness only).
+- **Collapse: none.** Unmounting `PipelineConfigurationForm` fires no
+  request of any kind — confirmed live (both source read and the R1 test
+  run's captured-request list is empty after the collapse click).
+- **Expand: read-only `GET` refetches, no `PUT`.** Confirmed live via the R1
+  test run: clicking expand fires 7 `GET` requests, all `prompt_lib`-scoped —
+  `tags`, `tools` (×2, `mcp=false`/`mcp=true`), `toolkits`, `applications`
+  (×2, `agents_type=classic`/`pipeline`), `upload_icon` — because remounting
+  the form remounts the TOOLS section (`ApplicationTools`), which fetches
+  its own supporting lists on mount. No `PUT`/persist call fires either
+  direction. Collapsing/expanding the panel itself is not persisted state —
+  a page reload always restores the expanded default (out of scope for this
+  case's steps, noted for awareness only).
 
 ## Known Defects Found During Exploration
 - None. Collapse/expand behaves exactly as the case describes, confirmed

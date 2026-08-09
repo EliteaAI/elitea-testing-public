@@ -2463,15 +2463,26 @@ append `?viewMode=owner`, so any test going through the page object is unaffecte
   field) went from 765px to 1057px on a fixed viewport after one collapse click.
   This value IS viewport/layout-dependent (unlike the panel's own 28px/320px
   pair) — assert the relative increase, not a hardcoded px value.
-- **Pure client-side `useState`, zero network implications** — confirmed via
-  source read (`onClickCollapsed` in both `GeneralFormPanel.jsx` and the sibling
-  `ChatPanel.jsx` is plain `setState`, no API call; `ConfigurationTab.jsx`'s
-  `onCollapsed` callback only recomputes a CSS `maxWidth` string for the sibling
-  panes) AND a live browser probe (no new console entries after either click).
-  Same "pure client-side viewport/layout op" class as the canvas zoom/pan/
-  control-panel cases above (ELITEA-2019/2057) — a persist call firing on this
-  toggle would be a genuine regression this case's Axis-2 addition guards
-  against.
+- **Pure client-side `useState` toggle — but EXPAND fires read-only GET
+  refetches, confirmed live via the actual pytest run (correcting an earlier
+  console-only probe that under-checked network).** `onClickCollapsed` in
+  both `GeneralFormPanel.jsx` and the sibling `ChatPanel.jsx` is plain
+  `setState`, no API call — collapse itself fires zero requests of any kind
+  (confirmed empty capture on the collapse click). But **expand REMOUNTS
+  `PipelineConfigurationForm`**, including the TOOLS section
+  (`ApplicationTools`), which fetches its own supporting lists on mount — the
+  R1 test run captured 7 `GET`s on expand, all `prompt_lib`-scoped: `tags`,
+  `tools`×2 (`mcp=false`/`true`), `toolkits`, `applications`×2
+  (`agents_type=classic`/`pipeline`), `upload_icon`. This is normal
+  remount behavior, not a defect. The guard that DOES hold both directions:
+  no `PUT` (persist) call ever fires — assert with
+  `capture_requests_matching(substring, method="PUT")`, not an unfiltered
+  capture. Lesson for future toggle/remount cases: a `console`-only live
+  probe is NOT sufficient evidence for a "zero network requests" AFS claim —
+  capture actual requests before asserting an empty set, or narrow the claim
+  to the method that matters (persist), matching this project's
+  `afs_claims_need_full_sweep_and_grep` memory pattern (previously observed
+  on ELITEA-2019's Axis-2 claim, now also on ELITEA-2072's).
 - **Sibling pattern, not yet a case:** `ChatPanel.jsx` (right-side embedded chat)
   has the IDENTICAL collapse/expand shape (own `useState`, own un-testid'd
   `IconButton`, same icon-swap) — no case in this campaign currently exercises
