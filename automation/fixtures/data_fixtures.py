@@ -777,6 +777,76 @@ def pipeline_code_node_multi_var_dict_return(pipeline_api: PipelineAPI, request)
         logger.warning("Failed to delete Code-node multi-var dict-return pipeline %s: %s", pid, exc)
 
 
+_CODE_NODE_ELITEA_CLIENT_USER_INFO_INSTRUCTIONS = """\
+entry_point: Code 1
+state:
+  user_info:
+    type: JSON
+nodes:
+  - id: Code 1
+    type: code
+    code:
+      type: fixed
+      value: |
+        user_info = elitea_client.get_user_data()
+        user_info
+    input: []
+    output: [user_info]
+    structured_output: true
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_code_node_elitea_client_user_info(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``Code 1 (entry) -> END`` with ONE custom JSON-typed
+    state variable (``user_info``). The Code node calls
+    ``elitea_client.get_user_data()`` and writes the returned dict into
+    ``user_info`` via a bare NAME-reference expression (``user_info``) as the
+    script's LAST statement -- distinct from
+    :func:`pipeline_llm_reads_state_via_code` /
+    :func:`pipeline_code_node_multi_var_dict_return`'s bare dict-LITERAL
+    convention, but confirmed live to work identically: both are
+    non-assignment expression statements the runtime routes into the
+    declared ``output:`` variable when ``structured_output: true``.
+
+    Satisfies the ELITEA-2448 precondition. Built via the GENERIC
+    :meth:`PipelineAPI.create_pipeline` (raw YAML ``instructions`` string),
+    same reason :func:`pipeline_llm_reads_state_via_code` /
+    :func:`pipeline_code_node_multi_var_dict_return` use it --
+    :meth:`create_pipeline_with_nodes` has no ``state:`` support. This is the
+    SIMPLEST fixture in the Code-node family -- one node, no chained
+    transition, so the disconnected-edge build-method gotcha
+    (``EliteaAI/elitea-testing-public#1384``) doesn't even apply here, but the
+    raw-YAML build is kept for consistency with the sibling fixtures.
+
+    CONFIRMED LIVE (AFS
+    ``l3_code-node-elitea-client-user-info_ELITEA-2448.md`` § Test Data): the
+    case's own literal script -- ``user_info = elitea_client.get_user_data()``
+    followed by a bare ``user_info`` name reference -- works exactly as
+    written; no CLARIFICATION needed.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2448_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline(
+        name=name,
+        description=f"Auto-created Code-node elitea_client user-info pipeline for test {request.node.name}",
+        instructions=_CODE_NODE_ELITEA_CLIENT_USER_INFO_INSTRUCTIONS,
+    )
+    pid = pipeline["id"]
+    logger.info("Created Code-node elitea_client user-info pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted Code-node elitea_client user-info pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete Code-node elitea_client user-info pipeline %s: %s", pid, exc)
+
+
 _PARENT_CHILD_STATE_SHARING_CHILD_INSTRUCTIONS = """\
 entry_point: CODE1
 state:
