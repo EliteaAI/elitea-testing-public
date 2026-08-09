@@ -8,10 +8,11 @@ Enables the pipeline's "Attachments" MODULES toggle (the same
 verifies the STATE panel instantly gains an immutable `input_attachments`
 (list) variable with a checked toggle and NO delete control (same structural
 guarantee ELITEA-2042 documents for the built-in `input`/`messages` rows),
-disables the module, verifies the variable disappears from the panel, and
-verifies the YAML `state:` section reflects the removal — all with zero Save
-click and zero network requests (purely client-side formik state, per the
-ELITEA-2059 finding for this exact toggle).
+verifies the YAML `state:` section includes `input_attachments` (type: list)
+while enabled, disables the module, verifies the variable disappears from the
+panel, and verifies the YAML `state:` section reflects the removal — all with
+zero Save click and zero network requests (purely client-side formik state,
+per the ELITEA-2059 finding for this exact toggle).
 
 Case-text CLARIFICATION (reused, not re-filed): the case's step 3 wording
 implies the STATE panel's row visibly shows each variable's type — this is
@@ -109,7 +110,31 @@ def test_state_panel_attachments_module(page, pipeline_id):
         )
 
     with allure.step(
-        'Step 6 — Disable the "Attachments" toggle in MODULES; toggle flips to unchecked '
+        f"Step 6 — While Attachments is enabled, verify in Yaml view that the state section "
+        f"includes {_ATTACHMENTS_VARIABLE!r} (type: list)"
+    ):
+        pipeline_page.close_state_panel(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.switch_to_yaml_view()
+        pipeline_page.yaml_editor.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        yaml_text_enabled = pipeline_page.get_yaml_content()
+        parsed_enabled = yaml.safe_load(yaml_text_enabled)
+        state_section_enabled = parsed_enabled.get("state") or {}
+
+        attachments_entry = state_section_enabled.get(_ATTACHMENTS_VARIABLE, {})
+        assert _ATTACHMENTS_VARIABLE in state_section_enabled, (
+            f"YAML state section should include {_ATTACHMENTS_VARIABLE!r} while Attachments is "
+            f"enabled, got state keys: {list(state_section_enabled.keys())!r}"
+        )
+        assert attachments_entry.get("type") == "list", (
+            f"YAML state.{_ATTACHMENTS_VARIABLE}.type should be 'list', got: {attachments_entry!r}"
+        )
+
+        pipeline_page.switch_to_flow_view()
+        pipeline_page.wait_for_canvas()
+        pipeline_page.open_state_panel(timeout=UI_ELEMENT_TIMEOUT)
+
+    with allure.step(
+        'Step 7 — Disable the "Attachments" toggle in MODULES; toggle flips to unchecked '
         "with zero network requests"
     ):
         api_requests.clear()
@@ -121,7 +146,7 @@ def test_state_panel_attachments_module(page, pipeline_id):
             f"Toggling the Attachments module off should fire zero API requests, got: {api_requests}"
         )
 
-    with allure.step(f"Step 7 — Verify {_ATTACHMENTS_VARIABLE!r} is removed from the STATE panel"):
+    with allure.step(f"Step 8 — Verify {_ATTACHMENTS_VARIABLE!r} is removed from the STATE panel"):
         for variable_name in _DEFAULT_VARIABLES:
             assert pipeline_page.get_state_variable_name_text(variable_name, timeout=UI_ELEMENT_TIMEOUT) == (
                 variable_name
@@ -132,7 +157,7 @@ def test_state_panel_attachments_module(page, pipeline_id):
         )
 
     with allure.step(
-        "Step 8 — Verify in Yaml view that the state section does not include input_attachments"
+        "Step 9 — Verify in Yaml view that the state section does not include input_attachments"
     ):
         pipeline_page.close_state_panel(timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.switch_to_yaml_view()
@@ -149,5 +174,5 @@ def test_state_panel_attachments_module(page, pipeline_id):
         pipeline_page.switch_to_flow_view()
         pipeline_page.wait_for_canvas()
 
-    with allure.step("Step 9 — No console errors were introduced at any step"):
+    with allure.step("Step 10 — No console errors were introduced at any step"):
         assert not console_errors, f"No step should introduce console errors: {console_errors}"
