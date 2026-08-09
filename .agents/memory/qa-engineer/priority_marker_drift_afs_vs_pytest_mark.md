@@ -180,3 +180,27 @@ the implementer's own preflight check
 (`.agents/memory/test-automation-engineer/afs_priority_vs_pytest_mark_preflight_check.md`)
 documents the exact grep to run BEFORE handoff, and this PR shows it still
 isn't being run reliably pre-handoff, only caught at review.
+
+## Recurrence variant (PR #1366/ELITEA-2044, 2026-08-09) — combined analyst+implementer slot, `high`-priority sibling in the same file this time
+
+Seventh occurrence, back to the ELITEA-2284 shape (a second, differently-
+prioritized case lands in a file whose module-level `pytestmark` was correct
+for the FIRST case) but with the priorities flipped: covering test
+ELITEA-2042 (case `priority: high`) correctly compiles to the module-level
+`pytest.mark.p1` in `test_pipeline_state_panel_default_and_custom_variables.py`.
+The new sibling `test_state_panel_delete_custom_variable` (ELITEA-2044, case
+frontmatter `priority: medium`, AFS itself mislabels this "l2 (medium...)" —
+should be l3 per the `l{n}→p{n-1}` filename convention, a second small
+authoring slip) has no per-function marker override, so it silently inherits
+the module's `p1` (high) instead of `p2` (medium). Confirmed against
+convention with 3 external siblings in the SAME `pipelines` feature area,
+all case `priority: medium`, all compiling to `p2` with zero exceptions:
+`test_pipeline_canvas_zoom_and_pan.py` (ELITEA-2019), `test_pipeline_collapse_left_panel.py`
+(ELITEA-2072), `test_pipeline_custom_node_configuration.py` (ELITEA-2036).
+Notable: this PR's own body documents two mechanical greps (locator-ladder,
+additive-only) in detail and both are genuinely clean — the priority-marker
+class of bug is invisible to both, exactly as the original entry predicts.
+Flagged CHANGES_REQUESTED — one-line fix: add a per-function
+`@pytest.mark.p2` decorator on `test_state_panel_delete_custom_variable`
+(cannot change the shared module-level `pytestmark` without demoting the
+correctly-`p1` ELITEA-2042 test).
