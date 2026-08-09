@@ -458,6 +458,20 @@ class PipelineDetailPage(PipelineFormPage):
         description="Embedded chat 'Clear the chat' button — starts a fresh conversation in place"
     )
 
+    # LLM model selector (embedded chat panel, ELITEA-2017). Mirrors
+    # AgentDetailPage's EXACT existing pattern (agent_detail_page.py:284-286)
+    # rather than ChatPage.model_selector's (which carries a forbidden
+    # `fallback=` param — pre-existing tech debt, not copied here; AFS
+    # l2_pipeline-execution-long-response-streaming_ELITEA-2017.md §
+    # Concrete Handles). Both `model-selector-button`/`model-selector-name`
+    # are confirmed on `main`; the dynamic `model-selector-option-{name}`
+    # testid this class constant matches is confirmed on `automation/testids`
+    # only (not yet cherry-picked to `main` as of this AFS's exploration —
+    # AFS amended accordingly).
+    model_selector_button = LocatorDescriptor(testid="model-selector-button")
+    model_selector_name = LocatorDescriptor(testid="model-selector-name")
+    MODEL_SELECTOR_OPTION_ANY_SELECTOR = '[data-testid^="model-selector-option-"]'
+
     # MCP node inline config fields (ELITEA-1954). Testid-only, added via
     # add-data-testid — BaseToolNode.jsx only sets these when nodeType is
     # "mcp" (untested node types stay untagged, .agents/testing.md §
@@ -5944,6 +5958,184 @@ class PipelineDetailPage(PipelineFormPage):
         # Last fallback: all text from the message
         text = ai_msg.text_content() or ""
         return text.strip()
+
+    def wait_for_embedded_chat_message_count(self, minimum: int, timeout: int = 10000) -> int:
+        """Condition-wait until the embedded chat has at least *minimum* messages.
+
+        Confirms a message was ACCEPTED (e.g. the user's own message
+        rendered as a new list item, ELITEA-2017 step 3) without waiting
+        for the full AI response to stabilise — that is
+        :meth:`wait_for_embedded_chat_response`'s job. Same polling idiom.
+
+        Args:
+            minimum: minimum message count to wait for.
+            timeout: maximum wait time in milliseconds.
+
+        Returns:
+            The message count once it reaches *minimum*.
+
+        Raises:
+            TimeoutError: if the count never reaches *minimum* within timeout.
+        """
+        deadline = time.time() + timeout / 1000
+        count = self.get_embedded_chat_message_count()
+        while time.time() < deadline:
+            count = self.get_embedded_chat_message_count()
+            if count >= minimum:
+                return count
+            self.page.wait_for_timeout(200)
+        raise TimeoutError(
+            f"Embedded chat message count did not reach {minimum} within {timeout}ms (last={count})"
+        )
+
+    # Transient loading/status placeholders that ``get_embedded_chat_last_message()``
+    # can legitimately return mid-stream — NOT real content growth. Same known
+    # vocabulary ``ChatPage.TRANSIENT_MESSAGES``/``_is_transient_message``
+    # already documents for the main chat; the pipeline's embedded chat renders
+    # through the SAME component chain (AFS
+    # l2_pipeline-execution-long-response-streaming_ELITEA-2017.md — confirmed
+    # live during implementation: "Waking the agent…" then "Packing its
+    # tools…" placeholders observed between send and real body text, both
+    # non-empty and of DIFFERENT lengths, which defeated a naive length-only
+    # growth check). Duplicated here (not imported from ``ChatPage``) rather
+    # than restructuring an unrelated, heavily-called page object for a
+    # same-vocabulary private helper.
+    _EMBEDDED_CHAT_TRANSIENT_PLACEHOLDERS = frozenset([
+        "waking the agent", "waking the agent…", "waking the agent...",
+        "thinking", "thinking…", "thinking...",
+    ])
+
+    def _is_embedded_chat_transient_text(self, text: str) -> bool:
+        """Return True if *text* is a transient loading/status placeholder
+        rather than real streamed response content.
+        """
+        normalized = text.replace("\xa0", " ").lower().strip()
+        if (
+            normalized.rstrip(".…") in self._EMBEDDED_CHAT_TRANSIENT_PLACEHOLDERS
+            or normalized in self._EMBEDDED_CHAT_TRANSIENT_PLACEHOLDERS
+        ):
+            return True
+        if normalized.startswith("thought for "):
+            return True
+        if "packing" in normalized and "tool" in normalized:
+            return True
+        return False
+
+    def wait_for_embedded_chat_real_content(self, timeout: int = 30000) -> str:
+        """Condition-wait until the last embedded-chat message has real
+        (non-empty, non-transient) body content, and return it.
+
+        Skips "Waking the agent…"/"Packing its tools…"/"Thought for N
+        secs"-style placeholders (see
+        :meth:`_is_embedded_chat_transient_text`) so callers get a genuine
+        first sample to measure progressive growth from (ELITEA-2017).
+
+        Args:
+            timeout: maximum wait time in milliseconds.
+
+        Returns:
+            The first non-transient body text sample.
+
+        Raises:
+            TimeoutError: if no real content appears within timeout.
+        """
+        deadline = time.time() + timeout / 1000
+        while time.time() < deadline:
+            current = self.get_embedded_chat_last_message()
+            if current and not self._is_embedded_chat_transient_text(current):
+                return current
+            self.page.wait_for_timeout(500)
+        raise TimeoutError(f"No real (non-transient) embedded chat content within {timeout}ms")
+
+    def wait_for_embedded_chat_body_growth(self, previous_length: int, timeout: int = 60000) -> str:
+        """Condition-wait until the last embedded-chat message's body text
+        grows past *previous_length* characters.
+
+        Direct analogue of ``ChatPage.wait_for_message_body_growth`` for the
+        pipeline's embedded chat panel (ELITEA-2017) — proves progressive
+        streaming without a fixed ``sleep()``. Polls
+        :meth:`get_embedded_chat_last_message` (same extraction path that
+        method already uses, not a raw locator), skipping transient
+        placeholder samples (see :meth:`_is_embedded_chat_transient_text`)
+        so a placeholder swap is never mistaken for real content growth.
+
+        Args:
+            previous_length: the previously-observed body-text length; the
+                wait resolves the instant a fresh sample exceeds it.
+            timeout: maximum wait time in milliseconds.
+
+        Returns:
+            The new (grown) body text.
+
+        Raises:
+            TimeoutError: if the body text has not grown within timeout.
+        """
+        logger.info(
+            "Waiting for embedded chat body to grow past %d chars (timeout=%dms)...",
+            previous_length, timeout,
+        )
+        deadline = time.time() + timeout / 1000
+        while time.time() < deadline:
+            current = self.get_embedded_chat_last_message()
+            if (
+                len(current) > previous_length
+                and not self._is_embedded_chat_transient_text(current)
+            ):
+                logger.info(
+                    "Embedded chat body grew: %d -> %d chars", previous_length, len(current)
+                )
+                return current
+            self.page.wait_for_timeout(500)
+        raise TimeoutError(
+            f"Embedded chat message body did not grow past {previous_length} chars within {timeout}ms"
+        )
+
+    # ------------------------------------------------------------------
+    # LLM model selector (embedded chat panel, ELITEA-2017)
+    # ------------------------------------------------------------------
+
+    @action("Open LLM model selector")
+    def open_model_selector(self, timeout: int = 5000):
+        """Click the embedded chat panel's model selector to open the dropdown.
+
+        LOCATOR: ``model-selector-button`` testid. Mirrors
+        ``AgentDetailPage.open_model_selector()``.
+
+        Args:
+            timeout: Maximum wait for the first option to become visible.
+        """
+        logger.info("Opening LLM model selector")
+        self.model_selector_button.click()
+        self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def get_selected_model_name(self) -> str:
+        """Return the currently displayed model name on the closed selector.
+
+        LOCATOR: ``model-selector-name`` testid.
+        """
+        return (self.model_selector_name.text_content() or "").strip()
+
+    @action("Select LLM model")
+    def select_llm_model(self, display_name: str, timeout: int = 5000):
+        """Select a model from the OPEN model-selector dropdown by its
+        rendered display name.
+
+        Call after :meth:`open_model_selector`. Mirrors
+        ``AgentDetailPage.select_llm_model()``.
+
+        Args:
+            display_name: Exact rendered model name (e.g. "GPT-5 mini").
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting LLM model: %s", display_name)
+        option = self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).filter(
+            has_text=display_name
+        )
+        option.first.wait_for(state="visible", timeout=timeout)
+        option.first.click()
+        logger.info("LLM model '%s' selected", display_name)
 
     def clear_chat(self, timeout: int = 10000) -> None:
         """Click the embedded chat's 'Clear the chat' button to start a fresh conversation.
