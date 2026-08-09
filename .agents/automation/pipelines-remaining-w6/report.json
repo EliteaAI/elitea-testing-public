@@ -1,0 +1,468 @@
+{
+  "batch": "pipelines-remaining-w6",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-pipelines-remaining-w6",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      179.333325959,
+      178.237099791,
+      180.804458625
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2043",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Live nuance beyond the case's own wording (recorded in AFS + _surface.md): the YAML top-level `state:` key, once rendered by toggling Attachments on, does NOT revert to fully absent after toggling off again in the same session — contrasts the existing ELITEA-2027 digest finding that a bare pipeline with only built-in input/messages vars has no `state:` key at all. Not a defect (the case only needs… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-state-panel-attachments-module_ELITEA-2043.md"
+        },
+        {
+          "kind": "note",
+          "note": "No pre-existing tracker issue found on board #9 for ELITEA-2043 (real-time gh issue list check, zero hits) — intake had not created one for this case yet. Flagging for Close so Tal links/creates the tracking card and performs the PR-link comment + TMS back-write per the seeded policy."
+        },
+        {
+          "kind": "clarification",
+          "note": "Dispatch named cases dir `.agents/automation/pipelines-remaining-w6/cases/` which does not exist; the actual case snapshot was at `.agents/automation/pipelines-remaining/cases/ELITEA-2043.md` (no wave suffix) — same drift pattern already logged for ELITEA-2053 in a prior wave. Used the correct path; batch intake naming may want to standardize this.",
+          "ref": ".agents/automation/pipelines-remaining/cases/ELITEA-2043.md"
+        },
+        {
+          "kind": "defect",
+          "note": "Important / CHANGES_REQUESTED — AFS-drift (AFS faithful, implementation drifts). The AFS's own Coverage Map row 7 (test-specs/pipelines/l2_pipeline-state-panel-attachments-module_ELITEA-2043.md:143) marks step 7 'asserted' with the explicit text 'parsed YAML state dict has no input_attachments key, both while checking the enabled state (has it) and the disabled state (doesn't)', and the AFS's own … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_state_panel_attachments_module.py:134-147"
+        },
+        {
+          "kind": "note",
+          "note": "Case snapshot for ELITEA-2043 was not at the dispatch-named path (.agents/automation/pipelines-remaining-w6/cases/ELITEA-2043.md — missing, no -w6 cases dir exists at all); it lives at .agents/automation/pipelines-remaining/cases/ELITEA-2043.md (no -w6 suffix). Fetched from there instead — matches a drift the implementer's own memory note already flagged for a sibling case (ELITEA-2053) this same … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else triangulates clean: mechanical non-testid-handle grep on the full diff returns only the two `self.page.locator(self.STATE_VARIABLE_NAME.format(name))` hits inside the page-object method (pipeline_detail_page.py:7367, additive-only, class-level UPPER_CASE constant STATE_VARIABLE_NAME confirmed defined at line 1098 as `[data-testid=\"pipeline-state-variable-name-{}\"]`) — compliant per… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Durable pattern for this feature area: a bidirectional YAML assertion (present-while-X / absent-while-not-X) on a panel that overlaps the canvas needs the close-panel/switch-view/reopen-panel dance at BOTH checkpoints, not just the terminal one. Logged in .agents/memory/test-automation-engineer/daily/2026-08-09.md for the next implementer touching this surface.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_state_panel_attachments_module.py"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding fixed: Step 6 (new) now parses YAML while Attachments is enabled and asserts `input_attachments` present with type: list; Step 9 asserts absence after disabling. Both directions of the AFS Coverage Map row 7 requirement are now satisfied.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_state_panel_attachments_module.py:104-128"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid handles on the full branch diff (automation/) produced one hit, which is compliant: `self.page.locator(self.STATE_VARIABLE_NAME.format(name))` inside the new `is_state_variable_present()` page-object method — STATE_VARIABLE_NAME is a class-level `[data-testid=\"pipeline-state-variable-name-{}\"]` constant (pipeline_detail_page.py:1098), and the interpolation happens in… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:7370"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case ↔ AFS ↔ implementation for all 7 TMS case steps + description/pass-fail criteria: every row has a real assertion at the claimed step (toggle state, panel row presence/absence, delete-button absence, YAML state-section membership both directions, zero console errors, zero /api/v2/ requests on toggle). No masked defects, no weakened assertions, no skips.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_state_panel_attachments_module.py:1"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-state-panel-attachments-module_ELITEA-2043.md",
+      "branch": "tests/elitea-2043-pipeline-state-panel-attachments-module",
+      "pr": 1365,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          179.333325959,
+          178.237099791,
+          180.804458625
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2044",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Dispatch pointed at .agents/automation/pipelines-remaining-w6/cases/ELITEA-2044.md, which does not exist. The actual case snapshot lives at .agents/automation/pipelines-remaining/cases/ELITEA-2044.md (no -w6 suffix on the campaign-slug folder). Used that path; batch trunk tests/batch-pipelines-remaining-w6 did exist and was used as instructed. Worth checking whether the campaign-slug/batch-trunk-s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2044"
+        },
+        {
+          "kind": "note",
+          "note": "STATE panel custom-variable delete has NO confirmation dialog and fires zero network requests on click (removal is purely client-side editor state until Save) — unlike every other delete flow in the pipelines feature area (pipeline delete, version delete), which show a type-to-confirm DeleteEntityModal. Recorded in test-specs/pipelines/_surface.md for the next analyst on this surface.",
+          "ref": "ELITEA-2044"
+        },
+        {
+          "kind": "defect",
+          "note": "Priority-marker drift (recurring defect class, 7th documented occurrence — .agents/memory/qa-engineer/priority_marker_drift_afs_vs_pytest_mark.md). The module-level `pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p1, pytest.mark.regression]` is correct for the covering test (ELITEA-2042, case `priority: high`) but is silently inherited by the new sibling `test_state_panel_delete_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_state_panel_default_and_custom_variables.py:52"
+        },
+        {
+          "kind": "note",
+          "note": "PR body's 'What changed' lists `test-specs/pipelines/_surface.md` as a file this PR modifies, but it is not in the PR's file list / diff — it was already committed to the batch trunk `tests/batch-pipelines-remaining-w6` by the combined analyst+implementer's earlier analysis-phase commit. Cosmetic PR-description inaccuracy only; the digest content itself (verified via `git show origin/tests/batch-p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/lextend_pipeline-state-panel-delete-custom-variable_ELITEA-2044.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS step 3's 'Verify' text asserts 'zero network requests fired' on the delete click, but no request/network listener exists anywhere in the test to check this claim in code — it's confirmed only by narrative in the AFS's own § Network Behavior section. Checked for house-convention consistency: the covering spec ELITEA-2042 follows the identical pattern (documents network behavior in its own § Net… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/lextend_pipeline-state-panel-delete-custom-variable_ELITEA-2044.md"
+        },
+        {
+          "kind": "note",
+          "note": "Priority-marker drift (recurrence #8 of this defect class, per .agents/memory/qa-engineer/priority_marker_drift_afs_vs_pytest_mark.md and .agents/memory/test-automation-engineer/afs_priority_vs_pytest_mark_preflight_check.md) fixed: added per-function @pytest.mark.p2 override. This is the first occurrence where a dedicated regression unit test was added for this static-metadata class (tests/unit/t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR#1366 / ELITEA-2044"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered a pytest gotcha: importing a live UI test function by its real name into a tests/unit/ module causes pytest's python_functions=test_* collector to re-discover and RE-EXECUTE it (with real browser fixtures) as a side effect of the import. Any future unit test that imports a test_* function by name for introspection should alias the import (e.g. `as _my_func`) and verify with --collect-on… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/unit/test_pipeline_state_panel_priority_markers.py"
+        },
+        {
+          "kind": "defect",
+          "note": "Fixed. Priority-marker drift resolved: `@pytest.mark.p2` added directly above `test_state_panel_delete_custom_variable` (automation/tests/ui/pipelines/test_pipeline_state_panel_default_and_custom_variables.py). Verified pytest's stacking semantics are handled correctly — the module-level `pytestmark = [..., pytest.mark.p1, ...]` (correct for the ELITEA-2042/high covering test) is untouched, and th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_state_panel_default_and_custom_variables.py:239"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing, non-blocking AFS-authoring nit (not introduced by this PR, not part of the round-1 finding): the AFS metadata line reads \"**Priority**: l2 (medium, as authored in the source TMS case)\" but per spec-format.md's canonical mapping (l1=critical, l2=high, l3=medium, l4=low) a medium-priority case should be l3, not l2. The actual compiled pytest marker (p2) is correct regardless — this is … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/lextend_pipeline-state-panel-delete-custom-variable_ELITEA-2044.md:4"
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_pipeline-state-panel-delete-custom-variable_ELITEA-2044.md",
+      "branch": "tests/ELITEA-2044-state-panel-delete-custom-variable",
+      "pr": 1366,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          179.333325959,
+          178.237099791,
+          180.804458625
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2066",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Genuine coverage gap closed: ELITEA-2059's merged test only proved the toggle->attach-button link is instant/live (no Save needed) in the ON direction. It never saved with the module enabled, never toggled off, and never reloaded — so 'Save' was never meaningfully exercised at all in that spec. The new test proves true server-side persistence (both directions) via a hard reload, which is the only … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Timing gotcha discovered and documented (test-specs/pipelines/_surface.md + .agents/memory/test-automation-engineer/pipeline_attach_button_disabled_attr_lags_toggle_checked_after_reload.md): right after a hard page reload, the attach button's `disabled` DOM attribute can lag ~2s behind the toggle's already-correct `checked` value. Not a product defect (persisted value always correct); a naive one-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "question",
+          "note": "No pre-existing GitHub issue found for ELITEA-2066 on board #9 (checked via gh issue list --state all, no title match) — same intake gap already flagged for ELITEA-2043 in a prior wave. Flagging for the lead to link/create the tracking card during Close rather than improvising an intake action from the implementer slot."
+        },
+        {
+          "kind": "note",
+          "note": "Dispatch named case-snapshot path .agents/automation/pipelines-remaining-w6/cases/ELITEA-2066.md, which does not exist. Actual file was at .agents/automation/pipelines-remaining/cases/ELITEA-2066.md (no wave suffix) — 3rd recurrence this campaign (also hit on ELITEA-2043, ELITEA-2053). Logged a durable memory entry (wave_dispatch_case_snapshot_dir_has_no_wave_suffix.md, indexed in MEMORY.md) so fu… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Dispatch named the case-snapshot dir as `.agents/automation/pipelines-remaining-w6/cases/` but no such directory exists — the actual snapshot lives at `.agents/automation/pipelines-remaining/cases/ELITEA-2066.md` (no `-w6` suffix). Used that. Worth checking whether the batch-dir naming drifted between the plan and the dispatch prompt for this wave."
+        },
+        {
+          "kind": "note",
+          "note": "Analyst and implementer were the same combined slot (test-automation-engineer) per the AFS metadata (\"Analyst: test-automation-engineer (agent, combined analyst+implementer slot)\") and the AFS itself was already committed on the batch trunk (tests/batch-pipelines-remaining-w6) before this PR branch was cut — the PR diff itself is test-code-only (100 insertions, 0 deletions), which is why the diff … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_pipeline-modules-attachments-toggle-persists_ELITEA-2066.md",
+      "branch": "tests/2066-pipeline-modules-attachments-persist",
+      "pr": 1367,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          179.333325959,
+          178.237099791,
+          180.804458625
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2054",
+      "outcome": "already-covered",
+      "note": "Dedup: test_pipeline_create_full_details_persist.py (ELITEA-2021, merged origin/automation/base@2ff0fc96) already fills Step limit to a non-default value, saves, reloads, and re-asserts persistence (lines :100-102, :104-113, :130-134, :150). Re-ran that spec live this session — green (41.94s) — as execution evidence. Only the literal step-limit digit string differs (50 vs case's 10), not the mecha… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "test-specs/pipelines/_surface.md § 'Confirmed testid gaps (need add-data-testid, as of 2026-08-02)' was stale — pipeline-step-limit-input / pipeline-editor-notes-section / pipeline-editor-notes-input were already added during ELITEA-2021's implementation (2026-08-08) but the gap-list entry was never superseded. Added a 'Resolved during ELITEA-2021 implementation' note in place so a future analyst … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Both ELITEA-2054 and ELITEA-2055 are terminal already-covered verdicts pointing at the same covering spec, test_pipeline_create_full_details_persist.py (ELITEA-2021). No build half ran — nothing advances to implementer for this dispatch."
+        },
+        {
+          "kind": "note",
+          "note": "Both testids (pipeline-step-limit-input, pipeline-editor-notes-section/-input) are confirmed present on automation/testids but NOT yet on origin/main (fresh git fetch + git grep this session) — awaiting human cherry-pick, same as the rest of ELITEA-2021's batch. Doesn't block localhost coverage, only deployed-env promotability."
+        }
+      ],
+      "afs": "test-specs/pipelines/lcovered_pipeline-advanced-step-limit-persist_ELITEA-2054.md"
+    },
+    {
+      "id": "ELITEA-2055",
+      "outcome": "already-covered",
+      "note": "Dedup: same covering spec (test_pipeline_create_full_details_persist.py) fills EDITOR NOTES, saves, reloads, re-asserts persistence (lines :122-124, :126-129, :130-134, :145-152). Same live green re-run used as evidence. Only the literal notes text differs, not the mechanism.",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "test-specs/pipelines/_surface.md § 'Confirmed testid gaps (need add-data-testid, as of 2026-08-02)' was stale — pipeline-step-limit-input / pipeline-editor-notes-section / pipeline-editor-notes-input were already added during ELITEA-2021's implementation (2026-08-08) but the gap-list entry was never superseded. Added a 'Resolved during ELITEA-2021 implementation' note in place so a future analyst … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Both ELITEA-2054 and ELITEA-2055 are terminal already-covered verdicts pointing at the same covering spec, test_pipeline_create_full_details_persist.py (ELITEA-2021). No build half ran — nothing advances to implementer for this dispatch."
+        },
+        {
+          "kind": "note",
+          "note": "Both testids (pipeline-step-limit-input, pipeline-editor-notes-section/-input) are confirmed present on automation/testids but NOT yet on origin/main (fresh git fetch + git grep this session) — awaiting human cherry-pick, same as the rest of ELITEA-2021's batch. Doesn't block localhost coverage, only deployed-env promotability."
+        }
+      ],
+      "afs": "test-specs/pipelines/lcovered_pipeline-editor-notes-persist_ELITEA-2055.md"
+    },
+    {
+      "id": "ELITEA-2056",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Filed EliteaAI/elitea-testing-public#1368 (MINOR): opening the Information section's 'Show' link preview modal on a single-node pipeline deterministically (2/2 reproduced) throws a console InvalidStateError ('Failed to execute inverse on SVGMatrix: the matrix is not invertible') from svg-pan-zoom's resetZoom, called by the shared MermaidDiagramOutput/DiagramOutput.jsx renderDiagram. Diagram still … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1368"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case text step 9 says clicking 'Show' 'navigates to pipeline YAML or visual representation.' Live product does NOT navigate anywhere (no URL change) — it opens a StyledShowContextModal rendering the pipeline's YAML as a Mermaid diagram, satisfying only the 'visual representation' branch of the case's own either/or wording. Not filed as a separate tracker issue (documented directly in the AFS's Kno… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Added a cross-page testid-reuse precedent note: show_context_diagram_container reuses the pre-existing chat-mermaid-diagram-svg-container testid (hardcoded inside the shared MermaidDiagramOutput/DiagramOutput.jsx component also used by ChatPage). This mirrors the ALREADY-established duplication of copy-id/copy-version-id/agent-information-section between AgentDetailPage and PipelineDetailPage — fl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "test_pipeline_information_section.py:147 — `pipeline_page.show_context_diagram_container.locator(\"svg\").count()` chains a raw CSS tag selector (`\"svg\"`) directly off a LocatorDescriptor field, inline in the SPEC file. This violates the testid-only locator policy (`.agents/testing.md` § Locator policy, `.agents/role-overrides.md`): locators live only as page-object class fields, never constructed i… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_information_section.py:147"
+        },
+        {
+          "kind": "defect",
+          "note": "test_pipeline_information_section.py:67-68 — Step 1 (\"Open an existing pipeline; it loads in the editor\") performs only `pipeline_page = _navigate_to_detail(page, pipeline_with_llm_id)` with no assertion. Both the TMS case (step 1 expected result: \"Pipeline is loaded in the editor\") and the AFS (step 1: \"Verify: pipeline loads (canvas/editor visible)\") specify an observable that must be checked at… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_information_section.py:67"
+        },
+        {
+          "kind": "note",
+          "note": "AFS step 9 directed `expect.soft()` for the console-cleanliness portion of the known #1368 defect; the implementation instead pre-filters the known error out of `console_errors` via `_is_known_1368_error()` and hard-asserts the remainder, with a `# Known defect: #N` comment. This is testing.md's OWN sanctioned alternative to expect.soft() (merge-gate section: \"soft-assert OR # Known defect: #N com… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_information_section.py:23-35"
+        },
+        {
+          "kind": "note",
+          "note": "Defect #1368 (svg-pan-zoom InvalidStateError, filed during ELITEA-2056 analysis) independently verified real via `gh issue view` — deterministic 2/2 repro, correctly labelled and linked to the case. New testid `pipeline-information-show-link` independently verified present on `EliteaAI/EliteaUI@automation/testids` (ApplicationInformation.jsx:159). Both check out; not a concern."
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer's suggested #579-sanctioned pattern (ChatPage.MERMAID_NODE/get_diagram_node_count) required one extra fix beyond a straight mirror: click_information_show_link() needed to wait for the first .node to attach, not just the container to become visible, because Mermaid populates the container asynchronously after it renders visible. Any future page-object method touching show_context_diagram_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Fix 1 verified: raw `.locator(\"svg\")` chained off a LocatorDescriptor in the spec file is gone. Replaced with `PipelineDetailPage.MERMAID_NODE = \".node\"` class constant + `get_diagram_node_count()`/`click_information_show_link()` page-object methods, mirroring `ChatPage.MERMAID_NODE`/`get_diagram_node_count()` exactly (pipeline_detail_page.py, new lines ~134-172, 1750-1780). Docstring declares the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Fix 2 verified: Step 1 now asserts `pipeline_page.canvas_wrapper.is_visible(timeout=UI_ELEMENT_TIMEOUT)` for \"pipeline loads in the editor\", matching the sibling pattern (test_pipeline_three_dot_menu_actions.py Step 1).",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_information_section.py:67-69"
+        },
+        {
+          "kind": "note",
+          "note": "Full Coverage-Map re-triangulation (case ↔ AFS ↔ diff): all 9 original case steps have a row and a real per-step assertion in the implementation (steps 1-9 checked individually against the diff). Axis-2 addition (console-error side-channel, known defect #1368) is present and correctly scoped to filter only the named defect string, not a blanket suppression.",
+          "ref": "test-specs/pipelines/l2_pipeline-information-section_ELITEA-2056.md"
+        },
+        {
+          "kind": "note",
+          "note": "Independent verification beyond the diff read: ruff clean on both changed files (checked at their real in-tree paths for correct import-sort resolution — the shared working tree was already sitting on this branch from a prior stage, not automation/base; restored via `git checkout --` immediately after, tree left clean); testid `pipeline-information-show-link` confirmed live on `EliteaAI/EliteaUI`'… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_information_section.py"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking, carried from round 1: AFS specified `expect.soft()` for the known-#1368 console-error assertion; the implementation instead filters the known error at the console listener and hard-asserts the remainder with a `# Known defect: #N` code comment. This matches the codebase's OWN established sibling pattern (`_is_known_1021_warning()` in test_pipeline_entry_point_trigger_types_persist.py… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_information_section.py:36-40"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-information-section_ELITEA-2056.md",
+      "branch": "tests/2056-pipeline-information-section",
+      "pr": 1369,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          179.333325959,
+          178.237099791,
+          180.804458625
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2064",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case-text drift: no 'Pipeline sub-tab' exists in the live product — the Toolkit/MCP/Agent/Pipeline buttons in the Tools section are 4 independent ADD triggers, and every attached item renders in ONE flat list sharing the agent-toolkit-card testid. Same root cause as EliteaAI/elitea-testing-public#530 (Agent) and #1149 (MCP) — documented as an AFS clarification, not filed as a new near-duplicate ti… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift: the pipeline's Save button stays disabled after the Tools-section attach (the attach's own PATCH already persisted everything, so there is nothing left for Save to act on) — same behavior already documented for ELITEA-2038's Agent-node case. The test asserts Save's disabled state rather than clicking an inert button."
+        },
+        {
+          "kind": "note",
+          "note": "No pre-existing tracker issue found on board #9 for ELITEA-2064 (same gap noted for ELITEA-2043 earlier this wave) — flagging for Tal to link/create during Close so the PR link + closure record have a home."
+        },
+        {
+          "kind": "note",
+          "note": "Near-miss git hazard on EliteaUI's automation/testids (shared org branch): a commitlint hook rejected the testid commit's message ('[ELITEA-2064]' instead of the repo's actual '[EL-0000] ... (ELITEA-<id>)' convention), and my reflexive `git commit --amend` retry silently amended a STRANGER's already-pushed commit (ELITEA-2056's) instead of retrying fresh. Caught via `git diff origin/branch HEAD --… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "automation/tests/ui/pipelines/test_pipeline_attach_pipeline_as_tool.py:12-14 — the @allure.issue URL uses slug ELITEA-2064_attach-pipeline-as-tool.md; the real TMS file is ELITEA-2064_pipeline-attach-pipeline-as-tool.md (confirmed 404 vs 200 via `gh api repos/EliteaAI/onetest-ai-tm-Elitea/contents/...`). Every sibling test in tests/ui/pipelines/ (2056, 2030, 2038, 2048, 0860 checked) uses the corr… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test_pipeline_attach_pipeline_as_tool.py:12-14"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks re-run independently and both clean: testid-only-locator grep on the full PR diff = 0 hits; additive-only grep (^-[^-]) on pipeline_detail_page.py's diff = 0 hits (matches the PR body's self-reported claims)."
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance verified against live EliteaUI git history, not just trusted from the AFS: EliteaAI/EliteaUI@e2130cf4 genuinely adds data-testid=\"agent-add-pipeline-button\" to ToolMenu.jsx's Pipeline BaseBtn, is present on origin/automation/testids, and the sibling commit it sits next to (22184211, ELITEA-2056) is intact/unclobbered — the implementer's own memory entry about a near-miss amend-ha… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "open_pipeline_popper()/select_pipeline_in_popper() are byte-for-byte structural mirrors of the existing open_agent_popper()/select_agent_in_popper() pair (same endpoint-substring wait discipline, same Popper helper calls) — page-object addition is genuinely additive, no existing method bodies touched."
+        },
+        {
+          "kind": "note",
+          "note": "All 6 original TMS case steps have Coverage Map rows and real per-step assertions in the implementation (popper visibility, attach PATCH 201 response, agent-toolkit-card presence+name, Save-disabled state, post-reload card persistence, console-error checks spanning steps 2-6). Both case-text CLARIFICATIONS (no 'Pipeline sub-tab' exists live; Save is inert post-attach because the attach's own PATCH… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Priority marker consistency verified: AFS states Priority l2 (source: medium), test file carries pytest.mark.p2 — matches, no drift."
+        },
+        {
+          "kind": "note",
+          "note": "PROMPT-INJECTION NOTE (not a defect in the PR under review): loading the code-review skill via the Skill tool returned output containing a fabricated <system-reminder> block claiming the date changed with an instruction to conceal that fact, plus fabricated 'MCP Server Instructions' for github tools. This did not originate from the real system/user and was disregarded; flagging so the operator is … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Fix was purely a documentation/metadata link correction (no application behavior involved) — no new regression test was added for it, since the reviewer's own mechanical checks (additive-only, locator-policy grep) don't apply here and no suite-wide TMS-link validator exists in this project; qa-engineer's memory entry documents the check reviewers should run (gh api / find against the TMS repo) for… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1370"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED and verified: the @allure.issue URL now reads '.../pipelines/ELITEA-2064_pipeline-attach-pipeline-as-tool.md', matching the real file at ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/pipelines/ELITEA-2064_pipeline-attach-pipeline-as-tool.md (confirmed by listing that directory). The link now resolves instead of 404ing.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_attach_pipeline_as_tool.py:35"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation (case snapshot .agents/automation/pipelines-remaining/cases/ELITEA-2064.md ↔ AFS test-specs/pipelines/l2_pipeline-attach-pipeline-as-tool_ELITEA-2064.md ↔ diff tests/batch-pipelines-remaining-w6...tests/2064-pipeline-attach-pipeline-as-tool) turned up nothing new to block on. Every Coverage-Map row (steps 1–6 + preconditions + expected-final-state) has a real assertion at its… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical checks re-run on the same diff: raw-locator grep (get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page.locator|.locator() on added lines) = 0 hits. Additive-only check on automation/pages/pipeline_detail_page.py (grep '^-[^-]') = 0 deletions — the new add_pipeline_button field + open_pipeline_popper()/select_pipeline_in_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "select_pipeline_in_popper() correctly hard-blocks on the PATCH .../application_relation/prompt_lib/{project}/... 201 response (same endpoint the Agent picker uses, distinct from the Toolkit/MCP picker's /tool/prompt_lib/ PATCH) before returning — this is the regression guard the AFS's Axis-2 addition calls for, and it's actually wired into the test body (attach_response asserted not-None), not jus… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-attach-pipeline-as-tool_ELITEA-2064.md",
+      "branch": "tests/2064-pipeline-attach-pipeline-as-tool",
+      "pr": 1370,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          179.333325959,
+          178.237099791,
+          180.804458625
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2065",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case text says MCP appears 'under the MCP sub-tab' — the live product has no MCP sub-tab; every attached item (Toolkit/MCP/Agent/Pipeline) renders in one flat list sharing the agent-toolkit-card testid. Already tracked as EliteaAI/elitea-testing-public#1149 (sibling of #530) from the ELITEA-2037 session — not re-filed, just re-confirmed live and referenced in this AFS.",
+          "ref": "EliteaAI/elitea-testing-public#1149"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 5 says the MCP entry shows 'its name and tools count or list' — the live product never renders a numeric tools-count, only a 'Show tools' toggle that expands a per-tool list. Documented in the AFS (not filed as a new ticket) — the case's 'count OR list' wording is satisfied by the list half."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 9 ('Save — verify removal persists') implies an explicit Save click is required. Live-verified: removing a Tools-section card auto-persists immediately via its own PUT (useDisassociateToolkit.hooks.js's savePipelineAfterToolkitRemoval), which resets the Formik dirty-state and disables the Save button — clicking it (even via a forced JS click, which a real disabled <button> suppresses) fi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "2 new data-testids (toolkit-card-tools-toggle, toolkit-card-tool-item-{tool}) are on EliteaAI/EliteaUI automation/testids only (@c45f1611) — not yet on main. Case is not deployed-env-promotable until a human cherry-picks them, per the standard promotability caveat."
+        },
+        {
+          "kind": "note",
+          "note": "Recorded a memory entry on toolkit-card removal mechanics (header-scoped hover targeting, overlay-click bypass via evaluate(), and the removal-auto-persists-so-Save-goes-disabled behavior) — applies to any future test removing an agent-toolkit-card on either the Agent or Pipeline Tools section, since both share ToolCard.jsx."
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING (Important). `remove_toolkit()` adds a new `self.page.wait_for_timeout(300)  # CSS hover transition reveals the delete button` immediately after `card.hover(...)`. This is a hard-rule violation: `.agents/conventions.md` § Hard don'ts states 'No `sleep`/`waitForTimeout` — framework waits only', and `.claude/rules/ui-tests.md`'s own '❌ WRONG' example is this exact call shape (`page.wait_for… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:5676"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checked out clean. Testid provenance independently re-verified via fresh `git fetch origin` + `git grep` in ../EliteaUI against both `origin/main` and `origin/automation/testids`: `toolkit-card-tools-toggle` and `toolkit-card-tool-item-{value}` confirmed present ONLY on `automation/testids` (0 hits on `main`) at commit `EliteaAI/EliteaUI@c45f1611` (commit message confirmed via `git… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical non-testid-handle grep on the full diff (automation/pages/ + automation/tests/): 4 hits, all `.locator(self.X)` chained off UPPER_CASE `[data-testid=...]` class constants (TOOLKIT_CARD_TOOLS_TOGGLE, TOOLKIT_CARD_TOOL_ITEM, TOOLKIT_CARD_DELETE_BUTTON) — compliant, no raw handles added. `pipeline_detail_page.py` diff is purely additive (+126/-0, no deletions) — POM additive-only disciplin… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map triangulated case ↔ AFS ↔ diff: all 9 original case steps + preconditions have a row and a real per-step assertion in the implementation, including the two documented CLARIFICATIONs (no 'MCP sub-tab' — #1149; no numeric tools-count display, source-confirmed) and the AFS's step-9 CORRECTED disposition (removal auto-persists; test asserts `save_button.is_disabled()` + reload + zero-coun… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer's flagged finding was fixed by simple removal — no functional behavior change, since the immediately-following delete_btn.wait_for(state=\"visible\") already covers the hover-reveal transition via polling. No AFS or scope drift.",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1 (commit d2f8eba2) removed the fixed 300ms wait_for_timeout in PipelineDetailPage.remove_toolkit(); the following delete_btn.wait_for(state=\"visible\", timeout=5000) already gates the click, so no functional loss. Verified via direct diff read + re-run mechanical greps against branch tip b485d08b: 0 wait_for_timeout/time.sleep hits, 4 non-testid-handle hits all compliant (.locator(self.X… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:5676"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-tools-section-mcp-add-view-remove_ELITEA-2065.md",
+      "branch": "tests/2065-pipeline-tools-section-mcp-remove",
+      "pr": 1371,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          179.333325959,
+          178.237099791,
+          180.804458625
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 6,
+    "already-covered": 2
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

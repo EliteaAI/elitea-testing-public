@@ -33,10 +33,15 @@
   **wave-05-chat-panel (7 cases) LANDED** — elitea-testing-public#1364, merged `9df3375c`, 6/7
   automated (0 sanctioned-RED), 1 blocked (ELITEA-2071, confirmed no-fullscreen-mode defect, #1363).
   TMS back-written (6 cases), closure comment posted.
-  wave-06 through wave-07 (19 cases) — PLANNED, not yet launched (see Plan)
-- Campaign totals so far: 36/55 terminal — 33 automated (2 sanctioned-RED: ELITEA-2047 vs #1327,
-  ELITEA-2051 vs #570) + 2 already-covered (ELITEA-2063, ELITEA-2060) + 1 blocked (ELITEA-2071, #1363).
-  19/55 remaining across wave-06..07
+  **wave-06-state-settings-tools (8 cases, 1 cluster) LANDED** — elitea-testing-public#1372, merged
+  `ef39129c`, 6/8 automated + 2 already-covered (ELITEA-2054+2055, cluster). Internal gate green 3/3.
+  Lead's own re-gate hit one isolated flake (toast-text race, `test_pipeline_information_section.py`)
+  — reproduced clean standalone + 3 subsequent consecutive green runs, not a defect. TMS back-written
+  (8 cases), closure comment posted.
+  wave-07 (11 cases) — PLANNED, not yet launched (see Plan)
+- Campaign totals so far: 44/55 terminal — 39 automated (2 sanctioned-RED: ELITEA-2047 vs #1327,
+  ELITEA-2051 vs #570) + 4 already-covered (ELITEA-2063, ELITEA-2060, ELITEA-2054, ELITEA-2055) + 1
+  blocked (ELITEA-2071, #1363). 11/55 remaining — wave-07 only
 - **Operator directive 2026-08-08T13:42:41Z: "Proceed with all waves till you complete."** — running
   wave-02..07 sequentially without further per-wave checkpoints; only stopping early for a real blocker
   (question/bug protocol).
