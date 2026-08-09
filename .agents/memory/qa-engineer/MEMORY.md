@@ -28,6 +28,7 @@
 - [Provenance grep false negatives](provenance_grep_needs_case_insensitive.md) — needs -i; object-literal `testId:` (colon) still fails filter, eyeball raw grep
 - [AI Providers tier selectors](ai_providers_tier_selectors_no_clear_and_no_chat_parity.md) — no unset in UI, only Default feeds chat model
 - [structured_output+messages+dict/list crash](structured_output_messages_dict_list_crash.md) — #1274; never combine in one node's output
+- [Known-defect soft-assert polarity](known_defect_soft_assert_polarity_must_encode_correct_behavior.md) — condition must fire on the BUG, not on its fix, or it's a hidden green
 - [Mechanical grep misses JS-string raw selectors](mechanical_grep_misses_js_string_raw_selectors.md) — grep `wait_for_function`/`evaluate` JS payloads separately for `data-testid=`
 - [Empty-title Tooltip breaks a11y snapshot](folder_confirm_button_state_absent_from_ax_snapshot.md) — `title={cond?'':text}` elements vanish/mislabel in browser_snapshot; testid-only is load-bearing, not just policy
 - [No non-admin test-user exists](no_non_admin_test_user_credential_exists.md) — TEST_USER is admin everywhere; RBAC cases need a flagged gap, not a role hunt
