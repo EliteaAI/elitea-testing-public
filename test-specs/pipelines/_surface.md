@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2053 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2058 analysis).
 
 ## Chat starters — shared `ConversationStarters.jsx` component; embedded-chat chip testid is FREE (already fixed by ELITEA-1886 on the Agent surface) (confirmed live, 2026-08-09, ELITEA-2053)
 
@@ -2622,6 +2622,22 @@ Full AFS: `test-specs/pipelines/l2_pipeline-execution-long-response-streaming_EL
   `PipelineAPI.create_pipeline_with_nodes()`. Satisfies the F-String
   precondition `pipeline_with_llm_id` does not (that fixture hardcodes
   TASK as `fixed`/`''`).
+
+**ELITEA-2058 (extend-existing, confirmed live 2026-08-09):** the model-chip
+proof for "execution actually used the selected model" — the missing piece
+the ELITEA-2017 test never asserted. Opened a pre-existing pipeline
+(`test-pipeline`, id `6938`), read the closed selector's DEFAULT label
+(`"Anthropic Claude 4.5 Sonnet"`) before touching it, switched to
+`"GPT-5 mini"` via the existing `open_model_selector()`/`select_llm_model()`,
+sent a message, and read `[data-testid="chat-answer-model-chip"]` on the
+settled response: `count == 1`, text `"GPT-5 mini (LLM1)"` — i.e.
+`"<selected model> (<node id>)"`, confirming execution used the newly
+selected model, not the pipeline's prior default. `PipelineDetailPage` has
+NO `answer_model_chip` field/getter yet — mirror `ChatPage.answer_model_chip`
+(`chat_page.py:620`) exactly; the testid itself needs no `add-data-testid`
+work (see provenance table below, same pending-promotion bucket ELITEA-2017
+already flagged). Full extension AFS:
+`test-specs/pipelines/lextend_pipeline-llm-model-selection-and-execution-usage_ELITEA-2058.md`.
 
 ## Embedded chat panel — Welcome message renders via the SAME shared FSD chat
 components as the agent surface; the "Welcome message" left-panel section is
