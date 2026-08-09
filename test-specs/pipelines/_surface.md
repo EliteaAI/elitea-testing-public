@@ -2,7 +2,59 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2052 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2053 analysis).
+
+## Chat starters — shared `ConversationStarters.jsx` component; embedded-chat chip testid is FREE (already fixed by ELITEA-1886 on the Agent surface) (confirmed live, 2026-08-09, ELITEA-2053)
+
+Confirmed live via Playwright MCP + `browser_run_code_unsafe` on a fresh disposable
+pipeline (id 8583):
+
+- **The pipeline's "Chat starters" left-panel section is the EXACT SAME
+  `src/components/ConversationStarters.jsx` component the Agent form uses** —
+  confirmed via source read: `PipelineConfigurationForm.jsx` and
+  `ApplicationConfigurationForm.jsx` both import it. All its testids
+  (`agent-conversation-starters-section` — rendered here as
+  `agent-canvas-section-chat-starters`, `agent-conversation-starter-add`,
+  `agent-conversation-starter-input`, `agent-conversation-starter-counter`, the
+  fullscreen-dialog set) are shared literals despite the `agent-` prefix — this
+  predates the current shared-component-testid ruling and is tracked tech debt,
+  not something to fix opportunistically on an unrelated case.
+- **Section renders already expanded by default** — same pattern as
+  Welcome-message/Advanced (ELITEA-2052/2021's note). No click needed to reach
+  the "+ Starter" button.
+- **The "delete starter" button has NO testid anywhere** (`main` or
+  `automation/testids`) — only `aria-label="delete starter"` on the shared
+  component's delete `BaseBtn`. No existing test (agent or pipeline surface)
+  exercises it. First case to need it: ELITEA-2053 (step 3, "verify existing
+  starter shows a delete button") — flagged `needs-adding` in that AFS.
+- **The embedded-chat starter CHIP (`chat-conversation-starter-tile`) needs NO
+  new `add-data-testid` work for the pipeline surface** — `ChatPanel.jsx`
+  (pipeline's right-side chat) mounts the identical shared `ChatBox` component
+  (`@/[fsd]/features/chat/ui`) the Agent Detail page mounts, which renders the
+  same `ChatConversationStarters.jsx` call site ELITEA-1886 already wired
+  (`EliteaAI/EliteaUI@afb48435`, on `automation/testids` only, confirmed via
+  fresh `git fetch origin` + `git grep` — absent on `origin/main`). One
+  component instance, two routes — the fix travels for free. Confirmed live:
+  `[data-testid="chat-conversation-starter-tile"]` count==1 with the exact
+  saved starter text, in the pipeline's embedded chat panel.
+- **Clicking the chip is pre-fill-only, one-shot** — same `hasStarterBeenSent`
+  mechanic ELITEA-1886 documented for the Agent surface (shared `ChatBox.jsx`
+  state, not a re-implementation): click sets `chat-message-input`'s value to
+  the exact starter text and the tile immediately disappears (count 1→0); it
+  does NOT auto-send. Confirmed live via `browser_run_code_unsafe`.
+- **Zero console errors, zero network 4xx/5xx** across add-starter → Save →
+  reload → click-chip. Save fires `POST .../applications/prompt_lib/399` →
+  `201`; reload's `GET .../application/prompt_lib/399/{id}` → `200` seeds the
+  chip from the saved `conversation_starters` list — same zero-extra-network
+  shape as the Welcome message (ELITEA-2052).
+- `PipelineDetailPage` already had `conversation_starter_add_button`/
+  `conversation_starter_inputs`/`add_conversation_starter()`/
+  `get_conversation_starter_value()` from a prior case (ELITEA-2021) — no
+  changes needed. Still missing (as of this session): a `CHAT_STARTER_TILE`
+  class constant + `get_chat_starter_tiles()`/`click_chat_starter_tile()`
+  methods (mirrors `AgentDetailPage`'s existing implementation exactly).
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-chat-starters-visible-and-clickable_ELITEA-2053.md`.
 
 ## Canvas Zoom/Pan/Fit-View — pure client-side ReactFlow viewport state, deterministic Fit View, zero new testids (confirmed live, 2026-08-08, ELITEA-2019)
 
