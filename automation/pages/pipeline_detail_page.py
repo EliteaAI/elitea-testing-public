@@ -134,6 +134,35 @@ class PipelineDetailPage(PipelineFormPage):
         description="Version ID text (Information accordion)",
     )
 
+    # Information accordion's "Pipeline: Show" link (ELITEA-2056). Rendered
+    # only when `showPipeline` is passed (ApplicationInformation.jsx),
+    # i.e. pipeline-only — same conditional shape as `information_trigger_row`
+    # above. Had NO testid before this session; added via add-data-testid,
+    # EliteaAI/EliteaUI@22184211. Clicking it opens a modal (NOT a
+    # navigation — confirmed live, see `_surface.md`) rendering the
+    # pipeline's YAML as a Mermaid diagram.
+    information_show_link = LocatorDescriptor(
+        testid="pipeline-information-show-link",
+        description='Information section\'s "Pipeline: Show" link — opens a '
+        "Mermaid-diagram preview modal of the pipeline's YAML",
+    )
+
+    # The Show-link modal's Mermaid diagram content. Reuses the PRE-EXISTING
+    # `chat-mermaid-diagram-svg-container` testid — hardcoded inside the
+    # shared `MermaidDiagramOutput/DiagramOutput.jsx` component that both
+    # Chat (`ChatPage.diagram_svg_container`) and this modal
+    # (`StyledShowContextModal` -> `MermaidDiagramOutput`) render through.
+    # No new testid needed; duplicating the literal across page objects for
+    # a shared-component testid is an established precedent here (same as
+    # `copy-id`/`copy-version-id`/`agent-information-section`, already
+    # duplicated between AgentDetailPage and PipelineDetailPage).
+    show_context_diagram_container = LocatorDescriptor(
+        testid="chat-mermaid-diagram-svg-container",
+        description="Mermaid diagram container inside the Show-link preview modal "
+        "(StyledShowContextModal) — shared testid, also used by ChatPage's own "
+        "mermaid canvas",
+    )
+
     # --- Version management (Save As Version / VERSION selector, ELITEA-2002).
     # `save_as_version_button` itself is inherited from PipelineFormPage.
     # Same shared components AgentDetailPage's version-management fields
@@ -1713,6 +1742,22 @@ class PipelineDetailPage(PipelineFormPage):
             Version ID as string (e.g. ``"8311"``).
         """
         return self.copy_version_id_button.text_content().strip()
+
+    @action("Click the Information section's 'Show' link")
+    def click_information_show_link(self, timeout: int = 10000) -> None:
+        """Click the "Pipeline: Show" link and wait for its preview modal.
+
+        Opens ``StyledShowContextModal`` (NOT a navigation — confirmed live,
+        ELITEA-2056 exploration) rendering the pipeline's YAML as a Mermaid
+        diagram via ``show_context_diagram_container``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the diagram
+                container to become visible.
+        """
+        self.information_show_link.click()
+        self.show_context_diagram_container.wait_for(state="visible", timeout=timeout)
+        logger.info("Information section 'Show' link opened the diagram preview modal")
 
     @action("Open the Create version dialog")
     def open_save_as_version_dialog(self, timeout: int = 10000):
