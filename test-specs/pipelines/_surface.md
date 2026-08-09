@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2070 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2451 analysis).
 
 ## Run History panel — Pipeline surface (SAME shared component as the Agent surface's ELITEA-1877, confirmed live, 2026-08-09, ELITEA-2011)
 
@@ -1396,6 +1396,54 @@ source, no such import/usage in `StateModifierNode.jsx`.
   Cosmetic only — panel renders and functions correctly. Don't assert a
   blanket "zero console errors" through the panel-open step for this flow;
   scope around this one known signature.
+
+### Timeline Stepper — per-step dot/tooltip/timestamp handles (confirmed live, 2026-08-09, ELITEA-2451)
+
+Confirmed live via a fresh 3-node plain-LLM chain (`LLM 1 → LLM 2 → LLM 3 → END`,
+pipeline id 8767, `afs_2451_probe2`, deleted at session end):
+
+- **Dot color is a SINGLE run-level flag, not per-step.** `ProcessStepIcon.jsx`
+  receives `isError={data.status === PipelineStatus.Error}` — identical value
+  passed to EVERY step in the map. For a `Completed` run, all N dots render
+  `palette.status.published` (green); there is no per-step success/fail color.
+  **`data-status` needs adding** to the dot (mirrors the existing
+  `pipeline-run-details-status-badge` `data-status` pattern) so automation
+  never has to assert a literal CSS color.
+- **The dot's `aria-label` attribute already carries the node id**
+  (`StyledTooltip title={step.id}` — MUI surfaces this as a static
+  `aria-label` on the trigger, confirmed via `outerHTML` read:
+  `aria-label="LLM1"`, NOT a `title` attribute) — present even before a real
+  hover event fires, confirmed via accessibility snapshot immediately on
+  panel open. Same space-stripping as the Timeline label (`"LLM 2"` →
+  `"LLM2"`). Read via `get_attribute("aria-label")` on the EXISTING
+  `pipeline-run-details-timeline-step-{index}` testid — no new handle
+  needed. Same technique already documented in role memory,
+  `artifacts_bucket_search_testid_gaps_and_tooltip_aria_label_technique.md`,
+  for a different MUI Tooltip call site. A real `.hover()` also renders the
+  visual popup (screenshot:
+  `test-results/screenshots/ELITEA-2451-step-hover-tooltip.png`).
+- **The per-step timestamp (`HH:mm:ss`, e.g. `13:32:19`) has NO testid** — a
+  plain `Typography` sibling of the dot inside the same `Step`
+  (`RunStateDialog.jsx:285-290`). **Needs adding**:
+  `pipeline-run-details-timeline-timestamp-{index}` (dynamic, same `index` as
+  the dot, so the two stay correlated).
+- **Layout is horizontal (left-to-right), NOT top-to-bottom** — plain MUI
+  `Stepper`, no `orientation="vertical"` override. Bounding-box read of 3
+  dots after a completed run: Y constant (~302–303px) while X increases
+  monotonically with execution order (371 → 852 → 1336). Case-text drift
+  (case step 7 says "top to bottom"); filed
+  `EliteaAI/elitea-testing-public#1375`. Assert execution order via DOM-index
+  + ascending-timestamp correlation, not axis/pixel position.
+- **Entry count == executed-node count, ONLY for plain (non-structured-output)
+  nodes.** A `structured_output: true` LLM node renders TWO timeline entries
+  per execution (ELITEA-2453 finding) — do not use a structured-output
+  fixture for any test asserting "N entries == N executed nodes".
+- **New prefix-selector constant, no new testid**: counting all dots reuses
+  the EXISTING per-index testid via a `[data-testid^="pipeline-run-details-
+  timeline-step-"]` prefix selector — same mechanism as the pre-existing
+  `CHAT_ATTACHMENT_CHIP_PREFIX` constant elsewhere in `pipeline_detail_page.py`.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l3_run-details-timeline-steps-display_ELITEA-2451.md`.
 
 ## LLM/HITL node Type+Value field — `Variable` Type swaps the Value field's WIDGET, not just its behaviour (confirmed live, 2026-08-04, ELITEA-2040)
 
