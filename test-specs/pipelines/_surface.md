@@ -2,7 +2,46 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2447 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2449 analysis).
+
+## Code node — input filtering (elitea_state scoping), confirmed live, clean pass (2026-08-09, ELITEA-2449)
+
+Confirms `.claude/skills/elitea-pipeline/references/yaml-schema.md:238-241`'s
+documented contract via live execution: **a Code node's `elitea_state` inside
+the pyodide sandbox contains ONLY the variables listed in that node's own
+`input:`** — a state variable declared in the pipeline's `state:` block AND
+written by an EARLIER node in the SAME run (so it has a real, non-empty value)
+is still completely absent from `elitea_state.keys()` if it isn't in the
+Code node's `input:` list. Confirmed live twice (2 disposable probe pipelines,
+ids 8823/8824, `var_a`/`var_b`/`var_c` set by 3 chained `state_modifier` nodes,
+Code node `input: [var_a, var_b]` only): `list(elitea_state.keys())` renders as
+exactly `['var_a', 'var_b']` and `'var_c' in elitea_state` is `False`, even
+though `var_c` independently shows a real value (`"CCC"`) in ITS OWN Run
+Details row at the same timeline step. **The two facts don't contradict each
+other** — a variable's Run Details row/value visibility is a pipeline-run-level
+fact (any variable declared in `state:` gets a row); a Code node's ability to
+READ a variable via `elitea_state` is scoped strictly to that node's own
+`input:` list. Don't conflate them when reading Run Details evidence for a
+"was this excluded" claim — read the CONSUMING node's own output/result value,
+not a sibling variable's unrelated row.
+
+- **`get_code_node_input_value()` (`PipelineDetailPage`, ELITEA-2009) returns
+  chip text with NO separator for a multi-variable selection** — confirmed
+  live: selecting `var_a` then `var_b` renders `.text_content()` as
+  `"var_avar_b"`, not `"var_a, var_b"` (that comma-joined form is only the
+  HIDDEN input's value, not what the visible-chip-container text read
+  returns). Any assertion against a 2+-variable Input selection must use
+  substring/membership checks (`"var_a" in value and "var_b" in value`), never
+  an exact-string match — ELITEA-2009/2446 never exercised this because both
+  only ever selected ONE variable.
+- **Calling `select_code_node_input_variable()` twice in a row (once per
+  variable) is safe and requires no new method** — confirmed live.
+  `_select_multi_select_option_and_close()`'s internal `Escape` + "wait for
+  popover fully closed" means the SECOND call's `open_code_node_input_select()`
+  reopens a genuinely-closed popover rather than toggling an already-open one
+  shut. No race, no gotcha.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l3_code-node-input-filtering-selective-state-access_ELITEA-2449.md`.
 
 ## Run Details STATES panel — Before/After values are PER-TIMELINE-STEP, not run-level (confirmed live, 2026-08-09, ELITEA-2444)
 
