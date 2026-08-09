@@ -198,3 +198,5 @@ lead before launching wave-01).
   already-covered (ELITEA-2060 → ELITEA-2018's pre-existing test, PR #1143). Testid provenance: 1 new
   commit (74ba8918, ELITEA-2072) — file differs from main, not promoted yet. Closure comment posted on
   #1297. Card stays In Progress. Launching wave-05 next.
+- 2026-08-09T04:45 wave-05-chat-panel (7 cases) launched. **Run ID: wf_0e4dae17-105** (task w41f7n4ly).
+  Polling in-turn for completion.
