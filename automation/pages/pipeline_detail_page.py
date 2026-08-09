@@ -42,6 +42,17 @@ class PipelineDetailPage(PipelineFormPage):
         description="Configuration panel General section header (always visible, replaces old tab)"
     )
 
+    # Collapse/expand toggle for the left configuration panel (ELITEA-2072).
+    # `GeneralFormPanel.jsx` — same button serves both directions (icon swaps
+    # DoubleLeft/DoubleRight, testid is stable); confirmed live: collapsing
+    # unmounts `PipelineConfigurationForm` entirely (`{!collapsed && (...)}`),
+    # so the section testids below (toolkits_section etc.) disappear from the
+    # DOM rather than merely becoming hidden.
+    config_panel_collapse_button = LocatorDescriptor(
+        testid="pipeline-config-collapse-button",
+        description="Collapse/expand toggle at the top of the left configuration panel"
+    )
+
     history_tab = LocatorDescriptor(
         testid="pipeline-history-tab",
         fallback=lambda page: page.locator('[aria-label="view run history"]'),
@@ -1866,6 +1877,33 @@ class PipelineDetailPage(PipelineFormPage):
         self.wait_for_network(timeout=timeout)
         logger.info("Configuration tab opened")
 
+    def toggle_config_panel_collapse(self, timeout: int = 5000):
+        """Click the left configuration panel's collapse/expand toggle button.
+
+        One button, both directions (ELITEA-2072) — clicking it collapses
+        the panel to a thin 28px strip if expanded, or restores it to 320px
+        if collapsed.
+
+        Args:
+            timeout: Maximum wait time for the button to be actionable.
+        """
+        logger.info("Toggling configuration panel collapse state")
+        self.config_panel_collapse_button.click(timeout=timeout)
+
+    def get_config_panel_width(self, timeout: int = 5000) -> float:
+        """Return the left configuration panel's current rendered width in px.
+
+        Confirmed live (`GeneralFormPanel.jsx`): 320px expanded, 28px
+        collapsed — a static (not layout-dependent) pair of values, but the
+        test asserts the before/after relationship rather than hardcoding
+        them, per the project's relative-assertion convention.
+
+        Args:
+            timeout: Maximum wait time for the panel to be actionable.
+        """
+        box = self.configuration_tab.bounding_box(timeout=timeout)
+        return box["width"]
+
     def click_history_tab(self, timeout: int = 10000):
         """Click the History tab.
 
@@ -2412,6 +2450,296 @@ class PipelineDetailPage(PipelineFormPage):
         """
         self.canvas_controls.locator('button[title="Fit View"]').click(timeout=timeout)
         self.page.wait_for_timeout(500)  # pan/zoom transition settle
+
+    def zoom_in_canvas(self, timeout: int = 5000) -> None:
+        """Click ReactFlow's own "Zoom In" control (canvas scale increases).
+
+        Added for ELITEA-2019. Same #579 sanctioned exception and same
+        ``canvas_controls``-scoped pattern as :meth:`fit_canvas_view` — the
+        individual button is ReactFlow's own internal render
+        (``@xyflow/react``'s ``Controls`` component, rendered directly by
+        ``FlowEditor.jsx``; no app testid can be placed on it) — scoped to
+        the real app testid ``canvas_controls`` parent.
+
+        Deliberately NOT the same as the pre-existing raw ``zoom_in()``
+        method near the bottom of this class (``self.page.locator(...)``,
+        page-level, unscoped) — that method is tracked tech debt, not a
+        pattern to extend.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('button[title="Zoom In"]').click(timeout=timeout)
+        self.page.wait_for_timeout(300)  # zoom transition settle
+
+    def zoom_out_canvas(self, timeout: int = 5000) -> None:
+        """Click ReactFlow's own "Zoom Out" control (canvas scale decreases).
+
+        Added for ELITEA-2019. Same #579 sanctioned exception and
+        ``canvas_controls``-scoped pattern as :meth:`zoom_in_canvas` /
+        :meth:`fit_canvas_view`. Confirmed live: this button becomes
+        ``disabled`` once ReactFlow's default ``minZoom`` (``scale(0.1)``)
+        is reached.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('button[title="Zoom Out"]').click(timeout=timeout)
+        self.page.wait_for_timeout(300)  # zoom transition settle
+
+    def is_control_panel_fully_visible(self, timeout: int = 5000) -> bool:
+        """Return True iff all 6 canvas control-panel buttons are visible.
+
+        Added for ELITEA-2057. Confirmed live (2026-08-08): ``canvas_controls``
+        (``rf__controls``) is a SINGLE ``@xyflow/react`` ``Controls`` instance
+        (``FlowEditor.jsx``'s ``StyledControls``) that renders its own default
+        4 buttons (Zoom In, Zoom Out, Fit View, Toggle Interactivity — each
+        with a real ``title``/``aria-label`` attribute) followed by 2 app-code
+        children appended inside the SAME component (Toggle cards size,
+        Auto-arrange — each wrapped in an MUI ``Tooltip`` whose accessible
+        name lands on the wrapping ``<span aria-label="...">``, not the inner
+        ``<button>`` itself). All 6 are #579-sanctioned third-party-widget
+        exceptions scoped under the one real app testid ``canvas_controls``,
+        same provenance as :meth:`fit_canvas_view`.
+
+        Args:
+            timeout: Maximum wait time per button, in milliseconds.
+
+        Returns:
+            True if every one of the 6 buttons is visible, False otherwise.
+        """
+        selectors = [
+            'button[title="Zoom In"]',
+            'button[title="Zoom Out"]',
+            'button[title="Fit View"]',
+            'button[title="Toggle Interactivity"]',
+            'span[aria-label="Toggle cards size"] button',
+            'span[aria-label="Auto-arrange"] button',
+        ]
+        for selector in selectors:
+            button = self.canvas_controls.locator(selector)
+            try:
+                button.wait_for(state="visible", timeout=timeout)
+            except Exception:
+                return False
+        return True
+
+    def toggle_canvas_interactivity(self, timeout: int = 5000) -> None:
+        """Click ReactFlow's own "Toggle Interactivity" control panel button.
+
+        Added for ELITEA-2057. Same #579 sanctioned exception and same
+        ``canvas_controls``-scoped pattern as :meth:`zoom_in_canvas` /
+        :meth:`fit_canvas_view` — the button is ReactFlow's own internal
+        render (``react-flow__controls-interactive``, a default ``Controls``
+        button, no app testid can be placed on it).
+
+        Confirmed live (2026-08-08): toggles ``nodesDraggable`` — a node that
+        was draggable before the click can no longer be repositioned by
+        :meth:`move_node` afterwards (bounding box unchanged), and a second
+        click restores dragging. Fires zero network requests and zero
+        console errors, same as the other canvas-viewport controls.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('button[title="Toggle Interactivity"]').click(timeout=timeout)
+        self.page.wait_for_timeout(300)  # state settle
+
+    def toggle_canvas_cards_size(self, timeout: int = 5000) -> None:
+        """Click the canvas control panel's "Toggle cards size" button.
+
+        Added for ELITEA-2057. #579 sanctioned exception (third-party widget
+        subtree): this is an app-code ``ControlButton`` appended as a child
+        of ReactFlow's own ``Controls`` component (``FlowEditor.jsx``'s
+        ``onExpandAll``), rendered inside the same ``@xyflow/react`` third-
+        party render tree as Zoom In/Out — no app testid is placeable on the
+        individual button. The accessible name lives on the wrapping MUI
+        ``Tooltip`` span (``aria-label="Toggle cards size"``), not the inner
+        ``<button>`` itself (confirmed live via DOM inspection) — scoped
+        under the real app testid ``canvas_controls`` parent.
+
+        Confirmed live (2026-08-08): toggles every node card between
+        expanded/compact — a node's rendered height shrinks dramatically
+        (e.g. a Decision node: 87.8px -> 9.5px) when compacted, and a second
+        click restores the exact original height. Fires zero network
+        requests and zero console errors.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('span[aria-label="Toggle cards size"] button').click(timeout=timeout)
+        self.page.wait_for_timeout(500)  # re-layout + fit-view settle (FlowEditor's onExpandAll)
+
+    def auto_arrange_canvas(self, timeout: int = 5000) -> None:
+        """Click the canvas control panel's "Auto-arrange" button.
+
+        Added for ELITEA-2057. Same #579 sanctioned exception and
+        ``canvas_controls``-scoped pattern as :meth:`toggle_canvas_cards_size`
+        — an app-code ``ControlButton`` (``FlowEditor.jsx``'s ``onReLayout``)
+        appended inside ReactFlow's own ``Controls`` render tree, accessible
+        name on the wrapping ``<span aria-label="Auto-arrange">`` rather than
+        the inner ``<button>``.
+
+        Confirmed live (2026-08-08): recomputes node positions via a
+        deterministic layout algorithm and calls Fit View — dragging a node
+        away from its arranged position and then clicking this button moves
+        it back to the EXACT same position it started at (px-perfect match,
+        same determinism class as Fit View — see
+        ``test-specs/pipelines/l2_pipeline-canvas-zoom-and-pan_ELITEA-2019.md``).
+        Fires zero network requests and zero console errors.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('span[aria-label="Auto-arrange"] button').click(timeout=timeout)
+        self.page.wait_for_timeout(700)  # re-layout (100ms internal) + fit-view transition settle
+
+    def get_canvas_viewport_transform(self) -> dict:
+        """Read the ReactFlow viewport's current CSS transform (translate + scale).
+
+        Added for ELITEA-2019 — the ground-truth signal for both zoom and
+        pan. #579 sanctioned exception (third-party widget subtree): reads
+        the inline ``style`` attribute ReactFlow itself writes onto
+        ``.react-flow__viewport`` (no app testid possible on a CSS transform
+        value) — scoped under the real app testid ``canvas_wrapper``
+        (``rf__wrapper``) parent, per the discipline in
+        ``.agents/testing.md`` § Locator policy.
+
+        Confirmed live shape (two independent sessions, two different
+        viewport sizes): ``translate(<tx>px, <ty>px) scale(<s>)``.
+
+        Returns:
+            Dict with float keys ``tx``, ``ty``, ``scale``.
+
+        Raises:
+            ValueError: if the transform string doesn't match the expected
+                ReactFlow shape (would indicate a library upgrade changed
+                the inline-style format).
+        """
+        viewport = self.canvas_wrapper.locator(".react-flow__viewport")
+        transform = viewport.get_attribute("style") or ""
+        match = re.search(
+            r"translate\(([-\d.]+)px,\s*([-\d.]+)px\)\s*scale\(([-\d.]+)\)", transform
+        )
+        if not match:
+            raise ValueError(f"Unexpected ReactFlow viewport transform shape: {transform!r}")
+        tx, ty, scale = match.groups()
+        return {"tx": float(tx), "ty": float(ty), "scale": float(scale)}
+
+    def get_node_bounding_box(self, node_id: str, timeout: int = 5000) -> dict:
+        """Return the on-screen bounding box of the node with *node_id*.
+
+        Added for ELITEA-2019 (public getter for zoom/pan proof — previously
+        only used internally by :meth:`move_node`). Locates via the exact
+        ``rf__node-{id}`` testid (:data:`RF_NODE_TESTID`, same #579-sanctioned
+        ReactFlow-injected provenance already documented for
+        :meth:`move_node`).
+
+        Args:
+            node_id: Internal id of the node (e.g. "Decision 1").
+            timeout: Maximum wait time for the node to be visible.
+
+        Returns:
+            Dict with float keys ``x``, ``y``, ``width``, ``height``.
+
+        Raises:
+            ValueError: if the node's bounding box can't be resolved (e.g.
+                the node isn't currently rendered).
+        """
+        node = self.page.locator(self.RF_NODE_TESTID.format(node_id))
+        node.wait_for(state="visible", timeout=timeout)
+        box = node.bounding_box()
+        if not box:
+            raise ValueError(f"Could not get bounding box for node {node_id!r}")
+        return box
+
+    def all_nodes_within_viewport(self, tolerance: float = 1.0) -> bool:
+        """Return True iff every canvas node's bounding box is fully contained
+        within the ``canvas_wrapper`` (``rf__wrapper``) bounding box.
+
+        Added for ELITEA-2019 — the "all nodes visible" proof for Fit View,
+        built entirely from existing/new testid-scoped handles
+        (:meth:`get_node_ids`, :meth:`get_node_bounding_box`,
+        ``canvas_wrapper``). *tolerance* absorbs sub-pixel rounding from
+        ReactFlow's own fit computation (confirmed live: exact containment
+        without tolerance already held on the pipelines probed this
+        session, but a fixed tolerance keeps this robust for other layouts).
+
+        Args:
+            tolerance: Pixels of slack allowed on each edge.
+
+        Returns:
+            True if every node is fully contained, False otherwise.
+        """
+        wrapper_box = self.canvas_wrapper.bounding_box()
+        if not wrapper_box:
+            raise ValueError("Could not get bounding box for canvas_wrapper")
+        wrapper_left = wrapper_box["x"] - tolerance
+        wrapper_top = wrapper_box["y"] - tolerance
+        wrapper_right = wrapper_box["x"] + wrapper_box["width"] + tolerance
+        wrapper_bottom = wrapper_box["y"] + wrapper_box["height"] + tolerance
+
+        for node_id in self.get_node_ids():
+            node_box = self.get_node_bounding_box(node_id)
+            if (
+                node_box["x"] < wrapper_left
+                or node_box["y"] < wrapper_top
+                or node_box["x"] + node_box["width"] > wrapper_right
+                or node_box["y"] + node_box["height"] > wrapper_bottom
+            ):
+                return False
+        return True
+
+    def pan_canvas(self, dx: int, dy: int, timeout: int = 5000) -> None:
+        """Drag the empty canvas pane by (*dx*, *dy*) screen pixels to pan the viewport.
+
+        Added for ELITEA-2019. #579 sanctioned exception (third-party widget
+        subtree): drags via ``.react-flow__pane`` (ReactFlow's own internal
+        pan-drag target, no app testid can be placed on it) — scoped under
+        the real app testid ``canvas_wrapper`` (``rf__wrapper``) parent, per
+        the discipline in ``.agents/testing.md`` § Locator policy. This is a
+        NEW method, distinct from the pre-existing raw ``_deselect_all()``
+        (which also uses ``.react-flow__pane`` but unscoped, page-level, and
+        for a click, not a drag) — tracked tech debt, not extended here.
+
+        Starts the drag 15% inset from the pane's top-left corner — empty of
+        nodes after a Fit View (ReactFlow's own fit computation leaves
+        margin at the edges; confirmed live on a 5-node pipeline). Uses REAL
+        ``page.mouse`` events (same technique as the existing
+        :meth:`move_node`/:meth:`connect_nodes`) — confirmed live that
+        JS-dispatched synthetic ``PointerEvent``s do NOT pan the canvas at
+        all (untrusted events, ReactFlow's drag handler ignores them); only
+        genuine mouse input works.
+
+        Args:
+            dx: Horizontal pan offset in pixels (positive = drag right).
+            dy: Vertical pan offset in pixels (positive = drag down).
+            timeout: Maximum wait time for the pane to be visible.
+
+        Raises:
+            ValueError: if the pane's bounding box can't be resolved.
+        """
+        pane = self.canvas_wrapper.locator(".react-flow__pane")
+        pane.wait_for(state="visible", timeout=timeout)
+        box = pane.bounding_box()
+        if not box:
+            raise ValueError("Could not get bounding box for canvas pane")
+        sx = box["x"] + box["width"] * 0.15
+        sy = box["y"] + box["height"] * 0.15
+
+        self.page.mouse.move(sx, sy)
+        self.page.wait_for_timeout(100)
+        self.page.mouse.down()
+        self.page.wait_for_timeout(100)
+
+        steps = 15
+        for i in range(1, steps + 1):
+            self.page.mouse.move(sx + dx * i / steps, sy + dy * i / steps)
+            self.page.wait_for_timeout(30)
+
+        self.page.mouse.up()
+        self.page.wait_for_timeout(300)
+        logger.info("Panned canvas by (%d, %d)", dx, dy)
 
     def add_node(self, node_type: str, timeout: int = 5000):
         """Add a node to the canvas via the + button menu.

@@ -57,3 +57,20 @@ drift, doesn't edit) — but a fix-round dispatch that explicitly names the
 `_surface.md` paragraph and directs the correction is a legitimate, narrow
 exception; do the edit as instructed and flag the ownership boundary in the PR
 comment for visibility rather than bouncing it back as `needs-analyst-rerun`.
+
+## Recurrence — ELITEA-2072, self-caught pre-review (2026-08-09)
+
+Wrote the AFS's Network Behavior section from a live browser probe that only
+checked `console` entries after clicking a collapse/expand toggle — no actual
+request capture. The claim ("zero network requests, either direction") was
+wrong: expand remounts a child section that fetches its own supporting lists
+on mount (7 legitimate `GET`s). The FIRST local test run (not a reviewer
+round) failed on the over-broad assertion, which is the cheap place to catch
+this — corrected the same session by narrowing to `method="PUT"` (the
+assertion that actually matters: no accidental persist) and fixed the AFS +
+`_surface.md` in the same commit. **Generalized rule: a console-only probe is
+never sufficient evidence for a "zero network requests" claim on anything
+that mounts/remounts a component with its own data-fetching hooks — capture
+actual requests (`capture_requests_matching`) before writing that claim, or
+scope the claim to the specific method/effect that matters (persist) instead
+of "no requests of any kind."**

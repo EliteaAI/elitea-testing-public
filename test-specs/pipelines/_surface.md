@@ -2,7 +2,148 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2016 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2019 analysis).
+
+## Canvas Zoom/Pan/Fit-View — pure client-side ReactFlow viewport state, deterministic Fit View, zero new testids (confirmed live, 2026-08-08, ELITEA-2019)
+
+Confirmed live via TWO independent browser sessions (Playwright MCP on a 5-node
+Decision+3-Printer pipeline id 8401, and CDP/`browser-verify` on the same pipeline
+at a controlled 1400x1000 viewport — cross-checked, both agree):
+
+- **Zoom In/Out and Fit View are already wired via the existing `canvas_controls`
+  testid (`rf__controls`) + `fit_canvas_view()` pattern** — the individual buttons
+  (`button[title="Zoom In"/"Zoom Out"/"Fit View"]`) are ReactFlow's OWN `Controls`
+  component (`@xyflow/react`, rendered directly by `FlowEditor.jsx`), #579
+  sanctioned third-party-widget exception, same provenance `fit_canvas_view()`
+  already documents. **Pre-existing raw `zoom_in()`/`zoom_out()` methods near the
+  bottom of `pipeline_detail_page.py` use an UNSCOPED `self.page.locator(...)`**
+  (tracked tech debt, not scoped under `canvas_controls`) — do not reuse them for
+  new work; add `canvas_controls`-scoped siblings instead (mirrors
+  `fit_canvas_view()` exactly).
+- **The ReactFlow viewport transform (`translate(Xpx, Ypx) scale(S)`, inline style
+  on `.react-flow__viewport`) is the ground-truth signal for both zoom and pan** —
+  confirmed live: one Zoom In click on a Fit-View baseline of `scale(0.206152)`
+  produced `scale(0.247382)` (Playwright MCP session; default viewport); a probed
+  node's `getBoundingClientRect()` grew from 97.1x87.8px to 116.5x105.4px in lockstep.
+  Zoom Out symmetrically decreases scale and clamps at ReactFlow's default `minZoom`
+  (observed `scale(0.1)`, Zoom Out button then `disabled` — not asserted by
+  ELITEA-2019, noted for awareness).
+- **Pan tracks the mouse drag delta EXACTLY (px-perfect), and only via REAL/CDP-level
+  mouse events — synthetic JS-dispatched `PointerEvent`s (`dispatchEvent`) do
+  NOTHING.** Confirmed on the CDP session: a drag of (+100, +150) screen px on
+  `.react-flow__pane` moved the viewport transform from `translate(12.9193px,
+  348.199px)` to `translate(112.919px, 498.199px)` — an exact match — and the same
+  probed node's bounding box shifted by the identical (+100, +150). A prior attempt
+  dispatching synthetic `PointerEvent`s via `page.evaluate()` (mousedown/move/up
+  sequence, `isPrimary: true`) produced **zero** transform change — confirmed
+  twice — because they are untrusted events and ReactFlow's pane-drag handler (like
+  most real drag implementations) does not react to them. **Automation
+  implication**: the implementer's `pan_canvas()` page-object method MUST use
+  Playwright's real `page.mouse.move/down/up` (same technique the existing
+  `move_node()`/`connect_nodes()` already use for node drags) — never
+  `page.evaluate()`-dispatched synthetic pointer events.
+- **Fit View is FULLY DETERMINISTIC for a static node layout** — clicking it a
+  second time, after an intervening Zoom In + pan away, restored the EXACT same
+  transform (`translate(12.9193px, 348.199px) scale(0.118012)`) the first Fit View
+  click produced. This makes an exact-transform-match assertion viable for "returns
+  to all-nodes-visible state" (step 7), stronger than a qualitative visibility check
+  alone.
+- **"All nodes visible" is verifiable purely via existing testids** — every node's
+  bounding box (via the existing `RF_NODE_TESTID`/`RF_NODE_TESTID_PREFIX` #579-
+  sanctioned class constants) fully contained within `canvas_wrapper`'s
+  (`rf__wrapper`) bounding box, confirmed live on all 5 nodes of the Decision
+  pipeline immediately after Fit View. No new testid needed anywhere in this flow —
+  `canvas_wrapper`, `canvas_controls`, and `RF_NODE_TESTID` already existed before
+  this session.
+- **Zoom/pan/Fit-View fire ZERO network requests** — confirmed via console+network
+  capture across the whole sequence on both sessions: pure client-side CSS
+  `transform` state on `.react-flow__viewport`, not part of `pipeline_settings`
+  (not persisted — a reload resets to the default Fit View). Distinct from node
+  CONFIGURATION changes elsewhere in this suite, which DO trigger
+  `PUT .../application/prompt_lib/{project}/{id}` on Save.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-canvas-zoom-and-pan_ELITEA-2019.md`.
+
+## Canvas Control Panel — all 6 buttons are ONE `canvas_controls` render tree; Zoom Out was an unused pre-existing method; Toggle Interactivity/cards-size/Auto-arrange are deterministic round-trips (confirmed live, 2026-08-08, ELITEA-2057)
+
+Confirmed live via Playwright MCP + CDP (`browser_run_code_unsafe`) on the SAME
+pipeline (id 8401, Decision + 3 Printer branches) the ELITEA-2019 session probed:
+
+- **`canvas_controls` (`rf__controls`) wraps ALL 6 buttons, not just
+  Zoom/Fit-View** — `FlowEditor.jsx`'s `StyledControls` is `styled(Controls)`
+  from `@xyflow/react`; ReactFlow's OWN 4 default buttons (Zoom In, Zoom Out,
+  Fit View, Toggle Interactivity — each with a real `title`/`aria-label` DOM
+  attribute) render first, followed by 2 app-code children appended in the
+  SAME component via `ControlButton` (Toggle cards size → `onExpandAll`,
+  Auto-arrange → `onReLayout`). Confirmed via `outerHTML` dump: the two
+  app-code buttons have NO `title`/`aria-label` on the `<button>` itself —
+  the accessible name lives on the wrapping MUI Tooltip `<span
+  aria-label="...">` instead. Locators: `button[title="Toggle
+  Interactivity"]` vs `span[aria-label="Toggle cards size"] button` /
+  `span[aria-label="Auto-arrange"] button`, all scoped under
+  `canvas_controls`.
+- **Zoom Out (`zoom_out_canvas()`) existed since ELITEA-2019 but no test
+  ever calls it** — confirmed by reading the merged `test_canvas_zoom_pan_and_fit_view`
+  (only `zoom_in_canvas()` is invoked). A real, un-flagged coverage gap
+  until ELITEA-2057 closed it.
+- **Toggle Interactivity is a real drag lock/unlock, but the drag-test
+  methodology has a false-negative trap**: dragging via a node's MID-BODY
+  coordinates on a Printer-type node (mostly `Value`/`Final Message` text
+  inputs) silently fails to move the node regardless of interactivity state
+  — the mouse-down lands on an `<input>`/`<textarea>`, not the ReactFlow
+  node wrapper. Zero displacement then looks identical to "interactivity is
+  off" but isn't. The existing `move_node()` (`pipeline_detail_page.py`,
+  added ELITEA-2047) already avoids this — it drags from the node's header
+  strip (`box.y + 12`) — so REUSE it for interactivity probes; don't build a
+  fresh drag helper that samples the bounding-box center. With `move_node`,
+  confirmed live: interactivity OFF → zero displacement; ON → exact-delta
+  displacement, in either order, fully reversible.
+- **Toggle cards size is a deterministic boolean round-trip, BUT it
+  RE-LAYOUTS node POSITIONS too, not just card visuals** — one click
+  collapses EVERY node's rendered height (confirmed live: a Decision node
+  went 87.8px → 9.5px), a second click restores the EXACT original height.
+  Backed by `FlowEditor.jsx`'s `expandAll` state + `onExpandAll`, which also
+  calls `onReLayout` (recomputes ALL node positions, same function
+  Auto-arrange uses) + a delayed `fitView()` — it is NOT a pure
+  resize-in-place. **Test-methodology consequence (confirmed live during
+  ELITEA-2057 implementation, 2 fix rounds):** if a node was manually
+  dragged (e.g. an interactivity probe) before the FIRST toggle click, a
+  plain `fit_canvas_view()` baseline does NOT land on the same basis the
+  post-toggle measurements will be on — the round-trip "restore exact
+  height" assertion produced a false mismatch (232.9px vs 251.2px, then
+  304.0px vs 251.2px on a second plain-Fit-View attempt) because Fit View
+  alone fits whatever positions are CURRENTLY on screen, while the toggle's
+  own `onReLayout` recomputes positions from scratch. Fix: call
+  `auto_arrange_canvas()` (not `fit_canvas_view()`) to establish the
+  "expanded" baseline before the first Toggle-cards-size click — this puts
+  the canvas on the SAME `onReLayout`-computed basis every subsequent
+  toggle/re-arrange call in the test will also land on, making the
+  round-trip exact. (`FlowEditor.jsx`'s `onReLayout(specifiedExpandAll)`
+  also has a latent `specifiedExpandAll || expandAll` falsy-OR: when
+  transitioning expanded→compact, `specifiedExpandAll` is `false`, and
+  `false || expandAll` silently falls through to the STALE `expandAll`
+  closure value instead — not confirmed as a visible product defect this
+  session, noted for a future analyst who touches node SPACING/positions
+  specifically during a compact-mode transition.)
+- **Auto-arrange is fully deterministic for a static graph — same
+  determinism class as Fit View (ELITEA-2019)**: dragging a node away from
+  its auto-arranged position (via `move_node`, from the header strip) and
+  then clicking Auto-arrange moves it back to the EXACT same bounding box
+  it started at (px-perfect match on both x/y), not merely "some
+  rearrangement". `onReLayout` recomputes positions via a deterministic
+  layout algorithm, not randomization.
+- **Zero network requests, zero console errors** for Zoom Out, Toggle
+  Interactivity, Toggle cards size, and Auto-arrange — same pure-client-side
+  class already documented for Zoom In/Pan/Fit-View above.
+- **Dragging a node (e.g. via `move_node`, used as the interactivity/
+  auto-arrange probe) DOES flip the pipeline's Save/Discard dirty state**
+  (confirmed live) — unlike viewport zoom/pan, which don't. Not asserted by
+  ELITEA-2057 (no Save performed), noted for the next analyst who touches
+  node-drag + Save/Discard together.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/lextend_pipeline-canvas-control-panel_ELITEA-2057.md`
+  (extends `test_pipeline_canvas_zoom_and_pan.py` — see that file for the
+  new `test_canvas_control_panel_*` test).
 
 ## Decision node execution/routing — entry-point mechanism, Input-variable requirement, and Printer's real output field (confirmed live, 2026-08-08, ELITEA-2016)
 
@@ -1064,6 +1205,18 @@ source, no such import/usage in `StateModifierNode.jsx`.
   dialog) already exists and works as documented — reused unmodified,
   pre-existing raw-handle tech debt (positional `MuiIconButton-colorTertiary`
   + `get_by_role("menuitem", name="Delete")`), not newly introduced.
+  **Resolved/added during ELITEA-2060 analysis:** case text phrasing like
+  "the node's action buttons (two small buttons on the node header)... click
+  the delete button (trash icon)" describes this EXACT mechanism, not a
+  separate quick-action control — confirmed via source
+  (`NodeCardHeader.jsx`): the two header `IconButton`s are Expand/Collapse +
+  the `DotMenu` 3-dot trigger (both visible by default since `NodeCard.jsx`
+  defaults `isExpanded=true`); the "Delete" menu item renders a `DeleteIcon`
+  (trash glyph) beside its label. No standalone trash-icon header button
+  exists anywhere in the pipelines flow-editor — grep confirms `DeleteIcon`
+  is referenced only once, inside this dropdown. A future case worded this
+  way is `already-covered` by `test_pipeline_canvas_delete_node.py`, not a
+  new interaction to discover.
 - **Deleting an EDGE**: click the edge (`.react-flow__edge`, gains a
   `selected` CSS class), press the `Delete` keyboard key → a
   `role="dialog"` confirmation appears ("Delete confirmation — Are you
@@ -2254,3 +2407,86 @@ Full AFS: `test-specs/pipelines/l2_pipeline-dashboard-pin-to-top_ELITEA-2025.md`
   direction already established for the reverse flow).
 
 Full AFS: `test-specs/pipelines/l2_flow-to-yaml-sync_ELITEA-2029.md`.
+
+**Resolved/added during ELITEA-2061 implementation (2026-08-09):** the
+per-type incrementing-name behavior (`getNormalInitialNodeId()` in
+`flowEditor.helpers.js`) is confirmed live for a SECOND type beyond LLM:
+adding "Code" nodes to an empty pipeline that already has two LLM nodes
+("LLM 1", "LLM 2") produces "Code 1" — the counter is per-type (keyed off
+which candidate id string collides with existing node ids), not a single
+canvas-wide counter. `wait_for_node_count(expected_total)` (added
+ELITEA-2033) combined with the `get_node_ids()` before/after diff above is
+sufficient to identify each newly-added node reliably — no new page-object
+method or testid was needed for this case.
+
+## Left configuration panel collapse/expand — pure client-side `useState`, one new testid (confirmed live, 2026-08-09, ELITEA-2072)
+
+Confirmed live via CDP browser probe on `AutoTest_Pipeline_probe_2020` (pipeline
+id 8056, `?viewMode=owner`) — a **direct navigation to `/pipelines/all/<id>` WITHOUT
+`?viewMode=owner` 400s** on `GET .../public_application/prompt_lib/<id>` (the
+role-overrides.md "4xx from the UI" split: this endpoint requires the owner
+viewMode param for a private pipeline — UI-side, not a backend bug; the existing
+`PipelineFormPage.navigate_to_edit()` / `PipelineDetailPage.navigate()` already
+append `?viewMode=owner`, so any test going through the page object is unaffected
+— this only bit a raw manual URL probe):
+
+- **The "left configuration panel" the case means is `GeneralFormPanel.jsx`**
+  (rendered by `ConfigurationTab.jsx`, testid `pipeline-config-tab` — the
+  pre-existing `configuration_tab` `LocatorDescriptor`), NOT any per-node inline
+  config panel (those are a different, node-scoped concept documented elsewhere
+  in this digest, e.g. "State modifier node — inline config panel"). It sits
+  alongside the ReactFlow canvas and the embedded chat panel, all three visible
+  simultaneously on `/pipelines/all/{id}` — no tab click needed.
+- **Collapse toggle had NO testid before this case** — one `IconButton` with no
+  `data-testid`, same click handler for both directions (icon swaps
+  `DoubleLeftIcon`/`DoubleRightIcon`, purely visual). Added
+  `pipeline-config-collapse-button` via `add-data-testid`
+  (`EliteaAI/EliteaUI@74ba8918`) — a single static testid, no state-ternary
+  concern (#277 doesn't apply: the testid VALUE never changes, only the icon
+  inside it does).
+- **Collapsing UNMOUNTS the configuration sections entirely** — `{!collapsed &&
+  (<PipelineConfigurationForm .../>)}` in `GeneralFormPanel.jsx`, confirmed live:
+  after collapse, `agent-toolkits-section` / `pipeline-step-limit-input` /
+  `pipeline-editor-notes-section` / `agent-information-section` all disappear
+  from the DOM (`querySelector` returns `null`), not merely `display:none`. Use
+  `to_have_count(0)` for the collapsed-state assertion, `to_be_visible()` for the
+  expanded-state one — same "absence assertion counts as a reference" pattern as
+  canon #511.
+- **Panel width is a static CSS pair, safe to assert exactly**: `maxWidth`/
+  `minWidth` ternary in `GeneralFormPanel.jsx` — 320px expanded, 28px collapsed,
+  confirmed live via `bounding_box()["width"]` on the `configuration_tab`
+  locator (NOT viewport/layout-dependent, unlike the canvas wrapper's width
+  below). The round trip is exact — re-expanding returns to 320px precisely, no
+  drift.
+- **Canvas area visibly grows when the panel collapses** — confirmed live:
+  `.react-flow` wrapper (testid `rf__wrapper`, the pre-existing `canvas_wrapper`
+  field) went from 765px to 1057px on a fixed viewport after one collapse click.
+  This value IS viewport/layout-dependent (unlike the panel's own 28px/320px
+  pair) — assert the relative increase, not a hardcoded px value.
+- **Pure client-side `useState` toggle — but EXPAND fires read-only GET
+  refetches, confirmed live via the actual pytest run (correcting an earlier
+  console-only probe that under-checked network).** `onClickCollapsed` in
+  both `GeneralFormPanel.jsx` and the sibling `ChatPanel.jsx` is plain
+  `setState`, no API call — collapse itself fires zero requests of any kind
+  (confirmed empty capture on the collapse click). But **expand REMOUNTS
+  `PipelineConfigurationForm`**, including the TOOLS section
+  (`ApplicationTools`), which fetches its own supporting lists on mount — the
+  R1 test run captured 7 `GET`s on expand, all `prompt_lib`-scoped: `tags`,
+  `tools`×2 (`mcp=false`/`true`), `toolkits`, `applications`×2
+  (`agents_type=classic`/`pipeline`), `upload_icon`. This is normal
+  remount behavior, not a defect. The guard that DOES hold both directions:
+  no `PUT` (persist) call ever fires — assert with
+  `capture_requests_matching(substring, method="PUT")`, not an unfiltered
+  capture. Lesson for future toggle/remount cases: a `console`-only live
+  probe is NOT sufficient evidence for a "zero network requests" AFS claim —
+  capture actual requests before asserting an empty set, or narrow the claim
+  to the method that matters (persist), matching this project's
+  `afs_claims_need_full_sweep_and_grep` memory pattern (previously observed
+  on ELITEA-2019's Axis-2 claim, now also on ELITEA-2072's).
+- **Sibling pattern, not yet a case:** `ChatPanel.jsx` (right-side embedded chat)
+  has the IDENTICAL collapse/expand shape (own `useState`, own un-testid'd
+  `IconButton`, same icon-swap) — no case in this campaign currently exercises
+  it; if one arrives, reuse this exact approach (one new testid, unmount-based
+  absence assertions, static-width exact-match).
+
+Full AFS: `test-specs/pipelines/l2_pipeline-collapse-left-panel_ELITEA-2072.md`.

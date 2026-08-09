@@ -29,3 +29,13 @@ This also applies to Agents (`test_agent_name_character_limit.py` already
 covers the truncation behavior itself as a case, ELITEA-1900) — any NEW test
 that generates its own name for either entity should budget for this cap
 before picking a prefix.
+
+**Variant — appending to an already-at-cap fixture name (ELITEA-2048,
+2026-08-09):** `pipeline_id`'s own `[:32]` name generation means the field is
+frequently already AT the 32-char cap before your test even edits it. A
+"modify the name" test step that does `f"{original_name} modified"` (the
+common AFS phrasing) silently drops the whole suffix, and the field reads
+back **unchanged** — indistinguishable from "the edit never happened" rather
+than a length error. Don't append to a fixture-generated name; use a fixed
+short literal instead (`"autotest_name_modified"`), same as
+`test_discard_reverts_name_change`'s pre-existing pattern.
