@@ -1637,6 +1637,18 @@ class PipelineDetailPage(PipelineFormPage):
         description='Run Details panel "States" section (header + per-variable accordion list)'
     )
 
+    # Multi-run history toggle (RunStateNodeGroup — ELITEA-2454). Renders
+    # only when >1 run exists (`nodes.length > 1`), immediately before the
+    # visible run-node label. Testid added via add-data-testid,
+    # EliteaAI/EliteaUI@89282f5e (app JSX we own, not a #579 exception).
+    run_node_history_button = LocatorDescriptor(
+        testid="pipeline-run-node-history-button",
+        description=(
+            "Clock-icon toggle above the Flow canvas that opens the "
+            "run-history menu (RunStateNodeGroup) — present only when >1 run exists"
+        )
+    )
+
     # Run Details panel — State Before/After per node (ELITEA-2452). Testids
     # added via add-data-testid, EliteaAI/EliteaUI@2b40e5a6 (app JSX we own,
     # not a #579 exception).
@@ -7053,6 +7065,104 @@ class PipelineDetailPage(PipelineFormPage):
     def get_run_details_states_section_text(self) -> str:
         """Return the Run Details panel's States section text content."""
         return (self.run_details_states_section.text_content() or "").strip()
+
+    # ------------------------------------------------------------------
+    # Run Details panel — multi-run history (RunStateNodeGroup — ELITEA-2454)
+    # ------------------------------------------------------------------
+    #
+    # `RunStateNodeGroup.jsx` renders only the newest run's
+    # `pipeline-run-node-label` directly; every other run lives inside a
+    # closed-by-default MUI `Menu` that unmounts entirely while closed. The
+    # history toggle (`run_node_history_button`) itself only renders once
+    # >1 run exists. Always open the toggle before counting/asserting run
+    # labels — closed-menu state is indistinguishable from "only one run".
+
+    def open_run_node_history(self, timeout: int = 10000):
+        """Ensure the run-history menu (history-toggle clock icon) is open.
+
+        Distinct from the unrelated chat-level ``open_run_history()``
+        (``pipeline-history-tab`` / ``RunHistoryContainer``, ELITEA-2011) —
+        this opens the ON-CANVAS multi-run menu (``RunStateNodeGroup``).
+        Only present once the run-node group holds >1 run.
+
+        Idempotent: once opened, the menu stays open across opening a run's
+        Run Details panel AND deleting a run from inside it (confirmed
+        live — no auto-close is wired). Re-clicking the toggle while the
+        menu is already open would hit the menu's own full-page invisible
+        `MuiBackdrop-root` (the interception quirk in
+        `.claude/rules/mui-patterns.md`), so this method first checks
+        whether more than one `pipeline-run-node-label` is already
+        rendered (the live signal the menu is open — see the class-level
+        mechanics note above) and skips the click entirely when it is.
+
+        Args:
+            timeout: Maximum wait time for the toggle to appear/menu to open.
+        """
+        if self.run_node_label.count() > 1:
+            logger.info("Run-node history menu already open — skipping click")
+            return
+        logger.info("Opening run-node history menu")
+        self.run_node_history_button.wait_for(state="visible", timeout=timeout)
+        self.run_node_history_button.click()
+        # The menu container itself carries no testid (scope discipline —
+        # see AFS Concrete Handles); its opening is observed via every
+        # history item's reused `pipeline-run-node-label` testid becoming
+        # visible, so wait on that instead of a container locator.
+        self.run_node_label.first.wait_for(state="visible", timeout=timeout)
+        logger.info("Run-node history menu opened")
+
+    def get_run_history_labels(self) -> list[str]:
+        """Return the text of every currently-rendered run-node label.
+
+        Includes the current/last run's label (rendered directly, outside
+        the menu) plus every history-menu item's label (rendered only while
+        the menu is open) — matching the live semantics of "all runs that
+        currently exist". Callers must call ``open_run_node_history()``
+        first if more than one run exists; the closed menu unmounts its
+        history items entirely.
+        """
+        labels = self.run_node_label
+        return [(labels.nth(i).text_content() or "").strip() for i in range(labels.count())]
+
+    def open_run_details_by_label(self, label: str, timeout: int = 10000):
+        """Click the run-node label whose text exactly equals *label*.
+
+        Uses an exact string match (not substring) so "Run 1 details" never
+        matches "Run 12 details". Opens that run's own Run Details panel.
+
+        When the history menu is open, the newest run's label renders
+        OUTSIDE the `Menu` but is still covered by MUI's full-page invisible
+        `MuiBackdrop-root` (the same-origin overlay-interception quirk
+        documented in `.claude/rules/mui-patterns.md`) — a plain
+        Playwright click would resolve against the backdrop (closing the
+        menu) rather than the label underneath it, so the click is
+        dispatched via ``evaluate`` to invoke the label's handler directly.
+
+        Args:
+            label: Exact label text (e.g. "Run 2 details").
+            timeout: Maximum wait time for the panel to appear.
+        """
+        logger.info("Opening Run Details panel for label %r", label)
+        target = self.run_node_label.filter(has_text=re.compile(f"^{re.escape(label)}$"))
+        target.first.wait_for(state="visible", timeout=timeout)
+        target.first.evaluate("el => el.click()")
+        self.run_details_panel.wait_for(state="visible", timeout=timeout)
+        logger.info("Run Details panel opened for %r", label)
+
+    def delete_current_run_details(self, timeout: int = 5000):
+        """Click the Run Details panel's delete (trash) button.
+
+        No confirmation dialog exists for this action (confirmed live,
+        source-verified) — the panel closes immediately once the run is
+        removed. No separate close click is needed.
+
+        Args:
+            timeout: Maximum wait time for the panel to disappear.
+        """
+        logger.info("Deleting current run via Run Details panel")
+        self.run_details_delete_button.click()
+        self.run_details_panel.wait_for(state="hidden", timeout=timeout)
+        logger.info("Run deleted; Run Details panel closed")
 
     # ------------------------------------------------------------------
     # Run Details panel — State Before/After per node (ELITEA-2452)
