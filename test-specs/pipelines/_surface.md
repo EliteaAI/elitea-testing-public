@@ -2673,6 +2673,38 @@ check — it's a trap I fell into myself mid-session (filed then retracted
   an exact nested-timeline shape must verify live against its OWN fixture
   recipe rather than assuming either the 5-entry or the 4-entry count.
 
+## CONFIRMED DEFECT: a node chained via `transition:` immediately after an Agent node's nested-pipeline tool call never executes (2026-08-09, ELITEA-2445, `EliteaAI/elitea-testing-public#1381`)
+
+- **What's new vs ELITEA-2443/2444's own fixtures:** both of THOSE parent
+  pipelines end `AGENT1`'s own `transition:` at `END` — neither ever tries to
+  chain a THIRD node after the Agent-node-with-pipeline-tool hop. ELITEA-2445
+  asks for exactly that shape (`Node_A → Agent_Node(child) → Node_C → END`), and
+  live-probing it live-2445 surfaced a genuine product defect nobody had hit yet.
+- **Repro (throwaway probe, same fixture/page-object technique as ELITEA-2443's
+  merged test):** parent `CODE1(sets state_1) → AGENT1(tool=<attached child>) →
+  CODE2(reads state_1 via `alita_state.get`, writes a distinguishable marker) →
+  END`. Run reports `Completed`, but `CODE2` NEVER executes: no distinct timeline
+  entry for it, and its marker value never appears anywhere in state. The
+  timeline silently stops at the SAME 4 entries a 2-node (`CODE1→AGENT1→END`,
+  no trailing node) parent produces: `["pyodide"(CODE1), <child_name> ×2,
+  "pyodide"(child's own code node)]`.
+- **Control probe (isolates the cause):** an otherwise-identical
+  `CODE1 → CODE2` chain with NO agent/pipeline-tool hop in between executes
+  BOTH nodes correctly (`timeline_count=2`, both markers visible) — so this is
+  NOT a generic multi-hop `transition:` chaining bug. It is specific to "a node
+  chained right after an `agent`-type node whose `tool:` resolves to a nested
+  pipeline attached via the Tools-section popper."
+- **Consequence for automating ELITEA-2445:** the case's "Node_C" premise (case
+  steps 5, 8) is genuinely BLOCKED by this defect — write it as
+  `expect.soft()` + `# Known defect: #1381` (sanctioned-RED /
+  `.agents/testing.md` analysis-time entry), NOT skipped/masked. The REST of
+  the case (Node_A's own Before/After, the Agent node's Before/After, the
+  Completed badge) is unaffected and already asserted by the merged
+  `test_pipeline_subgraph_state_sharing.py` (ELITEA-2443) — see
+  `test-specs/pipelines/lextend_pipeline-subgraph-node-c-state-propagation_ELITEA-2445.md`.
+- **A future case chaining anything after an Agent-node-with-pipeline-tool
+  hop will hit this same wall** — don't re-derive it; cite `#1381`.
+
 ## Pipelines dashboard — Search grid filter/clear (confirmed live, 2026-08-07, ELITEA-2023)
 
 **Resolved/added during ELITEA-2023 implementation:**
