@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2451 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2454 analysis).
 
 ## Run History panel — Pipeline surface (SAME shared component as the Agent surface's ELITEA-1877, confirmed live, 2026-08-09, ELITEA-2011)
 
@@ -2523,6 +2523,55 @@ is a legitimate empty state, not an error state).
   case step requires exactly 1 timeline entry); worth a closer look if a future case
   needs to assert exact timeline-entry counts for a structured-output node.
   Full handle table + fixture recipe: `l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md`.
+
+## Run Details panel — multi-run history toggle (RunStateNodeGroup) — the clock icon is EASY TO MISS (confirmed live, 2026-08-09, ELITEA-2454)
+
+**Read this before concluding "only one run ever exists" from a quick DOM
+check — it's a trap I fell into myself mid-session (filed then retracted
+`EliteaAI/elitea-testing-public#1377`).**
+
+- **`pipelineRunNodes` (`useRunEvent.hooks.js`) genuinely accumulates one
+  entry per execution** — 3 sequential chat messages in one conversation on
+  a single-LLM-node pipeline produced 3 real, independently-deletable
+  entries. Each gets a distinct id (`` `EliteA_Pipeline__State_${nextRunName}` ``)
+  and the reducer correctly appends (`prev.find(id match)` fails → `[...prev, new]`).
+- **The trap**: `RunStateNodeGroup.jsx` only ever renders ONE
+  `[data-testid="pipeline-run-node-label"]` directly (the newest/`last`
+  run) — every older run lives inside a MUI `Menu`
+  (`id="runNodes-history-menu"`, no `data-testid`) that is **entirely
+  unmounted while closed** (MUI's default `Menu` behaviour — children don't
+  exist in the DOM until `open=true`). So `document.querySelectorAll('[data-testid="pipeline-run-node-label"]').length === 1`
+  and `!document.getElementById('runNodes-history-menu')` are BOTH true
+  regardless of how many runs actually exist, UNLESS you first open the
+  history toggle. Checking either of those without opening the toggle first
+  is a false "only 1 run" reading.
+- **The toggle itself (`historyWrapper` `Box`, `RunStateNodeGroup.jsx:41-46`,
+  wraps a `<ClockIcon />`) renders as a sibling immediately BEFORE the
+  visible run-node `Box`, ONLY when `nodes.length > 1` — and has ZERO
+  testid, `aria-label`, or Tooltip** (confirmed via
+  `grep -n "data-testid" RunStateNodeGroup.jsx` — no hits). **Needs adding**:
+  `pipeline-run-node-history-button`. Not yet added as of this session (the
+  first implementer to pick up ELITEA-2454 owns it).
+- **Clicking a label inside the open history menu opens ITS OWN
+  `RunStateDialog` (same testids as ELITEA-2450) WITHOUT closing the
+  menu** — confirmed live: menu stayed mounted (`#runNodes-history-menu`
+  still present) while the panel for the clicked run was open.
+- **Delete via the panel's `pipeline-run-details-delete-button` removes
+  ONLY that run** (`deleteRunNode(id)` → `array.filter(id !== deleted)`) —
+  confirmed live twice, in both directions (deleting the newest first, then
+  an older one from inside the menu): every other run's label/status/content
+  is untouched. When the array drops back to length 1, the toggle AND the
+  menu disappear from the DOM entirely (the group re-renders via the bare
+  single-node branch) — this is the verifiable, live form of "deleted run no
+  longer appears in history."
+- **How to correctly assert "N runs exist" without a menu-container
+  testid** (deliberately NOT requesting one — scope discipline, only the
+  elements a test touches get testids): open the history toggle FIRST, THEN
+  count ALL `[data-testid="pipeline-run-node-label"]` elements on the page
+  (this naturally includes the last/current run plus every now-mounted menu
+  item). Do this BEFORE concluding anything about run count.
+  Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_run-details-delete-run-from-history_ELITEA-2454.md`.
 
 ## Pipelines dashboard — Search grid filter/clear (confirmed live, 2026-08-07, ELITEA-2023)
 
