@@ -2,7 +2,44 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2058 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2062 analysis).
+
+## "Pipeline tabs" = real BROWSER tabs, not an in-app widget; project-name title suffix is NOT "Private" (confirmed live, 2026-08-09, ELITEA-2062)
+
+Confirmed live via Playwright MCP `browser_tabs` (list/new/select/close) driving two
+real tabs in the SAME authenticated context, on pre-existing pipelines
+`AutoTest_Pipeline_probe_2020` (id 8056) and `probe-pipeline` (id 6934):
+
+- **The product has NO in-app "multiple open pipeline tabs" UI feature.**
+  `PipelinesListPage.open_pipeline_by_name()` → `card.click()` is a plain SPA
+  route push (confirmed via source: `Card.jsx`'s `handleCardClick`, no
+  `target="_blank"`, no anchor) — clicking a second pipeline card REPLACES the
+  first pipeline's route in the same tab, it does not add a tab to any
+  in-app tab strip. Any case whose text says "tablist" / "tab" / "close
+  button (X)" for pipelines (or agents/toolkits — same `Card.jsx`) is
+  describing the browser's OWN tab strip, testable via
+  `page.context.new_page()` / `Page.bring_to_front()` / `Page.close()` —
+  the same idiom already merged in
+  `test_agent_hub_my_liked_reload_cross_tab_sync.py` (Tab A/Tab B pattern)
+  and used by `pipeline_detail_page.py:6917` (`context.expect_page()` for
+  the toolkit "open in new tab" button).
+- **`document.title`'s project-name suffix is NOT the sidebar's "Private"
+  label** — confirmed live: title reads `"Pipeline: <name> -
+  project_user_659"`, not `"... - Private"`, even though the sidebar
+  combobox shows `"Project: Private"`. Root cause (source read,
+  `../EliteaUI/src/hooks/useSelectedProject.jsx`):
+  `useSelectedProjectName()` returns the loaded project's real `name` field
+  from Redux (`project?.name`), defaulting to the literal string `"Private"`
+  ONLY before that object loads. `test_agent_hub_page_loads_private_project.py`'s
+  `EXPECTED_PROJECT_NAME = "Private"` constant is therefore NOT a safe
+  precedent to copy for a NEW title assertion on this project/environment —
+  capture the project-name suffix dynamically at runtime (split the
+  dashboard's own title, `"Pipelines: all - {project_name}"`, on `" - "`)
+  instead of hardcoding `"Private"`. Unclear whether the existing hardcoded
+  constant is itself stale for its own test; out of this case's scope to
+  fix, flagged here for whoever next touches page-title assertions.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-multiple-browser-tabs_ELITEA-2062.md`.
 
 ## Chat starters — shared `ConversationStarters.jsx` component; embedded-chat chip testid is FREE (already fixed by ELITEA-1886 on the Agent surface) (confirmed live, 2026-08-09, ELITEA-2053)
 
