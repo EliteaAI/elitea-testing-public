@@ -755,6 +755,150 @@ def pipeline_parent_child_state_sharing(pipeline_api: PipelineAPI, request):
         logger.warning("Failed to delete ELITEA-2443 child pipeline %s: %s", child_id, exc)
 
 
+_PARENT_CHILD_STATE_ISOLATION_CHILD_INSTRUCTIONS = """\
+entry_point: CODE1
+state:
+  messages:
+    type: list
+  state_1:
+    type: str
+  state_3:
+    type: str
+nodes:
+  - id: CODE1
+    type: code
+    code:
+      type: fixed
+      value: |
+        {"state_1": "child_value", "state_3": "child_only_value"}
+    input: [state_1, state_3]
+    output: [state_1, state_3]
+    structured_output: true
+    transition: END
+"""
+
+
+def _build_parent_child_state_isolation_parent_instructions(child_pipeline_name: str) -> str:
+    """Build the PARENT pipeline's YAML for :func:`pipeline_parent_child_state_isolation`.
+
+    CODE1 sets BOTH ``state_1`` AND ``state_2`` (unlike
+    :func:`pipeline_parent_child_state_sharing`'s parent, which sets only
+    ``state_1``), then transitions to AGENT1, an ``agent``-type node whose
+    ``tool:`` field names the already-created child pipeline. Same Tools
+    -section attach precondition as the sibling fixture (AFS ELITEA-2444
+    § Preconditions, confirmed live) -- the bare ``tool:`` field alone does
+    not resolve the child; the test itself still performs the "+ Pipeline"
+    popper attach.
+
+    Args:
+        child_pipeline_name: Exact ``name`` of the already-created child
+            pipeline (see :data:`_PARENT_CHILD_STATE_ISOLATION_CHILD_INSTRUCTIONS`).
+    """
+    return f"""\
+entry_point: CODE1
+state:
+  messages:
+    type: list
+  state_1:
+    type: str
+  state_2:
+    type: str
+nodes:
+  - id: CODE1
+    type: code
+    code:
+      type: fixed
+      value: |
+        {{"state_1": "parent_value", "state_2": "parent_only_value"}}
+    input: [state_1, state_2]
+    output: [state_1, state_2]
+    structured_output: true
+    transition: AGENT1
+  - id: AGENT1
+    type: agent
+    input: [input]
+    output: [messages]
+    input_mapping:
+      task:
+        type: fixed
+        value: "Run the child pipeline and share state."
+      chat_history:
+        type: fixed
+        value: []
+    tool: {child_pipeline_name}
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_parent_child_state_isolation(pipeline_api: PipelineAPI, request):
+    """Create a CHILD pipeline (``state_1``/``state_3``, NO ``state_2`` key at
+    all) and a PARENT pipeline (``state_1``/``state_2``, NO ``state_3`` key at
+    all) attached as a tool to the parent's Agent node. Satisfies the
+    ELITEA-2444 precondition -- the defining difference from
+    :func:`pipeline_parent_child_state_sharing` is that ``state_2`` and
+    ``state_3`` are each declared in ONLY ONE of the two pipelines
+    (non-common state), unlike that fixture's fully-shared
+    ``state_1``/``state_2`` schema. Deletes BOTH pipelines afterwards
+    (order-independent, confirmed live during analysis).
+
+    Built via the GENERIC :meth:`PipelineAPI.create_pipeline` (raw YAML
+    ``instructions`` string) -- :meth:`create_pipeline_with_nodes` has no
+    ``state:`` support.
+
+    CRITICAL (AFS Preconditions, confirmed live): the Agent node's ``tool:``
+    field alone does NOT resolve the child pipeline -- an Agent node needs
+    the child ALSO attached via the Tools section's "+ Pipeline" popper, or
+    it renders "Agent not found -- select a replacement or delete this node"
+    even though the YAML name is byte-correct. That attach is a real RUNTIME
+    step the TEST itself must perform; this fixture only builds the two
+    pipelines and pre-sets the YAML ``tool:`` field.
+
+    Yields:
+        dict: ``{"parent_id": int, "parent_name": str, "child_id": int,
+        "child_name": str}``
+    """
+    child_name = f"autotest_2444c_{request.node.name}"[:32]
+    child = pipeline_api.create_pipeline(
+        name=child_name,
+        description=f"Auto-created ELITEA-2444 child pipeline for test {request.node.name}",
+        instructions=_PARENT_CHILD_STATE_ISOLATION_CHILD_INSTRUCTIONS,
+    )
+    child_id = child["id"]
+    logger.info(
+        "Created ELITEA-2444 child pipeline %s (%s) for %s", child_id, child_name, request.node.name
+    )
+
+    parent_name = f"autotest_2444p_{request.node.name}"[:32]
+    parent = pipeline_api.create_pipeline(
+        name=parent_name,
+        description=f"Auto-created ELITEA-2444 parent pipeline for test {request.node.name}",
+        instructions=_build_parent_child_state_isolation_parent_instructions(child_name),
+    )
+    parent_id = parent["id"]
+    logger.info(
+        "Created ELITEA-2444 parent pipeline %s (%s) for %s", parent_id, parent_name, request.node.name
+    )
+
+    yield {
+        "parent_id": parent_id,
+        "parent_name": parent_name,
+        "child_id": child_id,
+        "child_name": child_name,
+    }
+
+    try:
+        pipeline_api.delete_pipeline(parent_id)
+        logger.info("Deleted ELITEA-2444 parent pipeline %s", parent_id)
+    except Exception as exc:
+        logger.warning("Failed to delete ELITEA-2444 parent pipeline %s: %s", parent_id, exc)
+    try:
+        pipeline_api.delete_pipeline(child_id)
+        logger.info("Deleted ELITEA-2444 child pipeline %s", child_id)
+    except Exception as exc:
+        logger.warning("Failed to delete ELITEA-2444 child pipeline %s: %s", child_id, exc)
+
+
 @pytest.fixture
 def github_credential(credential_api: CredentialAPI, request):
     """Create a GitHub API credential and yield its metadata.
