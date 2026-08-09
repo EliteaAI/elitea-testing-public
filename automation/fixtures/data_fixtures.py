@@ -389,6 +389,88 @@ def pipeline_with_two_llm_nodes_id(pipeline_api: PipelineAPI, request):
         logger.warning("Failed to delete 2-LLM-node pipeline %s: %s", pid, exc)
 
 
+def build_three_llm_chain_nodes() -> list[dict]:
+    """Build the ``LLM 1 -> LLM 2 -> LLM 3 -> END`` node list for ELITEA-2451.
+
+    Three PLAIN (non-``structured_output``) LLM nodes chained in sequence —
+    deliberately NOT the structured-output shape, which the ELITEA-2453
+    sibling AFS found renders TWO timeline entries per execution (would break
+    this case's own "entries == executed nodes" assertion). Exact shape
+    confirmed live this session (AFS ``l3_run-details-timeline-steps-
+    display_ELITEA-2451.md`` § Preconditions, pipeline id 8767).
+    """
+    return [
+        {
+            "id": "LLM 1",
+            "type": "llm",
+            "input": [],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": "You are a helpful assistant."},
+                "task": {"type": "fixed", "value": "Say hello in exactly three words."},
+            },
+            "output": ["messages"],
+            "structured_output": False,
+            "transition": "LLM 2",
+        },
+        {
+            "id": "LLM 2",
+            "type": "llm",
+            "input": ["messages"],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": "Reply with just OK."},
+                "task": {"type": "fstring", "value": "Ack: {messages}"},
+            },
+            "output": [],
+            "structured_output": False,
+            "transition": "LLM 3",
+        },
+        {
+            "id": "LLM 3",
+            "type": "llm",
+            "input": [],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": "Reply with just DONE."},
+                "task": {"type": "fixed", "value": "final ack"},
+            },
+            "output": [],
+            "structured_output": False,
+            "transition": "END",
+        },
+    ]
+
+
+@pytest.fixture
+def pipeline_three_llm_chain(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``LLM 1 -> LLM 2 -> LLM 3 -> END`` (3 plain LLM
+    nodes) before the test and delete it afterwards. Satisfies the
+    ELITEA-2451 precondition (3+ plain nodes, all `Completed` — see
+    :func:`build_three_llm_chain_nodes`).
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2451_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created 3-LLM-chain pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_three_llm_chain_nodes(),
+    )
+    pid = pipeline["id"]
+    logger.info("Created 3-LLM-chain pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted 3-LLM-chain pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete 3-LLM-chain pipeline %s: %s", pid, exc)
+
+
 _TYPED_STATE_VARS_INSTRUCTIONS = """\
 entry_point: LLM 1
 state:
