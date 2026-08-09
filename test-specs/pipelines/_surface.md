@@ -2418,3 +2418,64 @@ canvas-wide counter. `wait_for_node_count(expected_total)` (added
 ELITEA-2033) combined with the `get_node_ids()` before/after diff above is
 sufficient to identify each newly-added node reliably — no new page-object
 method or testid was needed for this case.
+
+## Left configuration panel collapse/expand — pure client-side `useState`, one new testid (confirmed live, 2026-08-09, ELITEA-2072)
+
+Confirmed live via CDP browser probe on `AutoTest_Pipeline_probe_2020` (pipeline
+id 8056, `?viewMode=owner`) — a **direct navigation to `/pipelines/all/<id>` WITHOUT
+`?viewMode=owner` 400s** on `GET .../public_application/prompt_lib/<id>` (the
+role-overrides.md "4xx from the UI" split: this endpoint requires the owner
+viewMode param for a private pipeline — UI-side, not a backend bug; the existing
+`PipelineFormPage.navigate_to_edit()` / `PipelineDetailPage.navigate()` already
+append `?viewMode=owner`, so any test going through the page object is unaffected
+— this only bit a raw manual URL probe):
+
+- **The "left configuration panel" the case means is `GeneralFormPanel.jsx`**
+  (rendered by `ConfigurationTab.jsx`, testid `pipeline-config-tab` — the
+  pre-existing `configuration_tab` `LocatorDescriptor`), NOT any per-node inline
+  config panel (those are a different, node-scoped concept documented elsewhere
+  in this digest, e.g. "State modifier node — inline config panel"). It sits
+  alongside the ReactFlow canvas and the embedded chat panel, all three visible
+  simultaneously on `/pipelines/all/{id}` — no tab click needed.
+- **Collapse toggle had NO testid before this case** — one `IconButton` with no
+  `data-testid`, same click handler for both directions (icon swaps
+  `DoubleLeftIcon`/`DoubleRightIcon`, purely visual). Added
+  `pipeline-config-collapse-button` via `add-data-testid`
+  (`EliteaAI/EliteaUI@74ba8918`) — a single static testid, no state-ternary
+  concern (#277 doesn't apply: the testid VALUE never changes, only the icon
+  inside it does).
+- **Collapsing UNMOUNTS the configuration sections entirely** — `{!collapsed &&
+  (<PipelineConfigurationForm .../>)}` in `GeneralFormPanel.jsx`, confirmed live:
+  after collapse, `agent-toolkits-section` / `pipeline-step-limit-input` /
+  `pipeline-editor-notes-section` / `agent-information-section` all disappear
+  from the DOM (`querySelector` returns `null`), not merely `display:none`. Use
+  `to_have_count(0)` for the collapsed-state assertion, `to_be_visible()` for the
+  expanded-state one — same "absence assertion counts as a reference" pattern as
+  canon #511.
+- **Panel width is a static CSS pair, safe to assert exactly**: `maxWidth`/
+  `minWidth` ternary in `GeneralFormPanel.jsx` — 320px expanded, 28px collapsed,
+  confirmed live via `bounding_box()["width"]` on the `configuration_tab`
+  locator (NOT viewport/layout-dependent, unlike the canvas wrapper's width
+  below). The round trip is exact — re-expanding returns to 320px precisely, no
+  drift.
+- **Canvas area visibly grows when the panel collapses** — confirmed live:
+  `.react-flow` wrapper (testid `rf__wrapper`, the pre-existing `canvas_wrapper`
+  field) went from 765px to 1057px on a fixed viewport after one collapse click.
+  This value IS viewport/layout-dependent (unlike the panel's own 28px/320px
+  pair) — assert the relative increase, not a hardcoded px value.
+- **Pure client-side `useState`, zero network implications** — confirmed via
+  source read (`onClickCollapsed` in both `GeneralFormPanel.jsx` and the sibling
+  `ChatPanel.jsx` is plain `setState`, no API call; `ConfigurationTab.jsx`'s
+  `onCollapsed` callback only recomputes a CSS `maxWidth` string for the sibling
+  panes) AND a live browser probe (no new console entries after either click).
+  Same "pure client-side viewport/layout op" class as the canvas zoom/pan/
+  control-panel cases above (ELITEA-2019/2057) — a persist call firing on this
+  toggle would be a genuine regression this case's Axis-2 addition guards
+  against.
+- **Sibling pattern, not yet a case:** `ChatPanel.jsx` (right-side embedded chat)
+  has the IDENTICAL collapse/expand shape (own `useState`, own un-testid'd
+  `IconButton`, same icon-swap) — no case in this campaign currently exercises
+  it; if one arrives, reuse this exact approach (one new testid, unmount-based
+  absence assertions, static-width exact-match).
+
+Full AFS: `test-specs/pipelines/l2_pipeline-collapse-left-panel_ELITEA-2072.md`.
