@@ -50,6 +50,7 @@ from fixtures.data_fixtures import (
     pipeline_with_typed_state_vars_id,
     pipeline_with_custom_state_var_id,
     pipeline_llm_reads_state_via_code,
+    pipeline_code_node_multi_var_dict_return,
     pipeline_parent_child_state_sharing,
     pipeline_parent_child_state_sharing_three_node,
     pipeline_parent_child_state_isolation,

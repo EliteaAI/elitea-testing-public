@@ -701,6 +701,82 @@ def pipeline_llm_reads_state_via_code(pipeline_api: PipelineAPI, request):
         logger.warning("Failed to delete LLM-reads-state-via-code pipeline %s: %s", pid, exc)
 
 
+_CODE_NODE_MULTI_VAR_DICT_RETURN_INSTRUCTIONS = """\
+entry_point: STATE1
+state:
+  summary:
+    type: str
+  count:
+    type: number
+  tags:
+    type: list
+nodes:
+  - id: STATE1
+    type: state_modifier
+    template: 'Draft summary text'
+    variables_to_clean: []
+    input: []
+    output: [summary]
+    transition: CODE1
+  - id: CODE1
+    type: code
+    code:
+      type: fixed
+      value: |
+        data = elitea_state.get('summary', '')
+        {'summary': data + ' [processed]', 'count': len(data.split()), 'tags': ['processed', 'automated']}
+    input: [summary]
+    output: [summary, count, tags]
+    structured_output: true
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_code_node_multi_var_dict_return(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``STATE1 (state_modifier) -> CODE1 (code) -> END``
+    with THREE custom state variables (``summary``/str, ``count``/number,
+    ``tags``/list). STATE1 gives ``summary`` a deterministic starting value
+    (a fixed Jinja template, no variables -- NOT an LLM node, so ``count``'s
+    expected value stays a stable literal). CODE1 reads ``summary`` via
+    ``elitea_state.get('summary', '')`` and, as its script's LAST statement,
+    returns a bare THREE-key dict literal that updates ``summary`` (appended
+    text), ``count`` (word count), and ``tags`` (a fixed list) -- all from
+    the SAME single Code node execution.
+
+    Satisfies the ELITEA-2447 precondition. Built via the GENERIC
+    :meth:`PipelineAPI.create_pipeline` (raw YAML ``instructions`` string),
+    same reason :func:`pipeline_llm_reads_state_via_code` /
+    :func:`pipeline_with_typed_state_vars_id` use it --
+    :meth:`create_pipeline_with_nodes` has no ``state:`` support.
+
+    CONFIRMED LIVE (AFS ``l3_code-node-return-dict-multiple-state-vars_
+    ELITEA-2447.md`` § Test Data): the Code node's Output multi-select
+    accepts ``summary`` even though it is ALSO in that same node's own
+    ``input`` list -- no validation error; Run Details correctly attributes
+    the update to the single node that both read and wrote it.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2447_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline(
+        name=name,
+        description=f"Auto-created Code-node multi-var dict-return pipeline for test {request.node.name}",
+        instructions=_CODE_NODE_MULTI_VAR_DICT_RETURN_INSTRUCTIONS,
+    )
+    pid = pipeline["id"]
+    logger.info("Created Code-node multi-var dict-return pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted Code-node multi-var dict-return pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete Code-node multi-var dict-return pipeline %s: %s", pid, exc)
+
+
 _PARENT_CHILD_STATE_SHARING_CHILD_INSTRUCTIONS = """\
 entry_point: CODE1
 state:
