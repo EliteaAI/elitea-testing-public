@@ -2,7 +2,48 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2443 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2444 analysis).
+
+## Run Details STATES panel — Before/After values are PER-TIMELINE-STEP, not run-level (confirmed live, 2026-08-09, ELITEA-2444)
+
+**Correction/refinement to the ELITEA-2443 digest's implicit assumption below.**
+ELITEA-2443's test reads `state_1`/`state_2` Before/After after selecting only the
+LAST timeline entry and gets correct values — this made it LOOK like the STATES
+panel shows run-level (whole-run) Before/After snapshots. It doesn't. Confirmed
+live on ELITEA-2444's fixture (parent declares `state_1`/`state_2`, child declares
+`state_1`/`state_3` — `state_2` is NOT in the child's own `state:`/node input-output
+anywhere): with the LAST timeline step selected (the child's own final CODE node),
+`state_2`'s Before AND After both render as **empty strings** — not because the
+value is unset (it demonstrably is `"parent_only_value"`, set by the parent's own
+CODE1 node), but because **the currently-selected step's own input/output
+declaration doesn't include `state_2`, so the panel has nothing to show for that
+step**. Selecting timeline step 0 (the parent's own CODE1 execution) makes
+`state_2`'s After render correctly (`'"parent_only_value"'`). ELITEA-2443's own
+fixture never hit this because its child declared BOTH `state_1` and `state_2`, so
+every timeline step had both variables in scope regardless of which step was
+selected.
+
+- **Practical rule for any future case reading Before/After for a variable NOT
+  declared/used by every node in the run**: pick the timeline step whose OWN
+  input/output actually includes that variable — the step immediately AFTER the
+  node that writes it (for the After value) or immediately BEFORE (for the Before
+  value) — never assume "select the last step" is a safe universal convention.
+  Full worked example (two-step Before/After comparison across an Agent-node
+  boundary): `test-specs/pipelines/l2_pipeline-subgraph-non-common-state-isolation_ELITEA-2444.md`
+  Test Step 12.
+- **A variable's Run Details ROW EXISTENCE, by contrast, IS a clean run-level
+  fact** — `get_run_details_state_row_locator(variable).count() == 0` for a
+  variable the PARENT's own `state:` block never declares (confirmed at every one
+  of the run's 4 timeline steps, same `0` result throughout) — only the
+  Before/After VALUE rendering is step-scoped, not the row's existence. This is
+  the mechanism ELITEA-2444 uses to prove a child-only variable (`state_3`) never
+  leaks into the parent's panel.
+- Confirmed via `page.evaluate()` DOM queries (`document.querySelectorAll`) rather
+  than the accessibility-tree snapshot — the snapshot silently omits empty-text
+  value boxes, which looks identical to "element not found" at a glance. Use
+  `element.textContent` via `browser_evaluate`/a real pytest assertion when a
+  Before/After value might legitimately be an empty string; don't rely on
+  presence-in-snapshot alone.
 
 ## Run History panel — Pipeline surface (SAME shared component as the Agent surface's ELITEA-1877, confirmed live, 2026-08-09, ELITEA-2011)
 
