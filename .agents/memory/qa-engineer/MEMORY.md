@@ -44,3 +44,4 @@
 - [allure.issue slug can drift](allure_issue_link_slug_can_drift_from_real_tms_filename.md) — verify the TMS URL resolves, don't trust a plausible-looking slug
 - [Pipeline clear_embedded_chat() is a no-op](pipeline_clear_embedded_chat_is_broken.md) — stale locator; call chat_clear_button testid directly
 - [Run Details Before/After is per-step](pipeline_run_details_before_after_is_per_step_scoped.md) — not run-level; pick the step that touches the var, or read empty
+- [Code node needs dict-literal return](code_node_needs_dict_literal_return_not_assignment.md) — assignment silently no-ops; Add-node clicks don't auto-wire edges either

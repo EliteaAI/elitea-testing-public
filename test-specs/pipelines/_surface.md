@@ -3339,3 +3339,44 @@ quirk.
 - Full flow, handles, and Coverage Map:
   `test-specs/pipelines/lextend_pipeline-modules-attachments-toggle-persists_ELITEA-2066.md`
   (extends `automation/tests/ui/pipelines/test_pipeline_attach_files_in_chat.py`, ELITEA-2059).
+
+## Code node — execution & build-method gotchas (confirmed live, 2026-08-09, ELITEA-2446)
+
+- **Building `LLM 1 → Code 1 → END` via the Flow Editor's "Add node" button does
+  NOT auto-connect the nodes.** 4 live probe runs (disposable pipeline id 8809,
+  created and deleted via UI) each landed with `LLM 1` and `Code 1` as two
+  INDEPENDENT `transition: END` edges — confirmed via the YAML view
+  (`- id: LLM 1 ... transition: END` immediately followed by `- id: Code 1`, no
+  edge between them) and via the canvas's own edge labels ("Edge from LLM 1 to
+  END" + "Edge from Code 1 to END", never "LLM 1 to Code 1"). The Code node never
+  executes as a result — confirmed via Run Details showing only ONE timeline
+  entry (`LLM1`) across all 4 runs, `pipeline-run-details-timeline-step-1` never
+  matching any element. **Not a product execution defect** — every fixture in
+  this suite that needs a REAL multi-node execution (`pipeline_llm_code_end`,
+  `pipeline_with_typed_state_vars_id`, the subgraph-sharing fixtures, etc.)
+  already builds via `PipelineAPI.create_pipeline()`/`create_pipeline_with_nodes()`
+  with an EXPLICIT `transition:` field per node, which sidesteps this entirely.
+  **Automation implication:** any case that needs the pipeline to actually
+  EXECUTE end-to-end (as opposed to ELITEA-2009's UI-config-persistence-only
+  case, which never executes) must build via YAML/API, never via live
+  Flow-Editor node-placement clicks, when multiple nodes must chain.
+- **A Code node's script must end with a bare dict-literal expression, not an
+  assignment, for `structured_output: true` to route the value into the
+  declared `output:` variable.** `code_output = f"Processed: {result}"` (plain
+  assignment) confirmed live to produce NO state update (`code_output` stays
+  `""`/`""` Before/After in Run Details) even with `input`/`output`/
+  `structured_output` all configured correctly and the node's transition
+  correctly wired. `{"code_output": f"Processed: {result}"}` (dict literal as
+  the LAST statement) confirmed live to work correctly. Matches
+  `.claude/skills/elitea-pipeline/references/yaml-schema.md`'s own documented
+  Code Node rule verbatim ("Return a dict literal as the LAST expression...
+  Do NOT use a top-level `return`") — this is documented, expected behavior,
+  not a defect; case texts that show a plain-assignment script (as ELITEA-2446's
+  own source case does) are case-text drift, not a product bug.
+- **`elitea_state.get(...)` IS a valid accessor** (an alias of `alita_state.get(...)`,
+  both restored by the sandbox's state preamble per the same yaml-schema.md
+  reference) — confirmed live reading a correctly-populated value once the
+  dict-literal-return fix above was applied. No case-text drift on the accessor
+  name itself.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l3_code-node-read-elitea-state-variables_ELITEA-2446.md`.
