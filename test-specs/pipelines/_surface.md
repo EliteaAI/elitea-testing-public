@@ -47,16 +47,25 @@ for Agents in `test-specs/agents/_surface.md` / `l2_run-history-select-past-run-
   not requested here since no dispatched case's steps touch it yet.
 - Full flow, handles, and Coverage Map:
   `test-specs/pipelines/l2_pipeline-run-history-panel-view-executions_ELITEA-2011.md`.
-- **Sibling case flag — RESOLVED (2026-08-09, ELITEA-2070 analysis):** `ELITEA-2070`
-  ("Pipeline — Run History Panel") classified `extend-existing` against this ELITEA-2011
-  test (merged onto the batch trunk, `30041066`) — its only gap vs. ELITEA-2011 is the
-  "close run history panel" step. **The close (`X`) button has NO testid yet**
-  (`aria-label="close run history"` only, `RunHistoryContainer.jsx:77-84`) — ELITEA-2070
-  requests `run-history-close-button` (no `pipeline-`/`agent-` prefix, same reasoning as
-  `run-history-list-item`: the shared component serves both surfaces). Confirmed live
-  twice this session (empty-history AND populated-history states, pipeline id 8056
-  `AutoTest_Pipeline_probe_2020`): close removes the panel, restores
-  Configuration form + embedded chat, fires zero network requests. Full detail:
+- **Sibling case flag — RESOLVED (2026-08-09, ELITEA-2070 analysis + implementation):**
+  `ELITEA-2070` ("Pipeline — Run History Panel") classified `extend-existing` against
+  this ELITEA-2011 test (merged onto the batch trunk, `30041066`) — its only gap vs.
+  ELITEA-2011 is the "close run history panel" step. **The close (`X`) button had no
+  testid** (`aria-label="close run history"` only, `RunHistoryContainer.jsx:77-84`) —
+  ELITEA-2070 requested + added `run-history-close-button` (no `pipeline-`/`agent-`
+  prefix, same reasoning as `run-history-list-item`: the shared component serves both
+  surfaces), `EliteaAI/EliteaUI@ccbfc54a` on `automation/testids`. Confirmed live twice
+  during analysis (empty-history AND populated-history states, pipeline id 8056
+  `AutoTest_Pipeline_probe_2020`): close removes the panel, restores Configuration
+  form + embedded chat. ~~fires zero network requests~~ — **corrected during
+  implementation (live pytest run, same class as the ELITEA-2072 collapse/expand
+  recurrence below):** the `onClose` handler itself is a pure state flip with no fetch
+  call, but closing unmounts Run History and remounts the Configuration form, which
+  independently re-fires ITS OWN view-population requests (tools/toolkits/tags/
+  applications/index_types) unrelated to Run History — a console-only/click-only probe
+  during analysis missed this because it didn't capture actual requests. The precise,
+  durable claim (and what the implemented test asserts): closing does **not** re-fetch
+  the conversations list. Full detail:
   `lextend_pipeline-run-history-panel-close_ELITEA-2070.md`.
 - **Case-text drift flagged by ELITEA-2070**: the case's step 6 names a "status" element
   in the execution-detail view that doesn't exist as a distinct UI element — only
