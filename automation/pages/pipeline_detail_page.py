@@ -7358,6 +7358,17 @@ class PipelineDetailPage(PipelineFormPage):
         """
         return self.page.locator(self.STATE_VARIABLE_DELETE.format(name)).count() > 0
 
+    def is_state_variable_present(self, name: str) -> bool:
+        """Return whether a STATE panel row for *name* currently exists in the DOM.
+
+        Testid-based (``STATE_VARIABLE_NAME``) — used for its ABSENCE
+        (canon ruling #511 extension, absence assertions count as
+        references) to confirm a variable auto-added by a MODULES toggle
+        (e.g. ``input_attachments``, ELITEA-2043) is fully removed from the
+        STATE panel after the toggle is disabled again, not merely hidden.
+        """
+        return self.page.locator(self.STATE_VARIABLE_NAME.format(name)).count() > 0
+
     def click_state_variable_type_select(self, name: str, timeout: int = 5000) -> None:
         """Open a STATE panel row's type-selector dropdown.
 
