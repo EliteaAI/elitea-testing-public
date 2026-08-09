@@ -48,6 +48,22 @@ real observed repro numbers through the comparison before trusting it:
 `100 < 48` is `False` — the check would never have fired on the confirmed
 repro. Capture the baseline with the getter you will later compare against.
 
+**4. The `if` condition must go TRUE on the CURRENT buggy symptom, not on a
+deviation from it.** `soft_failures.append(...)` existing is necessary but
+NOT sufficient — trace which branch actually fires TODAY, while the defect
+is open. Compliant shape (`test_pipeline_hitl_node_runtime_behavior.py`
+#1103): `if restarted_types: soft_failures.append(...)` — true exactly when
+the symptom occurs, so the test is RED now and flips GREEN automatically
+once fixed. The inverted shape (ELITEA-2445 R0, PR #1382) wrote
+`if timeline_count != _EXPECTED_COUNT_WITH_BLOCKED_NODE: soft_failures.append(...)`
+— true only if the defect got FIXED or something else changed — so the test
+was GREEN for an open, confirmed, filed defect and would only go RED if the
+defect were fixed. Mechanically identical shape, opposite meaning; the
+reviewer's mechanical grep (and a skim for "does soft_failures exist") can't
+catch it — you have to read which branch is live. Self-check before
+shipping any known-defect soft-assert: plug in the CURRENT observed repro
+values and confirm the condition evaluates TRUE right now.
+
 ## Seen 1× (three distinct traps, one case) + 1 related
 
 - ELITEA-1799 / PR #608 — GH#607 sanctioned-RED assertion: dispatch-suggested `expect.soft(get_by_text(...))` was a new raw locator (Trap 1); the defect needs >~100 message groups but `start_new_chat()` guarantees a fresh small conversation, so it never went RED (Trap 2); `get_message_count()` vs `get_assistant_message_count()` cross-compared, caught in review (Trap 3).
