@@ -39,3 +39,17 @@ back **unchanged** — indistinguishable from "the edit never happened" rather
 than a length error. Don't append to a fixture-generated name; use a fixed
 short literal instead (`"autotest_name_modified"`), same as
 `test_discard_reverts_name_change`'s pre-existing pattern.
+
+**Variant — `pipeline_api.create_pipeline()` HARD-REJECTS >32 chars, does NOT
+silently truncate (ELITEA-2062, 2026-08-09):** unlike the UI's `agent-name-input`
+(above, silent truncation), the server-side `POST
+/elitea_core/applications/prompt_lib/{project}` payload validator 400s with
+`[{'type': 'string_too_long', 'loc': ['name'], 'msg': 'String should have at
+most 32 characters'}]` when `name` exceeds 32 chars. A descriptive prefix like
+`f"autotest_multitab_pipe_1_{ts}"` (26-char prefix + 10-digit unix timestamp =
+36 chars) 400s immediately at `pipeline_api.create_pipeline()` — before any
+browser interaction, so this is the FIRST thing to check when a pipeline-API
+test setup step 400s with a `string_too_long` body. Budget the full generated
+name (prefix + suffix) at ≤32 chars up front, same as the UI-field discipline
+above but for the API path — e.g. `f"autotest_mtab1_{ts}"` (15-char prefix +
+10-digit ts = 25 chars).
