@@ -41,9 +41,23 @@ ending in "AGENT1") -- selecting whichever entry is actually last still
 satisfies case step 6 ("click on the Agent node step in the timeline"), and
 the Before/After values for state_1/state_2 hold either way since the
 child's own CODE1 node is what performs the write in both shapes.
+
+ELITEA-2445 (`extend-existing` onto this module -- AFS
+test-specs/pipelines/lextend_pipeline-subgraph-node-c-state-propagation_ELITEA-2445.md)
+adds a SIBLING test below,
+`test_subgraph_state_sharing_node_c_state_propagation`, using a NEW 3-node
+parent fixture (`pipeline_parent_child_state_sharing_three_node`: CODE1 ->
+AGENT1 (agent, tool = child) -> CODE2/"Node_C" -> END). It covers two gaps
+this module's original test never exercises: (1) selecting timeline index 0
+(CODE1's OWN entry) produces a step-specific Before/After pair, distinct
+from the LAST-index selection above; (2) a node chained via `transition:`
+immediately after an Agent node's nested-pipeline tool call NEVER executes
+-- CONFIRMED DEFECT `EliteaAI/elitea-testing-public#1381` -- soft-asserted,
+not masked. This module's original test and its fixture are UNCHANGED.
 """
 
 import logging
+from datetime import datetime
 
 import allure
 import pytest
@@ -223,4 +237,180 @@ def test_subgraph_state_sharing_common_vars(page, pipeline_parent_child_state_sh
         assert not console_errors, (
             f"Unexpected console errors during attach->execute->open-run-details->select-step->"
             f"expand-state-rows: {[m.text for m in console_errors]}"
+        )
+
+
+_KNOWN_DEFECT_1381 = "https://github.com/EliteaAI/elitea-testing-public/issues/1381"
+
+# Timeline step count THIS fixture recipe (3-node parent: CODE1 -> AGENT1 -> CODE2) is
+# confirmed to produce -- the SAME count the 2-node-parent fixture above produces, because
+# CODE2/Node_C never joins the run (confirmed defect #1381). Not a general assumption about
+# nested-pipeline timelines -- specific to this exact recipe (AFS Automation Hints).
+_EXPECTED_TIMELINE_STEP_COUNT_WITH_BLOCKED_NODE_C = 4
+
+
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+    "automated-full-regression-ui/pipelines/"
+    "ELITEA-2445_subgraph-execution-verify-state-flow-in-run-details.md",
+    "onetest-ai Test Case link",
+)
+def test_subgraph_state_sharing_node_c_state_propagation(
+    page, pipeline_parent_child_state_sharing_three_node
+):
+    """Node_C (CODE2), chained via `transition:` immediately after an Agent node's
+    nested-pipeline tool call, never executes -- CONFIRMED DEFECT #1381, soft-asserted, not
+    masked. Also proves the Run Details STATES panel keys Before/After off the SELECTED
+    timeline step (index 0 = CODE1's own write), not a run-level aggregate, and that every
+    timeline step renders a non-decreasing timestamp.
+
+    TMS: ELITEA-2445 (extend-existing onto this module -- see module docstring)."""
+    project_id = str(settings.elitea_project_id)
+    parent_id = pipeline_parent_child_state_sharing_three_node["parent_id"]
+    child_name = pipeline_parent_child_state_sharing_three_node["child_name"]
+
+    console_errors = []
+
+    def _on_console(msg):
+        if msg.type == "error" and not _is_known_1267_stepper_prop_leak(msg):
+            console_errors.append(msg)
+
+    page.on("console", _on_console)
+
+    with allure.step(
+        "Step 1 — Open the 3-node parent (CODE1 -> AGENT1 -> CODE2/Node_C); CODE2 is wired "
+        "into the graph; attach the child pipeline via the Tools-section popper"
+    ):
+        pipeline_page = _navigate_to_canvas(page, parent_id)
+        node_ids = pipeline_page.get_node_ids()
+        assert "CODE1" in node_ids, f"Canvas should render the parent's CODE1 node, got {node_ids!r}"
+        assert "AGENT1" in node_ids, f"Canvas should render the parent's AGENT1 node, got {node_ids!r}"
+        assert "CODE2" in node_ids, (
+            f"Canvas should render the parent's CODE2 (Node_C) node -- confirms it is wired into "
+            f"the graph, distinguishing 'never wired' from 'wired but never executed' -- got "
+            f"{node_ids!r}"
+        )
+        assert pipeline_page.get_agent_node_agent_value(timeout=UI_ELEMENT_TIMEOUT) == "", (
+            "Agent node's Agent combobox should be EMPTY before the Tools-section attach"
+        )
+
+        popper = pipeline_page.open_pipeline_popper(timeout=UI_ELEMENT_TIMEOUT)
+        assert popper.is_visible(), "'+ Pipeline' popper should open"
+        attach_response = pipeline_page.select_pipeline_in_popper(
+            popper, child_name, project_id, timeout=UI_ELEMENT_TIMEOUT
+        )
+        assert attach_response is not None, (
+            "Pipeline attach should return the persisted relation payload from the immediate "
+            "PATCH .../application_relation/prompt_lib/{project}/{child_id}/{version_id} 201 "
+            "response"
+        )
+        page.keyboard.press("Escape")
+        assert pipeline_page.get_agent_node_agent_value(timeout=UI_ELEMENT_TIMEOUT) == child_name, (
+            f"Agent combobox should show the attached child pipeline name {child_name!r} after attach"
+        )
+        assert not console_errors, (
+            f"Attaching the child pipeline should not introduce console errors: {console_errors}"
+        )
+
+    with allure.step("Step 2 — Execute the parent pipeline via the embedded chat"):
+        initial_count = pipeline_page.get_embedded_chat_message_count()
+        pipeline_page.send_message_in_embedded_chat("Run the graph.", timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.wait_for_embedded_chat_response(
+            initial_count=initial_count,
+            stable_duration_ms=STABLE_DURATION_MS,
+            timeout=PIPELINE_EXECUTION_TIMEOUT,
+        )
+        assert pipeline_page.get_embedded_chat_message_count() > initial_count, (
+            "Embedded chat should show at least one new message after the run completes"
+        )
+
+    with allure.step("Step 3 — Open Run Details; the run completed"):
+        pipeline_page.open_run_details_panel(timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.get_run_details_status_badge_text() == "Completed", (
+            f"Run should complete before assessing the timeline/state -- got "
+            f"{pipeline_page.get_run_details_status_badge_text()!r}"
+        )
+
+    soft_failures = []
+
+    with allure.step(
+        "Step 4 — Select timeline index 0 (CODE1's OWN entry) -- satisfies case step 6: "
+        "state_1 Before is empty/initial, After is CODE1's own write -- proving the panel keys "
+        "Before/After off the SELECTED step, not a run-level aggregate (a DIFFERENT pair than "
+        "the LAST-index selection the sibling test above asserts)"
+    ):
+        pipeline_page.select_run_details_timeline_step(0, timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.expand_run_details_state_row("state_1", timeout=UI_ELEMENT_TIMEOUT)
+        state_1_before_index0 = pipeline_page.get_run_details_state_before_value(
+            "state_1", timeout=UI_ELEMENT_TIMEOUT
+        )
+        state_1_after_index0 = pipeline_page.get_run_details_state_after_value(
+            "state_1", timeout=UI_ELEMENT_TIMEOUT
+        )
+        assert state_1_before_index0 == '""', (
+            f"state_1's Before value at timeline index 0 (CODE1's own entry) should be empty/"
+            f"initial -- state_1 has never been set before CODE1 runs -- got "
+            f"{state_1_before_index0!r}"
+        )
+        assert state_1_after_index0 == '"parent_value"', (
+            f"state_1's After value at timeline index 0 should reflect CODE1's OWN write "
+            f"('parent_value') -- got {state_1_after_index0!r}"
+        )
+
+    with allure.step(
+        "Step 5 — CONFIRMED DEFECT (#1381, soft-asserted, not masked): the timeline does NOT "
+        "gain a distinct entry for CODE2/Node_C despite it being wired into the graph -- "
+        "documents case steps 5/8's blocked premise (case step 5: timeline should show all 3 "
+        "nodes; case step 8: click Node_C's own step to read the child-modified value)"
+    ):
+        timeline_count = pipeline_page.get_run_details_timeline_step_count()
+        timeline_node_ids = [
+            pipeline_page.get_run_details_timeline_step_node_id(i, timeout=UI_ELEMENT_TIMEOUT)
+            for i in range(timeline_count)
+        ]
+        if timeline_count != _EXPECTED_TIMELINE_STEP_COUNT_WITH_BLOCKED_NODE_C:
+            soft_failures.append(
+                f"Known defect {_KNOWN_DEFECT_1381}: expected the timeline to stay at "
+                f"{_EXPECTED_TIMELINE_STEP_COUNT_WITH_BLOCKED_NODE_C} steps (the 2-node-parent "
+                f"shape -- CODE2/Node_C never executes) -- got {timeline_count}. Either the "
+                f"fixture shape changed, or CODE2 has started executing (defect may be fixed) -- "
+                f"investigate before re-declaring this the known-defect signature."
+            )
+        if any("CODE2" in node_id for node_id in timeline_node_ids):
+            soft_failures.append(
+                f"Known defect {_KNOWN_DEFECT_1381}: expected NO timeline entry whose node-id "
+                f"aria-label matches 'CODE2' (case step 8's target control should not exist while "
+                f"the defect stands) -- got {timeline_node_ids!r}. CODE2 may have started "
+                f"executing -- investigate before re-declaring this the known-defect signature."
+            )
+
+    with allure.step(
+        "Step 6 — Every rendered timeline step exposes a non-empty timestamp, monotonically "
+        "non-decreasing across the run -- satisfies case step 5's 'timestamps in execution "
+        "order' wording (previously-unused handle)"
+    ):
+        timestamps = [
+            pipeline_page.get_run_details_timeline_step_timestamp(i, timeout=UI_ELEMENT_TIMEOUT)
+            for i in range(timeline_count)
+        ]
+        assert all(timestamps), (
+            f"Every timeline step should render a non-empty timestamp, got {timestamps!r}"
+        )
+        parsed_timestamps = [datetime.strptime(ts, "%H:%M:%S") for ts in timestamps]
+        assert parsed_timestamps == sorted(parsed_timestamps), (
+            f"Timeline timestamps should be monotonically non-decreasing in execution order, "
+            f"got {timestamps!r}"
+        )
+
+    with allure.step("Step 7 — Verify no unexpected console errors (excluding the known #1267 signature)"):
+        page.remove_listener("console", _on_console)
+        assert not console_errors, (
+            f"Unexpected console errors during attach->execute->open-run-details->select-step->"
+            f"expand-state-rows: {[m.text for m in console_errors]}"
+        )
+
+    if soft_failures:
+        pytest.fail(
+            "Soft assertion(s) failed (sanctioned RED — known defect #1381):\n"
+            + "\n".join(soft_failures)
         )

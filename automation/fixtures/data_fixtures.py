@@ -755,6 +755,142 @@ def pipeline_parent_child_state_sharing(pipeline_api: PipelineAPI, request):
         logger.warning("Failed to delete ELITEA-2443 child pipeline %s: %s", child_id, exc)
 
 
+def _build_parent_child_state_sharing_three_node_parent_instructions(child_pipeline_name: str) -> str:
+    """Build the THREE-node PARENT pipeline's YAML for
+    :func:`pipeline_parent_child_state_sharing_three_node` (ELITEA-2445).
+
+    Same ``CODE1``/``AGENT1`` shape as
+    :func:`_build_parent_child_state_sharing_parent_instructions`, plus a
+    THIRD node, ``CODE2`` (the case's "Node_C"), chained via ``AGENT1``'s own
+    ``transition:`` (instead of ``AGENT1`` transitioning straight to
+    ``END``). ``CODE2`` reads ``state_1`` back via
+    ``alita_state.get("state_1", "MISSING")`` and transitions to ``END``.
+
+    CONFIRMED LIVE DURING ANALYSIS (AFS ELITEA-2445 § Known Defects,
+    `EliteaAI/elitea-testing-public#1381`): a node chained via ``transition:``
+    immediately after an Agent node whose ``tool:`` resolves to a nested
+    pipeline NEVER executes -- the run still reports "Completed" and
+    ``CODE2`` never appears in the Run Details timeline. ``CODE2``'s own code
+    value is otherwise irrelevant to the ELITEA-2445 test -- it asserts the
+    node's ABSENCE from the observable run, not its output.
+
+    Args:
+        child_pipeline_name: Exact ``name`` of the already-created child
+            pipeline.
+    """
+    return f"""\
+entry_point: CODE1
+state:
+  messages:
+    type: list
+  state_1:
+    type: str
+  state_2:
+    type: number
+nodes:
+  - id: CODE1
+    type: code
+    code:
+      type: fixed
+      value: |
+        {{"state_1": "parent_value"}}
+    input: [state_1]
+    output: [state_1]
+    structured_output: true
+    transition: AGENT1
+  - id: AGENT1
+    type: agent
+    input: [input]
+    output: [messages]
+    input_mapping:
+      task:
+        type: fixed
+        value: "Run the child pipeline and share state."
+      chat_history:
+        type: fixed
+        value: []
+    tool: {child_pipeline_name}
+    transition: CODE2
+  - id: CODE2
+    type: code
+    code:
+      type: fixed
+      value: |
+        {{"state_1": alita_state.get("state_1", "MISSING")}}
+    input: [state_1]
+    output: [state_1]
+    structured_output: true
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_parent_child_state_sharing_three_node(pipeline_api: PipelineAPI, request):
+    """Create a CHILD pipeline (identical to
+    :func:`pipeline_parent_child_state_sharing`'s child) and a THREE-node
+    PARENT pipeline (``CODE1`` -> ``AGENT1`` (agent, tool = child) ->
+    ``CODE2`` -> ``END`` -- the case's "Node_C") for ELITEA-2445.
+
+    Distinct from :func:`pipeline_parent_child_state_sharing` (which this
+    fixture does NOT modify -- ELITEA-2443's merged test depends on its
+    exact 2-node parent shape): this parent adds a THIRD node, ``CODE2``,
+    chained after ``AGENT1`` via ``transition:``, to probe whether a node
+    placed AFTER an Agent-node's nested-pipeline tool call ever executes
+    (confirmed live: it does not -- `EliteaAI/elitea-testing-public#1381`).
+
+    Built via the GENERIC :meth:`PipelineAPI.create_pipeline` (raw YAML
+    ``instructions`` string) -- same technique as
+    :func:`pipeline_parent_child_state_sharing` -- :meth:`create_pipeline_with_nodes`
+    has no ``state:`` support.
+
+    Deletes BOTH pipelines afterwards (order-independent, same as the
+    2-node fixture).
+
+    Yields:
+        dict: ``{"parent_id": int, "parent_name": str, "child_id": int,
+        "child_name": str}``
+    """
+    child_name = f"autotest_2445c_{request.node.name}"[:32]
+    child = pipeline_api.create_pipeline(
+        name=child_name,
+        description=f"Auto-created ELITEA-2445 child pipeline for test {request.node.name}",
+        instructions=_PARENT_CHILD_STATE_SHARING_CHILD_INSTRUCTIONS,
+    )
+    child_id = child["id"]
+    logger.info(
+        "Created ELITEA-2445 child pipeline %s (%s) for %s", child_id, child_name, request.node.name
+    )
+
+    parent_name = f"autotest_2445p_{request.node.name}"[:32]
+    parent = pipeline_api.create_pipeline(
+        name=parent_name,
+        description=f"Auto-created ELITEA-2445 parent pipeline for test {request.node.name}",
+        instructions=_build_parent_child_state_sharing_three_node_parent_instructions(child_name),
+    )
+    parent_id = parent["id"]
+    logger.info(
+        "Created ELITEA-2445 parent pipeline %s (%s) for %s", parent_id, parent_name, request.node.name
+    )
+
+    yield {
+        "parent_id": parent_id,
+        "parent_name": parent_name,
+        "child_id": child_id,
+        "child_name": child_name,
+    }
+
+    try:
+        pipeline_api.delete_pipeline(parent_id)
+        logger.info("Deleted ELITEA-2445 parent pipeline %s", parent_id)
+    except Exception as exc:
+        logger.warning("Failed to delete ELITEA-2445 parent pipeline %s: %s", parent_id, exc)
+    try:
+        pipeline_api.delete_pipeline(child_id)
+        logger.info("Deleted ELITEA-2445 child pipeline %s", child_id)
+    except Exception as exc:
+        logger.warning("Failed to delete ELITEA-2445 child pipeline %s: %s", child_id, exc)
+
+
 _PARENT_CHILD_STATE_ISOLATION_CHILD_INSTRUCTIONS = """\
 entry_point: CODE1
 state:
