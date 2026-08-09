@@ -2,7 +2,35 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2071 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2043 analysis).
+
+## Attachments module auto-adds/removes an IMMUTABLE `input_attachments` (list) STATE var — instant, zero network, zero new testids (confirmed live, 2026-08-09, ELITEA-2043)
+
+Confirmed live via Playwright MCP on a fresh pipeline (id 8652): clicking the
+"Attachments" MODULES toggle (`agent-canvas-tools-toggle-attachments`) — the
+SAME switch ELITEA-2059 already documents — instantly adds/removes an
+`input_attachments` row in the STATE panel, with a checked toggle and NO
+delete button (same structural immutability as the built-in `input`/
+`messages` rows, ELITEA-2042). Zero Save, zero network requests, zero
+console errors, in either direction. All handles (STATE panel drawer/rows,
+MODULES toggle, Yaml view) already existed from prior cases — no
+`add-data-testid` work needed.
+
+- **Refinement to the ELITEA-2027 digest finding above** ("`state:`
+  top-level key only appears once at least one CUSTOM state variable
+  exists"): enabling Attachments also triggers the `state:` key to render
+  (with `input`/`messages` types now shown too, not just the newly-added
+  `input_attachments`) — even though `input_attachments` isn't a
+  user-added custom variable in the STATE-panel-`+`-button sense. **And the
+  key does NOT revert to fully absent after disabling Attachments again in
+  the same session** — after toggling off, the YAML still shows
+  `state: {input: {type: str}, messages: {type: list}}` rather than no
+  `state:` key at all. Not a defect (the case only needs
+  `input_attachments`'s absence, which holds) — but any assertion here
+  must check for the KEY's absence within `state`, not the whole `state`
+  section's absence, or it becomes session-order-dependent.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-state-panel-attachments-module_ELITEA-2043.md`.
 
 ## "Pipeline tabs" = real BROWSER tabs, not an in-app widget; project-name title suffix is NOT "Private" (confirmed live, 2026-08-09, ELITEA-2062)
 
