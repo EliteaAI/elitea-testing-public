@@ -1355,6 +1355,18 @@ class PipelineDetailPage(PipelineFormPage):
         description="An attached toolkit/MCP card in the TOOLS section"
     )
 
+    # Scoped sub-selectors for a specific attached card (ELITEA-2065) — each
+    # is a raw testid selector, chained off a `toolkit_card`-scoped Locator
+    # at the call site, never a free-floating page-level handle, per
+    # `.agents/testing.md` § Locator policy's dynamic/scoped-selector
+    # convention. `TOOLKIT_CARD_DELETE_BUTTON` is on-main (`ToolCard.jsx`,
+    # already used by `AgentDetailPage.remove_toolkit`); the other two were
+    # added this session (`BaseCardBody.jsx`/`EnhancedCardToolActions.jsx`,
+    # on-`automation/testids` only — `EliteaAI/EliteaUI@c45f1611`).
+    TOOLKIT_CARD_DELETE_BUTTON = '[data-testid="agent-toolkit-delete-button"]'
+    TOOLKIT_CARD_TOOLS_TOGGLE = '[data-testid="toolkit-card-tools-toggle"]'
+    TOOLKIT_CARD_TOOL_ITEM = '[data-testid="toolkit-card-tool-item-{}"]'
+
     # "+ Toolkit" button (ELITEA-2021). Testid already exists in the DOM on
     # `main` (ToolMenu.jsx) and is already a field on AgentDetailPage — only
     # missing here since PipelineDetailPage previously had no Toolkit-attach
@@ -5570,6 +5582,123 @@ class PipelineDetailPage(PipelineFormPage):
             return True
         except Exception:
             return False
+
+    @action("Expand a TOOLS-section card's attached-tools list")
+    def open_toolkit_card_tools(self, toolkit_name: str, timeout: int = 10000) -> None:
+        """Click a TOOLS-section card's "Show tools" toggle to reveal its tool list.
+
+        Only rendered when the attached toolkit/MCP has a non-empty
+        ``settings.selected_tools`` (``BaseCardBody.jsx`` — the card shows
+        its plain description text instead when empty; ``mcp_toolkit_with_tools``
+        always sets ``selected_tools`` at creation, so the toggle is present
+        for every MCP that fixture provisions). ELITEA-2065: the case's
+        "click the attached MCP entry to see its tools/details" step —
+        `toolkit-card-tools-toggle` is on-``automation/testids`` only,
+        added this session (``EliteaAI/EliteaUI@c45f1611``).
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card (scopes the
+                click to that specific card among possibly several attached).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Expanding tools list for TOOLS-section card '%s'", toolkit_name)
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        toggle = card.locator(self.TOOLKIT_CARD_TOOLS_TOGGLE)
+        toggle.wait_for(state="visible", timeout=timeout)
+        toggle.click()
+
+    def is_toolkit_card_tool_listed(
+        self, toolkit_name: str, tool_name: str, timeout: int = 5000
+    ) -> bool:
+        """Check whether *tool_name* is listed in an EXPANDED TOOLS-section card.
+
+        Call after :meth:`open_toolkit_card_tools`. `toolkit-card-tool-item-{tool}`
+        is on-``automation/testids`` only, added this session
+        (``EliteaAI/EliteaUI@c45f1611``, ``EnhancedCardToolActions.jsx``'s
+        ``ToolView``).
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card.
+            tool_name: Raw tool name (schema key, e.g. ``ask_question``).
+            timeout: How long to wait for the item to appear.
+
+        Returns:
+            True if the tool item is visible in the expanded card, False otherwise.
+        """
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        item = card.locator(self.TOOLKIT_CARD_TOOL_ITEM.format(tool_name))
+        try:
+            item.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @action("Remove a toolkit/MCP from the TOOLS section")
+    def remove_toolkit(self, toolkit_name: str, project_id: str, timeout: int = 10000) -> None:
+        """Remove a toolkit/MCP card from the pipeline's TOOLS section.
+
+        Ported from ``AgentDetailPage.remove_toolkit`` — same shared
+        ``ToolCard.jsx``/``DeleteEntityModal.jsx`` components, same
+        ``agent-toolkit-delete-button``/``delete-confirm-*`` testids
+        (both already on-main). Unlike the Agent-page port, this method
+        confirms via the page's own ``delete_confirm_button``/
+        ``delete_confirm_dialog`` fields (already wired here for the
+        pipeline-version-delete flow, ELITEA-2003) instead of the generic
+        ``Dialog`` component helper, since the exact testids are already
+        first-class fields on this page object. Also waits on the
+        disassociate PATCH itself (``useDisassociateToolkit.hooks.js`` /
+        ``api/toolkits.js``'s ``toolkitAssociate`` mutation, same
+        ``.../tool/prompt_lib/{project}/{toolkit}`` endpoint attach uses,
+        this time with ``has_relation: false``) rather than a fixed
+        timeout — mirrors :meth:`select_mcp_in_popper`'s hard-block pattern
+        so a future regression that stops firing this request fails the
+        step loudly instead of silently passing on the DOM-only wait alone.
+
+        Args:
+            toolkit_name: Name of the toolkit/MCP to remove.
+            project_id: Project id, used to scope the disassociate response URL match.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Removing toolkit/MCP '%s' from pipeline TOOLS section", toolkit_name)
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        card.scroll_into_view_if_needed()
+        # The delete button's reveal is a CSS `&:hover` rule scoped to the
+        # card's HEADER row only (`ToolCard.jsx` styles.cardHeader, fixed
+        # ~60px height) — a plain `card.hover()` targets the geometric
+        # center of the whole card, which lands OUTSIDE the header (and so
+        # never reveals the button) once the card is taller than the header
+        # alone, e.g. after :meth:`open_toolkit_card_tools` expanded its
+        # tool list below it. Hover a fixed offset near the top-left corner
+        # instead, so this works whether or not the card is expanded.
+        card.hover(position={"x": 10, "y": 10})
+
+        # No fixed sleep here: the CSS hover-reveal transition is covered by
+        # this wait_for's own polling — `state="visible"` re-checks until the
+        # transition completes (or fails loudly on a real regression) instead
+        # of gambling on a fixed 300ms guess.
+        delete_btn = card.locator(self.TOOLKIT_CARD_DELETE_BUTTON).first
+        delete_btn.wait_for(state="visible", timeout=5000)
+        # A coordinate-based force=True click can land on the (Tooltip-driven)
+        # invisible overlay above this icon instead of the button itself —
+        # confirmed live this session (the click reported success but no
+        # dialog opened). `evaluate("el => el.click()")` dispatches directly
+        # on the element, bypassing the overlay, per `.claude/rules/mui-
+        # patterns.md`'s "Use evaluate() ... for critical actions" guidance.
+        delete_btn.evaluate("el => el.click()")
+
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: f"/tool/prompt_lib/{project_id}/" in r.url and r.request.method == "PATCH",
+            timeout=timeout,
+        ):
+            self.delete_confirm_button.click()
+        self.delete_confirm_dialog.wait_for(state="hidden", timeout=timeout)
+
+        # Wait for the card itself to leave the DOM — React may defer the
+        # Formik state update/re-render past the dialog's own close.
+        card.wait_for(state="hidden", timeout=timeout)
 
     def save_and_wait_for_update(self, project_id: str, pipeline_id: int, timeout: int = 15000) -> dict:
         """Click Save and wait for the update PUT's 201 response.

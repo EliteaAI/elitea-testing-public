@@ -43,7 +43,7 @@
 8. Verify MCP is removed from the Tools list.
    - **Verify**: `agent-toolkit-card` filtered by the MCP's name has count 0 immediately after step 7's confirm.
 9. Save — verify removal persists.
-   - **Verify**: clicking the pipeline's Save button (`agent-save-button`) fires `PUT .../application/prompt_lib/{project}/{pipeline_id}` → `201 Created`; a full page reload at the canonical URL still shows 0 matching `agent-toolkit-card` entries. Zero console errors across the whole flow (steps 2–9).
+   - **Verify (CORRECTED, live-verified during implementation — see § Implementer Notes)**: removal auto-persists immediately as part of step 7's own flow (`useDisassociateToolkit.hooks.js`'s `savePipelineAfterToolkitRemoval` fires its own `PUT .../application/prompt_lib/{project}/{pipeline_id}` right after the disassociate PATCH), which resets the Formik baseline and makes the Save button (`agent-save-button`) DISABLED (`SaveApplicationButton.jsx`'s `isButtonDisabled` gates on `!isFormDirtyExcluding`) — there is nothing left to explicitly Save. Assert the Save button is disabled (confirms "no pending changes remain"), then a full page reload at the canonical URL still shows 0 matching `agent-toolkit-card` entries. Zero console errors across the whole flow (steps 2–9).
 
 ## Expected Results
 - An MCP toolkit with a real tool list can be attached to a pipeline's Tools section via "+ MCP", auto-persisting immediately on selection.
@@ -68,7 +68,7 @@
 | 6 Click on the attached MCP entry to see its tools/details | MCP details or tools list is shown | step 6 | step 6: expanded `toolkit-card-tool-item-{tool}` list, incl. `ask_question` | asserted |
 | 7 Remove the MCP (click X or delete icon) | MCP is removed from the Tools list | step 7 | step 7: `agent-toolkit-delete-button` click + confirm dialog + disassociate PATCH | asserted |
 | 8 Verify MCP is removed from the Tools list | "WebSearch" no longer appears under the MCP sub-tab | step 8 | step 8: `agent-toolkit-card` count 0 | asserted |
-| 9 Save — verify removal persists | MCP is absent from the Tools list after save | step 9 | step 9: Save PUT 201 + reload + count 0 | asserted |
+| 9 Save — verify removal persists | MCP is absent from the Tools list after save | step 9 | step 9: Save button disabled (already auto-persisted) + reload + count 0 | asserted — **CORRECTED live: removal auto-persists via its own PUT, leaving Save disabled with nothing pending — see Implementer Notes** |
 | Expected Final State: MCP can be added to Tools MCP sub-tab, details viewed, removed; removal persists after save | — | steps 4–9 | steps 4–9 | asserted (with the sub-tab and tools-count clarifications from steps 4–5) |
 | Pass/Fail: all steps complete without errors; MCP added/detail-viewed/removed and removal persists | — | all steps | all steps | asserted |
 
@@ -111,6 +111,45 @@
 ## Blocked Steps
 
 None.
+
+## Implementer Notes (added during automation, ELITEA-2065)
+
+- **Card-hover targeting fix**: `card.hover()` on the whole `agent-toolkit-card` box
+  misses the CSS `&:hover` rule that reveals `agent-toolkit-delete-button` — that
+  rule is scoped to the card's fixed-height HEADER row only (`ToolCard.jsx`'s
+  `styles.cardHeader`). Once the card is taller than its header (e.g. after step 6
+  expands the tools list), a center-point hover lands outside the header and the
+  delete button never reveals. Fixed via `card.hover(position={"x": 10, "y": 10})`
+  to always land inside the header regardless of expansion state.
+- **Delete-button click fix**: a coordinate-based `delete_btn.click(force=True)`
+  reported success but never opened the confirm dialog — confirmed live this
+  session the click was landing on an invisible Tooltip overlay above the icon
+  button rather than the button itself. Switched to
+  `delete_btn.evaluate("el => el.click()")` (dispatches directly on the element,
+  bypassing the overlay), per `.claude/rules/mui-patterns.md`'s existing
+  "evaluate() for critical actions" guidance.
+- **Step 9 CORRECTED, live-verified**: removal auto-persists via its own PUT
+  (`savePipelineAfterToolkitRemoval`), same class of finding as ELITEA-2037's
+  attach auto-persist correction. This resets the Formik baseline, so
+  `agent-save-button` goes DISABLED (`SaveApplicationButton.jsx`'s
+  `isButtonDisabled`) — confirmed live: a forced JS click on the disabled button
+  fires no new PUT (real `disabled` `<button>`s suppress `.click()`), which is
+  why the test asserts the disabled state instead of clicking Save. Not filed as
+  a new ticket — same pattern already tracked by
+  EliteaAI/elitea-testing-public#1149 for the attach direction.
+- Two new `data-testid`s added this session (`add-data-testid`,
+  `EliteaAI/EliteaUI@c45f1611` on `automation/testids`, NOT yet on `main`):
+  `toolkit-card-tools-toggle` (`BaseCardBody.jsx`) and
+  `toolkit-card-tool-item-{tool}` (`EnhancedCardToolActions.jsx`'s `ToolView`).
+- New `PipelineDetailPage` methods: `open_toolkit_card_tools()`,
+  `is_toolkit_card_tool_listed()`, `remove_toolkit()` (ported from
+  `AgentDetailPage.remove_toolkit`/`is_toolkit_attached` — same shared
+  `ToolCard.jsx` component, no shared base class between the two page objects
+  per this codebase's existing porting convention).
+- Test file: `automation/tests/ui/pipelines/test_pipeline_tools_section_mcp_add_view_remove.py`.
+  Green on 3rd local run after 2 root-cause fixes (hover targeting, then overlay
+  click, then the Step-9 Save-disabled correction — the last two surfaced
+  together across 2 reruns), 28.99s headless.
 
 ## Automation Hints
 
