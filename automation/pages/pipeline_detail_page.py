@@ -71,6 +71,19 @@ class PipelineDetailPage(PipelineFormPage):
         '[data-testid="run-history-list-item"][data-selected="true"]'
     )
 
+    # Run History panel close (X) button (ELITEA-2070). Same shared
+    # `RunHistoryContainer.jsx` IconButton the Agent surface also renders
+    # (no `pipeline-`/`agent-` prefix — same reasoning as
+    # `RUN_HISTORY_LIST_ITEM_SELECTOR` above: the component is shared, the
+    # testid is shared). Added via `add-data-testid`,
+    # EliteaAI/EliteaUI@ccbfc54a — no testid existed before this case;
+    # neither ELITEA-2011 (Pipeline) nor ELITEA-1877 (Agent) requested it
+    # since neither of those cases' own steps clicked it.
+    run_history_close_button = LocatorDescriptor(
+        testid="run-history-close-button",
+        description="Close (X) button in the Run History panel header",
+    )
+
     copy_id_button = LocatorDescriptor(
         testid="copy-id",
         fallback=lambda page: page.get_by_role("button", name="Copy ID"),
@@ -6958,6 +6971,25 @@ class PipelineDetailPage(PipelineFormPage):
         except Exception:
             return ""
         return "\n".join(items.all_text_contents())
+
+    @action("Close Run History panel")
+    def close_run_history(self, timeout: int = 10000):
+        """Click the Run History panel's close (X) button and wait for the
+        Configuration form + embedded chat to be restored.
+
+        ``onClose`` is a purely client-side ``showHistory`` state flip
+        (``ConfigurationTab.jsx`` — no network round trip), so completion is
+        confirmed by polling for ``chat_input`` to become visible again
+        rather than waiting on any request.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Closing Run History panel")
+        self.run_history_close_button.wait_for(state="visible", timeout=timeout)
+        self.run_history_close_button.click()
+        self.chat_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Run History panel closed")
 
     # ------------------------------------------------------------------
     # Run Details panel (RunStateNode/RunStateDialog — ELITEA-2450)
