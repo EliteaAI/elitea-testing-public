@@ -2,6 +2,8 @@
 
 TMS: ELITEA-2059
 (test-specs/pipelines/l2_pipeline-attach-files-in-chat_ELITEA-2059.md)
+Also covers TMS: ELITEA-2066
+(test-specs/pipelines/lextend_pipeline-modules-attachments-toggle-persists_ELITEA-2066.md)
 
 Enables the pipeline's "Attachments" MODULES toggle (live-formik-state gate,
 no Save required), attaches a `.txt` file via the bare icon-only
@@ -15,13 +17,20 @@ live-confirmed non-determinism note (Automation Hints / step 7 discovery),
 the acknowledgment check accepts EITHER the filename substring OR a generic
 attachment-acknowledgment keyword — a bare LLM node's phrasing varies run to
 run and does not always cite the filename verbatim.
+
+ELITEA-2066 extends this file with a second test that proves the SAME
+toggle's ON/OFF state (and its effect on the attach button) is genuinely
+persisted server-side across Save + a hard page reload — not merely a live,
+unsaved formik value — in both directions (enable-then-disable).
 """
 
 import logging
 
 import allure
 import pytest
+from config import settings
 from pages.pipeline_detail_page import PipelineDetailPage
+from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +38,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark
 
 UI_ELEMENT_TIMEOUT = 10_000
 AI_RESPONSE_TIMEOUT = 60_000
+SAVE_RESPONSE_TIMEOUT = 15_000
 
 _MESSAGE_TEXT = "Please summarize the content of the attached file."
 _ATTACHMENT_ACK_KEYWORD = "attach"  # matches "attachment"/"attached" in either observed AI phrasing
@@ -166,4 +176,94 @@ def test_attach_files_in_chat(page, pipeline_with_variable_task_llm_id, tmp_path
             f"acknowledgment (e.g. 'attach'/'attached'/'attachment'), got: {response_text!r}"
         )
 
+        assert not console_errors, f"No step should introduce console errors: {console_errors}"
+
+
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+    "automated-full-regression-ui/pipelines/"
+    "ELITEA-2066_pipeline-modules-section.md",
+    "onetest-ai Test Case link",
+)
+def test_attachments_toggle_persists_across_save_and_reload(page, pipeline_id):
+    """Attachments MODULES toggle + attach-button state survive Save + reload, both directions.
+
+    ELITEA-2059's own test proves the ON-direction, live/unsaved causal link
+    (toggle -> attach button, instant, no Save needed). This test proves the
+    stronger, Save-gated claim ELITEA-2066's case asks for: after Save and a
+    hard page reload, the toggle AND the attach button still reflect the
+    persisted state — in both the enable and disable direction.
+    """
+    pipeline_page = PipelineDetailPage(page)
+    project_id = str(settings.elitea_project_id)
+
+    console_errors = []
+    page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+
+    with allure.step(
+        "Step 1 — Open the pipeline; MODULES/Attachments toggle and attach button start "
+        "unchecked/disabled"
+    ):
+        pipeline_page.navigate(pipeline_id)
+        pipeline_page.dismiss_banner_if_present()
+        pipeline_page.wait_for_canvas()
+        toggle = pipeline_page.get_tools_module_toggle("attachments")
+        expect(toggle).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+        assert not pipeline_page.is_tools_module_toggle_checked("attachments"), (
+            "Attachments MODULES toggle should start unchecked on a fresh pipeline"
+        )
+        expect(pipeline_page.chat_attach_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+        expect(pipeline_page.chat_attach_button).to_be_disabled(timeout=UI_ELEMENT_TIMEOUT)
+
+    with allure.step('Step 2 — Toggle "Attachments" to enabled; attach button enables instantly'):
+        pipeline_page.toggle_attachments_module(timeout=UI_ELEMENT_TIMEOUT)
+        assert pipeline_page.is_tools_module_toggle_checked("attachments"), (
+            "Attachments MODULES toggle should be checked after clicking it"
+        )
+        expect(pipeline_page.chat_attach_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
+
+    with allure.step("Step 3 — Save the pipeline while Attachments is enabled"):
+        save_response = pipeline_page.save_and_wait_for_update(
+            project_id, pipeline_id, timeout=SAVE_RESPONSE_TIMEOUT
+        )
+        assert save_response is not None, "Save should return the persisted pipeline version"
+
+    with allure.step(
+        "Step 4 — Reload the pipeline (hard navigation, not live state); toggle stays checked "
+        "and the attach button stays enabled — proves server-side persistence, not just a "
+        "live/unsaved formik value"
+    ):
+        pipeline_page.navigate(pipeline_id)
+        pipeline_page.wait_for_canvas()
+        reloaded_toggle = pipeline_page.get_tools_module_toggle("attachments")
+        expect(reloaded_toggle).to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
+        # Auto-retrying assertion: the button's `disabled` attribute can lag a couple
+        # seconds behind the toggle's already-correct `checked` value right after a
+        # hard reload (confirmed live) — `to_be_enabled` polls until it settles.
+        expect(pipeline_page.chat_attach_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
+
+    with allure.step('Step 5 — Toggle "Attachments" back to disabled; attach button disables instantly'):
+        pipeline_page.toggle_attachments_module(timeout=UI_ELEMENT_TIMEOUT)
+        assert not pipeline_page.is_tools_module_toggle_checked("attachments"), (
+            "Attachments MODULES toggle should be unchecked after toggling it off"
+        )
+        expect(pipeline_page.chat_attach_button).to_be_disabled(timeout=UI_ELEMENT_TIMEOUT)
+
+    with allure.step("Step 6 — Save the pipeline while Attachments is disabled"):
+        save_response = pipeline_page.save_and_wait_for_update(
+            project_id, pipeline_id, timeout=SAVE_RESPONSE_TIMEOUT
+        )
+        assert save_response is not None, "Save should return the persisted pipeline version"
+
+    with allure.step(
+        "Step 7 — Reload the pipeline again; toggle stays unchecked and the attach button "
+        "stays disabled — proves the OFF state persists too"
+    ):
+        pipeline_page.navigate(pipeline_id)
+        pipeline_page.wait_for_canvas()
+        reloaded_toggle_off = pipeline_page.get_tools_module_toggle("attachments")
+        expect(reloaded_toggle_off).not_to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
+        expect(pipeline_page.chat_attach_button).to_be_disabled(timeout=UI_ELEMENT_TIMEOUT)
+
+    with allure.step("Step 8 — No console errors were introduced at any step"):
         assert not console_errors, f"No step should introduce console errors: {console_errors}"
