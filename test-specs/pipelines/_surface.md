@@ -1205,6 +1205,18 @@ source, no such import/usage in `StateModifierNode.jsx`.
   dialog) already exists and works as documented — reused unmodified,
   pre-existing raw-handle tech debt (positional `MuiIconButton-colorTertiary`
   + `get_by_role("menuitem", name="Delete")`), not newly introduced.
+  **Resolved/added during ELITEA-2060 analysis:** case text phrasing like
+  "the node's action buttons (two small buttons on the node header)... click
+  the delete button (trash icon)" describes this EXACT mechanism, not a
+  separate quick-action control — confirmed via source
+  (`NodeCardHeader.jsx`): the two header `IconButton`s are Expand/Collapse +
+  the `DotMenu` 3-dot trigger (both visible by default since `NodeCard.jsx`
+  defaults `isExpanded=true`); the "Delete" menu item renders a `DeleteIcon`
+  (trash glyph) beside its label. No standalone trash-icon header button
+  exists anywhere in the pipelines flow-editor — grep confirms `DeleteIcon`
+  is referenced only once, inside this dropdown. A future case worded this
+  way is `already-covered` by `test_pipeline_canvas_delete_node.py`, not a
+  new interaction to discover.
 - **Deleting an EDGE**: click the edge (`.react-flow__edge`, gains a
   `selected` CSS class), press the `Delete` keyboard key → a
   `role="dialog"` confirmation appears ("Delete confirmation — Are you
