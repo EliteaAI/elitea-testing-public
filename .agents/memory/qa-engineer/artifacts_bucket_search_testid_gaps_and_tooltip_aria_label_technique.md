@@ -47,6 +47,20 @@ stays fully testid-compliant (the LOCATOR is still the testid; you're reading an
 attribute of a testid-resolved element, not locating anything by role/label) and
 avoids flaky hover-then-wait-then-read sequences entirely.
 
+## Reconfirmed at a second call site (ELITEA-2451, 2026-08-09)
+
+Pipeline Run Details panel's per-timeline-step dot (`ProcessStepIcon.jsx`,
+`StyledTooltip title={step.id}`) shows the SAME mechanism: `outerHTML` read
+confirmed `aria-label="LLM1"` statically on the dot (plus
+`data-mui-internal-clone-element="true"`), not a `title` HTML attribute —
+my first instinct on this second sighting was to assume `title` (it seemed
+more "native"), which would have been wrong; this entry's original finding
+was the correct one to trust. **Rule of thumb going forward: for this
+project's `StyledTooltip` (`@/ComponentsLib/Tooltip`, a thin MUI Tooltip
+wrapper), assume `aria-label`, verify with an `outerHTML` read
+(`browser_run_code_unsafe`) before writing it into an AFS/spec — never guess
+`title`.**
+
 ## Also confirmed this run
 
 The generic `toast-message` testid (already a `LocatorDescriptor` on

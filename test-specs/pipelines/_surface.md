@@ -2,7 +2,167 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2064 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2449 analysis).
+
+## Code node — input filtering (elitea_state scoping), confirmed live, clean pass (2026-08-09, ELITEA-2449)
+
+Confirms `.claude/skills/elitea-pipeline/references/yaml-schema.md:238-241`'s
+documented contract via live execution: **a Code node's `elitea_state` inside
+the pyodide sandbox contains ONLY the variables listed in that node's own
+`input:`** — a state variable declared in the pipeline's `state:` block AND
+written by an EARLIER node in the SAME run (so it has a real, non-empty value)
+is still completely absent from `elitea_state.keys()` if it isn't in the
+Code node's `input:` list. Confirmed live twice (2 disposable probe pipelines,
+ids 8823/8824, `var_a`/`var_b`/`var_c` set by 3 chained `state_modifier` nodes,
+Code node `input: [var_a, var_b]` only): `list(elitea_state.keys())` renders as
+exactly `['var_a', 'var_b']` and `'var_c' in elitea_state` is `False`, even
+though `var_c` independently shows a real value (`"CCC"`) in ITS OWN Run
+Details row at the same timeline step. **The two facts don't contradict each
+other** — a variable's Run Details row/value visibility is a pipeline-run-level
+fact (any variable declared in `state:` gets a row); a Code node's ability to
+READ a variable via `elitea_state` is scoped strictly to that node's own
+`input:` list. Don't conflate them when reading Run Details evidence for a
+"was this excluded" claim — read the CONSUMING node's own output/result value,
+not a sibling variable's unrelated row.
+
+- **`get_code_node_input_value()` (`PipelineDetailPage`, ELITEA-2009) returns
+  chip text with NO separator for a multi-variable selection** — confirmed
+  live: selecting `var_a` then `var_b` renders `.text_content()` as
+  `"var_avar_b"`, not `"var_a, var_b"` (that comma-joined form is only the
+  HIDDEN input's value, not what the visible-chip-container text read
+  returns). Any assertion against a 2+-variable Input selection must use
+  substring/membership checks (`"var_a" in value and "var_b" in value`), never
+  an exact-string match — ELITEA-2009/2446 never exercised this because both
+  only ever selected ONE variable.
+- **Calling `select_code_node_input_variable()` twice in a row (once per
+  variable) is safe and requires no new method** — confirmed live.
+  `_select_multi_select_option_and_close()`'s internal `Escape` + "wait for
+  popover fully closed" means the SECOND call's `open_code_node_input_select()`
+  reopens a genuinely-closed popover rather than toggling an already-open one
+  shut. No race, no gotcha. **BUT this is safe ONLY when the Input starts
+  EMPTY** — resolved during ELITEA-2449 implementation: re-invoking
+  `select_code_node_input_variable("var_a")`/`("var_b")` against a Code node
+  whose Input is ALREADY `[var_a, var_b]` (this AFS's own recommended fixture,
+  pre-set via YAML at creation) TOGGLES both chips OFF instead of confirming
+  them — `option.click()` on an already-checked MUI multi-select MenuItem is a
+  plain toggle. Confirmed live: `get_code_node_input_value()` returned `""`
+  after the two calls against that fixture. The implementer's test verifies
+  step 3 READ-ONLY (no `select_code_node_input_variable()` calls at all) when
+  the fixture pre-sets Input via YAML — reserve the two-call sequence for a
+  Code node whose Input genuinely starts empty (a freshly-added node, per
+  ELITEA-2009's own test).
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l3_code-node-input-filtering-selective-state-access_ELITEA-2449.md`.
+
+## Run Details STATES panel — Before/After values are PER-TIMELINE-STEP, not run-level (confirmed live, 2026-08-09, ELITEA-2444)
+
+**Correction/refinement to the ELITEA-2443 digest's implicit assumption below.**
+ELITEA-2443's test reads `state_1`/`state_2` Before/After after selecting only the
+LAST timeline entry and gets correct values — this made it LOOK like the STATES
+panel shows run-level (whole-run) Before/After snapshots. It doesn't. Confirmed
+live on ELITEA-2444's fixture (parent declares `state_1`/`state_2`, child declares
+`state_1`/`state_3` — `state_2` is NOT in the child's own `state:`/node input-output
+anywhere): with the LAST timeline step selected (the child's own final CODE node),
+`state_2`'s Before AND After both render as **empty strings** — not because the
+value is unset (it demonstrably is `"parent_only_value"`, set by the parent's own
+CODE1 node), but because **the currently-selected step's own input/output
+declaration doesn't include `state_2`, so the panel has nothing to show for that
+step**. Selecting timeline step 0 (the parent's own CODE1 execution) makes
+`state_2`'s After render correctly (`'"parent_only_value"'`). ELITEA-2443's own
+fixture never hit this because its child declared BOTH `state_1` and `state_2`, so
+every timeline step had both variables in scope regardless of which step was
+selected.
+
+- **Practical rule for any future case reading Before/After for a variable NOT
+  declared/used by every node in the run**: pick the timeline step whose OWN
+  input/output actually includes that variable — the step immediately AFTER the
+  node that writes it (for the After value) or immediately BEFORE (for the Before
+  value) — never assume "select the last step" is a safe universal convention.
+  Full worked example (two-step Before/After comparison across an Agent-node
+  boundary): `test-specs/pipelines/l2_pipeline-subgraph-non-common-state-isolation_ELITEA-2444.md`
+  Test Step 12.
+- **A variable's Run Details ROW EXISTENCE, by contrast, IS a clean run-level
+  fact** — `get_run_details_state_row_locator(variable).count() == 0` for a
+  variable the PARENT's own `state:` block never declares (confirmed at every one
+  of the run's 4 timeline steps, same `0` result throughout) — only the
+  Before/After VALUE rendering is step-scoped, not the row's existence. This is
+  the mechanism ELITEA-2444 uses to prove a child-only variable (`state_3`) never
+  leaks into the parent's panel.
+- Confirmed via `page.evaluate()` DOM queries (`document.querySelectorAll`) rather
+  than the accessibility-tree snapshot — the snapshot silently omits empty-text
+  value boxes, which looks identical to "element not found" at a glance. Use
+  `element.textContent` via `browser_evaluate`/a real pytest assertion when a
+  Before/After value might legitimately be an empty string; don't rely on
+  presence-in-snapshot alone.
+
+## Run History panel — Pipeline surface (SAME shared component as the Agent surface's ELITEA-1877, confirmed live, 2026-08-09, ELITEA-2011)
+
+The Pipeline detail page's embedded-chat "view run history" icon
+(`pipeline-history-tab`, `ViewRunHistoryButton.jsx`) opens the exact same
+`RunHistoryContainer`/`RunHistoryList`/`RunHistoryChat` stack already documented
+for Agents in `test-specs/agents/_surface.md` / `l2_run-history-select-past-run-loads-messages_ELITEA-1877.md`
+— `ConfigurationTab.jsx` wires it with `source={ParticipantEntityTypes.Pipeline}`,
+`entityId={applicationId}`. Confirmed live on pipeline ids 8757/8758/8759:
+
+- **`PipelineDetailPage.clear_embedded_chat()` is a silent no-op** — it clicks a
+  stale `[aria-label="Clear the chat history"]` locator matching zero elements
+  (the real button is `ClearChatButton.jsx`, `aria-label="clear the chat"`,
+  `data-testid="chat-clear-button"` — a correct `chat_clear_button`
+  `LocatorDescriptor` field already exists on the same page object but the method
+  ignores it). Confirmed twice: the broken method → only 1 run-history entry after
+  2 sent messages (both landed in one conversation); `self.chat_clear_button.click()`
+  directly → 2 distinct entries, as expected. **Any test needing to start a fresh
+  pipeline conversation must call `chat_clear_button` directly (or the method must
+  be fixed first) — do not trust `clear_embedded_chat()` as-is.**
+- **`run-history-list-item` (+ its `data-selected` state) is on
+  `automation/testids` only, NOT yet on `main`** (added during ELITEA-1877's
+  `add-data-testid` work — `EliteaAI/EliteaUI@a5a9d0f5` — shared component, so it
+  serves BOTH the Agent and Pipeline surfaces once promoted). Verified via
+  `git fetch origin` + `git grep -- "run-history-list-item" origin/main -- src/`
+  (no hit) vs `origin/automation/testids` (hit, `RunHistoryListItem.jsx:143`).
+- **`PipelineDetailPage` has NO run-history methods yet** (only a stale,
+  pre-shared-component `click_history_tab()`/`get_history_entries()` pair using
+  raw CSS selectors like `table tbody tr` / `[class*="version"]` — these predate
+  the current `ViewRunHistoryButton`/`RunHistoryContainer` implementation and
+  match nothing live; do not use them for this feature). Mirror
+  `AgentDetailPage`'s `open_run_history()` / `get_run_history_item_count()` /
+  `select_run_history_item(index)` / `get_run_history_chat_messages_text()`
+  almost verbatim — same shared component, same behavior confirmed live.
+- The history panel REPLACES the Configuration form + embedded chat entirely
+  (`ConfigurationTab.jsx`: `{showHistory && <RunHistoryContainer/>}` /
+  `{!showHistory && (...)}`, mutually exclusive) — not an overlay/modal.
+- The close (`X`, `aria-label="close run history"`) button IS wired and works on
+  the Pipeline surface too (same fix already observed for Agents, the
+  previously-filed `#1093`) — confirmed live: closing returns
+  `chat-message-input` etc. to the DOM. No testid on it yet (aria-label only);
+  not requested here since no dispatched case's steps touch it yet.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-run-history-panel-view-executions_ELITEA-2011.md`.
+- **Sibling case flag — RESOLVED (2026-08-09, ELITEA-2070 analysis + implementation):**
+  `ELITEA-2070` ("Pipeline — Run History Panel") classified `extend-existing` against
+  this ELITEA-2011 test (merged onto the batch trunk, `30041066`) — its only gap vs.
+  ELITEA-2011 is the "close run history panel" step. **The close (`X`) button had no
+  testid** (`aria-label="close run history"` only, `RunHistoryContainer.jsx:77-84`) —
+  ELITEA-2070 requested + added `run-history-close-button` (no `pipeline-`/`agent-`
+  prefix, same reasoning as `run-history-list-item`: the shared component serves both
+  surfaces), `EliteaAI/EliteaUI@ccbfc54a` on `automation/testids`. Confirmed live twice
+  during analysis (empty-history AND populated-history states, pipeline id 8056
+  `AutoTest_Pipeline_probe_2020`): close removes the panel, restores Configuration
+  form + embedded chat. ~~fires zero network requests~~ — **corrected during
+  implementation (live pytest run, same class as the ELITEA-2072 collapse/expand
+  recurrence below):** the `onClose` handler itself is a pure state flip with no fetch
+  call, but closing unmounts Run History and remounts the Configuration form, which
+  independently re-fires ITS OWN view-population requests (tools/toolkits/tags/
+  applications/index_types) unrelated to Run History — a console-only/click-only probe
+  during analysis missed this because it didn't capture actual requests. The precise,
+  durable claim (and what the implemented test asserts): closing does **not** re-fetch
+  the conversations list. Full detail:
+  `lextend_pipeline-run-history-panel-close_ELITEA-2070.md`.
+- **Case-text drift flagged by ELITEA-2070**: the case's step 6 names a "status" element
+  in the execution-detail view that doesn't exist as a distinct UI element — only
+  message + response content renders (an errored run's response is distinguishable by
+  its text/disclosure content, not a separate status field). Treated as clarification,
+  not a defect — see the ELITEA-2070 AFS § Known Defects.
 
 ## Tools section "+ Pipeline" button — 4th ADD trigger, no testid before this session, same auto-persist mechanism as Agent attach (confirmed live, 2026-08-09, ELITEA-2064)
 
@@ -1328,6 +1488,64 @@ source, no such import/usage in `StateModifierNode.jsx`.
   blanket "zero console errors" through the panel-open step for this flow;
   scope around this one known signature.
 
+### Timeline Stepper — per-step dot/tooltip/timestamp handles (confirmed live, 2026-08-09, ELITEA-2451)
+
+Confirmed live via a fresh 3-node plain-LLM chain (`LLM 1 → LLM 2 → LLM 3 → END`,
+pipeline id 8767, `afs_2451_probe2`, deleted at session end):
+
+- **Dot color is a SINGLE run-level flag, not per-step.** `ProcessStepIcon.jsx`
+  receives `isError={data.status === PipelineStatus.Error}` — identical value
+  passed to EVERY step in the map. For a `Completed` run, all N dots render
+  `palette.status.published` (green); there is no per-step success/fail color.
+  **`data-status` needs adding** to the dot (mirrors the existing
+  `pipeline-run-details-status-badge` `data-status` pattern) so automation
+  never has to assert a literal CSS color.
+- **The dot's `aria-label` attribute already carries the node id**
+  (`StyledTooltip title={step.id}` — MUI surfaces this as a static
+  `aria-label` on the trigger, confirmed via `outerHTML` read:
+  `aria-label="LLM1"`, NOT a `title` attribute) — present even before a real
+  hover event fires, confirmed via accessibility snapshot immediately on
+  panel open. Same space-stripping as the Timeline label (`"LLM 2"` →
+  `"LLM2"`). Read via `get_attribute("aria-label")` on the EXISTING
+  `pipeline-run-details-timeline-step-{index}` testid — no new handle
+  needed. Same technique already documented in role memory,
+  `artifacts_bucket_search_testid_gaps_and_tooltip_aria_label_technique.md`,
+  for a different MUI Tooltip call site. A real `.hover()` also renders the
+  visual popup (screenshot:
+  `test-results/screenshots/ELITEA-2451-step-hover-tooltip.png`).
+- **The per-step timestamp (`HH:mm:ss`, e.g. `13:32:19`) has NO testid** — a
+  plain `Typography` sibling of the dot inside the same `Step`
+  (`RunStateDialog.jsx:285-290`). **Needs adding**:
+  `pipeline-run-details-timeline-timestamp-{index}` (dynamic, same `index` as
+  the dot, so the two stay correlated).
+- **Layout is horizontal (left-to-right), NOT top-to-bottom** — plain MUI
+  `Stepper`, no `orientation="vertical"` override. Bounding-box read of 3
+  dots after a completed run: Y constant (~302–303px) while X increases
+  monotonically with execution order (371 → 852 → 1336). Case-text drift
+  (case step 7 says "top to bottom"); filed
+  `EliteaAI/elitea-testing-public#1375`. Assert execution order via DOM-index
+  + ascending-timestamp correlation, not axis/pixel position.
+- **Entry count == executed-node count, ONLY for plain (non-structured-output)
+  nodes.** A `structured_output: true` LLM node renders TWO timeline entries
+  per execution (ELITEA-2453 finding) — do not use a structured-output
+  fixture for any test asserting "N entries == N executed nodes".
+- **New prefix-selector constant, no new testid**: counting all dots reuses
+  the EXISTING per-index testid via a `[data-testid^="pipeline-run-details-
+  timeline-step-"]` prefix selector — same mechanism as the pre-existing
+  `CHAT_ATTACHMENT_CHIP_PREFIX` constant elsewhere in `pipeline_detail_page.py`.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l3_run-details-timeline-steps-display_ELITEA-2451.md`.
+
+**Resolved/added during ELITEA-2451 implementation:** both `needs-adding` gaps
+above landed via `add-data-testid`, `EliteaAI/EliteaUI@95b1eada` on
+`automation/testids` (not yet on `main` — human cherry-pick pending): the
+timeline-step dot's `data-status` (`"error"`/`"completed"`, mirroring
+`pipeline-run-details-status-badge`) and
+`pipeline-run-details-timeline-timestamp-{index}` on the per-step `Typography`.
+New fixture `pipeline_three_llm_chain` /
+`build_three_llm_chain_nodes()` added to `automation/fixtures/data_fixtures.py`
+(exact YAML shape as this section's probe pipeline).
+
 ## LLM/HITL node Type+Value field — `Variable` Type swaps the Value field's WIDGET, not just its behaviour (confirmed live, 2026-08-04, ELITEA-2040)
 
 - **`SimpleLLMInputItem.jsx`** (shared across LLM node's SYSTEM/TASK/CHAT HISTORY and HITL's
@@ -2397,6 +2615,146 @@ is a legitimate empty state, not an error state).
   needs to assert exact timeline-entry counts for a structured-output node.
   Full handle table + fixture recipe: `l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md`.
 
+## Run Details panel — multi-run history toggle (RunStateNodeGroup) — the clock icon is EASY TO MISS (confirmed live, 2026-08-09, ELITEA-2454)
+
+**Read this before concluding "only one run ever exists" from a quick DOM
+check — it's a trap I fell into myself mid-session (filed then retracted
+`EliteaAI/elitea-testing-public#1377`).**
+
+- **`pipelineRunNodes` (`useRunEvent.hooks.js`) genuinely accumulates one
+  entry per execution** — 3 sequential chat messages in one conversation on
+  a single-LLM-node pipeline produced 3 real, independently-deletable
+  entries. Each gets a distinct id (`` `EliteA_Pipeline__State_${nextRunName}` ``)
+  and the reducer correctly appends (`prev.find(id match)` fails → `[...prev, new]`).
+- **The trap**: `RunStateNodeGroup.jsx` only ever renders ONE
+  `[data-testid="pipeline-run-node-label"]` directly (the newest/`last`
+  run) — every older run lives inside a MUI `Menu`
+  (`id="runNodes-history-menu"`, no `data-testid`) that is **entirely
+  unmounted while closed** (MUI's default `Menu` behaviour — children don't
+  exist in the DOM until `open=true`). So `document.querySelectorAll('[data-testid="pipeline-run-node-label"]').length === 1`
+  and `!document.getElementById('runNodes-history-menu')` are BOTH true
+  regardless of how many runs actually exist, UNLESS you first open the
+  history toggle. Checking either of those without opening the toggle first
+  is a false "only 1 run" reading.
+- **The toggle itself (`historyWrapper` `Box`, `RunStateNodeGroup.jsx:41-46`,
+  wraps a `<ClockIcon />`) renders as a sibling immediately BEFORE the
+  visible run-node `Box`, ONLY when `nodes.length > 1` — and has ZERO
+  testid, `aria-label`, or Tooltip** (confirmed via
+  `grep -n "data-testid" RunStateNodeGroup.jsx` — no hits). **Needs adding**:
+  `pipeline-run-node-history-button`. Not yet added as of this session (the
+  first implementer to pick up ELITEA-2454 owns it).
+- **Clicking a label inside the open history menu opens ITS OWN
+  `RunStateDialog` (same testids as ELITEA-2450) WITHOUT closing the
+  menu** — confirmed live: menu stayed mounted (`#runNodes-history-menu`
+  still present) while the panel for the clicked run was open.
+- **Delete via the panel's `pipeline-run-details-delete-button` removes
+  ONLY that run** (`deleteRunNode(id)` → `array.filter(id !== deleted)`) —
+  confirmed live twice, in both directions (deleting the newest first, then
+  an older one from inside the menu): every other run's label/status/content
+  is untouched. When the array drops back to length 1, the toggle AND the
+  menu disappear from the DOM entirely (the group re-renders via the bare
+  single-node branch) — this is the verifiable, live form of "deleted run no
+  longer appears in history."
+- **How to correctly assert "N runs exist" without a menu-container
+  testid** (deliberately NOT requesting one — scope discipline, only the
+  elements a test touches get testids): open the history toggle FIRST, THEN
+  count ALL `[data-testid="pipeline-run-node-label"]` elements on the page
+  (this naturally includes the last/current run plus every now-mounted menu
+  item). Do this BEFORE concluding anything about run count.
+  Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_run-details-delete-run-from-history_ELITEA-2454.md`.
+
+## Subgraph state sharing via Agent node calling a pipeline-as-tool — CONFIRMED LIVE the state IS shared (2026-08-09, ELITEA-2443)
+
+- **"Subgraph" in a case title ≠ the `SubgraphNode.jsx`/`pipeline` flow-editor node
+  type.** That node type is LEGACY/deprecated — NOT one of the 11 items in the Add
+  Node menu (ELITEA-2030's live-verified exact list has no "Pipeline" entry) — and
+  the bundled `elitea-pipeline` skill's `yaml-schema.md` says outright: *"Nested
+  pipelines are gone → delegate to an `agent` node."* A case titled "Subgraph
+  State Sharing" that says "add an Agent node calling the child pipeline" in its
+  own steps is describing the CORRECT current mechanism, not case-text drift —
+  don't go looking for a nonexistent add-node-menu "Pipeline"/"Subgraph" entry.
+- **An Agent node's `tool:` YAML field alone does NOT resolve a pipeline** — even
+  byte-correct. Confirmed live: authoring `tool: <child_pipeline_name>` directly
+  renders `"Agent not found — select a replacement or delete this node"` until the
+  child pipeline is ALSO attached via the Tools section's "+ Pipeline" popper
+  (`agent-add-pipeline-button` → `select_pipeline_in_popper()`, same
+  `PATCH .../application_relation/prompt_lib/{project}/{id}/{version_id}` → `201`
+  mechanism as ELITEA-2064/ELITEA-2038). Only after the attach does the Agent
+  node's "Agent" combobox show the child's name and the node stop erroring.
+- **Common-named state variables ARE shared between parent and child, confirmed
+  live** — this is the actual, surprising result, and it contradicts what the
+  Agent node's own documented schema implies. A `code` node in a 1-node child
+  pipeline set `state_1="child_value"`/`state_2=99`; the PARENT pipeline (which
+  declared the SAME two variable names in its own `state:` block) showed, in its
+  OWN Run Details panel, `state_1` Before=`"parent_value"` (the parent's own prior
+  write) → After=`"child_value"`, and `state_2` Before=`""` → After=`99` — i.e.
+  the child's writes propagate back into the parent's SAME-NAMED variables
+  automatically. This happens despite the `agent` node's `input_mapping` only
+  ever configuring a `task` string (per `elitea-pipeline` skill's own schema
+  doc) — there is no explicit state-mapping field on the node; the sharing is
+  implicit, keyed purely by variable NAME identity across the two pipelines'
+  `state:` blocks.
+- **The child's own execution is NOT opaque — its timeline nests inside the SAME
+  Run Details panel as the parent's.** A 2-node parent (code→agent(child)) calling
+  a 1-node child produced a 5-entry timeline in ONE panel:
+  `["pyodide" (parent's own code node), "<child_name>" ×2, "pyodide" (child's own
+  code node), "AGENT1"]` — not a single opaque "AGENT1" entry. This is new
+  territory beyond ELITEA-2450/2451/2452/2453 (all single, non-nested pipelines)
+  — a future case needing exact nested-timeline shapes should treat the entry
+  count/order as fixture-shape-dependent, not a fixed constant.
+- **Zero new testid work needed** — every handle this case exercises
+  (Tools-section attach popper, Agent node's Agent-combobox, Run Details
+  timeline/state rows) already exists from ELITEA-2030/2038/2064/2450-2454's own
+  implementation work.
+  Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-subgraph-state-sharing-common-vars_ELITEA-2443.md`.
+- **Resolved/added during ELITEA-2443 implementation:** the "5-entry timeline
+  ending in a distinct `AGENT1` wrap-up" shape above is confirmed
+  fixture-shape-dependent, not the only live shape. The implementer's own
+  minimal parent (`CODE1 → AGENT1(tool=child) → END`) + child (`CODE1 → END`)
+  recipe — structurally the same "2-node parent / 1-node child" description —
+  produced only **4** entries: `["pyodide" (parent's own code node),
+  "<child_name>" ×2, "pyodide" (child's own code node)]`, with NO trailing
+  `AGENT1` entry. Selecting whichever entry is actually LAST still satisfies
+  case step 6 ("click on the Agent node step in the timeline") and yields the
+  same Before/After values for `state_1`/`state_2`, because in both shapes the
+  child's own `code` node is what performs the write. A future case needing
+  an exact nested-timeline shape must verify live against its OWN fixture
+  recipe rather than assuming either the 5-entry or the 4-entry count.
+
+## CONFIRMED DEFECT: a node chained via `transition:` immediately after an Agent node's nested-pipeline tool call never executes (2026-08-09, ELITEA-2445, `EliteaAI/elitea-testing-public#1381`)
+
+- **What's new vs ELITEA-2443/2444's own fixtures:** both of THOSE parent
+  pipelines end `AGENT1`'s own `transition:` at `END` — neither ever tries to
+  chain a THIRD node after the Agent-node-with-pipeline-tool hop. ELITEA-2445
+  asks for exactly that shape (`Node_A → Agent_Node(child) → Node_C → END`), and
+  live-probing it live-2445 surfaced a genuine product defect nobody had hit yet.
+- **Repro (throwaway probe, same fixture/page-object technique as ELITEA-2443's
+  merged test):** parent `CODE1(sets state_1) → AGENT1(tool=<attached child>) →
+  CODE2(reads state_1 via `alita_state.get`, writes a distinguishable marker) →
+  END`. Run reports `Completed`, but `CODE2` NEVER executes: no distinct timeline
+  entry for it, and its marker value never appears anywhere in state. The
+  timeline silently stops at the SAME 4 entries a 2-node (`CODE1→AGENT1→END`,
+  no trailing node) parent produces: `["pyodide"(CODE1), <child_name> ×2,
+  "pyodide"(child's own code node)]`.
+- **Control probe (isolates the cause):** an otherwise-identical
+  `CODE1 → CODE2` chain with NO agent/pipeline-tool hop in between executes
+  BOTH nodes correctly (`timeline_count=2`, both markers visible) — so this is
+  NOT a generic multi-hop `transition:` chaining bug. It is specific to "a node
+  chained right after an `agent`-type node whose `tool:` resolves to a nested
+  pipeline attached via the Tools-section popper."
+- **Consequence for automating ELITEA-2445:** the case's "Node_C" premise (case
+  steps 5, 8) is genuinely BLOCKED by this defect — write it as
+  `expect.soft()` + `# Known defect: #1381` (sanctioned-RED /
+  `.agents/testing.md` analysis-time entry), NOT skipped/masked. The REST of
+  the case (Node_A's own Before/After, the Agent node's Before/After, the
+  Completed badge) is unaffected and already asserted by the merged
+  `test_pipeline_subgraph_state_sharing.py` (ELITEA-2443) — see
+  `test-specs/pipelines/lextend_pipeline-subgraph-node-c-state-propagation_ELITEA-2445.md`.
+- **A future case chaining anything after an Agent-node-with-pipeline-tool
+  hop will hit this same wall** — don't re-derive it; cite `#1381`.
+
 ## Pipelines dashboard — Search grid filter/clear (confirmed live, 2026-08-07, ELITEA-2023)
 
 **Resolved/added during ELITEA-2023 implementation:**
@@ -3031,3 +3389,105 @@ quirk.
 - Full flow, handles, and Coverage Map:
   `test-specs/pipelines/lextend_pipeline-modules-attachments-toggle-persists_ELITEA-2066.md`
   (extends `automation/tests/ui/pipelines/test_pipeline_attach_files_in_chat.py`, ELITEA-2059).
+
+## Code node — multi-key dict return updates several state vars in one execution (confirmed live, 2026-08-09, ELITEA-2447)
+
+Direct follow-on to ELITEA-2446 (below) — same Code-node dict-literal-return
+mechanism, but with THREE state vars of THREE distinct types (`summary`/str,
+`count`/number, `tags`/list) written by ONE Code node in ONE execution, via a
+SINGLE bare dict literal with 3 keys as the script's last statement.
+Confirmed live (fixture pipeline id 8816, `STATE1(state_modifier) → CODE1(code)
+→ END`, deleted at session end):
+
+- **The case's own literal script text is ALREADY the confirmed-working form**
+  — unlike ELITEA-2446's case text (a plain assignment, silently broken), this
+  case's `data = elitea_state.get('summary', '') {'summary': ..., 'count':
+  ..., 'tags': ...}` ends with a bare 3-key dict literal and worked exactly
+  as written, first try. No case-text drift found on this case.
+- **A Code node's Output multi-select accepts a variable that is ALSO in that
+  same node's own `input` list** — `input: [summary]` and
+  `output: [summary, count, tags]` together, confirmed live: no validation
+  error, the combobox renders all 3 chips, and Run Details correctly shows
+  `summary` updated by the SAME node that also read it. New observation, not
+  previously documented for this node family.
+- **All three types render correctly under ONE `pyodide` timeline entry**:
+  `summary` (str) Before `"Draft summary text"` → After
+  `"Draft summary text [processed]"` (string concat); `count` (number) Before
+  `""` (empty — genuinely present, not missing, confirmed via
+  `browser_evaluate`) → After `"3"` (bare numeral, `len(...)` word count);
+  `tags` (list) Before `"[]"` → After `'["processed","automated"]'` (JSON
+  array). Reconfirms ELITEA-2453's per-type `JSON.stringify` rendering rules
+  on a Code node instead of an LLM node, and reconfirms ELITEA-2446's
+  `"pyodide"` timeline-label convention on a second, independent fixture.
+- **A `state_modifier` node (not an LLM node) is the recommended way to seed a
+  deterministic starting value for a variable a Code node will then process**
+  — a fixed Jinja template with no variables (`template: 'Draft summary
+  text'`, `output: [summary]`) sets the value literally, avoiding
+  LLM-response nondeterminism for any downstream assertion that depends on
+  the seeded value's exact content/length (here, `count = len(data.split())`).
+- Console: same already-filed `#1267` Stepper prop-leak warning reproduced,
+  no new defect.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l3_code-node-return-dict-multiple-state-vars_ELITEA-2447.md`.
+
+## Code node — execution & build-method gotchas (confirmed live, 2026-08-09, ELITEA-2446)
+
+- **Building `LLM 1 → Code 1 → END` via the Flow Editor's "Add node" button does
+  NOT auto-connect the nodes.** 4 live probe runs (disposable pipeline id 8809,
+  created and deleted via UI) each landed with `LLM 1` and `Code 1` as two
+  INDEPENDENT `transition: END` edges — confirmed via the YAML view
+  (`- id: LLM 1 ... transition: END` immediately followed by `- id: Code 1`, no
+  edge between them) and via the canvas's own edge labels ("Edge from LLM 1 to
+  END" + "Edge from Code 1 to END", never "LLM 1 to Code 1"). The Code node never
+  executes as a result — confirmed via Run Details showing only ONE timeline
+  entry (`LLM1`) across all 4 runs, `pipeline-run-details-timeline-step-1` never
+  matching any element. **Not a product execution defect** — every fixture in
+  this suite that needs a REAL multi-node execution (`pipeline_llm_code_end`,
+  `pipeline_with_typed_state_vars_id`, the subgraph-sharing fixtures, etc.)
+  already builds via `PipelineAPI.create_pipeline()`/`create_pipeline_with_nodes()`
+  with an EXPLICIT `transition:` field per node, which sidesteps this entirely.
+  **Automation implication:** any case that needs the pipeline to actually
+  EXECUTE end-to-end (as opposed to ELITEA-2009's UI-config-persistence-only
+  case, which never executes) must build via YAML/API, never via live
+  Flow-Editor node-placement clicks, when multiple nodes must chain.
+- **A Code node's script must end with a bare dict-literal expression, not an
+  assignment, for `structured_output: true` to route the value into the
+  declared `output:` variable.** `code_output = f"Processed: {result}"` (plain
+  assignment) confirmed live to produce NO state update (`code_output` stays
+  `""`/`""` Before/After in Run Details) even with `input`/`output`/
+  `structured_output` all configured correctly and the node's transition
+  correctly wired. `{"code_output": f"Processed: {result}"}` (dict literal as
+  the LAST statement) confirmed live to work correctly. Matches
+  `.claude/skills/elitea-pipeline/references/yaml-schema.md`'s own documented
+  Code Node rule verbatim ("Return a dict literal as the LAST expression...
+  Do NOT use a top-level `return`") — this is documented, expected behavior,
+  not a defect; case texts that show a plain-assignment script (as ELITEA-2446's
+  own source case does) are case-text drift, not a product bug.
+- **`elitea_state.get(...)` IS a valid accessor** (an alias of `alita_state.get(...)`,
+  both restored by the sandbox's state preamble per the same yaml-schema.md
+  reference) — confirmed live reading a correctly-populated value once the
+  dict-literal-return fix above was applied. No case-text drift on the accessor
+  name itself.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l3_code-node-read-elitea-state-variables_ELITEA-2446.md`.
+
+**Resolved/added during ELITEA-2446 implementation:** the Run Details timeline
+label for a Code node's step reads `"pyodide"` (the Python-sandbox executor's
+name — visible in the chat panel as the tool-call chip "Python Sandbox:
+pyodide_sandbox"), **not** the space-stripped YAML id (`"Code1"`) that
+ELITEA-2450/2452 confirmed for LLM/Printer nodes. That convention does not
+generalize to Code nodes — `get_run_details_selected_timeline_step_id()` after
+`select_run_details_timeline_step(1, ...)` on an `LLM 1 -> Code 1 -> END`
+pipeline returns text containing `"pyodide"`, confirmed live via
+`test_pipeline_code_node_reads_state_variable.py`. Filed:
+[EliteaAI/elitea-testing-public#1385](https://github.com/EliteaAI/elitea-testing-public/issues/1385).
+
+**Also confirmed during ELITEA-2446 implementation:** this case's 2-node YAML
+(multi-line Code script + 2 custom state vars) is long enough to hit the
+ALREADY-FILED `EliteaAI/elitea-testing-public#1025` Pipeline-YAML-tab
+viewport-truncation defect (same one `test_pipeline_llm_structured_output_
+state_variables.py`, ELITEA-2045, already routes around) — the UI YAML tab
+never rendered the Code node's `input`/`output` fields. The test verifies
+those fields via `pipeline_api.get_pipeline()` server-truth readback instead
+of `pipeline_page.get_yaml_content()`. No new issue filed — same root cause,
+same established workaround pattern.

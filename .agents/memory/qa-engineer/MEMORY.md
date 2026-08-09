@@ -13,6 +13,7 @@
 - [Analyst commit authority](analyst_slot_has_no_git_commit_authority.md) — batch dispatch: commit AFS on trunk; standalone: leave untracked
 - [Can't self-approve a PR via gh](gh_identity_blocks_self_approval.md) — post the verdict via gh pr comment instead
 - [EliteaUI commits need [EL-NNNN]](eliteaui_testid_commit_message_format.md) — commitlint rejects [ELITEA-NNNN]
+- [MUI Menu unmounted-when-closed](mui_menu_unmounted_when_closed_false_negative.md) — open overflow menus before counting "how many"
 - [Priority marker drift](priority_marker_drift_afs_vs_pytest_mark.md) — grep AFS Priority vs @pytest.mark.p*
 - [Open cross-cutting defects](open_cross_cutting_defects.md) — #524, #694, bucket-fixture 404, #551/#585, #607
 - [API seed project mismatch](api_pipeline_seed_project_mismatch.md) — standalone scripts can miss the browser's active project
@@ -27,6 +28,7 @@
 - [Provenance grep false negatives](provenance_grep_needs_case_insensitive.md) — needs -i; object-literal `testId:` (colon) still fails filter, eyeball raw grep
 - [AI Providers tier selectors](ai_providers_tier_selectors_no_clear_and_no_chat_parity.md) — no unset in UI, only Default feeds chat model
 - [structured_output+messages+dict/list crash](structured_output_messages_dict_list_crash.md) — #1274; never combine in one node's output
+- [Known-defect soft-assert polarity](known_defect_soft_assert_polarity_must_encode_correct_behavior.md) — condition must fire on the BUG, not on its fix, or it's a hidden green
 - [Mechanical grep misses JS-string raw selectors](mechanical_grep_misses_js_string_raw_selectors.md) — grep `wait_for_function`/`evaluate` JS payloads separately for `data-testid=`
 - [Empty-title Tooltip breaks a11y snapshot](folder_confirm_button_state_absent_from_ax_snapshot.md) — `title={cond?'':text}` elements vanish/mislabel in browser_snapshot; testid-only is load-bearing, not just policy
 - [No non-admin test-user exists](no_non_admin_test_user_credential_exists.md) — TEST_USER is admin everywhere; RBAC cases need a flagged gap, not a role hunt
@@ -40,3 +42,6 @@
 - [Pipeline execution needs Save + working model](pipeline_llm_execution_needs_save_and_working_model.md) — Task-fix needs Save; DEV's default Claude 4.5 400s, use gpt-5.2
 - [Title project suffix ≠ "Private"](browser_title_project_name_suffix_not_private.md) — capture project name dynamically, don't hardcode "Private" in page-title asserts
 - [allure.issue slug can drift](allure_issue_link_slug_can_drift_from_real_tms_filename.md) — verify the TMS URL resolves, don't trust a plausible-looking slug
+- [Pipeline clear_embedded_chat() is a no-op](pipeline_clear_embedded_chat_is_broken.md) — stale locator; call chat_clear_button testid directly
+- [Run Details Before/After is per-step](pipeline_run_details_before_after_is_per_step_scoped.md) — not run-level; pick the step that touches the var, or read empty
+- [Code node needs dict-literal return](code_node_needs_dict_literal_return_not_assignment.md) — assignment silently no-ops; Add-node clicks don't auto-wire edges either

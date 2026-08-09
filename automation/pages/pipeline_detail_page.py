@@ -59,6 +59,31 @@ class PipelineDetailPage(PipelineFormPage):
         description="View run history icon button (replaces old History tab)"
     )
 
+    # `run-history-list-item` / `data-selected` — testid + state attribute
+    # (ELITEA-2011 AFS § Concrete Handles). Same `RunHistoryContainer` /
+    # `RunHistoryListItem.jsx` the Agent surface already documents
+    # (`AgentDetailPage`, ELITEA-1877/1876) — this page-object mirrors
+    # those constants/methods for the Pipeline surface. Same literal
+    # testid on every row, positionally distinguished (default sort =
+    # Date descending, so index 0 = most recent).
+    RUN_HISTORY_LIST_ITEM_SELECTOR = '[data-testid="run-history-list-item"]'
+    RUN_HISTORY_LIST_ITEM_SELECTED_SELECTOR = (
+        '[data-testid="run-history-list-item"][data-selected="true"]'
+    )
+
+    # Run History panel close (X) button (ELITEA-2070). Same shared
+    # `RunHistoryContainer.jsx` IconButton the Agent surface also renders
+    # (no `pipeline-`/`agent-` prefix — same reasoning as
+    # `RUN_HISTORY_LIST_ITEM_SELECTOR` above: the component is shared, the
+    # testid is shared). Added via `add-data-testid`,
+    # EliteaAI/EliteaUI@ccbfc54a — no testid existed before this case;
+    # neither ELITEA-2011 (Pipeline) nor ELITEA-1877 (Agent) requested it
+    # since neither of those cases' own steps clicked it.
+    run_history_close_button = LocatorDescriptor(
+        testid="run-history-close-button",
+        description="Close (X) button in the Run History panel header",
+    )
+
     copy_id_button = LocatorDescriptor(
         testid="copy-id",
         fallback=lambda page: page.get_by_role("button", name="Copy ID"),
@@ -1612,6 +1637,18 @@ class PipelineDetailPage(PipelineFormPage):
         description='Run Details panel "States" section (header + per-variable accordion list)'
     )
 
+    # Multi-run history toggle (RunStateNodeGroup — ELITEA-2454). Renders
+    # only when >1 run exists (`nodes.length > 1`), immediately before the
+    # visible run-node label. Testid added via add-data-testid,
+    # EliteaAI/EliteaUI@89282f5e (app JSX we own, not a #579 exception).
+    run_node_history_button = LocatorDescriptor(
+        testid="pipeline-run-node-history-button",
+        description=(
+            "Clock-icon toggle above the Flow canvas that opens the "
+            "run-history menu (RunStateNodeGroup) — present only when >1 run exists"
+        )
+    )
+
     # Run Details panel — State Before/After per node (ELITEA-2452). Testids
     # added via add-data-testid, EliteaAI/EliteaUI@2b40e5a6 (app JSX we own,
     # not a #579 exception).
@@ -1632,6 +1669,16 @@ class PipelineDetailPage(PipelineFormPage):
     RUN_DETAILS_STATE_VALUE_AFTER = '[data-testid="pipeline-run-details-state-value-after-{}"]'
     RUN_DETAILS_STATE_EXPAND_BEFORE = '[data-testid="pipeline-run-details-state-expand-before-{}"]'
     RUN_DETAILS_STATE_EXPAND_AFTER = '[data-testid="pipeline-run-details-state-expand-after-{}"]'
+
+    # Run Details panel — Timeline Steps Display (ELITEA-2451). Testid added
+    # via add-data-testid, EliteaAI/EliteaUI@95b1eada (app JSX we own, not a
+    # #579 exception): the per-step HH:mm:ss Typography had no handle before.
+    RUN_DETAILS_TIMELINE_TIMESTAMP = '[data-testid="pipeline-run-details-timeline-timestamp-{}"]'
+
+    # No new testid needed for the entry count — a prefix-selector constant
+    # over the ALREADY-EXISTING per-index dot testid (same mechanism as the
+    # pre-existing CHAT_ATTACHMENT_CHIP_PREFIX precedent).
+    RUN_DETAILS_TIMELINE_STEP_PREFIX = '[data-testid^="pipeline-run-details-timeline-step-"]'
 
     # Fullscreen value modal (PipelineStateViewModal.jsx) — feature-scoped
     # literal testids (single consumer, RunStateDialog.jsx).
@@ -6809,23 +6856,162 @@ class PipelineDetailPage(PipelineFormPage):
         return False
 
     def clear_embedded_chat(self, timeout: int = 5000):
-        """Clear the embedded chat history via the Clear button.
+        """Clear the embedded chat history via the Clear button — starts a
+        fresh, local, unsaved conversation as the new active one (the
+        previously-active conversation survives server-side as its own Run
+        History row).
+
+        Fixed for ELITEA-2011 (AFS § Known Defects): this method previously
+        clicked a stale raw locator, ``[aria-label="Clear the chat
+        history"]``, which matches ZERO elements on the live product — a
+        silent no-op (both messages before/after landed in the same
+        conversation, confirmed live). The real button is
+        ``ClearChatButton.jsx`` (``aria-label="clear the chat"``, testid
+        ``chat-clear-button``) — the ``chat_clear_button``
+        ``LocatorDescriptor`` field already exists on this page object
+        (added for ELITEA-2016); this method now uses it directly, same as
+        :meth:`clear_chat`.
 
         Args:
             timeout: Maximum wait time for the clear action.
         """
         logger.info("Clearing embedded chat history")
-        clear_btn = self.page.locator('[aria-label="Clear the chat history"]')
-        if clear_btn.count() > 0 and clear_btn.is_visible():
-            clear_btn.click()
-            # Handle confirmation dialog if present
-            try:
-                dialog = Dialog.wait_for(self.page, timeout=3000)
-                Dialog.click_button(dialog, "Confirm")
-            except Exception:
-                pass  # No confirmation dialog
-            self.page.wait_for_timeout(1000)
-            logger.info("Embedded chat cleared")
+        self.chat_clear_button.click(timeout=timeout)
+        self.page.wait_for_timeout(300)
+        logger.info("Embedded chat cleared")
+
+    # ------------------------------------------------------------------
+    # Run History panel (ELITEA-2011)
+    # ------------------------------------------------------------------
+    # Mirrors `AgentDetailPage`'s Run History methods (ELITEA-1877/1876)
+    # almost verbatim — same shared `RunHistoryContainer`/`RunHistoryList
+    # Item.jsx`/`RunHistoryChat.jsx` components, `source=pipeline` instead
+    # of `source=agent` on the underlying conversations-list request (AFS
+    # § Network Behavior). `RunHistoryContainer` REPLACES the whole
+    # Configuration form + embedded chat grid — it is not a tab and not an
+    # overlay — so "opened" is confirmed by waiting for at least one
+    # `run-history-list-item` row to render (the list fetch is a real
+    # network round trip; poll rather than a fixed timeout).
+
+    @action("Open Run History panel")
+    def open_run_history(self, timeout: int = 10000):
+        """Click the Run History button and wait for the panel to replace
+        the Configuration form + embedded chat.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Run History panel")
+        self.history_tab.wait_for(state="visible", timeout=timeout)
+        self.history_tab.click()
+        self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+        logger.info("Run History panel opened")
+
+    def get_run_history_item_count(self) -> int:
+        """Return the number of rows currently listed in the Run History panel.
+
+        Returns:
+            Integer count of ``run-history-list-item`` rows.
+        """
+        return self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).count()
+
+    def get_run_history_item_texts(self) -> list[str]:
+        """Return the full rendered text of every Run History row.
+
+        Each ``run-history-list-item`` row renders its Date, Version, and
+        Duration columns as plain child text nodes — no per-cell testid is
+        needed, the row's own text already exposes all three.
+
+        Returns:
+            List of each row's full text content, in current display order.
+        """
+        return self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).all_text_contents()
+
+    @action("Select Run History item")
+    def select_run_history_item(self, index: int, timeout: int = 10000):
+        """Click the Run History row at *index* (0 = most recent — default
+        sort is Date descending) and wait for its conversation detail to load.
+
+        Args:
+            index: Zero-based row index in the currently-rendered list.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting Run History item at index %d", index)
+        row = self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).nth(index)
+        row.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/elitea_core/conversation/prompt_lib/" in r.url
+            and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            row.click()
+        logger.info("Run History item %d selected", index)
+
+    def is_run_history_item_selected(self, index: int, timeout: int = 5000) -> bool:
+        """Return whether the Run History row at *index* carries
+        ``data-selected="true"``.
+
+        Args:
+            index: Zero-based row index in the currently-rendered list.
+            timeout: Maximum wait time for the row to be present.
+
+        Returns:
+            True if that row is the one currently marked selected.
+        """
+        row = self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).nth(index)
+        row.wait_for(state="visible", timeout=timeout)
+        return row.get_attribute("data-selected") == "true"
+
+    def get_run_history_chat_messages_text(self, timeout: int = 10000) -> str:
+        """Return the concatenated text of every message in the Run History
+        panel's chat (the selected row's conversation).
+
+        ``RunHistoryChat.jsx`` renders the SAME shared ``ChatMessageList``
+        component as the main embedded chat, so this reuses
+        ``CHAT_MESSAGE_ITEM_SELECTOR`` unchanged — confirmed live: only one
+        instance of ``chat-message-item`` exists on the page while History
+        is open (the main embedded chat is unmounted).
+
+        Waits (bounded by *timeout*) for at least one message item to render
+        before reading — ``select_run_history_item()`` only awaits the
+        conversation-detail GET response, which can resolve slightly ahead
+        of React committing the message list, producing a transient "" read.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first message
+                item to appear before giving up and reading whatever is present.
+
+        Returns:
+            Joined text of all ``chat-message-item`` elements, or "" if none
+            render within *timeout*.
+        """
+        items = self.page.locator(self.CHAT_MESSAGE_ITEM_SELECTOR)
+        try:
+            items.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        return "\n".join(items.all_text_contents())
+
+    @action("Close Run History panel")
+    def close_run_history(self, timeout: int = 10000):
+        """Click the Run History panel's close (X) button and wait for the
+        Configuration form + embedded chat to be restored.
+
+        ``onClose`` is a purely client-side ``showHistory`` state flip
+        (``ConfigurationTab.jsx`` — no network round trip), so completion is
+        confirmed by polling for ``chat_input`` to become visible again
+        rather than waiting on any request.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Closing Run History panel")
+        self.run_history_close_button.wait_for(state="visible", timeout=timeout)
+        self.run_history_close_button.click()
+        self.chat_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Run History panel closed")
 
     # ------------------------------------------------------------------
     # Run Details panel (RunStateNode/RunStateDialog — ELITEA-2450)
@@ -6881,6 +7067,104 @@ class PipelineDetailPage(PipelineFormPage):
         return (self.run_details_states_section.text_content() or "").strip()
 
     # ------------------------------------------------------------------
+    # Run Details panel — multi-run history (RunStateNodeGroup — ELITEA-2454)
+    # ------------------------------------------------------------------
+    #
+    # `RunStateNodeGroup.jsx` renders only the newest run's
+    # `pipeline-run-node-label` directly; every other run lives inside a
+    # closed-by-default MUI `Menu` that unmounts entirely while closed. The
+    # history toggle (`run_node_history_button`) itself only renders once
+    # >1 run exists. Always open the toggle before counting/asserting run
+    # labels — closed-menu state is indistinguishable from "only one run".
+
+    def open_run_node_history(self, timeout: int = 10000):
+        """Ensure the run-history menu (history-toggle clock icon) is open.
+
+        Distinct from the unrelated chat-level ``open_run_history()``
+        (``pipeline-history-tab`` / ``RunHistoryContainer``, ELITEA-2011) —
+        this opens the ON-CANVAS multi-run menu (``RunStateNodeGroup``).
+        Only present once the run-node group holds >1 run.
+
+        Idempotent: once opened, the menu stays open across opening a run's
+        Run Details panel AND deleting a run from inside it (confirmed
+        live — no auto-close is wired). Re-clicking the toggle while the
+        menu is already open would hit the menu's own full-page invisible
+        `MuiBackdrop-root` (the interception quirk in
+        `.claude/rules/mui-patterns.md`), so this method first checks
+        whether more than one `pipeline-run-node-label` is already
+        rendered (the live signal the menu is open — see the class-level
+        mechanics note above) and skips the click entirely when it is.
+
+        Args:
+            timeout: Maximum wait time for the toggle to appear/menu to open.
+        """
+        if self.run_node_label.count() > 1:
+            logger.info("Run-node history menu already open — skipping click")
+            return
+        logger.info("Opening run-node history menu")
+        self.run_node_history_button.wait_for(state="visible", timeout=timeout)
+        self.run_node_history_button.click()
+        # The menu container itself carries no testid (scope discipline —
+        # see AFS Concrete Handles); its opening is observed via every
+        # history item's reused `pipeline-run-node-label` testid becoming
+        # visible, so wait on that instead of a container locator.
+        self.run_node_label.first.wait_for(state="visible", timeout=timeout)
+        logger.info("Run-node history menu opened")
+
+    def get_run_history_labels(self) -> list[str]:
+        """Return the text of every currently-rendered run-node label.
+
+        Includes the current/last run's label (rendered directly, outside
+        the menu) plus every history-menu item's label (rendered only while
+        the menu is open) — matching the live semantics of "all runs that
+        currently exist". Callers must call ``open_run_node_history()``
+        first if more than one run exists; the closed menu unmounts its
+        history items entirely.
+        """
+        labels = self.run_node_label
+        return [(labels.nth(i).text_content() or "").strip() for i in range(labels.count())]
+
+    def open_run_details_by_label(self, label: str, timeout: int = 10000):
+        """Click the run-node label whose text exactly equals *label*.
+
+        Uses an exact string match (not substring) so "Run 1 details" never
+        matches "Run 12 details". Opens that run's own Run Details panel.
+
+        When the history menu is open, the newest run's label renders
+        OUTSIDE the `Menu` but is still covered by MUI's full-page invisible
+        `MuiBackdrop-root` (the same-origin overlay-interception quirk
+        documented in `.claude/rules/mui-patterns.md`) — a plain
+        Playwright click would resolve against the backdrop (closing the
+        menu) rather than the label underneath it, so the click is
+        dispatched via ``evaluate`` to invoke the label's handler directly.
+
+        Args:
+            label: Exact label text (e.g. "Run 2 details").
+            timeout: Maximum wait time for the panel to appear.
+        """
+        logger.info("Opening Run Details panel for label %r", label)
+        target = self.run_node_label.filter(has_text=re.compile(f"^{re.escape(label)}$"))
+        target.first.wait_for(state="visible", timeout=timeout)
+        target.first.evaluate("el => el.click()")
+        self.run_details_panel.wait_for(state="visible", timeout=timeout)
+        logger.info("Run Details panel opened for %r", label)
+
+    def delete_current_run_details(self, timeout: int = 5000):
+        """Click the Run Details panel's delete (trash) button.
+
+        No confirmation dialog exists for this action (confirmed live,
+        source-verified) — the panel closes immediately once the run is
+        removed. No separate close click is needed.
+
+        Args:
+            timeout: Maximum wait time for the panel to disappear.
+        """
+        logger.info("Deleting current run via Run Details panel")
+        self.run_details_delete_button.click()
+        self.run_details_panel.wait_for(state="hidden", timeout=timeout)
+        logger.info("Run deleted; Run Details panel closed")
+
+    # ------------------------------------------------------------------
     # Run Details panel — State Before/After per node (ELITEA-2452)
     # ------------------------------------------------------------------
 
@@ -6921,6 +7205,70 @@ class PipelineDetailPage(PipelineFormPage):
         text is returned as-is; callers substring-match the expected node id.
         """
         return self.get_run_details_timeline_section_text()
+
+    # ------------------------------------------------------------------
+    # Run Details panel — Timeline Steps Display (ELITEA-2451)
+    # ------------------------------------------------------------------
+
+    def get_run_details_timeline_step_status(self, index: int, timeout: int = 10000) -> str:
+        """Return the timeline-step dot's `data-status` attribute at *index*.
+
+        `"completed"` for a successful run step, `"error"` when the run's
+        overall status is Error — the color is a SINGLE run-level flag applied
+        identically to every step (`ProcessStepIcon.jsx`), not computed per
+        step (AFS ELITEA-2451 step 4 mechanism note).
+
+        Args:
+            index: Zero-based index into the run's timeline.
+            timeout: Maximum wait time for the dot to appear.
+        """
+        dot = self.page.locator(self.RUN_DETAILS_TIMELINE_STEP.format(index))
+        dot.wait_for(state="visible", timeout=timeout)
+        return dot.get_attribute("data-status") or ""
+
+    def get_run_details_timeline_step_node_id(self, index: int, timeout: int = 10000) -> str:
+        """Return the timeline-step dot's hover node-id at *index*.
+
+        Reads the `aria-label` attribute MUI's Tooltip surfaces statically on
+        the trigger element (`title={step.id}`) — present even without a real
+        hover event. The node id renders WITHOUT the YAML id's space
+        (`"LLM 2"` -> `"LLM2"`), same as the Timeline label (ELITEA-2450).
+
+        Args:
+            index: Zero-based index into the run's timeline.
+            timeout: Maximum wait time for the dot to appear.
+        """
+        dot = self.page.locator(self.RUN_DETAILS_TIMELINE_STEP.format(index))
+        dot.wait_for(state="visible", timeout=timeout)
+        return dot.get_attribute("aria-label") or ""
+
+    def hover_run_details_timeline_step(self, index: int, timeout: int = 10000):
+        """Hover the timeline-step dot at *index* (behavioral fidelity with
+        the case's literal "on hover" wording — the node-id assertion itself
+        reads the static `aria-label`, not the rendered popup).
+
+        Args:
+            index: Zero-based index into the run's timeline.
+            timeout: Maximum wait time for the dot to appear.
+        """
+        dot = self.page.locator(self.RUN_DETAILS_TIMELINE_STEP.format(index))
+        dot.wait_for(state="visible", timeout=timeout)
+        dot.hover()
+
+    def get_run_details_timeline_step_timestamp(self, index: int, timeout: int = 10000) -> str:
+        """Return the `HH:mm:ss` timestamp text under the timeline-step dot at *index*.
+
+        Args:
+            index: Zero-based index into the run's timeline.
+            timeout: Maximum wait time for the timestamp element to appear.
+        """
+        timestamp = self.page.locator(self.RUN_DETAILS_TIMELINE_TIMESTAMP.format(index))
+        timestamp.wait_for(state="visible", timeout=timeout)
+        return (timestamp.text_content() or "").strip()
+
+    def get_run_details_timeline_step_count(self) -> int:
+        """Return the total number of timeline-step dots currently rendered."""
+        return self.page.locator(self.RUN_DETAILS_TIMELINE_STEP_PREFIX).count()
 
     def expand_run_details_state_row(self, variable: str, timeout: int = 10000):
         """Click the accordion header for *variable* in the STATES section to

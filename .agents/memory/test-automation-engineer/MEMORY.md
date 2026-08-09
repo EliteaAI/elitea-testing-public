@@ -10,7 +10,7 @@
 - [Waits & races](never_assume_a_transition_settled.md) — networkidle/capture-list/Enter-send/cold-nav all lie
 - [Verify your own delivery](verify_your_own_delivery_before_handoff.md) — exit code, stdout and "done" all lie
 - [AFS: work order, not gospel](afs_is_a_work_order_not_gospel.md) — verify each claim; amend the file, don't re-scope
-- [Sanctioned-RED traps](sanctioned_red_soft_assert_traps.md) — soft_failures not expect.soft; RED isn't guaranteed
+- [Sanctioned-RED traps](sanctioned_red_soft_assert_traps.md) — soft_failures not expect.soft; RED not guaranteed; `if` must fire on the symptom, not its absence
 - [An assertion can prove the wrong fact](assertion_proves_the_wrong_fact.md) — invert-check passes, claim still false
 - [Agent fixtures that will chat](reasoning_effort_none_breaks_embedded_chat.md) — reasoning_effort:"none" 500s chat
 - [Proving a negative w/o sleep](proving_a_negative_without_wait_for_timeout.md) — `Locator.wait_for()` + `pytest.raises(TimeoutError)`, never wait_for_timeout
@@ -60,3 +60,6 @@
 - [Wave dispatch case-snapshot dir has no wave suffix](wave_dispatch_case_snapshot_dir_has_no_wave_suffix.md) — check `<campaign>/cases/` before `needs-analyst` on a missing `-w<N>` path
 - [Never amend after a failed husky commit](never_amend_after_a_failed_husky_commit_on_shared_branch.md) — a rejected commit-msg hook still leaves HEAD on someone else's commit; retry fresh, never `--amend`
 - [Toolkit-card delete: hover+overlay+autopersist](toolkit_card_delete_hover_overlay_and_autopersist.md) — header-scoped hover, evaluate-click, Save goes disabled after removal
+- [Open MUI Menu's backdrop intercepts outside clicks](mui_menu_stays_open_backdrop_intercepts_outside_clicks.md) — evaluate-click siblings outside the Paper; skip re-clicking an already-open toggle
+- [Code node timeline label is 'pyodide'](pipeline_run_details_code_node_timeline_label_is_pyodide.md) — not the space-stripped id; LLM/Printer convention doesn't apply
+- [Re-selecting a pre-filled multi-select chip toggles it off](multi_select_reselect_on_prefilled_input_toggles_off.md) — verify YAML-preset Input/Output read-only, don't re-click select_*_variable()
