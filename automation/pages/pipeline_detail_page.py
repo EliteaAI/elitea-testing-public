@@ -458,7 +458,7 @@ class PipelineDetailPage(PipelineFormPage):
         description="Embedded chat 'Clear the chat' button — starts a fresh conversation in place"
     )
 
-    # Testid-scoped embedded-chat message inventory (ELITEA-2052). All four
+    # Testid-scoped embedded-chat message inventory (ELITEA-2052). All
     # testids are pre-existing on `main` via the shared
     # `ChatMessageList.jsx`/`ApplicationAnswer.jsx`/`UserMessage.jsx` FSD
     # components (confirmed via source read this AFS) — mirrors
@@ -468,29 +468,31 @@ class PipelineDetailPage(PipelineFormPage):
     # `_embedded_chat_messages()` below (tech debt, additive-only — not
     # modified here); these back the agent-code-path assertions in
     # `get_last_embedded_chat_message_agent_markers()`.
+    #
+    # Only the two testids this test's executed path binds directly as
+    # `LocatorDescriptor` fields — `chat_message_list` (the scoping parent)
+    # and `skill_test_last_response` (read directly in
+    # `get_last_embedded_chat_message_text()`). The remaining three testids
+    # this test touches (`chat-message-item`, `chat-read-out-button`,
+    # `chat-answer-content`) are only ever used as *scoped sub-selectors*
+    # inside `last_item.locator(...)` / `chat_message_list.locator(...)` —
+    # never as a bare `self.<field>` locator — so per the locator-policy
+    # scope discipline (`.agents/role-overrides.md` — "touches" = the method
+    # this test actually calls) they live ONLY as the UPPER_CASE
+    # `[data-testid=...]` string constants below, not as a duplicate
+    # `LocatorDescriptor` field nobody calls. `chat-message-delete-button`
+    # is asserted as ABSENT on this test's path
+    # (`get_last_embedded_chat_message_agent_markers()` returns
+    # `has_delete_button`) via `CHAT_MESSAGE_DELETE_SELECTOR` the same way —
+    # an absence assertion is still a reference (canon ruling #511
+    # extension), so it stays.
     chat_message_list = LocatorDescriptor(
         testid="chat-message-list",
         description="Embedded chat message list container"
     )
-    chat_message_item = LocatorDescriptor(
-        testid="chat-message-item",
-        description="A single message item within the embedded chat message list"
-    )
-    chat_read_out_button = LocatorDescriptor(
-        testid="chat-read-out-button",
-        description="Read-out (TTS) button rendered on agent-answer messages only"
-    )
     skill_test_last_response = LocatorDescriptor(
         testid="skill-test-last-response",
         description="Agent-answer body testid used when the message is the last/only one in the list"
-    )
-    chat_answer_content = LocatorDescriptor(
-        testid="chat-answer-content",
-        description="Agent-answer body testid used when the message is NOT the last one in the list"
-    )
-    chat_message_delete_button = LocatorDescriptor(
-        testid="chat-message-delete-button",
-        description="Delete button rendered on user messages only"
     )
 
     # Scoped selectors (inside a single chat-message-item) for the
