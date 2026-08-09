@@ -38,6 +38,23 @@ suite already does this). Filed as CLARIFICATION:
 Full writeup: `test-specs/pipelines/l3_code-node-read-elitea-state-variables_ELITEA-2446.md`,
 `test-specs/pipelines/_surface.md` § "Code node — execution & build-method gotchas".
 
+**Refinement (2026-08-09, ELITEA-2448, pipeline id 8820): the rule is "bare
+non-assignment EXPRESSION statement", not specifically "dict literal".** A bare
+NAME reference to a dict-valued variable also works as the last statement —
+`user_info = elitea_client.get_user_data()` followed by a bare `user_info` (no
+literal, no assignment) on the next line correctly wrote the full dict into the
+declared `output:` var on the FIRST attempt, no iteration needed. So: dict
+LITERAL (2446/2447) and bare NAME reference (2448) both work; only an
+ASSIGNMENT as the last line silently no-ops. Also confirmed same session:
+`elitea_client` and `alita_client` are true aliases of the same runtime-injected
+client — the case's `elitea_client.get_user_data()` spelling and
+`workflows.md`'s documented `alita_client.get_user_data()` both resolve
+identically (bundled `examples/getuserdetails.yaml` uses the `elitea_client`
+spelling). And: a state variable declared `type: JSON` in raw YAML `instructions`
+(distinct spelling from the STATE-panel UI's internal `dict` type key/"Json"
+display label — `l2_pipeline-state-panel-default-and-custom-variables_ELITEA-2042.md`)
+is accepted by the API verbatim and renders correctly in the STATE panel.
+
 **Confirmed on a second, independent fixture (2026-08-09, ELITEA-2447, pipeline
 id 8816):** the SAME bare-dict-literal rule scales cleanly to a MULTI-key dict
 (`{'summary': ..., 'count': ..., 'tags': ...}`, 3 keys of 3 different types) —
