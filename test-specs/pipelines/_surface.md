@@ -39,7 +39,18 @@ not a sibling variable's unrelated row.
   `_select_multi_select_option_and_close()`'s internal `Escape` + "wait for
   popover fully closed" means the SECOND call's `open_code_node_input_select()`
   reopens a genuinely-closed popover rather than toggling an already-open one
-  shut. No race, no gotcha.
+  shut. No race, no gotcha. **BUT this is safe ONLY when the Input starts
+  EMPTY** — resolved during ELITEA-2449 implementation: re-invoking
+  `select_code_node_input_variable("var_a")`/`("var_b")` against a Code node
+  whose Input is ALREADY `[var_a, var_b]` (this AFS's own recommended fixture,
+  pre-set via YAML at creation) TOGGLES both chips OFF instead of confirming
+  them — `option.click()` on an already-checked MUI multi-select MenuItem is a
+  plain toggle. Confirmed live: `get_code_node_input_value()` returned `""`
+  after the two calls against that fixture. The implementer's test verifies
+  step 3 READ-ONLY (no `select_code_node_input_variable()` calls at all) when
+  the fixture pre-sets Input via YAML — reserve the two-call sequence for a
+  Code node whose Input genuinely starts empty (a freshly-added node, per
+  ELITEA-2009's own test).
 - Full flow, handles, and Coverage Map:
   `test-specs/pipelines/l3_code-node-input-filtering-selective-state-access_ELITEA-2449.md`.
 

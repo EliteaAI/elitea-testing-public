@@ -52,6 +52,7 @@ from fixtures.data_fixtures import (
     pipeline_llm_reads_state_via_code,
     pipeline_code_node_multi_var_dict_return,
     pipeline_code_node_elitea_client_user_info,
+    pipeline_code_node_input_filtering,
     pipeline_parent_child_state_sharing,
     pipeline_parent_child_state_sharing_three_node,
     pipeline_parent_child_state_isolation,
