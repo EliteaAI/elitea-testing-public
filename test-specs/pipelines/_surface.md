@@ -2407,3 +2407,14 @@ Full AFS: `test-specs/pipelines/l2_pipeline-dashboard-pin-to-top_ELITEA-2025.md`
   direction already established for the reverse flow).
 
 Full AFS: `test-specs/pipelines/l2_flow-to-yaml-sync_ELITEA-2029.md`.
+
+**Resolved/added during ELITEA-2061 implementation (2026-08-09):** the
+per-type incrementing-name behavior (`getNormalInitialNodeId()` in
+`flowEditor.helpers.js`) is confirmed live for a SECOND type beyond LLM:
+adding "Code" nodes to an empty pipeline that already has two LLM nodes
+("LLM 1", "LLM 2") produces "Code 1" — the counter is per-type (keyed off
+which candidate id string collides with existing node ids), not a single
+canvas-wide counter. `wait_for_node_count(expected_total)` (added
+ELITEA-2033) combined with the `get_node_ids()` before/after diff above is
+sufficient to identify each newly-added node reliably — no new page-object
+method or testid was needed for this case.
