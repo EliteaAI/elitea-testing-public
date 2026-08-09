@@ -227,3 +227,5 @@ lead before launching wave-01).
   matches policy for real product blockers). Testid provenance: 3 new commits (a926573d+2a4aab23
   ELITEA-2059, 63c96dd7 ELITEA-2053) — all 3 files differ from main, not promoted yet. Closure comment
   posted on #1297. Card stays In Progress. Launching wave-06 next.
+- 2026-08-09T09:05 wave-06-state-settings-tools (8 cases, 1 cluster [ELITEA-2054,ELITEA-2055])
+  launched. **Run ID: wf_68c5d244-cb1** (task wso28t4wd). Polling in-turn for completion.
