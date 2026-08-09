@@ -505,6 +505,19 @@ class PipelineDetailPage(PipelineFormPage):
     CHAT_ANSWER_CONTENT_SELECTOR = '[data-testid="chat-answer-content"]'
     CHAT_MESSAGE_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
 
+    # Embedded-chat conversation-starter tile (ELITEA-2053) — this page's own
+    # call site of the shared `ChatBox` component (`ChatPanel.jsx` mounts the
+    # exact same `ChatBox` the Agent Detail page mounts, which renders
+    # `ChatConversationStarters.jsx`). Same literal as
+    # `AgentDetailPage.CHAT_STARTER_TILE`/`ChatPage.CHAT_STARTER_TILE` by
+    # deliberate reuse (ELITEA-1886/ELITEA-2369 precedent) — the three call
+    # sites never render on the same page simultaneously. Pre-existing on
+    # `automation/testids` only (added by ELITEA-1886, `EliteaAI/EliteaUI@afb48435`)
+    # — no new add-data-testid work needed for this element (AFS Concrete
+    # Handles). Select a specific tile via `.filter(has_text=...)`, same
+    # idiom as `AgentDetailPage.click_chat_starter_tile()`.
+    CHAT_STARTER_TILE = '[data-testid="chat-conversation-starter-tile"]'
+
     # LLM model selector (embedded chat panel, ELITEA-2017). Mirrors
     # AgentDetailPage's EXACT existing pattern (agent_detail_page.py:284-286)
     # rather than ChatPage.model_selector's (which carries a forbidden
@@ -1283,6 +1296,18 @@ class PipelineDetailPage(PipelineFormPage):
     conversation_starter_inputs = LocatorDescriptor(
         testid="agent-conversation-starter-input",
         description="Conversation starter textarea field(s)"
+    )
+
+    # "delete starter" button (ELITEA-2053). Testid added via add-data-testid
+    # onto the shared ConversationStarters.jsx's delete BaseBtn
+    # (EliteaAI/EliteaUI@63c96dd7) — reuses the `agent-` prefix convention
+    # already established by every other testid on this same shared
+    # component (`agent-conversation-starter-add`/`-input`/`-counter`/
+    # `-expand`/`-dialog`), per the shared-component ruling
+    # (`.agents/testing.md` § Locator policy).
+    conversation_starter_delete_button = LocatorDescriptor(
+        testid="agent-conversation-starter-delete",
+        description='"delete starter" button next to each starter row (shared ConversationStarters component)'
     )
 
     # ADVANCED section Step limit (ELITEA-2021). Testid added via
@@ -5465,6 +5490,29 @@ class PipelineDetailPage(PipelineFormPage):
             index: Index of the conversation starter (0-based).
         """
         return self.conversation_starter_inputs.nth(index).input_value()
+
+    def get_chat_starter_tiles(self):
+        """Return the Locator matching ALL rendered embedded-chat conversation
+        starter tiles (ELITEA-2053) — use ``.count()`` to verify the configured
+        starter chips render before any message is sent. Mirrors
+        :meth:`AgentDetailPage.get_chat_starter_tiles`.
+        """
+        return self.page.locator(self.CHAT_STARTER_TILE)
+
+    @action("Click a conversation starter tile in the embedded chat")
+    def click_chat_starter_tile(self, match_text: str, timeout: int = 10000) -> str:
+        """Click the embedded-chat starter tile whose text CONTAINS *match_text*
+        (ELITEA-2053) — resolves via ``CHAT_STARTER_TILE`` + ``.filter(has_text=...)``,
+        same idiom as :meth:`AgentDetailPage.click_chat_starter_tile`. Returns the
+        tile's own full (stripped) text at click time, so callers can assert
+        the composer was populated with the SAME text actually clicked rather
+        than a hardcoded literal.
+        """
+        tile = self.page.locator(self.CHAT_STARTER_TILE).filter(has_text=match_text)
+        tile.first.wait_for(state="visible", timeout=timeout)
+        starter_text = (tile.first.text_content() or "").strip()
+        tile.first.click()
+        return starter_text
 
     def fill_step_limit(self, value: str, timeout: int = 5000):
         """Fill the ADVANCED section's Step limit numeric input.
