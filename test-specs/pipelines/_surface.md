@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2011 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2070 analysis).
 
 ## Run History panel — Pipeline surface (SAME shared component as the Agent surface's ELITEA-1877, confirmed live, 2026-08-09, ELITEA-2011)
 
@@ -47,10 +47,22 @@ for Agents in `test-specs/agents/_surface.md` / `l2_run-history-select-past-run-
   not requested here since no dispatched case's steps touch it yet.
 - Full flow, handles, and Coverage Map:
   `test-specs/pipelines/l2_pipeline-run-history-panel-view-executions_ELITEA-2011.md`.
-- **Sibling case flag**: `ELITEA-2070` ("Pipeline — Run History Panel") in the same
-  wave-07 batch looks like the same feature from a slightly different case-text
-  angle (adds "can be closed" as an explicit step) — not resolved here, flagged
-  for whoever analyses it next.
+- **Sibling case flag — RESOLVED (2026-08-09, ELITEA-2070 analysis):** `ELITEA-2070`
+  ("Pipeline — Run History Panel") classified `extend-existing` against this ELITEA-2011
+  test (merged onto the batch trunk, `30041066`) — its only gap vs. ELITEA-2011 is the
+  "close run history panel" step. **The close (`X`) button has NO testid yet**
+  (`aria-label="close run history"` only, `RunHistoryContainer.jsx:77-84`) — ELITEA-2070
+  requests `run-history-close-button` (no `pipeline-`/`agent-` prefix, same reasoning as
+  `run-history-list-item`: the shared component serves both surfaces). Confirmed live
+  twice this session (empty-history AND populated-history states, pipeline id 8056
+  `AutoTest_Pipeline_probe_2020`): close removes the panel, restores
+  Configuration form + embedded chat, fires zero network requests. Full detail:
+  `lextend_pipeline-run-history-panel-close_ELITEA-2070.md`.
+- **Case-text drift flagged by ELITEA-2070**: the case's step 6 names a "status" element
+  in the execution-detail view that doesn't exist as a distinct UI element — only
+  message + response content renders (an errored run's response is distinguishable by
+  its text/disclosure content, not a separate status field). Treated as clarification,
+  not a defect — see the ELITEA-2070 AFS § Known Defects.
 
 ## Tools section "+ Pipeline" button — 4th ADD trigger, no testid before this session, same auto-persist mechanism as Agent attach (confirmed live, 2026-08-09, ELITEA-2064)
 
