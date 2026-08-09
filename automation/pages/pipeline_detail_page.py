@@ -458,6 +458,42 @@ class PipelineDetailPage(PipelineFormPage):
         description="Embedded chat 'Clear the chat' button — starts a fresh conversation in place"
     )
 
+    # File attachments (ELITEA-2059). Bare icon-only `AttachmentButton`
+    # instance rendered directly by `NewChatInput.jsx`'s
+    # `!hideAttachments && !fromTheChat` branch — a DIFFERENT call site than
+    # `ChatPage.attach_files_button` (the `showLabel` Popper-menu instance
+    # reached via `chat-attach-menuitem-button`, ELITEA-2197/2200). No
+    # plus-menu hop here; the pipeline/agent embedded chat renders this
+    # button unconditionally. `chat-attach-button` added via `add-data-testid`
+    # (`NewChatInput.jsx:273`'s `testId` prop, EliteaAI/EliteaUI@2a4aab23 on
+    # `automation/testids`).
+    chat_attach_button = LocatorDescriptor(
+        testid="chat-attach-button",
+        description="Bare icon-only Attach Files button (pipeline/agent embedded chat, no plus-menu)"
+    )
+
+    # `chat-attach-button`'s own `aria-label` stays the STATIC string "attach
+    # files" — it does NOT reflect the dynamic "Attach Files (N left)" counter
+    # (live-confirmed, ELITEA-2059 implementer Phase 2 exploration). That
+    # counter text only exists in this Tooltip's popper content, added via
+    # `slotProps={{ tooltip: { 'data-testid': ... } }}` (EliteaAI/EliteaUI@a926573d
+    # on `automation/testids`) — the compliant testid-only path, since a raw
+    # `[role="tooltip"]` selector is not a sanctioned #579 exception (this is
+    # our own MUI usage, not a third-party widget).
+    chat_attach_button_tooltip = LocatorDescriptor(
+        testid="chat-attach-button-tooltip",
+        description="Attach button's Tooltip popper content — carries the dynamic 'Attach Files (N left)' text"
+    )
+
+    # FileList.jsx per-item chip, dynamic by render index (0-based, stable
+    # within one attach sequence). SAME shared component/testid as
+    # `ChatPage.CHAT_ATTACHMENT_CHIP` — ported here rather than inherited
+    # (no common ancestor between `PipelineDetailPage` and `ChatPage`; same
+    # cross-hierarchy duplication precedent as this file's `answer_model_chip`
+    # field, which mirrors `ChatPage.answer_model_chip`).
+    CHAT_ATTACHMENT_CHIP = '[data-testid="chat-attachment-chip-{}"]'
+    CHAT_ATTACHMENT_CHIP_PREFIX = '[data-testid^="chat-attachment-chip-"]'
+
     # Testid-scoped embedded-chat message inventory (ELITEA-2052). All
     # testids are pre-existing on `main` via the shared
     # `ChatMessageList.jsx`/`ApplicationAnswer.jsx`/`UserMessage.jsx` FSD
@@ -1287,6 +1323,19 @@ class PipelineDetailPage(PipelineFormPage):
         testid="agent-add-agent-button",
         description='"+ Agent" button in the TOOLS section (ToolMenu.jsx)'
     )
+
+    # TOOLS section MODULES toggle switches (ELITEA-2059) — dynamic per module
+    # key (e.g. "attachments", "data_analysis", "image_creation"). Same
+    # `AgentInternalToolSwitch.jsx` testid/mechanism as
+    # `AgentParticipantCanvasPage.TOOLS_TOGGLE` — ported here rather than
+    # inherited since `PipelineDetailPage` has no common ancestor with
+    # `AgentCanvasPage` (different route/hierarchy; same shared-component
+    # duplication precedent as `toolkits_section`/`add_agent_button` above,
+    # confirmed live: `ApplicationTools.jsx` renders it for pipelines too when
+    # `isPipeline=true`, filtering `pipelineVisibleTools` to only the
+    # `attachments` tool for this call site). Templated class-level constant
+    # per .agents/testing.md's dynamic-testid convention.
+    TOOLS_MODULE_TOGGLE = '[data-testid="agent-canvas-tools-toggle-{}"]'
 
     # General/Welcome/Chat-starters fields (ELITEA-2021). These testids exist
     # in the DOM on `main` already (shared AgentInput/ConversationStarters
@@ -6017,6 +6066,74 @@ class PipelineDetailPage(PipelineFormPage):
         )
         has_delete_button = last_item.locator(self.CHAT_MESSAGE_DELETE_SELECTOR).count() > 0
         return (has_read_out, has_answer_marker, has_delete_button)
+
+    def get_tools_module_toggle(self, module_key: str):
+        """Return the Locator for the TOOLS MODULES toggle identified by *module_key*.
+
+        E.g. ``module_key="attachments"`` for the Attachments switch
+        (ELITEA-2059).
+        """
+        return self.page.locator(self.TOOLS_MODULE_TOGGLE.format(module_key))
+
+    def is_tools_module_toggle_checked(self, module_key: str) -> bool:
+        """Return the toggle's ``checked`` DOM property (NOT `disabled`/
+        `aria-disabled`, which this component does not set — mirrors
+        ``AgentParticipantCanvasPage.is_tools_toggle_checked``)."""
+        return self.get_tools_module_toggle(module_key).is_checked()
+
+    @action("Toggle Attachments module")
+    def toggle_attachments_module(self, timeout: int = 10000):
+        """Click the TOOLS section's "Attachments" MODULES switch.
+
+        Live-formik-state gate (ELITEA-2059 AFS § Preconditions/Automation
+        Hints) — flips the embedded chat's attach button from disabled to
+        enabled INSTANTLY, no Save required (unlike the LLM node's TASK
+        mapping fix, which does require Save).
+        """
+        toggle = self.get_tools_module_toggle("attachments")
+        toggle.wait_for(state="attached", timeout=timeout)
+        toggle.click()
+
+    def open_embedded_chat_file_chooser(self, timeout: int = 10000):
+        """Click the bare attach button and return the native FileChooser dialog.
+
+        Targets ``chat-attach-button`` directly — no plus-menu hop needed at
+        this call site (contrast ``ChatPage.open_file_chooser()``, which
+        opens the plus menu first).
+
+        Args:
+            timeout: Maximum wait for the file chooser to appear (ms).
+
+        Returns:
+            playwright.sync_api.FileChooser
+        """
+        self.chat_attach_button.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_file_chooser(timeout=timeout) as fc_info:
+            self.chat_attach_button.click()
+        return fc_info.value
+
+    @action("Attach file in embedded chat")
+    def attach_file_in_embedded_chat(self, file_path: str, timeout: int = 10000):
+        """Open the embedded chat's file chooser and select *file_path*.
+
+        Args:
+            file_path: Absolute or relative path to the file to attach.
+            timeout: Maximum wait for the file chooser to appear (ms).
+        """
+        logger.info("Attaching file in embedded chat: %s", file_path)
+        file_chooser = self.open_embedded_chat_file_chooser(timeout=timeout)
+        file_chooser.set_files(file_path)
+        self.wait_for_network(timeout=timeout)
+
+    def get_embedded_chat_attachment_chip_count(self) -> int:
+        """Count of currently visible attachment chips in the embedded chat composer."""
+        return self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX).count()
+
+    def get_embedded_chat_attachment_chip_text(self, index: int, timeout: int = 5000) -> str:
+        """Return the text content of the attachment chip at *index* (0-based)."""
+        chip = self.page.locator(self.CHAT_ATTACHMENT_CHIP.format(index))
+        chip.wait_for(state="visible", timeout=timeout)
+        return (chip.text_content() or "").strip()
 
     def send_message_in_embedded_chat(self, message: str, timeout: int = 10000):
         """Type and send a message in the embedded chat panel.

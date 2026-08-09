@@ -44,6 +44,7 @@ from fixtures.data_fixtures import (
     pipeline_id,
     pipeline_with_llm_id,
     pipeline_with_fstring_llm_id,
+    pipeline_with_variable_task_llm_id,
     pipeline_with_two_llm_nodes_id,
     pipeline_with_typed_state_vars_id,
     pipeline_with_custom_state_var_id,
