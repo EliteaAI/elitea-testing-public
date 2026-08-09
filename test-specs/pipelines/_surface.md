@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2454 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2443 analysis).
 
 ## Run History panel — Pipeline surface (SAME shared component as the Agent surface's ELITEA-1877, confirmed live, 2026-08-09, ELITEA-2011)
 
@@ -2572,6 +2572,52 @@ check — it's a trap I fell into myself mid-session (filed then retracted
   item). Do this BEFORE concluding anything about run count.
   Full flow, handles, and Coverage Map:
   `test-specs/pipelines/l2_run-details-delete-run-from-history_ELITEA-2454.md`.
+
+## Subgraph state sharing via Agent node calling a pipeline-as-tool — CONFIRMED LIVE the state IS shared (2026-08-09, ELITEA-2443)
+
+- **"Subgraph" in a case title ≠ the `SubgraphNode.jsx`/`pipeline` flow-editor node
+  type.** That node type is LEGACY/deprecated — NOT one of the 11 items in the Add
+  Node menu (ELITEA-2030's live-verified exact list has no "Pipeline" entry) — and
+  the bundled `elitea-pipeline` skill's `yaml-schema.md` says outright: *"Nested
+  pipelines are gone → delegate to an `agent` node."* A case titled "Subgraph
+  State Sharing" that says "add an Agent node calling the child pipeline" in its
+  own steps is describing the CORRECT current mechanism, not case-text drift —
+  don't go looking for a nonexistent add-node-menu "Pipeline"/"Subgraph" entry.
+- **An Agent node's `tool:` YAML field alone does NOT resolve a pipeline** — even
+  byte-correct. Confirmed live: authoring `tool: <child_pipeline_name>` directly
+  renders `"Agent not found — select a replacement or delete this node"` until the
+  child pipeline is ALSO attached via the Tools section's "+ Pipeline" popper
+  (`agent-add-pipeline-button` → `select_pipeline_in_popper()`, same
+  `PATCH .../application_relation/prompt_lib/{project}/{id}/{version_id}` → `201`
+  mechanism as ELITEA-2064/ELITEA-2038). Only after the attach does the Agent
+  node's "Agent" combobox show the child's name and the node stop erroring.
+- **Common-named state variables ARE shared between parent and child, confirmed
+  live** — this is the actual, surprising result, and it contradicts what the
+  Agent node's own documented schema implies. A `code` node in a 1-node child
+  pipeline set `state_1="child_value"`/`state_2=99`; the PARENT pipeline (which
+  declared the SAME two variable names in its own `state:` block) showed, in its
+  OWN Run Details panel, `state_1` Before=`"parent_value"` (the parent's own prior
+  write) → After=`"child_value"`, and `state_2` Before=`""` → After=`99` — i.e.
+  the child's writes propagate back into the parent's SAME-NAMED variables
+  automatically. This happens despite the `agent` node's `input_mapping` only
+  ever configuring a `task` string (per `elitea-pipeline` skill's own schema
+  doc) — there is no explicit state-mapping field on the node; the sharing is
+  implicit, keyed purely by variable NAME identity across the two pipelines'
+  `state:` blocks.
+- **The child's own execution is NOT opaque — its timeline nests inside the SAME
+  Run Details panel as the parent's.** A 2-node parent (code→agent(child)) calling
+  a 1-node child produced a 5-entry timeline in ONE panel:
+  `["pyodide" (parent's own code node), "<child_name>" ×2, "pyodide" (child's own
+  code node), "AGENT1"]` — not a single opaque "AGENT1" entry. This is new
+  territory beyond ELITEA-2450/2451/2452/2453 (all single, non-nested pipelines)
+  — a future case needing exact nested-timeline shapes should treat the entry
+  count/order as fixture-shape-dependent, not a fixed constant.
+- **Zero new testid work needed** — every handle this case exercises
+  (Tools-section attach popper, Agent node's Agent-combobox, Run Details
+  timeline/state rows) already exists from ELITEA-2030/2038/2064/2450-2454's own
+  implementation work.
+  Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-subgraph-state-sharing-common-vars_ELITEA-2443.md`.
 
 ## Pipelines dashboard — Search grid filter/clear (confirmed live, 2026-08-07, ELITEA-2023)
 
