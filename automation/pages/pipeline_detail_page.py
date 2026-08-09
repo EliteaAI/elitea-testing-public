@@ -1373,6 +1373,18 @@ class PipelineDetailPage(PipelineFormPage):
         description='"+ Agent" button in the TOOLS section (ToolMenu.jsx)'
     )
 
+    # "+ Pipeline" button (ELITEA-2064). Testid did NOT exist anywhere on this
+    # element before this session (ToolMenu.jsx's Pipeline BaseBtn had zero
+    # attributes beyond variant/startIcon/disabled/onClick) — added it this
+    # session, naming mirrors the sibling agent-add-agent-button/
+    # agent-add-toolkit-button/agent-add-mcp-button (same shared ToolMenu.jsx
+    # component, same "agent-" prefix convention) —
+    # EliteaAI/EliteaUI@e2130cf4 on `automation/testids`.
+    add_pipeline_button = LocatorDescriptor(
+        testid="agent-add-pipeline-button",
+        description='"+ Pipeline" button in the TOOLS section (ToolMenu.jsx)'
+    )
+
     # TOOLS section MODULES toggle switches (ELITEA-2059) — dynamic per module
     # key (e.g. "attachments", "data_analysis", "image_creation"). Same
     # `AgentInternalToolSwitch.jsx` testid/mechanism as
@@ -5480,6 +5492,62 @@ class PipelineDetailPage(PipelineFormPage):
             Popper.select_menuitem_by_testid(popper, agent_name, self.page, timeout=timeout)
 
         logger.info("Agent '%s' attached", agent_name)
+        return response_info.value.json()
+
+    def open_pipeline_popper(self, timeout: int = 10000) -> Locator:
+        """Open the TOOLS section's "+ Pipeline" popper without selecting anything.
+
+        Mirrors :meth:`open_agent_popper` (ELITEA-2038) — ``ApplicationTools.jsx``/
+        ``ToolMenu.jsx`` is the same shared component, and the Pipeline picker's
+        rows carry the same ``toolkit-menu-item`` testid (confirmed live,
+        ELITEA-2064 analysis session).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator of the visible MUI popper (see ``components.mui.Popper``).
+        """
+        logger.info("Opening TOOLS section '+ Pipeline' popper")
+        self.ensure_toolkits_section_visible(timeout=timeout)
+        self.add_pipeline_button.wait_for(state="visible", timeout=timeout)
+        self.add_pipeline_button.click(force=True)
+        return Popper.wait_for(self.page, timeout=timeout)
+
+    def select_pipeline_in_popper(
+        self, popper: Locator, pipeline_name: str, project_id: str, timeout: int = 10000
+    ) -> dict:
+        """Select *pipeline_name* in an already-open "+ Pipeline" popper.
+
+        Same auto-persist mechanism and endpoint as :meth:`select_agent_in_popper`
+        — confirmed live (ELITEA-2064 analysis session) via source read of
+        ``ToolMenu.jsx``'s ``pipelineMenuItems``, which routes pipeline selection
+        through the SAME ``handleAssociateAgent(pipeline, true)`` call
+        (``useAgentPipelineAssociation.hooks.js``) the Agent picker uses — firing
+        ``PATCH .../application_relation/prompt_lib/{project}/{pipeline_id}/{version_id}``,
+        `201 Created`, NOT the Toolkit/MCP picker's ``/tool/prompt_lib/`` PATCH.
+        Waits on that response itself (not a fixed timeout), same discipline as
+        :meth:`select_agent_in_popper`/:meth:`select_mcp_in_popper`.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_pipeline_popper`.
+            pipeline_name: Exact name of the Pipeline to attach.
+            project_id: Project id, used to scope the attach response URL match.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the ``201 Created`` attach PATCH response.
+        """
+        logger.info("Selecting pipeline '%s' in popper", pipeline_name)
+        with self.page.expect_response(
+            lambda r: f"/application_relation/prompt_lib/{project_id}/" in r.url
+            and r.request.method == "PATCH"
+            and r.status == 201,
+            timeout=timeout,
+        ) as response_info:
+            Popper.select_menuitem_by_testid(popper, pipeline_name, self.page, timeout=timeout)
+
+        logger.info("Pipeline '%s' attached", pipeline_name)
         return response_info.value.json()
 
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
