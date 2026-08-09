@@ -49,6 +49,7 @@ from fixtures.data_fixtures import (
     pipeline_three_llm_chain,
     pipeline_with_typed_state_vars_id,
     pipeline_with_custom_state_var_id,
+    pipeline_parent_child_state_sharing,
     github_credential,
     github_toolkit,
     github_toolkit_with_selected_tools,

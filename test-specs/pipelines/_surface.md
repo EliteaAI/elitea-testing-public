@@ -2618,6 +2618,19 @@ check — it's a trap I fell into myself mid-session (filed then retracted
   implementation work.
   Full flow, handles, and Coverage Map:
   `test-specs/pipelines/l2_pipeline-subgraph-state-sharing-common-vars_ELITEA-2443.md`.
+- **Resolved/added during ELITEA-2443 implementation:** the "5-entry timeline
+  ending in a distinct `AGENT1` wrap-up" shape above is confirmed
+  fixture-shape-dependent, not the only live shape. The implementer's own
+  minimal parent (`CODE1 → AGENT1(tool=child) → END`) + child (`CODE1 → END`)
+  recipe — structurally the same "2-node parent / 1-node child" description —
+  produced only **4** entries: `["pyodide" (parent's own code node),
+  "<child_name>" ×2, "pyodide" (child's own code node)]`, with NO trailing
+  `AGENT1` entry. Selecting whichever entry is actually LAST still satisfies
+  case step 6 ("click on the Agent node step in the timeline") and yields the
+  same Before/After values for `state_1`/`state_2`, because in both shapes the
+  child's own `code` node is what performs the write. A future case needing
+  an exact nested-timeline shape must verify live against its OWN fixture
+  recipe rather than assuming either the 5-entry or the 4-entry count.
 
 ## Pipelines dashboard — Search grid filter/clear (confirmed live, 2026-08-07, ELITEA-2023)
 
