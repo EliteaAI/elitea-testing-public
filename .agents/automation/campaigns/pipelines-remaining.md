@@ -30,9 +30,13 @@
   workflow despite being genuinely merged — see Log). TMS back-written, closure comment posted.
   **wave-04-canvas-editor-controls (6 cases) LANDED** — elitea-testing-public#1356, merged `e788bfc2`,
   5/5 automated + 1 already-covered (ELITEA-2060). TMS back-written, closure comment posted.
-  wave-05 through wave-07 (26 cases) — PLANNED, not yet launched (see Plan)
-- Campaign totals so far: 29/55 terminal — 27 automated (2 sanctioned-RED: ELITEA-2047 vs #1327,
-  ELITEA-2051 vs #570) + 2 already-covered (ELITEA-2063, ELITEA-2060). 26/55 remaining across wave-05..07
+  **wave-05-chat-panel (7 cases) LANDED** — elitea-testing-public#1364, merged `9df3375c`, 6/7
+  automated (0 sanctioned-RED), 1 blocked (ELITEA-2071, confirmed no-fullscreen-mode defect, #1363).
+  TMS back-written (6 cases), closure comment posted.
+  wave-06 through wave-07 (19 cases) — PLANNED, not yet launched (see Plan)
+- Campaign totals so far: 36/55 terminal — 33 automated (2 sanctioned-RED: ELITEA-2047 vs #1327,
+  ELITEA-2051 vs #570) + 2 already-covered (ELITEA-2063, ELITEA-2060) + 1 blocked (ELITEA-2071, #1363).
+  19/55 remaining across wave-06..07
 - **Operator directive 2026-08-08T13:42:41Z: "Proceed with all waves till you complete."** — running
   wave-02..07 sequentially without further per-wave checkpoints; only stopping early for a real blocker
   (question/bug protocol).
@@ -206,3 +210,20 @@ lead before launching wave-01).
   cases merged per git log: 2017/2052/2053/2058/2059/2062; ELITEA-2071 analyst returned defect-found,
   issue #1363 filed — the crash was in the NEXT dispatch after that, likely gate or an erroneous
   implementer attempt on a defect-found case). Resumed again, same runId, task w6qnx51j1.
+- 2026-08-09T08:38 wave-05 workflow completed on the 3rd attempt (task w6qnx51j1). Internal gate
+  stalled again (`not-run`, 1 run 360.97s, all 6 cases `merged-ungated`) — same known pattern. All 6
+  unit PRs (#1357-1362) independently confirmed MERGED via `gh pr view` before trusting anything.
+  Lead ran fresh N=3 gate on the 5 green-required specs (11 collected tests, ELITEA-2058 shares
+  ELITEA-2017's test via extend-existing) — 11 passed every run (357.2/345.1/320.9s). Blast radius:
+  full diff review showed ZERO net removed lines in pages/fixtures/api despite ELITEA-2052's fix round
+  removing 4 dead LocatorDescriptor fields mid-PR (nets to zero vs base — added then removed within
+  the same PR). ELITEA-2071 stayed `blocked` — genuinely confirmed: pipeline chat panel has NO
+  fullscreen/expand control at all (only a collapse toggle), filed #1363, not part of this merge.
+  **Gotcha, caught before it mattered:** a campaign-card commit landed on the batch trunk branch
+  instead of `automation/base` (stray checkout left by a crashed workflow run) — caught via
+  `git branch --show-current` habit before the NEXT commit, cherry-picked cleanly onto
+  `automation/base` before opening the trunk→base PR. PR elitea-testing-public#1364 merged
+  (`9df3375c`). TMS back-written: 6 automated (ELITEA-2071 stays `draft`, blocked — not backwritten,
+  matches policy for real product blockers). Testid provenance: 3 new commits (a926573d+2a4aab23
+  ELITEA-2059, 63c96dd7 ELITEA-2053) — all 3 files differ from main, not promoted yet. Closure comment
+  posted on #1297. Card stays In Progress. Launching wave-06 next.
