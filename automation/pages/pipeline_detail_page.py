@@ -59,6 +59,18 @@ class PipelineDetailPage(PipelineFormPage):
         description="View run history icon button (replaces old History tab)"
     )
 
+    # `run-history-list-item` / `data-selected` — testid + state attribute
+    # (ELITEA-2011 AFS § Concrete Handles). Same `RunHistoryContainer` /
+    # `RunHistoryListItem.jsx` the Agent surface already documents
+    # (`AgentDetailPage`, ELITEA-1877/1876) — this page-object mirrors
+    # those constants/methods for the Pipeline surface. Same literal
+    # testid on every row, positionally distinguished (default sort =
+    # Date descending, so index 0 = most recent).
+    RUN_HISTORY_LIST_ITEM_SELECTOR = '[data-testid="run-history-list-item"]'
+    RUN_HISTORY_LIST_ITEM_SELECTED_SELECTOR = (
+        '[data-testid="run-history-list-item"][data-selected="true"]'
+    )
+
     copy_id_button = LocatorDescriptor(
         testid="copy-id",
         fallback=lambda page: page.get_by_role("button", name="Copy ID"),
@@ -6809,23 +6821,143 @@ class PipelineDetailPage(PipelineFormPage):
         return False
 
     def clear_embedded_chat(self, timeout: int = 5000):
-        """Clear the embedded chat history via the Clear button.
+        """Clear the embedded chat history via the Clear button — starts a
+        fresh, local, unsaved conversation as the new active one (the
+        previously-active conversation survives server-side as its own Run
+        History row).
+
+        Fixed for ELITEA-2011 (AFS § Known Defects): this method previously
+        clicked a stale raw locator, ``[aria-label="Clear the chat
+        history"]``, which matches ZERO elements on the live product — a
+        silent no-op (both messages before/after landed in the same
+        conversation, confirmed live). The real button is
+        ``ClearChatButton.jsx`` (``aria-label="clear the chat"``, testid
+        ``chat-clear-button``) — the ``chat_clear_button``
+        ``LocatorDescriptor`` field already exists on this page object
+        (added for ELITEA-2016); this method now uses it directly, same as
+        :meth:`clear_chat`.
 
         Args:
             timeout: Maximum wait time for the clear action.
         """
         logger.info("Clearing embedded chat history")
-        clear_btn = self.page.locator('[aria-label="Clear the chat history"]')
-        if clear_btn.count() > 0 and clear_btn.is_visible():
-            clear_btn.click()
-            # Handle confirmation dialog if present
-            try:
-                dialog = Dialog.wait_for(self.page, timeout=3000)
-                Dialog.click_button(dialog, "Confirm")
-            except Exception:
-                pass  # No confirmation dialog
-            self.page.wait_for_timeout(1000)
-            logger.info("Embedded chat cleared")
+        self.chat_clear_button.click(timeout=timeout)
+        self.page.wait_for_timeout(300)
+        logger.info("Embedded chat cleared")
+
+    # ------------------------------------------------------------------
+    # Run History panel (ELITEA-2011)
+    # ------------------------------------------------------------------
+    # Mirrors `AgentDetailPage`'s Run History methods (ELITEA-1877/1876)
+    # almost verbatim — same shared `RunHistoryContainer`/`RunHistoryList
+    # Item.jsx`/`RunHistoryChat.jsx` components, `source=pipeline` instead
+    # of `source=agent` on the underlying conversations-list request (AFS
+    # § Network Behavior). `RunHistoryContainer` REPLACES the whole
+    # Configuration form + embedded chat grid — it is not a tab and not an
+    # overlay — so "opened" is confirmed by waiting for at least one
+    # `run-history-list-item` row to render (the list fetch is a real
+    # network round trip; poll rather than a fixed timeout).
+
+    @action("Open Run History panel")
+    def open_run_history(self, timeout: int = 10000):
+        """Click the Run History button and wait for the panel to replace
+        the Configuration form + embedded chat.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Run History panel")
+        self.history_tab.wait_for(state="visible", timeout=timeout)
+        self.history_tab.click()
+        self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+        logger.info("Run History panel opened")
+
+    def get_run_history_item_count(self) -> int:
+        """Return the number of rows currently listed in the Run History panel.
+
+        Returns:
+            Integer count of ``run-history-list-item`` rows.
+        """
+        return self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).count()
+
+    def get_run_history_item_texts(self) -> list[str]:
+        """Return the full rendered text of every Run History row.
+
+        Each ``run-history-list-item`` row renders its Date, Version, and
+        Duration columns as plain child text nodes — no per-cell testid is
+        needed, the row's own text already exposes all three.
+
+        Returns:
+            List of each row's full text content, in current display order.
+        """
+        return self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).all_text_contents()
+
+    @action("Select Run History item")
+    def select_run_history_item(self, index: int, timeout: int = 10000):
+        """Click the Run History row at *index* (0 = most recent — default
+        sort is Date descending) and wait for its conversation detail to load.
+
+        Args:
+            index: Zero-based row index in the currently-rendered list.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting Run History item at index %d", index)
+        row = self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).nth(index)
+        row.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/elitea_core/conversation/prompt_lib/" in r.url
+            and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            row.click()
+        logger.info("Run History item %d selected", index)
+
+    def is_run_history_item_selected(self, index: int, timeout: int = 5000) -> bool:
+        """Return whether the Run History row at *index* carries
+        ``data-selected="true"``.
+
+        Args:
+            index: Zero-based row index in the currently-rendered list.
+            timeout: Maximum wait time for the row to be present.
+
+        Returns:
+            True if that row is the one currently marked selected.
+        """
+        row = self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).nth(index)
+        row.wait_for(state="visible", timeout=timeout)
+        return row.get_attribute("data-selected") == "true"
+
+    def get_run_history_chat_messages_text(self, timeout: int = 10000) -> str:
+        """Return the concatenated text of every message in the Run History
+        panel's chat (the selected row's conversation).
+
+        ``RunHistoryChat.jsx`` renders the SAME shared ``ChatMessageList``
+        component as the main embedded chat, so this reuses
+        ``CHAT_MESSAGE_ITEM_SELECTOR`` unchanged — confirmed live: only one
+        instance of ``chat-message-item`` exists on the page while History
+        is open (the main embedded chat is unmounted).
+
+        Waits (bounded by *timeout*) for at least one message item to render
+        before reading — ``select_run_history_item()`` only awaits the
+        conversation-detail GET response, which can resolve slightly ahead
+        of React committing the message list, producing a transient "" read.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first message
+                item to appear before giving up and reading whatever is present.
+
+        Returns:
+            Joined text of all ``chat-message-item`` elements, or "" if none
+            render within *timeout*.
+        """
+        items = self.page.locator(self.CHAT_MESSAGE_ITEM_SELECTOR)
+        try:
+            items.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        return "\n".join(items.all_text_contents())
 
     # ------------------------------------------------------------------
     # Run Details panel (RunStateNode/RunStateDialog — ELITEA-2450)
