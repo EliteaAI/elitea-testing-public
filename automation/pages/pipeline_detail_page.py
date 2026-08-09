@@ -2449,6 +2449,113 @@ class PipelineDetailPage(PipelineFormPage):
         self.canvas_controls.locator('button[title="Zoom Out"]').click(timeout=timeout)
         self.page.wait_for_timeout(300)  # zoom transition settle
 
+    def is_control_panel_fully_visible(self, timeout: int = 5000) -> bool:
+        """Return True iff all 6 canvas control-panel buttons are visible.
+
+        Added for ELITEA-2057. Confirmed live (2026-08-08): ``canvas_controls``
+        (``rf__controls``) is a SINGLE ``@xyflow/react`` ``Controls`` instance
+        (``FlowEditor.jsx``'s ``StyledControls``) that renders its own default
+        4 buttons (Zoom In, Zoom Out, Fit View, Toggle Interactivity — each
+        with a real ``title``/``aria-label`` attribute) followed by 2 app-code
+        children appended inside the SAME component (Toggle cards size,
+        Auto-arrange — each wrapped in an MUI ``Tooltip`` whose accessible
+        name lands on the wrapping ``<span aria-label="...">``, not the inner
+        ``<button>`` itself). All 6 are #579-sanctioned third-party-widget
+        exceptions scoped under the one real app testid ``canvas_controls``,
+        same provenance as :meth:`fit_canvas_view`.
+
+        Args:
+            timeout: Maximum wait time per button, in milliseconds.
+
+        Returns:
+            True if every one of the 6 buttons is visible, False otherwise.
+        """
+        selectors = [
+            'button[title="Zoom In"]',
+            'button[title="Zoom Out"]',
+            'button[title="Fit View"]',
+            'button[title="Toggle Interactivity"]',
+            'span[aria-label="Toggle cards size"] button',
+            'span[aria-label="Auto-arrange"] button',
+        ]
+        for selector in selectors:
+            button = self.canvas_controls.locator(selector)
+            try:
+                button.wait_for(state="visible", timeout=timeout)
+            except Exception:
+                return False
+        return True
+
+    def toggle_canvas_interactivity(self, timeout: int = 5000) -> None:
+        """Click ReactFlow's own "Toggle Interactivity" control panel button.
+
+        Added for ELITEA-2057. Same #579 sanctioned exception and same
+        ``canvas_controls``-scoped pattern as :meth:`zoom_in_canvas` /
+        :meth:`fit_canvas_view` — the button is ReactFlow's own internal
+        render (``react-flow__controls-interactive``, a default ``Controls``
+        button, no app testid can be placed on it).
+
+        Confirmed live (2026-08-08): toggles ``nodesDraggable`` — a node that
+        was draggable before the click can no longer be repositioned by
+        :meth:`move_node` afterwards (bounding box unchanged), and a second
+        click restores dragging. Fires zero network requests and zero
+        console errors, same as the other canvas-viewport controls.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('button[title="Toggle Interactivity"]').click(timeout=timeout)
+        self.page.wait_for_timeout(300)  # state settle
+
+    def toggle_canvas_cards_size(self, timeout: int = 5000) -> None:
+        """Click the canvas control panel's "Toggle cards size" button.
+
+        Added for ELITEA-2057. #579 sanctioned exception (third-party widget
+        subtree): this is an app-code ``ControlButton`` appended as a child
+        of ReactFlow's own ``Controls`` component (``FlowEditor.jsx``'s
+        ``onExpandAll``), rendered inside the same ``@xyflow/react`` third-
+        party render tree as Zoom In/Out — no app testid is placeable on the
+        individual button. The accessible name lives on the wrapping MUI
+        ``Tooltip`` span (``aria-label="Toggle cards size"``), not the inner
+        ``<button>`` itself (confirmed live via DOM inspection) — scoped
+        under the real app testid ``canvas_controls`` parent.
+
+        Confirmed live (2026-08-08): toggles every node card between
+        expanded/compact — a node's rendered height shrinks dramatically
+        (e.g. a Decision node: 87.8px -> 9.5px) when compacted, and a second
+        click restores the exact original height. Fires zero network
+        requests and zero console errors.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('span[aria-label="Toggle cards size"] button').click(timeout=timeout)
+        self.page.wait_for_timeout(500)  # re-layout + fit-view settle (FlowEditor's onExpandAll)
+
+    def auto_arrange_canvas(self, timeout: int = 5000) -> None:
+        """Click the canvas control panel's "Auto-arrange" button.
+
+        Added for ELITEA-2057. Same #579 sanctioned exception and
+        ``canvas_controls``-scoped pattern as :meth:`toggle_canvas_cards_size`
+        — an app-code ``ControlButton`` (``FlowEditor.jsx``'s ``onReLayout``)
+        appended inside ReactFlow's own ``Controls`` render tree, accessible
+        name on the wrapping ``<span aria-label="Auto-arrange">`` rather than
+        the inner ``<button>``.
+
+        Confirmed live (2026-08-08): recomputes node positions via a
+        deterministic layout algorithm and calls Fit View — dragging a node
+        away from its arranged position and then clicking this button moves
+        it back to the EXACT same position it started at (px-perfect match,
+        same determinism class as Fit View — see
+        ``test-specs/pipelines/l2_pipeline-canvas-zoom-and-pan_ELITEA-2019.md``).
+        Fires zero network requests and zero console errors.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('span[aria-label="Auto-arrange"] button').click(timeout=timeout)
+        self.page.wait_for_timeout(700)  # re-layout (100ms internal) + fit-view transition settle
+
     def get_canvas_viewport_transform(self) -> dict:
         """Read the ReactFlow viewport's current CSS transform (translate + scale).
 
