@@ -77,3 +77,18 @@ objects" is not evidence of `main` presence — a testid can be wired,
 committed, and reused across several `PipelineDetailPage`/`AgentDetailPage`
 methods while still living only on `automation/testids`. Always run the
 two-ref grep per-testid, never infer promotion state from reuse.
+
+## Seen again (ELITEA-2017, implementer, 2026-08-09)
+
+AFS + `test-specs/pipelines/_surface.md` both claimed `model-selector-option-
+{model-slug}` (the dynamic per-option testid in `LLMModelsMenu.jsx`)
+`on-main ✓ (confirmed live)` — same widget's `model-selector-button`/
+`model-selector-name` genuinely ARE on-main, which likely primed the
+false generalization to the third field of the same table row-group.
+`git fetch origin` + `git grep "model-selector-option" origin/main -- src/`
+→ 0 hits; `origin/automation/testids` → 1 hit (`LLMModelsMenu.jsx:48`).
+Amended both documents (AFS Concrete Handles row + surface digest) with an
+implementer-attributed correction, same mechanics as the fix rounds above.
+Pattern confirmation: sibling testids on the SAME component/widget can have
+DIFFERENT promotion states — verifying two of three fields on a widget is
+not evidence for the third.
