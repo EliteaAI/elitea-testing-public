@@ -2639,6 +2639,21 @@ work (see provenance table below, same pending-promotion bucket ELITEA-2017
 already flagged). Full extension AFS:
 `test-specs/pipelines/lextend_pipeline-llm-model-selection-and-execution-usage_ELITEA-2058.md`.
 
+**Resolved/added during ELITEA-2058 implementation (2026-08-09):**
+- `PipelineDetailPage.answer_model_chip` field (`testid="chat-answer-model-chip"`)
+  + `get_answer_model_chip_text()` getter added (`pipeline_detail_page.py`,
+  near the other model-selector methods) — mirrors `ChatPage.answer_model_chip`
+  exactly, as flagged above. Waits for the chip to become visible, then
+  returns its trimmed text.
+- The gap assertions landed as an in-place extension of
+  `TestExecutePipelineStreaming::test_long_response_streams_progressively`
+  (`tests/ui/pipelines/test_pipeline_execution.py`) — a new Step 2 (button
+  visible + non-empty default model, captured before any switch) and a new
+  Step 7 (chip text contains `MODEL_DISPLAY_NAME`, read right after the
+  existing Step 6 final-response assertion). Ran green first try
+  (`test_long_response_streams_progressively PASSED`, 52.11s) against
+  `test-pipeline` id `6938` — no product defect, no case-text drift.
+
 ## Embedded chat panel — Welcome message renders via the SAME shared FSD chat
 components as the agent surface; the "Welcome message" left-panel section is
 always expanded by default (confirmed live, 2026-08-09, ELITEA-2052)

@@ -532,6 +532,15 @@ class PipelineDetailPage(PipelineFormPage):
     model_selector_name = LocatorDescriptor(testid="model-selector-name")
     MODEL_SELECTOR_OPTION_ANY_SELECTOR = '[data-testid^="model-selector-option-"]'
 
+    # AI response's model-attribution chip (ELITEA-2058) — mirrors
+    # ChatPage.answer_model_chip (chat_page.py:620) exactly; renders through
+    # the identical shared component chain (ApplicationAnswer.jsx/
+    # ActionView.jsx) in the embedded chat panel. Confirmed on
+    # `automation/testids` only as of this AFS's exploration (same
+    # pending-promotion set ELITEA-2017 already flagged) — no new
+    # add-data-testid work required.
+    answer_model_chip = LocatorDescriptor(testid="chat-answer-model-chip")
+
     # MCP node inline config fields (ELITEA-1954). Testid-only, added via
     # add-data-testid — BaseToolNode.jsx only sets these when nodeType is
     # "mcp" (untested node types stay untagged, .agents/testing.md §
@@ -6298,6 +6307,18 @@ class PipelineDetailPage(PipelineFormPage):
         option.first.wait_for(state="visible", timeout=timeout)
         option.first.click()
         logger.info("LLM model '%s' selected", display_name)
+
+    def get_answer_model_chip_text(self, timeout: int = 5000) -> str:
+        """Return the settled response's model-attribution chip text.
+
+        LOCATOR: ``chat-answer-model-chip`` testid (e.g. ``"GPT-5 mini
+        (LLM1)"`` — ``"<model display name> (<node id>)"``). Call only
+        after the response has settled (e.g. after
+        :meth:`wait_for_embedded_chat_response`) — the chip may not have
+        rendered yet mid-stream.
+        """
+        self.answer_model_chip.wait_for(state="visible", timeout=timeout)
+        return (self.answer_model_chip.text_content() or "").strip()
 
     def clear_chat(self, timeout: int = 10000) -> None:
         """Click the embedded chat's 'Clear the chat' button to start a fresh conversation.
