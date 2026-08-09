@@ -611,6 +611,96 @@ def pipeline_with_custom_state_var_id(pipeline_api: PipelineAPI, request):
         logger.warning("Failed to delete custom-state-var pipeline %s: %s", pid, exc)
 
 
+_LLM_READS_STATE_VIA_CODE_INSTRUCTIONS = """\
+entry_point: LLM 1
+state:
+  user_info:
+    type: str
+  code_output:
+    type: str
+nodes:
+  - id: LLM 1
+    type: llm
+    input: []
+    input_mapping:
+      chat_history:
+        type: fixed
+        value: []
+      system:
+        type: fixed
+        value: You are a helpful assistant.
+      task:
+        type: fstring
+        value: '{input}'
+    output: [user_info]
+    structured_output: false
+    transition: Code 1
+  - id: Code 1
+    type: code
+    code:
+      type: fixed
+      value: |
+        result = elitea_state.get('user_info', '')
+        {"code_output": f"Processed: {result}"}
+    input: [user_info]
+    output: [code_output]
+    structured_output: true
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_llm_reads_state_via_code(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``LLM 1 -> Code 1 -> END`` with two CUSTOM state
+    variables (``user_info``/str, ``code_output``/str): the LLM node writes
+    its response into ``user_info``, the Code node reads it back via
+    ``elitea_state.get('user_info', '')`` and writes a processed value into
+    ``code_output``. Deletes the pipeline afterwards.
+
+    Satisfies the ELITEA-2446 precondition. Built via the GENERIC
+    :meth:`PipelineAPI.create_pipeline` (raw YAML ``instructions`` string)
+    rather than :meth:`create_pipeline_with_nodes`, which has no ``state:``
+    support -- confirmed live, AFS
+    ``l3_code-node-read-elitea-state-variables_ELITEA-2446.md`` §
+    Preconditions -- the SAME reason :func:`pipeline_with_typed_state_vars_id`
+    uses this method.
+
+    CRITICAL: the Code node's script ends with a bare dict-literal
+    expression (``{"code_output": f"Processed: {result}"}``) as its LAST
+    statement, NOT a plain assignment. A plain assignment (the case's own
+    literal step-4 text) is CONFIRMED LIVE to silently produce no state
+    update (AFS Known Defects CLARIFICATION #1,
+    ``EliteaAI/elitea-testing-public#1383``) -- the dict-literal form is the
+    live-correct one per ``.claude/skills/elitea-pipeline/references/
+    yaml-schema.md``'s own documented Code Node rule.
+
+    Also CRITICAL: this fixture wires the ``LLM 1 -> Code 1`` transition
+    explicitly in the YAML, sidestepping a SEPARATE confirmed-live gotcha
+    where building the same topology via the Flow Editor's "Add node"
+    button does NOT auto-connect sequentially-added nodes (AFS Known Defects
+    CLARIFICATION #2, ``EliteaAI/elitea-testing-public#1384``).
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2446_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline(
+        name=name,
+        description=f"Auto-created LLM-reads-state-via-code pipeline for test {request.node.name}",
+        instructions=_LLM_READS_STATE_VIA_CODE_INSTRUCTIONS,
+    )
+    pid = pipeline["id"]
+    logger.info("Created LLM-reads-state-via-code pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted LLM-reads-state-via-code pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete LLM-reads-state-via-code pipeline %s: %s", pid, exc)
+
+
 _PARENT_CHILD_STATE_SHARING_CHILD_INSTRUCTIONS = """\
 entry_point: CODE1
 state:
