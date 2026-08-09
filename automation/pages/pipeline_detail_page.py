@@ -458,6 +458,51 @@ class PipelineDetailPage(PipelineFormPage):
         description="Embedded chat 'Clear the chat' button — starts a fresh conversation in place"
     )
 
+    # Testid-scoped embedded-chat message inventory (ELITEA-2052). All four
+    # testids are pre-existing on `main` via the shared
+    # `ChatMessageList.jsx`/`ApplicationAnswer.jsx`/`UserMessage.jsx` FSD
+    # components (confirmed via source read this AFS) — mirrors
+    # `AgentDetailPage`'s equivalent fields (agent_detail_page.py:239-248)
+    # exactly, since the pipeline embedded chat renders through the same
+    # components. Distinct from the legacy CSS-based
+    # `_embedded_chat_messages()` below (tech debt, additive-only — not
+    # modified here); these back the agent-code-path assertions in
+    # `get_last_embedded_chat_message_agent_markers()`.
+    chat_message_list = LocatorDescriptor(
+        testid="chat-message-list",
+        description="Embedded chat message list container"
+    )
+    chat_message_item = LocatorDescriptor(
+        testid="chat-message-item",
+        description="A single message item within the embedded chat message list"
+    )
+    chat_read_out_button = LocatorDescriptor(
+        testid="chat-read-out-button",
+        description="Read-out (TTS) button rendered on agent-answer messages only"
+    )
+    skill_test_last_response = LocatorDescriptor(
+        testid="skill-test-last-response",
+        description="Agent-answer body testid used when the message is the last/only one in the list"
+    )
+    chat_answer_content = LocatorDescriptor(
+        testid="chat-answer-content",
+        description="Agent-answer body testid used when the message is NOT the last one in the list"
+    )
+    chat_message_delete_button = LocatorDescriptor(
+        testid="chat-message-delete-button",
+        description="Delete button rendered on user messages only"
+    )
+
+    # Scoped selectors (inside a single chat-message-item) for the
+    # agent-vs-user code-path markers above — same idiom as
+    # `AgentDetailPage.CHAT_MESSAGE_ITEM_SELECTOR`/`CHAT_READ_OUT_BUTTON_SELECTOR`
+    # (ELITEA-2052).
+    CHAT_MESSAGE_ITEM_SELECTOR = '[data-testid="chat-message-item"]'
+    CHAT_READ_OUT_BUTTON_SELECTOR = '[data-testid="chat-read-out-button"]'
+    SKILL_TEST_LAST_RESPONSE_SELECTOR = '[data-testid="skill-test-last-response"]'
+    CHAT_ANSWER_CONTENT_SELECTOR = '[data-testid="chat-answer-content"]'
+    CHAT_MESSAGE_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
+
     # LLM model selector (embedded chat panel, ELITEA-2017). Mirrors
     # AgentDetailPage's EXACT existing pattern (agent_detail_page.py:284-286)
     # rather than ChatPage.model_selector's (which carries a forbidden
@@ -5846,6 +5891,73 @@ class PipelineDetailPage(PipelineFormPage):
             Message count.
         """
         return self._embedded_chat_messages().count()
+
+    # ------------------------------------------------------------------
+    # Testid-scoped embedded chat message inventory (ELITEA-2052)
+    # ------------------------------------------------------------------
+    # Distinct from `_embedded_chat_messages()`/`get_embedded_chat_message_
+    # count()` above (legacy CSS-based, tech debt — additive-only, not
+    # modified). These back the "welcome message renders through the
+    # agent-answer code path" assertion, mirroring
+    # `AgentDetailPage.get_last_chat_message_agent_markers()` exactly.
+
+    def _embedded_chat_message_items_by_testid(self):
+        """Return a locator for all ``chat-message-item`` elements in the
+        embedded chat, scoped inside ``chat_message_list`` (testid-only).
+        """
+        return self.chat_message_list.locator(self.CHAT_MESSAGE_ITEM_SELECTOR)
+
+    def get_embedded_chat_message_item_count(self) -> int:
+        """Return the number of testid-scoped ``chat-message-item`` elements
+        currently rendered in the embedded chat.
+        """
+        return self._embedded_chat_message_items_by_testid().count()
+
+    def get_last_embedded_chat_message_text(self) -> str:
+        """Return the exact body text of the last/only embedded-chat message
+        via the ``skill-test-last-response`` testid (mirrors
+        ``AgentDetailPage.get_last_chat_response_text``) — unlike raw
+        ``text_content()`` on the ``<li>``, this excludes header metadata
+        (sender name, timestamp).
+
+        Returns:
+            Stripped body text, or "" if no messages are present yet.
+        """
+        items = self._embedded_chat_message_items_by_testid()
+        if items.count() == 0:
+            return ""
+        if self.skill_test_last_response.count() > 0:
+            return (self.skill_test_last_response.last.text_content() or "").strip()
+        return ""
+
+    def get_last_embedded_chat_message_agent_markers(self) -> tuple[bool, bool, bool]:
+        """Return agent/user code-path markers for the last (or only) message.
+
+        Scoped inside the last ``chat-message-item`` — works equally for a
+        single-message list, where "last" == "only" (ELITEA-2052: welcome
+        message before any user message). Mirrors
+        ``AgentDetailPage.get_last_chat_message_agent_markers`` exactly —
+        the pipeline embedded chat shares the same
+        ``ChatMessageList.jsx``/``ApplicationAnswer.jsx`` FSD components.
+
+        Returns:
+            ``(has_read_out, has_answer_marker, has_delete_button)``. A
+            message rendered via the agent code path has
+            ``(True, True, False)``. Returns ``(False, False, False)`` if
+            the chat has no messages.
+        """
+        items = self._embedded_chat_message_items_by_testid()
+        if items.count() == 0:
+            return (False, False, False)
+
+        last_item = items.last
+        has_read_out = last_item.locator(self.CHAT_READ_OUT_BUTTON_SELECTOR).count() > 0
+        has_answer_marker = (
+            last_item.locator(self.CHAT_ANSWER_CONTENT_SELECTOR).count() > 0
+            or last_item.locator(self.SKILL_TEST_LAST_RESPONSE_SELECTOR).count() > 0
+        )
+        has_delete_button = last_item.locator(self.CHAT_MESSAGE_DELETE_SELECTOR).count() > 0
+        return (has_read_out, has_answer_marker, has_delete_button)
 
     def send_message_in_embedded_chat(self, message: str, timeout: int = 10000):
         """Type and send a message in the embedded chat panel.
