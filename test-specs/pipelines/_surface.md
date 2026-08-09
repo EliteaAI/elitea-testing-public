@@ -2,7 +2,96 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2019 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2071 analysis).
+
+## "Pipeline tabs" = real BROWSER tabs, not an in-app widget; project-name title suffix is NOT "Private" (confirmed live, 2026-08-09, ELITEA-2062)
+
+Confirmed live via Playwright MCP `browser_tabs` (list/new/select/close) driving two
+real tabs in the SAME authenticated context, on pre-existing pipelines
+`AutoTest_Pipeline_probe_2020` (id 8056) and `probe-pipeline` (id 6934):
+
+- **The product has NO in-app "multiple open pipeline tabs" UI feature.**
+  `PipelinesListPage.open_pipeline_by_name()` → `card.click()` is a plain SPA
+  route push (confirmed via source: `Card.jsx`'s `handleCardClick`, no
+  `target="_blank"`, no anchor) — clicking a second pipeline card REPLACES the
+  first pipeline's route in the same tab, it does not add a tab to any
+  in-app tab strip. Any case whose text says "tablist" / "tab" / "close
+  button (X)" for pipelines (or agents/toolkits — same `Card.jsx`) is
+  describing the browser's OWN tab strip, testable via
+  `page.context.new_page()` / `Page.bring_to_front()` / `Page.close()` —
+  the same idiom already merged in
+  `test_agent_hub_my_liked_reload_cross_tab_sync.py` (Tab A/Tab B pattern)
+  and used by `pipeline_detail_page.py:6917` (`context.expect_page()` for
+  the toolkit "open in new tab" button).
+- **`document.title`'s project-name suffix is NOT the sidebar's "Private"
+  label** — confirmed live: title reads `"Pipeline: <name> -
+  project_user_659"`, not `"... - Private"`, even though the sidebar
+  combobox shows `"Project: Private"`. Root cause (source read,
+  `../EliteaUI/src/hooks/useSelectedProject.jsx`):
+  `useSelectedProjectName()` returns the loaded project's real `name` field
+  from Redux (`project?.name`), defaulting to the literal string `"Private"`
+  ONLY before that object loads. `test_agent_hub_page_loads_private_project.py`'s
+  `EXPECTED_PROJECT_NAME = "Private"` constant is therefore NOT a safe
+  precedent to copy for a NEW title assertion on this project/environment —
+  capture the project-name suffix dynamically at runtime (split the
+  dashboard's own title, `"Pipelines: all - {project_name}"`, on `" - "`)
+  instead of hardcoding `"Private"`. Unclear whether the existing hardcoded
+  constant is itself stale for its own test; out of this case's scope to
+  fix, flagged here for whoever next touches page-title assertions.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-multiple-browser-tabs_ELITEA-2062.md`.
+
+## Chat starters — shared `ConversationStarters.jsx` component; embedded-chat chip testid is FREE (already fixed by ELITEA-1886 on the Agent surface) (confirmed live, 2026-08-09, ELITEA-2053)
+
+Confirmed live via Playwright MCP + `browser_run_code_unsafe` on a fresh disposable
+pipeline (id 8583):
+
+- **The pipeline's "Chat starters" left-panel section is the EXACT SAME
+  `src/components/ConversationStarters.jsx` component the Agent form uses** —
+  confirmed via source read: `PipelineConfigurationForm.jsx` and
+  `ApplicationConfigurationForm.jsx` both import it. All its testids
+  (`agent-conversation-starters-section` — rendered here as
+  `agent-canvas-section-chat-starters`, `agent-conversation-starter-add`,
+  `agent-conversation-starter-input`, `agent-conversation-starter-counter`, the
+  fullscreen-dialog set) are shared literals despite the `agent-` prefix — this
+  predates the current shared-component-testid ruling and is tracked tech debt,
+  not something to fix opportunistically on an unrelated case.
+- **Section renders already expanded by default** — same pattern as
+  Welcome-message/Advanced (ELITEA-2052/2021's note). No click needed to reach
+  the "+ Starter" button.
+- **The "delete starter" button has NO testid anywhere** (`main` or
+  `automation/testids`) — only `aria-label="delete starter"` on the shared
+  component's delete `BaseBtn`. No existing test (agent or pipeline surface)
+  exercises it. First case to need it: ELITEA-2053 (step 3, "verify existing
+  starter shows a delete button") — flagged `needs-adding` in that AFS.
+- **The embedded-chat starter CHIP (`chat-conversation-starter-tile`) needs NO
+  new `add-data-testid` work for the pipeline surface** — `ChatPanel.jsx`
+  (pipeline's right-side chat) mounts the identical shared `ChatBox` component
+  (`@/[fsd]/features/chat/ui`) the Agent Detail page mounts, which renders the
+  same `ChatConversationStarters.jsx` call site ELITEA-1886 already wired
+  (`EliteaAI/EliteaUI@afb48435`, on `automation/testids` only, confirmed via
+  fresh `git fetch origin` + `git grep` — absent on `origin/main`). One
+  component instance, two routes — the fix travels for free. Confirmed live:
+  `[data-testid="chat-conversation-starter-tile"]` count==1 with the exact
+  saved starter text, in the pipeline's embedded chat panel.
+- **Clicking the chip is pre-fill-only, one-shot** — same `hasStarterBeenSent`
+  mechanic ELITEA-1886 documented for the Agent surface (shared `ChatBox.jsx`
+  state, not a re-implementation): click sets `chat-message-input`'s value to
+  the exact starter text and the tile immediately disappears (count 1→0); it
+  does NOT auto-send. Confirmed live via `browser_run_code_unsafe`.
+- **Zero console errors, zero network 4xx/5xx** across add-starter → Save →
+  reload → click-chip. Save fires `POST .../applications/prompt_lib/399` →
+  `201`; reload's `GET .../application/prompt_lib/399/{id}` → `200` seeds the
+  chip from the saved `conversation_starters` list — same zero-extra-network
+  shape as the Welcome message (ELITEA-2052).
+- `PipelineDetailPage` already had `conversation_starter_add_button`/
+  `conversation_starter_inputs`/`add_conversation_starter()`/
+  `get_conversation_starter_value()` from a prior case (ELITEA-2021) — no
+  changes needed. Still missing (as of this session): a `CHAT_STARTER_TILE`
+  class constant + `get_chat_starter_tiles()`/`click_chat_starter_tile()`
+  methods (mirrors `AgentDetailPage`'s existing implementation exactly).
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-chat-starters-visible-and-clickable_ELITEA-2053.md`.
 
 ## Canvas Zoom/Pan/Fit-View — pure client-side ReactFlow viewport state, deterministic Fit View, zero new testids (confirmed live, 2026-08-08, ELITEA-2019)
 
@@ -449,6 +538,20 @@ no product defect. Details in `test-specs/pipelines/l2_pipeline-import-via-file_
   `Type=Variable, Value=input` via the existing shared `select-option-{}` dynamic-testid
   convention. Any pipeline case that needs a working chat execution assertion must configure the
   LLM node's Task field this way — not an import-specific requirement.
+  **Refinement (2026-08-09, ELITEA-2059)**: this fix requires an explicit **Save**
+  (`agent-save-button`) to take effect at execution time — the live formik-state change alone is
+  NOT enough (confirmed: response stayed "I didn't receive any text or image" until Save was
+  clicked, on an otherwise-correctly-mapped Task field). This is DIFFERENT from module-level
+  toggles like "Attachments" (see below), which gate the chat UI's *availability* instantly with
+  no save needed — don't conflate the two when writing setup code. **Also model-specific**: even
+  with the Task fix + Save, the shared fixture `test-pipeline`'s (id 6938) DEFAULT chat model
+  (Anthropic Claude 4.5 Sonnet) still 400s on **every** message, attachment or not —
+  `"No fallback model group found for original model_group=1_eu.anthropic.claude-sonnet-4-5-...".`
+  This is a DEV-backend LLM-provider-routing gap for that one model, not attach/import-specific.
+  Switching to **GPT-5.2** (`pipelines.select_llm_model("GPT-5.2")`) works reliably.
+  `PipelineAPI.create_pipeline_with_llm_node()` already defaults to `settings.default_model_name`
+  = `"gpt-5.2"` (`automation/config.py:196`) — a FRESH pipeline created via that helper avoids
+  this gotcha entirely; only the shared UI fixture needs the manual model switch.
 - **Minor, already-tracked, non-blocking**: the Import Complete dialog's `IWModalSucceedContent.jsx`
   emits a benign React `validateDOMNesting` (`<div>` in `<p>`) console warning — tracked at
   `EliteaAI/elitea-testing-public#570` (originally filed against Agent/Skill import); this session
@@ -2490,3 +2593,256 @@ append `?viewMode=owner`, so any test going through the page object is unaffecte
   absence assertions, static-width exact-match).
 
 Full AFS: `test-specs/pipelines/l2_pipeline-collapse-left-panel_ELITEA-2072.md`.
+
+## Embedded chat panel (`ChatPanel.jsx`) — shares components with the main `ChatPage` chat (ELITEA-2017)
+
+Confirmed live (2026-08-09): the pipeline detail page's embedded chat renders
+AI responses through the EXACT SAME component chain as the main conversation
+chat (`ApplicationAnswer.jsx`/`ActionView.jsx`/`RotatingMessages.jsx`) — the
+"Thought for `<n>` secs" accordion + model-chip pattern documented for regular
+chat in `test-specs/chat-interface/l2_streaming-response-progressive-display_ELITEA-2181.md`
+appears identically here (e.g. `GPT-5 mini (LLM1)` chip, same accordion shape).
+Practical consequence: the 6 testids ELITEA-2181 flagged `needs-adding` are
+ALREADY implemented (confirmed via `git grep` on both refs, 2026-08-09) —
+`chat-answer-thought-accordion`, `chat-answer-model-chip`,
+`chat-answer-loading-placeholder`, `chat-copy-button`, `chat-regenerate-button`,
+`chat-answer-pause-scroll-toggle` — on `automation/testids` only (not yet on
+`main`); they work for THIS surface too since localhost serves that branch.
+Any future embedded-chat case needing those elements should treat them as
+already-implemented-pending-promotion, not a fresh gap.
+
+- **Model selector on the embedded chat**: closed button/current-model text
+  resolves via `model-selector-name` testid (on-main ✓); open-dropdown options
+  via the dynamic `model-selector-option-{model-slug}` pattern (e.g.
+  `model-selector-option-gpt-5-mini`), on-main ✓, exact case-text match
+  confirmed for "GPT-5 mini". `PipelineDetailPage` has NO page-object field or
+  `select_model()` method for this yet — mirror `AgentDetailPage`'s existing
+  compliant pattern (`model_selector_button`/`model_selector_name` fields +
+  `MODEL_SELECTOR_OPTION_ANY_SELECTOR` class constant), NOT `ChatPage.model_selector`'s
+  (which carries a forbidden `fallback=` param — pre-existing tech debt, do
+  not copy).
+- **Message send**: `chat-message-input`/`chat-send-button` — same testids as
+  `ChatPage`, already wired on `PipelineDetailPage.chat_input`/`chat_send_button`.
+- **Progressive-text extraction**: `PipelineDetailPage.get_embedded_chat_last_message()`
+  (`pipeline_detail_page.py:5914`) is the direct analogue of `ChatPage`'s body-extraction
+  method — reuse for poll-and-compare progressive-streaming assertions (sample
+  ≥2s apart, assert growth, never shrinks). Internally falls back to a raw CSS
+  class selector (`div.css-xn5i2e`) — pre-existing tech debt, not to be extended.
+- **Observed once (not reproduced): "Token limit reached mid-response. Press
+  'Continue' to see more."** appeared mid-essay on one of two live runs asking
+  for a long response (~730 chars in, well past any reasonable 200-char
+  threshold). Not an error state (no console error, no failed request, no red
+  banner) — a deliberate continuation affordance, likely tied to the pipeline's
+  default/unconfigured LLM max-token budget. Does not reproduce every run (the
+  other run's essay completed naturally at ~1800 chars). Note for any future
+  case asserting FULL response completeness (not just a >200-char minimum):
+  this is a real, intermittent behavior to account for, not a flake to ignore.
+
+Full AFS: `test-specs/pipelines/l2_pipeline-execution-long-response-streaming_ELITEA-2017.md`.
+
+**Resolved/added during ELITEA-2017 implementation (2026-08-09):**
+- **Provenance correction**: the dynamic `model-selector-option-{model-slug}`
+  testid (`LLMModelsMenu.jsx`) is on `automation/testids` ONLY — NOT on `main`
+  as this digest and the AFS both originally stated. Verified via
+  `git fetch origin` + `git grep "model-selector-option" origin/main -- src/`
+  (0 hits) vs `origin/automation/testids` (1 hit). `model-selector-button`/
+  `model-selector-name` ARE on-main; only the per-option testid is
+  testids-only, same pending-promotion bucket as the accordion/chip testids
+  noted above. Usable today locally either way.
+- `PipelineDetailPage` now HAS the model-selector page-object surface this
+  digest called out as missing: `model_selector_button`/`model_selector_name`
+  fields, `MODEL_SELECTOR_OPTION_ANY_SELECTOR` class constant,
+  `open_model_selector()`/`get_selected_model_name()`/`select_llm_model()`
+  methods — mirrors `AgentDetailPage`'s pattern exactly, per this digest's
+  own guidance. Any future embedded-chat case needing model selection should
+  reuse these rather than re-adding them.
+- New `PipelineDetailPage.wait_for_embedded_chat_real_content()` /
+  `wait_for_embedded_chat_body_growth()` helpers: the naive
+  "poll `get_embedded_chat_last_message()`, assert growth" approach this
+  digest recommends is NOT sufficient on its own — the embedded chat renders
+  transient placeholders ("Waking the agent…", "Packing its tools…",
+  "Thought for `<n>` secs") as non-empty body text before real streamed
+  content starts, and a length-only growth check can be fooled by a
+  placeholder SWAP (shorter placeholder -> longer placeholder, no real
+  content yet). Both new methods filter transient text (same known
+  vocabulary as `ChatPage._is_transient_message`) before treating a sample
+  as real. Any future progressive-streaming assertion on this surface should
+  reuse these, not re-derive a naive length-only poll.
+- New fixture `pipeline_with_fstring_llm_id` (`fixtures/data_fixtures.py`) —
+  single LLM node, TASK F-String `{input}`, entry->END, via the generic
+  `PipelineAPI.create_pipeline_with_nodes()`. Satisfies the F-String
+  precondition `pipeline_with_llm_id` does not (that fixture hardcodes
+  TASK as `fixed`/`''`).
+
+**ELITEA-2058 (extend-existing, confirmed live 2026-08-09):** the model-chip
+proof for "execution actually used the selected model" — the missing piece
+the ELITEA-2017 test never asserted. Opened a pre-existing pipeline
+(`test-pipeline`, id `6938`), read the closed selector's DEFAULT label
+(`"Anthropic Claude 4.5 Sonnet"`) before touching it, switched to
+`"GPT-5 mini"` via the existing `open_model_selector()`/`select_llm_model()`,
+sent a message, and read `[data-testid="chat-answer-model-chip"]` on the
+settled response: `count == 1`, text `"GPT-5 mini (LLM1)"` — i.e.
+`"<selected model> (<node id>)"`, confirming execution used the newly
+selected model, not the pipeline's prior default. `PipelineDetailPage` has
+NO `answer_model_chip` field/getter yet — mirror `ChatPage.answer_model_chip`
+(`chat_page.py:620`) exactly; the testid itself needs no `add-data-testid`
+work (see provenance table below, same pending-promotion bucket ELITEA-2017
+already flagged). Full extension AFS:
+`test-specs/pipelines/lextend_pipeline-llm-model-selection-and-execution-usage_ELITEA-2058.md`.
+
+**Resolved/added during ELITEA-2058 implementation (2026-08-09):**
+- `PipelineDetailPage.answer_model_chip` field (`testid="chat-answer-model-chip"`)
+  + `get_answer_model_chip_text()` getter added (`pipeline_detail_page.py`,
+  near the other model-selector methods) — mirrors `ChatPage.answer_model_chip`
+  exactly, as flagged above. Waits for the chip to become visible, then
+  returns its trimmed text.
+- The gap assertions landed as an in-place extension of
+  `TestExecutePipelineStreaming::test_long_response_streams_progressively`
+  (`tests/ui/pipelines/test_pipeline_execution.py`) — a new Step 2 (button
+  visible + non-empty default model, captured before any switch) and a new
+  Step 7 (chip text contains `MODEL_DISPLAY_NAME`, read right after the
+  existing Step 6 final-response assertion). Ran green first try
+  (`test_long_response_streams_progressively PASSED`, 52.11s) against
+  `test-pipeline` id `6938` — no product defect, no case-text drift.
+
+## Embedded chat panel — Welcome message renders via the SAME shared FSD chat
+components as the agent surface; the "Welcome message" left-panel section is
+always expanded by default (confirmed live, 2026-08-09, ELITEA-2052)
+
+Confirmed live via Playwright MCP against a fresh pipeline (id `8580`,
+`agent-welcome-message-input` = `"Hello! How can I help you today?"`):
+
+- **The pipeline detail page's embedded chat panel seeds its history from
+  the SAME `ChatHelpers.getWelcomeMessage()`/`getInitialChatHistory()` helper
+  (`chat.helpers.js`) that ELITEA-1885 documented for the agent surface** —
+  confirmed via source read: `usePipelineChat.hooks.js` calls the identical
+  helper `useApplicationChat.hooks.js` uses, keyed off
+  `pipelineVersionDetails.welcome_message` instead of
+  `applicationVersionDetails.welcome_message`. Same rendering path
+  (`ChatMessageList.jsx`/`ApplicationAnswer.jsx`), same testids:
+  `chat-message-list`, `chat-message-item`, `chat-read-out-button`,
+  `skill-test-last-response` (asserted when the message is last/only —
+  it always is for a lone welcome message), `chat-answer-content` (absence
+  check when last), `chat-message-delete-button` (absence check, proves
+  agent-not-user rendering). All confirmed present/absent exactly as
+  ELITEA-1885 documented for agents — **none of these are yet
+  `LocatorDescriptor` fields on `PipelineDetailPage`** (they only exist on
+  `AgentDetailPage`); add sibling fields with the same testids rather than
+  cross-importing from `AgentDetailPage` (project convention — see
+  ELITEA-2021's note on `PipelineDetailPage`/`AgentFormPage` being siblings,
+  not a class hierarchy).
+- **The "Welcome message" accordion in the left panel renders ALREADY
+  EXPANDED by default** — same pattern as the pre-existing "Advanced"
+  section (`agent-canvas-section-advanced`, documented in ELITEA-2021's
+  AFS). A case that says "expand the Welcome message section" needs no
+  click; `welcome_message_input.wait_for(state="visible")` already proves
+  the section is open. The accordion header DOES carry a testid
+  (`agent-canvas-section-welcome-message`, `WelcomeMessage.jsx`) but it is
+  **on `automation/testids` ONLY** (added 2026-07-21,
+  EliteaAI/EliteaUI@353be956, for the unrelated ELITEA-2166 in-chat-canvas
+  case — confirmed absent on `origin/main` via fresh `git fetch origin` +
+  `git grep` this session). No case has needed it yet since the section is
+  never actually collapsed in practice; don't add a page-object field for it
+  speculatively (canon #511 — only what a test's executed path calls).
+- **"Open a new chat session" has no distinct UI action on the pipeline
+  detail route** — the embedded chat panel is always mounted (same
+  live-product shape ELITEA-1885 found on the agent detail page). A
+  full-page reload (`page.goto`, not an SPA route change) is the closest
+  equivalent to a pristine "new session" and was confirmed to reproduce the
+  welcome-message-only state identically to the immediately-post-save state.
+- Welcome-message seeding is **zero-network beyond the existing detail-page
+  GET** — `GET /api/v2/elitea_core/application/prompt_lib/{project}/{id}`
+  returns `version_details.welcome_message`, which the hook reads client-side
+  to seed `chatHistory`. No WebSocket wait is needed for this specific
+  assertion (distinct from AI-generated responses elsewhere on this surface,
+  e.g. ELITEA-2017's streaming case).
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-welcome-message-shown-before-first-input_ELITEA-2052.md`.
+
+## Attach Files in Chat — bare icon `AttachmentButton` call site (NO plus-menu), testid-less; module toggle is instant, Task-field fix needs Save (confirmed live, 2026-08-09, ELITEA-2059)
+
+Confirmed live via Playwright MCP on the shared `test-pipeline` fixture (id 6938):
+
+- **The pipeline's (and Agent's) embedded chat panel renders a DIFFERENT `AttachmentButton`
+  instance than the general Chat page.** ELITEA-2197/2200 (Chat-interface surface) exercise the
+  `showLabel` instance inside `PlusChatButton.jsx`'s Popper `MenuList`
+  (`testId="chat-attach-menuitem-button"`), reached via a "+" plus-menu button. The embedded
+  chat panel (`ChatPanel.jsx` → shared `ChatBox` → `NewChatInput.jsx`, `isAgentsPage=true`)
+  renders **no plus-menu button at all** — confirmed via
+  `document.querySelector('[data-testid="plus-menu-button"]')` returning `null` — and instead
+  renders the **bare, icon-only** `ChatButton.AttachmentButton` directly
+  (`NewChatInput.jsx:272-278`, the `!hideAttachments && !fromTheChat` branch). This bare instance
+  has **zero testid** (`data-testid` attribute is literally `null` on the live DOM node) — needs
+  `add-data-testid` work. Recommended name: `chat-attach-button` — this exact string was
+  previously DEAD/STALE on `ChatPage.attach_files_button` (ELITEA-2197 confirmed zero hits
+  anywhere in `EliteaUI/src`, since re-pointed to `chat-attach-menuitem-button`), freeing it for
+  the call site it always semantically described. `NewChatInput.jsx` is shared chat
+  infrastructure (used by both Agent and Pipeline embedded chat) — name carries no
+  `agent-`/`pipeline-` prefix.
+- **The "Attach Files (N left)" text is a TOOLTIP, not a rendered label**, at this call site
+  (`showLabel` is falsy here) — it's the accessible name via `AttachmentButton.jsx`'s
+  `processStatus` memo (`!showLabel` branch wraps the button in a `<Tooltip title={processStatus}>`).
+  Don't expect a visible `<Typography>` "Attach Files" + counter pair like the Popper's
+  `showLabel` variant renders — assert via `aria-label="attach files"` (static) and read the
+  tooltip/title text only if the counter value itself needs verifying.
+- **The "Attachments" MODULES switch (`agent-canvas-tools-toggle-attachments`) gates the attach
+  button's `disabled` state INSTANTLY, purely client-side, no Save required** — confirmed live:
+  toggling the switch flips the button from `disabled` to enabled with zero network requests,
+  before any Save click. This is `useAgentAttachments`'s `disableAttachments = !internal_tools
+  .includes('attachments')`, read straight from formik's live `version_details.meta.internal_tools`
+  — contrast this with the Task-field execution fix below, which DOES require Save. On
+  `automation/testids` only (`AgentInternalToolSwitch.jsx:108`), absent on `main` — confirmed via
+  `git fetch origin` + `git grep` both refs. `ApplicationTools.jsx` filters
+  `pipelineVisibleTools` to only the `attachments` tool for `isPipeline=true`, so this is the
+  ONLY Modules card a pipeline's Tools accordion ever shows.
+- **A bare `llm`-type node cannot extract an attached file's actual content** — only a path-like
+  reference reaches the model's text context. Confirmed live (model GPT-5.2, Task correctly
+  mapped `type=variable value=input`, pipeline saved): asking the model to quote the attached
+  file's exact text got "I can't access the contents of that attachment from here (I don't have
+  file-browsing access to attachments/…/elitea2059_testfile.txt)." — an honest, correct answer
+  given the node's wiring (its `Toolkits` field is `disabled` on this entry node), NOT an
+  Attach-Files defect. Any case whose Pass criteria require literal content processing (RAG-style
+  summarization etc.) needs an additional toolkit/artifact-reading node — out of scope for a
+  minimal "attach + send" assertion, which should assert response-without-error +
+  filename-acknowledgment instead of literal content-quoting.
+- **The chat's own DEFAULT model on this DEV backend 400s on every message** (see the amended
+  note under "Execution gotcha" above) — same root cause class as the ELITEA-2012 finding, now
+  confirmed to be model-specific (`Anthropic Claude 4.5 Sonnet` has no fallback model group
+  configured) rather than purely a Task-field issue. `GPT-5.2` works reliably; it's also
+  `settings.default_model_name`, so a freshly-`create_pipeline_with_llm_node`-created pipeline
+  sidesteps this without any extra model-switch step.
+- **Zero console errors** across the full attach → send → response sequence.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-attach-files-in-chat_ELITEA-2059.md`.
+
+## Pipeline chat panel has NO fullscreen-mode toggle — feature-parity gap vs Agent/Skill/Toolkit-Index surfaces (confirmed live + source, 2026-08-09, ELITEA-2071)
+
+Confirmed live via Playwright MCP on pre-existing pipeline `probe-pipeline` (id
+6934): the chat panel header has **no fullscreen/expand button anywhere**.
+The only header icon is a **collapse** toggle (`ChatPanel.jsx`'s
+`onClickCollapsed`, `DoubleLeftIcon`/`DoubleRightIcon` `IconButton`, no
+testid on either `main` or `automation/testids`) that shrinks the chat panel
+itself to a ~28px strip — the opposite direction of "fullscreen," and it does
+**not** touch the left configuration panel (verified: clicking it live left
+every left-panel section — General/Tools/Welcome message/Chat
+starters/Advanced/Editor Notes/Information — fully visible and unchanged;
+zero console errors).
+
+- **Root cause (source, `EliteaAI/EliteaUI` `automation/testids`):** the
+  Agent/Skill/Toolkit-Index chat surfaces each wire a real
+  `FullScreenToggle` component (`src/components/Chat/FullScreenToggle.jsx`)
+  via genuine `useState`-backed `isFullScreenChat`/`setIsFullScreenChat`
+  (`Applications/ConfigurationTab.jsx:220`, `SkillTestPanel.jsx:67`,
+  `IndexChat.jsx:21`). The **Pipeline** surface's own
+  `Pipelines/Components/ConfigurationTab.jsx:205` only carries a hardcoded
+  **dead literal** `isFullScreenChat: false` in the settings object — no
+  state, no setter — and `ChatPanel.jsx` never imports `FullScreenToggle` at
+  all. Looks like a genuine feature-parity gap (stubbed but never wired for
+  Pipelines), not a case-authoring mistake.
+- **If this is ever fixed for Pipelines**, expect the implementation to
+  mirror the Agent surface's wiring closely — check `test-specs/agents/` for
+  a sibling fullscreen-chat AFS first (none existed as of this session)
+  before re-deriving handles.
+- Filed: [`elitea-testing-public#1363`](https://github.com/EliteaAI/elitea-testing-public/issues/1363).
+  Full flow: `test-specs/pipelines/l2_pipeline-fullscreen-chat-mode_ELITEA-2071.md`
+  (status `defect-found`).

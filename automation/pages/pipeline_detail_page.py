@@ -458,6 +458,138 @@ class PipelineDetailPage(PipelineFormPage):
         description="Embedded chat 'Clear the chat' button — starts a fresh conversation in place"
     )
 
+    # File attachments (ELITEA-2059). Bare icon-only `AttachmentButton`
+    # instance rendered directly by `NewChatInput.jsx`'s
+    # `!hideAttachments && !fromTheChat` branch — a DIFFERENT call site than
+    # `ChatPage.attach_files_button` (the `showLabel` Popper-menu instance
+    # reached via `chat-attach-menuitem-button`, ELITEA-2197/2200). No
+    # plus-menu hop here; the pipeline/agent embedded chat renders this
+    # button unconditionally. `chat-attach-button` added via `add-data-testid`
+    # (`NewChatInput.jsx:273`'s `testId` prop, EliteaAI/EliteaUI@2a4aab23 on
+    # `automation/testids`).
+    chat_attach_button = LocatorDescriptor(
+        testid="chat-attach-button",
+        description="Bare icon-only Attach Files button (pipeline/agent embedded chat, no plus-menu)"
+    )
+
+    # `chat-attach-button`'s own `aria-label` stays the STATIC string "attach
+    # files" — it does NOT reflect the dynamic "Attach Files (N left)" counter
+    # (live-confirmed, ELITEA-2059 implementer Phase 2 exploration). That
+    # counter text only exists in this Tooltip's popper content, added via
+    # `slotProps={{ tooltip: { 'data-testid': ... } }}` (EliteaAI/EliteaUI@a926573d
+    # on `automation/testids`) — the compliant testid-only path, since a raw
+    # `[role="tooltip"]` selector is not a sanctioned #579 exception (this is
+    # our own MUI usage, not a third-party widget).
+    chat_attach_button_tooltip = LocatorDescriptor(
+        testid="chat-attach-button-tooltip",
+        description="Attach button's Tooltip popper content — carries the dynamic 'Attach Files (N left)' text"
+    )
+
+    # FileList.jsx per-item chip, dynamic by render index (0-based, stable
+    # within one attach sequence). SAME shared component/testid as
+    # `ChatPage.CHAT_ATTACHMENT_CHIP` — ported here rather than inherited
+    # (no common ancestor between `PipelineDetailPage` and `ChatPage`; same
+    # cross-hierarchy duplication precedent as this file's `answer_model_chip`
+    # field, which mirrors `ChatPage.answer_model_chip`).
+    CHAT_ATTACHMENT_CHIP = '[data-testid="chat-attachment-chip-{}"]'
+    CHAT_ATTACHMENT_CHIP_PREFIX = '[data-testid^="chat-attachment-chip-"]'
+
+    # Testid-scoped embedded-chat message inventory (ELITEA-2052). All
+    # testids are pre-existing on `main` via the shared
+    # `ChatMessageList.jsx`/`ApplicationAnswer.jsx`/`UserMessage.jsx` FSD
+    # components (confirmed via source read this AFS) — mirrors
+    # `AgentDetailPage`'s equivalent fields (agent_detail_page.py:239-248)
+    # exactly, since the pipeline embedded chat renders through the same
+    # components. Distinct from the legacy CSS-based
+    # `_embedded_chat_messages()` below (tech debt, additive-only — not
+    # modified here); these back the agent-code-path assertions in
+    # `get_last_embedded_chat_message_agent_markers()`.
+    #
+    # Only the two testids this test's executed path binds directly as
+    # `LocatorDescriptor` fields — `chat_message_list` (the scoping parent)
+    # and `skill_test_last_response` (read directly in
+    # `get_last_embedded_chat_message_text()`). The remaining three testids
+    # this test touches (`chat-message-item`, `chat-read-out-button`,
+    # `chat-answer-content`) are only ever used as *scoped sub-selectors*
+    # inside `last_item.locator(...)` / `chat_message_list.locator(...)` —
+    # never as a bare `self.<field>` locator — so per the locator-policy
+    # scope discipline (`.agents/role-overrides.md` — "touches" = the method
+    # this test actually calls) they live ONLY as the UPPER_CASE
+    # `[data-testid=...]` string constants below, not as a duplicate
+    # `LocatorDescriptor` field nobody calls. `chat-message-delete-button`
+    # is asserted as ABSENT on this test's path
+    # (`get_last_embedded_chat_message_agent_markers()` returns
+    # `has_delete_button`) via `CHAT_MESSAGE_DELETE_SELECTOR` the same way —
+    # an absence assertion is still a reference (canon ruling #511
+    # extension), so it stays.
+    chat_message_list = LocatorDescriptor(
+        testid="chat-message-list",
+        description="Embedded chat message list container"
+    )
+    skill_test_last_response = LocatorDescriptor(
+        testid="skill-test-last-response",
+        description="Agent-answer body testid used when the message is the last/only one in the list"
+    )
+
+    # Scoped selectors (inside a single chat-message-item) for the
+    # agent-vs-user code-path markers above — same idiom as
+    # `AgentDetailPage.CHAT_MESSAGE_ITEM_SELECTOR`/`CHAT_READ_OUT_BUTTON_SELECTOR`
+    # (ELITEA-2052).
+    CHAT_MESSAGE_ITEM_SELECTOR = '[data-testid="chat-message-item"]'
+    CHAT_READ_OUT_BUTTON_SELECTOR = '[data-testid="chat-read-out-button"]'
+    SKILL_TEST_LAST_RESPONSE_SELECTOR = '[data-testid="skill-test-last-response"]'
+    CHAT_ANSWER_CONTENT_SELECTOR = '[data-testid="chat-answer-content"]'
+    CHAT_MESSAGE_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
+
+    # Attachment card rendered INSIDE a message bubble (ELITEA-2059 fix
+    # round). Pre-existing testid — same one `AgentDetailPage` already reads
+    # via `get_chat_artifact_file_names()` for AI-created artifact files
+    # (`NormalAttachment.jsx:147`, `data-testid="chat-artifact-file-card"`,
+    # `data-name={attachmentName}`). Confirmed via source read
+    # (`EliteaUI/src/components/Chat/NormalAttachment.jsx`) that the SAME
+    # component renders a user's OWN sent attachment inside
+    # `UserMessage.jsx`'s `MessageAttachmentList` — no wrapping
+    # `chat-artifact-file-list` container on that path (that wrapper is
+    # `ApplicationAnswer.jsx`-only), so the card is scoped directly off the
+    # message `<li>` here, not off a list container.
+    CHAT_ARTIFACT_FILE_CARD_SELECTOR = '[data-testid="chat-artifact-file-card"]'
+
+    # Embedded-chat conversation-starter tile (ELITEA-2053) — this page's own
+    # call site of the shared `ChatBox` component (`ChatPanel.jsx` mounts the
+    # exact same `ChatBox` the Agent Detail page mounts, which renders
+    # `ChatConversationStarters.jsx`). Same literal as
+    # `AgentDetailPage.CHAT_STARTER_TILE`/`ChatPage.CHAT_STARTER_TILE` by
+    # deliberate reuse (ELITEA-1886/ELITEA-2369 precedent) — the three call
+    # sites never render on the same page simultaneously. Pre-existing on
+    # `automation/testids` only (added by ELITEA-1886, `EliteaAI/EliteaUI@afb48435`)
+    # — no new add-data-testid work needed for this element (AFS Concrete
+    # Handles). Select a specific tile via `.filter(has_text=...)`, same
+    # idiom as `AgentDetailPage.click_chat_starter_tile()`.
+    CHAT_STARTER_TILE = '[data-testid="chat-conversation-starter-tile"]'
+
+    # LLM model selector (embedded chat panel, ELITEA-2017). Mirrors
+    # AgentDetailPage's EXACT existing pattern (agent_detail_page.py:284-286)
+    # rather than ChatPage.model_selector's (which carries a forbidden
+    # `fallback=` param — pre-existing tech debt, not copied here; AFS
+    # l2_pipeline-execution-long-response-streaming_ELITEA-2017.md §
+    # Concrete Handles). Both `model-selector-button`/`model-selector-name`
+    # are confirmed on `main`; the dynamic `model-selector-option-{name}`
+    # testid this class constant matches is confirmed on `automation/testids`
+    # only (not yet cherry-picked to `main` as of this AFS's exploration —
+    # AFS amended accordingly).
+    model_selector_button = LocatorDescriptor(testid="model-selector-button")
+    model_selector_name = LocatorDescriptor(testid="model-selector-name")
+    MODEL_SELECTOR_OPTION_ANY_SELECTOR = '[data-testid^="model-selector-option-"]'
+
+    # AI response's model-attribution chip (ELITEA-2058) — mirrors
+    # ChatPage.answer_model_chip (chat_page.py:620) exactly; renders through
+    # the identical shared component chain (ApplicationAnswer.jsx/
+    # ActionView.jsx) in the embedded chat panel. Confirmed on
+    # `automation/testids` only as of this AFS's exploration (same
+    # pending-promotion set ELITEA-2017 already flagged) — no new
+    # add-data-testid work required.
+    answer_model_chip = LocatorDescriptor(testid="chat-answer-model-chip")
+
     # MCP node inline config fields (ELITEA-1954). Testid-only, added via
     # add-data-testid — BaseToolNode.jsx only sets these when nodeType is
     # "mcp" (untested node types stay untagged, .agents/testing.md §
@@ -1205,6 +1337,19 @@ class PipelineDetailPage(PipelineFormPage):
         description='"+ Agent" button in the TOOLS section (ToolMenu.jsx)'
     )
 
+    # TOOLS section MODULES toggle switches (ELITEA-2059) — dynamic per module
+    # key (e.g. "attachments", "data_analysis", "image_creation"). Same
+    # `AgentInternalToolSwitch.jsx` testid/mechanism as
+    # `AgentParticipantCanvasPage.TOOLS_TOGGLE` — ported here rather than
+    # inherited since `PipelineDetailPage` has no common ancestor with
+    # `AgentCanvasPage` (different route/hierarchy; same shared-component
+    # duplication precedent as `toolkits_section`/`add_agent_button` above,
+    # confirmed live: `ApplicationTools.jsx` renders it for pipelines too when
+    # `isPipeline=true`, filtering `pipelineVisibleTools` to only the
+    # `attachments` tool for this call site). Templated class-level constant
+    # per .agents/testing.md's dynamic-testid convention.
+    TOOLS_MODULE_TOGGLE = '[data-testid="agent-canvas-tools-toggle-{}"]'
+
     # General/Welcome/Chat-starters fields (ELITEA-2021). These testids exist
     # in the DOM on `main` already (shared AgentInput/ConversationStarters
     # components, confirmed via ELITEA-2021 AFS provenance check) but had no
@@ -1222,6 +1367,18 @@ class PipelineDetailPage(PipelineFormPage):
     conversation_starter_inputs = LocatorDescriptor(
         testid="agent-conversation-starter-input",
         description="Conversation starter textarea field(s)"
+    )
+
+    # "delete starter" button (ELITEA-2053). Testid added via add-data-testid
+    # onto the shared ConversationStarters.jsx's delete BaseBtn
+    # (EliteaAI/EliteaUI@63c96dd7) — reuses the `agent-` prefix convention
+    # already established by every other testid on this same shared
+    # component (`agent-conversation-starter-add`/`-input`/`-counter`/
+    # `-expand`/`-dialog`), per the shared-component ruling
+    # (`.agents/testing.md` § Locator policy).
+    conversation_starter_delete_button = LocatorDescriptor(
+        testid="agent-conversation-starter-delete",
+        description='"delete starter" button next to each starter row (shared ConversationStarters component)'
     )
 
     # ADVANCED section Step limit (ELITEA-2021). Testid added via
@@ -5405,6 +5562,29 @@ class PipelineDetailPage(PipelineFormPage):
         """
         return self.conversation_starter_inputs.nth(index).input_value()
 
+    def get_chat_starter_tiles(self):
+        """Return the Locator matching ALL rendered embedded-chat conversation
+        starter tiles (ELITEA-2053) — use ``.count()`` to verify the configured
+        starter chips render before any message is sent. Mirrors
+        :meth:`AgentDetailPage.get_chat_starter_tiles`.
+        """
+        return self.page.locator(self.CHAT_STARTER_TILE)
+
+    @action("Click a conversation starter tile in the embedded chat")
+    def click_chat_starter_tile(self, match_text: str, timeout: int = 10000) -> str:
+        """Click the embedded-chat starter tile whose text CONTAINS *match_text*
+        (ELITEA-2053) — resolves via ``CHAT_STARTER_TILE`` + ``.filter(has_text=...)``,
+        same idiom as :meth:`AgentDetailPage.click_chat_starter_tile`. Returns the
+        tile's own full (stripped) text at click time, so callers can assert
+        the composer was populated with the SAME text actually clicked rather
+        than a hardcoded literal.
+        """
+        tile = self.page.locator(self.CHAT_STARTER_TILE).filter(has_text=match_text)
+        tile.first.wait_for(state="visible", timeout=timeout)
+        starter_text = (tile.first.text_content() or "").strip()
+        tile.first.click()
+        return starter_text
+
     def fill_step_limit(self, value: str, timeout: int = 5000):
         """Fill the ADVANCED section's Step limit numeric input.
 
@@ -5833,6 +6013,141 @@ class PipelineDetailPage(PipelineFormPage):
         """
         return self._embedded_chat_messages().count()
 
+    # ------------------------------------------------------------------
+    # Testid-scoped embedded chat message inventory (ELITEA-2052)
+    # ------------------------------------------------------------------
+    # Distinct from `_embedded_chat_messages()`/`get_embedded_chat_message_
+    # count()` above (legacy CSS-based, tech debt — additive-only, not
+    # modified). These back the "welcome message renders through the
+    # agent-answer code path" assertion, mirroring
+    # `AgentDetailPage.get_last_chat_message_agent_markers()` exactly.
+
+    def _embedded_chat_message_items_by_testid(self):
+        """Return a locator for all ``chat-message-item`` elements in the
+        embedded chat, scoped inside ``chat_message_list`` (testid-only).
+        """
+        return self.chat_message_list.locator(self.CHAT_MESSAGE_ITEM_SELECTOR)
+
+    def get_embedded_chat_message_item_count(self) -> int:
+        """Return the number of testid-scoped ``chat-message-item`` elements
+        currently rendered in the embedded chat.
+        """
+        return self._embedded_chat_message_items_by_testid().count()
+
+    def get_last_embedded_chat_message_text(self) -> str:
+        """Return the exact body text of the last/only embedded-chat message
+        via the ``skill-test-last-response`` testid (mirrors
+        ``AgentDetailPage.get_last_chat_response_text``) — unlike raw
+        ``text_content()`` on the ``<li>``, this excludes header metadata
+        (sender name, timestamp).
+
+        Returns:
+            Stripped body text, or "" if no messages are present yet.
+        """
+        items = self._embedded_chat_message_items_by_testid()
+        if items.count() == 0:
+            return ""
+        if self.skill_test_last_response.count() > 0:
+            return (self.skill_test_last_response.last.text_content() or "").strip()
+        return ""
+
+    def get_last_embedded_chat_message_agent_markers(self) -> tuple[bool, bool, bool]:
+        """Return agent/user code-path markers for the last (or only) message.
+
+        Scoped inside the last ``chat-message-item`` — works equally for a
+        single-message list, where "last" == "only" (ELITEA-2052: welcome
+        message before any user message). Mirrors
+        ``AgentDetailPage.get_last_chat_message_agent_markers`` exactly —
+        the pipeline embedded chat shares the same
+        ``ChatMessageList.jsx``/``ApplicationAnswer.jsx`` FSD components.
+
+        Returns:
+            ``(has_read_out, has_answer_marker, has_delete_button)``. A
+            message rendered via the agent code path has
+            ``(True, True, False)``. Returns ``(False, False, False)`` if
+            the chat has no messages.
+        """
+        items = self._embedded_chat_message_items_by_testid()
+        if items.count() == 0:
+            return (False, False, False)
+
+        last_item = items.last
+        has_read_out = last_item.locator(self.CHAT_READ_OUT_BUTTON_SELECTOR).count() > 0
+        has_answer_marker = (
+            last_item.locator(self.CHAT_ANSWER_CONTENT_SELECTOR).count() > 0
+            or last_item.locator(self.SKILL_TEST_LAST_RESPONSE_SELECTOR).count() > 0
+        )
+        has_delete_button = last_item.locator(self.CHAT_MESSAGE_DELETE_SELECTOR).count() > 0
+        return (has_read_out, has_answer_marker, has_delete_button)
+
+    def get_tools_module_toggle(self, module_key: str):
+        """Return the Locator for the TOOLS MODULES toggle identified by *module_key*.
+
+        E.g. ``module_key="attachments"`` for the Attachments switch
+        (ELITEA-2059).
+        """
+        return self.page.locator(self.TOOLS_MODULE_TOGGLE.format(module_key))
+
+    def is_tools_module_toggle_checked(self, module_key: str) -> bool:
+        """Return the toggle's ``checked`` DOM property (NOT `disabled`/
+        `aria-disabled`, which this component does not set — mirrors
+        ``AgentParticipantCanvasPage.is_tools_toggle_checked``)."""
+        return self.get_tools_module_toggle(module_key).is_checked()
+
+    @action("Toggle Attachments module")
+    def toggle_attachments_module(self, timeout: int = 10000):
+        """Click the TOOLS section's "Attachments" MODULES switch.
+
+        Live-formik-state gate (ELITEA-2059 AFS § Preconditions/Automation
+        Hints) — flips the embedded chat's attach button from disabled to
+        enabled INSTANTLY, no Save required (unlike the LLM node's TASK
+        mapping fix, which does require Save).
+        """
+        toggle = self.get_tools_module_toggle("attachments")
+        toggle.wait_for(state="attached", timeout=timeout)
+        toggle.click()
+
+    def open_embedded_chat_file_chooser(self, timeout: int = 10000):
+        """Click the bare attach button and return the native FileChooser dialog.
+
+        Targets ``chat-attach-button`` directly — no plus-menu hop needed at
+        this call site (contrast ``ChatPage.open_file_chooser()``, which
+        opens the plus menu first).
+
+        Args:
+            timeout: Maximum wait for the file chooser to appear (ms).
+
+        Returns:
+            playwright.sync_api.FileChooser
+        """
+        self.chat_attach_button.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_file_chooser(timeout=timeout) as fc_info:
+            self.chat_attach_button.click()
+        return fc_info.value
+
+    @action("Attach file in embedded chat")
+    def attach_file_in_embedded_chat(self, file_path: str, timeout: int = 10000):
+        """Open the embedded chat's file chooser and select *file_path*.
+
+        Args:
+            file_path: Absolute or relative path to the file to attach.
+            timeout: Maximum wait for the file chooser to appear (ms).
+        """
+        logger.info("Attaching file in embedded chat: %s", file_path)
+        file_chooser = self.open_embedded_chat_file_chooser(timeout=timeout)
+        file_chooser.set_files(file_path)
+        self.wait_for_network(timeout=timeout)
+
+    def get_embedded_chat_attachment_chip_count(self) -> int:
+        """Count of currently visible attachment chips in the embedded chat composer."""
+        return self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX).count()
+
+    def get_embedded_chat_attachment_chip_text(self, index: int, timeout: int = 5000) -> str:
+        """Return the text content of the attachment chip at *index* (0-based)."""
+        chip = self.page.locator(self.CHAT_ATTACHMENT_CHIP.format(index))
+        chip.wait_for(state="visible", timeout=timeout)
+        return (chip.text_content() or "").strip()
+
     def send_message_in_embedded_chat(self, message: str, timeout: int = 10000):
         """Type and send a message in the embedded chat panel.
 
@@ -5944,6 +6259,255 @@ class PipelineDetailPage(PipelineFormPage):
         # Last fallback: all text from the message
         text = ai_msg.text_content() or ""
         return text.strip()
+
+    def get_embedded_chat_message_full_text_at(self, index: int) -> str:
+        """Return the RAW ``text_content()`` of the embedded-chat message
+        ``<li>`` at *index* (ELITEA-2059 fix round).
+
+        Reads a SPECIFIC position rather than ``.last`` — same race
+        ``ChatPage.get_message_text_at`` (ELITEA-2369) already documents and
+        avoids: right after Send, a transient AI placeholder ("Waking the
+        agent…") can already render at ``initial_count + 1`` before the
+        reply arrives, so ``.last`` is race-prone for reading back the
+        user's OWN just-sent message at ``initial_count`` — confirmed live
+        this fix round (a first attempt using ``.last`` intermittently read
+        the placeholder's text instead of the sent message).
+
+        Unlike :meth:`get_embedded_chat_last_message` (which extracts only
+        an AI response's answer body via ``div.css-xn5i2e``/``<p>`` tags —
+        wrong shape for a USER message, whose body renders as
+        ``UserMessage.jsx``'s ``.MuiTypography-bodyMedium`` spans instead),
+        this reads the entire message container's text via the EXISTING
+        ``_embedded_chat_messages()`` locator with no new selector
+        construction — sufficient for a substring-containment check (does
+        the just-sent bubble show the typed text) rather than an
+        exact-body extraction.
+
+        Returns:
+            Full raw text of the message ``<li>`` at *index*, or "" if no
+            message exists at that position.
+        """
+        messages = self._embedded_chat_messages()
+        if messages.count() <= index:
+            return ""
+        return (messages.nth(index).text_content() or "").strip()
+
+    def get_embedded_chat_message_attachment_names_at(self, index: int) -> list[str]:
+        """Return the filenames of ``chat-artifact-file-card`` attachment
+        cards rendered INSIDE the embedded-chat message ``<li>`` at *index*
+        (ELITEA-2059 fix round).
+
+        Confirmed via source read (``UserMessage.jsx`` -> ``MessageAttachmentList``
+        -> ``NormalAttachment.jsx``) that a user's own just-sent attachment
+        renders this SAME pre-existing testid/``data-name`` pair that
+        :meth:`AgentDetailPage.get_chat_artifact_file_names` already reads
+        for AI-created artifact files — no new testid needed, just a new
+        scoping call site (the message ``<li>`` directly, no
+        ``chat-artifact-file-list`` wrapper on this render path). Reads a
+        SPECIFIC index for the same reason as
+        :meth:`get_embedded_chat_message_full_text_at` — ``.last`` races
+        against the AI's transient placeholder message.
+
+        Returns:
+            List of attachment filenames (``data-name`` values), in DOM
+            order. Empty list if no message exists at *index* or it has no
+            attachment cards.
+        """
+        messages = self._embedded_chat_messages()
+        if messages.count() <= index:
+            return []
+        cards = messages.nth(index).locator(self.CHAT_ARTIFACT_FILE_CARD_SELECTOR)
+        return [cards.nth(i).get_attribute("data-name") or "" for i in range(cards.count())]
+
+    def wait_for_embedded_chat_message_count(self, minimum: int, timeout: int = 10000) -> int:
+        """Condition-wait until the embedded chat has at least *minimum* messages.
+
+        Confirms a message was ACCEPTED (e.g. the user's own message
+        rendered as a new list item, ELITEA-2017 step 3) without waiting
+        for the full AI response to stabilise — that is
+        :meth:`wait_for_embedded_chat_response`'s job. Same polling idiom.
+
+        Args:
+            minimum: minimum message count to wait for.
+            timeout: maximum wait time in milliseconds.
+
+        Returns:
+            The message count once it reaches *minimum*.
+
+        Raises:
+            TimeoutError: if the count never reaches *minimum* within timeout.
+        """
+        deadline = time.time() + timeout / 1000
+        count = self.get_embedded_chat_message_count()
+        while time.time() < deadline:
+            count = self.get_embedded_chat_message_count()
+            if count >= minimum:
+                return count
+            self.page.wait_for_timeout(200)
+        raise TimeoutError(
+            f"Embedded chat message count did not reach {minimum} within {timeout}ms (last={count})"
+        )
+
+    # Transient loading/status placeholders that ``get_embedded_chat_last_message()``
+    # can legitimately return mid-stream — NOT real content growth. Same known
+    # vocabulary ``ChatPage.TRANSIENT_MESSAGES``/``_is_transient_message``
+    # already documents for the main chat; the pipeline's embedded chat renders
+    # through the SAME component chain (AFS
+    # l2_pipeline-execution-long-response-streaming_ELITEA-2017.md — confirmed
+    # live during implementation: "Waking the agent…" then "Packing its
+    # tools…" placeholders observed between send and real body text, both
+    # non-empty and of DIFFERENT lengths, which defeated a naive length-only
+    # growth check). Duplicated here (not imported from ``ChatPage``) rather
+    # than restructuring an unrelated, heavily-called page object for a
+    # same-vocabulary private helper.
+    _EMBEDDED_CHAT_TRANSIENT_PLACEHOLDERS = frozenset([
+        "waking the agent", "waking the agent…", "waking the agent...",
+        "thinking", "thinking…", "thinking...",
+    ])
+
+    def _is_embedded_chat_transient_text(self, text: str) -> bool:
+        """Return True if *text* is a transient loading/status placeholder
+        rather than real streamed response content.
+        """
+        normalized = text.replace("\xa0", " ").lower().strip()
+        if (
+            normalized.rstrip(".…") in self._EMBEDDED_CHAT_TRANSIENT_PLACEHOLDERS
+            or normalized in self._EMBEDDED_CHAT_TRANSIENT_PLACEHOLDERS
+        ):
+            return True
+        if normalized.startswith("thought for "):
+            return True
+        if "packing" in normalized and "tool" in normalized:
+            return True
+        return False
+
+    def wait_for_embedded_chat_real_content(self, timeout: int = 30000) -> str:
+        """Condition-wait until the last embedded-chat message has real
+        (non-empty, non-transient) body content, and return it.
+
+        Skips "Waking the agent…"/"Packing its tools…"/"Thought for N
+        secs"-style placeholders (see
+        :meth:`_is_embedded_chat_transient_text`) so callers get a genuine
+        first sample to measure progressive growth from (ELITEA-2017).
+
+        Args:
+            timeout: maximum wait time in milliseconds.
+
+        Returns:
+            The first non-transient body text sample.
+
+        Raises:
+            TimeoutError: if no real content appears within timeout.
+        """
+        deadline = time.time() + timeout / 1000
+        while time.time() < deadline:
+            current = self.get_embedded_chat_last_message()
+            if current and not self._is_embedded_chat_transient_text(current):
+                return current
+            self.page.wait_for_timeout(500)
+        raise TimeoutError(f"No real (non-transient) embedded chat content within {timeout}ms")
+
+    def wait_for_embedded_chat_body_growth(self, previous_length: int, timeout: int = 60000) -> str:
+        """Condition-wait until the last embedded-chat message's body text
+        grows past *previous_length* characters.
+
+        Direct analogue of ``ChatPage.wait_for_message_body_growth`` for the
+        pipeline's embedded chat panel (ELITEA-2017) — proves progressive
+        streaming without a fixed ``sleep()``. Polls
+        :meth:`get_embedded_chat_last_message` (same extraction path that
+        method already uses, not a raw locator), skipping transient
+        placeholder samples (see :meth:`_is_embedded_chat_transient_text`)
+        so a placeholder swap is never mistaken for real content growth.
+
+        Args:
+            previous_length: the previously-observed body-text length; the
+                wait resolves the instant a fresh sample exceeds it.
+            timeout: maximum wait time in milliseconds.
+
+        Returns:
+            The new (grown) body text.
+
+        Raises:
+            TimeoutError: if the body text has not grown within timeout.
+        """
+        logger.info(
+            "Waiting for embedded chat body to grow past %d chars (timeout=%dms)...",
+            previous_length, timeout,
+        )
+        deadline = time.time() + timeout / 1000
+        while time.time() < deadline:
+            current = self.get_embedded_chat_last_message()
+            if (
+                len(current) > previous_length
+                and not self._is_embedded_chat_transient_text(current)
+            ):
+                logger.info(
+                    "Embedded chat body grew: %d -> %d chars", previous_length, len(current)
+                )
+                return current
+            self.page.wait_for_timeout(500)
+        raise TimeoutError(
+            f"Embedded chat message body did not grow past {previous_length} chars within {timeout}ms"
+        )
+
+    # ------------------------------------------------------------------
+    # LLM model selector (embedded chat panel, ELITEA-2017)
+    # ------------------------------------------------------------------
+
+    @action("Open LLM model selector")
+    def open_model_selector(self, timeout: int = 5000):
+        """Click the embedded chat panel's model selector to open the dropdown.
+
+        LOCATOR: ``model-selector-button`` testid. Mirrors
+        ``AgentDetailPage.open_model_selector()``.
+
+        Args:
+            timeout: Maximum wait for the first option to become visible.
+        """
+        logger.info("Opening LLM model selector")
+        self.model_selector_button.click()
+        self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def get_selected_model_name(self) -> str:
+        """Return the currently displayed model name on the closed selector.
+
+        LOCATOR: ``model-selector-name`` testid.
+        """
+        return (self.model_selector_name.text_content() or "").strip()
+
+    @action("Select LLM model")
+    def select_llm_model(self, display_name: str, timeout: int = 5000):
+        """Select a model from the OPEN model-selector dropdown by its
+        rendered display name.
+
+        Call after :meth:`open_model_selector`. Mirrors
+        ``AgentDetailPage.select_llm_model()``.
+
+        Args:
+            display_name: Exact rendered model name (e.g. "GPT-5 mini").
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting LLM model: %s", display_name)
+        option = self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).filter(
+            has_text=display_name
+        )
+        option.first.wait_for(state="visible", timeout=timeout)
+        option.first.click()
+        logger.info("LLM model '%s' selected", display_name)
+
+    def get_answer_model_chip_text(self, timeout: int = 5000) -> str:
+        """Return the settled response's model-attribution chip text.
+
+        LOCATOR: ``chat-answer-model-chip`` testid (e.g. ``"GPT-5 mini
+        (LLM1)"`` — ``"<model display name> (<node id>)"``). Call only
+        after the response has settled (e.g. after
+        :meth:`wait_for_embedded_chat_response`) — the chip may not have
+        rendered yet mid-stream.
+        """
+        self.answer_model_chip.wait_for(state="visible", timeout=timeout)
+        return (self.answer_model_chip.text_content() or "").strip()
 
     def clear_chat(self, timeout: int = 10000) -> None:
         """Click the embedded chat's 'Clear the chat' button to start a fresh conversation.

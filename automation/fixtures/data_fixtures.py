@@ -13,6 +13,9 @@ Fixtures:
 - agent_id: Fresh agent per test
 - pipeline_id: Fresh empty pipeline per test
 - pipeline_with_llm_id: Fresh executable pipeline with LLM node
+- pipeline_with_variable_task_llm_id: Fresh executable pipeline with LLM node,
+  TASK mapped ``type: variable, value: input`` (forwards the user's message,
+  incl. attachment reference, into the LLM node — ELITEA-2059)
 - github_credential: GitHub API credential (skipped if GITHUB_TOKEN unset)
 - github_toolkit: GitHub toolkit attached to a fresh credential
 - github_toolkit_with_selected_tools: GitHub toolkit with settings.selected_tools
@@ -203,6 +206,117 @@ def pipeline_with_llm_id(pipeline_api: PipelineAPI, request):
         logger.info("Deleted LLM pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete LLM pipeline %s: %s", pid, exc)
+
+
+@pytest.fixture
+def pipeline_with_fstring_llm_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with a single LLM entry node whose TASK is an
+    F-String template (``{input}``), connected directly to END.
+
+    Satisfies the ELITEA-2017 precondition literally ("A pipeline with LLM
+    node as entry point exists (TASK configured with F-String: '{input}')")
+    — :func:`pipeline_with_llm_id` does NOT satisfy this as-is:
+    ``PipelineAPI.create_pipeline_with_llm_node()`` hardcodes TASK as
+    ``type: fixed, value: ''``, not an F-String (confirmed live, AFS
+    ``l2_pipeline-execution-long-response-streaming_ELITEA-2017.md`` §
+    Test Data). Built via the generic :meth:`PipelineAPI.create_pipeline_with_nodes`
+    — the SAME helper :func:`pipeline_with_two_llm_nodes_id`/
+    :func:`build_two_llm_nodes` already use for ELITEA-2452 — rather than
+    adding a new parameter to ``create_pipeline_with_llm_node``.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2017_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created F-String LLM pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=[
+            {
+                "id": "LLM 1",
+                "type": "llm",
+                "input": [],
+                "input_mapping": {
+                    "chat_history": {"type": "fixed", "value": []},
+                    "system": {"type": "fixed", "value": ""},
+                    "task": {"type": "fstring", "value": "{input}"},
+                },
+                "output": [],
+                "structured_output": False,
+                "transition": "END",
+            }
+        ],
+    )
+    pid = pipeline["id"]
+    logger.info("Created F-String LLM pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    # Cleanup: delete pipeline even if test fails
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted F-String LLM pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete F-String LLM pipeline %s: %s", pid, exc)
+
+
+@pytest.fixture
+def pipeline_with_variable_task_llm_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with a single LLM entry node whose TASK is mapped
+    ``type: variable, value: input`` (NOT the fixed/f-string shapes the
+    sibling fixtures above use), connected directly to END.
+
+    Satisfies the ELITEA-2059 precondition (AFS
+    ``l2_pipeline-attach-files-in-chat_ELITEA-2059.md`` § Preconditions):
+    :func:`pipeline_with_llm_id`'s TASK mapping is ``type: fixed, value: ''``
+    (hardcoded by ``PipelineAPI.create_pipeline_with_llm_node()``), which
+    never forwards the user's message text (or its attachment reference)
+    into the LLM node — the response would always ignore whatever was
+    typed/attached. Built via :meth:`PipelineAPI.create_pipeline_with_nodes`
+    (same generic helper :func:`pipeline_with_fstring_llm_id` /
+    :func:`pipeline_with_two_llm_nodes_id` already use) so the mapping is
+    correct — and persisted — from creation, with no separate UI Save step
+    needed. Uses the default ``gpt-5.2`` model (``_default_llm_settings()``'s
+    fallback) — the DEV-backend default (Claude 4.5 Sonnet, on the shared
+    ``test-pipeline`` UI fixture only) 400s with no configured LLM-provider
+    fallback; AFS § Test Data records this as environment test data, not an
+    Attach-Files defect.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2059_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created variable-TASK LLM pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=[
+            {
+                "id": "LLM 1",
+                "type": "llm",
+                "input": ["input"],
+                "input_mapping": {
+                    "chat_history": {"type": "fixed", "value": []},
+                    "system": {"type": "fixed", "value": ""},
+                    "task": {"type": "variable", "value": "input"},
+                },
+                "output": [],
+                "structured_output": False,
+                "transition": "END",
+            }
+        ],
+    )
+    pid = pipeline["id"]
+    logger.info("Created variable-TASK LLM pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted variable-TASK LLM pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete variable-TASK LLM pipeline %s: %s", pid, exc)
 
 
 def build_two_llm_nodes() -> list[dict]:

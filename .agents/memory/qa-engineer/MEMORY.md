@@ -36,3 +36,6 @@
 - [Confirmed-live ≠ on-main](confirmed_live_is_not_on_main_provenance_check.md) — dev server serves automation/testids; git grep origin/main separately
 - [View toggle layout proof](view_toggle_layout_proof_is_entity_card_name_absence_plus_url_param.md) — table headers have no testid; use entity-card-name count + ?view= param
 - [Tag filter panel is shared, entity-agnostic](skills_list_tag_filter_quirks.md) — Categories.jsx testids work verbatim on any entity's list page, check before filing testid-needed
+- [Pipeline embedded chat = main chat components](pipeline_embedded_chat_shares_main_chat_components.md) — ELITEA-2181's testids already apply, check _surface.md first
+- [Pipeline execution needs Save + working model](pipeline_llm_execution_needs_save_and_working_model.md) — Task-fix needs Save; DEV's default Claude 4.5 400s, use gpt-5.2
+- [Title project suffix ≠ "Private"](browser_title_project_name_suffix_not_private.md) — capture project name dynamically, don't hardcode "Private" in page-title asserts
