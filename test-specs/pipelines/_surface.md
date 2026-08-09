@@ -2,7 +2,7 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-08 (ELITEA-2019 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2052 analysis).
 
 ## Canvas Zoom/Pan/Fit-View — pure client-side ReactFlow viewport state, deterministic Fit View, zero new testids (confirmed live, 2026-08-08, ELITEA-2019)
 
@@ -2570,3 +2570,57 @@ Full AFS: `test-specs/pipelines/l2_pipeline-execution-long-response-streaming_EL
   `PipelineAPI.create_pipeline_with_nodes()`. Satisfies the F-String
   precondition `pipeline_with_llm_id` does not (that fixture hardcodes
   TASK as `fixed`/`''`).
+
+## Embedded chat panel — Welcome message renders via the SAME shared FSD chat
+components as the agent surface; the "Welcome message" left-panel section is
+always expanded by default (confirmed live, 2026-08-09, ELITEA-2052)
+
+Confirmed live via Playwright MCP against a fresh pipeline (id `8580`,
+`agent-welcome-message-input` = `"Hello! How can I help you today?"`):
+
+- **The pipeline detail page's embedded chat panel seeds its history from
+  the SAME `ChatHelpers.getWelcomeMessage()`/`getInitialChatHistory()` helper
+  (`chat.helpers.js`) that ELITEA-1885 documented for the agent surface** —
+  confirmed via source read: `usePipelineChat.hooks.js` calls the identical
+  helper `useApplicationChat.hooks.js` uses, keyed off
+  `pipelineVersionDetails.welcome_message` instead of
+  `applicationVersionDetails.welcome_message`. Same rendering path
+  (`ChatMessageList.jsx`/`ApplicationAnswer.jsx`), same testids:
+  `chat-message-list`, `chat-message-item`, `chat-read-out-button`,
+  `skill-test-last-response` (asserted when the message is last/only —
+  it always is for a lone welcome message), `chat-answer-content` (absence
+  check when last), `chat-message-delete-button` (absence check, proves
+  agent-not-user rendering). All confirmed present/absent exactly as
+  ELITEA-1885 documented for agents — **none of these are yet
+  `LocatorDescriptor` fields on `PipelineDetailPage`** (they only exist on
+  `AgentDetailPage`); add sibling fields with the same testids rather than
+  cross-importing from `AgentDetailPage` (project convention — see
+  ELITEA-2021's note on `PipelineDetailPage`/`AgentFormPage` being siblings,
+  not a class hierarchy).
+- **The "Welcome message" accordion in the left panel renders ALREADY
+  EXPANDED by default** — same pattern as the pre-existing "Advanced"
+  section (`agent-canvas-section-advanced`, documented in ELITEA-2021's
+  AFS). A case that says "expand the Welcome message section" needs no
+  click; `welcome_message_input.wait_for(state="visible")` already proves
+  the section is open. The accordion header DOES carry a testid
+  (`agent-canvas-section-welcome-message`, `WelcomeMessage.jsx`) but it is
+  **on `automation/testids` ONLY** (added 2026-07-21,
+  EliteaAI/EliteaUI@353be956, for the unrelated ELITEA-2166 in-chat-canvas
+  case — confirmed absent on `origin/main` via fresh `git fetch origin` +
+  `git grep` this session). No case has needed it yet since the section is
+  never actually collapsed in practice; don't add a page-object field for it
+  speculatively (canon #511 — only what a test's executed path calls).
+- **"Open a new chat session" has no distinct UI action on the pipeline
+  detail route** — the embedded chat panel is always mounted (same
+  live-product shape ELITEA-1885 found on the agent detail page). A
+  full-page reload (`page.goto`, not an SPA route change) is the closest
+  equivalent to a pristine "new session" and was confirmed to reproduce the
+  welcome-message-only state identically to the immediately-post-save state.
+- Welcome-message seeding is **zero-network beyond the existing detail-page
+  GET** — `GET /api/v2/elitea_core/application/prompt_lib/{project}/{id}`
+  returns `version_details.welcome_message`, which the hook reads client-side
+  to seed `chatHistory`. No WebSocket wait is needed for this specific
+  assertion (distinct from AI-generated responses elsewhere on this surface,
+  e.g. ELITEA-2017's streaming case).
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-welcome-message-shown-before-first-input_ELITEA-2052.md`.
