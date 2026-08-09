@@ -368,20 +368,27 @@ def test_subgraph_state_sharing_node_c_state_propagation(
             pipeline_page.get_run_details_timeline_step_node_id(i, timeout=UI_ELEMENT_TIMEOUT)
             for i in range(timeline_count)
         ]
-        if timeline_count != _EXPECTED_TIMELINE_STEP_COUNT_WITH_BLOCKED_NODE_C:
+        # Polarity (fix round, 2026-08-09): the condition must fire on the CURRENT
+        # buggy symptom (timeline stuck at the blocked count / CODE2 absent), not
+        # on a DEVIATION from it -- matching the compliant #1103 precedent above
+        # (`restarted_types` fires when the defect's symptom occurs). The inverted
+        # form (fire only on deviation) makes this test a hidden GREEN while #1381
+        # is open, since it would go RED only if the defect were fixed -- see
+        # `.agents/memory/qa-engineer/known_defect_soft_assert_polarity_must_encode_correct_behavior.md`.
+        if timeline_count == _EXPECTED_TIMELINE_STEP_COUNT_WITH_BLOCKED_NODE_C:
             soft_failures.append(
-                f"Known defect {_KNOWN_DEFECT_1381}: expected the timeline to stay at "
+                f"Known defect {_KNOWN_DEFECT_1381}: timeline is stuck at "
                 f"{_EXPECTED_TIMELINE_STEP_COUNT_WITH_BLOCKED_NODE_C} steps (the 2-node-parent "
-                f"shape -- CODE2/Node_C never executes) -- got {timeline_count}. Either the "
-                f"fixture shape changed, or CODE2 has started executing (defect may be fixed) -- "
-                f"investigate before re-declaring this the known-defect signature."
+                f"shape -- CODE2/Node_C never executes) -- got {timeline_count}. This is the "
+                f"CURRENT known-defect signature; it will clear on its own once #1381 is fixed "
+                f"and CODE2 starts joining the run."
             )
-        if any("CODE2" in node_id for node_id in timeline_node_ids):
+        if not any("CODE2" in node_id for node_id in timeline_node_ids):
             soft_failures.append(
-                f"Known defect {_KNOWN_DEFECT_1381}: expected NO timeline entry whose node-id "
-                f"aria-label matches 'CODE2' (case step 8's target control should not exist while "
-                f"the defect stands) -- got {timeline_node_ids!r}. CODE2 may have started "
-                f"executing -- investigate before re-declaring this the known-defect signature."
+                f"Known defect {_KNOWN_DEFECT_1381}: no timeline entry's node-id aria-label "
+                f"matches 'CODE2' (case step 8's target control does not exist while the defect "
+                f"stands) -- got {timeline_node_ids!r}. This is the CURRENT known-defect "
+                f"signature; it will clear on its own once #1381 is fixed."
             )
 
     with allure.step(

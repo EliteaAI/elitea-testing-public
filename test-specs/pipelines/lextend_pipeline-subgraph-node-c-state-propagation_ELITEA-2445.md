@@ -114,20 +114,34 @@ call per the skill: a near-rewrite would instead be `ready-for-automation`).
      off the SELECTED step, not a run-level aggregate.
 3. Confirm the timeline does **NOT** contain a distinct entry for `CODE2` —
    **NEW gap assertion, documents case steps 5/8's blocked premise**.
-   - **Verify** (`expect.soft()` + `# Known defect: EliteaAI/elitea-testing-public#1381`):
-     `get_run_details_timeline_step_count()` stays at the SAME count the
+   - **Verify** (soft-assertion trigger, `# Known defect: EliteaAI/elitea-testing-public#1381`):
+     the soft-failure condition fires ON the CURRENT buggy symptom —
+     i.e. it appends to `soft_failures` when
+     `get_run_details_timeline_step_count()` IS the SAME count the
      2-node-parent fixture produces (4, per ELITEA-2443's own confirmed shape)
      despite the 3-node parent's extra `CODE2` node being present on canvas
      (`get_node_ids()` includes `"CODE2"`) — i.e. `CODE2` is wired into the
-     graph but never appears in the run.
+     graph but never appears in the run. **Polarity is load-bearing**: while
+     `#1381` stays open this condition is TRUE (fires → `pytest.fail()` →
+     test is RED, the sanctioned signal), and it clears on its own — no code
+     change needed — the moment the defect is fixed and the count changes.
+     The inverted form (fire only when the count DEVIATES from 4) is a hidden
+     GREEN while the defect is open and is NOT compliant — see
+     `.agents/testing.md` § Merge gate's sanctioned-RED exception and the
+     compliant `#1103` precedent in this same file (`restarted_types` fires
+     on the defect's own symptom, not on its absence).
 4. Attempt case step 8 ("Click Node_C step — verify shared_data Before shows
    the child-modified value") — **NEW gap assertion, BLOCKED by `#1381`**.
-   - **Verify** (`expect.soft()` + `# Known defect: EliteaAI/elitea-testing-public#1381`):
-     there is no timeline entry whose node-id aria-label matches `"CODE2"`
+   - **Verify** (soft-assertion trigger, `# Known defect: EliteaAI/elitea-testing-public#1381`):
+     the soft-failure condition fires when there is NO timeline entry whose
+     node-id aria-label matches `"CODE2"`
      (`get_run_details_timeline_step_node_id(i)` for every `i` in
      `range(get_run_details_timeline_step_count())`) — confirming the node
      genuinely never executed rather than merely rendering under a different
-     label.
+     label. Same polarity rule as step 3: absence of `"CODE2"` is the CURRENT
+     buggy symptom, so the condition is TRUE (fires) while `#1381` is open —
+     test RED now, clears to GREEN automatically once the defect is fixed and
+     `CODE2` starts appearing.
 5. Timestamps render on every timeline step and are non-decreasing across the
    run — **NEW gap assertion, satisfies case step 5's "with timestamps in
    execution order" wording** (the covering test never calls
@@ -166,7 +180,7 @@ call per the skill: a near-rewrite would instead be `ready-for-automation`).
 | 5 Open Run Details — timeline shows all 3 nodes with timestamps in order | target loads, condition holds | covering test step 5 (panel loads) + gap steps 3, 5 (3-node count, timestamps) | covering test + gap steps 3, 5 | **partially blocked — timeline never shows 3 nodes (`#1381`); timestamp-ordering assertion is new, unblocked coverage** |
 | 6 Click Node_A step — Before empty/initial, After has Node_A's output | control responds | gap step 2 | gap step 2: index-0 selection, Before=`'""'`, After=`'"parent_value"'` | asserted (NEW) |
 | 7 Click Agent_Node step — Before shows Node_A's output, After shows child's modification | control responds | covering test steps 6-9 (selects LAST index) | covering test | asserted (already covered — the covering test's last-index selection IS the Agent-node step in the 4-entry shape) |
-| 8 Click Node_C step — Before shows the child-modified value | control responds | gap step 4 | gap step 4: `expect.soft()` + `# Known defect: #1381` | **BLOCKED — CONFIRMED DEFECT, soft-asserted, not masked** |
+| 8 Click Node_C step — Before shows the child-modified value | control responds | gap step 4 | gap step 4: soft-failure condition fires on CODE2's CURRENT absence (`# Known defect: #1381`) — test is RED while the defect is open, not GREEN | **BLOCKED — CONFIRMED DEFECT, soft-asserted with correct polarity, not masked** |
 | 9 Verify "Completed" badge on run header | condition holds | covering test step 5 | covering test | asserted (already covered) |
 
 ### Axis 2 — Beyond-case observables
