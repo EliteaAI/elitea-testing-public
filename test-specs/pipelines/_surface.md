@@ -2,7 +2,62 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2054/ELITEA-2055 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2056 analysis).
+
+## Information section "Show" link — new testid, opens a Mermaid modal (NOT navigation), deterministic console defect on single-node diagrams (confirmed live, 2026-08-09, ELITEA-2056)
+
+Confirmed live via `page.request` (Bearer `VITE_DEV_TOKEN`) + Playwright MCP against
+three disposable single-LLM-node probe pipelines (ids 8669/8670/8671, `instructions`
+YAML matching the `pipeline_with_llm_id` fixture exactly):
+
+- **The Information section's Pipeline ID / Version ID / Trigger rows all resolve
+  exactly as the ELITEA-2020/ELITEA-2041 digest entries already document** — no new
+  findings there. `copy-id` text == the pipeline's numeric id, `copy-version-id` text
+  == the version's numeric id, `information-trigger-row` text ==
+  `"Trigger:Chat Message"` (default trigger, no literal space — CSS flex `gap`, same
+  as ELITEA-2041's finding).
+- **Copy ID / Copy Version ID both fire a real `toastInfo` (info-severity `toast-alert`)
+  with DISTINCT wording** — confirmed live: `"The ID has been copied to the
+  clipboard."` for Copy ID, `"The Version ID has been copied to the clipboard."` for
+  Copy Version ID. Both are pure client-side `navigator.clipboard.writeText()` calls
+  (`CopyToClipboardButton.jsx`) — zero network requests, same class as the
+  ELITEA-2026 YAML-copy button.
+- **The "Pipeline: Show" link had NO testid anywhere** (`ApplicationInformation.jsx`,
+  the `showPipeline`-guarded block — same conditional shape as the pre-existing
+  `information-trigger-row`). Added `data-testid="pipeline-information-show-link"`
+  this session (`EliteaAI/EliteaUI@22184211`, `automation/testids`), confirmed live
+  via HMR immediately after push.
+- **Clicking "Show" does NOT navigate anywhere — it opens a `Dialog` modal**
+  (`StyledShowContextModal`, `contextLabel="Pipeline"`, `renderContextAsMermaid`)
+  rendering the pipeline's YAML as a Mermaid diagram. **Case-text drift** (not a
+  product defect, reverse-masking guard applies): ELITEA-2056's own step 9 says
+  "navigates to pipeline YAML or visual representation" — the product satisfies only
+  the "visual representation" branch, via a modal, not a route change. Assert the
+  modal + diagram, not a URL/navigation.
+- **The modal's Mermaid content is identifiable via the PRE-EXISTING
+  `chat-mermaid-diagram-svg-container` testid** — same shared
+  `MermaidDiagramOutput/DiagramOutput.jsx` component the chat surface already uses,
+  hardcoded testid inside the shared component (tracked naming tech debt per the
+  ELITEA-2053 chat-starters digest entry, NOT fixed here). Confirmed live: resolves
+  to exactly 1 element inside the opened dialog, containing 6 `<svg>` nodes for a
+  single-LLM-node pipeline. Cross-page duplication of the same testid literal across
+  `ChatPage`/`PipelineDetailPage` page objects is an established precedent already
+  (same pattern as `copy-id`/`copy-version-id`/`agent-information-section` duplicated
+  between `AgentDetailPage` and `PipelineDetailPage`).
+- **Deterministic (2/2) console defect on opening the Show-link modal for a
+  single-node pipeline** — `InvalidStateError: Failed to execute 'inverse' on
+  'SVGMatrix': The matrix is not invertible.`, thrown from `svg-pan-zoom`'s
+  `resetZoom` (`SvgPanZoom.zoomAtPoint` → `.zoom` → `.resetZoom` →
+  `DiagramOutput.jsx:298 renderDiagram`). The diagram still renders visually (SVG
+  present) — functionally non-blocking. Filed as
+  [`EliteaAI/elitea-testing-public#1368`](https://github.com/EliteaAI/elitea-testing-public/issues/1368),
+  a **sibling** of the pre-existing `#1045` (same `svg-pan-zoom` library, different
+  call site — #1045 is the in-chat Mermaid **canvas editor**, this is the read-only
+  **Show-link preview**). Any future case that opens this same modal on a
+  minimal/single-node pipeline should expect this error and soft-assert around it
+  with `# Known defect: #1368`, not assert zero console errors unscoped.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-information-section_ELITEA-2056.md`.
 
 ## STATE panel — custom variable delete button: no confirm dialog, zero network on click (confirmed live, 2026-08-09, ELITEA-2044)
 
