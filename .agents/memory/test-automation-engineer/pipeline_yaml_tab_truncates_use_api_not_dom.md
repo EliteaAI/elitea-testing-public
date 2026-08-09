@@ -14,7 +14,10 @@ scrollbar offered** (`.cm-scroller.scrollHeight === .cm-scroller.clientHeight`
 CONFIRMED, already-filed product defect:
 `EliteaAI/elitea-testing-public#1025` (first found ELITEA-2010, a Toolkit
 node with 41 lines cut at line 32; reconfirmed ELITEA-2045, an LLM
-structured-output node with 40 lines cut at line 34). It is display-only —
+structured-output node with 40 lines cut at line 34; reconfirmed again
+ELITEA-2446, a plain 2-node LLM->Code->END pipeline with 2 custom state vars
+— even a "short" multi-line Code-node script is enough to trip it). It is
+display-only —
 verified via the save PUT's response body, which always has the full,
 correct YAML.
 

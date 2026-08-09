@@ -105,8 +105,14 @@
    - **Verify**: reuse `select_run_details_timeline_step(1, ...)` (index 1 — the
      SECOND timeline entry, `Code 1`, confirmed live once the transition is wired
      correctly) and `get_run_details_selected_timeline_step_id()` returns text
-     containing `"Code1"` (node ids render without the YAML id's space, same
-     convention as `"LLM1"`/`"LLM2"`, confirmed ELITEA-2450/2452).
+     containing `"pyodide"` — **IMPLEMENTER AMENDMENT (confirmed live during
+     ELITEA-2446 implementation):** the space-stripped-YAML-id convention
+     (`"LLM1"`/`"LLM2"`, confirmed ELITEA-2450/2452) does NOT generalize to Code
+     nodes — the timeline label instead shows the underlying Python-sandbox
+     executor's name (`pyodide`), not `"Code1"`. Filed:
+     [EliteaAI/elitea-testing-public#1385](https://github.com/EliteaAI/elitea-testing-public/issues/1385).
+     The mechanism itself (selecting index 1, reading that step's state) is
+     unaffected — only the expected label text.
 9. Verify `code_output` After value contains the processed `user_info` value.
    - **Verify**: `expand_run_details_state_row("code_output", ...)` then
      `get_run_details_state_after_value("code_output")` contains the substring
@@ -125,7 +131,16 @@
       `Code 1` entry in `parsed["nodes"]`, assert `node["input"] == ["user_info"]`
       and `node["output"] == ["code_output"]` — same `yaml.safe_load()` +
       field-assertion technique ELITEA-2027/2042 already established for this
-      suite (no new pattern to invent).
+      suite (no new pattern to invent). **IMPLEMENTER AMENDMENT (confirmed live
+      during ELITEA-2446 implementation): this pipeline's 2-node YAML (multi-line
+      Code script + 2 custom state vars) is long enough to hit the ALREADY-FILED
+      `EliteaAI/elitea-testing-public#1025` viewport-truncation defect** (the
+      Pipeline YAML tab silently clips long documents — same defect
+      ELITEA-2045 already routes around) — the UI YAML tab never renders the
+      Code node's `input`/`output` fields. Verify via
+      `pipeline_api.get_pipeline()` → `yaml.safe_load(instructions)` instead
+      (the SAME server-truth-readback pattern ELITEA-2045/ELITEA-2068
+      established), not `pipeline_page.get_yaml_content()`.
 
 ## Expected Results
 - The Code node correctly reads `user_info` via `elitea_state.get(...)` and writes a
@@ -152,10 +167,10 @@
 | 5 Set Code node Output to `code_output` | Output shows `code_output` | step 5 | step 5: `get_code_node_output_value()` | asserted |
 | 6 Enable structured output | switch checked | step 6 | step 6: `.is_checked()` | asserted |
 | 7 Execute the pipeline | completes without error | step 7 | step 7: `get_run_details_status()` | asserted |
-| 8 Open Run Details, click Code node step | Code node step selectable | step 8 | step 8: `select_run_details_timeline_step(1, ...)` + label text | asserted — reuses ELITEA-2452's existing timeline-step methods unmodified |
+| 8 Open Run Details, click Code node step | Code node step selectable | step 8 | step 8: `select_run_details_timeline_step(1, ...)` + label text | asserted — reuses ELITEA-2452's existing timeline-step METHOD unmodified, but the expected label text is `"pyodide"` not `"Code1"` (implementer amendment, `EliteaAI/elitea-testing-public#1385`) |
 | 9 Verify `code_output` After contains processed `user_info` value | After value correct | step 9 | step 9: `get_run_details_state_after_value("code_output")` | asserted |
 | 10 Verify no execution errors in timeline | no errors | step 10 | step 10: per-step `data-status`, console errors (excl. known `#1267`) | asserted |
-| 11 YAML editor shows Code node `input: [user_info]`, `output: code_output` | YAML matches config | step 11 | step 11: `yaml.safe_load()` field assertions | asserted — reuses ELITEA-2027/2042's established YAML-parsing pattern |
+| 11 YAML editor shows Code node `input: [user_info]`, `output: code_output` | YAML matches config | step 11 | step 11: `yaml.safe_load()` field assertions | asserted — via `pipeline_api.get_pipeline()` server-truth readback, NOT the UI YAML tab (hits the already-filed `EliteaAI/elitea-testing-public#1025` viewport-truncation defect — implementer amendment) |
 | Expected Final State / Pass-Fail criteria | all steps complete, no errors | all steps | all steps | asserted |
 
 ### Axis 2 — Analyst additions
@@ -245,6 +260,16 @@ writeup):
    `transition:` field per node — which this AFS's own recommended fixture (see
    Automation Hints) does. Filed:
    [EliteaAI/elitea-testing-public#1384](https://github.com/EliteaAI/elitea-testing-public/issues/1384).
+
+3. **IMPLEMENTER AMENDMENT (confirmed live during implementation): the Run
+   Details timeline label for a Code node's step is `"pyodide"` (the Python
+   sandbox executor's name), not the space-stripped YAML id `"Code1"`.** The
+   convention documented by ELITEA-2450/2452 (id, space stripped —
+   `"LLM1"`/`"LLM2"`) does NOT generalize to Code nodes. The mechanism itself
+   (index-based `select_run_details_timeline_step(1, ...)`, reading that
+   step's state rows) is correct and unaffected — only the expected label
+   text. Filed:
+   [EliteaAI/elitea-testing-public#1385](https://github.com/EliteaAI/elitea-testing-public/issues/1385).
 
 `elitea_state.get(...)` (the case's literal spelling) IS confirmed valid — NOT a
 case-text drift. `.claude/skills/elitea-pipeline/references/yaml-schema.md:212`

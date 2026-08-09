@@ -3380,3 +3380,24 @@ quirk.
   name itself.
 - Full flow, handles, and Coverage Map:
   `test-specs/pipelines/l3_code-node-read-elitea-state-variables_ELITEA-2446.md`.
+
+**Resolved/added during ELITEA-2446 implementation:** the Run Details timeline
+label for a Code node's step reads `"pyodide"` (the Python-sandbox executor's
+name — visible in the chat panel as the tool-call chip "Python Sandbox:
+pyodide_sandbox"), **not** the space-stripped YAML id (`"Code1"`) that
+ELITEA-2450/2452 confirmed for LLM/Printer nodes. That convention does not
+generalize to Code nodes — `get_run_details_selected_timeline_step_id()` after
+`select_run_details_timeline_step(1, ...)` on an `LLM 1 -> Code 1 -> END`
+pipeline returns text containing `"pyodide"`, confirmed live via
+`test_pipeline_code_node_reads_state_variable.py`. Filed:
+[EliteaAI/elitea-testing-public#1385](https://github.com/EliteaAI/elitea-testing-public/issues/1385).
+
+**Also confirmed during ELITEA-2446 implementation:** this case's 2-node YAML
+(multi-line Code script + 2 custom state vars) is long enough to hit the
+ALREADY-FILED `EliteaAI/elitea-testing-public#1025` Pipeline-YAML-tab
+viewport-truncation defect (same one `test_pipeline_llm_structured_output_
+state_variables.py`, ELITEA-2045, already routes around) — the UI YAML tab
+never rendered the Code node's `input`/`output` fields. The test verifies
+those fields via `pipeline_api.get_pipeline()` server-truth readback instead
+of `pipeline_page.get_yaml_content()`. No new issue filed — same root cause,
+same established workaround pattern.
