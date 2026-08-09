@@ -28,9 +28,11 @@
   **wave-03-yaml-decision-trigger (5 cases) LANDED** — elitea-testing-public#1350, merged `7d79ad45`,
   5/5 automated (0 sanctioned-RED). Report bug found+fixed (ELITEA-2027 falsely marked blocked by the
   workflow despite being genuinely merged — see Log). TMS back-written, closure comment posted.
-  wave-04 through wave-07 (32 cases) — PLANNED, not yet launched (see Plan)
-- Campaign totals so far: 23/55 terminal — 22 automated (2 sanctioned-RED: ELITEA-2047 vs #1327,
-  ELITEA-2051 vs #570) + 1 already-covered (ELITEA-2063). 32/55 remaining across wave-04..07
+  **wave-04-canvas-editor-controls (6 cases) LANDED** — elitea-testing-public#1356, merged `e788bfc2`,
+  5/5 automated + 1 already-covered (ELITEA-2060). TMS back-written, closure comment posted.
+  wave-05 through wave-07 (26 cases) — PLANNED, not yet launched (see Plan)
+- Campaign totals so far: 29/55 terminal — 27 automated (2 sanctioned-RED: ELITEA-2047 vs #1327,
+  ELITEA-2051 vs #570) + 2 already-covered (ELITEA-2063, ELITEA-2060). 26/55 remaining across wave-05..07
 - **Operator directive 2026-08-08T13:42:41Z: "Proceed with all waves till you complete."** — running
   wave-02..07 sequentially without further per-wave checkpoints; only stopping early for a real blocker
   (question/bug protocol).
@@ -187,3 +189,12 @@ lead before launching wave-01).
   comment posted on #1297. Card stays In Progress. Launching wave-04 next.
 - 2026-08-09T02:05 wave-04-canvas-editor-controls (6 cases) launched. **Run ID: wf_b5ca8d13-d14**
   (task wcukzt24q). Polling in-turn for completion.
+- 2026-08-09T04:29 wave-04 workflow completed cleanly (~2.5h wall clock, 23 agents, 3.25M tokens, 857
+  tool calls) — gate green 3/3 (227.6/225.0/245.4s) on the first try, no report bugs this time; all 5
+  unit PRs (#1351-1355) independently confirmed MERGED via `gh pr view` before trusting the report.
+  Lead ran independent N=3 gate on the 4 green specs (14 collected tests) — 14 passed every run
+  (227.9/225.2/254.6s). Blast radius: only `pipeline_detail_page.py` touched, 0 removed lines, purely
+  additive. PR elitea-testing-public#1356 merged (`e788bfc2`). TMS back-written: 5 automated + 1
+  already-covered (ELITEA-2060 → ELITEA-2018's pre-existing test, PR #1143). Testid provenance: 1 new
+  commit (74ba8918, ELITEA-2072) — file differs from main, not promoted yet. Closure comment posted on
+  #1297. Card stays In Progress. Launching wave-05 next.

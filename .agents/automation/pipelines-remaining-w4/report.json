@@ -1,0 +1,311 @@
+{
+  "batch": "pipelines-remaining-w4",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-pipelines-remaining-w4",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      227.62,
+      224.99,
+      245.38
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2019",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Live-confirmed (two independent sessions: Playwright MCP + CDP/browser-verify): dispatching synthetic JS PointerEvents via page.evaluate() to simulate a canvas drag does NOTHING on ReactFlow's pane -- untrusted events, the library's drag handler ignores them. Only real page.mouse (Playwright) or CDP-level Input.dispatchMouseEvent pans/drags correctly. Logged as durable memory: .agents/memory/test-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Zoom Out clamps at ReactFlow's default minZoom (observed scale(0.1), Zoom Out button then disabled) -- confirmed live but NOT asserted by this case (out of the case's own scope); noted in the AFS/digest for awareness in case a future case wants to test the zoom floor explicitly."
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing unscoped raw zoom_in()/zoom_out() methods (page-level self.page.locator, not canvas_controls-scoped) already existed in pipeline_detail_page.py as tech debt before this session -- left untouched (additive-only), new compliant zoom_in_canvas()/zoom_out_canvas() added alongside instead of reusing them."
+        },
+        {
+          "kind": "defect",
+          "note": "Important — AFS Axis-2 addition claims an assertion that does not exist in the implementation. `test-specs/pipelines/l2_pipeline-canvas-zoom-and-pan_ELITEA-2019.md` § Coverage Map Axis 2 states verbatim: \"step 3/5/7 assert zero console errors and zero new network requests during the whole zoom/pan/fit-view sequence.\" I grepped the full diff (`git diff origin/tests/batch-pipelines-remaining-w4...or… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_canvas_zoom_and_pan.py"
+        },
+        {
+          "kind": "defect",
+          "note": "Nit/documentation drift — the AFS's Concrete Handles table (test-specs/pipelines/l2_pipeline-canvas-zoom-and-pan_ELITEA-2019.md, 'Canvas viewport transform' row and Automation Hints section) names two planned methods, `get_canvas_zoom_scale()` and `get_canvas_pan_offset()`. The implementation instead ships a single combined `get_canvas_viewport_transform()` returning `{tx, ty, scale}` (automation/… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-canvas-zoom-and-pan_ELITEA-2019.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-handle grep run on the full diff: `git diff origin/tests/batch-pipelines-remaining-w4...origin/tests/2019-pipeline-canvas-zoom-and-pan | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 5 hits, all compliant: `canvas_controls.locator('button[title=\"Zoom In\"/\"Zoom Out\"]')… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Chose a substring-scoped network capture (\"prompt_lib\") rather than an unscoped capture-everything listener for the zero-network-requests check, matching the existing repo convention (test_secret_eye_icon_reveal_and_mask_toggle.py, test_artifacts_upload_duplicate_detected_modal.py) — an unscoped listener risks false failures from unrelated background polling/analytics beacons that have nothing to … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2019"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS Automation Hints said 'Six NEW methods' but originally listed 7 names (the get_canvas_zoom_scale/get_canvas_pan_offset split). This was a pre-existing internal inconsistency in the AFS (not one of the two named reviewer findings) that the whole-document sweep surfaced and fixed as a side effect of correcting the method-name drift — now correctly names 6 methods matching the shipped code.",
+          "ref": "ELITEA-2019"
+        },
+        {
+          "kind": "note",
+          "note": "R1 fix round resolved both prior blockers with matching diffs. (1) capture_console_errors()/capture_requests_matching(\"prompt_lib\") — both pre-existing BasePage methods — are now registered right after the step-2 Fit-View baseline and asserted cumulatively at Step 3/4, Step 5/6, and Step 7 (test_pipeline_canvas_zoom_and_pan.py), matching the AFS Axis-2 claim exactly. (2) AFS method-name drift was … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_canvas_zoom_and_pan.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep on the pages/+tests diff (git diff tests/batch-pipelines-remaining-w4...tests/2019-pipeline-canvas-zoom-and-pan -- automation/pages/ automation/tests/ | grep -nE '(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') returned 6 hits: one is a docstring comment (not code); the other 5 are #579… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map Axis-1 re-verified row-by-row against the shipped test: all 7 original case elements (steps 1-7, with 3/4 and 5/6 folded per the AFS's decomposition note) map to a real assertion at the claimed step — node count, all_nodes_within_viewport(), scale+bbox-area increase, transform-delta+bbox-position-delta, and the exact-transform restore on Fit View. pipeline_llm_code_end fixture reuse a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-canvas-zoom-and-pan_ELITEA-2019.md"
+        },
+        {
+          "kind": "note",
+          "note": "zoom_out_canvas() was added (Concrete Handles table lists it) but is never called by this test — no NEW testid is involved (it's a #579 raw-handle exception, symmetric to zoom_in_canvas, and the AFS's Known-Defects section explicitly notes the Zoom-Out minZoom clamp as 'not asserted by this case, noted for awareness only'), so this is a non-blocking Nit, not a #511 testid-referenced violation.",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-canvas-zoom-and-pan_ELITEA-2019.md",
+      "branch": "tests/2019-pipeline-canvas-zoom-and-pan",
+      "pr": 1351,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          227.62,
+          224.99,
+          245.38
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2057",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Pre-existing zoom_out_canvas() page-object method (added for ELITEA-2019) was never exercised by any test before this PR — a real, previously-silent coverage gap, now closed by ELITEA-2057's new test."
+        },
+        {
+          "kind": "note",
+          "note": "Methodology trap for future canvas-drag work: dragging via a node's MID-BODY coordinates on a node whose body is mostly text inputs (e.g. a Printer node's Value/Final Message fields) silently fails to move the node regardless of interactivity state — the mouse-down lands on an <input>, not the ReactFlow node wrapper, producing a false-negative zero-displacement reading. The existing move_node() (a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Latent app-code quirk (not confirmed as a visible defect): FlowEditor.jsx's onReLayout(specifiedExpandAll) does `specifiedExpandAll || expandAll` — on an expanded->compact transition specifiedExpandAll is `false`, and `false || expandAll` silently falls through to the stale expandAll closure value instead of the intended `false`. No ELITEA-2057 assertion compares absolute node spacing so this doesn… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Dragging a node (via move_node) flips the pipeline's Save/Discard dirty state, even though pure canvas-viewport zoom/pan does not (confirmed live). Not asserted by ELITEA-2057 (no Save performed), noted for the next analyst who touches node-drag + Save/Discard together."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep run on the full diff (git diff tests/batch-pipelines-remaining-w4...tests/ELITEA-2057-canvas-control-panel | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'): 4 hits, all `self.canvas_controls.locator(...)` in the 4 new page-object methods (is_control_panel_fully_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:2452-2555"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case (.agents/automation/pipelines-remaining/cases/ELITEA-2057.md) vs AFS (test-specs/pipelines/lextend_pipeline-canvas-control-panel_ELITEA-2057.md) vs diff for all 8 case steps: steps 1/3/5 correctly disposed already-asserted against the merged (on-trunk) ELITEA-2019 test — verified those exact assertions exist at those exact steps (node count==3 at step1; scale+bbox-area increase a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/lextend_pipeline-canvas-control-panel_ELITEA-2057.md:112-125"
+        },
+        {
+          "kind": "note",
+          "note": "Existing test_canvas_zoom_pan_and_fit_view body is byte-identical (diff touches only the module docstring + appends a new test() function below it) — satisfies the additive-only extension contract. AFS was legitimately amended in-PR (the 'Resolved during ELITEA-2057 implementation, 2 fix rounds' section, +17 lines) to record two real implementation-time discoveries (node-drag activation threshold;… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_canvas_zoom_and_pan.py:1-45"
+        },
+        {
+          "kind": "note",
+          "note": "_surface.md flags a latent, unconfirmed app-code quirk (FlowEditor.jsx's onReLayout(specifiedExpandAll) falsy-OR: `specifiedExpandAll || expandAll` silently falls through to a stale closure value on an expanded->compact transition) as a note for a future analyst, not a filed defect — correctly not classified as defect-found since it's speculative and doesn't affect any assertion this test makes (n… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/_surface.md:98-123"
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_pipeline-canvas-control-panel_ELITEA-2057.md",
+      "branch": "tests/ELITEA-2057-canvas-control-panel",
+      "pr": 1352,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          227.62,
+          224.99,
+          245.38
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2060",
+      "outcome": "already-covered",
+      "note": "Targets ELITEA-2018's merged spec (test_pipeline_canvas_delete_node.py, origin/automation/base@5259179a) — same node-header-buttons -> 3-dot menu -> Delete -> confirm interaction, same node/edge-removal + Save-enabled observables, verified live (re-run PASSED 1/1, 22.36s) and against JSX source. Strict superset (covering test also asserts Save+reload persistence, not required by 2060). No gap in t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2060's case text ('two small buttons on the node header... click the delete button (trash icon)') is loose phrasing for the same 3-dot-DotMenu -> 'Delete' menuitem (which itself renders a trash DeleteIcon) -> confirm-dialog flow already automated for ELITEA-2018 — not a distinct quick-action control. Confirmed by source read (NodeCardHeader.jsx: only two header IconButtons, Expand/Collapse … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2018"
+        }
+      ],
+      "afs": "test-specs/pipelines/lcovered_pipeline-node-deletion-via-node-menu_ELITEA-2060.md"
+    },
+    {
+      "id": "ELITEA-2061",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2061's TMS case title says 'Pipeline — Node Duplicate via Node Menu' but the case body (Objective/Steps/Expected Results) describes an unrelated behavior: auto-incrementing default node names on ADD ('LLM 1', 'LLM 2', ...). No 'Duplicate' action exists anywhere on the pipeline node menu (confirmed via NodeCardHeader.jsx source read during ELITEA-2060's analysis — only Delete and Expand/Coll… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2061"
+        },
+        {
+          "kind": "note",
+          "note": "The case's own Step 3/5 illustrative examples ('LLM 1'/'Code 2' then 'LLM 2'/'Code 3') don't correspond to any single coherent add sequence — read as generic placeholders, not a literal required order. Automated the Objective's own internally-consistent example (LLM 1, LLM 2, LLM 3) instead, plus a second type (Code) to prove per-type independence, per the case's own 'any type' framing in Step 2.",
+          "ref": "ELITEA-2061"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS/implementation numeric drift (Important, blocking). AFS Test Steps text states '(total node count == 2)' for step 3 and '(total node count == 3)' for step 4, and the same numbers appear in the Coverage Map ('node count +1 (total 2)'). The actual code asserts `pipeline_page.get_node_count() == 3` after step 3 and `== 4` after step 4 (automation/tests/ui/pipelines/test_pipeline_node_auto_increme… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-node-auto-increment-naming_ELITEA-2061.md:58-68"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift (title 'Node Duplicate via Node Menu' vs body describing auto-increment naming on ADD) is documented only inside the AFS's 'Case-text note' section, with no separate tracker issue filed. Verified this matches the established convention for this same batch/wave: the tracking issue #1297's own work-log comment says '2 case-text clarifications documented in AFS (reverse-masking guard)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified all page-object methods the test calls pre-exist and are testid-based: get_add_node_menu_items/select_add_node_menu_item (ELITEA-2030), get_node_ids/get_node_count/wait_for_node_count, get_node_name — none touched or added by this diff. Mechanical locator grep on the full diff (git diff origin/tests/batch-pipelines-remaining-w4...origin/tests/ELITEA-2061-pipeline-node-auto-increment-namin… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Cross-checked the app source directly: FlowEditorConstants.PipelineNodeTypes/InitialNodeId and flowEditor.helpers.js's getNormalInitialNodeId() (../EliteaUI/src/[fsd]/features/pipelines/flow-editor/lib/) confirm the exact per-type incrementing-id algorithm the AFS/test rely on ('LLM 1','LLM 2','Code 1' — independent per-type counters, tried in order against existing node ids). select_add_node_menu… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Dedup/coverage classification (ready-for-automation, not already-covered) is sound: the implementer's daily-log note correctly identifies the closest existing spec (test_pipeline_router_node_configuration.py, ELITEA-2033) adds two same-type Printer nodes but renames them immediately without ever asserting the auto-assigned name — verified by reading that file (lines 83-101); it does not prove the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Root cause of the reviewer's numeric-drift finding: PipelineDetailPage.get_node_count() counts the always-present synthetic END node (every pipeline canvas renders one, even an \"empty\" one — confirmed in test-specs/pipelines/_surface.md's 'transition: END' note), so the count after N user-added nodes is N+1, not N. This is a recurring risk for any future pipeline-node-count AFS in this feature are… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2061 / PR #1353"
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1 resolved the prior blocking finding cleanly (outcome: fixed): AFS Test Steps 3/4 and the Coverage Map row 4 now state total node count == 3 / 4 (matching the shipped test's get_node_count()==3/4), with a clear baseline-note paragraph explaining the always-present synthetic END node that .react-flow__node counting picks up. The claim is grounded — cross-checked against existing test-spe… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-node-auto-increment-naming_ELITEA-2061.md"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-node-auto-increment-naming_ELITEA-2061.md",
+      "branch": "tests/ELITEA-2061-pipeline-node-auto-increment-naming",
+      "pr": 1353,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          227.62,
+          224.99,
+          245.38
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2072",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "New EliteaUI testid pipeline-config-collapse-button pushed to EliteaAI/EliteaUI@74ba8918 on automation/testids — not yet on main; standard human-cherry-pick gap, note in the closure record's promotability row.",
+          "ref": "EliteaAI/EliteaUI@74ba8918"
+        },
+        {
+          "kind": "note",
+          "note": "Self-caught AFS drift (pre-review, R1): the AFS's Network Behavior claim was 'zero network requests either direction', written from a console-only live probe. The first local test run showed expand legitimately fires 7 read-only GETs (TOOLS section remounting, fetching its own supporting lists) — not a defect. Narrowed the assertion to method=\"PUT\" (the guard that matters: no accidental persist) a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case (.agents/automation/pipelines-remaining/cases/ELITEA-2072.md — no -w4-suffixed snapshot exists, only the un-suffixed pipelines-remaining/ dir; same known no-per-wave-snapshot pattern already seen on ELITEA-2041/2061 this batch) ↔ AFS ↔ diff. All 7 original case steps map to an AFS Coverage-Map row with a real assertion at the claimed test step; step 2 ('locate the collapse button… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-collapse-left-panel_ELITEA-2072.md"
+        },
+        {
+          "kind": "note",
+          "note": "New testid pipeline-config-collapse-button (EliteaAI/EliteaUI@74ba8918, pushed to automation/testids, confirmed unique via git grep) is a single static data-testid on the IconButton — only the child icon (DoubleLeft/DoubleRight) swaps, the testid attribute itself never does, so no #277 state-ternary concern. Verified against live EliteaUI source that {!collapsed && (...)} really unmounts PipelineC… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:45"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer self-caught an AFS-drift before any reviewer round: the original 'zero network requests, either direction' claim was wrong (expand legitimately fires 7 read-only GETs from a TOOLS-section remount). Verified the correction was applied consistently in ALL locations that carried the claim — AFS Expected Results, AFS Axis 2, AFS Network Behavior, AND test-specs/pipelines/_surface.md — in t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff (automation/) — 0 hits: `git diff origin/tests/batch-pipelines-remaining-w4...origin/tests/elitea-2072-pipeline-collapse-left-panel -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → (no matches). Additive-only check on pipeline_d… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-collapse-left-panel_ELITEA-2072.md",
+      "branch": "tests/elitea-2072-pipeline-collapse-left-panel",
+      "pr": 1354,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          227.62,
+          224.99,
+          245.38
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2048",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "The pipeline_id fixture (automation/fixtures/data_fixtures.py) generates pipeline names via f\"autotest_{request.node.name}\"[:32] — for tests with long function names this lands exactly at the field's own MAX_NAME_LENGTH=32 cap (EliteaUI/src/common/constants.js), so any 'append a suffix to the current name' edit silently drops the suffix (browser maxlength enforcement) and the field reads back unch… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2048"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep run against the full diff `git diff tests/batch-pipelines-remaining-w4...HEAD | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 0 hits (exit 1, no matches). No new page-object or locator work in this PR at all — diff touches only automation/tests/ui/pipelines/t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Additive-only confirmed by direct diff read: the new test() is appended after the existing test_discard_reverts_name_change (byte-identical, zero '-' lines touching it). Triangulated case↔AFS↔diff: all 8 ELITEA-2048 case steps map 1:1 to Coverage Map rows, each 'asserted' row has a real assert at that point in the new test body (verified line-by-line against the diff). No duplicate ELITEA-2048 spe… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Nit, non-blocking: AFS metadata declares Priority 'l2 (medium)' but the implemented test carries @pytest.mark.p1 (matching the source case's actual 'high' declaration, not the AFS's self-assigned l2/medium). Cosmetic inconsistency only — the p1 marker is arguably the more correct choice since it matches the TMS case's own priority field. Not worth a fix round."
+        },
+        {
+          "kind": "note",
+          "note": "Step 6 ('Click Discard button' → expected 'Discard action is triggered') has no assertion of its own beyond the click + wait_for_detail_page_load call, relying on step 7/8's assertions to prove discard actually fired. This exactly mirrors the pre-existing, already-merged covering test's identical action (its own step 4 has the same shape), so it is established precedent this PR reuses rather than … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_pipeline-unsaved-changes-and-discard_ELITEA-2048.md",
+      "branch": "tests/ELITEA-2048-pipeline-unsaved-changes-discard",
+      "pr": 1355,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          227.62,
+          224.99,
+          245.38
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 5,
+    "already-covered": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
