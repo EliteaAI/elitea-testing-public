@@ -217,6 +217,7 @@ def test_state_panel_default_and_custom_variables(page, pipeline_id):
     "ELITEA-2044_pipeline-state-panel-delete-custom-variable.md",
     "onetest-ai Test Case link",
 )
+@pytest.mark.p2
 def test_state_panel_delete_custom_variable(page, pipeline_id):
     """STATE panel: a custom variable's delete button removes it; defaults stay immutable; removal persists in YAML."""
     project_id = str(settings.elitea_project_id)
