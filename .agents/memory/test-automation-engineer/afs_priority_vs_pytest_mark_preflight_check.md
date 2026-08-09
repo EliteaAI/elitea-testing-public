@@ -4,6 +4,34 @@ description: Before handing off any new test, grep the AFS's own "Priority: lN" 
 type: feedback
 ---
 
+## Recurrence 8 — ELITEA-2044/PR #1366 (fix round found the missing per-function override; first time a regression test was added for this class)
+
+Same root shape as recurrence 2 (module-level `p1` correct for the covering
+ELITEA-2042/high test, new sibling `test_state_panel_delete_custom_variable`
+ELITEA-2044/medium silently inherits it, no marker of its own). New this
+time: added a dedicated unit regression test
+(`tests/unit/test_pipeline_state_panel_priority_markers.py`) that introspects
+`getattr(test_func, "pytestmark", [])` — the function's OWN decorator
+markers, separate from the module-level list pytest merges in at collection
+— and asserts `p2` is present on the sibling and absent (no competing
+priority mark) on the covering test. Verified it goes RED on the pre-fix
+state (removed the decorator locally, reran, confirmed the exact failure
+message, restored the fix) and GREEN with it. This walks back recurrence
+4/6's "no precedent, static metadata isn't testable" conclusion — it IS
+testable via the function object's own `pytestmark` attribute, just not via
+a live pytest run of the test itself.
+
+**Gotcha hit while writing it:** importing the two live UI test functions by
+their real names into the unit-test module caused pytest's
+`python_functions = test_*` collector to re-discover and RE-EXECUTE them
+(with real `page`/`pipeline_id` browser fixtures) as a side effect of the
+import — "collected 4 items" instead of 2, ~36s instead of ~0.02s. Fix:
+alias the import (`as _delete_test_func` / `as _covering_test_func`) so the
+bound names don't match `test_*`. Confirmed via `--collect-only` before/after.
+Any future test that imports a live test function by name (not just for this
+marker check) should alias it the same way, or check `--collect-only` count
+first.
+
 ## Recurrence 7 — ELITEA-2045/PR #1325 (own p2 not p1, no fix attempt visible into round 1's own review)
 
 Same lesson, recurrence-3 shape again: `test_pipeline_llm_structured_output_state_variables.py`
