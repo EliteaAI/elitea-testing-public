@@ -202,3 +202,7 @@ lead before launching wave-01).
   Polling in-turn for completion.
 - 2026-08-09T04:48 Hard failure at 130s (task w41f7n4ly): triage agent never called StructuredOutput.
   Verified nothing landed (no branches created). Resumed same runId, new task w99k1v4ic. Polling.
+- 2026-08-09T08:16 Second hard failure on task w99k1v4ic (same runId), 32 agents done first (6/7
+  cases merged per git log: 2017/2052/2053/2058/2059/2062; ELITEA-2071 analyst returned defect-found,
+  issue #1363 filed — the crash was in the NEXT dispatch after that, likely gate or an erroneous
+  implementer attempt on a defect-found case). Resumed again, same runId, task w6qnx51j1.
