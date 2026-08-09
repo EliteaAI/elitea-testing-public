@@ -66,6 +66,9 @@ def test_pipeline_information_section(page, pipeline_with_llm_id):
 
     with allure.step("Step 1 — Open an existing pipeline; it loads in the editor"):
         pipeline_page = _navigate_to_detail(page, pipeline_with_llm_id)
+        assert pipeline_page.canvas_wrapper.is_visible(timeout=UI_ELEMENT_TIMEOUT), (
+            "Pipeline should load in the editor (canvas visible) after navigation"
+        )
 
     with allure.step('Step 2 — Expand "Information" section in left panel'):
         assert pipeline_page.information_section.is_visible(timeout=UI_ELEMENT_TIMEOUT), (
@@ -144,8 +147,8 @@ def test_pipeline_information_section(page, pipeline_with_llm_id):
         assert pipeline_page.show_context_diagram_container.is_visible(), (
             "Show-link modal should render the pipeline as a Mermaid diagram"
         )
-        svg_count = pipeline_page.show_context_diagram_container.locator("svg").count()
-        assert svg_count >= 1, "Mermaid diagram should render at least one <svg> node"
+        node_count = pipeline_page.get_diagram_node_count()
+        assert node_count >= 1, "Mermaid diagram should render at least one node"
 
         # Side-channel check across the whole flow (Axis 2 addition, AFS
         # § Coverage Map): zero UNEXPECTED console errors — the deterministic

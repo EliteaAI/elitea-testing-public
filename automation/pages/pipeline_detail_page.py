@@ -163,6 +163,13 @@ class PipelineDetailPage(PipelineFormPage):
         "mermaid canvas",
     )
 
+    # Sanctioned #579 exception (third-party widget subtree — the SVG itself
+    # is Mermaid.js-rendered, not app JSX) — scoped raw selector (standard
+    # Mermaid CSS class) as a child of show_context_diagram_container. Mirrors
+    # ChatPage.MERMAID_NODE (chat_page.py) — same shared Mermaid rendering
+    # path, same sanctioned pattern, applied here per ELITEA-2056 review.
+    MERMAID_NODE = ".node"
+
     # --- Version management (Save As Version / VERSION selector, ELITEA-2002).
     # `save_as_version_button` itself is inherited from PipelineFormPage.
     # Same shared components AgentDetailPage's version-management fields
@@ -1749,15 +1756,27 @@ class PipelineDetailPage(PipelineFormPage):
 
         Opens ``StyledShowContextModal`` (NOT a navigation — confirmed live,
         ELITEA-2056 exploration) rendering the pipeline's YAML as a Mermaid
-        diagram via ``show_context_diagram_container``.
+        diagram via ``show_context_diagram_container``. Waits for the
+        container itself AND for the diagram's Mermaid nodes to actually
+        render (mirrors ChatPage.wait_for_diagram_rendered, ELITEA-2088) —
+        the container becomes visible before Mermaid populates it, so a
+        node-count check right after only the container wait can race.
 
         Args:
             timeout: Maximum wait time in milliseconds for the diagram
-                container to become visible.
+                container (and its first rendered node) to become visible.
         """
         self.information_show_link.click()
         self.show_context_diagram_container.wait_for(state="visible", timeout=timeout)
+        self.show_context_diagram_container.locator(self.MERMAID_NODE).first.wait_for(
+            state="attached", timeout=timeout
+        )
         logger.info("Information section 'Show' link opened the diagram preview modal")
+
+    def get_diagram_node_count(self) -> int:
+        """Return the number of Mermaid diagram node elements currently rendered
+        inside the Show-link preview modal (mirrors ChatPage.get_diagram_node_count)."""
+        return self.show_context_diagram_container.locator(self.MERMAID_NODE).count()
 
     @action("Open the Create version dialog")
     def open_save_as_version_dialog(self, timeout: int = 10000):
