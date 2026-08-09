@@ -158,9 +158,18 @@ and restores the chat/config view.
 `origin/main` and `origin/automation/testids`, 2026-08-09.
 
 ## Network Behavior
-- Clicking the close (`X`) button fires **zero** network requests — confirmed live this session
-  (purely local `onClose` state flip via `showHistory` in `ConfigurationTab.jsx`, no
-  server round-trip needed to leave the Run History view).
+- **Amended during implementation (test run, 2026-08-09)** — the `onClose` handler
+  itself (`RunHistoryContainer.jsx:74-91`) is confirmed a pure client-side state
+  flip with no fetch call inline. But closing the panel also **unmounts** it and
+  **remounts** the Configuration form, which independently re-fires its own
+  view-population requests (`upload_icon`, `tags`, `tools` ×2, `toolkits`,
+  `applications` ×2, `index_types` — all `prompt_lib/{project}` scoped) as a normal
+  consequence of remounting — this is unrelated to Run History and not a defect.
+  A blanket "zero network requests on close" assertion is therefore too broad and
+  was corrected in the implemented test to the precise, durable claim: closing
+  does **not** re-fetch the conversations list (`conversation(s)/prompt_lib`) —
+  confirmed zero hits live, matching the intuition that already-loaded/discarded
+  Run History data has no reason to be re-read on close.
 - Steps 1–3's traffic is identical to ELITEA-2011's own § Network Behavior (`GET
   .../conversations/prompt_lib/...?source=pipeline...` on panel open, `GET
   .../conversation/prompt_lib/{project}/{conversationId}` on row click) — not re-documented here.

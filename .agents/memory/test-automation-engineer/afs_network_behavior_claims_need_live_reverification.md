@@ -74,3 +74,29 @@ that mounts/remounts a component with its own data-fetching hooks — capture
 actual requests (`capture_requests_matching`) before writing that claim, or
 scope the claim to the specific method/effect that matters (persist) instead
 of "no requests of any kind."**
+
+## Recurrence 2 — ELITEA-2070 (Pipeline Run History panel close, 2026-08-09)
+
+Same shape again, different surface: the AFS claimed closing the Run History
+panel (`X` button) "fires zero network requests" (confirmed live during
+analysis via click + console check, no request capture). The implemented
+test's first run failed: closing unmounts `RunHistoryContainer` and remounts
+the Configuration form, which independently re-fires its own
+view-population requests (tools/toolkits/tags/applications/index_types,
+`upload_icon`) as a normal consequence of remounting — 8 requests, zero of
+them Run-History-related. Corrected in the same run (1 rerun): narrowed the
+assertion to "no re-fetch of the conversations list"
+(`conversation`/`conversations` substring filter on captured request URLs)
+— the claim that actually matters (closing isn't wastefully re-reading data
+it's discarding) — and fixed the AFS + `_surface.md` (this file) in the same
+commit, with a strikethrough audit trail per the rule above.
+
+**Third occurrence of the identical root cause** (ELITEA-2037 persistence
+claim, ELITEA-2072 collapse/expand, now ELITEA-2070 panel close) — all three
+are "closing/collapsing/toggling one view remounts a sibling view that has
+its own independent data-fetching effect." **Any AFS claim of "zero network
+requests" tied to a view-switch (open/close, expand/collapse, tab switch,
+panel toggle) should be treated as suspect by default** — the switch itself
+may be a pure state flip, but whatever gets remounted almost always fetches
+its own data. Capture requests, don't reason from the handler's source code
+alone.
