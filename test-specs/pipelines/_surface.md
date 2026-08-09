@@ -2536,3 +2536,37 @@ already-implemented-pending-promotion, not a fresh gap.
   this is a real, intermittent behavior to account for, not a flake to ignore.
 
 Full AFS: `test-specs/pipelines/l2_pipeline-execution-long-response-streaming_ELITEA-2017.md`.
+
+**Resolved/added during ELITEA-2017 implementation (2026-08-09):**
+- **Provenance correction**: the dynamic `model-selector-option-{model-slug}`
+  testid (`LLMModelsMenu.jsx`) is on `automation/testids` ONLY — NOT on `main`
+  as this digest and the AFS both originally stated. Verified via
+  `git fetch origin` + `git grep "model-selector-option" origin/main -- src/`
+  (0 hits) vs `origin/automation/testids` (1 hit). `model-selector-button`/
+  `model-selector-name` ARE on-main; only the per-option testid is
+  testids-only, same pending-promotion bucket as the accordion/chip testids
+  noted above. Usable today locally either way.
+- `PipelineDetailPage` now HAS the model-selector page-object surface this
+  digest called out as missing: `model_selector_button`/`model_selector_name`
+  fields, `MODEL_SELECTOR_OPTION_ANY_SELECTOR` class constant,
+  `open_model_selector()`/`get_selected_model_name()`/`select_llm_model()`
+  methods — mirrors `AgentDetailPage`'s pattern exactly, per this digest's
+  own guidance. Any future embedded-chat case needing model selection should
+  reuse these rather than re-adding them.
+- New `PipelineDetailPage.wait_for_embedded_chat_real_content()` /
+  `wait_for_embedded_chat_body_growth()` helpers: the naive
+  "poll `get_embedded_chat_last_message()`, assert growth" approach this
+  digest recommends is NOT sufficient on its own — the embedded chat renders
+  transient placeholders ("Waking the agent…", "Packing its tools…",
+  "Thought for `<n>` secs") as non-empty body text before real streamed
+  content starts, and a length-only growth check can be fooled by a
+  placeholder SWAP (shorter placeholder -> longer placeholder, no real
+  content yet). Both new methods filter transient text (same known
+  vocabulary as `ChatPage._is_transient_message`) before treating a sample
+  as real. Any future progressive-streaming assertion on this surface should
+  reuse these, not re-derive a naive length-only poll.
+- New fixture `pipeline_with_fstring_llm_id` (`fixtures/data_fixtures.py`) —
+  single LLM node, TASK F-String `{input}`, entry->END, via the generic
+  `PipelineAPI.create_pipeline_with_nodes()`. Satisfies the F-String
+  precondition `pipeline_with_llm_id` does not (that fixture hardcodes
+  TASK as `fixed`/`''`).

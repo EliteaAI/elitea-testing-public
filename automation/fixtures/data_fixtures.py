@@ -205,6 +205,59 @@ def pipeline_with_llm_id(pipeline_api: PipelineAPI, request):
         logger.warning("Failed to delete LLM pipeline %s: %s", pid, exc)
 
 
+@pytest.fixture
+def pipeline_with_fstring_llm_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with a single LLM entry node whose TASK is an
+    F-String template (``{input}``), connected directly to END.
+
+    Satisfies the ELITEA-2017 precondition literally ("A pipeline with LLM
+    node as entry point exists (TASK configured with F-String: '{input}')")
+    — :func:`pipeline_with_llm_id` does NOT satisfy this as-is:
+    ``PipelineAPI.create_pipeline_with_llm_node()`` hardcodes TASK as
+    ``type: fixed, value: ''``, not an F-String (confirmed live, AFS
+    ``l2_pipeline-execution-long-response-streaming_ELITEA-2017.md`` §
+    Test Data). Built via the generic :meth:`PipelineAPI.create_pipeline_with_nodes`
+    — the SAME helper :func:`pipeline_with_two_llm_nodes_id`/
+    :func:`build_two_llm_nodes` already use for ELITEA-2452 — rather than
+    adding a new parameter to ``create_pipeline_with_llm_node``.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2017_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created F-String LLM pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=[
+            {
+                "id": "LLM 1",
+                "type": "llm",
+                "input": [],
+                "input_mapping": {
+                    "chat_history": {"type": "fixed", "value": []},
+                    "system": {"type": "fixed", "value": ""},
+                    "task": {"type": "fstring", "value": "{input}"},
+                },
+                "output": [],
+                "structured_output": False,
+                "transition": "END",
+            }
+        ],
+    )
+    pid = pipeline["id"]
+    logger.info("Created F-String LLM pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    # Cleanup: delete pipeline even if test fails
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted F-String LLM pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete F-String LLM pipeline %s: %s", pid, exc)
+
+
 def build_two_llm_nodes() -> list[dict]:
     """Build the ``LLM 1 -> LLM 2 -> END`` node list for ELITEA-2452.
 
