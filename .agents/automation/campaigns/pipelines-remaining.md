@@ -1,7 +1,7 @@
 # Campaign: pipelines-remaining
 
 ## State
-- Stage: waves (wave-01 LANDED, wave-02 through wave-07 pending)
+- Stage: **CLOSED — 55/55 cases reached a terminal outcome across 7 waves**
 - Conductor: none — plain sequential `batch-build` waves (foundation is null and already evidenced;
   per `campaign-planning.md` § When NOT to run a campaign, the full conductor apparatus is skipped)
 - Operator checkpoint: **substituted** — factory/unattended mode has no interactive `AskUserQuestion`.
@@ -38,13 +38,25 @@
   Lead's own re-gate hit one isolated flake (toast-text race, `test_pipeline_information_section.py`)
   — reproduced clean standalone + 3 subsequent consecutive green runs, not a defect. TMS back-written
   (8 cases), closure comment posted.
-  wave-07 (11 cases) — PLANNED, not yet launched (see Plan)
-- Campaign totals so far: 44/55 terminal — 39 automated (2 sanctioned-RED: ELITEA-2047 vs #1327,
-  ELITEA-2051 vs #570) + 4 already-covered (ELITEA-2063, ELITEA-2060, ELITEA-2054, ELITEA-2055) + 1
-  blocked (ELITEA-2071, #1363). 11/55 remaining — wave-07 only
-- **Operator directive 2026-08-08T13:42:41Z: "Proceed with all waves till you complete."** — running
-  wave-02..07 sequentially without further per-wave checkpoints; only stopping early for a real blocker
-  (question/bug protocol).
+  **wave-07-run-details-execution-introspection (11 cases, FINAL) LANDED** — elitea-testing-public#1390,
+  merged `a8e500b4`, 10/11 automated + 1 sanctioned-RED (ELITEA-2445 vs new defect #1381). Internal
+  gate never started (0 runs, forced to report early) — lead determined the green-required scope
+  itself (9 spec files), first full run surfaced the sanctioned-RED live, deselected + 3 consecutive
+  clean-green + sanctioned-RED confirmed 3x separately. Blast radius: one real shared-method fix
+  (`PipelineDetailPage.clear_embedded_chat()`, was a silent no-op) — independently verified zero
+  merged callers (the only 2 existing callers use `AgentDetailPage`'s separate same-named method).
+  TMS back-written (11 cases), closure comment posted.
+- **CAMPAIGN TOTALS (FINAL): 55/55 terminal — 47 automated (3 sanctioned-RED: ELITEA-2047 vs #1327,
+  ELITEA-2051 vs #570, ELITEA-2445 vs #1381) + 4 already-covered (ELITEA-2063, ELITEA-2060, ELITEA-2054,
+  ELITEA-2055) + 1 blocked (ELITEA-2071, #1363). 7 waves, 7 trunk→base PRs merged (#1329, #1343, #1350,
+  #1356, #1364, #1372, #1390). 3 new defects filed (#1327, #1332, #1363, #1381 — 4 total incl. #1332
+  from wave-02). Real-time wall clock ~35h across the operator's single "proceed till complete"
+  directive; the lead ran its own independent N=3 (or N=3+sanctioned-red-3x) gate on every wave,
+  recovered 2 hard workflow crashes (wave-05) via `resumeFromRunId` with zero work lost, and caught +
+  fixed one workflow report bug (wave-03's false-blocked ELITEA-2027) and one own git-hygiene slip
+  (wave-05's stray commit landing on the wrong branch) before they could propagate.**
+- **Operator directive 2026-08-08T13:42:41Z: "Proceed with all waves till you complete."** — **FULFILLED.**
+  All 7 waves ran sequentially with no further per-wave checkpoints, exactly as directed.
 
 ## Source
 
@@ -236,3 +248,20 @@ lead before launching wave-01).
   launched. **Run ID: wf_68c5d244-cb1** (task wso28t4wd). Polling in-turn for completion.
 - 2026-08-09T09:36 **wave-07-run-details-execution-introspection (11 cases, FINAL WAVE) launched.**
   Run ID: wf_fabe6e4a-80c (task wzft3yv5s). Polling in-turn for completion.
+- 2026-08-09T16:12 wave-07 workflow completed (~6.9h wall clock, 49 agents, 8.02M tokens, 2323 tool
+  calls). All 11 units merged; internal gate never started (0 runs, "forced to report before the N×3
+  run finished"). All 11 unit PRs (#1373,1374,1376,1378,1379,1380,1382,1386,1387,1388,1389)
+  independently confirmed MERGED via `gh pr view`. Lead determined the green-required scope from the
+  diff (9 spec files, no pre-computed list from the gate this time) and ran the first full-set
+  invocation, which surfaced ELITEA-2445's own already-declared sanctioned-RED (new defect #1381,
+  subgraph Node_C never joins the run) — correctly, not a surprise, the analyst had classified this
+  case ready-for-automation with a soft-assert per testing.md's analysis-time exception. Deselected
+  it, ran 3 consecutive clean-green invocations of the remaining 10 tests (317.5/293.9/297.3s), then
+  confirmed the sanctioned-RED spec 3x separately — identical deterministic failure every time.
+  Blast radius: one real modification to `PipelineDetailPage.clear_embedded_chat()` (fixed a silent
+  no-op) — independently verified zero merged callers (the 2 existing test callers use
+  `AgentDetailPage`'s own separate same-named method, confirmed via direct grep, not the
+  implementer's claim alone). PR elitea-testing-public#1390 merged (`a8e500b4`) — **the final wave**.
+  TMS back-written (11 cases, Form C, self-checked). Testid provenance: 3 new commits (89282f5e
+  ELITEA-2454, 95b1eada ELITEA-2451, ccbfc54a ELITEA-2070) — all 4 touched files differ from main.
+  Closure comment posted on #1297. **Campaign closed: 55/55 cases terminal.** Card → Ready.

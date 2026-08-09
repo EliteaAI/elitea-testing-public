@@ -1,0 +1,659 @@
+{
+  "batch": "pipelines-remaining-w7",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-pipelines-remaining-w7",
+  "gate": {
+    "verdict": "not-run",
+    "runs": 0,
+    "seconds": [],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2011",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "PipelineDetailPage.clear_embedded_chat() (automation/pages/pipeline_detail_page.py ~line 6811) is a silent no-op: it clicks a stale [aria-label=\"Clear the chat history\"] locator that matches zero elements on the live product (real button is ClearChatButton.jsx, aria-label=\"clear the chat\", data-testid=\"chat-clear-button\" — the correct chat_clear_button LocatorDescriptor field already exists on the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-run-history-panel-view-executions_ELITEA-2011.md"
+        },
+        {
+          "kind": "note",
+          "note": "PipelineDetailPage.click_history_tab()/get_history_entries() are separately stale (raw CSS 'table tbody tr' / '[class*=\"version\"]') and predate the current ViewRunHistoryButton/RunHistoryContainer shared-component implementation on the Pipeline surface — they match nothing live. Not used by this AFS; flagged so nobody reaches for them by mistake.",
+          "ref": "automation/pages/pipeline_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2070 (\"Pipeline — Run History Panel\"), also in this wave-07 batch, appears to describe the same feature as ELITEA-2011 from a slightly different case-text angle (adds an explicit 'can be closed' step). Not resolved in this dispatch (only ELITEA-2011 was assigned, and a same-batch unmerged AFS can't be an extend/already-covered target per the merged-target rule) — worth a look when ELITEA-20… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "run-history-list-item testid (+ its data-selected state attribute) is confirmed on EliteaAI/EliteaUI's automation/testids only (added during ELITEA-1877's add-data-testid work, commit a5a9d0f5) and NOT yet on main — awaiting human promotion. Serves both the Agent and Pipeline surfaces once promoted (shared component). Verified fresh via git fetch origin + git grep against both refs."
+        },
+        {
+          "kind": "note",
+          "note": "AFS flags a sibling case ELITEA-2070 in the same wave-07 batch as possibly describing the same feature (Run History panel with an explicit 'can be closed' step) — worth the lead reviewing once this spec merges, per the AFS's own Automation Hints section (not resolved here, out of this case's scope).",
+          "ref": "ELITEA-2070"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed live during implementation that PipelineDetailPage.get_embedded_chat_last_message() returns only the AI answer body, never the user's own sent text — a test-design gotcha (not a product defect), recorded in .agents/memory/test-automation-engineer/pipeline_embedded_chat_last_message_excludes_user_text.md for future pipeline-surface implementers."
+        },
+        {
+          "kind": "note",
+          "note": "Fixed a dead-code/silent-no-op defect in PipelineDetailPage.clear_embedded_chat() per the AFS's explicit direction (Known Defects section) — not a product bug, our own page-object code; 0 merged callers existed so the fix was a direct, safe change rather than requiring the shared-caller additive-only protocol."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case (.agents/automation/pipelines-remaining/cases/ELITEA-2011.md) ↔ AFS (test-specs/pipelines/l2_pipeline-run-history-panel-view-executions_ELITEA-2011.md) ↔ diff (PR #1373, automation/pages/pipeline_detail_page.py + new automation/tests/ui/pipelines/test_pipeline_run_history_view_executions.py). All 6 case steps map 1:1 to Coverage Map rows, each with a real assertion at its own all… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the diff: 6 hits, all `self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR)` / `self.page.locator(self.CHAT_MESSAGE_ITEM_SELECTOR)`; both are class-level `[data-testid=` string constants (verified RUN_HISTORY_LIST_ITEM_SELECTOR at pipeline_detail_page.py:69 and CHAT_MESSAGE_ITEM_SELECTOR at :586). 0 non-testid handles added. `data-selected` state is filtered as an attr… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "PROVENANCE table verified against fresh ground truth (git fetch origin in ../EliteaUI, then git grep against origin/main and origin/automation/testids): `run-history-list-item` — confirmed on automation/testids only (RunHistoryListItem.jsx), NOT on main, matching the AFS claim exactly. `chat-clear-button` confirmed on main (ClearChatButton.jsx). No stale-clone risk."
+        },
+        {
+          "kind": "note",
+          "note": "PR body claims 'zero merged callers of clear_embedded_chat() in tests/ui/pipelines/ before this PR, so no shared-caller regression' — verified by grepping the trunk (tests/batch-pipelines-remaining-w7) and automation/base: the only existing callers (test_agent_run_history_select_past_run.py, test_skill_agent_interaction.py) instantiate AgentDetailPage, which defines its own separate clear_embedded… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No defect masking found (no test.fail/skip/xit/weakened asserts). No fixed sleeps in the spec file itself (grepped clean). page-object-internal `self.page.wait_for_timeout(300)` inside the fixed clear_embedded_chat() is a pre-existing pattern class (shorter than the 1000ms it replaced) sanctioned by .claude/rules/mui-patterns.md's debounce-settle convention for page-object methods, not a spec-file… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-run-history-panel-view-executions_ELITEA-2011.md",
+      "branch": "tests/ELITEA-2011-pipeline-run-history-view-executions",
+      "pr": 1373
+    },
+    {
+      "id": "ELITEA-2070",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Case-text drift (clarification, not a product bug): ELITEA-2070's own step 6 says execution details show 'input message, output response, and status.' Live-verified (pipeline id 8056) that the Run History detail view renders only message + response content — there is no separate labelled 'status' UI element. An errored execution is distinguishable only by its response text/disclosure ('Pipeline ha… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/lextend_pipeline-run-history-panel-close_ELITEA-2070.md § Known Defects Found During Exploration"
+        },
+        {
+          "kind": "note",
+          "note": "Requested new testid run-history-close-button on RunHistoryContainer.jsx's close IconButton (currently aria-label=\"close run history\" only, no data-testid on main or automation/testids as of 2026-08-09). Naming has no pipeline-/agent- prefix, matching the existing run-history-list-item precedent for this shared component. Implementer must add it via add-data-testid before writing close_run_history… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/lextend_pipeline-run-history-panel-close_ELITEA-2070.md § Concrete Handles"
+        },
+        {
+          "kind": "note",
+          "note": "Resolved the sibling-case flag ELITEA-2011's own AFS/digest raised for ELITEA-2070 (same feature, close-button gap). test-specs/pipelines/_surface.md updated accordingly; no further follow-up needed on that flag.",
+          "ref": "test-specs/pipelines/_surface.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 6's expected result names a 'status' element in the Run History execution-detail view that doesn't exist as a distinct UI element — the detail panel renders message + response content only; status is inferable from the response text (an errored execution's response reads e.g. 'Pipeline has no nodes to execute...' with an 'Error debugging info' disclosure) but is not a separate labelled f… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2070"
+        },
+        {
+          "kind": "note",
+          "note": "AFS's 'zero network requests on close' claim (§ Network Behavior) was over-broad and contradicted by the live test run: closing the Run History panel remounts the Configuration form, which independently fires its own unrelated view-population requests (tools/toolkits/tags/applications/index_types/upload_icon). Corrected the AFS, test-specs/pipelines/_surface.md, and the test's assertion to the pre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2070"
+        },
+        {
+          "kind": "note",
+          "note": "The case snapshot path given in the dispatch (.agents/automation/pipelines-remaining-w7/cases/ELITEA-2070.md) does not exist — the file actually lives at .agents/automation/pipelines-remaining/cases/ELITEA-2070.md (batch slug without the -w7 suffix). Found and read it there; flagging in case this is a naming drift the orchestrator wants to fix in future dispatch prompts for this batch.",
+          "ref": "ELITEA-2070"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid handles added in automation/pages/ and automation/tests/ (git diff origin/tests/batch-pipelines-remaining-w7...origin/tests/ELITEA-2070-pipeline-run-history-panel-close -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') returned 0 hits. The o… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Merged-target rule verified: covering commit 30041066 ('test(ELITEA-2011): Pipeline Run History panel — view executions') is confirmed present on the trunk origin/tests/batch-pipelines-remaining-w7 (git log shows 897b192a 'merge ELITEA-2011 into tests/batch-pipelines-remaining-w7' as an ancestor of the PR head), satisfying extend-existing's same-batch-trunk allowance."
+        },
+        {
+          "kind": "note",
+          "note": "Covered-by rows (Coverage Map rows 1-6) independently checked against the covering spec's ACTUAL assertions — read the full TestPipelineRunHistoryViewExecutions body: steps 3-6 each carry real asserts (item_count>0, item_count==2 with date/version/duration regex per row, data-selected=true/false pair, message_a present/message_b absent) matching the AFS's claimed coverage. No row points at a spec … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New testid run-history-close-button verified live: present on origin/automation/testids (EliteaUI) at the exact commit cited (ccbfc54a), absent from origin/main (consistent with 'awaiting human promotion' — not this PR's job to fix). The JSX diff is a single static data-testid on a shared IconButton, no state-conditional value, consistent with the existing run-history-list-item shared-component na… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The new assertion get_run_history_item_count()==0 after close is grounded, not a guess: read ConfigurationTab.jsx (Pipelines) and confirmed RunHistoryContainer is conditionally rendered ({showHistory && <RunHistoryContainer .../>}) — closing genuinely unmounts it, so the zero-count check is a real DOM-removal assertion, not a false-positive check against a hidden node."
+        },
+        {
+          "kind": "note",
+          "note": "Additive-only check on the covering spec file: only 6 removed lines, all confined to the module-level docstring (rewritten to describe both test classes); TestPipelineRunHistoryViewExecutions's original test body is byte-for-byte untouched."
+        },
+        {
+          "kind": "note",
+          "note": "AFS Network Behavior amendment (zero-network-on-close narrowed to no-conversations-refetch) is well-grounded: correctly attributes the extra requests to the Configuration form's own remount effect (unrelated to Run History's onClose handler, confirmed a pure state flip via RunHistoryContainer.jsx:74-91 source read), and the implemented assertion matches the corrected, narrower claim. AFS + _surfac… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No defect masking: all assertions are hard asserts (no soft-assert, no skip, no test.fail). Step 6's case-text drift ('status' field doesn't exist as a distinct element) is correctly classified as a non-blocking clarification per the reverse-masking guard, flagged in the AFS/PR body for the orchestrator to file per the seeded routing — appropriately deferred, not silently dropped."
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_pipeline-run-history-panel-close_ELITEA-2070.md",
+      "branch": "tests/ELITEA-2070-pipeline-run-history-panel-close",
+      "pr": 1374
+    },
+    {
+      "id": "ELITEA-2451",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case step 7 says timeline entries appear 'top to bottom = first to last'; live product renders them horizontally left-to-right (bounding-box confirmed: y constant across all 3 dots, x ascending with execution order). Filed EliteaAI/elitea-testing-public#1375 (question label) with evidence screenshot embedded. Execution-order semantic itself holds — only the described axis is wrong; AFS asserts ord… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1375"
+        },
+        {
+          "kind": "note",
+          "note": "Two new EliteaUI testid-adjacent changes needed before implementation (both small, scoped): (1) add a data-status='error'|'completed' attribute to ProcessStepIcon.jsx's outer Box (already carries the pipeline-run-details-timeline-step-{index} testid), mirroring the isError prop that already exists and driving the panel's own status-badge data-status pattern — avoids any CSS-color-literal assertion… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mid-session self-correction worth flagging: initially assumed the dot's hover-revealed node-id was exposed via a native `title` HTML attribute; verified via a scoped outerHTML read (browser_run_code_unsafe) that it is actually a static `aria-label` (MUI StyledTooltip behavior), matching an existing role-memory entry (artifacts_bucket_search_testid_gaps_and_tooltip_aria_label_technique.md) for a di… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Entry-count/executed-node 1:1 correspondence (case step 8) breaks for a structured_output:true LLM node — ELITEA-2453's AFS found those render TWO timeline entries per execution. This case's fixture deliberately avoids structured output for exactly that reason; flagged as an explicit Automation Hint/caveat so nobody swaps in a structured-output fixture without re-deriving the expected count."
+        },
+        {
+          "kind": "note",
+          "note": "Case snapshot path in the dispatch (.agents/automation/pipelines-remaining-w7/cases/ELITEA-2451.md) does not exist; the actual file is at .agents/automation/pipelines-remaining/cases/ELITEA-2451.md (no -w7 suffix). Same drift pattern already logged for ELITEA-2043/2053/2066 in prior sessions — the wave-numbered dispatch path never matches the actual cases/ directory, which has no wave suffix.",
+          "ref": "ELITEA-2451"
+        },
+        {
+          "kind": "note",
+          "note": "No pre-existing tracker issue found for ELITEA-2451 on board #9 (same gap previously flagged for ELITEA-2043) — flagging for Tal to link/create during Close since Phase 6 step 4 (comment PR link on originating issue) could not be performed without an issue number.",
+          "ref": "ELITEA-2451"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS step 7 case-text clarification (Timeline layout is left-to-right, not top-to-bottom) was already filed by the analyst as EliteaAI/elitea-testing-public#1375 before this dispatch started; no new filing needed. Test asserts execution order via DOM-index + ascending-timestamp correlation, robust to the axis.",
+          "ref": "EliteaAI/elitea-testing-public#1375"
+        },
+        {
+          "kind": "note",
+          "note": "AFS provenance error (non-blocking, recurring known pattern): Concrete Handles table marks pipeline-run-node-label / pipeline-run-details-panel / pipeline-run-details-timeline-step as on-main, but fresh git fetch + git grep against origin/main in EliteaUI shows they exist only on origin/automation/testids (added by ELITEA-2450/2452). Matches an existing memory entry (confirmed_live_is_not_on_main_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l3_run-details-timeline-steps-display_ELITEA-2451.md"
+        },
+        {
+          "kind": "note",
+          "note": "Dispatch prompt's case-snapshot path (.agents/automation/pipelines-remaining-w7/cases/ELITEA-2451.md) does not exist; actual snapshot found at .agents/automation/pipelines-remaining/cases/ELITEA-2451.md (no -w7 suffix). Content matched the AFS faithfully once located — no impact on the verdict, just a batch-dir naming inconsistency worth a heads-up."
+        },
+        {
+          "kind": "note",
+          "note": "Working tree was already checked out on tests/ELITEA-2451-run-details-timeline-steps-display (implementer's terminal state) rather than the batch trunk when this review started. No checkout was performed for this static review (all comparisons used git diff <ref>...<ref> against remote refs); flagging so the next agent doesn't mistake it for reviewer-caused drift."
+        }
+      ],
+      "afs": "test-specs/pipelines/l3_run-details-timeline-steps-display_ELITEA-2451.md",
+      "branch": "tests/ELITEA-2451-run-details-timeline-steps-display",
+      "pr": 1376
+    },
+    {
+      "id": "ELITEA-2454",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Self-filed-then-retracted false-positive defect EliteaAI/elitea-testing-public#1377 during this analysis: initially concluded the pipeline's multi-run 'history' (RunStateNodeGroup's clock-icon overflow menu) never accumulates more than 1 run, based on checking [data-testid=\"pipeline-run-node-label\"] count and #runNodes-history-menu presence WITHOUT first opening the (testid-less) history toggle - … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1377 (closed, not planned)"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 3 ('Click the trash/delete icon button in the Run Details header') refers to the delete button INSIDE the opened Run Details panel's header (pipeline-run-details-delete-button, already testid'd from ELITEA-2450) - not the separate outer on-canvas delete icon that sits directly on RunStateNode next to the run label (also has no testid, forward-referenced by ELITEA-2450's AFS as pipeline-r… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New testid required for implementation: pipeline-run-node-history-button on RunStateNodeGroup.jsx's historyWrapper Box (lines 41-46, wraps a bare <ClockIcon/> with onClick, zero testid/aria-label/Tooltip today). Only rendered when >1 run exists. Naming and placement fully specified in the AFS's Concrete Handles table. Deliberately did not request a menu-container testid (scope discipline) since th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Analyst's earlier session (captured in the AFS) self-corrected a false-positive defect filing (#1377, filed then retracted same session) after discovering the real mechanism required opening the history toggle before counting run nodes. No defect carried forward into this implementation."
+        },
+        {
+          "kind": "note",
+          "note": "New durable gotcha logged to test-automation-engineer memory: MUI Menu's MuiBackdrop-root intercepts Playwright clicks on elements outside the Menu's Paper while the menu is open, even when those elements are visually unobstructed — requires evaluate(el => el.click()) or closing the menu first. Second-order gotcha: re-clicking a toggle button that opens such a menu, when already open, can hit the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation confirmed clean: fetched TMS ELITEA-2454 case is byte-identical to the batch snapshot the implementer used (.agents/automation/pipelines-remaining/cases/ELITEA-2454.md, no -w7 suffix — the known cross-batch snapshot-dir quirk, already memory-logged); AFS is a faithful translation (all 7 case steps mapped, mechanics independently verified against RunStateNodeGroup.jsx source on automa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance verified fresh: pipeline-run-node-history-button was added via EliteaAI/EliteaUI@89282f5e, confirmed present in RunStateNodeGroup.jsx on origin/automation/testids after git fetch origin (not yet on origin/main, as expected for a brand-new testid awaiting human cherry-pick)."
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid handles added in automation/pages/ and automation/tests/ (diff vs origin/tests/batch-pipelines-remaining-w7) returned 0 hits — command: git diff origin/tests/batch-pipelines-remaining-w7...origin/tests/2454-run-details-delete-run-from-history -- automation/pages/ automation/tests/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New PipelineDetailPage methods (open_run_node_history, get_run_history_labels, open_run_details_by_label, delete_current_run_details) are additive-only (no existing method bodies touched), correctly documented with docstrings covering the MUI backdrop-interception quirk, and the idempotent open_run_node_history() guard (count()>1 skip) is logically sound against the verified JSX (menu unmounts chi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Durable memory entry (mui_menu_stays_open_backdrop_intercepts_outside_clicks.md) is well-written, generic beyond this one case (any MUI Menu/Popover without explicit auto-close), and correctly committed alongside the code diff — no action needed, flagging only as a good pattern worth noting to the lead."
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_run-details-delete-run-from-history_ELITEA-2454.md",
+      "branch": "tests/2454-run-details-delete-run-from-history",
+      "pr": 1378
+    },
+    {
+      "id": "ELITEA-2443",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case title 'Subgraph State Sharing' uses the LEGACY node-type noun ('pipeline'/subgraph, SubgraphNode.jsx) for a capability the live product now implements via the modern Agent node + Tools-section pipeline-attach. The dedicated subgraph node type is deprecated and absent from the Add Node menu's 11 modern types (confirmed against the merged ELITEA-2030 AFS's live-verified exact list, and the bund… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-subgraph-state-sharing-common-vars_ELITEA-2443.md"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed live, surprising vs the modern agent node's documented schema (elitea-pipeline skill's yaml-schema.md shows only a task-string input_mapping, no state-passing field): common-named state variables DO share automatically between a parent pipeline and a pipeline attached-as-tool to an Agent node, keyed purely by variable-name identity across the two pipelines' state: blocks. Recorded in rol… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "An Agent node's tool: YAML field alone does not resolve a pipeline reference (renders 'Agent not found — select a replacement or delete this node') until the pipeline is ALSO attached via the Tools-section '+ Pipeline' popper. A fixture author who pre-sets tool: in YAML still needs the attach step at runtime — flagged in the AFS Preconditions and Automation Hints so the implementer doesn't skip it… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The child pipeline's own execution nests inside the SAME Run Details timeline/state panel as the parent's — not an opaque single 'AGENT1' entry. A 2-node parent calling a 1-node child produced 5 timeline entries (parent-code, child-name x2, child-code, AGENT1). This is new territory beyond the single-pipeline ELITEA-2450/2451/2452/2453 family and is documented as fixture-shape-dependent (assert st… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Dispatch-stated case-snapshot path .agents/automation/pipelines-remaining-w7/cases/ELITEA-2443.md does not exist on disk. The real snapshot is at .agents/automation/pipelines-remaining/cases/ELITEA-2443.md (no -w7 wave suffix) — same class of drift already logged in a prior session's daily-log entry for this batch (ELITEA-2041). Worth confirming the batch's case-snapshot naming convention with whi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Live-verified: an Agent node's YAML `tool:` field alone does NOT resolve a pipeline-as-tool reference — it must ALSO be attached via the Tools-section '+ Pipeline' popper, even when the YAML already names the correct pipeline byte-for-byte (same mechanism as ELITEA-2064). Test asserts the pre-attach empty combobox state explicitly.",
+          "ref": "ELITEA-2443"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS/analyst's own live session observed a 5-entry nested Run Details timeline ending in a distinct 'AGENT1' wrap-up dot for a '2-node-parent/1-node-child' recipe. This implementation's own independently-built recipe (structurally the same shape) produced only 4 entries with no trailing AGENT1 entry. Documented as fixture-shape-dependent in test-specs/pipelines/_surface.md and a new memory entry; t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2443"
+        },
+        {
+          "kind": "note",
+          "note": "No pre-existing GitHub tracking issue exists for ELITEA-2443 on board #9 — consistent with the campaign's card-light batch-workflow path seen in recent commit history. No PR-link comment step was performed (nothing to comment on); flagging in case Tal wants to link/create one during Close, matching the ELITEA-2043 precedent noted in prior sessions."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case (.agents/automation/pipelines-remaining/cases/ELITEA-2443.md — note: dispatch named the 'pipelines-remaining-w7' folder, which doesn't exist; only 'pipelines-remaining' has this case file, matching the PR body's own citation) ↔ AFS (test-specs/pipelines/l2_pipeline-subgraph-state-sharing-common-vars_ELITEA-2443.md) ↔ diff. Every Axis-1 Coverage Map row maps to a real assertion at… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for added non-testid handles (git diff <base>...<branch> | grep -nE '(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') returned 0 hits. Verified every page-object method the test calls (get_node_ids, get_agent_node_agent_value, open_pipeline_popper, select_pipeline_in_popper, send_message… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Declared-improvisation check (role-overrides.md § Declared-improvisation protocol): the AFS's own live session observed a 5-entry nested timeline ending in a distinct 'AGENT1' entry; the implementer's independently-built, structurally-similar fixture (pipeline_parent_child_state_sharing) produced only 4 entries with no trailing AGENT1. The implementer followed the AFS's own Automation Hints ('asse… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_subgraph_state_sharing.py"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (non-blocking): the AFS's Test Step 3 'Verify' clause and Axis-2 row both mention the pre-attach 'Agent not found' banner text; the test asserts the empty Agent combobox (Step 1) but does not assert the banner text itself. The implementer's docstring explicitly documents this as an intentional non-assertion — the AgentNode.jsx banner carries no testid and is not on this test's touched code pat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_subgraph_state_sharing.py"
+        },
+        {
+          "kind": "note",
+          "note": "Nit (cosmetic, non-blocking): the Step 7 assertion's failure message says \"state_1's Before value (at the AGENT1 step) should reflect...\" but in this fixture's actual 4-entry timeline the selected last entry is the child's own code node, not literally 'AGENT1' — the message text is a leftover from the AFS's 5-entry framing and would be slightly misleading if this assertion ever failed. Does not af… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_subgraph_state_sharing.py:190"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-subgraph-state-sharing-common-vars_ELITEA-2443.md",
+      "branch": "tests/2443-pipeline-subgraph-state-sharing-common-vars",
+      "pr": 1379
+    },
+    {
+      "id": "ELITEA-2444",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Intake snapshot missing at .agents/automation/pipelines-remaining-w7/cases/ELITEA-2444.md — fell back to the live TMS repo file (onetest-ai-tm-Elitea/tests/automated-full-regression-ui/pipelines/ELITEA-2444_subgraph-state-sharing-non-common-state-isolation.md), content identical to the stale non-w7 folder's copy. No blocker, just flagging the gap per the skill's fetch-fallback protocol.",
+          "ref": "ELITEA-2444"
+        },
+        {
+          "kind": "note",
+          "note": "New platform-behavior discovery: Pipeline Run Details STATES panel's Before/After values are scoped to the currently-selected timeline step's own node input/output declaration, not a run-level snapshot. Reading a variable at a step that doesn't declare it in its own input/output renders BOTH Before and After as empty strings — indistinguishable from 'value never set' without this context. Document… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2444"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2443's pipeline_parent_child_state_sharing fixture (automation/fixtures/data_fixtures.py) is NOT reusable for this case as-is — its child pipeline declares state_2 (making it common with the parent), which is exactly the non-common condition ELITEA-2444 needs to test. The implementer needs a new sibling fixture with the state schema documented in the AFS's Test Data section (parent: state_1… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2444"
+        },
+        {
+          "kind": "note",
+          "note": "Dispatch prompt named the case-snapshot dir as .agents/automation/pipelines-remaining-w7/cases/ELITEA-2444.md, which doesn't exist — the campaign uses one shared, un-suffixed .agents/automation/pipelines-remaining/cases/ directory across all waves. Used the correct path; this exact gotcha is already logged in my role memory (wave_dispatch_case_snapshot_dir_has_no_wave_suffix.md) from prior ELITEA-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No board #9 tracking issue exists yet for ELITEA-2444 (verified via the real-time gh issue list API, not --search). Phase 6 step 4 (comment PR link on originating issue) had nothing to attach to — this is an intake-sweep gap for the orchestrator to close, not something I invented a workaround for."
+        },
+        {
+          "kind": "note",
+          "note": "child_name = f\"autotest_2444c_{request.node.name}\"[:32] truncates almost all of request.node.name (only ~17 chars survive the 15-char prefix); uniqueness rests on the numeric case-id prefix. Harmless today (single consumer test) and copied verbatim from the already-merged ELITEA-2443 sibling fixture — not a new issue introduced by this PR, flagged for awareness only.",
+          "ref": "automation/fixtures/data_fixtures.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid handles on the full diff returned 0 hits: git diff tests/batch-pipelines-remaining-w7...tests/2444-pipeline-subgraph-non-common-state-isolation | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()' — diff adds no page-object/locator code at all; all PipelineDet… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All 8 TMS case steps (ELITEA-2444) have a matching AFS Coverage-Map row and a real per-step assertion in the implementation, with expected literals matching exactly (state_3 absence looped over every timeline index; state_1 before/after; state_2 two-step boundary comparison). No masking (no skip/xfail/soft-assert), console-error check runs correctly at the end with listener removed first."
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-subgraph-non-common-state-isolation_ELITEA-2444.md",
+      "branch": "tests/2444-pipeline-subgraph-non-common-state-isolation",
+      "pr": 1380
+    },
+    {
+      "id": "ELITEA-2445",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "CONFIRMED live, filed as EliteaAI/elitea-testing-public#1381: a node chained via `transition:` immediately after an `agent`-type node whose `tool:` resolves to a nested pipeline (attached via the Tools-section '+ Pipeline' popper) never executes -- the run still reports 'Completed'. Reproduced 2/2 against fresh pipelines. Isolated via a control probe (plain code-only 2-node chain, no agent hop) wh… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1381"
+        },
+        {
+          "kind": "note",
+          "note": "Neither ELITEA-2443 nor ELITEA-2444's merged fixtures ever chain a node after the Agent-node-with-pipeline-tool hop (both end AGENT1's transition at END) -- this defect was genuinely undiscovered ground before this analysis, not something either prior case's implementer missed."
+        },
+        {
+          "kind": "note",
+          "note": "RunStateDialog.jsx source-confirmed: the Run Details panel's Before/After values are keyed off the SELECTED timeline step index (data.timeline[selectedStep-1] / data.timeline[selectedStep]), not a run-level aggregate -- selecting a different index genuinely yields different values. Relevant for any future case asserting per-node state at a specific point in a multi-node run."
+        },
+        {
+          "kind": "note",
+          "note": "The two 'soft-asserted, not masked' checks in the new test (timeline count stays at 4; no timeline entry aria-label matches 'CODE2') currently PASS as literally written, because they assert the CURRENT (buggy) structural shape rather than the case's desired outcome -- there is no element to assert a positive 'Node_C ran' value against, since it never renders at all. The test is therefore GREEN tod… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-snapshot path gotcha recurs: the dispatch named .agents/automation/pipelines-remaining-w7/cases/ELITEA-2445.md, which does not exist -- the real file is at the un-suffixed .agents/automation/pipelines-remaining/cases/ELITEA-2445.md (same as prior units in this batch per existing memory entries #60/#62 and today's daily log). Worth fixing at the source (batch dispatch template) so future dispa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "CONFIRMED CRITICAL: inverted known-defect soft-assertion polarity produces a hidden GREEN for the open, confirmed, filed defect #1381, contradicting .agents/testing.md section Merge gate ('staying red in CI is the correct signal until the product fix ships'), the test-automation-implementation SKILL.md canon ('The test is now red until the product ships'), and the team-wide CLAUDE.md rule 'never a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_subgraph_state_sharing.py:371-385"
+        },
+        {
+          "kind": "note",
+          "note": "PR #1382's original body/Run Report claimed 'GREEN 2/2' and explicitly said 'currently both structural checks match the known-defect state, so the test is GREEN' — that was itself the tell that the polarity was inverted (a sanctioned-RED soft-assert for an OPEN defect should never be described as green). PR description now corrected to RED 1/2 (sanctioned) with the real Run Report.",
+          "ref": "PR #1382"
+        },
+        {
+          "kind": "note",
+          "note": "Extended sanctioned_red_soft_assert_traps.md (test-automation-engineer memory) with a 4th rule and updated its MEMORY.md index line — worth reviewing on any future known-defect soft-assert implementation.",
+          "ref": ".agents/memory/test-automation-engineer/sanctioned_red_soft_assert_traps.md"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED: the two soft-assertion trigger conditions in test_subgraph_state_sharing_node_c_state_propagation (automation/tests/ui/pipelines/test_pipeline_subgraph_state_sharing.py, lines ~356-380) now fire on the CURRENT buggy symptom (timeline_count == _EXPECTED_TIMELINE_STEP_COUNT_WITH_BLOCKED_NODE_C i.e. 4, and 'CODE2' absent from timeline_node_ids) instead of on a deviati… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_subgraph_state_sharing.py:356"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Test Steps 3-4 and Coverage Map row 8 were amended in lockstep with the code fix — both now explicitly state 'Polarity is load-bearing' and describe the correct trigger direction, matching the implementation exactly. No AFS/code drift.",
+          "ref": "test-specs/pipelines/lextend_pipeline-subgraph-node-c-state-propagation_ELITEA-2445.md:114"
+        },
+        {
+          "kind": "defect",
+          "note": "Minor/cosmetic: the code comment (line ~373) and the AFS (line ~130) both say the #1103 precedent is 'in this same file' / 'above' — it's actually in a different file, test_pipeline_hitl_node_runtime_behavior.py. Not blocking (doesn't affect correctness or coverage), just a slightly misleading cross-reference for a future reader.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_subgraph_state_sharing.py:373"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation complete: TMS case snapshot found at .agents/automation/pipelines-remaining/cases/ELITEA-2445.md (not under pipelines-remaining-w7 — same un-suffixed-folder gotcha the implementer's own daily log flags for ELITEA-2444). All 9 case steps map to Coverage Map rows faithfully; new fixture pipeline_parent_child_state_sharing_three_node is additive-only and does not touch the existing ELIT… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_subgraph_state_sharing.py:1"
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_pipeline-subgraph-node-c-state-propagation_ELITEA-2445.md",
+      "branch": "tests/ELITEA-2445-subgraph-node-c-state-propagation",
+      "pr": 1382
+    },
+    {
+      "id": "ELITEA-2446",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2446's own Code-node script text (`output = f\"Processed: {result}\"`, a plain assignment) does not write state — confirmed live the sandbox requires a bare dict-literal as the script's final statement for structured_output to route the value into the declared output variable, matching the elitea-pipeline skill's own documented rule. Filed and dedup-checked.",
+          "ref": "EliteaAI/elitea-testing-public#1383"
+        },
+        {
+          "kind": "clarification",
+          "note": "Building a multi-node pipeline via the Flow Editor's 'Add node' clicks does NOT auto-wire an edge between sequentially added nodes — each lands with an independent transition:END, so a chained node (e.g. the case's Code node after its LLM node) never executes. Confirmed live across 4 probe runs; not a product execution defect since building via API/YAML with explicit transition: fields (the patter… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1384"
+        },
+        {
+          "kind": "note",
+          "note": "The case snapshot file was missing from .agents/automation/pipelines-remaining-w7/cases/ for ELITEA-2446 — fetched fresh via the onetest-tms MCP server instead. Worth checking whether wave-07's intake sweep actually wrote case snapshots for all its cases, or whether this one arrived through a different path."
+        },
+        {
+          "kind": "note",
+          "note": "No existing fixture builds a pipeline with custom state variables via create_pipeline_with_nodes() (it has no state: support, confirmed by that helper's own docstring) AND explicit multi-node transition chaining together — the AFS recommends a new fixture using the raw-YAML PipelineAPI.create_pipeline() pattern (mirroring pipeline_with_typed_state_vars_id), which the implementer should add."
+        },
+        {
+          "kind": "defect",
+          "note": "Filed EliteaAI/elitea-testing-public#1385 (question-labelled clarification, not a bug): a Code node's Run Details timeline-step label reads 'pyodide' (the Python-sandbox executor's name), not the space-stripped YAML id ('Code1') that the ELITEA-2450/2452 LLM/Printer convention predicted. The AFS inherited that convention and was wrong for this node type. Test asserts the live-correct 'pyodide' lab… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1385"
+        },
+        {
+          "kind": "note",
+          "note": "This case's 2-node YAML (multi-line Code script + 2 custom state vars) is long enough to trip the already-filed #1025 Pipeline-YAML-tab viewport-truncation defect (same one ELITEA-2045 already routes around). No new issue filed — step 11 verifies via pipeline_api.get_pipeline() server-truth instead of the UI YAML tab, same established pattern. Updated the existing memory entry (pipeline_yaml_tab_t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1025"
+        },
+        {
+          "kind": "note",
+          "note": "Both of ELITEA-2446's own case-text clarifications (#1383: script must end with a dict-literal, not an assignment; #1384: Flow-Editor add-node doesn't auto-wire edges) were already filed by the analyst and are correctly handled by the AFS/fixture — confirmed still accurate during implementation, no change needed."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation: case (.agents/automation/pipelines-remaining/cases/ELITEA-2446.md, no -w7 suffix — same recurring intake-dir-slug pattern seen across this whole wave) ↔ AFS (test-specs/pipelines/l3_code-node-read-elitea-state-variables_ELITEA-2446.md) ↔ diff (PR #1386, branch tests/ELITEA-2446-code-node-read-elitea-state-variables, base tests/batch-pipelines-remaining-w7). Diff scope: automation/co… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Zero page-object files touched in this PR. Every method the spec calls (wait_for_node_on_canvas, edge_exists, get_state_variable_name_text, open_state_panel/close_state_panel, get_code_node_input_value/get_code_node_value/get_code_node_output_value, code_node_structured_output_toggle, run_node_label, open_run_details_panel, get_run_details_status, select_run_details_timeline_step, get_run_details_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "All 11 case steps + the precondition + the Expected-Final-State row have a real per-step assertion in the shipped test, matching the AFS Coverage Map row-for-row (verified against the AFS text, not just its existence). Axis-2 additions (step-2 edge-topology assert, step-9 prefix/non-empty-suffix assert instead of exact match, step-10 #1267 console-filter) are all present in the code exactly as dec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Both implementer amendments (Run Details Code-node timeline label is \"pyodide\" not the space-stripped id \"Code1\" → filed EliteaAI/elitea-testing-public#1385; the pipeline's 2-node YAML hits the already-filed #1025 viewport-truncation defect, routed via pipeline_api.get_pipeline() instead of the YAML tab, no new issue filed) are reflected in the AFS's Test Steps, Coverage Map, and Known Defects sec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified via `gh issue view` that all 4 referenced issues exist and are correctly stated: #1383 (question, OPEN), #1384 (question, OPEN), #1385 (question, OPEN, new this PR), #1025 (bug, OPEN, pre-existing, correctly reused/not re-filed — dedup was correct). The #1267 console-filter signature (\"non-boolean attribute\" in msg.text) matches all 5 sibling Run-Details-opening tests verbatim."
+        },
+        {
+          "kind": "note",
+          "note": "No defect masking of any kind (no pytest.skip/test.fail/xit/weakened asserts/`# Known defect` soft-assert patterns anywhere in the diff — grep confirmed 0 hits). Fixture teardown uses the established try/except-log pattern identical to the sibling fixture immediately above it in the same file, consistent with suite convention, not a swallowed real error."
+        },
+        {
+          "kind": "clarification",
+          "note": "One non-blocking observation reported via ReportFindings: the new fixture's LLM `task` field uses `{type: fstring, value: '{input}'}` where the AFS's illustrative YAML used `{type: fixed, value: \"Say hello to Alex in exactly three words.\"}`. This drift from the AFS's literal YAML isn't called out in the AFS/PR body, but it (a) matches an established convention already used by 6+ other fixtures in … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/fixtures/data_fixtures.py:641"
+        }
+      ],
+      "afs": "test-specs/pipelines/l3_code-node-read-elitea-state-variables_ELITEA-2446.md",
+      "branch": "tests/ELITEA-2446-code-node-read-elitea-state-variables",
+      "pr": 1386
+    },
+    {
+      "id": "ELITEA-2447",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "No product defect and no case-text drift found on ELITEA-2447 — the case's own literal Code-node script already matches the confirmed-live-working dict-literal-return form (unlike its close sibling ELITEA-2446, whose case text described a plain-assignment form that silently no-ops). Nothing to file."
+        },
+        {
+          "kind": "note",
+          "note": "New product behavior confirmed and documented (not a defect): a Code node's Output multi-select accepts a variable that is also present in that same node's own Input list — no validation error, and Run Details correctly attributes the update to the single node that both read and wrote it. Recorded in _surface.md and role memory for future cases that need a node to read-and-overwrite the same varia… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Recurring intake-path gotcha (same as every prior case in this wave): the case snapshot lives at .agents/automation/pipelines-remaining/cases/ELITEA-2447.md, not a -w7-suffixed path. Not a blocker this session (found it via grep) but worth normalizing at the intake step for future waves."
+        },
+        {
+          "kind": "note",
+          "note": "Live discovery, not a defect: PipelineDetailPage.get_code_node_output_value()/get_code_node_input_value() return chip text with ZERO separator characters when 2+ variables are selected (e.g. 'summarycounttags', not 'summary, count, tags'). A comma-split order-independent set comparison silently degrades to a one-item set and passes/fails for the wrong reason. Documented in the AFS (Axis 2 amendmen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l3_code-node-return-dict-multiple-state-vars_ELITEA-2447.md"
+        },
+        {
+          "kind": "note",
+          "note": "Case snapshot .agents/automation/pipelines-remaining-w7/cases/ELITEA-2447.md was missing (wave-07 cases dir doesn't exist yet); fetched the TMS case body directly from onetest-ai-tm-Elitea instead. Not a defect in this PR — flagging for the orchestrator's intake bookkeeping.",
+          "ref": "pipelines-remaining-w7 intake"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical non-testid-handle grep against the diff (automation/pages + automation/tests) returned 0 hits — no page-object changes in this PR at all; every locator/method the new test calls (get_state_variable_name_text, get_code_node_input_value/output_value/value, get_run_details_* family) pre-exists on the batch trunk from ELITEA-2009/2450/2451/2452.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_code_node_multi_var_dict_return.py"
+        },
+        {
+          "kind": "note",
+          "note": "Verified the implementer's mid-run finding (get_code_node_output_value() concatenates 2+ chips with zero separator) is real and correctly fixed with a substring-membership + total-length-equality check (not a vacuous contains-only check), and the AFS was amended in the same PR to document it.",
+          "ref": "test-specs/pipelines/l3_code-node-return-dict-multiple-state-vars_ELITEA-2447.md"
+        }
+      ],
+      "afs": "test-specs/pipelines/l3_code-node-return-dict-multiple-state-vars_ELITEA-2447.md",
+      "branch": "tests/2447-code-node-multi-var-dict-return",
+      "pr": 1387
+    },
+    {
+      "id": "ELITEA-2448",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Case text for ELITEA-2448 is live-correct as written (no clarification needed) -- distinct from sibling ELITEA-2446/2447, whose case text used a plain assignment as the Code node script's last statement and silently no-ops. This case's script ends with a bare NAME reference (not an assignment), which behaves like a bare dict-literal expression -- both are accepted. Recorded as a refinement in .age… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l3_code-node-elitea-client-user-info_ELITEA-2448.md"
+        },
+        {
+          "kind": "note",
+          "note": "elitea_client and alita_client are confirmed true aliases of the same runtime-injected Code-node client (get_user_data() resolves identically under both spellings); a raw-YAML state variable declared type: JSON is a distinct spelling from the STATE panel UI's internal 'dict' type key ('Json' display label) but the API accepts type: JSON verbatim and it renders correctly. Neither is a product defec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Case-file intake path used was .agents/automation/pipelines-remaining/cases/ELITEA-2448.md, not the w7-specific .../pipelines-remaining-w7/cases/ path named in the dispatch -- that w7 cases subdirectory does not exist on disk; only the original shared pipelines-remaining/cases/ dir has this case's snapshot. Worth checking whether intake for wave 7 actually wrote per-wave case snapshots or is reusi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/automation/pipelines-remaining/cases/ELITEA-2448.md"
+        },
+        {
+          "kind": "note",
+          "note": "No product defect found and no case-text drift for ELITEA-2448 — the case's own literal script (bare name-reference last statement, not an assignment) works exactly as written, unlike sibling ELITEA-2446/2447 which needed a dict-literal CLARIFICATION. AFS already documents this distinction."
+        },
+        {
+          "kind": "note",
+          "note": "No per-case tracker issue exists for this case in this batch context (campaign tracked at report.json/report.md level) — skipped the 'comment PR link on originating issue' handoff step as not applicable rather than inventing one; flagging so the orchestrator can confirm this is expected for pipelines-remaining-w7."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation confirmed faithful: TMS case ELITEA-2448 (6 steps) -> AFS l3_code-node-elitea-client-user-info_ELITEA-2448.md -> diff (automation/fixtures/data_fixtures.py new fixture pipeline_code_node_elitea_client_user_info, automation/conftest.py +1 import, new spec automation/tests/ui/pipelines/test_pipeline_code_node_elitea_client_user_info.py, +1 reviewer/analyst memory line). Every AFS Cover… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mandatory mechanical grep (git diff base...branch | grep raw-locator patterns) returned 0 hits -- no non-testid handle added. Zero new testids required or added per the AFS's own claim, confirmed: no EliteaUI diff exists in this PR at all, every locator used is a pre-existing class-level LocatorDescriptor or UPPER_CASE template constant from ELITEA-2009/2042/2450/2451/2452."
+        },
+        {
+          "kind": "note",
+          "note": "No defect masking: no pytest.skip/xit/weakened asserts; console-error check excludes only the pre-established, cross-suite #1267 signature (same pattern every other Run-Details-opening test in this family already uses) and asserts the rest are empty. AFS's Known-Defects section correctly records none found and explains why this case (bare name-reference last statement) needed no CLARIFICATION unli… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ruff clean on the new test file and fixtures file in isolation. conftest.py showed 60 F401 'imported but unused' hits including the new fixture import, but this is pre-existing suite-wide noise (ruff doesn't understand pytest fixture-registration-via-import semantics) affecting every other fixture import in the same block identically -- not introduced by this diff, not blocking."
+        },
+        {
+          "kind": "clarification",
+          "note": "Dispatch prompt named the case snapshot at .agents/automation/pipelines-remaining-w7/cases/ELITEA-2448.md, which does not exist; the actual snapshot lives at .agents/automation/pipelines-remaining/cases/ELITEA-2448.md (unsuffixed dir). Found and triangulated against the correct file; flagging so the orchestrator's dispatch-prompt path convention for this campaign's later waves is accurate (case sn… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/pipelines/l3_code-node-elitea-client-user-info_ELITEA-2448.md",
+      "branch": "tests/ELITEA-2448-code-node-elitea-client-user-info",
+      "pr": 1388
+    },
+    {
+      "id": "ELITEA-2449",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Confirmed live, no product defect: a Code node's elitea_state is strictly scoped to its own input: list (documented behavior, elitea-pipeline skill's yaml-schema.md:238-241) — var_c, though declared in pipeline state and written by an earlier node in the same run, is fully absent from elitea_state.keys() inside a Code node whose input: excludes it. This is exactly what the case describes; case tex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l3_code-node-input-filtering-selective-state-access_ELITEA-2449.md"
+        },
+        {
+          "kind": "note",
+          "note": "New page-object gotcha for the implementer: PipelineDetailPage.get_code_node_input_value() (and the LLM/Toolkit/MCP node equivalents sharing the same read pattern) returns multi-selected chip text with NO separator (\"var_avar_b\" for a 2-variable selection), not a comma-joined string. Every prior case using this method (ELITEA-2009, ELITEA-2446) only ever exercised a single selection, so this shape… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/code_node_multiselect_input_value_no_separator.md"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed live and safe to reuse as-is: calling select_code_node_input_variable() twice in a row (once per variable) composes cleanly with no popover-toggle race, because _select_multi_select_option_and_close() presses Escape and waits for the popover to fully close after each selection before the next open_*_select() call runs. No new page-object method is needed for multi-variable Input selectio… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:4594"
+        },
+        {
+          "kind": "note",
+          "note": "Two already-filed platform defects reproduced again on this case's pipeline topology (traceability only, not new findings, same root causes as ELITEA-2446/2447): #1025 (Pipeline YAML tab viewport-truncation, routed around via pipeline_api.get_pipeline() server-truth readback) and #1385 (Run Details timeline label for a Code node's step renders as \"pyodide\", not the space-stripped YAML id conventio… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS drift found + fixed during implementation: the AFS's recommended fixture pre-sets the Code node's Input via YAML (input: [var_a, var_b]) at pipeline creation, but AFS step 3 + Automation Hints instructed calling select_code_node_input_variable('var_a') then ('var_b') against that same fixture — a plain MUI multi-select click on an ALREADY-checked chip TOGGLES IT OFF (confirmed live: get_code_n… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l3_code-node-input-filtering-selective-state-access_ELITEA-2449.md"
+        },
+        {
+          "kind": "note",
+          "note": "No originating tracking issue found in EliteaAI/elitea-testing-public for ELITEA-2449 (checked via gh issue list --state all, grep '2449') — skipped the 'comment PR link on originating issue' handoff step since there's nothing to comment on. Flagging in case intake should have filed one for this batch and didn't."
+        },
+        {
+          "kind": "note",
+          "note": "Zero product defects found during this case's own execution — clean confirmation of the documented elitea_state input-scoping contract (a Code node only receives state variables listed in its own input:, per .claude/skills/elitea-pipeline/references/yaml-schema.md:238-241). New preventive memory entry written: .agents/memory/test-automation-engineer/multi_select_reselect_on_prefilled_input_toggles… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (case snapshot .agents/automation/pipelines-remaining/cases/ELITEA-2449.md ↔ AFS test-specs/pipelines/l3_code-node-input-filtering-selective-state-access_ELITEA-2449.md ↔ diff tests/ELITEA-2449-code-node-input-filtering...tests/batch-pipelines-remaining-w7) is clean: all 9 case steps + Expected Final State/Pass-Fail criteria map 1:1 to Coverage-Map rows, and every 'asserted' row has … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The implementer's AFS/​_surface.md amendment (multi-select re-selection toggles a YAML-pre-set chip off) is inserted as a clearly attributed 'IMPLEMENTER AMENDMENT (confirmed live during ELITEA-2449 automation)' block directly after the analyst's original claim, not a silent rewrite — only 3 lines were removed total across both docs, purely to splice the qualifier into the existing sentence; the a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "One numbering nit, non-blocking: the Coverage-Map row for case step 6 ('Execute the pipeline') cites 'asserted where: get_run_details_status()', but that assertion actually lives in the test's allure Step 7 block (Run Details), not Step 6 (which only sends the chat message and confirms a new message + body-text substring). The assertion genuinely exists and is real — this is a citation-precision g… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_code_node_input_filtering.py"
+        }
+      ],
+      "afs": "test-specs/pipelines/l3_code-node-input-filtering-selective-state-access_ELITEA-2449.md",
+      "branch": "tests/ELITEA-2449-code-node-input-filtering",
+      "pr": 1389
+    }
+  ],
+  "totals": {
+    "merged-ungated": 11
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
