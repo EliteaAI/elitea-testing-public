@@ -36,7 +36,7 @@ UI_ELEMENT_TIMEOUT = 10_000
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"
-    "ELITEA-2064_attach-pipeline-as-tool.md",
+    "ELITEA-2064_pipeline-attach-pipeline-as-tool.md",
     "onetest-ai Test Case link",
 )
 def test_attach_pipeline_as_tool(page, pipeline_id, pipeline_api):
