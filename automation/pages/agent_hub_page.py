@@ -65,6 +65,16 @@ class AgentHubPage(BasePage):
         description="Catalog search TextField (agents/skills, shared across both tabs).",
     )
 
+    agents_tab = LocatorDescriptor(
+        testid="catalog-agents-tab",
+        description="Agents tab in Catalog page header (EliteaCatalog.jsx, ELITEA-2370).",
+    )
+
+    skills_tab = LocatorDescriptor(
+        testid="catalog-skills-tab",
+        description="Skills tab in Catalog page header (EliteaCatalog.jsx, ELITEA-2370).",
+    )
+
     # Category section heading — dynamic per category name (slugified:
     # lowercase, non-alnum runs -> '-'). Templated class-level constant per
     # .agents/testing.md's dynamic-testid convention.
@@ -87,6 +97,10 @@ class AgentHubPage(BasePage):
     # via a caller-supplied `chipTestIdPrefix` prop per the shared-component
     # testid discipline (CategoryRail is shared with SkillsTab).
     CATEGORY_FILTER_CHIP = '[data-testid="catalog-agent-category-filter-chip-{}"]'
+
+    # Agent category filter-rail chip prefix (for querying all agent-scoped chips,
+    # ELITEA-2370) — used to count and verify filter chips in the Agents view.
+    AGENT_CATEGORY_FILTER_CHIP_PREFIX = '[data-testid^="catalog-agent-category-filter-chip-"]'
 
     # Like button (heart icon + count) on an agent card, ELITEA-2354 —
     # dynamic per application id, same idiom as CATEGORY_FILTER_CHIP/
