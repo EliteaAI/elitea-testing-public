@@ -693,6 +693,25 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 - **Known issue**: Redux console warning on like click — "non-serializable value was detected in an action, in the path: `payload.updateFn`" (appears to be a Redux Toolkit serialization enforcement warning, but the UI state updates correctly despite the warning). Does not block the feature — automation should proceed with normal assertions.
 - **Pre-existing from ELITEA-2356 analysis**: modal structure, agent name, description, CHAT STARTERS section, Welcome Message section, Start Chat button — all pre-existing handles, see ELITEA-2356 AFS § Concrete Handles for full reference.
 
+## Agent Hub Catalog modal — Share (copy-link) action (ELITEA-2359 run, 2026-08-10)
+- **Where**: Catalog modal → click overflow menu button → select "Share" option
+- **Overflow menu button**: `[data-testid="agent-hub-modal-menu-button"]` (three-dot icon in modal header, between like button and close button)
+- **Menu items**: `menu` role with three `menuitem` options:
+  - `[data-testid="export-agent-menuitem"]` (text "Export")
+  - `[data-testid="fork-agent-menuitem"]` (text "Fork")
+  - `[data-testid="share-agent-menuitem"]` (text "Share")
+- **Share action behavior** (confirmed live, ELITEA-2359):
+  - Clicking "Share" copies a URL to clipboard (client-side clipboard write, no network call)
+  - Success notification appears: `alert` role with text "The link has been copied to the clipboard."
+  - Notification auto-dismisses after ~3-5 seconds, or dismissible via close button
+  - **Copied URL format**: `http://localhost:5173/elitea-catalog?tab=agents&agentId={agent_id}` (example: `http://localhost:5173/elitea-catalog?tab=agents&agentId=275` for Entertainer Agent id=275)
+- **Navigation behavior** (ELITEA-2359 verification):
+  - Navigating directly to the copied URL loads the catalog page and **auto-opens the agent detail modal** for the specified agent (no manual card click required)
+  - All agent details (name, description, CHAT STARTERS, Welcome Message) display correctly in the reopened modal
+  - No page reload hop observed (URL navigation is instantaneous; modal renders immediately after)
+  - Link remains functional across browser sessions — navigation to a saved/bookmarked copy-link URL re-opens the same agent's modal
+- **Clipboard note** (troubleshooting for analysis): Direct `navigator.clipboard.readText()` may fail with permission denial in exploration. Workaround: monkey-patch `navigator.clipboard.writeText()` before the Share click to capture the URL into a window variable, or use Playwright context permissions `grantPermissions(['clipboard-read', 'clipboard-write'])` to grant clipboard access before clicking Share.
+
 ## Agents list empty state — search with no matches (ELITEA-2367 run, 2026-08-10)
 - **Where**: Agents list page `/agents/all?viewMode=owner` (card-list view, right panel with search input)
 - **Search input**: `textbox "search"` with `placeholder="Let's find something amazing!"`; input element itself has no `data-testid` (TBD add-data-testid candidate, default use is `data-testid="agent-search-input"` per SearchBar.jsx)
