@@ -1,0 +1,244 @@
+- generic [ref=f20e1]:
+  - generic [ref=f20e2]:
+    - generic [ref=f20e3]:
+      - navigation [ref=f20e578]:
+        - generic [ref=f20e5]:
+          - generic [ref=f20e6]:
+            - generic [ref=f20e7]:
+              - button [ref=f20e579] [cursor=pointer]
+              - generic [ref=f20e16] [cursor=pointer]
+            - separator [ref=f20e19]
+            - generic [ref=f20e24]:
+              - combobox [ref=f20e581] [cursor=pointer]:
+                - generic [ref=f20e27]:
+                  - generic [ref=f20e28]: P
+                  - generic [ref=f20e30]:
+                    - generic [ref=f20e31]: "Project:"
+                    - generic [ref=f20e32]: Private
+              - textbox: "399"
+            - separator [ref=f20e33]
+            - button [ref=f20e582] [cursor=pointer]: Create
+            - separator [ref=f20e41]
+          - generic [ref=f20e42]:
+            - generic [ref=f20e43]:
+              - listitem [ref=f20e44]:
+                - button [ref=f20e583] [cursor=pointer]:
+                  - generic [ref=f20e49]: Chats
+              - listitem [ref=f20e50]:
+                - button [ref=f20e584] [cursor=pointer]:
+                  - generic [ref=f20e55]: Agents
+              - listitem [ref=f20e56]:
+                - button [ref=f20e585] [cursor=pointer]:
+                  - generic [ref=f20e61]: Pipelines
+            - separator [ref=f20e62]
+            - generic [ref=f20e63]:
+              - listitem [ref=f20e64]:
+                - button [ref=f20e586] [cursor=pointer]:
+                  - generic [ref=f20e69]: Skills
+              - listitem [ref=f20e70]:
+                - button [ref=f20e587] [cursor=pointer]:
+                  - generic [ref=f20e75]: Toolkits & Indexes
+              - listitem [ref=f20e76]:
+                - button [ref=f20e588] [cursor=pointer]:
+                  - generic [ref=f20e82]: MCPs
+              - listitem [ref=f20e83]:
+                - button [ref=f20e589] [cursor=pointer]:
+                  - generic [ref=f20e88]: Credentials
+              - listitem [ref=f20e89]:
+                - button [ref=f20e590] [cursor=pointer]:
+                  - generic [ref=f20e94]: Applications
+            - separator [ref=f20e95]
+            - listitem [ref=f20e97]:
+              - button [ref=f20e591] [cursor=pointer]:
+                - generic [ref=f20e102]: Artifacts
+            - separator [ref=f20e103]
+            - generic [ref=f20e105]:
+              - generic [ref=f20e106] [cursor=pointer]: Settings
+              - separator [ref=f20e110]
+              - generic [ref=f20e111] [cursor=pointer]: Catalog
+          - generic [ref=f20e114]:
+            - generic [ref=f20e115]: Support Bot
+            - generic [ref=f20e592] [cursor=pointer]
+          - generic [ref=f20e121] [cursor=pointer]
+      - main [ref=f20e124]:
+        - generic [ref=f20e132]:
+          - generic [ref=f20e133]:
+            - generic [ref=f20e134]: Welcome to ELITEA Catalog!
+            - generic [ref=f20e137]:
+              - textbox [ref=f20e593]:
+                - /placeholder: Search for agents
+              - group
+            - tablist [ref=f20e141]:
+              - tab [selected] [ref=f20e594] [cursor=pointer]: Agents
+              - tab [ref=f20e595] [cursor=pointer]: Skills
+          - separator [ref=f20e149]
+          - generic [ref=f20e152]:
+            - generic [ref=f20e153]:
+              - generic [ref=f20e211]:
+                - generic [ref=f20e212]: Trending
+                - generic [ref=f20e214]:
+                  - generic [ref=f20e215] [cursor=pointer]:
+                    - generic [ref=f20e216]: Business Analyst
+                    - button [ref=f20e599]:
+                      - generic [ref=f20e228]: "7"
+                  - generic [ref=f20e229] [cursor=pointer]:
+                    - generic [ref=f20e230]: Assistant for ELITEA Documentation
+                    - button [ref=f20e604]:
+                      - generic [ref=f20e244]: "7"
+                  - generic [ref=f20e245] [cursor=pointer]:
+                    - generic [ref=f20e246]: Reflexion
+                    - button [ref=f20e607]:
+                      - generic [ref=f20e259]: "5"
+                  - generic [ref=f20e260] [cursor=pointer]:
+                    - generic [ref=f20e261]: Quality Engineering Sidekick
+                    - button [ref=f20e611]:
+                      - generic [ref=f20e273]: "4"
+                  - generic [ref=f20e274] [cursor=pointer]:
+                    - generic [ref=f20e275]: API Testing Buddy
+                    - button [ref=f20e615]:
+                      - generic [ref=f20e287]: "4"
+                  - generic [ref=f20e288] [cursor=pointer]:
+                    - generic [ref=f20e289]: Scalpel
+                    - button [ref=f20e618]:
+                      - generic [ref=f20e302]: "2"
+                - generic [ref=f20e303]: Show more
+              - generic [ref=f20e305]:
+                - generic [ref=f20e306]: Business Analyst
+                - generic [ref=f20e308]:
+                  - generic [ref=f20e309] [cursor=pointer]:
+                    - generic [ref=f20e310]: Elitea Feature Story Generator
+                    - button [ref=f20e622]:
+                      - generic [ref=f20e322]: "0"
+                  - generic [ref=f20e323] [cursor=pointer]:
+                    - generic [ref=f20e324]: User Story Creator
+                    - button [ref=f20e626]:
+                      - generic [ref=f20e336]: "0"
+                  - generic [ref=f20e337] [cursor=pointer]:
+                    - generic [ref=f20e338]: AI Platform Design Advisor
+                    - button [ref=f20e630]:
+                      - generic [ref=f20e350]: "1"
+                  - generic [ref=f20e351] [cursor=pointer]:
+                    - generic [ref=f20e352]: Business Analyst
+                    - button [ref=f20e634]:
+                      - generic [ref=f20e364]: "7"
+              - generic [ref=f20e365]:
+                - generic [ref=f20e366]: DevOps
+                - generic [ref=f20e369] [cursor=pointer]:
+                  - generic [ref=f20e370]: test-case-from-private
+                  - button [ref=f20e637]:
+                    - generic [ref=f20e383]: "0"
+              - generic [ref=f20e384]:
+                - generic [ref=f20e385]: Development
+                - generic [ref=f20e387]:
+                  - generic [ref=f20e388] [cursor=pointer]:
+                    - generic [ref=f20e389]: Linux Solution Mentor
+                    - button [ref=f20e641]:
+                      - generic [ref=f20e401]: "2"
+                  - generic [ref=f20e402] [cursor=pointer]:
+                    - generic [ref=f20e403]: Code Review Assistant
+                    - button [ref=f20e645]:
+                      - generic [ref=f20e415]: "2"
+              - generic [ref=f20e416]:
+                - generic [ref=f20e417]: Elitea
+                - generic [ref=f20e420] [cursor=pointer]:
+                  - generic [ref=f20e421]: Assistant for ELITEA Documentation
+                  - button [ref=f20e650]:
+                    - generic [ref=f20e435]: "7"
+              - generic [ref=f20e436]:
+                - generic [ref=f20e437]: Quality Assurance
+                - generic [ref=f20e439]:
+                  - generic [ref=f20e440] [cursor=pointer]:
+                    - generic [ref=f20e441]: Agent testing skills
+                    - button [ref=f20e653]:
+                      - generic [ref=f20e454]: "0"
+                  - generic [ref=f20e455] [cursor=pointer]:
+                    - generic [ref=f20e456]: Test Case Best Practices Advisor
+                    - button [ref=f20e657]:
+                      - generic [ref=f20e468]: "0"
+                  - generic [ref=f20e469] [cursor=pointer]:
+                    - generic [ref=f20e470]: Entertainer Agent
+                    - button [ref=f20e661]:
+                      - generic [ref=f20e482]: "0"
+              - generic [ref=f20e483]:
+                - generic [ref=f20e484]: Other
+                - generic [ref=f20e486]:
+                  - generic [ref=f20e487] [cursor=pointer]:
+                    - generic [ref=f20e488]: "Pytest: Quality Agent"
+                    - button [ref=f20e664]:
+                      - generic [ref=f20e501]: "1"
+                  - generic [ref=f20e502] [cursor=pointer]:
+                    - generic [ref=f20e503]: User Stories Creator
+                    - button [ref=f20e667]:
+                      - generic [ref=f20e516]: "0"
+                  - generic [ref=f20e517] [cursor=pointer]:
+                    - generic [ref=f20e518]: Testing Export
+                    - button [ref=f20e670]:
+                      - generic [ref=f20e531]: "0"
+                  - generic [ref=f20e532] [cursor=pointer]:
+                    - generic [ref=f20e533]: Parallel Subagents
+                    - button [ref=f20e673]:
+                      - generic [ref=f20e546]: "0"
+                  - generic [ref=f20e547] [cursor=pointer]:
+                    - generic [ref=f20e548]: Joke Orchestrator
+                    - button [ref=f20e677]:
+                      - generic [ref=f20e560]: "0"
+                  - generic [ref=f20e561] [cursor=pointer]:
+                    - generic [ref=f20e562]: test_agent3
+                    - button [ref=f20e680]:
+                      - generic [ref=f20e575]: "1"
+                - generic [ref=f20e576]: Show more
+            - separator [ref=f20e180]
+            - generic [ref=f20e182]:
+              - generic [ref=f20e183]:
+                - generic [ref=f20e184]: Featured
+                - generic [ref=f20e185]:
+                  - button [ref=f20e681] [cursor=pointer]:
+                    - generic [ref=f20e187]: Trending
+                  - button [ref=f20e682] [cursor=pointer]:
+                    - generic [ref=f20e189]: My Liked
+              - generic [ref=f20e190]:
+                - generic [ref=f20e191]: Categories
+                - generic [ref=f20e192]:
+                  - button [ref=f20e683] [cursor=pointer]:
+                    - generic [ref=f20e194]: Business Analyst
+                  - button [ref=f20e684] [cursor=pointer]:
+                    - generic [ref=f20e196]: DevOps
+                  - button [ref=f20e685] [cursor=pointer]:
+                    - generic [ref=f20e198]: Development
+                  - button [ref=f20e686] [cursor=pointer]:
+                    - generic [ref=f20e200]: Elitea
+                  - button [ref=f20e687] [cursor=pointer]:
+                    - generic [ref=f20e202]: Epam
+                  - button [ref=f20e688] [cursor=pointer]:
+                    - generic [ref=f20e204]: Knowledge & Documentation
+                  - button [ref=f20e689] [cursor=pointer]:
+                    - generic [ref=f20e206]: Project Management
+                  - button [ref=f20e690] [cursor=pointer]:
+                    - generic [ref=f20e208]: Quality Assurance
+                  - button [ref=f20e691] [cursor=pointer]:
+                    - generic [ref=f20e210]: Other
+    - generic:
+      - button
+  - dialog [active] [ref=f20e694]:
+    - generic [ref=f20e695]:
+      - heading "Levon Dadayan Levon Dadayan 0 close" [level=2] [ref=f20e696]:
+        - generic [ref=f20e697]:
+          - img "Levon Dadayan" [ref=f20e700]
+          - generic [ref=f20e701]: Levon Dadayan
+        - generic [ref=f20e702]:
+          - button "0" [ref=f20e703] [cursor=pointer]
+          - button [ref=f20e709] [cursor=pointer]
+          - button "close" [ref=f20e712] [cursor=pointer]
+      - generic [ref=f20e716]:
+        - img "elitea" [ref=f20e719]
+        - generic [ref=f20e720]: User Story Creator
+        - generic [ref=f20e721]: Thuis agent is responsible for creating proper user stories accordingly using provided user_template.md which is included in sub-agent.
+        - generic [ref=f20e722] [cursor=pointer]: Show instructions
+        - generic [ref=f20e723]:
+          - generic [ref=f20e724]:
+            - generic [ref=f20e725]: CHAT STARTERS
+            - generic [ref=f20e726]: No predefined chat starters – just type your request to begin.
+          - generic [ref=f20e727]:
+            - generic [ref=f20e728]: Welcome Message
+            - generic [ref=f20e729]: No welcome message set – the agent will start without a greeting.
+      - button "Start Chat" [ref=f20e731] [cursor=pointer]

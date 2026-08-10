@@ -1,0 +1,249 @@
+- generic [ref=f20e2]:
+  - generic [ref=f20e3]:
+    - navigation "side-bar" [ref=f20e732]:
+      - generic [ref=f20e5]:
+        - generic [ref=f20e6]:
+          - generic [ref=f20e7]:
+            - button "open drawer" [ref=f20e733] [cursor=pointer]:
+              - generic "Elitea is connected" [ref=f20e734]
+            - generic [ref=f20e16] [cursor=pointer]
+          - separator [ref=f20e19]
+          - generic [ref=f20e24]:
+            - 'combobox "P Project: Private" [ref=f20e735] [cursor=pointer]':
+              - generic [ref=f20e27]:
+                - generic [ref=f20e28]: P
+                - generic [ref=f20e30]:
+                  - generic [ref=f20e31]: "Project:"
+                  - generic [ref=f20e32]: Private
+            - textbox: "399"
+          - separator [ref=f20e33]
+          - generic [ref=f20e36]:
+            - button "Chat" [disabled]
+            - button [disabled]
+          - separator [ref=f20e41]
+        - generic [ref=f20e42]:
+          - generic [ref=f20e43]:
+            - listitem [ref=f20e44]:
+              - button "Chats" [ref=f20e736] [cursor=pointer]
+            - listitem [ref=f20e50]:
+              - button "Agents" [ref=f20e737] [cursor=pointer]
+            - listitem [ref=f20e56]:
+              - button "Pipelines" [ref=f20e738] [cursor=pointer]
+          - separator [ref=f20e62]
+          - generic [ref=f20e63]:
+            - listitem [ref=f20e64]:
+              - button "Skills" [ref=f20e739] [cursor=pointer]
+            - listitem [ref=f20e70]:
+              - button "Toolkits & Indexes" [ref=f20e740] [cursor=pointer]
+            - listitem [ref=f20e76]:
+              - button "MCPs" [ref=f20e741] [cursor=pointer]
+            - listitem [ref=f20e83]:
+              - button "Credentials" [ref=f20e742] [cursor=pointer]
+            - listitem [ref=f20e89]:
+              - button "Applications" [ref=f20e743] [cursor=pointer]
+          - separator [ref=f20e95]
+          - listitem [ref=f20e97]:
+            - button "Artifacts" [ref=f20e744] [cursor=pointer]
+          - separator [ref=f20e103]
+          - generic [ref=f20e105]:
+            - generic [ref=f20e106] [cursor=pointer]: Settings
+            - separator [ref=f20e110]
+            - generic [ref=f20e111] [cursor=pointer]: Catalog
+        - generic [ref=f20e114]:
+          - generic [ref=f20e115]: Support Bot
+          - generic "Help Center" [ref=f20e745] [cursor=pointer]
+        - generic [ref=f20e121] [cursor=pointer]
+    - main [ref=f20e124]:
+      - generic [ref=f20e746]:
+        - generic [ref=f20e747]:
+          - generic [ref=f20e748]:
+            - generic [ref=f20e749]:
+              - generic [ref=f20e750]:
+                - generic [ref=f20e751]: Chats
+                - generic "Create folder" [ref=f20e752]:
+                  - button [ref=f20e753] [cursor=pointer]
+                - button "Search chats" [ref=f20e756] [cursor=pointer]
+              - button [ref=f20e759] [cursor=pointer]
+            - generic [ref=f20e762]:
+              - generic [ref=f20e764]:
+                - button [ref=f20e765]:
+                  - heading [level=3] [ref=f20e770]:
+                    - button "ELITEA2459RenameTest" [ref=f20e772] [cursor=pointer]
+                - button [ref=f20e781]:
+                  - heading [level=3] [ref=f20e786]:
+                    - button "ELITEA2459RenameTest" [ref=f20e788] [cursor=pointer]
+                - button [ref=f20e797]:
+                  - heading [level=3] [ref=f20e802]:
+                    - button "ELITEA2459RenameTest" [ref=f20e804] [cursor=pointer]
+                - button [ref=f20e813]:
+                  - heading [level=3] [ref=f20e818]:
+                    - button "ABC" [ref=f20e820] [cursor=pointer]
+                - button [ref=f20e829]:
+                  - heading [level=3] [ref=f20e834]:
+                    - button "ELITEA2459RenameTest" [ref=f20e836] [cursor=pointer]
+                - button [ref=f20e845]:
+                  - heading [level=3] [ref=f20e850]:
+                    - button "ABC" [ref=f20e852] [cursor=pointer]
+                - button [ref=f20e861]:
+                  - heading [level=3] [ref=f20e866]:
+                    - button "ELITEA2459RenameTest" [ref=f20e868] [cursor=pointer]
+                - button [ref=f20e877]:
+                  - heading [level=3] [ref=f20e882]:
+                    - button "ABC" [ref=f20e884] [cursor=pointer]
+                - button [ref=f20e893]:
+                  - heading [level=3] [ref=f20e898]:
+                    - button "ELITEA2459RenameTest" [ref=f20e900] [cursor=pointer]
+                - button [ref=f20e909]:
+                  - heading [level=3] [ref=f20e914]:
+                    - button "ABC" [ref=f20e916] [cursor=pointer]
+                - button [ref=f20e925]:
+                  - heading [level=3] [ref=f20e930]:
+                    - button "ELITEA2459RenameTest" [ref=f20e932] [cursor=pointer]
+                - button [ref=f20e941]:
+                  - heading [level=3] [ref=f20e946]:
+                    - button "ABC" [ref=f20e948] [cursor=pointer]
+                - button [ref=f20e957]:
+                  - heading [level=3] [ref=f20e962]:
+                    - button "ELITEA2459RenameTest" [ref=f20e964] [cursor=pointer]
+                - button [ref=f20e973]:
+                  - heading [level=3] [ref=f20e978]:
+                    - button "ABC" [ref=f20e980] [cursor=pointer]
+                - button [ref=f20e989]:
+                  - heading [level=3] [ref=f20e994]:
+                    - button "ELITEA2459RenameTest" [ref=f20e996] [cursor=pointer]
+                - button [ref=f20e1005]:
+                  - heading [level=3] [ref=f20e1010]:
+                    - button "ABC" [ref=f20e1012] [cursor=pointer]
+                - button [ref=f20e1021]:
+                  - heading [level=3] [ref=f20e1026]:
+                    - button "ELITEA2459RenameTest" [ref=f20e1028] [cursor=pointer]
+                - button [ref=f20e1037]:
+                  - heading [level=3] [ref=f20e1042]:
+                    - button "ABC" [ref=f20e1044] [cursor=pointer]
+                - button [ref=f20e1053]:
+                  - heading [level=3] [ref=f20e1058]:
+                    - button "ELITEA2459RenameTest" [ref=f20e1060] [cursor=pointer]
+                - button [ref=f20e1069]:
+                  - heading [level=3] [ref=f20e1074]:
+                    - button "ABC" [ref=f20e1076] [cursor=pointer]
+                - button [ref=f20e1085]:
+                  - heading [level=3] [ref=f20e1090]:
+                    - button "ELITEA2459RenameTest" [ref=f20e1092] [cursor=pointer]
+                - button [ref=f20e1101]:
+                  - heading [level=3] [ref=f20e1106]:
+                    - button "ABC" [ref=f20e1108] [cursor=pointer]
+                - button [ref=f20e1117]:
+                  - heading [level=3] [ref=f20e1122]:
+                    - button "ABC" [ref=f20e1124] [cursor=pointer]
+                - button [ref=f20e1133]:
+                  - heading [level=3] [ref=f20e1138]:
+                    - button "ABC" [ref=f20e1140] [cursor=pointer]
+                - button [ref=f20e1149]:
+                  - heading [level=3] [ref=f20e1154]:
+                    - button "ABC" [ref=f20e1156] [cursor=pointer]
+                - button [ref=f20e1165]:
+                  - heading [level=3] [ref=f20e1170]:
+                    - button "ABC" [ref=f20e1172] [cursor=pointer]
+                - button [ref=f20e1181]:
+                  - heading [level=3] [ref=f20e1186]:
+                    - button "AutomationRenameTest" [ref=f20e1188] [cursor=pointer]
+                - button [ref=f20e1197]:
+                  - heading [level=3] [ref=f20e1202]:
+                    - button "AutomationRenameTest" [ref=f20e1204] [cursor=pointer]
+                - button [ref=f20e1213]:
+                  - heading [level=3] [ref=f20e1218]:
+                    - button "AutomationRenameTest" [ref=f20e1220] [cursor=pointer]
+                - button [ref=f20e1229]:
+                  - heading [level=3] [ref=f20e1234]:
+                    - button "New folder6" [ref=f20e1236] [cursor=pointer]
+                - button [ref=f20e1245]:
+                  - heading [level=3] [ref=f20e1250]:
+                    - button "New folder6" [ref=f20e1252] [cursor=pointer]
+                - button [ref=f20e1261]:
+                  - heading [level=3] [ref=f20e1266]:
+                    - button "New folder6" [ref=f20e1268] [cursor=pointer]
+                - button [ref=f20e1277]:
+                  - heading [level=3] [ref=f20e1282]:
+                    - button "New folder" [ref=f20e1284] [cursor=pointer]
+                - button [ref=f20e1293]:
+                  - heading [level=3] [ref=f20e1298]:
+                    - button "New folder" [ref=f20e1300] [cursor=pointer]
+                - button [ref=f20e1309]:
+                  - heading [level=3] [ref=f20e1314]:
+                    - button "New folder" [ref=f20e1316] [cursor=pointer]
+                - button [ref=f20e1325]:
+                  - heading [level=3] [ref=f20e1330]:
+                    - button "New folder6" [ref=f20e1332] [cursor=pointer]
+                - button [ref=f20e1341]:
+                  - heading [level=3] [ref=f20e1346]:
+                    - button "New folder6" [ref=f20e1348] [cursor=pointer]
+                - button [ref=f20e1357]:
+                  - heading [level=3] [ref=f20e1362]:
+                    - button "New folder6" [ref=f20e1364] [cursor=pointer]
+                - button [ref=f20e1373]:
+                  - heading [level=3] [ref=f20e1378]:
+                    - button "New folder" [ref=f20e1380] [cursor=pointer]
+                - button [ref=f20e1389]:
+                  - heading [level=3] [ref=f20e1394]:
+                    - button "New folder" [ref=f20e1396] [cursor=pointer]
+                - button [ref=f20e1405]:
+                  - heading [level=3] [ref=f20e1410]:
+                    - button "New folder" [ref=f20e1412] [cursor=pointer]
+                - button [ref=f20e1421]:
+                  - heading [level=3] [ref=f20e1426]:
+                    - button "New folder" [ref=f20e1428] [cursor=pointer]
+                - button [ref=f20e1437]:
+                  - heading [level=3] [ref=f20e1442]:
+                    - button "New folder6" [ref=f20e1444] [cursor=pointer]
+                - button [ref=f20e1453]:
+                  - heading [level=3] [ref=f20e1458]:
+                    - button "New folder" [ref=f20e1460] [cursor=pointer]
+                - button [ref=f20e1469]:
+                  - heading [level=3] [ref=f20e1474]:
+                    - button "New folder6" [ref=f20e1476] [cursor=pointer]
+                - button [ref=f20e1485]:
+                  - heading [level=3] [ref=f20e1490]:
+                    - button "New folder" [ref=f20e1492] [cursor=pointer]
+                - button [ref=f20e1501]:
+                  - heading [level=3] [ref=f20e1506]:
+                    - button "New folder6New folder" [ref=f20e1508] [cursor=pointer]
+                - button [ref=f20e1517]:
+                  - heading [level=3] [ref=f20e1522]:
+                    - button "New folder" [ref=f20e1524] [cursor=pointer]
+              - generic [ref=f20e1533]: Still no conversations created.
+          - status [ref=f20e1535]
+        - generic [ref=f20e1540]:
+          - generic [ref=f20e1541]:
+            - img "Elitea" [ref=f20e1542]
+            - generic [ref=f20e1543]: Hello, Test!
+            - generic [ref=f20e1544]: What can I do for you today?
+          - generic [ref=f20e1547]:
+            - textbox [active] [ref=f20e1551]
+            - generic [ref=f20e1552]:
+              - generic [ref=f20e1553]:
+                - generic [ref=f20e1554]:
+                  - generic:
+                    - generic "Attach Files (10 left)":
+                      - button "attach files"
+                  - button "plus menu" [ref=f20e1555] [cursor=pointer]
+                - generic [ref=f20e1558]:
+                  - generic [ref=f20e1559]:
+                    - group "Model Selector Menu" [ref=f20e1560]:
+                      - button "Switch Agent" [ref=f20e1561] [cursor=pointer]:
+                        - img "elitea" [ref=f20e1563]
+                        - generic [ref=f20e1564]: User Story Creator
+                      - separator
+                      - button "version selector menu" [ref=f20e1565] [cursor=pointer]: skills-v3.0
+                      - separator
+                      - button "agent settings menu" [ref=f20e1566] [cursor=pointer]
+                    - button "switch to model" [ref=f20e1569] [cursor=pointer]
+                  - generic "Start voice input" [ref=f20e1573]:
+                    - button "start voice input" [ref=f20e1574] [cursor=pointer]
+              - generic "Speaking mode" [ref=f20e1578]:
+                - button "enter speaking mode" [ref=f20e1579] [cursor=pointer]
+        - generic [ref=f20e1589]:
+          - button [ref=f20e1591] [cursor=pointer]
+          - generic "Agents in this conversation" [ref=f20e1595]:
+            - button "1" [ref=f20e1597] [cursor=pointer]
+  - generic:
+    - button "Support Assistant"

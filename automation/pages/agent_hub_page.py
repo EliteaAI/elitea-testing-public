@@ -376,6 +376,39 @@ class AgentHubPage(BasePage):
         """
         return self.page.locator(self.MODAL_STARTER_ITEM)
 
+    def click_agent_card(self, agent_id: int, timeout: int = 15000):
+        """Click an agent card by application ID to open its preview modal.
+
+        This method clicks the agent card identified by its application ID
+        and waits for the modal's agent-details fetch to complete before returning.
+
+        Args:
+            agent_id: Application ID of the agent to open (e.g. 172 for User Story Creator).
+            timeout: Maximum wait time for modal to open and fetch to complete (default 15000ms).
+        """
+        logger.info("Opening Catalog agent preview modal by ID: %s", agent_id)
+        card = self.page.locator(f'[data-testid="catalog-agent-card-{agent_id}"]')
+        card.wait_for(state="visible", timeout=timeout)
+        # Wait for the agent-details fetch to complete before proceeding
+        # (defect #1043: clicking before fetch resolves causes silent no-op)
+        with self.page.expect_response(
+            lambda r: "/public_application/prompt_lib/" in r.url and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            card.click()
+        self.modal_show_instructions_link.wait_for(state="visible", timeout=timeout)
+
+    def wait_for_agent_modal_to_load(self, timeout: int = 10000):
+        """Wait for the agent preview modal to be fully loaded and ready for interaction.
+
+        This waits for the 'Show instructions' link to become visible, which is
+        the signal that the agent-details fetch has resolved (ELITEA-2356).
+
+        Args:
+            timeout: Maximum wait time for modal content to load (default 10000ms).
+        """
+        self.modal_show_instructions_link.wait_for(state="visible", timeout=timeout)
+
     @action("Click Start Chat in the agent preview modal")
     def click_start_chat(self, timeout: int = 10000):
         """Click the 'Start Chat' button in the (already-ready) agent preview modal.
@@ -386,7 +419,7 @@ class AgentHubPage(BasePage):
         (uncaught TypeError, silent no-op, no navigation).
         """
         self.modal_start_chat_button.wait_for(state="visible", timeout=timeout)
-        self.modal_start_chat_button.click()
+        self.modal_start_chat_button.click(force=True)
 
     @action("Close the agent preview modal with X button")
     def close_modal(self, timeout: int = 10000):
