@@ -53,20 +53,18 @@ class TestCatalogDefaultAgentsTab:
 
         # Step 3: Verify Agents tab selected by default
         with allure.step("Step 3 — Verify Agents tab selected by default"):
-            agents_tab = page.locator('[data-testid="catalog-agents-tab"]')
-            expect(agents_tab).to_have_attribute("aria-selected", "true")
+            expect(agent_hub.agents_tab).to_have_attribute("aria-selected", "true")
 
         # Step 4: Verify Skills tab visible with icon
         with allure.step("Step 4 — Verify Skills tab visible with icon"):
-            skills_tab = page.locator('[data-testid="catalog-skills-tab"]')
-            expect(skills_tab).to_be_visible()
+            expect(agent_hub.skills_tab).to_be_visible()
             # Verify Skills tab contains an icon (svg or Icon component child)
-            icon = skills_tab.locator("svg, [class*='Icon']")
+            icon = agent_hub.skills_tab.locator("svg, [class*='Icon']")
             assert icon.count() > 0, "Skills tab should contain an icon"
 
         # Step 5: Verify main content displays Agents content
         with allure.step("Step 5 — Verify main content displays Agents content"):
-            main_content = page.locator("main")
+            main_content = agent_hub.get_main_content()
             main_text = main_content.text_content().lower()
             assert (
                 "agent" in main_text
@@ -75,7 +73,7 @@ class TestCatalogDefaultAgentsTab:
         # Step 6: Verify right panel shows FEATURED + CATEGORIES filters
         with allure.step("Step 6 — Verify right panel shows FEATURED + CATEGORIES filters"):
             # Count filter chips in Agents view
-            agent_filter_chips = page.locator('[data-testid^="catalog-agent-category-filter-chip-"]')
+            agent_filter_chips = page.locator(agent_hub.AGENT_CATEGORY_FILTER_CHIP_PREFIX)
             chip_count = agent_filter_chips.count()
             assert (
                 chip_count >= 11
@@ -88,14 +86,14 @@ class TestCatalogDefaultAgentsTab:
 
         # Step 7: Click Skills tab
         with allure.step("Step 7 — Click Skills tab"):
-            skills_tab.click()
+            agent_hub.skills_tab.click()
             # Wait for at least one skill filter chip to appear before proceeding
-            page.wait_for_selector('[data-testid^="catalog-skill-category-filter-chip-"]', timeout=10000)
+            page.wait_for_selector(agent_hub.SKILL_CATEGORY_FILTER_CHIP_PREFIX, timeout=10000)
             page.wait_for_timeout(1000)  # Extra settle time
 
         # Step 8: Verify Skills tab becomes active
         with allure.step("Step 8 — Verify Skills tab becomes active"):
-            expect(skills_tab).to_have_attribute("aria-selected", "true")
+            expect(agent_hub.skills_tab).to_have_attribute("aria-selected", "true")
 
         # Step 9: Verify main content switches to Skills content
         with allure.step("Step 9 — Verify main content switches to Skills content"):
@@ -106,14 +104,14 @@ class TestCatalogDefaultAgentsTab:
         with allure.step("Step 10 — Verify right panel filters update to Skills scope"):
             # Verify filter chips changed from agent-scoped to skill-scoped testid prefix
             # (the actual count depends on how many Skills exist in each category in the project)
-            skill_filter_chips = page.locator('[data-testid^="catalog-skill-category-filter-chip-"]')
+            skill_filter_chips = page.locator(agent_hub.SKILL_CATEGORY_FILTER_CHIP_PREFIX)
             skills_chip_count = skill_filter_chips.count()
             assert (
                 skills_chip_count > 0
             ), f"Expected skill-scoped filter chips to exist, got {skills_chip_count}"
 
             # Verify agent-scoped filter chips are NO LONGER visible
-            agent_filter_chips = page.locator('[data-testid^="catalog-agent-category-filter-chip-"]')
+            agent_filter_chips = page.locator(agent_hub.AGENT_CATEGORY_FILTER_CHIP_PREFIX)
             agent_chip_count_after = agent_filter_chips.count()
             assert (
                 agent_chip_count_after == 0

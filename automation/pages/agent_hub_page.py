@@ -65,6 +65,16 @@ class AgentHubPage(BasePage):
         description="Catalog search TextField (agents/skills, shared across both tabs).",
     )
 
+    agents_tab = LocatorDescriptor(
+        testid="catalog-agents-tab",
+        description="Agents tab in Catalog page header (EliteaCatalog.jsx, ELITEA-2370).",
+    )
+
+    skills_tab = LocatorDescriptor(
+        testid="catalog-skills-tab",
+        description="Skills tab in Catalog page header (EliteaCatalog.jsx, ELITEA-2370).",
+    )
+
     # Category section heading — dynamic per category name (slugified:
     # lowercase, non-alnum runs -> '-'). Templated class-level constant per
     # .agents/testing.md's dynamic-testid convention.
@@ -87,6 +97,18 @@ class AgentHubPage(BasePage):
     # via a caller-supplied `chipTestIdPrefix` prop per the shared-component
     # testid discipline (CategoryRail is shared with SkillsTab).
     CATEGORY_FILTER_CHIP = '[data-testid="catalog-agent-category-filter-chip-{}"]'
+
+    # Agent category filter-rail chip prefix (for querying all agent-scoped chips,
+    # ELITEA-2370) — used to count and verify filter chips in the Agents view.
+    AGENT_CATEGORY_FILTER_CHIP_PREFIX = '[data-testid^="catalog-agent-category-filter-chip-"]'
+
+    # Skill category filter-rail chip prefix (for querying all skill-scoped chips,
+    # ELITEA-2370) — used to count and verify filter chips in the Skills view.
+    SKILL_CATEGORY_FILTER_CHIP_PREFIX = '[data-testid^="catalog-skill-category-filter-chip-"]'
+
+    # Main content area selector (standard HTML <main> element, ELITEA-2370) —
+    # displays Agents or Skills content depending on active tab.
+    MAIN_CONTENT_SELECTOR = 'main'
 
     # Like button (heart icon + count) on an agent card, ELITEA-2354 —
     # dynamic per application id, same idiom as CATEGORY_FILTER_CHIP/
@@ -211,6 +233,15 @@ class AgentHubPage(BasePage):
         """Wait for the Catalog heading to become visible."""
         self.page_heading.wait_for(state="visible", timeout=timeout)
         logger.info("Agent Hub (Catalog) page loaded")
+
+    def get_main_content(self):
+        """Return locator for the main content area displaying Agents or Skills content.
+
+        The main content area is a standard HTML <main> element (not data-testid).
+        Its text content reflects the active tab: contains "agent" for Agents tab,
+        "skill" for Skills tab (ELITEA-2370).
+        """
+        return self.page.locator(self.MAIN_CONTENT_SELECTOR)
 
     def is_category_section_visible(self, category_slug: str, timeout: int = 10000) -> bool:
         """Return True if the category heading for *category_slug* is visible.
