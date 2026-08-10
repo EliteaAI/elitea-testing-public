@@ -83,38 +83,23 @@ class TestAgentHubUnlikeAgentListView:
             assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
             logger.info("Agent Hub (Catalog) page loaded with %d applications", len(applications))
 
-        with allure.step("Step 2 — Find an already-liked agent (or like one if none exist)"):
+        with allure.step("Step 2 — Find an already-liked agent"):
             # Use the bulk applications response to find an agent the current user has already liked
+            # Per AFS precondition: "An agent card is already liked by the current user"
             liked_app = agent_hub.find_liked_application(applications)
+            assert liked_app is not None, (
+                "Test precondition not met: no agent card is currently liked by the user. "
+                "The AFS precondition requires an agent with data-liked='true' to exist. "
+                "Please like an agent first and retry."
+            )
 
-            if liked_app:
-                liked_agent_id = liked_app["id"]
-                initial_like_count = liked_app.get("likes", 0)
-                logger.info(
-                    "Found pre-existing liked agent: id=%s, initial_count=%s",
-                    liked_agent_id,
-                    initial_like_count,
-                )
-            else:
-                # No pre-existing liked agents — like one first as setup, then proceed to unlike
-                logger.info("No pre-existing liked agents found. Liking an agent first as setup.")
-                unliked_app = agent_hub.find_unliked_application(applications)
-                assert unliked_app is not None, (
-                    "No unliked agents found. Cannot proceed with like-then-unlike test."
-                )
-                liked_agent_id = unliked_app["id"]
-                initial_like_count = unliked_app.get("likes", 0)
-
-                # Like the agent as setup
-                with allure.step("Setup: Like an agent first"):
-                    response = agent_hub.click_like_button(liked_agent_id, timeout=UI_ELEMENT_TIMEOUT)
-                    assert response.status in (201, 204), (
-                        f"Expected like endpoint to return 201 or 204, got {response.status}"
-                    )
-                    page.wait_for_timeout(500)  # Let UI update
-                    # Count has now incremented by 1
-                    initial_like_count += 1
-                    logger.info("Liked agent %s (count now: %s)", liked_agent_id, initial_like_count)
+            liked_agent_id = liked_app["id"]
+            initial_like_count = liked_app.get("likes", 0)
+            logger.info(
+                "Found pre-existing liked agent: id=%s, initial_count=%s",
+                liked_agent_id,
+                initial_like_count,
+            )
 
         with allure.step("Step 2a — Verify the agent card is visible and liked"):
             assert liked_agent_id is not None, "No liked agent could be located or created"
@@ -193,7 +178,7 @@ class TestAgentHubUnlikeAgentListView:
 
             # The button should still exist and show the new count
             if like_button_refreshed.count() > 0:
-                # Agent card still visible in the default view (Trending top-6 or search result)
+                # Agent card still visible in the default view (Trending top-6 or default list)
                 data_liked_refreshed = like_button_refreshed.get_attribute("data-liked")
                 like_count_refreshed_text = (like_button_refreshed.text_content() or "0").strip()
                 like_count_refreshed = int(like_count_refreshed_text)
@@ -209,29 +194,41 @@ class TestAgentHubUnlikeAgentListView:
                     like_count_refreshed,
                 )
             else:
-                # Agent not in default view (Trending top-6); verify via My Liked filter
+                # Agent not in default view; verify via search box per AFS § Step 6
                 logger.info(
-                    "Agent %s not in default Trending view after refresh; verifying via My Liked filter",
+                    "Agent %s not in default view after refresh; verifying via search box",
                     liked_agent_id,
                 )
-                # Navigate to My Liked filter — unliked agent should NOT appear there
-                agent_hub.click_category_filter_chip("My Liked", timeout=UI_ELEMENT_TIMEOUT)
-                page.wait_for_load_state("networkidle", timeout=UI_ELEMENT_TIMEOUT)
+                # Search for the agent by ID (converted to string for matching)
+                # Note: searching by agent ID directly; the agent name is dynamic user-authored content
+                # Per AFS: "locate the SAME agent (dynamically via data-testid if still rendered in
+                # default view, or via search box if not)"
+                agent_hub.search(str(liked_agent_id), timeout=UI_ELEMENT_TIMEOUT)
                 page.wait_for_timeout(1000)
 
-                # If the agent appears in My Liked, it's still liked (test should fail)
-                my_liked_buttons = page.locator(
+                # Check if the agent appears in search results
+                search_result_buttons = page.locator(
                     f'[data-testid="catalog-agent-like-button-{liked_agent_id}"]'
                 )
-                if my_liked_buttons.count() > 0:
-                    # Agent still appears in My Liked → still liked → test failed
-                    pytest.fail(
-                        f"Agent {liked_agent_id} should NOT appear in 'My Liked' after unlike. "
-                        "Like state was not persisted correctly."
-                    )
-                else:
-                    # Agent not in My Liked → correctly unliked → persist confirmed
-                    logger.info("Agent %s not in 'My Liked' after refresh → unlike persisted", liked_agent_id)
+                assert search_result_buttons.count() > 0, (
+                    f"Agent {liked_agent_id} should appear in search results after refresh"
+                )
+
+                # Verify the state is still unliked
+                data_liked_search = search_result_buttons.first.get_attribute("data-liked")
+                like_count_search_text = (search_result_buttons.first.text_content() or "0").strip()
+                like_count_search = int(like_count_search_text)
+
+                assert data_liked_search == "false", (
+                    f"After refresh (search verification): expected data-liked='false', got '{data_liked_search}'"
+                )
+                assert like_count_search == new_like_count, (
+                    f"After refresh (search verification): expected like count {new_like_count}, got {like_count_search}"
+                )
+                logger.info(
+                    "Like state persisted after refresh (via search): data-liked='false', count=%s",
+                    like_count_search,
+                )
 
         if soft_failures:
             pytest.fail(
