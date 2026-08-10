@@ -398,6 +398,23 @@ class AgentHubPage(BasePage):
                 return app
         return None
 
+    @staticmethod
+    def find_liked_application(applications: list[dict]) -> dict | None:
+        """Return the first application dict (as returned by
+        :meth:`navigate_and_capture_applications`) whose ``is_liked`` field is
+        truthy (the CURRENT user HAS liked it), or ``None`` if none currently
+        qualify (ELITEA-2355).
+
+        Used to discover an agent the test's own user has already liked
+        (with at least 1 like) — the unlike case requires starting from a
+        liked state, unlike the like case (ELITEA-2354) which searches for
+        a 0-like agent.
+        """
+        for app in applications:
+            if app.get("is_liked", False):
+                return app
+        return None
+
     def get_like_button(self, application_id: int):
         """Return the Locator for the like button (heart icon + count) on the
         agent card matching *application_id* (ELITEA-2354)."""
