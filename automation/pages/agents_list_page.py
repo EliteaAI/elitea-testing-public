@@ -336,11 +336,11 @@ class AgentsListPage(BasePage):
     # ------------------------------------------------------------------
 
     @action("Search agents")
-    def search(self, query: str, timeout: int = 5000):
-        """Type a search query into the agents search box.
+    def search(self, query: str, timeout: int = 15000):
+        """Type a search query into the agents search box and wait for results.
 
         Uses press_sequentially to trigger React onChange event (MUI pattern).
-        Waits for network settle after typing.
+        Waits for the debounced (300ms per useDebounceValue) search API response.
 
         Args:
             query: Text to search for.
@@ -348,8 +348,13 @@ class AgentsListPage(BasePage):
         """
         logger.info("Searching agents for: %s", query)
         self.search_input.wait_for(state="visible", timeout=timeout)
-        self.search_input.click()
-        self.search_input.press_sequentially(query, delay=50)
+        # Wait for search API response while typing (debounced search on /applications/prompt_lib/)
+        with self.page.expect_response(
+            lambda r: "/applications/prompt_lib/" in r.url and r.request.method == "GET" and "viewMode" in r.url,
+            timeout=timeout,
+        ):
+            self.search_input.click()
+            self.search_input.press_sequentially(query, delay=50)
         self.wait_for_network(timeout=timeout)
 
     @action("Search agents and wait")
@@ -368,16 +373,22 @@ class AgentsListPage(BasePage):
         logger.info(f"Searched for '{query}' and results ready")
 
     @action("Clear agent search")
-    def clear_search(self):
-        """Clear the agents search box.
+    def clear_search(self, timeout: int = 15000):
+        """Clear the agents search box and wait for results to restore.
 
         Uses select-all + Backspace to trigger React onChange (MUI pattern).
+        Waits for the debounced empty-query search API response.
         """
         self.search_input.wait_for(state="visible")
-        self.search_input.click()
-        self.search_input.press("ControlOrMeta+a")
-        self.search_input.press("Backspace")
-        self.wait_for_network(timeout=5000)
+        # Wait for search API response while clearing (debounced search on /applications/prompt_lib/)
+        with self.page.expect_response(
+            lambda r: "/applications/prompt_lib/" in r.url and r.request.method == "GET" and "viewMode" in r.url,
+            timeout=timeout,
+        ):
+            self.search_input.click()
+            self.search_input.press("ControlOrMeta+a")
+            self.search_input.press("Backspace")
+        self.wait_for_network(timeout=timeout)
 
     def verify_search_functional(self, query: str = "test", timeout: int = 5000) -> bool:
         """Verify the search input is functional by typing a query then clearing.
