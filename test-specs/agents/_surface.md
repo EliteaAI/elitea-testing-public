@@ -407,6 +407,23 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   chips visible pre-message → click chip → `chat-message-input` pre-filled → `chat-send-button` → real,
   contextually-relevant agent response, zero console errors, zero 4xx/5xx throughout.
 
+## Agent participant chip in chat message input area (ELITEA-2362 run, 2026-08-11)
+- Agent added as chat participant via "Start Chat" from Agent Hub modal renders as a **chip in the message input area at the bottom of the page**, NOT as an overlay or modal. Live-confirmed end-to-end: navigate to `/elitea-catalog` → click agent card → click "Start Chat" button (`catalog-agent-modal-start-chat-button`) → redirects to `/chat` → agent participant chip appears at message input.
+- **Chip structure:** container `[data-testid="chat-participant-row-application-{app_id}"]` (dynamic testid) containing:
+  - Avatar `<img>` with `src` pointing to `/api/v2/default_entity_icons/image_*.png`
+  - Agent name text in a `<span>` (e.g., "Business Analyst")
+  - Agent version text in a separate `<span>` (e.g., "v2.1")
+  - Settings button: `[data-testid="chat-participant-edit-view-button"]`, aria-label="View settings", renders as a gear icon
+  - Remove button: `[data-testid="chat-participant-remove-button"]`, aria-label="Remove agent", renders as an X icon
+- Both buttons are visible and clickable on the chip (confirmed live).
+- Chip is NOT dependent on saved state — it renders immediately after "Start Chat" click, before any Save action.
+- All testids on this chip are pre-existing and confirmed live (2026-08-11). No testid work needed.
+- **Locator strategy** (LocatorDescriptor patterns for implementer):
+  - Participant chip: use `LocatorDescriptor(testid="chat-participant-row-application-*")` pattern, scoped by agent id or searched by visible agent name text
+  - Settings button: `LocatorDescriptor(testid="chat-participant-edit-view-button")`
+  - Avatar image: scoped inside chip container, use `first_child()` or nth-child selector (no standalone testid on `<img>`)
+  - Agent name/version text: use `get_by_text()` scoped inside chip for positional assertions
+
 **Resolved/added during ELITEA-1886 implementation (2026-08-07):**
 - **Testid added.** `testId="chat-conversation-starter-tile"` is now wired on
   `ChatConversationStarters.jsx`'s `<EllipsisTextWithTooltip>` call (EliteaAI/EliteaUI
