@@ -3,7 +3,7 @@
 Handle cache for live-confirmed handles/quirks on the Agent Hub / Catalog
 surface (`/elitea-catalog`). Not a substitute for execution — verify a handle
 as you use it. One writer at a time; last confirmed by: qa-engineer (analyst
-slot), ELITEA-2353, 2026-08-10.
+slot), ELITEA-2364, 2026-08-10.
 
 ## Conversation-starter tiles — TWO real testid gaps (ELITEA-2369)
 - **Modal's starter list items** (`AgentConversationStarterItem.jsx`, inside
