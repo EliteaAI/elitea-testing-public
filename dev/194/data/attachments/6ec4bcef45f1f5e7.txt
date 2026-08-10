@@ -1,0 +1,6 @@
+WARNING  elitea.pages.chat:chat_page.py:561 Timeout waiting for AI response. Copy button seen: True, Current text: Thought for less than a second
+Error debugging info
+WARNING  elitea.pages.chat:chat_page.py:561 Timeout waiting for AI response. Copy button seen: True, Current text: Thought for less than a second
+Error debugging info
+WARNING  elitea.pages.chat:chat_page.py:561 Timeout waiting for AI response. Copy button seen: True, Current text: Thought for less than a second
+Error debugging info
