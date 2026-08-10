@@ -310,6 +310,48 @@ class AgentHubPage(BasePage):
         """
         return self.page.locator(self.MODAL_LIKE_BUTTON).get_attribute("data-liked") or ""
 
+    def get_modal_like_button(self):
+        """Return the Locator for the like button (heart icon + count) in the
+        agent preview modal (ELITEA-2358).
+        """
+        return self.page.locator(self.MODAL_LIKE_BUTTON)
+
+    def get_modal_like_count(self, timeout: int = 10000) -> int:
+        """Return the like button's numeric count in the preview modal
+        (ELITEA-2358) — the count ``Typography`` is the only text node
+        inside the button besides the icon ``<svg>``.
+
+        This is a one-shot, non-retrying read (use
+        :meth:`wait_for_modal_like_count` for a retrying wait).
+        """
+        button = self.get_modal_like_button()
+        button.wait_for(state="visible", timeout=timeout)
+        text = button.text_content() or "0"
+        return int(text.strip())
+
+    def wait_for_modal_like_count(self, expected_count: int, timeout: int = 10000) -> None:
+        """Wait (Playwright auto-retrying assertion) for the modal like button's
+        text to read *expected_count* (ELITEA-2358) — same rationale as
+        :meth:`wait_for_like_count` for card-level buttons.
+        """
+        expect(self.get_modal_like_button()).to_have_text(str(expected_count), timeout=timeout)
+
+    @action("Click like/unlike button in the agent preview modal")
+    def click_modal_like_button(self, timeout: int = 10000):
+        """Click the like button in the agent preview modal, toggling
+        like/unlike, and return the underlying ``/social/like/prompt_lib/...``
+        network response (``201`` on like, ``204`` on unlike — AFS § Network
+        Behavior, ELITEA-2358).
+        """
+        button = self.get_modal_like_button()
+        button.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/social/like/prompt_lib/" in r.url and r.request.method in ("POST", "DELETE"),
+            timeout=timeout,
+        ) as response_info:
+            button.click()
+        return response_info.value
+
     def get_modal_starter_items(self):
         """Return the Locator matching ALL rendered starter items inside the
         preview modal's CHAT STARTERS section (ELITEA-2369) — use
@@ -328,6 +370,22 @@ class AgentHubPage(BasePage):
         """
         self.modal_start_chat_button.wait_for(state="visible", timeout=timeout)
         self.modal_start_chat_button.click()
+
+    @action("Close the agent preview modal with X button")
+    def close_modal(self, timeout: int = 10000):
+        """Click the close ('x') button in the agent preview modal and wait
+        for the modal to transition to hidden state.
+
+        The modal's CSS fade-out transition takes ~300ms (MUI Dialog default);
+        this method waits up to *timeout* milliseconds for the modal's
+        ``state="hidden"`` condition (ELITEA-2357).
+
+        Args:
+            timeout: Maximum wait time for modal to close (default 10000ms).
+        """
+        self.modal_close_button.wait_for(state="visible", timeout=timeout)
+        self.modal_close_button.click()
+        self.modal_dialog.wait_for(state="hidden", timeout=timeout)
 
     # --- Like/unlike (ELITEA-2354) ---
 
