@@ -329,6 +329,22 @@ class AgentHubPage(BasePage):
         self.modal_start_chat_button.wait_for(state="visible", timeout=timeout)
         self.modal_start_chat_button.click()
 
+    @action("Close the agent preview modal with X button")
+    def close_modal(self, timeout: int = 10000):
+        """Click the close ('x') button in the agent preview modal and wait
+        for the modal to transition to hidden state.
+
+        The modal's CSS fade-out transition takes ~300ms (MUI Dialog default);
+        this method waits up to *timeout* milliseconds for the modal's
+        ``state="hidden"`` condition (ELITEA-2357).
+
+        Args:
+            timeout: Maximum wait time for modal to close (default 10000ms).
+        """
+        self.modal_close_button.wait_for(state="visible", timeout=timeout)
+        self.modal_close_button.click()
+        self.modal_dialog.wait_for(state="hidden", timeout=timeout)
+
     # --- Like/unlike (ELITEA-2354) ---
 
     @action("Navigate to Agent Hub and capture the initial applications snapshot")
