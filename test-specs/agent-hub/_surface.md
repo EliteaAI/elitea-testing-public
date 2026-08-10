@@ -376,6 +376,13 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
   The page `<title>` (`"ELITEA Catalog - {project name}"`) is a free,
   zero-interaction second confirmation of the active project context.
 
+## "My Liked" filter behavior — confirms like/unlike in filtered view removes agents (ELITEA-2364)
+- Clicking the "My Liked" filter chip (`catalog-agent-category-filter-chip-my-liked`) activates `data-selected="true"` and isolates the "My Liked" section as the sole rendered category.
+- Agents in the "My Liked" view show `data-liked="true"` on their like buttons.
+- **Unliking an agent while in the "My Liked" view removes it from the list immediately** (optimistic client-side update, `DELETE .../social/like/... => 204`). The agent's card and like button are no longer present in the DOM after the unlike click — not hidden/greyed, fully removed. Confirmed live, session 2026-08-10: agent ID 16 appeared in My Liked after a like (count 7→8, `data-liked=true`), then disappeared from the My Liked view after an unlike click (card query returned null).
+- **The "My Liked" chip selection is client-only state and does NOT survive a full page reload** — same as documented above for the multi-select filter behavior. After `page.goto()` or `reload()`, the chip resets to unselected and the unfiltered default view renders; any test that reloads while relying on the "My Liked" filter must re-select it post-reload (confirmed live during ELITEA-2365's cross-tab exploration).
+- Like counts in "My Liked" view correctly reflect the global like count — no stale/cached values observed.
+
 ## Known defects (already tracked elsewhere, not re-filed)
 - #1043 — Catalog agent-preview modal's "Start Chat" button has no
   `disabled={isFetching}` guard; race condition. Only relevant to cases that
