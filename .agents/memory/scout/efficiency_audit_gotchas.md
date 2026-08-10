@@ -4,9 +4,9 @@ description: Three recurring traps when running /efficiency-audit here — read 
 type: preventive
 ---
 
-Confirmed across the 2026-08-04, 2026-08-05 and 2026-08-06 audits. Check all
-three **before** quoting a figure; each one has produced a wrong number or a
-wrong comparison at least once.
+Confirmed across the 2026-08-04, 2026-08-05, 2026-08-06 and 2026-08-09 audits.
+Check all of them **before** quoting a figure; each one has produced a wrong
+number, a wrong comparison, or a wrong *finding* at least once.
 
 ## 1. `externalOk: false` is benign HERE — but verify, don't assume
 
@@ -46,6 +46,42 @@ A session started 08-01 and run through 08-04 contributes **$0** to a
 era's orchestrator session id appears in the ledger as neither `id` nor
 `parentId`, and that the first in-window session starts after the prior era's
 last report closed. Both were verified for the 08-06 era comparison.
+
+## 4. `skills` in the ledger is NOT "skills the agent used" — it inherits
+
+The rollup builds each unit's `skills` from **two** sources: real `Skill` tool
+calls **and** the host's `attributionSkill` record field, which sub-agents
+**inherit from whatever skill the parent had active**. On 2026-08-09 this made
+`sync-base-branches` the window's #1 "skill" (103 units) and nearly produced a
+headline waste finding ("94 sub-agents each re-syncing 3 OneDrive repos").
+Truth: **4,313 inherited attributions, ZERO actual invocations** in the
+campaign's 252 workflow agents.
+
+**Always verify before treating `skills` as behaviour:**
+```bash
+# real invocations only
+grep -ho '"skill":"[a-z-]*"' <session>/subagents/**/*.jsonl | sort | uniq -c
+# the contaminating field
+grep -ho '"attributionSkill":"[a-z-]*"' <same> | sort | uniq -c
+```
+Converse trap: a skill can be *consumed* without being *loaded* —
+`test-case-analysis` showed 1 invocation while 121 of 252 agents `Read`
+`spec-format.md` directly. Absence in `skills` is not evidence of skipping.
+
+## 5. Workflow-tool agents live 3 levels deep — `<session>/subagents/workflows/<wf_id>/`
+
+Not `<session>/subagents/`. A campaign session shows only ~3 files there while
+the ledger reports 250+ children. `find <session> -name 'agent-*.jsonl'` to
+locate them; the `workflows/*.json` files beside them are run manifests, not
+transcripts.
+
+## 6. "Since the last audit" ≠ "since the last audit FILE'S date" — check for a gap
+
+An audit run at 15:45Z on day N does not cover sessions that *start* later that
+day. The 2026-08-06 week audit (run 15:45Z) and the 2026-08-07 overnight audit
+(one session only) left **3 lead sessions / $58.91 covered by neither**. Before
+setting `--since`, list top-level sessions for the prior audit's day and confirm
+none started after that audit's own session began.
 
 ## Bonus: role labels collide on this team
 
