@@ -737,3 +737,60 @@ class AgentHubPage(BasePage):
         """
         cards = self.page.locator(self.AGENT_CARD_PREFIX)
         return [(cards.nth(i).text_content() or "").strip() for i in range(cards.count())]
+
+    # --- Tab navigation (ELITEA-2370) ---
+
+    agents_tab = LocatorDescriptor(
+        testid="catalog-agents-tab",
+        description="Agents tab in Catalog view (EliteaCatalog.jsx).",
+    )
+
+    skills_tab = LocatorDescriptor(
+        testid="catalog-skills-tab",
+        description="Skills tab in Catalog view (EliteaCatalog.jsx).",
+    )
+
+    def is_agents_tab_selected(self, timeout: int = 10000) -> bool:
+        """Return True if the Agents tab is currently selected (aria-selected='true')."""
+        self.agents_tab.wait_for(state="visible", timeout=timeout)
+        selected = self.agents_tab.get_attribute("aria-selected")
+        return selected == "true"
+
+    def is_skills_tab_selected(self, timeout: int = 10000) -> bool:
+        """Return True if the Skills tab is currently selected (aria-selected='true')."""
+        self.skills_tab.wait_for(state="visible", timeout=timeout)
+        selected = self.skills_tab.get_attribute("aria-selected")
+        return selected == "true"
+
+    def is_skills_tab_visible(self, timeout: int = 10000) -> bool:
+        """Return True if the Skills tab is visible."""
+        try:
+            self.skills_tab.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @action("Click the Skills tab")
+    def click_skills_tab(self, timeout: int = 10000):
+        """Click the Skills tab to switch from Agents to Skills view."""
+        self.skills_tab.wait_for(state="visible", timeout=timeout)
+        self.skills_tab.click()
+        # Wait for content to switch
+        self.wait_for_network(timeout=timeout)
+
+    def wait_for_filter_panel_visible(self, timeout: int = 10000) -> bool:
+        """Wait for the right-side filter panel (category chips) to be visible.
+
+        Returns True if filter panel is visible, used as a verification that
+        the Skills tab content has loaded with its filter options.
+        """
+        # Look for category filter chips or the filter panel container
+        filter_chips = self.page.locator(
+            '[data-testid^="catalog-agent-category-filter-chip-"], '
+            '[data-testid^="catalog-skill-category-filter-chip-"]'
+        )
+        try:
+            filter_chips.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
