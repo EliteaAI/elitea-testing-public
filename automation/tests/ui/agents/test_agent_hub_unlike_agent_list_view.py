@@ -34,7 +34,7 @@ import logging
 import allure
 import pytest
 from pages.agent_hub_page import AgentHubPage
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
 logger = logging.getLogger("elitea.tests.agents")
 
@@ -223,7 +223,8 @@ class TestAgentHubUnlikeAgentListView:
                     f"After refresh (search verification): expected data-liked='false', got '{data_liked_search}'"
                 )
                 assert like_count_search == new_like_count, (
-                    f"After refresh (search verification): expected like count {new_like_count}, got {like_count_search}"
+                    f"After refresh (search verification): expected like count {new_like_count}, "
+                    f"got {like_count_search}"
                 )
                 logger.info(
                     "Like state persisted after refresh (via search): data-liked='false', count=%s",
