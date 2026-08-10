@@ -722,6 +722,15 @@ class ChatPage(BasePage):
         )
     )
 
+    participant_settings_button = LocatorDescriptor(
+        testid="chat-participant-settings-button",
+        description=(
+            "Settings/edit icon button in the composer's agent/pipeline chip "
+            "(AgentEditorPanel.jsx). Visible when an agent or pipeline is the "
+            "active participant. Clicking opens the agent/pipeline settings editor."
+        )
+    )
+
     mention_skill_list = LocatorDescriptor(
         testid="skill-mention-list",
         description="Container for the '~mention' skill autocomplete popper's item list"
