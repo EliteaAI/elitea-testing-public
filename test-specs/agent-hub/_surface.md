@@ -393,13 +393,16 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
 - #1016 — Catalog category "Show more" permanently locks to collapse after
   first click. Only relevant to cases that interact with "Show more".
 
+## Trending category filter applies + agents render (ELITEA-2366, this dispatch)
+- **Case:** "Agent Hub — Trending category displays agents" (ELITEA-2366, priority medium)
+- **Status:** `ready-for-automation` — live execution complete, AFS written
+- **Execution:** 2026-08-10, analyst slot
+- **Findings:**
+  - Single-click on Trending filter chip (`catalog-agent-category-filter-chip-trending`, ELITEA-2352) filters content to show ONLY the Trending category section.
+  - Filter chip acquires `data-selected="true"` when active; clicking again toggles it.
+  - **Recurring case-text drift:** Case text claims a "Reload the category items" icon next to the section header — **does NOT exist on live product.** Filed #1212; this is the same drift as #1208 (header text) and #1212 (reload icon) from the ELITEA-2350 family. AFS records the drift; spec will NOT assert a missing icon.
+  - All pre-existing testids (catalog-page-heading, catalog-category-heading-trending, catalog-agent-card-*) confirmed live; filter chip testid from ELITEA-2352 is on automation/testids, pending human cherry-pick to main.
+- **Next step:** Implementer will write single test (navigate → click filter → assert header + agents + filter state). No dependencies, no seed/cleanup.
+
 ## Sibling family (not yet analysed as of this entry)
-ELITEA-2351 ("Team project" variant of this exact case — differs from
-ELITEA-2350 only in which project is active, a DATA difference per the
-family-vs-separate test) plus ~18 more behavioral cases (filter by
-category/multiple categories, like/unlike, open/close modal, search,
-start-conversation flows, etc. — GitHub issues #859-#878). A future batch
-covering the whole family should re-check whether ELITEA-2350/2351 belong in
-one parameterized family AFS (project name as the only variable) rather than
-two near-identical specs — this dispatch analysed ELITEA-2350 alone, not as
-a cluster, so no family-AFS merge was performed here.
+ELITEA-2351 ("Team project" variant — differs from ELITEA-2350 only in which project is active) plus ~18 more behavioral cases (multiple categories, like/unlike, open/close modal, search, start-conversation flows, etc.). Future batch should re-check whether ELITEA-2350/2351 belong in one parameterized family AFS.
