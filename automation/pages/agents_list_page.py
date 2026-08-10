@@ -62,6 +62,11 @@ class AgentsListPage(BasePage):
         description="Agents page header"
     )
 
+    empty_state_message = LocatorDescriptor(
+        testid="agents-list-empty-state-message",
+        description="Empty state message displayed when no agents match search"
+    )
+
     # -- Import (ELITEA-1795, testid-only rework — EliteaUI draft PR #552) --
     import_button = LocatorDescriptor(
         testid="agents-import-button",
@@ -175,6 +180,17 @@ class AgentsListPage(BasePage):
         super().navigate("/agents/create?viewMode=owner")
         self.wait_for_network(timeout=10000)
         logger.info("Navigated to create agent page and page loaded")
+
+    @action("Navigate to agents list (owner view mode)")
+    def navigate_owner_view(self):
+        """Navigate to the agents list with owner view mode and wait until ready.
+
+        Uses the /agents/all?viewMode=owner URL to show only the user's own agents.
+        Automatically waits for the "Agents" heading to appear and network to settle.
+        """
+        super().navigate("/agents/all?viewMode=owner")
+        self.wait_for_page_load()
+        logger.info("Navigated to agents list (owner view) and page loaded")
 
     # ------------------------------------------------------------------
     # Wait helpers
@@ -323,13 +339,17 @@ class AgentsListPage(BasePage):
     def search(self, query: str, timeout: int = 5000):
         """Type a search query into the agents search box.
 
+        Uses press_sequentially to trigger React onChange event (MUI pattern).
+        Waits for network settle after typing.
+
         Args:
             query: Text to search for.
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Searching agents for: %s", query)
         self.search_input.wait_for(state="visible", timeout=timeout)
-        self.search_input.fill(query)
+        self.search_input.click()
+        self.search_input.press_sequentially(query, delay=50)
         self.wait_for_network(timeout=timeout)
 
     @action("Search agents and wait")
@@ -349,8 +369,14 @@ class AgentsListPage(BasePage):
 
     @action("Clear agent search")
     def clear_search(self):
-        """Clear the agents search box."""
-        self.search_input.fill("")
+        """Clear the agents search box.
+
+        Uses select-all + Backspace to trigger React onChange (MUI pattern).
+        """
+        self.search_input.wait_for(state="visible")
+        self.search_input.click()
+        self.search_input.press("ControlOrMeta+a")
+        self.search_input.press("Backspace")
         self.wait_for_network(timeout=5000)
 
     def verify_search_functional(self, query: str = "test", timeout: int = 5000) -> bool:
