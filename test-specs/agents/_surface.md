@@ -3,8 +3,9 @@
 Handle cache for live-confirmed handles/quirks on the Agent detail page
 (`/agents/all/{id}?viewMode=owner`) — VERSION area + Run History + LLM Model Settings dialog +
 Tools section's Agent/Pipeline sub-tool version selector + nested-agent chat execution.
+Also covers Agent Hub Catalog modal (`/elitea-catalog`) — agent card detail modal with like button.
 Not a substitute for execution — verify a handle as you use it. One writer at a time; last
-confirmed by: qa-engineer analyst, ELITEA-1951 run (2026-08-07).
+confirmed by: qa-engineer analyst, ELITEA-2358 run (2026-08-10).
 
 ## Attached Agent/Pipeline tool card — version selector (ELITEA-1951 run, 2026-08-07)
 - Rendered by `EliteaUI/src/pages/Applications/Components/Tools/AgentPipelineVersionSelector.jsx`
@@ -676,3 +677,18 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   client-side, confirmed both by source and by network capture.
 - **Console**: only the pre-existing, documented `disableUnderline` baseline warning
   (ELITEA-1906/1913/1916/1918) — unchanged by the Back click, no new errors.
+
+## Agent Hub Catalog modal — like button (ELITEA-2358 run, 2026-08-10)
+- **Where**: Catalog view (`/elitea-catalog`) → click any agent card → modal overlay opens with agent details + like button
+- **Like button location**: modal header, right side, next to overflow menu and close button
+- **Testids**: 
+  - `catalog-agent-modal-like-button` (pre-existing per ELITEA-2356 AFS analysis) on the like button element
+  - `data-liked="true"` or `data-liked="false"` attribute on the same button (state attribute, follows same pattern as ELITEA-2354 card-list like button)
+- **Behavior confirmed live (ELITEA-2358)**: 
+  - Button text displays the current like count (e.g., "8")
+  - Clicking the button toggles the liked state and updates the count immediately in the modal header
+  - Button shows `data-liked="true"` when agent is liked by the current user, `data-liked="false"` when not liked
+  - Like count state is persisted across modal close/reopen — closing the modal and reopening shows the same updated count
+  - Like count also updates on the agent card in the Catalog grid list view (not just in the modal)
+- **Known issue**: Redux console warning on like click — "non-serializable value was detected in an action, in the path: `payload.updateFn`" (appears to be a Redux Toolkit serialization enforcement warning, but the UI state updates correctly despite the warning). Does not block the feature — automation should proceed with normal assertions.
+- **Pre-existing from ELITEA-2356 analysis**: modal structure, agent name, description, CHAT STARTERS section, Welcome Message section, Start Chat button — all pre-existing handles, see ELITEA-2356 AFS § Concrete Handles for full reference.
