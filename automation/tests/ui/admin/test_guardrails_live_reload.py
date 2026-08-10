@@ -456,8 +456,9 @@ class TestBlockedToolkitLiveReload:
                 timeout=CHAT_RESPONSE_TIMEOUT,
             )
 
-            response1 = agent_page.get_last_chat_message()
-            logger.info("Response before blocking: %s", response1[:300])
+            response1 = agent_page.get_last_chat_response_text()
+            logger.info("Response before blocking: %s", response1[:300] if response1 else "(empty)")
+            assert response1, "AI response should not be empty"
             assert "blocked" not in response1.lower() and "can't run" not in response1.lower(), (
                 "Tool should execute successfully before blocking"
             )
@@ -558,8 +559,9 @@ class TestBlockedToolLiveReload:
                 timeout=CHAT_RESPONSE_TIMEOUT,
             )
 
-            response1 = agent_page.get_last_chat_message()
-            logger.info("Response before blocking: %s", response1[:300])
+            response1 = agent_page.get_last_chat_response_text()
+            logger.info("Response before blocking: %s", response1[:300] if response1 else "(empty)")
+            assert response1, "AI response should not be empty"
             assert "blocked" not in response1.lower() and "not available" not in response1.lower(), (
                 "get_issue tool should execute successfully before blocking"
             )
@@ -594,8 +596,9 @@ class TestBlockedToolLiveReload:
                 timeout=CHAT_RESPONSE_TIMEOUT,
             )
 
-            response3 = agent_page.get_last_chat_message()
-            logger.info("Response for other tool: %s", response3[:200])
+            response3 = agent_page.get_last_chat_response_text()
+            logger.info("Response for other tool: %s", response3[:200] if response3 else "(empty)")
+            assert response3, "AI response should not be empty"
             assert "yes" in response3.lower() or "main" in response3.lower() or "exist" in response3.lower(), (
                 "Other tools in the toolkit should still work"
             )
@@ -672,8 +675,9 @@ class TestSensitiveToolLiveReload:
                 timeout=CHAT_RESPONSE_TIMEOUT,
             )
 
-            response1 = agent_page.get_last_chat_message()
-            logger.info("Response before marking sensitive: %s", response1[:300])
+            response1 = agent_page.get_last_chat_response_text()
+            logger.info("Response before marking sensitive: %s", response1[:300] if response1 else "(empty)")
+            assert response1, "AI response should not be empty"
             assert "authorize" not in response1.lower() and "approval" not in response1.lower(), (
                 "Tool should execute without authorization before marking sensitive"
             )
@@ -707,8 +711,8 @@ class TestSensitiveToolLiveReload:
                 timeout=CHAT_RESPONSE_TIMEOUT,
             )
 
-            response2 = agent_page.get_last_chat_message()
-            logger.info("Response after marking sensitive: %s", response2[:300])
+            response2 = agent_page.get_last_chat_response_text()
+            logger.info("Response after marking sensitive: %s", response2[:300] if response2 else "(empty)")
 
             assert auth_appeared, (
                 "Sensitive Action Authorization panel should appear for sensitive tool"
@@ -731,8 +735,8 @@ class TestSensitiveToolLiveReload:
                     timeout=CHAT_RESPONSE_TIMEOUT,
                 )
 
-                response3 = agent_page.get_last_chat_message()
-                logger.info("Response after removing from sensitive: %s", response3[:300])
+                response3 = agent_page.get_last_chat_response_text()
+                logger.info("Response after removing from sensitive: %s", response3[:300] if response3 else "(empty)")
             finally:
                 try:
                     guardrails.remove_sensitive_tool(TEST_TOOL)
