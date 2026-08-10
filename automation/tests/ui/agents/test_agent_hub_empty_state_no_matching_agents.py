@@ -9,7 +9,7 @@ Spec: test-specs/agent-hub/l2_empty-state-no-matching-agents_ELITEA-2367.md
 
 Uses `AgentHubPage` for navigation, search, and layout verification.
 The empty-state messages ("No agents found", "Try adjusting your search terms")
-lack testids per the AFS, so uses `page.get_by_text()` as the fallback locator.
+use testids `catalog-no-results-title` and `catalog-no-results-description` respectively.
 """
 
 import allure
@@ -60,15 +60,15 @@ class TestAgentHubEmptyStateNoMatchingAgents:
                 )
 
             with allure.step("Step 3 — Verify 'No agents found' message is displayed"):
-                # Empty-state messages lack testids; use page.get_by_text() as fallback
-                no_results_msg = page.get_by_text("No agents found")
+                # Empty-state messages have testids (catalog-no-results-title, catalog-no-results-description)
+                no_results_msg = page.get_by_test_id("catalog-no-results-title")
                 no_results_msg.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
                 assert no_results_msg.is_visible(), (
                     "Text 'No agents found' should be visible in the content area"
                 )
 
             with allure.step("Step 4 — Verify helper message appears"):
-                helper_msg = page.get_by_text("Try adjusting your search terms")
+                helper_msg = page.get_by_test_id("catalog-no-results-description")
                 helper_msg.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
                 assert helper_msg.is_visible(), (
                     "Text 'Try adjusting your search terms' should be visible below the main message"
