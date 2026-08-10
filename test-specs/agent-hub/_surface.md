@@ -225,19 +225,23 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
   Creator" reads "Thuis agent is responsible...") is live product DATA, not a
   UI defect. Assert description non-empty/visible, never the literal string.
 
-## Like/unlike an agent card — testids needed, shared `Like.jsx` component
+## Like/unlike an agent card — testids IMPLEMENTED, shared `Like.jsx` component
 - Heart icon + count on every agent card is the shared `src/components/Like.jsx`
   (also used by the data-table widget and `Card.jsx` for pipelines) via
-  `AgentHubLike.jsx` → `AgentCard.jsx`. **Zero testids anywhere in the chain**
-  (confirmed via source + `git grep`). Because `Like.jsx` is shared, the testid
-  must be a caller-supplied `testId` prop threaded from `AgentCard.jsx`
-  (`catalog-agent-like-button-{application.id}`), not hardcoded inside
-  `Like.jsx` itself — same discipline as `CategoryRail.jsx`'s chip prop.
-- "Liked" state has no accessible signal (icon swaps `HeartIcon`↔`HeartActiveIcon`,
-  confirmed visually via screenshot diff, zero DOM attribute difference) — needs
-  a `data-liked="true"/"false"` attribute on the same button, same precedent as
-  ELITEA-2352's chip `data-selected`. Full detail:
-  `l3_agent-hub-like-agent-from-list-view_ELITEA-2354.md`.
+  `AgentHubLike.jsx` → `AgentCard.jsx`. **Testids now implemented** (confirmed
+  live ELITEA-2355 exploration, 2026-08-10): `catalog-agent-like-button-{application.id}`
+  testid is present on the button element; the attribute is a caller-supplied
+  `testId` prop threaded from `AgentCard.jsx` into the shared `Like.jsx`
+  component (same discipline as `CategoryRail.jsx`'s chip prop). Status on `main`:
+  requires fresh `git fetch origin` + `git grep` to verify (ELITEA-2354 made a
+  false claim about presence on main; re-verify before citing).
+- "Liked" state **now has an accessible signal**: `data-liked="true"/"false"`
+  attribute on the like button (same precedent as ELITEA-2352's chip
+  `data-selected`, implemented alongside the testid). Confirmed live: attribute
+  flips correctly on click, persists across page reload, and the heart icon
+  renders as filled (`HeartActiveIcon`) when `data-liked="true"`, unfilled
+  (`HeartIcon`) when `data-liked="false"`. Full detail (including unlike flow):
+  `l3_agent-hub-unlike-agent-from-list-view_ELITEA-2355.md` (ELITEA-2355 AFS, this dispatch).
 - Endpoints: `POST /api/v2/social/like/prompt_lib/{project_id}/application/{id}`
   → `201` (like); `DELETE` same path → `204` (unlike). Update is optimistic
   client-side (no re-fetch awaited).
