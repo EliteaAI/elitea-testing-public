@@ -106,9 +106,12 @@ class AgentHubPage(BasePage):
     # ELITEA-2370) — used to count and verify filter chips in the Skills view.
     SKILL_CATEGORY_FILTER_CHIP_PREFIX = '[data-testid^="catalog-skill-category-filter-chip-"]'
 
-    # Main content area selector (standard HTML <main> element, ELITEA-2370) —
-    # displays Agents or Skills content depending on active tab.
-    MAIN_CONTENT_SELECTOR = 'main'
+    # Main content area — displays Agents or Skills content depending on active tab
+    # (ELITEA-2370). Standard HTML <main> element with testid.
+    main_content_area = LocatorDescriptor(
+        testid="catalog-main-content",
+        description="Main content area for Agents/Skills catalog content (ELITEA-2370).",
+    )
 
     # Like button (heart icon + count) on an agent card, ELITEA-2354 —
     # dynamic per application id, same idiom as CATEGORY_FILTER_CHIP/
@@ -237,11 +240,11 @@ class AgentHubPage(BasePage):
     def get_main_content(self):
         """Return locator for the main content area displaying Agents or Skills content.
 
-        The main content area is a standard HTML <main> element (not data-testid).
+        The main content area uses testid "catalog-main-content" (ELITEA-2370).
         Its text content reflects the active tab: contains "agent" for Agents tab,
-        "skill" for Skills tab (ELITEA-2370).
+        "skill" for Skills tab.
         """
-        return self.page.locator(self.MAIN_CONTENT_SELECTOR)
+        return self.main_content_area
 
     def is_category_section_visible(self, category_slug: str, timeout: int = 10000) -> bool:
         """Return True if the category heading for *category_slug* is visible.

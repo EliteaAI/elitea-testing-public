@@ -44,6 +44,10 @@ class TestCatalogEmptyState:
         agent_hub = AgentHubPage(page)
         search_term = "xyznonexistent123"
 
+        # Set up console message listener to capture errors during the test
+        console_messages = []
+        page.on("console", lambda msg: console_messages.append(msg.type))
+
         # Step 1: Navigate to Catalog
         with allure.step("Step 1 — Navigate to Agent Hub"):
             agent_hub.navigate()
@@ -87,14 +91,11 @@ class TestCatalogEmptyState:
             expect(agent_hub.agents_tab).to_be_visible()
             expect(agent_hub.skills_tab).to_be_visible()
 
-            # Category filter rail still visible — at least 11 filter chips (2 FEATURED + 9 CATEGORIES)
-            # Using the prefix selector to count all visible filter chips
-            filter_chips = page.locator(agent_hub.CATEGORY_HEADING_PREFIX)
+            # Category filter rail still visible — exactly 11 filter chips (2 FEATURED + 9 CATEGORIES)
+            # Using the agent category filter chip prefix to count all visible filter chips
+            filter_chips = page.locator(agent_hub.AGENT_CATEGORY_FILTER_CHIP_PREFIX)
             chip_count = filter_chips.count()
-            # Note: This checks CATEGORY_HEADING_PREFIX (content-list), not filter-rail chips
-            # The filter-rail chips themselves have no testids yet per the surface digest
-            # For now, verify we can see the category structure is intact
-            assert chip_count >= 0, "Category sections should be enumerable (may be zero in empty state)"
+            assert chip_count == 11, f"Expected 11 filter chips visible (2 Featured + 9 Categories), found {chip_count}"
 
         # Step 7: Verify zero agent cards present in the DOM
         with allure.step("Step 7 — Verify zero agent cards in the DOM"):
@@ -104,6 +105,5 @@ class TestCatalogEmptyState:
 
         # Step 8: Verify zero console errors during empty state
         with allure.step("Step 8 — Verify no console errors"):
-            console_messages = page.context.console_messages if hasattr(page.context, "console_messages") else []
-            error_messages = [msg for msg in console_messages if "error" in msg.lower()]
-            assert len(error_messages) == 0, f"Expected no console errors, found: {error_messages}"
+            error_types = [msg_type for msg_type in console_messages if msg_type == "error"]
+            assert len(error_types) == 0, f"Expected no console errors, found {len(error_types)} error(s)"
