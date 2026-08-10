@@ -397,6 +397,22 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
 - **Case:** "Agent Hub — Trending category displays agents" (ELITEA-2366, priority medium)
 - **Status:** `ready-for-automation` — live execution complete, AFS written
 - **Execution:** 2026-08-10, analyst slot
+
+## Chat Participants Panel — agent participant row structure (ELITEA-2361, this dispatch)
+- **Toggle button to expand/collapse participants panel:** `[data-testid="chat-participants-panel-toggle-button"]` on the right side of the chat composer area. When clicked, expands a right-side panel showing all participants.
+- **Participants panel heading:** "Participants" text displayed in the panel header.
+- **AGENTS section heading:** "Agents" text indicating the start of agent participants list (distinct from any other participant types that may be added later).
+- **Agent participant row container:** `[data-testid="chat-participant-row-application_{agent_id}_{participant_index}"]` where:
+  - `agent_id` = the application/agent ID (e.g., 172 for User Story Creator)
+  - `participant_index` = ordinal index of this participant in the conversation (1-based; first agent is 1)
+  - Example live: `chat-participant-row-application_172_1` for User Story Creator as first participant
+- **Avatar image within participant row:** `img` element with `alt="elitea"` inside the participant-row container — always present for agent participants.
+- **Agent name within participant row:** text content "User Story Creator" (or agent's actual name) rendered inside the participant-row container, stable across sessions.
+- **Agent version within participant row:** text content (e.g., "skills-v3.0") rendered inside the participant-row container, displays the agent's configured version/skill version.
+- **Participant row action buttons (also confirmed testid-present):**
+  - Edit/view settings: `[data-testid="chat-participant-edit-view-button"]`
+  - Remove agent: `[data-testid="chat-participant-remove-button"]`
+- **All handles confirmed live 2026-08-10 during ELITEA-2361 execution.** No testids required; all needed selectors are present.
 - **Findings:**
   - Single-click on Trending filter chip (`catalog-agent-category-filter-chip-trending`, ELITEA-2352) filters content to show ONLY the Trending category section.
   - Filter chip acquires `data-selected="true"` when active; clicking again toggles it.
