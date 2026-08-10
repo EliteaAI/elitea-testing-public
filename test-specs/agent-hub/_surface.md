@@ -3,7 +3,7 @@
 Handle cache for live-confirmed handles/quirks on the Agent Hub / Catalog
 surface (`/elitea-catalog`). Not a substitute for execution — verify a handle
 as you use it. One writer at a time; last confirmed by: qa-engineer (analyst
-slot), ELITEA-2369, 2026-08-06.
+slot), ELITEA-2353, 2026-08-10.
 
 ## Conversation-starter tiles — TWO real testid gaps (ELITEA-2369)
 - **Modal's starter list items** (`AgentConversationStarterItem.jsx`, inside
@@ -92,6 +92,12 @@ slot), ELITEA-2369, 2026-08-06.
   exchange). Cleanup precedent (ELITEA-2075): parse `conv_id` from
   `page.url` (`r"/chat/(\d+)"`), delete via
   `ConversationAPI.delete_conversation(conv_id)` in a `finally` block.
+
+## Category filter-rail behavior: single-select vs. multi-select (ELITEA-2352 / ELITEA-2353)
+- **Single-select behavior (ELITEA-2352)**: clicking one category chip filters to that category only — all other category sections disappear. Clicking a different chip replaces the filter (prior chip deselects).
+- **Multi-select accumulation behavior (ELITEA-2353, confirmed live 2026-08-10)**: clicking category chips accumulates filters — clicking "Business Analyst" filters to that category, then clicking "Elitea" while Business Analyst remains selected shows **both** categories' sections simultaneously. Both chips show `data-selected="true"` at the same time. This is automatic in `AgentsTab.jsx`'s `selectedTagNames` state machine (toggle logic: `includes(tag) ? remove(tag) : add(tag)`), not a defect or special behavior. A third click on either selected chip removes it from the set (toggle off).
+- **Verified chip state handling**: `data-selected="true"/"false"` attribute correctly flips on each click, persists across subsequent clicks on OTHER chips, and does not leak focus-state (unlike DOM `[active]` marker which Playwright incorrectly surfaces) — safe to assert on.
+- **Section header positioning**: after multi-select filters, sections appear in the order of their categories in the filter-rail (left to right), not alphabetical or discovery order. Business Analyst appears before Elitea in the filtered output because Business Analyst appears before Elitea in the category-rail chip list.
 
 ## "Business Analyst" (id 31) ALSO satisfies the "no starters/no welcome message" precondition (ELITEA-2368)
 - Not just "User Story Creator" (id 172, used by ELITEA-2356/2365's
