@@ -171,18 +171,19 @@ class TestAgentHubMyLikedFilterShowsOnlyLikedAgents:
             ):
                 # Wait for the agent card to be removed from the filtered view
                 # (the optimistic update removes it immediately from the client state)
-                # The simplest check: wait for the card count to change
+                # Capture the initial count BEFORE the unlike (from Step 9)
                 initial_count = agent_hub.get_agent_card_count()
+
                 # After unliking, the card should disappear from the "My Liked" view
-                # Use a timeout-based wait: the card should not be visible
-                try:
-                    agent_hub.get_agent_card(agent_name).first.wait_for(
-                        state="hidden", timeout=UI_ELEMENT_TIMEOUT
-                    )
-                except Exception:
-                    # Element not found or already hidden is also acceptable
-                    # (the more robust check is "count changed" via wait_for_agent_card_count_not)
-                    pass
+                # Use wait_for_agent_card_count_not() to verify count decreased (AFS § Step 6)
+                agent_hub.wait_for_agent_card_count_not(initial_count, timeout=UI_ELEMENT_TIMEOUT)
+
+                # Verify the agent card is no longer present in the DOM
+                assert agent_hub.get_agent_card(agent_name).count() == 0, (
+                    f"Agent card {agent_name!r} (id={application_id}) should be removed from "
+                    "the 'My Liked' filtered list after unliking (AFS § Step 6)"
+                )
+
                 # Verify the agent is no longer liked
                 assert not agent_hub.is_agent_liked(application_id, timeout=5000), (
                     f"Agent {agent_name!r} (id={application_id}) should show data-liked='false' after unliking"
