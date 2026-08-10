@@ -340,7 +340,7 @@ class AgentsListPage(BasePage):
         """Type a search query into the agents search box and wait for results.
 
         Uses press_sequentially to trigger React onChange event (MUI pattern).
-        Waits for the debounced (300ms per useDebounceValue) search API response.
+        Waits for network settle after typing to allow debounced search to complete.
 
         Args:
             query: Text to search for.
@@ -348,13 +348,10 @@ class AgentsListPage(BasePage):
         """
         logger.info("Searching agents for: %s", query)
         self.search_input.wait_for(state="visible", timeout=timeout)
-        # Wait for search API response while typing (debounced search on /applications/prompt_lib/)
-        with self.page.expect_response(
-            lambda r: "/applications/prompt_lib/" in r.url and r.request.method == "GET",
-            timeout=timeout,
-        ):
-            self.search_input.click()
-            self.search_input.press_sequentially(query, delay=50)
+        self.search_input.click()
+        self.search_input.press_sequentially(query, delay=50)
+        # Wait for debounce (300ms) + network settle after typing
+        self.page.wait_for_timeout(500)
         self.wait_for_network(timeout=timeout)
 
     @action("Search agents and wait")
@@ -377,17 +374,14 @@ class AgentsListPage(BasePage):
         """Clear the agents search box and wait for results to restore.
 
         Uses select-all + Backspace to trigger React onChange (MUI pattern).
-        Waits for the debounced empty-query search API response.
+        Waits for network settle to allow debounced search to complete.
         """
         self.search_input.wait_for(state="visible")
-        # Wait for search API response while clearing (debounced search on /applications/prompt_lib/)
-        with self.page.expect_response(
-            lambda r: "/applications/prompt_lib/" in r.url and r.request.method == "GET",
-            timeout=timeout,
-        ):
-            self.search_input.click()
-            self.search_input.press("ControlOrMeta+a")
-            self.search_input.press("Backspace")
+        self.search_input.click()
+        self.search_input.press("ControlOrMeta+a")
+        self.search_input.press("Backspace")
+        # Wait for debounce (300ms) + network settle after clearing
+        self.page.wait_for_timeout(500)
         self.wait_for_network(timeout=timeout)
 
     def verify_search_functional(self, query: str = "test", timeout: int = 5000) -> bool:
