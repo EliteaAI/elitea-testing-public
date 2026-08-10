@@ -40,12 +40,12 @@ test('tool requests become tool_use blocks under their Claude names', () => {
     toolRequests: [
       { toolCallId: 't1', name: 'bash', arguments: { command: 'ls' } },
       { toolCallId: 't2', name: 'edit', arguments: { path: '/repo/a.js', old_str: 'x', new_str: 'y' } },
-      { toolCallId: 't3', name: 'Elitea_Dev-JiraIntegration_search_using_jql', arguments: { jql: 'x' } },
+      { toolCallId: 't3', name: 'Tracker_MCP-JiraIntegration_search_using_jql', arguments: { jql: 'x' } },
     ],
   })]);
   const blocks = recs[0].message.content;
   assert.equal(blocks[0].type, 'text');
-  assert.deepEqual(blocks.slice(1).map((b) => b.name), ['Bash', 'Edit', 'Elitea_Dev-JiraIntegration_search_using_jql']);
+  assert.deepEqual(blocks.slice(1).map((b) => b.name), ['Bash', 'Edit', 'Tracker_MCP-JiraIntegration_search_using_jql']);
   // file_path, not path: the churn counter reads Claude's key.
   assert.equal(blocks[2].input.file_path, '/repo/a.js');
 });

@@ -73,13 +73,22 @@ const quote = (s, max = 400) => String(s ?? '')
   .trim()
   .slice(0, max)
 
+// Kept in step with batch-build.workflow.mjs's FOREGROUND_RULE — same measured
+// facts (28ms enforcement on a turn end; blocking sleep works; 600s call cap).
 const FOREGROUND_RULE =
-  'RUN LONG JOBS IN THE FOREGROUND — test suites especially. Let the call block. ' +
-  'If you background one you own it until it exits: poll it every turn until you ' +
-  'have the result. NEVER end a turn waiting for a background job to finish — ' +
-  'nothing will wake you, this workflow blocks on your return, and your silence ' +
-  'is indistinguishable from thinking. If a job is genuinely too long for one ' +
-  'call, say so and run the narrower selection you actually need. '
+  'LONG JOBS — test suites especially. A foreground call is killed at its `timeout` ' +
+  '(default 120s, MAXIMUM 600000ms), so ALWAYS pass timeout: 600000 on a suite run, ' +
+  'and let the call block when the job fits inside it. ' +
+  'When the job does NOT fit in one call: launch it detached, writing its output to a file, ' +
+  'then WAIT with blocking foreground polls — `sleep 300; <check the output file>`, each with ' +
+  'timeout: 600000 — until it is done. Sleeping in the foreground is legal and cheap: it is ONE turn ' +
+  'however long you sleep. ' +
+  'NEVER end a turn while a job is running — nothing will wake you (measured: you are forced to ' +
+  'report 28ms later, before the job finishes, and neither run_in_background nor Monitor beats that), ' +
+  'this workflow blocks on your return, and your silence is indistinguishable from thinking. ' +
+  'NEVER poll at second-level intervals either — you pay a full context per turn, and a busy-wait ' +
+  'exhausts your turn budget and gets you cut off mid-job. ' +
+  'If a job is too long even for sleep-polling, say so and run the narrower selection you actually need. '
 
 /**
  * Should the fix loop go round again? Duplicated from batch-build.workflow.mjs

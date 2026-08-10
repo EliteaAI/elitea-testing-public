@@ -301,7 +301,7 @@ test('the fix loop continues on unaddressed work and stops only on cannot-move',
 });
 
 // A unit amortizes dispatch cost, and the price was fate-coupling: one
-// policy-stuck case stranded four finished ones (ELITEA-2211..2215). When
+// policy-stuck case stranded four finished ones. When
 // every surviving blocker is scoped to a proper subset of the unit's cases,
 // the loop carves those cases out — blocked, code stripped, AFS kept — and
 // the remainder goes back through review and lands.
@@ -671,7 +671,7 @@ test('analyst tiering: triage routes mapped units to a combined slot, conservati
 // blocks. Merged-but-unproven units carry their own outcome so a dead run's
 // summary can never claim they failed.
 test('gate not-run is not a red: merged units become merged-ungated, never blocked', () => {
-  assert.match(text, /\} else if \(!gate \|\| gate\.verdict === 'not-run'\) \{/);
+  assert.match(text, /\} else if \(!gate \|\| gate\.verdict === 'not-run' \|\| gate\.verdict === 'incomplete'\) \{/);
   assert.match(text, /outcome: 'merged-ungated'/);
   assert.match(text, /UNPROVEN, not blocked/);
   // the next-step guidance stops the lead from trusting the totals
@@ -679,6 +679,36 @@ test('gate not-run is not a red: merged units become merged-ungated, never block
   assert.match(text, /An interrupted run's own totals are a claim, not evidence/);
   // the real-red path still records blocked
   assert.match(text, /outcome: 'blocked', note: why/);
+});
+
+// A gate CUT OFF mid-run knows things a gate that never started does not: how
+// many runs already went green, and where to resume. Collapsing both into
+// 'not-run' is what made three real recoveries restart from zero.
+test("'incomplete' is a distinct gate verdict from 'not-run', and says where to resume", () => {
+  assert.match(text, /enum: \['green', 'red', 'not-run', 'incomplete'\]/);
+  assert.match(text, /use verdict 'incomplete', NOT 'not-run'/);
+  assert.match(text, /gate CUT OFF mid-run/);
+  assert.match(text, /run\(s\) already green before it was cut off/);
+});
+
+// The receipt is the deliverable: two audits running, leads recover the gate
+// flawlessly and then never correct report.json, so genuinely-green specs score
+// as unproven forever. The obligation has to live where the lead reads it.
+test('the not-run/incomplete next-step orders the report.json write-back, with the label choice', () => {
+  assert.match(text, /WRITE IT BACK INTO \$\{REPORT_DIR\}\/report\.json/);
+  assert.match(text, /gate\.verdict, gate\.runs, gate\.seconds/);
+  assert.match(text, /'merged-sanctioned-red' for a ticketed red-by-design/);
+  assert.match(text, /scores as ZERO delivered/);
+});
+
+// The gate's own run shape. `--n 3` does all three runs in ONE process, which
+// on a real UI batch exceeds the 600s ceiling a foreground call has — measured
+// 2026-08-09: every gate that passed cleanly ran one run per call.
+test('the gate dispatch pins one run per call, with the ceiling and the sleep-poll fallback', () => {
+  const gate = text.slice(text.indexOf('Hardening gate for batch'));
+  assert.match(gate.slice(0, 9000), /FIRST time one run: \\`--n 1\\`/);
+  assert.match(gate.slice(0, 9000), /Do NOT pass \\`--n \$\{GATE_N\}\\`/);
+  assert.match(gate.slice(0, 9000), /sleep 300/);
 });
 
 // The R2 cap is per ROOT CAUSE, not per unit-total: 4 reruns on 4 distinct

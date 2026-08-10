@@ -1,8 +1,19 @@
 ---
-name: Blocker #524 blocks all agent creation (pipeline-wide, not just one case)
-description: Open bug #524 (temperature vs reasoning_effort 400 on agent create) breaks both the UI form and the AgentAPI.create_agent() fixture used across the whole agent test suite — check its status before dispatching any analyst on an agent-creation-dependent case
+name: "#524: product bug still OPEN, but the automation fixture is FIXED — do not park on it"
+description: HALF-SUPERSEDED 2026-08-10. AgentAPI.create_agent() now sends temperature=None and works; parking an agent-creation case as blocked on #524 is WRONG. The product-side UI bug remains open.
 type: project
 ---
+
+> ⚠️ **HALF-SUPERSEDED 2026-08-10 (scout) — read this before the body.**
+> - The **product** bug #524 is still `OPEN` — that part of the entry is accurate.
+> - The **automation** claim below is DEAD. `AgentAPI.create_agent()` no longer
+>   hardcodes `temperature`; `automation/api/client.py::_default_llm_settings()`
+>   now sends `"temperature": None` + `"reasoning_effort": "medium"` (landed in
+>   `3531a632`, `b60ce389`). The `agent_id` fixture **works**.
+> - **Do NOT park an agent-creation case as `blocked` on #524.** Acting on the
+>   original text would block cases that in fact run clean. De-indexed
+>   2026-08-10 for exactly this reason.
+> - Related narrowing: `bug_524_does_not_affect_skill_create.md`.
 
 ## What #524 is
 

@@ -8,15 +8,13 @@
 
 - **Host:** Claude Code (`.claude/agents/`).
 - **Dispatch:** host-native subagents via the built-in `Agent` tool.
-- **Installed personas:** 4 — see the roster below. (Legacy standalone agents
-  `ui-test-orchestrator.md` and `failure-investigator.md` are installed **for the
-  human test-automation team's direct use ONLY** (operator ruling 2026-07-14; briefly
-  archived, then restored). They encode a pre-pipeline flow that bypasses the AFS /
-  fresh-session-review / merge-gate / closure-record gates — **no pipeline agent ever
-  dispatches or defers to them**, and work produced through them enters the pipeline
-  only via the normal PR review gates. Load-bearing skills they reference
-  (`add-data-testid`, `page-object-generator`, `start-ui-localhost`) remain active;
-  they are NOT part of the pipeline roster — mine them for context only.)
+- **Installed personas:** 4 — see the roster below.
+- **NOT in the roster:** `ui-test-orchestrator.md` and `failure-investigator.md` —
+  installed for the **human** team's direct use only (operator ruling 2026-07-14).
+  They bypass the pipeline's gates, so **no pipeline agent dispatches or defers to
+  them**; their output enters only through the normal PR review gates. The skills
+  they reference (`add-data-testid`, `page-object-generator`, `start-ui-localhost`)
+  stay active — mine those for context, never the agents.
 
 ## Team roster
 

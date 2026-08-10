@@ -1,8 +1,17 @@
 ---
-name: PipelineDetailPage.clear_embedded_chat() is a silent no-op
-description: stale aria-label selector matches nothing live; use chat_clear_button testid directly instead
+name: RESOLVED — PipelineDetailPage.clear_embedded_chat() was a silent no-op (fixed)
+description: HISTORICAL. Fixed for ELITEA-2011; the method now calls chat_clear_button directly. Do not act on the body below.
 type: project
 ---
+
+> ⚠️ **RESOLVED 2026-08-10 — do NOT act on this entry.** Verified against
+> `automation/pages/pipeline_detail_page.py:6858`: `clear_embedded_chat()` now calls
+> `self.chat_clear_button.click(timeout=timeout)` and its docstring records the fix
+> ("Fixed for ELITEA-2011 … this method now uses it directly"). **Calling
+> `clear_embedded_chat()` is the correct move.** De-indexed by scout 2026-08-10 —
+> kept on disk as the record of the original defect and its fix. The secondary claim
+> below (that `click_history_tab()` / `get_history_entries()` are also stale) was
+> NOT re-verified; both still exist at `:2199` / `:2212`.
 
 `automation/pages/pipeline_detail_page.py`'s `clear_embedded_chat()` (~line 6811)
 clicks `[aria-label="Clear the chat history"]`. That string matches **zero**

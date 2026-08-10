@@ -26,7 +26,7 @@ test('meta: canonical name and one phase — merging only', () => {
 });
 
 test('hard rules: never-delete, mechanical-only, gate stays out, writes no state', () => {
-  assert.match(text, /never delete, rm, or checkout --ours\/--theirs/); // the Elitea rm -rf class, banned
+  assert.match(text, /never delete, rm, or checkout --ours\/--theirs/); // the rm -rf class, banned
   assert.match(text, /MECHANICAL/);
   assert.match(text, /SEMANTIC/);
   assert.match(text, /git merge --abort/); // park path exists

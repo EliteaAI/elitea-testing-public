@@ -194,6 +194,34 @@ report; classifying it is yours (playbook § Handling blockers), and a flake or
 test-code bug routes to the **stabilize workflow** (below), never to per-case
 fix dispatches.
 
+### Two harness limits the gate lives inside (measured 2026-08-09/10)
+
+They are host behaviour, not project behaviour, so they hold on every repo —
+and between them they caused **3 of 7 wave gates to fail** in one campaign,
+each time with the suite still running happily in the background.
+
+1. **A foreground call is capped at 600s** (`timeout` defaults to 120s if you
+   don't pass it). `gate-case.mjs --n 3` runs all three inside ONE process —
+   12–19 minutes on a real UI batch — so a single call is guaranteed to be
+   killed and auto-backgrounded. Both gates that passed cleanly ran **one run
+   per call** (`--n 1`, `timeout: 600000`); every gate that failed used one long
+   call. The dispatch now pins the one-run-per-call shape.
+2. **A dispatched agent that ends its turn is finished, not waiting.** A
+   controlled two-arm probe: a schema-bound subagent that ends its turn mid-job
+   is forced to report **28 ms later**, and *both* the documented
+   `run_in_background` completion notification and the Monitor tool lose that
+   race. There is no waking — which also rules out polling a CI run across
+   turns.
+
+What *does* work, from the same probe: **blocking foreground `sleep`**. Three
+45-second sleeps ran untouched. So a job longer than one call is launched
+detached and waited out with `sleep 300; <check the file>` calls — one turn per
+sleep, however long it is. That scales to any batch size: even an 87-minute
+N=3 over 30 cases is ~18 tiny turns. The alternative is what wave-01 did —
+busy-poll `kill -0` every 2 seconds, **27 poll turns and $1.29 (32% of that
+agent) for no verdict**, because you pay a full resident context per turn.
+Two `sleep 300` calls would have cost $0.10.
+
 ## The other shipped scripts
 
 **Integrate** — [`../scripts/workflows/batch-integrate.workflow.mjs`](../scripts/workflows/batch-integrate.workflow.mjs).

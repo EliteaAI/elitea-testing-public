@@ -1,8 +1,18 @@
 ---
-name: Indexes tab removed by EL-5708 — toolkit_detail_page.py indexes_tab now stale
-description: main folded the standalone Indexes tab into a Configuration-tab accordion (EL-5708); our page object's indexes_tab LocatorDescriptor and its one consumer (count_config_tabs, asserted >=2 at Step 24 of test_toolkit_creation_create_bucket_verify_list_files.py) are now broken and need a rework, not yet done
+name: RESOLVED — Indexes tab restructure (EL-5947, not EL-5708); page object already reworked
+description: HISTORICAL. toolkit_detail_page.py now uses indexes_accordion + wait_for_config_surface(); count_config_tabs() is gone. Landed in 583fa8f1. Nothing to do.
 type: project
 ---
+
+> ✅ **RESOLVED 2026-08-10 (scout) — no action required; de-indexed.**
+> The body says the rework is "not yet fixed". It **is** fixed. Verified against
+> `automation/pages/toolkit_detail_page.py`: it declares
+> `indexes_accordion = LocatorDescriptor(testid="toolkit-indexes-accordion", …)`
+> and `count_config_tabs()` has been replaced by `wait_for_config_surface()`,
+> whose docstring records the reason. Landed as `583fa8f1
+> test(adjust): toolkit-detail tabs restructure (EliteaUI EL-5947)`.
+> **The entry also names the wrong ticket** — the code says **EL-5947**, not
+> EL-5708. Kept on disk as the record of the drift and its repair.
 
 During the 2026-07-21 run-30 unattended sync (issue #707), merging `origin/main`
 into `EliteaUI`'s `automation/testids` produced a real conflict in

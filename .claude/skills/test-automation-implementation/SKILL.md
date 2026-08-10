@@ -138,13 +138,17 @@ When the AFS status is `extend-existing`, the artefact is an *edit to the coveri
 
 Run the single test locally with the exact CI command from `.agents/testing.md`. Capture the **Run Report** template (mandatory — see § Run Report below).
 
-**Run it in the FOREGROUND. Let the call block.** A test run is not a background job, however long it takes.
+**Run it in the FOREGROUND and let the call block — with `timeout: 600000`.** The default timeout is 120s and will kill a suite run mid-flight; 600000ms (10 min) is the maximum a foreground call can have.
 
-If you do background one, you own it until it exits: poll the output on every turn until you see the result. **Never end a turn with "I'll wait for this to complete"** — nothing is going to wake you. There is no timer, and a finished background job does not resume a turn you already ended. What actually happens is that your slot goes silent holding an unfinished branch; and inside a batch, the workflow is blocked on your return, so one idled run stalls the whole campaign behind it, with a `pending` journal entry and no error anywhere to explain it.
+**If the run is longer than that**, do not end your turn and do not busy-poll. Launch it detached, writing its output to a file, then wait with **blocking foreground polls** — `sleep 300; <check the output file>`, each with `timeout: 600000` — until it is done. A sleep is **one turn however long it lasts**, so waiting this way is both legal and nearly free.
+
+**Never end a turn with "I'll wait for this to complete"** — nothing is going to wake you. Measured in a controlled probe (2026-08-10): a dispatched slot that ends its turn mid-job is forced to report **28ms later**, and *both* the documented `run_in_background` completion notification and the Monitor tool lose that race. What actually happens is that your slot goes silent holding an unfinished branch; and inside a batch, the workflow is blocked on your return, so one idled run stalls the whole campaign behind it, with a `pending` journal entry and no error anywhere to explain it.
+
+**Never poll every few seconds either.** You pay a full resident context on every turn: measured at 132k context, a poll costs ~$0.048, and one gate agent's 27 `kill -0` checks burned $1.29 — a third of its total cost — before being cut off with no verdict. The same wait as two `sleep 300` calls: $0.10.
 
 Measured on the lazy-modal foundation build (2026-07-30): the implementer backgrounded the full suite, wrote *"I'll wait for this full-suite run to complete"*, and stopped. Twelve minutes later its output file was still empty, the conductor was still waiting, and it took a human noticing plus a rescue dispatch to finish a branch that was nearly done. The rescue agent's own note is the rule: *"run synchronously in the foreground — this is exactly the step the prior session backgrounded and abandoned."*
 
-If a suite is genuinely too long for one call, that is a finding worth reporting (`findings[]`, kind `note`) — say so and run the narrower selection your case needs. A slow suite is a problem to surface, not to hide behind a background job.
+If a suite is too long even for sleep-polling, that is a finding worth reporting (`findings[]`, kind `note`) — say so and run the narrower selection your case needs. A slow suite is a problem to surface, not to hide behind a background job.
 
 If green: proceed to handoff.
 If red: enter Phase 5 — Debug.

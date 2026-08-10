@@ -149,7 +149,7 @@ function safeParse(line) { try { return JSON.parse(line); } catch { return null;
 // Claude Code names a project dir by replacing every path separator and every
 // character that is awkward in a filename with a dash. Measured against the 28
 // project dirs on one real machine: this class resolves 28/28. The previous
-// `[/.]` resolved 6/28 — it missed underscores (`Alexander_Bychinskiy`), spaces
+// `[/.]` resolved 6/28 — it missed underscores (`Some_User`), spaces
 // (`AI baseline`), and on Windows every path there is, since `C:\Users\x`
 // contains neither a slash nor a dot to replace.
 //

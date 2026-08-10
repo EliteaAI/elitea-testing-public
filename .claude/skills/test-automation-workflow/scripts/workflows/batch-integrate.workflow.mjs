@@ -4,7 +4,7 @@
 //   Workflow({ scriptPath: '<installed skill>/scripts/workflows/batch-integrate.workflow.mjs',
 //              args: { slug, base, cases: [{id, branch}, …] } })
 //
-// Why this exists (Elitea retrospective, 2026-07-21): integration fallout —
+// Why this exists (production retrospective, 2026-07-21): integration fallout —
 // merges, conflicts, rebase cascades — handled conversationally cost the lead
 // 63 git commands, 90 conflict hits, and 3 pure-git-surgery dispatches in one
 // session. This workflow moves the whole integrate step into ONE isolated

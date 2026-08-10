@@ -171,7 +171,7 @@ function timeStats(stampsMs) {
 // Case ids (Jira-style keys) mined from dispatch descriptions, branches,
 // titles and prompts — ONLY the ids are stored, never the surrounding text, so
 // this runs ungated. They make spend-per-case attribution precise: a workflow
-// dispatch labelled "analyse ELITEA-2211+2212" names exactly what it worked on.
+// dispatch labelled "analyse TC-101+TC-102" names exactly what it worked on.
 // `SCRUM-T101` (letter-prefixed numbers) is a real TMS shape — hence `[A-Z]?`.
 // The stoplist drops the common tech tokens the loose pattern would otherwise
 // swallow (ISO-8601, SHA-256, …); imperfect by design, ids are a hint not a claim.

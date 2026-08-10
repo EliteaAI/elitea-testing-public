@@ -1,67 +1,58 @@
 # Role Overrides — project-specific hard rules (this file wins)
 
-_This is the bundle's designed override channel (`.agents/role-overrides.md`,
-hook-injected into every session and every subagent). Where anything here
-conflicts with a skill's **defaults or examples** — including the
+_This is the bundle's designed override channel. Where anything here conflicts
+with a skill's **defaults or examples** — including the
 `test-automation-workflow` "UI example" locator ladder — **this file wins.**
 Seeded by scout 2026-07-14 after the framework-alignment audit; the team's own
 ruling (elitea-testing-public PR #23, "Enforce testid-only locators") is the
 source of the locator policy._
 
+> ⚠️ **Delivery: this file reaches agents ONLY via the `@`-import block in
+> `CLAUDE.md`.** The bundle's hook *can* inject it, but this project sets
+> `SDLC_SHARED_DOCS=__none__` (`.claude/hooks/sdlc-skills/config.sh`) because the
+> hook's ~10 KB `additionalContext` cap truncated the shared docs. **Removing
+> `@.agents/role-overrides.md` from `CLAUDE.md` silently deletes the override
+> channel** — every hard rule below stops reaching every agent, with no error.
+> Verified 2026-08-10 (scout): the hook injects only per-role memory
+> (`RULES.md` + `MEMORY.md` + `project_briefing.md`), never this file.
+
 ## Every role — locator policy (the #1 override)
 
 **This project has NO locator ladder. The ladder is one rung: `data-testid`.**
 The `getByRole → testid → label → text → CSS` sequence in
-`test-automation-workflow` is a generic *example* that does **not** apply here —
-`.agents/testing.md` § Locator policy is the authority the skill itself defers to.
+`test-automation-workflow` is a generic *example* that does **not** apply here.
 
-Why (team goal, first-class): **the team wants `data-testid` on every element new
-tests touch, and will measure UI-automation coverage by testid presence.** A
-role/label/CSS handle is not just brittle here — it is *invisible to the coverage
-metric*. Every raw handle silently shrinks measured coverage.
+**→ The full policy is `.agents/testing.md` § Locator policy — the single source,
+and the authority the skill itself defers to. Read it; this section only states
+that it OVERRIDES the skill.** It covers, in full: why (coverage is measured by
+testid presence, so a raw handle is invisible to the metric); missing testid ⇒
+add it via `add-data-testid`, never rung down; the #579 sanctioned exceptions and
+their discipline; the blanket-add ban and the #511 "referenced = called on the
+executed path" ruling; #277 conditional pairs; dynamic-testid and state-attribute
+shapes; connected first-party repos; and why `automation/pages/`' ~350 pre-policy
+raw handles (#25/#42) are tech debt, never precedent.
 
-- Element lacks a testid? That is **work to do, not a reason to rung down**: the
-  implementer adds one via `add-data-testid` (dual-target flow). The escalation
-  test is OR, not AND: *missing testid alone* ⇒ add it. Only "testid genuinely
-  cannot be placed" escalates — **sanctioned exceptions (#579):** third-party widget
-  subtrees (outside `EliteaUI/src`, e.g. ReactFlow's `rf__wrapper`) OR third-party
-  editor library internal render nodes (CodeMirror/Monaco/ProseMirror per-line divs).
-  Both require: (1) parent has a real testid, (2) raw handle scoped to that parent,
-  (3) explicit docstring declaration. See `.agents/testing.md` § Locator policy for
-  full discipline.
-- **The scope is exactly the elements the case's test touches — NEVER blanket-add**
-  (team ruling 2026-07-14): testids on elements no test uses are front-end noise
-  AND corrupt the coverage metric — the "highlight what has a testid" visualization
-  is honest only while *presence ≈ tested*. Adding testids "while you're in there"
-  to untouched elements = `CHANGES_REQUESTED`. (Optional testid PROPS on shared
-  components are fine — they render nothing unless a caller opts in — but each new
-  prop is a component-API change the UI team reviews as a pattern.)
-  **"Touches" = the test actually invokes the page-object method that uses the
-  testid, on the case's executed code path (canon ruling #511, 2026-07-22).** A
-  `LocatorDescriptor` field wired into a real method that this test never calls
-  is NOT "touched" — no carve-out for reusable scaffolding, parameterized methods
-  used by sibling cases with other args, or "plausible future use." Sibling
-  testids in the same JSX array literal: add ONLY the one this test calls, leave
-  the rest to the case that exercises them. (#277 — structural locator-
-  disambiguation pairs — is a distinct axis, tracked separately.)
-- **Fresh ground truth (hard rule).** Any verification against `origin/*` refs —
-  promotability greps, "does this testid exist on main", branch-state checks —
-  is preceded by `git fetch origin` in that repo, in the same command block. A
-  verification against a stale clone is not a verification (#19 rework shipped a
-  false "0 of 12 on main" row exactly this way; truth was 5/12, added by the UI
-  team's own EL-5400). Name the ref you checked and PASTE the command output.
-- **Declared-improvisation protocol (canon gaps).** When the canon has NO pattern
-  for your case: pick the most spirit-compliant option AND declare it explicitly —
-  in the Run Report and the PR description — as a proposed pattern with reasoning
-  ("no sanctioned shape for X; chose Y because Z"). A DECLARED improvisation is a
-  canon-gap escalation: the reviewer verifies the reasoning, the auditor reports it
-  as a `question` — it can never solo-FAIL a delivery. An UNDECLARED improvisation
-  is a violation, full stop. (Origin: #19 FAIL-1 — a semantically-correct
-  improvisation was indistinguishable from a violation because it was silent.)
-- **The surrounding code is NOT precedent.** `automation/pages/` contains ~350
-  pre-policy raw handles (tracked tech debt, issues #25/#42). Matching the
-  neighbors is how the debt grew; never cite existing code to justify a new raw
-  handle.
+The per-slot consequences are below (§ Analyst / § Implementer / § Reviewer slot).
+
+## Every role — fresh ground truth (hard rule)
+
+Any verification against `origin/*` refs — promotability greps, "does this testid
+exist on main", branch-state checks — is preceded by `git fetch origin` in that
+repo, **in the same command block**. A verification against a stale clone is not a
+verification (#19 rework shipped a false "0 of 12 on main" row exactly this way;
+truth was 5/12, added by the UI team's own EL-5400). Name the ref you checked and
+PASTE the command output.
+
+## Every role — declared-improvisation protocol (canon gaps)
+
+When the canon has NO pattern for your case: pick the most spirit-compliant option
+AND declare it explicitly — in the Run Report and the PR description — as a
+proposed pattern with reasoning ("no sanctioned shape for X; chose Y because Z").
+A DECLARED improvisation is a canon-gap escalation: the reviewer verifies the
+reasoning, the auditor reports it as a `question` — it can never solo-FAIL a
+delivery. An UNDECLARED improvisation is a violation, full stop. (Origin: #19
+FAIL-1 — a semantically-correct improvisation was indistinguishable from a
+violation because it was silent.)
 
 ## Every role — before filing a UI "doesn't work" bug: the interaction-discovery ladder
 
@@ -165,14 +156,12 @@ lookup), never replace it.
 ## Every role — NO git worktrees for regular work (operator ruling 2026-07-24)
 
 Plain branching, **one thing at a time**, no concurrent checkouts. Never create a
-`git worktree` as part of ordinary analysis, implementation, review, or promotion —
-**only on an explicit human ask.** Most "I need a worktree" moments need no checkout at
-all: `git show <branch>:<path>` to read, `git diff <branch>...HEAD` to compare,
-`git grep '<id>' origin/main -- src/` to verify a ref. Review is **static** (no
-execution, no checkout). Full rationale + the replacement table:
-`.agents/workflow.md` § No git worktrees. (Origin: a confirmed-twice hazard where
-`worktree add/remove` left the MAIN checkout on the wrong branch — PRs #608/#693 — plus
-6 abandoned trees, ~54 MB, polluting the four-sibling topology.)
+`git worktree` in ordinary analysis, implementation, review, or promotion —
+**only on an explicit human ask.**
+
+**→ `.agents/workflow.md` § No git worktrees** is the single source: the rationale
+(a confirmed-twice hazard, PRs #608/#693) and the replacement table for every
+"I need a worktree" moment — none of which needs a checkout.
 
 ## Every role — batch shell round-trips (time-audit finding, 2026-07-16)
 

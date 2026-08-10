@@ -275,29 +275,47 @@ the output gets PASTED into the record:
 
 ```bash
 cd ../EliteaUI && git fetch origin      # fresh ground truth — NON-OPTIONAL
+FILTER='(data-testid|testid[[:space:]]*[:=])'          # -i is MANDATORY, see below
 for t in <every testid the case's diff uses>; do
   printf "%-32s main:%-3s testids:%s\n" "$t" \
-    "$(git grep -- "$t" origin/main -- src/ 2>/dev/null | grep -qE "(data-testid|testid.*=.*$t)" && echo YES || echo no)" \
-    "$(git grep -- "$t" origin/automation/testids -- src/ 2>/dev/null | grep -qE "(data-testid|testid.*=.*$t)" && echo YES || echo no)"
+    "$(git grep -- "$t" origin/main -- src/ 2>/dev/null | grep -qiE "$FILTER" && echo YES || echo no)" \
+    "$(git grep -- "$t" origin/automation/testids -- src/ 2>/dev/null | grep -qiE "$FILTER" && echo YES || echo no)"
 done
 ```
 
-**Note on the two-stage grep pattern (updated 2026-07-23, resolves #553):** 
+**Note on the two-stage grep pattern (fixed 2026-08-10; supersedes the 2026-07-23
+form that "resolved" #553 only halfway):**
 
 Stage 1 (`git grep -- "$t"`) uses bare-substring matching to catch testids wired via:
 - Direct attribute: `data-testid="agent-name-input"`
-- Object literal: `'data-testid': 'agent-name-input'`
+- Object literal: `'data-testid': 'agent-name-input'` and `testId: 'agent-name-input'`
 - Prop indirection: `buttonTestId="agent-name-input"` → `data-testid={buttonTestId}`
+- Runtime-composed: `` data-testid={`${PREFIX}-suffix`} `` — **stage 1 cannot see these
+  at all.** If a component file differs from `origin/main`, diff the file itself
+  (`git diff origin/main origin/automation/testids -- <file>`) instead of trusting a grep.
 
-Stage 2 (`grep -E "(data-testid|testid.*=.*$t)"`) filters to lines containing actual testid usage, removing:
-- Comments: `// TODO: add agent-name-input testid`
-- Unrelated mentions in docs/strings
+Stage 2 filters stage 1's hits down to real testid wiring, dropping comments
+(`// TODO: add agent-name-input testid`) and prose mentions.
 
-The literal `data-testid="$t"` form (used before 2026-07-23) missed prop indirection and object-literal syntax, producing false negatives on 5+ deliveries (#73, #95, #166, #175, #262). 
+⚠️ **Both stage-2 flags are load-bearing — the pre-2026-08-10 filter
+(`grep -qE "(data-testid|testid.*=.*$t)"`, no `-i`, `=` only) produced silent FALSE
+NEGATIVES on two of the three wiring forms above:**
+- `buttonTestId="agent-name-input"` — `testid` is **case-sensitive** and does not
+  match `TestId`, and the line carries no literal `data-testid`, so it was dropped.
+  Fixed by `-i`.
+- `testId: 'agent-name-input'` — the **colon** form has no `=`, so it was dropped.
+  Fixed by `[:=]`.
 
-**Caveat:** Bare-substring can still produce false positives (prefix collisions like `agent-form` matching `agent-form-save-button`, or variable names). When in doubt, verify manually by running the non-quiet version:
+A false negative here writes "not on main" into a closure record that is wrong —
+exactly the #19 failure the fetch rule was added to prevent. (Earlier still, the
+literal `data-testid="$t"` form missed prop indirection and object literals
+entirely: false rows on #73, #95, #166, #175, #262.)
+
+**Caveat:** bare-substring stage 1 can still produce false *positives* (prefix
+collisions — `agent-form` matching `agent-form-save-button` — or variable names).
+When in doubt, read the hits instead of counting them:
 ```bash
-git grep -- "$t" origin/main -- src/ | grep -E "(data-testid|testid.*=.*$t)"
+git grep -- "$t" origin/main -- src/ | grep -iE '(data-testid|testid[[:space:]]*[:=])'
 ```
 
 The UI team also adds testids in parallel (EL-5400, EL-5634, …). Only testids present

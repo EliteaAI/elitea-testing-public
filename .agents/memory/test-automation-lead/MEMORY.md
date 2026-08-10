@@ -1,57 +1,36 @@
 # Memory index — test-automation-lead
 
 > Only *preventive* facts are indexed — things that change your FIRST move.
-> Surface- and case-specific entries are NOT listed but ARE on disk:
+> Everything else stays on disk and stays greppable — always grep before
+> concluding something is unknown:
 > `grep -rl '<keyword>' .agents/memory/test-automation-lead/`
+> Compacted by scout 2026-08-10 (51 → 26 lines): merged 8 near-duplicate clusters
+> into their richest survivor, demoted surface lookups to disk-only, cut 2 lines
+> whose claims are now contradicted by the code. No entry file was deleted.
 
 - [Project briefing](project_briefing.md) — stack, pipeline, systems map, PR + merge policy
-- [Shared-tree git discipline](shared_tree_git_discipline.md) — one tree, many sessions; destructive git eats memory
+- [Shared-tree git discipline](shared_tree_git_discipline.md) — one tree, many sessions; destructive git eats memory; worktrees stay banned
 - [Closure-record discipline](closure_record_discipline.md) — table shape, clickable SHAs, pasted gate + promotability
-- [Promotability: which testids](promotability_dependency_set.md) — derive deps from the call chain, not the AFS
-- [Testid presence greps](testid_presence_grep_technique.md) — bare-string first; prop/template/dynamic testids lie
-- [Evidence, not narration](evidence_must_be_pasted_artifact.md) — verify claims against retrievable artifacts
-- [Merge-gate traps](merge_gate_operational_traps.md) — flake resets count, stale gh diff, per-step allure check
+- [Promotability = the call chain](promotability_dependency_set.md) — derive deps from code at check time, never the AFS
+- [Testid presence greps](testid_presence_grep_technique.md) — bare string, always -i, [:=] not =; component-scope reused names
+- [Evidence, not narration](evidence_must_be_pasted_artifact.md) — verify every claim against a retrievable artifact
+- [Merge-gate traps](merge_gate_operational_traps.md) — flake resets count, stale gh diff, per-step allure, sanctioned-RED sets
 - [Unattended run guards](unattended_run_guards.md) — liveness by ps + path overlap beats the 3 literal conditions
-- [Dispatch prompt completeness](dispatch_prompt_completeness.md) — what every dispatch carries; stale premises
-- [Subagent wait & resume](subagent_wait_and_resume_mechanics.md) — background resumes, orphaned waits, polling
-- [TMS back-write discipline](tms_backwrite_discipline.md) — no MCP write verb; hand-edit, recheck all 4 fields
-- [TMS intake technique](tms_intake_technique.md) — filename-id dedup, tree API, sequential filing, cap unenforced
-- [gh tracker & board gotchas](gh_tracker_and_board_gotchas.md) — pagination, -F vs -f, full+json, Closes #N, --squash
-- [Review-round rulings](review_round_rulings.md) — full re-check each round; verdict recorded; R2 cap by class
+- [Dispatch prompt completeness](dispatch_prompt_completeness.md) — what every dispatch carries; verify the premise first
+- [Waiting & resuming](subagent_wait_and_resume_mechanics.md) — poll in-turn; Workflow needs scriptPath AND args, every resume
+- [TMS back-write discipline](tms_backwrite_discipline.md) — hand-edit all 4 fields; onetest MCP verbs take NO repo: arg; never pass --dir
+- [TMS intake technique](tms_intake_technique.md) — filename-id dedup, uniq -d collision sweep, capture issue# at intake
+- [gh tracker & board gotchas](gh_tracker_and_board_gotchas.md) — pagination, -F vs -f, Closes #N, --squash, retry the read
+- [Review-round rulings](review_round_rulings.md) — full re-check each round; verdict recorded; R2 cap by signature
 - [Testid-usage extraction scope](testid_usage_scope.md) — grep all of automation/; trace the test's own call chain
 - [AFS gate rulings](afs_gate_rulings.md) — the AFS itself can be wrong: locators, provenance, status header
-- [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 5× violated; conflicts are dispatched, always, even at sync-time
-- [#524 blocks ALL agent creation](blocker_524_blocks_all_agent_creation.md) — still OPEN; kills the agent_id fixture
-- [Isolated-defect assert can ship GREEN](isolated_defect_can_ship_green.md) — verify its logic by hand, not colour
-- [EL-5708 broke indexes_tab](indexes_tab_removed_by_el5708_toolkit_detail_page_stale.md) — count_config_tabs fails
-- [Workflow gate stall = false blocked](workflow_gate_stall_gives_false_blocked_lead_runs_gate_directly.md) — check journal.jsonl, run gate yourself
-- [Gate hard-fail vs soft-stall](workflow_gate_hard_failure_vs_soft_stall_different_recovery.md) — StructuredOutput never called → plain resume works
-- [Long gate Bash calls get infra-killed](long_running_gate_bash_calls_get_infra_killed.md) — retry on 0 FAILED, don't diagnose red
-- [Case→issue mapping isn't in the snapshot](tms_case_to_issue_mapping_not_in_snapshot.md) — capture at intake; strict `[Automate][ELITEA-<id>]` match, not bare-ID
-- [Testid provenance: bulk not per-case](testid_provenance_bulk_check_for_multi_case_closure.md) — one dump+diff for the whole wave; `+`-lines only
-- [Workflow tool: use scriptPath, not workflow('name',...)](workflow_tool_named_registry_is_empty_use_scriptpath.md) — named registry is empty; wrapper-script call fails silently-fast
-- [build_index MCP verb can silently no-op](build_index_mcp_verb_can_silently_no_op.md) — omit `repo:` arg entirely; it misroutes to ~/.onetest-workspaces
-- [batch-build never opens trunk→base PR](batch_workflow_never_opens_trunk_to_base_pr.md) — lead always `gh pr create`+merge it by hand, every batch
-- [Workflow new-ground blocker needs blocking_detail too](workflow_new_ground_blocker_needs_blocking_detail_too.md) — `blocked` may be a loop-control gap, not unfixable — read the finding first
-- [Workflow R2 cap is total, not per-cause](batch_workflow_r2_counter_is_total_not_per_cause.md) — verify per-cause via the implementer's own notes + `gh pr view` before accepting an "R2 cap exceeded" park
-- [TMS ids CAN collide across modules](onetest_case_id_can_collide_across_modules.md) — SYSTEMIC (150+ ids); run `grep -h '^id: ELITEA-' -r tests/ | sort | uniq -d` every intake
-- [Report outcome "blocked" can still mean LAND IT](batch_report_case_outcome_blocked_can_still_mean_land_it.md) — check `gate.verdict`+`next` before parking a sanctioned-RED case
-- [Gate red at runs=1 — confirm before parking](gate_red_at_1_run_lead_confirms_sanctioned_red_before_landing.md) — internal gate honestly stops at 1 red; run your own N=3 before classifying
-- [Workflow status:failed ≠ work lost](workflow_hard_failure_can_still_have_landed_real_work.md) — check git+journal.jsonl, then just resume; don't redo
-- [gh project rate-limit hits the READ, not the mutation](gh_project_rate_limit_on_verification_read_not_the_mutation.md) — item-edit likely already succeeded; retry the verify read, don't redo the edit
-- [Blast-radius red doesn't block gate verdict](blast_radius_red_does_not_block_gate_verdict.md) — trust `gate.verdict`; route unrelated blast-radius failures as their own untriaged issue
-- [Workflow resume needs args too](workflow_resume_requires_args_too.md) — `{scriptPath, resumeFromRunId}` alone throws "args required"; always resend the same `args`
-- [Blast-radius can go UNOBSERVED](gate_blast_radius_can_go_unobserved_lead_must_complete_it.md) — a timed-out run isn't a red one; lead must actually re-run it before landing
-- [Report-writer agent can refuse the disk write](report_writer_agent_can_refuse_disk_write.md) — check `.agents/automation/<slug>/report.json` actually exists (and isn't clipped) after every batch; write it yourself if not
-- [Trunk→base PR can use a stale head](trunk_to_base_pr_can_use_stale_head_missing_report_commit.md) — `gh pr create` right after completion can miss the report-writer's own commit; verify `gh pr view --json files` includes report.json post-merge
-- [Large-batch gate: scope by node-id, not file](large_batch_gate_scope_by_nodeid_not_file.md) — file-level scope sweeps in unrelated pre-existing flaky siblings
-- [Gate red moving between tests = check tracker first](gate_red_recurring_on_different_tests_check_tracker_before_diagnosing.md) — same signature, different tests = shared/infra cause; grep `gh issue list` before diagnosing
-- [Sync conflict = main's component-extraction refactor](sync_conflict_caused_by_main_component_extraction_refactor.md) — check for a new sibling file before assuming a real testid conflict
-- [Dead testid= relying on fallback=](locator_descriptor_testid_can_be_dead_relying_on_fallback.md) — zero grep hits on BOTH refs means the locator never really used its testid
-- [Scoping-only card: Ready = deliverable posted](scoping_only_card_ready_means_deliverable_posted_not_merged_test.md) — "list X, don't automate yet" cards skip the merged-test/closure-record checklist entirely
-- [Promotability grep has 3 false-negative modes](promotability_grep_must_be_component_scoped_and_catch_prop_template_testids.md) — reused name/other component, prop/template, fully-composed `${PREFIX}-suffix` (needs file-diff, not grep)
-- [Factory-mode Workflow wait = TaskOutput poll loop](factory_mode_workflow_wait_is_taskoutput_poll_loop_not_turn_end.md) — never end the turn for a Workflow() call; loop `block=true, timeout=600000` in-turn instead
-- [Report can falsely say "blocked" on an already-merged case](report_case_outcome_can_falsely_say_blocked_for_an_already_merged_case.md) — cross-check git log + gh pr view before accepting any non-automated outcome; also: commit every wave's report.json/report.md
-- [Verify PR merged before trusting ANY workflow outcome](verify_pr_merged_before_trusting_any_workflow_outcome.md) — `gh pr view` every declared PR every wave, not just when something looks off
-- [Verify local vs origin before merging](verify_local_vs_origin_before_merging_case_branch.md) — `merge origin/<branch>` can silently no-op if the implementer never pushed
-- [zsh doesn't word-split unquoted $VAR](zsh_unquoted_var_no_word_split.md) — multi-node-id/multi-branch loops need heredoc file + `while read`, not `$VAR`/`mapfile`
+- [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 5× violated; conflicts are dispatched, always
+- [Workflow outcomes aren't ground truth](gate_red_at_1_run_lead_confirms_sanctioned_red_before_landing.md) — gh pr view + git log every unit (8×)
+- [Gate stalls: 4 shapes, 4 recoveries](workflow_gate_hard_failure_vs_soft_stall_different_recovery.md) — hard-fail resumes; not-run you run (7×)
+- [Landing is manual](batch_workflow_never_opens_trunk_to_base_pr.md) — push local refs, open trunk→base PR, verify report.json landed (12×)
+- [CORRECT report.json after your own gate](report_writer_agent_can_refuse_disk_write.md) — a lead-run gate must be written back; audits read this file
+- [Gate scope = node-ids, not files](large_batch_gate_scope_by_nodeid_not_file.md) — file scope sweeps in pre-existing flaky siblings
+- [Blast-radius red doesn't block](blast_radius_red_does_not_block_gate_verdict.md) — trust gate.verdict; file the reds as their own issue
+- [Gate red moving between tests](gate_red_recurring_on_different_tests_check_tracker_before_diagnosing.md) — same signature = shared cause, grep tracker
+- [Unshallow siblings before every sync](sibling_clones_can_go_shallow_check_before_sync.md) — shallow clones lie about ahead/behind
+- [--collect-only prints a tree, not node-ids](pytest_collect_only_renders_tree_not_flat_ids.md) — derive ids from source; zsh won't split $VAR

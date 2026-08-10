@@ -104,21 +104,18 @@ for critical-path fast tests).
 
 ## Coverage tagging (TMS traceability)
 
-The `automation_test_id` back-written to the TMS case is the **CI correlation key** —
-onetest-tms `correlate_results` matches it against the JUnit `code_ref` (`classname + "." +
-name`). It must be the **dotted, `tests.`-rooted** form:
+The `automation_test_id` back-written to the TMS case is the **CI correlation key**.
+It must be the **dotted, `tests.`-rooted "Form C"**:
 `tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_toolkits_section_visible`
-— no `automation.` prefix, no `.py`, no `::` (pytest runs from `automation/`, which has no
-`__init__.py`, so `tests` is the import root). **Both** the file-path node-id form
-(`automation/…​.py::Class::method`) **and** the `automation.`-prefixed dotted form fail
-correlation silently — they surface as 🟥 gaps in `automation_coverage`, never a match.
-The mechanical derivation, a self-check one-liner, and the "rebuild `index.json`" caveat live
-in `.agents/test-automation.yaml` § `backwrite_on_done` (canon set by ELITEA-1794 / issue #598,
-2026-07-23). The field is a **list of 1..N** such refs — a bare scalar is a 1-item list, and a
-case may list several (e.g. ELITEA-1050 lists 3); `correlate_results` links the case if **any**
-listed ref matches. One test may also cover several cases (the same ref under multiple case ids).
-Non-pytest surfaces (e.g. Xray cases under `tests/alita-sdk/`) carry a runner-native key like
-`XR04`, not a pytest path — Form C is specifically the pytest `code_ref` shape.
+— no `automation.` prefix, no `.py`, no `::`. **Both** other forms fail correlation
+**silently** (🟥 gap in `automation_coverage`, never an error).
+
+**→ `.agents/test-automation.yaml` § `backwrite_on_done` is the single source** —
+why Form C is the only shape that correlates, the mechanical derivation from a
+node-id, the self-check one-liner against `reports/junit.xml`, the list-of-1..N
+semantics, the non-pytest (Xray) exception, and the "rebuild `index.json`" caveat.
+Canon set by ELITEA-1794 / issue #598, 2026-07-23. **Back-writing is the
+orchestrator's job** — implementers and analysts never write this field.
 
 ## Locator policy (AUTHORITATIVE — overrides any skill's example ladder)
 

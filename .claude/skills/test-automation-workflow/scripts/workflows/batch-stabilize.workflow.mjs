@@ -87,14 +87,21 @@ const PREAMBLE =
   'loaded before touching anything. ' +
   'Anything worth telling someone that did not stop you goes in findings[] — do ' +
   'not write it to memory yourself; the report is what gets read. ' +
-  // Same field lesson as batch-build's FOREGROUND_RULE (2026-07-30): an agent
-  // that ends its turn waiting on a background job is not waiting, it is done.
-  // The re-gate slot is the exposed one here — running the suite N consecutive
-  // times is the longest job in this workflow.
-  'RUN LONG JOBS IN THE FOREGROUND — test suites especially. Let the call block. ' +
-  'If you background one you own it until it exits: poll it every turn until you ' +
-  'have the result. NEVER end a turn waiting for a background job to finish — ' +
-  'nothing will wake you and this workflow blocks on your return.'
+  // Same measured facts as batch-build's FOREGROUND_RULE: a turn ended mid-job
+  // is forced to report 28ms later (no wake, by any pattern), a foreground call
+  // is capped at 600s, and a blocking sleep is the legal — and cheap — way to
+  // wait. The re-gate slot is the exposed one here: running the suite N
+  // consecutive times is the longest job in this workflow.
+  'LONG JOBS — test suites especially. A foreground call is killed at its `timeout` ' +
+  '(default 120s, MAXIMUM 600000ms), so ALWAYS pass timeout: 600000 on a suite run, ' +
+  'and let the call block when the job fits inside it. ' +
+  'When the job does NOT fit in one call: launch it detached, writing its output to a file, ' +
+  'then WAIT with blocking foreground polls — `sleep 300; <check the output file>`, each with ' +
+  'timeout: 600000 — until it is done. Sleeping in the foreground is legal and cheap: it is ONE turn ' +
+  'however long you sleep. ' +
+  'NEVER end a turn while a job is running — nothing will wake you (measured: forced to report 28ms ' +
+  'later, and neither run_in_background nor Monitor beats that) and this workflow blocks on your return. ' +
+  'NEVER poll at second-level intervals — you pay a full context per turn and a busy-wait gets you cut off.'
 
 const FINDINGS = {
   type: 'array',

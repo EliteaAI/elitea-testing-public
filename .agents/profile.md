@@ -97,9 +97,10 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
   **back-link comment**, never a second card. (Two real incidents: elitea_support#1231
   via a stale support-agent config; elitea_issues#6039 via `file-app-bug` Step 4 —
   both removed.)
-- **Dedup rule**: before filing, check with the real-time list API — NOT `--search`
-  (the search index lags minutes and causes duplicate filings, cf. #17/#18):
-  `env -u GITHUB_TOKEN gh issue list --state all --limit 200 --json title | grep "ELITEA-<id>"`.
+- **Dedup rule (intake cards)**: never `--search` — the index lags minutes and
+  causes duplicate filings (#17/#18). Exact command:
+  `.agents/test-automation.yaml` § `intake.dedup` (single source).
+  *Bug* dedup is a different, wider check — see § Bug filing below.
 
 ### Test Management System (TMS)
 - **System**: onetest (custom — markdown cases + GitHub-issue executions, MCP server `onetest-tms`)

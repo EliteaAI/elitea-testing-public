@@ -233,13 +233,36 @@ const label = (unit) => unit.map((c) => c.id).join('+')
 // This goes to EVERY worker, not just implementers: the gate is the most
 // exposed slot of all, because running the suite N consecutive times is its
 // whole contract.
+//
+// Measured 2026-08-10, controlled probe, two arms: a schema-bound workflow
+// subagent that ends its turn while a job runs is forced to report in 28ms —
+// the documented run_in_background "you will be re-invoked when it exits" path
+// and the Monitor tool BOTH lose that race. There is no waking. In the same
+// probe a BLOCKING foreground `sleep` worked perfectly (3 x 45s, no
+// enforcement), which is why the rule below names sleep as the way to wait:
+// waiting is legal, idling is fatal, and nothing previously said so.
+//
+// The other half is arithmetic. A foreground call is capped at 600s (default
+// 120s if `timeout` is not passed), while N=3 over a real UI batch is 12-19
+// minutes — so "let the call block" ALONE is unsatisfiable, and every gate that
+// tried it was killed, auto-backgrounded, and then trapped. And you pay per
+// TURN, not per minute: at 132k resident context a poll costs ~$0.048, so
+// wave-01's 27 `kill -0` polls burned $1.29 (32% of that agent) and it still
+// failed. One `sleep 300` costs the same as one 2-second check.
 const FOREGROUND_RULE =
-  'RUN LONG JOBS IN THE FOREGROUND — test suites especially. Let the call block. ' +
-  'If you background one you own it until it exits: poll it every turn until you ' +
-  'have the result. NEVER end a turn waiting for a background job to finish — ' +
-  'nothing will wake you, this workflow blocks on your return, and your silence ' +
-  'is indistinguishable from thinking. If a job is genuinely too long for one ' +
-  'call, say so in findings[] and run the narrower selection you actually need.'
+  'LONG JOBS — test suites especially. A foreground call is killed at its `timeout` ' +
+  '(default 120s, MAXIMUM 600000ms), so ALWAYS pass timeout: 600000 on a suite run, ' +
+  'and let the call block when the job fits inside it. ' +
+  'When the job does NOT fit in one call: launch it detached, writing its output to a file, ' +
+  'then WAIT with blocking foreground polls — `sleep 300; <check the output file>`, each with ' +
+  'timeout: 600000 — until it is done. Sleeping in the foreground is legal and cheap: it is ONE turn ' +
+  'however long you sleep. ' +
+  'NEVER end a turn while a job is running — nothing will wake you (measured: you are forced to ' +
+  'report 28ms later, before the job finishes, and neither run_in_background nor Monitor beats that), ' +
+  'this workflow blocks on your return, and your silence is indistinguishable from thinking. ' +
+  'NEVER poll at second-level intervals either — you pay a full context per turn, and a busy-wait ' +
+  'exhausts your turn budget and gets you cut off mid-job (measured: 27 polls, $1.29, no verdict). ' +
+  'If a job is too long even for sleep-polling, say so in findings[] and run the narrower selection you need.'
 
 // FOREIGN TEXT GOES THROUGH HERE. Case titles come from the TMS, blocking items
 // and notes are written by other agents, tickets by the implementer — none of
@@ -1003,7 +1026,7 @@ async function buildUnit(u, pre = null) {
   //     `blocked`, and it goes to the lead with the reason.
   //   * …UNLESS the survivors are all scoped to a PROPER SUBSET of the unit's
   //     cases → SPLIT instead of stop (once per unit). Units amortize dispatch
-  //     cost, and the price was fate-coupling: ELITEA-2211..2215 stranded four
+  //     cost, and the price was fate-coupling: one stuck case stranded four
   //     finished cases behind one policy-stuck one. Carving records the stuck
   //     cases blocked, QUARANTINES their code (declared skip, re-armed when
   //     the blocker clears; deletion only when the code itself is condemned,
@@ -1231,7 +1254,13 @@ const GATE_SCHEMA = {
   type: 'object', additionalProperties: false,
   required: ['verdict', 'runs', 'green_specs', 'failures', 'notes'],
   properties: {
-    verdict: { type: 'string', enum: ['green', 'red', 'not-run'] },
+    // `incomplete` is NOT `not-run`. Measured 2026-08-09: three gates were cut
+    // off with runs already banked and pytest still executing, reported
+    // `not-run` because it was the only honest option in the enum, and their
+    // merged units were labelled merged-ungated — so a lead-run green later had
+    // nothing to attach to. Separating them lets the report say "resume here"
+    // instead of "nothing is known".
+    verdict: { type: 'string', enum: ['green', 'red', 'not-run', 'incomplete'] },
     runs: { type: 'integer' },
     seconds: { type: 'array', items: { type: 'number' } },
     green_specs: { type: 'array', items: { type: 'string' } },
@@ -1261,6 +1290,16 @@ if (!ANALYZE_ONLY && !SKIP_GATE && merged.length) {
     'Use `scripts/gate/gate-case.mjs` for the mechanics (it merges the base FIRST — a run against a branch that lacks base proves nothing about what will land — refuses a dirty tree, and returns timings), ' +
     (GATE_CMD ? `with --cmd '${GATE_CMD}'. ` : 'resolving the suite command from .agents/testing.md § run commands. ') +
     'A red anywhere ENDS the attempt — N CONSECUTIVE is the contract, not best-of-N. ' +
+    // HOW to run it, because the arithmetic is unforgiving and every gate that
+    // improvised got it wrong. `--n 3` does all three runs in ONE process: on a
+    // real UI batch that is 12-19 minutes against a 600s call ceiling, so the
+    // call is killed, auto-backgrounded, and the agent is stranded. The two
+    // gates that passed cleanly both ran ONE run per call. Measured 2026-08-09.
+    `HOW TO RUN IT — this is where gates fail, so follow it exactly. FIRST time one run: \`--n 1\`, in the foreground, with timeout: 600000. ` +
+    `Then, if that single run took under ~8 minutes, simply repeat it — \`--n 1\` once per run, ${GATE_N} separate foreground calls, each with timeout: 600000 — and count the consecutive greens yourself. ` +
+    `Do NOT pass \`--n ${GATE_N}\`: it runs all ${GATE_N} inside one process, which on a real batch exceeds the 600s ceiling a foreground call has, and the call is killed mid-run. ` +
+    'If ONE run does not fit under ~8 minutes (a large batch), launch that run detached with `--json` redirected to a file, then wait with blocking foreground polls — `sleep 300; <check the file>`, each with timeout: 600000 — and repeat per run. ' +
+    'Either way you never end a turn while a run is in flight and you never poll at second-level intervals: both are how gates get cut off before they finish (see the long-jobs rule above). ' +
     // TWO PROOFS, TWO COUNTS. The batch's own specs are unproven, so they need
     // repetition — that is what catches a flake. Everything else was already
     // proven, so ONE run is enough to reveal a regression, and repeating it
@@ -1273,6 +1312,8 @@ if (!ANALYZE_ONLY && !SKIP_GATE && merged.length) {
     `When you are done, LEAVE THE TREE ON ${gateBranch} — \`git checkout ${gateBranch}\` after the script's detached run — because the next step assumes it is there. ` +
     'On red: read the runner\'s STRUCTURED report (JSON/HTML) for per-spec verdicts rather than log-diving, and return one failures[] entry per failing spec with its failure signature and, where the spec names them, the case ids it covers. ' +
     'One distinction you MUST make, because only you see the runner output: a spec that FAILED (an assertion, a timeout, an error inside the test) versus a spec that never ran (module not found, worker crash, 0ms duration, collection error). The second is an infrastructure fact — a file missing from the merge, a dependency not installed — and reporting it as a red case sends the lead hunting a bug that does not exist. Put such failures in `failures` with the signature verbatim AND say in notes that the spec did not execute. ' +
+    // The enum distinction only pays off if the gate knows which one it is.
+    `IF YOU ARE CUT OFF before the ${GATE_N} runs finish — you are told to report while a run is still going — use verdict 'incomplete', NOT 'not-run'. They mean different things: 'not-run' is "nothing was attempted", 'incomplete' is "I was mid-flight". With 'incomplete' set runs to the number that ALREADY went green, list those in green_specs, and use notes to say exactly where to resume: the branch, the run set, and what remains. A resumable gate is worth far more to the lead than a blank one, and it is the difference between re-running one run and re-running all ${GATE_N}. ` +
     (EXPECTED_RED.length
       ? `RED BY DESIGN — do not count these against the green requirement:\n${EXPECTED_RED.map((r) => `  - ${quote(r.spec, 200)}${r.test_id ? ` :: ${quote(r.test_id, 120)}` : ''} — ticket ${quote(r.ticket, 60)} (${quote(r.why, 200)})`).join('\n')}\nRun them like everything else and report exactly what they did, but the N-consecutive-green contract covers only the OTHER specs. These carry a ticketed product defect the implementer asserted softly rather than hid — a permanently failing test is the correct signal, and counting it would make this batch unpassable while blocking every healthy case in it. If one of them comes back GREEN, say so loudly in notes: the product shipped a fix and the ticket can close. `
       : '') +
@@ -1303,16 +1344,28 @@ if (!ANALYZE_ONLY && !SKIP_GATE && merged.length) {
       autoCount++
     }
     log(`gate GREEN ${gate.runs}/${GATE_N} — ${autoCount} case(s) automated` + (EXPECTED_RED.length ? `, ${integratedIds.size - autoCount} held on ticketed defects` : ''))
-  } else if (!gate || gate.verdict === 'not-run') {
+  } else if (!gate || gate.verdict === 'not-run' || gate.verdict === 'incomplete') {
     // No verdict is NOT a red. An interrupted or dropped gate proves nothing
     // either way, and labelling its units `blocked` is how a dead run's own
     // summary becomes a false negative — measured live: a session killed
     // mid-gate reported "blocked: 14" while 13 of those 14 units were already
     // built, reviewed and MERGED on the trunk.
+    //
+    // `incomplete` says MORE than that: the gate was mid-flight with runs
+    // already banked. Same non-terminal outcome, but the note carries where to
+    // resume, so the lead re-runs the remainder instead of starting over — and
+    // so a lead-run green has something to correct rather than a blank.
+    const cut = gate?.verdict === 'incomplete'
+    const banked = cut && gate.runs ? ` — ${gate.runs}/${GATE_N} run(s) already green before it was cut off` : ''
     for (const id of integratedIds) {
-      record(id, { outcome: 'merged-ungated', note: 'gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate' })
+      record(id, {
+        outcome: 'merged-ungated',
+        note: cut
+          ? `gate CUT OFF mid-run${banked}; merged on the trunk but unproven — resume the gate on ${gateBranch}, then WRITE THE VERDICT BACK into this report`
+          : 'gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate',
+      })
     }
-    log(`gate not-run — ${integratedIds.size} merged unit(s) UNPROVEN, not blocked; re-run the gate on ${gateBranch}`)
+    log(`gate ${cut ? `incomplete${banked}` : 'not-run'} — ${integratedIds.size} merged unit(s) UNPROVEN, not blocked; re-run the gate on ${gateBranch}`)
   } else {
     const failedIds = new Set((gate.failures ?? []).flatMap((f) => f.case_ids ?? []))
     for (const id of integratedIds) {
@@ -1395,7 +1448,13 @@ return {
       // ONE PR takes the whole trunk to base — the units already merged into it,
       // so what was gated and what lands are the same object.
       ? `Gate green on ${gateBranch}. LAND IT: one PR from ${gateBranch} to ${BASE} per .agents/profile.md § Automation PR policy (auto-merge / human-approved / manual decides who presses it), then mirror to the TMS and run the close sweep. Replan anything not 'automated'.`
-      : merged.length && (!gate || gate.verdict === 'not-run')
-        ? `GATE NEVER RAN — ${gateBranch} holds ${merged.length} merged unit(s) that are UNPROVEN, not blocked (outcome merged-ungated). Re-run the gate first (re-invoke with resumeFromRunId — completed units replay from cache — or dispatch the gate alone on ${gateBranch}) and classify nothing until a verdict exists. An interrupted run's own totals are a claim, not evidence: verify against .agents/automation/_returns/ and git (playbook § Interruption).`
+      : merged.length && (!gate || gate.verdict === 'not-run' || gate.verdict === 'incomplete')
+        // THE RECEIPT IS THE DELIVERABLE. Measured across two audits: leads
+        // recover a failed gate flawlessly and then never correct report.json,
+        // so 38 of 69 genuinely-green specs (55%) scored as unproven or absent
+        // in the next rollup. Playbook prose did not fix it — this text is what
+        // the lead actually reads at the moment it happens, so the obligation
+        // lives here, next to the instruction that creates it.
+        ? `${gate?.verdict === 'incomplete' ? `GATE CUT OFF MID-RUN (${gate.runs ?? 0}/${GATE_N} banked)` : 'GATE NEVER RAN'} — ${gateBranch} holds ${merged.length} merged unit(s) that are UNPROVEN, not blocked (outcome merged-ungated). Re-run the gate first (re-invoke with resumeFromRunId — completed units replay from cache — or dispatch the gate alone on ${gateBranch}) and classify nothing until a verdict exists. An interrupted run's own totals are a claim, not evidence: verify against .agents/automation/_returns/ and git (playbook § Interruption). THEN, THE MOMENT YOU HAVE A VERDICT, WRITE IT BACK INTO ${REPORT_DIR}/report.json — gate.verdict, gate.runs, gate.seconds, and each case's real outcome ('automated' on green; 'merged-sanctioned-red' for a ticketed red-by-design). This file is the receipt every audit, every --resolved-from and the next batch's plan divide by: a gate you re-ran green but never wrote back scores as ZERO delivered, and the specs read as unproven forever.`
         : `Classify each blocked case (product defect → tracker; flake/test-code bug → batch-stabilize on ${gateBranch}; architectural → § Framework architecture), then replan the remainder. ${gateBranch} is NOT landed — nothing reaches ${BASE} until it is green.`,
 }

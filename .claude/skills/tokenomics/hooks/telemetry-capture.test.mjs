@@ -23,7 +23,7 @@ const tmp = () => mkdtempSync(join(tmpdir(), 'tokenomics-test-'));
 function claudeRecords() {
   return [
     { type: 'agent-setting', agentSetting: 'test-automation-lead' },
-    { type: 'user', message: { role: 'user', content: 'automate ELITEA-1 please' }, timestamp: '2026-07-30T10:00:00Z' },
+    { type: 'user', message: { role: 'user', content: 'automate TC-101 please' }, timestamp: '2026-07-30T10:00:00Z' },
     {
       type: 'assistant', gitBranch: 'tests/batch-x', timestamp: '2026-07-30T10:01:00Z',
       message: {
@@ -46,7 +46,7 @@ function claudeRecords() {
       message: {
         id: 'm2', model: 'claude-sonnet-5',
         usage: { input_tokens: 200, output_tokens: 60, cache_read_input_tokens: 1000, cache_creation_input_tokens: 50 },
-        content: [{ type: 'tool_use', id: 't2', name: 'Agent', input: { subagent_type: 'qa-engineer', description: 'analyse ELITEA-1' } }],
+        content: [{ type: 'tool_use', id: 't2', name: 'Agent', input: { subagent_type: 'qa-engineer', description: 'analyse TC-101' } }],
       },
     },
     { type: 'user', isSidechain: true, message: { content: '<system-reminder>noise</system-reminder>' }, timestamp: '2026-07-30T10:40:10Z' },
@@ -76,8 +76,8 @@ test('parseClaudeTranscript: role, branch, turns, tools, idle-gap-capped active 
 test('parseClaudeTranscript: prompts opt-in captures user text truncated, skips wrappers', () => {
   const p = parseClaudeTranscript(claudeRecords(), { capturePrompts: true });
   assert.equal(p.prompts.length, 1);
-  assert.equal(p.prompts[0].text, 'automate ELITEA-1 please');
-  assert.equal(p.dispatched[0].description, 'analyse ELITEA-1');
+  assert.equal(p.prompts[0].text, 'automate TC-101 please');
+  assert.equal(p.dispatched[0].description, 'analyse TC-101');
 });
 
 function writeClaudeFixture(root, sessionId, { withSub = true } = {}) {
@@ -117,7 +117,7 @@ test('captureClaudeSession: one line — parent tokens, sub-agents rolled up per
   assert.equal(line.costUsd, null);
   assert.equal(line.costSource, 'none');
   assert.ok(!('prompts' in line), 'prompts key absent by default');
-  assert.deepEqual(line.cases, ['ELITEA-1'], 'case ids mined from prompt + dispatch label, ungated');
+  assert.deepEqual(line.cases, ['TC-101'], 'case ids mined from prompt + dispatch label, ungated');
 });
 
 test('captureClaudeSession: empty transcript yields no line', () => {
