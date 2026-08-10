@@ -75,4 +75,6 @@ class TestCatalogTabsNavigation:
 
         with allure.step("Step 9 — Verify right panel shows category filters"):
             # Right panel should be visible with filter chips
-            hub_page.wait_for_filter_panel_visible(timeout=5000)
+            assert hub_page.wait_for_filter_panel_visible(timeout=5000), (
+                "Filter panel should be visible on Skills tab with category filter chips"
+            )

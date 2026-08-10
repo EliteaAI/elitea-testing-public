@@ -740,31 +740,32 @@ class AgentHubPage(BasePage):
 
     # --- Tab navigation (ELITEA-2370) ---
 
+    agents_tab = LocatorDescriptor(
+        testid="catalog-agents-tab",
+        description="Agents tab in Catalog view (EliteaCatalog.jsx).",
+    )
+
+    skills_tab = LocatorDescriptor(
+        testid="catalog-skills-tab",
+        description="Skills tab in Catalog view (EliteaCatalog.jsx).",
+    )
+
     def is_agents_tab_selected(self, timeout: int = 10000) -> bool:
         """Return True if the Agents tab is currently selected (aria-selected='true')."""
-        agents_tab = self.page.locator('[role="tab"]:has-text("Agents")')
-        try:
-            agents_tab.first.wait_for(state="visible", timeout=timeout)
-            selected = agents_tab.first.get_attribute("aria-selected")
-            return selected == "true"
-        except Exception:
-            return False
+        self.agents_tab.wait_for(state="visible", timeout=timeout)
+        selected = self.agents_tab.get_attribute("aria-selected")
+        return selected == "true"
 
     def is_skills_tab_selected(self, timeout: int = 10000) -> bool:
         """Return True if the Skills tab is currently selected (aria-selected='true')."""
-        skills_tab = self.page.locator('[role="tab"]:has-text("Skills")')
-        try:
-            skills_tab.first.wait_for(state="visible", timeout=timeout)
-            selected = skills_tab.first.get_attribute("aria-selected")
-            return selected == "true"
-        except Exception:
-            return False
+        self.skills_tab.wait_for(state="visible", timeout=timeout)
+        selected = self.skills_tab.get_attribute("aria-selected")
+        return selected == "true"
 
     def is_skills_tab_visible(self, timeout: int = 10000) -> bool:
         """Return True if the Skills tab is visible."""
-        skills_tab = self.page.locator('[role="tab"]:has-text("Skills")')
         try:
-            skills_tab.first.wait_for(state="visible", timeout=timeout)
+            self.skills_tab.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
             return False
@@ -772,11 +773,10 @@ class AgentHubPage(BasePage):
     @action("Click the Skills tab")
     def click_skills_tab(self, timeout: int = 10000):
         """Click the Skills tab to switch from Agents to Skills view."""
-        skills_tab = self.page.locator('[role="tab"]:has-text("Skills")')
-        skills_tab.first.wait_for(state="visible", timeout=timeout)
-        skills_tab.first.click()
+        self.skills_tab.wait_for(state="visible", timeout=timeout)
+        self.skills_tab.click()
         # Wait for content to switch
-        self.page.wait_for_load_state("networkidle", timeout=timeout)
+        self.wait_for_network(timeout=timeout)
 
     def wait_for_filter_panel_visible(self, timeout: int = 10000) -> bool:
         """Wait for the right-side filter panel (category chips) to be visible.
