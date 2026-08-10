@@ -420,5 +420,20 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
   - All pre-existing testids (catalog-page-heading, catalog-category-heading-trending, catalog-agent-card-*) confirmed live; filter chip testid from ELITEA-2352 is on automation/testids, pending human cherry-pick to main.
 - **Next step:** Implementer will write single test (navigate → click filter → assert header + agents + filter state). No dependencies, no seed/cleanup.
 
+## Agent chip in message input — avatar, name, version, settings (ELITEA-2362, this dispatch)
+- **Agent chip container:** `[data-testid="chat-switch-participant-button"]` in the message input composer area (left side, before text input field). Clickable; opens participant-switcher panel.
+- **Chip structure:** Contains avatar image + agent name text in a single button element (MuiButtonBase + MuiButtonGroup).
+- **Avatar image:** `<img alt="elitea" src="...entity_icon...">` within the chip, 1rem × 1rem, border-radius 50%.
+- **Agent name:** Text content rendered in a `<span class="MuiTypography-labelSmall">`, displays the agent's registered name (e.g., "Business Analyst", "User Story Creator"). Pre-existing, no separate testid for the name element.
+- **Agent version:** SEPARATE element, NOT part of the chip itself (important distinction). Selector: `[data-testid="chat-version-selector-trigger"]`. Displays version string (e.g., "v2.1", "v0.1") in format `v{major}.{minor}`. Clickable; opens a version-selection dropdown per participant.
+- **Settings icon/button:** `<button aria-label="agent settings menu">` with MuiButtonGroup classes. Currently NO data-testid (aria-label only). Rendered as part of the same button group as the agent chip. **NEEDS testid** (e.g., `chat-participant-settings-button`) per team's testid-only policy.
+- **Confirmed live 2026-08-10:** Executed full case flow (Catalog → agent card → Start Chat → verify chip elements) against localhost:5173. All elements present and functional.
+- **Testid status summary:**
+  - `chat-switch-participant-button` ✓ on automation/testids (ELITEA-2361)
+  - `chat-version-selector-trigger` ✓ on automation/testids (ELITEA-2361)
+  - Settings button **MISSING testid** — implementer work to add via `add-data-testid` skill
+- **Case-text clarification:** Case title/text implies a single "Agent name vX.X" combined chip, but product renders version as a separate adjacent element. Both are visible and usable; the split is intentional per product design.
+- **All observable assertions confirmed:** avatar visible, name matches selected agent, version non-empty, settings button clickable.
+
 ## Sibling family (not yet analysed as of this entry)
 ELITEA-2351 ("Team project" variant — differs from ELITEA-2350 only in which project is active) plus ~18 more behavioral cases (multiple categories, like/unlike, open/close modal, search, start-conversation flows, etc.). Future batch should re-check whether ELITEA-2350/2351 belong in one parameterized family AFS.
