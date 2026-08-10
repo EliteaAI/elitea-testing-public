@@ -159,6 +159,9 @@ class TestAgentHubMyLikedFilterShowsOnlyLikedAgents:
                 )
 
             with allure.step(f"Step 9 — Unlike {agent_name!r} while in the 'My Liked' view"):
+                # Capture the agent card count BEFORE unlike (for comparison in Step 10)
+                count_before_unlike = agent_hub.get_agent_card_count()
+
                 unlike_console_errors = agent_hub.capture_console_errors()
                 unlike_response = agent_hub.click_like_button(application_id, timeout=UI_ELEMENT_TIMEOUT)
                 liked = False  # Track that cleanup is no longer needed
@@ -171,12 +174,8 @@ class TestAgentHubMyLikedFilterShowsOnlyLikedAgents:
             ):
                 # Wait for the agent card to be removed from the filtered view
                 # (the optimistic update removes it immediately from the client state)
-                # Capture the initial count BEFORE the unlike (from Step 9)
-                initial_count = agent_hub.get_agent_card_count()
-
-                # After unliking, the card should disappear from the "My Liked" view
                 # Use wait_for_agent_card_count_not() to verify count decreased (AFS § Step 6)
-                agent_hub.wait_for_agent_card_count_not(initial_count, timeout=UI_ELEMENT_TIMEOUT)
+                agent_hub.wait_for_agent_card_count_not(count_before_unlike, timeout=UI_ELEMENT_TIMEOUT)
 
                 # Verify the agent card is no longer present in the DOM
                 assert agent_hub.get_agent_card(agent_name).count() == 0, (
