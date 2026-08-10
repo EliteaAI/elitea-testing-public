@@ -50,9 +50,11 @@ type: project
 - **Intake**: cases from `../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/`
   (tag `automated:UI:regression`, status `draft`). Rules in
   `.agents/test-automation.yaml` § intake: dedup by `[Automate][ELITEA-<id>]` title
-  search (all states), ≤10 new cards per run, already-automated exclusion (all three:
-  `execution_type: automated` + `status: ready` + non-empty `automation_test_id`),
-  contradictory metadata → report, never guess.
+  search (all states), already-automated exclusion (all three: `execution_type:
+  automated` + `status: ready` + non-empty `automation_test_id`), contradictory
+  metadata → report, never guess. **No per-run card cap** (retired 2026-08-10,
+  operator ruling) — file the whole qualifying set in one sweep; never self-split
+  into small batches. Wave sizing happens *after* intake, on the campaign card.
 - **Back-write post-merge**: edit the case file in `onetest-ai-tm-Elitea` — ALL FOUR:
   `execution_type: automated`, `status: ready`, `automation_test_id: <dotted pytest
   path>`, **`automation_pr: <merged PR URL>`** (#19 rework FAIL-4 = the fourth field

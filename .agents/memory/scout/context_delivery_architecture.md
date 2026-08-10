@@ -53,8 +53,25 @@ cut the injected store 45%. Cross-file duplication in `.agents/*` looked large b
 mention count but was worth only ~3 KB in bytes — those docs are big because they
 carry unique operational detail, not because they repeat each other.
 
-**Largest remaining lever (unapplied):** the bundle block *"Test Automation Team —
-shared conventions"* is 8,326 B and exists verbatim in **both** `CLAUDE.md` and
-`AGENTS.md`; only the `CLAUDE.md` copy costs tokens. It is bundle-owned, so an
-`init --update` may revert an edit — and it carries the standing Workflow opt-in the
-lead depends on. Don't cut it without an explicit operator decision.
+## `AGENTS.md` is NOT loaded on this host — don't treat it as a cheaper shelf
+
+**Proven 2026-08-10 by a zero-tool-call sub-agent probe.** Positive controls
+(`CLAUDE.md` § Layout, `.agents/testing.md` § Locator policy) came back YES;
+`AGENTS.md`'s top heading and its unique sections (Repository Structure / Build & Run
+/ CI/CD) came back **NOT IN CONTEXT**. Structurally confirmed: no `@`-import, no hook
+(`lib.sh:134` — *"the full AGENTS.md manual is NOT injected"*), no setting.
+
+`AGENTS.md` exists for **humans browsing the repo and for hosts that auto-load it**
+(Codex / Cursor / Copilot). On Claude Code it costs zero tokens and delivers zero
+context.
+
+⚠️ **Consequence:** the bundle block *"Test Automation Team — shared conventions"*
+(8,326 B) is duplicated verbatim in `CLAUDE.md` and `AGENTS.md`, and it is tempting to
+"move the prose to AGENTS.md" for a −6.8 KB/unit win. **That is deletion with extra
+steps** — agents on this host would simply stop receiving it, including the standing
+Workflow opt-in the lead depends on. The duplication is deliberate cross-host design,
+not waste. Bundle-owned too, so `init --update` may revert any edit.
+
+**Standing rule: "it's duplicated, so one copy is free to delete" is only true once
+you have PROVEN which copy is actually loaded.** The zero-tool-call probe above is the
+cheap way to prove it — reuse it before proposing any context cut.

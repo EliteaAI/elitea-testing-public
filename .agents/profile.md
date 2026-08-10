@@ -113,8 +113,10 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
   `onetest-ai-tm-Elitea/tests/automated-full-regression-ui/` (other folders may come later)
 - **Selector**: tag `automated:UI:regression`, status `draft`
 - **Intake rules**: see `.agents/test-automation.yaml` § intake (dedup key
-  `[Automate][ELITEA-<id>]` in title, ≤10 new cards per run, already-automated
-  exclusion, contradictory-metadata → report not guess)
+  `[Automate][ELITEA-<id>]` in title, already-automated exclusion,
+  contradictory-metadata → report not guess). **No per-run card cap** — retired
+  2026-08-10 by operator ruling; file the whole qualifying set in one sweep. Wave
+  sizing is a planning decision made *after* intake, on the campaign card.
 
 ### Knowledge base
 - **System**: readme-only + `docs/` (mkdocs) + `onetest-ai-tm-Elitea/docs/` for TMS docs

@@ -38,7 +38,13 @@ intake:
   issue_body: name the source file path + the case metadata
   board_placement: auto-add only — set NO status, assign NOBODY; a human approves
     by dragging to Approved
-  max_new_cards_per_run: 10        # more arrive next tick
+  # RETIRED 2026-08-10 by operator ruling ("not relevant now"). Was:
+  #   max_new_cards_per_run: 10    # more arrive next tick
+  # Never enforced in practice (219→436 carded in one pass; 256 filed 2026-07-23) and
+  # the batch/campaign path made it counter-productive — file the whole qualifying set
+  # in one intake sweep. Do NOT re-introduce a cap or self-split into small batches;
+  # wave sizing is a PLANNING decision made after intake, on the campaign card.
+  max_new_cards_per_run: unlimited
   already_automated_when:          # ALL three must hold — exclude such cases
     execution_type: automated
     status: ready

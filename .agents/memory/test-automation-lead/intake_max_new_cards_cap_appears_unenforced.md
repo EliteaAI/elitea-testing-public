@@ -1,8 +1,19 @@
 ---
-name: Cardless intake's max_new_cards_per_run cap appears unenforced in practice
-description: .agents/test-automation.yaml and project_briefing.md both state ≤10 new cards per run, but observed carded-issue-count history is inconsistent with that cap ever having been honored — flag the discrepancy each run rather than silently splitting into small batches or silently ignoring the yaml
+name: RESOLVED — the intake card cap is retired; stop flagging the discrepancy
+description: CLOSED 2026-08-10 by operator ruling ("not relevant now"). test-automation.yaml now says max_new_cards_per_run: unlimited. File the full delta; no discrepancy note owed.
 type: feedback
 ---
+
+> ✅ **RESOLVED 2026-08-10 (scout, operator ruling: "≤10 cards per run — not
+> relevant now").** The canon has been corrected at the source:
+> `.agents/test-automation.yaml` § intake now reads `max_new_cards_per_run:
+> unlimited`, and both `profile.md` § Task source and the lead's
+> `project_briefing.md` say "no per-run card cap". **You no longer owe a
+> discrepancy note in the summary issue or the operator report** — that
+> obligation existed only while the yaml and practice disagreed. File the full
+> qualifying delta in one sweep; wave sizing is a planning decision made after
+> intake, on the campaign card. Kept on disk as the record of how the
+> contradiction was detected and closed.
 
 ## What happened
 
