@@ -629,3 +629,38 @@ class AgentHubPage(BasePage):
         """
         cards = self.page.locator(self.AGENT_CARD_PREFIX)
         return [(cards.nth(i).text_content() or "").strip() for i in range(cards.count())]
+
+    def get_modal_like_count(self) -> int:
+        """Return the like count from the modal like button text content
+        (ELITEA-2358). The Like.jsx component renders the count as the button's
+        text — e.g. "8" for 8 likes. Returns 0 if the text is empty."""
+        button = self.page.locator(self.MODAL_LIKE_BUTTON)
+        text = (button.text_content() or "").strip()
+        try:
+            return int(text)
+        except ValueError:
+            logger.warning(f"Could not parse like count from modal button text: {text!r}")
+            return 0
+
+    def click_modal_like_button(self, timeout: int = 10000):
+        """Click the like button in the agent preview modal, toggling like/unlike,
+        and return the underlying ``/social/like/prompt_lib/...`` network response
+        (201 on like, 204 on unlike — AFS § Network Behavior)."""
+        button = self.page.locator(self.MODAL_LIKE_BUTTON)
+        button.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/social/like/prompt_lib/" in r.url and r.request.method in ("POST", "DELETE"),
+            timeout=timeout,
+        ) as response_info:
+            button.click()
+        return response_info.value
+
+    def wait_for_modal_like_count(self, expected_count: int, timeout: int = 10000) -> None:
+        """Wait (Playwright auto-retrying assertion) for the modal like button's
+        text content to equal *expected_count* (ELITEA-2358). The count update
+        is asynchronous relative to the network response resolving, so a one-shot
+        read taken immediately after :meth:`click_modal_like_button` can observe
+        a stale DOM state."""
+        button = self.page.locator(self.MODAL_LIKE_BUTTON)
+        expect(button).to_have_text(str(expected_count), timeout=timeout)
+
