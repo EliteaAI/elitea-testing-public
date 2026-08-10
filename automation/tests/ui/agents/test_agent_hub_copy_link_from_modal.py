@@ -99,13 +99,11 @@ class TestAgentHubCopyLinkFromModal:
             """)
 
             # Now click Share — the monkey-patch intercepts the URL.
-            share_item = page.locator('[data-testid="share-agent-menuitem"]')
-            share_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            share_item.click()
+            agent_hub.modal_share_menu_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            agent_hub.modal_share_menu_item.click()
 
             # Wait for the success notification (confirms the copy completed).
-            alert = page.locator('[role="alert"]:has-text("The link has been copied to the clipboard")')
-            alert.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            agent_hub.modal_share_success_toast.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
             logger.info("Share notification appeared, clipboard URL intercepted")
 
             # Retrieve the captured URL from the window variable.
