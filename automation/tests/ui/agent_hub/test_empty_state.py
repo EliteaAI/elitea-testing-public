@@ -68,15 +68,13 @@ class TestCatalogEmptyState:
 
         # Step 4: Verify "No agents found" message displays
         with allure.step("Step 4 — Verify 'No agents found' message visible"):
-            no_agents_msg = page.get_by_text("No agents found", exact=False)
-            no_agents_msg.wait_for(state="visible", timeout=5000)
-            expect(no_agents_msg).to_be_visible()
+            agent_hub.no_results_title.wait_for(state="visible", timeout=5000)
+            expect(agent_hub.no_results_title).to_be_visible()
 
         # Step 5: Verify helper message displays
         with allure.step("Step 5 — Verify 'Try adjusting your search terms' helper"):
-            helper_msg = page.get_by_text("Try adjusting your search terms")
-            helper_msg.wait_for(state="visible", timeout=5000)
-            expect(helper_msg).to_be_visible()
+            agent_hub.no_results_description.wait_for(state="visible", timeout=5000)
+            expect(agent_hub.no_results_description).to_be_visible()
 
         # Step 6: Verify layout consistency — all major elements remain visible
         with allure.step("Step 6 — Verify layout consistency (heading, search, tabs, filter rail)"):
@@ -92,15 +90,14 @@ class TestCatalogEmptyState:
             expect(agent_hub.skills_tab).to_be_visible()
 
             # Category filter rail still visible — exactly 11 filter chips (2 FEATURED + 9 CATEGORIES)
-            # Using the agent category filter chip prefix to count all visible filter chips
-            filter_chips = page.locator(agent_hub.AGENT_CATEGORY_FILTER_CHIP_PREFIX)
+            # Using the page object method to get all visible filter chips
+            filter_chips = agent_hub.get_visible_category_filter_chips()
             chip_count = filter_chips.count()
             assert chip_count == 11, f"Expected 11 filter chips visible (2 Featured + 9 Categories), found {chip_count}"
 
         # Step 7: Verify zero agent cards present in the DOM
         with allure.step("Step 7 — Verify zero agent cards in the DOM"):
-            agent_cards = page.locator(agent_hub.AGENT_CARD_PREFIX)
-            card_count = agent_cards.count()
+            card_count = agent_hub.get_agent_card_count()
             assert card_count == 0, f"Expected 0 agent cards, found {card_count}"
 
         # Step 8: Verify zero console errors during empty state

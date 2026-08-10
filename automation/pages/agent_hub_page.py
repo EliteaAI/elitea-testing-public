@@ -187,6 +187,17 @@ class AgentHubPage(BasePage):
         description="Agent description Typography inside the preview modal (ELITEA-2356).",
     )
 
+    # --- Empty state messages (ELITEA-2367) ---
+    no_results_title = LocatorDescriptor(
+        testid="catalog-no-results-title",
+        description="'No agents found' message when search matches zero agents (NoResultsMessage.jsx).",
+    )
+
+    no_results_description = LocatorDescriptor(
+        testid="catalog-no-results-description",
+        description="'Try adjusting your search terms' helper message (NoResultsMessage.jsx, ELITEA-2367).",
+    )
+
     modal_chat_starters_section = LocatorDescriptor(
         testid="catalog-agent-modal-chat-starters-section",
         description="'CHAT STARTERS' section container inside the preview modal (ELITEA-2356).",
@@ -247,6 +258,14 @@ class AgentHubPage(BasePage):
     def get_agent_card_count(self) -> int:
         """Return the number of agent cards currently rendered in the main content area."""
         return self.page.locator(self.AGENT_CARD_PREFIX).count()
+
+    def get_visible_category_filter_chips(self):
+        """Return the Locator for all visible agent category filter-rail chips.
+
+        Used to count and verify filter chips in the Agents view (ELITEA-2367).
+        Returns a Locator matching ALL agent-scoped filter chips (AGENT_CATEGORY_FILTER_CHIP_PREFIX).
+        """
+        return self.page.locator(self.AGENT_CATEGORY_FILTER_CHIP_PREFIX)
 
     def is_category_filter_chip_visible(self, category_label: str, timeout: int = 10000) -> bool:
         """Return True if the category filter-rail chip for *category_label* is visible.
