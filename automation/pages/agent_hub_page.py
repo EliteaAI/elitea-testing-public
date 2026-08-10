@@ -146,6 +146,23 @@ class AgentHubPage(BasePage):
         ),
     )
 
+    modal_share_menu_item = LocatorDescriptor(
+        testid="share-agent-menuitem",
+        description=(
+            "'Share' menu item in the overflow menu (AgentHubModalMenu.jsx) — triggers clipboard write "
+            "of the agent catalog link. Testid auto-generated from menu key 'share-agent' (ELITEA-2359)."
+        ),
+    )
+
+    modal_share_success_toast = LocatorDescriptor(
+        testid="toast-alert",
+        description=(
+            "Success toast notification that appears after 'Share' action copies the link "
+            "(Toast.jsx — 'The link has been copied to the clipboard.'). Testid shared with all toasts; "
+            "filtered by [data-severity=\"success\"] when needed (ELITEA-2359)."
+        ),
+    )
+
     modal_close_button = LocatorDescriptor(
         testid="catalog-agent-modal-close-button",
         description="'x' close IconButton (aria-label='close') in the preview modal header (ELITEA-2356).",
