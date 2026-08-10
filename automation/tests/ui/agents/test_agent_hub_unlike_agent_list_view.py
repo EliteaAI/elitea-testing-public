@@ -75,58 +75,62 @@ class TestAgentHubUnlikeAgentListView:
         """
         agent_hub = AgentHubPage(page)
         soft_failures: list[str] = []
+        liked_agent_id = None
+        initial_like_count = None
 
-        with allure.step("Step 1 — Navigate to Agent Hub"):
-            agent_hub.navigate()
-            agent_hub.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
+        with allure.step("Step 1 — Navigate to Agent Hub and capture applications"):
+            applications = agent_hub.navigate_and_capture_applications(timeout=NAVIGATION_TIMEOUT)
             assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
+            logger.info("Agent Hub (Catalog) page loaded with %d applications", len(applications))
 
-        with allure.step("Step 2 — Navigate to 'My Liked' filter to locate liked agents"):
-            # Per the AFS and surface digest: the default Trending view only shows top-6 agents.
-            # To ensure we find a liked agent, navigate to "My Liked" filter which shows only
-            # agents the user has liked.
-            try:
-                agent_hub.click_category_filter_chip("My Liked", timeout=UI_ELEMENT_TIMEOUT)
-                page.wait_for_load_state("networkidle", timeout=UI_ELEMENT_TIMEOUT)
-                page.wait_for_timeout(1500)  # Additional settle time for filter apply
-                logger.info("Navigated to 'My Liked' filter")
-            except Exception as e:
-                logger.warning("Failed to navigate to My Liked filter: %s. Proceeding with Trending view.", e)
-                # If My Liked filter fails, proceed with Trending view and find any liked agent there
+        with allure.step("Step 2 — Find an already-liked agent (or like one if none exist)"):
+            # Use the bulk applications response to find an agent the current user has already liked
+            liked_app = agent_hub.find_liked_application(applications)
 
-        with allure.step("Step 2a — Locate an agent card that is already liked (data-liked='true')"):
-            # Dynamically find an agent with data-liked="true" on its like button
-            # (the AFS explicitly forbids hardcoding a specific agent because like counts
-            # are mutable shared product data).
-            liked_agent_id = None
-            initial_like_count = None
-            like_buttons = page.locator('[data-testid^="catalog-agent-like-button-"]')
-            for i in range(like_buttons.count()):
-                button = like_buttons.nth(i)
-                data_liked = button.get_attribute("data-liked")
-                if data_liked == "true":
-                    # Extract the application ID from the testid
-                    testid = button.get_attribute("data-testid")
-                    # Format: catalog-agent-like-button-{id}
-                    liked_agent_id = int(testid.replace("catalog-agent-like-button-", ""))
-                    initial_like_count = int((button.text_content() or "0").strip())
-                    logger.info(
-                        "Found liked agent in 'My Liked' filter: id=%s, initial_count=%s",
-                        liked_agent_id,
-                        initial_like_count,
+            if liked_app:
+                liked_agent_id = liked_app["id"]
+                initial_like_count = liked_app.get("likes", 0)
+                logger.info(
+                    "Found pre-existing liked agent: id=%s, initial_count=%s",
+                    liked_agent_id,
+                    initial_like_count,
+                )
+            else:
+                # No pre-existing liked agents — like one first as setup, then proceed to unlike
+                logger.info("No pre-existing liked agents found. Liking an agent first as setup.")
+                unliked_app = agent_hub.find_unliked_application(applications)
+                assert unliked_app is not None, (
+                    "No unliked agents found. Cannot proceed with like-then-unlike test."
+                )
+                liked_agent_id = unliked_app["id"]
+                initial_like_count = unliked_app.get("likes", 0)
+
+                # Like the agent as setup
+                with allure.step("Setup: Like an agent first"):
+                    response = agent_hub.click_like_button(liked_agent_id, timeout=UI_ELEMENT_TIMEOUT)
+                    assert response.status in (201, 204), (
+                        f"Expected like endpoint to return 201 or 204, got {response.status}"
                     )
-                    break
+                    page.wait_for_timeout(500)  # Let UI update
+                    # Count has now incremented by 1
+                    initial_like_count += 1
+                    logger.info("Liked agent %s (count now: %s)", liked_agent_id, initial_like_count)
 
-            assert liked_agent_id is not None, (
-                "No liked agents found in 'My Liked' filter. Cannot proceed with unlike test."
+        with allure.step("Step 2a — Verify the agent card is visible and liked"):
+            assert liked_agent_id is not None, "No liked agent could be located or created"
+            like_button = page.locator(f'[data-testid="catalog-agent-like-button-{liked_agent_id}"]')
+            assert like_button.count() > 0, f"Like button for agent {liked_agent_id} should be visible"
+            data_liked = like_button.get_attribute("data-liked")
+            assert data_liked == "true", (
+                f"Expected agent {liked_agent_id} to have data-liked='true', got '{data_liked}'"
             )
-            assert initial_like_count is not None and initial_like_count >= 1, (
-                f"Expected agent {liked_agent_id} to have ≥1 likes, got {initial_like_count}"
-            )
+            logger.info("Agent %s is ready for unlike test (data-liked='true', count=%s)",
+                       liked_agent_id, initial_like_count)
 
         with allure.step("Step 3 — Click the heart icon (like button) on the agent card to unlike it"):
-            console_errors = agent_hub.capture_console_errors()
             like_button = page.locator(f'[data-testid="catalog-agent-like-button-{liked_agent_id}"]')
+            console_errors = agent_hub.capture_console_errors()
+
             assert like_button.is_visible(timeout=UI_ELEMENT_TIMEOUT), (
                 f"Like button for agent {liked_agent_id} should be visible"
             )
@@ -135,7 +139,7 @@ class TestAgentHubUnlikeAgentListView:
             assert response.status in (201, 204), (
                 f"Expected DELETE .../social/like/... to return 201 or 204, got {response.status}"
             )
-            logger.info("Like button click response: %s", response.status)
+            logger.info("Unlike button click response: %s", response.status)
 
         with allure.step("Step 4 — Verify the heart icon changes to an unfilled/inactive state"):
             # Wait for UI to update after the network response
@@ -160,7 +164,11 @@ class TestAgentHubUnlikeAgentListView:
             "(checked here, after step 5's own waits, so the async dispatch has landed)"
         ):
             unexpected_errors = [m.text for m in console_errors if not _is_known_defect_1215(m.text)]
-            assert not unexpected_errors, f"Unexpected console errors on unlike click: {unexpected_errors}"
+            # Soft-assert on unexpected errors — don't fail hard, collect them
+            if unexpected_errors:
+                soft_failures.append(
+                    f"Unexpected console errors on unlike click: {unexpected_errors}"
+                )
             # Known defect: EliteaAI/elitea-testing-public#1215 — recorded in
             # soft_failures so it stays RED until the product fix ships.
             known_defect_errors = [m.text for m in console_errors if _is_known_defect_1215(m.text)]
@@ -201,14 +209,14 @@ class TestAgentHubUnlikeAgentListView:
                     like_count_refreshed,
                 )
             else:
-                # Agent not in default view (Trending top-6); use search to find it
+                # Agent not in default view (Trending top-6); verify via My Liked filter
                 logger.info(
-                    "Agent %s not in default Trending view after refresh; using search to verify state",
+                    "Agent %s not in default Trending view after refresh; verifying via My Liked filter",
                     liked_agent_id,
                 )
-                # Perform a search or navigate to My Liked to find the agent
-                # For now, we verify via My Liked filter since unliked agent shouldn't appear there
+                # Navigate to My Liked filter — unliked agent should NOT appear there
                 agent_hub.click_category_filter_chip("My Liked", timeout=UI_ELEMENT_TIMEOUT)
+                page.wait_for_load_state("networkidle", timeout=UI_ELEMENT_TIMEOUT)
                 page.wait_for_timeout(1000)
 
                 # If the agent appears in My Liked, it's still liked (test should fail)
