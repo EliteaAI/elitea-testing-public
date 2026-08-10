@@ -52,12 +52,16 @@ Chrome counts, Python captures, **monocart translates**, Python summarizes.
 2. `ELITEA_URL=http://localhost:5173` in `automation/.env.test` (normally already there)
 3. One-time tool install: `cd coverage && npm install`
 
-## Measure (3 commands)
+## Measure
 
 ```bash
+# 0. BEFORE a long run — check prereqs and the area map (cheap; saves hours):
+node coverage/campaign.mjs preflight --tests 400   # dev server, esbuild, monocart, disk
+node coverage/campaign.mjs lint-areas              # areas.json still matches the src tree?
+node coverage/campaign.mjs archive <prev-label> --wipe   # snapshot the OLD report, clean slate
+
 # 1. Run ANY pytest selection with the switch on (from automation/):
 cd automation
-rm -rf ../coverage/.v8 ../coverage/report            # clean slate (skip to ACCUMULATE across runs)
 HEADLESS=true COVERAGE=1 ../.venv/bin/pytest tests/ui/agents/   # or any file/marker/node-id
 
 # 2. Translate browser counts -> per-file coverage (from repo root):
@@ -67,9 +71,25 @@ node coverage/report.mjs
 .venv/bin/python coverage/area_rollup.py             # statements view
 .venv/bin/python coverage/area_rollup.py --branches  # branch view  <- THE honest number
 .venv/bin/python coverage/area_rollup.py --files chat  # per-file detail for one area
+
+# 4. Compare against a previous campaign (NOT by eyeballing two tables — see Gotcha 2):
+node coverage/campaign.mjs compare ../coverage-archive/2026-07-24-baseline
 ```
 
 Line-by-line HTML: `open coverage/report/index.html`
+
+### `campaign.mjs` — the lifecycle helpers
+
+| Command | What it prevents |
+|---|---|
+| `preflight [--tests N]` | Starting a 4-hour run that dies on a missing dev server / esbuild / disk. |
+| `lint-areas` | A moved feature silently re-bucketing into another area (Gotcha 2). |
+| `archive <label> [--wipe]` | Wiping the old report with nothing to compare against later. |
+| `compare <baseline>` | Diffing two tables built with *different* area maps (Gotcha 2). |
+
+Archives land in `../coverage-archive/<label>/` — **outside the repo on purpose**:
+`coverage/report/` and `coverage/.v8/` are gitignored, but an in-repo archive dir
+would not be, and these reports are ~6 MB each.
 
 `COVERAGE=1` exists only for that one command — nothing is persisted, normal runs
 are untouched (verified: without it, zero overhead, zero files written).
@@ -112,6 +132,65 @@ do not compare it across campaigns.
 - Nonzero branches in a "foreign" area is usually REAL (agent pages embed chat
   components and toolkit hooks) — the app's areas aren't islands.
 
+## Gotchas — three ways this tool has produced a WRONG number
+
+All three were found in the 2026-08-10 campaign. Each is **silent**: the report
+generates cleanly and looks plausible. None throws an error.
+
+### 1. Vite HMR duplicates inflate the denominator (fixed — keep the fix)
+
+monocart normalises the served URL into a filesystem-safe `distFile`, turning
+`?` into `-`. Vite's HMR cache-buster therefore arrives as a trailing
+`-t=<epoch-ms>`, so a `sourcePath` that only does `.split('?')[0]` never matches
+it. Every file touched by an HMR reload mid-run becomes a **second entry**,
+splitting its coverage across the pair:
+
+| | entries | HMR dupes | branches | covered |
+|---|---:|---:|---:|---:|
+| 2026-07-24 | 1,877 | 0 | 40,995 | 14,376 |
+| 2026-08-10 *before fix* | 2,607 | **569** | 61,895 | 20,249 |
+| 2026-08-10 *after fix* | 2,038 | 0 | 42,996 | 20,249 |
+
+It read **32.7%** instead of **47.1%** — i.e. it looked like a *regression*.
+Dropping the dupes loses 10,215 covered branches; keeping them double-counts the
+denominator. They must be **merged**, which is what stripping the suffix does.
+
+**Why 2026-07-24 had none:** nothing edited EliteaUI during that campaign. A
+long campaign is exactly when other agents are pushing testids to
+`automation/testids`, so HMR fires repeatedly. **Expect this on every multi-hour
+run.** `report.mjs` now strips the suffix and warns if any entry still lacks a
+source extension.
+
+### 2. `areas.json` drift silently merges whole areas
+
+`analytics` was mapped to `src/[fsd]/features/analytics/`. That directory was
+deleted upstream and analytics moved *under* `src/[fsd]/features/settings/ui/`.
+Since `settings` maps the parent path and match order is first-wins, every
+analytics file silently re-bucketed as **settings** — inflating settings' apparent
+recovery and making the `analytics` row read 0/0.
+
+A dead mapping **does not error**. Run `node coverage/campaign.mjs lint-areas`
+before every campaign, and **never diff two printed tables** — use
+`campaign.mjs compare`, which re-buckets *both* datasets with the *current* map.
+
+### 3. The denominator spans two repos
+
+`src/lib/**` and `src/EliteaAssistant.tsx` are the **Support Assistant**
+(`../elitea_assistant`), reaching the browser via the `VITE_ASSISTANT_LOCAL`
+alias — not EliteaUI. ~312 branches. They are legitimate executed code, so they
+are mapped to a `support-assistant` area rather than hidden. Note that the
+`all` full-codebase scan only walks `../EliteaUI/src`, so connected-repo files
+enter **only when executed** — their denominator is not fixed the way EliteaUI's
+is. `lint-areas` reports anything in this category.
+
+### Sanity checks before quoting any %
+
+1. `campaign.mjs compare` prints the denominator drift and warns above ±10%.
+   Real source growth is a few percent (2026-08-10: +4.9% for 129 new files).
+2. Entry count in the report ≈ source-file count. A big jump means duplicates.
+3. `costMethod`-style trust rule: if a number surprises you, check the
+   denominator *before* believing the numerator.
+
 ## HTML report legend (`coverage/report/index.html`)
 
 Header, per metric: **% chip** (green good / yellow middling / red poor), then
@@ -143,7 +222,7 @@ but its logic never *exercised*. That gap is what this tool exists to expose.
 | Failed tests | Still emit coverage (capture is in fixture teardown) — they count what ran before dying |
 | Skipped tests | Contribute **zero** — an always-skipping test shows up as coverage it doesn't add |
 | Retries (`--reruns`) | Extra fragments, harmless (union) |
-| Full-campaign cost | ~180 UI tests ≈ 2h10m runtime, ~4.7 GB fragments, ~1 min report generation |
+| Full-campaign cost | 397 UI tests ≈ 3h56m runtime, 10 GB fragments (396), ~30 s report generation. Rate is steady at ~1.7 tests/min — scale linearly to size a campaign |
 | Browser | Must be Chromium (it is — see `fixtures/session_fixtures.py`) |
 
 How it works, one paragraph: the `page` fixture in `automation/conftest.py` (the
@@ -164,7 +243,7 @@ local disk.
 
 | Moment | Action | Why |
 |---|---|---|
-| **Start of the NEXT measurement** | `rm -rf coverage/.v8 coverage/report` (step 1 of the recipe above) | The standard cleanup point — keeps the new number unpolluted |
+| **Start of the NEXT measurement** | `node coverage/campaign.mjs archive <label> --wipe` | The standard cleanup point. **Archive first** — wiping without archiving destroys the only thing the next campaign can be compared against |
 | After reporting, optionally | Same command | Only if you need the disk back — the report itself is small and self-contained |
 | Never automatically | — | See below |
 
@@ -178,28 +257,58 @@ Why no auto-cleanup — two deliberate reasons:
    fragments — deleting them early makes the same answer cost the full test
    runtime again. Keep them until you're done slicing the campaign's data.
 
-## Baseline — 2026-07-22, full available UI suite (~180 tests, localhost)
+## Campaign history
 
-Reference point for future campaigns (branch view, full-codebase denominator):
+Archived under `../coverage-archive/<label>/` (report + rollups + `PROVENANCE.txt`).
+Always quote the **rollup** number, never monocart's console header.
 
-| | branch % | | branch % |
-|---|---:|---|---:|
-| credentials | 47% | skills | 29% |
-| artifacts | 39% | pipelines | 23% |
-| shared | 39% | mcp | 19% |
-| toolkits | 38% | auth / onboarding | 5–10% |
-| chat | 35% | **settings** (1,696 br) | **3%** |
-| agents | 34% | **resources / analytics / notifications / catalog** | **0%** |
+| Campaign | Tests | Runtime | Branches | Statements |
+|---|---:|---:|---:|---:|
+| `2026-07-24-baseline` | ~180 | ~2h10m | 14,376 / 40,995 = **35.1%** | 54.7% |
+| `2026-08-10-campaign` | 397 | 3h56m | 20,249 / 42,996 = **47.1%** | 66.9% |
 
-**OVERALL: 32.7% of 40,338 branches** (52.6% of statements). Excluded from the
-campaign: 3 admin tests (they mutate shared DEV-backend guardrail config).
-The 0% rows are areas with no tests at all — the ranked test-writing backlog.
+**2026-08-10 per area** (branch view, both sides re-bucketed with the current map):
+
+| area | base | new | Δpp | | area | base | new | Δpp |
+|---|---:|---:|---:|---|---|---:|---:|---:|
+| **settings** | 3% | **34%** | **+32** | | shared | 40% | 49% | +9 |
+| catalog | 0% | 43% | +43 | | credentials | 51% | 60% | +8 |
+| notifications | 0% | 37% | +37 | | mcp | 24% | 27% | +4 |
+| pipelines | 28% | 45% | +17 | | toolkits | 41% | 45% | +3 |
+| chat | 41% | 55% | +14 | | skills | 32% | 34% | +2 |
+| artifacts | 39% | 54% | +14 | | **onboarding** | 5% | **5%** | **0** |
+| resources | 0% | 12% | +12 | | **auth** | 10% | **10%** | **0** |
+| agents | 32% | 43% | +11 | | analytics | 0% | 39% | +39 |
+
+`onboarding` and `auth` gained **zero** branches across 217 additional tests —
+they have no tests at all. That, plus `skills`/`mcp`/`toolkits` being near-flat,
+is the ranked test-writing backlog.
+
+> **Both campaigns are floors, not ceilings.** 2026-08-10 ran 348 passed / 38
+> failed / 4 errors / 7 skipped, with 26 reruns all on `502 Server Error` (an
+> intermittently unhealthy DEV backend). Failed tests still emit coverage for
+> whatever ran before they died, so the number is valid — a healthy run scores
+> higher. Skipped tests contribute exactly zero.
+
+> **Note on the old figure.** This section previously read "32.7% of 40,338
+> branches" for the 2026-07-22 campaign. The archived report's own rollup says
+> **35.1% of 40,995**. The lower figure appears to have been monocart's console
+> header, which this README elsewhere says never to compare across campaigns.
+> The table above uses the rollup for both, so the +12.0 pp delta is like-for-like.
+
+Excluded from both campaigns: `test_guardrails_live_reload.py` (3 admin tests) —
+they mutate shared DEV-backend guardrail config.
 
 ## Maintenance
 
+- **Before every campaign** → `node coverage/campaign.mjs lint-areas`. It fails
+  on a mapped path that no longer exists (the silent re-bucketing of Gotcha 2),
+  and warns about files landing in `other` — including runtime-only files from a
+  connected repo, which the `all` tree-scan cannot see.
 - **New feature folder in EliteaUI** → add its path to `coverage/areas.json`.
-  Unmapped files land in an `other` bucket in the table — if `other` grows, the
-  map needs a refresh (`--files other` shows what's in it).
+  Remember **first match wins**: a specific path must come *before* the generic
+  parent that would otherwise swallow it (`analytics` sits above `settings` for
+  exactly this reason), and `shared` must stay last.
 - **Report empty / 1 file only** → dev server not in dev mode (needs sourcemaps),
   or monocart API drift — check `coverage/report.mjs` comments.
 - Full trial write-up & design rationale: `docs/runtime-execution-coverage-approach.md`

@@ -39,8 +39,16 @@ const mcr = MCR({
   // Vite serves each source file unbundled at its own URL — so the served path
   // (info.distFile, e.g. "localhost-5173/src/[fsd]/.../X.jsx") IS the original
   // source path. Restore it from there; strip Vite query suffixes (?import&react).
+  // NOTE: monocart normalises the served URL into a filesystem-safe distFile,
+  // which turns "?" into "-". So Vite's HMR cache-buster arrives as a trailing
+  // "-t=<epoch-ms>" and split('?') never sees it. Left unstripped, every file
+  // touched by an HMR reload mid-run becomes a SECOND entry, splitting its
+  // coverage and inflating the denominator (2026-08-09 campaign: 569 dupes,
+  // +18,892 phantom branches). Strip it so both halves merge into one file.
   sourcePath: (filePath, info) => {
-    const base = ((info && info.distFile) || filePath).split('?')[0];
+    const base = ((info && info.distFile) || filePath)
+      .split('?')[0]
+      .replace(/-t=\d+$/, '');
     const i = base.indexOf('src/');
     return i >= 0 ? base.slice(i) : filePath;
   },
@@ -93,4 +101,23 @@ for (const f of files) {
 console.log(`Merged ${files.length} fragment(s), ${entries} script entries`);
 await mcr.generate();
 if (transformFailures) console.warn(`[warn] ${transformFailures} untested file(s) failed JSX transform (byte/line metrics only)`);
+
+// Guard: a duplicate-entry bug is INVISIBLE in the numbers — it presents as a
+// plausible-looking regression (the 2026-08-09 campaign read 32.7% instead of
+// 47.1%). If any per-file key still carries a Vite query suffix, sourcePath()
+// above failed to normalise it and the denominator is inflated. Fail loudly.
+try {
+  const summaryFile = path.join(here, 'report', 'coverage-summary.json');
+  const summary = JSON.parse(fs.readFileSync(summaryFile, 'utf8'));
+  const keys = Object.keys(summary).filter((k) => k !== 'total');
+  const suspect = keys.filter((k) => !/\.(jsx?|tsx?|css|scss)$/.test(k));
+  if (suspect.length) {
+    console.warn(`[warn] ${suspect.length} entr(ies) do not end in a source extension — likely un-normalised Vite suffixes, which SPLIT a file's coverage and inflate the denominator:`);
+    for (const k of suspect.slice(0, 5)) console.warn(`         ${k}`);
+    console.warn('       Extend sourcePath() above to strip the suffix, then re-run this script (no test re-run needed).');
+  }
+  console.log(`${keys.length} source files in the report`);
+} catch { /* summary unreadable — nothing to assert */ }
+
 console.log(`HTML report -> ${path.join(here, 'report', 'index.html')}`);
+console.log('Next: node coverage/campaign.mjs compare <baselineDir>   (canonical %, both sides re-bucketed)');

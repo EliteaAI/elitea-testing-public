@@ -1,5 +1,5 @@
 {
-  "_comment": "Path->area map for EliteaUI runtime coverage. Substring match, FIRST match wins (insertion order) - specific paths before generic ones; 'shared' must stay LAST. Regenerated from the real EliteaUI src tree (branch automation/testids, 2026-07-22).",
+  "_comment": "Path->area map for EliteaUI runtime coverage. Substring match, FIRST match wins (insertion order) - specific paths before generic ones; 'shared' must stay LAST. Regenerated from the real EliteaUI src tree (branch automation/testids, 2026-07-22); revalidated 2026-08-10. VERIFY WITH: node coverage/campaign.mjs lint-areas - a mapped path that no longer exists does not error, it silently re-buckets those files into whichever area matches next (analytics vanished into settings this way).",
   "agents": [
     "src/[fsd]/features/agent/",
     "src/[fsd]/features/agent-hub/",
@@ -40,6 +40,9 @@
     "src/[fsd]/features/artifacts/",
     "src/pages/Artifacts/"
   ],
+  "analytics": [
+    "src/[fsd]/features/settings/ui/analytics/"
+  ],
   "settings": [
     "src/[fsd]/features/settings/",
     "src/[fsd]/pages/settings/",
@@ -52,9 +55,6 @@
   "resources": [
     "src/[fsd]/pages/resources/",
     "src/[fsd]/pages/indexes/"
-  ],
-  "analytics": [
-    "src/[fsd]/features/analytics/"
   ],
   "notifications": [
     "src/pages/NotificationCenter/",
@@ -71,6 +71,11 @@
   ],
   "catalog": [
     "src/[fsd]/pages/elitea-catalog/"
+  ],
+  "support-assistant": [
+    "src/lib/",
+    "src/EliteaAssistant.tsx",
+    "src/index.ts"
   ],
   "shared": [
     "src/[fsd]/features/maintenance/",
