@@ -393,13 +393,54 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
 - #1016 — Catalog category "Show more" permanently locks to collapse after
   first click. Only relevant to cases that interact with "Show more".
 
+## Trending category filter applies + agents render (ELITEA-2366, this dispatch)
+- **Case:** "Agent Hub — Trending category displays agents" (ELITEA-2366, priority medium)
+- **Status:** `ready-for-automation` — live execution complete, AFS written
+- **Execution:** 2026-08-10, analyst slot
+
+## Chat Participants Panel — agent participant row structure (ELITEA-2361, this dispatch)
+- **Toggle button to expand/collapse participants panel:** `[data-testid="chat-participants-panel-toggle-button"]` on the right side of the chat composer area. When clicked, expands a right-side panel showing all participants.
+- **Participants panel heading:** "Participants" text displayed in the panel header.
+- **AGENTS section heading:** "Agents" text indicating the start of agent participants list (distinct from any other participant types that may be added later).
+- **Agent participant row container:** `[data-testid="chat-participant-row-application_{agent_id}_{participant_index}"]` where:
+  - `agent_id` = the application/agent ID (e.g., 172 for User Story Creator)
+  - `participant_index` = ordinal index of this participant in the conversation (1-based; first agent is 1)
+  - Example live: `chat-participant-row-application_172_1` for User Story Creator as first participant
+- **Avatar image within participant row:** `img` element with `alt="elitea"` inside the participant-row container — always present for agent participants.
+- **Agent name within participant row:** text content "User Story Creator" (or agent's actual name) rendered inside the participant-row container, stable across sessions.
+- **Agent version within participant row:** text content (e.g., "skills-v3.0") rendered inside the participant-row container, displays the agent's configured version/skill version.
+- **Participant row action buttons (also confirmed testid-present):**
+  - Edit/view settings: `[data-testid="chat-participant-edit-view-button"]`
+  - Remove agent: `[data-testid="chat-participant-remove-button"]`
+- **All handles confirmed live 2026-08-10 during ELITEA-2361 execution.** No testids required; all needed selectors are present.
+- **Findings:**
+  - Single-click on Trending filter chip (`catalog-agent-category-filter-chip-trending`, ELITEA-2352) filters content to show ONLY the Trending category section.
+  - Filter chip acquires `data-selected="true"` when active; clicking again toggles it.
+  - **Recurring case-text drift:** Case text claims a "Reload the category items" icon next to the section header — **does NOT exist on live product.** Filed #1212; this is the same drift as #1208 (header text) and #1212 (reload icon) from the ELITEA-2350 family. AFS records the drift; spec will NOT assert a missing icon.
+  - All pre-existing testids (catalog-page-heading, catalog-category-heading-trending, catalog-agent-card-*) confirmed live; filter chip testid from ELITEA-2352 is on automation/testids, pending human cherry-pick to main.
+- **Next step:** Implementer will write single test (navigate → click filter → assert header + agents + filter state). No dependencies, no seed/cleanup.
+
+## Agent chip in message input — avatar, name, version, settings (ELITEA-2362, this dispatch)
+- **Agent chip container:** `[data-testid="chat-switch-participant-button"]` in the message input composer area (left side, before text input field). Clickable; opens participant-switcher panel.
+- **Chip structure:** Contains avatar image + agent name text in a single button element (MuiButtonBase + MuiButtonGroup).
+- **Avatar image:** `<img alt="elitea" src="...entity_icon...">` within the chip, 1rem × 1rem, border-radius 50%.
+- **Agent name:** Text content rendered in a `<span class="MuiTypography-labelSmall">`, displays the agent's registered name (e.g., "Business Analyst", "User Story Creator"). Pre-existing, no separate testid for the name element.
+- **Agent version:** SEPARATE element, NOT part of the chip itself (important distinction). Selector: `[data-testid="chat-version-selector-trigger"]`. Displays version string (e.g., "v2.1", "v0.1") in format `v{major}.{minor}`. Clickable; opens a version-selection dropdown per participant.
+- **Settings icon/button:** `<button aria-label="agent settings menu">` with MuiButtonGroup classes. Currently NO data-testid (aria-label only). Rendered as part of the same button group as the agent chip. **NEEDS testid** (e.g., `chat-participant-settings-button`) per team's testid-only policy.
+- **Confirmed live 2026-08-10:** Executed full case flow (Catalog → agent card → Start Chat → verify chip elements) against localhost:5173. All elements present and functional.
+- **Testid status summary:**
+  - `chat-switch-participant-button` ✓ on automation/testids (ELITEA-2361)
+  - `chat-version-selector-trigger` ✓ on automation/testids (ELITEA-2361)
+  - Settings button **MISSING testid** — implementer work to add via `add-data-testid` skill
+- **Case-text clarification:** Case title/text implies a single "Agent name vX.X" combined chip, but product renders version as a separate adjacent element. Both are visible and usable; the split is intentional per product design.
+- **All observable assertions confirmed:** avatar visible, name matches selected agent, version non-empty, settings button clickable.
+
+## Tab navigation (Agents ↔ Skills) — UI state + content switching (ELITEA-2370, this dispatch)
+- **Default state on page load:** Agents tab renders as `aria-selected="true"`, Skills tab as `aria-selected="false"`. Content area displays agent cards. This holds consistently on every fresh navigation to `/elitea-catalog`.
+- **Tab click behavior (confirmed live 2026-08-10):** Clicking the Skills tab (`[role="tab"]:has-text("Skills")`) swaps `aria-selected` values — Skills becomes true, Agents becomes false. Main content area swaps from agent-card grid to Skills content. Both tabs remain visible and clickable throughout.
+- **Content grid on Agents tab:** Agent cards render via `[data-testid^="catalog-agent-card-"]` (23 cards observed in this session, baseline for future regression checks; count varies by backend state).
+- **Right-panel filter rail:** Present on both tabs (category chips, featured/categories sections). Handles via pre-existing testids documented above. No testid gaps for this case's scope.
+- **No UI defects observed:** Tab switching is immediate (no race / flicker), aria-selected states are correct, content boundaries are clean.
+
 ## Sibling family (not yet analysed as of this entry)
-ELITEA-2351 ("Team project" variant of this exact case — differs from
-ELITEA-2350 only in which project is active, a DATA difference per the
-family-vs-separate test) plus ~18 more behavioral cases (filter by
-category/multiple categories, like/unlike, open/close modal, search,
-start-conversation flows, etc. — GitHub issues #859-#878). A future batch
-covering the whole family should re-check whether ELITEA-2350/2351 belong in
-one parameterized family AFS (project name as the only variable) rather than
-two near-identical specs — this dispatch analysed ELITEA-2350 alone, not as
-a cluster, so no family-AFS merge was performed here.
+ELITEA-2351 ("Team project" variant — differs from ELITEA-2350 only in which project is active) plus ~18 more behavioral cases (multiple categories, like/unlike, open/close modal, search, start-conversation flows, etc.). Future batch should re-check whether ELITEA-2350/2351 belong in one parameterized family AFS.

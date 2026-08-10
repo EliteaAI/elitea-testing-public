@@ -146,6 +146,23 @@ class AgentHubPage(BasePage):
         ),
     )
 
+    modal_share_menu_item = LocatorDescriptor(
+        testid="share-agent-menuitem",
+        description=(
+            "'Share' menu item in the overflow menu (AgentHubModalMenu.jsx) — triggers clipboard write "
+            "of the agent catalog link. Testid auto-generated from menu key 'share-agent' (ELITEA-2359)."
+        ),
+    )
+
+    modal_share_success_toast = LocatorDescriptor(
+        testid="toast-alert",
+        description=(
+            "Success toast notification that appears after 'Share' action copies the link "
+            "(Toast.jsx — 'The link has been copied to the clipboard.'). Testid shared with all toasts; "
+            "filtered by [data-severity=\"success\"] when needed (ELITEA-2359)."
+        ),
+    )
+
     modal_close_button = LocatorDescriptor(
         testid="catalog-agent-modal-close-button",
         description="'x' close IconButton (aria-label='close') in the preview modal header (ELITEA-2356).",
@@ -359,6 +376,39 @@ class AgentHubPage(BasePage):
         """
         return self.page.locator(self.MODAL_STARTER_ITEM)
 
+    def click_agent_card(self, agent_id: int, timeout: int = 15000):
+        """Click an agent card by application ID to open its preview modal.
+
+        This method clicks the agent card identified by its application ID
+        and waits for the modal's agent-details fetch to complete before returning.
+
+        Args:
+            agent_id: Application ID of the agent to open (e.g. 172 for User Story Creator).
+            timeout: Maximum wait time for modal to open and fetch to complete (default 15000ms).
+        """
+        logger.info("Opening Catalog agent preview modal by ID: %s", agent_id)
+        card = self.page.locator(f'[data-testid="catalog-agent-card-{agent_id}"]')
+        card.wait_for(state="visible", timeout=timeout)
+        # Wait for the agent-details fetch to complete before proceeding
+        # (defect #1043: clicking before fetch resolves causes silent no-op)
+        with self.page.expect_response(
+            lambda r: "/public_application/prompt_lib/" in r.url and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            card.click()
+        self.modal_show_instructions_link.wait_for(state="visible", timeout=timeout)
+
+    def wait_for_agent_modal_to_load(self, timeout: int = 10000):
+        """Wait for the agent preview modal to be fully loaded and ready for interaction.
+
+        This waits for the 'Show instructions' link to become visible, which is
+        the signal that the agent-details fetch has resolved (ELITEA-2356).
+
+        Args:
+            timeout: Maximum wait time for modal content to load (default 10000ms).
+        """
+        self.modal_show_instructions_link.wait_for(state="visible", timeout=timeout)
+
     @action("Click Start Chat in the agent preview modal")
     def click_start_chat(self, timeout: int = 10000):
         """Click the 'Start Chat' button in the (already-ready) agent preview modal.
@@ -369,7 +419,7 @@ class AgentHubPage(BasePage):
         (uncaught TypeError, silent no-op, no navigation).
         """
         self.modal_start_chat_button.wait_for(state="visible", timeout=timeout)
-        self.modal_start_chat_button.click()
+        self.modal_start_chat_button.click(force=True)
 
     @action("Close the agent preview modal with X button")
     def close_modal(self, timeout: int = 10000):
@@ -453,6 +503,22 @@ class AgentHubPage(BasePage):
         """
         for app in applications:
             if not app.get("is_liked", False):
+                return app
+        return None
+
+    @staticmethod
+    def find_liked_application(applications: list[dict]) -> dict | None:
+        """Return the first application dict (as returned by
+        :meth:`navigate_and_capture_applications`) whose ``is_liked`` field is
+        truthy (the CURRENT user has already liked it), or ``None`` if none
+        currently qualify (ELITEA-2355).
+
+        Inverse of :meth:`find_unliked_application`: used to locate an already-
+        liked agent for the unlike test, ensuring the test can always find a
+        starting agent regardless of which agent the user has previously liked.
+        """
+        for app in applications:
+            if app.get("is_liked", False):
                 return app
         return None
 

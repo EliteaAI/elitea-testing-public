@@ -693,15 +693,39 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
 - **Known issue**: Redux console warning on like click — "non-serializable value was detected in an action, in the path: `payload.updateFn`" (appears to be a Redux Toolkit serialization enforcement warning, but the UI state updates correctly despite the warning). Does not block the feature — automation should proceed with normal assertions.
 - **Pre-existing from ELITEA-2356 analysis**: modal structure, agent name, description, CHAT STARTERS section, Welcome Message section, Start Chat button — all pre-existing handles, see ELITEA-2356 AFS § Concrete Handles for full reference.
 
+## Agent Hub Catalog modal — Share (copy-link) action (ELITEA-2359 run, 2026-08-10)
+- **Where**: Catalog modal → click overflow menu button → select "Share" option
+- **Overflow menu button**: `[data-testid="agent-hub-modal-menu-button"]` (three-dot icon in modal header, between like button and close button)
+- **Menu items**: `menu` role with three `menuitem` options:
+  - `[data-testid="export-agent-menuitem"]` (text "Export")
+  - `[data-testid="fork-agent-menuitem"]` (text "Fork")
+  - `[data-testid="share-agent-menuitem"]` (text "Share")
+- **Share action behavior** (confirmed live, ELITEA-2359):
+  - Clicking "Share" copies a URL to clipboard (client-side clipboard write, no network call)
+  - Success notification appears: `alert` role with text "The link has been copied to the clipboard."
+  - Notification auto-dismisses after ~3-5 seconds, or dismissible via close button
+  - **Copied URL format**: `http://localhost:5173/elitea-catalog?tab=agents&agentId={agent_id}` (example: `http://localhost:5173/elitea-catalog?tab=agents&agentId=275` for Entertainer Agent id=275)
+- **Navigation behavior** (ELITEA-2359 verification):
+  - Navigating directly to the copied URL loads the catalog page and **auto-opens the agent detail modal** for the specified agent (no manual card click required)
+  - All agent details (name, description, CHAT STARTERS, Welcome Message) display correctly in the reopened modal
+  - No page reload hop observed (URL navigation is instantaneous; modal renders immediately after)
+  - Link remains functional across browser sessions — navigation to a saved/bookmarked copy-link URL re-opens the same agent's modal
+- **Clipboard note** (troubleshooting for analysis): Direct `navigator.clipboard.readText()` may fail with permission denial in exploration. Workaround: monkey-patch `navigator.clipboard.writeText()` before the Share click to capture the URL into a window variable, or use Playwright context permissions `grantPermissions(['clipboard-read', 'clipboard-write'])` to grant clipboard access before clicking Share.
+
 ## Agents list empty state — search with no matches (ELITEA-2367 run, 2026-08-10)
 - **Where**: Agents list page `/agents/all?viewMode=owner` (card-list view, right panel with search input)
-- **Search input**: `textbox "search"` with `placeholder="Let's find something amazing!"`; input element itself has no `data-testid` (TBD add-data-testid candidate)
-- **Search behavior**: live/reactive, debounced ~300ms (per `useDebounceValue(query, 300)` in `AgentsTab.jsx`). No Enter key needed, but implementer should wait for debounce + network latency (recommend 500–1000ms total) before asserting empty state
-- **Autocomplete/suggestion UI**: Typing into the search opens a tooltip/popover with list items including "No Agents Match" and "No Tags Match" options (observed in live snapshot) — these are suggestions/indicators, not action buttons; the main content area filtering happens independently
-- **Empty state location**: discovered to render in the main card-grid area (left/center panel), NOT in the search input or right panel
-- **Empty state message**: TBD exact text — case text says "No agents found" + helper "Try adjusting your search terms", but live code (`PrivateAgentsList.jsx`) renders `"Nothing found. Create yours now!"` for search-no-match cases (lines 56–60). Implementer should capture actual rendered text and verify against case intent
-- **Clear/Reset mechanism**: two clickable elements observed next to the search input (`[ref=f11e603]` and `[ref=f11e606]`), likely clear/reset buttons (exact purpose TBD); clicking clears the search and agents should reappear
+- **Search input**: `textbox "search"` with `placeholder="Let's find something amazing!"`; input element itself has no `data-testid` (TBD add-data-testid candidate, default use is `data-testid="agent-search-input"` per SearchBar.jsx)
+- **Search behavior: CORRECTED — requires Enter key or button click** (NOT live debounce-only as initially noted). Typing alone updates local component state but does NOT update Redux `state.search.query` until Enter is pressed or the `search-send-button` is clicked (SearchBar.jsx lines 122–151, dispatch happens in `onSearch()` function). Minimum search length = 3 characters. Implementer must wait for Redux dispatch + network latency (recommend 500–1000ms total after Enter) before asserting empty state.
+- **Search controls**: `data-testid="search-send-button"` (right-side icon, enabled when input differs from Redux query), `data-testid="search-clear-button"` (right-side icon to reset search and clear filter)
+- **Autocomplete/suggestion UI**: Typing into the search opens a tooltip/popover with list items including "No Agents Match" and "No Tags Match" options (observed in live snapshot) — these are suggestions/indicators, not action buttons; the main content area filtering happens independently via Redux after Enter/button-click
+- **Empty state location**: Confirmed renders in the main card-grid area (left/center panel), NOT in the search input or right panel
+- **Empty state message**: **CASE-TEXT DRIFT CONFIRMED** — Case text says "No agents found" + helper "Try adjusting your search terms", but live product (PrivateAgentsList.jsx lines 114–122 config + EmptyStatePage component) renders:
+  - Title: `"No agents yet"`
+  - Body: `"Create your first agent to get started, or take a quick tour to see how it works. Or take a quick tour to see how it works."`
+  - Interactive "Create" button
+  - **Reason**: The `EmptyStatePage` component uses the same generic wording for ALL empty states (no agents created yet, search matches nothing, filter returns nothing) — not search-context-specific. Filed as clarification issue (ELITEA-2367 drift).
+- **Empty state testid**: `data-testid="agents-list-empty-state-message"` (already on the container per PrivateAgentsList.jsx:57) — use this for reliable querying instead of text content, which differs from case spec
 - **Right panel during empty state**: Tags section remains visible, showing "No tags to display." and the footer count "Agents: 19" (or current total) — confirms the right panel is not hidden during empty state, only the main content area filters
-- **API call for empty results**: likely `GET /api/v2/elitea_core/applications/prompt_lib/{projectId}?query={searchTerm}&...` returning `{ total: 0, rows: [] }` or similar; implementer can use network capture to verify the backend's response structure
-- **Testid gaps (needs-adding)**: Search input itself has no `data-testid` (TBD); empty-state message container/heading may need a testid for reliable querying depending on implementation
-- **Known issue**: Category/tag filter variant mentioned in case text ("Apply a category filter that has no agents") is NOT yet explored — the Tags section on the right is currently non-interactive (shows "No tags to display."), so it's unclear whether tag filtering exists on this page or only on the Catalog. Filed as clarification in ELITEA-2367 AFS.
+- **API call for empty results**: `GET /api/v2/elitea_core/applications/prompt_lib/{projectId}?query={searchTerm}&...` returning `{ total: 0, rows: [] }` or similar; implementer can use network capture to verify the backend's response structure
+- **Testid gaps (TBD add-data-testid)**: Search input itself has no `data-testid` (or defaulted via the SearchBar.jsx `testId` prop; use `data-testid="agent-search-input"` or the placeholder selector)
+- **Known issue**: Category/tag filter variant mentioned in case text ("Apply a category filter that has no agents") is NOT yet explored — the Tags section on the right is currently non-interactive (shows "No tags to display."), so it's unclear whether tag filtering exists on this page or only on the Catalog. Not pursued in this run (ELITEA-2367 scope is search-only); flag for a future case if needed.

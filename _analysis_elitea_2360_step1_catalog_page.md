@@ -1,0 +1,86 @@
+- generic [ref=f20e2]:
+  - generic [ref=f20e3]:
+    - navigation "side-bar" [ref=f20e4]:
+      - generic [ref=f20e5]:
+        - generic [ref=f20e6]:
+          - generic [ref=f20e7]:
+            - button "open drawer" [ref=f20e8] [cursor=pointer]:
+              - generic "Elitea is connected" [ref=f20e129]
+            - generic [ref=f20e16] [cursor=pointer]
+          - separator [ref=f20e19]
+          - generic [ref=f20e24]:
+            - 'combobox "P Project: Private" [ref=f20e131] [cursor=pointer]':
+              - generic [ref=f20e27]:
+                - generic [ref=f20e28]: P
+                - generic [ref=f20e30]:
+                  - generic [ref=f20e31]: "Project:"
+                  - generic [ref=f20e32]: Private
+            - textbox: "399"
+          - separator [ref=f20e33]
+          - button [ref=f20e37] [cursor=pointer]
+          - separator [ref=f20e41]
+        - generic [ref=f20e42]:
+          - generic [ref=f20e43]:
+            - listitem [ref=f20e44]:
+              - button "Chats" [ref=f20e45] [cursor=pointer]
+            - listitem [ref=f20e50]:
+              - button "Agents" [ref=f20e51] [cursor=pointer]
+            - listitem [ref=f20e56]:
+              - button "Pipelines" [ref=f20e57] [cursor=pointer]
+          - separator [ref=f20e62]
+          - generic [ref=f20e63]:
+            - listitem [ref=f20e64]:
+              - button "Skills" [ref=f20e65] [cursor=pointer]
+            - listitem [ref=f20e70]:
+              - button "Toolkits & Indexes" [ref=f20e71] [cursor=pointer]
+            - listitem [ref=f20e76]:
+              - button "MCPs" [ref=f20e77] [cursor=pointer]
+            - listitem [ref=f20e83]:
+              - button "Credentials" [ref=f20e84] [cursor=pointer]
+            - listitem [ref=f20e89]:
+              - button "Applications" [ref=f20e90] [cursor=pointer]
+          - separator [ref=f20e95]
+          - listitem [ref=f20e97]:
+            - button "Artifacts" [ref=f20e98] [cursor=pointer]
+          - separator [ref=f20e103]
+          - generic [ref=f20e105]:
+            - generic [ref=f20e106] [cursor=pointer]: Settings
+            - separator [ref=f20e110]
+            - generic [ref=f20e111] [cursor=pointer]: Catalog
+        - generic [ref=f20e114]:
+          - generic [ref=f20e115]: Support Bot
+          - generic "Help Center" [ref=f20e117] [cursor=pointer]
+        - generic [ref=f20e121] [cursor=pointer]
+    - main [ref=f20e124]:
+      - generic [ref=f20e132]:
+        - generic [ref=f20e133]:
+          - generic [ref=f20e134]: Welcome to ELITEA Catalog!
+          - generic [ref=f20e137]:
+            - textbox "Search for agents" [ref=f20e138]
+            - group
+          - tablist [ref=f20e141]:
+            - tab "Agents" [selected] [ref=f20e142] [cursor=pointer]
+            - tab "Skills" [ref=f20e145] [cursor=pointer]
+        - separator [ref=f20e149]
+        - generic [ref=f20e152]:
+          - separator [ref=f20e180]
+          - generic [ref=f20e182]:
+            - generic [ref=f20e183]:
+              - generic [ref=f20e184]: Featured
+              - generic [ref=f20e185]:
+                - button "Trending" [ref=f20e186] [cursor=pointer]
+                - button "My Liked" [ref=f20e188] [cursor=pointer]
+            - generic [ref=f20e190]:
+              - generic [ref=f20e191]: Categories
+              - generic [ref=f20e192]:
+                - button "Business Analyst" [ref=f20e193] [cursor=pointer]
+                - button "DevOps" [ref=f20e195] [cursor=pointer]
+                - button "Development" [ref=f20e197] [cursor=pointer]
+                - button "Elitea" [ref=f20e199] [cursor=pointer]
+                - button "Epam" [ref=f20e201] [cursor=pointer]
+                - button "Knowledge & Documentation" [ref=f20e203] [cursor=pointer]
+                - button "Project Management" [ref=f20e205] [cursor=pointer]
+                - button "Quality Assurance" [ref=f20e207] [cursor=pointer]
+                - button "Other" [ref=f20e209] [cursor=pointer]
+  - generic:
+    - button "Support Assistant"
