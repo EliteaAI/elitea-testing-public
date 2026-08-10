@@ -65,6 +65,16 @@ class AgentHubPage(BasePage):
         description="Catalog search TextField (agents/skills, shared across both tabs).",
     )
 
+    agents_tab = LocatorDescriptor(
+        testid="catalog-agents-tab",
+        description="Agents tab in Catalog page header (EliteaCatalog.jsx, ELITEA-2370).",
+    )
+
+    skills_tab = LocatorDescriptor(
+        testid="catalog-skills-tab",
+        description="Skills tab in Catalog page header (EliteaCatalog.jsx, ELITEA-2370).",
+    )
+
     # Category section heading — dynamic per category name (slugified:
     # lowercase, non-alnum runs -> '-'). Templated class-level constant per
     # .agents/testing.md's dynamic-testid convention.
@@ -87,6 +97,21 @@ class AgentHubPage(BasePage):
     # via a caller-supplied `chipTestIdPrefix` prop per the shared-component
     # testid discipline (CategoryRail is shared with SkillsTab).
     CATEGORY_FILTER_CHIP = '[data-testid="catalog-agent-category-filter-chip-{}"]'
+
+    # Agent category filter-rail chip prefix (for querying all agent-scoped chips,
+    # ELITEA-2370) — used to count and verify filter chips in the Agents view.
+    AGENT_CATEGORY_FILTER_CHIP_PREFIX = '[data-testid^="catalog-agent-category-filter-chip-"]'
+
+    # Skill category filter-rail chip prefix (for querying all skill-scoped chips,
+    # ELITEA-2370) — used to count and verify filter chips in the Skills view.
+    SKILL_CATEGORY_FILTER_CHIP_PREFIX = '[data-testid^="catalog-skill-category-filter-chip-"]'
+
+    # Main content area — displays Agents or Skills content depending on active tab
+    # (ELITEA-2370). Standard HTML <main> element with testid.
+    main_content_area = LocatorDescriptor(
+        testid="catalog-main-content",
+        description="Main content area for Agents/Skills catalog content (ELITEA-2370).",
+    )
 
     # Like button (heart icon + count) on an agent card, ELITEA-2354 —
     # dynamic per application id, same idiom as CATEGORY_FILTER_CHIP/
@@ -211,6 +236,15 @@ class AgentHubPage(BasePage):
         """Wait for the Catalog heading to become visible."""
         self.page_heading.wait_for(state="visible", timeout=timeout)
         logger.info("Agent Hub (Catalog) page loaded")
+
+    def get_main_content(self):
+        """Return locator for the main content area displaying Agents or Skills content.
+
+        The main content area uses testid "catalog-main-content" (ELITEA-2370).
+        Its text content reflects the active tab: contains "agent" for Agents tab,
+        "skill" for Skills tab.
+        """
+        return self.main_content_area
 
     def is_category_section_visible(self, category_slug: str, timeout: int = 10000) -> bool:
         """Return True if the category heading for *category_slug* is visible.
@@ -470,6 +504,22 @@ class AgentHubPage(BasePage):
         """
         for app in applications:
             if not app.get("is_liked", False):
+                return app
+        return None
+
+    @staticmethod
+    def find_liked_application(applications: list[dict]) -> dict | None:
+        """Return the first application dict (as returned by
+        :meth:`navigate_and_capture_applications`) whose ``is_liked`` field is
+        truthy (the CURRENT user has already liked it), or ``None`` if none
+        currently qualify (ELITEA-2355).
+
+        Opposite of :meth:`find_unliked_application` — used by the unlike
+        test to discover an agent already in the user's liked state, rather
+        than creating one via setup.
+        """
+        for app in applications:
+            if app.get("is_liked", False):
                 return app
         return None
 
