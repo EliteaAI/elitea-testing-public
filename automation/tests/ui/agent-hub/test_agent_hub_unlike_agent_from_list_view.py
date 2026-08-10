@@ -75,57 +75,46 @@ class TestAgentHubUnlikeAgentListView:
         icon, and persists across a full page refresh. Final state: count 0,
         unliked (no re-like cleanup unlike ELITEA-2354).
 
-        Approach (mirrors ELITEA-2354 in reverse): Finds an unliked agent,
-        likes it as a setup step, then tests the unlike flow. Unlike ELITEA-2354
-        which re-likes for cleanup, this test leaves the agent unliked (the
-        final state) as its cleanup, so no re-like is performed.
+        Approach: Dynamically discovers an agent already liked by the current
+        user (per AFS § Test Data requirement), then tests the unlike flow.
+        Unlike ELITEA-2354 which re-likes for cleanup, this test leaves the
+        agent unliked (the final state) as its cleanup, so no re-like is performed.
         """
         agent_hub = AgentHubPage(page)
         soft_failures: list[str] = []
-        liked_for_test = False
         application_id: int | None = None
         agent_name: str | None = None
+        count_before: int | None = None
 
         try:
             with allure.step("Step 1 — Navigate to Agent Hub"):
                 applications = agent_hub.navigate_and_capture_applications(timeout=NAVIGATION_TIMEOUT)
                 assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
 
-            with allure.step("Setup — Find an unliked agent and like it (precondition for test)"):
-                target = agent_hub.find_unliked_application(applications)
+            with allure.step("Step 2 — Locate an agent card currently liked by the user"):
+                # Dynamically discover an agent already liked by the current user
+                # (AFS § Test Data: "dynamically discover any currently-rendered agent card
+                # whose `data-liked` attribute reads `true` at runtime").
+                target = agent_hub.find_liked_application(applications)
                 assert target is not None, (
-                    "Expected at least one published agent NOT liked by the current user at test start "
+                    "Expected at least one published agent already liked by the current user at test start "
                     "(dynamic discovery — live like states are mutable shared product data)"
                 )
                 application_id = target["id"]
                 agent_name = target["name"]
 
-                # Verify not liked at start
-                assert not agent_hub.is_agent_liked(application_id, timeout=UI_ELEMENT_TIMEOUT), (
-                    f"Agent {agent_name!r} (id={application_id}) should not be liked at test start"
-                )
-
-                # Like the agent (setup for this test's precondition)
-                setup_response = agent_hub.click_like_button(application_id, timeout=UI_ELEMENT_TIMEOUT)
-                assert setup_response.status == 201, (
-                    f"Setup like failed: expected 201, got {setup_response.status}"
-                )
-                # Wait for count to update (optimistic client-side update)
-                agent_hub.wait_for_like_count(application_id, 1, timeout=UI_ELEMENT_TIMEOUT)
-                liked_for_test = True
-
-            with allure.step(f"Step 2 — Locate the liked agent card ({agent_name!r}, just liked in setup)"):
-                # Search for the agent to ensure it's visible and navigated to
-                agent_hub.search(agent_name, timeout=UI_ELEMENT_TIMEOUT)
-                assert agent_hub.get_agent_card(agent_name).first.is_visible(), (
-                    f"Agent card {agent_name!r} (id={application_id}) should be visible after liking"
-                )
-                # Double-check the liked state is visible
+                # Verify the agent is currently liked
                 assert agent_hub.is_agent_liked(application_id, timeout=UI_ELEMENT_TIMEOUT), (
-                    f"Agent {agent_name!r} should show data-liked='true' after setup like"
+                    f"Agent {agent_name!r} (id={application_id}) should show data-liked='true' at test start"
                 )
 
-            with allure.step(f"Step 3 — Click the heart icon on {agent_name!r} (unlike)"):
+                # Capture the like count before unliking (for assertion in Step 4)
+                count_before = agent_hub.get_like_count(application_id, timeout=UI_ELEMENT_TIMEOUT)
+                assert count_before >= 1, (
+                    f"Agent {agent_name!r} should have at least 1 like before unliking (was {count_before})"
+                )
+
+            with allure.step(f"Step 3 — Click the heart icon on {agent_name!r} to unlike it"):
                 console_errors = agent_hub.capture_console_errors()
                 response = agent_hub.click_like_button(application_id, timeout=UI_ELEMENT_TIMEOUT)
                 assert response.status == 204, (
@@ -133,11 +122,16 @@ class TestAgentHubUnlikeAgentListView:
                 )
 
             with allure.step("Step 4 — Verify the like count decrements by 1"):
-                # Wait for count update first (optimistic client-side update, same as Step 5 in ELITEA-2354)
-                agent_hub.wait_for_like_count(application_id, 0, timeout=UI_ELEMENT_TIMEOUT)
+                # Wait for count update (optimistic client-side update)
+                agent_hub.wait_for_like_count(application_id, count_before - 1, timeout=UI_ELEMENT_TIMEOUT)
+                # Assert the decremented count (AFS § Expected Results, step 5)
+                count_after = agent_hub.get_like_count(application_id, timeout=UI_ELEMENT_TIMEOUT)
+                assert count_after == count_before - 1, (
+                    f"Like count should decrement: {count_before} → {count_after} (expected {count_before - 1})"
+                )
 
             with allure.step("Step 5 — Verify the heart icon changes to an unfilled/inactive state"):
-                # After waiting for count (which pumps the event loop), check the state
+                # Check the state attribute after count decrement
                 assert not agent_hub.is_agent_liked(application_id, timeout=UI_ELEMENT_TIMEOUT), (
                     f"Agent {agent_name!r} (id={application_id}) should show data-liked='false' after unliking"
                 )
@@ -166,7 +160,8 @@ class TestAgentHubUnlikeAgentListView:
                 assert agent_hub.get_agent_card(agent_name).first.is_visible(), (
                     f"Agent card {agent_name!r} should be visible via search after refresh"
                 )
-                agent_hub.wait_for_like_count(application_id, 0, timeout=UI_ELEMENT_TIMEOUT)
+                expected_count_after_refresh = count_before - 1
+                agent_hub.wait_for_like_count(application_id, expected_count_after_refresh, timeout=UI_ELEMENT_TIMEOUT)
                 assert not agent_hub.is_agent_liked(application_id, timeout=UI_ELEMENT_TIMEOUT), (
                     f"Agent {agent_name!r} (id={application_id}) should still show data-liked='false' after refresh"
                 )
