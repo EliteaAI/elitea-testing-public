@@ -176,11 +176,13 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
   `AGENT_CARD_PREFIX` already cover everything this behavior needs. One NEW page-
   object method is needed though: `clear_search()` (select-all+Backspace,
   network-response-aware) — didn't exist before this dispatch.
-- **"No results" state has NO testid** (`Category.NoResultsMessage.jsx`, renders
-  "No agents found" / "Try adjusting your search terms" via
-  `AgentsTab.jsx`'s `noResultsTitle`/`noResultsDescription` props) — not needed for
-  ELITEA-2363 (the case's own search term always matches ≥1 agent), but flag for
-  any future sibling case that specifically tests a zero-match search term.
+
+## "No results" empty state — NO testids, confirmed live (ELITEA-2367)
+- **"No agents found" / "Try adjusting your search terms" messages** (`Category.NoResultsMessage.jsx`, renders via `AgentsTab.jsx`'s `noResultsTitle`/`noResultsDescription` props when `results === []`). **Both messages are SPAN elements with MuiTypography classes only; neither carries a testid** — confirmed via live DOM inspection 2026-08-10 (ELITEA-2367 exploration).
+- Elements: `<span class="MuiTypography-root MuiTypography-headingMedium ...">No agents found</span>` + `<span class="MuiTypography-root MuiTypography-bodyMedium ...">Try adjusting your search terms</span>`, both children of `<div class="MuiBox-root css-cxi1bf">`.
+- **Layout consistency confirmed:** when search matches zero agents, the empty-state messages render in place of the agent-card grid, while the page heading, search input, tabs, and category filter rail all remain visible and functional (not hidden/disabled/collapsed).
+- **Workaround for automation:** use `page.get_by_text("No agents found")` / `page.get_by_text("Try adjusting your search terms")` as fallback locators. **Future enhancement:** add `data-testid="catalog-no-results-title"` and `catalog-no-results-description` to the component (one-line addition to each SPAN) so tests can use stable testid selectors.
+- No console errors during empty-state render; no 4xx/5xx network responses when search matches zero agents.
 
 ## Agent detail modal (`AgentModal.jsx`) — mostly untested, only 3 of ~10 fields have testids
 - Opened by clicking any Catalog agent card; content-ready signal is the
