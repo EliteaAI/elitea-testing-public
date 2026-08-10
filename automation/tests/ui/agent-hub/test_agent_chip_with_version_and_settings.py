@@ -46,8 +46,8 @@ class TestAgentChipWithVersionAndSettings:
             hub_page.page_heading.wait_for(state="visible", timeout=10000)
 
         with allure.step("Step 2 — Open agent detail modal"):
-            # Use Business Analyst as the test agent
-            hub_page.open_agent_by_name("Business Analyst")
+            # Use User Story Creator as the test agent (known to have version)
+            hub_page.open_agent_by_name("User Story Creator")
 
         with allure.step("Step 3 — Start conversation (click Start Chat button)"):
             # Click the Start Chat button in the modal
@@ -78,7 +78,7 @@ class TestAgentChipWithVersionAndSettings:
         with allure.step("Step 8 — Verify agent name displayed on chip"):
             # Agent name should be visible on the chip
             chip_text = chat_page.switch_participant_button.text_content() or ""
-            assert "Business Analyst" in chip_text or chip_text.strip(), (
+            assert "User Story Creator" in chip_text or chip_text.strip(), (
                 f"Agent name should be displayed on chip, got: {chip_text}"
             )
 
