@@ -1,99 +1,96 @@
-# Test Case: Agent Hub — Trending category displays agents
+---
+status: ready-for-automation
+priority: medium
+family_afs: false
+afs_version: 1.0
+tms_id: ELITEA-2366
+tms_link: "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agent-hub/ELITEA-2366.md"
+---
 
-## Metadata
-- **TMS ID**: ELITEA-2366
-- **Linked Story**: none (case `requirements: []`)
-- **Priority**: l2 (case priority: medium)
-- **Environment Explored**: local (`http://localhost:5173/elitea-catalog`, EliteaUI `automation/testids`, DEV backend)
-- **User set**: `${TEST_USER}` — on localhost, `auth_state`/`VITE_DEV_TOKEN` skips explicit Keycloak login
-- **Analyst**: qa-engineer (agent)
-- **Status**: **ready-for-automation** — case executed end-to-end live via Playwright MCP. All 5 steps reproduced live. Zero console errors. One case-text drift (CLARIFICATION, filed per ELITEA-2352/#1212 precedent — see § Known Defects).
-- **Related surfaces reused**: `AgentHubPage` (`automation/pages/agent_hub_page.py`) already covers category chips and agent cards (`navigate()`, `CATEGORY_HEADING`/`is_category_section_visible()`, `AGENT_CARD_PREFIX`/`get_agent_card()`). This case uses the same surface; no new page object needed. **Not a target for `extend-existing`/`already-covered`**: ELITEA-2350's merged spec asserts only the default *all-category* view; this case asserts the *filtered Trending-only* view — a distinct observable (the filter activation and its effect on the category list), not an extension of the same test.
+# ELITEA-2366: Agent Hub — Trending category displays agents
+
+**AFS Status:** `ready-for-automation`  
+**Implementer Instructions:** The case text refers to a "Reload the category items" icon which does **not exist** in the live product (verified 2026-08-10, filed as [#1212](https://github.com/EliteaAI/elitea-testing-public/issues/1212)). Test only the assertions that match live product: section header "Trending" appears, and agents are displayed under it. The "reload" step is omitted per reverse-masking guard — case-text drift → CLARIFICATION, not a product defect.
+
+---
 
 ## Preconditions
-- User is logged in to the Elitea platform (`${TEST_USER}` / dev-auth on localhost).
-- Active project context is "Private" or any project containing agents (confirmed live).
 
-## Test Data
-
-### reuse-existing
-- `${TEST_USER}` — see `.agents/profile.md` § Roles & sample users.
-
-(No other test data required — case's own Test Data table says "(none required)".)
-
-## Test Steps
-
-1. Navigate to the ELITEA Catalog page (`/elitea-catalog`).
-   - **Verify**: URL is `/elitea-catalog`; page title contains "ELITEA Catalog" (confirmed live: `"ELITEA Catalog - project_user_659"`).
-   - **Verify**: sidebar `project-selector-trigger-combobox` shows the active project (confirmed live: "Project: Private").
-
-2. Click the **Trending category filter chip**.
-   - **Verify**: the click succeeds; the page remains at `/elitea-catalog` (no navigation).
-   - **Verify**: Trending chip updates to [active] state (confirmed live via ref=f7e186: `button "Trending" [active]`).
-   - **Testid handle**: `catalog-agent-category-filter-chip-trending` (pre-existing, applied live by Playwright MCP's `getByTestId`)
-
-3. Verify the Trending tab is highlighted/active.
-   - **Verify**: the Trending filter chip carries the `[active]` state indicator (confirmed live after step 2 click).
-   - **State assertion handle**: `[data-testid="catalog-agent-category-filter-chip-trending"][data-selected="true"]` (conditional attribute — see Handles Reference).
-
-4. Verify agents are displayed under the Trending section.
-   - **Verify**: at least one `catalog-agent-card-{id}` (dynamic testid per `AgentCard.jsx`) visible below the "Trending" content-list heading (confirmed live: 6 cards rendered — Business Analyst, Assistant for ELITEA Documentation, Reflexion, Quality Engineering Sidekick, API Testing Buddy, Linux Solution Mentor — plus a "Show more" expander).
-   - **Testid handle**: `catalog-agent-card-{id}` (pre-existing dynamic per ELITEA-2350).
-
-5. Verify the section header "Trending" appears above the results.
-   - **Verify**: text "Trending" appears as a content-list section heading above the agent cards (confirmed live: generic element at position [240,219,1159,24] with text "Trending").
-   - **Testid handle**: `catalog-category-heading-trending` (pre-existing, per ELITEA-2350 and ELITEA-2352).
+- User is logged in to the Elitea platform via test auth state
+- Default project is "Private"
 
 ---
 
-## Handles Reference
+## Test Coverage
 
-| Element | Primary Handle | Fallback | State/Filter | PROVENANCE |
+| Case Element | Observable | Covered by | Asserted where | Disposition |
 |---|---|---|---|---|
-| Trending category filter chip (right-hand rail) | `catalog-agent-category-filter-chip-trending` — testid applied live | none (raw handle forbidden) | `[data-selected="true"]` when active | on-automation/testids (pre-existing, per ELITEA-2350) |
-| Agent card grid item (per agent) | `catalog-agent-card-{id}` (dynamic, `AgentCard.jsx`) | none (raw handle forbidden) | none (state not asserted) | on-main ✓ (pre-existing, ELITEA-2350) |
-| "Trending" section heading (content-list) | `catalog-category-heading-trending` (pre-existing, `AgentCategorySection.jsx`) | none | none | on-main ✓ (pre-existing, ELITEA-2075) |
-| "Show more" expander (category section) | testid needed: `catalog-trending-show-more-expander` (or use accessible name "Show more" via `getByText()` + scoped to section) | none (raw handle forbidden) | none | needs-adding |
+| Step 1: Navigate to Agent Hub | Page loads successfully | `ChatPage.navigate("/elitea-catalog")` + wait for page heading | test body, Step 1 | `ready` |
+| Step 2: Click "Trending" filter (implicit: verify default view shows it) | Filter button present, clickable | inspect filter rail for "Trending" button | Step 2 | `ready` |
+| Step 3: Verify tab is highlighted/active | "Trending" button shows selected state (`data-selected="true"`) | click "Trending" + read `data-selected` | Step 3 | `ready` |
+| Step 4: Verify agents display under Trending | ≥1 agent card renders in Trending section | query `catalog-agent-card-*` within Trending section | Step 4 | `ready` |
+| Step 5 — CASE-TEXT DRIFT: "Reload the category items" icon | Icon exists next to header | [#1212](https://github.com/EliteaAI/elitea-testing-public/issues/1212): CONFIRMED ABSENT — no reload/refresh icon exists anywhere on the page; only automatic background refresh via `useCatalogAutoRefresh` (no manual UI trigger) | test description, class docstring | `disposition: clarification filed as #1212` |
+| **CORRECTED Step 5:** Section header "Trending" appears above results | "Trending" text visible in section header container | read `catalog-category-heading-trending` text content | Step 5 (amended) | `ready` |
 
 ---
 
-## Coverage Map — Test Steps vs. Observable Requirements
+## Concrete Handles
 
-| Case Step | Observable (from case text) | Covered by | Asserted at | Disposition |
+| Element | Locator | Fallback | Provenance | Status |
 |---|---|---|---|---|
-| 1 | Navigate to Agent Hub; URL loads | browser step 1 — `page.goto('/elitea-catalog')` + URL assertion | test step 1 | ✅ asserted |
-| 2 | Click Trending category filter tab; control responds | browser step 2 — click `catalog-agent-category-filter-chip-trending` | test step 2 | ✅ asserted |
-| 3 | Verify tab is highlighted/active | browser state after step 2 — [active] state indicator | test step 3 | ✅ asserted via `data-selected="true"` attribute |
-| 4 | Verify agents are displayed under Trending section | browser step 4 — locate ≥1 `catalog-agent-card-*` card under `catalog-category-heading-trending` | test step 4 | ✅ asserted (count: 6 cards confirmed live) |
-| 5 | Verify section header "Trending" appears above results with "reload category items" next to it | browser step 5 — verify "Trending" text present + positioned above cards (reload icon NOT asserted per case-text drift) | test step 5 | ✅ heading asserted; ⚠️ reload icon **omitted** (see Known Defects) |
+| Page heading | `get_by_text("Welcome to ELITEA Catalog!")` | `data-testid="catalog-page-heading"` | pre-existing, on-automation/testids | on-testids ✓ |
+| "Trending" filter button | `button >> text="Trending"` (in filter rail) | inspect filter-rail section "Featured", first button | _surface.md: Featured section lists `Trending` / `My Liked` as static chips | standard MUI Chip |
+| Trending section header | `data-testid="catalog-category-heading-trending"` | `get_by_text("Trending")` within content area | _surface.md § Category filter rail vs. category content-list headings; slugify: `String("Trending").toLowerCase()` = `trending` | pre-existing, on-testids ✓ |
+| Trending section container | `page.locator("div:has-text('Trending')").first()` parent `generic` | nth section by role | none — section structure via DOM nesting | generated, not testid'd |
+| Agent card (dynamic) | `data-testid="catalog-agent-card-{id}"` | `get_by_role("button").filter(has=...)` | _surface.md: `AgentCard.jsx` wires testid; id = application.id | pre-existing; e.g. `catalog-agent-card-1`, `catalog-agent-card-8` |
+| Filter button selected state | `[data-selected="true"]` on Trending button | CSS computed style (background color) | _surface.md (ELITEA-2352): `data-selected` attribute added; flips on click | live, confirmed ELITEA-2352, pending main merge |
 
 ---
 
-## Known Defects / Case-Text Drift
+## Observed Product Behavior
 
-**[CLARIFICATION, filed]** [EliteaAI/elitea-testing-public#1212](https://github.com/EliteaAI/elitea-testing-public/issues/1212) — case text claims "reload the category items" icon appears next to the section header; **no such icon exists anywhere in the live product** (confirmed via source grep for reload/refresh icon components in `src/[fsd]/features/agent-hub/` and `src/[fsd]/shared/ui/category/` — 0 hits; visual confirmation: screenshot shows only "Trending" heading text, no adjacent icon). Same drift family as #1208 (ELITEA-2350). The Catalog has only automatic background refresh (`useCatalogAutoRefresh`), no manual-trigger UI element. **Automation asserts the heading only; does NOT assert a reload icon** (reverse-masking guard — asserting a non-existent element would either always fail on a non-defect, or if written as an absence-assertion, would assert nothing meaningful about case intent).
+1. **Page loads with "Trending" category as the default view.** The Trending section header and 6 agent cards render immediately (Business Analyst, Assistant for ELITEA Documentation, Reflexion, Quality Engineering Sidekick, API Testing Buddy, Scalpel) plus a "Show more" expander.
 
----
+2. **Filter rail (right column):** "Featured" section lists two buttons: "Trending" and "My Liked". "Trending" button is present and clickable. Clicking it cycles the `data-selected` attribute (confirmed ELITEA-2352 flow).
 
-## Test Implementation Notes
+3. **Section header styling:** The "Trending" text is a plain Typography element in the section header container. **NO reload/refresh icon exists next to it.** Full source inspection (`AgentCategorySection.jsx`) confirms only a `Typography` renders in `headerContainer` — zero icon elements. This is the same root cause as #1212 ("Business Analyst" instance).
 
-- **Page navigation**: use `AgentHubPage.navigate()` to reach `/elitea-catalog`.
-- **Filter activation**: click via `catalog-agent-category-filter-chip-trending` testid.
-- **Wait strategy**: after click, use `page.wait_for_selector('[data-testid="catalog-agent-card-"]')` to ensure cards are rendered (no fixed sleep).
-- **Assertion: heading presence**: assert `page.locator('[data-testid="catalog-category-heading-trending"]').is_visible()` and text equals "Trending".
-- **Assertion: agent cards**: assert `page.locator('[data-testid^="catalog-agent-card-"]').count() >= 1`.
-- **State assertion**: filter chip's `data-selected` attribute OR `[data-testid="catalog-agent-category-filter-chip-trending"]` has `[aria-pressed="true"]` if the chip is a button (verify via live DOM inspection).
-- **Step reporting**: wrap each step in `with allure.step("Step N — …"):` per `.agents/testing.md`.
+4. **Only automatic refresh exists:** The page's sole refresh mechanism is `useCatalogAutoRefresh()` (throttled background polling) — no manual UI trigger anywhere on the surface.
+
+5. **Agent cards:** Each card carries `data-testid="catalog-agent-card-{id}"`. Like button shows `data-liked="true"/"false"` (ELITEA-2355). Card onclick opens the agent preview modal.
 
 ---
 
-## Evidence
+## Expected Results
 
-- **Screenshot (step 2-5 completion)**: `.playwright-mcp/after-trending-click-snapshot.md` — shows Trending chip [active], "Trending" heading visible, 6 agent cards rendered, "Show more" expander visible. No reload icon present.
+**Step 1:** Page `/elitea-catalog` loads with heading "Welcome to ELITEA Catalog!" visible. ✓
+
+**Step 2:** "Trending" filter button is present in the filter rail's "Featured" section. ✓
+
+**Step 3:** Clicking the Trending button (if not already selected) sets `data-selected="true"` on it. ✓
+
+**Step 4:** Trending section displays with header "Trending" and ≥1 agent card visible under it (minimum: Business Analyst visible or any agent id from the live Trending list). ✓
+
+**Step 5 (amended):** Section header text "Trending" is visible and readable above the agent card grid. **NO reload icon is asserted** (case-text drift filed as #1212 — this spec asserts only what exists in the live product).
 
 ---
 
-## Related Cases / Coverage Gaps
+## Known Defects
 
-- **ELITEA-2350** (agent hub page load, private project) — merged spec (`test_agent_hub_page_loads_private_project.py`) asserts the default *all-category* view; does **not** assert filter activation or category-specific results.
-- **ELITEA-2352** (filter by single category) — merged spec asserts the Business Analyst category filter; same pattern as this case (Trending filter instead).
+- **#1212** — "Reload category items" icon claimed in case text does not exist in product. Automatic background refresh only; no manual UI trigger. Cited by ELITEA-2365 (same family, "My Liked" section drift). Do not re-file.
+- **#1215** — Like/unlike clicks fire a Redux console error (`non-serializable value`). Minor, non-blocking; already tracked. Relevant if test likes/unlikes an agent.
+
+---
+
+## Test Execution Notes
+
+- **Auth:** Use default `auth_state` (Keycloak skipped on localhost via `VITE_DEV_TOKEN`).
+- **Project:** Test runs under `project_user_659` ("Private" project, default for `${TEST_USER}`).
+- **Wait strategy:** Page heading "Welcome to ELITEA Catalog!" is the readiness signal (content is populated after this text appears).
+- **No teardown needed:** The test is read-only; no agent liking, no state mutation, no cleanup.
+
+---
+
+## Clarification Issue
+
+**Related:** [#1042](https://github.com/EliteaAI/elitea-testing-public/issues/1042) — case text across this family (ELITEA-2356 through ELITEA-2369) uses "CONVERSATION STARTERS" and "Start conversation"; live product reads "CHAT STARTERS" and "Start Chat" (`AgentConversationStarters.jsx`, `AgentModal.jsx`). Cite instead of re-filing.
