@@ -21,6 +21,7 @@
 import { readFileSync, readdirSync, existsSync, statSync, writeFileSync } from 'node:fs';
 import { join, basename, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { updateBatchCosts } from './batch-cost.mjs';
 
 const DELIVERED = 'automated'; // the one receipts outcome that produced a spec
 
@@ -271,16 +272,117 @@ export function renderMarkdown(rep, { window, label } = {}) {
 }
 
 // --- CLI ---------------------------------------------------------------------
+// --- Batch mode (--batch <slug> | --batches) ---------------------------------
+// Renders the per-batch cost view: what the batch delivered, what it cost, per
+// case (direct, measured) and at batch level (overhead, once). The numbers come
+// from batch-cost.mjs — the same recompute the capture hook runs, built fresh
+// here so the report never trails the ledger.
+export function renderBatchMarkdown(c) {
+  const out = [`# Batch cost — ${c.batch}`, '', `Generated: ${c.generatedAt}  ·  sessions: ${c.sources.sessions} (${c.sources.hosts.join(', ') || 'none'})`, ''];
+  const oc = Object.entries(c.outcomes).sort((a, z) => z[1] - a[1]).map(([k, n]) => `${k} ${n}`).join('  ·  ');
+  out.push('## What happened', '');
+  out.push(`- Cases: ${c.cases.length}  ·  **delivered: ${c.delivered}**${oc ? `  ·  ${oc}` : ''}`);
+  if (c.gate) out.push(`- Gate: ${c.gate.verdict}${c.gate.runs ? ` (${c.gate.runs} runs)` : ''}`);
+  out.push(`- Findings reported: ${c.cases.reduce((n, x) => n + x.findings, 0)}  ·  fix rounds: ${c.cases.reduce((n, x) => n + x.direct.fixRounds, 0)}`, '');
+  out.push('## What it cost', '');
+  out.push(`- Total: ${usd(c.totals.costUsd)}  ·  ${c.totals.tokens.toLocaleString()} tokens  ·  ${hours(c.totals.activeMin)} active  ·  ${c.totals.dispatches} dispatches`);
+  out.push(`- Overhead (lead + triage + gate + report, shown once): ${usd(c.overhead.costUsd)}${c.overhead.sharePct != null ? ` (${c.overhead.sharePct}%)` : ''}`);
+  if (c.averages.totalPerDelivered) out.push(`- **Per delivered case (incl. overhead): ${usd(c.averages.totalPerDelivered.costUsd)}**`);
+  if (c.averages.directPerCase) out.push(`- Avg direct per case (excl. overhead): ${usd(c.averages.directPerCase.costUsd)}`);
+  const s = c.stats;
+  const line4 = (st, f = (x) => x) => st ? `avg ${f(st.avg)} · median ${f(st.median)} · min ${f(st.min)} · max ${f(st.max)}` : null;
+  if (s.directCostUsd) out.push(`- Direct cost spread: ${line4(s.directCostUsd, (x) => usd(x))}`);
+  if (s.directActiveMin) out.push(`- Active-time spread: ${line4(s.directActiveMin, (x) => `${x}m`)}`);
+  if (!s.directCostUsd && s.directTokens) out.push(`- Direct token spread (no per-dispatch dollars on this host): ${line4(s.directTokens, (x) => x.toLocaleString())}`);
+  out.push('', '## Per case (direct, measured — batch overhead is NOT in these rows)', '');
+  out.push('| case | outcome | direct cost | tokens | active | dispatches | fix rounds | findings |', '|---|---|---|---|---|---|---|---|');
+  for (const x of c.cases) {
+    out.push(`| ${x.id} | ${x.outcome ?? '—'} | ${usd(x.direct.costUsd)} | ${x.direct.tokens.toLocaleString()} | ${x.direct.activeMin}m | ${x.direct.dispatches} | ${x.direct.fixRounds} | ${x.findings} |`);
+  }
+  if (c.coverage.casesUnattributed.length) {
+    out.push('', `Unattributed (no dispatch named them in any captured session): ${c.coverage.casesUnattributed.join(', ')}`);
+  }
+  return out.join('\n');
+}
+
+// Self-contained batch page — no external assets, light/dark aware. The bar
+// chart is plain divs: direct cost (or tokens where dollars don't exist on the
+// host) per case, with overhead drawn once as its own labelled band.
+export function renderBatchHtml(c) {
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const priced = !!c.stats.directCostUsd;
+  const val = (x) => (priced ? (x.direct.costUsd ?? 0) : x.direct.tokens);
+  const fmtV = (v) => (priced ? `$${v.toFixed(2)}` : `${(v / 1000).toFixed(0)}k tok`);
+  const max = Math.max(1, ...c.cases.map(val));
+  const bars = c.cases.map((x) => `
+    <div class="row"><div class="lbl" title="${esc(x.outcome)}">${esc(x.id)}<span class="oc oc-${esc(x.outcome)}">${esc(x.outcome ?? '')}</span></div>
+    <div class="track"><div class="bar" style="width:${Math.max(1, (val(x) / max) * 100)}%"></div></div>
+    <div class="num">${fmtV(val(x))}<span class="sub"> · ${x.direct.activeMin}m · ${x.direct.fixRounds ? `${x.direct.fixRounds} fix` : 'no fix'}${x.findings ? ` · ${x.findings} finding${x.findings > 1 ? 's' : ''}` : ''}</span></div></div>`).join('');
+  const st = (s, f) => (s ? `avg ${f(s.avg)} · median ${f(s.median)} · min ${f(s.min)} · max ${f(s.max)}` : 'n/a');
+  const oc = Object.entries(c.outcomes).map(([k, n]) => `<span class="oc oc-${esc(k)}">${esc(k)} ${n}</span>`).join(' ');
+  return `<!doctype html><meta charset="utf-8"><title>Batch cost — ${esc(c.batch)}</title><style>
+  :root{--fg:#1a1a1a;--dim:#666;--line:#ddd;--bg:#fff;--accent:#2b6cb0;--band:#f3f4f6}
+  @media(prefers-color-scheme:dark){:root{--fg:#e8e8e8;--dim:#9a9a9a;--line:#333;--bg:#151515;--accent:#63a4e0;--band:#1f2937}}
+  body{font:14px/1.5 -apple-system,Segoe UI,sans-serif;color:var(--fg);background:var(--bg);max-width:920px;margin:2rem auto;padding:0 1rem}
+  h1{font-size:1.3rem} h2{font-size:1.05rem;margin-top:1.6rem;border-bottom:1px solid var(--line);padding-bottom:.3rem}
+  .k{display:inline-block;margin:.2rem 1.2rem .2rem 0}.k b{font-size:1.25rem}.k span{color:var(--dim);font-size:.85rem;display:block}
+  .row{display:grid;grid-template-columns:220px 1fr 220px;gap:.6rem;align-items:center;margin:.25rem 0}
+  .lbl{font-family:ui-monospace,monospace;font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .track{background:var(--band);border-radius:3px;height:14px}.bar{background:var(--accent);height:14px;border-radius:3px}
+  .num{font-size:.85rem}.sub{color:var(--dim)}
+  .oc{font-size:.72rem;border:1px solid var(--line);border-radius:8px;padding:0 .4rem;margin-left:.35rem;color:var(--dim)}
+  .oc-automated{color:#2f855a;border-color:#2f855a}.oc-blocked{color:#c53030;border-color:#c53030}
+  .note{color:var(--dim);font-size:.85rem}</style>
+  <h1>Batch cost — ${esc(c.batch)}</h1>
+  <p class="note">Generated ${esc(c.generatedAt)} · ${c.sources.sessions} session(s) on ${esc(c.sources.hosts.join(', '))} · sources: ${esc(c.sources.costSources.join(', ') || 'tokens only')}</p>
+  <div><span class="k"><b>${usd(c.totals.costUsd)}</b><span>total (measured)</span></span>
+  <span class="k"><b>${c.delivered}/${c.cases.length}</b><span>delivered / cases</span></span>
+  <span class="k"><b>${c.averages.totalPerDelivered ? usd(c.averages.totalPerDelivered.costUsd) : 'n/a'}</b><span>per delivered (incl. overhead)</span></span>
+  <span class="k"><b>${usd(c.overhead.costUsd)}${c.overhead.sharePct != null ? ` (${c.overhead.sharePct}%)` : ''}</b><span>overhead: lead + triage + gate + report</span></span>
+  <span class="k"><b>${c.gate ? esc(c.gate.verdict) : 'n/a'}</b><span>gate${c.gate?.runs ? ` (${c.gate.runs} runs)` : ''}</span></span></div>
+  <p>${oc}</p>
+  <h2>Per case — direct, measured${priced ? '' : ' (tokens: no per-dispatch dollars on this host)'}</h2>
+  <p class="note">Batch overhead is NOT in these bars — it is the labelled figure above, shown once instead of smeared.</p>
+  ${bars}
+  <h2>Spread (direct, measured only)</h2>
+  <p>${priced ? `Cost: ${st(c.stats.directCostUsd, (x) => `$${x.toFixed(2)}`)}<br>` : ''}Tokens: ${st(c.stats.directTokens, (x) => x.toLocaleString())}<br>Active time: ${st(c.stats.directActiveMin, (x) => `${x}m`)}</p>
+  ${Object.keys(c.byRole ?? {}).length ? `<h2>By role</h2>${(() => {
+    const roles = Object.entries(c.byRole);
+    const rmax = Math.max(1, ...roles.map(([, b]) => b.tokens));
+    return roles.map(([r, b]) => `
+    <div class="row"><div class="lbl">${esc(r)}</div>
+    <div class="track"><div class="bar" style="width:${Math.max(1, (b.tokens / rmax) * 100)}%"></div></div>
+    <div class="num">${b.costUsd != null ? `$${b.costUsd.toFixed(2)}` : `${(b.tokens / 1e6).toFixed(1)}M tok`}<span class="sub"> · ${b.dispatches || '—'} disp · ${b.activeMin}m</span></div></div>`).join('');
+  })()}` : ''}
+  ${c.coverage.casesUnattributed.length ? `<p class="note">Unattributed (no captured dispatch named them): ${esc(c.coverage.casesUnattributed.join(', '))}</p>` : ''}`;
+}
+
 export function main(argv = process.argv.slice(2)) {
   const flags = new Map();
   const roots = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--json') flags.set('json', true);
-    else if (a === '--since' || a === '--until' || a === '--out' || a === '--receipts' || a === '--label' || a === '--role') flags.set(a.slice(2), argv[++i]);
+    else if (a === '--html') flags.set('html', true);
+    else if (a === '--batches') flags.set('batch', '*');
+    else if (a === '--since' || a === '--until' || a === '--out' || a === '--receipts' || a === '--label' || a === '--role' || a === '--batch') flags.set(a.slice(2), argv[++i]);
     else roots.push(resolve(a));
   }
   if (!roots.length) roots.push(process.cwd());
+  if (flags.get('batch')) {
+    // Batch mode is per-repo (receipts live in the repo) — first root wins.
+    const batch = flags.get('batch') === '*' ? undefined : flags.get('batch');
+    const results = updateBatchCosts(roots[0], { batch, write: true });
+    if (!results.length) { process.stderr.write(`team-report: no receipts${batch ? ` for batch '${batch}'` : ''} under ${join(roots[0], '.agents', 'automation')}\n`); return 1; }
+    const output = flags.get('json')
+      ? JSON.stringify(results.length === 1 ? results[0] : results, null, 2)
+      : flags.get('html')
+        ? results.map(renderBatchHtml).join('\n')
+        : results.map(renderBatchMarkdown).join('\n\n---\n\n');
+    if (flags.get('out')) writeFileSync(flags.get('out'), `${output}\n`);
+    else process.stdout.write(`${output}\n`);
+    return 0;
+  }
   const lines = filterRole(
     filterWindow(dedupLines(loadLines(roots)), flags.get('since'), flags.get('until')),
     flags.get('role'),

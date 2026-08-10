@@ -35,6 +35,7 @@ import { homedir, tmpdir, userInfo } from 'node:os';
 import { join, basename, dirname, sep } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { execFileSync, spawn } from 'node:child_process';
+import { updateBatchCosts } from '../scripts/batch-cost.mjs';
 
 const LEDGER_VERSION = 1;
 const IDLE_GAP_MS = 30 * 60 * 1000;   // same active-time rule as efficiency-audit
@@ -191,9 +192,11 @@ export function extractCaseIds(...texts) {
   return [...out].sort();
 }
 
-/** A user prompt worth keeping: real text, not an injected wrapper. */
-function promptText(rec) {
-  if (rec.type !== 'user' || rec.isSidechain) return null;
+/** Raw user-authored text of a record, or null (injected wrappers excluded).
+ * `sidechain: true` when reading a SUB-AGENT's own transcript — there every
+ * record is marked isSidechain, including the dispatch prompt we need. */
+function userText(rec, { sidechain = false } = {}) {
+  if (rec.type !== 'user' || (rec.isSidechain && !sidechain)) return null;
   const c = rec.message?.content;
   let text = null;
   if (typeof c === 'string') text = c;
@@ -204,12 +207,19 @@ function promptText(rec) {
   if (!text) return null;
   text = text.trim();
   if (!text || text.startsWith('<')) return null; // system-reminder / command wrappers
-  return text.slice(0, PROMPT_MAX_CHARS);
+  return text;
 }
 
-export function parseClaudeTranscript(records, { capturePrompts = false } = {}) {
+/** A user prompt worth keeping, capped for the ledger. */
+function promptText(rec) {
+  const t = userText(rec);
+  return t ? t.slice(0, PROMPT_MAX_CHARS) : null;
+}
+
+export function parseClaudeTranscript(records, { capturePrompts = false, sidechain = false } = {}) {
   let role = null;
   let branch = null;
+  let firstText = null; // raw first user message — a workflow sub-agent's only naming surface
   let turns = 0, toolCalls = 0, toolErrors = 0;
   const skills = new Set();
   const dispatched = [];
@@ -221,7 +231,14 @@ export function parseClaudeTranscript(records, { capturePrompts = false } = {}) 
   for (const rec of records) {
     if (rec.type === 'agent-setting' && rec.agentSetting) role = rec.agentSetting;
     if (rec.gitBranch) branch = rec.gitBranch;
-    if (rec.attributionSkill) skills.add(rec.attributionSkill);
+    // attributionSkill is deliberately NOT folded in: sub-agents inherit the
+    // parent's active skill, so it reports loads that never happened (the same
+    // conflation efficiency-audit's rollup had to split). `skills` = real
+    // Skill-tool invocations only.
+    // 8000 chars: a workflow dispatch opens with a ~3.5k-char boilerplate
+    // preamble BEFORE the stage text the label needs (measured live at offset
+    // 3564) — and firstText never reaches the ledger, only the derived label.
+    if (!firstText) { const raw = userText(rec, { sidechain }); if (raw) firstText = raw.slice(0, 8000); }
     if (rec.timestamp) {
       const t = Date.parse(rec.timestamp);
       if (!Number.isNaN(t)) stamps.push(t);
@@ -263,7 +280,7 @@ export function parseClaudeTranscript(records, { capturePrompts = false } = {}) 
   }
   const { tokens, models } = dedupUsage(records);
   const caseIds = extractCaseIds(branch, ...caseTexts);
-  return { role, branch, turns, toolCalls, toolErrors, skills, dispatched, prompts, caseIds, tokens, models, ...timeStats(stamps) };
+  return { role, branch, firstText, turns, toolCalls, toolErrors, skills, dispatched, prompts, caseIds, tokens, models, ...timeStats(stamps) };
 }
 
 /** `{path, id, role}` per sub-agent transcript — keyed off the .meta.json sidecar. */
@@ -288,41 +305,31 @@ export function findSubagents(projectDir, sessionId) {
   return out;
 }
 
-/** Sub-agent lines rolled up per role — the ledger's grain is the session. */
-function rollupSubagents(parsedSubs) {
-  const byRole = new Map();
-  for (const s of parsedSubs) {
-    if (!byRole.has(s.role)) {
-      byRole.set(s.role, { role: s.role, n: 0, tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, activeMin: 0, toolCalls: 0, toolErrors: 0 });
-    }
-    const b = byRole.get(s.role);
-    b.n++;
-    b.tokens.input += s.tokens.input; b.tokens.output += s.tokens.output;
-    b.tokens.cacheRead += s.tokens.cacheRead; b.tokens.cacheWrite += s.tokens.cacheWrite;
-    b.activeMin += s.activeMin; b.toolCalls += s.toolCalls; b.toolErrors += s.toolErrors;
-  }
-  return [...byRole.values()].sort((a, z) => a.role.localeCompare(z.role));
-}
-
 // --- ccusage metering at capture time (Claude dollars, best-effort) ----------
 function linkOrCopy(src, dest) {
   try { linkSync(src, dest); } catch { copyFileSync(src, dest); }
 }
 
 /**
- * Meter one session (parent + sub-agents) with ccusage by staging the files
- * flat in a throwaway CLAUDE_CONFIG_DIR — the same trick efficiency-audit uses,
- * scoped to a single session. Returns total USD or null (ccusage missing,
- * offline without cached pricing, timeout). Null means "unpriced", never $0.
+ * Meter a session's files with ccusage by staging them in a throwaway
+ * CLAUDE_CONFIG_DIR — the same trick efficiency-audit uses. ccusage keys its
+ * rows by the staged FOLDER name (verified: files sharing a folder fold into
+ * one row; separate folders stay separate rows), so each file gets its own
+ * `f<i>` folder and the rows come back as PER-FILE dollars — which is what
+ * per-dispatch case attribution needs. Returns `{ totalUsd, perFileUsd }`
+ * (aligned with `files`); totalUsd null = "unpriced", never $0.
  */
 export function meterSession(files, { env = process.env } = {}) {
-  if (env.TOKENOMICS_NO_CCUSAGE === '1') return null;
+  const unpriced = { totalUsd: null, perFileUsd: files.map(() => null) };
+  if (env.TOKENOMICS_NO_CCUSAGE === '1') return unpriced;
   let stage;
   try {
     stage = mkdtempSync(join(tmpdir(), 'tokenomics-'));
-    const proj = join(stage, 'projects', 'p');
-    mkdirSync(proj, { recursive: true });
-    for (const f of files) linkOrCopy(f, join(proj, basename(f)));
+    for (const [i, f] of files.entries()) {
+      const proj = join(stage, 'projects', `f${i}`);
+      mkdirSync(proj, { recursive: true });
+      linkOrCopy(f, join(proj, basename(f)));
+    }
     const out = execFileSync('npx', ['--yes', 'ccusage@latest', 'claude', 'session', '--json', '--offline'], {
       env: { ...env, CLAUDE_CONFIG_DIR: stage },
       encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
@@ -330,16 +337,38 @@ export function meterSession(files, { env = process.env } = {}) {
     });
     const parsed = safeParse(out);
     const list = parsed?.session || parsed?.sessions || parsed?.data || [];
+    const perFileUsd = files.map(() => null);
     let total = 0, priced = 0;
     for (const s of list) {
-      if (typeof s.totalCost === 'number') { total += s.totalCost; priced++; }
+      if (typeof s.totalCost !== 'number') continue;
+      total += s.totalCost; priced++;
+      const m = /^f(\d+)$/.exec(String(s.period || s.session || s.sessionId || ''));
+      if (m) { const i = Number(m[1]); if (i < perFileUsd.length) perFileUsd[i] = s.totalCost; }
     }
-    return priced ? total : null;
+    return priced ? { totalUsd: total, perFileUsd } : unpriced;
   } catch {
-    return null;
+    return unpriced;
   } finally {
     if (stage) try { rmSync(stage, { recursive: true, force: true }); } catch { /* ignore */ }
   }
+}
+
+// --- dispatch labels (what a sub-agent was FOR) ------------------------------
+// The label is the attribution key: the batch-cost join matches the receipt's
+// own case ids against it, so it must carry whatever identifies the dispatch.
+// Task-tool dispatches have a real `description`. Workflow-tool sub-agents get
+// no description (meta carries only agentType) and their first user message
+// opens with a shared boilerplate preamble — so slice from the first stage
+// marker instead, which is where the ids live ("analyst:", "Implementer slot —
+// fix round 2 for TC-101…", "Hardening gate for batch …").
+const STAGE_MARKER = /\b(triage|analyst|implement\w*|combined|review\w*|fix round|carve|merge|hardening gate|mini-gate|gate for batch|report writer|write the report|diagnostician|stabiliz\w+)\b/i;
+export function deriveLabel(description, firstText) {
+  const d = String(description || '').trim();
+  if (d) return d.slice(0, 160);
+  const t = String(firstText || '');
+  const m = STAGE_MARKER.exec(t);
+  if (m) return t.slice(m.index, m.index + 160).replace(/\s+/g, ' ').trim();
+  return t.slice(0, 160).replace(/\s+/g, ' ').trim();
 }
 
 /** One ledger line for a Claude session (parent transcript + sub-agents). */
@@ -348,18 +377,30 @@ export function captureClaudeSession(repo, transcriptPath, sessionId, { config, 
   const records = readRecords(transcriptPath);
   const p = parseClaudeTranscript(records, { capturePrompts: cfg.capturePrompts });
   const subMeta = findSubagents(dirname(transcriptPath), sessionId);
-  const subs = subMeta
-    .map((s) => {
-      try { return { ...parseClaudeTranscript(readRecords(s.path)), role: s.role }; }
-      catch { return null; }
+  // Parse each sub-agent keeping its meta alongside, THEN filter — so the
+  // transcript paths handed to the meter stay index-aligned with the records
+  // that receive the per-file dollars back.
+  const pairs = subMeta
+    .map((meta) => {
+      try {
+        const sp = parseClaudeTranscript(readRecords(meta.path), { sidechain: true });
+        // The label is the attribution key downstream (batch-cost matches
+        // receipt case ids against it). Task dispatches carry a description;
+        // Workflow sub-agents don't, so derive from their first user message.
+        return { meta, sub: { ...sp, role: meta.role, label: deriveLabel(meta.description, sp.firstText) } };
+      } catch { return null; }
     })
     .filter(Boolean);
+  const subs = pairs.map((x) => x.sub);
   if (!p.turns && !p.tokens.output && !subs.length) return null; // empty shell — not worth a line
   const models = new Set(p.models);
   for (const s of subs) for (const m of s.models) models.add(m);
   let costUsd = null;
   if (price && cfg.priceAtCapture) {
-    costUsd = meterSession([transcriptPath, ...subMeta.map((s) => s.path)]);
+    const metered = meterSession([transcriptPath, ...pairs.map((x) => x.meta.path)]);
+    costUsd = metered.totalUsd;
+    // perFileUsd[0] is the parent; [1..] align with `pairs` in order.
+    subs.forEach((s, i) => { s.costUsd = metered.perFileUsd[i + 1] ?? null; });
   }
   // Case ids from every naming surface: branch, prompts/dispatch labels, the
   // sub-agents' .meta.json dispatch descriptions, and the sub-agents' own text.
@@ -380,7 +421,15 @@ export function captureClaudeSession(repo, transcriptPath, sessionId, { config, 
     tokens: p.tokens, // parent only — sub-agent tokens live in subagents[]
     costUsd, costSource: costUsd != null ? 'ccusage-metered' : 'none',
     cases,
-    subagents: rollupSubagents(subs),
+    // One record PER DISPATCH (n:1), not a role roll-up: the label + per-file
+    // costUsd are what lets batch-cost attribute work to individual cases.
+    // Aggregating consumers (team-report byRole) sum records the same either way.
+    subagents: subs.map((s) => ({
+      role: s.role, label: s.label, n: 1,
+      tokens: s.tokens, activeMin: s.activeMin,
+      toolCalls: s.toolCalls, toolErrors: s.toolErrors,
+      ...(s.costUsd != null ? { costUsd: s.costUsd } : {}),
+    })),
     skills: [...p.skills].sort(), dispatches: p.dispatched.length,
     ...(cfg.capturePrompts ? { prompts: p.prompts, dispatched: p.dispatched } : {}),
   };
@@ -459,7 +508,7 @@ export function captureCopilotSession(repo, eventsPath, sessionId, { config, use
   const byModel = new Map(); const stamps = [];
   let turns = 0, toolCalls = 0, toolErrors = 0;
   const dispatched = []; const prompts = []; const caseTexts = [];
-  const subStarted = new Map(); const subs = [];
+  const subStarted = new Map(); const subDesc = new Map(); const subs = [];
   for (const ev of events) {
     const d = ev.data ?? {};
     if (ev.timestamp) {
@@ -479,14 +528,21 @@ export function captureCopilotSession(repo, eventsPath, sessionId, { config, use
     if (ev.type === 'subagent.started') {
       dispatched.push(d.agentName ?? 'unknown');
       subStarted.set(d.toolCallId, d.agentName ?? 'unknown');
-      if (typeof d.agentDescription === 'string') caseTexts.push(d.agentDescription.slice(0, 400));
+      if (typeof d.agentDescription === 'string') {
+        caseTexts.push(d.agentDescription.slice(0, 400));
+        subDesc.set(d.toolCallId, d.agentDescription);
+      }
     }
     if (ev.type === 'subagent.completed') {
       subs.push({
         role: d.agentName ?? subStarted.get(d.toolCallId) ?? 'unknown',
+        label: deriveLabel(subDesc.get(d.toolCallId), ''),
         n: 1,
         // Copilot reports ONE cache-inclusive total per sub-agent — parked in
         // `input`, same convention as efficiency-audit. Read it as total tokens.
+        // No per-dispatch dollars exist on Copilot (billing is one nano-AIU
+        // figure at shutdown) — costUsd stays absent, and batch-cost reports
+        // per-case tokens/time here, dollars only at batch level.
         tokens: { input: num(d.totalTokens), output: 0, cacheRead: 0, cacheWrite: 0 },
         activeMin: d.durationMs ? Math.round(d.durationMs / 60000) : 0,
         toolCalls: num(d.totalToolCalls), toolErrors: 0,
@@ -521,7 +577,6 @@ export function captureCopilotSession(repo, eventsPath, sessionId, { config, use
   const subTotal = subs.reduce((n, s) => n + s.tokens.input, 0);
   tokens.input = Math.max(0, tokens.input - subTotal);
   const t = timeStats(stamps);
-  const subRoll = rollupSubagents(subs.map((s) => ({ role: s.role, tokens: s.tokens, activeMin: s.activeMin, toolCalls: s.toolCalls, toolErrors: s.toolErrors, models: [] })));
   const usd = nanoAiu === null ? null : (nanoAiu / 1e9) * USD_PER_CREDIT;
   return {
     v: LEDGER_VERSION, host: 'copilot', id: sessionId,
@@ -536,7 +591,7 @@ export function captureCopilotSession(repo, eventsPath, sessionId, { config, use
     tokens,
     costUsd: usd, costSource: usd != null ? 'copilot-nano-aiu' : 'none',
     cases: extractCaseIds(branch, ...caseTexts),
-    subagents: subRoll,
+    subagents: subs, // per-dispatch (n:1) with label — same shape as the Claude path
     skills: [...skills].sort(), dispatches: dispatched.length,
     ...(cfg.capturePrompts ? { prompts } : {}),
   };
@@ -884,9 +939,21 @@ export function main(argv = process.argv.slice(2), env = process.env) {
   // OTel opted in with a localhost endpoint → make sure the sink is up.
   if (cfg.otel?.enabled && env.TOKENOMICS_NO_SINK !== '1') ensureSink(cfg.otel, env);
 
+  // After any append, refresh the per-batch cost.json files: a pure recompute
+  // joining the ledger to the pipeline's receipts (batch-cost.mjs). Never
+  // fatal — cost.json is a derivation and can always be rebuilt on demand.
+  const refreshBatchCosts = () => {
+    if (env.TOKENOMICS_NO_BATCH_COST === '1') return;
+    try {
+      const n = updateBatchCosts(repo).length;
+      if (n) process.stderr.write(`tokenomics: refreshed cost.json for ${n} batch(es)\n`);
+    } catch { /* receipts absent or malformed — nothing to refresh */ }
+  };
+
   if (argv.includes('--sweep')) {
     const r = sweep(repo, { config: cfg, user: me, all: argv.includes('--all'), env });
     process.stderr.write(`tokenomics: swept ${r.captured} session(s)${r.skipped ? `, ${r.skipped} deferred (bounded — rerun or use --all)` : ''}\n`);
+    if (r.captured) refreshBatchCosts();
     return 0;
   }
 
@@ -914,6 +981,7 @@ export function main(argv = process.argv.slice(2), env = process.env) {
   // Claude ones) — bounded, so the hook stays quick.
   const r = sweep(repo, { config: cfg, user: me, env });
   process.stderr.write(`tokenomics: captured ${captured + r.captured} session(s) → .agents/telemetry/usage-${me}.jsonl\n`);
+  if (captured + r.captured) refreshBatchCosts();
   return 0;
 }
 

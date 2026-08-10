@@ -99,7 +99,7 @@ function writeClaudeFixture(root, sessionId, { withSub = true } = {}) {
   return transcript;
 }
 
-test('captureClaudeSession: one line — parent tokens, sub-agents rolled up per role, models merged', () => {
+test('captureClaudeSession: one line — parent tokens, per-dispatch sub-agent records, models merged', () => {
   const repo = tmp(); const proj = tmp();
   const transcript = writeClaudeFixture(proj, 'sess-1');
   const line = captureClaudeSession(repo, transcript, 'sess-1', { config: CFG, user: 'tester' });
@@ -107,8 +107,10 @@ test('captureClaudeSession: one line — parent tokens, sub-agents rolled up per
   assert.equal(line.role, 'test-automation-lead');
   assert.deepEqual(line.tokens, { input: 300, output: 100, cacheRead: 2000, cacheWrite: 100 });
   assert.equal(line.subagents.length, 1);
+  // One record PER DISPATCH (n:1) carrying its label — the attribution key
+  // batch-cost joins receipt case ids against. No costUsd key when unpriced.
   assert.deepEqual(line.subagents[0], {
-    role: 'qa-engineer', n: 1,
+    role: 'qa-engineer', label: 'analyse', n: 1,
     tokens: { input: 510, output: 55, cacheRead: 0, cacheWrite: 0 },
     activeMin: 2, toolCalls: 0, toolErrors: 0,
   });
@@ -172,8 +174,10 @@ test('captureCopilotSession: billed nanoAIU → USD, parent netted of sub-agent 
   assert.equal(line.turns, 2);           // parent only — the sub-agent's turn excluded
   assert.equal(line.toolCalls, 1);
   assert.equal(line.toolErrors, 1);
+  // This fixture's subagent.started carries no agentDescription — the label is
+  // honestly empty (batch-cost will classify such a dispatch as overhead).
   assert.deepEqual(line.subagents[0], {
-    role: 'qa-engineer', n: 1,
+    role: 'qa-engineer', label: '', n: 1,
     tokens: { input: 1000, output: 0, cacheRead: 0, cacheWrite: 0 },
     activeMin: 2, toolCalls: 5, toolErrors: 0,
   });

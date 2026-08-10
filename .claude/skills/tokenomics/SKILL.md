@@ -52,7 +52,31 @@ node .claude/skills/tokenomics/hooks/telemetry-capture.mjs --sweep --all
 node .claude/skills/tokenomics/scripts/team-report.mjs
 node .claude/skills/tokenomics/scripts/team-report.mjs ~/work/repoA ~/work/repoB --since 2026-08-01 --json
 node .claude/skills/tokenomics/scripts/team-report.mjs --role qa-engineer   # sessions involving that agent
+
+# 5. Per-batch cost — what a batch delivered and what it cost, per case
+node .claude/skills/tokenomics/scripts/team-report.mjs --batch <slug>            # markdown
+node .claude/skills/tokenomics/scripts/team-report.mjs --batch <slug> --html --out batch.html
+node .claude/skills/tokenomics/scripts/team-report.mjs --batches                 # every batch with a receipt
+
+# 6. Cross-factory export (optional) — one dataset row per batch
+#    identity comes from .agents/telemetry/factory-profile.json (copy
+#    templates/factory-profile.template.json there and fill it in once)
+node .claude/skills/tokenomics/scripts/build-tokenomics-export.mjs --batch <slug>
+node .claude/skills/tokenomics/scripts/build-tokenomics-export.mjs --compare a/cost.json b/cost.json
 ```
+
+**Per-batch cost.json (automatic).** Once capture is enabled, every session end
+also refreshes `.agents/automation/<slug>/cost.json` for each batch the ledger
+can see — a pure recompute joining ledger lines to the pipeline's own
+`report.json` receipt (matching the receipt's case ids/branches against each
+dispatch's label, so any id shape works). Per-case rows carry **direct,
+measured** work only — the case's own analyst/implement/review/fix/merge
+dispatches, with a cluster dispatch split evenly across its ids; batch-level
+work (lead thread, triage, gate, report) is **overhead, shown once**, never
+smeared. avg/median/min/max run over measured values only. Per-dispatch
+dollars exist on Claude (per-file metering); Copilot bills one figure per
+session, so its per-case rows carry tokens/time and dollars appear at batch
+level from billed credits — the report labels which is which.
 
 After step 1, capture is automatic. Claude Code sessions are captured when they
 end AND swept at every session start (async, injects nothing) — so a session
