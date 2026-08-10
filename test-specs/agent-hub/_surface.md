@@ -435,5 +435,12 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
 - **Case-text clarification:** Case title/text implies a single "Agent name vX.X" combined chip, but product renders version as a separate adjacent element. Both are visible and usable; the split is intentional per product design.
 - **All observable assertions confirmed:** avatar visible, name matches selected agent, version non-empty, settings button clickable.
 
+## Tab navigation (Agents ↔ Skills) — UI state + content switching (ELITEA-2370, this dispatch)
+- **Default state on page load:** Agents tab renders as `aria-selected="true"`, Skills tab as `aria-selected="false"`. Content area displays agent cards. This holds consistently on every fresh navigation to `/elitea-catalog`.
+- **Tab click behavior (confirmed live 2026-08-10):** Clicking the Skills tab (`[role="tab"]:has-text("Skills")`) swaps `aria-selected` values — Skills becomes true, Agents becomes false. Main content area swaps from agent-card grid to Skills content. Both tabs remain visible and clickable throughout.
+- **Content grid on Agents tab:** Agent cards render via `[data-testid^="catalog-agent-card-"]` (23 cards observed in this session, baseline for future regression checks; count varies by backend state).
+- **Right-panel filter rail:** Present on both tabs (category chips, featured/categories sections). Handles via pre-existing testids documented above. No testid gaps for this case's scope.
+- **No UI defects observed:** Tab switching is immediate (no race / flicker), aria-selected states are correct, content boundaries are clean.
+
 ## Sibling family (not yet analysed as of this entry)
 ELITEA-2351 ("Team project" variant — differs from ELITEA-2350 only in which project is active) plus ~18 more behavioral cases (multiple categories, like/unlike, open/close modal, search, start-conversation flows, etc.). Future batch should re-check whether ELITEA-2350/2351 belong in one parameterized family AFS.
