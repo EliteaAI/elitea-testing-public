@@ -103,7 +103,7 @@ class TestAgentHubUnlikeAgentListView:
 
         with allure.step("Step 2a — Verify the agent card is visible and liked"):
             assert liked_agent_id is not None, "No liked agent could be located or created"
-            like_button = page.locator(f'[data-testid="catalog-agent-like-button-{liked_agent_id}"]')
+            like_button = agent_hub.get_like_button(liked_agent_id)
             assert like_button.count() > 0, f"Like button for agent {liked_agent_id} should be visible"
             data_liked = like_button.get_attribute("data-liked")
             assert data_liked == "true", (
@@ -113,7 +113,7 @@ class TestAgentHubUnlikeAgentListView:
                        liked_agent_id, initial_like_count)
 
         with allure.step("Step 3 — Click the heart icon (like button) on the agent card to unlike it"):
-            like_button = page.locator(f'[data-testid="catalog-agent-like-button-{liked_agent_id}"]')
+            like_button = agent_hub.get_like_button(liked_agent_id)
             console_errors = agent_hub.capture_console_errors()
 
             assert like_button.is_visible(timeout=UI_ELEMENT_TIMEOUT), (
@@ -172,9 +172,7 @@ class TestAgentHubUnlikeAgentListView:
             page.wait_for_timeout(1000)  # Additional settle time for app initialization
 
             # Re-locate the like button for this agent and verify the state persisted
-            like_button_refreshed = page.locator(
-                f'[data-testid="catalog-agent-like-button-{liked_agent_id}"]'
-            )
+            like_button_refreshed = agent_hub.get_like_button(liked_agent_id)
 
             # The button should still exist and show the new count
             if like_button_refreshed.count() > 0:
@@ -207,9 +205,7 @@ class TestAgentHubUnlikeAgentListView:
                 page.wait_for_timeout(1000)
 
                 # Check if the agent appears in search results
-                search_result_buttons = page.locator(
-                    f'[data-testid="catalog-agent-like-button-{liked_agent_id}"]'
-                )
+                search_result_buttons = agent_hub.get_like_button(liked_agent_id)
                 assert search_result_buttons.count() > 0, (
                     f"Agent {liked_agent_id} should appear in search results after refresh"
                 )
