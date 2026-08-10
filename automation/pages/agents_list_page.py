@@ -350,7 +350,7 @@ class AgentsListPage(BasePage):
         self.search_input.wait_for(state="visible", timeout=timeout)
         # Wait for search API response while typing (debounced search on /applications/prompt_lib/)
         with self.page.expect_response(
-            lambda r: "/applications/prompt_lib/" in r.url and r.request.method == "GET" and "viewMode" in r.url,
+            lambda r: "/applications/prompt_lib/" in r.url and r.request.method == "GET",
             timeout=timeout,
         ):
             self.search_input.click()
@@ -382,7 +382,7 @@ class AgentsListPage(BasePage):
         self.search_input.wait_for(state="visible")
         # Wait for search API response while clearing (debounced search on /applications/prompt_lib/)
         with self.page.expect_response(
-            lambda r: "/applications/prompt_lib/" in r.url and r.request.method == "GET" and "viewMode" in r.url,
+            lambda r: "/applications/prompt_lib/" in r.url and r.request.method == "GET",
             timeout=timeout,
         ):
             self.search_input.click()
