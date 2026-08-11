@@ -38,6 +38,7 @@
 - [reasoning_effort on API-created agents](reasoning_effort_none_breaks_embedded_chat.md) — "none" is save/reload-only; any chat-sending test needs another value
 - [Page-object API calls need Bearer fallback](page_object_api_delete_needs_bearer_fallback_on_localhost.md) — self.page.request has no cookies on localhost
 - [Name fields cap at 32 chars](pipeline_agent_name_field_32char_silent_truncation.md) — silent truncation on agent-name-input, blocks Approve on Build-with-AI (3×)
+- [Shared save testid, create vs edit](shared_save_testid_create_vs_edit_navigation_false_pass.md) — create-flow save-and-wait-for-nav helper false-passes on an edit form (no nav)
 - [Entity-card list pages](search_highlight_breaks_exact_text_locator.md) — read entity-card-name + .text_content(); scope per-card via .filter(has=…) (3×)
 - [Killed runs orphan test data](killed_background_run_orphans_test_data.md) — backgrounded/SIGKILLed pytest skips finally:; filter by name+id, not id alone
 - [Resume dispatch: trust disk](resume_dispatch_trust_disk_not_prior_session_notes.md) — a prior session's "completed" note can describe uncommitted code; grep first
