@@ -140,6 +140,13 @@ class SkillsListPage(BasePage):
     # See ``get_card_tags()``.
     CARD_TAG_CHIP = '[data-testid="entity-card-tag-chip"]'
 
+    # Scoped sub-selector — a skill card's "+N" tag-overflow badge (rendered
+    # instead of further chips once the card holds more tags than
+    # ``CardTagSection.jsx``'s ``MAX_NUMBER_TAGS_SHOWN`` (2) — ELITEA-2434
+    # exploration finding: a skill with >2 tags never renders every tag as
+    # its own chip). See ``get_card_tag_overflow_text()``.
+    CARD_TAG_OVERFLOW = '[data-testid="entity-card-tag-overflow"]'
+
     # Dynamic (runtime-parameterized) testid template — a skill card's own
     # "Pin to top"/"Unpin from top" icon button (shared PinButton.jsx
     # component; getPinTestIdSlug() maps skill cards -> 'skill'). Confirmed
@@ -294,6 +301,35 @@ class SkillsListPage(BasePage):
             (tag_labels.nth(i).text_content() or "").strip()
             for i in range(tag_labels.count())
         ]
+
+    def get_card_tag_overflow_text(self, skill_name: str) -> str:
+        """Return a specific skill card's "+N" tag-overflow badge text.
+
+        LOCATOR: :attr:`CARD_TAG_OVERFLOW`, scoped to the card the same way
+        as :meth:`get_card_tags`. ``CardTagSection.jsx`` only ever renders
+        the first ``MAX_NUMBER_TAGS_SHOWN`` (2) tags as individual chips —
+        a skill with more tags than that shows this overflow badge instead
+        of a 3rd/4th chip (confirmed live/source-side, ELITEA-2434).
+
+        Args:
+            skill_name: The skill's exact name shown on its card
+                (case-insensitive substring match, consistent with
+                :meth:`skill_exists_in_list`).
+
+        Returns:
+            The overflow badge's text (e.g. ``"+2"``), or ``""`` if the
+            card isn't found or has no overflow badge (≤2 tags).
+        """
+        card_name = self.skill_card_name.filter(
+            has_text=re.compile(re.escape(skill_name), re.IGNORECASE)
+        ).first
+        if card_name.count() == 0:
+            return ""
+        card = self.skill_card.filter(has=card_name).first
+        overflow = card.locator(self.CARD_TAG_OVERFLOW)
+        if overflow.count() == 0:
+            return ""
+        return (overflow.first.text_content() or "").strip()
 
     # ------------------------------------------------------------------
     # Pin/Unpin (ELITEA-2435)
