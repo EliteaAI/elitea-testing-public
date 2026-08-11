@@ -471,4 +471,68 @@ Distinct from the valid-import round trip (ELITEA-1737/1738, above the
   ELITEA-2430 needs to clear a *populated* Name field (case step 6) — add
   `SkillFormPage.set_name(name: str)` mirroring `set_description()`
   exactly.
+
+## Tags — add/remove on an existing Skill (ELITEA-2433) + multiple tags on create+edit (ELITEA-2434)
+
+- **Tags field validation — hyphens are REJECTED, confirmed live.**
+  `TagEditor.jsx` → `AutoCompleteDropDown.jsx` validates every freeSolo tag
+  value against `NormalTagNameInputRegExp = /^[\w,\s]+$/g` (input-level
+  error state) and, decisively, `onChangeMulti` filters the committed value
+  against `NormalSingleTagNameInputRegExp = /^[ \t]*[\w]*[ \t]*$/g`
+  (`EliteaUI/src/common/constants.js:92-93`) before adding it to the tag
+  list — both allow only word chars (letters/digits/underscore), comma,
+  whitespace. Typing `regression-v1` + Enter clears the input but adds
+  **no chip** (silently filtered, zero network calls). `regression_v1`
+  (underscore) commits normally. This is case-text drift for ELITEA-2433's
+  literal test data (case says `"regression-v1"`) — filed as a
+  CLARIFICATION, not a bug: `EliteaAI/elitea-testing-public#1445`. Use
+  `regression_v1` in automation. Sibling pattern to issue #20 (Skill
+  *Name* field — opposite direction: Name REQUIRES hyphens/kebab-case,
+  Tags FORBIDS them).
+- **CONFIRMED LIVE GAP — tag-chip delete icon has no testid.**
+  `AutoCompleteDropDown.jsx`'s `renderValue()` supports a `chipDeleteTestId`
+  prop (function or string, same pattern as `chipTestId`/`getOptionTestId`)
+  on the MUI `Chip`'s `deleteIcon` (`RemoveIcon`), but
+  `CreateSkillForm.jsx`'s `<TagEditor>` call site (`skill-tags-input`
+  section, ~line 249) never passes it — only `chipTestId="skill-tag-chip"`
+  and `getOptionTestId` are wired. The rendered delete `<img>`/SVG inside
+  each committed-tag chip is therefore unaddressable by testid today.
+  Fix (`add-data-testid`, one-line, mirrors the existing
+  `getOptionTestId={option => 'skill-tag-option-${option?.name}'}` shape):
+  add `chipDeleteTestId={option => 'skill-tag-chip-delete-${option?.name}'}`
+  to the same `<TagEditor>` call site. Dynamic testid, name-keyed (same
+  convention as `SKILL_TAG_OPTION`). **Confirmed live: only the delete
+  icon itself removes the tag — clicking elsewhere on the chip (its label
+  text / the chip body) does NOT** (verified directly: a click centered on
+  the chip button, away from the icon's bounding box, left the tag intact
+  and Save stayed disabled; a click on the icon's own `<img>`/SVG node
+  removed it and dirtied the form). MUI's `onDelete` only wires to the
+  `deleteIcon` sub-element, not the whole `Chip`. **Workaround confirmed
+  live in the meantime (until the fix lands):** scope to the specific
+  chip via `page.get_by_test_id("skill-tag-chip").filter(has_text=tag_name)`
+  then click that chip's only child element (the icon `<img>`/SVG,
+  addressed positionally — no other child exists inside a `skill-tag-chip`
+  node) — not a `#579` scoped-raw-handle exception (this is 100%
+  app-owned JSX, addressable via `add-data-testid`), just the interim
+  shape.
+- **Edit-flow tag add/remove round-trips through `SkillDetailPage.save_edits()`**
+  (existing method, PUT `.../skill/prompt_lib/{project}/{skillId}` → 200,
+  "Skill saved" toast, no navigation) — same mechanism as any other field
+  edit. No new endpoint.
+- **Create-flow: Tags field is available and committable BEFORE the first
+  Save** (confirmed live — `/skills/create`'s `CreateSkillForm.jsx` renders
+  the same `TagEditor` pre-save; tags added pre-save ride the `POST
+  .../skills/prompt_lib/{project}` payload's top-level `tags` field intact).
+  Adding MORE tags after the skill exists (edit mode) uses the same PUT as
+  above — confirmed live, all 4 tags (2 pre-save + 2 post-save) persist
+  through a full page navigate-away-and-back reload, not just client state.
+- **Skill card + list-level tag rendering**: `SkillsListPage.get_card_tags()`
+  / `CARD_TAG_CHIP` (`entity-card-tag-chip`) already covers "tag appears on
+  the card" / "tag no longer appears on the card" assertions — no new
+  page-object work needed there, reused as-is from ELITEA-1740.
+- Test files: `automation/tests/ui/skills/test_skill_tag_add_remove.py`
+  (ELITEA-2433), `automation/tests/ui/skills/test_skill_tag_multiple.py`
+  (ELITEA-2434) — pending implementation.
+  Full details: `test-specs/skills/l3_add-save-remove-skill-tag_ELITEA-2433.md`,
+  `test-specs/skills/l3_multiple-tags-persist-on-creation-and-edit_ELITEA-2434.md`.
   Full details: `test-specs/skills/l3_skill-creation-mandatory-fields-validation_ELITEA-2430.md`.
