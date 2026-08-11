@@ -39,3 +39,13 @@ Before writing an edit/update test for ANY entity with a create/edit form
 pair, check the shared Save button's underlying hook logic
 (`grep -rn "useSave" ../EliteaUI/src/[fsd]/features/<entity>/lib/hooks/`)
 rather than assuming the create-flow save helper is safe to reuse.
+
+**Round-2 gap (ELITEA-2431 fix round 1, review-caught):** waiting on the
+save-confirmation toast alone is NOT sufficient to prove "no navigation" —
+the toast (`version_toast_message` / `toast-message` testid) renders
+app-wide via a portal, so it would still appear even if the click somehow
+also routed the user away. The edit-flow save method must ALSO capture
+`page.url` immediately before the click and assert it is unchanged after
+the toast + network-idle wait. This is the assertion that actually proves
+"stayed put" — the toast only proves "the save happened". Both checks now
+live together inside `save_edits()`.
