@@ -154,14 +154,16 @@ class SkillsListPage(BasePage):
     # run; AFS amended accordingly). Only the outer container testid is
     # wired here since this case's test data is always icon-less; a future
     # case asserting a CUSTOM icon's src would add the img field then.
-    entity_card_icon = LocatorDescriptor(
-        testid="entity-card-icon",
-        description="Skill card icon — collection locator, one per visible card",
-    )
-
-    # Scoped sub-selector — a specific card's own icon container, addressed
-    # via ``card_icon_locator()`` below (mirrors ``CARD_TAG_CHIP``'s pattern
-    # of a class-level testid constant used inside a `card.locator(...)` scope).
+    #
+    # Scoped sub-selector ONLY — no unscoped page-wide LocatorDescriptor
+    # field for this testid. `entity-card-icon` repeats once per visible
+    # card, so the only thing that's ever exercised is a *specific* card's
+    # icon via ``card_icon_locator()`` below (mirrors ``CARD_TAG_CHIP``'s
+    # pattern of a class-level testid constant used inside a
+    # `card.locator(...)` scope); an unscoped field would resolve to the
+    # first card page-wide and go unreferenced (reviewer finding, ELITEA-2428
+    # round 1 — see AgentsListPage.entity_card_icon for the same dead-code
+    # shape, pre-existing tech debt, not replicated here).
     CARD_ICON_SELECTOR = '[data-testid="entity-card-icon"]'
 
     # ELITEA-2428 — card hover-tooltip description text. Added this run via
