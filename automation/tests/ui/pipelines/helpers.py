@@ -19,7 +19,6 @@ def _navigate_to_detail(page, pipeline_id) -> PipelineDetailPage:
     """
     detail_page = PipelineDetailPage(page)
     detail_page.navigate(pipeline_id)
-    detail_page.dismiss_banner_if_present()
     return detail_page
 
 

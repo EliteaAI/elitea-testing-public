@@ -302,7 +302,6 @@ class TestEditPipeline:
         with allure.step("Step 1 — Navigate to pipeline detail page"):
             detail_page = PipelineDetailPage(page)
             detail_page.navigate(pipeline_id)
-            detail_page.dismiss_banner_if_present()
 
         with allure.step("Step 2 — Update pipeline name"):
             detail_page.update_name(new_name)
@@ -326,7 +325,6 @@ class TestEditPipeline:
         with allure.step("Step 1 — Navigate to pipeline detail page"):
             detail_page = PipelineDetailPage(page)
             detail_page.navigate(pipeline_id)
-            detail_page.dismiss_banner_if_present()
 
         with allure.step("Step 2 — Update pipeline description"):
             detail_page.update_description(new_desc)
@@ -367,7 +365,6 @@ class TestEditPipeline:
         with allure.step("Step 1 — Navigate to pipeline detail page"):
             detail_page = PipelineDetailPage(page)
             detail_page.navigate(pipeline_id)
-            detail_page.dismiss_banner_if_present()
 
         with allure.step("Step 2 — Verify configuration panel is visible"):
             assert detail_page.configuration_tab.is_visible(), "Configuration panel (General section) should be visible"
@@ -451,7 +448,6 @@ class TestDeletePipeline:
             with allure.step("Step 2 — Navigate to pipeline detail page"):
                 detail_page = PipelineDetailPage(page)
                 detail_page.navigate(pid)
-                detail_page.dismiss_banner_if_present()
 
             with allure.step("Step 3 — Delete pipeline via three-dot menu"):
                 detail_page.delete_pipeline_via_menu(timeout=NAVIGATION_TIMEOUT)
