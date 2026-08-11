@@ -536,3 +536,64 @@ Distinct from the valid-import round trip (ELITEA-1737/1738, above the
   Full details: `test-specs/skills/l3_add-save-remove-skill-tag_ELITEA-2433.md`,
   `test-specs/skills/l3_multiple-tags-persist-on-creation-and-edit_ELITEA-2434.md`.
   Full details: `test-specs/skills/l3_skill-creation-mandatory-fields-validation_ELITEA-2430.md`.
+
+## Test panel — model selector + Model Settings dialog (ELITEA-2436)
+
+The Skill test panel (`SkillTestPanel.jsx`) embeds the SAME
+`NewChatInput`/`llm-model-selector` shared widget the Agent detail page
+uses (ELITEA-1880) — **confirmed live: every testid ELITEA-1880 added to
+that shared widget resolves correctly on `/skills/all/{id}` with zero new
+`add-data-testid` work**, even though `SkillDetailPage` has no
+model-selector/model-settings methods yet (new page-object surface, not an
+extension of `AgentDetailPage`'s):
+
+- `model-selector-button` / `model-selector-name` — model picker trigger +
+  current-name display. Dropdown options: `model-selector-option-{name}`
+  (dynamic, API `name` suffix — same 12-model catalog as agents/pipelines).
+- `model-settings-button` (aria-label `"model settings menu"`, gear icon)
+  → opens `model-settings-dialog` (MUI dialog, title "Model settings").
+- Dialog contents are MODEL-TYPE CONDITIONAL
+  (`model?.supports_reasoning ? <ReasoningSlider/> : <CreativitySlider/>`,
+  `LLMSettings.jsx:119`):
+  - Reasoning-capable model (e.g. `gpt-5.2`, `Anthropic Claude 4.5 Sonnet`)
+    → `model-settings-reasoning-slider`, 3 discrete positions
+    `model-settings-reasoning-level-{1,2,3}`, rendered labels lowercase
+    `low`/`medium`/`high`.
+  - Non-reasoning model (e.g. `gpt-5-mini`) → Creativity slider instead,
+    **NO testid** on this branch (`CreativitySlider.jsx` never got the
+    `testId` prop-threading `ReasoningSlider.jsx` did) — `add-data-testid`
+    gap: `model-settings-creativity-slider`, same
+    `DiscreteSlider.jsx`-threading pattern. Underlying range input in the
+    meantime: `[aria-label="Creativity level"]`.
+  - `model-settings-max-tokens-section` — always rendered regardless of
+    model type (Default/Custom toggle).
+  - `model-settings-capabilities-section` — chips per model capability
+    (`Reasoning`, `Image analysis`; a model can show both).
+  - `model-settings-cancel-button` / `model-settings-apply-button` — **NEW
+    FINDING (2026-08-11, ELITEA-2436 run): Apply now HAS a testid.** At
+    ELITEA-1880 analysis time it did not (`agent_detail_page.py`'s
+    `model_settings_*` comment block explicitly says "Apply button
+    intentionally has NO testid here... do not add unless a future case
+    needs it") — someone added it since. `AgentDetailPage` has no
+    `LocatorDescriptor` field for it yet; back-fill when convenient.
+- **Discrete-slider interaction — MUI quirk, confirmed live:** clicking the
+  visual `<span class="MuiSlider-thumb">` directly times out (intercepts
+  pointer events over the underlying `<input type="range">`). Working
+  pattern: `page.locator('[aria-label="<Slider> level"]').focus()` then
+  `page.keyboard.press("ArrowRight"/"ArrowLeft")` — mirrors
+  `user_profile_settings_page.py`'s `set_speed()`
+  (`automation/pages/user_profile_settings_page.py:690-714`). A value
+  change enables the dialog's Apply button.
+- **Model selection + Settings-dialog edits are pure client-side state on
+  the Skill test panel — ZERO network calls** (confirmed via
+  `browser_network_requests` across a full run: no `PUT`/`PATCH` to the
+  skill entity). Different from the Agent detail page instance, where a
+  real Save PUTs the change to the entity — the Skill test panel has no
+  persistent "Save" for these settings at all, so **any existing skill is
+  safe to reuse for this kind of case** without disposable-fixture/cleanup
+  concerns.
+  Full details: `test-specs/skills/l3_llm-model-settings-configurable_ELITEA-2436.md`.
+  Clarification filed: [EliteaAI/elitea-testing-public#1447](https://github.com/EliteaAI/elitea-testing-public/issues/1447)
+  (step 2's "gpt5-mini ... reasoning slider" case-text drift — gpt-5-mini
+  isn't reasoning-capable; sibling of ELITEA-1880's Clarification 1 on the
+  Agent detail page).
