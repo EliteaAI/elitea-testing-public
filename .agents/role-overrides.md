@@ -258,6 +258,20 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
   — `CHANGES_REQUESTED`. Absence assertions are caught by the existing
   mechanical grep (they use `.locator(`/`get_by_*` the same as positive
   assertions), so no new grep is needed.
+- **Zero-functional-impact check on any EliteaUI JSX in the diff (origin: EliteaUI PR
+  #753, 2026-08-11).** A new DOM node, a replaced MUI built-in, a new/moved hook call,
+  a render-prop form change, or product state frozen into `useState` — added in order to
+  host a testid — is `CHANGES_REQUESTED`. Mechanical check: run the three Step-5.5 greps
+  from `add-data-testid` § Step 5.5 on the PR diff and paste command + output (or explicit
+  "0 hits") per the existing reviewer paste discipline:
+  ```bash
+  git diff origin/main...HEAD -- src/ | grep -nE '^\+.*\buse(State|Effect|Memo|Callback|Ref)\('
+  git diff origin/main...HEAD -- src/ | grep -nE '^\+.*<(Box|div|span|Fragment)'
+  git diff origin/main...HEAD -- src/ | grep -nE '^-' | grep -vE 'testid|TestId'
+  ```
+  A hit is a blocker unless the commit body names the mandatory-plumbing exception
+  (`add-data-testid` § Mandatory-plumbing exceptions) and explains why it was unavoidable.
+  An undeclared hit is a violation (§ Declared-improvisation protocol).
 - **Declared improvisations** (see § Every role): verify the reasoning and say so
   explicitly in the verdict; if sound, APPROVED + recommend the canon addition —
   do not block solely for the gap the canon itself left.

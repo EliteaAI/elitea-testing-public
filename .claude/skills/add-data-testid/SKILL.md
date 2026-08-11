@@ -54,6 +54,99 @@ Assistant) components for robust test automation locators.
 3. **Testid props are named `testId` / `<part>TestId`** (`closeButtonTestId`) —
    never `dataTestId` / `<part>DataTestId`; the `data` prefix is redundant.
 
+## Hard gate: the diff is testids and nothing else (EliteaUI PR #753 review, 2026-08-11)
+
+**The gate.** Every line you add or remove in EliteaUI must be either **(a)** a testid
+attribute/prop, or **(b)** the *minimum* plumbing that attribute requires. Anything else
+— a new DOM node, a replaced MUI internal, a moved hook, a reshaped render prop, product
+state frozen into `useState` — is **out of scope even when it works and even when the
+testid genuinely needs it.** If a testid cannot be attached without one of those,
+**stop and flag that element** (§ Edge Cases → Element Not Found) and do not attach it.
+
+> Origin: PR #753 promoted 400 accumulated testids and carried **eight** changes that
+> were neither testid additions nor legitimately testid-driven — each one changed
+> rendered DOM or product logic to make a testid attachable **when a non-invasive
+> channel already existed.** Worked before/after for all eight:
+> `references/non-invasive-patterns.md`.
+
+### The preference ladder — try in order, stop at the first rung that works
+
+1. **An existing prop channel on the component you are calling.** Grep the shared
+   component for `TestId` **before editing anything**:
+   ```bash
+   grep -rn "TestId" ../EliteaUI/src/\[fsd\]/shared/ui/ ../EliteaUI/src/components/
+   ```
+   Channels already in the tree: `BaseModal.titleTestId`, `InputBase.helperTextTestId`,
+   `KPICard.valueTestId`, `InfoTooltip.contentTestId`, `InfoTooltip.testId`.
+   **This rung alone resolved 3 of the 8 PR #753 violations** — the wrapper nodes added
+   for a dialog title and two error-text elements were all already reachable by a prop
+   (`ZipDownloadProgressDialog.jsx:64`, `EditSecretInputGridTable.jsx:93`,
+   `CreatePersonalToken.jsx:162`).
+2. **`data-testid` directly on the element / MUI component that already renders it.**
+   MUI forwards unknown props to the root DOM node — no wrapper needed.
+3. **MUI `slotProps` on a slot element that already exists.** This is the channel for
+   **anything inside** a MUI component: you get the attribute without changing what MUI
+   renders. Verified slots: `Alert.closeButton`, `Tooltip.tooltip`,
+   `TextField.formHelperText`, `TextField.htmlInput`, `Switch.input` (full table:
+   § Edge Cases → MUI Components). **This rung resolved 2 of the 8 violations**
+   (`Toast.jsx:71`, `InfoTooltip.jsx:117`). `undefined` renders no attribute, so every
+   non-opting caller keeps byte-identical DOM.
+4. **A new caller-opt-in prop on the shared component, defaulting to `undefined`.**
+   Canonical shape, live at
+   `[fsd]/widgets/pin-toggler/lib/hooks/usePinMenu.hooks.jsx:20`:
+   ```jsx
+   ...(key ? { key } : {}),   // absent by default → every existing caller unchanged
+   ```
+   Add the new prop to the enclosing `useMemo`/`useCallback` dep array. Name it
+   `testId` / `<part>TestId` (§ Conventions rule 3) — never `dataTestId`.
+5. **Nothing.** No rung applies ⇒ report the element as unreachable and move on. **A
+   dropped grouping testid is cheaper than a DOM change** (`RunStateDialog` precedent:
+   two `display: contents` wrappers reverted, two grouping testids dropped).
+
+### Banned — never do any of these to host a testid
+
+Each one is a real PR #753 finding, not a hypothetical:
+
+- ❌ **Add a wrapper element.** Includes `display: contents` wrappers, promoting
+  `<>…</>` to `<Box>`, and an extra `<span>`. **Zero new DOM nodes.**
+- ❌ **Replace a MUI built-in sub-element with your own** (`Alert`'s close button, a
+  `Dialog` title, a `Select` icon). Read the MUI source before assuming your addition is
+  additive — `Alert.js:247` renders the built-in close button only when
+  `action == null && onClose`, so passing `action` **replaces** it. The PR #753 version
+  silently swapped the icon, changed 20→18px, and lost both the `currentColor` severity
+  tint and the native `title="Close"`. Compliant form now in the tree at `Toast.jsx:71`.
+- ❌ **Freeze product state into `useState` / `useRef` for testid scoping.** If you need
+  a mount-stable value for a testid, add a **separate** variable and leave the product
+  one computed per render (`ToolkitEditor.isMCP` had 9 consumers).
+- ❌ **Convert a render prop between element form and function form.** recharts'
+  `renderContent` does `cloneElement` for elements but `createElement` for functions, so
+  an inline arrow is a **new component type every render** and the child remounts. Pass
+  the testid as a prop on the element instead —
+  `content={<ChartTooltip testId="…" />}` (`AnalyticsUserDetailed.jsx:200`).
+- ❌ **Move, add, or conditionalize a hook call.**
+- ❌ **Change a `key`, `id`, or `className` whose value feeds product logic** — unless
+  you read every consumer and say so in the commit body (`BucketItem` `id="bucket-menu"`
+  → `` id={`bucket-menu-${name}`} `` was kept on exactly those terms: `DotMenu` derives
+  its testids from `id`, and the change also fixed duplicate DOM ids).
+- ❌ **Add a `data-*` state attribute without first proving no stylesheet selects on it:**
+  ```bash
+  grep -rn '\[data-active' ../EliteaUI/src/ \
+    ../EliteaUI/node_modules/@mui/material ../EliteaUI/node_modules/@mui/x-data-grid
+  ```
+
+### Mandatory-plumbing exceptions (allowed — must be minimal, and declared)
+
+- **Widening `undefined` → `{}`** when there is genuinely nowhere else to attach,
+  **preserving every existing key**:
+  `inputProps={{ maxLength: MAX_VARIABLES_LENGTH, 'data-testid': … }}`,
+  `{ name: name || 'api_key', ...(testId && { 'data-testid': testId }) }`.
+- **A new caller-opt-in prop + its dep-array entry** (ladder rung 4).
+- **A pure, null-safe testid-slug helper.**
+
+Each exception you use gets **one line in the commit body** stating why it was
+unavoidable. An undeclared exception is a violation
+(`.agents/role-overrides.md` § Declared-improvisation protocol).
+
 ## Connected repos (Support Assistant, and future ones)
 
 Some elements render from a **connected first-party repo** we own but consume as a package —
@@ -115,7 +208,12 @@ Read the file and find the exact element:
 ```
 
 **Placement rules:**
-- Add `data-testid` as FIRST attribute after opening tag
+- **Append `data-testid` after the existing attributes** — do NOT insert it as the first
+  attribute. EliteaUI's Prettier config sets `printWidth: 110` + **`singleAttributePerLine: true`**,
+  so touching the attribute order of a one-line tag explodes it into N lines and buries
+  your actual change. Appending after existing attributes keeps the diff to one line
+  (or the minimal reflow Prettier needs), which is the only way a reviewer can spot a
+  violation at a glance.
 - Keep existing attributes unchanged
 - For MUI components, testid goes on the MUI component directly
 
@@ -148,6 +246,37 @@ mcp__playwright__browser_snapshot()
 Look for `data-testid` attributes in the snapshot output.
 
 **Note:** Vite HMR should auto-reload. If not visible, the test should call `page.reload()`.
+
+### Step 5.5: Prove zero functional impact
+
+Before committing, run these checks against every touched file:
+
+```bash
+cd ../EliteaUI
+git diff -- <file>         # every +/- line is a testid attribute, prop, or listed exception
+npx prettier --check src/  # confirms reflow noise is Prettier's, not yours
+npx eslint src/<file>
+```
+
+Then three targeted greps over the whole diff — each one catches a different violation
+class from PR #753:
+
+```bash
+# Any new hook call added?
+git diff origin/main...HEAD -- src/ | grep -nE '^\+.*\buse(State|Effect|Memo|Callback|Ref)\('
+
+# Any new DOM node added?
+git diff origin/main...HEAD -- src/ | grep -nE '^\+.*<(Box|div|span|Fragment)'
+
+# Any real deletion (not just Prettier reflow of a testid line)?
+git diff origin/main...HEAD -- src/ | grep -nE '^-' | grep -vE 'testid|TestId'
+```
+
+**Expected output:** empty, empty, and (for the third) only lines whose new form differs
+solely by Prettier reflow. **Any non-empty result must be explained in the commit body or
+reverted.** For a large batch, a token-level normalizer (strip testid attributes + scaffolding,
+tokenize, compare `git show base:f` vs `git show HEAD:f`) is the only reliable instrument —
+line diffs are worthless under `singleAttributePerLine`.
 
 ### Step 6: Output Report
 
@@ -206,12 +335,40 @@ For elements in loops (list items, messages):
    f-string `get_by_test_id`
 
 ### MUI Components
-MUI forwards data-testid to the root element:
+
+**Root element (the default).** MUI forwards `data-testid` (and any unknown prop) to the
+root DOM node — place it directly on the MUI component:
+
 ```jsx
 <TextField data-testid="agent-form-name-input" label="Name" />
 <Button data-testid="agent-form-save-button">Save</Button>
 <Select data-testid="agent-form-model-dropdown" />
 ```
+
+**Anything inside a MUI component goes through `slotProps` — never by replacing the
+built-in.** MUI v7 exposes every internal sub-element as a named slot. Pass the testid
+via `slotProps.<slot>` on the slot that already renders the element:
+
+| Slot path | What it targets | Example |
+|---|---|---|
+| `Alert.slotProps.closeButton` | The built-in close `<IconButton>` | `slotProps={{ closeButton: { 'data-testid': 'toast-dismiss-button' } }}` |
+| `Tooltip.slotProps.tooltip` | The tooltip bubble `<div>` | `slotProps={{ …existing, tooltip: { 'data-testid': contentTestId } }}` |
+| `TextField.slotProps.formHelperText` | The helper/error text | wired via `InputBase.helperTextTestId` prop channel |
+| `TextField.slotProps.htmlInput` | The `<input>` element | `inputProps={{ …existing, 'data-testid': … }}` (MUI v7 maps `inputProps` → `slotProps.htmlInput`) |
+| `Switch.slotProps.input` | The hidden `<input>` | `slotProps={{ input: { 'data-testid': … } }}` |
+
+**The `inputProps` → `htmlInput` mapping (MUI v7, `TextField.js:148`).** MUI silently
+maps the deprecated `inputProps` into `slotProps.htmlInput` — a *different* slot from
+`input`/`inputLabel`. This means widening `inputProps={{ maxLength, 'data-testid': … }}`
+is safe: it cannot clobber existing `slotProps` entries.
+
+`undefined` renders no attribute, so callers that don't opt in keep byte-identical DOM.
+
+**Never replace a built-in sub-element to add a testid.** The `action` prop on `Alert` is the
+canonical example: `Alert.js:247` renders the built-in close button only when
+`action == null && onClose`. Passing `action` **replaces** the button — silently swapping
+the icon, changing size, and losing `currentColor` severity tint + `title="Close"`. The
+compliant form is `slotProps.closeButton` (live at `Toast.jsx:71`).
 
 ---
 
@@ -330,3 +487,11 @@ Before completing:
 - [ ] **No `main` PR opened** (suspended 2026-07-16; a human cherry-picks to `main`)
 - [ ] Output includes ready-to-use LocatorDescriptor definitions
 - [ ] Snapshot confirms testids are visible in DOM
+- [ ] **Every added line is a testid attribute, prop, or a declared mandatory exception**
+      (§ Hard gate — the gate)
+- [ ] **Zero new DOM nodes; zero replaced MUI built-ins; zero hook changes** — if any of
+      the three Step 5.5 greps returns a hit, explain it in the commit body or revert
+- [ ] **Highest applicable ladder rung used** — existing prop channel → direct attr →
+      `slotProps` → new opt-in prop (§ Hard gate → preference ladder)
+- [ ] **Step 5.5 greps run** and output pasted into the commit body or report (empty
+      output is valid evidence; a missing paste is a gap)
