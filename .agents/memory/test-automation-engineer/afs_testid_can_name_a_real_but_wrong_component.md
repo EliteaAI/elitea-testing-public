@@ -251,3 +251,40 @@ template-construction pattern (`` `${ ``, `SelectDisplayProps`, or the
 project's documented dynamic-testid mechanisms), not just the exact
 concatenated form — and check EACH ref separately, pasting both outputs,
 never collapsing "checked both, zero on either" into one unverified claim.
+
+## Addendum (ELITEA-2370 fix round 1, reviewer dispatch): two files with the IDENTICAL basename `SkillCard.jsx`, only one wired into the surface under test
+
+A fifth variant, this time in a REVIEWER's fix instruction rather than an
+AFS row — same failure class, different origin. The reviewer's dispatch
+named a specific, real, already-pushed fix: "`skill-card-{id}` on `EliteaUI
+src/[fsd]/features/skill/ui/SkillCard.jsx:48`" as the handle to use for a
+Catalog-page Skills-tab content-visibility assertion. That testid IS real,
+IS on `main` and `automation/testids`, and IS named exactly as claimed —
+every surface-level check passes. But `features/skill/ui/SkillCard.jsx` is
+imported ONLY by `ApplicationSkills.jsx` (an agent's attached-skills list on
+the agent detail page) — confirmed via `grep -rln "SkillCard" src/` +
+reading each hit's import path. The Catalog's Skills tab
+(`EliteaCatalog.jsx` → `SkillsTab.jsx` → `SkillCategorySection.jsx`) imports
+a DIFFERENT, unrelated component that happens to share the exact same
+filename one directory over: `features/skill-hub/ui/SkillCard.jsx` — which
+had NO testid at all.
+
+**Why this is a sharper version of the same trap**: prior addenda involved
+same-STRING-different-component or same-string-different-REF collisions.
+Here the collision is same-BASENAME-different-directory — `grep -rln
+"SkillCard" src/` alone still returns both files with no signal to prefer
+one, because both are legitimately named `SkillCard.jsx`. The disambiguator
+is the RELATIVE import (`import SkillCard from './SkillCard'` inside
+`skill-hub/ui/SkillCategorySection.jsx` resolves to the sibling file in
+`skill-hub/ui/`, not the one in `skill/ui/`) — a check that requires reading
+the importer's own directory, not just the imported filename.
+
+**Actionable pattern, restated for basename collisions**: when a fix/AFS
+names `<Component>.jsx` as the owner of a handle, `find src -iname
+"<Component>.jsx"` (not just `grep`) BEFORE trusting the path — if more than
+one file shares the basename, trace which one the surface's actual import
+chain resolves to (`grep -rn "SkillCard" <surface-entry-point>.jsx` then
+read that import's relative/aliased path literally) before adding to or
+reusing either file's testid. Two components can legitimately have the same
+name in an FSD-style `features/<domain>/ui/` layout — the directory is part
+of the identity, not decoration.
