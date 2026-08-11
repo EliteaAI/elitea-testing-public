@@ -45,3 +45,12 @@ product defect — documented in the AFS as an automation-only interaction quirk
 `open_icon_picker()`, `select_icon_option()`, `get_header_icon_src()`.
 `automation/pages/agents_list_page.py` — `entity_card`, `entity_card_icon`,
 `get_card_icon_src()`. Test: `automation/tests/ui/agents/test_agent_icon_management.py`.
+
+**Confirmed again on Skills (ELITEA-2428, 2026-08-11):** a skill created via the
+live UI form (no icon ever selected) renders zero `<img>` inside `entity-card-icon`
+on `/skills/all` — only the generic SVG glyph. `SkillsListPage` therefore does NOT
+carry a `get_card_icon_src()`/`entity-card-icon-img` field at all (would be
+unreferenced dead code for every case whose fixture is icon-less); it only has
+`entity_card_icon` (container) + `card_icon_locator(name)`, asserting container
+visibility. Add the img field only when a future Skills case's fixture actually
+has a custom icon.
