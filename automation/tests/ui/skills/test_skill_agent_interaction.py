@@ -1,10 +1,13 @@
 """Interact with Skills from Agent (ELITEA-1735).
 
-Verifies that skills attached to an agent can be invoked selectively via
-the "~<skill-name>" mention syntax, and that a plain message (no mention)
-does not apply any attached skill's formatting.
+Verifies skill invocation modes for agents with attached skills:
+1. V1 Explicit invocation: "~<skill-name>" mention syntax triggers the skill
+2. V2 Autonomous invocation: skill auto-applies when user message matches
+   the skill's description trigger condition
+3. Plain messages that don't match any skill's trigger should NOT apply skills
 
 Spec: test-specs/skills/l3_interact-with-skills-from-agent_ELITEA-1735.md
+Related: GitHub issue #5698 (Skills V2 - Autonomous Invocation)
 """
 
 import logging
@@ -28,34 +31,51 @@ AI_RESPONSE_TIMEOUT = 60_000
 
 logger = logging.getLogger("elitea.tests.skills")
 
+# Skill 1: Uppercase formatting
+# Description is the V2 autonomous trigger condition - LLM reads this to decide relevance
 SKILL_1_NAME = "elitea-1735-skill-uppercase"
+SKILL_1_DESCRIPTION = (
+    "Use this skill ONLY when user explicitly requests FORMAL or POLITE tone"
+)
 SKILL_1_INSTRUCTIONS = (
-    "Always respond with the exact text the user asked for, but convert the "
-    "ENTIRE output to UPPER CASE letters. Do not use any lowercase letters "
-    "in your response."
+    "CRITICAL: You MUST convert ALL text in your response to UPPER CASE letters. "
+    "Do NOT use any lowercase letters. Do NOT explain or interpret the text - "
+    "just output it in UPPER CASE. Example: 'hello world' becomes 'HELLO WORLD'."
 )
+
+# Skill 2: Underscore formatting
 SKILL_2_NAME = "elitea-1735-skill-underscore"
-SKILL_2_INSTRUCTIONS = (
-    "Always respond with the exact text the user asked for, but replace "
-    "every space between words with an underscore character _ so the "
-    "output is underscore_delimited like_this."
+SKILL_2_DESCRIPTION = (
+    "Use this skill ONLY when user explicitly requests FUN or PLAYFUL formatting"
 )
+SKILL_2_INSTRUCTIONS = (
+    "CRITICAL: You MUST replace ALL spaces between words with underscore _ characters. "
+    "Do NOT explain or interpret the text - just output it with underscores. "
+    "Example: 'hello world' becomes 'hello_world'."
+)
+
 AGENT_NAME = "elitea-1735-skills-agent"
 
-# Plain question for Step 6 - agent should answer normally without applying skills
+# Plain question - should NOT trigger any skill (no trigger keyword, no ~mention)
 PLAIN_QUESTION = "Hello, how are you today?"
 
-# Neutral text for skill mention tests (Steps 7-8)
-# Skills will transform this text literally according to their instructions
+# V2 autonomous trigger messages - match skill description trigger conditions
+AUTONOMOUS_TRIGGER_FORMAL = "Please respond in a formal polite tone: The quick brown fox"
+AUTONOMOUS_TRIGGER_FUN = "Make this fun and playful: The quick brown fox"
+
+# Neutral text for explicit ~mention tests
 NEUTRAL_TEXT_FOR_SKILL = "The quick brown fox jumps over the lazy dog"
 
 
-def _create_skill(page, name: str, instructions: str) -> int:
+def _create_skill(page, name: str, instructions: str, description: str) -> int:
     """Create a skill via the UI and return its numeric ID.
 
-    Mirrors the create flow in test_skill_management.py: fill the form
-    (name / description / CodeMirror instructions), save, and confirm the
-    nav-blocker dialog that fires on every save from the create form.
+    Args:
+        page: Playwright page instance.
+        name: Skill name.
+        instructions: Skill instructions (what the skill does).
+        description: Skill description - this is the V2 autonomous trigger
+            condition that the LLM reads to decide if the skill is relevant.
     """
     list_page = SkillsListPage(page)
     list_page.navigate_to_create()
@@ -65,7 +85,7 @@ def _create_skill(page, name: str, instructions: str) -> int:
     form_page.fill_form(
         name=name,
         instructions=instructions,
-        description=f"ELITEA-1735 automation skill — {name}",
+        description=description,
     )
     form_page.wait_for_form_validation()
     assert form_page.is_save_enabled(), (
@@ -81,41 +101,49 @@ def _create_skill(page, name: str, instructions: str) -> int:
 
 
 class TestInteractWithSkillsFromAgent:
-    """Interact with Skills from Agent (ELITEA-1735, l3/p2)."""
+    """Interact with Skills from Agent (ELITEA-1735, l3/p2).
+
+    Tests both V1 explicit (~mention) and V2 autonomous skill invocation.
+    """
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-1735_interact-with-skills-from-agent.md",
         "onetest-ai Test Case link",
     )
+    @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5698", name="Skills V2 Epic")
     @pytest.mark.p2
     @pytest.mark.regression
     def test_interact_with_skills_from_agent(self, page, agent_api, skill_api):
-        """Create two skills, attach both to an agent, and verify selective
-        invocation via the "~<skill-name> <prompt>" mention syntax.
+        """Create two skills, attach both to an agent, and verify:
+        - Plain messages (no trigger) do NOT apply skills
+        - V2 autonomous: messages matching skill description trigger the skill
+        - V1 explicit: ~<skill-name> mention always triggers the skill
 
-        Steps (AFS test-specs/skills/l3_interact-with-skills-from-agent_ELITEA-1735.md):
-        1. Create Skill 1 (uppercase-formatting instructions).
-        2. Create Skill 2 (underscore-formatting instructions).
+        Steps:
+        1. Create Skill 1 (uppercase, triggered by "formal/polite" keywords).
+        2. Create Skill 2 (underscore, triggered by "fun/playful" keywords).
         3. Create an Agent.
         4-5. Attach both skills to the agent via the Skills section.
-        6. Send a plain message (no mention) — should NOT apply skill formatting.
-        7. Send "~<skill-1> <prompt>" — should return entirely UPPER CASE.
-        8. Send "~<skill-2> <prompt>" — should return underscore-delimited.
+        6. Plain message — should NOT apply any skill formatting.
+        7. V2 autonomous trigger for Skill 1 — should return UPPER CASE.
+        8. V2 autonomous trigger for Skill 2 — should return underscore_delimited.
+        9. V1 explicit ~<Skill 1> mention — should return UPPER CASE.
+        10. V1 explicit ~<Skill 2> mention — should return underscore_delimited.
         """
         skill_1_id = None
         skill_2_id = None
         agent_id = None
-        # Soft failures list — record failures here instead of raising immediately,
-        # so steps 7-8 still execute and report. If anything landed here, the test
-        # fails at the very end via pytest.fail().
-        soft_failures = []
 
         try:
-            with allure.step("Step 1 — Create Skill 1 (uppercase-formatting instructions)"):
-                skill_1_id = _create_skill(page, SKILL_1_NAME, SKILL_1_INSTRUCTIONS)
+            with allure.step("Step 1 — Create Skill 1 (uppercase, formal/polite trigger)"):
+                skill_1_id = _create_skill(
+                    page, SKILL_1_NAME, SKILL_1_INSTRUCTIONS, SKILL_1_DESCRIPTION
+                )
 
-            with allure.step("Step 2 — Create Skill 2 (underscore-formatting instructions)"):
-                skill_2_id = _create_skill(page, SKILL_2_NAME, SKILL_2_INSTRUCTIONS)
+            with allure.step("Step 2 — Create Skill 2 (underscore, fun/playful trigger)"):
+                skill_2_id = _create_skill(
+                    page, SKILL_2_NAME, SKILL_2_INSTRUCTIONS, SKILL_2_DESCRIPTION
+                )
                 assert skill_2_id != skill_1_id, (
                     "Skill 2 should have a distinct ID from Skill 1"
                 )
@@ -161,7 +189,7 @@ class TestInteractWithSkillsFromAgent:
                 )
 
             with allure.step(
-                "Step 6 — Plain message (no mention) should NOT apply skill formatting"
+                "Step 6 — Plain message (no trigger keywords) should NOT apply skills"
             ):
                 initial_count = detail_page.get_chat_message_count()
                 detail_page.send_chat_message(PLAIN_QUESTION, timeout=UI_ELEMENT_TIMEOUT)
@@ -169,31 +197,62 @@ class TestInteractWithSkillsFromAgent:
                     initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT,
                 )
                 plain_response = detail_page.get_last_chat_response_text()
-                logger.info("Plain response (no mention): %r", plain_response)
+                logger.info("Plain response (no trigger): %r", plain_response)
 
-                # Without ~mention, agent should NOT apply skill formatting.
-                # The response should be a normal agent reply (asking what to do
-                # with the text), NOT the input text transformed by skills.
+                # Plain question has no trigger keywords (formal/polite/fun/playful)
+                # so neither skill should be applied
                 alpha_chars = [c for c in plain_response if c.isalpha()]
-
-                # Check that skills were NOT applied (response is not all uppercase)
                 is_all_uppercase = alpha_chars and all(c.isupper() for c in alpha_chars)
-                # Check that underscore skill was NOT applied
                 has_underscores = "_" in plain_response
 
-                # Plain question should get a normal response, not skill-formatted
-                if is_all_uppercase and has_underscores:
-                    soft_failures.append(
-                        f"Plain message (no ~mention) unexpectedly had skill formatting applied: "
-                        f"got {plain_response!r}"
-                    )
-                elif is_all_uppercase:
-                    soft_failures.append(
-                        f"Plain message appears to have uppercase skill applied: "
-                        f"got {plain_response!r}"
-                    )
+                assert not is_all_uppercase, (
+                    f"Plain message should NOT trigger uppercase skill: {plain_response!r}"
+                )
+                assert not has_underscores, (
+                    f"Plain message should NOT trigger underscore skill: {plain_response!r}"
+                )
 
-            with allure.step("Step 7 — ~<Skill 1> mention invocation returns UPPER CASE"):
+            with allure.step(
+                "Step 7 — V2 autonomous: 'formal polite' trigger returns UPPER CASE"
+            ):
+                detail_page.clear_embedded_chat(timeout=UI_ELEMENT_TIMEOUT)
+                initial_count = detail_page.get_chat_message_count()
+                detail_page.send_chat_message(
+                    AUTONOMOUS_TRIGGER_FORMAL, timeout=UI_ELEMENT_TIMEOUT
+                )
+                detail_page.wait_for_chat_response(
+                    initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT,
+                )
+                formal_response = detail_page.get_last_chat_response_text()
+                logger.info("V2 autonomous formal/polite response: %r", formal_response)
+                alpha_chars = [c for c in formal_response if c.isalpha()]
+                assert alpha_chars, (
+                    f"Formal trigger response has no alphabetic chars: {formal_response!r}"
+                )
+                assert all(c.isupper() for c in alpha_chars), (
+                    f"V2 autonomous: 'formal polite' should trigger uppercase skill, "
+                    f"got: {formal_response!r}"
+                )
+
+            with allure.step(
+                "Step 8 — V2 autonomous: 'fun playful' trigger returns underscore_delimited"
+            ):
+                detail_page.clear_embedded_chat(timeout=UI_ELEMENT_TIMEOUT)
+                initial_count = detail_page.get_chat_message_count()
+                detail_page.send_chat_message(
+                    AUTONOMOUS_TRIGGER_FUN, timeout=UI_ELEMENT_TIMEOUT
+                )
+                detail_page.wait_for_chat_response(
+                    initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT,
+                )
+                fun_response = detail_page.get_last_chat_response_text()
+                logger.info("V2 autonomous fun/playful response: %r", fun_response)
+                assert "_" in fun_response, (
+                    f"V2 autonomous: 'fun playful' should trigger underscore skill, "
+                    f"got: {fun_response!r}"
+                )
+
+            with allure.step("Step 9 — V1 explicit: ~<Skill 1> returns UPPER CASE"):
                 detail_page.clear_embedded_chat(timeout=UI_ELEMENT_TIMEOUT)
                 initial_count = detail_page.get_chat_message_count()
                 detail_page.send_chat_message_with_mention(
@@ -205,16 +264,17 @@ class TestInteractWithSkillsFromAgent:
                     initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT,
                 )
                 upper_response = detail_page.get_last_chat_response_text()
-                logger.info("Uppercase skill response: %r", upper_response)
+                logger.info("V1 explicit ~uppercase response: %r", upper_response)
                 alpha_chars = [c for c in upper_response if c.isalpha()]
                 assert alpha_chars, (
-                    f"~{SKILL_1_NAME} response contains no alphabetic characters: {upper_response!r}"
+                    f"~{SKILL_1_NAME} response has no alphabetic chars: {upper_response!r}"
                 )
                 assert all(c.isupper() for c in alpha_chars), (
-                    f"~{SKILL_1_NAME} response should be entirely UPPER CASE, got: {upper_response!r}"
+                    f"V1 explicit ~{SKILL_1_NAME} should return UPPER CASE, "
+                    f"got: {upper_response!r}"
                 )
 
-            with allure.step("Step 8 — ~<Skill 2> mention invocation returns underscore-delimited"):
+            with allure.step("Step 10 — V1 explicit: ~<Skill 2> returns underscore_delimited"):
                 detail_page.clear_embedded_chat(timeout=UI_ELEMENT_TIMEOUT)
                 initial_count = detail_page.get_chat_message_count()
                 detail_page.send_chat_message_with_mention(
@@ -226,27 +286,13 @@ class TestInteractWithSkillsFromAgent:
                     initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT,
                 )
                 underscore_response = detail_page.get_last_chat_response_text()
-                logger.info("Underscore skill response: %r", underscore_response)
+                logger.info("V1 explicit ~underscore response: %r", underscore_response)
                 assert "_" in underscore_response, (
-                    f"~{SKILL_2_NAME} response should use '_' between words, "
+                    f"V1 explicit ~{SKILL_2_NAME} should return underscore_delimited, "
                     f"got: {underscore_response!r}"
-                )
-                alpha_chars = [c for c in underscore_response if c.isalpha()]
-                assert not (alpha_chars and all(c.isupper() for c in alpha_chars)), (
-                    f"~{SKILL_2_NAME} response should NOT be forced UPPER CASE "
-                    f"(that is Skill 1's formatting), got: {underscore_response!r}"
-                )
-
-            if soft_failures:
-                pytest.fail(
-                    "Soft assertion(s) failed:\n" + "\n".join(soft_failures)
                 )
 
         finally:
-            # Cleanup per AFS: delete agent first (teardown hygiene), then both
-            # skills, tolerating individual failures so one bad delete doesn't
-            # skip the rest (mirrors the clean_skill fixture pattern in
-            # test_skill_management.py).
             if agent_id is not None:
                 try:
                     agent_api.delete_agent(agent_id)

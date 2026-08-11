@@ -537,9 +537,18 @@ class TestBlockedToolLiveReload:
             guardrails = GuardrailsAdminPage(admin_page)
             guardrails.navigate_to_guardrails()
 
-        with allure.step("Step 2 — Verify get_issue tool is NOT blocked initially"):
+        with allure.step("Step 2 — Ensure get_issue tool is NOT blocked (cleanup if needed)"):
+            # Self-healing: remove blocked tool if left over from previous run
+            if guardrails.is_tool_blocked(TEST_TOOL):
+                logger.warning("Tool '%s' was already blocked - cleaning up", TEST_TOOL)
+                guardrails.remove_blocked_tool(TEST_TOOL)
+                guardrails.remove_empty_toolkit_containers()
+                guardrails.save_configuration()
+                admin_page.reload()
+                guardrails.wait_for_page_load()
+
             assert not guardrails.is_tool_blocked(TEST_TOOL), (
-                f"Tool '{TEST_TOOL}' should NOT be blocked initially"
+                f"Tool '{TEST_TOOL}' should NOT be blocked after cleanup"
             )
             assert not guardrails.has_reload_required_badge("Blocked Tools"), (
                 "Blocked Tools should NOT have 'Reload required' badge"
@@ -653,9 +662,18 @@ class TestSensitiveToolLiveReload:
             guardrails = GuardrailsAdminPage(admin_page)
             guardrails.navigate_to_guardrails()
 
-        with allure.step("Step 2 — Verify get_issue is NOT in Sensitive Action Tools"):
+        with allure.step("Step 2 — Ensure get_issue is NOT in Sensitive Action Tools (cleanup if needed)"):
+            # Self-healing: remove sensitive tool if left over from previous run
+            if guardrails.is_tool_in_sensitive_list(TEST_TOOL, TEST_TOOLKIT):
+                logger.warning("Tool '%s' was already in sensitive list - cleaning up", TEST_TOOL)
+                guardrails.remove_sensitive_tool(TEST_TOOL)
+                guardrails.remove_empty_sensitive_toolkit_blocks()
+                guardrails.save_configuration()
+                admin_page.reload()
+                guardrails.wait_for_page_load()
+
             assert not guardrails.is_tool_in_sensitive_list(TEST_TOOL, TEST_TOOLKIT), (
-                f"Tool '{TEST_TOOL}' should NOT be in sensitive list initially"
+                f"Tool '{TEST_TOOL}' should NOT be in sensitive list after cleanup"
             )
             assert not guardrails.has_reload_required_badge("Sensitive Action Tools"), (
                 "Sensitive Action Tools should NOT have 'Reload required' badge"
