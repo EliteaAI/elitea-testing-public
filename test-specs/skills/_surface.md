@@ -346,6 +346,37 @@ Distinct from the valid-import round trip (ELITEA-1737/1738, above the
   Test: `automation/tests/ui/skills/test_skill_back_navigation.py`.
   Full details: `test-specs/skills/l2_skill-editor-back-button-returns-to-skills-list_ELITEA-2429.md`.
 
+## Edit existing skill — Name/Description/Instructions persistence (ELITEA-2431) — `EditSkill.jsx` (`SkillDetailPage`, extends `SkillFormPage`)
+
+- **Confirmed live, no testid gaps.** The detail/edit page reuses every
+  field handle already wired on `SkillFormPage` — `skill-name-input-field`,
+  `skill-description-input-field`, `skill-instructions-editor-content`,
+  `skill-save-button`.
+- **The edit-flow Save button is the SAME `skill-save-button` testid as the
+  create-flow Save, but a DIFFERENT hook and outcome — do not reuse
+  `save_and_wait_for_navigation()` for an edit.** Editing an existing skill
+  drives `useSaveSkill.hooks.js`'s `onSave()`: `PUT
+  /api/v2/elitea_core/skill/prompt_lib/{project}/{skillId}` (no
+  `versionId` segment — updates name/description AND the currently
+  selected version's instructions in one call) → `200 OK`, then
+  `resetForm()` + `toastSuccess('Skill saved')` — **no navigation**. The
+  create-flow's `save_and_wait_for_navigation()` completion check
+  (`"/skills/all/" in url and "/create" not in url`) is already true
+  *before* the click on a detail page, so calling it for an edit-save
+  would return immediately without ever waiting for the PUT — a silent
+  false pass, not a real wait.
+- New method `SkillDetailPage.save_edits()` added for this (additive-only,
+  no existing method body touched): waits on the PUT response
+  (URL-ends-with-skillId + method PUT) and the reused `toast-message`
+  testid (`SkillDetailPage.version_toast_message`, already wired for the
+  Save-As-Version flow) showing exact text `"Skill saved"`.
+- Confirmed live: editing Name/Description/Instructions and clicking Save
+  persists all three; navigating away (Skills list) and re-opening the
+  skill (list card click by its NEW name — `SkillsListPage.
+  click_skill_card()`, pre-existing from ELITEA-2435) shows the updated
+  values, not the originals.
+  Full details: `test-specs/skills/l3_skill-edit-name-description-instructions_ELITEA-2431.md`.
+
 ## Create form — Save-button mandatory-field gating (ELITEA-2430) — `CreateSkillForm.jsx`
 
 - **Confirmed live, no testid gaps.** Every element the case needs
