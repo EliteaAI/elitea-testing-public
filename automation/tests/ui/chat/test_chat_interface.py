@@ -168,7 +168,6 @@ class TestMessageActions:
         with allure.step("Step 1 — Navigate to chat page"):
             chat = ChatPage(page)
             chat.navigate_to_chat(conversation_id=conversation_id)
-            chat.dismiss_banner_if_present()
 
         with allure.step("Step 2 — Send a message"):
             test_message = "Message to copy"
@@ -178,7 +177,6 @@ class TestMessageActions:
 
         with allure.step("Step 3 — Wait for streaming to complete"):
             chat.wait_for_network(timeout=AI_RESPONSE_TIMEOUT)
-            chat.dismiss_banner_if_present()
 
         with allure.step("Step 4 — Get AI response text"):
             ai_response_text = chat.get_last_message_text()
@@ -484,7 +482,6 @@ class TestContextAndSettings:
         with allure.step("Step 1 — Navigate to chat page"):
             chat = ChatPage(page)
             chat.navigate_to_chat(conversation_id=conversation_id)
-            chat.dismiss_banner_if_present()
 
         with allure.step("Step 2 — Send a message to populate Context Budget"):
             initial_count = chat.get_message_count()
@@ -492,7 +489,6 @@ class TestContextAndSettings:
             chat.wait_for_input_ready()
             chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
             chat.wait_for_network(timeout=AI_RESPONSE_TIMEOUT)
-            chat.dismiss_banner_if_present()
 
         with allure.step("Step 3 — Expand Participants panel if needed"):
             participants_toggle = page.locator('button').filter(has=page.locator('img')).filter(
@@ -577,7 +573,6 @@ class TestSearchAndErrorHandling:
         with allure.step("Step 1 — Navigate to chat page"):
             chat = ChatPage(page)
             chat.navigate_to_chat(conversation_id=conversation_id)
-            chat.dismiss_banner_if_present()
 
         with allure.step("Step 2 — Open search conversations"):
             chat.open_search_conversations()
