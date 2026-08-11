@@ -154,3 +154,20 @@ wired to something real, not silently short-circuited by a bad boolean or an
 always-true guard) — the exact class of bug the review findings in this file
 exist to catch in the first place, so it's worth catching in your own new
 code before shipping it.
+
+## Confirmed a fourth time — ELITEA-2353 fix-only pass (commit d1e7b7d4)
+
+Same #1434 Montserrat-font-404 signature, this time on
+`test_agent_hub_filter_multiple_categories.py`'s Step 7 console-error
+assertion (no network-response side-channel in this test, so only the
+console-message filter was needed — unlike the ELITEA-2361 case above).
+Took 11 fresh re-runs before it fired (1/12 total) — noticeably noisier to
+reproduce than the earlier 1/6 occurrence; don't give up after only 3-6
+clean runs when chasing this specific known defect, budget more attempts.
+Copied `_is_known_1434_montserrat_font_404` verbatim into the new file
+(same repo convention as `_is_known_554_toolkits_404` etc. — one filter
+function per spec file, not a shared cross-file import) rather than
+factoring it into a shared helper module; four independent copies now exist
+across the suite for this one issue. Worth flagging to the lead as a
+tech-debt candidate (extract to a shared `known_defects.py`/similar) if a
+5th copy appears.
