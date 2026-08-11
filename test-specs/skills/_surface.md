@@ -345,3 +345,33 @@ Distinct from the valid-import round trip (ELITEA-1737/1738, above the
   `get_skill_card_names()` (mirror `AgentsListPage`'s equivalents).
   Test: `automation/tests/ui/skills/test_skill_back_navigation.py`.
   Full details: `test-specs/skills/l2_skill-editor-back-button-returns-to-skills-list_ELITEA-2429.md`.
+
+## Create form — Save-button mandatory-field gating (ELITEA-2430) — `CreateSkillForm.jsx`
+
+- **Confirmed live, no testid gaps.** Every element the case needs
+  (`skill-name-input-field`, `skill-description-input-field`,
+  `skill-instructions-editor-content`, `skill-save-button`) is already
+  wired on `SkillFormPage` — no `add-data-testid` round-trip needed.
+- Save-state gating (`Name` and `Description` both required, `Instructions`
+  required but held constant/filled throughout the case) is 100%
+  client-side, synchronous Formik/yup validation
+  (`skillValidationSchema.validation.js`) — confirmed live, zero network
+  calls fire on field edit; the Save button's `disabled` attribute flips
+  immediately.
+- Per-field MUI helper text ("Name is required" / "Description is
+  required") renders live but carries **no `data-testid`**
+  (`CreateSkillForm.jsx`'s `helperText={formik.touched?.x && formik.errors.x}`
+  — a plain MUI helper-text string, not a dedicated node like the
+  Build-with-AI review form's `review-name-helper-text`). Out of scope for
+  ELITEA-2430 — the case only asserts the Save button's enabled/disabled
+  state, never the helper text's content, so no testid was requested.
+- **Page-object gap (implementer work, not a testid gap):**
+  `SkillFormPage` has `set_description()` (click + `select_text()` +
+  Backspace + type — reliably clears a *populated* field) but no
+  symmetric `set_name()`. `fill_form()`'s internal `_fill_text_input()`
+  (Ctrl+A + type) does NOT reliably clear a populated field to empty (an
+  empty `type("")` after Ctrl+A leaves the field's prior value in place).
+  ELITEA-2430 needs to clear a *populated* Name field (case step 6) — add
+  `SkillFormPage.set_name(name: str)` mirroring `set_description()`
+  exactly.
+  Full details: `test-specs/skills/l3_skill-creation-mandatory-fields-validation_ELITEA-2430.md`.
