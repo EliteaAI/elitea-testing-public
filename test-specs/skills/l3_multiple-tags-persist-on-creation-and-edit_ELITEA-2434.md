@@ -57,9 +57,17 @@
    - **Verify**: `get_tags() == ["tag1", "tag2", "tag3", "tag4"]` on the
      freshly-loaded page — confirmed live, all four tags (2 from creation
      + 2 from the later edit) persist together through a full backend
-     round trip. Also verify the skill's card in `/skills/all` renders all
-     four tag chips (`SkillsListPage.get_card_tags(skill_name)` — order
-     not asserted at the card level, only membership).
+     round trip. Also verify the skill's card in `/skills/all` — **amended
+     during implementation** (case-text drift, see Known Defects
+     Clarification #1 below): `CardTagSection.jsx` caps a card at
+     `MAX_NUMBER_TAGS_SHOWN = 2` individually-rendered tag chips regardless
+     of how many tags the skill actually has, so a 4-tag skill's card never
+     renders 4 chips. The live-accurate check is:
+     `SkillsListPage.get_card_tags(skill_name)` returns exactly the 2
+     rendered chips, both members of the 4-tag set, **and**
+     `SkillsListPage.get_card_tag_overflow_text(skill_name) == "+2"`
+     (new page-object method, ELITEA-2434) proving the other 2 aren't
+     silently dropped, just collapsed into the overflow badge.
 
 ## Expected Results
 - Tags committed before the first Save (create flow) are included in the
@@ -130,10 +138,25 @@ No testid gaps for this case — every element is already wired.
   persisted tag list without relying on client-side state.
 
 ## Known Defects Found During Exploration
-None found. (Unlike ELITEA-2433, this case's own test data — `tag1`
-through `tag4` — contains no hyphens, so the Tags-field hyphen-rejection
-behavior documented in `EliteaAI/elitea-testing-public#1445` does not
-affect this case; no clarification needed here.)
+- **[CLARIFICATION]** (added during implementation) Step 5's original
+  wording assumed a Skill card in `/skills/all` renders every one of its
+  tags as an individual chip. Confirmed live/source-side
+  (`EliteaUI/src/components/CardTagSection.jsx`,
+  `MAX_NUMBER_TAGS_SHOWN = 2`): a card renders **at most 2** tag chips
+  regardless of the skill's actual tag count, with a "+N" overflow badge
+  (`entity-card-tag-overflow` testid) covering the rest. This is intentional
+  UI design (a card is a compact summary), not a persistence defect — the
+  detail-page form (step 5's `get_tags()` check) still proves all 4 tags
+  are correctly persisted server-side. Case-text drift, not a product
+  defect; the reverse-masking-safe assertion is: 2 chips rendered (both
+  real members of the 4-tag set) + overflow badge reads `"+2"`. Not filed
+  as a tracker issue (cosmetic/UI-design fact, not a behavior bug) — noted
+  here so a future analyst/implementer on a card-tag assertion doesn't
+  re-derive this.
+- No other defects found. (Unlike ELITEA-2433, this case's own test data —
+  `tag1` through `tag4` — contains no hyphens, so the Tags-field
+  hyphen-rejection behavior documented in
+  `EliteaAI/elitea-testing-public#1445` does not affect this case.)
 
 ## Blocked Steps
 None.

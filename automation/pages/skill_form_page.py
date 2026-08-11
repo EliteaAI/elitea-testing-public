@@ -99,6 +99,13 @@ class SkillFormPage(BasePage):
     # ``select_existing_tag()``.
     SKILL_TAG_OPTION = '[data-testid="skill-tag-option-{}"]'
 
+    # Dynamic (runtime-parameterized) testid template — a committed tag
+    # chip's delete icon, keyed by tag name (ELITEA-2433). Added via
+    # add-data-testid (EliteaUI CreateSkillForm.jsx's ``chipDeleteTestId``
+    # prop on ``TagEditor``/``AutoCompleteDropDown``, mirroring the existing
+    # ``getOptionTestId`` pattern) — see ``remove_tag()``.
+    SKILL_TAG_CHIP_DELETE = '[data-testid="skill-tag-chip-delete-{}"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -248,6 +255,26 @@ class SkillFormPage(BasePage):
         option.click()
         self.page.wait_for_timeout(200)
         logger.info("Selected existing tag: %r", tag_name)
+
+    @action("Remove a committed tag chip")
+    def remove_tag(self, tag_name: str, timeout: int = 5000):
+        """Remove a committed tag chip by clicking its delete icon.
+
+        Clicking the chip's label/body does NOT remove it — only the
+        delete icon (a ``RemoveIcon`` SVG child) does. Located via the
+        name-keyed ``skill-tag-chip-delete-{tag_name}`` testid (ELITEA-2433,
+        added via add-data-testid) using the class-level
+        :attr:`SKILL_TAG_CHIP_DELETE` template constant.
+
+        Args:
+            tag_name: Exact tag text of the chip to remove.
+            timeout: Maximum wait time in milliseconds for the icon to appear.
+        """
+        delete_icon = self.page.locator(self.SKILL_TAG_CHIP_DELETE.format(tag_name))
+        delete_icon.wait_for(state="visible", timeout=timeout)
+        delete_icon.click()
+        self.page.wait_for_timeout(200)
+        logger.info("Removed tag: %r", tag_name)
 
     def _fill_text_input(self, locator, text: str):
         """Fill a standard MUI text input with React-safe keyboard events.
@@ -415,6 +442,56 @@ class SkillFormPage(BasePage):
         )
         self.wait_for_network(timeout=5000)
         logger.info("Saved skill — URL: %s", self.page.url)
+
+    @action("Save skill (create flow) and capture the POST payload + status")
+    def save_and_wait_for_navigation_capturing_payload(self, timeout: int = 15000) -> tuple[dict, int]:
+        """Same as :meth:`save_and_wait_for_navigation`, but also captures the
+        create-flow ``POST .../elitea_core/skills/prompt_lib/{project_id}``
+        request body AND response status (ELITEA-2434 — proves pre-save tags
+        ride the create payload, and that the create actually succeeded with
+        a ``201``, not just that the eventual redirect happened).
+
+        DECLARED IMPROVISATION — reads the body via a temporary
+        ``page.route()`` interceptor (reading ``route.request.post_data_json``
+        inside the handler, then ``route.continue_()``) rather than
+        ``response.request.post_data_json`` / ``Page.expect_request``, mirroring
+        the pattern already used in ``SecretsPage`` (``secrets_page.py``) for
+        the same documented reason: interception reads the body BEFORE the
+        request leaves the browser, unaffected by the post-hoc-read timing gap.
+        The status is captured separately via ``page.expect_response()``
+        wrapping the same save action — the two mechanisms are independent
+        listeners on the same request/response pair, so both fire from the
+        one click. No sanctioned canon pattern covers Playwright
+        request-body capture in this project yet — flagged for the lead per
+        `.agents/role-overrides.md` § Declared-improvisation protocol.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the final URL change.
+
+        Returns:
+            A ``(payload, status)`` tuple: the parsed JSON body of the
+            create-flow POST request, and its HTTP response status code.
+        """
+        captured: dict = {}
+        route_pattern = "**/elitea_core/skills/prompt_lib/**"
+
+        def _capture_post_body(route):
+            if route.request.method == "POST":
+                captured["post_data_json"] = route.request.post_data_json
+            route.continue_()
+
+        self.page.route(route_pattern, _capture_post_body)
+        try:
+            with self.page.expect_response(
+                lambda r: "/elitea_core/skills/prompt_lib/" in r.url
+                and r.request.method == "POST",
+                timeout=timeout,
+            ) as response_info:
+                self.save_and_wait_for_navigation(timeout=timeout)
+            status = response_info.value.status
+        finally:
+            self.page.unroute(route_pattern, _capture_post_body)
+        return captured.get("post_data_json"), status
 
     # ------------------------------------------------------------------
     # Read field values

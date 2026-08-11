@@ -43,3 +43,15 @@ If a future case needs to assert a request body and reaches for
 `response.request.post_data_json` first (the obvious API), expect it to
 silently return `None` here — reach for `page.route()` from the start instead
 of losing a debug cycle rediscovering this.
+
+**Addendum (ELITEA-2434, PR #1446 fix round 1):** a payload-capturing helper
+that uses ONLY `page.route()` (no `expect_response` wrapper) has no way to
+return the response status — and a reviewer/AFS coverage-map check WILL
+demand that status assertion later (e.g. "create-flow POST returns 201").
+Combine both from the start, as the snippet above already shows — don't add
+`page.route()` alone and assume a later round can bolt status capture onto
+the same click without a second listener. Fix was to wrap the existing
+`save_and_wait_for_navigation()` call in
+`with page.expect_response(predicate, timeout=timeout) as response_info:`
+and read `response_info.value.status` after — both listeners fire off the
+same click, no duplicated network wait.

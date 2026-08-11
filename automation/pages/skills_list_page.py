@@ -132,6 +132,16 @@ class SkillsListPage(BasePage):
         )
     )
 
+    tags_panel_empty_state = LocatorDescriptor(
+        testid="tags-panel-empty-state",
+        description=(
+            "Page-header Tags filter panel's empty-state message "
+            "(Categories.jsx, `No {title} to display.`) — rendered instead "
+            "of any chip once the project has zero tags to show. Added "
+            "ELITEA-2433 (was previously untestid'd prose)."
+        )
+    )
+
     # Dynamic (runtime-parameterized) testid template — Tags filter panel's
     # per-tag chip (Categories.jsx StyledChip). See ``filter_by_tag()``.
     TAGS_PANEL_CHIP = '[data-testid="tags-panel-chip-{}"]'
@@ -139,6 +149,13 @@ class SkillsListPage(BasePage):
     # Scoped sub-selector — a skill card's own (non-overflow) tag chip.
     # See ``get_card_tags()``.
     CARD_TAG_CHIP = '[data-testid="entity-card-tag-chip"]'
+
+    # Scoped sub-selector — a skill card's "+N" tag-overflow badge (rendered
+    # instead of further chips once the card holds more tags than
+    # ``CardTagSection.jsx``'s ``MAX_NUMBER_TAGS_SHOWN`` (2) — ELITEA-2434
+    # exploration finding: a skill with >2 tags never renders every tag as
+    # its own chip). See ``get_card_tag_overflow_text()``.
+    CARD_TAG_OVERFLOW = '[data-testid="entity-card-tag-overflow"]'
 
     # Dynamic (runtime-parameterized) testid template — a skill card's own
     # "Pin to top"/"Unpin from top" icon button (shared PinButton.jsx
@@ -294,6 +311,35 @@ class SkillsListPage(BasePage):
             (tag_labels.nth(i).text_content() or "").strip()
             for i in range(tag_labels.count())
         ]
+
+    def get_card_tag_overflow_text(self, skill_name: str) -> str:
+        """Return a specific skill card's "+N" tag-overflow badge text.
+
+        LOCATOR: :attr:`CARD_TAG_OVERFLOW`, scoped to the card the same way
+        as :meth:`get_card_tags`. ``CardTagSection.jsx`` only ever renders
+        the first ``MAX_NUMBER_TAGS_SHOWN`` (2) tags as individual chips —
+        a skill with more tags than that shows this overflow badge instead
+        of a 3rd/4th chip (confirmed live/source-side, ELITEA-2434).
+
+        Args:
+            skill_name: The skill's exact name shown on its card
+                (case-insensitive substring match, consistent with
+                :meth:`skill_exists_in_list`).
+
+        Returns:
+            The overflow badge's text (e.g. ``"+2"``), or ``""`` if the
+            card isn't found or has no overflow badge (≤2 tags).
+        """
+        card_name = self.skill_card_name.filter(
+            has_text=re.compile(re.escape(skill_name), re.IGNORECASE)
+        ).first
+        if card_name.count() == 0:
+            return ""
+        card = self.skill_card.filter(has=card_name).first
+        overflow = card.locator(self.CARD_TAG_OVERFLOW)
+        if overflow.count() == 0:
+            return ""
+        return (overflow.first.text_content() or "").strip()
 
     # ------------------------------------------------------------------
     # Pin/Unpin (ELITEA-2435)
@@ -606,6 +652,29 @@ class SkillsListPage(BasePage):
         self.wait_for_network(timeout=5000)
         self.page.wait_for_timeout(300)
         logger.info("Tag filter cleared — URL: %s", self.page.url)
+
+    @action("Check Tags filter panel empty state")
+    def is_tags_panel_empty(self, timeout: int = 10000) -> bool:
+        """Return True if the page-header Tags filter panel shows its empty state.
+
+        LOCATOR: :attr:`tags_panel_empty_state` (``tags-panel-empty-state``,
+        ``Categories.jsx``) — rendered instead of any ``tags-panel-chip-*``
+        chip once the project has zero tags project-wide. Used as a second,
+        independent signal (alongside the card-level chip check) that a
+        removed tag is gone everywhere, not just off one card.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the empty-state
+                message to render.
+
+        Returns:
+            True if the "No tags to display." message is visible.
+        """
+        try:
+            self.tags_panel_empty_state.wait_for(state="visible", timeout=timeout)
+            return True
+        except PlaywrightTimeoutError:
+            return False
 
     # ------------------------------------------------------------------
     # Import
