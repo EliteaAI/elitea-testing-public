@@ -1,0 +1,5 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Click read out button — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("chat-message-item").last.locator("[data-testid=\"chat-read-out-button\"]").first to be visible
+
+WARNING  tests.ui.voice.test_voice_configuration:test_voice_configuration.py:392 Failed to delete conversation 547: 404 Client Error: Not Found for url: https://dev.elitea.ai/api/v2/elitea_core/conversation/prompt_lib/576/547 — headers: {'Content-Length': '36', 'Content-Type': 'application/json', 'Date': 'Tue, 11 Aug 2026 14:53:51 GMT', 'Vary': 'Cookie'} — body: {'error': 'Conversation not found'}
