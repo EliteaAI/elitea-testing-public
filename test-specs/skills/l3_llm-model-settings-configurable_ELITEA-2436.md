@@ -115,6 +115,28 @@
      component" — traced to the test panel's disabled "Clear the chat"
      button, not to anything this case's steps touch; not filed, noted for
      completeness only per this skill's side-channel discipline).
+   - **Resolved/amended during ELITEA-2436 implementation:** re-running
+     step 3 live during automation found the exact-literal `"OK"` response
+     does NOT reproduce reliably. The reused fixture skill
+     (`elitea-1735-skill-underscore`) applies its own instructions
+     ("replace ALL spaces between words with underscore characters")
+     **unconditionally** inside the SkillTestPanel — the panel always runs
+     the skill's instructions against whatever is typed (there is no
+     separate V2-autonomous trigger-match gate here, unlike agent-level
+     chat) — so the LLM's literal-vs-instruction-following interpretation
+     of `"Say OK"` is genuinely non-deterministic across runs/models: the
+     analyst's run produced `"OK"`; the implementer's re-verification run
+     (same skill, same `gpt-5-mini` model) produced `"Say_OK"` instead. The
+     case's own Pass criterion is "action completes without error and
+     produces the expected UI state" — it does not require a specific
+     literal string — so the shipped test asserts a **substring** match
+     (`"ok"` case-insensitive, which both `"OK"` and `"Say_OK"` satisfy)
+     plus "response is non-empty" and "no error text in the response"
+     instead of the exact-literal equality this AFS originally recorded.
+     This is a reverse-masking-guard case, not a defect: the live
+     product's behavior (skill instructions apply unconditionally in the
+     test panel) is exactly as designed; only the AFS's narrower literal
+     expectation needed loosening to match what's actually stable.
 
 4. Switch to a reasoning model (if available) and verify reasoning effort
    options appear (Low / Medium / High).
