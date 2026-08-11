@@ -34,3 +34,6 @@
 - [Gate red moving between tests](gate_red_recurring_on_different_tests_check_tracker_before_diagnosing.md) — same signature = shared cause, grep tracker
 - [Unshallow siblings before every sync](sibling_clones_can_go_shallow_check_before_sync.md) — shallow clones lie about ahead/behind
 - [--collect-only prints a tree, not node-ids](pytest_collect_only_renders_tree_not_flat_ids.md) — derive ids from source; zsh won't split $VAR
+- [Montserrat font 404 is known-noisy](known_noisy_resource_montserrat_font_404.md) — app-wide CDN flake; caught 4× only by lead's own gate; filter idiom exists
+- [Cherry-pick clean units off a broken trunk](cherry_pick_clean_units_off_broken_trunk.md) — one bad unit doesn't sink the whole batch; land the rest alone
+- [2 Workflow hard-fails on one batch = switch to direct dispatch](workflow_combined_route_unreliable_switch_to_direct_dispatch.md) — combined-route + retry clusters unreliable
