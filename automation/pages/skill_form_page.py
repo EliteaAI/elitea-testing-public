@@ -128,6 +128,38 @@ class SkillFormPage(BasePage):
         self.fill_instructions(instructions)
         logger.info("Filled skill form: name=%r", name)
 
+    @action("Set name")
+    def set_name(self, name: str):
+        """Replace the Name field's content (works on pre-filled fields).
+
+        Mirrors :meth:`set_description` exactly — the wrapper-level click +
+        Ctrl+A pattern in :meth:`fill_form`/:meth:`_fill_text_input` only
+        reliably clears an *empty* field; ``Control+a`` alone does not
+        reliably select existing content first (typed text ends up inserted
+        rather than replacing it, or an empty ``text`` argument leaves the
+        prior value in place since a bare selection with nothing typed over
+        it does not clear the field). Uses ``Locator.select_text()`` +
+        Backspace to reliably clear the real, editable input (addressed
+        directly via its own ``skill-name-input-field`` testid, set on the
+        real element via MUI's ``inputProps``/``htmlInput`` slot, not a raw
+        CSS chain off the ``skill-name-input`` wrapper testid) before typing
+        the replacement — needed for a step that must clear an
+        already-populated Name field back to empty.
+
+        Args:
+            name: New name text (pass ``""`` to clear the field).
+        """
+        field = self.name_input_field
+        field.click()
+        field.select_text()
+        self.page.wait_for_timeout(100)
+        self.page.keyboard.press("Backspace")
+        self.page.wait_for_timeout(100)
+        if name:
+            self.page.keyboard.type(name)
+        self.page.wait_for_timeout(300)
+        logger.info("Set name: %r", name[:60])
+
     @action("Set description")
     def set_description(self, description: str):
         """Replace the Description field's content (works on pre-filled fields).
