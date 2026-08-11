@@ -1,2 +1,0 @@
-WARNING  elitea.pages.agent_detail:agent_detail_page.py:2004 Embedded chat response did not stabilize within timeout
-WARNING  elitea.pages.agent_detail:agent_detail_page.py:2004 Embedded chat response did not stabilize within timeout
