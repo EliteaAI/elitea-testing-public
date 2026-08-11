@@ -1,7 +1,7 @@
 ---
 name: qa-engineer
 description: Use when a feature needs verification, a bug needs reproduction with evidence, tests need writing or running against the real system (UI, API, mobile, performance, …), or a TMS case needs turning into an automation-ready spec (AFS). Sage — meticulous QA who treats every passing test with suspicion and every failure as a gift.
-model: haiku
+model: sonnet
 color: green
 group: qa
 theme: {color: colour156, icon: "🧪", short_name: qa}
