@@ -61,7 +61,7 @@
 |---|---|---|---|---|
 | 1 Open an existing Skill | detail page loads | step 1 | `step 1`: `get_name()`/`get_description()`/`get_instructions()` == seeded values | asserted |
 | 2 Change Name, Description, Instructions to new values | action completes without error, fields reflect new values | step 2 | `step 2`: field getters == new values + Save enabled | asserted |
-| 3 Click Save | control responds, expected next state shown | step 3 | `step 3`: PUT response status 200 + "Skill saved" toast text (inside `save_edits()`) | asserted |
+| 3 Click Save | control responds, expected next state shown; page stays on the same detail URL (no navigation) | step 3 | `step 3`: PUT response status 200 + "Skill saved" toast text + pre/post `page.url` equality (all inside `save_edits()`) | asserted |
 | 4 Navigate back to list, re-open the Skill | detail page loads | step 4 | `step 4`: `skill_exists_in_list(new_name)` + navigation via `click_skill_card()` + `wait_for_page_load()` | asserted |
 | 5 Verify all three values persisted | fields show updated values | step 5 | `step 5`: `get_name()`/`get_description()`/`get_instructions()` == new values | asserted |
 
@@ -149,3 +149,13 @@ None.
   `TestSkillMandatoryFieldsValidation` (all three exercise the same
   Name/Description/Instructions form, just different lifecycle stages:
   create, create-validation, edit-persistence).
+
+**Amended during fix round 1 (review):** `save_edits()` now also captures
+`page.url` before the Save click and asserts it is unchanged after the
+toast + network-idle wait, closing the gap the reviewer flagged — the
+'Skill saved' toast alone can't distinguish "saved, stayed put" from
+"saved, then also navigated away", because `version_toast_message` is an
+app-wide portal toast, not scoped to the detail page. The assertion lives
+inside `save_edits()` (the abstraction-layer method), not inline in the
+test, per the page-object rule that `page.url` reads stay behind a page
+object method rather than leaking into spec files.

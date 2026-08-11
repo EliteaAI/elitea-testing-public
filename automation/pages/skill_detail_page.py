@@ -740,6 +740,16 @@ class SkillDetailPage(SkillFormPage):
         true *before* the click on a detail page, so it would return
         immediately without ever waiting for the PUT to complete.
 
+        Also asserts the browser stays on the SAME detail URL across the
+        Save -- the distinguishing edit-flow behavior the AFS's Step 3
+        Verify text specifies (edit-flow ``PUT`` + toast, no navigation,
+        vs. the create-flow's ``POST`` + redirect). The 'Skill saved' toast
+        alone can't catch a regression that both saves AND navigates: the
+        toast is rendered app-wide via a portal (``version_toast_message``
+        is not scoped to the detail page), so it would still appear even if
+        the click also routed the user away. Comparing ``page.url`` before
+        and after is what actually proves "no navigation".
+
         Args:
             timeout: Maximum wait time in milliseconds.
 
@@ -748,6 +758,7 @@ class SkillDetailPage(SkillFormPage):
             ``PUT .../skill/prompt_lib/{project}/{skillId}`` request.
         """
         skill_id = self.get_skill_id()
+        pre_save_url = self.page.url
         pattern = "/skill/prompt_lib/"
         logger.info("Saving edits to skill %s", skill_id)
         with self.page.expect_response(
@@ -763,6 +774,14 @@ class SkillDetailPage(SkillFormPage):
             f"Expected 'Skill saved' toast, got: {toast_text!r}"
         )
         self.wait_for_network(timeout=5000)
+
+        post_save_url = self.page.url
+        assert post_save_url == pre_save_url, (
+            "Edit-flow Save must NOT navigate away from the skill detail "
+            f"page -- expected to stay on {pre_save_url!r}, but URL is now "
+            f"{post_save_url!r}"
+        )
+
         logger.info("Skill %s edits saved — PUT status=%s", skill_id, response_info.value.status)
         return response_info.value
 
