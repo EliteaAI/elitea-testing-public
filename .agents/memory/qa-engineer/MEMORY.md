@@ -33,3 +33,4 @@
 - [Missing control = defect, not clarification](case_describes_nonexistent_control_is_defect_not_clarification.md) — don't stretch reverse-masking
 - [MCP snapshot refs go stale on canvas](playwright_mcp_snapshot_refs_go_stale_fast_on_pipeline_canvas.md) — target by testid, not [ref=eN]
 - [Corrective testid commits leave orphans](corrective_testid_commit_can_leave_wrong_call_site_wired.md) — grep automation/testids, not the narrative
+- [MUI Tooltip title is app-owned](mui_tooltip_title_content_is_app_owned_testid_able.md) — not #579; testid the JSX directly

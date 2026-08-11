@@ -267,3 +267,39 @@ Distinct from the valid-import round trip (ELITEA-1737/1738, above the
   scope the console-error assertion to the case's own steps, not through
   cleanup.
   Full details: `test-specs/skills/l3_test-panel-uses-selected-skill-version-instructions_ELITEA-2440.md`.
+
+## Card view — per-card fields (ELITEA-2428) — `Card.jsx` (shared, `/skills/all`)
+
+- Card view is the **default** view on fresh `/skills/all` load — no click
+  needed; the toggle's Card-view button is `[pressed]` immediately.
+  Confirmed live via a11y snapshot: no interaction required to see the
+  card grid.
+- View-toggle buttons carry `agent-*`-prefixed testids
+  (`agent-card-view-button` / `agent-table-view-button`) even on the Skills
+  page — **not a defect**, `ViewToggle.jsx`'s default prop values, no
+  override at `Skills.jsx:70`'s `<ViewToggle />` call site. Same naming
+  quirk already documented for `search_input` (`agent-search-input`). Both
+  testids on `main`.
+- Card fields and their testids: icon = `entity-card-icon` (outer) /
+  `entity-card-icon-img` (inner `<img>`) — **on `automation/testids` only**
+  (ELITEA-1899, awaiting human cherry-pick to `main`), no page-object field
+  on `SkillsListPage` yet (only `AgentsListPage` has one — same shared
+  component, straightforward to mirror). Name = `entity-card-name` (on
+  main ✓, existing `SkillsListPage.skill_card_name`). Tags =
+  `entity-card-tag-chip` (on main ✓, existing
+  `SkillsListPage.get_card_tags()`).
+- **Description is NEVER shown on the un-hovered card** — it renders ONLY
+  inside a hover tooltip (MUI `Tooltip`, `role="tooltip"`, ~1s
+  `enterDelay`) triggered by hovering the card's name/title area. Tooltip
+  content = two app-owned `<Typography>` nodes (name, then description),
+  both inside `Card.jsx`'s own `StyledTooltip` `title` JSX — **confirmed
+  live gap: zero `data-testid` on either node**, neither on `main` nor
+  `automation/testids`. This is NOT the #579 third-party-render-node
+  exception (the JSX is app-owned, MUI's `Tooltip` renders arbitrary
+  `title` content verbatim) — a `data-testid="entity-card-description-tooltip"`
+  can and should be added directly to the description `Typography` (only
+  that one; the sibling name/title node doesn't need one yet since no case
+  has asserted it independently of `entity-card-name`). Not yet fixed as
+  of this run (ELITEA-2428 analysis) — implementer work via
+  `add-data-testid`.
+  Full details: `test-specs/skills/l2_skills-card-view-fields_ELITEA-2428.md`.
