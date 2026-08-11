@@ -143,6 +143,14 @@ class AgentHubPage(BasePage):
     # CATEGORY_FILTER_CHIP's `data-selected`, ELITEA-2352).
     LIKE_BUTTON = '[data-testid="catalog-agent-like-button-{}"]'
 
+    # Prefix + state-attribute filter, ELITEA-2355 — matches ANY rendered
+    # like button currently showing data-liked="true", regardless of which
+    # application id it belongs to. Used for dynamic "find a currently-liked
+    # agent" discovery (case Step 2) — same templated-constant discipline as
+    # LIKE_BUTTON above, just unparameterized for the "find the liked one"
+    # direction instead of "read a known id".
+    LIKED_LIKE_BUTTON_PREFIX = '[data-testid^="catalog-agent-like-button-"][data-liked="true"]'
+
     # --- Agent preview modal (AgentModal.jsx) ---
     modal_agent_name = LocatorDescriptor(
         testid="catalog-agent-modal-agent-name",
@@ -606,12 +614,50 @@ class AgentHubPage(BasePage):
                 return app
         return None
 
-    def get_like_button(self, application_id: int):
+    def get_like_button(self, application_id: int, *, first: bool = False):
         """Return the Locator for the like button (heart icon + count) on the
-        agent card matching *application_id* (ELITEA-2354)."""
-        return self.page.locator(self.LIKE_BUTTON.format(application_id))
+        agent card matching *application_id* (ELITEA-2354).
 
-    def get_like_count(self, application_id: int, timeout: int = 10000) -> int:
+        Args:
+            first: When True, scope to ``.first`` — collapses duplicate
+                renders of the SAME agent card across multiple category
+                sections (e.g. Trending + a category rail both render the
+                identical ``catalog-agent-like-button-{id}`` testid;
+                confirmed live, ELITEA-2358's Step 6a). A *dynamically
+                discovered* application id (ELITEA-2354's zero/unliked
+                lookups, ELITEA-2355's liked lookup) has no guarantee it
+                renders in exactly one section, so callers acting on such an
+                id should pass ``first=True`` to avoid a Playwright
+                strict-mode violation. Default False preserves prior
+                behaviour for existing callers that already scope
+                separately (e.g. the modal test's own ``.first`` at the
+                call site).
+        """
+        locator = self.page.locator(self.LIKE_BUTTON.format(application_id))
+        return locator.first if first else locator
+
+    def find_first_liked_application_id(self, timeout: int = 10000) -> int | None:
+        """Return the application id of the first rendered agent card whose
+        like button currently shows ``data-liked="true"`` (ELITEA-2355's
+        dynamic "locate an already-liked agent" discovery — case Step 2), or
+        ``None`` if no card currently renders liked.
+
+        Uses ``.first`` on :attr:`LIKED_LIKE_BUTTON_PREFIX` to collapse
+        duplicate renders of the SAME liked agent across multiple category
+        sections (see :meth:`get_like_button`'s ``first`` docstring) — this
+        method only needs to recover WHICH id is liked, not enumerate every
+        rendered instance.
+        """
+        liked = self.page.locator(self.LIKED_LIKE_BUTTON_PREFIX)
+        try:
+            liked.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return None
+        testid = liked.first.get_attribute("data-testid") or ""
+        suffix = testid.rsplit("-", 1)[-1]
+        return int(suffix) if suffix.isdigit() else None
+
+    def get_like_count(self, application_id: int, timeout: int = 10000, *, first: bool = False) -> int:
         """Return the like button's numeric count (ELITEA-2354) — the count
         ``Typography`` is the only text node inside the button besides the
         icon ``<svg>`` (which has no text).
@@ -626,26 +672,59 @@ class AgentHubPage(BasePage):
         implementation: the cleanup unlike's response returned 204 but a
         same-tick ``get_like_count`` read still showed the pre-unlike value).
         """
-        button = self.get_like_button(application_id)
+        button = self.get_like_button(application_id, first=first)
         button.wait_for(state="visible", timeout=timeout)
         text = button.text_content() or "0"
         return int(text.strip())
 
-    def wait_for_like_count(self, application_id: int, expected_count: int, timeout: int = 10000) -> None:
+    def wait_for_like_count(
+        self, application_id: int, expected_count: int, timeout: int = 10000, *, first: bool = False
+    ) -> None:
         """Wait (Playwright auto-retrying assertion) for the like button's
         text to read *expected_count* (ELITEA-2354) — see
         :meth:`get_like_count`'s docstring for why a retrying wait is
-        required here instead of a one-shot read.
+        required here instead of a one-shot read. ``first`` — see
+        :meth:`get_like_button`.
         """
-        expect(self.get_like_button(application_id)).to_have_text(str(expected_count), timeout=timeout)
+        expect(self.get_like_button(application_id, first=first)).to_have_text(str(expected_count), timeout=timeout)
 
-    def is_agent_liked(self, application_id: int, timeout: int = 5000) -> bool:
+    def wait_for_liked_state(
+        self, application_id: int, liked: bool, timeout: int = 10000, *, first: bool = False
+    ) -> None:
+        """Wait (Playwright auto-retrying assertion) for the like button's
+        ``data-liked`` attribute to read *liked* (ELITEA-2355) — an
+        auto-retrying transition wait, unlike :meth:`is_agent_liked` below.
+
+        The like/unlike DOM update is optimistic-client-side and
+        asynchronous RELATIVE TO the click's own network response resolving
+        (same class of race as :meth:`get_like_count`'s docstring — confirmed
+        live during implementation: immediately after an unlike click's
+        response resolves, a one-shot ``[data-liked="true"]`` visibility
+        check can still find the STALE ``"true"`` state, because
+        ``.wait_for(state="visible")`` only retries for a match to APPEAR —
+        it has no way to wait for a match to disappear/flip). Use this
+        method (not :meth:`is_agent_liked`) whenever asserting a state
+        TRANSITION right after a click; use :meth:`is_agent_liked` for a
+        point-in-time / already-settled read (e.g. a baseline before any
+        action).
+        """
+        button = self.get_like_button(application_id, first=first)
+        expect(button).to_have_attribute("data-liked", "true" if liked else "false", timeout=timeout)
+
+    def is_agent_liked(self, application_id: int, timeout: int = 5000, *, first: bool = False) -> bool:
         """Return True if the like button for *application_id* currently shows
         ``data-liked="true"`` (ELITEA-2354) — same ``data-*`` state-attribute
         precedent as :meth:`is_category_filter_chip_selected`'s
-        ``data-selected``.
+        ``data-selected``. ``first`` — see :meth:`get_like_button`.
+
+        This is a positive-existence, retry-until-APPEARS check — correct
+        for asserting a card IS liked (waits it out if the optimistic update
+        hasn't landed yet), but NOT for asserting a card is NOT/no-longer
+        liked right after a click (see :meth:`wait_for_liked_state`).
         """
         liked_locator = self.page.locator(self.LIKE_BUTTON.format(application_id) + '[data-liked="true"]')
+        if first:
+            liked_locator = liked_locator.first
         try:
             liked_locator.wait_for(state="visible", timeout=timeout)
             return True
@@ -653,12 +732,12 @@ class AgentHubPage(BasePage):
             return False
 
     @action("Click like/unlike button on agent card")
-    def click_like_button(self, application_id: int, timeout: int = 10000):
+    def click_like_button(self, application_id: int, timeout: int = 10000, *, first: bool = False):
         """Click the like button for *application_id*, toggling like/unlike,
         and return the underlying ``/social/like/prompt_lib/...`` network
         response (``201`` on like, ``204`` on unlike — AFS § Network
-        Behavior, ELITEA-2354)."""
-        button = self.get_like_button(application_id)
+        Behavior, ELITEA-2354). ``first`` — see :meth:`get_like_button`."""
+        button = self.get_like_button(application_id, first=first)
         button.wait_for(state="visible", timeout=timeout)
         with self.page.expect_response(
             lambda r: "/social/like/prompt_lib/" in r.url and r.request.method in ("POST", "DELETE"),

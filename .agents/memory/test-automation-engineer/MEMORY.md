@@ -41,3 +41,4 @@
 - [Entity-card list pages](search_highlight_breaks_exact_text_locator.md) — read entity-card-name + .text_content(); scope per-card via .filter(has=…) (3×)
 - [Killed runs orphan test data](killed_background_run_orphans_test_data.md) — backgrounded/SIGKILLed pytest skips finally:; filter by name+id, not id alone
 - [Resume dispatch: trust disk](resume_dispatch_trust_disk_not_prior_session_notes.md) — a prior session's "completed" note can describe uncommitted code; grep first
+- [Positive-existence wait can't assert negative transition](positive_existence_wait_cant_assert_negative_transition.md) — `not is_X()` right after a click races; use `expect().to_have_attribute()` instead
