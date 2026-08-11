@@ -839,6 +839,15 @@ class ChatPage(BasePage):
     # (ELITEA-2085 addition).
     PARTICIPANT_WARNING_ICON = '[data-testid="chat-participant-warning-icon"]'
 
+    # Participant's avatar <img> (EntityIcon -> EliteAImage.jsx, alt="elitea")
+    # inside the EXPANDED PARTICIPANTS panel row — static testid, scoped via
+    # the row's own dynamic testid, same pattern as PARTICIPANT_REMOVE_BUTTON
+    # above (ELITEA-2361 addition; wired only on ParticipantItem.jsx's normal
+    # non-error card branch — canon #511 scope discipline, the misconfigured/
+    # attention-card branch's own EntityIcon call is a different, unexercised
+    # code path).
+    PARTICIPANT_AVATAR = '[data-testid="chat-participant-avatar"]'
+
     # ------------------------------------------------------------------
     # Users participant type (ELITEA-2095) — independent of the Agent/
     # Pipeline/Toolkit/MCP participant work above (different participant
@@ -3923,6 +3932,18 @@ class ChatPage(BasePage):
         row = self.page.locator(self.PARTICIPANT_ROW_PREFIX).filter(has_text=name)
         row.first.wait_for(state="visible", timeout=timeout)
         return row.first
+
+    def get_participant_avatar(self, participant_row, timeout: int = 10000):
+        """Return the avatar ``<img>`` Locator scoped inside *participant_row*
+        (an EXPANDED PARTICIPANTS panel row from
+        :meth:`get_participant_row_by_name`) — testid-based
+        (``PARTICIPANT_AVATAR``, ELITEA-2361), same scoped-static-testid idiom
+        as :meth:`open_agent_participant_settings`'s use of
+        ``PARTICIPANT_EDIT_VIEW_BUTTON``.
+        """
+        avatar = participant_row.locator(self.PARTICIPANT_AVATAR)
+        avatar.wait_for(state="visible", timeout=timeout)
+        return avatar
 
     @action("Open agent participant settings (View settings / Edit agent)")
     def open_agent_participant_settings(self, participant_name: str, timeout: int = 10000):
