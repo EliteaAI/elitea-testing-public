@@ -342,7 +342,6 @@ class TestMultiNodeTopology:
             pipelines.page.reload()
             pipelines.wait_for_network()
             pipelines.wait_for_detail_page_load()
-            pipelines.dismiss_banner_if_present()
             pipelines.wait_for_canvas()
 
         with allure.step("Step 5 — Verify nodes persist after reload"):

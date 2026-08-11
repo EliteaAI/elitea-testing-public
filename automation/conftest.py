@@ -334,6 +334,40 @@ def page(context: BrowserContext) -> Page:
     pg.close()
 
 
+@pytest.fixture(autouse=True)
+def dismiss_banner_after_navigation(page: Page, request):
+    """Dismiss deployment/maintenance banners after navigation.
+
+    Banners (e.g., "Release 2.0.5 - Deployment") overlay the top of the page
+    and intercept clicks on form fields. This fixture wraps page.goto() and
+    page.reload() to automatically dismiss banners after navigation.
+    """
+    from pages.base_page import BasePage
+
+    def _dismiss_banner():
+        base = BasePage(page)
+        base.dismiss_banner_if_present()
+
+    original_goto = page.goto
+    original_reload = page.reload
+
+    def goto_with_banner_dismiss(url, **kwargs):
+        result = original_goto(url, **kwargs)
+        _dismiss_banner()
+        return result
+
+    def reload_with_banner_dismiss(**kwargs):
+        result = original_reload(**kwargs)
+        _dismiss_banner()
+        return result
+
+    page.goto = goto_with_banner_dismiss
+    page.reload = reload_with_banner_dismiss
+    yield
+    page.goto = original_goto
+    page.reload = original_reload
+
+
 # ===========================================================================
 # Screenshot hook — captures only on test failures
 # ===========================================================================

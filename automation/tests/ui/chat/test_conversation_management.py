@@ -513,7 +513,6 @@ class TestConversationIsolation:
             chat = ChatPage(page)
             chat.navigate_to_chat(conversation_id=conversation_id)
             chat.wait_for_page_load()
-            chat.dismiss_banner_if_present()
 
         with allure.step("Step 2 — Verify conversation page loaded correctly"):
             _verify_conversation_page_loaded(chat, conversation_id, page)
