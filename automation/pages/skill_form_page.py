@@ -443,12 +443,13 @@ class SkillFormPage(BasePage):
         self.wait_for_network(timeout=5000)
         logger.info("Saved skill — URL: %s", self.page.url)
 
-    @action("Save skill (create flow) and capture the POST payload")
-    def save_and_wait_for_navigation_capturing_payload(self, timeout: int = 15000) -> dict:
+    @action("Save skill (create flow) and capture the POST payload + status")
+    def save_and_wait_for_navigation_capturing_payload(self, timeout: int = 15000) -> tuple[dict, int]:
         """Same as :meth:`save_and_wait_for_navigation`, but also captures the
         create-flow ``POST .../elitea_core/skills/prompt_lib/{project_id}``
-        request body (ELITEA-2434 — proves pre-save tags ride the create
-        payload, not just the eventual redirect).
+        request body AND response status (ELITEA-2434 — proves pre-save tags
+        ride the create payload, and that the create actually succeeded with
+        a ``201``, not just that the eventual redirect happened).
 
         DECLARED IMPROVISATION — reads the body via a temporary
         ``page.route()`` interceptor (reading ``route.request.post_data_json``
@@ -457,15 +458,19 @@ class SkillFormPage(BasePage):
         the pattern already used in ``SecretsPage`` (``secrets_page.py``) for
         the same documented reason: interception reads the body BEFORE the
         request leaves the browser, unaffected by the post-hoc-read timing gap.
-        No sanctioned canon pattern covers Playwright request-body capture in
-        this project yet — flagged for the lead per
+        The status is captured separately via ``page.expect_response()``
+        wrapping the same save action — the two mechanisms are independent
+        listeners on the same request/response pair, so both fire from the
+        one click. No sanctioned canon pattern covers Playwright
+        request-body capture in this project yet — flagged for the lead per
         `.agents/role-overrides.md` § Declared-improvisation protocol.
 
         Args:
             timeout: Maximum wait time in milliseconds for the final URL change.
 
         Returns:
-            The parsed JSON body of the create-flow POST request.
+            A ``(payload, status)`` tuple: the parsed JSON body of the
+            create-flow POST request, and its HTTP response status code.
         """
         captured: dict = {}
         route_pattern = "**/elitea_core/skills/prompt_lib/**"
@@ -477,10 +482,16 @@ class SkillFormPage(BasePage):
 
         self.page.route(route_pattern, _capture_post_body)
         try:
-            self.save_and_wait_for_navigation(timeout=timeout)
+            with self.page.expect_response(
+                lambda r: "/elitea_core/skills/prompt_lib/" in r.url
+                and r.request.method == "POST",
+                timeout=timeout,
+            ) as response_info:
+                self.save_and_wait_for_navigation(timeout=timeout)
+            status = response_info.value.status
         finally:
             self.page.unroute(route_pattern, _capture_post_body)
-        return captured.get("post_data_json")
+        return captured.get("post_data_json"), status
 
     # ------------------------------------------------------------------
     # Read field values

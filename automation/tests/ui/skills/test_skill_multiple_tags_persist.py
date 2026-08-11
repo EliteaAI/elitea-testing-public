@@ -66,9 +66,14 @@ class TestSkillMultipleTagsPersist:
                     "Save should be enabled once name, description, instructions, and tags are valid"
                 )
 
-            with allure.step("Step 2 — Save and verify the POST payload includes both pre-save tags"):
-                payload = form_page.save_and_wait_for_navigation_capturing_payload(
+            with allure.step(
+                "Step 2 — Save and verify the POST returns 201 with both pre-save tags in the payload"
+            ):
+                payload, status = form_page.save_and_wait_for_navigation_capturing_payload(
                     timeout=FORM_SAVE_TIMEOUT
+                )
+                assert status == 201, (
+                    f"Expected 201 from the create-flow POST, got {status}"
                 )
                 assert payload is not None, "Expected to capture the create-flow POST payload"
                 # Confirmed live/source-side (CreateSkillTabBar.jsx onSave): tags ride

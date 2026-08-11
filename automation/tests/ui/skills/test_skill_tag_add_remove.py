@@ -108,6 +108,14 @@ class TestSkillTagAddRemove:
                     f"Expected no tags on {skill_name!r}'s card after removal, got: {card_tags_after!r}"
                 )
 
+                assert list_page.is_tags_panel_empty(), (
+                    "Expected the page-header Tags filter panel to drop to its "
+                    "empty state ('No tags to display.') once the project's "
+                    "last tag has been removed — a second, independent signal "
+                    "(alongside the card check above) that the tag is gone "
+                    "project-wide, not just off one card."
+                )
+
         finally:
             with allure.step("Cleanup — delete the skill created for this test"):
                 if skill_id is not None:
