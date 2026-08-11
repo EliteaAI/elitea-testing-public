@@ -1,8 +1,38 @@
 ---
 name: Catalog "Start Chat" needs an extra wait beyond open_agent_by_name()
-description: Known defect #1043 — clicking Start Chat within ~200ms of modal-open silently no-ops; open_agent_by_name()'s own wait is insufficient, add page.wait_for_timeout(1000) before the click
+description: Known defect #1043 — clicking Start Chat within ~200ms of modal-open silently no-ops. FIXED 2026-08-11 — the wait now lives INSIDE AgentHubPage.click_start_chat() itself, no per-call-site wait needed any more.
 type: feedback
 ---
+
+## UPDATE (2026-08-11, ELITEA-2360 root-cause debug dispatch)
+
+The wait documented below is now applied **inside**
+`AgentHubPage.click_start_chat()` itself (`automation/pages/agent_hub_page.py`)
+— callers no longer need to add `page.wait_for_timeout(1000)` before calling
+it. This was moved in-method precisely because relying on each call site to
+remember the workaround caused THREE separate implementation attempts
+(ELITEA-2360/2361/2362, across two batch dispatches) to hit this exact race
+100% of the time — each omitted the inline wait. Confirmed via a scripted
+repro matching this suite's own `conftest.py` fixtures: 0/3 navigations
+succeed at <=200ms post-modal-open (deterministic silent no-op — screenshot
+evidence: modal stays fully open, `page.wait_for_url(r"/chat")` times out at
+15000ms every time), 3/3 succeed at >=300ms — same threshold as originally
+documented below. Re-ran the three existing merged callers
+(ELITEA-2368/2369/2075) after the change; all three progressed past Start
+Chat + navigation cleanly (no regression) — two of the three then hit an
+UNRELATED, pre-existing environment flake later in their flow (concurrent-run
+AI-response contention in one solo rerun, a transient DEV-backend 503/CORS
+burst in another, and a separate "Catalog loads before project bootstrap
+completes" cold-start race reproduced even on the ORIGINAL unmodified code) —
+none of these are click_start_chat/#1043-related; don't conflate them if seen
+again.
+
+If you're touching `click_start_chat()` again: the wait is now load-bearing
+for THREE merged callers plus this one — additive-only discipline applies,
+don't remove it or shorten it below ~1s without re-running the 200/300ms
+threshold check documented below.
+
+## Original finding (2026-08-06/07, still accurate as root-cause analysis)
 
 `AgentHubPage.open_agent_by_name()`'s documented ready-signal (waits on the
 modal's `GET .../public_application/prompt_lib/{id}` response AND
