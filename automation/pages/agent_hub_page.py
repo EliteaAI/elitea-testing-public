@@ -75,6 +75,15 @@ class AgentHubPage(BasePage):
         description="Skills tab in Catalog page header (EliteaCatalog.jsx, ELITEA-2370).",
     )
 
+    skills_tab_icon = LocatorDescriptor(
+        testid="catalog-skills-tab-icon",
+        description=(
+            "Lightning-bolt icon inside the Skills tab (EliteaCatalog.jsx, ELITEA-2370) — "
+            "testid added directly to the SkillsIcon svg (EliteaAI/EliteaUI@da16c70a), same "
+            "precedent as version.helpers.jsx's PinIcon."
+        ),
+    )
+
     # Category section heading — dynamic per category name (slugified:
     # lowercase, non-alnum runs -> '-'). Templated class-level constant per
     # .agents/testing.md's dynamic-testid convention.
@@ -101,6 +110,16 @@ class AgentHubPage(BasePage):
     # Agent category filter-rail chip prefix (for querying all agent-scoped chips,
     # ELITEA-2370) — used to count and verify filter chips in the Agents view.
     AGENT_CATEGORY_FILTER_CHIP_PREFIX = '[data-testid^="catalog-agent-category-filter-chip-"]'
+
+    # Skill category filter-rail chip prefix (ELITEA-2370) — same idiom as
+    # AGENT_CATEGORY_FILTER_CHIP_PREFIX above, threaded from SkillsTab via its own
+    # `chipTestIdPrefix="catalog-skill-category-filter-chip"` prop (shared CategoryRail.jsx,
+    # feature-scoped per caller — .agents/testing.md's shared-component testid discipline).
+    # Its prefix swapping with AGENT_CATEGORY_FILTER_CHIP_PREFIX on tab switch (confirmed
+    # live: 11 agent chips -> 0, 0 skill chips -> 11) is this test's primary content-switch
+    # signal — a testid-backed replacement for reading the raw <main> element's text
+    # content, which the testid-only locator policy forbids (see AFS Declared Improvisation).
+    SKILL_CATEGORY_FILTER_CHIP_PREFIX = '[data-testid^="catalog-skill-category-filter-chip-"]'
 
     # Like button (heart icon + count) on an agent card, ELITEA-2354 —
     # dynamic per application id, same idiom as CATEGORY_FILTER_CHIP/
@@ -266,6 +285,45 @@ class AgentHubPage(BasePage):
         Returns a Locator matching ALL agent-scoped filter chips (AGENT_CATEGORY_FILTER_CHIP_PREFIX).
         """
         return self.page.locator(self.AGENT_CATEGORY_FILTER_CHIP_PREFIX)
+
+    def get_visible_skill_category_filter_chips(self):
+        """Return the Locator for all visible skill category filter-rail chips (ELITEA-2370).
+
+        Returns a Locator matching ALL skill-scoped filter chips (SKILL_CATEGORY_FILTER_CHIP_PREFIX)
+        — the Skills-tab counterpart of :meth:`get_visible_category_filter_chips`.
+        """
+        return self.page.locator(self.SKILL_CATEGORY_FILTER_CHIP_PREFIX)
+
+    def is_agents_tab_selected(self) -> bool:
+        """Return True if the Agents tab currently carries ``aria-selected="true"``
+        (ELITEA-2370).
+
+        ``aria-selected`` is MUI ``Tabs``' own native accessibility-state attribute
+        (confirmed live: flips true/false between the two tabs on every click) — not
+        a custom attribute this suite added — so filtering the stable
+        ``catalog-agents-tab`` testid by it is the same "state via attribute, not a
+        state-switched testid" pattern as the existing ``data-selected``/``data-liked``
+        precedents (:meth:`is_category_filter_chip_selected`, :meth:`is_agent_liked`).
+        """
+        return self.agents_tab.get_attribute("aria-selected") == "true"
+
+    def is_skills_tab_selected(self) -> bool:
+        """Return True if the Skills tab currently carries ``aria-selected="true"``
+        (ELITEA-2370). See :meth:`is_agents_tab_selected` for the aria-selected rationale.
+        """
+        return self.skills_tab.get_attribute("aria-selected") == "true"
+
+    @action("Click the Skills tab in Catalog")
+    def click_skills_tab(self, timeout: int = 10000):
+        """Click the Skills tab and wait for its own selection state + content
+        switch to land (ELITEA-2370) — both the ``aria-selected`` flip and the
+        filter-rail prefix swap (agent-scoped chips -> skill-scoped chips) happen
+        synchronously with the click (confirmed live, no network round-trip to await),
+        so a state-condition wait on ``aria-selected`` is the correct signal.
+        """
+        self.skills_tab.wait_for(state="visible", timeout=timeout)
+        self.skills_tab.click()
+        expect(self.skills_tab).to_have_attribute("aria-selected", "true", timeout=timeout)
 
     def is_category_filter_chip_visible(self, category_label: str, timeout: int = 10000) -> bool:
         """Return True if the category filter-rail chip for *category_label* is visible.
