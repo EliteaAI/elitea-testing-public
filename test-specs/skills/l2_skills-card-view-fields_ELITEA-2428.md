@@ -162,6 +162,24 @@ only (ELITEA-1899, awaiting human cherry-pick to `main`) but needs no NEW
 `add-data-testid` work — just page-object plumbing mirroring
 `AgentsListPage`.
 
+**Amendment (implementer exploration, ELITEA-2428 build) — icon assertion
+drift confirmed live.** `EntityIcon.jsx` only renders the inner
+`entity-card-icon-img` `<img>` when `icon?.url` is set (a custom icon).
+This case's Test Data creates the skill via the live UI form, which never
+sets a custom icon — so the card renders the generic `EntityTypeIcon` SVG
+glyph inside the `entity-card-icon` **container**, and the inner
+`entity-card-icon-img` testid never mounts for this skill. Calling
+`AgentsListPage.get_card_icon_src()`'s pattern verbatim (waiting on the
+inner img testid) times out for THIS case's fixture. **Corrected
+implementation:** `SkillsListPage` gets only the outer `entity_card_icon`
+field (+ a `card_icon_locator(name)` scoped-container helper) — the case's
+own wording ("a generic skill glyph, visually present on every card
+regardless of whether the skill has a custom icon set") is satisfied by
+asserting the **container**'s visibility, not the img's `src`. The inner
+`entity-card-icon-img` field is deliberately NOT added to `SkillsListPage`
+in this PR (an unreferenced testid on this case's executed path); a future
+case asserting a Skill with a CUSTOM icon would add it then.
+
 ## Network Behavior
 - `POST /api/v2/elitea_core/skills/prompt_lib/{project_id}` — create, `201`,
   payload `{name, description, versions: [{name: "base", instructions}]}`

@@ -124,6 +124,58 @@ class SkillsListPage(BasePage):
         )
     )
 
+    # ELITEA-2428 — card-view toggle buttons. Shared ViewToggle.jsx component
+    # hardcodes 'agent-*' as its default prop values and Skills.jsx renders
+    # <ViewToggle /> with no override, so the Skills page's toggle literally
+    # carries these agent-prefixed testids (confirmed live + via source,
+    # ViewToggle.jsx lines 14-15 / Skills.jsx:70 — functionally correct on
+    # this page, not a defect; do not rename). Mirrors
+    # AgentsListPage.card_view_button/table_view_button minus the legacy
+    # `fallback=` param (forbidden in new code).
+    card_view_button = LocatorDescriptor(
+        testid="agent-card-view-button",
+        description="Switch to card view (Skills page reuses the shared "
+                     "ViewToggle.jsx default testid)"
+    )
+
+    table_view_button = LocatorDescriptor(
+        testid="agent-table-view-button",
+        description="Switch to table view (Skills page reuses the shared "
+                     "ViewToggle.jsx default testid)"
+    )
+
+    # ELITEA-2428 — card icon (shared Card.jsx/EntityIcon; pre-existing on
+    # `automation/testids` only, from ELITEA-1899 — awaiting human
+    # cherry-pick to `main`; see the AFS's Concrete Handles PROVENANCE
+    # note). NOTE: a freshly created skill has no custom icon set, so
+    # EntityIcon.jsx renders the generic `EntityTypeIcon` SVG glyph inside
+    # this container, NOT the `entity-card-icon-img` <img> (that inner
+    # testid only renders when `icon.url` is set — confirmed live this
+    # run; AFS amended accordingly). Only the outer container testid is
+    # wired here since this case's test data is always icon-less; a future
+    # case asserting a CUSTOM icon's src would add the img field then.
+    entity_card_icon = LocatorDescriptor(
+        testid="entity-card-icon",
+        description="Skill card icon — collection locator, one per visible card",
+    )
+
+    # Scoped sub-selector — a specific card's own icon container, addressed
+    # via ``card_icon_locator()`` below (mirrors ``CARD_TAG_CHIP``'s pattern
+    # of a class-level testid constant used inside a `card.locator(...)` scope).
+    CARD_ICON_SELECTOR = '[data-testid="entity-card-icon"]'
+
+    # ELITEA-2428 — card hover-tooltip description text. Added this run via
+    # add-data-testid to Card.jsx's descriptionTooltip Typography node
+    # (EliteaAI/EliteaUI automation/testids commit df9a6f8d) — see AFS
+    # Concrete Handles. Only the description node is testid'd (the sibling
+    # title/name Typography is not, per the "referenced = called on the
+    # test's actual code path" ruling — this case only asserts description).
+    card_description_tooltip = LocatorDescriptor(
+        testid="entity-card-description-tooltip",
+        description="Card hover-tooltip's description text (MUI Popper "
+                     "content, rendered only while the card name is hovered)",
+    )
+
     tags_panel_clear_all = LocatorDescriptor(
         testid="tags-panel-clear-all",
         description=(
@@ -264,6 +316,42 @@ class SkillsListPage(BasePage):
             (tag_labels.nth(i).text_content() or "").strip()
             for i in range(tag_labels.count())
         ]
+
+    def card_icon_locator(self, name: str) -> Locator:
+        """Return the ``entity-card-icon`` element for a specific skill's card.
+
+        LOCATOR: scopes ``skill_card`` by visible name text, then reads the
+        card's own ``entity-card-icon`` container testid — the case only
+        requires the icon glyph to be present (see AFS Concrete Handles: "a
+        generic skill glyph, visually present on every card regardless of
+        whether the skill has a custom icon set"), which this container
+        renders for both the custom-icon (``<img>``) and generic-glyph
+        (``EntityTypeIcon`` SVG) cases alike.
+
+        Args:
+            name: Exact skill name to match the card by.
+
+        Returns:
+            The ``Locator`` for that card's icon container.
+        """
+        card = self.skill_card.filter(has_text=name).first
+        return card.locator(self.CARD_ICON_SELECTOR)
+
+    def is_card_view_active(self) -> bool:
+        """Check if card view is currently the active list view.
+
+        Mirrors ``AgentsListPage.is_card_view_active()`` — MUI ToggleButton
+        sets ``aria-pressed="true"`` when active.
+
+        Returns:
+            True if card view is active, False otherwise.
+        """
+        try:
+            pressed = self.card_view_button.get_attribute("aria-pressed")
+            return pressed == "true"
+        except Exception:
+            classes = self.card_view_button.get_attribute("class") or ""
+            return "selected" in classes.lower() or "active" in classes.lower()
 
     # ------------------------------------------------------------------
     # Pin/Unpin (ELITEA-2435)
