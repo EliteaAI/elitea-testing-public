@@ -30,6 +30,7 @@ SKILL_NAME = "autotest-skill-caps"
 MANDATORY_FIELDS_SKILL_NAME = "autotest-skill-mandatory-fields"
 EDIT_SKILL_ORIGINAL_NAME = "autotest-skill-edit-original"
 EDIT_SKILL_NEW_NAME = "autotest-skill-edit-updated"
+MARKDOWN_TOGGLE_SKILL_NAME = "autotest-skill-markdown-toggle"
 
 
 @pytest.fixture
@@ -352,6 +353,116 @@ class TestEditSkill:
                 )
                 assert detail_page.get_instructions() == updated_instructions, (
                     "Instructions should show the updated value after re-open"
+                )
+        finally:
+            if skill_id is not None:
+                try:
+                    skill_api.delete_skill(skill_id)
+                    logger.info("Cleanup: deleted skill id=%s", skill_id)
+                except Exception as exc:
+                    logger.warning("Skill cleanup failed (non-fatal): %s", exc)
+
+
+class TestSkillInstructionsMarkdownTogglePersistence:
+    """Skill instructions — Markdown edit/preview toggle round-trips the raw
+    source unchanged and persists it on Save (ELITEA-2432, P3).
+    """
+
+    @allure.issue("ELITEA-2432", "onetest-ai Test Case link")
+    @pytest.mark.p3
+    @pytest.mark.skills
+    def test_markdown_edit_preview_toggle_and_persist(self, page, skill_api):
+        """Seed a skill via API, open it, edit the Instructions with Markdown,
+        toggle Preview -> verify rendered output, toggle back to Edit ->
+        verify raw source unchanged, Save, re-open and verify persistence.
+        """
+        original_instructions = "Always say ORIGINAL"
+        markdown_instructions = "**Bold text** and a list:\n- Item one\n- Item two"
+        skill_id = None
+
+        try:
+            # ------------------------------------------------------------
+            # Setup — seed the skill via API (edit needs pre-existing state)
+            # ------------------------------------------------------------
+            created = skill_api.create_skill(
+                name=MARKDOWN_TOGGLE_SKILL_NAME,
+                description="Automation test skill for ELITEA-2432",
+                instructions=original_instructions,
+            )
+            skill_id = created["id"]
+
+            # ------------------------------------------------------------
+            # Step 1 — Open an existing Skill
+            # ------------------------------------------------------------
+            with allure.step("Step 1 — Open an existing Skill"):
+                detail_page = SkillDetailPage(page)
+                detail_page.navigate(skill_id)
+                assert detail_page.get_instructions() == original_instructions
+                assert detail_page.instructions_edit_mode_button.get_attribute("aria-pressed") == "true", (
+                    "Edit mode should be the toggle's default active state"
+                )
+
+            # ------------------------------------------------------------
+            # Step 2 — Switch to Edit mode and modify the Markdown body
+            # ------------------------------------------------------------
+            with allure.step("Step 2 — In the Instructions section, switch to Edit mode and modify the Markdown body"):
+                detail_page.click_edit_mode()
+                detail_page.fill_instructions_markdown(markdown_instructions)
+                assert detail_page.get_instructions_multiline() == markdown_instructions, (
+                    "Raw editor content should be replaced with the new Markdown source"
+                )
+
+            # ------------------------------------------------------------
+            # Step 3 — Switch to Preview mode, verify rendered output
+            # ------------------------------------------------------------
+            with allure.step("Step 3 — Switch to Preview mode — verify the rendered Markdown output is correct"):
+                detail_page.click_preview_mode()
+                assert detail_page.instructions_preview_mode_button.get_attribute("aria-pressed") == "true", (
+                    "Preview mode should become the active toggle state"
+                )
+                preview_text = detail_page.get_preview_content()
+                assert "**Bold text**" not in preview_text, (
+                    "Preview should render bold markup, not echo the raw '**' syntax"
+                )
+                assert "- Item one" not in preview_text and "- Item two" not in preview_text, (
+                    "Preview should render the list, not echo the raw '- ' markers"
+                )
+                assert "Bold text" in preview_text, "Preview should still show the bold text's words"
+                assert "Item one" in preview_text and "Item two" in preview_text, (
+                    "Preview should still show both list items' words"
+                )
+
+            # ------------------------------------------------------------
+            # Step 4 — Switch back to Edit mode, verify raw Markdown unchanged
+            # ------------------------------------------------------------
+            with allure.step("Step 4 — Switch back to Edit mode — verify the raw Markdown matches what was typed"):
+                detail_page.click_edit_mode()
+                assert detail_page.instructions_edit_mode_button.get_attribute("aria-pressed") == "true", (
+                    "Edit mode should become the active toggle state again"
+                )
+                assert detail_page.get_instructions_multiline() == markdown_instructions, (
+                    "Raw Markdown should be byte-identical after round-tripping through Preview"
+                )
+
+            # ------------------------------------------------------------
+            # Step 5 — Save and re-open, verify instructions persist
+            # ------------------------------------------------------------
+            with allure.step("Step 5 — Save and re-open — verify updated instructions persist"):
+                response = detail_page.save_edits(timeout=FORM_SAVE_TIMEOUT)
+                assert response.status == 200, (
+                    f"Expected 200 from the skill update PUT, got {response.status}"
+                )
+
+                list_page = SkillsListPage(page)
+                list_page.navigate()
+                assert list_page.skill_exists_in_list(MARKDOWN_TOGGLE_SKILL_NAME), (
+                    f"Skill should still be listed under {MARKDOWN_TOGGLE_SKILL_NAME!r}"
+                )
+                list_page.click_skill_card(MARKDOWN_TOGGLE_SKILL_NAME)
+                detail_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
+
+                assert detail_page.get_instructions_multiline() == markdown_instructions, (
+                    "Instructions should show the saved Markdown source after re-open"
                 )
         finally:
             if skill_id is not None:

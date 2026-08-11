@@ -408,13 +408,39 @@ Distinct from the valid-import round trip (ELITEA-1737/1738, above the
 - Switching Edit → Preview → Edit does not mutate the stored/typed Markdown
   source — confirmed live: the CodeMirror content after the round trip is
   byte-identical to what was typed before switching to Preview.
+- **Two confirmed-live automation-technique gotchas for MULTI-LINE
+  instructions content (single-line instructions, every other caller's
+  usage, are unaffected):**
+  1. This editor's markdown language mode
+     (`@codemirror/lang-markdown`) auto-continues an unordered list on
+     Enter — typing `"- Item one\n- Item two"` via
+     `page.keyboard.type()` (discrete Enter keydown per `\n`) renders as
+     `"- Item one\n- - Item two"` (a real editor UX feature, not a
+     product bug). Fix: `page.keyboard.insert_text()` instead of
+     `.type()` for the insertion step — one atomic op, no discrete Enter
+     keydown, continuation keymap never fires. New method:
+     `SkillFormPage.fill_instructions_markdown()`.
+  2. `get_instructions()`'s `text_content()` concatenates CodeMirror's
+     per-line `<div class="cm-line">` elements with no separator —
+     silently flattens multi-line content into one unbroken string. Fix:
+     `inner_text()` instead (layout-aware, inserts a newline between
+     block-level elements). New method:
+     `SkillFormPage.get_instructions_multiline()`.
+  3. A blank line (`"\n\n"`) between two content lines produces one EXTRA
+     `"\n"` via `inner_text()` (an empty `cm-line`'s inner `<br>` seems to
+     contribute its own break beyond the block-separator one) — sidestep
+     rather than fight it: use single `"\n"` line breaks in multi-line
+     test data. `marked` (the Preview renderer) still parses a list
+     correctly without a blank-line paragraph separator.
 - Page object: new `SkillFormPage.instructions_edit_mode_button` /
   `instructions_preview_mode_button` / `instructions_preview_content`
   `LocatorDescriptor` fields (Instructions accordion is shared, so these
   live on the base form page like the other Instructions handles) +
   `click_edit_mode()` / `click_preview_mode()` / `get_preview_content()`
-  methods. Reuses pre-existing `fill_instructions()` / `get_instructions()`
-  / `save_edits()` — no changes to those method bodies.
+  / `fill_instructions_markdown()` / `get_instructions_multiline()`
+  methods. `fill_instructions()` / `get_instructions()` / `save_edits()`
+  themselves are unchanged (additive-only) — still correct for every
+  other caller's single-line instructions.
   Full details: `test-specs/skills/l3_skill-instructions-markdown-edit-preview-toggle_ELITEA-2432.md`.
 
 ## Create form — Save-button mandatory-field gating (ELITEA-2430) — `CreateSkillForm.jsx`

@@ -27,16 +27,17 @@
 - New Markdown instructions (typed in step 2):
   ```
   **Bold text** and a list:
-
   - Item one
   - Item two
   ```
-  Chosen because it exercises two distinct Markdown constructs (inline
-  bold, an unordered list) whose rendered form is structurally different
-  from their raw source — bold loses the `**` delimiters and becomes a
-  `<strong>` node, and list items lose their leading `- ` marker and
-  become `<li>` nodes — so a Preview-mode assertion can prove real
-  interpretation happened, not just a pass-through render of the raw text.
+  (single `\n` between lines, no blank-line paragraph break — see
+  **Amended during implementation** below for why). Chosen because it
+  exercises two distinct Markdown constructs (inline bold, an unordered
+  list) whose rendered form is structurally different from their raw
+  source — bold loses the `**` delimiters and becomes a `<strong>` node,
+  and list items lose their leading `- ` marker and become `<li>` nodes —
+  so a Preview-mode assertion can prove real interpretation happened, not
+  just a pass-through render of the raw text.
 
 ## Test Steps
 1. Open an existing Skill (`/skills/all/{id}`)
@@ -82,11 +83,11 @@
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Open an existing Skill | detail page loads | step 1 | `step 1`: `get_instructions()` == seeded value + Edit mode is the active toggle | asserted |
-| 2 Switch to Edit mode and modify the Markdown body | action completes, raw text updated | step 2 | `step 2`: `fill_instructions()` + `get_instructions()` == typed Markdown | asserted |
+| 1 Open an existing Skill | detail page loads | step 1 | `step 1`: `get_instructions()` == seeded (single-line) value + Edit mode's `aria-pressed` toggle | asserted |
+| 2 Switch to Edit mode and modify the Markdown body | action completes, raw text updated | step 2 | `step 2`: `fill_instructions_markdown()` + `get_instructions_multiline()` == typed Markdown | asserted |
 | 3 Switch to Preview mode — rendered output is correct | rendered Markdown, no error | step 3 | `step 3`: `click_preview_mode()` + `get_preview_content()` contains rendered words, does NOT contain raw `**`/`- ` markers | asserted |
-| 4 Switch back to Edit mode — raw Markdown matches what was typed | raw text unchanged | step 4 | `step 4`: `click_edit_mode()` + `get_instructions()` == same typed Markdown from step 2 | asserted |
-| 5 Save and re-open — updated instructions persist | persists, confirmation shown | step 5 | `step 5`: PUT response status 200 + "Skill saved" toast (inside `save_edits()`) + re-open `get_instructions()` == typed Markdown | asserted |
+| 4 Switch back to Edit mode — raw Markdown matches what was typed | raw text unchanged | step 4 | `step 4`: `click_edit_mode()` + `get_instructions_multiline()` == same typed Markdown from step 2 | asserted |
+| 5 Save and re-open — updated instructions persist | persists, confirmation shown | step 5 | `step 5`: PUT response status 200 + "Skill saved" toast (inside `save_edits()`) + re-open `get_instructions_multiline()` == typed Markdown | asserted |
 
 **Axis 2 — Analyst additions.**
 - None beyond the case. Source-level confirmation (not asserted directly,
@@ -144,12 +145,56 @@ shared component).
   cleanup → `204 No Content`.
 
 ## Known Defects Found During Exploration
-None. The Edit/Preview toggle behaved exactly per the case's expected
-results on the first live run: Markdown syntax rendered correctly in
-Preview (bold → `<strong>`, list → `<ul><li>`), and the raw Markdown source
-was unchanged after round-tripping through Preview and back to Edit. The
-only gap found was a testid gap (three toggle/preview-container testids),
-not a functional defect — fixed via `add-data-testid` in this same run.
+None product-level. The Edit/Preview toggle behaved exactly per the case's
+expected results: Markdown syntax rendered correctly in Preview (bold →
+`<strong>`, list → `<ul><li>`), and the raw Markdown source was unchanged
+after round-tripping through Preview and back to Edit. The only gap found
+was a testid gap (three toggle/preview-container testids), not a
+functional defect — fixed via `add-data-testid` in this same run.
+
+**Amended during implementation (two confirmed-live AUTOMATION-technique
+gotchas, not product defects — Phase 2 exploration, ELITEA-2432):**
+1. **CodeMirror markdown list auto-continuation on Enter.** This editor's
+   markdown language mode (`@codemirror/lang-markdown`) auto-inserts a
+   fresh `"- "` prefix on the line after a list-item line whenever Enter
+   is pressed — a real editor UX feature (continue the list for the
+   user), not a bug. Driving multi-line list Markdown via
+   `page.keyboard.type()` (which dispatches a discrete Enter keydown per
+   `\n`) triggers it and corrupts the typed text (confirmed live: typing
+   `"- Item one\n- Item two"` via `type()` rendered as
+   `"- Item one\n- - Item two"`). Fix: a new page-object method,
+   `SkillFormPage.fill_instructions_markdown()`, uses
+   `Keyboard.insert_text()` instead of `Keyboard.type()` for the
+   insertion step (same `select_text()` + Backspace clear as
+   `fill_instructions()`) — `insert_text()` inserts the whole string as
+   one atomic operation with no discrete Enter keydown, so the
+   continuation keymap never fires, while still triggering the editor's
+   real input handling. `fill_instructions()` itself is untouched
+   (additive-only) — it remains correct for the single-line instructions
+   every other caller uses.
+2. **`text_content()` drops line breaks on multi-line CodeMirror content.**
+   `get_instructions()` reads `text_content()`, which concatenates
+   CodeMirror's per-line `<div class="cm-line">` elements with NO
+   separator between them — correct for every other caller's single-line
+   instructions, but confirmed live to silently flatten a multi-line
+   Markdown source into one unbroken string. Fix: a new page-object
+   method, `SkillFormPage.get_instructions_multiline()`, reads
+   `inner_text()` instead — Playwright's `inner_text()` is layout-aware
+   and inserts a newline between adjacent block-level elements, so it
+   reconstructs the editor's real line breaks with no new selector needed
+   (each `cm-line` div is already block-level). `get_instructions()`
+   itself is untouched (additive-only).
+3. A **blank line** (`"\n\n"`) between the bold-text line and the list in
+   the original planned test data produced one extra `"\n"` via
+   `inner_text()` — CodeMirror appears to render an empty line's `cm-line`
+   div with an inner `<br>` that itself contributes a line break beyond
+   the normal block-separator newline, so `inner_text()` double-counts an
+   empty line. Confirmed live it does NOT affect Preview rendering either
+   way. Test data changed to a single `\n` (no blank-line paragraph break)
+   to sidestep the ambiguity rather than special-case it — `marked`
+   (the Preview renderer) still correctly parses the list without a
+   blank-line separator, confirmed live (Preview still renders a real
+   `<ul><li>` list from `"...and a list:\n- Item one\n- Item two"`).
 
 ## Blocked Steps
 None.
@@ -157,14 +202,24 @@ None.
 ## Automation Hints
 - Framework: Playwright + pytest, confirmed from `.agents/testing.md`.
 - Page objects: `SkillDetailPage` (`automation/pages/skill_detail_page.py`,
-  extends `SkillFormPage`) — reuses `fill_instructions()` / `get_instructions()`
-  / `save_edits()`, all pre-existing (ELITEA-2430/2431). New additions:
-  `instructions_edit_mode_button` / `instructions_preview_mode_button` /
-  `instructions_preview_content` `LocatorDescriptor` fields on
-  `SkillFormPage` (the toggle lives inside the shared Instructions
-  accordion, present on both create and edit forms) + three thin methods
-  (`click_edit_mode()`, `click_preview_mode()`, `get_preview_content()`) —
-  additive-only, no existing method body touched.
+  extends `SkillFormPage`) — reuses `save_edits()`, pre-existing
+  (ELITEA-2431). New additions on `SkillFormPage`, all additive-only (no
+  existing method body touched):
+  - `instructions_edit_mode_button` / `instructions_preview_mode_button` /
+    `instructions_preview_content` `LocatorDescriptor` fields (the toggle
+    lives inside the shared Instructions accordion, present on both
+    create and edit forms).
+  - `click_edit_mode()` / `click_preview_mode()` — click the toggle.
+  - `get_preview_content()` — `text_content()` of the Preview container.
+  - `fill_instructions_markdown(text)` — Markdown-safe alternative to
+    `fill_instructions()`, uses `Keyboard.insert_text()` instead of
+    `Keyboard.type()` (see **Amended during implementation** point 1
+    above — avoids the CodeMirror list-continuation corruption).
+  - `get_instructions_multiline()` — line-break-preserving alternative to
+    `get_instructions()`, uses `inner_text()` instead of `text_content()`
+    (see point 2 above). `fill_instructions()` / `get_instructions()`
+    themselves are unmodified — still correct and used as-is by every
+    other caller (single-line instructions).
 - Seed via `SkillAPI.create_skill(name, description, instructions)` →
   returns `{"id": ..., ...}`; `skill_id = created["id"]`.
 - Re-open by name (name is not edited by this case, unlike ELITEA-2431):
