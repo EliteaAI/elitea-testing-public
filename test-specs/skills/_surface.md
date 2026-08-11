@@ -377,6 +377,46 @@ Distinct from the valid-import round trip (ELITEA-1737/1738, above the
   values, not the originals.
   Full details: `test-specs/skills/l3_skill-edit-name-description-instructions_ELITEA-2431.md`.
 
+## Instructions Edit/Preview toggle (ELITEA-2432) — `CreateSkillForm.jsx` (`skill-instructions-*`)
+
+- Shared by both `/skills/create` and `/skills/all/{id}` (edit) — same
+  `CreateSkillForm.jsx` renders the Instructions accordion's
+  summary-action toggle (`TabGroupButton` fed a 2-entry `modeButtons`
+  array, `value: 'edit' | 'preview'`, local `useState('edit')` — 100%
+  client-side, zero network calls on toggle).
+- **CONFIRMED LIVE GAP, now fixed**: neither toggle button nor the
+  rendered-preview wrapper `<Box>` had a `data-testid`. `TabButtonItem.jsx`
+  (the shared component under `modeButtons`) already spreads
+  `{...item.buttonProps}` onto the underlying MUI `ToggleButton`, so the
+  fix is caller-side only — `CreateSkillForm.jsx`'s `modeButtons` array
+  entries each gained `buttonProps: { 'data-testid': '...' }`; no change to
+  the shared `TabButtonItem.jsx`/`TabGroupButton.jsx` components. Fixed via
+  `add-data-testid`, pushed to `automation/testids` (commit `b6e1c7c9`):
+  `skill-instructions-edit-mode-button`, `skill-instructions-preview-mode-button`,
+  and `skill-instructions-preview-content` (the preview wrapper `<Box>`,
+  wraps either `<Markdown>{instructions}</Markdown>` or the "No
+  instructions yet." empty state).
+- Preview renders via the app's shared `Markdown` component (`marked`-based
+  lexer, same renderer as chat messages) — confirmed live:
+  `**Bold text**` → `<strong>Bold text</strong>`, `- Item one` / `- Item two`
+  → a real `<ul><li>` list, both with the raw Markdown syntax characters
+  (`**`, `- `) stripped from the rendered/accessible text. This is what
+  makes a content-based `text_content()` assertion on the one preview-content
+  testid sufficient — no need to address the rendered `<strong>`/`<li>`
+  nodes individually (and thus no need for the `#579` scoped-raw-handle
+  exception here).
+- Switching Edit → Preview → Edit does not mutate the stored/typed Markdown
+  source — confirmed live: the CodeMirror content after the round trip is
+  byte-identical to what was typed before switching to Preview.
+- Page object: new `SkillFormPage.instructions_edit_mode_button` /
+  `instructions_preview_mode_button` / `instructions_preview_content`
+  `LocatorDescriptor` fields (Instructions accordion is shared, so these
+  live on the base form page like the other Instructions handles) +
+  `click_edit_mode()` / `click_preview_mode()` / `get_preview_content()`
+  methods. Reuses pre-existing `fill_instructions()` / `get_instructions()`
+  / `save_edits()` — no changes to those method bodies.
+  Full details: `test-specs/skills/l3_skill-instructions-markdown-edit-preview-toggle_ELITEA-2432.md`.
+
 ## Create form — Save-button mandatory-field gating (ELITEA-2430) — `CreateSkillForm.jsx`
 
 - **Confirmed live, no testid gaps.** Every element the case needs
