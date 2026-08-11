@@ -28,6 +28,8 @@ logger = logging.getLogger("elitea.tests.skills")
 
 SKILL_NAME = "autotest-skill-caps"
 MANDATORY_FIELDS_SKILL_NAME = "autotest-skill-mandatory-fields"
+EDIT_SKILL_ORIGINAL_NAME = "autotest-skill-edit-original"
+EDIT_SKILL_NEW_NAME = "autotest-skill-edit-updated"
 
 
 @pytest.fixture
@@ -252,6 +254,104 @@ class TestSkillMandatoryFieldsValidation:
                 list_page.navigate()
                 assert list_page.skill_exists_in_list(skill_name), (
                     f"Skill '{skill_name}' should appear in the Skills list after creation"
+                )
+        finally:
+            if skill_id is not None:
+                try:
+                    skill_api.delete_skill(skill_id)
+                    logger.info("Cleanup: deleted skill id=%s", skill_id)
+                except Exception as exc:
+                    logger.warning("Skill cleanup failed (non-fatal): %s", exc)
+
+
+class TestEditSkill:
+    """Edit an existing skill's Name, Description, and Instructions, save,
+    and verify all three values persist across a re-open (ELITEA-2431, P3).
+    """
+
+    @allure.issue("ELITEA-2431", "onetest-ai Test Case link")
+    @pytest.mark.p3
+    @pytest.mark.skills
+    def test_edit_name_description_instructions_persist(self, page, skill_api):
+        """Seed a skill via API, open it, edit all three fields, Save,
+        navigate back to the Skills list and re-open the skill, then verify
+        the Name/Description/Instructions fields all show the updated values.
+        """
+        original_description = "Original description before edit"
+        original_instructions = "Always say ORIGINAL"
+        updated_description = "Updated description after edit"
+        updated_instructions = "Always say UPDATED"
+        skill_id = None
+
+        try:
+            # ------------------------------------------------------------
+            # Setup — seed the skill via API (edit needs pre-existing state)
+            # ------------------------------------------------------------
+            created = skill_api.create_skill(
+                name=EDIT_SKILL_ORIGINAL_NAME,
+                description=original_description,
+                instructions=original_instructions,
+            )
+            skill_id = created["id"]
+
+            # ------------------------------------------------------------
+            # Step 1 — Open an existing Skill
+            # ------------------------------------------------------------
+            with allure.step("Step 1 — Open an existing Skill"):
+                detail_page = SkillDetailPage(page)
+                detail_page.navigate(skill_id)
+                assert detail_page.get_name() == EDIT_SKILL_ORIGINAL_NAME
+                assert detail_page.get_description() == original_description
+                assert detail_page.get_instructions() == original_instructions
+
+            # ------------------------------------------------------------
+            # Step 2 — Change the Name, Description, and Instructions
+            # ------------------------------------------------------------
+            with allure.step("Step 2 — Change the Name, Description, and Instructions to new values"):
+                detail_page.set_name(EDIT_SKILL_NEW_NAME)
+                detail_page.set_description(updated_description)
+                detail_page.fill_instructions(updated_instructions)
+                detail_page.wait_for_form_validation()
+                assert detail_page.get_name() == EDIT_SKILL_NEW_NAME
+                assert detail_page.get_description() == updated_description
+                assert detail_page.get_instructions() == updated_instructions
+                assert detail_page.is_save_enabled(), (
+                    "Save should be enabled once all three fields hold valid values"
+                )
+
+            # ------------------------------------------------------------
+            # Step 3 — Click Save
+            # ------------------------------------------------------------
+            with allure.step("Step 3 — Click Save"):
+                response = detail_page.save_edits(timeout=FORM_SAVE_TIMEOUT)
+                assert response.status == 200, (
+                    f"Expected 200 from the skill update PUT, got {response.status}"
+                )
+
+            # ------------------------------------------------------------
+            # Step 4 — Navigate back to the Skills list and re-open the Skill
+            # ------------------------------------------------------------
+            with allure.step("Step 4 — Navigate back to the Skills list and re-open the Skill"):
+                list_page = SkillsListPage(page)
+                list_page.navigate()
+                assert list_page.skill_exists_in_list(EDIT_SKILL_NEW_NAME), (
+                    f"Skill should be listed under its new name {EDIT_SKILL_NEW_NAME!r}"
+                )
+                list_page.click_skill_card(EDIT_SKILL_NEW_NAME)
+                detail_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
+
+            # ------------------------------------------------------------
+            # Step 5 — Verify all three updated values are persisted
+            # ------------------------------------------------------------
+            with allure.step("Step 5 — Verify all three updated values are persisted correctly"):
+                assert detail_page.get_name() == EDIT_SKILL_NEW_NAME, (
+                    "Name should show the updated value after re-open"
+                )
+                assert detail_page.get_description() == updated_description, (
+                    "Description should show the updated value after re-open"
+                )
+                assert detail_page.get_instructions() == updated_instructions, (
+                    "Instructions should show the updated value after re-open"
                 )
         finally:
             if skill_id is not None:
