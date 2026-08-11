@@ -79,6 +79,15 @@ class TestCatalogDefaultAgentsTab:
 
         with allure.step("Step 8 — Verify main content switches to Skills"):
             agent_hub.wait_for_agent_card_count(0)
+            # Genuine content-visibility assertion: at least one real skill card
+            # renders in the main content area — the direct Skills-tab analog of
+            # Step 5's wait_for_any_agent_card(). agent_chips/skill_chips below
+            # are fed by the filter rail's OWN state (allCategories/categoryNames
+            # in SkillsTab.jsx / CatalogBody.jsx), which is DIFFERENT state from
+            # the main-content grid (groupedItems) — so they prove the rail
+            # switched, not that Skills content actually rendered. This assertion
+            # closes that gap.
+            agent_hub.wait_for_any_skill_card()
             skill_chips_after = agent_hub.get_visible_skill_category_filter_chips()
             agent_chips_after = agent_hub.get_visible_category_filter_chips()
             # Same race as Step 5 (rail settles a beat after the card-count signal) —

@@ -94,6 +94,16 @@ class AgentHubPage(BasePage):
     # to select by name, same idiom as AgentDetailPage.MODEL_SELECTOR_OPTION_ANY_SELECTOR.
     AGENT_CARD_PREFIX = '[data-testid^="catalog-agent-card-"]'
 
+    # Skill card — the Skills-tab analog of AGENT_CARD_PREFIX above (ELITEA-2370).
+    # Dynamic per skill id, same prefix-match idiom. testid added directly to the
+    # SkillCard root Card element rendered by the Catalog's Skills tab
+    # (`src/[fsd]/features/skill-hub/ui/SkillCard.jsx`, EliteaAI/EliteaUI@c8c621bd) —
+    # NOT the identically-named `src/[fsd]/features/skill/ui/SkillCard.jsx` (a
+    # different component, used by ApplicationSkills.jsx for an agent's attached
+    # skills list, already carries `skill-card-{id}` but is never rendered on this
+    # page — verified via import-graph trace during implementation, do not conflate).
+    SKILL_CARD_PREFIX = '[data-testid^="catalog-skill-card-"]'
+
     # Content-list category heading — prefix match across ALL rendered category
     # sections (ELITEA-2352), used to enumerate which categories are currently
     # visible rather than probing one at a time. Same underlying testid as
@@ -768,6 +778,16 @@ class AgentHubPage(BasePage):
         every category's initial slice — has already landed.
         """
         self.page.locator(self.AGENT_CARD_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def wait_for_any_skill_card(self, timeout: int = 10000) -> None:
+        """Wait (Playwright auto-retrying assertion) for at least one skill
+        card to be rendered (ELITEA-2370) — the Skills-tab content-visibility
+        signal, same idiom as :meth:`wait_for_any_agent_card` above. Used to
+        prove the main content area actually switched to Skills content after
+        clicking the Skills tab, rather than inferring it from the (differently
+        state-driven) filter-rail chip swap alone.
+        """
+        self.page.locator(self.SKILL_CARD_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
     def wait_for_agent_card_count(self, expected_count: int, timeout: int = 10000) -> None:
         """Wait (Playwright auto-retrying assertion) for the number of

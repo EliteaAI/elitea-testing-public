@@ -44,7 +44,7 @@ not a deliberate override; corrected here to `l1`/`p1`.
 | Main content area displays Agents content by default | Agent-scoped filter rail + agent cards render (Agents tab's own component tree is mounted) | Step 5 | `get_visible_category_filter_chips()` count == 11, `get_visible_skill_category_filter_chips()` count == 0 (absence), `wait_for_any_agent_card()` | asserted |
 | Click the "Skills" tab | Skills tab receives click | Step 6 | `click_skills_tab()` | asserted |
 | Skills tab becomes active/highlighted | Skills tab `aria-selected="true"` after click | Step 7 | `is_skills_tab_selected()` (also awaited inside `click_skills_tab()`) | asserted |
-| Main content area switches to display Skills content with Trending and category sections | Agent-scoped filter rail unmounts, skill-scoped filter rail (incl. Trending/My Liked FEATURED chips) mounts; Agents tab's own content (cards) unmounts | Step 8 | `get_visible_skill_category_filter_chips()` count == 11, `get_visible_category_filter_chips()` count == 0 (absence), `wait_for_agent_card_count(0)` | asserted |
+| Main content area switches to display Skills content with Trending and category sections | Agent-scoped filter rail unmounts, skill-scoped filter rail (incl. Trending/My Liked FEATURED chips) mounts; Agents tab's own content (cards) unmounts; Skills tab's own content (skill cards) mounts | Step 8 | `wait_for_any_skill_card()` (main-content-grid signal — see amended Declared Improvisation), `get_visible_skill_category_filter_chips()` count == 11, `get_visible_category_filter_chips()` count == 0 (absence), `wait_for_agent_card_count(0)` | asserted |
 | Right panel shows FEATURED (Trending, My Liked) and CATEGORIES filters | ≥11 filter chips visible in both tab views (2 FEATURED + 9 CATEGORIES, confirmed live for this project) | Step 9 | chip-count assertions folded into Steps 5 + 8 (no separate step — see Notes) | asserted |
 
 ## Coverage Map — Axis 2 (Observations beyond the case)
@@ -98,6 +98,38 @@ swap is verifiable in BOTH the populated and empty-catalog cases where a
 word "skill" appears in agent names/descriptions too, in this project's real
 data — confirmed live: several agent cards' visible text contains "skill").
 
+**Amendment (fix round, post-first-review):** a fresh reviewer session correctly
+flagged that signal (1) above — the filter-chip prefix swap — is fed by
+`CategoryRail.jsx`'s OWN state (`allCategories`/`categoryNames` in
+`SkillsTab.jsx`/`CatalogBody.jsx`), which is **different state** from the
+main-content grid (`groupedItems`, rendered by `SkillCategorySection.jsx`).
+Proving the rail swapped does not prove the main content area itself
+rendered Skills content — Step 8's own case text ("main content area
+switches to display Skills content") was therefore asserted only by proxy.
+
+Root cause: `src/[fsd]/features/skill-hub/ui/SkillCard.jsx` — the component
+`SkillCategorySection.jsx` actually renders on this page — had **no testid**
+at implementation time. A similarly-named `src/[fsd]/features/skill/ui/SkillCard.jsx`
+(a different component, used by `ApplicationSkills.jsx` for an agent's
+attached-skills list) already carried `skill-card-{id}`, which the fix round's
+first pass nearly reused by mistake — verified via import-graph trace
+(`grep -rn "SkillCard" src/`, confirmed `SkillCategorySection.jsx` imports
+`./SkillCard` which resolves within `features/skill-hub/ui/`, not
+`features/skill/ui/`) that the two are unrelated components with unrelated
+render trees.
+
+**Correction:** added `catalog-skill-card-{id}` directly to the actual
+Skills-tab `SkillCard.jsx` root (`src/[fsd]/features/skill-hub/ui/SkillCard.jsx`,
+EliteaAI/EliteaUI@c8c621bd, pushed to `automation/testids`) via `add-data-testid`
+— the direct analog of `AgentCard.jsx`'s pre-existing `catalog-agent-card-{id}`.
+Step 8 now asserts `wait_for_any_skill_card()` (`SKILL_CARD_PREFIX` — same
+prefix-match idiom as `AGENT_CARD_PREFIX`/`wait_for_any_agent_card()`) as a
+genuine main-content-grid signal, alongside the pre-existing filter-rail and
+agent-card-absence signals (which remain valid corroborating evidence — they
+just aren't sufficient alone). This is still a technique substitution (the
+*how*), not a scope change: the case's requirement is unchanged, only now
+fully (not partially) asserted.
+
 ## Steps
 
 ### Step 1 — Navigate to Catalog
@@ -149,10 +181,13 @@ data — confirmed live: several agent cards' visible text contains "skill").
 
 **Action:**
 1. `wait_for_agent_card_count(0)` (Agents tab's own cards unmounted).
-2. `get_visible_skill_category_filter_chips()` count == 11.
-3. `get_visible_category_filter_chips()` count == 0 (absence — agent-scoped rail unmounted).
+2. `wait_for_any_skill_card()` (at least one real skill card rendered in the main
+   content grid — the direct content-visibility proof; see amended Declared
+   Improvisation).
+3. `get_visible_skill_category_filter_chips()` count == 11.
+4. `get_visible_category_filter_chips()` count == 0 (absence — agent-scoped rail unmounted).
 
-**Expected:** All three hold.
+**Expected:** All four hold.
 
 ### Step 9 — Right panel FEATURED + CATEGORIES filters
 
