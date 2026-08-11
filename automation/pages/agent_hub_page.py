@@ -413,12 +413,44 @@ class AgentHubPage(BasePage):
     def click_start_chat(self, timeout: int = 10000):
         """Click the 'Start Chat' button in the (already-ready) agent preview modal.
 
-        Callers MUST have already awaited :meth:`open_agent_by_name`'s own
-        wait for ``modal_show_instructions_link`` — clicking before the
-        modal's agent-details fetch resolves hits known defect #1043
-        (uncaught TypeError, silent no-op, no navigation).
+        Root-caused this dispatch (ELITEA-2360 debug task) via
+        ``AgentModal.jsx`` source: the button's ``onClick={onStartConversation()}``
+        (line 277) reads ``agentDetails.version_details.*`` from a
+        ``useState(null)`` (line 52) populated by an async
+        ``getPublicApplicationDetail`` RTK-Query fetch (lines 81-90). Clicking
+        while ``agentDetails`` is still ``null`` throws an uncaught TypeError
+        *inside* the click handler, BEFORE the ``dispatch(...)``/``navigate(...)``
+        calls execute — the click registers, no exception surfaces to
+        Playwright, the modal simply stays open forever. Already tracked as
+        known defect #1043.
+
+        :meth:`open_agent_by_name`'s own ready-signal (the agent-details GET
+        response resolving + ``modal_show_instructions_link`` visible) is
+        NOT sufficient — that link renders unconditionally regardless of
+        fetch status (confirmed via source), and the HTTP response resolving
+        in Playwright does not mean the React/Redux state that reads it has
+        committed yet. No DOM signal distinguishes "agentDetails committed"
+        from "still null" (both render identical visible content for a
+        no-starters agent) — confirmed live via a scripted repro this
+        dispatch: **0/3** navigations succeed when Start Chat is clicked
+        within ~200ms of the modal opening (deterministic silent no-op,
+        modal stays open — reproduced against a fresh no-cookie context
+        matching this suite's own ``conftest.py`` fixtures), **3/3** succeed
+        at >=300ms. A fixed 1s wait immediately before the click is the
+        declared workaround already used successfully in two merged sibling
+        tests (ELITEA-2368/2369) — moved in here so every caller gets it
+        instead of relying on each test file to remember it (three prior
+        unmerged attempts at ELITEA-2360/2361/2362 omitted this wait at the
+        call site and hit the race 100% of the time — the systemic cause
+        this method now closes). This is test synchronization for an
+        unobservable async gap, not defect masking: the underlying product
+        gap (no ``disabled={isFetching}`` guard on the button) stays tracked,
+        untouched, on #1043.
         """
         self.modal_start_chat_button.wait_for(state="visible", timeout=timeout)
+        # Known defect #1043 — see docstring above for the full root-cause
+        # analysis and the live-tested 200ms/300ms threshold this wait clears.
+        self.page.wait_for_timeout(1000)
         self.modal_start_chat_button.click()
 
     @action("Close the agent preview modal with X button")
