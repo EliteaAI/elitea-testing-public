@@ -303,3 +303,45 @@ Distinct from the valid-import round trip (ELITEA-1737/1738, above the
   of this run (ELITEA-2428 analysis) — implementer work via
   `add-data-testid`.
   Full details: `test-specs/skills/l2_skills-card-view-fields_ELITEA-2428.md`.
+
+## Back button (skill editor header) — `back-button` (ELITEA-2429)
+
+- The skill editor's Back button is the shared `BackButton.jsx` component
+  (`EliteaUI/src/components/BackButton.jsx`, rendered via `StyledTabs.jsx`'s
+  `leftButton` slot) — **pre-existing testid, `data-testid="back-button"`**,
+  same element already exposed as `AgentDetailPage.back_button` on the Agent
+  detail page. Confirmed live: clicking it from `/skills/all/{id}` navigates
+  straight to `/skills/all` (Skills list) — never `/chat`.
+- Source-traced root cause of *why* this is a meaningful regression guard
+  (not asserted in the test, informational): `BackButton.jsx`'s `onBack()`
+  falls back to `gotoListPage()` →
+  `NavigationHelpers.getListRouteByPageType(pageType, RouteDefinitions.Chat)`
+  whenever `useBackPath()` (`EliteaUI/src/hooks/useBackPath.js`) has no
+  `prevPath` for the current route — true for the Skills editor, since
+  `useBackPath.js`'s `hasMultiplePaths`/`getPrevPath` have no case for the
+  Skills route prefix (unlike Applications/Pipelines/Toolkits/Apps). `Chat`
+  is only the **fallback** when `pageType` is unmapped in
+  `navigation.helpers.js`'s `pageTypeToListRoute`; that map DOES include
+  `SkillDetails: RouteDefinitions.Skills`, so the fallback is never actually
+  reached for Skills today — but the code shape for a fallback-to-Chat
+  regression genuinely exists (an unmapped `pageType` would hit it), making
+  this a real, well-targeted guard.
+- **CONFIRMED LIVE GAP, now fixed**: `SkillsListPage.page_header`
+  (`testid="skills-page-header"`) was a pre-existing page-object field
+  pointing at a testid that did not exist anywhere in EliteaUI src (neither
+  `main` nor `automation/testids`) — `Skills.jsx`'s `<StickyTabs>` call never
+  passed a `titleTestId` prop, unlike `Applications.jsx` (Agents page),
+  which passes `titleTestId="agents-page-header"` to the same shared
+  component (`StickyTabs.jsx` already renders `data-testid={titleTestId}`
+  unconditionally). Fixed via `add-data-testid`: one-line
+  `titleTestId="skills-page-header"` addition to `Skills.jsx`'s
+  `<StickyTabs>` call, pushed to `automation/testids` (commit `b29c9b03`).
+  This was dead tech debt in the page object (the field had zero other
+  usages before this run) — not a new element, just newly exercised.
+- Page object additions (additive-only, no existing method bodies touched):
+  `SkillDetailPage.back_button` + `click_back_button()` (mirrors
+  `AgentDetailPage.click_back_button()` exactly);
+  `SkillsListPage.verify_dashboard_header_visible()` +
+  `get_skill_card_names()` (mirror `AgentsListPage`'s equivalents).
+  Test: `automation/tests/ui/skills/test_skill_back_navigation.py`.
+  Full details: `test-specs/skills/l2_skill-editor-back-button-returns-to-skills-list_ELITEA-2429.md`.
