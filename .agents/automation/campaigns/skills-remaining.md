@@ -16,8 +16,8 @@
 - Foundation merged: n/a — foundation is null (see Conductor note above)
 - Foundation surfaces CLAIMED: none (no foundation stage)
 - Heads analyzed: none (skipped — no foundation stage)
-- Waves: **wave-01 (8 cases) pending** · wave-02 (8) pending · wave-03 (8) pending · wave-04 (7) pending
-  · wave-05 (9, build_with_ai) pending
+- Waves: **wave-01 (8 cases) RUNNING — runId `wf_a1da4261-c1b`** · wave-02 (8) pending · wave-03 (8) pending
+  · wave-04 (7) pending · wave-05 (9, build_with_ai) pending
 
 ## Source
 
@@ -88,3 +88,5 @@ automation/base, no CI gate on it — each wave lands before the next starts). `
   — intake snapshots (40 candidate cases from #1399)`), pushed to automation/base.
 - 2026-08-11T~20:55Z — plan proposed by dispatched planner, self-reviewed and approved by lead (see Plan
   above). Wave-01 launch next.
+- 2026-08-11T~21:00Z — wave-01 launched via `batch-build.workflow.mjs`, runId `wf_a1da4261-c1b`, slug
+  `skills-remaining-w1`, base `origin/automation/base`. Polling in-turn.
