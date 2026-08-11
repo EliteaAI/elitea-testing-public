@@ -26,6 +26,12 @@ Case-text drift (CLARIFICATION, filed — not a defect,
 EliteaAI/elitea-testing-public#1212): case text claims a "reload category
 items" icon appears next to filtered section headers; no such icon exists
 anywhere in the live product. Asserts the header text only.
+
+Orchestrator's independent 3x gate hit 1/3 fresh red — an intermittent
+console-error 404 at Step 7. Reproduced live (1/12 fresh re-runs) with
+temporary debug instrumentation; root-caused as the same known defect
+already filed on a sibling case — see ``_is_known_1434_montserrat_font_404``
+below.
 """
 
 import logging
@@ -43,6 +49,27 @@ UI_ELEMENT_TIMEOUT = 10_000
 
 FIRST_CATEGORY = "Business Analyst"
 SECOND_CATEGORY = "Elitea"
+
+
+# Known defect elitea-testing-public#1434 (already filed) — an intermittent
+# 404 fetching a Montserrat ``.woff2`` file from Google's Fonts CDN
+# (fonts.gstatic.com). NOT tied to this test's own flow: EliteaUI's
+# ``index.html`` loads Montserrat via a Google Fonts CSS ``<link>`` tag, so
+# the woff2 fetch happens on EVERY page render, app-wide — unrelated to the
+# Agent Hub category filter-rail or the content-list sections this test
+# exercises. ``fonts.gstatic.com`` URLs are content-hashed and essentially
+# never 404 once published, so this reads as a transient CDN/network blip
+# rather than a broken reference. Live-confirmed via temporary debug
+# instrumentation (a print of ``msg.text``/``msg.location`` for every raw
+# console error) during this fix-only pass: 1/12 fresh re-runs surfaced the
+# exact signature below; removed the debug code once confirmed. Same
+# filter-by-resource-URL technique already established by
+# ``test_agent_hub_started_conversation_has_agent_as_participant.py``'s
+# identically-named helper — match on BOTH ``msg.text`` and
+# ``(msg.location or {}).get("url", "")``, never a blanket "any 404" filter.
+def _is_known_1434_montserrat_font_404(msg) -> bool:
+    location_url = (msg.location or {}).get("url", "")
+    return "404" in msg.text and "fonts.gstatic.com" in location_url and "montserrat" in location_url
 
 # Business Analyst category has these agents (confirmed live during analysis and
 # re-confirmed live during this implementer dispatch).
@@ -181,8 +208,10 @@ class TestAgentHubFilterMultipleCategories:
                 # EliteaAI/elitea-testing-public#1212); not asserted here (reverse-masking guard).
 
             with allure.step("Step 7 — Verify zero console errors during the multi-click filter interaction"):
-                assert not console_capture, (
-                    f"Unexpected console errors: {[m.text for m in console_capture]!r}"
-                )
+                # Known defect: elitea-testing-public#1434 — the app-wide Montserrat
+                # webfont CDN 404 (see _is_known_1434_montserrat_font_404 docstring
+                # above); filtered by resource URL, not a blanket 404 exclusion.
+                unexpected_errors = [m.text for m in console_capture if not _is_known_1434_montserrat_font_404(m)]
+                assert not unexpected_errors, f"Unexpected console errors: {unexpected_errors}"
         finally:
             console_capture.stop()
