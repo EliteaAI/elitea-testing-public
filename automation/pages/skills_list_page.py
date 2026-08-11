@@ -192,9 +192,39 @@ class SkillsListPage(BasePage):
         self.dismiss_banner_if_present()
         logger.info("Skills list page loaded")
 
+    def verify_dashboard_header_visible(self):
+        """Verify the Skills header is visible.
+
+        Mirrors ``AgentsListPage.verify_dashboard_header_visible()``.
+        Uses global timeout (10s) configured in conftest.py.
+        """
+        self.page_header.wait_for(state="visible")
+        logger.info("Verified dashboard header is visible")
+
     # ------------------------------------------------------------------
     # List queries
     # ------------------------------------------------------------------
+
+    def get_skill_card_names(self, timeout: int = 5000) -> list[str]:
+        """Return names of all skill cards visible on the dashboard.
+
+        Mirrors ``AgentsListPage.get_agent_card_names()``.
+
+        Returns:
+            List of skill name strings.
+        """
+        self.wait_for_network(timeout=timeout)
+        cards = self.skill_card_name
+
+        try:
+            cards.first.wait_for(state="visible", timeout=timeout)
+        except PlaywrightTimeoutError:
+            return []
+
+        names = []
+        for i in range(cards.count()):
+            names.append(cards.nth(i).text_content().strip())
+        return names
 
     def skill_exists_in_list(self, name: str) -> bool:
         """Return True if a skill with the given name is currently visible.

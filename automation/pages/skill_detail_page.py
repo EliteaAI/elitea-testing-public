@@ -31,6 +31,15 @@ class SkillDetailPage(SkillFormPage):
     URL: /skills/all/{skill_id}
     """
 
+    # --- Navigation ---
+    # Shared BackButton.jsx component (EliteaUI src/components/BackButton.jsx),
+    # reused across every entity-detail page header (agents, skills,
+    # credentials, ...) via StyledTabs.jsx's `leftButton` slot. Same
+    # pre-existing testid already wired as AgentDetailPage.back_button
+    # (automation/pages/agent_detail_page.py:542) — not a new element,
+    # just not yet exposed on this page object (ELITEA-2429).
+    back_button = LocatorDescriptor(testid="back-button")
+
     # Information section (used for wait_for_page_load)
     information_section = LocatorDescriptor(
         testid="skill-information-section",
@@ -202,6 +211,24 @@ class SkillDetailPage(SkillFormPage):
         assert "/skills/all/" in url, f"Not on skill detail page: {url}"
         assert "/create" not in url, f"Still on create page: {url}"
         logger.info("Verified on skill detail page: %s", url)
+
+    # ------------------------------------------------------------------
+    # Navigation helpers
+    # ------------------------------------------------------------------
+
+    @action("Navigate back")
+    def click_back_button(self, timeout: int = 5000):
+        """Click the back arrow button in the skill editor header.
+
+        Mirrors ``AgentDetailPage.click_back_button()`` — same shared
+        ``BackButton.jsx`` component/testid.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking back button")
+        self.back_button.click()
+        self.wait_for_network(timeout=timeout)
 
     # ------------------------------------------------------------------
     # Skill information
