@@ -29,6 +29,12 @@ Sequenced after ELITEA-2360's own root-cause fix (known defect #1043):
 ``AgentHubPage.click_start_chat()`` now owns the internal 1s wait before
 clicking, so this test calls it exactly as-is with no extra synchronization
 at the call site.
+
+Orchestrator's independent 3x gate hit 1/3 fresh red — an intermittent
+console-error 404 at Step 2. Reproduced live (1/6 fresh re-runs) with
+temporary debug instrumentation; root-caused as an unrelated, pre-existing,
+app-wide known-noisy resource — see ``_is_known_1434_montserrat_font_404``
+below.
 """
 
 import re
@@ -49,6 +55,42 @@ CATALOG_AGENT_NAME = "User Story Creator"
 EXPECTED_AGENT_VERSION = "skills-v3.0"
 
 
+# Known defect elitea-testing-public#1434 (already filed) — an intermittent
+# 404 fetching a Montserrat ``.woff2`` file from Google's Fonts CDN
+# (fonts.gstatic.com). NOT tied to this test's own flow: EliteaUI's
+# ``index.html`` loads Montserrat via a Google Fonts CSS ``<link>`` tag
+# (line 23), so the woff2 fetch happens on EVERY page render, app-wide —
+# unrelated to the Agent Hub modal, the Participants panel, or the new
+# ``chat-participant-avatar`` testid this test exercises.
+# ``fonts.gstatic.com`` URLs are content-hashed and essentially never 404
+# once published, so this reads as a transient CDN/network blip rather than
+# a broken reference — no fix available on the Elitea side beyond the
+# optional mitigation noted on the issue (self-host the font /
+# ``rel="preconnect"``). Live-confirmed via temporary debug instrumentation
+# (a parallel ``page.on("console", ...)`` printing ``msg.text``/
+# ``msg.location`` for every raw error) during this fix-only pass: 1/6 fresh
+# re-runs surfaced the exact signature below; removed the debug code once
+# confirmed. Same filter-by-resource-URL technique already established by
+# ``test_agent_publish_unpublish_version.py``'s ``_is_known_554_toolkits_404``
+# — match on BOTH ``msg.text`` and ``(msg.location or {}).get("url", "")``,
+# never a blanket "any 404" filter.
+def _is_known_1434_montserrat_font_404(msg) -> bool:
+    location_url = (msg.location or {}).get("url", "")
+    return "404" in msg.text and "fonts.gstatic.com" in location_url and "montserrat" in location_url
+
+
+# Same known defect (#1434), applied to the raw network ``response`` side-channel
+# instead of the console-message side-channel: the SAME woff2 fetch that logs the
+# console error above also surfaces here as a bare 4xx status in ``failed_responses``.
+# Filtering only the console-error assertions and leaving this one unfiltered would
+# just relocate the same intermittent red from one assertion to the other, not fix
+# it — so both side-channels for this one known-noisy resource are filtered
+# symmetrically. Takes ``(status, url)`` rather than a Playwright message object,
+# since ``page.on("response", ...)`` gives no ``.text``/``.location`` shape.
+def _is_known_1434_montserrat_font_404_response(status: int, url: str) -> bool:
+    return status == 404 and "fonts.gstatic.com" in url and "montserrat" in url
+
+
 class TestAgentHubStartedConversationHasAgentAsParticipant:
     """ELITEA-2361: Agent Hub — started conversation has agent added as participant (l2, medium)."""
 
@@ -67,8 +109,11 @@ class TestAgentHubStartedConversationHasAgentAsParticipant:
         conv_id: int | None = None
 
         console_errors = agent_hub.capture_console_errors()
-        failed_responses: list[int] = []
-        page.on("response", lambda resp: failed_responses.append(resp.status) if resp.status >= 400 else None)
+        failed_responses: list[tuple[int, str]] = []
+        page.on(
+            "response",
+            lambda resp: failed_responses.append((resp.status, resp.url)) if resp.status >= 400 else None,
+        )
 
         try:
             with allure.step("Step 1 — Navigate to Agent Hub"):
@@ -83,7 +128,14 @@ class TestAgentHubStartedConversationHasAgentAsParticipant:
                 # deterministic ready-signal for the modal, but click_start_chat()
                 # owns the extra known-defect-#1043 wait internally (below).
                 agent_hub.open_agent_by_name(CATALOG_AGENT_NAME, timeout=NAVIGATION_TIMEOUT)
-                assert not console_errors, f"Unexpected console errors while opening the modal: {console_errors}"
+                # Known defect: elitea-testing-public#1434 — the app-wide Montserrat
+                # webfont CDN 404 (see _is_known_1434_montserrat_font_404 docstring)
+                # can fire on this step's page render; filtered by resource URL, not
+                # a blanket 404 exclusion.
+                unexpected_errors = [m.text for m in console_errors if not _is_known_1434_montserrat_font_404(m)]
+                assert not unexpected_errors, (
+                    f"Unexpected console errors while opening the modal: {unexpected_errors}"
+                )
 
             with allure.step(
                 'Step 3 — Click "Start Chat" (case text: "Start conversation" — drift, '
@@ -94,7 +146,14 @@ class TestAgentHubStartedConversationHasAgentAsParticipant:
             with allure.step("Step 4 — Verify the new chat is created and the user lands on the Chat page"):
                 page.wait_for_url(re.compile(r"/chat"), timeout=NAVIGATION_TIMEOUT)
                 chat.wait_for_page_load()
-                assert not failed_responses, f"Unexpected 4xx/5xx responses: {failed_responses}"
+                # Known defect: elitea-testing-public#1434 — see
+                # _is_known_1434_montserrat_font_404_response docstring above.
+                unexpected_responses = [
+                    (status, url)
+                    for status, url in failed_responses
+                    if not _is_known_1434_montserrat_font_404_response(status, url)
+                ]
+                assert not unexpected_responses, f"Unexpected 4xx/5xx responses: {unexpected_responses}"
 
             with allure.step("Step 5 — Expand the Participants panel"):
                 chat.expand_participants_panel_via_toggle(timeout=UI_ELEMENT_TIMEOUT)
@@ -128,8 +187,16 @@ class TestAgentHubStartedConversationHasAgentAsParticipant:
                 )
 
             with allure.step("Side-channel check — zero console errors, zero 4xx/5xx across the whole flow"):
-                assert not console_errors, f"Unexpected console errors: {console_errors}"
-                assert not failed_responses, f"Unexpected 4xx/5xx responses: {failed_responses}"
+                # Known defect: elitea-testing-public#1434 — see
+                # _is_known_1434_montserrat_font_404 docstring above.
+                unexpected_errors = [m.text for m in console_errors if not _is_known_1434_montserrat_font_404(m)]
+                assert not unexpected_errors, f"Unexpected console errors: {unexpected_errors}"
+                unexpected_responses = [
+                    (status, url)
+                    for status, url in failed_responses
+                    if not _is_known_1434_montserrat_font_404_response(status, url)
+                ]
+                assert not unexpected_responses, f"Unexpected 4xx/5xx responses: {unexpected_responses}"
         finally:
             console_errors.stop()
             # A conversation may not have been created yet if the flow failed before
