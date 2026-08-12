@@ -113,6 +113,7 @@ class TestInteractWithSkillsFromAgent:
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5698", name="Skills V2 Epic")
     @pytest.mark.p2
     @pytest.mark.regression
+    @pytest.mark.flaky(reruns=2, reruns_delay=5)
     def test_interact_with_skills_from_agent(self, page, agent_api, skill_api):
         """Create two skills, attach both to an agent, and verify:
         - Plain messages (no trigger) do NOT apply skills

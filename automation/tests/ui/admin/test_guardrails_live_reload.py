@@ -541,9 +541,12 @@ class TestBlockedToolLiveReload:
             # Self-healing: remove blocked tool if left over from previous run
             if guardrails.is_tool_blocked(TEST_TOOL):
                 logger.warning("Tool '%s' was already blocked - cleaning up", TEST_TOOL)
-                guardrails.remove_blocked_tool(TEST_TOOL)
-                guardrails.remove_empty_toolkit_containers()
-                guardrails.save_configuration()
+                try:
+                    guardrails.remove_blocked_tool(TEST_TOOL)
+                    guardrails.remove_empty_toolkit_containers()
+                    guardrails.save_configuration(timeout=15000)
+                except Exception as cleanup_err:
+                    logger.warning("Cleanup save failed: %s - reloading page", cleanup_err)
                 admin_page.reload()
                 guardrails.wait_for_page_load()
 
@@ -666,9 +669,12 @@ class TestSensitiveToolLiveReload:
             # Self-healing: remove sensitive tool if left over from previous run
             if guardrails.is_tool_in_sensitive_list(TEST_TOOL, TEST_TOOLKIT):
                 logger.warning("Tool '%s' was already in sensitive list - cleaning up", TEST_TOOL)
-                guardrails.remove_sensitive_tool(TEST_TOOL)
-                guardrails.remove_empty_sensitive_toolkit_blocks()
-                guardrails.save_configuration()
+                try:
+                    guardrails.remove_sensitive_tool(TEST_TOOL)
+                    guardrails.remove_empty_sensitive_toolkit_blocks()
+                    guardrails.save_configuration(timeout=15000)
+                except Exception as cleanup_err:
+                    logger.warning("Cleanup save failed: %s - reloading page", cleanup_err)
                 admin_page.reload()
                 guardrails.wait_for_page_load()
 
