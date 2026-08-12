@@ -2596,6 +2596,55 @@ class AgentDetailPage(AgentFormPage):
         skill_id = self._get_skill_id_from_card(card)
         return card.locator(self.SKILL_VERSION_TRIGGER_SELECTOR.format(skill_id))
 
+    @action("Select a skill's version from the Versions menu")
+    def select_skill_version(self, skill_name: str, version_name: str, timeout: int = 10000):
+        """Open a skill card's version selector and click a specific version option.
+
+        LOCATOR: reuses :meth:`open_skill_version_selector`'s skill_id
+        resolution + trigger click to open the "Versions" menu, then clicks
+        the target entry via ``SKILL_VERSION_OPTION_SELECTOR`` — the
+        template constant already defined at class level (ELITEA-1789
+        testid-only rework), never previously called from a public method
+        (ELITEA-1789's own case only ever had one saved version, so
+        selecting a non-base option was never exercised — ELITEA-2610 is
+        the first caller). Selecting a version is an immediate API-level
+        auto-save (PATCH .../skill/prompt_lib/{project}/{skill_id} -> 201),
+        mirroring :meth:`attach_skill`'s counter-polling pattern: rather
+        than trust networkidle alone, poll the trigger's own text until it
+        reflects *version_name* before returning, so callers can safely
+        send the next chat message right after this call.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            version_name: Exact version name to select (e.g. "casual", "base").
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting version %r for skill %r", version_name, skill_name)
+        self.open_skill_version_selector(skill_name, timeout=timeout)
+
+        option = self.page.locator(self.SKILL_VERSION_OPTION_SELECTOR.format(version_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+
+        card = self._skill_card(skill_name, timeout=timeout)
+        skill_id = self._get_skill_id_from_card(card)
+        trigger = card.locator(self.SKILL_VERSION_TRIGGER_SELECTOR.format(skill_id))
+
+        deadline = time.time() + timeout / 1000
+        current = ""
+        while time.time() < deadline:
+            current = (trigger.text_content() or "").strip()
+            if current == version_name:
+                break
+            self.page.wait_for_timeout(300)
+
+        if current != version_name:
+            logger.warning(
+                "Version trigger did not update to %r within timeout (still %r)",
+                version_name, current,
+            )
+        logger.info("Skill %r version selector now shows %r", skill_name, current)
+
     @action("Attempt to open a skill's version selector (locked version — expect no-op)")
     def attempt_open_skill_version_selector(self, skill_name: str, timeout: int = 5000) -> bool:
         """Click a skill card's version-selector trigger and report whether
@@ -2894,6 +2943,30 @@ class AgentDetailPage(AgentFormPage):
             Integer count of message items currently in the chat.
         """
         return self._embedded_chat_messages().count()
+
+    def get_last_message_tool_chip_texts(self, timeout: int = 10000) -> list[str]:
+        """Return the text of every ``chat-answer-tool-chip`` in the LAST
+        embedded-chat message, scoped to that message only (ELITEA-2610).
+
+        Distinct from :meth:`get_nested_agent_tool_chip_texts`, which is
+        scoped INSIDE a nested sub-agent's own accordion details (a parent
+        agent invoking another agent as a tool). This reader is for the
+        TOP-LEVEL case — an agent invoking a skill directly, no nested
+        sub-agent involved — and scopes to the last ``chat-message-item``
+        so that across multiple turns in one conversation, only the most
+        recent turn's chip(s) are read, never an earlier turn's.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for at least one
+                chip to appear in the last message.
+
+        Returns:
+            List of chip text strings (e.g. ``["Skill: my-skill-name"]``).
+        """
+        last_msg = self._embedded_chat_messages().last
+        chips = last_msg.locator(self.CHAT_ANSWER_TOOL_CHIP_SELECTOR)
+        chips.first.wait_for(state="visible", timeout=timeout)
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
 
     def get_chat_starter_tiles(self):
         """Return the Locator matching ALL rendered embedded-chat conversation

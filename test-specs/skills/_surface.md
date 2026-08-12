@@ -48,6 +48,34 @@ analyst); update in place, don't append duplicate entries.
   oldest of 10 skills, moved from last to first on pin).
   Full details: `test-specs/skills/l3_skill-pin-unpin-flow_ELITEA-2435.md`.
 
+## Subagent skill isolation (ELITEA-2608) — nested-accordion chip is the deterministic signal
+
+- **The isolation mechanism itself is correct, confirmed live twice.** A
+  subagent invoked via the master's "+ Agent" Tools attach (`agent-add-agent-button`)
+  only ever shows ITS OWN attached skill's `chat-answer-tool-chip`
+  (`"Skill: {skill-name}"`) inside ITS OWN nested accordion details
+  (`chat-answer-nested-agent-accordion-details-{agent_name}`, ELITEA-1951's
+  existing testids/methods) — the master's skill never appears there, and a
+  skill-free subagent's nested details container shows zero
+  `chat-answer-tool-chip` elements.
+- **Confound to avoid when writing this style of test: an unconditionally-
+  triggered master-level skill can fire on the master's OWN top-level turn,
+  independent of subagent delegation, and visually confuses the
+  whole-message-text signal.** If the master agent has its OWN skill attached
+  (as this case's Test Data requires) and that skill's description has no
+  scoping condition ("Format all output in UPPERCASE" reads as "always" to the
+  LLM), the master can autonomously invoke it on a turn that ALSO delegates to
+  a subagent — producing an all-uppercase final rendered message even though
+  the subagent's own nested execution stayed correctly skill-free. This chip
+  shows up in the OUTER thought-accordion region (sibling to the nested
+  accordion's summary heading), NOT inside the nested details container — that
+  placement IS the disambiguator. **Fix: give skill descriptions used in this
+  kind of multi-agent test a narrow, intent-scoped trigger** (mirroring
+  ELITEA-2607's `"Use this skill ONLY when..."` convention), and always assert
+  isolation via the nested-accordion chip (deterministic) rather than the
+  whole-message text (confoundable) as the PRIMARY signal.
+  Full details: `test-specs/skills/l3_subagent-skills-isolation_ELITEA-2608.md`.
+
 ## VERSION dropdown — set-as-default (ELITEA-2437) — `SkillTabBar.jsx` (`skill-version-select`)
 
 **Distinct from the entity-level "Pin to top" flow above** — same "pin"
@@ -1240,3 +1268,241 @@ on an agent that has 3 Skills attached.
   you sure you want to discard changes?", `discard-confirm-button`) before reverting. Don't assume a
   failed Save silently resets state between per-field assertions.
   Full details: `test-specs/skills/l2_published-agent-version-cannot-be-modified_ELITEA-2614.md`.
+
+## Autonomous skill invocation + thought-process visibility (ELITEA-2607)
+
+- **`agent-add-skill-button` is now on-main, confirmed live.** The ELITEA-1735
+  AFS (2026-07-14 pass) logged this as a gap ("no testid, recommend
+  `add-data-testid`"). Confirmed live 2026-08-12: the button IS wired
+  (`data-testid="agent-add-skill-button"`) — the UI team added it since that
+  earlier pass. Stop citing the ELITEA-1735 gap note for this element; use the
+  testid directly.
+- **Skill invocation is visible in the thought process as a `chat-answer-tool-chip`
+  reading `"Skill: {skill-name}"`.** `ActionView.jsx`
+  (`../EliteaUI/src/components/Chat/ActionView.jsx:196-217`) special-cases
+  `action.toolMeta.toolkit_name === 'skills'`: the chip title becomes
+  `` `Skill${separator}${loadedSkillName}` `` instead of the usual
+  `"{toolkit}: {tool}"` form. Confirmed live: attaching one skill to a fresh
+  agent and sending a message matching that skill's description trigger (no
+  `~mention`) produces a `"Thought for N secs"` accordion (auto-expanded) whose
+  chip row reads exactly `"Skill: {skill-name}"` next to the model chip. Existing
+  page-object handles (`AgentDetailPage.CHAT_ANSWER_THOUGHT_ACCORDION_SELECTOR` /
+  `CHAT_ANSWER_TOOL_CHIP_SELECTOR`, `automation/pages/agent_detail_page.py:189-191`)
+  already scope correctly — no new testid needed for this assertion.
+- **Autonomous (V2, no `~mention`) invocation and the plain-message
+  non-invocation path both already work correctly live** — same mechanism
+  ELITEA-1735's merged test already exercises
+  (`automation/tests/ui/skills/test_skill_agent_interaction.py`). Re-confirmed
+  this run on a fresh single-skill topology (not just the merged test's
+  two-skill topology).
+- **Unattached skills are never invoked — confirmed live, no defect.** Created a
+  second skill with a distinctive canary-marker instruction (a string that could
+  ONLY appear in the response if that skill's own instructions fired), left it
+  unattached, then sent an adversarial prompt explicitly inviting it by name/intent
+  ("...use your translator skill if you have one"). Result: no
+  `chat-answer-tool-chip` for the unattached skill anywhere in the thought
+  accordion; response opens with "I don't have a translator skill available...";
+  canary marker never appears. **Gotcha for anyone writing this assertion**: don't
+  use a plausible real transform (e.g. an actual translation) as the unattached
+  skill's instructions — a correct real transform is indistinguishable from the
+  base LLM answering the same prompt with ZERO skill involvement, so it can't
+  prove non-invocation either way. Use an unmistakable canary marker instead.
+  Full details:
+  `test-specs/skills/lextend_skill-autonomous-invocation-core-functionality_ELITEA-2607.md`.
+
+## Explicit `~mention` + autonomous context-match on the SAME message — no double-injection (ELITEA-2609)
+
+- **Confirmed live, no defect.** Sending `~{skill-name} {text that ALSO
+  independently matches that skill's own description trigger}` — i.e. an
+  explicit mention AND a context match co-occurring on one message — invokes
+  the skill exactly ONCE: exactly one `chat-answer-tool-chip` reading
+  `"Skill: {skill-name}"` inside the outer `chat-answer-thought-accordion`,
+  and a single, clean, non-duplicated response (no repeated/concatenated
+  output block). Explicit mention does not "stack" with a coincidental
+  autonomous trigger match.
+- **Assertion shape that actually falsifies double-injection**: assert
+  `get_outer_thought_accordion().locator(CHAT_ANSWER_TOOL_CHIP_SELECTOR)` has
+  `.count() == 1` (not merely `.to_be_visible()` — a duplicate-invocation
+  defect would still leave "a chip visible" true even with 2 chips present).
+  Also prefer a markdown/structured skill transform (heading + list) over a
+  flat prose transform (e.g. plain uppercase) as the deterministic-transform
+  test data for this specific assertion — a double-injection defect on a
+  structured response shows up as a duplicated heading/list block, which is
+  far more visually/structurally distinctive than "still all-uppercase"
+  (compatible with either 1 or 2 invocations on a prose transform).
+  Full details:
+  `test-specs/skills/lextend_skill-explicit-autonomous-invocation-coexistence_ELITEA-2609.md`.
+
+## Agent-attached skill: SELECTING a non-base version actually changes chat behaviour (ELITEA-2610)
+
+- **New ground vs ELITEA-1789**: that AFS's skill only ever had ONE saved
+  version (`base`), so it confirmed the version-selector trigger/menu render
+  and open correctly, but never confirmed that clicking a non-base
+  `skill-version-option-{name}` menu item (a) actually re-PATCHes the
+  attachment, or (b) changes the AGENT's live-chat behaviour when the skill is
+  autonomously invoked. Both confirmed live this run, 3/3 (casual →
+  technical → base), with the change taking effect on the VERY NEXT chat
+  turn — same conversation, no page reload, no new chat, no explicit
+  agent-level Save.
+- **All three `skill-version-selector-trigger-{skill_id}` /
+  `skill-version-selector-menu-{skill_id}` / `skill-version-option-{version_name}`
+  testids are now `on-main ✓`** (promoted since the ELITEA-1789 rework, which
+  recorded them as `automation/testids`-only). Re-verify PROVENANCE fresh on
+  your own run regardless — this is a snapshot, not a standing guarantee.
+- **Real click required, same gotcha as ELITEA-1789**: an accessibility-tree/
+  `ref=`-resolved click on the trigger still silently no-ops (issue #46's a11y
+  half, `tabIndex=-1`/no ARIA role, reconfirmed live this run). Use a real
+  Playwright/CDP click (or `browser_evaluate` + `querySelector(...).click()`)
+  on the testid-scoped element.
+- **Gotcha for deterministic assertions**: don't use the case's literal
+  subjective tone descriptions ("formal"/"casual with emojis"/"technical") as
+  the skill's actual instructions — "is this response casual" isn't a
+  scriptable assertion. Use a `"Start every response with the exact tag
+  [X-STYLE]:"` marker-tag instruction per version (mirrors ELITEA-2440's
+  `"Always say BASE"` pattern) so the automated assertion is an exact-prefix
+  check, not a vibe check.
+- **No page-object method exists yet to CLICK a specific version option** —
+  only open/read/close the menu (`open_skill_version_selector`,
+  `get_versions_menu_item_names`, `close_versions_menu`). The
+  `SKILL_VERSION_OPTION_SELECTOR` template constant (`agent_detail_page.py:259`)
+  is already defined but never called from a public method — implementer adds
+  `select_skill_version(skill_name, version_name)`.
+  Full details:
+  `test-specs/skills/l3_skill-version-selection-behavior_ELITEA-2610.md`.
+
+## Edit with AI (skill editing, not creation) — `/skills/all/{id}` → `AIEditSkillModal`
+
+- **Shared shell, skill-specific wiring.** `entities/edit-entity-with-ai/`
+  (`EditEntityButton`/`EditEntityModal`/`EditEntityComparisonLayout`/
+  `EditEntityStepIndicator`/`GeneralStep`/`InstructionsStep`/`TextDiffHighlight`)
+  is the SAME shell consumed by Skill (`features/skill/ui/ai-edit-skill-modal/`),
+  Agent (`features/agent/ui/ai-edit-agent-modal/`), and Project Context
+  (`features/settings/ui/project-context/ai-edit/`) — Edit-with-AI, distinct
+  from the "Build with AI" skill-CREATION flow documented above (different
+  button: `edit-skill-with-ai-button` vs `generate-skill-open-button`;
+  different endpoint call shape — see below).
+- Trigger: `edit-skill-with-ai-button` (sparkle-icon button next to
+  Name/Description in `CreateSkillForm`'s `summaryEditAction` slot,
+  `EditSkill.jsx:241`). Modal: `ai-edit-skill-modal`. Prompt-phase testids
+  (`ai-edit-skill-prompt-input`/`-generate-button`/`-cancel-button`/
+  `-close-button`/`-error-alert`/`-loading-indicator`) all pre-existing,
+  on-main.
+- Loading text confirmed live: **"Generating skill draft..."**.
+- Wizard has up to 3 steps computed by
+  `features/skill/lib/helpers/skillAIEditionSteps.helpers.js:computeVisibleSteps()`:
+  General (Name+Description) shown if either changed OR nothing changed at
+  all; Instructions shown if it changed OR nothing changed; **Summary is
+  ALWAYS shown** (last step, `EDIT_STEP_KEYS.SUMMARY`). "Nothing changed"
+  branch exists so the wizard doesn't just vanish when the AI echoes the
+  input back unmodified — not yet exercised by any case as of this run.
+- Each step: `EditEntityComparisonLayout` renders CURRENT (read-only) /
+  SUGGESTED (contentEditable, per-field "Apply changes" checkbox, **checked
+  by default**) columns. `TextDiffHighlight.jsx` computes a word-level diff
+  and renders added/removed segments as styled spans — CSS-only, no testid on
+  the segments (first-party code, not a #579 exception if you want to assert
+  the highlight itself — see the AFS's Automation Hints for why the data-level
+  "text differs" assertion is preferred instead).
+- **UPDATE (ELITEA-2612 run, superseding the "zero testid coverage" note
+  below as of this run):** the wizard-phase gap WAS fixed for ELITEA-2611 —
+  the step indicator, all 3 "Apply changes" checkboxes, Previous/Next/Save,
+  and the 3 Summary-step inputs are now wired and on `main`
+  (`EliteaAI/EliteaUI@cddfd6d4`, fix-round-1 additions
+  `EliteaAI/EliteaUI@3e1e5c73`). **Still unwired: "Refine Prompt" and "Save as
+  Version"** — `AIEditSkillModal.jsx`'s `<EditEntityModal>` call site leaves
+  `refinePromptButtonTestId`/`saveAsVersionButtonTestId` unset (canon #511:
+  ELITEA-2611 never clicked either control, so wiring them then would have
+  been an orphan testid). ELITEA-2612 DOES exercise "Refine Prompt" (its
+  "Back" equivalent — there is no separate "Back" button, confirmed via
+  source read) — see `l3_edit-with-ai-navigation-error-handling_ELITEA-2612.md`
+  § Concrete Handles for the exact prop-wiring + naming
+  (`ai-edit-skill-wizard-refine-prompt-button`). "Save as Version" remains
+  unwired/unexercised as of this run — original text preserved below for
+  the historical "zero coverage" framing, now stale in its "no testid on
+  ANY of" claim but still accurate on which specific 2 controls are gapped.
+- ~~**CONFIRMED LIVE GAP — the entire wizard PHASE has zero testid coverage.**
+  Only the prompt phase (table above) is wired. No testid on: the step
+  indicator ("1. General"/"2. Instructions"/"3. Summary"), any of the 3
+  "Apply changes" checkboxes, the 4 wizard-footer buttons (Refine Prompt /
+  Previous / Next / Save / Save as Version — 5 buttons, Save+SaveAsVersion
+  both only on the last step), or the 3 Summary-step merged-value inputs.
+  Full component/prop/testid-name breakdown:
+  `test-specs/skills/l2_edit-with-ai-skill-happy-path_ELITEA-2611.md` §
+  Concrete Handles. Not yet fixed as of this run — implementer work via
+  `add-data-testid`, threaded the same `xxxTestId`-prop way the prompt phase
+  already is.~~ *(superseded — see UPDATE above)*
+- **Wizard-phase-only-has-Close, no-Cancel (ELITEA-2612 finding).**
+  `EditEntityModal.jsx`'s `renderActions()` — which renders the "Cancel"
+  button (`ai-edit-skill-cancel-button`) — returns `null` whenever
+  `phase !== PHASES.PROMPT`. Once generation succeeds and the wizard phase is
+  reached, "Cancel" no longer exists in the DOM at all; the ONLY dismissal
+  control from that point on is the modal-level Close (X),
+  `ai-edit-skill-close-button`. A case asking to "Cancel or close the wizard"
+  from a wizard step must use Close, not Cancel.
+- **"Refine Prompt" (`handleRefinePrompt`) preserves the prompt text;
+  "Close"/"Cancel" (`handleClose`, and the `!open` effect) do NOT — confirmed
+  live (ELITEA-2612).** Both handlers reset `phase`/`draftData`/
+  `activeStepIndex`; only `handleClose` additionally resets `description`
+  (the prompt state) and calls `resetGenerate()`. This asymmetry is
+  intentional per the case's own intent (Refine Prompt lets you tweak and
+  resend the SAME prompt; Cancel/Close abandons the whole attempt) — not a
+  bug either way it currently isn't.
+- **Generation-failure error text is genuinely the backend's own message,
+  round-tripped verbatim** (`generateError?.data?.error ||
+  generateError?.data?.detail || 'Failed to generate. Please try again.'`).
+  No product-side lever exists to force a real failure on demand — automate
+  via `page.route()` intercepting exactly one `generate_skill_draft` POST
+  with a mocked `5xx` + JSON body, same interception class already used
+  elsewhere in this page object for reading POST bodies. There is no
+  separate "Retry" control — "Generate Draft" itself, still present/enabled
+  in the (already-current) prompt phase after a failure, IS the retry path.
+- **Empty/whitespace-prompt validation is disable-only, no message
+  (ELITEA-2612 finding — case-text drift, clarification filed:
+  [elitea-testing-public#1478](https://github.com/EliteaAI/elitea-testing-public/issues/1478)).**
+  `disabled={!description.trim()}` on the Generate Draft button covers BOTH
+  empty and whitespace-only prompts (`.trim()` on either is falsy) — no
+  `ai-edit-skill-error-alert` or any other validation-message element is ever
+  rendered for this path. Assert via the button's `disabled` state, not a
+  message.
+- **Partial-apply mechanism confirmed correct, live.** Unchecking a field's
+  "Apply changes" checkbox at any wizard step and navigating away/back
+  preserves that per-field checked state (`fieldApplyFlags` in
+  `AIEditSkillModal.jsx`, lifted above the per-step components). The Summary
+  step is NOT an itemized "these will change" list as case text implies — it's
+  ONE merged, directly-editable form per field, where each field's value is
+  either CURRENT or SUGGESTED depending on that field's checkbox state. Same
+  guarantee, different presentation — not a defect, just a case-text
+  imprecision worth knowing before you go looking for a bullet list.
+- **Save vs Save as Version**: "Save" (wizard) calls `useSaveSkill` →
+  `PUT /api/v2/elitea_core/skill/prompt_lib/{projectId}/{skillId}`
+  (`skillsApi.js:187-200`, `skillUpdate` mutation) — mutates the CURRENT
+  version in place, toast "Skill saved". "Save as Version" instead opens a
+  "Create version" name dialog (`ai-edit-skill-version-dialog-*` testids,
+  pre-existing/on-main) and creates a NEW version via `useSaveSkillVersion` —
+  not exercised by the happy-path AFS above (out of scope, noted for a sibling
+  case).
+- Generate endpoint: `POST /api/v2/elitea_core/generate_skill_draft/prompt_lib/{projectId}`
+  — **same URL as skill-creation's Build-with-AI**, disambiguated by payload:
+  edit-mode body carries `skill_id`+`version_id`, create-mode omits both.
+  `200 OK` either way.
+  Full details:
+  `test-specs/skills/l2_edit-with-ai-skill-happy-path_ELITEA-2611.md`.
+- **Role-gated visibility (ELITEA-2613) — `edit-skill-with-ai-button` confirmed live for the
+  admin-equivalent `${TEST_USER}`.** Clicking the button (`getByTestId('edit-skill-with-ai-button')`)
+  opens `ai-edit-skill-modal` with heading "Edit with AI"; 0 console errors on close. Editor/Viewer
+  halves are BLOCKED — same missing `EDITOR_TEST_USER_*`/`VIEWER_TEST_USER_*` fixture gap already
+  tracked by `EliteaAI/elitea-testing-public#1314` for the Agent-entity sibling (ELITEA-1903/1904).
+  The button's render gate is presumed (not live-verified for Skill specifically) to be the same
+  `GET /api/v2/auth/permissions/prompt_lib/{project_id}`-driven `checkPermission(...)` mechanism
+  ELITEA-1903 confirmed for Agent's `generate-agent-open-button` — same `entities/edit-entity-with-ai/`
+  shell backs both, so no divergence is expected, but flag if a future run finds otherwise.
+- **Character limit is 5,000, not 2,500 (ELITEA-2613 finding — case-text drift, clarification filed:
+  [elitea-testing-public#1480](https://github.com/EliteaAI/elitea-testing-public/issues/1480)).**
+  `MAX_INSTRUCTIONS_LENGTH = 5000` (`EliteaUI/src/common/constants.js:68`), applied identically at the
+  wizard's editable Instructions field (`AIEditSkillModal.jsx:215` → `InstructionsStep`'s
+  `TextDiffHighlight`, silent JS-level slice, `TextDiffHighlight.jsx:64,74-79`) and the Summary step's
+  merged Instructions input (`SummaryStep.jsx:99,107`, native HTML `maxLength` attribute, existing
+  testid `ai-edit-skill-summary-instructions-input` — **no new testid needed** to assert this). Same
+  silent-truncation shape as the already-documented Name-field `maxlength=64` pattern above — no
+  validation-error/blocked-Save path exists for over-limit Instructions text either.
+  Full details:
+  `test-specs/skills/l2_edit-with-ai-skill-permissions_ELITEA-2613.md`.
