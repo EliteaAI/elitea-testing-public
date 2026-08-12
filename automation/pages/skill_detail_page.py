@@ -272,6 +272,35 @@ class SkillDetailPage(SkillFormPage):
     # hierarchy from AgentDetailPage) since Publish is triggered from the
     # SKILL controls menu on THIS page, mirroring the Fork-wizard block
     # above.
+    #
+    # ⚠ CROSS-PR RECONCILIATION (fix round, 2026-08-12) — sibling PR #1464
+    # (ELITEA-2595/96/98, branch tests/2595-2596-2598-skill-publish-wizard),
+    # SAME trunk (tests/batch-skills-remaining-w3), still OPEN, independently
+    # declares this exact field block (publish_menuitem,
+    # publish_version_name_input, publish_category_select,
+    # publish_agree_checkbox, publish_continue_button, publish_confirm_button,
+    # PUBLISH_CATEGORY_OPTION) with IDENTICAL testids/behavior — verified via
+    # `gh pr diff 1464` this round. This is a duplicate DECLARATION, not a
+    # contract conflict: whichever PR merges second will silently redefine
+    # these class attributes, but since the values/behavior are equivalent,
+    # the redefinition is functionally harmless either way (only the
+    # `publish_confirm_button` docstring's extra two-JSX-branch detail —
+    # ELITEA-2597-specific — would be lost if #1464's simpler declaration
+    # applies last; the testid VALUE is identical either way, so no test
+    # breaks). Left AS-IS rather than removed here: dropping these fields
+    # would break ELITEA-2597's own Preparation-step flow if #1464 has NOT
+    # yet merged when this branch is built/run, and I have no authority to
+    # edit PR #1464's branch from this dispatch. Recommendation for whoever
+    # merges second (orchestrator-level — needs cross-branch coordination
+    # neither implementer can do solo): delete the duplicate block, keep one
+    # canonical copy (prefer this one — richer `publish_confirm_button`
+    # docstring documents a real two-branch testid reuse the simpler version
+    # doesn't capture). The ONE genuine behavioral conflict in this pair of
+    # PRs — `confirm_publish()`'s return contract (int vs Response) — IS
+    # resolved on this branch: see `confirm_publish_and_capture_response()`
+    # below, deliberately renamed off the shared/established `int`-returning
+    # `confirm_publish()` name so the two PRs can merge in EITHER order with
+    # zero collision on that one.
     # ------------------------------------------------------------------
     publish_menuitem = LocatorDescriptor(
         testid="publish-menuitem",
@@ -1084,8 +1113,8 @@ class SkillDetailPage(SkillFormPage):
         logger.info("publish_skill_validate responded status=%d", response.status)
         return response
 
-    @action("Confirm Publish")
-    def confirm_publish(self, timeout: int = 15000):
+    @action("Confirm Publish and capture the raw response")
+    def confirm_publish_and_capture_response(self, timeout: int = 15000):
         """Click the Validation step's "Publish" button and wait for the
         ``publish_skill`` request to resolve.
 
@@ -1096,6 +1125,34 @@ class SkillDetailPage(SkillFormPage):
         a TTL-expiry failure (AFS ELITEA-2597: both share ``error:
         validation_token_invalid`` but differ in ``msg`` text — a
         status-only assertion can't tell them apart).
+
+        NAMING — deliberately NOT called ``confirm_publish()`` (fix-round
+        reconciliation, ELITEA-2597 vs sibling PR #1464/ELITEA-2595-96-98,
+        same batch trunk, both touching this class). ``confirm_publish()``
+        is an established, load-bearing contract that returns an ``int``
+        HTTP status: ``AgentDetailPage.confirm_publish() -> int`` (2 real
+        callers: ``test_agent_publish_unpublish_version.py``,
+        ``test_agent_version_selector_order.py``) and sibling PR #1464
+        independently mirrors that same ``-> int`` shape for
+        ``SkillDetailPage.confirm_publish()`` (3 callers across its own
+        test files, all doing ``assert publish_status == 200``). Reusing
+        the name here for a ``Response``-returning override would silently
+        shadow whichever declaration merges second — same class, same
+        method name, incompatible return types (``int`` vs ``Response``) —
+        breaking the other PR's `int`-equality assertions with an
+        ``AttributeError``-free but semantically wrong comparison
+        (``Response.__eq__`` against an int is just always False, so the
+        break would show as a mystifying assertion failure, not even a
+        clean crash). Following the naming precedent already used
+        elsewhere on this page family for a "click and keep the full
+        Response" variant of a status-only sibling method
+        (``artifacts_page.py``'s
+        ``click_upload_path_upload_button_and_capture_response()``) avoids
+        the collision entirely, independent of merge order — see the
+        Publish-wizard section header comment above for the fuller
+        reconciliation note and the still-open, harmless field/method
+        duplication this does NOT resolve (only the genuinely conflicting
+        contract needed a rename).
 
         Args:
             timeout: Maximum wait time in milliseconds.

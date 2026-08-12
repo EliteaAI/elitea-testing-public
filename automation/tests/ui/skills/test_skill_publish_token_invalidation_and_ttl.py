@@ -167,7 +167,7 @@ class TestSkillPublishTokenInvalidationAndTTL:
                 "verify 400 validation_token_invalid with the 'modified' msg, "
                 "the same text renders inline, and Publish becomes disabled"
             ):
-                publish_response = detail_page.confirm_publish()
+                publish_response = detail_page.confirm_publish_and_capture_response()
                 assert publish_response.status == 400, (
                     f"Expected 400 from publish_skill with a stale "
                     f"(modified) token, got {publish_response.status}"
@@ -280,7 +280,7 @@ class TestSkillPublishTokenInvalidationAndTTL:
                 "'expired' msg (distinct from Part A's 'modified' msg), "
                 "the same text renders inline, Publish becomes disabled"
             ):
-                publish_response = detail_page.confirm_publish()
+                publish_response = detail_page.confirm_publish_and_capture_response()
                 assert publish_response.status == 400, (
                     f"Expected 400 from publish_skill with an expired "
                     f"token, got {publish_response.status}"
