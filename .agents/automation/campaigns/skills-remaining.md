@@ -55,7 +55,7 @@
   as the correct sanctioned-RED signature. Own gate: clean 7-spec set 3/3 green (~1000-1100s/
   run, includes a real ~320s TTL wait) + sanctioned 2-spec set (`#611` + `#1470`) 3/3
   deterministic identical failure. 8/8 automated, 0 blocked at close. TMS back-written.
-  · wave-04 (7) pending · wave-05 (9, build_with_ai) pending
+  · **wave-04 (7 cases) RUNNING — runId `wf_4803fcbf-1c8`** · wave-05 (9, build_with_ai) pending
 
 ## Source
 
