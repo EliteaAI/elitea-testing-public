@@ -749,23 +749,71 @@ extension of `AgentDetailPage`'s):
   folder), confirmed live across a cross-project fork (399→400). Not a
   defect — the icon renders correctly in the target project regardless of
   which project's storage path it physically lives under.
-- **Skill icon upload — TWO testid gaps, confirmed via source read (not yet
-  fixed as of this session):**
-  1. `EntityIcon` in `CreateSkillForm.jsx` passes no `data-testid` at all
-     (Agent's equivalent call sites DO pass `agent-form-icon-button`, added
-     for ELITEA-1899 — Skill never received the same treatment). Testid
-     needed: `skill-form-icon-button`.
-  2. `SelectIconDialog.jsx`'s Upload `IconButton` (tooltip-only accessible
-     name "Upload a bmp, ico, gif, jpeg...") has no testid at all — affects
-     every entity type that uses this shared dialog, not skill-specific.
-     Testid needed: `agent-icon-picker-upload-button` (or an entity-agnostic
-     equivalent, matching the dialog's own existing `agent-` prefix
-     convention for this shared component).
+- **Skill icon upload — the two gaps below were FIXED during ELITEA-2602's
+  implementation** (`skill-form-icon-button`/`skill-form-icon-img` and
+  `agent-icon-picker-upload-button` all confirmed LIVE and in active use by
+  `SkillFormPage` as of ELITEA-2604's analysis run, 2026-08-12 — do not
+  re-add or re-request them):
+  1. ~~`EntityIcon` in `CreateSkillForm.jsx` passes no `data-testid`~~ — FIXED,
+     `skill-form-icon-button`/`skill-form-icon-img` live on both
+     `/skills/create` and `/skills/all/{id}` (same shared component, both
+     modes confirmed).
+  2. ~~`SelectIconDialog.jsx`'s Upload `IconButton` has no testid~~ — FIXED,
+     `agent-icon-picker-upload-button` live (entity-agnostic, shared dialog).
   3. Same TWO-CLICK quirk as the Agent icon avatar (first click only mounts
      the hover-triggered edit-pencil overlay; second click actually opens
      the dialog) — confirmed live, same as
      `.agents/memory/qa-engineer/agent_form_dual_component_and_icon_picker_quirks.md`,
-     automation-only artifact, not a product defect.
+     automation-only artifact, not a product defect. Still applies as of
+     2026-08-12.
+  4. **NEW GAP found during ELITEA-2604 (icon upload/validation case,
+     2026-08-12), NOT yet fixed**: the per-uploaded-icon delete `IconButton`
+     inside `UserIconItem.jsx`
+     (`../EliteaUI/src/[fsd]/features/settings/ui/project-general/general/
+     select-project-icon/UserIconItem.jsx`) has NO `data-testid` at all —
+     only a non-unique `className="deleteButton"`. It's hover-revealed
+     (`visibility:hidden` → `visible` on `:hover`, the button IS in the DOM
+     the whole time). Needed for automating "delete an uploaded icon"
+     (reverts to default if it was the selected one, confirmed live —
+     `DELETE .../upload_skill_icon/prompt_lib/{project}/{icon_name}` → 200).
+     Recommended fix: forward a `deleteButtonTestId` prop from
+     `SelectIconDialog.jsx`'s existing per-item
+     `data-testid={`agent-icon-picker-uploaded-${index}`}` call site →
+     `agent-icon-picker-uploaded-{index}-delete-button`. Full detail:
+     `test-specs/skills/l2_skill-custom-icon-upload-and-validation_ELITEA-2604.md`
+     Part D step 17.
+  5. **The "Default" tile (`agent-icon-picker-default-icon`) is a SECOND,
+     already-testid'd revert-to-default mechanism** distinct from deleting
+     an uploaded icon — in edit mode it fires
+     `PUT .../upload_skill_icon/prompt_lib/{project}/{versionId}` with
+     `{name: "", url: ""}`, toast "The icon has been reset to default icon"
+     (vs the delete path's "The icon has been successfully deleted."). Both
+     confirmed live to revert `skill-form-icon-img` to ABSENT (no `<img>`
+     element — the live product's default state, NOT a literal
+     `skill-icon.svg` file reference despite what some case text says), and
+     both confirmed to persist across a full page reload.
+  6. **Create mode vs edit mode upload persistence differs** (case-relevant
+     for any icon-upload test, not just ELITEA-2604): create mode (no
+     `entityId` yet) fires ONE `POST .../upload_skill_icon/prompt_lib/
+     {project}` → 200 and applies the icon to local form state only (persists
+     when the skill itself is saved). Edit mode (entityId present) fires the
+     SAME `POST` (still 200) **followed by** a second `PUT
+     .../upload_skill_icon/prompt_lib/{project}/{versionId}` → 200 that
+     applies+persists the icon to that skill version immediately,
+     independent of the main Save button (which stays disabled after an
+     icon-only edit-mode change — same mechanism as `AgentDetailPage`/
+     ELITEA-1899). A test asserting the upload-success toast text must
+     account for this: create mode shows exactly one toast ("The image has
+     been uploaded"); edit mode shows that toast followed by a second one
+     ("The icon has been changed") from the replace call.
+  7. **The oversized-file (>500KB) rejection is 100% server-side** — no
+     client pre-flight size check exists in `useUploadSkillIconMutation`.
+     Confirmed live: `POST` with a ~1.25MB valid PNG → **400 Bad Request**,
+     body `{"error": "File size exceeds 512 KB"}` (note: the picker
+     dialog's own tooltip says "less than 500KB" — same limit, inconsistent
+     unit-label string, cosmetic only). The dialog stays open and the
+     previous icon is retained (unchanged `skill-form-icon-img` src) on
+     rejection.
 - **Cross-project direct-URL navigation 404s** — `GET
   .../skill/prompt_lib/{currentlySelectedProjectId}/{skillId}` uses the
   SIDEBAR's currently-selected project, not any project encoded in the
