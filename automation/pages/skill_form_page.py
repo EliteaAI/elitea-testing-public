@@ -157,6 +157,47 @@ class SkillFormPage(BasePage):
         testid="toast-message",
         description="App-wide toast message text body",
     )
+    # App-wide toast Alert root (same shared Toast.jsx component) — carries
+    # data-severity (ELITEA-2604, used to confirm the oversized-icon
+    # rejection toast is severity="error"). Not yet declared on this page
+    # object before this case; pre-existing testid, mirrors
+    # ChatPage.toast_alert / AgentDetailPage.toast_alert.
+    toast_alert = LocatorDescriptor(
+        testid="toast-alert",
+        description="App-wide toast Alert root; carries data-severity (info/warning/error/success).",
+    )
+    # Severity-scoped toast alert selector — testid identity + data-severity
+    # state filter, the compliant shape for a state-dependent assertion
+    # (mirrors ChatPage.TOAST_ALERT_SEVERITY / AgentDetailPage.TOAST_ALERT_SEVERITY).
+    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
+
+    # "Default" tile in the icon picker's gallery — selecting it (edit mode)
+    # reverts the skill to the system default icon. Pre-existing, shared/
+    # entity-agnostic testid (same component AgentDetailPage.icon_picker_default_icon
+    # already declares) — not yet exposed on this page object before ELITEA-2604.
+    default_icon_tile = LocatorDescriptor(
+        testid="agent-icon-picker-default-icon",
+        description='Icon picker dialog — "Default" tile; selecting it '
+                     "reverts to the system default icon (entity-agnostic).",
+    )
+
+    # NOTE (ELITEA-2604 implementer, live-confirmed 2026-08-12): dynamic
+    # "Uploaded" gallery templates (ICON_PICKER_OPTION/ICON_PICKER_UPLOADED/
+    # ICON_PICKER_UPLOADED_SELECTED/ICON_PICKER_UPLOADED_DELETE_BUTTON), the
+    # shared alert_dialog_content/alert_dialog_confirm_button confirmation
+    # dialog, and a delete_selected_uploaded_icon() method (mechanism (a) —
+    # delete the currently-selected uploaded icon via its hover-revealed
+    # delete button) were explored here but REMOVED — confirmed live that the
+    # "Uploaded" gallery's infinite-scroll loader (ListInfiniteMoreLoader +
+    # RTK Query merge in getSkillIcons) gets PERMANENTLY stuck after a
+    # mutation (upload/replace/delete) invalidates the list while the
+    # dialog's local `page` state is already > 0 — exactly the situation this
+    # test's own Part B/C already produce by the time Part D runs. Filed as
+    # EliteaAI/elitea-testing-public#1459. This test uses mechanism (b)
+    # (select_default_icon_tile(), below) instead, per the AFS's own
+    # documented phased-approach allowance. The `agent-icon-picker-uploaded-
+    # {index}-delete-button` testid (EliteaAI/EliteaUI@1553565f) remains live
+    # in EliteaUI source for a future case once #1459 is fixed.
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -398,6 +439,150 @@ class SkillFormPage(BasePage):
         except Exception:
             return ""
         return self.skill_icon_img.get_attribute("src") or ""
+
+    def get_toast_alert(self, severity: str):
+        """Return the toast Alert locator scoped to a specific data-severity value.
+
+        Testid identity (``toast-alert``) + a ``data-severity`` state filter
+        — the compliant shape for a state-dependent assertion (mirrors
+        ``ChatPage.get_toast_alert()`` / ``AgentDetailPage``'s identical
+        pattern for the same shared Toast.jsx component).
+
+        Args:
+            severity: e.g. "error", "success", "warning", "info".
+        """
+        return self.page.locator(self.TOAST_ALERT_SEVERITY.format(severity))
+
+    @action("Upload a custom skill icon (edit mode — replaces the current icon)")
+    def upload_skill_icon_edit_mode(self, file_path: str, timeout: int = 10000) -> str:
+        """Open the icon picker (edit mode, entityId present) and upload a
+        replacement icon file.
+
+        Edit-mode upload fires TWO sequential requests — ``POST
+        .../upload_skill_icon/prompt_lib/{project}`` (uploads to the gallery,
+        identical to create mode) followed by ``PUT
+        .../upload_skill_icon/prompt_lib/{project}/{versionId}`` (applies/
+        persists the icon to this specific skill version) — unlike create
+        mode's single POST (see :meth:`upload_skill_icon`). The "The image
+        has been uploaded" toast is superseded by a second toast before the
+        next snapshot in some runs, so this method asserts on the network
+        response PAIR (POST 200 + PUT 200) as the authoritative persistence
+        signal instead of a toast-text match (AFS ELITEA-2604 step 8's
+        finding — :meth:`upload_skill_icon`'s exact-match toast assertion is
+        correct only for the single-request create-mode path).
+
+        Args:
+            file_path: Path to a valid image file (PNG/JPG/GIF/WEBP, under 500KB).
+            timeout: Maximum wait time in milliseconds for each response.
+
+        Returns:
+            The resulting ``skill-form-icon-img`` src after the PUT completes.
+        """
+        logger.info("Uploading skill icon (edit mode — replace): %s", file_path)
+        self.open_icon_picker(timeout=timeout)
+
+        with self.page.expect_response(
+            lambda r: "/upload_skill_icon/prompt_lib/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as put_info:
+            with self.page.expect_response(
+                lambda r: "/upload_skill_icon/prompt_lib/" in r.url
+                and r.request.method == "POST",
+                timeout=timeout,
+            ) as post_info:
+                with self.page.expect_file_chooser() as fc_info:
+                    self.icon_picker_upload_button.click()
+                fc_info.value.set_files(file_path)
+            post_response = post_info.value
+            assert post_response.status == 200, (
+                f"Edit-mode icon upload POST should return 200, got {post_response.status}"
+            )
+        put_response = put_info.value
+        assert put_response.status == 200, (
+            f"Edit-mode icon upload PUT should return 200, got {put_response.status}"
+        )
+
+        src = self.get_form_icon_src(timeout=timeout)
+        logger.info("Skill icon replaced (edit mode) — resulting src: %s", src)
+        return src
+
+    @action("Attempt to upload an oversized skill icon (expects a 400 rejection)")
+    def attempt_upload_oversized_icon(self, file_path: str, timeout: int = 10000) -> dict:
+        """Open the icon picker and attempt to upload a file expected to be
+        rejected server-side for exceeding the size limit.
+
+        Validation is server-side, not client-side (confirmed via source:
+        ``useUploadSkillIconMutation``'s RTK-Query builder has no pre-flight
+        size check — the FormData POST always fires) — this waits for the
+        network response rather than short-circuiting on a client-side
+        error. The icon picker dialog stays OPEN on a failed upload (does
+        NOT auto-close, unlike a successful one — see :meth:`upload_skill_icon`).
+
+        Args:
+            file_path: Path to an oversized image file (>500KB/512KB).
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The parsed JSON body of the 400 response (e.g.
+            ``{"error": "File size exceeds 512 KB"}``).
+        """
+        logger.info("Attempting oversized skill icon upload: %s", file_path)
+        self.open_icon_picker(timeout=timeout)
+
+        with self.page.expect_response(
+            lambda r: "/upload_skill_icon/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as response_info:
+            with self.page.expect_file_chooser() as fc_info:
+                self.icon_picker_upload_button.click()
+            fc_info.value.set_files(file_path)
+
+        response = response_info.value
+        assert response.status == 400, (
+            f"Oversized icon upload should be rejected with 400, got {response.status}"
+        )
+        body = response.json()
+        logger.info("Oversized upload rejected as expected: %r", body)
+        return body
+
+    @action("Select the Default icon tile (revert to default, edit mode)")
+    def select_default_icon_tile(self, timeout: int = 10000) -> str:
+        """Open the icon picker and click the "Default" tile to reset the
+        skill's icon to the system default (edit mode).
+
+        LOCATOR: ``default_icon_tile`` (``agent-icon-picker-default-icon``,
+        pre-existing shared testid). In edit mode (entityId present),
+        clicking this tile calls the same ``replaceSkillIcon`` mutation as
+        any other gallery selection but with an empty ``{name: "", url: ""}``
+        payload — confirmed live: ``PUT
+        .../upload_skill_icon/prompt_lib/{project}/{versionId}`` -> 200,
+        toast "The icon has been reset to default icon", dialog auto-closes.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The resulting ``skill-form-icon-img`` src — empty string, since
+            the icon reverted to the default (absent-``<img>``) state, see
+            :meth:`get_form_icon_src`.
+        """
+        logger.info("Selecting the Default icon tile (revert to default)")
+        self.open_icon_picker(timeout=timeout)
+
+        with self.page.expect_response(
+            lambda r: "/upload_skill_icon/prompt_lib/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as put_info:
+            self.default_icon_tile.click()
+        put_response = put_info.value
+        assert put_response.status == 200, (
+            f"Reset-to-default PUT should return 200, got {put_response.status}"
+        )
+
+        self.icon_picker_dialog.wait_for(state="hidden", timeout=timeout)
+        src = self.get_form_icon_src(timeout=timeout)
+        logger.info("Icon reset to default — resulting src: %r", src)
+        return src
 
     def _fill_text_input(self, locator, text: str):
         """Fill a standard MUI text input with React-safe keyboard events.
