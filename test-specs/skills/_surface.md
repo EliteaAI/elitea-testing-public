@@ -48,6 +48,34 @@ analyst); update in place, don't append duplicate entries.
   oldest of 10 skills, moved from last to first on pin).
   Full details: `test-specs/skills/l3_skill-pin-unpin-flow_ELITEA-2435.md`.
 
+## Subagent skill isolation (ELITEA-2608) — nested-accordion chip is the deterministic signal
+
+- **The isolation mechanism itself is correct, confirmed live twice.** A
+  subagent invoked via the master's "+ Agent" Tools attach (`agent-add-agent-button`)
+  only ever shows ITS OWN attached skill's `chat-answer-tool-chip`
+  (`"Skill: {skill-name}"`) inside ITS OWN nested accordion details
+  (`chat-answer-nested-agent-accordion-details-{agent_name}`, ELITEA-1951's
+  existing testids/methods) — the master's skill never appears there, and a
+  skill-free subagent's nested details container shows zero
+  `chat-answer-tool-chip` elements.
+- **Confound to avoid when writing this style of test: an unconditionally-
+  triggered master-level skill can fire on the master's OWN top-level turn,
+  independent of subagent delegation, and visually confuses the
+  whole-message-text signal.** If the master agent has its OWN skill attached
+  (as this case's Test Data requires) and that skill's description has no
+  scoping condition ("Format all output in UPPERCASE" reads as "always" to the
+  LLM), the master can autonomously invoke it on a turn that ALSO delegates to
+  a subagent — producing an all-uppercase final rendered message even though
+  the subagent's own nested execution stayed correctly skill-free. This chip
+  shows up in the OUTER thought-accordion region (sibling to the nested
+  accordion's summary heading), NOT inside the nested details container — that
+  placement IS the disambiguator. **Fix: give skill descriptions used in this
+  kind of multi-agent test a narrow, intent-scoped trigger** (mirroring
+  ELITEA-2607's `"Use this skill ONLY when..."` convention), and always assert
+  isolation via the nested-accordion chip (deterministic) rather than the
+  whole-message text (confoundable) as the PRIMARY signal.
+  Full details: `test-specs/skills/l3_subagent-skills-isolation_ELITEA-2608.md`.
+
 ## VERSION dropdown — set-as-default (ELITEA-2437) — `SkillTabBar.jsx` (`skill-version-select`)
 
 **Distinct from the entity-level "Pin to top" flow above** — same "pin"
