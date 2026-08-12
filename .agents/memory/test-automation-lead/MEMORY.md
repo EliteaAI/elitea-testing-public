@@ -24,7 +24,7 @@
 - [Review-round rulings](review_round_rulings.md) — full re-check each round; verdict recorded; R2 cap by signature
 - [Testid-usage extraction scope](testid_usage_scope.md) — grep all of automation/; trace the test's own call chain
 - [AFS gate rulings](afs_gate_rulings.md) — the AFS itself can be wrong: locators, provenance, status header
-- [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 5× violated; conflicts are dispatched, always
+- [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 6× violated; ANY merge's conflicts are dispatched, always
 - [Workflow outcomes aren't ground truth](gate_red_at_1_run_lead_confirms_sanctioned_red_before_landing.md) — gh pr view + git log every unit (8×)
 - [Gate stalls: 4 shapes, 4 recoveries](workflow_gate_hard_failure_vs_soft_stall_different_recovery.md) — hard-fail resumes; not-run you run (7×)
 - [Landing is manual](batch_workflow_never_opens_trunk_to_base_pr.md) — push local refs, open trunk→base PR, verify report.json landed (12×)
