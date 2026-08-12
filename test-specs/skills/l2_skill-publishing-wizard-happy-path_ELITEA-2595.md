@@ -106,7 +106,7 @@
 | 6 Wait for validation to complete | passes, no FAIL (may show warnings) | step 8 | `step 8`: `status != "FAIL"` | asserted, *clarification: only true when icon+tag are present — see #1463* |
 | 7 Click Next → Step 3 Publishing | publishing confirmation step shown | step 9 (Publish click) | `step 9`: publish request fires | asserted *(the live wizard collapses "Next"+"Publish" into a single "Publish" action on the Validation step once status≠FAIL — there's no separate intermediate confirmation click)* |
 | 8 Click Publish | publishing completes, success shown | step 9 | `step 9`: 200 response + toast | asserted |
-| 9 Navigate to Catalog | published skill appears with correct version | steps 10–11 | `step 11`: skill card visible under category | asserted, *decomposed: version re-select (step 10) needed first due to #614* |
+| 9 Navigate to Catalog | published skill appears with correct version | steps 10–11 | `step 12`: skill card visible under category (mislabeled `step 11` previously — step 11 only asserts the category heading visible; the category-scoped skill-card check is `get_skill_card(skill_name, category=CATEGORY_NAME)` in step 12's code) | asserted, *decomposed: version re-select (step 10) needed first due to #614* |
 | 10 Verify published skill details | name/description/version/category match | step 12 | `step 12`: card fields match input | asserted |
 
 **Axis 2 — Analyst additions.**
@@ -159,13 +159,17 @@ handles. PROVENANCE verified via `cd ../EliteaUI && git fetch origin` +
 | VERSION dropdown trigger | (existing `SkillDetailPage` field — see `switch_version()`/`open_version_selector()`) | on-main ✓ |
 | VERSION option by name | dynamic `version-option-{name}` | on-main ✓ |
 | Catalog — Skills tab | `catalog-skills-tab` | on-`automation/testids` only |
+| Catalog — skill category section container (scopes the published skill's card as a DESCENDANT of its selected category, not merely present anywhere on the page) | `catalog-category-section-{slug}` (slugify: lowercase, `[^a-z0-9]+` → `-`) | **new — added this round**, EliteaAI/EliteaUI@c80de351, on-`automation/testids` only (awaiting human promotion to main) |
 
-No new testids needed — every handle this flow touches is pre-existing
-(shared with the agent Publish flow + prior skill AFS work). The 5 testids
-marked "on `automation/testids` only" are pre-existing from ELITEA-1892's
-agent-Publish rework, not new work for this case — they will reach `main`
-via the same human cherry-pick already pending for that case, not a new
-action this AFS creates.
+One new testid WAS added this round: `catalog-category-section-{slug}`
+(EliteaAI/EliteaUI@c80de351) — superseding this AFS's original "no new
+testids needed" claim, which held only for the initial implementation pass,
+not after this fix round's addition. Every other handle this flow touches
+remains pre-existing (shared with the agent Publish flow + prior skill AFS
+work). The 5 pre-existing testids marked "on `automation/testids` only" are
+from ELITEA-1892's agent-Publish rework, not new work for this case — they
+will reach `main` via the same human cherry-pick already pending for that
+case.
 
 ## Network Behavior
 - `POST .../publish_skill_validate/prompt_lib/{project}/{skillId}/{versionId}`

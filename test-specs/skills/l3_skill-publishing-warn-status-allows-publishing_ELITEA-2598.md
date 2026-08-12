@@ -131,7 +131,11 @@ on gallery tiles observed this run — selected via the existing
 `upload_skill_icon_edit_mode()` page-object method's file-chooser path, or
 manually via the gallery's first "Uploaded" image if reusing an existing
 project icon), plus `catalog-skills-tab` (on `automation/testids` only) for
-step 10.
+step 10, plus `catalog-category-section-{slug}` (container testid,
+**new — added this round**, EliteaAI/EliteaUI@c80de351, on
+`automation/testids` only) — this case's Catalog verification also calls
+`get_skill_card(skill_name, category=CATEGORY_NAME)`, the same
+category-scoped card check ELITEA-2595 uses, so it shares that testid too.
 
 ## Network Behavior
 - `POST .../publish_skill_validate/prompt_lib/{project}/{skillId}/{versionId}`
