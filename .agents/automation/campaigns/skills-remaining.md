@@ -55,7 +55,19 @@
   as the correct sanctioned-RED signature. Own gate: clean 7-spec set 3/3 green (~1000-1100s/
   run, includes a real ~320s TTL wait) + sanctioned 2-spec set (`#611` + `#1470`) 3/3
   deterministic identical failure. 8/8 automated, 0 blocked at close. TMS back-written.
-  · **wave-04 (7 cases) RUNNING — runId `wf_4803fcbf-1c8`** · wave-05 (9, build_with_ai) pending
+  · **wave-04 (7 cases) LANDED** — elitea-testing-public#1482, merged. ELITEA-2607's outcome
+  arrived mislabeled `blocked` by the report writer despite a real merged+APPROVED PR #1474 —
+  verified against git ground truth (same known report-writer bug as before) before landing.
+  ELITEA-2608's implementer session was interrupted mid-Phase-4-Execute; its 409-line written
+  test survived as a git stash (found by the gate agent, flagged, not touched), recovered by
+  the lead onto its own branch, finished by a fresh dispatch — found+fixed a real assertion bug
+  (nested sub-agent accordion always renders a wrapper chip regardless of skill attachment,
+  root-caused against EliteaUI source), reviewed APPROVED. Since the fix landed after the
+  workflow's own internal gate ran, the lead ran a full fresh 3/3 gate over the current trunk
+  tip (11 node-ids, ~13-18min/run incl. live LLM calls) — 2 attempts each hit one transient
+  console-404 (known noisy-resource pattern), 3rd attempt clean. Blast radius: both touched
+  page objects purely additive. 7/7 automated, 0 blocked at close. TMS back-written.
+  · wave-05 (9, build_with_ai) pending
 
 ## Source
 
