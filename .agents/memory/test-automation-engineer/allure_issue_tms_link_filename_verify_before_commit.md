@@ -33,3 +33,23 @@ response** (no diff touched it) — cost a whole extra round.
    adjacent-string-literal URL wrapping) and asserts the path resolves in
    the sibling `onetest-ai-tm-Elitea` clone. Pattern is copy-pasteable to
    any other spec file that accumulates multiple `@allure.issue` links.
+
+## Recurrence #3 (ELITEA-2612, PR #1479, 2026-08-12)
+
+Same class, third time: `@allure.issue` on
+`test_skill_edit_with_ai_navigation_error_handling.py` pointed at
+`skills/ELITEA-2612_edit-with-ai-navigation-error-handling.md` (mirroring the
+AFS filename `l3_edit-with-ai-navigation-error-handling_ELITEA-2612.md`) but
+the real onetest-ai-tm-Elitea file is
+`skills/ELITEA-2612_edit-with-ai-skill-navigation-and-errors.md` — a
+**different slug from the AFS filename**, not just a typo. Also missed on the
+first fix-round pass (finding came back "not addressed" — no diff line touched
+it), same failure mode as recurrence #1. **The reusable lesson given 3
+occurrences: never assume the TMS case slug matches the AFS filename slug —
+they're independently named.** Always resolve the real filename with
+`ls ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/<feature>/ | grep -i <id>`
+(or the `gh api` equivalent) and paste it in, never derive it from the AFS
+name or the case title. A repo-wide guard (one parametrized unit test walking
+every spec file's `@allure.issue` decorators, instead of one bespoke test per
+spec) would close this class for good — worth proposing to the orchestrator
+next time this recurs.

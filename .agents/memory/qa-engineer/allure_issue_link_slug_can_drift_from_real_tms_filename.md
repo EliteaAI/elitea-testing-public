@@ -54,3 +54,17 @@ Classified **blocking** here (CHANGES_REQUESTED), consistent with how the
 "not blocking, cosmetic" call in `allure_issue_tms_link_path_drift.md` (a
 different PR/file); this project's own review history on this exact file
 already set the precedent as blocking.
+
+## Recurrence #3 (ELITEA-2612 review, PR #1479) — different file, same batch
+
+`test_skill_edit_with_ai_navigation_error_handling.py` linked
+`skills/ELITEA-2612_edit-with-ai-navigation-error-handling.md` (confirmed 404
+via `gh api`); the real file is
+`skills/ELITEA-2612_edit-with-ai-skill-navigation-and-errors.md` (confirmed
+200). Implementer's own daily-log entry claimed "no live drift, no new gotcha
+class" for this case despite this — the check is genuinely never automatic,
+it has to be re-run by hand on every `@allure.issue` addition regardless of
+how routine the PR looks. Three occurrences across two different files in one
+batch (skills-remaining-w4) — worth proposing as a pre-commit/CI grep
+(`gh api .../<slug>.md` for every new `@allure.issue` line in a diff) rather
+than relying on review to keep catching it.
