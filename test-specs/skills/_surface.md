@@ -704,3 +704,82 @@ extension of `AgentDetailPage`'s):
   testid — a text-based selector would be ambiguous; the testid scopes
   correctly to just the AI response.
   Full details: `test-specs/skills/l3_test-panel-response-actions-enabled_ELITEA-2442.md`.
+
+## Fork wizard — skill entity (ELITEA-2602/ELITEA-2603)
+
+- **Skill Fork reuses the SAME shared `ImportWizardModal`/`IWModal*` tree
+  Agent Fork (ELITEA-1893) and Pipeline Fork (ELITEA-2051) already use** —
+  literal `agent-` prefix on nearly every handle is naming tech debt, not
+  entity scoping. Confirmed live, zero new testids needed for the wizard
+  body itself: `agent-import-preview-dialog` / `agent-import-complete-dialog`,
+  `agent-import-wizard-project-select-combobox`, `select-option-{projectId}`
+  (dynamic), `agent-import-preview-name`, `agent-import-preview-card-toggle`,
+  `agent-fork-confirm-button`, `agent-import-complete-got-it-button`.
+- **Only the Fork MENUITEM is entity-scoped, and it's NOT the shared
+  `ForkEntityButton.jsx`/`useForkEntityMenu()` hook Agent/Pipeline/Toolkit
+  use.** `SkillControls.jsx` implements Fork as its own menu item
+  (`key: 'fork'`, wired via a dedicated `useForkSkill()` hook that still
+  dispatches into the same shared `importWizard` Redux slice) — confirmed
+  via source read. Result: the skill Fork menuitem's testid is the GENERIC
+  `fork-menuitem` (not `agent-actions-fork-menuitem`/
+  `pipeline-actions-fork-menuitem` — those come from the shared hook's
+  `FORK_MENU_ITEM_KEY_BY_ENTITY` map, which Skill never uses). Still unique
+  and functionally sufficient within the skill controls menu (only one Fork
+  item), just don't assume naming parity with Agent/Pipeline when writing
+  new tests.
+- **The Fork wizard's "Main entity" card NEVER shows Tags** — confirmed
+  live via DOM text-content check with two tags present on the source. Only
+  Name, "Type: {entity}", Description, Instructions render. Same omission
+  applies to Agent/Pipeline Fork (their AFS/memory files never document
+  tags in the preview either) — consistent shared-component behavior, not
+  a skill-specific gap. Filed as clarification (case-text overstatement,
+  ELITEA-2602 step 7 promised "tags, etc."):
+  https://github.com/EliteaAI/elitea-testing-public/issues/1455.
+- **Version-scoped Fork**: forking a NON-base version correctly captures
+  THAT version's instructions/tags (confirmed via `skill_export_fork` GET
+  firing with the active version's id, and the resulting fork's
+  `meta.parent_version_id` pointing at the SOURCE's non-base version id,
+  not its base version id). The forked copy's own version is always named
+  `"base"` in the target project regardless of which source version was
+  forked — confirmed live (`versions` array has exactly one entry,
+  `name: "base"`).
+- **Icon is preserved by reference, not re-uploaded per fork** — the
+  forked skill's `meta.icon_meta.url` is byte-identical to the source's
+  (same file path under the SOURCE project's `skill_icon/{sourceProjectId}/`
+  folder), confirmed live across a cross-project fork (399→400). Not a
+  defect — the icon renders correctly in the target project regardless of
+  which project's storage path it physically lives under.
+- **Skill icon upload — TWO testid gaps, confirmed via source read (not yet
+  fixed as of this session):**
+  1. `EntityIcon` in `CreateSkillForm.jsx` passes no `data-testid` at all
+     (Agent's equivalent call sites DO pass `agent-form-icon-button`, added
+     for ELITEA-1899 — Skill never received the same treatment). Testid
+     needed: `skill-form-icon-button`.
+  2. `SelectIconDialog.jsx`'s Upload `IconButton` (tooltip-only accessible
+     name "Upload a bmp, ico, gif, jpeg...") has no testid at all — affects
+     every entity type that uses this shared dialog, not skill-specific.
+     Testid needed: `agent-icon-picker-upload-button` (or an entity-agnostic
+     equivalent, matching the dialog's own existing `agent-` prefix
+     convention for this shared component).
+  3. Same TWO-CLICK quirk as the Agent icon avatar (first click only mounts
+     the hover-triggered edit-pencil overlay; second click actually opens
+     the dialog) — confirmed live, same as
+     `.agents/memory/qa-engineer/agent_form_dual_component_and_icon_picker_quirks.md`,
+     automation-only artifact, not a product defect.
+- **Cross-project direct-URL navigation 404s** — `GET
+  .../skill/prompt_lib/{currentlySelectedProjectId}/{skillId}` uses the
+  SIDEBAR's currently-selected project, not any project encoded in the
+  visited URL path (`/skills/all/{id}` carries no project segment). A test
+  navigating between a fork's source and target projects MUST switch the
+  sidebar project selector (`project-selector-trigger-combobox` →
+  `select-option-{projectId}`) BEFORE navigating to a detail page in the
+  other project — confirmed live (a naive direct nav 404s and shows a
+  blank/error state).
+- **Tags field silently rejects hyphens** (see
+  `skill_tags_field_hyphen_rejected_and_chip_delete_icon_only.md` for the
+  full regex detail) — reconfirmed for THIS case's literal test data
+  (`test-tag`, `fork-demo`, `v2-tag` all rejected; `enhanced` accepted, no
+  hyphen). The Create-Version dialog's Name field does NOT share this
+  restriction — `v2-enhanced` (with hyphen) is accepted there, confirmed
+  live. Don't assume all text fields on the skill surface share one
+  validation ruleset.
