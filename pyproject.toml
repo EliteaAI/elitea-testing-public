@@ -2,6 +2,11 @@
 requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["automation", "automation.*"]
+exclude = ["coverage", "evidence", "docs", "scripts", "test-data", "test-specs", "toolkit-tests", "ui-tests", "reports"]
+
 [project]
 name = "elitea-testing"
 version = "0.1.0"
