@@ -1,32 +1,43 @@
 ---
 name: Catalog category grouping cannot be scoped — no container testid
-description: "Appears under Category" can't be proven with current testids; heading + card checks are independent, page-wide
+description: RESOLVED (PR #1464 fix-round-1) — container testid now exists; card-under-category is provably scoped
 type: feedback
 ---
 
-Found reviewing ELITEA-2595/2596/2598 (PR #1464, `test_skill_publish_wizard_happy_path.py`
-/ `test_skill_publish_warn_status_allows_publishing.py`). Both AFS files claim the
-published skill "appears under its selected Category group" — matching the TMS case's
-own wording — and both AFS Coverage Maps cite this as `asserted`. In the implementation
-it is checked as TWO independent, page-wide assertions:
+**Status: RESOLVED**, 2026-08-12 (PR #1464 fix round 1). The gap this entry
+originally documented is closed — do not treat "heading + card checks are
+independent, page-wide" as current truth. Kept as the pattern reference for
+the next area that needs the same "X is a descendant of category section Y"
+proof (e.g. Agents-tab `AgentCategorySection.jsx`, still ungapped as of this
+writing — see note below).
 
-1. `AgentHubPage.get_visible_category_heading_texts()` — `CATEGORY_NAME` is present
-   ANYWHERE among the rendered `catalog-category-heading-*` elements.
-2. `AgentHubPage.get_skill_card(skill_name)` — a card with that name exists ANYWHERE
-   via the page-wide `SKILL_CARD_PREFIX` (`[data-testid^="catalog-skill-card-"]`).
+**Original finding** (reviewing ELITEA-2595/2596/2598): both AFS files
+claimed the published skill "appears under its selected Category group," but
+the implementation checked it as TWO independent, page-wide assertions —
+`get_visible_category_heading_texts()` (heading text present ANYWHERE) and
+`get_skill_card(skill_name)` (card present ANYWHERE via the page-wide
+`SKILL_CARD_PREFIX`). Neither was scoped to the other, because
+`SkillCategorySection.jsx`'s wrapping `<Box>` (heading + card grid) carried
+no testid — only the heading `<Typography>` and each `SkillCard` root did.
 
-Neither is scoped to the other. Source read of both `SkillCategorySection.jsx` and
-`AgentCategorySection.jsx` (EliteaUI) confirms why: each wraps its heading + card grid
-in a plain `<Box>` with **no testid on the container** — only the heading `<Typography>`
-and each `SkillCard`/`AgentCard` root carry testids. There is currently no testid-only
-way to assert "this specific card is a child of that specific category section" — a
-skill/agent published under the WRONG category would pass both checks unnoticed, since
-the target category section is populated by other items regardless, and the card
-renders somewhere on the page regardless of which section it's actually under.
+**Fix (implementer, fix round 1):** added `data-testid="catalog-category-
+section-{slug}"` (same slugify convention as `catalog-category-heading-
+{slug}`) to `SkillCategorySection.jsx`'s outer `<Box>`
+(`EliteaAI/EliteaUI@c80de351`, verified this Box is the actual parent of
+both the heading and the `SkillCard` grid — real DOM descendance, not a
+sibling container). `AgentHubPage.get_skill_card(skill_name, category=...)`
+now scopes via `CATEGORY_SECTION.format(slug)).locator(SKILL_CARD_PREFIX)`
+when `category` is given — this genuinely proves descendance, not just a
+narrower page-wide guess. Confirmed by reading both the JSX and the page
+object directly (not trusting the PR description).
 
-**If a future case needs the real "under Category X" relationship asserted**: this is a
-`testid needed` gap on the section container (e.g. `catalog-category-section-{slug}`
-wrapping both heading and grid) — flag it via `add-data-testid`, don't try to fake
-scoping with CSS ancestor/sibling traversal (violates testid-only policy). Until that
-testid exists, "heading text present" + "card present" is the best available proxy and
-should be flagged as such in the AFS rather than claimed as the full case behavior.
+**Pattern for reuse:** when a case needs "element X is under category-
+section Y" proven with testid-only locators, add a testid to the SECTION
+CONTAINER (not just the heading), scoped-name `{feature}-category-section-
+{slug}`, then `page.locator(SECTION.format(slug)).locator(CHILD_PREFIX)`.
+`AgentCategorySection.jsx` (Agents-tab equivalent) does NOT have this
+container testid yet as of PR #1464 — same gap, unaddressed because no test
+on that branch exercises an agent-card-under-category check
+(`.agents/testing.md` "referenced = called on the executed path" — adding it
+speculatively would be an unreferenced testid). Flag it the same way if a
+future Agents-tab case needs it.
