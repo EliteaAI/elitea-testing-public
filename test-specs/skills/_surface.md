@@ -1141,3 +1141,50 @@ on an agent that has 3 Skills attached.
   silently reset the message to plain text with no `~mention`, and the
   skill did not fire).
   Full details: `test-specs/skills/l2_agent-with-skills-publishing-flow_ELITEA-2600.md`.
+
+## Agent-level publish validation — per-skill attribution + Agent-vs-Skill token invalidation (ELITEA-2601)
+
+- **`publish_validate`'s Critical-issue rules for attached skills are INDEPENDENT per
+  rule, not one combined "content quality" check.** Confirmed live: a skill with SHORT
+  content AND placeholder text produces TWO separate `critical_issues[]` entries, both
+  prefixed `skills [skill: <name>]:` — `"Skill content is too short (min 100 chars)"`
+  and `"Skill content contains placeholder text"` — not one merged message. A skill
+  with clean, valid content shows up ONLY in the non-blocking `Suggestions` section
+  (never Critical/Warning) — the correct way to assert "no errors for this skill".
+- **Removing an attached skill entirely (not just fixing its content) also clears its
+  Critical issues on re-validation** — confirmed live: `Critical: 2` → remove the
+  offending skill (`AgentDetailPage.remove_skill()`, already exists) → re-open the
+  Publish wizard (always starts a FRESH empty Preparation step, never resumes) →
+  `Critical: 0`, Publish enabled.
+- **`skill-card-remove-button` testid is NOT unique across attached-skill cards** — it
+  repeats per card; scope it inside the card's own `[data-testid="skill-card-{id}"]`
+  container. Hover-revealed (`aria-label="remove skill"`), confirmation dialog reuses
+  the generic `delete-confirm-button` testid.
+- **The AGENT-entity publish-token-invalidation mechanism exists and mirrors the SKILL
+  entity's (ELITEA-2597), but with a DIFFERENT `error` code.** Confirmed live: holding
+  a validated (`Critical: 0`) Publish wizard open in one tab, then attaching a skill to
+  the SAME agent version in a second tab, then clicking Publish in the first tab →
+  `400 {"error": "validation_failed", "msg": "Agent was modified since validation.
+  Please re-validate."}`. ELITEA-2597's AFS documents `"validation_token_invalid"` for
+  the analogous SKILL-entity case — **the two entities use different `error` codes for
+  the same underlying "stale token" condition**; assert on both `error` and `msg`, not
+  `msg` alone. The `msg` text itself ("Agent was modified...") is CORRECT here (it's a
+  real agent) — this also explains why ELITEA-2597's Skill flow shows the SAME
+  "Agent"-worded message as a (separately filed, MINOR, #1465) copy-paste artifact: the
+  shared `PublishWizardModal.jsx`/backend validator is agent-first and was never
+  re-templated for the Skill entity.
+- Reuses the SAME `publish-wizard-error-alert` testid ELITEA-2597's implementer added
+  (`EliteaAI/EliteaUI@2dafb537`, shared component) — confirmed live it renders
+  unmodified for the Agent flow too, no new testid needed.
+- **Second-tab navigation to an agent's config/Skills panel MUST include
+  `?destTab=configuration&viewMode=owner`** — a bare `/agents/all/{id}` URL lands on
+  the Chat tab instead, silently hiding the Skills section a test needs.
+- **Not yet confirmed live**: whether *removing* a skill in the second tab (rather than
+  attaching one) triggers the identical `400 validation_failed` invalidation — the
+  mechanism is very likely the same (`remove_skill()` persists immediately, same as
+  `attach_skill()`, which IS confirmed to trigger it), but this run's attempt was
+  confounded by reusing an already-invalid skill as the attach/detach probe (produced
+  a real `Critical: 2` FAIL instead of a clean stale-token scenario). Next analyst/
+  implementer touching this flow: seed a dedicated, content-VALID third skill for the
+  attach/detach probe to isolate this cleanly.
+  Full details: `test-specs/skills/l2_agent-with-skills-validation-attribution-and-token-invalidation_ELITEA-2601.md`.
