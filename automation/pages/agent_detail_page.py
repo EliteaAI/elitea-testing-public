@@ -218,7 +218,21 @@ class AgentDetailPage(AgentFormPage):
     # constants): scoped within a single skill's card (resolved via
     # `_skill_card()`), so no per-skill dynamic suffix is needed.
     SKILL_CARD_REMOVE_BUTTON_SELECTOR = '[data-testid="skill-card-remove-button"]'
+    # Attached-skill SkillCard's custom-icon <img> (ELITEA-2605 — new testid,
+    # EliteaAI/EliteaUI@ccc8c001). Same-element-conditional-pair shape as
+    # SKILL_MENU_ITEM_ICON_IMG_SELECTOR above — only the `EliteAImage`
+    # (custom-icon) branch is tagged, the default `SkillIcon` glyph is not.
+    # Scope via ``_skill_card(skill_name).locator(...)``, never page-wide
+    # (the testid repeats once per attached-skill card).
+    SKILL_CARD_ICON_IMG_SELECTOR = '[data-testid="skill-card-icon-img"]'
     SKILL_MENTION_ITEM_SELECTOR = '[data-testid="skill-mention-item-{}"]'
+    # `~`-mention popper row's custom-icon <img> (ELITEA-2605 — new testid,
+    # EliteaAI/EliteaUI@ccc8c001, `MentionSkillList.jsx`). Same
+    # same-element-conditional-pair shape as SKILL_MENU_ITEM_ICON_IMG_SELECTOR
+    # / SKILL_CARD_ICON_IMG_SELECTOR above — only the `EliteAImage`
+    # (custom-icon) branch is tagged. Scope via ``.locator()`` off an
+    # already name-filtered row from :meth:`get_chat_mention_item`.
+    SKILL_MENTION_ITEM_ICON_IMG_SELECTOR = '[data-testid="skill-mention-item-icon-img"]'
     # Version-selector testids (ELITEA-1789 testid-only rework — added via
     # add-data-testid to SkillVersionSelector.jsx; see EliteaUI draft PR #545).
     SKILL_VERSION_TRIGGER_SELECTOR = '[data-testid="skill-version-selector-trigger-{}"]'
@@ -230,6 +244,24 @@ class AgentDetailPage(AgentFormPage):
     # MenuItems while their Menu is closed, so only one card's menu items
     # are ever in the DOM at a time.
     SKILL_VERSION_OPTION_ANY_SELECTOR = '[data-testid^="skill-version-option-"]'
+
+    # Shared UnifiedDropdown row testid (SkillMenu.jsx attach popper, same
+    # component `Popper.select_menuitem_by_testid` in components/mui.py
+    # already targets by raw string) — promoted to a class-level constant
+    # here so :meth:`open_skill_menu`/:meth:`get_skill_menu_item` (ELITEA-2605)
+    # don't repeat the literal. NOT unique per row (repeats once per
+    # dropdown item, same as every other `UnifiedDropdown` consumer) —
+    # callers must filter by text/name.
+    TOOLKIT_MENU_ITEM_SELECTOR = '[data-testid="toolkit-menu-item"]'
+    # SkillMenu dropdown row's custom-icon <img> (ELITEA-2605 — new testid,
+    # EliteaAI/EliteaUI@ccc8c001). Same-element-conditional-pair shape: only
+    # the custom-icon (`EliteAImage`) branch carries this testid, the
+    # default `SkillIcon` glyph branch is untagged (`.agents/testing.md` §
+    # Locator policy, "only the used branch is named"). Scope with
+    # ``.locator()`` off an already name-filtered row from
+    # :meth:`get_skill_menu_item` — never page-wide (the testid repeats
+    # once per row).
+    SKILL_MENU_ITEM_ICON_IMG_SELECTOR = '[data-testid="skill-menu-item-icon-img"]'
 
     # --- Sensitive action authorization ---
     sensitive_action_panel = LocatorDescriptor(testid="sensitive-action-panel")
@@ -2046,6 +2078,49 @@ class AgentDetailPage(AgentFormPage):
             )
         logger.info("Skill '%s' attached to agent (counter: %r -> %r)", skill_name, counter_before, counter_after)
 
+    @action("Open the '+ Skill' attach dropdown (read-only)")
+    def open_skill_menu(self, timeout: int = 10000) -> Locator:
+        """Open the Skills-section "+ Skill" attach dropdown (SkillMenu.jsx)
+        and return the MuiPopper Locator, WITHOUT selecting any item.
+
+        Read-only companion to :meth:`attach_skill` (which opens + selects +
+        attaches in one call, ELITEA-1735) — added for ELITEA-2605, which
+        needs to inspect a candidate row (its custom-icon `<img>`) BEFORE
+        deciding whether to select it. Does not change attachment state;
+        callers that only inspect should close the popper afterward (e.g.
+        ``page.keyboard.press("Escape")``) rather than clicking a row, or
+        call :meth:`attach_skill` separately (which re-opens its own popper
+        fresh) to actually attach.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator for the open MuiPopper-root.
+        """
+        logger.info("Opening '+ Skill' dropdown (read-only)")
+        self.ensure_skills_section_visible(timeout=timeout)
+        self.agent_add_skill_button.wait_for(state="visible", timeout=timeout)
+        self.agent_add_skill_button.click(force=True)
+        return Popper.wait_for(self.page, timeout=timeout)
+
+    def get_skill_menu_item(self, popper: Locator, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the SkillMenu dropdown row Locator for an exact skill name.
+
+        LOCATOR: :attr:`TOOLKIT_MENU_ITEM_SELECTOR`, filtered by name text
+        (same shared-row testid :meth:`attach_skill` selects via
+        ``Popper.select_menuitem_by_testid`` — not unique per row, so this
+        must stay scoped to *popper* and filtered by *skill_name*).
+
+        Args:
+            popper: The open MuiPopper Locator (from :meth:`open_skill_menu`).
+            skill_name: Exact name of the skill row to locate.
+            timeout: Maximum wait time in milliseconds.
+        """
+        row = popper.locator(self.TOOLKIT_MENU_ITEM_SELECTOR).filter(has_text=skill_name).first
+        row.wait_for(state="visible", timeout=timeout)
+        return row
+
     @action("Open Create New Skill from Agent")
     def open_create_new_skill(self, timeout: int = 10000):
         """Open the "+ Skill" dropdown and click "Create new".
@@ -2217,6 +2292,29 @@ class AgentDetailPage(AgentFormPage):
         ).filter(has_text=skill_name).first
         card.wait_for(state="visible", timeout=timeout)
         return card
+
+    def get_skill_card_icon_src(self, skill_name: str, timeout: int = 5000) -> str:
+        """Return an attached skill's SkillCard custom-icon `<img>` src, or
+        `""` if the card shows the default (non-custom) glyph instead.
+
+        LOCATOR: :attr:`SKILL_CARD_ICON_IMG_SELECTOR`, scoped to the card
+        resolved by :meth:`_skill_card` (ELITEA-2605). Mirrors
+        ``SkillFormPage.get_form_icon_src()``'s "absence = default icon"
+        convention — the `EliteAImage` `<img>` only renders when
+        `skill.icon_meta.url` is set; the default `SkillIcon` SVG glyph
+        renders instead (no `<img>`, no src) otherwise.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        icon_img = card.locator(self.SKILL_CARD_ICON_IMG_SELECTOR)
+        try:
+            icon_img.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        return icon_img.get_attribute("src") or ""
 
     def _get_skill_id_from_card(self, card: Locator) -> str:
         """Extract the skill_id embedded in a card's `skill-card-{skill_id}` testid.
@@ -2711,6 +2809,50 @@ class AgentDetailPage(AgentFormPage):
         self.chat_send_button.wait_for(state="visible", timeout=timeout)
         self.chat_send_button.click()
         logger.info("Mention message sent (~%s)", skill_name)
+
+    @action("Type ~ in embedded chat")
+    def type_tilde_in_chat(self, timeout: int = 10000) -> Locator:
+        """Type "~" in the embedded chat message input and wait for the
+        "Mention skill" popper to appear, WITHOUT selecting any item.
+
+        Read-only counterpart to :meth:`send_chat_message_with_mention`
+        (ELITEA-2605) — that method types "~", selects a row, appends a
+        prompt, and sends in one call; this method stops right after the
+        popper opens, so a caller can inspect a row (e.g. its custom-icon
+        `<img>`) before deciding whether to select it. Mirrors
+        :meth:`type_tilde_in_instructions`'s read-only shape for the
+        Instructions-field mention entry point.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator scoped to the open ``skill_mention_list`` popper.
+        """
+        logger.info("Typing ~ in embedded chat to open mention popper")
+        self.chat_message_input.wait_for(state="visible", timeout=timeout)
+        self.chat_message_input.click()
+        self.chat_message_input.press_sequentially("~", delay=50)
+        self.skill_mention_list.wait_for(state="visible", timeout=timeout)
+        return self.skill_mention_list
+
+    def get_chat_mention_item(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the embedded-chat "~"-mention popper row Locator for an
+        exact skill name.
+
+        LOCATOR: :attr:`SKILL_MENTION_ITEM_SELECTOR`, scoped to the open
+        ``skill_mention_list`` popper (call after :meth:`type_tilde_in_chat`).
+
+        Args:
+            skill_name: Exact name of the attached skill to look for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.skill_mention_list.wait_for(state="visible", timeout=timeout)
+        row = self.skill_mention_list.locator(
+            self.SKILL_MENTION_ITEM_SELECTOR.format(skill_name)
+        ).first
+        row.wait_for(state="visible", timeout=timeout)
+        return row
 
     # ------------------------------------------------------------------
     # LLM model selector (embedded chat panel, ELITEA-1881)
