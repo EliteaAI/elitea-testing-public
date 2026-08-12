@@ -38,7 +38,8 @@
   set 3/3 identical failure. 8/8 automated, 0 blocked at close. TMS back-written (8 cases, Form C +
   index.json — noted a PRE-EXISTING duplicate-entry issue in index.json affecting ~150+ unrelated case
   ids, not caused by this wave, flagged for a future data-hygiene pass, not fixed here).
-  · wave-03 (8) pending · wave-04 (7) pending · wave-05 (9, build_with_ai) pending
+  · **wave-03 (8 cases) RUNNING — runId `wf_642ec17e-f18`** · wave-04 (7) pending
+  · wave-05 (9, build_with_ai) pending
 
 ## Source
 
