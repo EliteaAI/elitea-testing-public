@@ -831,3 +831,29 @@ extension of `AgentDetailPage`'s):
   restriction — `v2-enhanced` (with hyphen) is accepted there, confirmed
   live. Don't assume all text fields on the skill surface share one
   validation ruleset.
+- **Custom skill icon renders consistently across all 5 UI surfaces that show a
+  skill** (ELITEA-2605, 2026-08-12, confirmed live end-to-end with one
+  freshly-uploaded icon): Skills list card, Skill detail/edit page, Agent
+  "+ Skill" SkillMenu attach-dropdown, Agent SKILLS-section `SkillCard`, and the
+  chat/instructions `~mention` autocomplete. All five render the byte-identical
+  uploaded-icon `src` — no product defect, but only 2 of the 5 have a usable
+  testid chain today:
+  - **List card**: `entity-card-icon-img` (inner `<img>`) EXISTS (ELITEA-2428)
+    but has no `SkillsListPage` field yet — page-object plumbing only, no
+    `add-data-testid` needed.
+  - **Detail page**: `skill-form-icon-img` fully wired already (ELITEA-2602/2604).
+  - **SkillMenu dropdown item, Agent SkillCard, mention-autocomplete item — ALL
+    THREE have zero `data-testid` on the icon `<img>` itself**, confirmed via
+    source read: `SkillMenu.jsx`, `SkillCard.jsx`
+    (`src/[fsd]/features/skill/ui/SkillCard.jsx`), and `MentionSkillList.jsx`
+    each independently implement the SAME `icon_meta?.url ? <EliteAImage/> :
+    <SkillIcon/>` ternary with no testid prop on either branch — three separate
+    JSX call sites of one shared pattern, each needs its OWN fix (not one shared
+    testid). Recommended names: `skill-menu-item-icon-img`, `skill-card-icon-img`,
+    `skill-mention-item-icon-img` (custom-icon branch only — leave `SkillIcon`
+    untagged, per the same-element-conditional-pair "only the used branch is
+    named" convention). Full detail:
+    `test-specs/skills/l2_skill-custom-icon-visibility-across-ui_ELITEA-2605.md`.
+  - Note: `EliteAImage` (`src/components/EliteAImage.jsx`) DOES accept a
+    `data-testid` prop already — it's the three call sites above that never pass
+    one, not a limitation of the shared image component itself.
