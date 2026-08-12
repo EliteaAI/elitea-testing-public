@@ -97,7 +97,7 @@ from pages.pipeline_detail_page import PipelineDetailPage
 
 logger = logging.getLogger("elitea.tests.chat.pipeline_flow_editor_canvas")
 
-pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.pipelines, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.pipelines, pytest.mark.regression, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)

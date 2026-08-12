@@ -55,7 +55,7 @@ from pages.mcp_form_page import McpFormPage
 
 logger = logging.getLogger("elitea.tests.chat.create_mcp_from_conversation")
 
-pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.toolkits, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.toolkits, pytest.mark.regression, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)

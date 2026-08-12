@@ -26,7 +26,7 @@ from tests.ui.pipelines.helpers import _navigate_to_detail
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 UI_ELEMENT_TIMEOUT = 10_000
 TOAST_TIMEOUT = 10_000

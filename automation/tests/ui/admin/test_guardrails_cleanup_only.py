@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # `-m "not guardrails"` when the Admin UI isn't served (it is not on localhost).
 # Without it this file silently ran during guardrails-excluded runs and failed on
 # `text="Guardrails"` never becoming visible, which reads as a real regression.
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.guardrails]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.guardrails, pytest.mark.new]
 
 # Test data matching main test file
 TEST_TOOLKIT = "github"

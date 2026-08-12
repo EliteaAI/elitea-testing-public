@@ -41,7 +41,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger("elitea.tests.chat.edit_table_canvas_modify_cell")
 
-pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p3, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p3, pytest.mark.regression, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)

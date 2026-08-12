@@ -46,7 +46,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 SECRET_VALUE = "hide-test-value-123"
 RECREATE_SECRET_VALUE = "hide-test-recreated-value-456"

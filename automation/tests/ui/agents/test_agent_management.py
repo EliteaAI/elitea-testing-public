@@ -32,7 +32,7 @@ from pages.internal_tools import InternalTool
 from playwright.sync_api import expect
 import allure
 
-pytestmark = [pytest.mark.ui, pytest.mark.agents]
+pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)

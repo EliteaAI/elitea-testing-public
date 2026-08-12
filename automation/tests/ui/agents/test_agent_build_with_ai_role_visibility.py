@@ -37,7 +37,7 @@ from pages.generate_agent_modal_page import GenerateAgentModalPage
 
 logger = logging.getLogger("elitea.tests.agents.build_with_ai_role_visibility")
 
-pytestmark = [pytest.mark.ui, pytest.mark.agents]
+pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new]
 
 EXPECTED_BUTTON_ACCESSIBLE_TEXT = "Build with AI"
 

@@ -22,7 +22,7 @@ from pages.skill_form_page import SkillFormPage
 from pages.skills_list_page import SkillsListPage
 from playwright.sync_api import expect
 
-pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 logger = logging.getLogger("elitea.tests.skills")
 

@@ -36,7 +36,7 @@ import allure
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.toolkits]
+pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.new]
 
 # Credential creation can hit race conditions (server-side deduplication or
 # eventual consistency), so allow extra retries beyond the global default.

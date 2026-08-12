@@ -46,7 +46,7 @@ from pages.pipeline_detail_page import PipelineDetailPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 PAUSE_TIMEOUT = 60_000
 RESUME_SETTLE_MS = 8_000

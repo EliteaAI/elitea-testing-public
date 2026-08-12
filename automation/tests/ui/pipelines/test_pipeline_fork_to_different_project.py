@@ -49,7 +49,7 @@ from api import PipelineAPI
 from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipelines_list_page import PipelinesListPage
 
-pytestmark = [pytest.mark.ui, pytest.mark.pipelines]
+pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.new]
 
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000

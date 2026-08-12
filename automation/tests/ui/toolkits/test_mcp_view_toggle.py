@@ -22,7 +22,7 @@ from pages.mcp_list_page import McpListPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.p1, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.p1, pytest.mark.regression, pytest.mark.new]
 
 
 def _seed_mcp_via_ui(page) -> int:

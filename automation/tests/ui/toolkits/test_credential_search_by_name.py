@@ -41,7 +41,7 @@ from pages.credentials_list_page import CredentialsListPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 SEARCH_ALPHA = "alpha"
 SEARCH_PREFIX = "autotest_cred"

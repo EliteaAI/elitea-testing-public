@@ -4,7 +4,7 @@
 
 Regression coverage for the priority-marker-drift defect class documented in
 `.agents/memory/qa-engineer/priority_marker_drift_afs_vs_pytest_mark.md`
-(recurrence #7): the module declares `pytestmark = [..., pytest.mark.p1, ...]`
+(recurrence #7): the module declares `pytestmark = [..., pytest.mark.p1, ..., pytest.mark.new]`
 because its FIRST test (ELITEA-2042, case priority high) is correctly p1 —
 but a sibling test added later for a *different*-priority case
 (ELITEA-2044, case priority medium → p2) silently inherited that module-level

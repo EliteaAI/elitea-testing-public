@@ -33,7 +33,7 @@ import allure
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui]
+pytestmark = [pytest.mark.ui, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)

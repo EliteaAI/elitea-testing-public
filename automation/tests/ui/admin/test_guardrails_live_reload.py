@@ -539,13 +539,23 @@ class TestBlockedToolLiveReload:
 
         with allure.step("Step 2 — Ensure get_issue tool is NOT blocked (cleanup if needed)"):
             # Self-healing: remove blocked tool if left over from previous run
-            if guardrails.is_tool_blocked(TEST_TOOL):
-                logger.warning("Tool '%s' was already blocked - cleaning up", TEST_TOOL)
-                guardrails.remove_blocked_tool(TEST_TOOL)
-                guardrails.remove_empty_toolkit_containers()
-                guardrails.save_configuration()
-                admin_page.reload()
-                guardrails.wait_for_page_load()
+            # Retry up to 2 times in case first cleanup fails
+            for attempt in range(2):
+                if not guardrails.is_tool_blocked(TEST_TOOL):
+                    break
+                logger.warning(
+                    "Tool '%s' was already blocked - cleanup attempt %d/2", TEST_TOOL, attempt + 1
+                )
+                try:
+                    guardrails.remove_blocked_tool(TEST_TOOL)
+                    guardrails.remove_empty_toolkit_containers()
+                    guardrails.save_configuration(timeout=15000)
+                    admin_page.reload()
+                    guardrails.wait_for_page_load()
+                except Exception as cleanup_err:
+                    logger.warning("Cleanup failed: %s - reloading page", cleanup_err)
+                    admin_page.reload()
+                    guardrails.wait_for_page_load()
 
             assert not guardrails.is_tool_blocked(TEST_TOOL), (
                 f"Tool '{TEST_TOOL}' should NOT be blocked after cleanup"
@@ -664,13 +674,23 @@ class TestSensitiveToolLiveReload:
 
         with allure.step("Step 2 — Ensure get_issue is NOT in Sensitive Action Tools (cleanup if needed)"):
             # Self-healing: remove sensitive tool if left over from previous run
-            if guardrails.is_tool_in_sensitive_list(TEST_TOOL, TEST_TOOLKIT):
-                logger.warning("Tool '%s' was already in sensitive list - cleaning up", TEST_TOOL)
-                guardrails.remove_sensitive_tool(TEST_TOOL)
-                guardrails.remove_empty_sensitive_toolkit_blocks()
-                guardrails.save_configuration()
-                admin_page.reload()
-                guardrails.wait_for_page_load()
+            # Retry up to 2 times in case first cleanup fails
+            for attempt in range(2):
+                if not guardrails.is_tool_in_sensitive_list(TEST_TOOL, TEST_TOOLKIT):
+                    break
+                logger.warning(
+                    "Tool '%s' was in sensitive list - cleanup attempt %d/2", TEST_TOOL, attempt + 1
+                )
+                try:
+                    guardrails.remove_sensitive_tool(TEST_TOOL)
+                    guardrails.remove_empty_sensitive_toolkit_blocks()
+                    guardrails.save_configuration(timeout=15000)
+                    admin_page.reload()
+                    guardrails.wait_for_page_load()
+                except Exception as cleanup_err:
+                    logger.warning("Cleanup failed: %s - reloading page", cleanup_err)
+                    admin_page.reload()
+                    guardrails.wait_for_page_load()
 
             assert not guardrails.is_tool_in_sensitive_list(TEST_TOOL, TEST_TOOLKIT), (
                 f"Tool '{TEST_TOOL}' should NOT be in sensitive list after cleanup"

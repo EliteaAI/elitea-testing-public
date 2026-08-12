@@ -75,7 +75,7 @@ from pages.chat_page import ChatPage
 
 logger = logging.getLogger("elitea.tests.chat")
 
-pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.regression, pytest.mark.new]
 
 UI_ELEMENT_TIMEOUT = 10_000
 

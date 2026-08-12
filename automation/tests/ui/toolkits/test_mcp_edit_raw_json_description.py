@@ -21,7 +21,7 @@ from pages.mcp_form_page import McpFormPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.p0, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.p0, pytest.mark.regression, pytest.mark.new]
 
 UPDATED_DESCRIPTION = "Updated via raw JSON"
 
