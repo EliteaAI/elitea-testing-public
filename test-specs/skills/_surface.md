@@ -664,3 +664,43 @@ extension of `AgentDetailPage`'s):
   `CONVERSATION_ITEM_PREFIX`/`CONVERSATION_ITEM` constants, never a raw
   structural selector or a bare visual count.
   Full details: `test-specs/skills/l3_test-panel-does-not-create-new-chat-conversation_ELITEA-2441.md`.
+
+## Test panel response action buttons — Read aloud / Copy to clipboard (ELITEA-2442) — `ApplicationAnswer.jsx` (shared with Chat)
+
+- **Confirmed live, no testid gaps** — both buttons already carry testids on
+  the SAME shared `ApplicationAnswer.jsx` component the Chat `ChatBox.jsx`
+  uses (per the ELITEA-2436 precedent above: SkillTestPanel embeds the same
+  message-rendering tree). `chat-read-out-button` (aria-label `"Read out"`)
+  and `chat-copy-button` — both resolve to exactly one element scoped to the
+  last (AI) response.
+- **Gap is page-object wiring, not testids**: `ChatPage` already exposes
+  these as `read_out_button` (`chat_page.py:526`) and `copy_action_button`
+  (`chat_page.py:481`), but `SkillDetailPage` (extends `SkillFormPage`, no
+  shared base with `ChatPage`) has neither field yet — implementer adds
+  both, mirroring `ChatPage`'s exactly.
+- **Enabled-state gating, source-confirmed**: Read out disables on
+  `VOICE_FEATURES_TEMPORARILY_DISABLED || isProcessing || !realAnswer ||
+  !!speakingMessageId`; Copy disables on `isProcessing || !realAnswer`. Both
+  clear the instant a response finishes streaming — confirmed live via
+  `.disabled === false` on both testids once `wait_for_test_response()`
+  completes.
+- **Voice features are ON by default on localhost**: `VOICE_FEATURES_ENABLED`
+  defaults `true`, `VOICE_FEATURES_TEMPORARILY_DISABLED` defaults `false`
+  (`common/constants.js`, both env vars unset in `EliteaUI/.env`) —
+  confirmed live via the test-panel input bar's "enter speaking mode" /
+  "start voice input" controls rendering, and the Read-out button rendering
+  at all (it's conditionally rendered on `VOICE_FEATURES_ENABLED`, not just
+  disabled).
+- **Click-through, not just `disabled` state, confirmed live**: clicking
+  `chat-copy-button` produces the toast `"The message has been copied to
+  the clipboard."`; clicking `chat-read-out-button` opens
+  `chat-voice-mini-player` (pre-existing `ChatPage.voice_mini_player`
+  `OptionalLocatorDescriptor`) with a live `chat-voice-play-stop-button`.
+  Both actions are 100% client-side — zero network requests fired by either
+  click (confirmed via `browser_network_requests`).
+- **Don't match "Copy to clipboard" by text/role** — the user's own message
+  row ALSO renders a same-labelled "Copy to clipboard" button
+  (`UserMessage.jsx`, inline `title` prop) but with NO `chat-copy-button`
+  testid — a text-based selector would be ambiguous; the testid scopes
+  correctly to just the AI response.
+  Full details: `test-specs/skills/l3_test-panel-response-actions-enabled_ELITEA-2442.md`.
