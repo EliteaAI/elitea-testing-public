@@ -67,7 +67,7 @@
   tip (11 node-ids, ~13-18min/run incl. live LLM calls) — 2 attempts each hit one transient
   console-404 (known noisy-resource pattern), 3rd attempt clean. Blast radius: both touched
   page objects purely additive. 7/7 automated, 0 blocked at close. TMS back-written.
-  · wave-05 (9, build_with_ai) pending
+  · **wave-05 (9 cases, build_with_ai) RUNNING — runId `wf_c52e4e4f-cf5`** (FINAL WAVE)
 
 ## Source
 
