@@ -83,3 +83,22 @@ no raw parent traversal) needs its own testid. Caught in implementer Phase
 2 before writing the assertion, not after a failed run — check live BEFORE
 assuming an existing testid is sufficient whenever a case needs tooltip
 TEXT, not just a click.
+
+**Same pattern, 4 buttons at once (ELITEA-2614, 2026-08-12):**
+`ToolMenu.jsx`'s Toolkit/MCP/Agent/Pipeline "+ X" add buttons each wrap a
+testid'd `BaseBtn` in `<Tooltip><Box component="span">…</Box></Tooltip>`
+with NO testid on the `Box`. Confirmed the mechanism by reading
+`node_modules/@mui/material/Tooltip/Tooltip.js` directly (childrenProps
+spread order: `{...nameOrDescProps, ...other, ...children.props}` — the
+clone lands on Tooltip's immediate JSX child, and any `aria-label` already
+set explicitly on that child via its own JSX props wins) rather than
+guessing from behavior. Fix mirrored the pre-existing
+`agent-add-skill-button-tooltip` precedent exactly: added
+`agent-add-{toolkit,mcp,agent,pipeline}-button-tooltip` testids to the 4
+wrapper `Box`es. Worth checking `Tooltip.js`'s childrenProps spread order
+specifically when the WRAPPED element already sets its own static
+`aria-label` prop (as `SkillCard.jsx`'s remove-button IconButton does,
+`aria-label="remove skill"`) — in that shape the static prop wins over
+Tooltip's generated one, so reading `aria-label` off the button reveals the
+static label, not the tooltip's (conditional) title text; that's a
+DIFFERENT node needing a DIFFERENT read, not just "one level up."
