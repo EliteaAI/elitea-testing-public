@@ -1309,3 +1309,26 @@ on an agent that has 3 Skills attached.
   prove non-invocation either way. Use an unmistakable canary marker instead.
   Full details:
   `test-specs/skills/lextend_skill-autonomous-invocation-core-functionality_ELITEA-2607.md`.
+
+## Explicit `~mention` + autonomous context-match on the SAME message — no double-injection (ELITEA-2609)
+
+- **Confirmed live, no defect.** Sending `~{skill-name} {text that ALSO
+  independently matches that skill's own description trigger}` — i.e. an
+  explicit mention AND a context match co-occurring on one message — invokes
+  the skill exactly ONCE: exactly one `chat-answer-tool-chip` reading
+  `"Skill: {skill-name}"` inside the outer `chat-answer-thought-accordion`,
+  and a single, clean, non-duplicated response (no repeated/concatenated
+  output block). Explicit mention does not "stack" with a coincidental
+  autonomous trigger match.
+- **Assertion shape that actually falsifies double-injection**: assert
+  `get_outer_thought_accordion().locator(CHAT_ANSWER_TOOL_CHIP_SELECTOR)` has
+  `.count() == 1` (not merely `.to_be_visible()` — a duplicate-invocation
+  defect would still leave "a chip visible" true even with 2 chips present).
+  Also prefer a markdown/structured skill transform (heading + list) over a
+  flat prose transform (e.g. plain uppercase) as the deterministic-transform
+  test data for this specific assertion — a double-injection defect on a
+  structured response shows up as a duplicated heading/list block, which is
+  far more visually/structurally distinctive than "still all-uppercase"
+  (compatible with either 1 or 2 invocations on a prose transform).
+  Full details:
+  `test-specs/skills/lextend_skill-explicit-autonomous-invocation-coexistence_ELITEA-2609.md`.
