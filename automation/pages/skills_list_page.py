@@ -78,10 +78,16 @@ class SkillsListPage(BasePage):
     # severity-scoped toast_alert (see ``get_toast_text()``).
     TOAST_MESSAGE_SELECTOR = '[data-testid="toast-message"]'
 
-    toast_dismiss_button = LocatorDescriptor(
-        testid="toast-dismiss-button",
-        description="Close (X) icon button on the app-wide toast Alert."
-    )
+    # NOTE: no `toast_dismiss_button` field here (removed ELITEA-2428 round 2
+    # fix). It was added in ELITEA-2438 mirroring `ChatPage.toast_dismiss_
+    # button`, but — unlike ChatPage, which wires it via `dismiss_toast_
+    # alert()` — no method or test on THIS page ever called it; it was
+    # genuinely dead code, only masked because a since-fixed reference-
+    # scoping bug in `test_skills_list_page_locator_inventory.py` credited
+    # `ChatPage`'s own `self.toast_dismiss_button.click()` as a (false)
+    # reference for this page's field. Re-add it only alongside a real
+    # dismiss method/caller on SkillsListPage — same rule as
+    # `entity_card_icon` / `table_view_button` above.
 
     search_input = LocatorDescriptor(
         testid="agent-search-input",
