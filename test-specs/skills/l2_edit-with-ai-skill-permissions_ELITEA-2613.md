@@ -77,8 +77,22 @@
       (reuse `AIEditSkillModalPage.click_generate_and_wait_for_response()` from ELITEA-2611's page
       object — already exercises this exact call).
 18. Advance through General → Instructions → Summary (`ai-edit-skill-wizard-next-button`).
-    - **Verify**: `ai-edit-skill-step-indicator` shows "3. Summary"; `ai-edit-skill-summary-instructions-input`
-      is visible and editable.
+    - **Verify**: `ai-edit-skill-step-indicator` shows a label containing "Summary";
+      `ai-edit-skill-summary-instructions-input` is visible and editable.
+    - **Amended during implementation (ELITEA-2613, 2026-08-12):** the step indicator's numeral
+      prefix (`${activeStepIndex + 1}. ${label}`, `EditEntityStepIndicator.jsx:15`) is POSITIONAL,
+      not fixed per step — `computeVisibleSteps()`
+      (`EliteaUI src/[fsd]/features/skill/lib/helpers/skillAIEditionSteps.helpers.js`) SKIPS the
+      General step entirely when the AI draft's Name/Description are identical to CURRENT (only
+      Instructions-diff or "nothing changed" pushes it). Live-confirmed this run: an edit prompt
+      that changed only Instructions produced a 2-step wizard (Instructions, Summary), so Summary
+      rendered as "2. Summary", not "3. Summary" as originally specced. The wizard's OPENING step
+      is therefore "1. General" OR "1. Instructions" depending on what the LLM call actually
+      changed — not deterministically "1. General". The implementer's test asserts Summary by
+      label-substring match (numeral-agnostic) and advances via a bounded "click Next until
+      Summary" loop rather than a fixed two-click sequence — this is a genuine live-product
+      behavior the case text/AFS didn't anticipate, not a defect (the character-limit contract
+      Part D exists to verify is unaffected either way).
 19. Fill `ai-edit-skill-summary-instructions-input` with 5,010 characters (10 over the ACTUAL live limit
     — see Clarification below).
     - **Verify**: `.input_value()` length is exactly **5,000**, not 5,010 — the field silently truncates
