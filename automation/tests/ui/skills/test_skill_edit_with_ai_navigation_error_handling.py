@@ -76,7 +76,7 @@ class TestSkillEditWithAINavigationErrorHandling:
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "skills/ELITEA-2612_edit-with-ai-navigation-error-handling.md",
+        "skills/ELITEA-2612_edit-with-ai-skill-navigation-and-errors.md",
         "onetest-ai Test Case link",
     )
     @pytest.mark.p3
