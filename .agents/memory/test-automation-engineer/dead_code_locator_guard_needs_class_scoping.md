@@ -1,8 +1,37 @@
 ---
 name: Dead-code locator guard needs class scoping
-description: Static-analysis guard for unreferenced LocatorDescriptor fields must scope its grep to files referencing the class, not all of automation/
+description: Unreferenced-LocatorDescriptor guard's "class scoping" must key off a real import/instantiation, not a bare class-name substring
 type: feedback
 ---
+
+## Round 3 update — bare substring scoping still false-passes
+
+Round 2's fix below reads as a real fix but isn't one: scoping files by
+`if CLASS_NAME in text` still collides with any file that merely **mentions**
+the class name in a comment/docstring (`agents_list_page.py` has `# ...
+CredentialsListPage/SkillsListPage/McpListPage; ...`), which pulls that
+WHOLE file — and its own same-named fields — into scope. A fresh-session
+reviewer traced this statically in round 2 review and it reproduced live in
+round 3: `SkillsListPage.toast_dismiss_button` (added ELITEA-2438, dead on
+this page) was masked the whole time because `chat_page.py` mentions
+"SkillsListPage" in a comment and separately defines+uses its OWN
+`toast_dismiss_button`.
+
+**Round 3 fix:** scope by a REAL usage regex — the import line
+(`from pages.X import ClassName`) or an instantiation call (`ClassName(`) —
+never a bare `ClassName in text` substring check. And don't just read the
+fix: write a direct test for the scoping function itself against a
+synthetic fixture tree reproducing the exact collision (an incidental-mention
+file + a real-caller file), asserting the mechanism actually discriminates
+them. Reading the scoping code and accepting it as sound is exactly how
+round 2 shipped a fix that wasn't.
+
+**Second-order lesson:** tightening a guard's scoping can retroactively
+un-mask an OLDER, unrelated dead field that a looser version of the same
+bug was hiding. Don't assume every guard-failure post-fix is caused by your
+own change — check history (`git log -S<field>`) before reflexively
+weakening the guard back down; if the field is genuinely dead, remove it
+per the same precedent as the fields the guard was written to catch.
 
 ## What happened (ELITEA-2428, fix round 1 → round 2)
 
