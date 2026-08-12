@@ -131,8 +131,10 @@ Same wizard component/testids as ELITEA-2595 — see that AFS's Handles table
 for the full PROVENANCE-verified list (`skill-name-input-field`,
 `skill-description-input-field`, `skill-instructions-editor-content`,
 `skill-save-button`, `skill-controls-menu-button`, `publish-menuitem`,
-`agent-publish-version-name-input`, `agent-publish-category-select-
-combobox`, `agent-publish-agree-checkbox`, `agent-publish-continue-button`,
+`agent-publish-version-name-input`, `agent-publish-category-select`
+(*docs(afs) correction, PR #1464 review — no `-combobox` suffix; live source
+confirms this per the ELITEA-2595 AFS's own implementer correction*),
+`agent-publish-agree-checkbox`, `agent-publish-continue-button`,
 `agent-publish-confirm-button`). No additional handles needed for this case
 — it never proceeds past the Validation step.
 

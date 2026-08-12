@@ -89,6 +89,20 @@ class AgentHubPage(BasePage):
     # .agents/testing.md's dynamic-testid convention.
     CATEGORY_HEADING = '[data-testid="catalog-category-heading-{}"]'
 
+    # Category section CONTAINER (ELITEA-2595/2598, EliteaAI/EliteaUI@c80de351
+    # -- added to SkillCategorySection.jsx's outer Box). Same slugify
+    # convention as CATEGORY_HEADING, but scoped to the whole section
+    # (heading + card grid), not just the heading text. Lets a card-existence
+    # check be scoped to "descendant of THIS category's section" instead of
+    # "anywhere on the page" -- see get_skill_card()'s `category` parameter.
+    # Naming deliberately mirrors CATEGORY_HEADING's undifferentiated
+    # (agent/skill) convention so a future AgentCategorySection.jsx container
+    # testid could reuse this same pattern -- NOT added there yet: no test on
+    # this branch exercises an agent-card-under-category check, so adding it
+    # now would be an unreferenced testid (.agents/testing.md "referenced =
+    # called on the executed path" ruling).
+    CATEGORY_SECTION = '[data-testid="catalog-category-section-{}"]'
+
     # Agent card — dynamic per application id (unknown ahead of time from a
     # display name alone), so a prefix-match + .filter(has_text=...) is used
     # to select by name, same idiom as AgentDetailPage.MODEL_SELECTOR_OPTION_ANY_SELECTOR.
@@ -296,12 +310,26 @@ class AgentHubPage(BasePage):
         """Return the number of agent cards currently rendered in the main content area."""
         return self.page.locator(self.AGENT_CARD_PREFIX).count()
 
-    def get_skill_card(self, skill_name: str):
+    def get_skill_card(self, skill_name: str, category: str | None = None):
         """Return the Locator for the skill card matching *skill_name* (by
         visible text) — the Skills-tab analog of :meth:`get_agent_card`,
         same ``SKILL_CARD_PREFIX`` dynamic-testid + ``filter(has_text=...)``
         idiom (ELITEA-2595/2598, Catalog verification steps).
+
+        Args:
+            category: When given, scopes the search to that category's
+                section container (``CATEGORY_SECTION``, same slugify
+                convention as ``CATEGORY_HEADING``) — proving the returned
+                card is a DESCENDANT of that specific category section, not
+                merely present anywhere on the page. A skill published under
+                the wrong category is a real regression an unscoped,
+                page-wide ``filter(has_text=...)`` cannot catch (reviewer
+                finding on PR #1464). Omit only for a genuine page-wide
+                existence check.
         """
+        if category is not None:
+            section = self.page.locator(self.CATEGORY_SECTION.format(_slugify_category(category)))
+            return section.locator(self.SKILL_CARD_PREFIX).filter(has_text=skill_name)
         return self.page.locator(self.SKILL_CARD_PREFIX).filter(has_text=skill_name)
 
     def get_visible_category_filter_chips(self):
@@ -875,6 +903,38 @@ class AgentHubPage(BasePage):
         state-driven) filter-rail chip swap alone.
         """
         self.page.locator(self.SKILL_CARD_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def wait_for_category_heading(self, category_label: str, timeout: int = 10000) -> None:
+        """Wait (Playwright auto-retrying assertion) for a SPECIFIC category's
+        heading to render on the Skills tab (ELITEA-2595/2598) — use this
+        BEFORE reading :meth:`get_visible_category_heading_texts` when
+        asserting a particular category's presence, rather than relying on
+        :meth:`wait_for_any_skill_card` alone.
+
+        Unlike :meth:`wait_for_any_agent_card`'s "single commit" assumption
+        (one bulk fetch, so any rendered card proves every category's initial
+        slice already landed), the Skills tab's data flow
+        (``useSkillHubData.hooks.js``) fires THREE independent fetches on
+        mount — ``fetchAllAndCategorize`` (the ``ALL_SKILLS_LIMIT=1000``
+        bulk fetch that buckets skills into non-Trending category sections
+        like this one), ``fetchTrendingSkills`` (its own, much smaller
+        page-sized request), and ``fetchMyLikedSkills``. These resolve
+        independently, so the Trending section's card can (and, confirmed
+        live, sometimes does) render and satisfy
+        :meth:`wait_for_any_skill_card` well before the bulk-categorize
+        fetch — and therefore this category's own section — has landed.
+        Reading :meth:`get_visible_category_heading_texts` immediately after
+        only "any card" is visible is a race that intermittently under-reads
+        the heading list (observed: ``['Trending']`` with the target
+        category's section not yet mounted). Waiting on the target heading
+        directly closes that race with a framework-native wait, not a sleep.
+
+        Args:
+            category_label: Human display label (e.g. "Quality Assurance") —
+                slugified internally the same way EliteaUI does client-side.
+        """
+        heading = self.page.locator(self.CATEGORY_HEADING.format(_slugify_category(category_label)))
+        heading.first.wait_for(state="visible", timeout=timeout)
 
     def wait_for_agent_card_count(self, expected_count: int, timeout: int = 10000) -> None:
         """Wait (Playwright auto-retrying assertion) for the number of

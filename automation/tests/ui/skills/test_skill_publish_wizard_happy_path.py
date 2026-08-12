@@ -361,6 +361,7 @@ class TestSkillPublishWizardHappyPath:
                 catalog_page.navigate()
                 catalog_page.click_skills_tab(timeout=NAVIGATION_TIMEOUT)
                 catalog_page.wait_for_any_skill_card(timeout=NAVIGATION_TIMEOUT)
+                catalog_page.wait_for_category_heading(CATEGORY_NAME, timeout=NAVIGATION_TIMEOUT)
 
                 visible_headings = catalog_page.get_visible_category_heading_texts()
                 assert CATEGORY_NAME in visible_headings, (
@@ -372,11 +373,11 @@ class TestSkillPublishWizardHappyPath:
                 "Step 12 — Verify the published skill's card details: "
                 "name matches the skill's live Name field"
             ):
-                skill_card = catalog_page.get_skill_card(skill_name)
+                skill_card = catalog_page.get_skill_card(skill_name, category=CATEGORY_NAME)
                 skill_card.first.wait_for(state="visible", timeout=NAVIGATION_TIMEOUT)
                 assert skill_card.count() >= 1, (
-                    f"Expected a Catalog card for {skill_name!r} after publishing, "
-                    f"found none"
+                    f"Expected a Catalog card for {skill_name!r} under the "
+                    f"{CATEGORY_NAME!r} category section after publishing, found none"
                 )
 
             if soft_failures:

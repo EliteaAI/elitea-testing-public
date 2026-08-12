@@ -99,7 +99,7 @@
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
 | 1 Navigate to Skills, create skill with valid name/desc(100+)/instructions(100+) | skill created and saved | steps 1–2 | `step 2`: URL is `/skills/all/{id}` | asserted, *clarification: icon+tag also required, see Known Defects* |
-| 2 Open skill, click "Publish" | wizard modal opens, Step 1 Preparation | step 4 | `step 4`: dialog visible, Stepper shows 3 steps | asserted, *clarification: trigger is a MENU ITEM inside the overflow menu, not a standalone "Publish" button* |
+| 2 Open skill, click "Publish" | wizard modal opens, Step 1 Preparation | step 4 | `step 4`: dialog visible (Version-name input rendered), Continue starts disabled | asserted, *clarification: trigger is a MENU ITEM inside the overflow menu, not a standalone "Publish" button; docs(afs) correction PR #1464 review — the AFS previously claimed "Stepper shows 3 steps" is asserted here, but the implementation never checks a step count (no testid exists on the Stepper's step nodes); the wording now matches what step 4's code actually verifies* |
 | 3 Enter version name + category | fields accept, no errors | step 5 | `step 5`: field values reflect input | asserted |
 | 4 Accept Publishing Terms checkbox | checked, Next enabled | step 6 | `step 6`: checkbox checked + Continue enabled | asserted |
 | 5 Click Next → Step 2 Validation | validation runs automatically | step 7 | `step 7`: validate response captured | asserted |
