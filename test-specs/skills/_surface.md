@@ -1369,3 +1369,70 @@ on an agent that has 3 Skills attached.
   `select_skill_version(skill_name, version_name)`.
   Full details:
   `test-specs/skills/l3_skill-version-selection-behavior_ELITEA-2610.md`.
+
+## Edit with AI (skill editing, not creation) — `/skills/all/{id}` → `AIEditSkillModal`
+
+- **Shared shell, skill-specific wiring.** `entities/edit-entity-with-ai/`
+  (`EditEntityButton`/`EditEntityModal`/`EditEntityComparisonLayout`/
+  `EditEntityStepIndicator`/`GeneralStep`/`InstructionsStep`/`TextDiffHighlight`)
+  is the SAME shell consumed by Skill (`features/skill/ui/ai-edit-skill-modal/`),
+  Agent (`features/agent/ui/ai-edit-agent-modal/`), and Project Context
+  (`features/settings/ui/project-context/ai-edit/`) — Edit-with-AI, distinct
+  from the "Build with AI" skill-CREATION flow documented above (different
+  button: `edit-skill-with-ai-button` vs `generate-skill-open-button`;
+  different endpoint call shape — see below).
+- Trigger: `edit-skill-with-ai-button` (sparkle-icon button next to
+  Name/Description in `CreateSkillForm`'s `summaryEditAction` slot,
+  `EditSkill.jsx:241`). Modal: `ai-edit-skill-modal`. Prompt-phase testids
+  (`ai-edit-skill-prompt-input`/`-generate-button`/`-cancel-button`/
+  `-close-button`/`-error-alert`/`-loading-indicator`) all pre-existing,
+  on-main.
+- Loading text confirmed live: **"Generating skill draft..."**.
+- Wizard has up to 3 steps computed by
+  `features/skill/lib/helpers/skillAIEditionSteps.helpers.js:computeVisibleSteps()`:
+  General (Name+Description) shown if either changed OR nothing changed at
+  all; Instructions shown if it changed OR nothing changed; **Summary is
+  ALWAYS shown** (last step, `EDIT_STEP_KEYS.SUMMARY`). "Nothing changed"
+  branch exists so the wizard doesn't just vanish when the AI echoes the
+  input back unmodified — not yet exercised by any case as of this run.
+- Each step: `EditEntityComparisonLayout` renders CURRENT (read-only) /
+  SUGGESTED (contentEditable, per-field "Apply changes" checkbox, **checked
+  by default**) columns. `TextDiffHighlight.jsx` computes a word-level diff
+  and renders added/removed segments as styled spans — CSS-only, no testid on
+  the segments (first-party code, not a #579 exception if you want to assert
+  the highlight itself — see the AFS's Automation Hints for why the data-level
+  "text differs" assertion is preferred instead).
+- **CONFIRMED LIVE GAP — the entire wizard PHASE has zero testid coverage.**
+  Only the prompt phase (table above) is wired. No testid on: the step
+  indicator ("1. General"/"2. Instructions"/"3. Summary"), any of the 3
+  "Apply changes" checkboxes, the 4 wizard-footer buttons (Refine Prompt /
+  Previous / Next / Save / Save as Version — 5 buttons, Save+SaveAsVersion
+  both only on the last step), or the 3 Summary-step merged-value inputs.
+  Full component/prop/testid-name breakdown:
+  `test-specs/skills/l2_edit-with-ai-skill-happy-path_ELITEA-2611.md` §
+  Concrete Handles. Not yet fixed as of this run — implementer work via
+  `add-data-testid`, threaded the same `xxxTestId`-prop way the prompt phase
+  already is.
+- **Partial-apply mechanism confirmed correct, live.** Unchecking a field's
+  "Apply changes" checkbox at any wizard step and navigating away/back
+  preserves that per-field checked state (`fieldApplyFlags` in
+  `AIEditSkillModal.jsx`, lifted above the per-step components). The Summary
+  step is NOT an itemized "these will change" list as case text implies — it's
+  ONE merged, directly-editable form per field, where each field's value is
+  either CURRENT or SUGGESTED depending on that field's checkbox state. Same
+  guarantee, different presentation — not a defect, just a case-text
+  imprecision worth knowing before you go looking for a bullet list.
+- **Save vs Save as Version**: "Save" (wizard) calls `useSaveSkill` →
+  `PUT /api/v2/elitea_core/skill/prompt_lib/{projectId}/{skillId}`
+  (`skillsApi.js:187-200`, `skillUpdate` mutation) — mutates the CURRENT
+  version in place, toast "Skill saved". "Save as Version" instead opens a
+  "Create version" name dialog (`ai-edit-skill-version-dialog-*` testids,
+  pre-existing/on-main) and creates a NEW version via `useSaveSkillVersion` —
+  not exercised by the happy-path AFS above (out of scope, noted for a sibling
+  case).
+- Generate endpoint: `POST /api/v2/elitea_core/generate_skill_draft/prompt_lib/{projectId}`
+  — **same URL as skill-creation's Build-with-AI**, disambiguated by payload:
+  edit-mode body carries `skill_id`+`version_id`, create-mode omits both.
+  `200 OK` either way.
+  Full details:
+  `test-specs/skills/l2_edit-with-ai-skill-happy-path_ELITEA-2611.md`.
