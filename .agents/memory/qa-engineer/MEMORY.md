@@ -41,4 +41,4 @@
 - [Agent publish token error code differs from Skill's](agent_publish_validation_token_error_code_differs_by_entity.md) — Agent=validation_failed, Skill=validation_token_invalid; assert both fields
 - [Catalog "under Category" scoping](catalog_category_grouping_cannot_be_scoped_no_container_testid.md) — RESOLVED PR #1464; container-testid pattern for reuse
 - [Subagent skill isolation confound](subagent_skill_isolation_confound.md) — assert nested-accordion chip, not whole-message text; master's own skill can fire independently
-- [Edit-with-AI wizard: zero testids](edit_with_ai_wizard_zero_testid_coverage.md) — shared shell (Skill/Agent/Project-Context), prompt phase only wired
+- [Edit-with-AI wizard testid gaps](edit_with_ai_wizard_testid_gaps.md) — Refine Prompt/Save-as-Version still unwired; Cancel absent in wizard phase

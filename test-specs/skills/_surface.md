@@ -1402,7 +1402,24 @@ on an agent that has 3 Skills attached.
   the segments (first-party code, not a #579 exception if you want to assert
   the highlight itself — see the AFS's Automation Hints for why the data-level
   "text differs" assertion is preferred instead).
-- **CONFIRMED LIVE GAP — the entire wizard PHASE has zero testid coverage.**
+- **UPDATE (ELITEA-2612 run, superseding the "zero testid coverage" note
+  below as of this run):** the wizard-phase gap WAS fixed for ELITEA-2611 —
+  the step indicator, all 3 "Apply changes" checkboxes, Previous/Next/Save,
+  and the 3 Summary-step inputs are now wired and on `main`
+  (`EliteaAI/EliteaUI@cddfd6d4`, fix-round-1 additions
+  `EliteaAI/EliteaUI@3e1e5c73`). **Still unwired: "Refine Prompt" and "Save as
+  Version"** — `AIEditSkillModal.jsx`'s `<EditEntityModal>` call site leaves
+  `refinePromptButtonTestId`/`saveAsVersionButtonTestId` unset (canon #511:
+  ELITEA-2611 never clicked either control, so wiring them then would have
+  been an orphan testid). ELITEA-2612 DOES exercise "Refine Prompt" (its
+  "Back" equivalent — there is no separate "Back" button, confirmed via
+  source read) — see `l3_edit-with-ai-navigation-error-handling_ELITEA-2612.md`
+  § Concrete Handles for the exact prop-wiring + naming
+  (`ai-edit-skill-wizard-refine-prompt-button`). "Save as Version" remains
+  unwired/unexercised as of this run — original text preserved below for
+  the historical "zero coverage" framing, now stale in its "no testid on
+  ANY of" claim but still accurate on which specific 2 controls are gapped.
+- ~~**CONFIRMED LIVE GAP — the entire wizard PHASE has zero testid coverage.**
   Only the prompt phase (table above) is wired. No testid on: the step
   indicator ("1. General"/"2. Instructions"/"3. Summary"), any of the 3
   "Apply changes" checkboxes, the 4 wizard-footer buttons (Refine Prompt /
@@ -1412,7 +1429,40 @@ on an agent that has 3 Skills attached.
   `test-specs/skills/l2_edit-with-ai-skill-happy-path_ELITEA-2611.md` §
   Concrete Handles. Not yet fixed as of this run — implementer work via
   `add-data-testid`, threaded the same `xxxTestId`-prop way the prompt phase
-  already is.
+  already is.~~ *(superseded — see UPDATE above)*
+- **Wizard-phase-only-has-Close, no-Cancel (ELITEA-2612 finding).**
+  `EditEntityModal.jsx`'s `renderActions()` — which renders the "Cancel"
+  button (`ai-edit-skill-cancel-button`) — returns `null` whenever
+  `phase !== PHASES.PROMPT`. Once generation succeeds and the wizard phase is
+  reached, "Cancel" no longer exists in the DOM at all; the ONLY dismissal
+  control from that point on is the modal-level Close (X),
+  `ai-edit-skill-close-button`. A case asking to "Cancel or close the wizard"
+  from a wizard step must use Close, not Cancel.
+- **"Refine Prompt" (`handleRefinePrompt`) preserves the prompt text;
+  "Close"/"Cancel" (`handleClose`, and the `!open` effect) do NOT — confirmed
+  live (ELITEA-2612).** Both handlers reset `phase`/`draftData`/
+  `activeStepIndex`; only `handleClose` additionally resets `description`
+  (the prompt state) and calls `resetGenerate()`. This asymmetry is
+  intentional per the case's own intent (Refine Prompt lets you tweak and
+  resend the SAME prompt; Cancel/Close abandons the whole attempt) — not a
+  bug either way it currently isn't.
+- **Generation-failure error text is genuinely the backend's own message,
+  round-tripped verbatim** (`generateError?.data?.error ||
+  generateError?.data?.detail || 'Failed to generate. Please try again.'`).
+  No product-side lever exists to force a real failure on demand — automate
+  via `page.route()` intercepting exactly one `generate_skill_draft` POST
+  with a mocked `5xx` + JSON body, same interception class already used
+  elsewhere in this page object for reading POST bodies. There is no
+  separate "Retry" control — "Generate Draft" itself, still present/enabled
+  in the (already-current) prompt phase after a failure, IS the retry path.
+- **Empty/whitespace-prompt validation is disable-only, no message
+  (ELITEA-2612 finding — case-text drift, clarification filed:
+  [elitea-testing-public#1478](https://github.com/EliteaAI/elitea-testing-public/issues/1478)).**
+  `disabled={!description.trim()}` on the Generate Draft button covers BOTH
+  empty and whitespace-only prompts (`.trim()` on either is falsy) — no
+  `ai-edit-skill-error-alert` or any other validation-message element is ever
+  rendered for this path. Assert via the button's `disabled` state, not a
+  message.
 - **Partial-apply mechanism confirmed correct, live.** Unchecking a field's
   "Apply changes" checkbox at any wizard step and navigating away/back
   preserves that per-field checked state (`fieldApplyFlags` in
