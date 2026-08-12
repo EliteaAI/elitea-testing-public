@@ -8,6 +8,7 @@
 > into their richest survivor, demoted surface lookups to disk-only, promoted 5
 > preventive entries. No entry file was deleted — everything stays greppable.
 > `(N×)` = how many separate sessions hit it.
+- [Autonomous skill invocation needs a nudge](autonomous_skill_invocation_nudge.md) — attach alone won't do it
 
 - [Project briefing](project_briefing.md) — your slot, the six-phase loop, the ≤2-rerun budget, the Run Report
 - [Verify feature branch first](verify_feature_branch_before_first_commit.md) — `git branch --show-current` before any commit; dispatch starts you ON the trunk (5×)
