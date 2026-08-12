@@ -12,9 +12,9 @@ on:
         options: [all, agents, admin, artifacts, chat, pipelines, skills, smoke, support_assistant, toolkits, voice]
         default: all
       custom_suites:
-        description: 'Custom suites (comma-separated)'
+        description: 'Custom suites (comma-separated). Default: 10 baseline suites. Use "all" to discover all suites.'
         type: string
-        default: ''
+        default: 'admin,agents,artifacts,chat,pipelines,skills,smoke,support_assistant,toolkits,voice'
       parallel_jobs:
         description: 'Number of parallel runners (1-9)'
         type: choice
@@ -42,7 +42,7 @@ jobs:
     with:
       environment: dev
       suite: ${{ inputs.suite || 'all' }}
-      custom_suites: ${{ inputs.custom_suites || '' }}
+      custom_suites: ${{ inputs.custom_suites || 'admin,agents,artifacts,chat,pipelines,skills,smoke,support_assistant,toolkits,voice' }}
       parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
       markers: ${{ inputs.markers || 'not new' }}
       ref: ${{ inputs.ref || 'main' }}
