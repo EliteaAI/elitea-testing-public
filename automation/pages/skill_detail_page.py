@@ -52,6 +52,70 @@ class SkillDetailPage(SkillFormPage):
         description="SkillTestPanel container"
     )
 
+    # ------------------------------------------------------------------
+    # LLM model selector + Model Settings dialog (SkillTestPanel, ELITEA-2436)
+    # ------------------------------------------------------------------
+    # These testids are NOT new — they were added on the Agent detail page's
+    # embedded chat panel for ELITEA-1880/ELITEA-1881 (see
+    # `agent_detail_page.py`'s equivalent fields) and are inherited for free
+    # here because both pages render the exact same shared
+    # `LLMModelSelector`/`LLMSettingsDialog` widget
+    # (`src/[fsd]/widgets/llm-model-selector/`). Only `model_settings_apply_button`
+    # (now-live, no prior LocatorDescriptor field on either page) and
+    # `model_settings_creativity_slider`/its `-input` twin (added via
+    # add-data-testid for THIS case, see below) are new.
+    model_selector_button = LocatorDescriptor(testid="model-selector-button")
+    model_selector_name = LocatorDescriptor(testid="model-selector-name")
+    MODEL_SELECTOR_OPTION_ANY_SELECTOR = '[data-testid^="model-selector-option-"]'
+
+    model_settings_button = LocatorDescriptor(
+        testid="model-settings-button",
+        description="Gear icon next to the model selector — opens the Model settings dialog",
+    )
+    model_settings_dialog = LocatorDescriptor(testid="model-settings-dialog")
+    model_settings_cancel_button = LocatorDescriptor(testid="model-settings-cancel-button")
+    # New finding (AFS Concrete Handles): this testid now exists on
+    # LLMSettingsDialog.jsx's Apply button (it did not at ELITEA-1880
+    # analysis time) but had no LocatorDescriptor field on either detail
+    # page yet.
+    model_settings_apply_button = LocatorDescriptor(testid="model-settings-apply-button")
+    # Reasoning-capable models render this slider (Low/Medium/High); a
+    # non-reasoning model renders CreativitySlider instead.
+    model_settings_reasoning_slider = LocatorDescriptor(testid="model-settings-reasoning-slider")
+    # Non-reasoning models (e.g. gpt-5-mini) render this slider instead of
+    # Reasoning. Wrapper testid added via add-data-testid for ELITEA-2436
+    # (CreativitySlider.jsx, mirroring ReasoningSlider.jsx's existing
+    # `testId="model-settings-reasoning-slider"` prop-threading through the
+    # shared DiscreteSlider.jsx). A SECOND, distinct `inputTestId` prop was
+    # also threaded through DiscreteSlider (declared improvisation — the AFS
+    # only asked for the wrapper; MUI's `<Slider>` renders the interactive
+    # `<input type="range">` as a separate internal node the wrapper's
+    # data-testid never reaches, same family as the documented
+    # "MUI testid lands on wrapper, not input" gotcha) — this case's step 2
+    # must MOVE the slider, not just assert its presence, so the underlying
+    # input needs its OWN testid rather than reusing the AFS's suggested
+    # `[aria-label="Creativity level"]` raw handle or the pre-existing raw
+    # `input[aria-valuemin=...]` precedent in
+    # `user_profile_settings_page.py::set_speed()` (tracked tech debt, not
+    # precedent per `.agents/testing.md`). Scoped ONLY to CreativitySlider —
+    # ReasoningSlider does NOT receive `inputTestId` since this case never
+    # drives the Reasoning slider's input (canon #511 scope discipline).
+    model_settings_creativity_slider = LocatorDescriptor(testid="model-settings-creativity-slider")
+    model_settings_creativity_slider_input = LocatorDescriptor(
+        testid="model-settings-creativity-slider-input",
+        description="The real <input type=range> inside the Creativity slider "
+                     "wrapper — use this (not the wrapper) to focus + arrow-key "
+                     "the slider value",
+    )
+    model_settings_max_tokens_section = LocatorDescriptor(testid="model-settings-max-tokens-section")
+
+    # Dynamic (runtime-parameterized) testid for a model-selector dropdown
+    # option, keyed by the model's stable API `name` (mirrors
+    # AgentDetailPage's identical constant/pattern).
+    MODEL_SELECTOR_OPTION = '[data-testid="model-selector-option-{}"]'
+    # Dynamic testid for a Reasoning-slider level mark (1=Low, 2=Medium, 3=High).
+    MODEL_SETTINGS_REASONING_LEVEL = '[data-testid="model-settings-reasoning-level-{}"]'
+
     # Overflow menu trigger button
     controls_menu_button = LocatorDescriptor(
         testid="skill-controls-menu-button",
@@ -373,6 +437,153 @@ class SkillDetailPage(SkillFormPage):
         """
         # The last message in the skill test panel uses testid "skill-test-last-response".
         return (self.page.get_by_test_id("skill-test-last-response").text_content() or "").strip()
+
+    # ------------------------------------------------------------------
+    # LLM model selector (SkillTestPanel, ELITEA-2436)
+    # ------------------------------------------------------------------
+
+    @action("Open LLM model selector")
+    def open_model_selector(self, timeout: int = 5000):
+        """Click the test panel's model selector to open the dropdown.
+
+        LOCATOR: ``model-selector-button`` testid. Mirrors
+        ``AgentDetailPage.open_model_selector()`` — same shared widget.
+        """
+        logger.info("Opening LLM model selector (skill test panel)")
+        self.model_selector_button.click()
+        self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def get_selected_model_name(self) -> str:
+        """Return the currently displayed model name on the closed selector.
+
+        LOCATOR: ``model-selector-name`` testid.
+        """
+        return (self.model_selector_name.text_content() or "").strip()
+
+    @action("Select LLM model")
+    def select_llm_model(self, model_name: str, timeout: int = 5000):
+        """Select a model from the OPEN model-selector dropdown by its
+        stable API ``name`` (dynamic testid suffix, e.g. ``gpt-5-mini``).
+
+        Call after :meth:`open_model_selector`.
+
+        Args:
+            model_name: The model's stable API name (matches the
+                ``model-selector-option-{name}`` dynamic testid suffix).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting LLM model: %s", model_name)
+        option = self.page.locator(self.MODEL_SELECTOR_OPTION.format(model_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        logger.info("LLM model '%s' selected", model_name)
+
+    # ------------------------------------------------------------------
+    # Model Settings dialog (SkillTestPanel, ELITEA-2436)
+    # ------------------------------------------------------------------
+
+    @action("Open Model settings dialog")
+    def open_model_settings_dialog(self, timeout: int = 5000):
+        """Click the gear icon and wait for the Model settings dialog to open.
+
+        LOCATOR: ``model-settings-button`` -> ``model-settings-dialog``.
+        """
+        logger.info("Opening Model settings dialog (skill test panel)")
+        self.model_settings_button.click()
+        self.model_settings_dialog.wait_for(state="visible", timeout=timeout)
+
+    def is_reasoning_slider_visible(self, timeout: int = 5000) -> bool:
+        """Return True if the Reasoning slider (Low/Medium/High) is shown.
+
+        LOCATOR: ``model-settings-reasoning-slider``. Rendered only for a
+        reasoning-capable model. Call after :meth:`open_model_settings_dialog`.
+        """
+        try:
+            self.model_settings_reasoning_slider.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_reasoning_slider_text(self, timeout: int = 5000) -> str:
+        """Return the Reasoning slider's own rendered text (label + Low/Medium/High).
+
+        LOCATOR: ``model-settings-reasoning-slider``.
+        """
+        self.model_settings_reasoning_slider.wait_for(state="visible", timeout=timeout)
+        return (self.model_settings_reasoning_slider.text_content() or "").strip()
+
+    def is_creativity_slider_visible(self, timeout: int = 5000) -> bool:
+        """Return True if the Creativity slider is shown (non-reasoning model).
+
+        LOCATOR: ``model-settings-creativity-slider``. Call after
+        :meth:`open_model_settings_dialog`.
+        """
+        try:
+            self.model_settings_creativity_slider.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_creativity_slider_value(self, timeout: int = 5000) -> int:
+        """Return the Creativity slider's current numeric position (1-5).
+
+        LOCATOR: ``model-settings-creativity-slider-input`` — the real
+        ``<input type="range">`` inside the slider wrapper.
+        """
+        self.model_settings_creativity_slider_input.wait_for(state="visible", timeout=timeout)
+        value = self.model_settings_creativity_slider_input.get_attribute("value")
+        return int(value) if value is not None else -1
+
+    @action("Adjust Creativity slider")
+    def increase_creativity_slider(self, timeout: int = 5000):
+        """Focus the Creativity slider's underlying range input and press
+        ArrowRight once to move it one discrete position.
+
+        LOCATOR: ``model-settings-creativity-slider-input``. Focusing the
+        underlying ``<input type="range">`` directly (not clicking the
+        visual MUI thumb) avoids the thumb `<span>` intercepting pointer
+        events — confirmed live during AFS exploration and mirrored from
+        the existing discrete-slider interaction pattern
+        (``user_profile_settings_page.py::set_speed()``), but via a
+        testid-scoped locator instead of a raw aria-label/attribute
+        selector.
+        """
+        logger.info("Increasing Creativity slider by one step")
+        self.model_settings_creativity_slider_input.wait_for(state="visible", timeout=timeout)
+        self.model_settings_creativity_slider_input.focus()
+        self.page.keyboard.press("ArrowRight")
+
+    def is_apply_button_enabled(self, timeout: int = 5000) -> bool:
+        """Return True if the Model settings dialog's Apply button is enabled.
+
+        LOCATOR: ``model-settings-apply-button``.
+        """
+        self.model_settings_apply_button.wait_for(state="visible", timeout=timeout)
+        return self.model_settings_apply_button.is_enabled()
+
+    @action("Apply Model settings")
+    def click_apply_model_settings(self, timeout: int = 5000):
+        """Click Apply and wait for the Model settings dialog to close.
+
+        LOCATOR: ``model-settings-apply-button``.
+        """
+        logger.info("Applying Model settings")
+        self.model_settings_apply_button.click()
+        self.model_settings_dialog.wait_for(state="hidden", timeout=timeout)
+
+    @action("Close Model settings dialog via Cancel")
+    def close_model_settings_dialog_via_cancel(self, timeout: int = 5000):
+        """Click Cancel and wait for the Model settings dialog to close.
+
+        LOCATOR: ``model-settings-cancel-button``. Discards any local
+        (unapplied) edits made inside the dialog. Mirrors
+        ``AgentDetailPage.close_model_settings_dialog_via_cancel()``.
+        """
+        logger.info("Closing Model settings dialog via Cancel")
+        self.model_settings_cancel_button.click()
+        self.model_settings_dialog.wait_for(state="hidden", timeout=timeout)
 
     # ------------------------------------------------------------------
     # Actions menu (overflow/three-dot menu)

@@ -115,6 +115,28 @@
      component" — traced to the test panel's disabled "Clear the chat"
      button, not to anything this case's steps touch; not filed, noted for
      completeness only per this skill's side-channel discipline).
+   - **Resolved/amended during ELITEA-2436 implementation:** re-running
+     step 3 live during automation found the exact-literal `"OK"` response
+     does NOT reproduce reliably. The reused fixture skill
+     (`elitea-1735-skill-underscore`) applies its own instructions
+     ("replace ALL spaces between words with underscore characters")
+     **unconditionally** inside the SkillTestPanel — the panel always runs
+     the skill's instructions against whatever is typed (there is no
+     separate V2-autonomous trigger-match gate here, unlike agent-level
+     chat) — so the LLM's literal-vs-instruction-following interpretation
+     of `"Say OK"` is genuinely non-deterministic across runs/models: the
+     analyst's run produced `"OK"`; the implementer's re-verification run
+     (same skill, same `gpt-5-mini` model) produced `"Say_OK"` instead. The
+     case's own Pass criterion is "action completes without error and
+     produces the expected UI state" — it does not require a specific
+     literal string — so the shipped test asserts a **substring** match
+     (`"ok"` case-insensitive, which both `"OK"` and `"Say_OK"` satisfy)
+     plus "response is non-empty" and "no error text in the response"
+     instead of the exact-literal equality this AFS originally recorded.
+     This is a reverse-masking-guard case, not a defect: the live
+     product's behavior (skill instructions apply unconditionally in the
+     test panel) is exactly as designed; only the AFS's narrower literal
+     expectation needed loosening to match what's actually stable.
 
 4. Switch to a reasoning model (if available) and verify reasoning effort
    options appear (Low / Medium / High).
@@ -266,7 +288,8 @@ skill (see § Test Data), standard `SkillAPI.delete_skill()` /
 | Model Settings dialog root | `page.get_by_test_id("model-settings-dialog")` | **confirmed live**, on-automation/testids ✓ |
 | Reasoning slider (reasoning-capable models only) | `page.get_by_test_id("model-settings-reasoning-slider")` | **confirmed live** for `GPT-5.2`/default `Anthropic Claude 4.5 Sonnet`, on-automation/testids ✓ |
 | Reasoning slider level marks (Low/Medium/High) | `page.locator('[data-testid="model-settings-reasoning-level-{}"]'.format(n))` for `n` in `1,2,3` | **confirmed live**, on-automation/testids ✓ — dialog full-text confirms rendered labels are lowercase `low`/`medium`/`high` |
-| Creativity slider (non-reasoning models, e.g. gpt-5-mini) | underlying range input: `page.locator('[aria-label="Creativity level"]')` — **no dedicated `data-testid`** on this control per this run's DOM inspection (the reasoning branch got one via ELITEA-1880's `add-data-testid` work; the Creativity/temperature branch did not) | **testid needed: `model-settings-creativity-slider`** on `CreativitySlider.jsx`'s slider wrapper, mirroring `ReasoningSlider.jsx`'s existing `testId="model-settings-reasoning-slider"` prop-threading pattern through the shared `DiscreteSlider.jsx` (see `agent_detail_page.py`'s comment block at the `model_settings_reasoning_slider` field for the exact prior precedent to copy) — this case's step 2 exercises the Creativity slider for `gpt-5-mini`, so the testid is in-scope per the "elements this test touches" rule |
+| Creativity slider (non-reasoning models, e.g. gpt-5-mini) — wrapper (presence) | `page.get_by_test_id("model-settings-creativity-slider")` | **testid needed: `model-settings-creativity-slider`** on `CreativitySlider.jsx`'s slider wrapper, mirroring `ReasoningSlider.jsx`'s existing `testId="model-settings-reasoning-slider"` prop-threading pattern through the shared `DiscreteSlider.jsx` (see `agent_detail_page.py`'s comment block at the `model_settings_reasoning_slider` field for the exact prior precedent to copy) — this case's step 2 exercises the Creativity slider for `gpt-5-mini`, so the testid is in-scope per the "elements this test touches" rule. **Added** (`EliteaAI/EliteaUI@95bd8d06`, on `automation/testids`) |
+| Creativity slider — real `<input type="range">` (needed to MOVE the slider, not just assert presence) | `page.get_by_test_id("model-settings-creativity-slider-input")` | **Declared improvisation, added during implementation** (not originally requested by this AFS — see below). This AFS's original ask above covers only a presence check; step 2 must actually change the slider's value (to prove Apply enables on change), and MUI's `<Slider>` renders its interactive `<input type="range">` as a separate internal node the wrapper's `data-testid` never reaches (same family as the "MUI testid lands on wrapper, not input" gotcha). The implementer threaded a second, new `inputTestId` prop through `DiscreteSlider.jsx` → MUI's `slotProps.input` (`slotProps={inputTestId ? { input: { 'data-testid': inputTestId } } : undefined}`), scoped **only** to `CreativitySlider.jsx` (`inputTestId="model-settings-creativity-slider-input"` — `ReasoningSlider.jsx`'s input is untouched; this test never drives it — canon #511 scope discipline). This avoids both this AFS's originally-suggested `[aria-label="Creativity level"]` raw handle and the pre-existing raw-CSS precedent in `user_profile_settings_page.py::set_speed()` (tracked tech debt, not precedent). **Added** (`EliteaAI/EliteaUI@42c7e3eb`, on `automation/testids`). |
 | Max Completion Tokens section | `page.get_by_test_id("model-settings-max-tokens-section")` | **confirmed live**, on-automation/testids ✓ |
 | Settings dialog Cancel button | `page.get_by_test_id("model-settings-cancel-button")` | **confirmed live**, on-automation/testids ✓ |
 | Settings dialog Apply button | `page.get_by_test_id("model-settings-apply-button")` | **confirmed live, NEW FINDING**: this testid now exists (it did NOT at ELITEA-1880 analysis time — that AFS explicitly noted "Apply button intentionally has NO testid here... do not add unless a future case needs it"). Someone added it since; `AgentDetailPage`'s `LocatorDescriptor` set does not yet have a field for it — implementer should add `model_settings_apply_button = LocatorDescriptor(testid="model-settings-apply-button")` to whichever page object(s) need it (this case's `SkillDetailPage`, and optionally back-filling `AgentDetailPage` as a drive-by since the testid is already there for free) |
@@ -274,14 +297,23 @@ skill (see § Test Data), standard `SkillAPI.delete_skill()` /
 | Test panel send button | `page.get_by_test_id("chat-send-button")` | **confirmed live**, on-automation/testids ✓ |
 | Test panel last AI response text | `page.get_by_test_id("skill-test-last-response")` | **confirmed live**, on-automation/testids ✓ (already `SkillDetailPage.get_last_test_response()`) |
 
-**Summary for the implementer / `add-data-testid`:** ONE testid gap found —
-`model-settings-creativity-slider` on `CreativitySlider.jsx` (step 2's
-non-reasoning-model branch). Every other element this case touches already
-carries a testid, inherited for free from the ELITEA-1880 implementation on
-the shared `llm-model-selector` widget. Also flag (not blocking): the
-now-live `model-settings-apply-button` testid has no `LocatorDescriptor`
-field yet on `AgentDetailPage` or `SkillDetailPage` — add it to
-`SkillDetailPage` as part of this case's page-object work.
+**Summary for the implementer / `add-data-testid`:** ONE testid gap found by
+this AFS at analysis time — `model-settings-creativity-slider` on
+`CreativitySlider.jsx`'s wrapper (step 2's non-reasoning-model branch,
+presence-only). **Resolved/amended during ELITEA-2436 implementation:** that
+wrapper testid alone was insufficient — step 2 must actually MOVE the
+Creativity slider, and the wrapper's `data-testid` doesn't reach MUI's
+internal `<input type="range">`. The implementer added a SECOND testid,
+`model-settings-creativity-slider-input`, via a new `inputTestId` prop
+threaded through `DiscreteSlider.jsx` into MUI's `slotProps.input`, scoped
+only to `CreativitySlider` — see the Concrete Handles table's second
+Creativity-slider row for the full declared-improvisation reasoning and the
+originating commit. Every other element this case touches already carries a
+testid, inherited for free from the ELITEA-1880 implementation on the shared
+`llm-model-selector` widget. Also flag (not blocking): the now-live
+`model-settings-apply-button` testid has no `LocatorDescriptor` field yet on
+`AgentDetailPage` or `SkillDetailPage` — add it to `SkillDetailPage` as part
+of this case's page-object work.
 
 ## Network Behavior
 - `POST /api/v2/elitea_core/predict_llm/prompt_lib/399` → `200 OK` (step 3,
@@ -327,19 +359,40 @@ model to confirm the Reasoning slider (Low/Medium/High) renders correctly.
   same interaction patterns, different page-object class).
 - **Discrete-slider interaction (MUI quirk, confirmed live):** do NOT
   `.click()` the visual `<span class="MuiSlider-thumb">` directly — it
-  intercepts pointer events and the click times out. Instead:
-  `page.locator('[aria-label="Creativity level"]').focus()` (or the
-  equivalent `aria-label` for the Reasoning slider, if the implementer
-  needs to move it, though this case only needs to confirm the Reasoning
-  slider's *presence*, not move it) then
+  intercepts pointer events and the click times out. Instead: focus the
+  underlying `<input type="range">` then
   `page.keyboard.press("ArrowRight")` / `"ArrowLeft"` — mirrors
   `user_profile_settings_page.py`'s `set_speed()` precedent
   (`automation/pages/user_profile_settings_page.py:690-714`).
-- `add-data-testid` work needed for ONE element: `model-settings-creativity-slider`
-  on `CreativitySlider.jsx` (see Concrete Handles) — thread a `testId` prop
-  through the shared `DiscreteSlider.jsx`, mirroring the existing
-  `ReasoningSlider.jsx` → `testId="model-settings-reasoning-slider"`
-  precedent exactly (`EliteaUI/src/[fsd]/widgets/llm-model-selector/ui/settings/ReasoningSlider.jsx:65-67`).
+  **Resolved/amended during ELITEA-2436 implementation:** the AFS originally
+  suggested focusing via the `[aria-label="Creativity level"]` raw handle
+  (a rung-down from the testid-only locator policy). The implementer instead
+  added a dedicated `model-settings-creativity-slider-input` testid on the
+  real `<input>` (see Concrete Handles) and focuses/drives it via
+  `page.get_by_test_id("model-settings-creativity-slider-input").focus()` —
+  no raw `aria-label` handle needed. This case only needs to confirm the
+  Reasoning slider's *presence*, not move it, so no equivalent input-testid
+  was added for `ReasoningSlider.jsx` (canon #511 scope discipline — testid
+  only where the test's executed path touches it).
+- `add-data-testid` work needed for **two** elements on `CreativitySlider.jsx`
+  (both landed on `automation/testids`):
+  1. `model-settings-creativity-slider` — wrapper testid, presence-only,
+     threaded via the existing `testId` prop through the shared
+     `DiscreteSlider.jsx`, mirroring `ReasoningSlider.jsx`'s existing
+     `testId="model-settings-reasoning-slider"` precedent exactly
+     (`EliteaUI/src/[fsd]/widgets/llm-model-selector/ui/settings/ReasoningSlider.jsx:65-67`).
+     `EliteaAI/EliteaUI@95bd8d06`.
+  2. `model-settings-creativity-slider-input` — **declared improvisation**,
+     added during implementation once the wrapper testid alone proved
+     insufficient to drive the slider's value. A new `inputTestId` prop was
+     threaded through `DiscreteSlider.jsx` into MUI's `slotProps.input`
+     (`slotProps={inputTestId ? { input: { 'data-testid': inputTestId } } : undefined}`),
+     wired only on `CreativitySlider.jsx`
+     (`inputTestId="model-settings-creativity-slider-input"`). `ReasoningSlider.jsx`
+     was left untouched — this case never drives its input, only asserts its
+     presence. `EliteaAI/EliteaUI@42c7e3eb`. See Concrete Handles for the
+     full reasoning and PR #1448's "Declared improvisation" section for the
+     original narration.
 - No disposable-skill/cleanup infrastructure needed for this case — see §
   Cleanup (model settings are pure client-side state here, unlike
   ELITEA-1880's agent-page instance which persists via a real Save).

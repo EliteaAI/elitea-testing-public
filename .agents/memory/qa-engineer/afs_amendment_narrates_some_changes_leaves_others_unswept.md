@@ -81,3 +81,21 @@ grep for every occurrence" (as this round's fix commit message did) is what
 actually closes out this finding class in one round — narrow "fix these 3
 named things" framing is what produces the multi-round drag seen elsewhere
 this session.
+
+## Round-3 recurrence — PR #1448/ELITEA-2436 (2026-08-12, static review)
+
+Same shape again, one level more compact: the PR body's own "Declared
+improvisation" section fully and accurately narrates a NEW testid
+(`model-settings-creativity-slider-input`, threaded via a new `inputTestId`
+prop on shared `DiscreteSlider.jsx`) added beyond what the AFS asked for
+(the AFS's Concrete Handles row only requested the wrapper testid
+`model-settings-creativity-slider`). Verified live: both testids are
+genuinely on `origin/automation/testids` (commits 95bd8d06 + 42c7e3eb) and
+both are wired into `skill_detail_page.py` + asserted in the shipped test.
+But the AFS's own Concrete Handles table / Automation Hints section was
+never touched — still reads as if only the single wrapper testid exists.
+Confirms the check generalizes beyond "silent, unnarrated" changes (round 1)
+to "narrated in the PR body/memory, but the narration target was the PR
+description, not the AFS document itself" — two different artifacts, and
+satisfying one does not satisfy the other. Flagged as a blocking finding
+(cheap fix: one Concrete Handles row + one Automation Hints bullet).

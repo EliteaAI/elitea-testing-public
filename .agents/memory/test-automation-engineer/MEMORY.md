@@ -26,6 +26,7 @@
 - [An assertion can prove the wrong fact](assertion_proves_the_wrong_fact.md) — invert-check is necessary, not sufficient; isolate every OR-gate (5×)
 - [Shared-state cleanup must soft-assert](cleanup_verification_on_shared_state_must_soft_assert.md) — logger.error-only lets failed cleanup pollute the baseline
 - [MUI testid lands on the wrapper](testid_lands_on_mui_wrapper_not_input.md) — relocate via inputProps/slotProps at source; never chain .locator("input") (11×)
+- [Declared improvisation needs AFS sweep](declared_improvisation_needs_afs_sweep_not_just_pr_narration.md) — PR-body narration alone leaves the AFS document stale; amend Concrete Handles + Hints too
 - [MUI icon auto-testid is dev-build-only](mui_icon_auto_testid_is_dev_build_only_never_locate_on_it.md) — green on localhost, absent in every deployed env
 - [New testid must not share a prefix selector](component_level_testid_must_not_share_a_prefix_selector.md) — grep `^=` in the page object before naming
 - [#579 exceptions are narrow](custom_handle_testid_prop_not_579_exception.md) — CustomHandle/SingleSelect are app-owned; only ReactFlow/CodeMirror internals qualify
