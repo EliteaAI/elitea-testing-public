@@ -23,7 +23,11 @@ make Coverage Map rows 10/11 (read-only vs editable column display)
 structurally assertable.
 
 Covers: ELITEA-2611 (happy path — full wizard round-trip, partial apply via
-per-field checkboxes, persistence across a full page reload).
+per-field checkboxes, persistence across a full page reload); ELITEA-2612
+(navigation/error handling — Refine Prompt preserves the prompt, Close
+never applies uncommitted wizard state, a generation-failure error and
+retry via the same Generate Draft control, empty/whitespace prompt
+disable-only validation).
 """
 
 import logging
@@ -79,14 +83,22 @@ class AIEditSkillModalPage(BasePage):
         testid="ai-edit-skill-step-indicator",
         description='Wizard step title text, e.g. "1. General" / "2. Instructions" / "3. Summary"',
     )
-    # NOTE: "Refine Prompt" and "Save as Version" wizard-footer buttons are
-    # NOT declared here. Their EditEntityModal prop channel
-    # (refinePromptButtonTestId / saveAsVersionButtonTestId) exists but is
-    # deliberately left unwired at the AIEditSkillModal.jsx call site — this
-    # test never clicks either control, so neither testid is "referenced"
-    # per canon #511's executed-code-path rule (no orphan testid is
-    # rendered). Add the field here + wire the value in EliteaUI once a
-    # case actually exercises one of them.
+    refine_prompt_button = LocatorDescriptor(
+        testid="ai-edit-skill-wizard-refine-prompt-button",
+        description='Wizard footer — "Refine Prompt" (the wizard\'s ONLY '
+                     "dismissal-to-prompt-phase control; there is no separate "
+                     '"Back" button). Wired for ELITEA-2612 '
+                     "(EliteaAI/EliteaUI@cbf9dd27) — the EditEntityModal prop "
+                     "channel (refinePromptButtonTestId) already existed but was "
+                     "left unwired at the call site until this case actually "
+                     "clicked it (canon #511 executed-code-path rule).",
+    )
+    # NOTE: "Save as Version" wizard-footer button is NOT declared here. Its
+    # EditEntityModal prop channel (saveAsVersionButtonTestId) exists but is
+    # deliberately left unwired at the AIEditSkillModal.jsx call site — no
+    # case yet clicks it, so the testid is not "referenced" per canon #511's
+    # executed-code-path rule (no orphan testid is rendered). Add the field
+    # here + wire the value in EliteaUI once a case actually exercises it.
     previous_button = LocatorDescriptor(
         testid="ai-edit-skill-wizard-previous-button",
         description="Wizard footer — Previous (hidden on the first visible step)",
@@ -354,6 +366,24 @@ class AIEditSkillModalPage(BasePage):
         previous_step = self.get_step_indicator_text()
         self.previous_button.click()
         expect(self.step_indicator).not_to_have_text(previous_step, timeout=timeout)
+
+    @action("Click wizard Refine Prompt")
+    def click_refine_prompt(self, timeout: int = 5000):
+        """Click "Refine Prompt" and wait for the modal to return to the
+        prompt-input phase.
+
+        Unlike :meth:`click_next`/:meth:`click_previous` (which move
+        between WIZARD steps and wait on the step indicator's text
+        changing), "Refine Prompt" exits the wizard phase entirely back to
+        the prompt-input phase — so the correct completion signal is the
+        prompt textarea becoming visible again, not a step-indicator
+        change (the step indicator is unmounted once back in the prompt
+        phase, per ``EditEntityModal.jsx``'s ``handleRefinePrompt``, which
+        resets ``phase`` to ``PHASES.PROMPT``).
+        """
+        self.refine_prompt_button.click()
+        self.prompt_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Refine Prompt clicked — modal returned to prompt-input phase")
 
     # ------------------------------------------------------------------
     # Wizard — Summary step reads
