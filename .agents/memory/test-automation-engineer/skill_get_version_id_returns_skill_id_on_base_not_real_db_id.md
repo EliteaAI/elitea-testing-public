@@ -42,3 +42,19 @@ actual DB version id in that case, not a fallback). Capture it immediately after
 `save_as_version()` succeeds, while that skill's own URL is still current — once
 you navigate elsewhere (e.g. onto a forked copy's single-segment URL),
 `get_version_id()` will read THAT url instead and silently return the wrong value.
+
+**Refinement (ELITEA-2606, confirmed live):** the single-segment fallback ONLY
+applies to the very first create-flow redirect, before ANY explicit version
+segment has ever appeared in the URL. Once a second version exists and you
+`switch_version("base")` back to it via the VERSION dropdown, the URL DOES gain
+an explicit two-digit segment for base too (e.g. skill `1511` -> `/skills/all/
+1511/1572`, where `1572` is base's own real database id) — `get_version_id()`
+then correctly returns that real id, NOT the skill id. So `get_version_id() ==
+skill_id` is true ONLY on first load; asserting it after any explicit
+version-selector navigation (even back to "base") is wrong and will fail with a
+real-but-unpredictable id vs. the skill id. Don't assert a specific numeric
+version-id for base unless you've independently captured base's real id via
+`SkillAPI.get_skill()["version_details"]["id"]` first — asserting
+`get_version_selector_value() == "base"` (which `switch_version()` itself
+already polls to convergence) is the correct, sufficient check for "base is
+selected".
