@@ -976,3 +976,34 @@ existing product naming, not something to "fix" via `add-data-testid`).
   same signature if seen (`SvgCheckedIcon` + "non-boolean attribute"/"does
   not recognize the" text), per `test_agent_publish_unpublish_version.py`'s
   existing filter.
+
+### `validation_token` mechanics — invalidation-on-modify + 5-min TTL (ELITEA-2597)
+
+Confirmed live end-to-end this run (skill 1579/version 1663, `publish_skill`/
+`publish_skill_validate` — both direct-API and real two-tab UI repro):
+
+- `validation_token` (from `publish_skill_validate`'s response) is a
+  colon-delimited opaque 4-part string: `<base64 sig>:<version_id>:<hex
+  hash>:<unix timestamp>` — the trailing segment IS the token's issuance
+  Unix time (cross-checked against wall-clock `date -u +%s` at capture,
+  twice, both matched to within ~1s). Treat as fully opaque in automation —
+  never parse/reconstruct.
+- **Modified-after-validation**: `publish_skill` with a token whose skill
+  version changed since issuance → `400`
+  `{"error": "validation_token_invalid", "msg": "Agent was modified since
+  validation. Please re-validate."}` — note the **"Agent" wording bug on the
+  Skill flow**, filed as
+  https://github.com/EliteaAI/elitea-testing-public/issues/1465 (MINOR,
+  cosmetic only — mechanism itself is correct).
+- **TTL expiration**: confirmed **300s (5 min) exactly**, matching the case
+  text. `publish_skill` with an unmodified skill but a token older than 300s
+  (confirmed with a 330s real wait) → `400`
+  `{"error": "validation_token_invalid", "msg": "Validation token expired.
+  Please re-validate before publishing."}` — same `error` code as the
+  modified-content case, **different `msg`**, so automation must assert on
+  `msg` text, not just `error`/status code, to distinguish the two causes.
+- Both errors render inline in the wizard's Validation-step summary area
+  (same node the WARN/PASS summary already occupies — no new testid needed)
+  and disable the "Publish" button; the wizard does NOT auto-reset to
+  Preparation or auto-refire validation — user must Cancel and reopen.
+  Full details: `test-specs/skills/l2_skill-publishing-token-invalidation-and-ttl-expiration_ELITEA-2597.md`.
