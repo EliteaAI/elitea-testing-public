@@ -453,3 +453,30 @@ None. All 21 case steps executed to completion with no blockers.
   2s on localhost — the project's standard `UI_ELEMENT_TIMEOUT = 10_000` used elsewhere in the
   skills tests is comfortably sufficient, no special long-timeout handling needed even for the
   ~1.25MB oversized-file upload attempt (the 400 response itself also returned quickly).
+
+## Implementation-time findings (appended during ELITEA-2604 build — test-automation-engineer)
+
+Two facts this AFS's exploration did not (and could not, without exercising these
+exact interactions) surface, discovered while implementing Part D:
+
+1. **`agent-icon-picker-close-button` was declared "pre-existing" but was actually
+   DEAD** — `SelectIconDialog.jsx` passed `closeButtonDataTestId` to `BaseModal`,
+   which destructures `closeButtonTestId` (no "Data"). React silently drops the
+   unrecognized prop, so the close button never carried a real `data-testid`
+   despite the testid string being correct and present in the codebase. Neither
+   this AFS nor ELITEA-2602's ever actually clicked this button, so the mismatch
+   went uncaught. **Fixed**: `EliteaAI/EliteaUI@72a6f788` renames the prop to
+   `closeButtonTestId`. This affects the SAME shared dialog on Agent/Pipeline too
+   — any future case that clicks their `icon_picker_close_button` benefits from
+   this fix as well.
+2. **The "Uploaded" gallery is NOT ordered by upload recency** — it is a shared,
+   project-scoped list (confirmed by this AFS's own Preconditions note), but
+   this run additionally confirmed live that neither index 0 nor the last index
+   reliably corresponds to "the icon this test just uploaded/applied". A
+   positional-index delete target is unreliable. **Fix**: added
+   `data-selected={isSelected}` to `ProjectIconItem.jsx` (shared by both the
+   Default and Uploaded galleries) — `EliteaAI/EliteaUI@e7ff6c06` — so automation
+   can target the currently-APPLIED icon deterministically via a
+   `[data-testid^="agent-icon-picker-uploaded-"][data-selected="true"]` filter
+   (testid identity + `data-*` state, this project's standard shape) instead of
+   guessing a position. `SkillFormPage.delete_selected_uploaded_icon()` uses this.
