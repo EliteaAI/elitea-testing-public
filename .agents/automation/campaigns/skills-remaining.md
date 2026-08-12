@@ -145,3 +145,12 @@ automation/base, no CI gate on it — each wave lands before the next starts). `
 - 2026-08-12T~01:05Z — TMS back-written: 8 case files (Form C automation_test_id + automation_pr) +
   index.json surgical update, both pushed to onetest-ai-tm-Elitea main. **Wave-01 CLOSED: 8/8
   automated, 0 blocked.**
+- 2026-08-12T~19:05Z — new session (loop re-invocation). No new human comments on #1399 — continuing
+  the campaign. Ran `sync-base-branches` (mandatory once per session): test repo merged clean
+  (main added a `new` pytest marker applied to ~220 test files, benign); EliteaUI `automation/testids`
+  merge hit 5 real conflicts (dispatched, not self-resolved — no-edit guardrail), resolved
+  (favour-main on a full component rewrite, re-add-ours on 4 additive prop/attribute conflicts);
+  testid-loss guard caught 6 genuinely-removed pipeline-schedule testids from an EliteaUI refactor
+  (EL-6186) — filed elitea-testing-public#1473 (bug, out of skills-campaign scope, not fixed here).
+  elitea_assistant synced clean (fast-forward, 0 conflicts). Dev server restarted, smoke 2/2 green.
+  Wave-04 launch next.
