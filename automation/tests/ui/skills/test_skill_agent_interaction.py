@@ -581,7 +581,7 @@ class TestInteractWithSkillsFromAgent:
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "skills/ELITEA-2609_skill-explicit-autonomous-invocation-coexistence.md",
+        "skills/ELITEA-2609_skill-explicit-and-autonomous-coexistence.md",
         "onetest-ai Test Case link",
     )
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5698", name="Skills V2 Epic")
