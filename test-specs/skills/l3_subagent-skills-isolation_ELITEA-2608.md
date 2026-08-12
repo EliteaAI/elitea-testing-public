@@ -320,6 +320,36 @@ way.
 
 None.
 
+## Implementer Amendment (2026-08-13)
+
+**Step 13/15's "zero `chat-answer-tool-chip` elements" claim was incorrect —
+confirmed live during implementation.** A bare `to_have_count(0)` on
+`chat-answer-tool-chip` inside `subagent-no-skills`'s own nested details
+container FAILED deterministically (actual count `1`, not `0`) on the first
+implementation run. Root cause, confirmed both live and by reading
+`EliteaUI/src/components/Chat/ApplicationThinkView.jsx` /
+`ActionView.jsx` / `SubAgentAccordion.jsx`: the nested details container
+always additionally renders the delegation WRAPPER's own "called this agent
+as a tool" chip (bare agent name text, e.g. `"e2608-subagent-no-skills"`) —
+sharing the SAME `chat-answer-tool-chip` testid as a skill/tool chip would.
+This is a normal invocation-tracking signal, present for EVERY sub-agent
+invocation regardless of skill activity — **not** a skill-isolation signal —
+and it is exactly the same "two distinct chips share this testid" pattern
+`test_nested_agent_with_mcp_tool_output.py` (ELITEA-1951) already documented
+for a different (MCP-tool) case.
+
+The case's actual pass/fail criterion ("no skill invocations shown for this
+subagent") is unaffected — it is proven correctly by filtering to chips
+whose text starts with `"Skill: "` (zero matches), the identical technique
+Part A's own step 9/10 already uses to disambiguate the sub-formatter chip
+from the master-formatter chip. The implementer's automated test asserts
+`not any(text.startswith("Skill: ") for text in chip_texts)` instead of
+`to_have_count(0)` on the raw chip locator. Verified green 3/3 consecutive
+runs with this fix. No product defect — a case-authoring gap in the AFS's
+own step 13/15 expected-result wording, corrected here per the reverse-
+masking guard (live product's actual DOM contract, not the AFS's untested
+assumption).
+
 ## Automation Hints
 
 - **Re-verify Part B live with the narrowed master-skill description before

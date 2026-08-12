@@ -46,7 +46,6 @@ from pages.agents_list_page import AgentsListPage
 from pages.skill_detail_page import SkillDetailPage
 from pages.skill_form_page import SkillFormPage
 from pages.skills_list_page import SkillsListPage
-from playwright.sync_api import expect
 
 pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.new]
 
@@ -386,11 +385,31 @@ class TestSubagentSkillsIsolation:
                 "Step 13 — Nested accordion for subagent-no-skills shows ZERO skill "
                 "chips, regardless of the master's own turn (deterministic, unconditional)"
             ):
-                details = detail_page.get_nested_agent_accordion_details(
+                # NOT a bare to_have_count(0) on ALL chat-answer-tool-chip elements:
+                # live run + source read (EliteaUI ApplicationThinkView.jsx /
+                # ActionView.jsx) confirmed the nested details container always
+                # renders the delegation WRAPPER's own "called this agent as a
+                # tool" chip (bare agent name — same testid, same container,
+                # regardless of skill activity — the exact pattern
+                # test_nested_agent_with_mcp_tool_output.py/ELITEA-1951 already
+                # documents). That chip is a normal invocation-tracking signal,
+                # unrelated to skill isolation, and always renders here — so the
+                # deterministic, correct assertion (mirroring step 9's own
+                # "Skill: "-prefix filter) is "no SKILL chip", not "no chip at all".
+                no_skills_chip_texts = detail_page.get_nested_agent_tool_chip_texts(
                     SUBAGENT_NO_SKILLS_NAME, timeout=UI_ELEMENT_TIMEOUT,
                 )
-                all_chips = details.locator(detail_page.CHAT_ANSWER_TOOL_CHIP_SELECTOR)
-                expect(all_chips).to_have_count(0)
+                logger.info(
+                    "Nested accordion tool-chip texts for '%s': %s",
+                    SUBAGENT_NO_SKILLS_NAME, no_skills_chip_texts,
+                )
+                assert not any(
+                    text.startswith("Skill: ") for text in no_skills_chip_texts
+                ), (
+                    f"Nested accordion for '{SUBAGENT_NO_SKILLS_NAME}' must show ZERO "
+                    "skill invocations (no skills attached to this subagent) — the "
+                    f"master's own skill must not bleed in, got: {no_skills_chip_texts!r}"
+                )
 
         finally:
             for aid in (master_agent_id, subagent_with_skill_id, subagent_no_skills_id):
