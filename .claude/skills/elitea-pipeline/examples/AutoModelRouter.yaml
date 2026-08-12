@@ -1,0 +1,209 @@
+# Auto Model Router (SDLC demo) — project 27, app 384 / version 842.
+#
+# Routes each task to a tier-appropriate MODEL by delegating to one agent per
+# tier (model-per-agent — pipeline llm nodes can't pin their own model; the only
+# model lever is the version, so each tier is a separate agent).
+#
+# CONVERSATION MEMORY (the subtle part):
+#   - Pipeline state is STATELESS per turn — each user message is a fresh run;
+#     `messages` does NOT carry prior turns (verified via a code-node probe).
+#   - BUT the runtime injects the conversation history into `llm` nodes at
+#     execution time. It does NOT inject it into `agent` nodes.
+#   - So a memory-capable `llm` node (Recall) captures the context and INJECTS it
+#     into each tier agent's task as text. That's how the agent tiers "remember".
+#   - No `printer` node: a printer INTERRUPTS (HITL "type anything to resume"),
+#     which makes the next turn resume the paused run instead of starting fresh.
+#     Compose writes the report to `messages` and goes straight to END.
+#
+# LLM-node input_mapping keeps all three keys (chat_history/system/task) so the
+# Flow Editor round-trips it (a missing chat_history blanks system/task on load).
+
+state:
+  input:
+    type: str
+  messages:
+    type: list
+  recap:
+    type: str
+    value: ''
+  tier:
+    type: str
+    value: ''
+  reason:
+    type: str
+    value: ''
+  answer:
+    type: str
+    value: ''
+  report:
+    type: str
+    value: ''
+
+entry_point: Recall
+
+nodes:
+  # 0. Recall — an llm node DOES receive conversation history from the runtime.
+  #    It distills the prior turns into `recap`, which later gets injected into
+  #    the tier agent's task (agent nodes get no history, so we hand it over).
+  - id: Recall
+    type: llm
+    input: [input, messages]
+    output: [recap]
+    structured_output: false
+    input_mapping:
+      chat_history:
+        type: variable
+        value: messages
+      system:
+        type: fixed
+        value: 'You are the conversation memory. Output a concise bullet list of facts/details the user stated earlier in THIS conversation that may be needed to answer their latest message. If nothing relevant was said earlier, output exactly: (no prior context)'
+      task:
+        type: fstring
+        value: '{input}'
+    transition: Classify
+
+  # 1. Classifier — cheap low-tier LLM (version-level model = Claude Haiku 4.5).
+  #    Scores the task against the SDLC complexity rubric and emits {tier, reason}.
+  - id: Classify
+    type: llm
+    input: [input, messages]
+    output: [tier, reason]
+    structured_output: true
+    input_mapping:
+      chat_history:
+        type: variable
+        value: messages
+      system:
+        type: fixed
+        value: |
+          You are a fast task-complexity classifier for an SDLC assistant.
+          Read the user's task and assign exactly ONE tier:
+
+          - complex: 4+ dependent steps or tool-calls; architecture or "why/how"
+            reasoning; deep debugging / root-cause analysis; or broad investigation
+            across multiple artifacts.
+          - simple: highly specific and bounded, 1-3 steps — a lookup, a rename,
+            a single test case, a format transform.
+          - standard: everything in between (this is the default fallback).
+
+          Respond with ONLY raw JSON — no code fences, no prose, no extra keys —
+          exactly of the form:
+          {"tier": "simple|standard|complex", "reason": "one short sentence explaining the choice"}
+      task:
+        type: fstring
+        value: '{input}'
+    transition: Route
+
+  # 2. Router — deterministic dispatch on state.tier (no LLM). Standard is default.
+  - id: Route
+    type: router
+    input: [tier]
+    condition: |
+      {% set t = tier|lower|trim %}
+      {% if t == 'simple' %}
+      Simple
+      {% elif t == 'complex' %}
+      Complex
+      {% else %}
+      Standard
+      {% endif %}
+    routes:
+      - Simple
+      - Standard
+      - Complex
+    default_output: Standard
+
+  # 3a/b/c. Tier branches — each delegates to an agent pinned to its tier's model.
+  #   Agent nodes get NO conversation history, so the task carries the injected
+  #   {recap} from the Recall node. chat_history stays [] (agents ignore it).
+  - id: Simple
+    type: agent
+    input: [input, recap]
+    output: [answer]
+    tool: AutoRouter-Simple          # Claude Haiku 4.5
+    input_mapping:
+      task:
+        type: fstring
+        value: |-
+          Relevant context from earlier in the conversation:
+          {recap}
+
+          Current request:
+          {input}
+      chat_history:
+        type: fixed
+        value: []
+    transition: Compose
+  - id: Standard
+    type: agent
+    input: [input, recap]
+    output: [answer]
+    tool: AutoRouter-Standard         # GPT-5.4-mini
+    input_mapping:
+      task:
+        type: fstring
+        value: |-
+          Relevant context from earlier in the conversation:
+          {recap}
+
+          Current request:
+          {input}
+      chat_history:
+        type: fixed
+        value: []
+    transition: Compose
+  - id: Complex
+    type: agent
+    input: [input, recap]
+    output: [answer]
+    tool: AutoRouter-Complex          # Claude 4.6 Sonnet
+    input_mapping:
+      task:
+        type: fstring
+        value: |-
+          Relevant context from earlier in the conversation:
+          {recap}
+
+          Current request:
+          {input}
+      chat_history:
+        type: fixed
+        value: []
+    transition: Compose
+
+  # 4. Compose — pure code: map tier -> model label, build the routing banner,
+  #    prepend it to the answer, write `report`, and append it to `messages`.
+  #    Goes straight to END (no printer -> no HITL interrupt -> fresh run each turn).
+  - id: Compose
+    type: code
+    input: [tier, reason, answer, messages]
+    output: [report, messages]
+    structured_output: true
+    code:
+      type: fixed
+      value: |
+        tier = (alita_state.get('tier', '') or '').strip().lower()
+        reason = (alita_state.get('reason', '') or '').strip()
+        answer = alita_state.get('answer', '') or ''
+
+        labels = {
+            'simple': 'Claude Haiku 4.5',
+            'standard': 'GPT-5.4-mini',
+            'complex': 'Claude 4.6 Sonnet',
+        }
+        label = labels.get(tier, labels['standard'])
+        shown_tier = tier if tier in labels else 'standard'
+
+        banner = (
+            '\U0001F9ED **Auto Model Router** → **' + label + '** '
+            '(' + shown_tier + ' tier)\n\n'
+            '> ' + (reason or 'no rationale returned') + '\n\n'
+            '---\n\n'
+        )
+        report = banner + answer
+
+        existing = alita_state.get('messages', []) or []
+        out_messages = list(existing) + [('ai', report)]
+
+        {'report': report, 'messages': out_messages}
+    transition: END

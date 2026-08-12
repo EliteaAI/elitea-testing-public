@@ -139,6 +139,24 @@ class SupportAssistantPage(BasePage):
         except Exception:
             return False
 
+    def is_fullview_mode(self) -> bool:
+        """Check if the widget is currently in full-view (expanded) mode.
+
+        Mode-specific signal, complementary to is_widget_open(): the widget
+        container gains the --expanded modifier class (and resizes
+        460x480 -> 720x678) when expanded via the header toggle button.
+        is_widget_open() alone cannot distinguish compact from full-view,
+        since it only checks title visibility (true in both modes).
+
+        Returns:
+            True if the widget container has the --expanded modifier class.
+        """
+        try:
+            class_attr = self.widget_container.get_attribute("class") or ""
+            return "elitea-assistant-window--expanded" in class_attr
+        except Exception:
+            return False
+
     @action("Open Support Assistant")
     def open_widget(self, timeout: int = 5000):
         """Click the launcher to open the Support Assistant widget.

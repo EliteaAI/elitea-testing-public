@@ -175,6 +175,20 @@ class Settings(BaseSettings):
     postman_api_key: str = ""
 
     # ------------------------------------------------------------------
+    # Settings -> Users page test data (ELITEA-2292)
+    # ------------------------------------------------------------------
+    # A TEAM (non-private) project the acting test user belongs to, confirmed
+    # live to carry existing users — Settings -> Users is hidden/redirected
+    # away for a PRIVATE project (see admin_users_page.py module docstring).
+    # Deliberately a DISTINCT key from the existing (currently unused by any
+    # test) ELITEA_TEAM_PROJECT_ID=471 — that value is "Elitea Testing Team",
+    # a different project already relied on (as a locally-hardcoded constant)
+    # by several chat/toolkit tests; conflating the two would silently break
+    # this precondition or misrepresent that one. Default "400" ("UI Testing")
+    # preserves current behaviour when the key is unset.
+    users_team_project_id: str = "400"
+
+    # ------------------------------------------------------------------
     # Default LLM settings for API-created agents / pipelines
     # Using gpt-5.2 as cheap default model for cost efficiency in tests
     # model_project_id=1 matches UI-created agents (0 may cause issues)

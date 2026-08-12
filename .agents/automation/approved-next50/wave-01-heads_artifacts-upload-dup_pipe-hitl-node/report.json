@@ -1,0 +1,40 @@
+{
+  "campaign": "approved-next50",
+  "wave": "wave-01-heads_artifacts-upload-dup_pipe-hitl-node",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-wave-01-heads_artifacts-upload-dup_pipe-hitl-node",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [491.0, 430.7, 452.4],
+    "failures": [],
+    "notes": "Workflow's internal gate stalled on git fetch (OneDrive), returned not-run/0 runs. Lead ran the real N=3 gate directly. 9-file green set clean 3/3. Sanctioned-red spec (test_pipeline_hitl_node_runtime_behavior.py, ELITEA-2015, defect #1103) deterministic 3/3. 64-file blast-radius regression sweep: 9 distinct failures, all confirmed pre-existing/unrelated (5 fresh-checked against automation/base this session, 6 matching approved-top10-confirmed patterns, 1 known-red-fix-incomplete follow-up posted on #1088). Zero regressions."
+  },
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/pipelines/test_pipeline_hitl_node_runtime_behavior.py",
+      "ticket": "elitea-testing-public#1103",
+      "why": "HITL node resume does not follow configured router mapping (Approve/Reject both wrong) — backend re-emits ['agent_start','start_task'] on Reject instead of ending at END. expect.soft() keeps this honestly red until the product fix ships.",
+      "test_id": "test_hitl_node_runtime_behavior",
+      "case_ids": ["ELITEA-2015"],
+      "unit": "ELITEA-2014+ELITEA-2015"
+    }
+  ],
+  "cases": [
+    { "id": "ELITEA-1920", "outcome": "automated", "note": "Green. Build-with-AI (chat canvas) cluster with ELITEA-1999.", "branch": "tests/1920-1999-build-with-ai-chat-and-skill-roundtrip", "pr": 1098 },
+    { "id": "ELITEA-1999", "outcome": "automated", "note": "Green. Same PR as ELITEA-1920.", "branch": "tests/1920-1999-build-with-ai-chat-and-skill-roundtrip", "pr": 1098 },
+    { "id": "ELITEA-1811", "outcome": "automated", "note": "Green. Bucket-name validation cluster with ELITEA-1814.", "branch": "tests/1811-1814-bucket-name-invalid-formats", "pr": 1099 },
+    { "id": "ELITEA-1814", "outcome": "automated", "note": "Green. Same PR as ELITEA-1811.", "branch": "tests/1811-1814-bucket-name-invalid-formats", "pr": 1099 },
+    { "id": "ELITEA-2021", "outcome": "automated", "note": "Green. Head case, pipeline full-details persist.", "branch": "tests/ELITEA-2021-pipeline-full-details-persist", "pr": 1101 },
+    { "id": "ELITEA-1828", "outcome": "automated", "note": "Green. Artifacts duplicate-resolution cluster with ELITEA-1829/1831.", "branch": "tests/1828-1829-1831-artifacts-duplicate-resolution", "pr": null },
+    { "id": "ELITEA-1829", "outcome": "automated", "note": "Green. Same cluster/PR as ELITEA-1828.", "branch": "tests/1828-1829-1831-artifacts-duplicate-resolution", "pr": null },
+    { "id": "ELITEA-1831", "outcome": "automated", "note": "Green. Same cluster/PR as ELITEA-1828.", "branch": "tests/1828-1829-1831-artifacts-duplicate-resolution", "pr": null },
+    { "id": "ELITEA-2014", "outcome": "automated", "note": "Green. Pipeline HITL node cluster with ELITEA-2015.", "branch": "tests/2014-2015-hitl-node-config-and-runtime", "pr": 1105 },
+    { "id": "ELITEA-2015", "outcome": "automated", "note": "Sanctioned RED — known defect #1103, deterministic 3/3, expect.soft(). Same cluster/PR as ELITEA-2014.", "branch": "tests/2014-2015-hitl-node-config-and-runtime", "pr": 1105 },
+    { "id": "ELITEA-2181", "outcome": "automated", "note": "Green after full recovery (original session force-ended mid-verification) + 3 review rounds. See report.md 'Notable' section.", "branch": "tests/ELITEA-2181-chat-streaming-response", "pr": 1106 }
+  ],
+  "totals": { "automated": 11, "blocked": 0 },
+  "quality_flags": [],
+  "quota_halted": false,
+  "next": "Land this wave to automation/base, back-write TMS, closure records, board moves to Ready, then proceed to the consolidated waves 2-5."
+}

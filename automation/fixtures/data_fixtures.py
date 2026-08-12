@@ -13,8 +13,15 @@ Fixtures:
 - agent_id: Fresh agent per test
 - pipeline_id: Fresh empty pipeline per test
 - pipeline_with_llm_id: Fresh executable pipeline with LLM node
+- pipeline_with_variable_task_llm_id: Fresh executable pipeline with LLM node,
+  TASK mapped ``type: variable, value: input`` (forwards the user's message,
+  incl. attachment reference, into the LLM node — ELITEA-2059)
 - github_credential: GitHub API credential (skipped if GITHUB_TOKEN unset)
 - github_toolkit: GitHub toolkit attached to a fresh credential
+- github_toolkit_with_selected_tools: GitHub toolkit with settings.selected_tools
+  set (required for the pipeline Toolkit node's Tool select to render)
+- github_relevant_agents: GitHub-relevant Agent pair (selected/not_selected)
+- github_relevant_skills: GitHub-relevant Skill pair (selected/not_selected)
 - invalid_jira_credential: Jira credential with invalid/expired token
 - jira_toolkit_with_invalid_credential: Jira toolkit using invalid credential
 - invalid_github_credential: GitHub credential with invalid token
@@ -24,9 +31,10 @@ import logging
 import time
 
 import pytest
-
-from api import ArtifactAPI, ConversationAPI, AgentAPI, PipelineAPI, CredentialAPI, ToolkitAPI
+from api import AgentAPI, APIClient, ArtifactAPI, ConversationAPI, CredentialAPI, PipelineAPI, SkillAPI, ToolkitAPI
 from config import settings
+from pages.guardrails_admin_page import GuardrailsAdminPage
+from playwright.sync_api import Browser
 
 logger = logging.getLogger("elitea.automation.fixtures.data")
 
@@ -201,6 +209,1172 @@ def pipeline_with_llm_id(pipeline_api: PipelineAPI, request):
 
 
 @pytest.fixture
+def pipeline_with_fstring_llm_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with a single LLM entry node whose TASK is an
+    F-String template (``{input}``), connected directly to END.
+
+    Satisfies the ELITEA-2017 precondition literally ("A pipeline with LLM
+    node as entry point exists (TASK configured with F-String: '{input}')")
+    — :func:`pipeline_with_llm_id` does NOT satisfy this as-is:
+    ``PipelineAPI.create_pipeline_with_llm_node()`` hardcodes TASK as
+    ``type: fixed, value: ''``, not an F-String (confirmed live, AFS
+    ``l2_pipeline-execution-long-response-streaming_ELITEA-2017.md`` §
+    Test Data). Built via the generic :meth:`PipelineAPI.create_pipeline_with_nodes`
+    — the SAME helper :func:`pipeline_with_two_llm_nodes_id`/
+    :func:`build_two_llm_nodes` already use for ELITEA-2452 — rather than
+    adding a new parameter to ``create_pipeline_with_llm_node``.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2017_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created F-String LLM pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=[
+            {
+                "id": "LLM 1",
+                "type": "llm",
+                "input": [],
+                "input_mapping": {
+                    "chat_history": {"type": "fixed", "value": []},
+                    "system": {"type": "fixed", "value": ""},
+                    "task": {"type": "fstring", "value": "{input}"},
+                },
+                "output": [],
+                "structured_output": False,
+                "transition": "END",
+            }
+        ],
+    )
+    pid = pipeline["id"]
+    logger.info("Created F-String LLM pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    # Cleanup: delete pipeline even if test fails
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted F-String LLM pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete F-String LLM pipeline %s: %s", pid, exc)
+
+
+@pytest.fixture
+def pipeline_with_variable_task_llm_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with a single LLM entry node whose TASK is mapped
+    ``type: variable, value: input`` (NOT the fixed/f-string shapes the
+    sibling fixtures above use), connected directly to END.
+
+    Satisfies the ELITEA-2059 precondition (AFS
+    ``l2_pipeline-attach-files-in-chat_ELITEA-2059.md`` § Preconditions):
+    :func:`pipeline_with_llm_id`'s TASK mapping is ``type: fixed, value: ''``
+    (hardcoded by ``PipelineAPI.create_pipeline_with_llm_node()``), which
+    never forwards the user's message text (or its attachment reference)
+    into the LLM node — the response would always ignore whatever was
+    typed/attached. Built via :meth:`PipelineAPI.create_pipeline_with_nodes`
+    (same generic helper :func:`pipeline_with_fstring_llm_id` /
+    :func:`pipeline_with_two_llm_nodes_id` already use) so the mapping is
+    correct — and persisted — from creation, with no separate UI Save step
+    needed. Uses the default ``gpt-5.2`` model (``_default_llm_settings()``'s
+    fallback) — the DEV-backend default (Claude 4.5 Sonnet, on the shared
+    ``test-pipeline`` UI fixture only) 400s with no configured LLM-provider
+    fallback; AFS § Test Data records this as environment test data, not an
+    Attach-Files defect.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2059_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created variable-TASK LLM pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=[
+            {
+                "id": "LLM 1",
+                "type": "llm",
+                "input": ["input"],
+                "input_mapping": {
+                    "chat_history": {"type": "fixed", "value": []},
+                    "system": {"type": "fixed", "value": ""},
+                    "task": {"type": "variable", "value": "input"},
+                },
+                "output": [],
+                "structured_output": False,
+                "transition": "END",
+            }
+        ],
+    )
+    pid = pipeline["id"]
+    logger.info("Created variable-TASK LLM pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted variable-TASK LLM pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete variable-TASK LLM pipeline %s: %s", pid, exc)
+
+
+def build_two_llm_nodes() -> list[dict]:
+    """Build the ``LLM 1 -> LLM 2 -> END`` node list for ELITEA-2452.
+
+    LLM 1 WRITES to ``messages`` (its ``output`` mapping); LLM 2 writes to
+    nothing. The pipeline's two DEFAULT state variables (``input``,
+    ``messages`` — no custom variable needed) exercise both observables the
+    case requires: ``messages`` is modified at LLM 1 (not at LLM 2);
+    ``input`` is populated once at pipeline entry and never modified again.
+    Exact shape confirmed live this session (AFS ``l3_run-details-state-
+    before-after-per-node_ELITEA-2452.md`` § Test Data, pipelines 7681/7682).
+    """
+    return [
+        {
+            "id": "LLM 1",
+            "type": "llm",
+            "input": [],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": "You are a helpful assistant."},
+                "task": {"type": "fstring", "value": "User asked: {input}"},
+            },
+            "output": ["messages"],
+            "structured_output": False,
+            "transition": "LLM 2",
+        },
+        {
+            "id": "LLM 2",
+            "type": "llm",
+            "input": ["messages"],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": "Reply with just OK."},
+                "task": {"type": "fstring", "value": "Ack: {messages}"},
+            },
+            "output": [],
+            "structured_output": False,
+            "transition": "END",
+        },
+    ]
+
+
+@pytest.fixture
+def pipeline_with_two_llm_nodes_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``LLM 1 -> LLM 2 -> END`` (2 nodes, 2 default state
+    variables) before the test and delete it afterwards. Satisfies the
+    ELITEA-2452 precondition (2+ nodes, 2+ state variables, one node writes
+    to a variable and one does not — see :func:`build_two_llm_nodes`).
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2452_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created 2-LLM-node pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_two_llm_nodes(),
+    )
+    pid = pipeline["id"]
+    logger.info("Created 2-LLM-node pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted 2-LLM-node pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete 2-LLM-node pipeline %s: %s", pid, exc)
+
+
+def build_three_llm_chain_nodes() -> list[dict]:
+    """Build the ``LLM 1 -> LLM 2 -> LLM 3 -> END`` node list for ELITEA-2451.
+
+    Three PLAIN (non-``structured_output``) LLM nodes chained in sequence —
+    deliberately NOT the structured-output shape, which the ELITEA-2453
+    sibling AFS found renders TWO timeline entries per execution (would break
+    this case's own "entries == executed nodes" assertion). Exact shape
+    confirmed live this session (AFS ``l3_run-details-timeline-steps-
+    display_ELITEA-2451.md`` § Preconditions, pipeline id 8767).
+    """
+    return [
+        {
+            "id": "LLM 1",
+            "type": "llm",
+            "input": [],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": "You are a helpful assistant."},
+                "task": {"type": "fixed", "value": "Say hello in exactly three words."},
+            },
+            "output": ["messages"],
+            "structured_output": False,
+            "transition": "LLM 2",
+        },
+        {
+            "id": "LLM 2",
+            "type": "llm",
+            "input": ["messages"],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": "Reply with just OK."},
+                "task": {"type": "fstring", "value": "Ack: {messages}"},
+            },
+            "output": [],
+            "structured_output": False,
+            "transition": "LLM 3",
+        },
+        {
+            "id": "LLM 3",
+            "type": "llm",
+            "input": [],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": "Reply with just DONE."},
+                "task": {"type": "fixed", "value": "final ack"},
+            },
+            "output": [],
+            "structured_output": False,
+            "transition": "END",
+        },
+    ]
+
+
+@pytest.fixture
+def pipeline_three_llm_chain(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``LLM 1 -> LLM 2 -> LLM 3 -> END`` (3 plain LLM
+    nodes) before the test and delete it afterwards. Satisfies the
+    ELITEA-2451 precondition (3+ plain nodes, all `Completed` — see
+    :func:`build_three_llm_chain_nodes`).
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2451_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created 3-LLM-chain pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_three_llm_chain_nodes(),
+    )
+    pid = pipeline["id"]
+    logger.info("Created 3-LLM-chain pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted 3-LLM-chain pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete 3-LLM-chain pipeline %s: %s", pid, exc)
+
+
+_TYPED_STATE_VARS_INSTRUCTIONS = """\
+entry_point: LLM 1
+state:
+  custom_text:
+    type: str
+  custom_num:
+    type: number
+  custom_list:
+    type: list
+  custom_json:
+    type: dict
+nodes:
+  - id: LLM 1
+    type: llm
+    input: []
+    input_mapping:
+      chat_history:
+        type: fixed
+        value: []
+      system:
+        type: fixed
+        value: 'You populate structured state variables. Always return values for
+          custom_text (a short string), custom_num (a number), custom_list (a list
+          of 3 short strings), and custom_json (a small JSON object with 2 keys).'
+      task:
+        type: fstring
+        value: '{input}'
+    output: [custom_text, custom_num, custom_list, custom_json]
+    structured_output: true
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_with_typed_state_vars_id(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with 4 CUSTOM state variables of 4 distinct types
+    (``custom_text``/str, ``custom_num``/number, ``custom_list``/list,
+    ``custom_json``/dict) plus the 2 built-in ``input``/``messages``
+    variables, and a single LLM node with ``structured_output: true`` whose
+    ``output`` mapping writes to all 4 custom variables. Satisfies the
+    ELITEA-2453 precondition. Deletes the pipeline afterwards.
+
+    Built via the GENERIC :meth:`PipelineAPI.create_pipeline` (raw YAML
+    ``instructions`` string) rather than :meth:`create_pipeline_with_nodes`,
+    which has no ``state:`` support -- confirmed live, AFS
+    ``l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md``
+    § Preconditions.
+
+    CRITICAL: ``messages`` is deliberately NOT included in this node's
+    ``output`` list. Combining ``messages`` with `dict`/`list`-typed custom
+    variables in a ``structured_output: true`` node's ``output`` mapping is a
+    CONFIRMED product defect (``EliteaAI/elitea-testing-public#1274``) that
+    makes the run fail with a raw backend error instead of populating state.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2453_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline(
+        name=name,
+        description=f"Auto-created typed-state-vars pipeline for test {request.node.name}",
+        instructions=_TYPED_STATE_VARS_INSTRUCTIONS,
+    )
+    pid = pipeline["id"]
+    logger.info("Created typed-state-vars pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted typed-state-vars pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete typed-state-vars pipeline %s: %s", pid, exc)
+
+
+_CUSTOM_STATE_VAR_INSTRUCTIONS = """\
+entry_point: LLM 1
+state:
+  custom_text:
+    type: str
+nodes:
+  - id: LLM 1
+    type: llm
+    input: []
+    input_mapping:
+      chat_history:
+        type: fixed
+        value: []
+      system:
+        type: fixed
+        value: ''
+      task:
+        type: fixed
+        value: ''
+    output: []
+    structured_output: false
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_with_custom_state_var_id(pipeline_api: PipelineAPI, request):
+    """Create a minimal pipeline with ONE custom state variable (``custom_text``,
+    type ``str``) plus a single LLM node and an ``entry_point``. Deletes the
+    pipeline afterwards.
+
+    Satisfies the ELITEA-2026 precondition (pipeline with ≥1 node AND ≥1
+    CUSTOM state variable). NOT the same as :func:`pipeline_with_llm_id` —
+    that fixture's YAML has no ``state:`` key at all (confirmed live, AFS
+    ``l2_pipeline-yaml-editor-view_ELITEA-2026.md`` § Preconditions clarifies
+    that the case's own "any pipeline with nodes" wording does not, by
+    itself, guarantee a ``state:`` key in the rendered YAML — only an
+    explicit custom variable does).
+
+    Built via the GENERIC :meth:`PipelineAPI.create_pipeline` (raw YAML
+    ``instructions`` string), the same shape as
+    :func:`pipeline_with_typed_state_vars_id` but with a single variable —
+    that fixture's 4-variable recipe is unnecessarily rich for this case.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2026_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline(
+        name=name,
+        description=f"Auto-created custom-state-var pipeline for test {request.node.name}",
+        instructions=_CUSTOM_STATE_VAR_INSTRUCTIONS,
+    )
+    pid = pipeline["id"]
+    logger.info("Created custom-state-var pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted custom-state-var pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete custom-state-var pipeline %s: %s", pid, exc)
+
+
+_LLM_READS_STATE_VIA_CODE_INSTRUCTIONS = """\
+entry_point: LLM 1
+state:
+  user_info:
+    type: str
+  code_output:
+    type: str
+nodes:
+  - id: LLM 1
+    type: llm
+    input: []
+    input_mapping:
+      chat_history:
+        type: fixed
+        value: []
+      system:
+        type: fixed
+        value: You are a helpful assistant.
+      task:
+        type: fstring
+        value: '{input}'
+    output: [user_info]
+    structured_output: false
+    transition: Code 1
+  - id: Code 1
+    type: code
+    code:
+      type: fixed
+      value: |
+        result = elitea_state.get('user_info', '')
+        {"code_output": f"Processed: {result}"}
+    input: [user_info]
+    output: [code_output]
+    structured_output: true
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_llm_reads_state_via_code(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``LLM 1 -> Code 1 -> END`` with two CUSTOM state
+    variables (``user_info``/str, ``code_output``/str): the LLM node writes
+    its response into ``user_info``, the Code node reads it back via
+    ``elitea_state.get('user_info', '')`` and writes a processed value into
+    ``code_output``. Deletes the pipeline afterwards.
+
+    Satisfies the ELITEA-2446 precondition. Built via the GENERIC
+    :meth:`PipelineAPI.create_pipeline` (raw YAML ``instructions`` string)
+    rather than :meth:`create_pipeline_with_nodes`, which has no ``state:``
+    support -- confirmed live, AFS
+    ``l3_code-node-read-elitea-state-variables_ELITEA-2446.md`` §
+    Preconditions -- the SAME reason :func:`pipeline_with_typed_state_vars_id`
+    uses this method.
+
+    CRITICAL: the Code node's script ends with a bare dict-literal
+    expression (``{"code_output": f"Processed: {result}"}``) as its LAST
+    statement, NOT a plain assignment. A plain assignment (the case's own
+    literal step-4 text) is CONFIRMED LIVE to silently produce no state
+    update (AFS Known Defects CLARIFICATION #1,
+    ``EliteaAI/elitea-testing-public#1383``) -- the dict-literal form is the
+    live-correct one per ``.claude/skills/elitea-pipeline/references/
+    yaml-schema.md``'s own documented Code Node rule.
+
+    Also CRITICAL: this fixture wires the ``LLM 1 -> Code 1`` transition
+    explicitly in the YAML, sidestepping a SEPARATE confirmed-live gotcha
+    where building the same topology via the Flow Editor's "Add node"
+    button does NOT auto-connect sequentially-added nodes (AFS Known Defects
+    CLARIFICATION #2, ``EliteaAI/elitea-testing-public#1384``).
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2446_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline(
+        name=name,
+        description=f"Auto-created LLM-reads-state-via-code pipeline for test {request.node.name}",
+        instructions=_LLM_READS_STATE_VIA_CODE_INSTRUCTIONS,
+    )
+    pid = pipeline["id"]
+    logger.info("Created LLM-reads-state-via-code pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted LLM-reads-state-via-code pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete LLM-reads-state-via-code pipeline %s: %s", pid, exc)
+
+
+_CODE_NODE_MULTI_VAR_DICT_RETURN_INSTRUCTIONS = """\
+entry_point: STATE1
+state:
+  summary:
+    type: str
+  count:
+    type: number
+  tags:
+    type: list
+nodes:
+  - id: STATE1
+    type: state_modifier
+    template: 'Draft summary text'
+    variables_to_clean: []
+    input: []
+    output: [summary]
+    transition: CODE1
+  - id: CODE1
+    type: code
+    code:
+      type: fixed
+      value: |
+        data = elitea_state.get('summary', '')
+        {'summary': data + ' [processed]', 'count': len(data.split()), 'tags': ['processed', 'automated']}
+    input: [summary]
+    output: [summary, count, tags]
+    structured_output: true
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_code_node_multi_var_dict_return(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``STATE1 (state_modifier) -> CODE1 (code) -> END``
+    with THREE custom state variables (``summary``/str, ``count``/number,
+    ``tags``/list). STATE1 gives ``summary`` a deterministic starting value
+    (a fixed Jinja template, no variables -- NOT an LLM node, so ``count``'s
+    expected value stays a stable literal). CODE1 reads ``summary`` via
+    ``elitea_state.get('summary', '')`` and, as its script's LAST statement,
+    returns a bare THREE-key dict literal that updates ``summary`` (appended
+    text), ``count`` (word count), and ``tags`` (a fixed list) -- all from
+    the SAME single Code node execution.
+
+    Satisfies the ELITEA-2447 precondition. Built via the GENERIC
+    :meth:`PipelineAPI.create_pipeline` (raw YAML ``instructions`` string),
+    same reason :func:`pipeline_llm_reads_state_via_code` /
+    :func:`pipeline_with_typed_state_vars_id` use it --
+    :meth:`create_pipeline_with_nodes` has no ``state:`` support.
+
+    CONFIRMED LIVE (AFS ``l3_code-node-return-dict-multiple-state-vars_
+    ELITEA-2447.md`` § Test Data): the Code node's Output multi-select
+    accepts ``summary`` even though it is ALSO in that same node's own
+    ``input`` list -- no validation error; Run Details correctly attributes
+    the update to the single node that both read and wrote it.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2447_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline(
+        name=name,
+        description=f"Auto-created Code-node multi-var dict-return pipeline for test {request.node.name}",
+        instructions=_CODE_NODE_MULTI_VAR_DICT_RETURN_INSTRUCTIONS,
+    )
+    pid = pipeline["id"]
+    logger.info("Created Code-node multi-var dict-return pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted Code-node multi-var dict-return pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete Code-node multi-var dict-return pipeline %s: %s", pid, exc)
+
+
+_CODE_NODE_ELITEA_CLIENT_USER_INFO_INSTRUCTIONS = """\
+entry_point: Code 1
+state:
+  user_info:
+    type: JSON
+nodes:
+  - id: Code 1
+    type: code
+    code:
+      type: fixed
+      value: |
+        user_info = elitea_client.get_user_data()
+        user_info
+    input: []
+    output: [user_info]
+    structured_output: true
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_code_node_elitea_client_user_info(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``Code 1 (entry) -> END`` with ONE custom JSON-typed
+    state variable (``user_info``). The Code node calls
+    ``elitea_client.get_user_data()`` and writes the returned dict into
+    ``user_info`` via a bare NAME-reference expression (``user_info``) as the
+    script's LAST statement -- distinct from
+    :func:`pipeline_llm_reads_state_via_code` /
+    :func:`pipeline_code_node_multi_var_dict_return`'s bare dict-LITERAL
+    convention, but confirmed live to work identically: both are
+    non-assignment expression statements the runtime routes into the
+    declared ``output:`` variable when ``structured_output: true``.
+
+    Satisfies the ELITEA-2448 precondition. Built via the GENERIC
+    :meth:`PipelineAPI.create_pipeline` (raw YAML ``instructions`` string),
+    same reason :func:`pipeline_llm_reads_state_via_code` /
+    :func:`pipeline_code_node_multi_var_dict_return` use it --
+    :meth:`create_pipeline_with_nodes` has no ``state:`` support. This is the
+    SIMPLEST fixture in the Code-node family -- one node, no chained
+    transition, so the disconnected-edge build-method gotcha
+    (``EliteaAI/elitea-testing-public#1384``) doesn't even apply here, but the
+    raw-YAML build is kept for consistency with the sibling fixtures.
+
+    CONFIRMED LIVE (AFS
+    ``l3_code-node-elitea-client-user-info_ELITEA-2448.md`` § Test Data): the
+    case's own literal script -- ``user_info = elitea_client.get_user_data()``
+    followed by a bare ``user_info`` name reference -- works exactly as
+    written; no CLARIFICATION needed.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2448_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline(
+        name=name,
+        description=f"Auto-created Code-node elitea_client user-info pipeline for test {request.node.name}",
+        instructions=_CODE_NODE_ELITEA_CLIENT_USER_INFO_INSTRUCTIONS,
+    )
+    pid = pipeline["id"]
+    logger.info("Created Code-node elitea_client user-info pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted Code-node elitea_client user-info pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete Code-node elitea_client user-info pipeline %s: %s", pid, exc)
+
+
+_CODE_NODE_INPUT_FILTERING_INSTRUCTIONS = """\
+entry_point: STATE_A
+state:
+  var_a:
+    type: str
+  var_b:
+    type: str
+  var_c:
+    type: str
+  result:
+    type: str
+nodes:
+  - id: STATE_A
+    type: state_modifier
+    template: 'AAA'
+    variables_to_clean: []
+    input: []
+    output: [var_a]
+    transition: STATE_B
+  - id: STATE_B
+    type: state_modifier
+    template: 'BBB'
+    variables_to_clean: []
+    input: []
+    output: [var_b]
+    transition: STATE_C
+  - id: STATE_C
+    type: state_modifier
+    template: 'CCC'
+    variables_to_clean: []
+    input: []
+    output: [var_c]
+    transition: CODE1
+  - id: CODE1
+    type: code
+    code:
+      type: fixed
+      value: |
+        available_keys = list(elitea_state.keys())
+        has_var_c = 'var_c' in elitea_state
+        result = f"Keys: {available_keys}, has_var_c: {has_var_c}"
+        {"result": result}
+    input: [var_a, var_b]
+    output: [result]
+    structured_output: true
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_code_node_input_filtering(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``STATE_A -> STATE_B -> STATE_C -> CODE1 -> END`` with
+    THREE custom state variables (``var_a``/``var_b``/``var_c``, all str) plus
+    a ``result`` output variable. The three ``state_modifier`` nodes (NOT LLM
+    nodes -- deterministic literals) give ``var_a``/``var_b``/``var_c`` the
+    fixed values ``'AAA'``/``'BBB'``/``'CCC'`` respectively, in that order,
+    before CODE1 runs. CODE1's own ``input:`` DELIBERATELY lists only
+    ``var_a``/``var_b`` -- ``var_c`` is excluded even though it was already
+    set by STATE_C earlier in the SAME run. CODE1 reads
+    ``list(elitea_state.keys())`` and checks ``'var_c' in elitea_state``,
+    writing both into ``result`` as its script's LAST statement, a bare
+    dict-literal expression (same confirmed-live-working convention as
+    :func:`pipeline_llm_reads_state_via_code` / :func:`pipeline_code_node_multi_var_dict_return`).
+
+    Satisfies the ELITEA-2449 precondition. Built via the GENERIC
+    :meth:`PipelineAPI.create_pipeline` (raw YAML ``instructions`` string),
+    same reason the sibling Code-node fixtures use it --
+    :meth:`create_pipeline_with_nodes` has no ``state:`` support. The explicit
+    ``transition:`` per node sidesteps the SAME disconnected-edge build-method
+    gotcha (``EliteaAI/elitea-testing-public#1384``) already documented for
+    ELITEA-2446/2447.
+
+    CONFIRMED LIVE (AFS
+    ``l3_code-node-input-filtering-selective-state-access_ELITEA-2449.md`` §
+    Test Data): ``elitea_state`` inside the Code node's sandbox contains ONLY
+    the variables listed in that node's own ``input:`` -- ``var_c``, though
+    declared in the pipeline's ``state:`` and written by STATE_C earlier in
+    THIS run, is completely absent from ``elitea_state.keys()``. ``var_c``'s
+    own Run Details row still shows a real Before/After value (``"CCC"``) --
+    that row's existence is orthogonal to whether CODE1 itself could read the
+    variable via ``elitea_state``.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_2449_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline(
+        name=name,
+        description=f"Auto-created Code-node input-filtering pipeline for test {request.node.name}",
+        instructions=_CODE_NODE_INPUT_FILTERING_INSTRUCTIONS,
+    )
+    pid = pipeline["id"]
+    logger.info("Created Code-node input-filtering pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted Code-node input-filtering pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete Code-node input-filtering pipeline %s: %s", pid, exc)
+
+
+_PARENT_CHILD_STATE_SHARING_CHILD_INSTRUCTIONS = """\
+entry_point: CODE1
+state:
+  messages:
+    type: list
+  state_1:
+    type: str
+  state_2:
+    type: number
+nodes:
+  - id: CODE1
+    type: code
+    code:
+      type: fixed
+      value: |
+        {"state_1": "child_value", "state_2": 99}
+    input: [state_1, state_2]
+    output: [state_1, state_2]
+    structured_output: true
+    transition: END
+"""
+
+
+def _build_parent_child_state_sharing_parent_instructions(child_pipeline_name: str) -> str:
+    """Build the PARENT pipeline's YAML for :func:`pipeline_parent_child_state_sharing`.
+
+    CODE1 sets ONLY ``state_1`` (never touches ``state_2``), then transitions
+    to AGENT1, an ``agent``-type node whose ``tool:`` field names the already
+    -created child pipeline. This pre-sets the YAML reference the AFS
+    Preconditions describe -- the test itself still has to perform the
+    Tools-section "+ Pipeline" attach (``PipelineDetailPage.open_pipeline_popper``/
+    ``select_pipeline_in_popper``) before AGENT1 can resolve it; the bare
+    ``tool:`` field is NOT sufficient by itself (confirmed live, ELITEA-2443
+    AFS § Preconditions).
+
+    Args:
+        child_pipeline_name: Exact ``name`` of the already-created child
+            pipeline (see :data:`_PARENT_CHILD_STATE_SHARING_CHILD_INSTRUCTIONS`).
+    """
+    return f"""\
+entry_point: CODE1
+state:
+  messages:
+    type: list
+  state_1:
+    type: str
+  state_2:
+    type: number
+nodes:
+  - id: CODE1
+    type: code
+    code:
+      type: fixed
+      value: |
+        {{"state_1": "parent_value"}}
+    input: [state_1]
+    output: [state_1]
+    structured_output: true
+    transition: AGENT1
+  - id: AGENT1
+    type: agent
+    input: [input]
+    output: [messages]
+    input_mapping:
+      task:
+        type: fixed
+        value: "Run the child pipeline and share state."
+      chat_history:
+        type: fixed
+        value: []
+    tool: {child_pipeline_name}
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_parent_child_state_sharing(pipeline_api: PipelineAPI, request):
+    """Create a CHILD pipeline (``state_1``/``state_2``, one ``code`` node
+    overwriting both -- ``{"state_1": "child_value", "state_2": 99}``) and a
+    PARENT pipeline (same ``state_1``/``state_2`` names, CODE1 sets only
+    ``state_1`` then transitions to AGENT1, an ``agent``-type node whose YAML
+    ``tool:`` field already names the child pipeline). Satisfies the
+    ELITEA-2443 precondition. Deletes BOTH pipelines afterwards (order
+    -independent -- no FK constraint observed deleting the parent before the
+    child, confirmed live during analysis).
+
+    Built via the GENERIC :meth:`PipelineAPI.create_pipeline` (raw YAML
+    ``instructions`` string) -- same technique as
+    :func:`pipeline_with_typed_state_vars_id` -- :meth:`create_pipeline_with_nodes`
+    has no ``state:`` support.
+
+    CRITICAL (AFS Preconditions, confirmed live): the Agent node's ``tool:``
+    field alone does NOT resolve the child pipeline -- an Agent node needs
+    the child ALSO attached via the Tools section's "+ Pipeline" popper, or
+    it renders "Agent not found -- select a replacement or delete this node"
+    even though the YAML name is byte-correct. That attach is a real RUNTIME
+    step the TEST itself must perform; this fixture only builds the two
+    pipelines and pre-sets the YAML ``tool:`` field.
+
+    Yields:
+        dict: ``{"parent_id": int, "parent_name": str, "child_id": int,
+        "child_name": str}``
+    """
+    child_name = f"autotest_2443c_{request.node.name}"[:32]
+    child = pipeline_api.create_pipeline(
+        name=child_name,
+        description=f"Auto-created ELITEA-2443 child pipeline for test {request.node.name}",
+        instructions=_PARENT_CHILD_STATE_SHARING_CHILD_INSTRUCTIONS,
+    )
+    child_id = child["id"]
+    logger.info(
+        "Created ELITEA-2443 child pipeline %s (%s) for %s", child_id, child_name, request.node.name
+    )
+
+    parent_name = f"autotest_2443p_{request.node.name}"[:32]
+    parent = pipeline_api.create_pipeline(
+        name=parent_name,
+        description=f"Auto-created ELITEA-2443 parent pipeline for test {request.node.name}",
+        instructions=_build_parent_child_state_sharing_parent_instructions(child_name),
+    )
+    parent_id = parent["id"]
+    logger.info(
+        "Created ELITEA-2443 parent pipeline %s (%s) for %s", parent_id, parent_name, request.node.name
+    )
+
+    yield {
+        "parent_id": parent_id,
+        "parent_name": parent_name,
+        "child_id": child_id,
+        "child_name": child_name,
+    }
+
+    try:
+        pipeline_api.delete_pipeline(parent_id)
+        logger.info("Deleted ELITEA-2443 parent pipeline %s", parent_id)
+    except Exception as exc:
+        logger.warning("Failed to delete ELITEA-2443 parent pipeline %s: %s", parent_id, exc)
+    try:
+        pipeline_api.delete_pipeline(child_id)
+        logger.info("Deleted ELITEA-2443 child pipeline %s", child_id)
+    except Exception as exc:
+        logger.warning("Failed to delete ELITEA-2443 child pipeline %s: %s", child_id, exc)
+
+
+def _build_parent_child_state_sharing_three_node_parent_instructions(child_pipeline_name: str) -> str:
+    """Build the THREE-node PARENT pipeline's YAML for
+    :func:`pipeline_parent_child_state_sharing_three_node` (ELITEA-2445).
+
+    Same ``CODE1``/``AGENT1`` shape as
+    :func:`_build_parent_child_state_sharing_parent_instructions`, plus a
+    THIRD node, ``CODE2`` (the case's "Node_C"), chained via ``AGENT1``'s own
+    ``transition:`` (instead of ``AGENT1`` transitioning straight to
+    ``END``). ``CODE2`` reads ``state_1`` back via
+    ``alita_state.get("state_1", "MISSING")`` and transitions to ``END``.
+
+    CONFIRMED LIVE DURING ANALYSIS (AFS ELITEA-2445 § Known Defects,
+    `EliteaAI/elitea-testing-public#1381`): a node chained via ``transition:``
+    immediately after an Agent node whose ``tool:`` resolves to a nested
+    pipeline NEVER executes -- the run still reports "Completed" and
+    ``CODE2`` never appears in the Run Details timeline. ``CODE2``'s own code
+    value is otherwise irrelevant to the ELITEA-2445 test -- it asserts the
+    node's ABSENCE from the observable run, not its output.
+
+    Args:
+        child_pipeline_name: Exact ``name`` of the already-created child
+            pipeline.
+    """
+    return f"""\
+entry_point: CODE1
+state:
+  messages:
+    type: list
+  state_1:
+    type: str
+  state_2:
+    type: number
+nodes:
+  - id: CODE1
+    type: code
+    code:
+      type: fixed
+      value: |
+        {{"state_1": "parent_value"}}
+    input: [state_1]
+    output: [state_1]
+    structured_output: true
+    transition: AGENT1
+  - id: AGENT1
+    type: agent
+    input: [input]
+    output: [messages]
+    input_mapping:
+      task:
+        type: fixed
+        value: "Run the child pipeline and share state."
+      chat_history:
+        type: fixed
+        value: []
+    tool: {child_pipeline_name}
+    transition: CODE2
+  - id: CODE2
+    type: code
+    code:
+      type: fixed
+      value: |
+        {{"state_1": alita_state.get("state_1", "MISSING")}}
+    input: [state_1]
+    output: [state_1]
+    structured_output: true
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_parent_child_state_sharing_three_node(pipeline_api: PipelineAPI, request):
+    """Create a CHILD pipeline (identical to
+    :func:`pipeline_parent_child_state_sharing`'s child) and a THREE-node
+    PARENT pipeline (``CODE1`` -> ``AGENT1`` (agent, tool = child) ->
+    ``CODE2`` -> ``END`` -- the case's "Node_C") for ELITEA-2445.
+
+    Distinct from :func:`pipeline_parent_child_state_sharing` (which this
+    fixture does NOT modify -- ELITEA-2443's merged test depends on its
+    exact 2-node parent shape): this parent adds a THIRD node, ``CODE2``,
+    chained after ``AGENT1`` via ``transition:``, to probe whether a node
+    placed AFTER an Agent-node's nested-pipeline tool call ever executes
+    (confirmed live: it does not -- `EliteaAI/elitea-testing-public#1381`).
+
+    Built via the GENERIC :meth:`PipelineAPI.create_pipeline` (raw YAML
+    ``instructions`` string) -- same technique as
+    :func:`pipeline_parent_child_state_sharing` -- :meth:`create_pipeline_with_nodes`
+    has no ``state:`` support.
+
+    Deletes BOTH pipelines afterwards (order-independent, same as the
+    2-node fixture).
+
+    Yields:
+        dict: ``{"parent_id": int, "parent_name": str, "child_id": int,
+        "child_name": str}``
+    """
+    child_name = f"autotest_2445c_{request.node.name}"[:32]
+    child = pipeline_api.create_pipeline(
+        name=child_name,
+        description=f"Auto-created ELITEA-2445 child pipeline for test {request.node.name}",
+        instructions=_PARENT_CHILD_STATE_SHARING_CHILD_INSTRUCTIONS,
+    )
+    child_id = child["id"]
+    logger.info(
+        "Created ELITEA-2445 child pipeline %s (%s) for %s", child_id, child_name, request.node.name
+    )
+
+    parent_name = f"autotest_2445p_{request.node.name}"[:32]
+    parent = pipeline_api.create_pipeline(
+        name=parent_name,
+        description=f"Auto-created ELITEA-2445 parent pipeline for test {request.node.name}",
+        instructions=_build_parent_child_state_sharing_three_node_parent_instructions(child_name),
+    )
+    parent_id = parent["id"]
+    logger.info(
+        "Created ELITEA-2445 parent pipeline %s (%s) for %s", parent_id, parent_name, request.node.name
+    )
+
+    yield {
+        "parent_id": parent_id,
+        "parent_name": parent_name,
+        "child_id": child_id,
+        "child_name": child_name,
+    }
+
+    try:
+        pipeline_api.delete_pipeline(parent_id)
+        logger.info("Deleted ELITEA-2445 parent pipeline %s", parent_id)
+    except Exception as exc:
+        logger.warning("Failed to delete ELITEA-2445 parent pipeline %s: %s", parent_id, exc)
+    try:
+        pipeline_api.delete_pipeline(child_id)
+        logger.info("Deleted ELITEA-2445 child pipeline %s", child_id)
+    except Exception as exc:
+        logger.warning("Failed to delete ELITEA-2445 child pipeline %s: %s", child_id, exc)
+
+
+_PARENT_CHILD_STATE_ISOLATION_CHILD_INSTRUCTIONS = """\
+entry_point: CODE1
+state:
+  messages:
+    type: list
+  state_1:
+    type: str
+  state_3:
+    type: str
+nodes:
+  - id: CODE1
+    type: code
+    code:
+      type: fixed
+      value: |
+        {"state_1": "child_value", "state_3": "child_only_value"}
+    input: [state_1, state_3]
+    output: [state_1, state_3]
+    structured_output: true
+    transition: END
+"""
+
+
+def _build_parent_child_state_isolation_parent_instructions(child_pipeline_name: str) -> str:
+    """Build the PARENT pipeline's YAML for :func:`pipeline_parent_child_state_isolation`.
+
+    CODE1 sets BOTH ``state_1`` AND ``state_2`` (unlike
+    :func:`pipeline_parent_child_state_sharing`'s parent, which sets only
+    ``state_1``), then transitions to AGENT1, an ``agent``-type node whose
+    ``tool:`` field names the already-created child pipeline. Same Tools
+    -section attach precondition as the sibling fixture (AFS ELITEA-2444
+    § Preconditions, confirmed live) -- the bare ``tool:`` field alone does
+    not resolve the child; the test itself still performs the "+ Pipeline"
+    popper attach.
+
+    Args:
+        child_pipeline_name: Exact ``name`` of the already-created child
+            pipeline (see :data:`_PARENT_CHILD_STATE_ISOLATION_CHILD_INSTRUCTIONS`).
+    """
+    return f"""\
+entry_point: CODE1
+state:
+  messages:
+    type: list
+  state_1:
+    type: str
+  state_2:
+    type: str
+nodes:
+  - id: CODE1
+    type: code
+    code:
+      type: fixed
+      value: |
+        {{"state_1": "parent_value", "state_2": "parent_only_value"}}
+    input: [state_1, state_2]
+    output: [state_1, state_2]
+    structured_output: true
+    transition: AGENT1
+  - id: AGENT1
+    type: agent
+    input: [input]
+    output: [messages]
+    input_mapping:
+      task:
+        type: fixed
+        value: "Run the child pipeline and share state."
+      chat_history:
+        type: fixed
+        value: []
+    tool: {child_pipeline_name}
+    transition: END
+"""
+
+
+@pytest.fixture
+def pipeline_parent_child_state_isolation(pipeline_api: PipelineAPI, request):
+    """Create a CHILD pipeline (``state_1``/``state_3``, NO ``state_2`` key at
+    all) and a PARENT pipeline (``state_1``/``state_2``, NO ``state_3`` key at
+    all) attached as a tool to the parent's Agent node. Satisfies the
+    ELITEA-2444 precondition -- the defining difference from
+    :func:`pipeline_parent_child_state_sharing` is that ``state_2`` and
+    ``state_3`` are each declared in ONLY ONE of the two pipelines
+    (non-common state), unlike that fixture's fully-shared
+    ``state_1``/``state_2`` schema. Deletes BOTH pipelines afterwards
+    (order-independent, confirmed live during analysis).
+
+    Built via the GENERIC :meth:`PipelineAPI.create_pipeline` (raw YAML
+    ``instructions`` string) -- :meth:`create_pipeline_with_nodes` has no
+    ``state:`` support.
+
+    CRITICAL (AFS Preconditions, confirmed live): the Agent node's ``tool:``
+    field alone does NOT resolve the child pipeline -- an Agent node needs
+    the child ALSO attached via the Tools section's "+ Pipeline" popper, or
+    it renders "Agent not found -- select a replacement or delete this node"
+    even though the YAML name is byte-correct. That attach is a real RUNTIME
+    step the TEST itself must perform; this fixture only builds the two
+    pipelines and pre-sets the YAML ``tool:`` field.
+
+    Yields:
+        dict: ``{"parent_id": int, "parent_name": str, "child_id": int,
+        "child_name": str}``
+    """
+    child_name = f"autotest_2444c_{request.node.name}"[:32]
+    child = pipeline_api.create_pipeline(
+        name=child_name,
+        description=f"Auto-created ELITEA-2444 child pipeline for test {request.node.name}",
+        instructions=_PARENT_CHILD_STATE_ISOLATION_CHILD_INSTRUCTIONS,
+    )
+    child_id = child["id"]
+    logger.info(
+        "Created ELITEA-2444 child pipeline %s (%s) for %s", child_id, child_name, request.node.name
+    )
+
+    parent_name = f"autotest_2444p_{request.node.name}"[:32]
+    parent = pipeline_api.create_pipeline(
+        name=parent_name,
+        description=f"Auto-created ELITEA-2444 parent pipeline for test {request.node.name}",
+        instructions=_build_parent_child_state_isolation_parent_instructions(child_name),
+    )
+    parent_id = parent["id"]
+    logger.info(
+        "Created ELITEA-2444 parent pipeline %s (%s) for %s", parent_id, parent_name, request.node.name
+    )
+
+    yield {
+        "parent_id": parent_id,
+        "parent_name": parent_name,
+        "child_id": child_id,
+        "child_name": child_name,
+    }
+
+    try:
+        pipeline_api.delete_pipeline(parent_id)
+        logger.info("Deleted ELITEA-2444 parent pipeline %s", parent_id)
+    except Exception as exc:
+        logger.warning("Failed to delete ELITEA-2444 parent pipeline %s: %s", parent_id, exc)
+    try:
+        pipeline_api.delete_pipeline(child_id)
+        logger.info("Deleted ELITEA-2444 child pipeline %s", child_id)
+    except Exception as exc:
+        logger.warning("Failed to delete ELITEA-2444 child pipeline %s: %s", child_id, exc)
+
+
+@pytest.fixture
 def github_credential(credential_api: CredentialAPI, request):
     """Create a GitHub API credential and yield its metadata.
 
@@ -274,6 +1448,226 @@ def github_toolkit(github_credential: dict, toolkit_api: ToolkitAPI, request):
         logger.info("Deleted GitHub toolkit %s", toolkit["id"])
     except Exception as exc:
         logger.warning("Failed to delete toolkit %s during teardown: %s", toolkit["id"], exc)
+
+
+@pytest.fixture
+def github_toolkit_with_selected_tools(github_credential: dict, toolkit_api: ToolkitAPI, request):
+    """Create a GitHub toolkit with ``settings.selected_tools`` explicitly set.
+
+    Sibling of :func:`github_toolkit` — that fixture does NOT set
+    ``selected_tools``, which is fine for toolkit-attach/agent flows but is a
+    load-bearing gap for the pipeline Toolkit node (ELITEA-2010 AFS §
+    Preconditions / Automation Hints): a toolkit with no ``selected_tools``
+    renders a Toolkit node with no Tool select at all (0 options, absent
+    from the DOM, confirmed live) — the node's Tool dropdown reads the
+    toolkit's own ``settings.selected_tools``, not a dynamic "discover all
+    tools" call. This fixture selects ``search_issues`` (1 required param —
+    SEARCH QUERY — plus 2 optional — MAX COUNT / REPO NAME), matching the
+    AFS's Test Data.
+
+    Depends on ``github_credential`` — both are cleaned up after the test.
+
+    Yields a dict with ``id``, ``name``, and ``branch`` keys — same shape as
+    :func:`github_toolkit`.
+
+    Args:
+        github_credential: GitHub credential fixture (provides elitea_title)
+        toolkit_api: ToolkitAPI client (from api_fixtures)
+        request: Pytest request object (provides test metadata)
+
+    Yields:
+        dict: ``{"id": int, "name": str, "branch": str}``
+    """
+    name = f"autotest_gh_tk_tools_{request.node.name}"[:32]
+    toolkit = toolkit_api.create_github_toolkit(
+        name=name,
+        description=f"Auto-created for test {request.node.name}",
+        credential_elitea_title=github_credential["elitea_title"],
+        repository=settings.git_repo,
+        active_branch=_GITHUB_BRANCH,
+        base_branch=_GITHUB_BRANCH,
+        selected_tools=["search_issues"],
+    )
+    logger.info(
+        "Created GitHub toolkit %s (%s, selected_tools=['search_issues']) for %s",
+        toolkit["id"], name, request.node.name,
+    )
+
+    yield {"id": toolkit["id"], "name": name, "branch": _GITHUB_BRANCH}
+
+    try:
+        toolkit_api.delete_toolkit(toolkit["id"])
+        logger.info("Deleted GitHub toolkit %s", toolkit["id"])
+    except Exception as exc:
+        logger.warning("Failed to delete toolkit %s during teardown: %s", toolkit["id"], exc)
+
+
+# ---------------------------------------------------------------------------
+# GitHub-relevant Agent pair for ELITEA-1909 ("Build with AI" suggested-Agent
+# precondition)
+# ---------------------------------------------------------------------------
+
+def _build_with_ai_agent_payload(name: str, description: str) -> dict:
+    """Payload for a minimal Agent used purely as a "Build with AI"
+    suggestion-engine candidate (never opened/edited by the test itself).
+
+    Uses ``AgentAPI.create_agent_full()`` rather than the ``create_agent()``
+    convenience method's default ``llm_settings`` (which pairs
+    ``temperature`` with ``reasoning_effort``) — that combination is
+    rejected with a 400 by this project's current default model. See the
+    ELITEA-1909 AFS's Known Defects/Gaps #3.
+    """
+    return {
+        "name": name,
+        "description": description,
+        "type": "interface",
+        "versions": [
+            {
+                "name": "base",
+                "tags": [],
+                "instructions": description,
+                "variables": [],
+                "tools": [],
+                "llm_settings": {
+                    "max_tokens": -1,
+                    "model_name": settings.default_model_name,
+                    "model_project_id": settings.default_model_project_id,
+                },
+                "conversation_starters": [],
+                "agent_type": "openai",
+                "welcome_message": "",
+                "meta": {"step_limit": 25},
+            }
+        ],
+    }
+
+
+@pytest.fixture
+def github_relevant_agents(agent_api: AgentAPI, request):
+    """Create two pre-existing, GitHub-relevant Agents so "Build with AI"'s
+    suggestion engine has real candidates to surface as ``suggested_agents``
+    — the engine only suggests Agents already configured in the project,
+    filtered by semantic relevance to the submitted prompt (see ELITEA-1909
+    AFS Preconditions — the case's own preconditions never state this).
+
+    Yields a dict with ``selected`` and ``not_selected`` sub-dicts, each
+    ``{"id": int, "name": str, "description": str}`` — the caller's test
+    prompt must name both agents by their exact ``name`` for the
+    suggestion engine's relevance match to pick them up (see AFS
+    Automation Hints: fixture descriptions and the test prompt are
+    co-maintained in the same test module for this reason).
+
+    Both agents are deleted in teardown even if the test fails.
+    """
+    # Distinctive, collision-resistant naming (AFS Automation Hints): a
+    # short numeric suffix rather than the full (often >32-char) test node
+    # name, which the API's 32-char name limit can't accommodate anyway.
+    suffix = str(int(time.time() * 1000))[-6:]
+    selected_name = f"autotest GH Issue Bot {suffix}"[:32]
+    not_selected_name = f"autotest GH PR Reviewer {suffix}"[:32]
+    selected_description = "Agent that manages GitHub issues and pull requests for a repository."
+    not_selected_description = "Agent that reviews GitHub pull requests and posts review comments."
+
+    selected = agent_api.create_agent_full(
+        _build_with_ai_agent_payload(selected_name, selected_description)
+    )
+    not_selected = agent_api.create_agent_full(
+        _build_with_ai_agent_payload(not_selected_name, not_selected_description)
+    )
+    logger.info(
+        "Created GitHub-relevant agent pair %s (%s) / %s (%s) for %s",
+        selected["id"], selected_name, not_selected["id"], not_selected_name,
+        request.node.name,
+    )
+
+    yield {
+        "selected": {
+            "id": selected["id"], "name": selected_name, "description": selected_description,
+        },
+        "not_selected": {
+            "id": not_selected["id"], "name": not_selected_name, "description": not_selected_description,
+        },
+    }
+
+    for agent in (selected, not_selected):
+        try:
+            agent_api.delete_agent(agent["id"])
+            logger.info("Deleted GitHub-relevant agent %s", agent["id"])
+        except Exception as exc:
+            logger.warning("Failed to delete agent %s during teardown: %s", agent["id"], exc)
+
+
+# ---------------------------------------------------------------------------
+# GitHub-relevant Skill pair for ELITEA-1911 ("Build with AI" suggested-Skill
+# precondition — same shape as github_relevant_agents above)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def github_relevant_skills(skill_api: SkillAPI, request):
+    """Create two pre-existing, GitHub-relevant Skills so "Build with AI"'s
+    suggestion engine has real candidates to surface as ``suggested_skills``
+    — the engine only suggests Skills already configured in the project,
+    filtered by semantic relevance to the submitted prompt (see ELITEA-1911
+    AFS Preconditions — same inventory-gating mechanism ``github_relevant_agents``
+    already documents for Toolkits/Agents).
+
+    Yields a dict with ``selected`` and ``not_selected`` sub-dicts, each
+    ``{"id": int, "name": str, "description": str}`` — the caller's test
+    prompt must name both skills by their exact ``name`` for the suggestion
+    engine's relevance match to pick them up (mirrors
+    ``github_relevant_agents``'s Automation Hints).
+
+    Skill names are constrained (live-confirmed via the Skills UI form's
+    validation message, see ``SkillAPI.create_skill()``) to lowercase
+    letters, digits, and hyphens, max 32 characters, no leading/trailing
+    hyphen — the generated names respect this.
+
+    Both skills are deleted in teardown even if the test fails.
+    """
+    suffix = str(int(time.time() * 1000))[-6:]
+    selected_name = f"autotest-gh-changelog-{suffix}"[:32]
+    not_selected_name = f"autotest-gh-issue-label-{suffix}"[:32]
+    selected_description = (
+        "Skill that writes GitHub repository changelog entries from merged pull requests."
+    )
+    not_selected_description = (
+        "Skill that reads GitHub issues and applies priority/severity labels automatically."
+    )
+    selected_instructions = (
+        "You are a skill that reads merged GitHub pull requests and writes concise "
+        "changelog entries summarizing the changes."
+    )
+    not_selected_instructions = (
+        "You are a skill that reads incoming GitHub issues and applies priority and "
+        "severity labels based on their content."
+    )
+
+    selected = skill_api.create_skill(selected_name, selected_description, selected_instructions)
+    not_selected = skill_api.create_skill(
+        not_selected_name, not_selected_description, not_selected_instructions
+    )
+    logger.info(
+        "Created GitHub-relevant skill pair %s (%s) / %s (%s) for %s",
+        selected["id"], selected_name, not_selected["id"], not_selected_name,
+        request.node.name,
+    )
+
+    yield {
+        "selected": {
+            "id": selected["id"], "name": selected_name, "description": selected_description,
+        },
+        "not_selected": {
+            "id": not_selected["id"], "name": not_selected_name, "description": not_selected_description,
+        },
+    }
+
+    for skill in (selected, not_selected):
+        try:
+            skill_api.delete_skill(skill["id"])
+            logger.info("Deleted GitHub-relevant skill %s", skill["id"])
+        except Exception as exc:
+            logger.warning("Failed to delete skill %s during teardown: %s", skill["id"], exc)
 
 
 # ---------------------------------------------------------------------------
@@ -359,13 +1753,144 @@ def artifact_toolkit(artifact_bucket: dict, toolkit_api: ToolkitAPI, request):
         toolkit["id"], name, bucket_name, request.node.name,
     )
 
-    yield {"id": toolkit["id"], "name": name, "bucket_name": bucket_name}
+    yield {
+        "id": toolkit["id"],
+        "name": name,
+        "bucket_name": bucket_name,
+        "project_id": int(toolkit_api.project_id),  # ELITEA-2203: slash-mention menu-item testids need it
+    }
 
     try:
         toolkit_api.delete_toolkit(toolkit["id"])
         logger.info("Deleted artifact toolkit %s", toolkit["id"])
     except Exception as exc:
         logger.warning("Failed to delete artifact toolkit %s: %s", toolkit["id"], exc)
+
+
+# ELITEA-2204's exact, narrow selected_tools list -- NOT create_artifact_toolkit()'s
+# hardcoded 16-tool list, which would make the case's "exactly 4 tools, in this
+# order" assertion false against the live default (AFS § Test Data).
+_FOUR_TOOL_SELECTED_TOOLS = ["index_data", "list_indexes", "search_index", "stepback_search_index"]
+
+
+@pytest.fixture
+def artifact_toolkit_four_tools(artifact_bucket: dict, toolkit_api: ToolkitAPI, request):
+    """Create an Artifact toolkit with EXACTLY 4 ``selected_tools`` (ELITEA-2204).
+
+    ``artifact_toolkit`` (above) reuses ``create_artifact_toolkit()``, whose
+    factory hardcodes a 16-tool ``selected_tools`` list -- unusable for a case
+    that asserts the slash-mention tools list shows exactly 4, in configuration
+    order. This fixture calls ``toolkit_api.create_toolkit()`` directly with
+    the narrower list instead, keeping the same
+    ``pgvector_configuration``/``embedding_model``/``bucket`` shape
+    ``create_artifact_toolkit()`` already uses.
+
+    Depends on ``artifact_bucket`` -- both are cleaned up after the test.
+
+    Yields:
+        dict: ``{"id": int, "name": str, "bucket_name": str, "project_id": int}``
+    """
+    ts = str(int(time.time()))
+    raw = f"autotest-art4-{request.node.name}"
+    name = raw[:28] + f"-{ts[-4:]}"  # keep total ≤ 32 chars (API limit)
+
+    bucket_name = artifact_bucket["name"]
+    toolkit = toolkit_api.create_toolkit(
+        name=name,
+        description=f"Auto-created 4-tool artifact toolkit for {request.node.name}",
+        toolkit_type="artifact",
+        settings={
+            "pgvector_configuration": None,
+            "embedding_model": "text-embedding-3-small",
+            "bucket": bucket_name,
+            "selected_tools": _FOUR_TOOL_SELECTED_TOOLS,
+        },
+    )
+    logger.info(
+        "Created 4-tool artifact toolkit %s ('%s') → bucket '%s' for %s",
+        toolkit["id"], name, bucket_name, request.node.name,
+    )
+
+    yield {
+        "id": toolkit["id"],
+        "name": name,
+        "bucket_name": bucket_name,
+        "project_id": int(toolkit_api.project_id),
+    }
+
+    try:
+        toolkit_api.delete_toolkit(toolkit["id"])
+        logger.info("Deleted 4-tool artifact toolkit %s", toolkit["id"])
+    except Exception as exc:
+        logger.warning("Failed to delete 4-tool artifact toolkit %s: %s", toolkit["id"], exc)
+
+
+# ---------------------------------------------------------------------------
+# HITL sensitive-action fixtures for ELITEA-2211..2214 (direct toolkit call)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def artifact_seeded_file(artifact_toolkit: dict, artifact_api: ArtifactAPI, request):
+    """Seed one real file into ``artifact_toolkit``'s bucket.
+
+    Gives Authorize/Block something genuine to act on so the backend-verified
+    execution/non-execution checks (ELITEA-2212/2213/2214 — "assert via
+    ArtifactAPI, not just a UI-only signal") have ground truth to compare
+    against: Authorize should make this file disappear, Block should leave
+    it in place. No separate teardown — the ``artifact_bucket`` fixture
+    (a dependency of ``artifact_toolkit``) deletes the whole bucket.
+
+    Yields:
+        str: the file's key (relative path) inside the bucket.
+    """
+    bucket_name = artifact_toolkit["bucket_name"]
+    file_key = f"autotest-hitl-{request.node.name}"[:60] + ".txt"
+    artifact_api.upload_file(bucket_name, file_key, b"hitl automation seed file")
+    logger.info("Seeded file '%s' in bucket '%s' for %s", file_key, bucket_name, request.node.name)
+    return file_key
+
+
+@pytest.fixture(scope="module")
+def sensitive_delete_file_toolkit(browser: Browser, auth_state):
+    """Mark ``artifact``/``delete_file`` sensitive for the whole test module.
+
+    Sensitivity is toolkit-TYPE scoped
+    (``GuardrailsAdminPage.add_sensitive_tool("artifact", "delete_file")``),
+    not per-toolkit-instance, so marking/removing it ONCE per module (rather
+    than once per test) avoids redundant admin round-trips across
+    ELITEA-2211..2214's four cases, per those AFS's own Cleanup section —
+    same pattern ``test_guardrails_live_reload.py``'s
+    ``TestSensitiveToolLiveReload`` already established.
+
+    Module scope means this fixture's setup/teardown run ONCE for whichever
+    single test module requests it, even though it is centrally defined here
+    (fixture location rule — ``.claude/rules/api-patterns.md``).
+    """
+    ctx = browser.new_context(
+        storage_state=auth_state, viewport={"width": 1920, "height": 1080}
+    )
+    ctx.set_default_timeout(15000)
+    ctx.set_default_navigation_timeout(30000)
+    page = ctx.new_page()
+
+    guardrails = GuardrailsAdminPage(page)
+    guardrails.navigate_to_guardrails()
+    guardrails.add_sensitive_tool("artifact", "delete_file")
+    guardrails.save_configuration()
+    logger.info("Marked artifact/delete_file sensitive for the module")
+
+    yield
+
+    try:
+        guardrails.remove_sensitive_tool("delete_file")
+        guardrails.save_configuration()
+        logger.info("Removed artifact/delete_file from the sensitive list")
+    except Exception as exc:
+        logger.warning("Failed to remove sensitive tool 'delete_file' during teardown: %s", exc)
+    finally:
+        page.close()
+        ctx.close()
 
 
 # ---------------------------------------------------------------------------
@@ -592,6 +2117,7 @@ def mcp_toolkit_with_tools(toolkit_api: ToolkitAPI, request):
         "name": name,
         "toolkit_name": toolkit.get("toolkit_name", name),
         "tools": [t["name"] for t in tools],
+        "project_id": int(toolkit_api.project_id),  # ELITEA-2203: slash-mention menu-item testids need it
     }
 
     try:
@@ -667,3 +2193,292 @@ def mcp_pipeline_with_toolkits(
         logger.info("Deleted MCP pipeline %s", pid)
     except Exception as exc:
         logger.warning("Failed to delete MCP pipeline %s: %s", pid, exc)
+
+
+_HITL_RUNTIME_PRINTER_OUTPUT = "Final: pipeline approved"
+
+
+def build_hitl_runtime_nodes(hitl_message: str) -> list[dict]:
+    """Build the LLM 1 -> HITL 1 -> Printer 1 -> END node list for ELITEA-2015.
+
+    HITL routes: APPROVE -> Printer 1, REJECT -> END (the case's stated
+    precondition). Exposed as a plain function (not a fixture) so a test
+    needing MORE THAN ONE independent instance — e.g. a fresh pipeline per
+    Approve/Reject variant, per the AFS's Test isolation note — can call it
+    directly via ``pipeline_api`` instead of duplicating the YAML.
+
+    ``LLM 1``'s task is a real, non-empty fixed value (the analyst's
+    exploration pipeline had an empty task, which is incidental to the
+    precondition, not required by the case — see the AFS Test Data note) so
+    the Reject-path evidence stays legible.
+
+    Args:
+        hitl_message: The HITL node's fixed user_message value.
+
+    Returns:
+        list[dict]: Node definitions for ``PipelineAPI.create_pipeline_with_nodes``.
+    """
+    return [
+        {
+            "id": "LLM 1",
+            "type": "llm",
+            "input": [],
+            "input_mapping": {
+                "chat_history": {"type": "fixed", "value": []},
+                "system": {"type": "fixed", "value": ""},
+                "task": {"type": "fixed", "value": "Say hello in one short sentence."},
+            },
+            "output": ["messages"],
+            "structured_output": False,
+            "transition": "HITL 1",
+        },
+        {
+            "id": "HITL 1",
+            "type": "hitl",
+            "user_message": {"type": "fixed", "value": hitl_message},
+            "input": [],
+            "routes": {"approve": "Printer 1", "reject": "END"},
+        },
+        {
+            "id": "Printer 1",
+            "type": "printer",
+            "input_mapping": {
+                "printer": {"type": "fixed", "value": _HITL_RUNTIME_PRINTER_OUTPUT},
+            },
+            "transition": "END",
+        },
+    ]
+
+
+@pytest.fixture
+def hitl_runtime_pipeline(pipeline_api: PipelineAPI, request):
+    """Create a pipeline LLM 1 -> HITL 1 -> Printer 1 -> END with HITL routes
+    configured (APPROVE -> Printer 1, REJECT -> END).
+
+    Satisfies the ELITEA-2015 precondition (see :func:`build_hitl_runtime_nodes`).
+
+    Yields:
+        dict: ``{"id": int, "hitl_message": str, "printer_output": str}``
+    """
+    name = f"autotest_hitl_{request.node.name}"[:32]
+    hitl_message = "Please review this response"
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created HITL runtime pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_hitl_runtime_nodes(hitl_message),
+    )
+    pid = pipeline["id"]
+    logger.info("Created HITL runtime pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield {"id": pid, "hitl_message": hitl_message, "printer_output": _HITL_RUNTIME_PRINTER_OUTPUT}
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted HITL runtime pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete HITL runtime pipeline %s: %s", pid, exc)
+
+
+def _llm_node_dict(transition: str) -> dict:
+    """Build the LLM 1 node dict shared by the canvas node/edge CRUD fixtures
+    below (ELITEA-2018/2031/2032) — same shape confirmed live in the AFS
+    exploration sessions for all three cases.
+
+    Args:
+        transition: The node's ``transition`` target (e.g. ``"Code 1"``,
+            ``"Printer 1"``, ``"END"``).
+    """
+    return {
+        "id": "LLM 1",
+        "type": "llm",
+        "input": [],
+        "input_mapping": {
+            "chat_history": {"type": "fixed", "value": []},
+            "system": {"type": "fixed", "value": ""},
+            "task": {"type": "fixed", "value": "hi"},
+        },
+        "output": ["messages"],
+        "structured_output": False,
+        "transition": transition,
+    }
+
+
+def build_delete_node_pipeline_nodes() -> list[dict]:
+    """LLM 1 -> Code 1 -> END node list for ELITEA-2018 (Pipeline Canvas —
+    Delete Node). Confirmed live (2026-08-03): produces exactly 3 nodes /
+    2 edges on first canvas load, no manual UI wiring needed.
+    """
+    return [
+        _llm_node_dict(transition="Code 1"),
+        {
+            "id": "Code 1",
+            "type": "code",
+            "input": [],
+            "output": [],
+            "code": "print('hi')",
+            "transition": "END",
+        },
+    ]
+
+
+@pytest.fixture
+def pipeline_llm_code_end(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``LLM 1 -> Code 1 -> END`` (3 nodes, 2 edges) before
+    the test and delete it afterwards. Satisfies the ELITEA-2018 precondition
+    (see :func:`build_delete_node_pipeline_nodes`).
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_delnode_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created delete-node pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_delete_node_pipeline_nodes(),
+    )
+    pid = pipeline["id"]
+    logger.info("Created delete-node pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted delete-node pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete delete-node pipeline %s: %s", pid, exc)
+
+
+def _printer_node_dict(transition: str) -> dict:
+    """Build the Printer 1 node dict shared by the edge-creation/-deletion
+    fixtures below (ELITEA-2031/2032).
+
+    Args:
+        transition: The node's ``transition`` target (e.g. ``"END"``).
+    """
+    return {
+        "id": "Printer 1",
+        "type": "printer",
+        "input_mapping": {"printer": {"type": "fixed", "value": "done"}},
+        "transition": transition,
+    }
+
+
+def build_llm_printer_nodes(llm_transition: str) -> list[dict]:
+    """Build an ``LLM 1`` + ``Printer 1`` node pair, parametrized on where
+    ``LLM 1`` transitions to. Shared by the ELITEA-2031 (edge creation) and
+    ELITEA-2032 (edge deletion) fixtures below — same node pair, differing
+    only in whether LLM 1 already points at Printer 1.
+
+    Args:
+        llm_transition: ``LLM 1``'s ``transition`` value — ``"END"`` seeds
+            two independently-terminating nodes (ELITEA-2031, so the edge
+            under test doesn't pre-exist); ``"Printer 1"`` seeds the edge
+            directly (ELITEA-2032, so the edge under test already exists).
+
+    Returns:
+        list[dict]: ``[LLM 1, Printer 1]`` node definitions.
+    """
+    return [
+        _llm_node_dict(transition=llm_transition),
+        _printer_node_dict(transition="END"),
+    ]
+
+
+@pytest.fixture
+def pipeline_llm_printer_disconnected(pipeline_api: PipelineAPI, request):
+    """Create a pipeline with ``LLM 1`` and ``Printer 1``, each independently
+    ``transition: END`` (NOT connected to each other) before the test, and
+    delete it afterwards. Satisfies the ELITEA-2031 precondition — omitting
+    ``transition`` on both nodes entirely auto-defaults ``LLM 1`` to
+    ``transition: Printer 1`` (the next node in the YAML list), which would
+    pre-create the very edge this case tests the creation of; both must
+    explicitly point at END.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_edgecreate_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created edge-creation pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_llm_printer_nodes(llm_transition="END"),
+    )
+    pid = pipeline["id"]
+    logger.info("Created edge-creation pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted edge-creation pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete edge-creation pipeline %s: %s", pid, exc)
+
+
+@pytest.fixture
+def pipeline_llm_printer_connected(pipeline_api: PipelineAPI, request):
+    """Create a pipeline ``LLM 1 -> Printer 1 -> END`` (the edge under test
+    already exists) before the test, and delete it afterwards. Satisfies the
+    ELITEA-2032 precondition.
+
+    Yields:
+        int: Numeric pipeline ID.
+    """
+    name = f"autotest_edgedelete_{request.node.name}"[:32]
+    pipeline = pipeline_api.create_pipeline_with_nodes(
+        name=name,
+        description=f"Auto-created edge-deletion pipeline for test {request.node.name}",
+        entry_point="LLM 1",
+        nodes=build_llm_printer_nodes(llm_transition="Printer 1"),
+    )
+    pid = pipeline["id"]
+    logger.info("Created edge-deletion pipeline %s (%s) for %s", pid, name, request.node.name)
+
+    yield pid
+
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted edge-deletion pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete edge-deletion pipeline %s: %s", pid, exc)
+
+
+def _delete_project_context(client: APIClient) -> None:
+    """Best-effort DELETE of the active project's Project Context.
+
+    Tolerates HTTP 404 (``{"error": "Project context not found"}`` —
+    confirmed live) — "already clean" is a pass, not a failure. Any other
+    non-2xx status is re-raised so a real API problem is not swallowed.
+    """
+    path = f"/elitea_core/project_context/prompt_lib/{client.project_id}/project-context"
+    resp = client.delete(path)
+    if resp.status_code == 404:
+        logger.info("Project Context already absent for project %s (404 — clean)", client.project_id)
+        return
+    resp.raise_for_status()
+    logger.info("Deleted Project Context for project %s", client.project_id)
+
+
+@pytest.fixture
+def clean_project_context(api: APIClient):
+    """Ensure the active project has no Project Context before AND after the test.
+
+    Deletes via the API (tolerating 404 — "already clean" is a pass) both
+    before the test runs (clean precondition for the empty-state "Create"
+    flow) and after it finishes (teardown, restores the empty-state
+    precondition for the next run) — ELITEA-2272.
+
+    No corresponding "id" is yielded: this fixture's only job is the
+    delete-before/delete-after bracket, not creating an entity.
+    """
+    _delete_project_context(api)
+
+    yield
+
+    try:
+        _delete_project_context(api)
+    except Exception as exc:
+        logger.warning("Failed to delete Project Context in teardown: %s", exc)

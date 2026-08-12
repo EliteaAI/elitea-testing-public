@@ -26,33 +26,45 @@ class DetailPage(FormPage):  # Inherits get_name()
     pass
 ```
 
-## Locator Strategy: testid-only
+## Locator Strategy: testid-only (NO fallback)
 
-**All locators must use `LocatorDescriptor` with data-testid.** Fallback selectors are NOT allowed.
+**All locators must use `LocatorDescriptor` with a testid and strictly NO
+`fallback`.** `fallback` is dead code — `__get__` never calls it when a testid is
+set. If the element has no `data-testid`, add one to EliteaUI via the
+`add-data-testid` skill instead of writing a fallback.
+
+Locators live **only as class-level fields on page objects** — never constructed
+inside method bodies, never in test/spec files.
 
 ```python
 from .locator_descriptor import LocatorDescriptor
 
 class MyPage(BasePage):
-    # ONLY data-testid is allowed
+    element = LocatorDescriptor(
+        testid="unique-testid",        # data-testid — the only locator source
+        description="What this element does"
+    )
     save_button = LocatorDescriptor(testid="save-button")
     refresh_btn = LocatorDescriptor(testid="toolkit-reload-button")
 ```
 
 **If element lacks data-testid** → run `add-data-testid` skill to add it in EliteaUI first.
 
-**FORBIDDEN:**
+**Never use direct or fallback locators:**
 ```python
-# ❌ WRONG - fallback/locator selectors not allowed
-button = LocatorDescriptor(locator="#SomeId")
-button = LocatorDescriptor(locator='[aria-label="Delete"]')
-
-# ❌ WRONG - direct locators in __init__
+# ❌ WRONG — direct locator in a method
 def __init__(self, page):
     self.button = page.locator('button')
 
-# ✅ CORRECT - testid only
-button = LocatorDescriptor(testid="save-button")
+# ❌ WRONG — fallback is dead code, forbidden
+button = LocatorDescriptor(testid="save-btn", fallback=lambda page: ...)
+
+# ❌ WRONG — fallback/locator selectors not allowed
+button = LocatorDescriptor(locator="#SomeId")
+button = LocatorDescriptor(locator='[aria-label="Delete"]')
+
+# ✅ CORRECT — class field, testid only
+button = LocatorDescriptor(testid="save-btn", description="Save the form")
 ```
 
 ## Architecture Pattern
@@ -120,6 +132,21 @@ CHAT_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
 # Use inside method
 message.locator(self.CHAT_DELETE_SELECTOR)
 ```
+
+**Dynamic (runtime-parameterized) testids — same mechanism, templated:**
+```python
+# ✅ CORRECT — class-level template constant; the pattern stays in the inventory
+SKILL_TAG_OPTION = '[data-testid="skill-tag-option-{}"]'
+
+def select_tag(self, tag_name: str):
+    self.page.locator(self.SKILL_TAG_OPTION.format(tag_name)).click()
+
+# ❌ WRONG — inline f-string get_by_test_id in a method body (invisible to the
+# class-level testid inventory; the #19-rework FAIL-1 shape)
+def select_tag(self, tag_name: str):
+    self.page.get_by_test_id(f"skill-tag-option-{tag_name}").click()
+```
+Naming for dynamic testids: `{section}-{element}-{param}` (parameter last).
 
 **Locators MUST be class-level fields, NEVER inline in methods:**
 ```python
@@ -284,12 +311,36 @@ def click_save(self):
     self.save_button.click()  # GOOD
 ```
 
+❌ **Don't chain a raw selector off an existing field inside a method** — this
+looks compliant (it starts from a real class field) but still bakes an
+untracked, non-testid selector into method code. Real case that merged in
+PR #22 (`automation/pages/skill_form_page.py:272`, ELITEA-1737):
+```python
+instructions_editor = LocatorDescriptor(testid="skill-instructions-editor")
+
+def get_instructions_text(self):
+    content = self.instructions_editor.locator(".cm-content")  # BAD - raw CSS chained on
+    return content.text_content()
+```
+
+✅ **Give the sub-element its own testid + LocatorDescriptor:**
+```python
+instructions_editor_content = LocatorDescriptor(testid="skill-instructions-editor-content")
+
+def get_instructions_text(self):
+    return self.instructions_editor_content.text_content()  # GOOD
+```
+
 ## Sign off Checklist
 
 Verify:
 - [ ] No duplicate methods across page objects
-- [ ] All locators use LocatorDescriptor (testid preferred, locator if no testid)
+- [ ] All locators use LocatorDescriptor with testid only (NO fallback)
+- [ ] No raw selectors chained off an existing field inside a method (e.g.
+      `self.some_field.locator(".css-class")`) — give the sub-element its own
+      testid + LocatorDescriptor instead
 - [ ] Scoped selectors use UPPER_CASE string constants
+- [ ] Complex locators documented in docstring
 - [ ] Method names follow conventions
 - [ ] Class docstring includes URL pattern
 - [ ] Tests don't contain direct page.locator() calls

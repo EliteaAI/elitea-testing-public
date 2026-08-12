@@ -1,0 +1,122 @@
+# Surface digest — toolkits-credentials (Configuration/Credential dropdown family)
+
+Confirmed live 2026-08-02 against `http://localhost:5173` (EliteaUI
+`automation/testids` → DEV backend `https://dev.elitea.ai/api/v2`), identity
+"Test Bot" (`author_id 659`, `personal_project_id 399` = the "Private"
+project). Read before driving `CredentialsSelect` (toolkit Configuration
+dropdown, credential-create form) on a new case; update after your own run.
+
+## Project topology (identity: Test Bot)
+
+| project_id | name | scope | write access (configurations/toolkits) |
+|---|---|---|---|
+| 399 | Private | personal (`personal_project_id`) | YES — full CRUD |
+| 406 | Bugs & Features | team | READ only (403 on `configurations.configuration.create` / `models.applications.tools.create`) |
+| 25 | Elitea Development | team | READ only (same 403 pattern, not individually re-verified) |
+| 471 | Elitea Testing Team | team | READ only (confirmed via live 403) |
+| 400 | UI Testing | team | READ only (same 403 pattern, not individually re-verified) |
+
+Project switch (UI): `[data-testid="project-selector-trigger"]` → click →
+`[data-testid="select-option-{project_id}"]`. Switch persists across
+`page.goto()` within the same browser context (localStorage-backed).
+
+**Why the project matters for `CredentialsSelect`:** `Create_Project_Title`
+option only renders when `selectedProjectId != personal_project_id`
+(`EliteaUI/src/[fsd]/features/credentials/ui/credentials-select/CredentialsSelect.jsx`
+`createMenuData` `useMemo`). On project 399 (Test Bot's own personal
+project) the CREATE section shows **only** "New private ... credentials" —
+the "New project ..." option is entirely absent from the DOM, not just
+disabled. Both options render together only in a team project (471 used
+here — pick any team project the identity can at least READ).
+
+## CredentialsSelect dropdown — confirmed DOM shape (project 471, toolkit 151 "ProjectAlita/elitea_core")
+
+```
+<ul role="listbox" aria-labelledby="simple-select-label-Github Configuration">
+  <li role="option">CREATE</li>                                         <!-- ListSubheader, no testid -->
+  <li role="option" data-value='{"kind":"create_action","private":true}'>
+    New private github credentials                                       <!-- NO data-testid -->
+  </li>
+  <li role="option" data-value='{"kind":"create_action","private":false}'>
+    New project github credentials                                       <!-- NO data-testid; only renders off-personal-project -->
+  </li>
+  <li role="option">SAVED GITHUB CREDENTIALS <button aria-label="Refresh the configurations">…</button></li>
+  <li role="option" data-testid='select-option-{"kind":"saved","elitea_title":"...","private":true|false}'>
+    <credential label> <button data-testid="credential-open-in-new-tab-button" aria-label="Open in new tab">
+    <!-- credential-status-indicator / credential-reload-button also live here per toolkit_detail_page.py, when invalid -->
+  </li>
+  ...
+</ul>
+```
+
+Text renders visually UPPERCASE ("CREATE") via CSS `text-transform` — the
+underlying string is `"Create"` / `"Saved github Credentials"` (verify
+against rendered `inner_text()`, not raw textContent, if asserting case).
+
+## Confirmed testid gaps (needs-adding — none present on `main` or `automation/testids`, re-verified via fresh `git fetch origin` 2026-08-02)
+
+| Element | Current state | Where to add | Suggested testid |
+|---|---|---|---|
+| Configuration select **trigger** (combobox button) | `role="combobox"` only, no testid; `Select.SingleSelect` already supports a `dataTestId` prop (renders `${dataTestId}` on the root + `${dataTestId}-combobox` on `SelectDisplayProps`, `SingleSelect.jsx:658-659`) but `CredentialsSelect.jsx`'s `<Select.SingleSelect>` call never passes it | `CredentialsSelect.jsx` — add `dataTestId={\`toolkit-credential-select-${type}\`}` to the `<Select.SingleSelect>` call | `toolkit-credential-select-{type}` (e.g. `toolkit-credential-select-github`), combobox sub-part auto-gets `-combobox` suffix per the shared component |
+| CREATE-section option `<li>` (`variant: 'action'`, both private + project) | Bare `<MenuItem>`, no `data-testid` — sibling "saved" branch DOES get one via `SingleSelectMenuItem.jsx:117` (`data-testid={option.testId ?? \`select-option-${option.value}\`}`) because it renders through `SingleSelectDropdown`→`SingleSelectMenuItem`; the action branch bypasses that and renders a bare `MenuItem` directly | `EliteaUI/src/[fsd]/shared/ui/select/SingleSelect.jsx` ~line 411-417 (the `option.variant === 'action'` branch of `renderMenuItems`) — add `data-testid={option.testId ?? \`select-option-${option.value}\`}` to match the sibling branch | Comes for free once added: `select-option-{"kind":"create_action","private":true}` / `...,"private":false}` — same encoding the saved options already use |
+| Duplicate-credential-name API-error text ("Credential with ID '…' already exists") | Plain `<Typography variant="bodyMedium" sx={styles.errorMessage}>{apiError}</Typography>`, no testid | `EliteaUI/src/pages/Credentials/CredentialForm.jsx` ~line 352-360 | `credential-form-api-error-message` |
+| Configuration-field mismatch footer ("Your configuration does not match any available configurations.") — shown when the linked credential's `elitea_title` no longer resolves against any fetched configuration (e.g. it was deleted) | `<FormControl error><FormHelperText>…</FormHelperText></FormControl>`, no testid | `EliteaUI/src/[fsd]/features/credentials/ui/credentials-select/CredentialMismatchFooter.jsx` ~line 20-26 | `credential-select-mismatch-footer` |
+
+**Note (2026-07-24, orphaned prior attempt):** a dangling, never-merged local
+commit from an earlier session claims a testid
+`credential-form-api-error-message` was added at `EliteaUI@8c448d99` — that
+SHA is a **dangling commit object**, unreachable from any branch
+(`git log --all` confirms), and the string is absent from both `main` and
+`automation/testids` today. Treat it as **needs-adding**, not existing;
+reuse the same proposed name (it's a reasonable one) but the work itself was
+lost, not landed.
+
+## Server-side duplicate-name error (confirmed via API, `POST /configurations/configurations/{project_id}`)
+
+```
+400 {"error": "Credential with ID '<elitea_title>' already exists", "field": "elitea_title"}
+```
+Fires when `elitea_title` collides — the create form's ID field **live-mirrors
+Display Name** (`credential_form_fields.py`), so a Display-Name collision on
+an unedited ID field reproduces this. UI surfaces the exact string visibly
+(confirmed live) even though the element carries no testid yet (see gap
+table above).
+
+## Credential deletion reflection in a toolkit's Configuration field (ELITEA-1979 step 8)
+
+Deleting a **non-private, non-personal-project** credential that's linked to
+a toolkit, then reloading the toolkit's detail page: the Configuration
+combobox still renders the (now-orphaned) `elitea_title` text, but in
+**red/error styling**, with the `CredentialMismatchFooter` "does not match
+any available configurations" text below it (confirmed live, screenshot
+`test-results/screenshots/ELITEA-1979-step-08-mismatch.png` pattern). This is
+the concrete "empty/error state" the case's Pass criteria describe — it is
+NOT a blank/empty field, it's a red mismatched-value + helper-text pair.
+
+## Known defects touching this surface
+
+- **#1004** (OPEN) — GitHub credential create form: Access Token field is
+  NOT enforced as required once "Token" auth is selected — Save stays
+  enabled and the backend persists a credential with `access_token: null`.
+  Re-confirmed live 2026-08-02, identical repro. Relevant to ELITEA-1978
+  steps 5-6.
+- **#1047** (OPEN, filed as `[Clarification]`) — the Configuration select's
+  menu does NOT auto-close after a CREATE-action click (`variant: 'action'`
+  options set `skipNextCloseRef.current = true` in `SingleSelect.jsx`,
+  making the following `handleMenuClose` a no-op). Re-clicking the trigger
+  afterward hits an obscured element (`TimeoutError`). Relevant whenever a
+  test returns to the SAME open tab after a CREATE-action click without an
+  intervening reload/navigation — not hit in this session's own scripted
+  probes (which always did a fresh `page.goto()`/`page.reload()` before the
+  next combobox click), but a real trap for anyone assuming "click again to
+  reopen."
+- **#999** (OPEN, filed 2026-07-23/24: "GitHub toolkit type unavailable for
+  creation; existing toolkits locked to Raw JSON") — **appears NO LONGER
+  reproducible as of 2026-08-02**: this session created GitHub toolkits via
+  both API and the UI type-picker without error (`github` present in the
+  type-selector search, `POST .../tools/prompt_lib/399 {"type":"github",...}`
+  → 200), and the 3 pre-existing project-471 GitHub toolkits (117/150/151)
+  render the full Form view (Configuration tab, tool chips, credential
+  dropdown) — none are locked to Raw-JSON-only. Left OPEN (not closed by
+  this analyst — closure is human-only per `.agents/profile.md`); flagged
+  as a note for the report so a human can verify + close.

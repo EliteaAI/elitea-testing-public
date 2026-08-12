@@ -1,0 +1,1551 @@
+entry_point: FetchAndClassify
+
+state:
+  messages:
+    type: list
+  report_md:
+    type: str
+    value: ''
+
+nodes:
+  - id: FetchAndClassify
+    type: code
+    code:
+      type: fixed
+      value: |
+        import asyncio
+        import json
+        import re
+        import httpx
+        from datetime import datetime, timedelta, timezone
+
+        re  # ensure name bound before parse-args block below
+
+        DEFAULT_PROJECT_ID = 630
+        DEFAULT_DAYS_BACK = 7
+        USER_TIMEOUT_MINUTES = 15
+        # A streaming-but-empty assistant group is only treated as hung once it
+        # has been streaming for at least this many minutes. Below the threshold
+        # the predict is considered actively running and we report it as `active`.
+        ASSISTANT_HUNG_MINUTES = 10
+        # Grace period before flagging "no_teams_delivery": a completed
+        # assistant turn that lacks a successful ReplyTeamsMessage call may
+        # still be settling (meta.tool_calls eventual consistency, or a
+        # follow-up tool call in progress). Wait this many minutes before
+        # declaring the absence of delivery as a failure.
+        NO_DELIVERY_GRACE_MINUTES = 15
+        MAX_CONVERSATIONS = 300
+        PAGE_SIZE = 50
+        PARALLEL_DETAIL_FETCH = 30
+
+        # Parse user_input. The pipeline can be invoked two ways:
+        # 1. Chat / REST: human or external system sends a prompt like
+        #    `"1 day apply project=630"`. We parse it.
+        # 2. Native ELITEA scheduled (cron) trigger: ELITEA records the run as a
+        #    `source="pipeline"` conversation with `meta.scheduled_trigger=true`
+        #    and an input message whose content is `[Scheduled execution
+        #    triggered]`. IMPORTANT: that bracketed marker is NOT reliably
+        #    present in `elitea_state.get('input')` — the custom `state` block
+        #    below doesn't declare `input`, and the brackets don't survive into
+        #    that channel — so detecting cron by `'[Scheduled execution
+        #    triggered]' in input` silently fails and the run falls through to
+        #    the chat/`else` branch (7-day DRY-RUN → no nudges ever sent). We
+        #    therefore match the marker case/bracket-insensitively AND scan
+        #    `messages`, where the trigger text reliably lands. The
+        #    PipelineTriggerSchedule schema has no payload field — input can't be
+        #    customized per trigger — so cron mode uses fixed defaults:
+        #    DAYS_BACK=1, APPLY=True, project=DEFAULT_PROJECT_ID (same cadence as
+        #    `"1 day apply"` from chat / the old GH-Actions cron).
+        user_input = (elitea_state.get('input', '') or '').strip()
+        is_cron_invocation = (
+            user_input == ''
+            or 'scheduled execution triggered' in user_input.lower()
+            or 'scheduled execution triggered' in str(elitea_state.get('messages', '')).lower()
+        )
+
+        if is_cron_invocation:
+            PROJECT_ID = DEFAULT_PROJECT_ID
+            DAYS_BACK = 1
+            APPLY = True
+        else:
+            # project=NNN override (otherwise DEFAULT_PROJECT_ID)
+            m_proj = re.search(r'project\s*[=: ]\s*(\d+)', user_input, re.IGNORECASE)
+            PROJECT_ID = int(m_proj.group(1)) if m_proj else DEFAULT_PROJECT_ID
+
+            # Days-back: a bare integer like "1 day" / "30d" / "2"
+            # (must NOT swallow the project= number — strip that first)
+            u_no_proj = re.sub(r'project\s*[=: ]\s*\d+', '', user_input, flags=re.IGNORECASE)
+            m_days = re.search(r'(\d+)\s*(?:day|days|d)?\b', u_no_proj) if u_no_proj else None
+            DAYS_BACK = int(m_days.group(1)) if m_days else DEFAULT_DAYS_BACK
+            DAYS_BACK = max(1, min(DAYS_BACK, 90))
+
+            # APPLY is the DEFAULT (so scheduled/cron runs nudge without any
+            # trigger detection — which proved unreliable: the trigger marker
+            # never reaches `input`/`messages` at this node). DRY-RUN is opt-in
+            # via a 'dryrun' / 'dry-run' / 'dry' token in the chat input.
+            # ('apply' is still accepted as a harmless no-op.)
+            APPLY = not bool(re.search(r'\bdry(?:[\s_-]?run)?\b', user_input, re.IGNORECASE))
+
+        # Filter to Teams-only conversations (those with name starting "Teams:")
+        TEAMS_ONLY = True
+
+        # Markers we put into every nudge — used for idempotency on re-runs.
+        # NUDGE_MARKER_PREFIX is the stable substring we search for to detect any
+        # prior nudge (old or new format). The concrete marker placed in each
+        # nudge is `f"{NUDGE_MARKER_PREFIX} for {agent_name}]"`, which makes the
+        # targeted agent visible to humans reading the chat history.
+        NUDGE_MARKER_PREFIX = '[Pipeline retry —'
+        # Legacy fixed marker (still present in historic nudges) — kept for
+        # back-reference; new nudges use the per-agent format below.
+        NUDGE_MARKER = '[Pipeline retry — operator-triggered]'
+        # Stop nudging the same failure after this many attempts. Beyond the
+        # cap we treat the conv as needing human attention rather than
+        # endlessly re-nudging into platform instability.
+        MAX_NUDGE_ATTEMPTS = 3
+
+        headers = {
+            'Authorization': f'Bearer {elitea_client.auth_token}',
+            'Accept': 'application/json',
+        }
+        base_url = elitea_client.base_url.rstrip('/')
+        cutoff = datetime.now(timezone.utc) - timedelta(days=DAYS_BACK)
+
+        # The conversation-LIST endpoint's `updated_at` doesn't always advance
+        # when new message_groups land — convs that have broken predicts (e.g.
+        # the v0.416 LLM-resolver crash) often keep a stale list-`updated_at`
+        # from an older event (rename, fork, etc.). If we filter Pass 1 by the
+        # user's requested DAYS_BACK directly, those stale-updated_at convs
+        # with recent failing activity get silently dropped before we ever
+        # fetch their last messages.
+        #
+        # Fix: ALWAYS use a wider Pass-1 window (LIST_CUTOFF_DAYS_MIN) so we
+        # over-fetch from the list endpoint. Pass 2 re-filters by the conv's
+        # ACTUAL latest message_group timestamp (from the lightweight
+        # /messages/?limit=2 response) against the user's cutoff. The overhead
+        # is bounded — Pass 2 is cheap.
+        LIST_CUTOFF_DAYS_MIN = 7
+        list_cutoff_days = max(DAYS_BACK, LIST_CUTOFF_DAYS_MIN)
+        list_cutoff = datetime.now(timezone.utc) - timedelta(days=list_cutoff_days)
+
+        def parse_ts(s):
+            if not s:
+                return None
+            if s.endswith('Z'):
+                s = s[:-1]
+            has_offset = len(s) >= 6 and s[-6] in '+-' and s[-3] == ':'
+            if not has_offset:
+                s = s + '+00:00'
+            try:
+                return datetime.fromisoformat(s)
+            except Exception:
+                return None
+
+        ERROR_RE = re.compile(
+            r'(An unexpected error|error occurred|Traceback|OperationalError|'
+            r'RateLimitError|TimeoutError|ConnectionError)',
+            re.IGNORECASE,
+        )
+
+        # When the agent's predict task gets an auth/redirect failure (e.g. its
+        # ReplyTeamsMessage tool call hits a redirect to login), the platform
+        # sometimes wraps the redirect HTML body as the assistant's "response".
+        # The text starts with `Error: <!DOCTYPE html>` or `Error: <html` and
+        # contains the ELITEA UI bundle markers (alita_ui_config,
+        # sourceMappingURL, the 120-second auto-reload script). These are
+        # unambiguously not real assistant replies — we treat them as errored
+        # so the conv gets re-nudged (or flagged for human review).
+        CORRUPTED_RESPONSE_RE = re.compile(
+            r'Error:\s*<!DOCTYPE|Error:\s*<html|alita_ui_config|sourceMappingURL=',
+            re.IGNORECASE,
+        )
+
+        def normalize_text(content):
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                parts = []
+                for item in content:
+                    if isinstance(item, dict):
+                        parts.append(str(item.get('text') or item.get('content') or ''))
+                    else:
+                        parts.append(str(item))
+                return ' '.join(parts)
+            if isinstance(content, dict):
+                return str(content.get('text') or content.get('content') or content)
+            return str(content) if content is not None else ''
+
+        def last_text_of_group(group):
+            text_chunks = []
+            for it in (group.get('message_items') or []):
+                if it.get('item_type') == 'text_message':
+                    text_chunks.append(normalize_text((it.get('item_details') or {}).get('content')))
+            return ' '.join(text_chunks).strip()
+
+        def _classify_teams_delivery(group):
+            """Inspect ReplyTeamsMessage tool_calls in this group and return a
+            verdict on whether the user has the agent's final reply in Teams.
+
+            Why this isn't just `finish_reason == 'stop'`: the ReplyTeamsMessage
+            tool wraps a Power Automate workflow that POSTs to Microsoft Graph.
+            The tool returns `finish_reason: stop` whenever Power Automate
+            replies — but Power Automate also "replies" with a structured
+            error body when Microsoft Graph rejects the message. So `stop`
+            means "the workflow returned", NOT "the Teams user got the
+            message". Truth lives in `tool_output`: either
+            `{"ok":true,"message":"Teams reply was sent"}` (delivered) or
+            `Tool execution error!...` / `Power Automate workflow ... error`
+            (not delivered). Conv 2164 was the canonical case: 3 calls, all
+            `finish_reason=stop`, only the small apology delivered, the
+            long-form answer rejected twice — user got an apology and no
+            answer.
+
+            Verdicts emphasise the LAST call because the agent's last
+            ReplyTeamsMessage represents its final intent for this turn:
+              * 'all_success'              — every call delivered
+              * 'delivered_last_ok'        — some failures in the middle but
+                                             the LAST call delivered. From the
+                                             user's perspective the latest
+                                             intended message landed, so this
+                                             is treated as completed (we don't
+                                             re-nudge).
+              * 'last_failed'              — the LAST call failed. Some earlier
+                                             calls may have delivered (apology,
+                                             intermediate parts), but the
+                                             agent's most recent attempted
+                                             send did NOT reach the user.
+                                             Re-nudge.
+              * 'all_failed'               — every call failed; user got
+                                             nothing. Re-nudge.
+              * 'no_call'                  — no ReplyTeamsMessage calls;
+                                             user got nothing. Re-nudge.
+              * 'unverifiable'             — calls exist but tool_output
+                                             not in fetched data (Pass 2
+                                             lightweight); caller should
+                                             trigger Pass 3.
+            """
+            tcs = (group.get('meta') or {}).get('tool_calls') or {}
+            reply_calls = sorted(
+                [
+                    tc for tc in tcs.values()
+                    if (tc.get('tool_name') or '').strip().lower() == 'replyteamsmessage'
+                ],
+                key=lambda x: x.get('timestamp_start', '') or '',
+            )
+            if not reply_calls:
+                return 'no_call', 'no ReplyTeamsMessage calls', ''
+
+            # Detect if tool_output is present anywhere; if not, this is
+            # lightweight Pass 2 data and we can't verify delivery.
+            if not any(tc.get('tool_output') is not None for tc in reply_calls):
+                return ('unverifiable',
+                        f'{len(reply_calls)} ReplyTeamsMessage call(s); tool_output not in fetched data',
+                        '')
+
+            def _is_delivered(tc):
+                out = tc.get('tool_output')
+                if isinstance(out, (dict, list)):
+                    out_s = json.dumps(out)
+                else:
+                    out_s = str(out) if out is not None else ''
+                out_compact = out_s.replace(' ', '')
+                ok = ('"ok":true' in out_compact) or ('Teams reply was sent' in out_s)
+                err = (
+                    'Tool execution error' in out_s
+                    or 'failed internally' in out_s
+                    or ('Power Automate workflow' in out_s and 'error' in out_s.lower())
+                    or ('Microsoft Graph HTTP request' in out_s and 'failed' in out_s.lower())
+                )
+                # Conservative on ambiguity: only call it delivered if clearly ok and not err
+                return (ok and not err), out_s
+
+            results = [_is_delivered(tc) for tc in reply_calls]
+            total = len(results)
+            succeeded = sum(1 for ok, _ in results if ok)
+            failed = total - succeeded
+            last_ok, last_out = results[-1]
+            # First failure excerpt for evidence
+            first_failure_excerpt = next(
+                (out_s[:200] for ok, out_s in results if not ok),
+                ''
+            )
+
+            if failed == 0:
+                return 'all_success', f'{total}/{total} ReplyTeamsMessage calls delivered', ''
+
+            if succeeded == 0:
+                return ('all_failed',
+                        f'0/{total} ReplyTeamsMessage calls delivered (every attempt failed)',
+                        first_failure_excerpt)
+
+            # Mixed: at least one succeeded, at least one failed
+            if last_ok:
+                # User has the agent's latest intended message — count as
+                # delivered. Earlier failures are noted but don't warrant a
+                # re-nudge (the agent already retried and succeeded).
+                return ('delivered_last_ok',
+                        f'{succeeded}/{total} delivered (incl. last call) — user has the agent\'s final intent',
+                        first_failure_excerpt)
+            # Last call failed → user is missing the latest content
+            return ('last_failed',
+                    f'{succeeded}/{total} delivered, but LAST call failed — user has incomplete/stale content',
+                    first_failure_excerpt)
+
+        def enrich(detail):
+            """Cheap signals from data already in the detail response."""
+            groups = detail.get('message_groups') or []
+            participants = detail.get('participants') or []
+            meta = detail.get('meta') or {}
+
+            agent_ids = sorted({
+                (p.get('entity_meta') or {}).get('id')
+                for p in participants
+                if p.get('entity_name') == 'application'
+                and (p.get('entity_meta') or {}).get('id') is not None
+            })
+
+            tool_ok = 0
+            tool_err = 0
+            tool_err_names = {}
+            for g in groups:
+                tcs = (g.get('meta') or {}).get('tool_calls') or {}
+                for tc in tcs.values():
+                    fr = (tc.get('finish_reason') or '').lower()
+                    if fr == 'error':
+                        tool_err += 1
+                        name = tc.get('tool_name') or '?'
+                        tool_err_names[name] = tool_err_names.get(name, 0) + 1
+                    elif fr == 'stop':
+                        tool_ok += 1
+
+            top_failing_tool = None
+            if tool_err_names:
+                top_failing_tool = max(tool_err_names.items(), key=lambda kv: kv[1])
+
+            ctx_strat = meta.get('context_strategy') or {}
+            ctx_analy = meta.get('context_analytics') or {}
+            current_tok = ctx_analy.get('current_context_tokens')
+            max_tok = ctx_strat.get('max_context_tokens')
+            pressure = None
+            if isinstance(current_tok, (int, float)) and isinstance(max_tok, (int, float)) and max_tok > 0:
+                pressure = round(current_tok / max_tok, 2)
+
+            return {
+                'agent_ids': agent_ids,
+                'tool_ok_count': tool_ok,
+                'tool_error_count': tool_err,
+                'top_failing_tool': (
+                    f'{top_failing_tool[0]}×{top_failing_tool[1]}'
+                    if top_failing_tool else None
+                ),
+                'context_pressure': pressure,
+                'context_tokens': current_tok,
+                'max_context_tokens': max_tok,
+                'summaries_generated': ctx_analy.get('summaries_generated'),
+            }
+
+        def classify(groups, user_pids):
+            """Classify based on the LAST message group. `user_pids` may be
+            empty when called against the messages endpoint (no participants
+            array available); we fall back to author_participant_id heuristics."""
+            if not groups:
+                return {
+                    'status': 'empty',
+                    'failure': 'no',
+                    'failure_reason': None,
+                    'last_group_id': None,
+                    'evidence': 'no message_groups returned',
+                }
+
+            try:
+                groups_sorted = sorted(
+                    groups,
+                    key=lambda g: parse_ts(g.get('created_at', '')) or datetime.min.replace(tzinfo=timezone.utc),
+                )
+            except Exception:
+                groups_sorted = groups
+            last = groups_sorted[-1]
+
+            last_pid = last.get('author_participant_id')
+            if user_pids:
+                last_is_user = last_pid in user_pids
+            else:
+                # Fallback: assistant groups typically have a task_id, user groups don't
+                # AND assistant groups have non-empty meta.tool_calls or message_items
+                # with text from agents. Heuristic only.
+                meta = last.get('meta') or {}
+                last_is_user = (
+                    not last.get('task_id')
+                    and not (meta.get('tool_calls') or {})
+                    and not last.get('is_streaming')
+                )
+            last_streaming = bool(last.get('is_streaming'))
+            last_task_id = last.get('task_id')
+            last_items = last.get('message_items') or []
+            last_text = last_text_of_group(last)
+
+            # Pattern A: streaming-but-empty assistant group
+            # - Active (< ASSISTANT_HUNG_MINUTES old) → status=active (don't nudge)
+            # - Stale (>= threshold) → status=errored, hung
+            #
+            # NOTE: the original guard required a truthy `last_task_id`, but after
+            # the elitea_core v0.416 regression (LLM resolver throws before a
+            # task_id is bound to the message group) we see streaming-but-empty
+            # groups with task_id=''. Those are ALSO hung — just never made it
+            # past validate_and_resolve_llm_settings. Treat both shapes the same.
+            if not last_is_user and last_streaming and not last_items:
+                last_ts = parse_ts(last.get('created_at', ''))
+                age_min = None
+                if last_ts:
+                    age_min = (datetime.now(timezone.utc) - last_ts).total_seconds() / 60.0
+                task_marker = (last_task_id[:8] if last_task_id else 'no-task-id')
+                if age_min is None or age_min >= ASSISTANT_HUNG_MINUTES:
+                    extra = ' (no task_id assigned — likely v0.416 LLM-resolver crash)' if not last_task_id else ''
+                    return {
+                        'status': 'errored',
+                        'failure': 'yes',
+                        'failure_reason': f'hung: predict streaming for {int(age_min) if age_min is not None else "?"}m (>= {ASSISTANT_HUNG_MINUTES}m threshold){extra}',
+                        'last_group_id': last.get('id'),
+                        'evidence': f'is_streaming=True items=0 task_id={task_marker}',
+                    }
+                # Active in-flight predict — leave it alone
+                return {
+                    'status': 'active',
+                    'failure': 'no',
+                    'failure_reason': None,
+                    'last_group_id': last.get('id'),
+                    'evidence': f'predict actively running ({int(age_min)}m old, threshold {ASSISTANT_HUNG_MINUTES}m, task_id={task_marker})',
+                }
+
+            # Pattern B: explicit error string in the LAST assistant message text
+            if not last_is_user and last_text:
+                m = ERROR_RE.search(last_text[:600])
+                if m:
+                    return {
+                        'status': 'errored',
+                        'failure': 'yes',
+                        'failure_reason': f'explicit error: {m.group(0)}',
+                        'last_group_id': last.get('id'),
+                        'evidence': last_text[:200],
+                    }
+                # Pattern B.2: corrupted HTML/JS bundle response — the agent's
+                # predict path hit an auth/redirect and the redirect page got
+                # stored as its "reply". The text usually starts with
+                # "Error: <!DOCTYPE html>" and runs into the JS bundle.
+                # Check the first 1500 chars so we catch the markers even when
+                # they're past the inlined `<head>` section.
+                m2 = CORRUPTED_RESPONSE_RE.search(last_text[:1500])
+                if m2:
+                    return {
+                        'status': 'errored',
+                        'failure': 'yes',
+                        'failure_reason': (
+                            f'corrupted response (ELITEA UI HTML bundle bled '
+                            f'into agent reply: matched {m2.group(0)!r}) — '
+                            f'agent never actually replied'
+                        ),
+                        'last_group_id': last.get('id'),
+                        'evidence': last_text[:200],
+                    }
+
+            # Pattern C: last group is a user message → check timeout
+            if last_is_user:
+                last_ts = parse_ts(last.get('created_at', ''))
+                age_min = None
+                if last_ts:
+                    age_min = (datetime.now(timezone.utc) - last_ts).total_seconds() / 60.0
+                if age_min is not None and age_min >= USER_TIMEOUT_MINUTES:
+                    return {
+                        'status': 'errored',
+                        'failure': 'yes',
+                        'failure_reason': f'timeout: no reply within {USER_TIMEOUT_MINUTES}m (age={int(age_min)}m)',
+                        'last_group_id': last.get('id'),
+                        'evidence': f'user msg at {last.get("created_at")}, no assistant follow-up',
+                    }
+                return {
+                    'status': 'pending',
+                    'failure': 'no',
+                    'failure_reason': None,
+                    'last_group_id': last.get('id'),
+                    'evidence': f'awaiting reply (age={int(age_min) if age_min is not None else "?"}m)',
+                }
+
+            # Pattern E: Teams delivery verification (covers Patterns E and G).
+            #
+            # For Teams: convs (TEAMS_ONLY pre-filter), the user only sees what
+            # ReplyTeamsMessage delivered to their Teams chat. This rule
+            # subsumes several specific failure modes:
+            #   * Ghost-teams-reply: text claims a Teams reply but no tool call
+            #   * Scratchpad-only: agent reasoning never followed by delivery
+            #   * Forgot-the-tool: agent emitted a polished answer but skipped
+            #     the tool invocation
+            #   * Tool-failed: ReplyTeamsMessage was called but Power Automate
+            #     / Microsoft Graph rejected the body (HTML too complex, etc.)
+            #   * Partial delivery: some ReplyTeamsMessage calls succeeded
+            #     (e.g. an apology) but others failed (the actual answer)
+            #
+            # Uses _classify_teams_delivery, which inspects each call's
+            # `tool_output`. tool_output is only present in Pass 3 full-detail
+            # data — Pass 2 lightweight calls return 'unverifiable', in which
+            # case we fall back to a conservative finish_reason check AND mark
+            # the conv for Pass 3 promotion so the next pass can verify.
+            if not last_is_user and last_text and not last_streaming:
+                verdict, summary, evidence = _classify_teams_delivery(last)
+                last_ts = parse_ts(last.get('created_at', ''))
+                age_min = (
+                    (datetime.now(timezone.utc) - last_ts).total_seconds() / 60.0
+                    if last_ts else None
+                )
+                age_str = f'{int(age_min)}m old' if age_min is not None else 'age unknown'
+
+                # Pattern F (highest priority for self-reported failure):
+                # The Teams Support Agent's updated prompt instructs it to emit
+                # `DELIVERY_FAILED:` (in its `<answer>` text) when it has tried
+                # the progressive-simplification ladder (full HTML → bold-only
+                # → plain text → chunked) and ALL attempts came back as
+                # `Tool execution error!`. This is the agent honestly signalling
+                # it gave up — flag immediately, regardless of what tool_output
+                # verdicts say (the agent's last call may actually be a short
+                # "I tried but failed" status that *did* deliver, which would
+                # otherwise hide the failure under `delivered_last_ok`).
+                if 'DELIVERY_FAILED:' in last_text[:600]:
+                    # Extract the agent's self-reported reason if present
+                    import re as _re
+                    m = _re.search(r'DELIVERY_FAILED:\s*([^\n]{1,400})', last_text[:1500])
+                    self_reason = m.group(1).strip() if m else 'agent reported delivery failure'
+                    return {
+                        'status': 'errored',
+                        'failure': 'yes',
+                        'failure_reason': (
+                            f'agent_self_reported_failure: the agent emitted '
+                            f'`DELIVERY_FAILED:` in its <answer> after exhausting '
+                            f'the progressive-simplification ladder. '
+                            f'Agent\'s last words: {self_reason[:200]}'
+                        ),
+                        'last_group_id': last.get('id'),
+                        'evidence': f'first 200 of last_text: {last_text[:200]!r}',
+                    }
+
+                # all_failed and partial: agent attempted but delivery did not
+                # land (or only partially landed). Flag immediately — no grace
+                # period, because tool_output is authoritative once present.
+                if verdict == 'all_failed':
+                    return {
+                        'status': 'errored',
+                        'failure': 'yes',
+                        'failure_reason': (
+                            f'no_teams_delivery: all ReplyTeamsMessage calls failed at the '
+                            f'platform layer (Power Automate / Microsoft Graph rejected the body). '
+                            f'{summary}'
+                        ),
+                        'last_group_id': last.get('id'),
+                        'evidence': f'{summary}; first failure: {evidence!r}',
+                    }
+                if verdict == 'last_failed':
+                    # Agent's MOST RECENT ReplyTeamsMessage attempt didn't
+                    # deliver. Some earlier calls (apology / earlier parts)
+                    # may have landed, but the user is missing the agent's
+                    # final intended content for this turn — re-nudge.
+                    return {
+                        'status': 'errored',
+                        'failure': 'yes',
+                        'failure_reason': (
+                            f'last_failed: {summary}. The user got the early calls (e.g. apology '
+                            f'or earlier parts of a multi-part answer) but the agent\'s last '
+                            f'attempted send failed — typical when the substantive answer body '
+                            f'uses HTML tags Teams forbids (<h1>-<h6>, complex code blocks, '
+                            f'<table>, oversized HTML). Re-nudge with simpler HTML.'
+                        ),
+                        'last_group_id': last.get('id'),
+                        'evidence': f'{summary}; first failure: {evidence!r}',
+                    }
+                # `delivered_last_ok` falls through to the completed path below:
+                # the LAST call succeeded, so the user has the agent's final
+                # intended content. Earlier failures are residual noise — log
+                # them in evidence but don't re-nudge.
+                # `all_success` also falls through naturally.
+
+                # no_call: assistant produced content but never even attempted
+                # ReplyTeamsMessage. Apply the grace period — fresh responses
+                # may still be settling, e.g. a tool call about to fire.
+                if verdict == 'no_call' and (age_min is None or age_min >= NO_DELIVERY_GRACE_MINUTES):
+                    claims_replied = bool(re.search(
+                        r'replied (to [^\s]+ )?via teams|sent.*to teams|message sent to teams',
+                        last_text[:600], re.IGNORECASE,
+                    ))
+                    if claims_replied:
+                        reason = (
+                            f'ghost_teams_reply: assistant text claims a Teams reply but '
+                            f'no ReplyTeamsMessage tool_call was made at all (Teams user '
+                            f'received nothing; turn is {age_str}, past {NO_DELIVERY_GRACE_MINUTES}m grace)'
+                        )
+                    else:
+                        reason = (
+                            f'no_teams_delivery: assistant produced content but made no '
+                            f'ReplyTeamsMessage attempts at all — Teams user received nothing '
+                            f'(turn is {age_str}, past {NO_DELIVERY_GRACE_MINUTES}m grace)'
+                        )
+                    return {
+                        'status': 'errored',
+                        'failure': 'yes',
+                        'failure_reason': reason,
+                        'last_group_id': last.get('id'),
+                        'evidence': f'last_text[:120]={last_text[:120]!r}',
+                    }
+
+                # verdict == 'unverifiable' or 'all_success' (or no_call within
+                # grace): fall through to `completed`. Pass 3 will re-classify
+                # any conv whose lightweight pass left us 'unverifiable'.
+
+            # Otherwise the assistant produced content — count as completed
+            return {
+                'status': 'completed',
+                'failure': 'no',
+                'failure_reason': None,
+                'last_group_id': last.get('id'),
+                'evidence': last_text[:140] if last_text else 'assistant produced non-text content',
+            }
+
+        async def fetch_list_page(client, offset):
+            url = f'{base_url}/api/v2/elitea_core/conversations/prompt_lib/{PROJECT_ID}'
+            resp = await client.get(url, headers=headers, params={
+                'limit': PAGE_SIZE,
+                'offset': offset,
+                'sort_by': 'updated_at',
+                'sort_order': 'desc',
+            })
+            if resp.status_code >= 400:
+                return None, resp.status_code
+            return resp.json(), 200
+
+        async def fetch_last_messages(client, cid, limit=2):
+            """Lightweight: last N message groups, with full meta.tool_calls."""
+            url = f'{base_url}/api/v2/elitea_core/messages/prompt_lib/{PROJECT_ID}/{cid}'
+            resp = await client.get(url, headers=headers, params={
+                'limit': limit,
+                'sort_order': 'desc',
+            })
+            if resp.status_code >= 400:
+                return None
+            try:
+                return resp.json()
+            except Exception:
+                return None
+
+        async def fetch_full_detail(client, cid):
+            """Heavyweight: full conversation with participants + all groups.
+            Called only for non-completed convs (Pass 3).
+
+            IMPORTANT: pass messages_limit + sort_order=desc. This endpoint
+            defaults to the OLDEST 100 message groups (messages_limit=100,
+            ascending), so a long conversation (>100 groups — a busy Teams user)
+            gets truncated to its oldest 100. The classifier then keys on a
+            STALE mid-conversation group (e.g. an old hung predict that sits at
+            the 100-group boundary) instead of the real tail, and the
+            idempotency guard can't see recent nudges (they live past group 100)
+            — so a healthy conversation gets re-nudged on every run, forever.
+            Fetch the NEWEST groups instead."""
+            url = f'{base_url}/api/v2/elitea_core/conversation/prompt_lib/{PROJECT_ID}/{cid}'
+            resp = await client.get(url, headers=headers, params={
+                'messages_limit': 500,
+                'sort_order': 'desc',
+            })
+            if resp.status_code >= 400:
+                return None
+            try:
+                return resp.json()
+            except Exception:
+                return None
+
+        def tool_stats_for_groups(groups):
+            ok = 0; err = 0; err_names = {}
+            for g in groups:
+                tcs = (g.get('meta') or {}).get('tool_calls') or {}
+                for tc in tcs.values():
+                    fr = (tc.get('finish_reason') or '').lower()
+                    if fr == 'error':
+                        err += 1
+                        n = tc.get('tool_name') or '?'
+                        err_names[n] = err_names.get(n, 0) + 1
+                    elif fr == 'stop':
+                        ok += 1
+            top = max(err_names.items(), key=lambda kv: kv[1]) if err_names else None
+            return ok, err, (f'{top[0]}×{top[1]}' if top else None)
+
+        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+            # ───── Pass 1: list pages, filter by list-endpoint updated_at ─────
+            # Uses list_cutoff (>= DAYS_BACK) — over-fetches on purpose, then
+            # Pass 2 re-filters by ACTUAL latest message-group timestamp to
+            # avoid stale-updated_at false negatives.
+            recent = []
+            offset = 0
+            errors = []
+            while len(recent) < MAX_CONVERSATIONS:
+                page, status = await fetch_list_page(client, offset)
+                if status != 200 or not page:
+                    errors.append(f'list offset={offset} status={status}')
+                    break
+                rows_page = page.get('rows') or []
+                if not rows_page:
+                    break
+                for row in rows_page:
+                    ts = parse_ts(row.get('updated_at') or row.get('created_at') or '')
+                    if not ts or ts < list_cutoff:
+                        continue
+                    if TEAMS_ONLY and not (row.get('name') or '').startswith('Teams:'):
+                        continue
+                    recent.append(row)
+                last_ts = parse_ts(rows_page[-1].get('updated_at') or rows_page[-1].get('created_at') or '')
+                if not last_ts or last_ts < list_cutoff:
+                    break
+                offset += PAGE_SIZE
+            recent = recent[:MAX_CONVERSATIONS]
+
+            # ───── Pass 2: last 2 messages per conv (lightweight) ─────
+            sem = asyncio.Semaphore(PARALLEL_DETAIL_FETCH)
+
+            async def fetch_msgs(cid):
+                async with sem:
+                    return cid, await fetch_last_messages(client, cid, limit=2)
+
+            msg_results = await asyncio.gather(
+                *(fetch_msgs(c['id']) for c in recent),
+                return_exceptions=False,
+            )
+            msgs_by_cid = {cid: data for cid, data in msg_results}
+
+            # ───── Pass 2 re-filter ─────
+            # Drop convs whose ACTUAL latest message_group timestamp is older
+            # than the user's requested cutoff. Compensates for the list
+            # endpoint's stale `updated_at` (convs with recent broken predicts
+            # often keep an old list-`updated_at`). Convs we couldn't fetch
+            # messages for are kept (msgs=None) so they still surface in the
+            # report as fetch failures.
+            kept = []
+            dropped_by_actual_age = 0
+            for c in recent:
+                cid = c['id']
+                msgs = msgs_by_cid.get(cid)
+                if msgs is None:
+                    kept.append(c)
+                    continue
+                groups = msgs.get('rows') or []
+                latest_ts = None
+                for g in groups:
+                    ts = parse_ts(g.get('created_at', ''))
+                    if ts and (latest_ts is None or ts > latest_ts):
+                        latest_ts = ts
+                if latest_ts is None or latest_ts >= cutoff:
+                    kept.append(c)
+                else:
+                    dropped_by_actual_age += 1
+            recent = kept
+            list_meta_by_cid = {c['id']: c for c in recent}
+
+            # Build initial rows with classification from last 2 groups
+            rows = []
+            need_full_detail = []
+            for cid in [c['id'] for c in recent]:
+                conv_row = list_meta_by_cid[cid]
+                msgs = msgs_by_cid.get(cid)
+                if msgs is None:
+                    rows.append({
+                        'id': cid,
+                        'name': conv_row.get('name'),
+                        'updated_at': conv_row.get('updated_at'),
+                        'status': 'errored',
+                        'failure': 'yes',
+                        'failure_reason': 'messages fetch failed',
+                        'last_group_id': None,
+                        'evidence': None,
+                    })
+                    continue
+
+                groups = msgs.get('rows') or []  # desc order, last N
+                cls = classify(groups, user_pids=set())  # no participants yet
+
+                # Tool stats just for the LAST 2 groups (cheap signal)
+                ok2, err2, top_tool_2 = tool_stats_for_groups(groups)
+
+                # context_pressure FREE from list-endpoint meta
+                m = conv_row.get('meta') or {}
+                ctx_strat = m.get('context_strategy') or {}
+                ctx_analy = m.get('context_analytics') or {}
+                ctok = ctx_analy.get('current_context_tokens')
+                mtok = ctx_strat.get('max_context_tokens')
+                pressure = None
+                if isinstance(ctok, (int, float)) and isinstance(mtok, (int, float)) and mtok > 0:
+                    pressure = round(ctok / mtok, 2)
+
+                rows.append({
+                    'id': cid,
+                    'name': conv_row.get('name'),
+                    'created_at': conv_row.get('created_at'),
+                    'updated_at': conv_row.get('updated_at'),
+                    'source': conv_row.get('source'),
+                    'message_groups_count': conv_row.get('message_groups_count'),
+                    'participants_count': conv_row.get('participants_count'),
+                    'agent_id': None,  # filled in Pass 3 only if needed
+                    'tool_ok_in_last2': ok2,
+                    'tool_error_in_last2': err2,
+                    'tool_error_count': err2,  # default; refined in Pass 3 for non-completed
+                    'top_failing_tool': top_tool_2,
+                    'context_pressure': pressure,
+                    'context_tokens': ctok,
+                    'max_context_tokens': mtok,
+                    'summaries_generated': ctx_analy.get('summaries_generated'),
+                    **cls,
+                })
+
+                # Schedule full detail for non-completed convs (to read
+                # participants + run the full ERROR_RE check against all
+                # groups) AND for completed convs whose last assistant turn
+                # has ReplyTeamsMessage `finish_reason=stop` calls — those
+                # need Pass 3 to inspect tool_output and verify whether
+                # delivery actually succeeded vs failed at the Power Automate
+                # / Microsoft Graph layer (Pattern E + G).
+                if cls.get('status') in ('errored', 'pending'):
+                    need_full_detail.append(cid)
+                elif cls.get('status') == 'completed' and groups:
+                    last_g = groups[0]  # desc order — most recent group
+                    last_tcs_p2 = (last_g.get('meta') or {}).get('tool_calls') or {}
+                    if any(
+                        (tc.get('tool_name') or '').strip().lower() == 'replyteamsmessage'
+                        and (tc.get('finish_reason') or '').lower() == 'stop'
+                        for tc in last_tcs_p2.values()
+                    ):
+                        need_full_detail.append(cid)
+
+            # ───── Pass 3: full detail for non-completed convs only ─────
+            async def fetch_detail_bounded(cid):
+                async with sem:
+                    return cid, await fetch_full_detail(client, cid)
+
+            full_details = {}
+            if need_full_detail:
+                full_results = await asyncio.gather(
+                    *(fetch_detail_bounded(cid) for cid in need_full_detail),
+                    return_exceptions=False,
+                )
+                full_details = {cid: d for cid, d in full_results if d is not None}
+
+            # ───── Pass 3.5: fetch agent names for every agent that may be ─────
+            # mentioned in a nudge. We embed the agent name in the per-nudge
+            # marker so the human reading the chat can see at a glance which
+            # agent was being asked to retry. Run in parallel across unique
+            # application ids, with the same concurrency limit as pass 3.
+            unique_app_ids = set()
+            for detail in full_details.values():
+                for p in (detail.get('participants') or []):
+                    if p.get('entity_name') == 'application':
+                        aid = (p.get('entity_meta') or {}).get('id')
+                        if aid is not None:
+                            unique_app_ids.add(aid)
+
+            async def _fetch_agent_name(aid):
+                url = f'{base_url}/api/v2/elitea_core/application/prompt_lib/{PROJECT_ID}/{aid}'
+                async with sem:
+                    try:
+                        resp = await client.get(url, headers=headers)
+                    except Exception:
+                        return aid, f'agent#{aid}'
+                if resp.status_code >= 400:
+                    return aid, f'agent#{aid}'
+                try:
+                    body = resp.json() or {}
+                except Exception:
+                    body = {}
+                return aid, (body.get('name') or f'agent#{aid}')
+
+            agent_name_by_app_id = {}
+            if unique_app_ids:
+                pairs = await asyncio.gather(
+                    *(_fetch_agent_name(aid) for aid in unique_app_ids),
+                    return_exceptions=False,
+                )
+                agent_name_by_app_id = dict(pairs)
+
+        # Enrich non-completed rows with agent_id + whole-conv tool error count
+        for r in rows:
+            if r['id'] not in full_details:
+                continue
+            detail = full_details[r['id']]
+            participants = detail.get('participants') or []
+            user_pids = {p.get('id') for p in participants if p.get('entity_name') == 'user'}
+            agent_ids = sorted({
+                (p.get('entity_meta') or {}).get('id')
+                for p in participants
+                if p.get('entity_name') == 'application'
+                and (p.get('entity_meta') or {}).get('id') is not None
+            })
+            r['agent_id'] = agent_ids[0] if agent_ids else None
+            all_groups = detail.get('message_groups') or []
+            ok_all, err_all, top_tool_all = tool_stats_for_groups(all_groups)
+            r['tool_ok_count'] = ok_all
+            r['tool_error_count'] = err_all
+            r['top_failing_tool'] = top_tool_all
+            # Re-run classification with real user_pids (more accurate)
+            cls2 = classify(all_groups, user_pids=user_pids)
+            r.update(cls2)
+
+        passes_summary = {
+            'list_pages_fetched': (offset // PAGE_SIZE) + 1,
+            'list_cutoff_days': list_cutoff_days,
+            'effective_cutoff_days': DAYS_BACK,
+            'dropped_by_actual_age': dropped_by_actual_age,
+            'pass2_msg_fetches': len(msgs_by_cid),
+            'pass3_full_detail_fetches': len(full_details),
+            'parallelism': PARALLEL_DETAIL_FETCH,
+        }
+
+        # ───── Build nudge plan for errored conversations ─────
+        # For each errored conv, extract the user's last question text and the
+        # agent participant_id (target of the nudge). Then either dry-run-print
+        # or actually POST the nudge.
+
+        def _decode_text(raw):
+            """Make raw user content readable: handle escaped newlines, &nbsp;, HTML tags."""
+            if not isinstance(raw, str):
+                raw = normalize_text(raw)
+            text = raw
+            # Replace HTML entities
+            text = text.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"').replace('&#39;', "'")
+            # Replace literal \n / \r escape sequences with real newlines
+            text = text.replace('\\n', '\n').replace('\\r', '\n').replace('\\t', '\t')
+            return text
+
+        def _strip_inner_tags(s):
+            s = re.sub(r'<[^>]+>', ' ', s)
+            s = re.sub(r'[ \t]+', ' ', s).strip()
+            return s
+
+        def parse_teams_user_message(content):
+            """Pull apart a Teams user message into:
+              - latest_question (str): what the user actually asked this turn
+              - reply_instructions (str): the raw <ReplyInstructions>...</...> block
+                  the agent needs for Teams routing (ReplyTeamsMessage tool)
+              - history_lines (list[dict]): parsed history entries [{ts, who, text}]
+            Handles both closed and unclosed <ChatHistory>/<ReplyInstructions> tags.
+            """
+            text = _decode_text(content)
+            # Remove "Foo asks:" prefix
+            text = re.sub(r'^\s*[^<:\n]{1,80}\s+asks:\s*', '', text)
+
+            # Capture (don't drop) ReplyInstructions — preserve verbatim for the agent
+            reply_instr = ''
+            ri_match = re.search(r'<ReplyInstructions>(.*?)(?:</ReplyInstructions>|$)', text, flags=re.DOTALL)
+            if ri_match:
+                reply_instr = ri_match.group(1).strip()
+                text = text[:ri_match.start()] + text[ri_match.end():]
+
+            # Capture ChatHistory (also may be unclosed)
+            history_match = re.search(r'<ChatHistory>(.*?)(?:</ChatHistory>|$)', text, flags=re.DOTALL)
+            history_raw = ''
+            if history_match:
+                history_raw = history_match.group(1)
+                text = text[:history_match.start()] + text[history_match.end():]
+
+            latest_question = _strip_inner_tags(text)
+
+            # Parse the ChatHistory block. Each turn STARTS with a header line:
+            #   `2026-05-28 12:12:10 | Alexander Bychinskiy | first-line-of-text`
+            # and may continue across many physical lines until the next header.
+            # The earlier parser matched only the header line and dropped all
+            # continuation content, so the nudge's history block ended up
+            # showing just the first line of each turn (the agent's multi-line
+            # replies were truncated to e.g. "🛠️ GITHUB TOOLKIT — CREATE_FILE…"
+            # with the rest invisible). Accumulate continuations into the
+            # current turn's `text` so the agent receives the full message
+            # bodies as context.
+            header_re = re.compile(
+                r'^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?)\s*\|\s*([^|]+?)\s*\|\s*(.*)$'
+            )
+            history_lines = []
+            current = None
+            for raw_line in history_raw.splitlines():
+                stripped = raw_line.strip()
+                m = header_re.match(stripped) if stripped else None
+                if m:
+                    if current is not None:
+                        history_lines.append(current)
+                    current = {
+                        'ts': m.group(1),
+                        'who': m.group(2).strip(),
+                        'text': m.group(3),
+                    }
+                else:
+                    if current is None:
+                        continue  # text before any header — discard
+                    # Accumulate. Preserve a single newline between physical
+                    # lines so structured content (tables, lists) stays readable.
+                    if current['text']:
+                        current['text'] = current['text'] + '\n' + raw_line
+                    else:
+                        current['text'] = raw_line
+            if current is not None:
+                history_lines.append(current)
+            # Final clean-up per turn: strip residual inner tags + trailing
+            # whitespace, then cap to a generous size so the agent gets real
+            # context without runaway nudge bodies.
+            for h in history_lines:
+                h['text'] = _strip_inner_tags(h['text']).strip()[:800]
+
+            return latest_question, reply_instr, history_lines
+
+        def extract_last_user_message(detail):
+            """Return the raw content of the LATEST REAL user message.
+
+            "Real" means: author is a user-type participant AND the message
+            is not a previous nudge from this pipeline. Filtering out nudges
+            matters because nudges are sent as the operator's user-participant
+            (e.g. pid=77), so the naive "last user-pid message" would return
+            the nudge itself — and then the next nudge would be telling the
+            agent to "answer" our own prior nudge.
+            """
+            participants = detail.get('participants') or []
+            user_pids = {p.get('id') for p in participants if p.get('entity_name') == 'user'}
+            groups = detail.get('message_groups') or []
+            sorted_g = sorted(
+                groups,
+                key=lambda g: parse_ts(g.get('created_at', '')) or datetime.min.replace(tzinfo=timezone.utc),
+            )
+            for g in reversed(sorted_g):
+                if g.get('author_participant_id') not in user_pids:
+                    continue
+                if _is_nudge_group(g):
+                    continue
+                for it in (g.get('message_items') or []):
+                    if it.get('item_type') == 'text_message':
+                        return (it.get('item_details') or {}).get('content') or ''
+            return None
+
+        def find_agent_participant_id(detail):
+            for p in (detail.get('participants') or []):
+                if p.get('entity_name') == 'application':
+                    return p.get('id')
+            return None
+
+        def _is_nudge_group(g):
+            """A group is a nudge if any text_message item starts with our marker prefix.
+
+            Matches both the legacy `[Pipeline retry — operator-triggered]` and
+            the new per-agent `[Pipeline retry — for {name}]` forms via prefix.
+            """
+            for it in (g.get('message_items') or []):
+                if it.get('item_type') != 'text_message':
+                    continue
+                c = ((it.get('item_details') or {}).get('content') or '')
+                if isinstance(c, str) and NUDGE_MARKER_PREFIX in c:
+                    return True
+            return False
+
+        def _nudge_response_is_real(sorted_g, nudge_idx, user_pids):
+            """True if the nudge at `nudge_idx` produced an actual assistant
+            reply (not hung, not just an explicit error) before the next user
+            message.
+
+            "Real" means: an assistant group exists in (nudge_idx, next_user_idx)
+            that is NOT streaming-with-no-items, has non-empty text content,
+            and the text doesn't match the platform's error fingerprints. If
+            every assistant group after the nudge is hung or errored, the nudge
+            is treated as having failed — we should re-nudge rather than skip.
+            """
+            for g in sorted_g[nudge_idx + 1:]:
+                if g.get('author_participant_id') in user_pids:
+                    return False  # next user turn: nudge window closed
+                if _is_nudge_group(g):
+                    continue       # another nudge — keep looking past it
+                # Hung shape (incl. v0.416 no-task-id variant)
+                if g.get('is_streaming') and not (g.get('message_items') or []):
+                    continue
+                text = last_text_of_group(g)
+                if not text:
+                    continue
+                if ERROR_RE.search(text[:600]):
+                    continue       # assistant returned an explicit error message
+                if CORRUPTED_RESPONSE_RE.search(text[:1500]):
+                    continue       # ELITEA UI HTML bled into the reply (auth/redirect failure)
+                # Mirror of Pattern E (with tool_output verification when
+                # available): a "real" response must have actually delivered
+                # to Teams via a SUCCESSFUL ReplyTeamsMessage call. Partial
+                # delivery (some succeeded, some failed) and all-failed don't
+                # count — the Teams user still has incomplete content.
+                #
+                # When tool_output isn't available (Pass 2 / lightweight data),
+                # fall back to the conservative finish_reason='stop' check —
+                # we'll defer to a future Pass 3 re-classification for the
+                # definitive verdict.
+                verdict, _summary, _ev = _classify_teams_delivery(g)
+                if verdict in ('all_success', 'delivered_last_ok'):
+                    # User has the agent's final intended message in Teams.
+                    return True
+                if verdict == 'unverifiable':
+                    # Lightweight data; do a softer check by finish_reason
+                    tcs = (g.get('meta') or {}).get('tool_calls') or {}
+                    if any(
+                        (tc.get('tool_name') or '').strip().lower() == 'replyteamsmessage'
+                        and (tc.get('finish_reason') or '').lower() == 'stop'
+                        for tc in tcs.values()
+                    ):
+                        return True    # plausible delivery — best we can tell now
+                    continue
+                # last_failed / all_failed / no_call → not a real reply; keep
+                # looking for a later assistant group that did deliver, until
+                # we hit the next user turn.
+                continue
+            return False
+
+        def already_nudged_for_current_failure(detail):
+            """Idempotency check, scoped to the CURRENT failure.
+
+            A conversation is "already nudged" only if a prior nudge ACTUALLY
+            produced a real assistant reply (see `_nudge_response_is_real`). If
+            we nudged but the agent's response is itself hung or errored (e.g.
+            platform instability swallowed the predict task), the nudge is
+            considered no-op and we re-nudge on the next tick.
+
+            To prevent runaway re-nudging during prolonged outages, we also
+            stop after `MAX_NUDGE_ATTEMPTS` nudges have landed since the user's
+            last real question.
+            """
+            groups = detail.get('message_groups') or []
+            participants = detail.get('participants') or []
+            user_pids = {p.get('id') for p in participants if p.get('entity_name') == 'user'}
+
+            sorted_g = sorted(
+                groups,
+                key=lambda g: parse_ts(g.get('created_at', '')) or datetime.min.replace(tzinfo=timezone.utc),
+            )
+
+            # Find the chronologically-latest REAL user message: user-pid AND not a nudge.
+            last_real_user_idx = -1
+            for i, g in enumerate(sorted_g):
+                if g.get('author_participant_id') in user_pids and not _is_nudge_group(g):
+                    last_real_user_idx = i
+
+            # No real user message anywhere → fall back to global "any marker"
+            # check (rare; safest default to avoid runaway).
+            if last_real_user_idx < 0:
+                return any(_is_nudge_group(g) for g in sorted_g)
+
+            # Collect nudges placed after the last real user msg
+            nudge_indices = [
+                i for i in range(last_real_user_idx + 1, len(sorted_g))
+                if _is_nudge_group(sorted_g[i])
+            ]
+            if not nudge_indices:
+                return False  # never nudged for this failure → eligible
+
+            # Cap: if we've already nudged MAX_NUDGE_ATTEMPTS times, escalate
+            # to human (don't keep adding to history).
+            if len(nudge_indices) >= MAX_NUDGE_ATTEMPTS:
+                return True
+
+            # Re-nudge unless at least one prior nudge got a real response
+            return any(
+                _nudge_response_is_real(sorted_g, i, user_pids)
+                for i in nudge_indices
+            )
+
+        nudge_plan = []
+        nudge_skipped = []  # convs we'd nudge but for the idempotency block
+        for r in rows:
+            if r.get('status') != 'errored':
+                continue
+            cid = r['id']
+            detail = full_details.get(cid)
+            if not detail:
+                r['nudge_skipped_reason'] = 'no full detail available'
+                continue
+
+            # Idempotency, scoped to current failure: skip only if we already
+            # nudged AFTER the user's most recent real question. New failures
+            # (after a successful retry) become eligible again.
+            if already_nudged_for_current_failure(detail):
+                nudge_skipped.append({
+                    'conversation_id': cid,
+                    'name': r.get('name'),
+                    'reason': 'already nudged for current failure — needs human attention',
+                })
+                r['nudge_skipped_reason'] = 'already_nudged_for_current_failure'
+                continue
+
+            agent_pid = find_agent_participant_id(detail)
+            raw_user_msg = extract_last_user_message(detail)
+            conv_uuid = detail.get('uuid')
+            if not agent_pid or not raw_user_msg or not conv_uuid:
+                r['nudge_skipped_reason'] = (
+                    f'missing fields agent_pid={agent_pid} '
+                    f'user_q={"yes" if raw_user_msg else "no"} '
+                    f'uuid={"yes" if conv_uuid else "no"}'
+                )
+                continue
+
+            # Resolve the target agent's display name for the nudge marker
+            # (fetched in Pass 3.5). Falls back to a synthetic name if lookup
+            # failed for any reason.
+            agent_app_id = None
+            for p in (detail.get('participants') or []):
+                if p.get('entity_name') == 'application' and p.get('id') == agent_pid:
+                    agent_app_id = (p.get('entity_meta') or {}).get('id')
+                    break
+            agent_name = (
+                agent_name_by_app_id.get(agent_app_id)
+                if agent_app_id is not None
+                else None
+            ) or f'agent#{agent_app_id or "?"}'
+            nudge_marker = f'{NUDGE_MARKER_PREFIX} for {agent_name}]'
+
+            latest_question, reply_instr, history_lines = parse_teams_user_message(raw_user_msg)
+            # If the latest user message had no plain text after HTML/ChatHistory/
+            # ReplyInstructions stripping, it's typically an attachment/image-only
+            # turn (e.g. a screenshot pasted into Teams without a caption). We
+            # still want to nudge — the agent should look at the attachment in
+            # the conversation history and respond. Substitute a clear placeholder
+            # for the agent. Try to give the agent a hint about what shape the
+            # original payload had so it knows what to look for.
+            if not latest_question or not latest_question.strip():
+                hints = []
+                rum = raw_user_msg or ''
+                if '<img' in rum.lower():
+                    hints.append('image')
+                if '<a ' in rum.lower() or 'href=' in rum.lower():
+                    hints.append('hyperlink')
+                if 'graph.microsoft.com' in rum.lower():
+                    hints.append('Teams-hosted media')
+                shape = ', '.join(hints) if hints else 'attachment or media'
+                latest_question = (
+                    f'(the user sent a message with no plain text — {shape}). '
+                    'Open the conversation in Teams (or use the conversation '
+                    'history below) to see what they sent, and respond '
+                    'appropriately to that content.'
+                )
+            reason = r.get('failure_reason') or 'unknown'
+
+            history_block = ''
+            if history_lines:
+                lines_md = []
+                for h in history_lines[-12:]:
+                    lines_md.append(f"- `{h['ts']}` **{h['who']}**: {h['text']}")
+                history_block = (
+                    "\n\n**Recent conversation history (for context, useful after compaction):**\n"
+                    + "\n".join(lines_md)
+                )
+
+            # Preserve the Teams routing block verbatim — agent uses it for ReplyTeamsMessage
+            reply_instr_block = ''
+            if reply_instr:
+                reply_instr_block = (
+                    "\n\n**Teams routing (use these instructions for `ReplyTeamsMessage`):**\n"
+                    f"<ReplyInstructions>{reply_instr}</ReplyInstructions>"
+                )
+
+            nudge_text = (
+                f"{nudge_marker}\n\n"
+                f"Your previous reply in this conversation failed: `{reason}`.\n\n"
+                "**Please do the following, in order:**\n"
+                "1. Use `ReplyTeamsMessage` (with the Teams routing instructions below) to send a "
+                "brief apology to the user in Teams, acknowledging the technical failure of the "
+                "previous turn. Do NOT reveal internal details — say something like: \"Sorry, my "
+                "previous reply was broken due to a technical issue. Let me try again.\"\n"
+                "2. Then process the user's most recent question (below) and send the actual answer "
+                "to the same Teams conversation.\n\n"
+                "---\n\n"
+                f"**User's latest question (the one you must answer):**\n\n{latest_question or '(empty)'}"
+                + reply_instr_block
+                + history_block
+            )
+
+            nudge_plan.append({
+                'conversation_id': cid,
+                'conversation_uuid': conv_uuid,
+                'name': r.get('name'),
+                'agent_participant_id': agent_pid,
+                'agent_app_id': agent_app_id,
+                'agent_name': agent_name,
+                'failure_reason': reason,
+                'latest_question': latest_question,
+                'has_reply_instructions': bool(reply_instr),
+                'history_line_count': len(history_lines),
+                'nudge_text': nudge_text,
+            })
+
+        # ───── Execute (or dry-run) the nudges ─────
+        nudge_results = []
+        if APPLY and nudge_plan:
+            async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+                send_headers = dict(headers)
+                send_headers['Content-Type'] = 'application/json'
+                async def send_one(item):
+                    url = f"{base_url}/api/v2/elitea_core/messages/prompt_lib/{PROJECT_ID}/{item['conversation_uuid']}"
+                    payload = {
+                        'participant_id': item['agent_participant_id'],
+                        'user_input': item['nudge_text'],
+                        'await_task_timeout': -1,
+                        'return_task_id': True,
+                    }
+                    try:
+                        resp = await client.post(url, headers=send_headers, json=payload)
+                        ok = resp.status_code < 400
+                        body = None
+                        try: body = resp.json()
+                        except Exception: body = {'raw': resp.text[:200]}
+                        return {
+                            'conversation_id': item['conversation_id'],
+                            'http_status': resp.status_code,
+                            'ok': ok,
+                            'task_id': (body or {}).get('task_id'),
+                            'response_excerpt': str(body)[:200],
+                        }
+                    except Exception as e:
+                        return {
+                            'conversation_id': item['conversation_id'],
+                            'http_status': None,
+                            'ok': False,
+                            'error': str(e)[:200],
+                        }
+                nudge_results = await asyncio.gather(*(send_one(item) for item in nudge_plan))
+
+        passes_summary['nudges_planned'] = len(nudge_plan)
+        passes_summary['nudges_skipped_already_nudged'] = len(nudge_skipped)
+        passes_summary['nudges_applied'] = len(nudge_results)
+        passes_summary['mode'] = 'APPLY' if APPLY else 'DRY-RUN'
+
+        # Sort: errored > pending > active > completed > empty, newest first within each
+        order = {'errored': 0, 'pending': 1, 'active': 2, 'completed': 3, 'empty': 4}
+        rows.sort(key=lambda r: (
+            order.get(r.get('status'), 9),
+            -(int((parse_ts(r.get('updated_at') or '') or datetime.min.replace(tzinfo=timezone.utc)).timestamp())),
+        ))
+
+        counts = {'errored': 0, 'pending': 0, 'active': 0, 'completed': 0, 'empty': 0}
+        for r in rows:
+            s = r.get('status', 'empty')
+            counts[s] = counts.get(s, 0) + 1
+
+        # Build Markdown report
+        lines = []
+        lines.append(f"# Conversation Health Report — project {PROJECT_ID} (mode: {passes_summary['mode']})")
+        lines.append('')
+        lines.append(
+            f"**Window:** last {DAYS_BACK} days  |  "
+            f"**Total:** {len(rows)}  |  "
+            f"**Errored:** {counts['errored']}  |  "
+            f"**Pending:** {counts['pending']}  |  "
+            f"**Active:** {counts.get('active', 0)}  |  "
+            f"**Completed:** {counts['completed']}  |  "
+            f"**Empty:** {counts['empty']}"
+        )
+        lines.append('')
+        lines.append(
+            f"*Fetches: pass2(last-2-msgs)={passes_summary['pass2_msg_fetches']}, "
+            f"pass3(full-detail-only-for-non-completed)={passes_summary['pass3_full_detail_fetches']}; "
+            f"list scan over {passes_summary['list_cutoff_days']}d "
+            f"(effective window {passes_summary['effective_cutoff_days']}d, "
+            f"dropped={passes_summary['dropped_by_actual_age']} convs whose actual last message was older than effective cutoff)*"
+        )
+        lines.append('')
+        if errors:
+            lines.append('> Fetch warnings: ' + '; '.join(errors))
+            lines.append('')
+        lines.append(
+            '| id | name | updated_at | agent_id | groups | tool_err | top_failing_tool | '
+            'ctx_press | status | failure | failure_reason |'
+        )
+        lines.append('|---|---|---|---|---|---|---|---|---|---|---|')
+
+        def cell(s):
+            if s is None:
+                return ''
+            s = str(s).replace('|', '\\|').replace('\n', ' ')
+            return s[:80]
+
+        # Dedupe by id (list endpoint occasionally returns dups)
+        seen_ids = set()
+        for r in rows:
+            if r['id'] in seen_ids:
+                continue
+            seen_ids.add(r['id'])
+            te = r.get('tool_error_count') or 0
+            te_disp = f'**{te}**' if te > 5 else (str(te) if te else '')
+            ctx_p = r.get('context_pressure')
+            ctx_disp = ''
+            if ctx_p is not None:
+                ctx_disp = f'**{ctx_p:.2f}**' if ctx_p >= 0.85 else f'{ctx_p:.2f}'
+            lines.append(
+                f"| {r['id']} | {cell(r.get('name'))} | {cell(r.get('updated_at'))} | "
+                f"{cell(r.get('agent_id'))} | {cell(r.get('message_groups_count'))} | "
+                f"{te_disp} | {cell(r.get('top_failing_tool'))} | {ctx_disp} | "
+                f"{r.get('status')} | {r.get('failure')} | {cell(r.get('failure_reason'))} |"
+            )
+        # Append nudge plan / results
+        lines.append('')
+        lines.append('---')
+        lines.append('')
+        lines.append(f"## Nudge plan — mode: **{passes_summary['mode']}**")
+        lines.append('')
+        if nudge_skipped:
+            lines.append(
+                f"**Skipped (already nudged previously, need human attention):** {len(nudge_skipped)}"
+            )
+            for s in nudge_skipped:
+                lines.append(f"- conv {s['conversation_id']} — {s['name']}")
+            lines.append('')
+
+        if not nudge_plan:
+            lines.append('No new errored Teams conversations to nudge.')
+        else:
+            lines.append(f"**Planned nudges:** {len(nudge_plan)}")
+            if APPLY:
+                lines.append(f"**Applied:** {len(nudge_results)}")
+            lines.append('')
+            for i, item in enumerate(nudge_plan, 1):
+                lines.append(f"### {i}. Conversation {item['conversation_id']} — {item['name']}")
+                lines.append(f"- agent: **{item['agent_name']}** (app_id=`{item.get('agent_app_id')}`, participant_id=`{item['agent_participant_id']}`)")
+                lines.append(f"- failure_reason: `{item['failure_reason']}`")
+                lines.append(f"- latest_question: {(item['latest_question'] or '(empty)')[:200]}")
+                lines.append(f"- has_reply_instructions: {item['has_reply_instructions']}")
+                lines.append(f"- history_lines_included: {item['history_line_count']}")
+                lines.append('')
+                lines.append('<details><summary>Nudge body to POST</summary>')
+                lines.append('')
+                lines.append('```')
+                lines.append(item['nudge_text'])
+                lines.append('```')
+                lines.append('</details>')
+                lines.append('')
+                if APPLY:
+                    res = next((r for r in nudge_results if r['conversation_id'] == item['conversation_id']), None)
+                    if res:
+                        ok_tag = '✅' if res.get('ok') else '❌'
+                        lines.append(
+                            f"**Send result:** {ok_tag} HTTP {res.get('http_status')} "
+                            f"task_id=`{res.get('task_id')}` "
+                            f"{res.get('error', '')}"
+                        )
+                lines.append('')
+
+        if not APPLY:
+            lines.append('---')
+            lines.append('> To actually send these nudges, include the word `apply` in your message '
+                         '(e.g. `7 days apply`). Otherwise this is dry-run only.')
+
+        report_md = '\n'.join(lines)
+
+        # Deduplicate before aggregating
+        deduped = []
+        _seen = set()
+        for r in rows:
+            if r['id'] not in _seen:
+                _seen.add(r['id'])
+                deduped.append(r)
+
+        # Per-agent rollup: which agent has the highest error rate?
+        per_agent = {}
+        for r in deduped:
+            aid = r.get('agent_id')
+            if aid is None:
+                continue
+            s = per_agent.setdefault(aid, {'total': 0, 'errored': 0, 'tool_err_sum': 0})
+            s['total'] += 1
+            if r.get('status') == 'errored':
+                s['errored'] += 1
+            s['tool_err_sum'] += r.get('tool_error_count') or 0
+
+        per_agent_rollup = sorted(
+            (
+                {
+                    'agent_id': aid,
+                    'total': s['total'],
+                    'errored': s['errored'],
+                    'error_rate': round(s['errored'] / s['total'], 2) if s['total'] else 0,
+                    'tool_err_sum': s['tool_err_sum'],
+                }
+                for aid, s in per_agent.items()
+            ),
+            key=lambda x: (-x['error_rate'], -x['tool_err_sum']),
+        )
+
+        # Top failing tools across the window
+        tool_err_global = {}
+        for r in deduped:
+            tft = r.get('top_failing_tool')
+            if not tft:
+                continue
+            try:
+                name, cnt = tft.rsplit('×', 1)
+                tool_err_global[name] = tool_err_global.get(name, 0) + int(cnt)
+            except Exception:
+                pass
+        top_failing_tools_global = sorted(
+            tool_err_global.items(), key=lambda kv: -kv[1]
+        )[:5]
+
+        # Context-pressure outliers (≥ 85% full)
+        ctx_pressure_outliers = [
+            {
+                'id': r['id'],
+                'name': r.get('name'),
+                'ctx_pressure': r.get('context_pressure'),
+                'context_tokens': r.get('context_tokens'),
+                'summaries': r.get('summaries_generated'),
+            }
+            for r in deduped
+            if r.get('context_pressure') is not None and r.get('context_pressure') >= 0.85
+        ][:10]
+
+        summary = {
+            'project_id': PROJECT_ID,
+            'window_days': DAYS_BACK,
+            'fetched_at_utc': datetime.now(timezone.utc).isoformat(),
+            'counts': counts,
+            'per_agent_rollup': per_agent_rollup,
+            'top_failing_tools': [
+                {'tool': name, 'errors_in_window': cnt}
+                for name, cnt in top_failing_tools_global
+            ],
+            'context_pressure_outliers': ctx_pressure_outliers,
+            'errored_samples': [
+                {
+                    'id': r['id'],
+                    'name': r.get('name'),
+                    'agent_id': r.get('agent_id'),
+                    'failure_reason': r.get('failure_reason'),
+                    'evidence': r.get('evidence'),
+                    'tool_error_count': r.get('tool_error_count'),
+                    'top_failing_tool': r.get('top_failing_tool'),
+                    'context_pressure': r.get('context_pressure'),
+                }
+                for r in deduped if r.get('status') == 'errored'
+            ][:15],
+            'pending_samples': [
+                {'id': r['id'], 'name': r.get('name'), 'created_at': r.get('created_at')}
+                for r in deduped if r.get('status') == 'pending'
+            ][:10],
+        }
+        # Append the report as a message so ELITEA surfaces it as the
+        # assistant's chat response. Without this, the pipeline returns the
+        # structured output dict but the chat surface shows nothing (we
+        # removed the Printer node for 2.0.3 cron compatibility — see below).
+        # The Knowledge Compaction reference pipeline gets this for free
+        # because its terminal node is `llm`, which auto-appends its response
+        # to `messages`. For pure-code pipelines we have to do it explicitly.
+        #
+        # `langchain_core.messages.AIMessage` is NOT available inside the
+        # Pyodide sandbox the code node runs in. Instead use LangGraph's
+        # 2-tuple message format `(role, content)` which `add_messages`
+        # reducer accepts natively and auto-converts to AIMessage downstream.
+        existing_messages = elitea_state.get('messages', []) or []
+        out_messages = list(existing_messages) + [('ai', report_md)]
+        {'report_md': report_md, 'messages': out_messages}
+    input: []
+    output: [report_md, messages]
+    structured_output: true
+    transition: END
+
+  # Display (printer) node removed for 2.0.3 native-cron compatibility:
+  # `scheduled` and `webhook` triggers silently refuse to execute pipelines
+  # that contain Printer / HITL / interrupt nodes (the scheduler picks them
+  # up but the runtime stops before the trigger has a chance to fire). The
+  # report is surfaced to chat via the AIMessage we append above —
+  # ELITEA returns the last entry in `messages` as the assistant's reply.
+  # and scheduled runs. No printer needed.

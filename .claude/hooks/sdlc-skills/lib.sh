@@ -1,0 +1,628 @@
+# Shared helpers for sdlc-skills hooks. Sourced by session-start / agent-start.
+# No shebang and no `set` here — this file is sourced, not executed.
+
+# Project hook config (tunables: SDLC_SHARED_DOCS, SDLC_ROLE_MEMORY_FILES, SDLC_CTX_CAP)
+# from config.sh beside this file, if present. It lives WITH the hooks and is NOT
+# overwritten by a package sync (which refreshes the hook scripts, not config.sh).
+# A real environment value still wins — config.sh uses `: "${VAR:=...}"` defaults.
+if [ -n "${BASH_SOURCE:-}" ]; then
+  __sdlc_cfg="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/config.sh"
+  [ -f "$__sdlc_cfg" ] && . "$__sdlc_cfg"
+fi
+
+# Read the hook payload from stdin WITHOUT blocking. Critical: the Copilot CLI
+# leaves the stdin pipe open on `subagentStart` (no EOF), so a plain `cat` blocks
+# until the hook's 10s timeout — the runtime then KILLS the hook and discards its
+# output (we observed `Hook command timed out after 10 seconds` → no injection).
+# superpowers' hooks dodge this by never reading stdin; we must (we need the
+# sessionId / agentName), so we background `cat` to a temp file and cap the wait.
+# The payload is written immediately, so we capture it even if EOF never arrives.
+# Pure bash 3.2 (macOS): `read -t` is unusable — 3.2 discards partial input on
+# timeout (verified). ~2s cap, well under the 10s hook budget.
+read_stdin_payload() {
+  [ -t 0 ] && { printf ''; return 0; }            # not a pipe → nothing to read
+  local tmp pid i=0
+  tmp="$(mktemp 2>/dev/null)" || { printf ''; return 0; }
+  # `<&0` is REQUIRED: a backgrounded command in a non-interactive shell (no job
+  # control) has stdin redirected from /dev/null unless an explicit redirection is
+  # given, so a bare `cat &` reads nothing. `<&0` forces it to read the real pipe.
+  cat <&0 > "$tmp" 2>/dev/null &
+  pid=$!
+  while kill -0 "$pid" 2>/dev/null && [ "$i" -lt 20 ]; do sleep 0.1; i=$((i + 1)); done
+  kill "$pid" 2>/dev/null
+  wait "$pid" 2>/dev/null
+  cat "$tmp" 2>/dev/null
+  rm -f "$tmp"
+}
+
+# True when the string is empty or contains only whitespace. Replaces the
+# `[ -z "${var//[$'\n\t ']/}" ]` idiom, whose global parameter substitution is
+# O(n²) on bash 3.2 (the macOS default): on a ~14KB context it ran ~114s and
+# blew past the 10s hook timeout, so a dispatched worker silently got no memory.
+# `case` glob matching is linear (~0.01s on the same input). `[![:space:]]`
+# matches any non-whitespace char, so a hit means the string has real content.
+is_blank() {
+  case "$1" in
+    *[![:space:]]*) return 1 ;;
+    *)              return 0 ;;
+  esac
+}
+
+# Escape a string for embedding inside a JSON string literal.
+# NOT with bash `${s//…}`: global parameter substitution is QUADRATIC on
+# bash 3.2 (the macOS default) — measured 0.39s at 8KB, 3.08s at 16KB, and
+# ~3+ MINUTES at 63KB of real .agents docs. session-start is registered
+# async:false, so that blocked the whole session at startup, and agent-start
+# pays the same price on EVERY subagent dispatch. (Same bug class is_blank()
+# above already fixed — this function was the one left behind.)
+# One linear perl pass: 93KB in ~7ms (measured; awk 11ms, python3 25ms — and
+# python3 is not a given on Windows, so perl it is). perl ships with macOS and
+# Git for Windows; a perl-less environment falls back to the substitution below.
+#
+# THE FINAL SUBSTITUTION IS NOT COSMETIC. JSON forbids a RAW control character
+# (U+0000–U+001F) inside a string, and \n \r \t are only three of the thirty-two.
+# An ESC from an ANSI colour code, a form feed, a vertical tab — one of those in
+# any injected doc made the whole payload invalid JSON, and the host then drops
+# it entirely: NO context injected, no error, nothing in the log. Escaping the
+# remainder as \u00xx costs nothing measurable (93KB: 7ms either way) and the
+# output is byte-identical on text that has none, which is the normal case —
+# 0 of 371 real .agents docs on this machine carried one. Latent, not academic:
+# pasting a coloured test-run log into a gotchas file is all it takes.
+# Order matters: backslash first, then quote, then the three short forms, and
+# \u00xx only for what is left — otherwise \n would come out as \u000a.
+escape_for_json() {
+  if command -v perl >/dev/null 2>&1; then
+    printf '%s' "$1" | perl -0777 -pe 's/\\/\\\\/g; s/"/\\"/g; s/\n/\\n/g; s/\r/\\r/g; s/\t/\\t/g; s/([\x00-\x1F])/sprintf("\\u%04x",ord($1))/ge'
+  else
+    # No perl: strip the control characters that have no short form instead of
+    # encoding them. Lossy, but the alternative in pure bash is a per-character
+    # loop over a payload this size, and dropping an ANSI escape from a document
+    # loses nothing a reader wanted. \t \n \r are kept and escaped below.
+    #
+    # `tr` is used ONLY if present, and a failure falls through to the raw
+    # string. This branch is the last resort in an environment already missing
+    # perl, so it must not acquire a second hard dependency: emitting text that
+    # is merely at risk of an invalid control char beats emitting nothing.
+    local s="$1"
+    if command -v tr >/dev/null 2>&1; then
+      s="$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')" || s="$1"
+    fi
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+  fi
+}
+
+# Extract a top-level JSON string field without requiring jq (which we can't
+# assume is installed). Usage: json_string_field "$json" "agent_name"
+json_string_field() {
+  local json="$1" key="$2"
+  printf '%s' "$json" \
+    | sed -n "s/.*\"${key}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" \
+    | head -n1
+}
+
+# The shared project docs are a CURATED list (not every file in .agents/, so you
+# control exactly what's shared and don't sweep in stray files). The list is set in
+# the hook config (config.sh → $SDLC_SHARED_DOCS, space-separated base names); a
+# real environment value overrides it; the built-in default is the final fallback.
+# Names are base names (no .md); a listed doc that doesn't exist is simply skipped.
+# These are flat .agents/<name>.md files — subfolders are never involved.
+SDLC_SHARED_DOCS_DEFAULT="testing profile workflow conventions role-overrides team-comms"
+shared_doc_names() {
+  printf '%s\n' ${SDLC_SHARED_DOCS:-$SDLC_SHARED_DOCS_DEFAULT}
+}
+
+# True if the shared-doc instruction files are already on disk — i.e. this session
+# loaded them into the system prompt at startup, so the agent already has the shared
+# docs and needs no read-list. session-start checks this BEFORE it (re)writes them,
+# so it reflects the pre-session state. $1 = project dir.
+instructions_present() {
+  local dir="$1/.github/instructions" name
+  for name in $(shared_doc_names); do
+    [ -f "${dir}/${name}.instructions.md" ] && return 0
+  done
+  return 1
+}
+
+# Concatenate the lean shared project docs (scout outputs + role overrides) that
+# exist under $1 (an .agents dir), each under a markdown header. Echoes the
+# combined string (empty if none). This is the per-dispatch "must-read" project
+# context — kept lean on purpose; the full AGENTS.md manual is NOT injected, it
+# stays an on-demand reference.
+collect_shared_context() {
+  local agents_dir="$1" out="" name f
+  for name in $(shared_doc_names "$agents_dir"); do
+    f="${agents_dir}/${name}.md"
+    if [ -f "$f" ]; then
+      out="${out}"$'\n\n'"# .agents/${name}.md"$'\n\n'"$(cat "$f")"
+    fi
+  done
+  printf '%s' "$out"
+}
+
+# Concatenate a role's startup memory — the persona (SOUL.md, injected only for
+# VS Code / Copilot CLI, which reference it softly and don't expand @-imports;
+# Claude expands it natively and Codex inlines it) plus the memory snapshot/index
+# (snapshot.md is the generic name, MEMORY.md is the index `init` seeds). Echoes
+# the combined string (empty if the role has no memory dir / no files).
+# $1 = project dir, $2 = role name. Shared by agent-start (subagent dispatch) and
+# session-start (Copilot CLI orchestrator, resolved from session-state).
+# The role-memory file names injected from .agents/memory/<role>/ — a CURATED,
+# configurable list (hook config → $SDLC_ROLE_MEMORY_FILES, space-separated; default
+# below). SOUL.md (the persona) is honored only under Copilot — Claude/Codex receive
+# it via the agent body's @-import, so injecting it here too would duplicate it.
+# Echoes one name per line (after the SOUL gate). Shared by collect_role_memory,
+# build_capped_context's inline memory loop, and list_role_memory_files so all agree.
+# RULES.md sits second on purpose. ORDER IS THE PRIORITY: the inline loop takes
+# files while they still fit the cap and spills the rest to a read-list, so what
+# is listed first is what survives a tight budget. Hard behavioural rules should
+# outrank the memory index — an agent that read its index but not its rules is
+# the worse failure. (Measured: a lead violated a context-frugality rule that
+# lived only in RULES.md, a file no host was installing into its context at all.)
+SDLC_ROLE_MEMORY_FILES_DEFAULT="SOUL.md RULES.md snapshot.md MEMORY.md project_briefing.md"
+role_memory_files() {
+  local mf
+  for mf in ${SDLC_ROLE_MEMORY_FILES:-$SDLC_ROLE_MEMORY_FILES_DEFAULT}; do
+    if [ "$mf" = "SOUL.md" ] && [ -z "${SDLC_VSCODE:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
+      continue                          # persona arrives via @-import on Claude/Codex
+    fi
+    printf '%s\n' "$mf"
+  done
+}
+
+# Where a role-memory file actually lives. The per-role memory dir is the primary
+# home, but not every file gets installed there: `RULES.md` ships INSIDE the agent
+# directory, and only the Copilot path relocates `SOUL.md` into memory — so a
+# memory-dir-only lookup silently skipped both on most hosts. (Measured: a lead
+# violated a rule that was written in RULES.md and had never reached its context,
+# on a host where the file sat two directories away the whole time.)
+#
+# So: memory dir first, then the host's agent directory. Copilot and Codex flatten
+# their agents into a single file and genuinely have no per-agent dir — nothing to
+# find there, and the loop simply moves on.
+# Echoes the resolved path, or nothing.
+resolve_role_file() {
+  local base="$1" role="$2" mf="$3" d
+  for d in "${base}/.agents/memory/${role}" \
+           "${base}/.claude/agents/${role}" \
+           "${base}/.cursor/agents/${role}" \
+           "${base}/.windsurf/agents/${role}"; do
+    [ -f "${d}/${mf}" ] && { printf '%s' "${d}/${mf}"; return 0; }
+  done
+  printf ''
+}
+
+# The project-root-relative form of the same, for read-lists and headers.
+rel_role_file() {
+  local base="$1" p="$2"
+  printf '%s' "${p#"${base}/"}"
+}
+
+collect_role_memory() {
+  local base="$1" role="$2" out="" mf f rel header
+  [ -n "$role" ] || { printf ''; return 0; }
+  for mf in $(role_memory_files); do
+    f="$(resolve_role_file "$base" "$role" "$mf")"
+    [ -n "$f" ] || continue
+    rel="$(rel_role_file "$base" "$f")"
+    case "$mf" in
+      SOUL.md)  header="# Your persona — ${rel}" ;;
+      RULES.md) header="# Your standing rules — ${rel}" ;;
+      *)        header="# Your persistent memory — ${rel}" ;;
+    esac
+    out="${out}"$'\n\n'"${header}"$'\n\n'"$(cat "$f")"
+  done
+  printf '%s' "$out"
+}
+
+# Byte length of a string (wc -c, so it's true bytes regardless of locale).
+byte_len() { printf '%s' "$1" | wc -c | tr -d ' '; }
+
+# Byte length the string will occupy AFTER JSON escaping — i.e. the size the
+# runtime actually measures against the additionalContext cap. escape_for_json
+# prefixes a backslash to each \ " newline carriage-return tab, so each such
+# char adds exactly one byte; escaped_len = raw_len + count(those chars). Counted
+# with tr|wc (linear, two passes) — NOT by running the full O(n²)-ish escape.
+esc_byte_len() {
+  local s="$1" raw esc
+  raw="$(byte_len "$s")"
+  esc="$(printf '%s' "$s" | tr -cd '\\"'$'\n\r\t' | wc -c | tr -d ' ')"
+  printf '%s' "$((raw + esc))"
+}
+
+# List the shared-doc paths (project-root-relative) that collect_shared_context
+# WOULD inline — used to build a "read these instead" directive when inlining
+# them would overflow the additionalContext cap. Mirrors that function's set/order.
+list_shared_files() {
+  local agents_dir="$1" name out=""
+  for name in $(shared_doc_names "$agents_dir"); do
+    [ -f "${agents_dir}/${name}.md" ] && out="${out}.agents/${name}.md"$'\n'
+  done
+  printf '%s' "$out"
+}
+
+# List the role-memory paths (project-root-relative) that collect_role_memory
+# WOULD inline. Mirrors its SOUL.md gating + file set. $1=project dir, $2=role.
+list_role_memory_files() {
+  local base="$1" role="$2" mf f out=""
+  [ -n "$role" ] || { printf ''; return 0; }
+  for mf in $(role_memory_files); do
+    f="$(resolve_role_file "$base" "$role" "$mf")"
+    [ -n "$f" ] && out="${out}$(rel_role_file "$base" "$f")"$'\n'
+  done
+  printf '%s' "$out"
+}
+
+# Build a hard-rule directive telling the agent to READ the given files (one
+# project-root-relative path per line in $1) in full before starting — the
+# fallback when inlining their content would blow the additionalContext cap.
+# Best-effort, not guaranteed (additionalContext isn't the system prompt), but
+# strictly better than the runtime silently dropping an over-cap payload whole.
+build_read_directive() {
+  local files="$1" out f oldifs
+  out="# REQUIRED READING — load these before doing anything else"$'\n\n'
+  out="${out}These project files may not be inlined in your context. Read each one in"$'\n'
+  out="${out}full now — SKIP any whose content is already present in your context or"$'\n'
+  out="${out}instructions — before other work; they are authoritative and override"$'\n'
+  out="${out}defaults in your agent definition:"$'\n'
+  oldifs="$IFS"; IFS=$'\n'
+  for f in $files; do
+    [ -n "$f" ] && out="${out}"$'\n'"- ${f}"
+  done
+  IFS="$oldifs"
+  printf '%s' "$out"
+}
+
+# Build the additionalContext injection so it NEVER overflows the ~10KB cap (an
+# over-cap payload is dropped IN FULL by the runtime — verified). Two channels, no
+# overlap: shared docs ride the instruction-file shelf (see refresh_shared_
+# instructions); additionalContext carries the ROLE MEMORY (role-specific → can't go
+# on the global shelf), plus a read-list pointing at the shared docs only when this
+# agent won't have the shelf. Specifically:
+#   - Each role-memory file is inlined while it still fits the cap; one too big to
+#     fit becomes a self-read pointer (read its own .agents/memory/<role>/ file).
+#   - A shared-doc read-list is appended ONLY when cli_sub is set (CLI sub-agents
+#     never inherit instruction files) OR instr_present is empty (cold first run);
+#     otherwise the shared docs are already in the system prompt — no note needed.
+# The cap is Copilot-specific; other runtimes (Claude/Codex/Cursor) inline as-is.
+# Sizes are measured AFTER JSON escaping (esc_byte_len). $1=project dir, $2=role,
+# $3=instr_present (1/empty), $4=cli_sub (1/empty). SDLC_CTX_CAP overrides (def 10240).
+# The per-host injection budget, in BYTES. Exposed because the caller must be
+# able to subtract whatever IT appends after this function returns — anything
+# added afterwards is outside the cap, and the runtime drops an over-cap payload
+# WHOLE. (Measured: two small trailing blocks pushed a 32,768-byte budget to
+# 32,993 escaped bytes. Harmless against the 48KB rejection floor, but the
+# accounting was wrong, and a bigger tail would not have been.)
+default_ctx_cap() {
+  if [ -n "${COPILOT_CLI:-}" ] || [ -n "${SDLC_VSCODE:-}" ]; then printf '10240'; else printf '32768'; fi
+}
+
+build_capped_context() {
+  local base="$1" role="$2" instr_present="$3" cli_sub="$4"
+  local agents_dir="${base}/.agents" dir="${base}/.agents/memory/${role}"
+
+  # EVERY host caps. This used to return early for Claude/Codex ("no cap — inline
+  # memory + all shared"), on the assumption that only Copilot enforces a limit.
+  # Field measurement (2026-07-24) says otherwise: across one 13-hour campaign,
+  # 302 of 302 SubagentStart payloads on Claude Code were REJECTED for inlining
+  # (smallest rejection 48KB, largest 126.7KB) and replaced with a ~2KB preview
+  # plus a file path. Every worker ran on a fraction of its memory and had no way
+  # to know. Uncapped does not mean "everything gets through" — it means the
+  # runtime truncates instead of us, silently and without a read-list.
+  #
+  # Default caps are per-host because the ceilings differ: Copilot's
+  # additionalContext limit is ~10KB; Claude Code's observed rejection floor is
+  # 48KB, so 32KB leaves headroom (the same number the archived octobots
+  # memory.py chose for snapshot.md, independently, for the same reason).
+  # NOTE on units: this budget is BYTES. Dense technical prose runs ~2.2
+  # bytes/token, not the usual ~4 — do not "convert" this cap to tokens with the
+  # wrong ratio and double it.
+  local default_cap; default_cap="$(default_ctx_cap)"
+
+  # Reserve room for the worst-case MUST-READ directive: it can name every role-memory
+  # file AND every shared doc, so reserving that upper bound guarantees the inlined
+  # content can never crowd the directive out and push the final payload over the cap
+  # (the runtime drops an over-cap payload WHOLE). Measured post-escape; the real
+  # directive is always a subset of this list, so the bound is safe. (A fixed reserve
+  # was NOT enough — a long role name + full overflow list exceeded it.)
+  local cap="${SDLC_CTX_CAP:-$default_cap}" budget maxlist
+  maxlist="$(list_role_memory_files "$base" "$role")
+$(list_shared_files "$agents_dir")"
+  budget=$(( cap - $(esc_byte_len "$(build_read_directive "$maxlist")") - 16 ))
+
+  # Role memory rides additionalContext — it's role-specific, so it can't go on the
+  # shared instruction-file shelf. Inline each memory file while it still fits the
+  # cap; a file too big to fit becomes a self-read pointer (read its own file).
+  local context="" overflow="" mf f header doc cand
+  local rel
+  if [ -n "$role" ]; then
+    for mf in $(role_memory_files); do
+      f="$(resolve_role_file "$base" "$role" "$mf")"; [ -n "$f" ] || continue
+      rel="$(rel_role_file "$base" "$f")"
+      case "$mf" in
+        SOUL.md)  header="# Your persona — ${rel}" ;;
+        RULES.md) header="# Your standing rules — ${rel}" ;;
+        *)        header="# Your persistent memory — ${rel}" ;;
+      esac
+      doc=$'\n\n'"${header}"$'\n\n'"$(cat "$f")"
+      cand="${context}${doc}"
+      if [ "$(esc_byte_len "$cand")" -le "$budget" ]; then
+        context="$cand"                                          # fits → inline
+      else
+        # Whole-file spill loses everything in that file. MEMORY.md is the one
+        # file where a partial view is still useful: it is line-oriented (one
+        # entry per line), so the first N lines are N complete, usable hooks —
+        # not a sentence cut in half. A legacy index can be many times the cap
+        # (measured: 124KB against a 32KB budget), and all-or-nothing there means
+        # the agent gets no map at all.
+        if [ "$mf" = "MEMORY.md" ]; then
+          # Incremental accounting. esc_byte_len is per-character additive
+          # (raw bytes + one per escaped char), so measuring the fixed parts
+          # ONCE — context plus the header/annotation wrapper this slice ships
+          # inside — and adding each line's own escaped length (+2 for its
+          # escaped newline) sums to exactly the whole-candidate measurement.
+          # Re-measuring the accumulated candidate per line was quadratic:
+          # seconds of synchronous latency per dispatch on a field-sized index.
+          # The wrapper is measured with a 5-digit N placeholder (upper bound),
+          # so the annotation can never push the final payload over the cap.
+          local head_doc="" line n=0 used lineln wrapper
+          wrapper=$'\n\n'"${header} (FIRST 99999 ENTRIES — the file is over the injection budget)"$'\n\n'
+          used=$(( $(esc_byte_len "$context") + $(esc_byte_len "$wrapper") ))
+          while IFS= read -r line; do
+            lineln=$(( $(esc_byte_len "$line") + 2 ))
+            [ $(( used + lineln )) -gt "$budget" ] && break
+            used=$(( used + lineln ))
+            head_doc="${head_doc}${line}"$'\n'
+            n=$((n + 1))
+          done < "$f"
+          if [ "$n" -gt 0 ]; then
+            context="${context}"$'\n\n'"${header} (FIRST ${n} ENTRIES — the file is over the injection budget)"$'\n\n'"${head_doc}"
+          fi
+        fi
+        overflow="${overflow}${rel}"$'\n'                        # too big → self-read
+      fi
+    done
+  fi
+
+  # Shared docs normally live on the instruction-file shelf. How they reach THIS
+  # agent depends on whether it gets the shelf:
+  #
+  # NO SHELF → INLINE WHAT FITS, read-list the rest. Two audiences land here and
+  # they used to be treated differently for no good reason:
+  #   * CLI sub-agents, which never inherit instruction files; and
+  #   * ANY top-level agent on a host that has no shelf at all — which is every
+  #     Claude Code session, because refresh_shared_instructions is guarded to
+  #     Copilot (`.github/instructions/` is a Copilot convention Claude Code does
+  #     not read). `instr_present` is therefore permanently empty there.
+  # The second case used to fall into a "cold first run, the shelf warms next
+  # session" branch that handed over a bare read-list. On Claude Code the shelf
+  # never warms, so that transient state was permanent: measured on a live lead
+  # session, the orchestrator spent four Read calls at startup on 24KB of docs
+  # that fit the 32KB budget with room to spare — while the sub-agents it
+  # dispatched got the same docs inlined. The top-level agent was served worse
+  # than its own workers.
+  if [ -n "$cli_sub" ] || [ -z "$instr_present" ]; then
+    # Deliver the shared docs through additionalContext: inline them in priority
+    # order (shared_doc_names / SDLC_SHARED_DOCS) after memory while they still
+    # fit the cap; whatever doesn't fit becomes a read-list. This is the only
+    # case where the SDLC_SHARED_DOCS ORDER matters (the cap forces the choice),
+    # and it degrades correctly: a 93KB doc set (measured on another project)
+    # still spills to the read-list instead of blowing the payload.
+    local name
+    for name in $(shared_doc_names); do
+      f="${agents_dir}/${name}.md"; [ -f "$f" ] || continue
+      doc=$'\n\n'"# .agents/${name}.md"$'\n\n'"$(cat "$f")"
+      cand="${context}${doc}"
+      if [ "$(esc_byte_len "$cand")" -le "$budget" ]; then
+        context="$cand"                                  # fits → inline
+      else
+        overflow="${overflow}.agents/${name}.md"$'\n'    # spills → read-list
+      fi
+    done
+  fi
+  # No third branch: a warm shelf-getter (Copilot, instruction files on disk)
+  # needs nothing here — the shared docs are already in its system prompt, and
+  # inlining them again would spend the same budget twice.
+
+  if ! is_blank "$overflow"; then
+    context="${context}"$'\n\n'"$(build_read_directive "$overflow")"
+  fi
+  printf '%s' "$context"
+}
+
+# Mirror each shared project doc to its own Copilot instruction file so the docs
+# land in the SYSTEM PROMPT (uncapped, guaranteed, no read) — complementing the
+# capped additionalContext delivery. Verified reach: the top-level agent in BOTH
+# runtimes, AND dispatched subagents in VS Code; CLI subagents do NOT inherit it,
+# so additionalContext stays their channel. Files are read at session start (before
+# hooks fire), so this write is WARM-CACHE — effective on the NEXT session.
+#
+# One-to-one mapping: .agents/<name>.md -> .github/instructions/<name>.instructions.md
+# (all `applyTo: "**/*"`, so each always loads). Per-file (not one combined blob) so a
+# change to one doc rewrites only its own file. Each generated file carries a marker
+# so we (a) never clobber a human-authored same-named instruction file, and (b) can
+# remove our file when its source doc goes away. Idempotent: rewrites only on change.
+# Copilot-only. $1 = project dir.
+refresh_shared_instructions() {
+  local base="$1" agents_dir dir name f out content new old marker want
+  [ -n "${COPILOT_CLI:-}${SDLC_VSCODE:-}" ] || return 0
+  agents_dir="${base}/.agents"
+  dir="${base}/.github/instructions"
+  marker="auto-generated by sdlc-skills"
+  rm -f "${dir}/sdlc-shared.instructions.md" 2>/dev/null   # migrate off the old combined file
+
+  # ALL shared docs go to the instruction-file shelf (one file each) — they are NOT
+  # inlined into additionalContext (memory rides that channel). Space-padded set for
+  # the sweep's membership test below.
+  want=" $(shared_doc_names | tr '\n' ' ') "
+
+  # 1) Mirror each shared doc to its own instruction file.
+  for name in $(shared_doc_names); do
+    f="${agents_dir}/${name}.md"
+    [ -f "$f" ] || continue
+    out="${dir}/${name}.instructions.md"
+    # never clobber a human-authored same-named instruction file (no marker)
+    if [ -f "$out" ] && ! grep -q "$marker" "$out" 2>/dev/null; then continue; fi
+    content="$(cat "$f")"
+    new="---"$'\n'"applyTo: \"**/*\""$'\n'"---"$'\n'"# .agents/${name}.md — ${marker}; do not edit (regenerated each session)"$'\n\n'"${content}"
+    if [ -f "$out" ]; then
+      old="$(cat "$out" 2>/dev/null)"
+      if [ "$old" = "$new" ]; then continue; fi    # unchanged → skip the write
+    fi
+    mkdir -p "$dir" 2>/dev/null || return 0
+    printf '%s\n' "$new" > "$out" 2>/dev/null || true
+  done
+
+  # 2) Sweep OUR generated files no longer backed by a listed shared doc — source
+  # doc deleted, or it was removed from the shared-docs list.
+  [ -d "$dir" ] || return 0
+  for out in "$dir"/*.instructions.md; do
+    [ -f "$out" ] || continue
+    grep -q "$marker" "$out" 2>/dev/null || continue          # only ours
+    name="$(basename "$out" .instructions.md)"
+    case "$want" in *" $name "*) : ;; *) rm -f "$out" ;; esac
+  done
+}
+
+# Resolve the Copilot CLI main/orchestrator agent for a session. The CLI is
+# launched with `--agent <name>` and records that selection as the first
+# `subagent.selected` event in its session-state log; the SessionStart payload
+# carries the sessionId to find it. Echoes the agent name (empty if not
+# resolvable). This SELF-GATES to the Copilot CLI: VS Code's sessionId has no
+# session-state dir, so it returns empty there (VS Code orchestrators load memory
+# via the agent-frontmatter SessionStart hook instead). A short retry covers the
+# rare race where SessionStart fires before the event is logged.
+#
+# The CLI keeps state under ~/.copilot (no --config-dir flag and no dir env var in
+# 1.0.x — verified). COPILOT_CONFIG_DIR / COPILOT_HOME are honored as a forward-
+# compatible override should a custom config dir ever be exposed. $1 = sessionId.
+resolve_cli_session_agent() {
+  local sid="$1" cfg ev a i
+  [ -n "$sid" ] || { printf ''; return 0; }
+  cfg="${COPILOT_CONFIG_DIR:-${COPILOT_HOME:-$HOME/.copilot}}"
+  ev="${cfg}/session-state/${sid}/events.jsonl"
+  for i in 1 2 3; do
+    if [ -f "$ev" ]; then
+      a="$(grep -m1 '"type":"subagent.selected"' "$ev" 2>/dev/null \
+            | sed -n 's/.*"agentName":"\([^"]*\)".*/\1/p' | head -n1)"
+      [ -n "${a:-}" ] && { printf '%s' "$a"; return 0; }
+    fi
+    [ "$i" -lt 3 ] && sleep 0.1
+  done
+  printf ''
+}
+
+# True under Cursor — the plugin path sets CURSOR_PLUGIN_ROOT; the `npx … init`
+# project install sets CURSOR_HOOK=1 in the generated .cursor/hooks.json command
+# (mirrors CODEX_HOOK below).
+is_cursor() {
+  [ -n "${CURSOR_HOOK:-}" ] || [ -n "${CURSOR_PLUGIN_ROOT:-}" ]
+}
+
+# True only under plain Claude Code. Mirrors the branching in the emit_* helpers.
+# The plugin path sets CLAUDE_PLUGIN_ROOT; the `npx … init` project install wires
+# only CLAUDE_PROJECT_DIR into .claude/settings.json — accept either, minus the
+# runtimes that set their own markers (Copilot CLI, Cursor, and raw-mode hosts
+# like Kiro, where SDLC_HOOK_RAW=1 must win over a CLAUDE_PROJECT_DIR leaked
+# from a parent Claude Code shell).
+#
+# ⚠ SDLC_HOOK_RAW CHANGES WHAT YOU ARE MEASURING — it is not a formatter switch.
+# Because it disqualifies Claude Code here, session-start stops resolving the
+# launch role from CLAUDE_CODE_AGENT, and the payload comes back with NO role
+# memory at all. Debugging a real Claude Code injection with it therefore shows
+# you a DIFFERENT payload than the one that ships, and the difference is exactly
+# the part people usually want to inspect. (Cost of learning this the hard way:
+# a raw-mode reading showed shared docs and no memory, which reads as "memory was
+# crowded out" when the truth was the opposite — memory had never been collected.)
+# To inspect the real thing, run WITHOUT the flag and parse the JSON:
+#   echo '{}' | CLAUDE_PROJECT_DIR=$PWD CLAUDE_CODE_AGENT=<role> bash hooks/session-start \
+#     | python3 -c 'import json,sys; print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])'
+is_claude_code() {
+  [ -z "${SDLC_HOOK_RAW:-}" ] && { [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || [ -n "${CLAUDE_PROJECT_DIR:-}" ]; } && [ -z "${COPILOT_CLI:-}" ] && ! is_cursor
+}
+
+# True under Codex, which exports PLUGIN_ROOT (a Codex-specific extension) and
+# uses the same hookSpecificOutput shape as Claude Code. CODEX_HOOK is an
+# optional explicit override for installers that prefer to set it.
+is_codex() {
+  [ -n "${CODEX_HOOK:-}" ] || [ -n "${PLUGIN_ROOT:-}" ]
+}
+
+# True on runtimes whose per-agent start hook can BOTH name the agent AND
+# inject context: Claude Code (SubagentStart), Codex (SubagentStart), Copilot
+# CLI (subagentStart), VS Code Copilot Chat (SubagentStart). These load per-role
+# memory via agent-start, so session-start skips the roster reminder for them.
+#
+# Cursor is deliberately excluded: it has subagentStart, but that event is
+# permission-only (allow/deny) — it cannot return additionalContext — and its
+# identifier is a generic type (generalPurpose/explore/shell), not our role
+# names. So Cursor falls back to the sessionStart roster reminder.
+has_subagent_hook() {
+  is_claude_code || [ -n "${COPILOT_CLI:-}" ] || [ -n "${SDLC_VSCODE:-}" ] || is_codex
+}
+
+# Emit session-level context in the shape the current runtime consumes.
+# SDLC_HOOK_RAW=1 prints the bare text instead — handy, but see the warning on
+# is_claude_code(): the flag also suppresses role resolution, so raw output is
+# NOT the payload a real Claude Code session receives.
+#   Cursor                 -> additional_context (top-level, snake_case)
+#   Claude Code/Codex/VSCode -> hookSpecificOutput.additionalContext (SessionStart)
+#   Copilot CLI / SDK      -> additionalContext (top-level)
+#   Kiro / raw             -> plain text on stdout (agentSpawn appends stdout)
+# Set SDLC_HOOK_RAW=1 (Kiro) for raw; CODEX_HOOK=1 selects the Codex shape;
+# CURSOR_HOOK=1 the Cursor shape (non-plugin installs); SDLC_VSCODE=1 selects
+# the VS Code Copilot Chat shape (same as Claude/Codex).
+emit_session_context() {
+  if [ -n "${SDLC_HOOK_RAW:-}" ]; then printf '%s\n' "$1"; return; fi
+  local ctx; ctx="$(escape_for_json "$1")"
+  if is_cursor; then
+    printf '{\n  "additional_context": "%s"\n}\n' "$ctx"
+  elif [ -n "${SDLC_VSCODE:-}" ] || is_codex || is_claude_code; then
+    printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$ctx"
+  else
+    printf '{\n  "additionalContext": "%s"\n}\n' "$ctx"
+  fi
+}
+
+# Emit per-agent start context in the shape the current runtime consumes.
+#   Copilot CLI            -> additionalContext (top-level; subagentStart prepends it)
+#   Claude Code/Codex/VSCode -> hookSpecificOutput.additionalContext (SubagentStart)
+#   Kiro / raw             -> plain stdout (a per-agent config calls agent-start direct)
+# VS Code Copilot Chat (SDLC_VSCODE=1) uses the same hookSpecificOutput shape as
+# Claude/Codex — checked before the CLI's top-level shape since the two flags are
+# mutually exclusive per invocation (set by the camelCase vs PascalCase entry).
+# The emitted hookEventName defaults to SubagentStart but can be overridden via
+# SDLC_HOOK_EVENT — an agent-scoped SessionStart hook (per-agent frontmatter, for
+# the main-session-as-role case) sets SDLC_HOOK_EVENT=SessionStart so the role
+# context is delivered through agent-start but labelled as a SessionStart event.
+# Hosts silently degrade an oversized additionalContext — Claude Code persists it
+# to a file and injects a ~2KB preview, so the agent receives a pointer it has no
+# reason to distrust. That happened 302 times out of 302 in one campaign and went
+# unnoticed for 13 hours. The cap in build_capped_context should make it
+# impossible; this is the tripwire for when it doesn't (a caller that bypassed the
+# cap, or a host with a lower ceiling than we assumed). stderr only — it must warn
+# the operator without corrupting the JSON on stdout.
+SDLC_EMIT_WARN_BYTES="${SDLC_EMIT_WARN_BYTES:-40960}"
+warn_if_oversized() {
+  local n; n="$(esc_byte_len "$1")"
+  [ "$n" -le "$SDLC_EMIT_WARN_BYTES" ] && return 0
+  printf 'sdlc-skills: WARNING — additionalContext is %s bytes (> %s). The host may drop it to a preview and the agent will run on partial memory. Shrink .agents/memory/<role>/MEMORY.md (index lines are hooks, not summaries) or lower SDLC_CTX_CAP.\n' \
+    "$n" "$SDLC_EMIT_WARN_BYTES" >&2
+}
+
+emit_subagent_context() {
+  warn_if_oversized "$1"
+  if [ -n "${SDLC_HOOK_RAW:-}" ]; then printf '%s\n' "$1"; return; fi
+  local ctx ev; ctx="$(escape_for_json "$1")"; ev="${SDLC_HOOK_EVENT:-SubagentStart}"
+  if [ -n "${SDLC_VSCODE:-}" ] || is_codex || is_claude_code; then
+    printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "%s",\n    "additionalContext": "%s"\n  }\n}\n' "$ev" "$ctx"
+  elif [ -n "${COPILOT_CLI:-}" ]; then
+    printf '{\n  "additionalContext": "%s"\n}\n' "$ctx"
+  else
+    printf '%s\n' "$1"
+  fi
+}
