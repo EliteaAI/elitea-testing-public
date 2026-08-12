@@ -99,14 +99,14 @@
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
 | 1 Navigate to Skills, create skill with valid name/desc(100+)/instructions(100+) | skill created and saved | steps 1–2 | `step 2`: URL is `/skills/all/{id}` | asserted, *clarification: icon+tag also required, see Known Defects* |
-| 2 Open skill, click "Publish" | wizard modal opens, Step 1 Preparation | step 4 | `step 4`: dialog visible, Stepper shows 3 steps | asserted, *clarification: trigger is a MENU ITEM inside the overflow menu, not a standalone "Publish" button* |
+| 2 Open skill, click "Publish" | wizard modal opens, Step 1 Preparation | step 4 | `step 4`: dialog visible (Version-name input rendered), Continue starts disabled | asserted, *clarification: trigger is a MENU ITEM inside the overflow menu, not a standalone "Publish" button; docs(afs) correction PR #1464 review — the AFS previously claimed "Stepper shows 3 steps" is asserted here, but the implementation never checks a step count (no testid exists on the Stepper's step nodes); the wording now matches what step 4's code actually verifies* |
 | 3 Enter version name + category | fields accept, no errors | step 5 | `step 5`: field values reflect input | asserted |
 | 4 Accept Publishing Terms checkbox | checked, Next enabled | step 6 | `step 6`: checkbox checked + Continue enabled | asserted |
 | 5 Click Next → Step 2 Validation | validation runs automatically | step 7 | `step 7`: validate response captured | asserted |
 | 6 Wait for validation to complete | passes, no FAIL (may show warnings) | step 8 | `step 8`: `status != "FAIL"` | asserted, *clarification: only true when icon+tag are present — see #1463* |
 | 7 Click Next → Step 3 Publishing | publishing confirmation step shown | step 9 (Publish click) | `step 9`: publish request fires | asserted *(the live wizard collapses "Next"+"Publish" into a single "Publish" action on the Validation step once status≠FAIL — there's no separate intermediate confirmation click)* |
 | 8 Click Publish | publishing completes, success shown | step 9 | `step 9`: 200 response + toast | asserted |
-| 9 Navigate to Catalog | published skill appears with correct version | steps 10–11 | `step 11`: skill card visible under category | asserted, *decomposed: version re-select (step 10) needed first due to #614* |
+| 9 Navigate to Catalog | published skill appears with correct version | steps 10–11 | `step 12`: skill card visible under category (mislabeled `step 11` previously — step 11 only asserts the category heading visible; the category-scoped skill-card check is `get_skill_card(skill_name, category=CATEGORY_NAME)` in step 12's code) | asserted, *decomposed: version re-select (step 10) needed first due to #614* |
 | 10 Verify published skill details | name/description/version/category match | step 12 | `step 12`: card fields match input | asserted |
 
 **Axis 2 — Analyst additions.**
@@ -149,7 +149,7 @@ handles. PROVENANCE verified via `cd ../EliteaUI && git fetch origin` +
 | Skill controls (⋮) overflow menu button | `skill-controls-menu-button` | on-main ✓ |
 | "Publish" menu item | `publish-menuitem` | **dynamically constructed** — `DotMenu.jsx`: `` data-testid={testId ? `${testId}-menuitem` : undefined} ``, `testId = item.key`; `SkillControls.jsx` sets `key: 'publish'` at the call site. Not a literal grep hit on either ref — verify by reading `SkillControls.jsx`'s `key: 'publish'` line + `DotMenu.jsx`'s template, both on-main ✓ |
 | Publish wizard — Version name input | `agent-publish-version-name-input` | on-`automation/testids` only (awaiting human promotion to main) — pre-existing, added for the agent Publish flow (ELITEA-1892), shared component |
-| Publish wizard — Category select trigger | `agent-publish-category-select-combobox` (dynamic option: `select-option-{Category Label}`) | on-`automation/testids` only |
+| Publish wizard — Category select trigger | `agent-publish-category-select` (dynamic option: `select-option-{Category Label}`) — **implementer correction**: live source (`PreparationStep.jsx`) confirms no `-combobox` suffix, the AFS's original value was wrong | on-`automation/testids` only |
 | Publish wizard — Publishing Terms checkbox | `agent-publish-agree-checkbox` | on-`automation/testids` only |
 | Publish wizard — Continue button (Preparation step) | `agent-publish-continue-button` | on-`automation/testids` only |
 | Publish wizard — Publish button (Validation step) | `agent-publish-confirm-button` | on-`automation/testids` only |
@@ -159,13 +159,17 @@ handles. PROVENANCE verified via `cd ../EliteaUI && git fetch origin` +
 | VERSION dropdown trigger | (existing `SkillDetailPage` field — see `switch_version()`/`open_version_selector()`) | on-main ✓ |
 | VERSION option by name | dynamic `version-option-{name}` | on-main ✓ |
 | Catalog — Skills tab | `catalog-skills-tab` | on-`automation/testids` only |
+| Catalog — skill category section container (scopes the published skill's card as a DESCENDANT of its selected category, not merely present anywhere on the page) | `catalog-category-section-{slug}` (slugify: lowercase, `[^a-z0-9]+` → `-`) | **new — added this round**, EliteaAI/EliteaUI@c80de351, on-`automation/testids` only (awaiting human promotion to main) |
 
-No new testids needed — every handle this flow touches is pre-existing
-(shared with the agent Publish flow + prior skill AFS work). The 5 testids
-marked "on `automation/testids` only" are pre-existing from ELITEA-1892's
-agent-Publish rework, not new work for this case — they will reach `main`
-via the same human cherry-pick already pending for that case, not a new
-action this AFS creates.
+One new testid WAS added this round: `catalog-category-section-{slug}`
+(EliteaAI/EliteaUI@c80de351) — superseding this AFS's original "no new
+testids needed" claim, which held only for the initial implementation pass,
+not after this fix round's addition. Every other handle this flow touches
+remains pre-existing (shared with the agent Publish flow + prior skill AFS
+work). The 5 pre-existing testids marked "on `automation/testids` only" are
+from ELITEA-1892's agent-Publish rework, not new work for this case — they
+will reach `main` via the same human cherry-pick already pending for that
+case.
 
 ## Network Behavior
 - `POST .../publish_skill_validate/prompt_lib/{project}/{skillId}/{versionId}`

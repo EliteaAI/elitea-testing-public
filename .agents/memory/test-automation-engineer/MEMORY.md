@@ -54,3 +54,4 @@
 - [Publish AI gate flags "reply X" instructions](skill_publish_ai_gate_rejects_blanket_reply_instructions.md) — 422/FAIL prompt-injection heuristic; use bounded task-specific text
 - [Popper select_menuitem substring collision](popper_select_menuitem_substring_collision_attaches_wrong_item.md) — attach-by-name .filter(has_text=).first silently attaches the wrong entity if one seeded name is a substring of another
 - [gate-case.mjs timeout/tail trap](gate_case_timeout_and_tail_piping_loses_verdict.md) — size --timeout to real runtime, never `| tail -N`; junit.xml is ground truth if verdict is lost
+- [Skill icon-upload-before-tag-save race](skill_publish_wizard_implementer_quirks.md) — icon PUT can revert an unsaved tag; save tag FIRST, then upload icon
