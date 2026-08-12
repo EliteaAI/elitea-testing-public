@@ -27,8 +27,18 @@
   `.agents/memory/test-automation-lead/known_noisy_resource_montserrat_font_404.md`).
   8/8 automated, 0 blocked at close. TMS back-written (8 cases, Form C + index.json
   surgical update). · wave-02 (8) pending · wave-03 (8) pending · wave-04 (7) pending
-  · **wave-02 (8 cases) RUNNING — runId `wf_71994834-461`** · wave-03 (8) pending · wave-04 (7) pending
-  · wave-05 (9, build_with_ai) pending
+  · **wave-02 (8 cases) LANDED** — elitea-testing-public#1462, merged. Workflow's own gate went RED
+  (1 unclassified failure + 2 sanctioned-#570 + 1 implementer harness-death). Lead resolved all three:
+  ELITEA-2604 (implementer died mid-run, WIP quarantined by a later unit onto its own branch, finished
+  in a follow-up dispatch, found+filed real bug #1459 en route), ELITEA-2605 (own gate caught a genuine
+  deterministic test-code race — SPA route-push lagging DOM render — fixed with a missing
+  `wait_for_page_load()` call), ELITEA-2602/2603 (sanctioned RED-BY-DESIGN, known defect #570,
+  confirmed 3/3 deterministic identical failure). Lead's own gate: clean 6-spec set 3/3 green (1
+  transient console-404 on run 1, not reproduced — known-noisy-resource pattern) + sanctioned 2-spec
+  set 3/3 identical failure. 8/8 automated, 0 blocked at close. TMS back-written (8 cases, Form C +
+  index.json — noted a PRE-EXISTING duplicate-entry issue in index.json affecting ~150+ unrelated case
+  ids, not caused by this wave, flagged for a future data-hygiene pass, not fixed here).
+  · wave-03 (8) pending · wave-04 (7) pending · wave-05 (9, build_with_ai) pending
 
 ## Source
 
