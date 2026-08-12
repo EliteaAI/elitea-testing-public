@@ -104,6 +104,19 @@ class AgentHubPage(BasePage):
     # page — verified via import-graph trace during implementation, do not conflate).
     SKILL_CARD_PREFIX = '[data-testid^="catalog-skill-card-"]'
 
+    # Skill card — per-id template (ELITEA-2599 unpublish/republish
+    # lifecycle). Same testid family as SKILL_CARD_PREFIX above, but keyed
+    # by the exact ``public_skill_id`` captured from a
+    # ``publish_skill``/``confirm_publish_and_capture_response()`` response
+    # body — the precise, collision-proof handle for "is THIS specific
+    # public catalog entry present", vs SKILL_CARD_PREFIX's name-filtered
+    # any-match. Required because a skill's ``public_skill_id`` changes
+    # across an unpublish/republish boundary (a fresh republish is a new
+    # public entry, AFS ELITEA-2599 § Network Behavior) — asserting by name
+    # alone can't distinguish "the OLD entry is still there" from "a NEW
+    # entry with the same name appeared".
+    SKILL_CARD = '[data-testid="catalog-skill-card-{}"]'
+
     # Content-list category heading — prefix match across ALL rendered category
     # sections (ELITEA-2352), used to enumerate which categories are currently
     # visible rather than probing one at a time. Same underlying testid as
@@ -867,6 +880,57 @@ class AgentHubPage(BasePage):
         state-driven) filter-rail chip swap alone.
         """
         self.page.locator(self.SKILL_CARD_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def get_skill_card_by_id(self, public_skill_id):
+        """Return the Locator for the Catalog skill card matching *public_skill_id*
+        exactly (ELITEA-2599) — see :attr:`SKILL_CARD` for why this is
+        id-keyed rather than name-filtered.
+
+        Args:
+            public_skill_id: The skill's public catalog id (int or str), as
+                returned by the ``publish_skill`` response body's
+                ``public_skill_id`` field.
+        """
+        return self.page.locator(self.SKILL_CARD.format(public_skill_id))
+
+    def is_skill_card_visible(self, public_skill_id, timeout: int = 10000) -> bool:
+        """Return True if a Catalog skill card for *public_skill_id* is visible
+        within *timeout* (ELITEA-2599).
+
+        Args:
+            public_skill_id: The skill's public catalog id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            self.get_skill_card_by_id(public_skill_id).first.wait_for(
+                state="visible", timeout=timeout
+            )
+            return True
+        except Exception:
+            return False
+
+    def wait_for_skill_card_absent(self, public_skill_id, timeout: int = 10000) -> None:
+        """Wait (Playwright auto-retrying assertion) for the Catalog skill
+        card matching *public_skill_id* to be gone (ELITEA-2599) — the
+        unpublish removal signal, mirrors :meth:`wait_for_any_skill_card`'s
+        presence-wait idiom in reverse.
+
+        Args:
+            public_skill_id: The skill's public catalog id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        expect(self.get_skill_card_by_id(public_skill_id)).to_have_count(0, timeout=timeout)
+
+    def get_skill_card_count_by_name(self, skill_name: str) -> int:
+        """Return the number of Catalog skill cards whose visible text matches
+        *skill_name* (ELITEA-2599) — used to assert "exactly one card, never
+        duplicates" across a version-coexistence sequence, independent of
+        which ``public_skill_id`` is currently active.
+
+        Args:
+            skill_name: Exact skill name to match (rendered card text).
+        """
+        return self.page.locator(self.SKILL_CARD_PREFIX).filter(has_text=skill_name).count()
 
     def wait_for_agent_card_count(self, expected_count: int, timeout: int = 10000) -> None:
         """Wait (Playwright auto-retrying assertion) for the number of

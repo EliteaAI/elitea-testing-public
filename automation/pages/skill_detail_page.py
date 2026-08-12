@@ -365,6 +365,35 @@ class SkillDetailPage(SkillFormPage):
     # label (mirrors AgentDetailPage.PUBLISH_CATEGORY_OPTION).
     PUBLISH_CATEGORY_OPTION = '[data-testid="select-option-{}"]'
 
+    # ------------------------------------------------------------------
+    # Unpublish confirm dialog (ELITEA-2599) — mirrors
+    # AgentDetailPage.unpublish_version_menuitem/unpublish_confirm_button
+    # (same UnpublishConfirmModal.jsx component, entityLabel="skill"), but
+    # the overflow-menu ITEM testid differs: SkillControls.jsx's DotMenu
+    # instance keys the "Unpublish" entry `key: 'unpublish'` ->
+    # `unpublish-menuitem` (NOT AgentDetailPage's `unpublish-version-
+    # menuitem` — different DotMenu instance, different `key`), confirmed
+    # live for ELITEA-2599. The confirm BUTTON reuses the SAME
+    # `agent-unpublish-confirm-button` testid across both entities (the
+    # modal component hardcodes it regardless of `entityLabel`, same
+    # cross-entity naming artifact already documented on
+    # `publish_confirm_button` above) — only rendered once ``canUnpublish``
+    # gates the version's Published status true.
+    # ------------------------------------------------------------------
+    unpublish_menuitem = LocatorDescriptor(
+        testid="unpublish-menuitem",
+        description="VERSION-group 'Unpublish' menuitem in the overflow menu "
+                     "(dynamic DotMenu testId=item.key mechanism, "
+                     "SkillControls.jsx key: 'unpublish')",
+    )
+    unpublish_confirm_button = LocatorDescriptor(
+        testid="agent-unpublish-confirm-button",
+        description="Unpublish confirm dialog — 'Unpublish' button "
+                     "(cross-entity testid, shared with AgentDetailPage's "
+                     "same-named field — UnpublishConfirmModal.jsx hardcodes "
+                     "this testid regardless of entityLabel)",
+    )
+
     # Sidebar project switcher (ELITEA-2602) — same shared testid already
     # wired by ChatPage/PipelinesListPage/AnalyticsPage's own fields
     # (identical shared sidebar component); NEW field on this page.
@@ -835,6 +864,22 @@ class SkillDetailPage(SkillFormPage):
         self.controls_menu_button.evaluate("el => el.click()")
         self.page.get_by_test_id("skill-delete-menu-item").wait_for(state="visible", timeout=5000)
 
+    def close_actions_menu(self, timeout: int = 5000):
+        """Close the open skill controls overflow menu by pressing Escape
+        (ELITEA-2599).
+
+        Mirrors ``AgentDetailPage.close_actions_menu()``'s Escape-press
+        pattern. Waits for the VERSION-group "Publish" menuitem to hide as
+        the "menu closed" signal — this page has no single dedicated menu
+        container ``LocatorDescriptor`` field to wait on directly (see
+        :meth:`open_actions_menu`'s own delete-menuitem-based open signal).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.page.keyboard.press("Escape")
+        self.publish_menuitem.wait_for(state="hidden", timeout=timeout)
+
     def get_pin_toggle_menu_label(self) -> str:
         """Return the pin-toggle menu item's current text ("Pin to top" / "Unpin from top")."""
         return self.pin_toggle_menuitem.text_content() or ""
@@ -1212,6 +1257,64 @@ class SkillDetailPage(SkillFormPage):
         # dialog actually closed.
         self.publish_confirm_button.wait_for(state="hidden", timeout=timeout)
         logger.info("Publish wizard closed")
+
+    @action("Open Unpublish confirm dialog")
+    def open_unpublish_dialog(self, timeout: int = 10000):
+        """Open the Unpublish confirmation dialog via the actions overflow menu
+        (ELITEA-2599).
+
+        Opens the overflow menu (:meth:`open_actions_menu`) and clicks the
+        VERSION-scoped "Unpublish" menuitem (only rendered for a Published
+        version — same ``canUnpublish`` gate as ``AgentDetailPage``'s
+        equivalent), then waits for the "Unpublish Skill" confirmation
+        dialog (``UnpublishConfirmModal.jsx``) to become visible. Mirrors
+        ``AgentDetailPage.open_unpublish_dialog()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening Unpublish confirm dialog via skill controls menu")
+        self.open_actions_menu()
+        self.unpublish_menuitem.click()
+        Dialog.wait_for(self.page, timeout=timeout)
+        self.unpublish_confirm_button.wait_for(state="visible", timeout=timeout)
+        logger.info("Unpublish confirm dialog visible")
+
+    def get_unpublish_dialog_text(self, timeout: int = 5000) -> str:
+        """Return the Unpublish confirm dialog's full visible text
+        (ELITEA-2599) — title ("Unpublish Skill") + body (name/version +
+        the Catalog-removal warning), via the shared MUI ``Dialog`` helper
+        rather than a raw ad-hoc locator. Call after :meth:`open_unpublish_dialog`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return (Dialog.wait_for_visible(self.page, timeout=timeout).text_content() or "").strip()
+
+    @action("Confirm Unpublish")
+    def confirm_unpublish(self, timeout: int = 15000) -> int:
+        """Click the Unpublish confirm dialog's "Unpublish" button (ELITEA-2599).
+
+        Waits for ``POST .../unpublish_skill/prompt_lib/{project}/{skillId}/
+        {versionId}`` to resolve and for the dialog to close. Mirrors
+        ``AgentDetailPage.confirm_unpublish()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            HTTP status code of the ``unpublish_skill`` response.
+        """
+        logger.info("Confirming Unpublish")
+        with self.page.expect_response(
+            lambda r: "/unpublish_skill/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as unpublish_info:
+            self.unpublish_confirm_button.click()
+        status = unpublish_info.value.status
+        Dialog.wait_for_hidden(self.page, timeout=timeout)
+        logger.info("Unpublish confirmed — status=%d", status)
+        return status
 
     # ------------------------------------------------------------------
     # Sidebar project switcher (ELITEA-2602)
