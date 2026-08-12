@@ -148,7 +148,7 @@ attributes populated. No functional defect found.
 | Skills list → Table view toggle button (companion, for negative/contrast checks only — not this case's target) | `page.get_by_test_id("agent-table-view-button")` | on-main ✓ |
 | Skill card outer container (list view) | `page.get_by_test_id("entity-card")` — **existing testid**, already `SkillsListPage.skill_card` | on-main ✓ |
 | Skill card name (title) | `page.get_by_test_id("entity-card-name")` — **existing testid**, already `SkillsListPage.skill_card_name` | on-main ✓ |
-| Skill card icon | `page.get_by_test_id("entity-card-icon")` (outer) / `page.get_by_test_id("entity-card-icon-img")` (inner `<img>`) — **existing testids** on the shared `Card.jsx`'s `EntityIcon`, added for ELITEA-1899 (Agents). Confirmed via source read this run (`Card.jsx` lines ~174–180: `<EntityIcon data-testid="entity-card-icon" imgTestId="entity-card-icon-img" .../>`) that the SAME `Card.jsx` renders skill cards — no skill-specific fix needed. **No page-object field exists yet on `SkillsListPage`** (only `AgentsListPage.entity_card_icon`/`get_card_icon_src()` exist today) — this case's implementer adds the equivalent fields to `SkillsListPage`, mirroring `AgentsListPage` exactly (page-object plumbing only, testid already present). | **`entity-card-icon`/`entity-card-icon-img`: on `automation/testids` only** (added for ELITEA-1899, not yet on `main` — awaiting human cherry-pick). `entity-card` (parent scope) is on-main ✓. |
+| Skill card icon | `page.get_by_test_id("entity-card-icon")` (outer) / `page.get_by_test_id("entity-card-icon-img")` (inner `<img>`) — **existing testids** on the shared `Card.jsx`'s `EntityIcon`, added for ELITEA-1899 (Agents). Confirmed via source read this run (`Card.jsx` lines ~174–180: `<EntityIcon data-testid="entity-card-icon" imgTestId="entity-card-icon-img" .../>`) that the SAME `Card.jsx` renders skill cards — no skill-specific fix needed. **No page-object plumbing exists yet on `SkillsListPage`** for this testid — the testid itself is already present, this case's implementer only needs to wire it up. **[Amended, fix round 1]** Do not mirror `AgentsListPage.entity_card_icon` literally (that field is unscoped, page-wide, and dead-code — see Automation Hints below); the shipped shape is a scoped `CARD_ICON_SELECTOR` sub-selector constant + `card_icon_locator(name)` helper instead. | **`entity-card-icon`/`entity-card-icon-img`: on `automation/testids` only** (added for ELITEA-1899, not yet on `main` — awaiting human cherry-pick). `entity-card` (parent scope) is on-main ✓. |
 | Skill card tag chip(s) | `page.get_by_test_id("entity-card-tag-chip")` (`CARD_TAG_CHIP` class constant) — **existing testid + existing page-object method** `SkillsListPage.get_card_tags(skill_name)` (`automation/pages/skills_list_page.py:141,230-265`) — reuse directly, no new work. | on-main ✓ |
 | Skill card description — **hover tooltip content** (the case's step 3 "description (upon hover)" target) | **TESTID NEEDED — confirmed live gap.** `Card.jsx`'s `StyledTooltip` `title` prop renders two app-owned `<Typography>` nodes (name, then description — lines ~188–199) into a MUI Popper (`role="tooltip"`, confirmed live via accessibility snapshot: `tooltip "skill-card-2428-1e8db006 ELITEA-2428 card-view field verification description text, unique enough to spot in a hover tooltip."`). This is **not** the #579 third-party-internal-render-node exception — the tooltip's content JSX is fully app-owned (`Card.jsx` itself), MUI's `Tooltip` accepts arbitrary JSX in `title` and renders it verbatim, so a `data-testid` can be added directly to the description `<Typography sx={styles.descriptionTooltip}>` node. Fix: add `data-testid="entity-card-description-tooltip"` to that element (mirrors the `entity-card-*` shared-component naming family — this case's own code path only needs the description node, not the sibling name/title node, per the "referenced = called on the test's actual code path" ruling — do not also testid the title Typography unless a future case asserts it). Route through `add-data-testid`. | **needs-adding** — confirmed live gap, zero `data-testid` on either tooltip `Typography` today, neither on `main` nor `automation/testids` (verified via `git grep` for `descriptionTooltip`/`titleTooltip` styles keys — no `data-testid` attribute present at either JSX node). |
 
@@ -206,17 +206,29 @@ hover-description, tags), then cleanup.
   is `test_skill_tag_filter.py`'s tag-chip assertions and
   `test_skill_pin_unpin.py`'s `entity-card`/`entity-card-name` reuse).
 - Reuse `SkillsListPage.skill_card` / `.skill_card_name` /
-  `.get_card_tags(name)` as-is. Add `entity_card_icon` +
-  `get_card_icon_src(name)` to `SkillsListPage`, copying
-  `AgentsListPage.entity_card_icon` / `get_card_icon_src()` verbatim
-  (same shared `Card.jsx`/`EntityIcon` component, same testids).
-  Add `card_view_button`/`table_view_button` fields to `SkillsListPage`
-  using the confirmed-live `agent-card-view-button`/`agent-table-view-button`
-  testids (do NOT rename/re-add — reuse exactly, per the naming-quirk note
-  above), mirroring `AgentsListPage.card_view_button`/`table_view_button`
-  minus the `fallback=` param (legacy, forbidden in new code — the AGENTS
-  page object's `fallback=lambda ...` on these same two fields is
-  pre-existing tech debt, do not copy it).
+  `.get_card_tags(name)` as-is. **[Amended by implementer, fix round 1 —
+  entity_card_icon shape replaced]** Do NOT add an unscoped `entity_card_icon`
+  `LocatorDescriptor` field — `entity-card-icon` repeats once per visible
+  card, so a page-wide field always resolves to the *first* card and goes
+  unreferenced the moment a test needs a *specific* card's icon (the same
+  dead-code shape already present as tech debt on
+  `AgentsListPage.entity_card_icon`, not to be replicated here). The
+  shipped, reviewer-approved shape is a scoped sub-selector constant +
+  helper: class-level `CARD_ICON_SELECTOR = '[data-testid="entity-card-icon"]'`
+  plus `card_icon_locator(name)` (`card = self.skill_card.filter(has_text=name)
+  .first; return card.locator(self.CARD_ICON_SELECTOR)`), mirroring
+  `CARD_TAG_CHIP`'s existing per-card scoping pattern. **[Amended, fix round
+  2 — table_view_button dropped]** Add ONLY `card_view_button` to
+  `SkillsListPage`, using the confirmed-live `agent-card-view-button` testid
+  (do NOT rename/re-add — reuse exactly, per the naming-quirk note above),
+  mirroring `AgentsListPage.card_view_button` minus the `fallback=` param
+  (legacy, forbidden in new code — the AGENTS page object's
+  `fallback=lambda ...` on this field is pre-existing tech debt, do not copy
+  it). Do **not** also add `table_view_button` — this case never switches to
+  table view, so that field would have no caller on the test's executed path
+  and is unreferenced dead code per the "referenced = called on the test's
+  actual code path" ruling (`.agents/testing.md` § Locator policy); a future
+  case that exercises table view on the Skills page adds it then.
 - Hover assertion: `card_name_locator.filter(has_text=skill_name).hover()`
   then assert the tooltip's testid (`entity-card-description-tooltip`,
   once added) `to_be_visible()` and `to_have_text(description)` — Playwright
