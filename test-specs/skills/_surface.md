@@ -1215,3 +1215,28 @@ on an agent that has 3 Skills attached.
   substring containment between any pair (e.g. "valid-skill"/"broken-skill", not
   "valid-skill"/"invalid-skill"). Full detail:
   `.agents/memory/test-automation-engineer/popper_select_menuitem_substring_collision_attaches_wrong_item.md`.
+
+## Published/embedded agent version — immutability mechanism (ELITEA-2614)
+
+- **Two distinct enforcement mechanisms on a locked version — don't assume one covers both.**
+  General-section fields (Name/Description/Instructions/Tags) are **NOT disabled/read-only** on a
+  published version — they stay freely editable, and `Save` re-enables the moment you type. The lock
+  is enforced server-side: `PUT /api/v2/elitea_core/application/prompt_lib/{project}/{agent_id}`
+  returns `400 {"error": "Version id {versionId} is published and can not be updated"}`. Skill/Tool
+  attachment controls (Steps 14-19 of ELITEA-2614), by contrast, ARE disabled pre-emptively via a
+  client-side `isVersionLocked = versionStatus === 'published' || versionStatus === 'embedded'` prop
+  (`ApplicationSkills.jsx`/`ApplicationTools.jsx`) — no request fires at all when blocked this way.
+- **Tooltip coverage for "why disabled" is inconsistent — confirmed, filed as
+  [#1470](https://github.com/EliteaAI/elitea-testing-public/issues/1470) (MINOR).** The Tools
+  section's 4 add buttons (`ToolMenu.jsx`'s `lockedTooltip`, exact text "This agent version is
+  published and can not be modified") and the Skill "+Skill" add button (`SkillMenu.jsx`, "...or
+  embedded...") correctly show an immutability tooltip when disabled. `SkillCard`'s remove button
+  (`skill-card-remove-button`, pre-existing testid — confirmed present, do NOT re-add it) keeps a
+  static, unconditional "Remove skill" tooltip even when locked; `SkillVersionSelector`'s trigger
+  (`skill-version-selector-trigger-{skill_id}`, pre-existing) has **no `Tooltip` wrapper at all**.
+  Assert the correct 3 hard, the missing 2 soft + `# Known defect: #1470`.
+- **Failed Save does not auto-revert the form.** After a rejected edit (400), the input keeps showing
+  the rejected value until `Discard` is clicked — and `Discard` itself opens a confirm dialog ("Are
+  you sure you want to discard changes?", `discard-confirm-button`) before reverting. Don't assume a
+  failed Save silently resets state between per-field assertions.
+  Full details: `test-specs/skills/l2_published-agent-version-cannot-be-modified_ELITEA-2614.md`.
