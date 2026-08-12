@@ -38,8 +38,24 @@
   set 3/3 identical failure. 8/8 automated, 0 blocked at close. TMS back-written (8 cases, Form C +
   index.json — noted a PRE-EXISTING duplicate-entry issue in index.json affecting ~150+ unrelated case
   ids, not caused by this wave, flagged for a future data-hygiene pass, not fixed here).
-  · **wave-03 (8 cases) RUNNING — runId `wf_642ec17e-f18`** · wave-04 (7) pending
-  · wave-05 (9, build_with_ai) pending
+  · **wave-03 (8 cases) LANDED** — elitea-testing-public#1472, merged. Roughest wave so far:
+  workflow gate RED (fix-round harness death on the 3-case publish cluster, dev.elitea.ai
+  transient 503s, guardrail slip — lead directly edited `automation/pages/agent_hub_page.py`
+  to resolve a merge conflict, a forbidden path per AGENT.md; logged for memory, no repeat).
+  Lead resolved: (a) 3-case cluster — 2 more dispatched fix rounds (real category-scoping
+  gap, then AFS-docs gap), both APPROVED, merge conflicts on 5 files resolved (memory:
+  spliced directly; 1 page-object: dispatched — see guardrail note above). (b) Lead's own
+  gate caught a NEW deterministic bug — `update_text_field()` (shared MUI helper, ≥4
+  callers) racing a 10ms auto-blur timer, corrupting field values — root-caused, fixed,
+  reviewed, blast-radius re-verified on all callers. (c) ELITEA-2598's AI-judgment
+  non-determinism (LLM publish-validator flips WARN/PASS on the same fixture) — assertion
+  reshaped to the case's real behavioral contract (critical_issues empty, Publish succeeds),
+  reviewed for masking, APPROVED. (d) ELITEA-2614 reclassified mid-flight: its persist-bug
+  was the (c)-adjacent real bug (now fixed), leaving its 2 pre-existing `#1470` soft-asserts
+  as the correct sanctioned-RED signature. Own gate: clean 7-spec set 3/3 green (~1000-1100s/
+  run, includes a real ~320s TTL wait) + sanctioned 2-spec set (`#611` + `#1470`) 3/3
+  deterministic identical failure. 8/8 automated, 0 blocked at close. TMS back-written.
+  · wave-04 (7) pending · wave-05 (9, build_with_ai) pending
 
 ## Source
 
