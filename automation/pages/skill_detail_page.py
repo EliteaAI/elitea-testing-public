@@ -1057,6 +1057,61 @@ class SkillDetailPage(SkillFormPage):
             "New version %r created — URL: %s", version_name, self.page.url
         )
 
+    @action("Confirm the 'Create version' dialog, capturing the create-version response")
+    def confirm_create_version_capturing_response(self, version_name: str, timeout: int = 10000):
+        """Click the "Create version" dialog's Save button and capture the
+        underlying create-version network response (ELITEA-2606).
+
+        Companion to :meth:`save_as_version` for callers that need to verify
+        the dialog opening (``create_version_dialog``) and the Name field
+        (``create_version_name_input_field``) as their OWN case steps first
+        — via those already-public locators — before confirming. Call this
+        only AFTER the dialog is open and the Name field already holds
+        *version_name* (mirrors the second half of :meth:`save_as_version`'s
+        body; :meth:`save_as_version` remains the right hook for callers
+        that don't need that per-step granularity).
+
+        Captures the ``POST .../elitea_core/skill/prompt_lib/{project}/
+        {skillId}`` (singular ``skill`` — the "create version" endpoint,
+        distinct from the plural ``skills`` create-skill endpoint) response,
+        so the caller can read its JSON body — e.g. ``meta.icon_meta`` — as
+        an authoritative server-side assertion point instead of relying
+        solely on a DOM ``<img src>`` read.
+
+        Args:
+            version_name: The version name already entered in the Name
+                field — used only to assert the confirmation toast's exact
+                text (same assertion :meth:`save_as_version` makes).
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the create-version POST.
+        """
+        previous_version_id = self.get_version_id()
+
+        with self.page.expect_response(
+            lambda r: "/elitea_core/skill/prompt_lib/" in r.url
+            and r.request.method == "POST"
+        ) as response_info:
+            self.create_version_save_button.click()
+
+        self.version_toast_message.wait_for(state="visible", timeout=timeout)
+        toast_text = self.version_toast_message.text_content()
+        assert toast_text == f'Version "{version_name}" created', (
+            f"Expected 'Version \"{version_name}\" created' toast, got: {toast_text!r}"
+        )
+        self.page.wait_for_function(
+            "prevId => window.location.pathname.split('/').filter(Boolean).pop() !== prevId",
+            arg=previous_version_id,
+            timeout=timeout,
+        )
+        self.wait_for_network(timeout=5000)
+        logger.info(
+            "New version %r created (response captured) — URL: %s, POST status=%s",
+            version_name, self.page.url, response_info.value.status,
+        )
+        return response_info.value
+
     def get_version_selector_value(self) -> str:
         """Return the currently displayed value of the VERSION selector.
 
