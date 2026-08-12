@@ -1332,3 +1332,40 @@ on an agent that has 3 Skills attached.
   (compatible with either 1 or 2 invocations on a prose transform).
   Full details:
   `test-specs/skills/lextend_skill-explicit-autonomous-invocation-coexistence_ELITEA-2609.md`.
+
+## Agent-attached skill: SELECTING a non-base version actually changes chat behaviour (ELITEA-2610)
+
+- **New ground vs ELITEA-1789**: that AFS's skill only ever had ONE saved
+  version (`base`), so it confirmed the version-selector trigger/menu render
+  and open correctly, but never confirmed that clicking a non-base
+  `skill-version-option-{name}` menu item (a) actually re-PATCHes the
+  attachment, or (b) changes the AGENT's live-chat behaviour when the skill is
+  autonomously invoked. Both confirmed live this run, 3/3 (casual →
+  technical → base), with the change taking effect on the VERY NEXT chat
+  turn — same conversation, no page reload, no new chat, no explicit
+  agent-level Save.
+- **All three `skill-version-selector-trigger-{skill_id}` /
+  `skill-version-selector-menu-{skill_id}` / `skill-version-option-{version_name}`
+  testids are now `on-main ✓`** (promoted since the ELITEA-1789 rework, which
+  recorded them as `automation/testids`-only). Re-verify PROVENANCE fresh on
+  your own run regardless — this is a snapshot, not a standing guarantee.
+- **Real click required, same gotcha as ELITEA-1789**: an accessibility-tree/
+  `ref=`-resolved click on the trigger still silently no-ops (issue #46's a11y
+  half, `tabIndex=-1`/no ARIA role, reconfirmed live this run). Use a real
+  Playwright/CDP click (or `browser_evaluate` + `querySelector(...).click()`)
+  on the testid-scoped element.
+- **Gotcha for deterministic assertions**: don't use the case's literal
+  subjective tone descriptions ("formal"/"casual with emojis"/"technical") as
+  the skill's actual instructions — "is this response casual" isn't a
+  scriptable assertion. Use a `"Start every response with the exact tag
+  [X-STYLE]:"` marker-tag instruction per version (mirrors ELITEA-2440's
+  `"Always say BASE"` pattern) so the automated assertion is an exact-prefix
+  check, not a vibe check.
+- **No page-object method exists yet to CLICK a specific version option** —
+  only open/read/close the menu (`open_skill_version_selector`,
+  `get_versions_menu_item_names`, `close_versions_menu`). The
+  `SKILL_VERSION_OPTION_SELECTOR` template constant (`agent_detail_page.py:259`)
+  is already defined but never called from a public method — implementer adds
+  `select_skill_version(skill_name, version_name)`.
+  Full details:
+  `test-specs/skills/l3_skill-version-selection-behavior_ELITEA-2610.md`.
