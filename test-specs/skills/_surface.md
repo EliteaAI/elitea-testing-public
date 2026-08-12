@@ -1007,3 +1007,81 @@ Confirmed live end-to-end this run (skill 1579/version 1663, `publish_skill`/
   and disable the "Publish" button; the wizard does NOT auto-reset to
   Preparation or auto-refire validation — user must Cancel and reopen.
   Full details: `test-specs/skills/l2_skill-publishing-token-invalidation-and-ttl-expiration_ELITEA-2597.md`.
+
+## Unpublish + republish lifecycle, version coexistence (ELITEA-2599) — `UnpublishConfirmModal.jsx` (shared with agents, `entityLabel="skill"`)
+
+Confirmed live end-to-end this run (skill 1595, project 399).
+
+- **Trigger**: overflow (⋮) menu → VERSION group → "Unpublish" — testid
+  `unpublish-menuitem`, same runtime-constructed `${item.key}-menuitem`
+  pattern as `publish-menuitem` (`SkillControls.jsx` sets `key: 'unpublish'`
+  at the call site — `useUnpublishSkillMenu.hooks.jsx`'s `canUnpublish` gate
+  requires `versionStatus === Published`, so this menu item only appears
+  when viewing a Published version, never the draft `base`).
+- **Confirm dialog**: `UnpublishConfirmModal.jsx`, title "Unpublish Skill",
+  body (non-admin/no-reason branch, confirmed verbatim): "Are you sure you
+  want to unpublish {name} (version: {version})? The skill will be removed
+  from ELITEA Catalog immediately. Existing conversations using this skill
+  version may be affected." Confirm button testid
+  `agent-unpublish-confirm-button` — **same cross-entity naming artifact as
+  `agent-publish-*`** (component hardcodes this testid regardless of the
+  `entityLabel` prop it receives) — not a defect, matches the already-
+  accepted Publish-side pattern.
+- **Endpoint**: `POST unpublish_skill/prompt_lib/{project}/{skillId}/
+  {versionId}` → `200 {msg: "Successfully unpublished", status: "deleted"}`.
+  Invalidates the SAME RTK tags as `publishSkill`
+  (`TAG_TYPE_PUBLIC_SKILLS`/`TAG_TYPE_PUBLIC_SKILL_DETAILS`) — Catalog
+  reflects the removal on a fresh navigation, no reload/wait needed.
+- **Post-unpublish, the version is fully re-editable/re-publishable** — the
+  overflow menu flips back to showing "Publish" (not "Unpublish") the
+  moment `versionStatus !== Published`. No separate "restore" flow exists;
+  republish is a normal Publish-wizard pass on the same version.
+- **`public_skill_id` behavior is the crux of "version coexistence" — read
+  carefully, this is easy to get backwards:**
+  - Publish → Unpublish → Republish (of the SAME or a different version of
+    the same skill) allocates a **brand-new `public_skill_id`**. Unpublish
+    is a real deletion (`status: "deleted"`) of that catalog entity, not a
+    toggle. Confirmed live: `v1.0` published → `public_skill_id=51` →
+    unpublished → `v2.0` published (different version, same underlying
+    skill 1595) → `public_skill_id=52` (NEW, not 51 reused).
+  - Publishing a SIBLING version of the same skill **while an existing
+    published version stays live (never unpublished)** REUSES the same
+    `public_skill_id` and only allocates a new `public_version_id`. This
+    is the actual coexistence mechanism the TMS case means by "up to 3
+    versions can coexist". Confirmed live: with `v2.0` live at
+    `public_skill_id=52, public_version_id=56`, publishing the skill's
+    `base` draft as `v3.0` (WITHOUT unpublishing v2.0 first) produced
+    `public_skill_id=52, public_version_id=57` — same 52. A further `v4.0`
+    (published from the previously-unpublished `v1.0`'s now-reusable
+    version) produced `public_skill_id=52, public_version_id=58` — still
+    52, bringing the total to 3 coexisting versions (56/57/58) under one
+    public entry. No rejection or cap enforcement was observed publishing
+    up to 3 coexisting versions this way.
+  - A true "4th version beyond 3 coexisting" publish was NOT exercised
+    (turn-budget boundary this run) — unconfirmed whether the platform
+    enforces a hard cap at that point or keeps accepting them. The TMS
+    case's own language for this edge is non-prescriptive ("handled
+    appropriately"), so don't treat an accepted 4th-beyond-3 publish as a
+    defect without a more specific spec to check it against.
+- **Catalog card**: one card per ACTIVE `public_skill_id`, testid
+  `catalog-skill-card-{public_skill_id}` (confirmed `catalog-skill-card-52`
+  live). Opening it shows only the current (latest-published) content —
+  no version-history/selector UI exposed to Catalog viewers. "Only latest
+  shown" is therefore a structural property (one entry, not a filtered
+  list of many), not something the test computes by comparing versions.
+- **Agent-attachment independence (EntitySkillMapping)**: read (not
+  independently re-executed live this run — see the AFS's Coverage Map
+  Axis 2 gap) — `ApplicationSkills.jsx`'s `useGetApplicationSkillsQuery`
+  keys an agent's attached skills by project-scoped `skill_id` alone, with
+  no dependency on that skill's Catalog/publish status anywhere in the
+  query or its cache tags. Attaching a skill to an agent should therefore
+  survive an unpublish of that skill untouched — implementer must still
+  assert this live, the code reading is strong evidence, not a substitute.
+- **Transient infra flakiness observed, not a product defect**: one
+  `publish_skill_validate` call 502'd, then 503'd, then succeeded on a 3rd
+  immediate retry with no code-side change — in the same window,
+  unrelated `socket.io` polling also 502/503'd and a CORS failure hit
+  `dev.elitea.ai` directly. Treat an isolated 502/503 on this endpoint as
+  environment noise (bounded retry acceptable), not evidence against the
+  coexistence claim — but don't silently swallow a REPEATED failure.
+  Full details: `test-specs/skills/l3_skill-unpublish-republish-lifecycle_ELITEA-2599.md`.
