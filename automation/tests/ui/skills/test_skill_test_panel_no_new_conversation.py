@@ -133,9 +133,7 @@ class TestSkillTestPanelNoNewConversation:
                     f"Expected conversation ids to stay {baseline_ids}, got {after_ids}"
                 )
 
-                sidebar_count = chat_page.page.locator(
-                    chat_page.CONVERSATION_ITEM_PREFIX
-                ).count()
+                sidebar_count = chat_page.get_conversation_item_rows().count()
                 baseline_sidebar_count = len(baseline_ids)
                 assert sidebar_count == baseline_sidebar_count, (
                     f"Expected Chat sidebar conversation-item count to stay "
