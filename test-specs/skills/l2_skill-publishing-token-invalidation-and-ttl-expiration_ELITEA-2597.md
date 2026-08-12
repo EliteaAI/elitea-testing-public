@@ -156,12 +156,48 @@ Testid-only per `.agents/testing.md` § Locator policy — every UI handle this
 flow touches is **identical to ELITEA-2595's Publish-wizard set** (same
 `PublishWizardModal.jsx`, `entityLabel="skill"`); not re-listed in full here,
 see `test-specs/skills/l2_skill-publishing-wizard-happy-path_ELITEA-2595.md`
-§ Concrete Handles for the complete PROVENANCE table. No NEW testids needed
-for this case — Part A/B only exercise the SAME Preparation/Validation-step
-elements plus reading the inline error text, which reuses the wizard's
-existing error-display node (no separate testid needed beyond what ELITEA-2595
-already captured; the implementer asserts on message TEXT via the existing
-Validation-step summary region, not a new locator).
+§ Concrete Handles for the complete PROVENANCE table.
+
+**Implementer amendment (2026-08-12) — this AFS's "no new testids needed"
+claim was written on the ASSUMPTION that ELITEA-2595's implementation (PR
+EliteaAI/elitea-testing-public#1464) was already merged and its page-object
+methods reusable. At implementation time PR #1464 was still open/in a
+fix-round on the batch trunk — not a merged, stable base to build on (batch
+rule: "never target a same-batch AFS that has not merged") — so the
+`SkillDetailPage` Publish-wizard methods were written fresh here, keyed off
+this AFS's OWN verified testid table above plus a source read of the shared
+`PublishWizardModal.jsx`/`usePublishSkill.hooks.js` (not off #1464's
+unmerged page-object diff). That source read surfaced TWO real gaps this
+AFS's "no new testids" claim missed:**
+
+1. **The inline error Alert had NO testid at all** on either `main` or
+   `automation/testids` (verified via `git grep`/source read, not assumed)
+   — `PublishWizardModal.jsx`'s `<Alert severity="error">{publishError}</Alert>`
+   carried no `data-testid`. Added `publish-wizard-error-alert` (generic,
+   shared-component-scoped per the naming rule) via `add-data-testid`,
+   `LocatorDescriptor` field `SkillDetailPage.publish_error_alert`.
+2. **The Publish button LOSES its testid entirely after a rejected publish
+   attempt** — confirmed live this run: `usePublishSkill.hooks.js`'s
+   `handlePublish()` unconditionally advances `step` to `PUBLISHING` before
+   the request resolves, so a rejection (`error` set) renders the
+   `step === PUBLISHING && publishError` branch's hard-disabled Publish
+   button — a SEPARATE JSX node from the Validation-step's
+   `agent-publish-confirm-button`, and it previously had no testid, making
+   Part A/B step 4/8/5/9's "Publish button becomes disabled" un-assertable
+   with testid-only locators. Reused the SAME `agent-publish-confirm-button`
+   testid on this second, mutually-exclusive branch (declared improvisation,
+   `.agents/role-overrides.md` § Declared-improvisation protocol — see
+   `SkillDetailPage.publish_confirm_button`'s LocatorDescriptor description
+   for the full reasoning; the two branches are never mounted simultaneously
+   since `step` is a single value, so there is no collision risk — same
+   spirit as canon ruling #277's same-element conditional pair, applied
+   across two JSX blocks instead of one ternary).
+
+Both additions committed to `EliteaUI` `automation/testids`
+(`EliteaAI/EliteaUI@2dafb537`, `EliteaAI/EliteaUI@c9c1f29e`) — not yet on
+`main` (human cherry-pick pending, per the standing testid-promotion policy).
+Part A/B otherwise only exercise the SAME Preparation/Validation-step
+elements this AFS's table already names.
 
 ### `validation_token` format (new discovery, not in ELITEA-2595's AFS)
 Confirmed live (two independent tokens captured, skill 1579/version 1663):

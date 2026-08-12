@@ -50,3 +50,5 @@
 - [Dirty trunk from an interrupted prior unit](dirty_trunk_from_interrupted_prior_unit_quarantine_dont_absorb.md) — quarantine onto its OWN branch first; never absorb or clean
 - [Icon picker Uploaded gallery can get stuck](skill_icon_uploaded_gallery_order.md) — infinite-scroll loader breaks after mutation+page>0 (#1459); don't build on data-selected there
 - [verify_on_detail_page races SPA route](verify_on_detail_page_races_spa_route_push.md) — call wait_for_page_load() first, always, after any save/nav
+- [Publish button loses testid on rejection](publish_wizard_step_advances_before_request_resolves_kills_testid.md) — step→PUBLISHING fires before the request resolves
+- [Publish AI gate flags "reply X" instructions](skill_publish_ai_gate_rejects_blanket_reply_instructions.md) — 422/FAIL prompt-injection heuristic; use bounded task-specific text
