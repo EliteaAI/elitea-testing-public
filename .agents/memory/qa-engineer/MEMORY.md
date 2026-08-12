@@ -37,3 +37,4 @@
 - [Dead-code guard's "class scoping" still false-passes](dead_code_guard_class_name_substring_scoping_still_false_passes.md) — verify via a live collision, don't trust the scoping code
 - [Recovered-branch PRs can wipe daily logs](pr_branch_recovery_can_silently_wipe_other_units_daily_log.md) — diff line counts vs base, not just content
 - [Skill Publish: no icon/tags = FAIL not WARN](skill_publish_icon_tags_critical_not_warn.md) — happy-path fixtures need icon+tag; #1463
+- [Catalog "under Category" can't be scoped](catalog_category_grouping_cannot_be_scoped_no_container_testid.md) — no container testid; heading+card checks are independent
