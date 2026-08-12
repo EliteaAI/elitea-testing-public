@@ -555,6 +555,35 @@ class AgentFormPage(BasePage):
 
         logger.info("Saved and navigation completed")
 
+    @action("Save (capturing the raw PUT response)")
+    def save_and_capture_response(self, timeout: int = 15000):
+        """Click Save and return the raw PUT ``.../application/...``
+        Response, WITHOUT waiting for success or navigation.
+
+        Additive sibling of :meth:`save_and_wait` / :meth:`click_save` —
+        those assume the save SUCCEEDS (they only wait for network idle,
+        discarding the response). Callers asserting a REJECTED save on a
+        locked/published version (ELITEA-2614 — the server returns 400
+        with an ``error`` field naming the exact version id) need the
+        response itself, not just an idle-network heuristic.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the
+            ``PUT .../elitea_core/application/prompt_lib/...`` call.
+        """
+        logger.info("Clicking Save (capturing response)")
+        with self.page.expect_response(
+            lambda r: "/elitea_core/application/prompt_lib/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as save_info:
+            self.save_button.evaluate("el => el.click()")
+        response = save_info.value
+        logger.info("Save response captured — status=%d", response.status)
+        return response
+
     # ------------------------------------------------------------------
     # Field update helpers
     # ------------------------------------------------------------------

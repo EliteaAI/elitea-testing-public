@@ -127,6 +127,25 @@ class AgentDetailPage(AgentFormPage):
     # ELITEA-1887, pushed to automation/testids commit ce74cd40. See
     # open_agent_picker() below.
     add_agent_button = LocatorDescriptor(testid="agent-add-agent-button")
+    # "+ Pipeline" add button (ToolMenu.jsx) — opens a popper listing
+    # project pipelines that could be attached as sub-agent tools. Added
+    # ELITEA-2614 — pre-existing testid on the live app, simply never had a
+    # page-object field before this dispatch.
+    add_pipeline_button = LocatorDescriptor(testid="agent-add-pipeline-button")
+    # Tooltip wrappers for the 4 Tools "+ X" add buttons above — added via
+    # `add-data-testid` in the ELITEA-2614 testid-only rework
+    # (EliteaAI/EliteaUI@2d05a7f1 on `automation/testids`), mirroring the
+    # pre-existing `agent_add_skill_button_tooltip` pattern (SkillMenu.jsx).
+    # MUI's `Tooltip` clones its `title` onto `aria-label` on its IMMEDIATE
+    # child — here the wrapping `<Box component="span">`, NOT the nested
+    # `BaseBtn` that carries the button's own testid above — so a separate
+    # testid on the wrapper is the only testid-only way to read the
+    # tooltip text (`lockedTooltip` / the "Save the ... first" ternary in
+    # `ToolMenu.jsx`). See get_add_toolkit_button_tooltip() etc. below.
+    add_toolkit_button_tooltip = LocatorDescriptor(testid="agent-add-toolkit-button-tooltip")
+    add_mcp_button_tooltip = LocatorDescriptor(testid="agent-add-mcp-button-tooltip")
+    add_agent_button_tooltip = LocatorDescriptor(testid="agent-add-agent-button-tooltip")
+    add_pipeline_button_tooltip = LocatorDescriptor(testid="agent-add-pipeline-button-tooltip")
     toolkit_card = LocatorDescriptor(testid="agent-toolkit-card")
     toolkit_delete_button = LocatorDescriptor(testid="agent-toolkit-delete-button")
     toolkit_search_input = LocatorDescriptor(testid="toolkit-search-input")
@@ -2280,6 +2299,60 @@ class AgentDetailPage(AgentFormPage):
         except Exception:
             return None
 
+    def _get_tool_add_button_tooltip(self, wrapper: Locator, timeout: int) -> str | None:
+        """Shared implementation for the 4 Tools "+ X" button tooltip getters.
+
+        Args:
+            wrapper: The button's Tooltip-wrapper `LocatorDescriptor` field
+                (e.g. :attr:`add_toolkit_button_tooltip`).
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            wrapper.wait_for(state="visible", timeout=timeout)
+            return wrapper.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def get_add_toolkit_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ Toolkit" button's tooltip text (`lockedTooltip`
+        when the version is locked, or the "Save first" hint when unsaved).
+
+        See :attr:`add_toolkit_button_tooltip`'s docstring for why the
+        wrapper (not the button) carries the `aria-label`. Returns None if
+        the wrapper never appears within the timeout.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_toolkit_button_tooltip, timeout)
+
+    def get_add_mcp_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ MCP" button's tooltip text — see
+        :meth:`get_add_toolkit_button_tooltip`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_mcp_button_tooltip, timeout)
+
+    def get_add_agent_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ Agent" button's tooltip text — see
+        :meth:`get_add_toolkit_button_tooltip`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_agent_button_tooltip, timeout)
+
+    def get_add_pipeline_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ Pipeline" button's tooltip text — see
+        :meth:`get_add_toolkit_button_tooltip`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_pipeline_button_tooltip, timeout)
+
     def _skills_section_content(self):
         """Return a locator scoped to the Skills accordion's content container.
 
@@ -2505,6 +2578,91 @@ class AgentDetailPage(AgentFormPage):
     def close_versions_menu(self):
         """Close the open Versions menu by pressing Escape."""
         self.page.keyboard.press("Escape")
+
+    def get_skill_version_selector_trigger(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the version-selector trigger Locator for a skill's card.
+
+        LOCATOR: `skill-version-selector-trigger-{skill_id}`
+        (`SKILL_VERSION_TRIGGER_SELECTOR`), scoped off :meth:`_skill_card`
+        — same handle :meth:`open_skill_version_selector` clicks, exposed
+        directly for callers (ELITEA-2614) that need to inspect the
+        trigger itself (e.g. its `aria-label`) rather than open the menu.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        skill_id = self._get_skill_id_from_card(card)
+        return card.locator(self.SKILL_VERSION_TRIGGER_SELECTOR.format(skill_id))
+
+    @action("Attempt to open a skill's version selector (locked version — expect no-op)")
+    def attempt_open_skill_version_selector(self, skill_name: str, timeout: int = 5000) -> bool:
+        """Click a skill card's version-selector trigger and report whether
+        the Versions menu actually opened.
+
+        On a locked (published/embedded) agent version,
+        `SkillVersionSelector.jsx`'s trigger has `onClick={isUpdating ||
+        disabled ? undefined : handleOpen}` — clicking a `Box` with no
+        `onClick` handler is a legal Playwright click that simply does
+        nothing (source-confirmed, ELITEA-2614). Distinguishes an
+        intentional "attempt and observe no-op" from
+        :meth:`open_skill_version_selector`, which asserts the menu DOES
+        open and would just time out here without telling the caller
+        whether the click itself was refused or merely slow.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds for the trigger
+                itself; the post-click menu check uses a short fixed
+                window (menus that DO open render near-instantly).
+
+        Returns:
+            True if the Versions menu opened after the click, False if it
+            stayed closed (the expected outcome on a locked version).
+        """
+        trigger = self.get_skill_version_selector_trigger(skill_name, timeout=timeout)
+        trigger.wait_for(state="visible", timeout=timeout)
+        trigger.click()
+        return self.is_versions_menu_open(skill_name, timeout=1500)
+
+    @action("Hover a skill's card to reveal its hover-only action buttons")
+    def hover_skill_card(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Hover a skill's card and return its Locator, revealing the
+        hover-only "remove skill" / "open in new tab" icon buttons
+        (`SkillCard.jsx`'s `actionButton` style flips `display:none` ->
+        `flex` only on the card's `:hover` CSS rule).
+
+        Extracted from :meth:`remove_skill`'s hover-prep steps for callers
+        (ELITEA-2614) that need to ASSERT on the revealed buttons
+        (disabled state, `aria-label`) without actually removing anything.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds for the card itself.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        card.scroll_into_view_if_needed()
+        card.hover()
+        self.page.wait_for_timeout(500)  # hover-reveal CSS transition
+        return card
+
+    def get_skill_card_remove_button(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the "remove skill" icon button Locator for a skill's card.
+
+        LOCATOR: `SKILL_CARD_REMOVE_BUTTON_SELECTOR`, scoped off
+        :meth:`_skill_card` (same handle :meth:`remove_skill` clicks).
+        DOM-attribute reads (`get_attribute("aria-label")`,
+        `is_disabled()`) work regardless of the card's hover state; callers
+        that need real VISIBILITY should call :meth:`hover_skill_card`
+        first.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        return card.locator(self.SKILL_CARD_REMOVE_BUTTON_SELECTOR)
 
     def is_remove_skill_button_visible(self, skill_name: str, timeout: int = 5000) -> bool:
         """Point-in-time check: is the "remove skill" icon button currently
