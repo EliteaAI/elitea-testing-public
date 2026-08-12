@@ -1240,3 +1240,44 @@ on an agent that has 3 Skills attached.
   you sure you want to discard changes?", `discard-confirm-button`) before reverting. Don't assume a
   failed Save silently resets state between per-field assertions.
   Full details: `test-specs/skills/l2_published-agent-version-cannot-be-modified_ELITEA-2614.md`.
+
+## Autonomous skill invocation + thought-process visibility (ELITEA-2607)
+
+- **`agent-add-skill-button` is now on-main, confirmed live.** The ELITEA-1735
+  AFS (2026-07-14 pass) logged this as a gap ("no testid, recommend
+  `add-data-testid`"). Confirmed live 2026-08-12: the button IS wired
+  (`data-testid="agent-add-skill-button"`) — the UI team added it since that
+  earlier pass. Stop citing the ELITEA-1735 gap note for this element; use the
+  testid directly.
+- **Skill invocation is visible in the thought process as a `chat-answer-tool-chip`
+  reading `"Skill: {skill-name}"`.** `ActionView.jsx`
+  (`../EliteaUI/src/components/Chat/ActionView.jsx:196-217`) special-cases
+  `action.toolMeta.toolkit_name === 'skills'`: the chip title becomes
+  `` `Skill${separator}${loadedSkillName}` `` instead of the usual
+  `"{toolkit}: {tool}"` form. Confirmed live: attaching one skill to a fresh
+  agent and sending a message matching that skill's description trigger (no
+  `~mention`) produces a `"Thought for N secs"` accordion (auto-expanded) whose
+  chip row reads exactly `"Skill: {skill-name}"` next to the model chip. Existing
+  page-object handles (`AgentDetailPage.CHAT_ANSWER_THOUGHT_ACCORDION_SELECTOR` /
+  `CHAT_ANSWER_TOOL_CHIP_SELECTOR`, `automation/pages/agent_detail_page.py:189-191`)
+  already scope correctly — no new testid needed for this assertion.
+- **Autonomous (V2, no `~mention`) invocation and the plain-message
+  non-invocation path both already work correctly live** — same mechanism
+  ELITEA-1735's merged test already exercises
+  (`automation/tests/ui/skills/test_skill_agent_interaction.py`). Re-confirmed
+  this run on a fresh single-skill topology (not just the merged test's
+  two-skill topology).
+- **Unattached skills are never invoked — confirmed live, no defect.** Created a
+  second skill with a distinctive canary-marker instruction (a string that could
+  ONLY appear in the response if that skill's own instructions fired), left it
+  unattached, then sent an adversarial prompt explicitly inviting it by name/intent
+  ("...use your translator skill if you have one"). Result: no
+  `chat-answer-tool-chip` for the unattached skill anywhere in the thought
+  accordion; response opens with "I don't have a translator skill available...";
+  canary marker never appears. **Gotcha for anyone writing this assertion**: don't
+  use a plausible real transform (e.g. an actual translation) as the unattached
+  skill's instructions — a correct real transform is indistinguishable from the
+  base LLM answering the same prompt with ZERO skill involvement, so it can't
+  prove non-invocation either way. Use an unmistakable canary marker instead.
+  Full details:
+  `test-specs/skills/lextend_skill-autonomous-invocation-core-functionality_ELITEA-2607.md`.
