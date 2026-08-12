@@ -130,8 +130,8 @@
 | 7 Loading state "Generating skill draft…" | indicator+message shown | step 5 | `step 5`: `ai-edit-skill-loading-indicator` text | asserted |
 | 8 Wait for generation to complete | suggestions generated | step 6 | `step 6` | asserted |
 | 9 Wizard first step General (Name, Description) | Step 1 displayed | step 6 | `step 6`: step-indicator text + Name/Description fields | asserted |
-| 10 "Current" value read-only | original shown non-editable | step 6 | `step 6`: CURRENT column | asserted |
-| 11 "Suggested" value editable | AI suggestion shown editable | step 6 | `step 6`: SUGGESTED column (contentEditable) | asserted |
+| 10 "Current" value read-only | original shown non-editable | step 6 | `step 6`: `ai-edit-skill-general-description-current` text == SEED_DESCRIPTION + no `contenteditable` attribute | asserted |
+| 11 "Suggested" value editable | AI suggestion shown editable | step 6 | `step 6`: `ai-edit-skill-general-description-suggested` `contenteditable="true"` | asserted |
 | 12 Diff highlighting shows changes | visual diff current vs suggested | step 6 | `step 6`: suggested text differs from current text | asserted *(data-level, not CSS — see Automation Hints)* |
 | 13 Checkboxes present, default checked | checked by default | step 6 | `step 6`: Name + Description checkboxes checked | asserted |
 | 14 Navigate to Instructions step | Step 2 loads | step 7 | `step 7`: Next click + step-indicator text | asserted |
@@ -220,6 +220,17 @@ discipline, just extended to the wizard phase:
 | Summary step — Name input | `features/skill/ui/ai-edit-skill-modal/steps/SummaryStep.jsx` (skill-specific) | `nameInputTestId` | `ai-edit-skill-summary-name-input` |
 | Summary step — Description input | same | `descriptionInputTestId` | `ai-edit-skill-summary-description-input` |
 | Summary step — Instructions input | same | `instructionsInputTestId` | `ai-edit-skill-summary-instructions-input` |
+| General step — Description CURRENT column (read-only) | `entities/edit-entity-with-ai/ui/GeneralStep.jsx` (shared, via `TextDiffHighlight.jsx`'s new `testId` prop) | `descriptionCurrentTestId` | `ai-edit-skill-general-description-current` |
+| General step — Description SUGGESTED column (editable) | same | `descriptionSuggestedTestId` | `ai-edit-skill-general-description-suggested` |
+
+**Added during ELITEA-2611 fix round 1 (implementer):** the two rows above were
+missing from the original Concrete Handles table even though Coverage Map rows
+10/11 required them — `TextDiffHighlight.jsx` now accepts a generic `testId`
+prop (threaded through `GeneralStep.jsx` → `AIEditSkillModal.jsx`), landed on
+`automation/testids` at `EliteaAI/EliteaUI@3e1e5c73`. Only the Description
+field's Current/Suggested columns are wired (not Name's) — the test only
+asserts on Description, so per canon #511 no orphan testid is introduced for
+Name's pair.
 
 **Minimum viable testid set for THIS case** (if the implementer wants to trim
 scope): step indicator + the 3 checkboxes + the 4 wizard-footer navigation/save
