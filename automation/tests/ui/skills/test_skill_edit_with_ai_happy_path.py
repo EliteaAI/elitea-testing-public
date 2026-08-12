@@ -196,6 +196,23 @@ class TestSkillEditWithAIHappyPath:
                     f"Description — got identical text: {draft.get('description')!r}"
                 )
 
+                # Coverage Map rows 10/11 — CURRENT is a read-only display of
+                # the original value, SUGGESTED is a genuinely editable
+                # field. Asserted structurally (contenteditable attribute)
+                # rather than by content, matching the AFS's data-level
+                # treatment of the AI-generated SUGGESTED text elsewhere.
+                assert modal.get_general_description_current_text() == SEED_DESCRIPTION, (
+                    "General step CURRENT column should display the original (seeded) "
+                    f"Description, got: {modal.get_general_description_current_text()!r}"
+                )
+                assert not modal.is_general_description_current_editable(), (
+                    "General step CURRENT column should be read-only (no contenteditable "
+                    "attribute)"
+                )
+                assert modal.is_general_description_suggested_editable(), (
+                    "General step SUGGESTED column should be editable (contenteditable=true)"
+                )
+
             # ------------------------------------------------------------
             # Step 7 — Navigate to the Instructions step; verify the
             # checkbox is checked by default and the suggestion differs

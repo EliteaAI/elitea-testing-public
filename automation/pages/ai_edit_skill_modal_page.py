@@ -17,15 +17,19 @@ review-form step — the two page objects share no methods worth inheriting.
 Wizard-phase testids (step indicator, checkboxes, nav buttons, Summary
 inputs) were added via ``add-data-testid`` for ELITEA-2611
 (EliteaAI/EliteaUI@cddfd6d4) — the wizard previously carried zero
-data-testid wiring.
+data-testid wiring. The General step's Description CURRENT/SUGGESTED
+column testids were added in fix round 1 (EliteaAI/EliteaUI@3e1e5c73) to
+make Coverage Map rows 10/11 (read-only vs editable column display)
+structurally assertable.
 
 Covers: ELITEA-2611 (happy path — full wizard round-trip, partial apply via
 per-field checkboxes, persistence across a full page reload).
 """
 
 import logging
+import re
 
-from playwright.sync_api import Page, Response
+from playwright.sync_api import Page, Response, expect
 from utils.actions import action
 
 from .base_page import BasePage
@@ -115,6 +119,22 @@ class AIEditSkillModalPage(BasePage):
         testid="ai-edit-skill-instructions-checkbox",
         description="Instructions step — 'Apply changes' checkbox (same "
                      "Mui-checked class workaround)",
+    )
+
+    general_description_current = LocatorDescriptor(
+        testid="ai-edit-skill-general-description-current",
+        description="General step — Description CURRENT column (read-only "
+                     "display of the original text; renders as a plain "
+                     "<Typography>, never carries contenteditable). Added "
+                     "for ELITEA-2611 fix round 1 (EliteaAI/EliteaUI@3e1e5c73) "
+                     "to make Coverage Map row 10 assertable.",
+    )
+    general_description_suggested = LocatorDescriptor(
+        testid="ai-edit-skill-general-description-suggested",
+        description="General step — Description SUGGESTED column (editable "
+                     "diff view; renders as a contenteditable <div>). Added "
+                     "for ELITEA-2611 fix round 1 (EliteaAI/EliteaUI@3e1e5c73) "
+                     "to make Coverage Map row 11 assertable.",
     )
 
     summary_name_input = LocatorDescriptor(
@@ -248,6 +268,29 @@ class AIEditSkillModalPage(BasePage):
         return (self.step_indicator.text_content() or "").strip()
 
     # ------------------------------------------------------------------
+    # Wizard — General step Description CURRENT/SUGGESTED column checks
+    # (Coverage Map rows 10/11 — read-only vs editable structural proof)
+    # ------------------------------------------------------------------
+
+    def get_general_description_current_text(self) -> str:
+        """Return the CURRENT (read-only) column's rendered text for
+        Description."""
+        return (self.general_description_current.text_content() or "").strip()
+
+    def is_general_description_current_editable(self) -> bool:
+        """Row 10 — CURRENT must be read-only: the column renders as a
+        plain ``<Typography>`` and never carries a ``contenteditable``
+        attribute at all (``get_attribute`` returns ``None``, not
+        ``"false"``)."""
+        return self.general_description_current.get_attribute("contenteditable") is not None
+
+    def is_general_description_suggested_editable(self) -> bool:
+        """Row 11 — SUGGESTED must be editable: the column renders as a
+        ``contenteditable`` ``<div>`` (``TextDiffHighlight.jsx``, editable
+        branch)."""
+        return self.general_description_suggested.get_attribute("contenteditable") == "true"
+
+    # ------------------------------------------------------------------
     # Wizard — General/Instructions step checkboxes
     # ------------------------------------------------------------------
 
@@ -277,10 +320,17 @@ class AIEditSkillModalPage(BasePage):
     @action("Uncheck the Description 'Apply changes' checkbox")
     def uncheck_description_checkbox(self):
         """Uncheck the General step's Description checkbox (no-op if
-        already unchecked)."""
+        already unchecked).
+
+        Waits on the ``Mui-checked`` class actually leaving the checkbox's
+        root ``<span>`` (framework condition-wait) instead of a fixed
+        sleep — same class-list technique as :meth:`_is_mui_checkbox_checked`,
+        driven through Playwright's auto-retrying ``expect()`` rather than
+        a one-shot read.
+        """
         if self.is_description_checkbox_checked():
             self.general_description_checkbox.click()
-            self.page.wait_for_timeout(150)
+            expect(self.general_description_checkbox).not_to_have_class(re.compile("Mui-checked"))
         logger.info("Description 'Apply changes' checkbox unchecked")
 
     # ------------------------------------------------------------------
@@ -288,14 +338,22 @@ class AIEditSkillModalPage(BasePage):
     # ------------------------------------------------------------------
 
     @action("Click wizard Next")
-    def click_next(self):
+    def click_next(self, timeout: int = 5000):
+        """Click Next and wait for the step indicator to actually change,
+        rather than a fixed sleep — the step transition is a synchronous
+        React state update (``EditEntityModal``'s ``activeStepIndex``), so
+        the indicator's text is the real completion signal."""
+        previous_step = self.get_step_indicator_text()
         self.next_button.click()
-        self.page.wait_for_timeout(200)
+        expect(self.step_indicator).not_to_have_text(previous_step, timeout=timeout)
 
     @action("Click wizard Previous")
-    def click_previous(self):
+    def click_previous(self, timeout: int = 5000):
+        """Click Previous and wait for the step indicator to change (same
+        condition-wait as :meth:`click_next`)."""
+        previous_step = self.get_step_indicator_text()
         self.previous_button.click()
-        self.page.wait_for_timeout(200)
+        expect(self.step_indicator).not_to_have_text(previous_step, timeout=timeout)
 
     # ------------------------------------------------------------------
     # Wizard — Summary step reads
