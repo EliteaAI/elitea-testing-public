@@ -36,3 +36,7 @@
 - [MUI Tooltip title is app-owned](mui_tooltip_title_content_is_app_owned_testid_able.md) — not #579; testid the JSX directly
 - [Dead-code guard's "class scoping" still false-passes](dead_code_guard_class_name_substring_scoping_still_false_passes.md) — verify via a live collision, don't trust the scoping code
 - [Recovered-branch PRs can wipe daily logs](pr_branch_recovery_can_silently_wipe_other_units_daily_log.md) — diff line counts vs base, not just content
+- [Skill Publish: no icon/tags = FAIL not WARN](skill_publish_icon_tags_critical_not_warn.md) — happy-path fixtures need icon+tag; #1463
+- [Sibling PRs can duplicate page-object surface](same_batch_parallel_units_can_duplicate_page_object_surface.md) — check open PRs on same trunk, same file, before approving
+- [Agent publish token error code differs from Skill's](agent_publish_validation_token_error_code_differs_by_entity.md) — Agent=validation_failed, Skill=validation_token_invalid; assert both fields
+- [Catalog "under Category" scoping](catalog_category_grouping_cannot_be_scoped_no_container_testid.md) — RESOLVED PR #1464; container-testid pattern for reuse

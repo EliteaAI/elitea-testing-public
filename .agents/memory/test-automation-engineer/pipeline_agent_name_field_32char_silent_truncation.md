@@ -40,6 +40,20 @@ than a length error. Don't append to a fixture-generated name; use a fixed
 short literal instead (`"autotest_name_modified"`), same as
 `test_discard_reverts_name_change`'s pre-existing pattern.
 
+**Same trap with a MANUALLY-chosen (not fixture-generated) base name
+(ELITEA-2614, 2026-08-12):** `f"immutable-test-agent-2614-{uuid.hex[:6]}"`
+landed at exactly 32 chars by coincidence of the prefix+suffix lengths — no
+`[:32]` slicing involved, so nothing about the base name LOOKED
+truncation-prone. Appending `-EDITED` for a "attempt to edit the Name" case
+step typed 0 extra characters (already at cap), so the field's value never
+actually changed — and the symptom here was `Save` staying **disabled**
+(`is_save_enabled()` → False) rather than a wrong post-save value, an even
+more misleading signal since it looks like "the click/type interaction
+itself failed" rather than a length problem. Any test that constructs its
+own base name AND plans to edit/append to it later in the same test must
+budget headroom for the longest planned suffix up front — don't just check
+the base name's own length in isolation.
+
 **Variant — `pipeline_api.create_pipeline()` HARD-REJECTS >32 chars, does NOT
 silently truncate (ELITEA-2062, 2026-08-09):** unlike the UI's `agent-name-input`
 (above, silent truncation), the server-side `POST

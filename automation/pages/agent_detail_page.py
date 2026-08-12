@@ -127,6 +127,25 @@ class AgentDetailPage(AgentFormPage):
     # ELITEA-1887, pushed to automation/testids commit ce74cd40. See
     # open_agent_picker() below.
     add_agent_button = LocatorDescriptor(testid="agent-add-agent-button")
+    # "+ Pipeline" add button (ToolMenu.jsx) — opens a popper listing
+    # project pipelines that could be attached as sub-agent tools. Added
+    # ELITEA-2614 — pre-existing testid on the live app, simply never had a
+    # page-object field before this dispatch.
+    add_pipeline_button = LocatorDescriptor(testid="agent-add-pipeline-button")
+    # Tooltip wrappers for the 4 Tools "+ X" add buttons above — added via
+    # `add-data-testid` in the ELITEA-2614 testid-only rework
+    # (EliteaAI/EliteaUI@2d05a7f1 on `automation/testids`), mirroring the
+    # pre-existing `agent_add_skill_button_tooltip` pattern (SkillMenu.jsx).
+    # MUI's `Tooltip` clones its `title` onto `aria-label` on its IMMEDIATE
+    # child — here the wrapping `<Box component="span">`, NOT the nested
+    # `BaseBtn` that carries the button's own testid above — so a separate
+    # testid on the wrapper is the only testid-only way to read the
+    # tooltip text (`lockedTooltip` / the "Save the ... first" ternary in
+    # `ToolMenu.jsx`). See get_add_toolkit_button_tooltip() etc. below.
+    add_toolkit_button_tooltip = LocatorDescriptor(testid="agent-add-toolkit-button-tooltip")
+    add_mcp_button_tooltip = LocatorDescriptor(testid="agent-add-mcp-button-tooltip")
+    add_agent_button_tooltip = LocatorDescriptor(testid="agent-add-agent-button-tooltip")
+    add_pipeline_button_tooltip = LocatorDescriptor(testid="agent-add-pipeline-button-tooltip")
     toolkit_card = LocatorDescriptor(testid="agent-toolkit-card")
     toolkit_delete_button = LocatorDescriptor(testid="agent-toolkit-delete-button")
     toolkit_search_input = LocatorDescriptor(testid="toolkit-search-input")
@@ -539,6 +558,33 @@ class AgentDetailPage(AgentFormPage):
                      "(disabled while the AI publish_validate gate reports "
                      "any Critical issue; canPublish = status !== 'FAIL')",
     )
+    publish_error_alert = LocatorDescriptor(
+        testid="publish-wizard-error-alert",
+        description="Publish wizard — inline error Alert (Validation step), "
+                     "renders a rejected publish's error message (agent "
+                     "entity: validation_failed — 'modified since "
+                     "validation'). Pre-existing testid, added by "
+                     "ELITEA-2597's implementer on the shared "
+                     "PublishWizardModal.jsx component "
+                     "(EliteaAI/EliteaUI@2dafb537, automation/testids); "
+                     "confirmed live (ELITEA-2601) to render unmodified for "
+                     "the Agent flow — no new testid needed, exposed here "
+                     "only because AgentDetailPage never wired it before.",
+    )
+    publish_terms_content = LocatorDescriptor(
+        testid="agent-publish-terms-content",
+        description=(
+            "Publish wizard, Preparation step — the scrollable Publishing "
+            "Terms disclosure text box (PublishingTerms.jsx/TermsContent.jsx, "
+            "ELITEA-2600). Contains the platform's documented guarantee that "
+            "attached Skills/sub-agents are embedded, not stripped, and are "
+            "never independently catalog-listed. Added via add-data-testid "
+            "on the shared component's only call site (PreparationStep.jsx), "
+            "following that call site's existing agent-publish-* naming even "
+            "though the component is entityLabel-shared with the skill-"
+            "publish wizard (same pre-existing precedent as its siblings)."
+        ),
+    )
     # Dynamic (runtime-parameterized) testid for the Publish wizard's
     # Category dropdown options — same shared `select-option-{value}` family
     # (SingleSelectMenuItem.jsx) as FORK_PROJECT_OPTION above, keyed here by
@@ -631,6 +677,32 @@ class AgentDetailPage(AgentFormPage):
         super(AgentDetailPage, self).navigate(f"/agents/all/{agent_id}?viewMode=owner")
         self.wait_for_page_load()
         logger.info("Navigated to agent %d and page loaded", agent_id)
+
+    @action("Navigate to agent's Configuration tab (second-tab-safe)")
+    def navigate_to_configuration_tab(self, agent_id: int):
+        """Navigate directly to the agent's Configuration/Skills panel.
+
+        ELITEA-2601 gotcha, confirmed live: opening a SECOND browser tab on
+        a bare ``/agents/all/{id}`` URL (even with ``?viewMode=owner``)
+        lands on the Chat tab, not the Configuration/Skills panel — the
+        ``destTab=configuration`` query param is REQUIRED to land there
+        directly. Added as a sibling of :meth:`navigate` (not a change to
+        it) because that method's existing behaviour has real callers
+        across the suite that already reach Configuration reliably in a
+        SINGLE-tab flow (the default-active-tab difference only manifests
+        for a genuinely fresh second tab/page).
+
+        Args:
+            agent_id: The numeric agent ID.
+        """
+        super(AgentDetailPage, self).navigate(
+            f"/agents/all/{agent_id}?destTab=configuration&viewMode=owner"
+        )
+        self.wait_for_page_load()
+        logger.info(
+            "Navigated to agent %d Configuration tab (second-tab-safe) and page loaded",
+            agent_id,
+        )
 
     # ------------------------------------------------------------------
     # Wait helpers
@@ -2227,6 +2299,60 @@ class AgentDetailPage(AgentFormPage):
         except Exception:
             return None
 
+    def _get_tool_add_button_tooltip(self, wrapper: Locator, timeout: int) -> str | None:
+        """Shared implementation for the 4 Tools "+ X" button tooltip getters.
+
+        Args:
+            wrapper: The button's Tooltip-wrapper `LocatorDescriptor` field
+                (e.g. :attr:`add_toolkit_button_tooltip`).
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            wrapper.wait_for(state="visible", timeout=timeout)
+            return wrapper.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def get_add_toolkit_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ Toolkit" button's tooltip text (`lockedTooltip`
+        when the version is locked, or the "Save first" hint when unsaved).
+
+        See :attr:`add_toolkit_button_tooltip`'s docstring for why the
+        wrapper (not the button) carries the `aria-label`. Returns None if
+        the wrapper never appears within the timeout.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_toolkit_button_tooltip, timeout)
+
+    def get_add_mcp_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ MCP" button's tooltip text — see
+        :meth:`get_add_toolkit_button_tooltip`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_mcp_button_tooltip, timeout)
+
+    def get_add_agent_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ Agent" button's tooltip text — see
+        :meth:`get_add_toolkit_button_tooltip`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_agent_button_tooltip, timeout)
+
+    def get_add_pipeline_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ Pipeline" button's tooltip text — see
+        :meth:`get_add_toolkit_button_tooltip`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_pipeline_button_tooltip, timeout)
+
     def _skills_section_content(self):
         """Return a locator scoped to the Skills accordion's content container.
 
@@ -2452,6 +2578,91 @@ class AgentDetailPage(AgentFormPage):
     def close_versions_menu(self):
         """Close the open Versions menu by pressing Escape."""
         self.page.keyboard.press("Escape")
+
+    def get_skill_version_selector_trigger(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the version-selector trigger Locator for a skill's card.
+
+        LOCATOR: `skill-version-selector-trigger-{skill_id}`
+        (`SKILL_VERSION_TRIGGER_SELECTOR`), scoped off :meth:`_skill_card`
+        — same handle :meth:`open_skill_version_selector` clicks, exposed
+        directly for callers (ELITEA-2614) that need to inspect the
+        trigger itself (e.g. its `aria-label`) rather than open the menu.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        skill_id = self._get_skill_id_from_card(card)
+        return card.locator(self.SKILL_VERSION_TRIGGER_SELECTOR.format(skill_id))
+
+    @action("Attempt to open a skill's version selector (locked version — expect no-op)")
+    def attempt_open_skill_version_selector(self, skill_name: str, timeout: int = 5000) -> bool:
+        """Click a skill card's version-selector trigger and report whether
+        the Versions menu actually opened.
+
+        On a locked (published/embedded) agent version,
+        `SkillVersionSelector.jsx`'s trigger has `onClick={isUpdating ||
+        disabled ? undefined : handleOpen}` — clicking a `Box` with no
+        `onClick` handler is a legal Playwright click that simply does
+        nothing (source-confirmed, ELITEA-2614). Distinguishes an
+        intentional "attempt and observe no-op" from
+        :meth:`open_skill_version_selector`, which asserts the menu DOES
+        open and would just time out here without telling the caller
+        whether the click itself was refused or merely slow.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds for the trigger
+                itself; the post-click menu check uses a short fixed
+                window (menus that DO open render near-instantly).
+
+        Returns:
+            True if the Versions menu opened after the click, False if it
+            stayed closed (the expected outcome on a locked version).
+        """
+        trigger = self.get_skill_version_selector_trigger(skill_name, timeout=timeout)
+        trigger.wait_for(state="visible", timeout=timeout)
+        trigger.click()
+        return self.is_versions_menu_open(skill_name, timeout=1500)
+
+    @action("Hover a skill's card to reveal its hover-only action buttons")
+    def hover_skill_card(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Hover a skill's card and return its Locator, revealing the
+        hover-only "remove skill" / "open in new tab" icon buttons
+        (`SkillCard.jsx`'s `actionButton` style flips `display:none` ->
+        `flex` only on the card's `:hover` CSS rule).
+
+        Extracted from :meth:`remove_skill`'s hover-prep steps for callers
+        (ELITEA-2614) that need to ASSERT on the revealed buttons
+        (disabled state, `aria-label`) without actually removing anything.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds for the card itself.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        card.scroll_into_view_if_needed()
+        card.hover()
+        self.page.wait_for_timeout(500)  # hover-reveal CSS transition
+        return card
+
+    def get_skill_card_remove_button(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the "remove skill" icon button Locator for a skill's card.
+
+        LOCATOR: `SKILL_CARD_REMOVE_BUTTON_SELECTOR`, scoped off
+        :meth:`_skill_card` (same handle :meth:`remove_skill` clicks).
+        DOM-attribute reads (`get_attribute("aria-label")`,
+        `is_disabled()`) work regardless of the card's hover state; callers
+        that need real VISIBILITY should call :meth:`hover_skill_card`
+        first.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        return card.locator(self.SKILL_CARD_REMOVE_BUTTON_SELECTOR)
 
     def is_remove_skill_button_visible(self, skill_name: str, timeout: int = 5000) -> bool:
         """Point-in-time check: is the "remove skill" icon button currently
@@ -3845,6 +4056,118 @@ class AgentDetailPage(AgentFormPage):
         self.wait_for_network(timeout=timeout)
         logger.info("Publish confirmed — status=%d", status)
         return status
+
+    @action("Continue from Publish wizard Preparation step, capturing the raw response")
+    def click_publish_continue_and_capture_response(self, timeout: int = 15000):
+        """Click "Continue" and wait for the ``publish_validate`` response,
+        returning the raw Playwright ``Response`` (not just the status).
+
+        Additive sibling of :meth:`click_publish_continue` — that method's
+        ``int``-only return is an established contract with real callers
+        (``test_agent_publish_unpublish_version.py``,
+        ``test_agent_version_selector_order.py``); this method exists
+        because callers that need the response BODY (``critical_issues[]``/
+        ``warnings[]``/``recommendations[]`` — each entry carrying
+        ``field``/``context``/``issue``/``fix``, per
+        ``ValidationResult.jsx``'s ``buildPlainText()``) cannot get it from
+        an ``int``. Mirrors ``SkillDetailPage.click_publish_continue()``'s
+        own ``Response``-returning shape (ELITEA-2597), added here for the
+        AGENT entity (ELITEA-2601 — per-skill validation-issue attribution
+        assertions need the ``context: "skill: <name>"`` field, which only
+        the response body carries).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the
+            ``publish_validate`` call.
+        """
+        logger.info("Clicking Publish wizard Continue (capturing response)")
+        with self.page.expect_response(
+            lambda r: "publish_validate" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as validate_info:
+            self.publish_continue_button.click()
+        response = validate_info.value
+        self.publish_confirm_button.wait_for(state="visible", timeout=timeout)
+        logger.info("publish_validate responded status=%d", response.status)
+        return response
+
+    def is_publish_confirm_enabled(self) -> bool:
+        """Return whether the Validation step's "Publish" button is enabled.
+
+        Mirrors ``SkillDetailPage.is_publish_confirm_enabled()`` — added
+        here for the AGENT entity (ELITEA-2601), which previously only had
+        ``is_publish_continue_enabled()`` for the Preparation step.
+        """
+        return self.publish_confirm_button.is_enabled()
+
+    @action("Confirm Publish, capturing the raw response")
+    def confirm_publish_and_capture_response(self, timeout: int = 15000):
+        """Click the Validation step's "Publish" button and wait for the
+        ``publish`` request to resolve, returning the raw Playwright
+        ``Response`` (not just the status).
+
+        Additive sibling of :meth:`confirm_publish` — same reconciliation
+        rationale as :meth:`click_publish_continue_and_capture_response`
+        above: ``confirm_publish()`` is an established ``int``-returning
+        contract with real callers, so a ``Response``-returning override
+        would silently shadow it. Callers that need the response BODY's
+        ``error``/``msg`` fields (e.g. distinguishing the AGENT entity's
+        ``validation_failed`` "modified since validation" rejection,
+        ELITEA-2601) use this method instead. Mirrors
+        ``SkillDetailPage.confirm_publish_and_capture_response()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the ``publish`` call.
+        """
+        logger.info("Confirming Publish (capturing response)")
+        with self.page.expect_response(
+            lambda r: "/publish/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as publish_info:
+            self.publish_confirm_button.click()
+        response = publish_info.value
+        logger.info("Publish confirmed — status=%d", response.status)
+        return response
+
+    def get_publish_error_message(self, timeout: int = 5000) -> str:
+        """Return the Publish wizard's inline error Alert text.
+
+        LOCATOR: ``publish-wizard-error-alert`` (pre-existing, shared with
+        the Skill flow — see the ``publish_error_alert`` field docstring).
+        Renders the SAME ``msg`` text the ``publish`` response body
+        carries, inline in the Validation step, once a rejected publish
+        attempt (e.g. a stale ``validation_failed`` token) lands.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.publish_error_alert.wait_for(state="visible", timeout=timeout)
+        return (self.publish_error_alert.text_content() or "").strip()
+
+    @action("Close Publish wizard via Escape")
+    def close_publish_wizard(self, timeout: int = 5000):
+        """Close the Publish wizard dialog by pressing Escape.
+
+        Mirrors ``SkillDetailPage.close_publish_wizard()`` — added here for
+        the AGENT entity (ELITEA-2601). Escape calls the SAME ``onClose``
+        handler as the (untestid'd) "Cancel" button, and both re-opening
+        and closing reset the shared wizard's state, so re-opening after
+        this always starts a fresh Preparation step (confirmed live,
+        ELITEA-2601, matching the Skill flow's already-documented shape).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog to hide.
+        """
+        logger.info("Closing Publish wizard via Escape")
+        self.page.keyboard.press("Escape")
+        self.publish_confirm_button.wait_for(state="hidden", timeout=timeout)
+        logger.info("Publish wizard closed")
 
     @action("Select a version by name from the VERSION dropdown")
     def select_version_by_name(

@@ -170,6 +170,67 @@ class SkillDetailPage(SkillFormPage):
         description="Export the current (base) version via the overflow menu"
     )
 
+    # ------------------------------------------------------------------
+    # Publish wizard (ELITEA-2595/2596/2598) — PublishWizardModal.jsx, the
+    # SAME shared component AgentDetailPage's Publish flow uses (ELITEA-1892)
+    # — confirmed via source read (PreparationStep.jsx / PublishWizardModal.jsx
+    # take an `entityLabel` prop, 'agent' vs 'skill', but the testids
+    # themselves are NOT entity-scoped). "Publish" menuitem testid IS
+    # skill-specific: SkillControls.jsx's own DotMenu entry with
+    # `key: 'publish'` composes to `publish-menuitem` via DotMenu.jsx's
+    # generic `testId: item.key` -> `data-testid={testId}-menuitem`
+    # mechanism (distinct from AgentDetailPage's own
+    # `publish-version-menuitem`, a different DotMenu entry's key).
+    # ------------------------------------------------------------------
+    publish_menuitem = LocatorDescriptor(
+        testid="publish-menuitem",
+        description="VERSION-group 'Publish' menu item (SkillControls.jsx's "
+                     "own key='publish' DotMenu entry — distinct testid from "
+                     "AgentDetailPage.publish_version_menuitem)",
+    )
+    # Preparation step fields — confirmed via source
+    # (EliteaUI src/[fsd]/entities/version/ui/PreparationStep.jsx,
+    # PublishWizardModal.jsx) to be the EXACT SAME testids as
+    # AgentDetailPage's own fields (shared component, no per-entity
+    # suffix). AFS ELITEA-2595's Concrete Handles table named
+    # "agent-publish-category-select-combobox" for the Category trigger —
+    # live source read (this implementation pass) shows the real testid is
+    # "agent-publish-category-select" (no "-combobox" suffix); AFS amended.
+    publish_version_name_input = LocatorDescriptor(
+        testid="agent-publish-version-name-input",
+        description="Publish wizard, Preparation step — version-name input "
+                     "(shared PreparationStep.jsx component, same testid as "
+                     "AgentDetailPage.publish_version_name_input)",
+    )
+    publish_category_select = LocatorDescriptor(
+        testid="agent-publish-category-select",
+        description="Publish wizard, Preparation step — Category dropdown "
+                     "trigger (shared component; testid has NO '-combobox' "
+                     "suffix despite the entity-agnostic 'agent-' prefix)",
+    )
+    publish_agree_checkbox = LocatorDescriptor(
+        testid="agent-publish-agree-checkbox",
+        description='Publish wizard, Preparation step — "I agree with the '
+                     'Publishing Terms" checkbox',
+    )
+    publish_continue_button = LocatorDescriptor(
+        testid="agent-publish-continue-button",
+        description="Publish wizard, Preparation step — Continue button "
+                     "(disabled until name + category + agree-checkbox are "
+                     "all filled/checked)",
+    )
+    publish_confirm_button = LocatorDescriptor(
+        testid="agent-publish-confirm-button",
+        description="Publish wizard, Validation step — Publish button "
+                     "(disabled while publish_skill_validate reports "
+                     "status == 'FAIL'; canPublish = status !== 'FAIL')",
+    )
+    # Dynamic (runtime-parameterized) testid for the Publish wizard's
+    # Category dropdown options — same shared `select-option-{value}` family
+    # (SingleSelectMenuItem.jsx) as SkillDetailPage.SELECT_OPTION/
+    # FORK_PROJECT_OPTION above, keyed here by the category's display label.
+    PUBLISH_CATEGORY_OPTION = '[data-testid="select-option-{}"]'
+
     # Overflow menu — "Share" items (ELITEA-2439). SkillControls.jsx wires
     # the same useCopyLinkMenu() hook the Agent flow uses (ELITEA-1898,
     # AgentDetailPage.share_version_menuitem/share_agent_menuitem) — two
@@ -259,6 +320,140 @@ class SkillDetailPage(SkillFormPage):
     # family already used by AgentDetailPage.FORK_PROJECT_OPTION /
     # PipelineDetailPage.SELECT_OPTION, keyed by the numeric project id.
     FORK_PROJECT_OPTION = '[data-testid="select-option-{}"]'
+
+    # ------------------------------------------------------------------
+    # Publish wizard (ELITEA-2597) — shared PublishWizardModal.jsx,
+    # entityLabel="skill" (SAME component/testids as AgentDetailPage's
+    # Publish wizard fields, confirmed source-side: PreparationStep.jsx's
+    # data-testid literals are hardcoded, NOT entityLabel-parametrized —
+    # the "agent-publish-*" prefix is a cross-entity naming artifact, not
+    # a scoping bug; see ELITEA-2595's AFS Known Defects for the analogous
+    # "Agent"-wording note on the error message text). Re-declared here
+    # (not inherited — SkillDetailPage extends SkillFormPage, a separate
+    # hierarchy from AgentDetailPage) since Publish is triggered from the
+    # SKILL controls menu on THIS page, mirroring the Fork-wizard block
+    # above.
+    #
+    # ⚠ CROSS-PR RECONCILIATION (fix round, 2026-08-12) — sibling PR #1464
+    # (ELITEA-2595/96/98, branch tests/2595-2596-2598-skill-publish-wizard),
+    # SAME trunk (tests/batch-skills-remaining-w3), still OPEN, independently
+    # declares this exact field block (publish_menuitem,
+    # publish_version_name_input, publish_category_select,
+    # publish_agree_checkbox, publish_continue_button, publish_confirm_button,
+    # PUBLISH_CATEGORY_OPTION) with IDENTICAL testids/behavior — verified via
+    # `gh pr diff 1464` this round. This is a duplicate DECLARATION, not a
+    # contract conflict: whichever PR merges second will silently redefine
+    # these class attributes, but since the values/behavior are equivalent,
+    # the redefinition is functionally harmless either way (only the
+    # `publish_confirm_button` docstring's extra two-JSX-branch detail —
+    # ELITEA-2597-specific — would be lost if #1464's simpler declaration
+    # applies last; the testid VALUE is identical either way, so no test
+    # breaks). Left AS-IS rather than removed here: dropping these fields
+    # would break ELITEA-2597's own Preparation-step flow if #1464 has NOT
+    # yet merged when this branch is built/run, and I have no authority to
+    # edit PR #1464's branch from this dispatch. Recommendation for whoever
+    # merges second (orchestrator-level — needs cross-branch coordination
+    # neither implementer can do solo): delete the duplicate block, keep one
+    # canonical copy (prefer this one — richer `publish_confirm_button`
+    # docstring documents a real two-branch testid reuse the simpler version
+    # doesn't capture). The ONE genuine behavioral conflict in this pair of
+    # PRs — `confirm_publish()`'s return contract (int vs Response) — IS
+    # resolved on this branch: see `confirm_publish_and_capture_response()`
+    # below, deliberately renamed off the shared/established `int`-returning
+    # `confirm_publish()` name so the two PRs can merge in EITHER order with
+    # zero collision on that one.
+    # ------------------------------------------------------------------
+    publish_menuitem = LocatorDescriptor(
+        testid="publish-menuitem",
+        description="VERSION-group 'Publish' menuitem in the overflow menu "
+                     "(dynamic DotMenu testId=item.key mechanism, "
+                     "SkillControls.jsx key: 'publish')",
+    )
+    publish_version_name_input = LocatorDescriptor(
+        testid="agent-publish-version-name-input",
+        description="Publish wizard, Preparation step — version-name input",
+    )
+    publish_category_select = LocatorDescriptor(
+        testid="agent-publish-category-select",
+        description="Publish wizard, Preparation step — Category dropdown trigger",
+    )
+    publish_agree_checkbox = LocatorDescriptor(
+        testid="agent-publish-agree-checkbox",
+        description='Publish wizard, Preparation step — "I agree with the '
+                     'Publishing Terms" checkbox',
+    )
+    publish_continue_button = LocatorDescriptor(
+        testid="agent-publish-continue-button",
+        description="Publish wizard, Preparation step — Continue button",
+    )
+    publish_confirm_button = LocatorDescriptor(
+        testid="agent-publish-confirm-button",
+        description="Publish wizard's 'Publish' action button. DECLARED "
+                     "improvisation (`.agents/role-overrides.md` § "
+                     "Declared-improvisation protocol), added for "
+                     "ELITEA-2597: this ONE testid is now wired onto TWO "
+                     "mutually-exclusive JSX branches in "
+                     "PublishWizardModal.jsx — the Validation step's "
+                     "enabled/disabled button (step===VALIDATION) AND the "
+                     "hard-disabled button rendered after a REJECTED "
+                     "publish_skill call (step===PUBLISHING && "
+                     "publishError, previously carried NO testid at all — "
+                     "confirmed live this run: without it, the wizard "
+                     "silently loses the Publish control's testid the "
+                     "moment a stale/expired-token rejection lands, "
+                     "because handlePublish() always advances `step` to "
+                     "PUBLISHING before the request resolves). Only one "
+                     "branch is ever mounted at a time (`step` is a single "
+                     "value), so there is no collision risk — same pattern "
+                     "as canon ruling #277's same-element conditional "
+                     "pair, applied across two JSX blocks instead of one "
+                     "ternary. `is_publish_confirm_enabled()` resolves "
+                     "correctly against whichever branch is live.",
+    )
+    publish_error_alert = LocatorDescriptor(
+        testid="publish-wizard-error-alert",
+        description="Publish wizard — inline error Alert (Validation step), "
+                     "renders validation_token_invalid failures (modified/"
+                     "expired token). Testid ADDED for ELITEA-2597 — the "
+                     "MUI Alert previously carried no testid; generic name "
+                     "(no agent-/skill- prefix) per the shared-component "
+                     "naming rule, PublishWizardModal.jsx lives under "
+                     "src/[fsd]/entities/version/ui/.",
+    )
+    # Dynamic (runtime-parameterized) testid for the Publish wizard's
+    # Category dropdown options — same shared `select-option-{value}`
+    # family as FORK_PROJECT_OPTION above, keyed by the category's display
+    # label (mirrors AgentDetailPage.PUBLISH_CATEGORY_OPTION).
+    PUBLISH_CATEGORY_OPTION = '[data-testid="select-option-{}"]'
+
+    # ------------------------------------------------------------------
+    # Unpublish confirm dialog (ELITEA-2599) — mirrors
+    # AgentDetailPage.unpublish_version_menuitem/unpublish_confirm_button
+    # (same UnpublishConfirmModal.jsx component, entityLabel="skill"), but
+    # the overflow-menu ITEM testid differs: SkillControls.jsx's DotMenu
+    # instance keys the "Unpublish" entry `key: 'unpublish'` ->
+    # `unpublish-menuitem` (NOT AgentDetailPage's `unpublish-version-
+    # menuitem` — different DotMenu instance, different `key`), confirmed
+    # live for ELITEA-2599. The confirm BUTTON reuses the SAME
+    # `agent-unpublish-confirm-button` testid across both entities (the
+    # modal component hardcodes it regardless of `entityLabel`, same
+    # cross-entity naming artifact already documented on
+    # `publish_confirm_button` above) — only rendered once ``canUnpublish``
+    # gates the version's Published status true.
+    # ------------------------------------------------------------------
+    unpublish_menuitem = LocatorDescriptor(
+        testid="unpublish-menuitem",
+        description="VERSION-group 'Unpublish' menuitem in the overflow menu "
+                     "(dynamic DotMenu testId=item.key mechanism, "
+                     "SkillControls.jsx key: 'unpublish')",
+    )
+    unpublish_confirm_button = LocatorDescriptor(
+        testid="agent-unpublish-confirm-button",
+        description="Unpublish confirm dialog — 'Unpublish' button "
+                     "(cross-entity testid, shared with AgentDetailPage's "
+                     "same-named field — UnpublishConfirmModal.jsx hardcodes "
+                     "this testid regardless of entityLabel)",
+    )
 
     # Sidebar project switcher (ELITEA-2602) — same shared testid already
     # wired by ChatPage/PipelinesListPage/AnalyticsPage's own fields
@@ -730,6 +925,22 @@ class SkillDetailPage(SkillFormPage):
         self.controls_menu_button.evaluate("el => el.click()")
         self.page.get_by_test_id("skill-delete-menu-item").wait_for(state="visible", timeout=5000)
 
+    def close_actions_menu(self, timeout: int = 5000):
+        """Close the open skill controls overflow menu by pressing Escape
+        (ELITEA-2599).
+
+        Mirrors ``AgentDetailPage.close_actions_menu()``'s Escape-press
+        pattern. Waits for the VERSION-group "Publish" menuitem to hide as
+        the "menu closed" signal — this page has no single dedicated menu
+        container ``LocatorDescriptor`` field to wait on directly (see
+        :meth:`open_actions_menu`'s own delete-menuitem-based open signal).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.page.keyboard.press("Escape")
+        self.publish_menuitem.wait_for(state="hidden", timeout=timeout)
+
     def get_pin_toggle_menu_label(self) -> str:
         """Return the pin-toggle menu item's current text ("Pin to top" / "Unpin from top")."""
         return self.pin_toggle_menuitem.text_content() or ""
@@ -825,6 +1036,185 @@ class SkillDetailPage(SkillFormPage):
         return self.export_base_version_via_menu(timeout=timeout)
 
     # ------------------------------------------------------------------
+    # Publish wizard (ELITEA-2595/2596/2598)
+    # ------------------------------------------------------------------
+
+    @action("Open Publish wizard")
+    def open_publish_wizard(self, timeout: int = 10000):
+        """Open the Publish wizard via the actions overflow menu (VERSION group).
+
+        Opens the overflow menu and clicks the VERSION-scoped "Publish"
+        menuitem, then waits for the wizard's Preparation step (the
+        version-name input) to render. Mirrors
+        ``AgentDetailPage.open_publish_wizard()`` — same shared
+        ``PublishWizardModal.jsx`` component, distinct "Publish" menuitem
+        testid (``publish-menuitem`` vs the agent flow's
+        ``publish-version-menuitem``).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening Publish wizard via skill controls menu")
+        self.open_actions_menu()
+        self.publish_menuitem.click()
+        Dialog.wait_for(self.page, timeout=timeout)
+        self.publish_version_name_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Publish wizard Preparation step visible")
+
+    @action("Fill the Publish wizard's Preparation step")
+    def fill_publish_preparation_step(
+        self, version_name: str, category_name: str, timeout: int = 10000
+    ):
+        """Fill the Preparation step: version name, Category, agree-checkbox.
+
+        Call after :meth:`open_publish_wizard`. All three fields are
+        required to enable "Continue" (Category and the Publishing-Terms
+        checkbox are not named in the TMS case text but are hard
+        requirements in the live product — same CLARIFICATION #612 already
+        documented for the Agent Publish flow).
+
+        Args:
+            version_name: Name for the new (to-be-published) version, e.g.
+                ``"v1.0"``.
+            category_name: Exact display label of the Category option to
+                select, e.g. ``"Quality Assurance"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info(
+            "Filling Publish wizard Preparation step — version=%r category=%r",
+            version_name, category_name,
+        )
+        self.publish_version_name_input.click()
+        self.publish_version_name_input.press_sequentially(version_name, delay=50)
+
+        self.publish_category_select.click()
+        option = self.page.locator(self.PUBLISH_CATEGORY_OPTION.format(category_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+
+        self.publish_agree_checkbox.click()
+        logger.info("Publish wizard Preparation step filled")
+
+    def is_publish_continue_enabled(self) -> bool:
+        """Return whether the Preparation step's "Continue" button is enabled."""
+        return self.publish_continue_button.is_enabled()
+
+    @action("Continue from Publish wizard Preparation step")
+    def click_publish_continue(self, timeout: int = 30000):
+        """Click "Continue" and wait for the ``publish_skill_validate`` response.
+
+        Waits for ``POST .../publish_skill_validate/prompt_lib/{project}/
+        {skillId}/{versionId}`` (AFS § Network Behavior — never a fixed
+        sleep) and returns the raw Playwright ``Response`` object, so
+        callers can read BOTH its status (``200`` WARN/PASS, ``422`` FAIL)
+        AND its JSON body (``critical_issues``/``warnings``/``status`` —
+        ELITEA-2596/2598 assert on the response body, not just the status
+        code, unlike ``AgentDetailPage.click_publish_continue()`` which only
+        needed the status).
+
+        Args:
+            timeout: Maximum wait time in milliseconds (AI-backed — variable
+                latency).
+
+        Returns:
+            The matched Playwright ``Response`` for the ``publish_skill_validate`` POST.
+        """
+        logger.info("Clicking Publish wizard Continue")
+        with self.page.expect_response(
+            lambda r: "publish_skill_validate" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as validate_info:
+            self.publish_continue_button.click()
+        response = validate_info.value
+        # The response resolving does not guarantee the Validation step's DOM
+        # has re-rendered yet — the Publish button is always present on the
+        # Validation step regardless of the FAIL/WARN/PASS outcome (only its
+        # enabled state differs), so waiting for visibility here is safe for
+        # every status.
+        self.publish_confirm_button.wait_for(state="visible", timeout=timeout)
+        logger.info("publish_skill_validate responded status=%d", response.status)
+        return response
+
+    @action("Confirm Publish")
+    def confirm_publish(self, timeout: int = 15000) -> int:
+        """Click the Validation step's "Publish" button and wait for the
+        publish request to resolve.
+
+        Waits for ``POST .../publish_skill/prompt_lib/{project}/{skillId}/
+        {versionId}`` to resolve and returns its HTTP status — callers
+        should assert 200. Mirrors ``AgentDetailPage.confirm_publish()``:
+        does NOT wait for / assert on a post-publish navigation — the app's
+        own auto-navigation to the new version is unreliable (Known defect
+        #614, reproduces identically for skills — see AFS ELITEA-2595 §
+        Known Defects). Callers MUST use :meth:`select_version_by_name` to
+        reliably land on the new version afterward.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            HTTP status code of the ``publish_skill`` response.
+        """
+        logger.info("Confirming Publish")
+        with self.page.expect_response(
+            lambda r: "/publish_skill/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as publish_info:
+            self.publish_confirm_button.click()
+        status = publish_info.value.status
+        self.wait_for_network(timeout=timeout)
+        logger.info("Publish confirmed — status=%d", status)
+        return status
+
+    @action("Select a version by name from the VERSION dropdown (Known defect #614 workaround)")
+    def select_version_by_name(self, version_name: str, timeout: int = 10000, attempts: int = 2) -> None:
+        """Explicitly select a version from the VERSION dropdown, retrying
+        across full reload cycles if the client-side state lags.
+
+        The reliable way to land on (and stay on) a specific version after
+        Publish — the app's own auto-navigation is unreliable (Known defect
+        #614: a network trace shows the app briefly navigating to the new
+        version then silently reverting to the previously-active one — see
+        AFS ELITEA-2595 § Known Defects). Built on top of :meth:`switch_version`
+        (this page's existing, single-cycle select-and-poll helper) rather
+        than duplicating its body — each attempt is a full select+reload
+        cycle (re-open the dropdown, re-click the option, reload on
+        non-convergence), mirroring
+        ``AgentDetailPage.select_version_by_name()``'s bounded-attempts shape.
+
+        Args:
+            version_name: Exact version name to select, e.g. ``"v1.0"``.
+            timeout: Maximum wait time in milliseconds, per wait condition.
+            attempts: Number of full select+reload cycles to try.
+
+        Raises:
+            AssertionError: if the VERSION selector never converges on
+                *version_name* after *attempts* select+reload cycles.
+        """
+        last_error = None
+        for attempt in range(1, attempts + 1):
+            try:
+                self.switch_version(version_name, timeout=timeout)
+                logger.info(
+                    "select_version_by_name converged on %r (attempt %d/%d)",
+                    version_name, attempt, attempts,
+                )
+                return
+            except RuntimeError as exc:
+                last_error = exc
+                logger.warning(
+                    "select_version_by_name attempt %d/%d did not converge on %r: %s",
+                    attempt, attempts, version_name, exc,
+                )
+                if attempt < attempts:
+                    self.page.reload()
+                    self.wait_for_page_load(timeout=timeout)
+        raise AssertionError(
+            f"VERSION selector never converged on {version_name!r} after "
+            f"{attempts} select+reload cycles (Known defect #614 candidate): {last_error}"
+        )
+
+    # ------------------------------------------------------------------
     # Fork wizard (ELITEA-2602)
     # ------------------------------------------------------------------
 
@@ -910,6 +1300,300 @@ class SkillDetailPage(SkillFormPage):
             forked_skill_id, self.page.url,
         )
         return forked_skill_id
+
+    # ------------------------------------------------------------------
+    # Publish wizard (ELITEA-2597) — shared PublishWizardModal.jsx,
+    # entityLabel="skill" (mirrors AgentDetailPage's Publish-wizard
+    # methods; endpoints differ — publish_skill_validate/publish_skill vs
+    # publish_validate/publish — everything else is the same component).
+    # ------------------------------------------------------------------
+
+    @action("Open Publish wizard")
+    def open_publish_wizard(self, timeout: int = 10000):
+        """Open the Publish wizard via the skill controls overflow menu.
+
+        Opens the overflow (three-dot) menu (``open_actions_menu()``) and
+        clicks the VERSION-scoped "Publish" menuitem, then waits for the
+        wizard's Preparation step (the version-name input) to render.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening Publish wizard via skill controls menu")
+        self.open_actions_menu()
+        self.publish_menuitem.click()
+        Dialog.wait_for(self.page, timeout=timeout)
+        self.publish_version_name_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Publish wizard Preparation step visible")
+
+    @action("Fill the Publish wizard's Preparation step")
+    def fill_publish_preparation_step(
+        self, version_name: str, category_name: str, timeout: int = 10000
+    ):
+        """Fill the Preparation step: version name, Category, agree-checkbox.
+
+        Call after :meth:`open_publish_wizard`. All three fields are
+        required to enable "Continue".
+
+        Args:
+            version_name: Name for the new (to-be-published) version, must
+                match ``VERSION_NAME_REGEX`` (``^[a-zA-Z0-9._-]{1,50}$``).
+            category_name: Exact display label of the Category option to
+                select, e.g. ``"Quality Assurance"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info(
+            "Filling Publish wizard Preparation step — version=%r category=%r",
+            version_name, category_name,
+        )
+        self.publish_version_name_input.click()
+        self.publish_version_name_input.press_sequentially(version_name, delay=50)
+
+        self.publish_category_select.click()
+        option = self.page.locator(self.PUBLISH_CATEGORY_OPTION.format(category_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+
+        self.publish_agree_checkbox.click()
+        logger.info("Publish wizard Preparation step filled")
+
+    def is_publish_confirm_enabled(self) -> bool:
+        """Return whether the Validation step's "Publish" button is enabled."""
+        return self.publish_confirm_button.is_enabled()
+
+    @action("Continue from Publish wizard Preparation step")
+    def click_publish_continue(self, timeout: int = 15000):
+        """Click "Continue" and wait for the ``publish_skill_validate`` response.
+
+        Waits for ``POST .../publish_skill_validate/prompt_lib/{project}/
+        {skillId}/{versionId}`` (AFS ELITEA-2597 § Network Behavior — never
+        a fixed sleep) and returns the raw Playwright ``Response`` (not
+        just the status) — callers need the response BODY's
+        ``validation_token``/``status`` fields, not only the HTTP status:
+        ``200`` when the content-quality gate reports ``WARN``/``PASS`` (a
+        non-null ``validation_token`` is issued — the Validation step's
+        "Publish" button becomes enabled), ``422`` when it reports
+        ``FAIL`` (``validation_token: null`` — button stays disabled).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the
+            ``publish_skill_validate`` call.
+        """
+        logger.info("Clicking Publish wizard Continue")
+        with self.page.expect_response(
+            lambda r: "publish_skill_validate" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as validate_info:
+            self.publish_continue_button.click()
+        response = validate_info.value
+        # Response resolving does not guarantee the Validation step's DOM
+        # has re-rendered yet (one more React tick) — mirrors
+        # AgentDetailPage.click_publish_continue()'s same confirmed-live
+        # race. The button is always present on the Validation step
+        # regardless of WARN/PASS/FAIL, only its enabled state differs.
+        self.publish_confirm_button.wait_for(state="visible", timeout=timeout)
+        logger.info("publish_skill_validate responded status=%d", response.status)
+        return response
+
+    @action("Confirm Publish and capture the raw response")
+    def confirm_publish_and_capture_response(self, timeout: int = 15000):
+        """Click the Validation step's "Publish" button and wait for the
+        ``publish_skill`` request to resolve.
+
+        Waits for ``POST .../publish_skill/prompt_lib/{project}/{skillId}/
+        {versionId}`` and returns the raw Playwright ``Response`` (not just
+        the status) — callers need the response BODY's ``error``/``msg``
+        fields to distinguish a stale-token-from-modification failure from
+        a TTL-expiry failure (AFS ELITEA-2597: both share ``error:
+        validation_token_invalid`` but differ in ``msg`` text — a
+        status-only assertion can't tell them apart).
+
+        NAMING — deliberately NOT called ``confirm_publish()`` (fix-round
+        reconciliation, ELITEA-2597 vs sibling PR #1464/ELITEA-2595-96-98,
+        same batch trunk, both touching this class). ``confirm_publish()``
+        is an established, load-bearing contract that returns an ``int``
+        HTTP status: ``AgentDetailPage.confirm_publish() -> int`` (2 real
+        callers: ``test_agent_publish_unpublish_version.py``,
+        ``test_agent_version_selector_order.py``) and sibling PR #1464
+        independently mirrors that same ``-> int`` shape for
+        ``SkillDetailPage.confirm_publish()`` (3 callers across its own
+        test files, all doing ``assert publish_status == 200``). Reusing
+        the name here for a ``Response``-returning override would silently
+        shadow whichever declaration merges second — same class, same
+        method name, incompatible return types (``int`` vs ``Response``) —
+        breaking the other PR's `int`-equality assertions with an
+        ``AttributeError``-free but semantically wrong comparison
+        (``Response.__eq__`` against an int is just always False, so the
+        break would show as a mystifying assertion failure, not even a
+        clean crash). Following the naming precedent already used
+        elsewhere on this page family for a "click and keep the full
+        Response" variant of a status-only sibling method
+        (``artifacts_page.py``'s
+        ``click_upload_path_upload_button_and_capture_response()``) avoids
+        the collision entirely, independent of merge order — see the
+        Publish-wizard section header comment above for the fuller
+        reconciliation note and the still-open, harmless field/method
+        duplication this does NOT resolve (only the genuinely conflicting
+        contract needed a rename).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the ``publish_skill`` call.
+        """
+        logger.info("Confirming Publish")
+        with self.page.expect_response(
+            lambda r: "/publish_skill/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as publish_info:
+            self.publish_confirm_button.click()
+        response = publish_info.value
+        logger.info("Publish confirmed — status=%d", response.status)
+        return response
+
+    def get_publish_error_message(self, timeout: int = 5000) -> str:
+        """Return the Publish wizard's inline error Alert text.
+
+        LOCATOR: ``publish-wizard-error-alert`` (added for ELITEA-2597 —
+        the shared ``PublishWizardModal.jsx`` Alert previously carried no
+        testid). Renders the SAME ``msg`` text the ``publish_skill``
+        response body carries, inline in the Validation step, once a
+        stale/expired token is rejected.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.publish_error_alert.wait_for(state="visible", timeout=timeout)
+        return (self.publish_error_alert.text_content() or "").strip()
+
+    @action("Close Publish wizard via Escape")
+    def close_publish_wizard(self, timeout: int = 5000):
+        """Close the Publish wizard dialog by pressing Escape.
+
+        Confirmed source-side (``PublishWizardModal.jsx``'s
+        ``handleDialogKeyDown``): Escape calls the SAME ``onClose`` handler
+        as the "Cancel" button (which carries no dedicated testid) —
+        equivalent user-visible outcome, no raw-handle locator needed. Both
+        ``onClose`` (Cancel/Escape) AND the wizard's own re-open handler
+        reset all wizard state (version name, category, validation result/
+        token) — confirmed source-side (``usePublishSkill.hooks.js``'s
+        ``resetState()``, called from both ``handleCloseModal`` and
+        ``handleOpenModal``), so re-opening after a Cancel/Escape always
+        starts a fresh Preparation step, never resumes a stale one.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog to hide.
+        """
+        logger.info("Closing Publish wizard via Escape")
+        self.page.keyboard.press("Escape")
+        # publish_confirm_button is the element visible at the point this
+        # is normally called (Validation step, after a rejected Publish
+        # attempt) — waiting on it (not publish_version_name_input, which
+        # is already hidden on the Validation step) is the real signal the
+        # dialog actually closed.
+        self.publish_confirm_button.wait_for(state="hidden", timeout=timeout)
+        logger.info("Publish wizard closed")
+
+    @action("Open Unpublish confirm dialog")
+    def open_unpublish_dialog(self, timeout: int = 10000):
+        """Open the Unpublish confirmation dialog via the actions overflow menu
+        (ELITEA-2599).
+
+        Opens the overflow menu (:meth:`open_actions_menu`) and clicks the
+        VERSION-scoped "Unpublish" menuitem (only rendered for a Published
+        version — same ``canUnpublish`` gate as ``AgentDetailPage``'s
+        equivalent), then waits for the "Unpublish Skill" confirmation
+        dialog (``UnpublishConfirmModal.jsx``) to become visible. Mirrors
+        ``AgentDetailPage.open_unpublish_dialog()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening Unpublish confirm dialog via skill controls menu")
+        self.open_actions_menu()
+        self.unpublish_menuitem.click()
+        Dialog.wait_for(self.page, timeout=timeout)
+        self.unpublish_confirm_button.wait_for(state="visible", timeout=timeout)
+        logger.info("Unpublish confirm dialog visible")
+
+    def get_unpublish_dialog_text(self, timeout: int = 5000) -> str:
+        """Return the Unpublish confirm dialog's full visible text
+        (ELITEA-2599) — title ("Unpublish Skill") + body (name/version +
+        the Catalog-removal warning), via the shared MUI ``Dialog`` helper
+        rather than a raw ad-hoc locator. Call after :meth:`open_unpublish_dialog`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return (Dialog.wait_for_visible(self.page, timeout=timeout).text_content() or "").strip()
+
+    @action("Confirm Unpublish")
+    def confirm_unpublish(self, timeout: int = 15000) -> int:
+        """Click the Unpublish confirm dialog's "Unpublish" button (ELITEA-2599).
+
+        Waits for ``POST .../unpublish_skill/prompt_lib/{project}/{skillId}/
+        {versionId}`` to resolve and for the dialog to close. Mirrors
+        ``AgentDetailPage.confirm_unpublish()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            HTTP status code of the ``unpublish_skill`` response.
+        """
+        logger.info("Confirming Unpublish")
+        with self.page.expect_response(
+            lambda r: "/unpublish_skill/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as unpublish_info:
+            self.unpublish_confirm_button.click()
+        status = unpublish_info.value.status
+        Dialog.wait_for_hidden(self.page, timeout=timeout)
+        logger.info("Unpublish confirmed — status=%d", status)
+        return status
+
+    @action("Confirm Unpublish and capture the response body")
+    def confirm_unpublish_and_capture_response(self, timeout: int = 15000) -> dict:
+        """Click the Unpublish confirm dialog's "Unpublish" button and return
+        the ``unpublish_skill`` response BODY (ELITEA-2599).
+
+        Waits for ``POST .../unpublish_skill/prompt_lib/{project}/{skillId}/
+        {versionId}`` to resolve and for the dialog to close. The AFS requires
+        asserting the response body's ``{msg: "Successfully unpublished",
+        status: "deleted"}`` shape, not just the HTTP status — so this
+        returns the parsed JSON body (status code included as ``http_status``)
+        rather than the bare ``int`` :meth:`confirm_unpublish` returns.
+
+        NAMING — deliberately a sibling method, not a signature change to
+        ``confirm_unpublish()``: same "click-and-capture-body" precedent as
+        :meth:`confirm_publish_and_capture_response` alongside
+        ``confirm_publish()`` above — ``confirm_unpublish()`` mirrors
+        ``AgentDetailPage.confirm_unpublish() -> int`` on purpose (see that
+        method's docstring) and changing its return type in place would be
+        the same silent-shadowing hazard documented on the publish sibling.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The ``unpublish_skill`` response JSON body, plus ``http_status``.
+        """
+        logger.info("Confirming Unpublish (capturing response body)")
+        with self.page.expect_response(
+            lambda r: "/unpublish_skill/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as unpublish_info:
+            self.unpublish_confirm_button.click()
+        response = unpublish_info.value
+        body = response.json()
+        body["http_status"] = response.status
+        Dialog.wait_for_hidden(self.page, timeout=timeout)
+        logger.info("Unpublish confirmed — status=%d, body=%r", response.status, body)
+        return body
 
     # ------------------------------------------------------------------
     # Sidebar project switcher (ELITEA-2602)
@@ -1167,6 +1851,13 @@ class SkillDetailPage(SkillFormPage):
     def open_version_selector(self):
         """Click the VERSION dropdown trigger to open the options list."""
         self.version_selector.click()
+
+    def close_versions_menu(self):
+        """Close the open VERSION dropdown by pressing Escape.
+
+        Mirrors ``AgentDetailPage.close_versions_menu()``.
+        """
+        self.page.keyboard.press("Escape")
 
     def is_version_option_visible(self, version_name: str, timeout: int = 5000) -> bool:
         """Check whether a version is present in the open VERSION dropdown.

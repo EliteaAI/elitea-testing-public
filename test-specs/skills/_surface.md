@@ -894,3 +894,349 @@ extension of `AgentDetailPage`'s):
   `/{version_id}` to the URL) — not yet added as of this run; the DOM-level
   `skill-form-icon-img` src read is sufficient and was this run's primary
   evidence.
+
+## Publish wizard — skill entity (ELITEA-2595/ELITEA-2596/ELITEA-2598) — `PublishWizardModal.jsx` (shared with agents, `entityLabel="skill"`)
+
+Confirmed live (skills 1560/1561/1562/1563/1564, project 399). The wizard
+is the SAME `entities/version/ui/PublishWizardModal.jsx` component the
+agent Publish flow uses (ELITEA-1892, `test_agent_publish_unpublish_version.py`)
+— `entityLabel="skill"` swaps copy only; every `agent-publish-*` testid is
+reused verbatim for skills (not agent-scoped despite the literal name —
+existing product naming, not something to "fix" via `add-data-testid`).
+
+- **Trigger is a MENU ITEM, not a standalone button** — skill detail page's
+  overflow ("Skill" ⋮) menu → VERSION group → "Publish". Testid
+  `publish-menuitem` — constructed at RUNTIME as `${item.key}-menuitem` by
+  `DotMenu.jsx` (`SkillControls.jsx` sets `key: 'publish'` on the menu-item
+  object at the call site) — **not a literal string anywhere in JSX**, so a
+  plain `git grep -- "publish-menuitem"` finds nothing; verify by reading
+  `SkillControls.jsx`'s `key: 'publish'` line + `DotMenu.jsx`'s
+  `` data-testid={testId ? `${testId}-menuitem` : undefined} `` instead of
+  grepping the literal string. `skill-controls-menu-button` opens the menu.
+- **3-step wizard**: Preparation (version name + category + Publishing
+  Terms checkbox) → Validation (AI/deterministic content check) → Publishing.
+  Reuse `agent-publish-version-name-input`, `agent-publish-category-select-
+  combobox` (+ dynamic `select-option-{category}`), `agent-publish-agree-
+  checkbox` (role-based `checkbox[name="I agree with the Publishing Terms."]`
+  resolves it — has the `agent-publish-agree-checkbox` testid per
+  `PreparationStep.jsx` source, MCP's role locator just doesn't surface it
+  in generated code), `agent-publish-continue-button`, `agent-publish-
+  confirm-button` ("Publish" on the Validation step).
+- **Validation endpoint**: `POST .../publish_skill_validate/prompt_lib/
+  {project}/{skillId}/{versionId}` — `422` when `status: "FAIL"`, `200`
+  when `status: "WARN"` or `"PASS"`. Response body:
+  `{status, critical_issues[], warnings[], recommendations[], counts,
+  summary, ai_validation_available, validation_token}`. Each issue entry
+  carries `"source": "deterministic"` (rule-based, reproducible) or
+  `"source": "ai"` (LLM-generated wording — same underlying detection is
+  reliable across runs but exact phrasing may vary; assert on `field` +
+  membership in `critical_issues`/`warnings`, not exact wording, for
+  `source: "ai"` entries).
+- **Deterministic CRITICAL gates confirmed** (any one of these alone ⇒
+  `status: "FAIL"`, Publish button disabled — `canPublish = status !==
+  'FAIL'` in `PublishWizardModal.jsx`):
+  - `icon` — "No custom icon set" — **confirmed CRITICAL, not WARN**,
+    contradicting ELITEA-2598's premise (filed as clarification #1463).
+  - `tags` — "No tags defined" (skill has zero tags).
+  - `description` — "Description is too short (min 50 chars)".
+  - `instructions` — "Instructions are too short (min 100 chars)".
+  (Live thresholds: description 50 chars, instructions 100 chars — NOT the
+  "100 characters" the ELITEA-2595/2596/2598 case text uses for both
+  fields.)
+- **AI-sourced CRITICAL gates confirmed** (also block, `source: "ai"`):
+  placeholder-text markers (`[replace this]`, `TODO:`) in description OR
+  instructions; hardcoded secrets/API-keys/passwords in instructions.
+- **WARN-level (does NOT block)**: generic/placeholder-like name (e.g.
+  literal `"skill"`) — `source: "ai"`; "description lacks action verbs" —
+  `source: "deterministic"`.
+- **Happy-path prerequisite gap vs ELITEA-2595's Test Data**: description/
+  instructions ≥ the thresholds above is NOT sufficient — the skill also
+  needs a custom icon AND ≥1 tag, or Validation returns FAIL (confirmed:
+  same 100+-char content, no icon/no tag ⇒ 2 critical issues; add 1 tag ⇒
+  1 critical issue (icon only, still FAIL); add icon too ⇒ `WARN`, Publish
+  enabled). Icon upload reuses `SkillFormPage.upload_skill_icon_edit_mode()`
+  (ELITEA-2604) — pick any existing gallery entry (project-scoped
+  "Uploaded" tab) to skip a fresh file upload.
+- **Known defect #614 (agent Publish, `ELITEA-1892`) REPRODUCES for skills
+  too**: after a successful `publish_skill` (200), the VERSION dropdown
+  does not auto-select the newly published version — it stays showing
+  `base` until the dropdown is opened and the new version name is picked
+  explicitly (confirmed live: skill 1560, dropdown showed `base` active
+  post-publish, `v1.0 - <date>` present but not selected). Automation must
+  re-select by name after Publish, exactly as `AgentDetailPage.
+  select_version_by_name()` already does — do not assert on auto-navigation.
+- **Catalog verification**: published skill appears under `/elitea-catalog
+  ?tab=skills`, grouped by its selected Category (`catalog-skills-tab`
+  testid switches the tab; confirmed skill card renders with its custom
+  icon and under the "Quality Assurance" category group after publishing
+  with that category).
+- **Known defect #611 (agent Publish, Stepper icon console warnings)
+  likely reproduces too** (same `PublishWizardModal.jsx` Stepper) — not
+  independently re-verified against the console this run; treat as the
+  same signature if seen (`SvgCheckedIcon` + "non-boolean attribute"/"does
+  not recognize the" text), per `test_agent_publish_unpublish_version.py`'s
+  existing filter.
+
+### `validation_token` mechanics — invalidation-on-modify + 5-min TTL (ELITEA-2597)
+
+Confirmed live end-to-end this run (skill 1579/version 1663, `publish_skill`/
+`publish_skill_validate` — both direct-API and real two-tab UI repro):
+
+- `validation_token` (from `publish_skill_validate`'s response) is a
+  colon-delimited opaque 4-part string: `<base64 sig>:<version_id>:<hex
+  hash>:<unix timestamp>` — the trailing segment IS the token's issuance
+  Unix time (cross-checked against wall-clock `date -u +%s` at capture,
+  twice, both matched to within ~1s). Treat as fully opaque in automation —
+  never parse/reconstruct.
+- **Modified-after-validation**: `publish_skill` with a token whose skill
+  version changed since issuance → `400`
+  `{"error": "validation_token_invalid", "msg": "Agent was modified since
+  validation. Please re-validate."}` — note the **"Agent" wording bug on the
+  Skill flow**, filed as
+  https://github.com/EliteaAI/elitea-testing-public/issues/1465 (MINOR,
+  cosmetic only — mechanism itself is correct).
+- **TTL expiration**: confirmed **300s (5 min) exactly**, matching the case
+  text. `publish_skill` with an unmodified skill but a token older than 300s
+  (confirmed with a 330s real wait) → `400`
+  `{"error": "validation_token_invalid", "msg": "Validation token expired.
+  Please re-validate before publishing."}` — same `error` code as the
+  modified-content case, **different `msg`**, so automation must assert on
+  `msg` text, not just `error`/status code, to distinguish the two causes.
+- Both errors render inline in the wizard's Validation-step summary area
+  (same node the WARN/PASS summary already occupies — no new testid needed)
+  and disable the "Publish" button; the wizard does NOT auto-reset to
+  Preparation or auto-refire validation — user must Cancel and reopen.
+  Full details: `test-specs/skills/l2_skill-publishing-token-invalidation-and-ttl-expiration_ELITEA-2597.md`.
+
+## Unpublish + republish lifecycle, version coexistence (ELITEA-2599) — `UnpublishConfirmModal.jsx` (shared with agents, `entityLabel="skill"`)
+
+Confirmed live end-to-end this run (skill 1595, project 399).
+
+- **Trigger**: overflow (⋮) menu → VERSION group → "Unpublish" — testid
+  `unpublish-menuitem`, same runtime-constructed `${item.key}-menuitem`
+  pattern as `publish-menuitem` (`SkillControls.jsx` sets `key: 'unpublish'`
+  at the call site — `useUnpublishSkillMenu.hooks.jsx`'s `canUnpublish` gate
+  requires `versionStatus === Published`, so this menu item only appears
+  when viewing a Published version, never the draft `base`).
+- **Confirm dialog**: `UnpublishConfirmModal.jsx`, title "Unpublish Skill",
+  body (non-admin/no-reason branch, confirmed verbatim): "Are you sure you
+  want to unpublish {name} (version: {version})? The skill will be removed
+  from ELITEA Catalog immediately. Existing conversations using this skill
+  version may be affected." Confirm button testid
+  `agent-unpublish-confirm-button` — **same cross-entity naming artifact as
+  `agent-publish-*`** (component hardcodes this testid regardless of the
+  `entityLabel` prop it receives) — not a defect, matches the already-
+  accepted Publish-side pattern.
+- **Endpoint**: `POST unpublish_skill/prompt_lib/{project}/{skillId}/
+  {versionId}` → `200 {msg: "Successfully unpublished", status: "deleted"}`.
+  Invalidates the SAME RTK tags as `publishSkill`
+  (`TAG_TYPE_PUBLIC_SKILLS`/`TAG_TYPE_PUBLIC_SKILL_DETAILS`) — Catalog
+  reflects the removal on a fresh navigation, no reload/wait needed.
+- **Post-unpublish, the version is fully re-editable/re-publishable** — the
+  overflow menu flips back to showing "Publish" (not "Unpublish") the
+  moment `versionStatus !== Published`. No separate "restore" flow exists;
+  republish is a normal Publish-wizard pass on the same version.
+- **`public_skill_id` behavior is the crux of "version coexistence" — read
+  carefully, this is easy to get backwards:**
+  - Publish → Unpublish → Republish (of the SAME or a different version of
+    the same skill) allocates a **brand-new `public_skill_id`**. Unpublish
+    is a real deletion (`status: "deleted"`) of that catalog entity, not a
+    toggle. Confirmed live: `v1.0` published → `public_skill_id=51` →
+    unpublished → `v2.0` published (different version, same underlying
+    skill 1595) → `public_skill_id=52` (NEW, not 51 reused).
+  - Publishing a SIBLING version of the same skill **while an existing
+    published version stays live (never unpublished)** REUSES the same
+    `public_skill_id` and only allocates a new `public_version_id`. This
+    is the actual coexistence mechanism the TMS case means by "up to 3
+    versions can coexist". Confirmed live: with `v2.0` live at
+    `public_skill_id=52, public_version_id=56`, publishing the skill's
+    `base` draft as `v3.0` (WITHOUT unpublishing v2.0 first) produced
+    `public_skill_id=52, public_version_id=57` — same 52. A further `v4.0`
+    (published from the previously-unpublished `v1.0`'s now-reusable
+    version) produced `public_skill_id=52, public_version_id=58` — still
+    52, bringing the total to 3 coexisting versions (56/57/58) under one
+    public entry. No rejection or cap enforcement was observed publishing
+    up to 3 coexisting versions this way.
+  - A true "4th version beyond 3 coexisting" publish was NOT exercised
+    (turn-budget boundary this run) — unconfirmed whether the platform
+    enforces a hard cap at that point or keeps accepting them. The TMS
+    case's own language for this edge is non-prescriptive ("handled
+    appropriately"), so don't treat an accepted 4th-beyond-3 publish as a
+    defect without a more specific spec to check it against.
+- **Catalog card**: one card per ACTIVE `public_skill_id`, testid
+  `catalog-skill-card-{public_skill_id}` (confirmed `catalog-skill-card-52`
+  live). Opening it shows only the current (latest-published) content —
+  no version-history/selector UI exposed to Catalog viewers. "Only latest
+  shown" is therefore a structural property (one entry, not a filtered
+  list of many), not something the test computes by comparing versions.
+- **Agent-attachment independence (EntitySkillMapping)**: read (not
+  independently re-executed live this run — see the AFS's Coverage Map
+  Axis 2 gap) — `ApplicationSkills.jsx`'s `useGetApplicationSkillsQuery`
+  keys an agent's attached skills by project-scoped `skill_id` alone, with
+  no dependency on that skill's Catalog/publish status anywhere in the
+  query or its cache tags. Attaching a skill to an agent should therefore
+  survive an unpublish of that skill untouched — implementer must still
+  assert this live, the code reading is strong evidence, not a substitute.
+- **Transient infra flakiness observed, not a product defect**: one
+  `publish_skill_validate` call 502'd, then 503'd, then succeeded on a 3rd
+  immediate retry with no code-side change — in the same window,
+  unrelated `socket.io` polling also 502/503'd and a CORS failure hit
+  `dev.elitea.ai` directly. Treat an isolated 502/503 on this endpoint as
+  environment noise (bounded retry acceptable), not evidence against the
+  coexistence claim — but don't silently swallow a REPEATED failure.
+  Full details: `test-specs/skills/l3_skill-unpublish-republish-lifecycle_ELITEA-2599.md`.
+
+## Agent publish with attached Skills — embedded, not independently catalog-listed, visible in thought process (ELITEA-2600)
+
+Confirmed live end-to-end this run (agent 9131 `multi-skill-agent-2600`,
+skills 1605/1606/1607, project 399). Distinct flow from the Skill-entity
+Publish wizard above — this is the **AGENT** Publish wizard
+(`ELITEA-1892`'s `PublishWizardModal.jsx`, `entityLabel="agent"`) exercised
+on an agent that has 3 Skills attached.
+
+- **Agent-publish validation ALSO inspects each attached skill's own
+  content — new information beyond ELITEA-1892's AFS** (which only
+  exercised agents with zero attached skills). `POST publish_validate/
+  prompt_lib/{project}/{versionId}`'s `critical_issues[]` includes a
+  `field: "skills"` entry — `"skills [skill: <name>]: Skill content is too
+  short (min 100 chars)"` — when ANY attached skill's instructions are
+  under 100 chars, blocking the whole AGENT's publish (not just that
+  skill). Confirmed live: skill `summarizer-2600` at 84 chars produced this
+  Critical issue; lengthening to 179 chars cleared it (`Critical: 0`).
+  Seed all attached skills' instructions ≥100 chars to avoid this in
+  automation.
+- **Publishing Terms text confirms the case's core premise verbatim**
+  (Preparation step, "1 - Exclusions Notice" section): *"Exception:
+  attached Skills and sub-agents are not stripped — their instructions
+  are embedded in the published agent. Retained Skills are never listed
+  as separate entries in the catalog."* — a platform-documented guarantee,
+  not just inferred behavior.
+- **Confirmed functionally, not just per the disclosure text**: after
+  publishing, `/elitea-catalog?tab=skills` search for each attached
+  skill's name returns **"No skills found"** — the skills are NOT
+  independently searchable/listed, even though the agent that embeds them
+  IS published and visible under `/elitea-catalog?tab=agents` (grouped by
+  its selected Category, same `catalog-agent-card-{id}` /
+  `catalog-category-heading-{slug}` pattern as any other published agent).
+- **Skill invocation in the "Thought for N secs" accordion reuses the
+  SAME `chat-answer-tool-chip` testid already documented above (Test panel
+  section) for external toolkit calls** — confirmed live for a genuinely
+  different text shape: `"Skill: {skill_name}"` (e.g. `"Skill:
+  word-counter-2600"`), NOT the `"{toolkit_name}: {tool_name}"` shape the
+  page object's docstring currently describes for toolkit chips. Skills
+  hardcode `toolkitName` to the literal string `"Skill"` under the hood.
+  Confirmed for TWO separate skills in the same conversation
+  (`word-counter-2600` → response `"Word count: 10"`;
+  `format-uppercase-2600` → response fully upper-cased) — both produced
+  their own `chat-answer-tool-chip`, and the accordion auto-expands by
+  default (no separate "expand" click is needed to see it, contra the
+  case text's step 12 implying a manual expand action).
+- **`~<skill-name>` mention mechanics**: typing `~` opens the
+  `skill-mention-list` popper immediately (no debounce); the reusable
+  `ChatPage.send_message_with_skill_mention()` page-object method already
+  handles this correctly via `press_sequentially` throughout — **do NOT
+  use `.fill()` for the trailing prompt text**, it replaces the whole
+  textbox value and destroys the inserted mention chip (confirmed by
+  hitting this live in this run: a `fill()` after selecting the mention
+  silently reset the message to plain text with no `~mention`, and the
+  skill did not fire).
+  Full details: `test-specs/skills/l2_agent-with-skills-publishing-flow_ELITEA-2600.md`.
+
+## Agent-level publish validation — per-skill attribution + Agent-vs-Skill token invalidation (ELITEA-2601)
+
+- **`publish_validate`'s Critical-issue rules for attached skills are INDEPENDENT per
+  rule, not one combined "content quality" check.** Confirmed live: a skill with SHORT
+  content AND placeholder text produces TWO separate `critical_issues[]` entries, both
+  prefixed `skills [skill: <name>]:` — `"Skill content is too short (min 100 chars)"`
+  and `"Skill content contains placeholder text"` — not one merged message. A skill
+  with clean, valid content shows up ONLY in the non-blocking `Suggestions` section
+  (never Critical/Warning) — the correct way to assert "no errors for this skill".
+- **Removing an attached skill entirely (not just fixing its content) also clears its
+  Critical issues on re-validation** — confirmed live: `Critical: 2` → remove the
+  offending skill (`AgentDetailPage.remove_skill()`, already exists) → re-open the
+  Publish wizard (always starts a FRESH empty Preparation step, never resumes) →
+  `Critical: 0`, Publish enabled.
+- **`skill-card-remove-button` testid is NOT unique across attached-skill cards** — it
+  repeats per card; scope it inside the card's own `[data-testid="skill-card-{id}"]`
+  container. Hover-revealed (`aria-label="remove skill"`), confirmation dialog reuses
+  the generic `delete-confirm-button` testid.
+- **The AGENT-entity publish-token-invalidation mechanism exists and mirrors the SKILL
+  entity's (ELITEA-2597), but with a DIFFERENT `error` code.** Confirmed live: holding
+  a validated (`Critical: 0`) Publish wizard open in one tab, then attaching a skill to
+  the SAME agent version in a second tab, then clicking Publish in the first tab →
+  `400 {"error": "validation_failed", "msg": "Agent was modified since validation.
+  Please re-validate."}`. ELITEA-2597's AFS documents `"validation_token_invalid"` for
+  the analogous SKILL-entity case — **the two entities use different `error` codes for
+  the same underlying "stale token" condition**; assert on both `error` and `msg`, not
+  `msg` alone. The `msg` text itself ("Agent was modified...") is CORRECT here (it's a
+  real agent) — this also explains why ELITEA-2597's Skill flow shows the SAME
+  "Agent"-worded message as a (separately filed, MINOR, #1465) copy-paste artifact: the
+  shared `PublishWizardModal.jsx`/backend validator is agent-first and was never
+  re-templated for the Skill entity.
+- Reuses the SAME `publish-wizard-error-alert` testid ELITEA-2597's implementer added
+  (`EliteaAI/EliteaUI@2dafb537`, shared component) — confirmed live it renders
+  unmodified for the Agent flow too, no new testid needed.
+- **Second-tab navigation to an agent's config/Skills panel MUST include
+  `?destTab=configuration&viewMode=owner`** — a bare `/agents/all/{id}` URL lands on
+  the Chat tab instead, silently hiding the Skills section a test needs.
+- **Not yet confirmed live**: whether *removing* a skill in the second tab (rather than
+  attaching one) triggers the identical `400 validation_failed` invalidation — the
+  mechanism is very likely the same (`remove_skill()` persists immediately, same as
+  `attach_skill()`, which IS confirmed to trigger it), but this run's attempt was
+  confounded by reusing an already-invalid skill as the attach/detach probe (produced
+  a real `Critical: 2` FAIL instead of a clean stale-token scenario). Next analyst/
+  implementer touching this flow: seed a dedicated, content-VALID third skill for the
+  attach/detach probe to isolate this cleanly.
+  Full details: `test-specs/skills/l2_agent-with-skills-validation-attribution-and-token-invalidation_ELITEA-2601.md`.
+
+**Resolved during ELITEA-2601 implementation (test-automation-engineer):**
+- **The removal direction IS confirmed** — seeding a THIRD, dedicated, content-valid
+  `extra-skill` for the attach/detach probe (as suggested above) removed the confound:
+  attaching it (2nd tab) → `400 validation_failed` in the 1st tab (addition direction,
+  as already documented); restart validation → `Critical: 0` again (extra-skill
+  content-valid) → REMOVE it (2nd tab) → attempt Publish (1st tab) → the SAME
+  `400 {"error": "validation_failed", "msg": "...modified since validation..."}`. Both
+  directions of the mechanism are now live-confirmed, not just inferred.
+- **Gotcha, also affects this flow (already documented for ELITEA-2600 in the section
+  above):** the AGENT's own `instructions` field is independently subject to the same
+  ≥100-char "too short" Critical rule a skill's content is — an agent instructions
+  fixture under 100 chars adds a 3rd, agent-level `critical_issues[]` entry
+  (`context: None`) alongside the 2 skill-attributed ones this case's Part A targets,
+  breaking a `counts.critical == 2` assertion. Seed the agent's own instructions at
+  ≥100 chars too. (This AFS's own Test Data section originally claimed
+  Description/Instructions are "Warning-level gates only, not Critical" — that claim
+  is WRONG for Instructions and has been corrected in the AFS file itself.)
+- **Menu-item attach-by-name gotcha (new, not previously documented on this surface):**
+  `Popper.select_menuitem_by_testid()` resolves via `.filter(has_text=name).first` — a
+  SUBSTRING match. Seeding a "valid-skill-<x>" and an "invalid-skill-<x>" in the SAME
+  test means attaching "valid-skill-<x>" ambiguously matches BOTH menu items (the
+  second contains the first as a literal substring) and silently attaches the WRONG
+  one — no error, just a downstream assertion failure. Pick skill-fixture names with no
+  substring containment between any pair (e.g. "valid-skill"/"broken-skill", not
+  "valid-skill"/"invalid-skill"). Full detail:
+  `.agents/memory/test-automation-engineer/popper_select_menuitem_substring_collision_attaches_wrong_item.md`.
+
+## Published/embedded agent version — immutability mechanism (ELITEA-2614)
+
+- **Two distinct enforcement mechanisms on a locked version — don't assume one covers both.**
+  General-section fields (Name/Description/Instructions/Tags) are **NOT disabled/read-only** on a
+  published version — they stay freely editable, and `Save` re-enables the moment you type. The lock
+  is enforced server-side: `PUT /api/v2/elitea_core/application/prompt_lib/{project}/{agent_id}`
+  returns `400 {"error": "Version id {versionId} is published and can not be updated"}`. Skill/Tool
+  attachment controls (Steps 14-19 of ELITEA-2614), by contrast, ARE disabled pre-emptively via a
+  client-side `isVersionLocked = versionStatus === 'published' || versionStatus === 'embedded'` prop
+  (`ApplicationSkills.jsx`/`ApplicationTools.jsx`) — no request fires at all when blocked this way.
+- **Tooltip coverage for "why disabled" is inconsistent — confirmed, filed as
+  [#1470](https://github.com/EliteaAI/elitea-testing-public/issues/1470) (MINOR).** The Tools
+  section's 4 add buttons (`ToolMenu.jsx`'s `lockedTooltip`, exact text "This agent version is
+  published and can not be modified") and the Skill "+Skill" add button (`SkillMenu.jsx`, "...or
+  embedded...") correctly show an immutability tooltip when disabled. `SkillCard`'s remove button
+  (`skill-card-remove-button`, pre-existing testid — confirmed present, do NOT re-add it) keeps a
+  static, unconditional "Remove skill" tooltip even when locked; `SkillVersionSelector`'s trigger
+  (`skill-version-selector-trigger-{skill_id}`, pre-existing) has **no `Tooltip` wrapper at all**.
+  Assert the correct 3 hard, the missing 2 soft + `# Known defect: #1470`.
+- **Failed Save does not auto-revert the form.** After a rejected edit (400), the input keeps showing
+  the rejected value until `Discard` is clicked — and `Discard` itself opens a confirm dialog ("Are
+  you sure you want to discard changes?", `discard-confirm-button`) before reverting. Don't assume a
+  failed Save silently resets state between per-field assertions.
+  Full details: `test-specs/skills/l2_published-agent-version-cannot-be-modified_ELITEA-2614.md`.
