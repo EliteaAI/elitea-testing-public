@@ -173,6 +173,18 @@ class SkillsListPage(BasePage):
     # shape, pre-existing tech debt, not replicated here).
     CARD_ICON_SELECTOR = '[data-testid="entity-card-icon"]'
 
+    # Card's custom-icon `<img>` (inner, shared `Card.jsx`/`EntityIcon`
+    # testid — pre-existing since ELITEA-1899, already flagged as a
+    # page-object gap by ELITEA-2428's own AFS/Automation Hints). Only
+    # renders when the skill has a custom icon set (`icon.url` truthy) —
+    # its presence/absence IS the "custom vs default" signal, distinct from
+    # `entity-card-icon` (the outer container, present unconditionally for
+    # both the `<img>` and the generic `EntityTypeIcon` SVG glyph cases).
+    # Wired here for ELITEA-2605, which is the first case asserting a
+    # CUSTOM icon's src rather than just the container's presence. Scoped
+    # sub-selector only — see :meth:`card_icon_img_locator`.
+    CARD_ICON_IMG_SELECTOR = '[data-testid="entity-card-icon-img"]'
+
     # ELITEA-2428 — card hover-tooltip description text. Added via
     # add-data-testid to Card.jsx's descriptionTooltip Typography node
     # (see AFS Concrete Handles). Only the description node is testid'd
@@ -421,6 +433,28 @@ class SkillsListPage(BasePage):
         """
         card = self.skill_card.filter(has_text=name).first
         return card.locator(self.CARD_ICON_SELECTOR)
+
+    def card_icon_img_locator(self, name: str) -> Locator:
+        """Return the ``entity-card-icon-img`` inner `<img>` for a specific
+        skill's card — present ONLY when the skill has a custom icon set.
+
+        LOCATOR: scopes ``skill_card`` by visible name text (same idiom as
+        :meth:`card_icon_locator`), then reads the card's inner
+        ``entity-card-icon-img`` testid (:attr:`CARD_ICON_IMG_SELECTOR`).
+        Unlike :meth:`card_icon_locator` (the outer container, present for
+        both custom-icon and default-glyph cards), this element's very
+        presence IS the "has custom icon" signal — absent entirely for a
+        skill with no custom icon (ELITEA-2605 AFS Concrete Handles).
+
+        Args:
+            name: Exact skill name to match the card by.
+
+        Returns:
+            The ``Locator`` for that card's inner icon `<img>` (count() == 0
+            when the skill has no custom icon).
+        """
+        card = self.skill_card.filter(has_text=name).first
+        return card.locator(self.CARD_ICON_IMG_SELECTOR)
 
     def is_card_view_active(self) -> bool:
         """Check if card view is currently the active list view.
