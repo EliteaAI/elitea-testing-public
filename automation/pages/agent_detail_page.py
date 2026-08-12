@@ -539,6 +539,20 @@ class AgentDetailPage(AgentFormPage):
                      "(disabled while the AI publish_validate gate reports "
                      "any Critical issue; canPublish = status !== 'FAIL')",
     )
+    publish_terms_content = LocatorDescriptor(
+        testid="agent-publish-terms-content",
+        description=(
+            "Publish wizard, Preparation step — the scrollable Publishing "
+            "Terms disclosure text box (PublishingTerms.jsx/TermsContent.jsx, "
+            "ELITEA-2600). Contains the platform's documented guarantee that "
+            "attached Skills/sub-agents are embedded, not stripped, and are "
+            "never independently catalog-listed. Added via add-data-testid "
+            "on the shared component's only call site (PreparationStep.jsx), "
+            "following that call site's existing agent-publish-* naming even "
+            "though the component is entityLabel-shared with the skill-"
+            "publish wizard (same pre-existing precedent as its siblings)."
+        ),
+    )
     # Dynamic (runtime-parameterized) testid for the Publish wizard's
     # Category dropdown options — same shared `select-option-{value}` family
     # (SingleSelectMenuItem.jsx) as FORK_PROJECT_OPTION above, keyed here by
