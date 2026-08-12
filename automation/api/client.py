@@ -1457,6 +1457,24 @@ class SkillAPI:
         _raise_for_status(resp)
         return resp.json()
 
+    def get_skill(self, skill_id: int) -> dict:
+        """Fetch a single skill by *skill_id*.
+
+        Uses the **singular** ``/skill/`` path segment. Added for
+        ELITEA-2602/ELITEA-2603 (Fork verification) — the source of truth
+        for field/tags/icon/lineage assertions instead of re-deriving them
+        from the DOM (mirrors ``AgentAPI.get_agent()``/
+        ``PipelineAPI.get_pipeline()``).
+
+        Args:
+            skill_id: The numeric skill ID.
+        """
+        url = self._skill_url(skill_id)
+        logger.debug("GET skill %s", url)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        return resp.json()
+
     def delete_skill(self, skill_id: int) -> None:
         """Delete a skill by ID.
 

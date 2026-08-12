@@ -106,6 +106,58 @@ class SkillFormPage(BasePage):
     # ``getOptionTestId`` pattern) — see ``remove_tag()``.
     SKILL_TAG_CHIP_DELETE = '[data-testid="skill-tag-chip-delete-{}"]'
 
+    # ------------------------------------------------------------------
+    # Icon picker (ELITEA-2602) — CreateSkillForm.jsx is the SAME shared
+    # component rendered on both /skills/create and /skills/all/{id}
+    # (confirmed via source: EditSkill.jsx and CreateSkill.jsx both render
+    # it), so these live on the FORM page (not the detail page, unlike
+    # AgentDetailPage's icon fields, since Agent uses two separate
+    # components for create vs edit — see
+    # `.agents/memory/qa-engineer/agent_form_dual_component_and_icon_picker_quirks.md`).
+    # `skill_icon_button`/`skill_icon_img` testids added via add-data-testid
+    # to CreateSkillForm.jsx's `<EntityIcon>` call (EliteaUI automation/testids
+    # commit 3d74538c) — mirrors AgentDetailPage.agent_icon_button/
+    # agent_icon_img's naming, scoped to the Skill call site.
+    skill_icon_button = LocatorDescriptor(
+        testid="skill-form-icon-button",
+        description=(
+            "Skill icon avatar/button (opens the icon picker). Shares the "
+            "same hover-then-click quirk as the Agent icon picker (same "
+            "EntityIcon component): a bare single .click() with no prior "
+            ".hover() only mounts the hover-triggered edit-pencil overlay "
+            "and does NOT open the dialog. Callers must hover() before "
+            "click()."
+        ),
+    )
+    skill_icon_img = LocatorDescriptor(
+        testid="skill-form-icon-img",
+        description="Skill form icon's <img> element (absent until an "
+                     "icon.url is set — see get_form_icon_src())",
+    )
+    # Icon picker dialog (SelectIconDialog.jsx) — SHARED across
+    # Agent/Skill/Pipeline, same testids AgentDetailPage already declares
+    # (literal `agent-` prefix, entity-agnostic per that component's own
+    # naming — see `.agents/testing.md` § Locator policy).
+    icon_picker_dialog = LocatorDescriptor(testid="agent-icon-picker-dialog")
+    icon_picker_close_button = LocatorDescriptor(testid="agent-icon-picker-close-button")
+    # Upload button — no testid existed anywhere on this shared dialog
+    # before ELITEA-2602 (confirmed via source read: the header IconButton
+    # only carried a tooltip accessible name). Added via add-data-testid
+    # (EliteaUI automation/testids commit 3d74538c) with the entity-agnostic
+    # `agent-` prefix, matching the dialog's own naming convention.
+    icon_picker_upload_button = LocatorDescriptor(
+        testid="agent-icon-picker-upload-button",
+        description='Icon picker dialog — "Upload" header button (opens '
+                     "the native file chooser)",
+    )
+
+    # App-wide toast (shared Toast.jsx component) — used to confirm "The
+    # image has been uploaded" after a successful icon upload.
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide toast message text body",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -275,6 +327,77 @@ class SkillFormPage(BasePage):
         delete_icon.click()
         self.page.wait_for_timeout(200)
         logger.info("Removed tag: %r", tag_name)
+
+    # ------------------------------------------------------------------
+    # Icon picker (ELITEA-2602)
+    # ------------------------------------------------------------------
+
+    @action("Open the skill icon picker dialog")
+    def open_icon_picker(self, timeout: int = 10000):
+        """Open the skill icon picker dialog.
+
+        LOCATOR: ``skill_icon_button``. Must ``hover()`` immediately before
+        ``click()`` — the icon's clickable state only mounts once its
+        hover-triggered edit-pencil overlay is rendered (same EntityIcon
+        component/quirk as ``AgentDetailPage.open_icon_picker()``).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening the skill icon picker dialog")
+        self.skill_icon_button.scroll_into_view_if_needed()
+        self.skill_icon_button.hover()
+        self.skill_icon_button.click()
+        self.icon_picker_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Icon picker dialog opened")
+
+    @action("Upload a custom skill icon")
+    def upload_skill_icon(self, file_path: str, timeout: int = 10000):
+        """Open the icon picker and upload a custom icon file.
+
+        Opens the picker (:meth:`open_icon_picker`), clicks the Upload
+        button (``icon_picker_upload_button``), selects *file_path* via the
+        native file chooser, and waits for the "The image has been
+        uploaded" toast (``uploadFile()`` in SelectIconDialog.jsx calls
+        ``toastSuccess`` on success and auto-applies the icon — no explicit
+        "select" click needed, confirmed live per the AFS).
+
+        Args:
+            file_path: Path to a valid image file (PNG/JPG, under 500KB).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Uploading skill icon: %s", file_path)
+        self.open_icon_picker(timeout=timeout)
+
+        with self.page.expect_file_chooser() as fc_info:
+            self.icon_picker_upload_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(file_path)
+
+        self.toast_message.wait_for(state="visible", timeout=timeout)
+        toast_text = self.toast_message.text_content()
+        assert toast_text == "The image has been uploaded", (
+            f"Expected 'The image has been uploaded' toast, got: {toast_text!r}"
+        )
+        self.wait_for_network(timeout=5000)
+        logger.info("Skill icon uploaded")
+
+    def get_form_icon_src(self, timeout: int = 5000) -> str:
+        """Return the ``src`` of the skill form icon's ``<img>`` element.
+
+        LOCATOR: ``skill_icon_img``. A skill with no icon explicitly set
+        yet renders an inline SVG placeholder instead (no ``<img>`` at
+        all) — mirrors ``AgentDetailPage.get_header_icon_src()`` — so this
+        returns ``""`` in that case rather than timing out.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            self.skill_icon_img.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        return self.skill_icon_img.get_attribute("src") or ""
 
     def _fill_text_input(self, locator, text: str):
         """Fill a standard MUI text input with React-safe keyboard events.
