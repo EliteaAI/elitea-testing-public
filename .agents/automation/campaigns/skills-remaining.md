@@ -16,8 +16,18 @@
 - Foundation merged: n/a — foundation is null (see Conductor note above)
 - Foundation surfaces CLAIMED: none (no foundation stage)
 - Heads analyzed: none (skipped — no foundation stage)
-- Waves: **wave-01 (8 cases) RUNNING — runId `wf_a1da4261-c1b`** · wave-02 (8) pending · wave-03 (8) pending
-  · wave-04 (7) pending · wave-05 (9, build_with_ai) pending
+- Waves: **wave-01 (8 cases) LANDED** — elitea-testing-public#1449 (7/8 cases, merged
+  `1d973fed`) + elitea-testing-public#1450 (ELITEA-2428, fix v2, merged after workflow's
+  own 2 rounds left it `blocked` — lead ran 1 more dispatched fix round targeting the
+  exact residual findings, then a 4th review round caught a stale-branch daily-log
+  clobber, fixed mechanically, self-verified). Lead's own independent gate: 3/3 green
+  for both PRs (wave trunk: 8 node-ids, 234-237s/run; ELITEA-2428 alone: 5 node-ids,
+  run 1 hit a transient console-404 — not reproduced in 2 clean re-runs, consistent
+  with the known Montserrat-CDN noisy-resource pattern, see
+  `.agents/memory/test-automation-lead/known_noisy_resource_montserrat_font_404.md`).
+  8/8 automated, 0 blocked at close. TMS back-written (8 cases, Form C + index.json
+  surgical update). · wave-02 (8) pending · wave-03 (8) pending · wave-04 (7) pending
+  · wave-05 (9, build_with_ai) pending
 
 ## Source
 
@@ -90,3 +100,20 @@ automation/base, no CI gate on it — each wave lands before the next starts). `
   above). Wave-01 launch next.
 - 2026-08-11T~21:00Z — wave-01 launched via `batch-build.workflow.mjs`, runId `wf_a1da4261-c1b`, slug
   `skills-remaining-w1`, base `origin/automation/base`. Polling in-turn.
+- 2026-08-12T~00:20Z — wave-01 workflow completed. Report: 7/8 `merged-ungated` (gate cut off at 0/3,
+  turn-budget), 1 `blocked` (ELITEA-2428, 2 fix rounds, dead LocatorDescriptor field + guard-test
+  scoping gap). Recovered from an accidental commit landing on the shared tree's then-checked-out case
+  branch mid-run (`git reset HEAD~1`, implementer's WIP left intact — per
+  `shared_tree_git_discipline.md`); no further tree writes attempted while the workflow held it.
+- 2026-08-12T~00:26Z — lead's own independent gate on `tests/batch-skills-remaining-w1`: 3/3 green
+  (8 node-ids). Page-object diffs purely additive — blast radius skipped per doctrine. PR #1449 opened
+  + squash-merged to `automation/base`.
+- 2026-08-12T~00:30-01:00Z — ELITEA-2428: dispatched fix round 2 (table_view_button dead field +
+  guard scoping) → CHANGES_REQUESTED (guard fix narrowed but didn't close the collision) → fix round 3
+  (import/instantiation-signal scoping + synthetic-fixture regression test) → CHANGES_REQUESTED (stale
+  daily-log clobber from the recovered branch) → lead self-verified the mechanical splice fix (pure
+  union, diff pasted). Own gate 3/3 (run 1 hit a transient console-404, not reproduced in runs 2-3).
+  PR #1450 squash-merged.
+- 2026-08-12T~01:05Z — TMS back-written: 8 case files (Form C automation_test_id + automation_pr) +
+  index.json surgical update, both pushed to onetest-ai-tm-Elitea main. **Wave-01 CLOSED: 8/8
+  automated, 0 blocked.**
