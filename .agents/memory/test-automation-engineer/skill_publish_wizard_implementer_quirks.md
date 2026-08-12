@@ -67,6 +67,36 @@ assertion (length/placeholder/secrets/generic-name/…) should be treated as
 content-sensitive to cosmetic changes like this, not just to the semantic
 substance a human would expect it to key off of.
 
+### Update (fix round, 2026-08-12) — the bare literal ALSO flips WARN <-> PASS, and the wording varies too
+
+The uuid-suffix fix above reduces the flake but does NOT eliminate it: the
+SAME bare literal `"skill"` (unchanged desc/instructions) has been observed
+classified as `status: "WARN"` (issue in `warnings[]`) in most runs and as
+`status: "PASS"` (identical signal downgraded to `recommendations[]`) in
+occasional runs — reproduced first by the lead's gate run, then again by a
+targeted 5-run local check during the fix itself (1 PASS in the first 4
+runs, 5/5 stable after the assertion was corrected). No fixture text change
+can make this fully deterministic — it's LLM judge boundary noise on a
+genuinely borderline generic name, not a function purely of the input
+string (same input -> different output across runs is the tell). **The
+free-text WORDING of the finding also varies independently of the
+status/bucket** — live-observed for the identical fixture: `"The name is
+too generic to convey the skill's purpose."` (warnings), `"Use a more
+descriptive name than \"skill\"..."` (recommendations), `"Use a more
+specific name than \"skill\"..."` (recommendations, a DIFFERENT run) — a
+keyword match on `"generic"`/`"descriptive"` failed on the third phrasing.
+**Lesson for any AI-graded borderline-severity assertion:** (1) assert on
+the STATUS SET that maps to the real behavioral contract (`status in
+("WARN", "PASS")`, i.e. "not FAIL", when the case's actual pass criterion
+is "doesn't block" rather than a specific label) plus the deterministic
+gate field (`critical_issues == []`); (2) assert on STRUCTURED presence
+(`field == "name"` entry exists, non-empty text) rather than matching
+free-text keywords against AI-generated prose — the keyword list will keep
+growing as new phrasings surface, and each one is a needless red run, not
+a real regression. Full case for grounding this in the TMS case's own
+Pass/Fail criteria (not a scope change) is in the AFS's amended Test Steps
+4/5 + `l3_skill-publishing-warn-status-allows-publishing_ELITEA-2598.md`.
+
 ## AFS Concrete Handles table had a testid typo (implementer-caught, amended)
 
 ELITEA-2595's AFS named the Category select trigger
