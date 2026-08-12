@@ -335,6 +335,45 @@ established pattern:
 None — case executed end-to-end live, all 12 steps (3 parts), including the
 harder mid-conversation variant of the version-switch verification.
 
+## Implementer Amendments (ELITEA-2610, this branch)
+
+Two live findings during automation that the AFS's Test Data section didn't
+anticipate — both technique (the **how**), not scope:
+
+1. **Autonomous invocation is NOT guaranteed by attachment alone — the skill's
+   own `description` field and the agent's own `instructions` field both need
+   to nudge the model toward using it.** First implementation attempt used a
+   generic skill description ("... — version selection behaviour") and agent
+   instructions "Answer the user's question directly" (which actively
+   discourages tool use) — the model answered the prompt directly with NO
+   skill invocation at all (no `chat-answer-tool-chip`, generic unstyled
+   response). Fixed per the established pattern already in
+   `test_skill_agent_interaction.py` (ELITEA-2607/2609): skill description
+   `"Use this skill for EVERY user question, no matter the topic."` + agent
+   instructions `"You are a helpful assistant. Use your skills when
+   appropriate."` — reliable invocation on all 3 turns after this change.
+2. **A literal `"```"` (fenced code block) does NOT survive
+   `get_last_chat_response_text()`'s `text_content()` extraction** — the
+   markdown renderer converts it to a `<pre><code>` DOM structure, so the
+   backtick characters themselves are gone from the extracted text (same
+   class of issue the marker-tag approach already solved for tone). Fixed by
+   extending the TECH-STYLE instructions to require a literal
+   `[CODE-EXAMPLE]` tag immediately before the code snippet — a marker that
+   DOES survive text extraction, same mechanism as `[BASE-STYLE]`/
+   `[CASUAL-STYLE]`/`[TECH-STYLE]`. The test asserts on `"[CODE-EXAMPLE]" in
+   response_technical` instead of `"```" in response_technical`.
+
+New page-object methods added to `AgentDetailPage` (automation/pages/agent_detail_page.py):
+- `select_skill_version(skill_name, version_name, timeout)` — opens the
+  Versions menu (reusing `open_skill_version_selector`) and clicks the
+  target option via the pre-existing `SKILL_VERSION_OPTION_SELECTOR`
+  template constant (defined in the ELITEA-1789 rework, never previously
+  called from a public method), then polls the trigger's text for the new
+  value (mirrors `attach_skill()`'s counter-polling pattern).
+- `get_last_message_tool_chip_texts(timeout)` — top-level (non-nested)
+  counterpart to `get_nested_agent_tool_chip_texts()`, scoped to the last
+  `chat-message-item`'s own `chat-answer-tool-chip` elements.
+
 ## Automation Hints
 - Framework: Playwright + pytest. Likely home:
   `automation/tests/ui/skills/test_skill_agent_version_selection_behavior.py`
