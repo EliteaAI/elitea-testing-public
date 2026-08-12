@@ -537,6 +537,44 @@ Distinct from the valid-import round trip (ELITEA-1737/1738, above the
   `test-specs/skills/l3_multiple-tags-persist-on-creation-and-edit_ELITEA-2434.md`.
   Full details: `test-specs/skills/l3_skill-creation-mandatory-fields-validation_ELITEA-2430.md`.
 
+## Copy Link / Share (ELITEA-2439) — `SkillControls.jsx` (`share-version-menuitem` / `share-skill-menuitem`)
+
+- **Confirmed live, no testid gaps.** `SkillControls.jsx` wires the exact same
+  `useCopyLinkMenu()` hook the Agent flow uses (ELITEA-1898) — two "Share" menu
+  items inside the `skill-controls-menu-button` overflow menu:
+  `share-version-menuitem` (VERSION group, `useProjectEntityLink({ versionId:
+  currentVersionId })` → URL gains `/{versionId}`) and `share-skill-menuitem`
+  (SKILL group, no `versionId` override → generic skill URL, no version
+  segment). Confirmed live via a11y snapshot of the open menu on skill 951
+  (`content-reviewer`) — both items present and clickable.
+- Confirmation toast: same `toast-message`/`toast-alert[data-severity="info"]`
+  mechanism, exact text `"The link has been copied to the clipboard."`
+  (source-confirmed, `useCopyLinkMenu`'s `handleCopy()` → `toastInfo(...)`) —
+  identical string to the Agent flow's ELITEA-1898/#1288 toast.
+- Direct navigation to a skill+version URL (confirmed live:
+  `/skills/all/951/979?viewMode=owner`) opens the correct skill (tab title +
+  selected tab both show the skill name, Information panel shows matching
+  Skill ID/Version ID) — no "not found"/404 state.
+- **`SkillDetailPage` has no page-object fields for either Share menuitem
+  yet** — implementer work (additive `LocatorDescriptor`s), no `add-data-testid`
+  round trip needed.
+- **Gotcha:** the base version's Information-panel "Version ID" can differ
+  from the Skill ID even though the URL shows only one digit segment while on
+  `base` (confirmed live: skill 951 shows Version ID 979 in the Information
+  panel while its URL is just `/skills/all/951`) —
+  `SkillDetailPage.get_version_id()`'s URL-only parsing returns the skill id
+  for `base`, not the true version id. Not a bug for THIS case (it only
+  matters for a **named**, non-base version, where the URL always carries the
+  real version id as its second digit segment), but a trap for any future case
+  that wants "the base version's real version id" — read it from the
+  Information panel's `Copy version ID` button text instead of the URL in
+  that specific scenario.
+  Clarification filed: [EliteaAI/elitea-testing-public#1451](https://github.com/EliteaAI/elitea-testing-public/issues/1451)
+  (case text says a standalone "Copy Link" button — live product has two
+  separate "Share" menu items instead; sibling of #1288/ELITEA-1898 and
+  #1337/ELITEA-2049, same pattern, different entity).
+  Full details: `test-specs/skills/l2_copy-link-copies-valid-url-to-correct-skill-version_ELITEA-2439.md`.
+
 ## Test panel — model selector + Model Settings dialog (ELITEA-2436)
 
 The Skill test panel (`SkillTestPanel.jsx`) embeds the SAME
@@ -597,3 +635,262 @@ extension of `AgentDetailPage`'s):
   (step 2's "gpt5-mini ... reasoning slider" case-text drift — gpt-5-mini
   isn't reasoning-capable; sibling of ELITEA-1880's Clarification 1 on the
   Agent detail page).
+
+## SkillTestPanel does NOT create a Chat conversation (ELITEA-2441) — confirmed live
+
+- Running a prompt through the SkillTestPanel produces **zero** requests to
+  any `elitea_core/conversations*` endpoint — confirmed via
+  `browser_network_requests` across a full create-skill + send-test-message
+  + wait-for-response cycle. The only "conversation"-shaped traffic seen is
+  the unrelated `support_assistant/conversations/` widget (Support Bot, not
+  Chat) plus the skill's own `elitea_core/skills*`/`elitea_core/
+  skill_categories*` calls.
+- **Two ground truths for "conversation count", confirmed to agree exactly:**
+  `ConversationAPI.list_conversations()` (`{"total": int, "rows": [...]}`,
+  fixture `conversation_api` in `automation/fixtures/api_fixtures.py:115`)
+  and the Chat sidebar's DOM count of `ChatPage.CONVERSATION_ITEM_PREFIX`
+  (`'[data-testid^="chat-conversation-item-"]'`) — both read `1` (same
+  conversation id `7929`) before and after a full skill-create +
+  test-panel-run + skill-delete cycle, in a project (`Private`/399) with a
+  dozen leftover `ELITEA2459RenameTest`/`ABC` **folders** cluttering the
+  sidebar.
+- **Gotcha — don't count sidebar `<button>`/`<heading>` elements broadly.**
+  Those leftover folders render as `heading > button` pairs in the a11y
+  snapshot and look, at a glance, like a much larger conversation list (~2
+  dozen buttons). They are folders, not conversations — `ChatPage`'s own
+  `get_conversation_list_items()` (a pre-testid-policy `:has(h6) > button`
+  CSS selector, tracked tech debt) would very likely miscount here too.
+  Always scope conversation-count assertions to the testid-based
+  `CONVERSATION_ITEM_PREFIX`/`CONVERSATION_ITEM` constants, never a raw
+  structural selector or a bare visual count.
+  Full details: `test-specs/skills/l3_test-panel-does-not-create-new-chat-conversation_ELITEA-2441.md`.
+
+## Test panel response action buttons — Read aloud / Copy to clipboard (ELITEA-2442) — `ApplicationAnswer.jsx` (shared with Chat)
+
+- **Confirmed live, no testid gaps** — both buttons already carry testids on
+  the SAME shared `ApplicationAnswer.jsx` component the Chat `ChatBox.jsx`
+  uses (per the ELITEA-2436 precedent above: SkillTestPanel embeds the same
+  message-rendering tree). `chat-read-out-button` (aria-label `"Read out"`)
+  and `chat-copy-button` — both resolve to exactly one element scoped to the
+  last (AI) response.
+- **Gap is page-object wiring, not testids**: `ChatPage` already exposes
+  these as `read_out_button` (`chat_page.py:526`) and `copy_action_button`
+  (`chat_page.py:481`), but `SkillDetailPage` (extends `SkillFormPage`, no
+  shared base with `ChatPage`) has neither field yet — implementer adds
+  both, mirroring `ChatPage`'s exactly.
+- **Enabled-state gating, source-confirmed**: Read out disables on
+  `VOICE_FEATURES_TEMPORARILY_DISABLED || isProcessing || !realAnswer ||
+  !!speakingMessageId`; Copy disables on `isProcessing || !realAnswer`. Both
+  clear the instant a response finishes streaming — confirmed live via
+  `.disabled === false` on both testids once `wait_for_test_response()`
+  completes.
+- **Voice features are ON by default on localhost**: `VOICE_FEATURES_ENABLED`
+  defaults `true`, `VOICE_FEATURES_TEMPORARILY_DISABLED` defaults `false`
+  (`common/constants.js`, both env vars unset in `EliteaUI/.env`) —
+  confirmed live via the test-panel input bar's "enter speaking mode" /
+  "start voice input" controls rendering, and the Read-out button rendering
+  at all (it's conditionally rendered on `VOICE_FEATURES_ENABLED`, not just
+  disabled).
+- **Click-through, not just `disabled` state, confirmed live**: clicking
+  `chat-copy-button` produces the toast `"The message has been copied to
+  the clipboard."`; clicking `chat-read-out-button` opens
+  `chat-voice-mini-player` (pre-existing `ChatPage.voice_mini_player`
+  `OptionalLocatorDescriptor`) with a live `chat-voice-play-stop-button`.
+  Both actions are 100% client-side — zero network requests fired by either
+  click (confirmed via `browser_network_requests`).
+- **Don't match "Copy to clipboard" by text/role** — the user's own message
+  row ALSO renders a same-labelled "Copy to clipboard" button
+  (`UserMessage.jsx`, inline `title` prop) but with NO `chat-copy-button`
+  testid — a text-based selector would be ambiguous; the testid scopes
+  correctly to just the AI response.
+  Full details: `test-specs/skills/l3_test-panel-response-actions-enabled_ELITEA-2442.md`.
+
+## Fork wizard — skill entity (ELITEA-2602/ELITEA-2603)
+
+- **Skill Fork reuses the SAME shared `ImportWizardModal`/`IWModal*` tree
+  Agent Fork (ELITEA-1893) and Pipeline Fork (ELITEA-2051) already use** —
+  literal `agent-` prefix on nearly every handle is naming tech debt, not
+  entity scoping. Confirmed live, zero new testids needed for the wizard
+  body itself: `agent-import-preview-dialog` / `agent-import-complete-dialog`,
+  `agent-import-wizard-project-select-combobox`, `select-option-{projectId}`
+  (dynamic), `agent-import-preview-name`, `agent-import-preview-card-toggle`,
+  `agent-fork-confirm-button`, `agent-import-complete-got-it-button`.
+- **Only the Fork MENUITEM is entity-scoped, and it's NOT the shared
+  `ForkEntityButton.jsx`/`useForkEntityMenu()` hook Agent/Pipeline/Toolkit
+  use.** `SkillControls.jsx` implements Fork as its own menu item
+  (`key: 'fork'`, wired via a dedicated `useForkSkill()` hook that still
+  dispatches into the same shared `importWizard` Redux slice) — confirmed
+  via source read. Result: the skill Fork menuitem's testid is the GENERIC
+  `fork-menuitem` (not `agent-actions-fork-menuitem`/
+  `pipeline-actions-fork-menuitem` — those come from the shared hook's
+  `FORK_MENU_ITEM_KEY_BY_ENTITY` map, which Skill never uses). Still unique
+  and functionally sufficient within the skill controls menu (only one Fork
+  item), just don't assume naming parity with Agent/Pipeline when writing
+  new tests.
+- **The Fork wizard's "Main entity" card NEVER shows Tags** — confirmed
+  live via DOM text-content check with two tags present on the source. Only
+  Name, "Type: {entity}", Description, Instructions render. Same omission
+  applies to Agent/Pipeline Fork (their AFS/memory files never document
+  tags in the preview either) — consistent shared-component behavior, not
+  a skill-specific gap. Filed as clarification (case-text overstatement,
+  ELITEA-2602 step 7 promised "tags, etc."):
+  https://github.com/EliteaAI/elitea-testing-public/issues/1455.
+- **Version-scoped Fork**: forking a NON-base version correctly captures
+  THAT version's instructions/tags (confirmed via `skill_export_fork` GET
+  firing with the active version's id, and the resulting fork's
+  `meta.parent_version_id` pointing at the SOURCE's non-base version id,
+  not its base version id). The forked copy's own version is always named
+  `"base"` in the target project regardless of which source version was
+  forked — confirmed live (`versions` array has exactly one entry,
+  `name: "base"`).
+- **Icon is preserved by reference, not re-uploaded per fork** — the
+  forked skill's `meta.icon_meta.url` is byte-identical to the source's
+  (same file path under the SOURCE project's `skill_icon/{sourceProjectId}/`
+  folder), confirmed live across a cross-project fork (399→400). Not a
+  defect — the icon renders correctly in the target project regardless of
+  which project's storage path it physically lives under.
+- **Skill icon upload — the two gaps below were FIXED during ELITEA-2602's
+  implementation** (`skill-form-icon-button`/`skill-form-icon-img` and
+  `agent-icon-picker-upload-button` all confirmed LIVE and in active use by
+  `SkillFormPage` as of ELITEA-2604's analysis run, 2026-08-12 — do not
+  re-add or re-request them):
+  1. ~~`EntityIcon` in `CreateSkillForm.jsx` passes no `data-testid`~~ — FIXED,
+     `skill-form-icon-button`/`skill-form-icon-img` live on both
+     `/skills/create` and `/skills/all/{id}` (same shared component, both
+     modes confirmed).
+  2. ~~`SelectIconDialog.jsx`'s Upload `IconButton` has no testid~~ — FIXED,
+     `agent-icon-picker-upload-button` live (entity-agnostic, shared dialog).
+  3. Same TWO-CLICK quirk as the Agent icon avatar (first click only mounts
+     the hover-triggered edit-pencil overlay; second click actually opens
+     the dialog) — confirmed live, same as
+     `.agents/memory/qa-engineer/agent_form_dual_component_and_icon_picker_quirks.md`,
+     automation-only artifact, not a product defect. Still applies as of
+     2026-08-12.
+  4. **NEW GAP found during ELITEA-2604 (icon upload/validation case,
+     2026-08-12), NOT yet fixed**: the per-uploaded-icon delete `IconButton`
+     inside `UserIconItem.jsx`
+     (`../EliteaUI/src/[fsd]/features/settings/ui/project-general/general/
+     select-project-icon/UserIconItem.jsx`) has NO `data-testid` at all —
+     only a non-unique `className="deleteButton"`. It's hover-revealed
+     (`visibility:hidden` → `visible` on `:hover`, the button IS in the DOM
+     the whole time). Needed for automating "delete an uploaded icon"
+     (reverts to default if it was the selected one, confirmed live —
+     `DELETE .../upload_skill_icon/prompt_lib/{project}/{icon_name}` → 200).
+     Recommended fix: forward a `deleteButtonTestId` prop from
+     `SelectIconDialog.jsx`'s existing per-item
+     `data-testid={`agent-icon-picker-uploaded-${index}`}` call site →
+     `agent-icon-picker-uploaded-{index}-delete-button`. Full detail:
+     `test-specs/skills/l2_skill-custom-icon-upload-and-validation_ELITEA-2604.md`
+     Part D step 17.
+  5. **The "Default" tile (`agent-icon-picker-default-icon`) is a SECOND,
+     already-testid'd revert-to-default mechanism** distinct from deleting
+     an uploaded icon — in edit mode it fires
+     `PUT .../upload_skill_icon/prompt_lib/{project}/{versionId}` with
+     `{name: "", url: ""}`, toast "The icon has been reset to default icon"
+     (vs the delete path's "The icon has been successfully deleted."). Both
+     confirmed live to revert `skill-form-icon-img` to ABSENT (no `<img>`
+     element — the live product's default state, NOT a literal
+     `skill-icon.svg` file reference despite what some case text says), and
+     both confirmed to persist across a full page reload.
+  6. **Create mode vs edit mode upload persistence differs** (case-relevant
+     for any icon-upload test, not just ELITEA-2604): create mode (no
+     `entityId` yet) fires ONE `POST .../upload_skill_icon/prompt_lib/
+     {project}` → 200 and applies the icon to local form state only (persists
+     when the skill itself is saved). Edit mode (entityId present) fires the
+     SAME `POST` (still 200) **followed by** a second `PUT
+     .../upload_skill_icon/prompt_lib/{project}/{versionId}` → 200 that
+     applies+persists the icon to that skill version immediately,
+     independent of the main Save button (which stays disabled after an
+     icon-only edit-mode change — same mechanism as `AgentDetailPage`/
+     ELITEA-1899). A test asserting the upload-success toast text must
+     account for this: create mode shows exactly one toast ("The image has
+     been uploaded"); edit mode shows that toast followed by a second one
+     ("The icon has been changed") from the replace call.
+  7. **The oversized-file (>500KB) rejection is 100% server-side** — no
+     client pre-flight size check exists in `useUploadSkillIconMutation`.
+     Confirmed live: `POST` with a ~1.25MB valid PNG → **400 Bad Request**,
+     body `{"error": "File size exceeds 512 KB"}` (note: the picker
+     dialog's own tooltip says "less than 500KB" — same limit, inconsistent
+     unit-label string, cosmetic only). The dialog stays open and the
+     previous icon is retained (unchanged `skill-form-icon-img` src) on
+     rejection.
+- **Cross-project direct-URL navigation 404s** — `GET
+  .../skill/prompt_lib/{currentlySelectedProjectId}/{skillId}` uses the
+  SIDEBAR's currently-selected project, not any project encoded in the
+  visited URL path (`/skills/all/{id}` carries no project segment). A test
+  navigating between a fork's source and target projects MUST switch the
+  sidebar project selector (`project-selector-trigger-combobox` →
+  `select-option-{projectId}`) BEFORE navigating to a detail page in the
+  other project — confirmed live (a naive direct nav 404s and shows a
+  blank/error state).
+- **Tags field silently rejects hyphens** (see
+  `skill_tags_field_hyphen_rejected_and_chip_delete_icon_only.md` for the
+  full regex detail) — reconfirmed for THIS case's literal test data
+  (`test-tag`, `fork-demo`, `v2-tag` all rejected; `enhanced` accepted, no
+  hyphen). The Create-Version dialog's Name field does NOT share this
+  restriction — `v2-enhanced` (with hyphen) is accepted there, confirmed
+  live. Don't assume all text fields on the skill surface share one
+  validation ruleset.
+- **Custom skill icon renders consistently across all 5 UI surfaces that show a
+  skill** (ELITEA-2605, 2026-08-12, confirmed live end-to-end with one
+  freshly-uploaded icon): Skills list card, Skill detail/edit page, Agent
+  "+ Skill" SkillMenu attach-dropdown, Agent SKILLS-section `SkillCard`, and the
+  chat/instructions `~mention` autocomplete. All five render the byte-identical
+  uploaded-icon `src` — no product defect, but only 2 of the 5 have a usable
+  testid chain today:
+  - **List card**: `entity-card-icon-img` (inner `<img>`) EXISTS (ELITEA-2428)
+    but has no `SkillsListPage` field yet — page-object plumbing only, no
+    `add-data-testid` needed.
+  - **Detail page**: `skill-form-icon-img` fully wired already (ELITEA-2602/2604).
+  - **SkillMenu dropdown item, Agent SkillCard, mention-autocomplete item — ALL
+    THREE have zero `data-testid` on the icon `<img>` itself**, confirmed via
+    source read: `SkillMenu.jsx`, `SkillCard.jsx`
+    (`src/[fsd]/features/skill/ui/SkillCard.jsx`), and `MentionSkillList.jsx`
+    each independently implement the SAME `icon_meta?.url ? <EliteAImage/> :
+    <SkillIcon/>` ternary with no testid prop on either branch — three separate
+    JSX call sites of one shared pattern, each needs its OWN fix (not one shared
+    testid). Recommended names: `skill-menu-item-icon-img`, `skill-card-icon-img`,
+    `skill-mention-item-icon-img` (custom-icon branch only — leave `SkillIcon`
+    untagged, per the same-element-conditional-pair "only the used branch is
+    named" convention). Full detail:
+    `test-specs/skills/l2_skill-custom-icon-visibility-across-ui_ELITEA-2605.md`.
+  - Note: `EliteAImage` (`src/components/EliteAImage.jsx`) DOES accept a
+    `data-testid` prop already — it's the three call sites above that never pass
+    one, not a limitation of the shared image component itself.
+
+## Custom icon persists across "Save As Version" (ELITEA-2606) — confirmed live
+
+- **The "create version" endpoint copies `meta.icon_meta` forward into the
+  new version at creation time — server-side, not a client-state
+  carryover.** Confirmed via the `POST /api/v2/elitea_core/skill/
+  prompt_lib/{project}/{skillId}` response body itself (fired by
+  `SkillDetailPage.save_as_version()`): the new version's `meta.icon_meta`
+  is present in that SAME response, `url` byte-identical to the base
+  version's icon, before any subsequent GET/reload. Verified further by a
+  full hard reload of the new version's URL (`/skills/all/{skillId}/
+  {newVersionId}`) — `skill-form-icon-img`'s `src` unchanged, ruling out
+  "looked persisted only because the client never re-fetched" as a false
+  positive.
+- **The base version's icon is unaffected** by creating a new version —
+  switching back to `base` after creating `v2` shows the identical icon
+  `src`, confirmed live (not merely assumed from "nothing touched it").
+- **Same `meta.icon_meta` shape and "preserved by reference" guarantee as
+  Fork** (ELITEA-2602/ELITEA-2603, above) — but a DIFFERENT endpoint. Fork's
+  copy happens via `skill_export_fork`; Save-As-Version's copy happens via
+  the plain `POST skill/prompt_lib/{project}/{skillId}` "create version"
+  call. Corroborating precedent, not the same code path — don't assume a
+  fix/regression in one automatically implies the same for the other.
+  Full detail:
+  `test-specs/skills/l3_skill-custom-icon-persistence-on-save-as-version_ELITEA-2606.md`.
+- **No testid gaps** — every element this flow touches (`skill-form-icon-
+  img`, `skill-save-as-version-button`, `skill-create-version-dialog`/
+  `-name-input-field`/`-save-button`, `skill-version-select`(-combobox),
+  `version-option-{name}`, `toast-message`) is pre-existing, reused from
+  ELITEA-1738/ELITEA-2437/ELITEA-2604 rework.
+- **`SkillAPI.get_skill(skill_id)` cannot target a specific version's icon**
+  — it always hits the bare `/skill/prompt_lib/{project}/{skillId}`
+  endpoint (no `versionId` segment). An API-level per-version assertion
+  needs a small additive extension (optional `version_id` param appending
+  `/{version_id}` to the URL) — not yet added as of this run; the DOM-level
+  `skill-form-icon-img` src read is sufficient and was this run's primary
+  evidence.

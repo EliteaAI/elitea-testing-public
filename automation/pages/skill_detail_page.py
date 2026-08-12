@@ -14,7 +14,7 @@ from playwright.sync_api import Page
 from playwright.sync_api import Download
 
 from .skill_form_page import SkillFormPage
-from .locator_descriptor import LocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor
 from components.mui import Dialog
 from utils.actions import action
 
@@ -116,6 +116,35 @@ class SkillDetailPage(SkillFormPage):
     # Dynamic testid for a Reasoning-slider level mark (1=Low, 2=Medium, 3=High).
     MODEL_SETTINGS_REASONING_LEVEL = '[data-testid="model-settings-reasoning-level-{}"]'
 
+    # ------------------------------------------------------------------
+    # SkillTestPanel response action buttons (ELITEA-2442)
+    # ------------------------------------------------------------------
+    # Same underlying ApplicationAnswer.jsx component the Chat surface
+    # renders (ELITEA-2436 precedent) — both testids already exist live,
+    # only the LocatorDescriptor field was missing on this page. Mirrors
+    # ChatPage.read_out_button / ChatPage.copy_action_button exactly
+    # (chat_page.py:526 / :481); SkillDetailPage has no shared base with
+    # ChatPage so the fields are duplicated here, not inherited.
+    read_out_button = LocatorDescriptor(
+        testid="chat-read-out-button",
+        description="Read out (speaker) button on the test-panel AI response",
+    )
+    copy_action_button = LocatorDescriptor(
+        testid="chat-copy-button",
+        description="Copy-to-clipboard button on the test-panel AI response",
+    )
+    # Voice mini player — appears after clicking Read out (Layer 2 proof).
+    # Mirrors ChatPage.voice_mini_player (OptionalLocatorDescriptor since the
+    # container is not present until Read-out is clicked).
+    voice_mini_player = OptionalLocatorDescriptor(
+        testid="chat-voice-mini-player",
+        description="Voice mini player container, appears after Read-out click",
+    )
+    voice_play_stop_button = LocatorDescriptor(
+        testid="chat-voice-play-stop-button",
+        description="Play/Stop button in the voice mini player",
+    )
+
     # Overflow menu trigger button
     controls_menu_button = LocatorDescriptor(
         testid="skill-controls-menu-button",
@@ -140,6 +169,108 @@ class SkillDetailPage(SkillFormPage):
         testid="export-version-menuitem",
         description="Export the current (base) version via the overflow menu"
     )
+
+    # Overflow menu — "Share" items (ELITEA-2439). SkillControls.jsx wires
+    # the same useCopyLinkMenu() hook the Agent flow uses (ELITEA-1898,
+    # AgentDetailPage.share_version_menuitem/share_agent_menuitem) — two
+    # visually-identical "Share" menu items, one per DotMenu section.
+    # share_version_menuitem copies a URL carrying the CURRENT version's id
+    # as a distinct trailing path segment (useProjectEntityLink({versionId})
+    # in SkillControls.jsx); share_skill_menuitem is the negative-control
+    # target — it omits the version id (no versionId override passed to the
+    # hook). Confirmed live via a11y snapshot of the open menu (AFS Concrete
+    # Handles) — both pre-existing testids, no add-data-testid round trip.
+    share_version_menuitem = LocatorDescriptor(
+        testid="share-version-menuitem",
+        description="VERSION-group 'Share' item — copies a version-specific link",
+    )
+    # Negative-control target for the version-id contrast assertion — do not
+    # click this expecting a version-specific URL, it deliberately omits the
+    # version id (AFS Axis 2).
+    share_skill_menuitem = LocatorDescriptor(
+        testid="share-skill-menuitem",
+        description="SKILL-group 'Share' item — copies a generic, version-less link",
+    )
+
+    # ------------------------------------------------------------------
+    # Fork wizard (ELITEA-2602) — shares the ImportWizardModal dialog
+    # family with the Agent/Pipeline Fork flows (AgentDetailPage's
+    # fork_wizard_dialog/fork_complete_dialog/etc. carry the SAME testids;
+    # re-declared here since Fork is triggered from the SKILL controls menu
+    # on THIS page). The "Fork" menuitem testid is the ONE skill-specific
+    # value — SkillControls.jsx implements its own `key: 'fork'` menu entry
+    # (via its own useForkSkill-driven DotMenu item), NOT the shared
+    # ForkEntityButton.jsx/useForkEntityMenu() hook Agent/Pipeline/Toolkit
+    # use — confirmed via source read of SkillControls.jsx. The dialog
+    # container swaps its own testid in place from
+    # "agent-import-preview-dialog" (pre-fork) to
+    # "agent-import-complete-dialog" (post-fork) — do not assert on a
+    # single fixed testid persisting across the fork action.
+    # ------------------------------------------------------------------
+    fork_menuitem = LocatorDescriptor(
+        testid="fork-menuitem",
+        description="Skill overflow menu — 'Fork' item (generic testid, "
+                     "unique within this menu — SkillControls.jsx's own "
+                     "key, not the shared agent-actions-fork family)",
+    )
+    fork_wizard_dialog = LocatorDescriptor(
+        testid="agent-import-preview-dialog",
+        description="Fork wizard 'Fork parameters' dialog (pre-fork state)",
+    )
+    fork_complete_dialog = LocatorDescriptor(
+        testid="agent-import-complete-dialog",
+        description="Fork wizard 'Fork Complete' dialog (post-fork state — "
+                     "same container as fork_wizard_dialog, testid swaps)",
+    )
+    fork_main_entity_name = LocatorDescriptor(
+        testid="agent-import-preview-name",
+        description="Fork wizard — Main entity card's name",
+    )
+    # Every rendered entity-preview card carries this SAME toggle testid —
+    # its count() is a direct proxy for "how many entity cards are showing"
+    # (this skill has only a Main entity card, no Nested entities section).
+    fork_entity_card_toggle = LocatorDescriptor(
+        testid="agent-import-preview-card-toggle",
+        description="Fork wizard — 'Show details' toggle, one per rendered "
+                     "entity-preview card",
+    )
+    fork_project_select_trigger = LocatorDescriptor(
+        testid="agent-import-wizard-project-select",
+        description="Fork wizard — target Project selector trigger "
+                     "(shared ProjectSelect DOM node, same testid as "
+                     "AgentDetailPage.fork_project_select_trigger)",
+    )
+    fork_confirm_button = LocatorDescriptor(
+        testid="agent-fork-confirm-button",
+        description='Fork wizard — "Fork" confirm button',
+    )
+    fork_complete_skills_list = LocatorDescriptor(
+        testid="agent-import-complete-list-skills",
+        description="Fork Complete dialog — forked Skills name list "
+                     "(IWModalSucceedContent.jsx's per-entity-type list, "
+                     "keyed 'skills')",
+    )
+    fork_complete_got_it_button = LocatorDescriptor(
+        testid="agent-import-complete-got-it-button",
+        description="Fork Complete dialog — 'Got it' confirm/navigate button",
+    )
+    # Dynamic (runtime-parameterized) testid template for the Fork wizard's
+    # Project-selector dropdown options — same shared `select-option-{value}`
+    # family already used by AgentDetailPage.FORK_PROJECT_OPTION /
+    # PipelineDetailPage.SELECT_OPTION, keyed by the numeric project id.
+    FORK_PROJECT_OPTION = '[data-testid="select-option-{}"]'
+
+    # Sidebar project switcher (ELITEA-2602) — same shared testid already
+    # wired by ChatPage/PipelinesListPage/AnalyticsPage's own fields
+    # (identical shared sidebar component); NEW field on this page.
+    project_selector_trigger = LocatorDescriptor(
+        testid="project-selector-trigger-combobox",
+        description="Sidebar project switcher trigger (shows current project name)",
+    )
+    # Dynamic (runtime-parameterized) testid for a project-switcher dropdown
+    # option, keyed by numeric project id — same shared SingleSelectMenuItem
+    # family as FORK_PROJECT_OPTION above.
+    SELECT_OPTION = '[data-testid="select-option-{}"]'
 
     # ------------------------------------------------------------------
     # Version management (Save As Version / VERSION selector) — testids
@@ -694,6 +825,119 @@ class SkillDetailPage(SkillFormPage):
         return self.export_base_version_via_menu(timeout=timeout)
 
     # ------------------------------------------------------------------
+    # Fork wizard (ELITEA-2602)
+    # ------------------------------------------------------------------
+
+    @action("Open Fork wizard")
+    def open_fork_wizard(self, timeout: int = 10000):
+        """Open the Fork wizard via the skill controls overflow menu.
+
+        Opens the overflow (three-dot) menu (``open_actions_menu()``) and
+        clicks the "Fork" menuitem, then waits for the wizard dialog
+        (``agent-import-preview-dialog``) to become visible.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog.
+        """
+        logger.info("Opening Fork wizard via skill controls menu")
+        self.open_actions_menu()
+        self.fork_menuitem.click()
+        self.fork_wizard_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Fork wizard dialog visible")
+
+    @action("Select Fork target project")
+    def select_fork_target_project(self, project_id: int, timeout: int = 10000):
+        """Open the Fork wizard's Project selector and pick a target project.
+
+        LOCATOR: ``fork_project_select_trigger`` opens the dropdown; the
+        option is resolved via the dynamic ``select-option-{project_id}``
+        testid (see ``FORK_PROJECT_OPTION`` above).
+
+        Args:
+            project_id: Numeric id of the target project (must differ from
+                the skill's current project).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting Fork target project id=%d", project_id)
+        self.fork_project_select_trigger.click()
+        option = self.page.locator(self.FORK_PROJECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        logger.info("Fork target project id=%d selected", project_id)
+
+    @action("Confirm Fork")
+    def confirm_fork(self, timeout: int = 15000):
+        """Click the Fork wizard's "Fork" confirm button.
+
+        Waits for the dialog to re-render in place as the "Fork Complete"
+        state (``agent-import-complete-dialog`` — same container, testid
+        swaps once the fork operation succeeds).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the success dialog.
+        """
+        logger.info("Confirming Fork")
+        self.fork_confirm_button.click()
+        self.fork_complete_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Fork Complete dialog visible")
+
+    @action("Confirm Fork complete (Got it)")
+    def confirm_fork_complete(self, timeout: int = 15000) -> int:
+        """Click "Got it" on the Fork Complete dialog.
+
+        Auto-navigates to the newly forked Skill's detail page, inside the
+        target project. Parses and returns the new Skill's numeric ID from
+        the resulting URL.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the navigation.
+
+        Returns:
+            The forked Skill's numeric ID.
+        """
+        self.fork_complete_got_it_button.click()
+        self.page.wait_for_url(re.compile(r".*/skills/all/\d+"), timeout=timeout)
+        self.wait_for_network(timeout=5000)
+
+        match = re.search(r"/skills/all/(\d+)", self.page.url)
+        if not match:
+            raise ValueError(
+                f"Could not parse forked Skill ID from URL: {self.page.url}"
+            )
+        forked_skill_id = int(match.group(1))
+        logger.info(
+            "Fork complete — navigated to forked skill id=%d (%s)",
+            forked_skill_id, self.page.url,
+        )
+        return forked_skill_id
+
+    # ------------------------------------------------------------------
+    # Sidebar project switcher (ELITEA-2602)
+    # ------------------------------------------------------------------
+
+    @action("Switch active project")
+    def switch_project(self, project_id: int, timeout: int = 10000) -> None:
+        """Switch the active project via the sidebar project selector.
+
+        A bare ``page.goto()``/``navigate()`` to another project's skill
+        detail route 404s — the currently-selected project scopes the GET
+        (confirmed live). Cross-project navigation MUST go through this
+        method first. Mirrors ``PipelinesListPage.switch_project()`` (same
+        shared component).
+
+        Args:
+            project_id: Numeric id of the target project.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Switching active project to id=%d", project_id)
+        self.project_selector_trigger.click()
+        option = self.page.locator(self.SELECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Switched to project id=%d", project_id)
+
+    # ------------------------------------------------------------------
     # Version management (Save As Version / VERSION selector)
     # ------------------------------------------------------------------
 
@@ -717,6 +961,55 @@ class SkillDetailPage(SkillFormPage):
             # No explicit version segment yet — Version ID equals Skill ID.
             return digit_parts[0]
         raise RuntimeError(f"Cannot determine version ID from URL: {url}")
+
+    def wait_for_version_selector_and_url_id(
+        self, version_name: str, version_id: str, timeout: int = 10000
+    ) -> None:
+        """Wait until the VERSION selector trigger AND the URL's trailing
+        version-id path segment both agree with the given ``(version_name,
+        version_id)`` pair (ELITEA-2439).
+
+        Mirrors ``AgentDetailPage.wait_for_version_trigger_and_id()`` — the
+        two-way convergence check for a caller that just navigated to a
+        version-specific copied link in a fresh tab and only needs the
+        CLIENT-SIDE render state to catch up post-navigation. Skills have no
+        ``copy-version-id``-style testid'd readout (the "Copy version ID"
+        footer button carries no ``data-testid`` — AFS Concrete Handles), so
+        this polls the URL's own trailing digit segment instead of a second
+        testid'd element — the URL segment IS the authoritative version id
+        for a non-``base`` version (``get_version_id()`` reads the same
+        segment once settled).
+
+        LOCATOR: polls ``skill-version-select`` via ``document.querySelector``
+        inside the predicate — ``wait_for_function`` executes in-page JS,
+        which cannot reference a Playwright ``Locator`` directly, so the
+        testid (also the ``version_selector`` ``LocatorDescriptor`` field
+        above) is inlined as a literal ``[data-testid="…"]`` string here
+        rather than duplicated as a second selector elsewhere.
+
+        Args:
+            version_name: Expected VERSION-selector trigger text, e.g.
+                ``"v1-copy-link-test"``.
+            version_id: Expected version id, as it appears as the URL's
+                trailing digit segment (i.e. :meth:`get_version_id`'s value).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.page.wait_for_function(
+            """([name, expectedId]) => {
+                const trigger = document.querySelector(
+                    '[data-testid="skill-version-select"]'
+                );
+                if (!trigger || trigger.innerText.trim() !== name) return false;
+                const parts = window.location.pathname.split('/').filter(Boolean);
+                return parts[parts.length - 1] === expectedId;
+            }""",
+            arg=[version_name, version_id],
+            timeout=timeout,
+        )
+        logger.info(
+            "VERSION selector/URL id converged on name=%r id=%r",
+            version_name, version_id,
+        )
 
     @action("Save current edits as a new version")
     def save_as_version(self, version_name: str, timeout: int = 10000):
@@ -763,6 +1056,61 @@ class SkillDetailPage(SkillFormPage):
         logger.info(
             "New version %r created — URL: %s", version_name, self.page.url
         )
+
+    @action("Confirm the 'Create version' dialog, capturing the create-version response")
+    def confirm_create_version_capturing_response(self, version_name: str, timeout: int = 10000):
+        """Click the "Create version" dialog's Save button and capture the
+        underlying create-version network response (ELITEA-2606).
+
+        Companion to :meth:`save_as_version` for callers that need to verify
+        the dialog opening (``create_version_dialog``) and the Name field
+        (``create_version_name_input_field``) as their OWN case steps first
+        — via those already-public locators — before confirming. Call this
+        only AFTER the dialog is open and the Name field already holds
+        *version_name* (mirrors the second half of :meth:`save_as_version`'s
+        body; :meth:`save_as_version` remains the right hook for callers
+        that don't need that per-step granularity).
+
+        Captures the ``POST .../elitea_core/skill/prompt_lib/{project}/
+        {skillId}`` (singular ``skill`` — the "create version" endpoint,
+        distinct from the plural ``skills`` create-skill endpoint) response,
+        so the caller can read its JSON body — e.g. ``meta.icon_meta`` — as
+        an authoritative server-side assertion point instead of relying
+        solely on a DOM ``<img src>`` read.
+
+        Args:
+            version_name: The version name already entered in the Name
+                field — used only to assert the confirmation toast's exact
+                text (same assertion :meth:`save_as_version` makes).
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the create-version POST.
+        """
+        previous_version_id = self.get_version_id()
+
+        with self.page.expect_response(
+            lambda r: "/elitea_core/skill/prompt_lib/" in r.url
+            and r.request.method == "POST"
+        ) as response_info:
+            self.create_version_save_button.click()
+
+        self.version_toast_message.wait_for(state="visible", timeout=timeout)
+        toast_text = self.version_toast_message.text_content()
+        assert toast_text == f'Version "{version_name}" created', (
+            f"Expected 'Version \"{version_name}\" created' toast, got: {toast_text!r}"
+        )
+        self.page.wait_for_function(
+            "prevId => window.location.pathname.split('/').filter(Boolean).pop() !== prevId",
+            arg=previous_version_id,
+            timeout=timeout,
+        )
+        self.wait_for_network(timeout=5000)
+        logger.info(
+            "New version %r created (response captured) — URL: %s, POST status=%s",
+            version_name, self.page.url, response_info.value.status,
+        )
+        return response_info.value
 
     def get_version_selector_value(self) -> str:
         """Return the currently displayed value of the VERSION selector.
