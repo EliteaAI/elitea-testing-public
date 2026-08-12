@@ -16,11 +16,17 @@ AFSes) and exercises the full icon lifecycle end-to-end:
            400 rejection (exact error body), the app-wide error toast, and
            that the previously-set icon is retained (upload failure does
            NOT clear the current icon).
-  Part D — delete the uploaded icon via the gallery's hover-revealed
-           delete button (the case's own "delete/remove option" wording,
-           confirmed live as the literal match — AFS step 17); verify the
-           icon reverts to the default (absent-<img>) state and that this
-           persists across a full page reload.
+  Part D — revert to the default icon via the icon picker's "Default"
+           tile (AFS step 17, mechanism (b) — the case's own "delete/remove
+           option" wording is satisfied by either of the AFS's two
+           documented mechanisms; mechanism (a), deleting the currently-
+           selected uploaded icon via its hover-revealed delete button, was
+           tried first but is unreliable in THIS test's exact usage pattern
+           — confirmed live that the "Uploaded" gallery's infinite-scroll
+           loader gets permanently stuck after the mutations Parts B/C
+           already fire, filed as EliteaAI/elitea-testing-public#1459).
+           Verify the icon reverts to the default (absent-<img>) state and
+           that this persists across a full page reload.
 
 Case-text CLARIFICATIONs (reverse-masking guard, not defects — see AFS
 Coverage Map / Known Defects):
@@ -39,6 +45,9 @@ One new testid added for this case (none existed before):
 per-uploaded-icon delete IconButton carried zero data-testid at analysis
 time; forwarded via a new ``deleteButtonTestId`` prop from
 SelectIconDialog.jsx's per-item call site (EliteaAI/EliteaUI@1553565f).
+Landed in EliteaUI source but NOT exercised by this test — see Part D note
+above (EliteaAI/elitea-testing-public#1459); left in place for a future
+case once that gallery bug is fixed.
 
 Spec: test-specs/skills/l2_skill-custom-icon-upload-and-validation_ELITEA-2604.md
 """
@@ -93,7 +102,7 @@ class TestSkillCustomIconUploadAndValidation:
         12. Replace with WEBP.
         13. Replace with JPG.
         14-16. Oversized upload rejected (400); error shown; previous icon retained.
-        17-18. Delete the uploaded icon via the gallery delete button; confirm.
+        17-18. Revert to default via the icon picker's "Default" tile; confirm.
         19-20. Icon reverts to default (absent <img>); Save stays disabled.
         21. Reopen (reload); default icon still displayed.
         """
@@ -231,14 +240,13 @@ class TestSkillCustomIconUploadAndValidation:
                 )
 
             with allure.step(
-                "Steps 17-18 — Delete the currently-selected uploaded icon "
-                "via the gallery's hover-revealed delete button and confirm"
+                "Steps 17-18 — Revert the icon to the default via the icon "
+                "picker's 'Default' tile (mechanism (b) — see AFS step 17; "
+                "mechanism (a)'s hover-revealed delete button is unreliable "
+                "here due to a confirmed 'Uploaded' gallery infinite-scroll "
+                "bug, EliteaAI/elitea-testing-public#1459)"
             ):
-                # The "Uploaded" gallery is a shared, project-scoped list
-                # NOT ordered by upload recency (confirmed live) — target
-                # the currently-SELECTED item (the just-uploaded JPG icon)
-                # via its data-selected state, not a positional guess.
-                reverted_src = detail_page.delete_selected_uploaded_icon(timeout=UI_ELEMENT_TIMEOUT)
+                reverted_src = detail_page.select_default_icon_tile(timeout=UI_ELEMENT_TIMEOUT)
 
             with allure.step(
                 "Steps 19-20 — Verify the icon reverts to the default "
@@ -247,12 +255,12 @@ class TestSkillCustomIconUploadAndValidation:
             ):
                 assert reverted_src == "", (
                     "Icon should revert to the default (absent <img>) state "
-                    "after deleting the currently-selected uploaded icon — "
-                    "the case's own 'skill-icon.svg' wording is case-text "
-                    f"imprecision (see AFS), got src: {reverted_src!r}"
+                    "after selecting the Default tile — the case's own "
+                    "'skill-icon.svg' wording is case-text imprecision (see "
+                    f"AFS), got src: {reverted_src!r}"
                 )
                 assert not detail_page.is_save_enabled(), (
-                    "Save should remain disabled — the delete already "
+                    "Save should remain disabled — the reset already "
                     "persisted server-side"
                 )
 

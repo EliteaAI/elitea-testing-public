@@ -181,48 +181,23 @@ class SkillFormPage(BasePage):
                      "reverts to the system default icon (entity-agnostic).",
     )
 
-    # Dynamic (runtime-parameterized) testid templates — icon picker
-    # gallery items (ELITEA-2604). Mirrors AgentDetailPage.ICON_PICKER_OPTION/
-    # ICON_PICKER_UPLOADED exactly (same shared SelectIconDialog.jsx component).
-    ICON_PICKER_OPTION = '[data-testid="agent-icon-picker-option-{}"]'
-    ICON_PICKER_UPLOADED = '[data-testid="agent-icon-picker-uploaded-{}"]'
-    # Testid identity + data-* state filter (this project's standard shape
-    # for a state-dependent assertion, e.g. TOAST_ALERT_SEVERITY above) —
-    # the currently-selected item in EITHER gallery (Default or Uploaded).
-    # `data-selected` was added this case (EliteaAI/EliteaUI@e7ff6c06,
-    # ProjectIconItem.jsx) since selection was previously tracked only via
-    # a CSS border/background style with no queryable DOM signal. The
-    # "Uploaded" gallery is a shared, project-scoped list NOT ordered by
-    # upload recency (confirmed live this run — a positional/index guess
-    # for "the icon I just uploaded" is unreliable), so this is the only
-    # deterministic way to target it.
-    ICON_PICKER_UPLOADED_SELECTED = (
-        '[data-testid^="agent-icon-picker-uploaded-"][data-selected="true"]'
-    )
-    # Per-uploaded-icon delete button — NEW testid added for ELITEA-2604
-    # (EliteaAI/EliteaUI@1553565f — UserIconItem.jsx's delete IconButton
-    # forwarded via a new `deleteButtonTestId` prop from SelectIconDialog.jsx's
-    # per-item call site). No data-testid existed on this element before this
-    # case (AFS Concrete Handles § NEW TESTID GAP).
-    ICON_PICKER_UPLOADED_DELETE_BUTTON = (
-        '[data-testid="agent-icon-picker-uploaded-{}-delete-button"]'
-    )
-
-    # Shared, generic AlertDialog.jsx confirmation dialog — used by the
-    # per-uploaded-icon delete flow's "Are you sure to delete this icon?"
-    # prompt. Pre-existing testids; declared here per this repo's
-    # shared-dialog-declared-per-page-object precedent (mirrors
-    # secrets_page.py's identical alert_dialog_content/alert_dialog_confirm_button
-    # fields for its own hide-secret confirmation flow).
-    alert_dialog_content = LocatorDescriptor(
-        testid="alert-dialog-content",
-        description="Delete-uploaded-icon confirmation dialog body text "
-                     '("Are you sure to delete this icon?").',
-    )
-    alert_dialog_confirm_button = LocatorDescriptor(
-        testid="alert-dialog-confirm-button",
-        description="Delete-uploaded-icon confirmation dialog's Confirm button.",
-    )
+    # NOTE (ELITEA-2604 implementer, live-confirmed 2026-08-12): dynamic
+    # "Uploaded" gallery templates (ICON_PICKER_OPTION/ICON_PICKER_UPLOADED/
+    # ICON_PICKER_UPLOADED_SELECTED/ICON_PICKER_UPLOADED_DELETE_BUTTON), the
+    # shared alert_dialog_content/alert_dialog_confirm_button confirmation
+    # dialog, and a delete_selected_uploaded_icon() method (mechanism (a) —
+    # delete the currently-selected uploaded icon via its hover-revealed
+    # delete button) were explored here but REMOVED — confirmed live that the
+    # "Uploaded" gallery's infinite-scroll loader (ListInfiniteMoreLoader +
+    # RTK Query merge in getSkillIcons) gets PERMANENTLY stuck after a
+    # mutation (upload/replace/delete) invalidates the list while the
+    # dialog's local `page` state is already > 0 — exactly the situation this
+    # test's own Part B/C already produce by the time Part D runs. Filed as
+    # EliteaAI/elitea-testing-public#1459. This test uses mechanism (b)
+    # (select_default_icon_tile(), below) instead, per the AFS's own
+    # documented phased-approach allowance. The `agent-icon-picker-uploaded-
+    # {index}-delete-button` testid (EliteaAI/EliteaUI@1553565f) remains live
+    # in EliteaUI source for a future case once #1459 is fixed.
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -607,68 +582,6 @@ class SkillFormPage(BasePage):
         self.icon_picker_dialog.wait_for(state="hidden", timeout=timeout)
         src = self.get_form_icon_src(timeout=timeout)
         logger.info("Icon reset to default — resulting src: %r", src)
-        return src
-
-    @action("Delete an uploaded gallery icon (hover-reveal, confirm dialog)")
-    def delete_selected_uploaded_icon(self, timeout: int = 10000) -> str:
-        """Open the icon picker, locate the currently-SELECTED item in the
-        "Uploaded" gallery, hover it to reveal its delete button, click it,
-        confirm the AlertDialog prompt, and close the picker.
-
-        LOCATORS: ``ICON_PICKER_UPLOADED_SELECTED`` (the ``data-selected``
-        state filter — the "Uploaded" gallery is a shared, project-scoped
-        list NOT ordered by upload recency, confirmed live: a positional
-        index guess for "the icon I just uploaded" is unreliable, so this
-        targets the actually-applied icon deterministically) and
-        ``ICON_PICKER_UPLOADED_DELETE_BUTTON`` (the delete button itself —
-        NEW testid added for this case, see the class-level constant's
-        docstring; its numeric index is read off the selected item's own
-        ``data-testid`` rather than assumed). Confirming fires ``DELETE
-        .../upload_skill_icon/prompt_lib/{project}/{icon_name}``. Per
-        source (``SelectIconDialog.jsx``'s ``onDeleteIcon``), the dialog
-        does NOT auto-close on delete (unlike a select action) — this
-        method closes it explicitly via ``icon_picker_close_button``.
-        Since this always targets the currently-selected icon, the form's
-        ``skill-form-icon-img`` element is removed entirely afterwards
-        (reverts to the default placeholder).
-
-        Args:
-            timeout: Maximum wait time in milliseconds.
-
-        Returns:
-            The resulting ``skill-form-icon-img`` src after the delete
-            (empty string — the deleted icon was the currently-selected one).
-        """
-        logger.info("Deleting the currently-selected uploaded gallery icon")
-        self.open_icon_picker(timeout=timeout)
-
-        selected_icon = self.page.locator(self.ICON_PICKER_UPLOADED_SELECTED)
-        selected_icon.wait_for(state="visible", timeout=timeout)
-        selected_testid = selected_icon.get_attribute("data-testid") or ""
-        index = selected_testid.removeprefix("agent-icon-picker-uploaded-")
-
-        selected_icon.hover()
-        self.page.wait_for_timeout(300)  # CSS visibility transition (hover-reveal)
-
-        delete_button = self.page.locator(self.ICON_PICKER_UPLOADED_DELETE_BUTTON.format(index))
-        delete_button.wait_for(state="visible", timeout=timeout)
-        delete_button.click()
-
-        self.alert_dialog_content.wait_for(state="visible", timeout=timeout)
-        with self.page.expect_response(
-            lambda r: "/upload_skill_icon/prompt_lib/" in r.url and r.request.method == "DELETE",
-            timeout=timeout,
-        ) as delete_info:
-            self.alert_dialog_confirm_button.click()
-        delete_response = delete_info.value
-        assert delete_response.status == 200, (
-            f"Delete-uploaded-icon DELETE should return 200, got {delete_response.status}"
-        )
-
-        self.icon_picker_close_button.click()
-        self.icon_picker_dialog.wait_for(state="hidden", timeout=timeout)
-        src = self.get_form_icon_src(timeout=timeout)
-        logger.info("Selected uploaded icon (index=%s) deleted — resulting src: %r", index, src)
         return src
 
     def _fill_text_input(self, locator, text: str):

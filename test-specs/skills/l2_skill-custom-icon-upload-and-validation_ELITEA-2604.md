@@ -321,7 +321,7 @@ returned a clean 204 with no follow-up error). Noted here for completeness; not 
 | Step 14: Upload oversized file | upload rejected | AFS step 14 | step 14 | covered — 400, exact server error body captured |
 | Step 15: Verify error message | size-exceeds message shown | AFS step 15 | step 15 | covered — exact text "File size exceeds 512 KB" via `toast-alert`/`toast-message` |
 | Step 16: Verify previous icon retained | icon unchanged | AFS step 16 | step 16 | covered — DOM src comparison before/after failed upload |
-| Step 17: Click delete/remove option | confirmation or immediate removal | AFS step 17 | step 17 | covered — TWO live-confirmed mechanisms (delete-uploaded-icon / select-Default-tile); testid gap found for mechanism (a) |
+| Step 17: Click delete/remove option | confirmation or immediate removal | AFS step 17 | step 17 | covered — via mechanism (b), select-Default-tile; mechanism (a) (delete-uploaded-icon) built but not used in the final test, see Implementation-time findings #3 (confirmed gallery infinite-scroll bug, #1459) |
 | Step 18: Confirm deletion if prompted | icon removed | AFS step 18 | step 18 | covered |
 | Step 19: Verify reverts to default `skill-icon.svg` | default icon shown | AFS step 19 | step 19 | covered — CLARIFICATION: live product has no such literal asset/filename; correct assertion is "icon img element absent" (same as ELITEA-1899) |
 | Step 20: Save the skill | changes saved | AFS step 20 | step 20 | covered — same CLARIFICATION as step 10 |
@@ -475,8 +475,41 @@ exact interactions) surface, discovered while implementing Part D:
    reliably corresponds to "the icon this test just uploaded/applied". A
    positional-index delete target is unreliable. **Fix**: added
    `data-selected={isSelected}` to `ProjectIconItem.jsx` (shared by both the
-   Default and Uploaded galleries) — `EliteaAI/EliteaUI@e7ff6c06` — so automation
-   can target the currently-APPLIED icon deterministically via a
-   `[data-testid^="agent-icon-picker-uploaded-"][data-selected="true"]` filter
-   (testid identity + `data-*` state, this project's standard shape) instead of
-   guessing a position. `SkillFormPage.delete_selected_uploaded_icon()` uses this.
+   Default and Uploaded galleries) — `EliteaAI/EliteaUI@e7ff6c06` — intended to
+   let automation target the currently-APPLIED icon deterministically via a
+   `[data-testid^="agent-icon-picker-uploaded-"][data-selected="true"]` filter.
+   **Superseded by finding 3 below** — this mechanism was built but is NOT used
+   by the final test (kept live in EliteaUI source for a future case).
+
+3. **CONFIRMED LIVE (verify/finish pass, 2026-08-12): the "Uploaded" gallery's
+   infinite-scroll loader gets PERMANENTLY STUCK after a mutation invalidates
+   the list while the dialog's local `page` state is already > 0** — exactly
+   the situation this test's own Parts B/C produce (each edit-mode
+   upload/replace reopens the picker and fires a mutation). Reproduced live via
+   Playwright MCP against a real skill: after several open/close + upload
+   cycles, reopening the "Uploaded" gallery rendered only 1 item (not the just-
+   applied one) despite the project having 56 total uploaded icons; the
+   `infinite-loader-trigger` element remained present (confirming more data was
+   available) but never fired again even after being scrolled into view. Root
+   cause (read from source): `ListInfiniteMoreLoader.jsx`'s `hasTriggeredRef`
+   only resets when the merged list's size changes — if a post-mutation refetch
+   collapses the accumulated list back to a near-empty state, the size never
+   changes again and the loader can never recover for that dialog instance.
+   This means finding 2's `data-selected` filter is frequently pointed at an
+   item that was never even rendered — NOT a positional-guessing problem, a
+   list-completeness problem. Filed as
+   `EliteaAI/elitea-testing-public#1459` (not escalated to `elitea_issues` per
+   this project's policy — no explicit ask). **Consequence for this AFS's own
+   step 17 guidance** ("the implementer should pick ONE as the case's primary
+   automated path... recommend the delete-button path... MAY note the second as
+   an Axis-2 addition... If the implementer prefers to ship Part D FIRST using
+   only mechanism (b)... that is an acceptable phased approach"): this
+   implementation ships with mechanism (b) (the "Default" tile,
+   `SkillFormPage.select_default_icon_tile()`) as the test's ONLY automated
+   Part D path, per that explicit phased-approach allowance — mechanism (a)'s
+   `delete_selected_uploaded_icon()` method and its supporting locators
+   (`ICON_PICKER_UPLOADED_SELECTED`/`ICON_PICKER_UPLOADED_DELETE_BUTTON`/
+   `alert_dialog_content`/`alert_dialog_confirm_button`) were removed from
+   `SkillFormPage` as unused/unreliable dead code (no orphan-testid coverage
+   claim); the `agent-icon-picker-uploaded-{index}-delete-button` testid itself
+   remains live in EliteaUI source for a future case once #1459 is fixed.
