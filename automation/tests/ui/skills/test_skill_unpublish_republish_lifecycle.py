@@ -228,6 +228,13 @@ class TestSkillUnpublishRepublishLifecycle:
                 assert "/skills/all/" in page.url, (
                     f"Expected to be on the skill detail page, got: {page.url}"
                 )
+                # Capture the DRAFT version's own id (distinct integer from
+                # skill_id — confirmed live, e.g. skill=1495 vs
+                # version_details.id=1554, same split test_skill_fork_end_to_end.py
+                # relies on) so Step 3 can assert the published clone got a
+                # NEW version id relative to the actual thing it was cloned
+                # from, not the unrelated skill_id.
+                draft_version_id_v1 = skill_api.get_skill(skill_id)["version_details"]["id"]
 
             with allure.step(
                 "Step 2 — Open the Publish wizard, fill Version name v1.0 + "
@@ -261,9 +268,13 @@ class TestSkillUnpublishRepublishLifecycle:
                 public_skill_id_v1 = v1_body["public_skill_id"]
                 public_version_id_v1 = v1_body["public_version_id"]
                 source_version_id_v1 = v1_body["source_version_id"]
-                assert source_version_id_v1 != skill_id, (
+                assert source_version_id_v1 != draft_version_id_v1, (
                     "The published clone's version id should be a NEW id, "
-                    "distinct from the original draft skill/version id"
+                    "distinct from the original draft VERSION's own id "
+                    f"(draft_version_id_v1={draft_version_id_v1}) — a republish-"
+                    "in-place regression that reused the draft's own version "
+                    "id would trivially satisfy a comparison against the "
+                    "unrelated skill_id instead"
                 )
                 logger.info(
                     "v1.0 published: public_skill_id=%s public_version_id=%s "
