@@ -26,7 +26,7 @@ Spec: test-specs/skills/l3_skill-version-selection-behavior_ELITEA-2610.md
 
 import logging
 import re
-import time
+import uuid
 
 import allure
 import pytest
@@ -46,9 +46,17 @@ UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
 AI_RESPONSE_TIMEOUT = 60_000
 
-TS = int(time.time())
-SKILL_NAME = f"elitea-2610-response-style-{TS}"[:32]
-AGENT_NAME = f"elitea-2610-version-behavior-agent-{TS}"[:32]
+# uuid4 suffix (not a truncated timestamp) — real per-run entropy that survives
+# the 32-char name cap (constants.js MAX_NAME_LENGTH), matching the established
+# `_SUFFIX = uuid.uuid4().hex[:6]` pattern in this dir (e.g.
+# test_published_agent_version_cannot_be_modified.py). Applying `[:32]` AFTER
+# concatenating a full name+timestamp string (the prior shape here) sliced off
+# the differentiating suffix digits instead of the base name, so two runs
+# started in the same ~1-day window collided on name — fixed by building each
+# name short enough, by construction, to never need a post-hoc slice.
+_SUFFIX = uuid.uuid4().hex[:6]
+SKILL_NAME = f"el-2610-resp-style-{_SUFFIX}"
+AGENT_NAME = f"el-2610-ver-behavior-{_SUFFIX}"
 TEST_PROMPT = "Explain what an API is"
 
 SKILL_DESCRIPTION = "Use this skill for EVERY user question, no matter the topic."
