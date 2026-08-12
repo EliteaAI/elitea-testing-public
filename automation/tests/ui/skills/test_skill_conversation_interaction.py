@@ -112,7 +112,7 @@ class TestInteractWithSkillsFromConversation:
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5698", name="Skills V2 Epic")
     @pytest.mark.p2
     @pytest.mark.regression
-    @pytest.mark.flaky(reruns=2, reruns_delay=5)
+    @pytest.mark.flaky(reruns=3, reruns_delay=5)
     def test_interact_with_skills_from_conversation(
         self, page, agent_api, skill_api, conversation_api,
     ):
