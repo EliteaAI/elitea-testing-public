@@ -14,7 +14,7 @@ from playwright.sync_api import Page
 from playwright.sync_api import Download
 
 from .skill_form_page import SkillFormPage
-from .locator_descriptor import LocatorDescriptor
+from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor
 from components.mui import Dialog
 from utils.actions import action
 
@@ -115,6 +115,35 @@ class SkillDetailPage(SkillFormPage):
     MODEL_SELECTOR_OPTION = '[data-testid="model-selector-option-{}"]'
     # Dynamic testid for a Reasoning-slider level mark (1=Low, 2=Medium, 3=High).
     MODEL_SETTINGS_REASONING_LEVEL = '[data-testid="model-settings-reasoning-level-{}"]'
+
+    # ------------------------------------------------------------------
+    # SkillTestPanel response action buttons (ELITEA-2442)
+    # ------------------------------------------------------------------
+    # Same underlying ApplicationAnswer.jsx component the Chat surface
+    # renders (ELITEA-2436 precedent) — both testids already exist live,
+    # only the LocatorDescriptor field was missing on this page. Mirrors
+    # ChatPage.read_out_button / ChatPage.copy_action_button exactly
+    # (chat_page.py:526 / :481); SkillDetailPage has no shared base with
+    # ChatPage so the fields are duplicated here, not inherited.
+    read_out_button = LocatorDescriptor(
+        testid="chat-read-out-button",
+        description="Read out (speaker) button on the test-panel AI response",
+    )
+    copy_action_button = LocatorDescriptor(
+        testid="chat-copy-button",
+        description="Copy-to-clipboard button on the test-panel AI response",
+    )
+    # Voice mini player — appears after clicking Read out (Layer 2 proof).
+    # Mirrors ChatPage.voice_mini_player (OptionalLocatorDescriptor since the
+    # container is not present until Read-out is clicked).
+    voice_mini_player = OptionalLocatorDescriptor(
+        testid="chat-voice-mini-player",
+        description="Voice mini player container, appears after Read-out click",
+    )
+    voice_play_stop_button = LocatorDescriptor(
+        testid="chat-voice-play-stop-button",
+        description="Play/Stop button in the voice mini player",
+    )
 
     # Overflow menu trigger button
     controls_menu_button = LocatorDescriptor(
