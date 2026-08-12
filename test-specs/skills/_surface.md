@@ -537,6 +537,44 @@ Distinct from the valid-import round trip (ELITEA-1737/1738, above the
   `test-specs/skills/l3_multiple-tags-persist-on-creation-and-edit_ELITEA-2434.md`.
   Full details: `test-specs/skills/l3_skill-creation-mandatory-fields-validation_ELITEA-2430.md`.
 
+## Copy Link / Share (ELITEA-2439) — `SkillControls.jsx` (`share-version-menuitem` / `share-skill-menuitem`)
+
+- **Confirmed live, no testid gaps.** `SkillControls.jsx` wires the exact same
+  `useCopyLinkMenu()` hook the Agent flow uses (ELITEA-1898) — two "Share" menu
+  items inside the `skill-controls-menu-button` overflow menu:
+  `share-version-menuitem` (VERSION group, `useProjectEntityLink({ versionId:
+  currentVersionId })` → URL gains `/{versionId}`) and `share-skill-menuitem`
+  (SKILL group, no `versionId` override → generic skill URL, no version
+  segment). Confirmed live via a11y snapshot of the open menu on skill 951
+  (`content-reviewer`) — both items present and clickable.
+- Confirmation toast: same `toast-message`/`toast-alert[data-severity="info"]`
+  mechanism, exact text `"The link has been copied to the clipboard."`
+  (source-confirmed, `useCopyLinkMenu`'s `handleCopy()` → `toastInfo(...)`) —
+  identical string to the Agent flow's ELITEA-1898/#1288 toast.
+- Direct navigation to a skill+version URL (confirmed live:
+  `/skills/all/951/979?viewMode=owner`) opens the correct skill (tab title +
+  selected tab both show the skill name, Information panel shows matching
+  Skill ID/Version ID) — no "not found"/404 state.
+- **`SkillDetailPage` has no page-object fields for either Share menuitem
+  yet** — implementer work (additive `LocatorDescriptor`s), no `add-data-testid`
+  round trip needed.
+- **Gotcha:** the base version's Information-panel "Version ID" can differ
+  from the Skill ID even though the URL shows only one digit segment while on
+  `base` (confirmed live: skill 951 shows Version ID 979 in the Information
+  panel while its URL is just `/skills/all/951`) —
+  `SkillDetailPage.get_version_id()`'s URL-only parsing returns the skill id
+  for `base`, not the true version id. Not a bug for THIS case (it only
+  matters for a **named**, non-base version, where the URL always carries the
+  real version id as its second digit segment), but a trap for any future case
+  that wants "the base version's real version id" — read it from the
+  Information panel's `Copy version ID` button text instead of the URL in
+  that specific scenario.
+  Clarification filed: [EliteaAI/elitea-testing-public#1451](https://github.com/EliteaAI/elitea-testing-public/issues/1451)
+  (case text says a standalone "Copy Link" button — live product has two
+  separate "Share" menu items instead; sibling of #1288/ELITEA-1898 and
+  #1337/ELITEA-2049, same pattern, different entity).
+  Full details: `test-specs/skills/l2_copy-link-copies-valid-url-to-correct-skill-version_ELITEA-2439.md`.
+
 ## Test panel — model selector + Model Settings dialog (ELITEA-2436)
 
 The Skill test panel (`SkillTestPanel.jsx`) embeds the SAME
