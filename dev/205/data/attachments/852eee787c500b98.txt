@@ -1,1 +1,0 @@
-ERROR    elitea.api:client.py:1103 Failed to create credential: status=500 body={"error": "Unexpected error", "field": "unknown"}
