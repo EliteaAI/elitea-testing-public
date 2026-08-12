@@ -26,6 +26,7 @@
 - [An assertion can prove the wrong fact](assertion_proves_the_wrong_fact.md) — invert-check is necessary, not sufficient; isolate every OR-gate (5×)
 - [Shared-state cleanup must soft-assert](cleanup_verification_on_shared_state_must_soft_assert.md) — logger.error-only lets failed cleanup pollute the baseline
 - [MUI testid lands on the wrapper](testid_lands_on_mui_wrapper_not_input.md) — relocate via inputProps/slotProps at source; never chain .locator("input") (11×)
+- [Declared improvisation needs AFS sweep](declared_improvisation_needs_afs_sweep_not_just_pr_narration.md) — PR-body narration alone leaves the AFS document stale; amend Concrete Handles + Hints too
 - [MUI icon auto-testid is dev-build-only](mui_icon_auto_testid_is_dev_build_only_never_locate_on_it.md) — green on localhost, absent in every deployed env
 - [New testid must not share a prefix selector](component_level_testid_must_not_share_a_prefix_selector.md) — grep `^=` in the page object before naming
 - [#579 exceptions are narrow](custom_handle_testid_prop_not_579_exception.md) — CustomHandle/SingleSelect are app-owned; only ReactFlow/CodeMirror internals qualify
@@ -38,6 +39,7 @@
 - [reasoning_effort on API-created agents](reasoning_effort_none_breaks_embedded_chat.md) — "none" is save/reload-only; any chat-sending test needs another value
 - [Page-object API calls need Bearer fallback](page_object_api_delete_needs_bearer_fallback_on_localhost.md) — self.page.request has no cookies on localhost
 - [Name fields cap at 32 chars](pipeline_agent_name_field_32char_silent_truncation.md) — silent truncation on agent-name-input, blocks Approve on Build-with-AI (3×)
+- [Shared save testid, create vs edit](shared_save_testid_create_vs_edit_navigation_false_pass.md) — create-flow save-and-wait-for-nav helper false-passes on an edit form (no nav)
 - [Entity-card list pages](search_highlight_breaks_exact_text_locator.md) — read entity-card-name + .text_content(); scope per-card via .filter(has=…) (3×)
 - [Killed runs orphan test data](killed_background_run_orphans_test_data.md) — backgrounded/SIGKILLed pytest skips finally:; filter by name+id, not id alone
 - [Resume dispatch: trust disk](resume_dispatch_trust_disk_not_prior_session_notes.md) — a prior session's "completed" note can describe uncommitted code; grep first

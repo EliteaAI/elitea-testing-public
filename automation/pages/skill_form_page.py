@@ -44,6 +44,21 @@ class SkillFormPage(BasePage):
         description="Skill instructions CodeMirror content element (.cm-content)"
     )
 
+    instructions_edit_mode_button = LocatorDescriptor(
+        testid="skill-instructions-edit-mode-button",
+        description="Instructions Edit/Preview toggle — Edit mode button (ELITEA-2432)"
+    )
+
+    instructions_preview_mode_button = LocatorDescriptor(
+        testid="skill-instructions-preview-mode-button",
+        description="Instructions Edit/Preview toggle — Preview mode button (ELITEA-2432)"
+    )
+
+    instructions_preview_content = LocatorDescriptor(
+        testid="skill-instructions-preview-content",
+        description="Instructions Preview-mode rendered Markdown container (ELITEA-2432)"
+    )
+
     save_button = LocatorDescriptor(
         testid="skill-save-button",
         description="Save skill button"
@@ -83,6 +98,13 @@ class SkillFormPage(BasePage):
     # option for a previously-created project tag. See
     # ``select_existing_tag()``.
     SKILL_TAG_OPTION = '[data-testid="skill-tag-option-{}"]'
+
+    # Dynamic (runtime-parameterized) testid template — a committed tag
+    # chip's delete icon, keyed by tag name (ELITEA-2433). Added via
+    # add-data-testid (EliteaUI CreateSkillForm.jsx's ``chipDeleteTestId``
+    # prop on ``TagEditor``/``AutoCompleteDropDown``, mirroring the existing
+    # ``getOptionTestId`` pattern) — see ``remove_tag()``.
+    SKILL_TAG_CHIP_DELETE = '[data-testid="skill-tag-chip-delete-{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -127,6 +149,38 @@ class SkillFormPage(BasePage):
         self._fill_text_input(self.description_input, description)
         self.fill_instructions(instructions)
         logger.info("Filled skill form: name=%r", name)
+
+    @action("Set name")
+    def set_name(self, name: str):
+        """Replace the Name field's content (works on pre-filled fields).
+
+        Mirrors :meth:`set_description` exactly — the wrapper-level click +
+        Ctrl+A pattern in :meth:`fill_form`/:meth:`_fill_text_input` only
+        reliably clears an *empty* field; ``Control+a`` alone does not
+        reliably select existing content first (typed text ends up inserted
+        rather than replacing it, or an empty ``text`` argument leaves the
+        prior value in place since a bare selection with nothing typed over
+        it does not clear the field). Uses ``Locator.select_text()`` +
+        Backspace to reliably clear the real, editable input (addressed
+        directly via its own ``skill-name-input-field`` testid, set on the
+        real element via MUI's ``inputProps``/``htmlInput`` slot, not a raw
+        CSS chain off the ``skill-name-input`` wrapper testid) before typing
+        the replacement — needed for a step that must clear an
+        already-populated Name field back to empty.
+
+        Args:
+            name: New name text (pass ``""`` to clear the field).
+        """
+        field = self.name_input_field
+        field.click()
+        field.select_text()
+        self.page.wait_for_timeout(100)
+        self.page.keyboard.press("Backspace")
+        self.page.wait_for_timeout(100)
+        if name:
+            self.page.keyboard.type(name)
+        self.page.wait_for_timeout(300)
+        logger.info("Set name: %r", name[:60])
 
     @action("Set description")
     def set_description(self, description: str):
@@ -202,6 +256,26 @@ class SkillFormPage(BasePage):
         self.page.wait_for_timeout(200)
         logger.info("Selected existing tag: %r", tag_name)
 
+    @action("Remove a committed tag chip")
+    def remove_tag(self, tag_name: str, timeout: int = 5000):
+        """Remove a committed tag chip by clicking its delete icon.
+
+        Clicking the chip's label/body does NOT remove it — only the
+        delete icon (a ``RemoveIcon`` SVG child) does. Located via the
+        name-keyed ``skill-tag-chip-delete-{tag_name}`` testid (ELITEA-2433,
+        added via add-data-testid) using the class-level
+        :attr:`SKILL_TAG_CHIP_DELETE` template constant.
+
+        Args:
+            tag_name: Exact tag text of the chip to remove.
+            timeout: Maximum wait time in milliseconds for the icon to appear.
+        """
+        delete_icon = self.page.locator(self.SKILL_TAG_CHIP_DELETE.format(tag_name))
+        delete_icon.wait_for(state="visible", timeout=timeout)
+        delete_icon.click()
+        self.page.wait_for_timeout(200)
+        logger.info("Removed tag: %r", tag_name)
+
     def _fill_text_input(self, locator, text: str):
         """Fill a standard MUI text input with React-safe keyboard events.
 
@@ -244,6 +318,67 @@ class SkillFormPage(BasePage):
         self.page.keyboard.type(text)
         self.page.wait_for_timeout(300)
         logger.info("Filled instructions editor")
+
+    @action("Fill instructions editor with Markdown source (list-safe)")
+    def fill_instructions_markdown(self, text: str):
+        """Replace the CodeMirror instructions editor's content with raw
+        Markdown source that may contain multi-line lists (ELITEA-2432).
+
+        Same reliable-clear mechanism as :meth:`fill_instructions`
+        (``select_text()`` + Backspace, works on both empty and populated
+        editors), but inserts via ``Keyboard.insert_text()`` instead of
+        ``Keyboard.type()``. Confirmed live: this editor's markdown
+        language mode (``@codemirror/lang-markdown``) auto-continues an
+        unordered list on Enter — ``keyboard.type()`` dispatches a
+        discrete Enter keydown for every ``\\n`` in the typed text, which
+        triggers that continuation and inserts an extra ``"- "`` at the
+        start of the line right after a list-item line, corrupting any
+        typed multi-line list Markdown (e.g. typing
+        ``"- Item one\\n- Item two"`` renders as
+        ``"- Item one\\n- - Item two"``). ``keyboard.insert_text()`` inserts
+        the whole string as one atomic operation with no discrete Enter
+        keydown, so the list-continuation keymap never fires, while still
+        triggering the editor's real input handling (confirmed live: the
+        character counter and React form state update correctly).
+
+        Args:
+            text: Markdown instructions text to enter verbatim.
+        """
+        self.instructions_editor.click()
+        self.page.wait_for_timeout(200)
+        self.instructions_editor_content.select_text()
+        self.page.wait_for_timeout(100)
+        self.page.keyboard.press("Backspace")
+        self.page.wait_for_timeout(100)
+        self.page.keyboard.insert_text(text)
+        self.page.wait_for_timeout(300)
+        logger.info("Filled instructions editor with Markdown source (list-safe)")
+
+    # ------------------------------------------------------------------
+    # Instructions Edit/Preview toggle (ELITEA-2432)
+    # ------------------------------------------------------------------
+
+    @action("Switch Instructions to Edit mode")
+    def click_edit_mode(self, timeout: int = 5000):
+        """Switch the Instructions section to Edit mode (raw Markdown/CodeMirror).
+
+        100% client-side toggle (local ``useState`` in ``CreateSkillForm.jsx``) —
+        no network wait needed, only a short settle for the view swap.
+        """
+        self.instructions_edit_mode_button.click()
+        self.page.wait_for_timeout(200)
+        logger.info("Switched Instructions to Edit mode")
+
+    @action("Switch Instructions to Preview mode")
+    def click_preview_mode(self, timeout: int = 5000):
+        """Switch the Instructions section to Preview mode (rendered Markdown).
+
+        100% client-side toggle — no network wait needed, only a short
+        settle for the view swap.
+        """
+        self.instructions_preview_mode_button.click()
+        self.page.wait_for_timeout(200)
+        logger.info("Switched Instructions to Preview mode")
 
     # ------------------------------------------------------------------
     # Save state
@@ -308,6 +443,56 @@ class SkillFormPage(BasePage):
         self.wait_for_network(timeout=5000)
         logger.info("Saved skill — URL: %s", self.page.url)
 
+    @action("Save skill (create flow) and capture the POST payload + status")
+    def save_and_wait_for_navigation_capturing_payload(self, timeout: int = 15000) -> tuple[dict, int]:
+        """Same as :meth:`save_and_wait_for_navigation`, but also captures the
+        create-flow ``POST .../elitea_core/skills/prompt_lib/{project_id}``
+        request body AND response status (ELITEA-2434 — proves pre-save tags
+        ride the create payload, and that the create actually succeeded with
+        a ``201``, not just that the eventual redirect happened).
+
+        DECLARED IMPROVISATION — reads the body via a temporary
+        ``page.route()`` interceptor (reading ``route.request.post_data_json``
+        inside the handler, then ``route.continue_()``) rather than
+        ``response.request.post_data_json`` / ``Page.expect_request``, mirroring
+        the pattern already used in ``SecretsPage`` (``secrets_page.py``) for
+        the same documented reason: interception reads the body BEFORE the
+        request leaves the browser, unaffected by the post-hoc-read timing gap.
+        The status is captured separately via ``page.expect_response()``
+        wrapping the same save action — the two mechanisms are independent
+        listeners on the same request/response pair, so both fire from the
+        one click. No sanctioned canon pattern covers Playwright
+        request-body capture in this project yet — flagged for the lead per
+        `.agents/role-overrides.md` § Declared-improvisation protocol.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the final URL change.
+
+        Returns:
+            A ``(payload, status)`` tuple: the parsed JSON body of the
+            create-flow POST request, and its HTTP response status code.
+        """
+        captured: dict = {}
+        route_pattern = "**/elitea_core/skills/prompt_lib/**"
+
+        def _capture_post_body(route):
+            if route.request.method == "POST":
+                captured["post_data_json"] = route.request.post_data_json
+            route.continue_()
+
+        self.page.route(route_pattern, _capture_post_body)
+        try:
+            with self.page.expect_response(
+                lambda r: "/elitea_core/skills/prompt_lib/" in r.url
+                and r.request.method == "POST",
+                timeout=timeout,
+            ) as response_info:
+                self.save_and_wait_for_navigation(timeout=timeout)
+            status = response_info.value.status
+        finally:
+            self.page.unroute(route_pattern, _capture_post_body)
+        return captured.get("post_data_json"), status
+
     # ------------------------------------------------------------------
     # Read field values
     # ------------------------------------------------------------------
@@ -341,6 +526,37 @@ class SkillFormPage(BasePage):
         the wrapper testid.
         """
         return (self.instructions_editor_content.text_content() or "").strip()
+
+    def get_instructions_multiline(self) -> str:
+        """Return the Instructions CodeMirror editor's text content,
+        preserving line breaks (ELITEA-2432).
+
+        :meth:`get_instructions` reads ``text_content()``, which
+        concatenates CodeMirror's per-line ``<div class="cm-line">``
+        elements with NO separator — correct for the single-line
+        instructions every other caller of :meth:`get_instructions` uses,
+        but confirmed live to silently drop every line break for
+        multi-line content (a 3-line Markdown source round-trips as one
+        unbroken string via ``text_content()``). ``inner_text()`` is
+        layout-aware — Playwright inserts a newline between adjacent
+        block-level elements — so it reconstructs the editor's line breaks
+        correctly with no new selector needed (each ``cm-line`` div is
+        already block-level).
+        """
+        return (self.instructions_editor_content.inner_text() or "").strip()
+
+    def get_preview_content(self) -> str:
+        """Return the rendered Markdown text content of the Instructions
+        Preview pane (ELITEA-2432).
+
+        Reads ``text_content()`` of the ``skill-instructions-preview-content``
+        container — the app's shared ``Markdown`` component renders bold/list/etc.
+        as real HTML nodes with the raw Markdown syntax characters (``**``, ``- ``)
+        stripped, so this text can be compared directly against the raw source
+        from :meth:`get_instructions` to prove real interpretation happened.
+        Only meaningful while the Preview mode is active (see :meth:`click_preview_mode`).
+        """
+        return (self.instructions_preview_content.text_content() or "").strip()
 
     def get_tags(self) -> list[str]:
         """Return the currently committed tags as a list of strings.

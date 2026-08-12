@@ -267,3 +267,333 @@ Distinct from the valid-import round trip (ELITEA-1737/1738, above the
   scope the console-error assertion to the case's own steps, not through
   cleanup.
   Full details: `test-specs/skills/l3_test-panel-uses-selected-skill-version-instructions_ELITEA-2440.md`.
+
+## Card view — per-card fields (ELITEA-2428) — `Card.jsx` (shared, `/skills/all`)
+
+- Card view is the **default** view on fresh `/skills/all` load — no click
+  needed; the toggle's Card-view button is `[pressed]` immediately.
+  Confirmed live via a11y snapshot: no interaction required to see the
+  card grid.
+- View-toggle buttons carry `agent-*`-prefixed testids
+  (`agent-card-view-button` / `agent-table-view-button`) even on the Skills
+  page — **not a defect**, `ViewToggle.jsx`'s default prop values, no
+  override at `Skills.jsx:70`'s `<ViewToggle />` call site. Same naming
+  quirk already documented for `search_input` (`agent-search-input`). Both
+  testids on `main`.
+- Card fields and their testids: icon = `entity-card-icon` (outer) /
+  `entity-card-icon-img` (inner `<img>`) — **on `automation/testids` only**
+  (ELITEA-1899, awaiting human cherry-pick to `main`), no page-object field
+  on `SkillsListPage` yet (only `AgentsListPage` has one — same shared
+  component, straightforward to mirror). Name = `entity-card-name` (on
+  main ✓, existing `SkillsListPage.skill_card_name`). Tags =
+  `entity-card-tag-chip` (on main ✓, existing
+  `SkillsListPage.get_card_tags()`).
+- **Description is NEVER shown on the un-hovered card** — it renders ONLY
+  inside a hover tooltip (MUI `Tooltip`, `role="tooltip"`, ~1s
+  `enterDelay`) triggered by hovering the card's name/title area. Tooltip
+  content = two app-owned `<Typography>` nodes (name, then description),
+  both inside `Card.jsx`'s own `StyledTooltip` `title` JSX — **confirmed
+  live gap: zero `data-testid` on either node**, neither on `main` nor
+  `automation/testids`. This is NOT the #579 third-party-render-node
+  exception (the JSX is app-owned, MUI's `Tooltip` renders arbitrary
+  `title` content verbatim) — a `data-testid="entity-card-description-tooltip"`
+  can and should be added directly to the description `Typography` (only
+  that one; the sibling name/title node doesn't need one yet since no case
+  has asserted it independently of `entity-card-name`). Not yet fixed as
+  of this run (ELITEA-2428 analysis) — implementer work via
+  `add-data-testid`.
+  Full details: `test-specs/skills/l2_skills-card-view-fields_ELITEA-2428.md`.
+
+## Back button (skill editor header) — `back-button` (ELITEA-2429)
+
+- The skill editor's Back button is the shared `BackButton.jsx` component
+  (`EliteaUI/src/components/BackButton.jsx`, rendered via `StyledTabs.jsx`'s
+  `leftButton` slot) — **pre-existing testid, `data-testid="back-button"`**,
+  same element already exposed as `AgentDetailPage.back_button` on the Agent
+  detail page. Confirmed live: clicking it from `/skills/all/{id}` navigates
+  straight to `/skills/all` (Skills list) — never `/chat`.
+- Source-traced root cause of *why* this is a meaningful regression guard
+  (not asserted in the test, informational): `BackButton.jsx`'s `onBack()`
+  falls back to `gotoListPage()` →
+  `NavigationHelpers.getListRouteByPageType(pageType, RouteDefinitions.Chat)`
+  whenever `useBackPath()` (`EliteaUI/src/hooks/useBackPath.js`) has no
+  `prevPath` for the current route — true for the Skills editor, since
+  `useBackPath.js`'s `hasMultiplePaths`/`getPrevPath` have no case for the
+  Skills route prefix (unlike Applications/Pipelines/Toolkits/Apps). `Chat`
+  is only the **fallback** when `pageType` is unmapped in
+  `navigation.helpers.js`'s `pageTypeToListRoute`; that map DOES include
+  `SkillDetails: RouteDefinitions.Skills`, so the fallback is never actually
+  reached for Skills today — but the code shape for a fallback-to-Chat
+  regression genuinely exists (an unmapped `pageType` would hit it), making
+  this a real, well-targeted guard.
+- **CONFIRMED LIVE GAP, now fixed**: `SkillsListPage.page_header`
+  (`testid="skills-page-header"`) was a pre-existing page-object field
+  pointing at a testid that did not exist anywhere in EliteaUI src (neither
+  `main` nor `automation/testids`) — `Skills.jsx`'s `<StickyTabs>` call never
+  passed a `titleTestId` prop, unlike `Applications.jsx` (Agents page),
+  which passes `titleTestId="agents-page-header"` to the same shared
+  component (`StickyTabs.jsx` already renders `data-testid={titleTestId}`
+  unconditionally). Fixed via `add-data-testid`: one-line
+  `titleTestId="skills-page-header"` addition to `Skills.jsx`'s
+  `<StickyTabs>` call, pushed to `automation/testids` (commit `b29c9b03`).
+  This was dead tech debt in the page object (the field had zero other
+  usages before this run) — not a new element, just newly exercised.
+- Page object additions (additive-only, no existing method bodies touched):
+  `SkillDetailPage.back_button` + `click_back_button()` (mirrors
+  `AgentDetailPage.click_back_button()` exactly);
+  `SkillsListPage.verify_dashboard_header_visible()` +
+  `get_skill_card_names()` (mirror `AgentsListPage`'s equivalents).
+  Test: `automation/tests/ui/skills/test_skill_back_navigation.py`.
+  Full details: `test-specs/skills/l2_skill-editor-back-button-returns-to-skills-list_ELITEA-2429.md`.
+
+## Edit existing skill — Name/Description/Instructions persistence (ELITEA-2431) — `EditSkill.jsx` (`SkillDetailPage`, extends `SkillFormPage`)
+
+- **Confirmed live, no testid gaps.** The detail/edit page reuses every
+  field handle already wired on `SkillFormPage` — `skill-name-input-field`,
+  `skill-description-input-field`, `skill-instructions-editor-content`,
+  `skill-save-button`.
+- **The edit-flow Save button is the SAME `skill-save-button` testid as the
+  create-flow Save, but a DIFFERENT hook and outcome — do not reuse
+  `save_and_wait_for_navigation()` for an edit.** Editing an existing skill
+  drives `useSaveSkill.hooks.js`'s `onSave()`: `PUT
+  /api/v2/elitea_core/skill/prompt_lib/{project}/{skillId}` (no
+  `versionId` segment — updates name/description AND the currently
+  selected version's instructions in one call) → `200 OK`, then
+  `resetForm()` + `toastSuccess('Skill saved')` — **no navigation**. The
+  create-flow's `save_and_wait_for_navigation()` completion check
+  (`"/skills/all/" in url and "/create" not in url`) is already true
+  *before* the click on a detail page, so calling it for an edit-save
+  would return immediately without ever waiting for the PUT — a silent
+  false pass, not a real wait.
+- New method `SkillDetailPage.save_edits()` added for this (additive-only,
+  no existing method body touched): waits on the PUT response
+  (URL-ends-with-skillId + method PUT) and the reused `toast-message`
+  testid (`SkillDetailPage.version_toast_message`, already wired for the
+  Save-As-Version flow) showing exact text `"Skill saved"`.
+- Confirmed live: editing Name/Description/Instructions and clicking Save
+  persists all three; navigating away (Skills list) and re-opening the
+  skill (list card click by its NEW name — `SkillsListPage.
+  click_skill_card()`, pre-existing from ELITEA-2435) shows the updated
+  values, not the originals.
+  Full details: `test-specs/skills/l3_skill-edit-name-description-instructions_ELITEA-2431.md`.
+
+## Instructions Edit/Preview toggle (ELITEA-2432) — `CreateSkillForm.jsx` (`skill-instructions-*`)
+
+- Shared by both `/skills/create` and `/skills/all/{id}` (edit) — same
+  `CreateSkillForm.jsx` renders the Instructions accordion's
+  summary-action toggle (`TabGroupButton` fed a 2-entry `modeButtons`
+  array, `value: 'edit' | 'preview'`, local `useState('edit')` — 100%
+  client-side, zero network calls on toggle).
+- **CONFIRMED LIVE GAP, now fixed**: neither toggle button nor the
+  rendered-preview wrapper `<Box>` had a `data-testid`. `TabButtonItem.jsx`
+  (the shared component under `modeButtons`) already spreads
+  `{...item.buttonProps}` onto the underlying MUI `ToggleButton`, so the
+  fix is caller-side only — `CreateSkillForm.jsx`'s `modeButtons` array
+  entries each gained `buttonProps: { 'data-testid': '...' }`; no change to
+  the shared `TabButtonItem.jsx`/`TabGroupButton.jsx` components. Fixed via
+  `add-data-testid`, pushed to `automation/testids` (commit `b6e1c7c9`):
+  `skill-instructions-edit-mode-button`, `skill-instructions-preview-mode-button`,
+  and `skill-instructions-preview-content` (the preview wrapper `<Box>`,
+  wraps either `<Markdown>{instructions}</Markdown>` or the "No
+  instructions yet." empty state).
+- Preview renders via the app's shared `Markdown` component (`marked`-based
+  lexer, same renderer as chat messages) — confirmed live:
+  `**Bold text**` → `<strong>Bold text</strong>`, `- Item one` / `- Item two`
+  → a real `<ul><li>` list, both with the raw Markdown syntax characters
+  (`**`, `- `) stripped from the rendered/accessible text. This is what
+  makes a content-based `text_content()` assertion on the one preview-content
+  testid sufficient — no need to address the rendered `<strong>`/`<li>`
+  nodes individually (and thus no need for the `#579` scoped-raw-handle
+  exception here).
+- Switching Edit → Preview → Edit does not mutate the stored/typed Markdown
+  source — confirmed live: the CodeMirror content after the round trip is
+  byte-identical to what was typed before switching to Preview.
+- **Two confirmed-live automation-technique gotchas for MULTI-LINE
+  instructions content (single-line instructions, every other caller's
+  usage, are unaffected):**
+  1. This editor's markdown language mode
+     (`@codemirror/lang-markdown`) auto-continues an unordered list on
+     Enter — typing `"- Item one\n- Item two"` via
+     `page.keyboard.type()` (discrete Enter keydown per `\n`) renders as
+     `"- Item one\n- - Item two"` (a real editor UX feature, not a
+     product bug). Fix: `page.keyboard.insert_text()` instead of
+     `.type()` for the insertion step — one atomic op, no discrete Enter
+     keydown, continuation keymap never fires. New method:
+     `SkillFormPage.fill_instructions_markdown()`.
+  2. `get_instructions()`'s `text_content()` concatenates CodeMirror's
+     per-line `<div class="cm-line">` elements with no separator —
+     silently flattens multi-line content into one unbroken string. Fix:
+     `inner_text()` instead (layout-aware, inserts a newline between
+     block-level elements). New method:
+     `SkillFormPage.get_instructions_multiline()`.
+  3. A blank line (`"\n\n"`) between two content lines produces one EXTRA
+     `"\n"` via `inner_text()` (an empty `cm-line`'s inner `<br>` seems to
+     contribute its own break beyond the block-separator one) — sidestep
+     rather than fight it: use single `"\n"` line breaks in multi-line
+     test data. `marked` (the Preview renderer) still parses a list
+     correctly without a blank-line paragraph separator.
+- Page object: new `SkillFormPage.instructions_edit_mode_button` /
+  `instructions_preview_mode_button` / `instructions_preview_content`
+  `LocatorDescriptor` fields (Instructions accordion is shared, so these
+  live on the base form page like the other Instructions handles) +
+  `click_edit_mode()` / `click_preview_mode()` / `get_preview_content()`
+  / `fill_instructions_markdown()` / `get_instructions_multiline()`
+  methods. `fill_instructions()` / `get_instructions()` / `save_edits()`
+  themselves are unchanged (additive-only) — still correct for every
+  other caller's single-line instructions.
+  Full details: `test-specs/skills/l3_skill-instructions-markdown-edit-preview-toggle_ELITEA-2432.md`.
+
+## Create form — Save-button mandatory-field gating (ELITEA-2430) — `CreateSkillForm.jsx`
+
+- **Confirmed live, no testid gaps.** Every element the case needs
+  (`skill-name-input-field`, `skill-description-input-field`,
+  `skill-instructions-editor-content`, `skill-save-button`) is already
+  wired on `SkillFormPage` — no `add-data-testid` round-trip needed.
+- Save-state gating (`Name` and `Description` both required, `Instructions`
+  required but held constant/filled throughout the case) is 100%
+  client-side, synchronous Formik/yup validation
+  (`skillValidationSchema.validation.js`) — confirmed live, zero network
+  calls fire on field edit; the Save button's `disabled` attribute flips
+  immediately.
+- Per-field MUI helper text ("Name is required" / "Description is
+  required") renders live but carries **no `data-testid`**
+  (`CreateSkillForm.jsx`'s `helperText={formik.touched?.x && formik.errors.x}`
+  — a plain MUI helper-text string, not a dedicated node like the
+  Build-with-AI review form's `review-name-helper-text`). Out of scope for
+  ELITEA-2430 — the case only asserts the Save button's enabled/disabled
+  state, never the helper text's content, so no testid was requested.
+- **Page-object gap (implementer work, not a testid gap):**
+  `SkillFormPage` has `set_description()` (click + `select_text()` +
+  Backspace + type — reliably clears a *populated* field) but no
+  symmetric `set_name()`. `fill_form()`'s internal `_fill_text_input()`
+  (Ctrl+A + type) does NOT reliably clear a populated field to empty (an
+  empty `type("")` after Ctrl+A leaves the field's prior value in place).
+  ELITEA-2430 needs to clear a *populated* Name field (case step 6) — add
+  `SkillFormPage.set_name(name: str)` mirroring `set_description()`
+  exactly.
+
+## Tags — add/remove on an existing Skill (ELITEA-2433) + multiple tags on create+edit (ELITEA-2434)
+
+- **Tags field validation — hyphens are REJECTED, confirmed live.**
+  `TagEditor.jsx` → `AutoCompleteDropDown.jsx` validates every freeSolo tag
+  value against `NormalTagNameInputRegExp = /^[\w,\s]+$/g` (input-level
+  error state) and, decisively, `onChangeMulti` filters the committed value
+  against `NormalSingleTagNameInputRegExp = /^[ \t]*[\w]*[ \t]*$/g`
+  (`EliteaUI/src/common/constants.js:92-93`) before adding it to the tag
+  list — both allow only word chars (letters/digits/underscore), comma,
+  whitespace. Typing `regression-v1` + Enter clears the input but adds
+  **no chip** (silently filtered, zero network calls). `regression_v1`
+  (underscore) commits normally. This is case-text drift for ELITEA-2433's
+  literal test data (case says `"regression-v1"`) — filed as a
+  CLARIFICATION, not a bug: `EliteaAI/elitea-testing-public#1445`. Use
+  `regression_v1` in automation. Sibling pattern to issue #20 (Skill
+  *Name* field — opposite direction: Name REQUIRES hyphens/kebab-case,
+  Tags FORBIDS them).
+- **CONFIRMED LIVE GAP — tag-chip delete icon has no testid.**
+  `AutoCompleteDropDown.jsx`'s `renderValue()` supports a `chipDeleteTestId`
+  prop (function or string, same pattern as `chipTestId`/`getOptionTestId`)
+  on the MUI `Chip`'s `deleteIcon` (`RemoveIcon`), but
+  `CreateSkillForm.jsx`'s `<TagEditor>` call site (`skill-tags-input`
+  section, ~line 249) never passes it — only `chipTestId="skill-tag-chip"`
+  and `getOptionTestId` are wired. The rendered delete `<img>`/SVG inside
+  each committed-tag chip is therefore unaddressable by testid today.
+  Fix (`add-data-testid`, one-line, mirrors the existing
+  `getOptionTestId={option => 'skill-tag-option-${option?.name}'}` shape):
+  add `chipDeleteTestId={option => 'skill-tag-chip-delete-${option?.name}'}`
+  to the same `<TagEditor>` call site. Dynamic testid, name-keyed (same
+  convention as `SKILL_TAG_OPTION`). **Confirmed live: only the delete
+  icon itself removes the tag — clicking elsewhere on the chip (its label
+  text / the chip body) does NOT** (verified directly: a click centered on
+  the chip button, away from the icon's bounding box, left the tag intact
+  and Save stayed disabled; a click on the icon's own `<img>`/SVG node
+  removed it and dirtied the form). MUI's `onDelete` only wires to the
+  `deleteIcon` sub-element, not the whole `Chip`. **Workaround confirmed
+  live in the meantime (until the fix lands):** scope to the specific
+  chip via `page.get_by_test_id("skill-tag-chip").filter(has_text=tag_name)`
+  then click that chip's only child element (the icon `<img>`/SVG,
+  addressed positionally — no other child exists inside a `skill-tag-chip`
+  node) — not a `#579` scoped-raw-handle exception (this is 100%
+  app-owned JSX, addressable via `add-data-testid`), just the interim
+  shape.
+- **Edit-flow tag add/remove round-trips through `SkillDetailPage.save_edits()`**
+  (existing method, PUT `.../skill/prompt_lib/{project}/{skillId}` → 200,
+  "Skill saved" toast, no navigation) — same mechanism as any other field
+  edit. No new endpoint.
+- **Create-flow: Tags field is available and committable BEFORE the first
+  Save** (confirmed live — `/skills/create`'s `CreateSkillForm.jsx` renders
+  the same `TagEditor` pre-save; tags added pre-save ride the `POST
+  .../skills/prompt_lib/{project}` payload's top-level `tags` field intact).
+  Adding MORE tags after the skill exists (edit mode) uses the same PUT as
+  above — confirmed live, all 4 tags (2 pre-save + 2 post-save) persist
+  through a full page navigate-away-and-back reload, not just client state.
+- **Skill card + list-level tag rendering**: `SkillsListPage.get_card_tags()`
+  / `CARD_TAG_CHIP` (`entity-card-tag-chip`) already covers "tag appears on
+  the card" / "tag no longer appears on the card" assertions — no new
+  page-object work needed there, reused as-is from ELITEA-1740.
+- Test files: `automation/tests/ui/skills/test_skill_tag_add_remove.py`
+  (ELITEA-2433), `automation/tests/ui/skills/test_skill_tag_multiple.py`
+  (ELITEA-2434) — pending implementation.
+  Full details: `test-specs/skills/l3_add-save-remove-skill-tag_ELITEA-2433.md`,
+  `test-specs/skills/l3_multiple-tags-persist-on-creation-and-edit_ELITEA-2434.md`.
+  Full details: `test-specs/skills/l3_skill-creation-mandatory-fields-validation_ELITEA-2430.md`.
+
+## Test panel — model selector + Model Settings dialog (ELITEA-2436)
+
+The Skill test panel (`SkillTestPanel.jsx`) embeds the SAME
+`NewChatInput`/`llm-model-selector` shared widget the Agent detail page
+uses (ELITEA-1880) — **confirmed live: every testid ELITEA-1880 added to
+that shared widget resolves correctly on `/skills/all/{id}` with zero new
+`add-data-testid` work**, even though `SkillDetailPage` has no
+model-selector/model-settings methods yet (new page-object surface, not an
+extension of `AgentDetailPage`'s):
+
+- `model-selector-button` / `model-selector-name` — model picker trigger +
+  current-name display. Dropdown options: `model-selector-option-{name}`
+  (dynamic, API `name` suffix — same 12-model catalog as agents/pipelines).
+- `model-settings-button` (aria-label `"model settings menu"`, gear icon)
+  → opens `model-settings-dialog` (MUI dialog, title "Model settings").
+- Dialog contents are MODEL-TYPE CONDITIONAL
+  (`model?.supports_reasoning ? <ReasoningSlider/> : <CreativitySlider/>`,
+  `LLMSettings.jsx:119`):
+  - Reasoning-capable model (e.g. `gpt-5.2`, `Anthropic Claude 4.5 Sonnet`)
+    → `model-settings-reasoning-slider`, 3 discrete positions
+    `model-settings-reasoning-level-{1,2,3}`, rendered labels lowercase
+    `low`/`medium`/`high`.
+  - Non-reasoning model (e.g. `gpt-5-mini`) → Creativity slider instead,
+    **NO testid** on this branch (`CreativitySlider.jsx` never got the
+    `testId` prop-threading `ReasoningSlider.jsx` did) — `add-data-testid`
+    gap: `model-settings-creativity-slider`, same
+    `DiscreteSlider.jsx`-threading pattern. Underlying range input in the
+    meantime: `[aria-label="Creativity level"]`.
+  - `model-settings-max-tokens-section` — always rendered regardless of
+    model type (Default/Custom toggle).
+  - `model-settings-capabilities-section` — chips per model capability
+    (`Reasoning`, `Image analysis`; a model can show both).
+  - `model-settings-cancel-button` / `model-settings-apply-button` — **NEW
+    FINDING (2026-08-11, ELITEA-2436 run): Apply now HAS a testid.** At
+    ELITEA-1880 analysis time it did not (`agent_detail_page.py`'s
+    `model_settings_*` comment block explicitly says "Apply button
+    intentionally has NO testid here... do not add unless a future case
+    needs it") — someone added it since. `AgentDetailPage` has no
+    `LocatorDescriptor` field for it yet; back-fill when convenient.
+- **Discrete-slider interaction — MUI quirk, confirmed live:** clicking the
+  visual `<span class="MuiSlider-thumb">` directly times out (intercepts
+  pointer events over the underlying `<input type="range">`). Working
+  pattern: `page.locator('[aria-label="<Slider> level"]').focus()` then
+  `page.keyboard.press("ArrowRight"/"ArrowLeft")` — mirrors
+  `user_profile_settings_page.py`'s `set_speed()`
+  (`automation/pages/user_profile_settings_page.py:690-714`). A value
+  change enables the dialog's Apply button.
+- **Model selection + Settings-dialog edits are pure client-side state on
+  the Skill test panel — ZERO network calls** (confirmed via
+  `browser_network_requests` across a full run: no `PUT`/`PATCH` to the
+  skill entity). Different from the Agent detail page instance, where a
+  real Save PUTs the change to the entity — the Skill test panel has no
+  persistent "Save" for these settings at all, so **any existing skill is
+  safe to reuse for this kind of case** without disposable-fixture/cleanup
+  concerns.
+  Full details: `test-specs/skills/l3_llm-model-settings-configurable_ELITEA-2436.md`.
+  Clarification filed: [EliteaAI/elitea-testing-public#1447](https://github.com/EliteaAI/elitea-testing-public/issues/1447)
+  (step 2's "gpt5-mini ... reasoning slider" case-text drift — gpt-5-mini
+  isn't reasoning-capable; sibling of ELITEA-1880's Clarification 1 on the
+  Agent detail page).
