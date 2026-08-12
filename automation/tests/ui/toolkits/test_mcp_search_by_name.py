@@ -41,7 +41,7 @@ from pages.mcp_list_page import McpListPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.p1, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.p1, pytest.mark.regression, pytest.mark.new]
 
 SEARCH_TERM_MATCH = "github"
 SEARCH_TERM_MATCH_EXPECTED_NAME = "Remote Github"

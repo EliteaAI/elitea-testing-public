@@ -69,7 +69,7 @@ from pages.skills_list_page import SkillsListPage
 from pages.skill_detail_page import SkillDetailPage
 from pages.generate_skill_modal_page import GenerateSkillModalPage
 
-pytestmark = [pytest.mark.ui, pytest.mark.skills]
+pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)

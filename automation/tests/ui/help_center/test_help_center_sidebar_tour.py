@@ -35,7 +35,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.help_center, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.help_center, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 # Source of truth: EliteaUI src/[fsd]/features/interactive-tours/lib/constants/
 # sidebarTour.constants.js (17 entries) — confirmed against the live constants

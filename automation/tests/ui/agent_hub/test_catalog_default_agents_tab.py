@@ -12,7 +12,7 @@ import pytest
 from pages.agent_hub_page import AgentHubPage
 from playwright.sync_api import Page, expect
 
-pytestmark = [pytest.mark.ui, pytest.mark.agent_hub, pytest.mark.regression, pytest.mark.p1]
+pytestmark = [pytest.mark.ui, pytest.mark.agent_hub, pytest.mark.regression, pytest.mark.p1, pytest.mark.new]
 
 
 class TestCatalogDefaultAgentsTab:

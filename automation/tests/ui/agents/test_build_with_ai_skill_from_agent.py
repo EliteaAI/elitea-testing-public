@@ -46,7 +46,7 @@ from pages.generate_skill_modal_page import GenerateSkillModalPage
 
 logger = logging.getLogger("elitea.tests.agents.build_with_ai_skill")
 
-pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.regression, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)

@@ -17,7 +17,7 @@ import pytest
 from pages.skill_detail_page import SkillDetailPage
 from pages.skills_list_page import SkillsListPage
 
-pytestmark = [pytest.mark.ui, pytest.mark.skills]
+pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.new]
 
 NAVIGATION_TIMEOUT = 15000
 

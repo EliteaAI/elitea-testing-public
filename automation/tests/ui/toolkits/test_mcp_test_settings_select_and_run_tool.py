@@ -27,7 +27,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.p3, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.p3, pytest.mark.regression, pytest.mark.new]
 
 MCP_URL = "https://mcp.deepwiki.com/mcp"
 TOOL_KEY = "read_wiki_structure"

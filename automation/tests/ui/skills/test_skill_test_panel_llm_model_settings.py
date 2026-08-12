@@ -32,7 +32,7 @@ import pytest
 from pages.skill_detail_page import SkillDetailPage
 from playwright.sync_api import Page, Response
 
-pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p3, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p3, pytest.mark.regression, pytest.mark.new]
 
 logger = logging.getLogger("elitea.tests.skills")
 

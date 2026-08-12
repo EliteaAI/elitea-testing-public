@@ -23,7 +23,7 @@ from pages.notification_center_page import NotificationCenterPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 # Unresolved markdown-link token — parseMessage() failed to resolve a [text]()
 # segment (notification.helpers.js). Distinct from step 5's embedded

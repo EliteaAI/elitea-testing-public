@@ -31,7 +31,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.toolkits, pytest.mark.p1, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.toolkits, pytest.mark.p1, pytest.mark.regression, pytest.mark.new]
 
 SAVE_RESPONSE_TIMEOUT = 15_000
 TEAM_PROJECT_ID = "471"  # "Elitea Testing Team" — viewer-only, confirmed multi-member team project

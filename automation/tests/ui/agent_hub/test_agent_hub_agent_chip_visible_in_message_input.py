@@ -45,7 +45,7 @@ from pages.agent_hub_page import AgentHubPage
 from pages.chat_page import ChatPage
 from playwright.sync_api import Page
 
-pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000

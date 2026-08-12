@@ -34,7 +34,7 @@ from pages.pipeline_form_page import PipelineFormPage
 from pages.pipelines_list_page import PipelinesListPage
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-pytestmark = [pytest.mark.ui, pytest.mark.pipelines]
+pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)

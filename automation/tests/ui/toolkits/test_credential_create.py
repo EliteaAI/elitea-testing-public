@@ -30,7 +30,7 @@ from pages.credentials_list_page import CredentialsListPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.p1, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.p1, pytest.mark.regression, pytest.mark.new]
 
 SAVE_RESPONSE_TIMEOUT = 15_000
 

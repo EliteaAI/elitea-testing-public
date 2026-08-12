@@ -25,7 +25,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.toolkits, pytest.mark.p1, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.toolkits, pytest.mark.p1, pytest.mark.regression, pytest.mark.new]
 
 # NOTE (batch-gate flake, ELITEA-1979, 2026-08-02): Step 6's RUN TOOL click hits
 # the toolkit's underlying GitHub API call SERVER-SIDE (this case's own AFS §

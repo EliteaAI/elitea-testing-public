@@ -19,7 +19,7 @@ from pages.skills_list_page import SkillsListPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p3, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p3, pytest.mark.regression, pytest.mark.new]
 
 TAG_TEXT = "regression_v1"
 

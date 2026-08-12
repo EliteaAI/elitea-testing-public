@@ -27,7 +27,7 @@ from pages.support_assistant_page import SupportAssistantPage
 from pages.chat_page import ChatPage
 import allure
 
-pytestmark = [pytest.mark.smoke, pytest.mark.ui, pytest.mark.support_assistant]
+pytestmark = [pytest.mark.smoke, pytest.mark.ui, pytest.mark.support_assistant, pytest.mark.new]
 
 # Timeout constants
 WIDGET_TIMEOUT = 10_000

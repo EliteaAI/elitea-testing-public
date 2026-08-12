@@ -38,7 +38,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 # The header cells' JSX text is title-case, but `tableCell`'s sx applies
 # `text-transform: uppercase` — Playwright's `inner_text()` reflects the

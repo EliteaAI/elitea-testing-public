@@ -63,9 +63,9 @@ on:
           - '9'
         default: '9'
       markers:
-        description: 'Pytest markers (e.g., p0, smoke, "p0 or p1")'
+        description: 'Pytest markers (default excludes new tests; use "new" for new only, empty string for all)'
         required: false
-        default: ''
+        default: 'not new'
       ref:
         description: 'Git ref (branch, tag, SHA). Leave empty for default.'
         required: false
@@ -109,10 +109,10 @@ on:
         type: string
         default: '9'
       markers:
-        description: 'Pytest markers'
+        description: 'Pytest markers (default excludes new tests; use "new" for new only, empty string for all)'
         required: false
         type: string
-        default: ''
+        default: 'not new'
       ref:
         description: 'Git ref (branch, tag, SHA)'
         required: false

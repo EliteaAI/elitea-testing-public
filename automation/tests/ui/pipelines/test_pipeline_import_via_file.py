@@ -52,7 +52,7 @@ from pages.pipelines_list_page import PipelinesListPage
 
 logger = logging.getLogger("elitea.tests.pipelines")
 
-pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000

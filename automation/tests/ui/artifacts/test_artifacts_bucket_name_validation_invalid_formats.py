@@ -39,7 +39,7 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.regression, pytest.mark.p2]
+pytestmark = [pytest.mark.ui, pytest.mark.regression, pytest.mark.p2, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (ms)
