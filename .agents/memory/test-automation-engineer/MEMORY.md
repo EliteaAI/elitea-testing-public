@@ -52,3 +52,4 @@
 - [verify_on_detail_page races SPA route](verify_on_detail_page_races_spa_route_push.md) — call wait_for_page_load() first, always, after any save/nav
 - [Publish button loses testid on rejection](publish_wizard_step_advances_before_request_resolves_kills_testid.md) — step→PUBLISHING fires before the request resolves
 - [Publish AI gate flags "reply X" instructions](skill_publish_ai_gate_rejects_blanket_reply_instructions.md) — 422/FAIL prompt-injection heuristic; use bounded task-specific text
+- [Popper select_menuitem substring collision](popper_select_menuitem_substring_collision_attaches_wrong_item.md) — attach-by-name .filter(has_text=).first silently attaches the wrong entity if one seeded name is a substring of another
