@@ -1,0 +1,5 @@
+WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to agent — Locator.wait_for: Timeout 15000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("agent-information-section") to be visible
+WARNING  tests.ui.chat.test_agent_with_toolkit_chat:test_agent_with_toolkit_chat.py:84 Failed to delete agent 976: 400 Client Error: Bad Request for url: https://dev.elitea.ai/api/v2/elitea_core/application/prompt_lib/574/976 — headers: {'Content-Length': '51', 'Content-Type': 'application/json', 'Date': 'Wed, 12 Aug 2026 11:30:44 GMT', 'Vary': 'Cookie'} — body: {'ok': False, 'error': 'Application is not found'}
