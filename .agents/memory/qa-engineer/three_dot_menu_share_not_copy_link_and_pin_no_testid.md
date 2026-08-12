@@ -14,10 +14,17 @@ A TMS case that says "click Copy link" will never find that literal text
 anywhere in this app's UI — it's always a menu item labelled "Share" instead.
 This is confirmed case-text drift, filed as a sibling clarification on each
 new surface it's hit: #1288 (Agent Detail page), #1218 (Agent Hub modal),
-#1337 (Pipeline Detail page). If a 4th surface (Skill/Toolkit/Credential
-three-dot menu) hits it, file another sibling — don't assume it's already
-covered just because the pattern repeats; each is a genuinely different
-screen/object per `.agents/profile.md`'s dedup rules.
+#1337 (Pipeline Detail page), #1451 (Skill Detail page, ELITEA-2439 —
+`share-version-menuitem`/`share-skill-menuitem`, reviewed PR #1452 confirmed
+the `DotMenu.jsx` `data-testid={testId ? \`${testId}-menuitem\` : undefined}`
+composition live against source — a bare-substring grep for these testids on
+`main`/`automation/testids` finds NOTHING because the value is built from
+`key: 'share-version'` at the call site, not a literal string; verify via
+source (`SkillControls.jsx`'s `useCopyLinkMenu({ key, link })` calls +
+`DotMenu.jsx`), never conclude "missing" from grep alone here). If a 5th
+surface (Toolkit/Credential three-dot menu) hits it, file another sibling —
+don't assume it's already covered just because the pattern repeats; each is
+a genuinely different screen/object per `.agents/profile.md`'s dedup rules.
 
 **Disambiguation trap**: when TWO "Share" items exist on the same menu
 (VERSION-group vs entity-group, e.g. `share-version-menuitem` vs
