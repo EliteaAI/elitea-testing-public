@@ -102,6 +102,9 @@ CONTEXT_MATCHING_PROMPT = "Please format this Python code: def hello(): print('h
 # Deliberately invites the UNATTACHED Skill 4 by name/intent - no ~mention
 # available either, since Skill 4 was never attached (ELITEA-1791 scoping)
 ADVERSARIAL_PROMPT = "Translate 'hello' to Spanish, use your translator skill if you have one."
+# Case Part B step 10 (verbatim test data) - matches neither Skill 3's nor
+# Skill 4's trigger condition
+NON_MATCHING_PROMPT = "What is the capital of France?"
 
 
 def _create_skill(page, name: str, instructions: str, description: str) -> int:
@@ -347,7 +350,7 @@ class TestInteractWithSkillsFromAgent:
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "skills/ELITEA-2607_skill-autonomous-invocation-core-functionality.md",
+        "skills/ELITEA-2607_skill-autonomous-invocation-core.md",
         "onetest-ai Test Case link",
     )
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5698", name="Skills V2 Epic")
@@ -359,10 +362,16 @@ class TestInteractWithSkillsFromAgent:
 
         ELITEA-1735's own test already proves autonomous invocation via
         response-text transforms (2 always-attached skills) and
-        non-matching-prompt non-invocation. This test fills the two gaps the
-        covering spec never asserts:
+        non-matching-prompt non-invocation on the response TEXT. This test
+        fills the two gaps the covering spec never asserts, plus the case's
+        own Part B step 12 (thought-process side of non-invocation, which the
+        covering spec's Step 6 never checks - only the response text):
         - Gap 1: the autonomous invocation is visible in the thought process
           as a "Skill: {name}" tool chip inside `chat-answer-thought-accordion`.
+        - Part B step 12: a non-matching prompt shows NO skill chip in the
+          thought process either (not just an untransformed response) - the
+          AFS Coverage Map flagged this as a real gap since the covering
+          spec's Step 6 only asserts response text, never the chip.
         - Gap 2: a skill that is NEVER attached to the agent is never invoked,
           even when an adversarial prompt explicitly invites it by name/intent
           (security invariant) - no attached skill in the covering spec is
@@ -377,7 +386,11 @@ class TestInteractWithSkillsFromAgent:
         5-6. Send the context-matching prompt (Skill 3's trigger, no
            ~mention) - assert the response is transformed AND the thought
            accordion shows a "Skill: {Skill 3 name}" tool chip (Gap 1).
-        7-8. Clear chat; send an adversarial prompt inviting the UNATTACHED
+        7. Clear chat; send the case's verbatim non-matching prompt ("What is
+           the capital of France?", no ~mention) - assert the response is
+           NOT transformed AND no "Skill: {Skill 3 name}" chip appears in the
+           thought accordion (case Part B step 12).
+        8-9. Clear chat; send an adversarial prompt inviting the UNATTACHED
            Skill 4 by name/intent - assert the canary marker never appears
            in the response AND no "Skill: {Skill 4 name}" chip appears in
            the thought accordion (Gap 2).
@@ -472,7 +485,34 @@ class TestInteractWithSkillsFromAgent:
                 )
 
             with allure.step(
-                "Step 7-8 — Adversarial prompt naming the UNATTACHED Skill 4 never invokes "
+                "Step 7 — Non-matching prompt does not invoke Skill 3: no transform, "
+                "no 'Skill: {name}' chip in the thought process (case Part B step 12)"
+            ):
+                detail_page.clear_embedded_chat(timeout=UI_ELEMENT_TIMEOUT)
+                initial_count = detail_page.get_chat_message_count()
+                detail_page.send_chat_message(
+                    NON_MATCHING_PROMPT, timeout=UI_ELEMENT_TIMEOUT
+                )
+                detail_page.wait_for_chat_response(
+                    initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT,
+                )
+                non_matching_response = detail_page.get_last_chat_response_text()
+                logger.info("Non-matching-prompt response: %r", non_matching_response)
+                alpha_chars = [c for c in non_matching_response if c.isalpha()]
+                is_all_uppercase = alpha_chars and all(c.isupper() for c in alpha_chars)
+                assert not is_all_uppercase, (
+                    f"Non-matching prompt should NOT trigger Skill 3's uppercase "
+                    f"transform: {non_matching_response!r}"
+                )
+
+                accordion = detail_page.get_outer_thought_accordion(timeout=UI_ELEMENT_TIMEOUT)
+                unmatched_chip = accordion.locator(
+                    detail_page.CHAT_ANSWER_TOOL_CHIP_SELECTOR
+                ).filter(has_text=f"Skill: {SKILL_3_NAME}")
+                expect(unmatched_chip).to_have_count(0)
+
+            with allure.step(
+                "Step 8-9 — Adversarial prompt naming the UNATTACHED Skill 4 never invokes "
                 "it: no canary marker in the response, no 'Skill: {name}' chip (Gap 2)"
             ):
                 detail_page.clear_embedded_chat(timeout=UI_ELEMENT_TIMEOUT)
