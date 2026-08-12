@@ -296,6 +296,14 @@ class AgentHubPage(BasePage):
         """Return the number of agent cards currently rendered in the main content area."""
         return self.page.locator(self.AGENT_CARD_PREFIX).count()
 
+    def get_skill_card(self, skill_name: str):
+        """Return the Locator for the skill card matching *skill_name* (by
+        visible text) — the Skills-tab analog of :meth:`get_agent_card`,
+        same ``SKILL_CARD_PREFIX`` dynamic-testid + ``filter(has_text=...)``
+        idiom (ELITEA-2595/2598, Catalog verification steps).
+        """
+        return self.page.locator(self.SKILL_CARD_PREFIX).filter(has_text=skill_name)
+
     def get_visible_category_filter_chips(self):
         """Return the Locator for all visible agent category filter-rail chips.
 

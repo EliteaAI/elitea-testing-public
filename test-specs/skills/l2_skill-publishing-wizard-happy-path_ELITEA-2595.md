@@ -149,7 +149,7 @@ handles. PROVENANCE verified via `cd ../EliteaUI && git fetch origin` +
 | Skill controls (⋮) overflow menu button | `skill-controls-menu-button` | on-main ✓ |
 | "Publish" menu item | `publish-menuitem` | **dynamically constructed** — `DotMenu.jsx`: `` data-testid={testId ? `${testId}-menuitem` : undefined} ``, `testId = item.key`; `SkillControls.jsx` sets `key: 'publish'` at the call site. Not a literal grep hit on either ref — verify by reading `SkillControls.jsx`'s `key: 'publish'` line + `DotMenu.jsx`'s template, both on-main ✓ |
 | Publish wizard — Version name input | `agent-publish-version-name-input` | on-`automation/testids` only (awaiting human promotion to main) — pre-existing, added for the agent Publish flow (ELITEA-1892), shared component |
-| Publish wizard — Category select trigger | `agent-publish-category-select-combobox` (dynamic option: `select-option-{Category Label}`) | on-`automation/testids` only |
+| Publish wizard — Category select trigger | `agent-publish-category-select` (dynamic option: `select-option-{Category Label}`) — **implementer correction**: live source (`PreparationStep.jsx`) confirms no `-combobox` suffix, the AFS's original value was wrong | on-`automation/testids` only |
 | Publish wizard — Publishing Terms checkbox | `agent-publish-agree-checkbox` | on-`automation/testids` only |
 | Publish wizard — Continue button (Preparation step) | `agent-publish-continue-button` | on-`automation/testids` only |
 | Publish wizard — Publish button (Validation step) | `agent-publish-confirm-button` | on-`automation/testids` only |
