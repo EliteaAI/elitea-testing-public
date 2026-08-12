@@ -635,3 +635,32 @@ extension of `AgentDetailPage`'s):
   (step 2's "gpt5-mini ... reasoning slider" case-text drift — gpt-5-mini
   isn't reasoning-capable; sibling of ELITEA-1880's Clarification 1 on the
   Agent detail page).
+
+## SkillTestPanel does NOT create a Chat conversation (ELITEA-2441) — confirmed live
+
+- Running a prompt through the SkillTestPanel produces **zero** requests to
+  any `elitea_core/conversations*` endpoint — confirmed via
+  `browser_network_requests` across a full create-skill + send-test-message
+  + wait-for-response cycle. The only "conversation"-shaped traffic seen is
+  the unrelated `support_assistant/conversations/` widget (Support Bot, not
+  Chat) plus the skill's own `elitea_core/skills*`/`elitea_core/
+  skill_categories*` calls.
+- **Two ground truths for "conversation count", confirmed to agree exactly:**
+  `ConversationAPI.list_conversations()` (`{"total": int, "rows": [...]}`,
+  fixture `conversation_api` in `automation/fixtures/api_fixtures.py:115`)
+  and the Chat sidebar's DOM count of `ChatPage.CONVERSATION_ITEM_PREFIX`
+  (`'[data-testid^="chat-conversation-item-"]'`) — both read `1` (same
+  conversation id `7929`) before and after a full skill-create +
+  test-panel-run + skill-delete cycle, in a project (`Private`/399) with a
+  dozen leftover `ELITEA2459RenameTest`/`ABC` **folders** cluttering the
+  sidebar.
+- **Gotcha — don't count sidebar `<button>`/`<heading>` elements broadly.**
+  Those leftover folders render as `heading > button` pairs in the a11y
+  snapshot and look, at a glance, like a much larger conversation list (~2
+  dozen buttons). They are folders, not conversations — `ChatPage`'s own
+  `get_conversation_list_items()` (a pre-testid-policy `:has(h6) > button`
+  CSS selector, tracked tech debt) would very likely miscount here too.
+  Always scope conversation-count assertions to the testid-based
+  `CONVERSATION_ITEM_PREFIX`/`CONVERSATION_ITEM` constants, never a raw
+  structural selector or a bare visual count.
+  Full details: `test-specs/skills/l3_test-panel-does-not-create-new-chat-conversation_ELITEA-2441.md`.
