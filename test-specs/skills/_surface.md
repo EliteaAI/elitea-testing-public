@@ -1085,3 +1085,59 @@ Confirmed live end-to-end this run (skill 1595, project 399).
   environment noise (bounded retry acceptable), not evidence against the
   coexistence claim — but don't silently swallow a REPEATED failure.
   Full details: `test-specs/skills/l3_skill-unpublish-republish-lifecycle_ELITEA-2599.md`.
+
+## Agent publish with attached Skills — embedded, not independently catalog-listed, visible in thought process (ELITEA-2600)
+
+Confirmed live end-to-end this run (agent 9131 `multi-skill-agent-2600`,
+skills 1605/1606/1607, project 399). Distinct flow from the Skill-entity
+Publish wizard above — this is the **AGENT** Publish wizard
+(`ELITEA-1892`'s `PublishWizardModal.jsx`, `entityLabel="agent"`) exercised
+on an agent that has 3 Skills attached.
+
+- **Agent-publish validation ALSO inspects each attached skill's own
+  content — new information beyond ELITEA-1892's AFS** (which only
+  exercised agents with zero attached skills). `POST publish_validate/
+  prompt_lib/{project}/{versionId}`'s `critical_issues[]` includes a
+  `field: "skills"` entry — `"skills [skill: <name>]: Skill content is too
+  short (min 100 chars)"` — when ANY attached skill's instructions are
+  under 100 chars, blocking the whole AGENT's publish (not just that
+  skill). Confirmed live: skill `summarizer-2600` at 84 chars produced this
+  Critical issue; lengthening to 179 chars cleared it (`Critical: 0`).
+  Seed all attached skills' instructions ≥100 chars to avoid this in
+  automation.
+- **Publishing Terms text confirms the case's core premise verbatim**
+  (Preparation step, "1 - Exclusions Notice" section): *"Exception:
+  attached Skills and sub-agents are not stripped — their instructions
+  are embedded in the published agent. Retained Skills are never listed
+  as separate entries in the catalog."* — a platform-documented guarantee,
+  not just inferred behavior.
+- **Confirmed functionally, not just per the disclosure text**: after
+  publishing, `/elitea-catalog?tab=skills` search for each attached
+  skill's name returns **"No skills found"** — the skills are NOT
+  independently searchable/listed, even though the agent that embeds them
+  IS published and visible under `/elitea-catalog?tab=agents` (grouped by
+  its selected Category, same `catalog-agent-card-{id}` /
+  `catalog-category-heading-{slug}` pattern as any other published agent).
+- **Skill invocation in the "Thought for N secs" accordion reuses the
+  SAME `chat-answer-tool-chip` testid already documented above (Test panel
+  section) for external toolkit calls** — confirmed live for a genuinely
+  different text shape: `"Skill: {skill_name}"` (e.g. `"Skill:
+  word-counter-2600"`), NOT the `"{toolkit_name}: {tool_name}"` shape the
+  page object's docstring currently describes for toolkit chips. Skills
+  hardcode `toolkitName` to the literal string `"Skill"` under the hood.
+  Confirmed for TWO separate skills in the same conversation
+  (`word-counter-2600` → response `"Word count: 10"`;
+  `format-uppercase-2600` → response fully upper-cased) — both produced
+  their own `chat-answer-tool-chip`, and the accordion auto-expands by
+  default (no separate "expand" click is needed to see it, contra the
+  case text's step 12 implying a manual expand action).
+- **`~<skill-name>` mention mechanics**: typing `~` opens the
+  `skill-mention-list` popper immediately (no debounce); the reusable
+  `ChatPage.send_message_with_skill_mention()` page-object method already
+  handles this correctly via `press_sequentially` throughout — **do NOT
+  use `.fill()` for the trailing prompt text**, it replaces the whole
+  textbox value and destroys the inserted mention chip (confirmed by
+  hitting this live in this run: a `fill()` after selecting the mention
+  silently reset the message to plain text with no `~mention`, and the
+  skill did not fire).
+  Full details: `test-specs/skills/l2_agent-with-skills-publishing-flow_ELITEA-2600.md`.
