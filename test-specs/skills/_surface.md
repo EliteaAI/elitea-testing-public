@@ -894,3 +894,85 @@ extension of `AgentDetailPage`'s):
   `/{version_id}` to the URL) — not yet added as of this run; the DOM-level
   `skill-form-icon-img` src read is sufficient and was this run's primary
   evidence.
+
+## Publish wizard — skill entity (ELITEA-2595/ELITEA-2596/ELITEA-2598) — `PublishWizardModal.jsx` (shared with agents, `entityLabel="skill"`)
+
+Confirmed live (skills 1560/1561/1562/1563/1564, project 399). The wizard
+is the SAME `entities/version/ui/PublishWizardModal.jsx` component the
+agent Publish flow uses (ELITEA-1892, `test_agent_publish_unpublish_version.py`)
+— `entityLabel="skill"` swaps copy only; every `agent-publish-*` testid is
+reused verbatim for skills (not agent-scoped despite the literal name —
+existing product naming, not something to "fix" via `add-data-testid`).
+
+- **Trigger is a MENU ITEM, not a standalone button** — skill detail page's
+  overflow ("Skill" ⋮) menu → VERSION group → "Publish". Testid
+  `publish-menuitem` — constructed at RUNTIME as `${item.key}-menuitem` by
+  `DotMenu.jsx` (`SkillControls.jsx` sets `key: 'publish'` on the menu-item
+  object at the call site) — **not a literal string anywhere in JSX**, so a
+  plain `git grep -- "publish-menuitem"` finds nothing; verify by reading
+  `SkillControls.jsx`'s `key: 'publish'` line + `DotMenu.jsx`'s
+  `` data-testid={testId ? `${testId}-menuitem` : undefined} `` instead of
+  grepping the literal string. `skill-controls-menu-button` opens the menu.
+- **3-step wizard**: Preparation (version name + category + Publishing
+  Terms checkbox) → Validation (AI/deterministic content check) → Publishing.
+  Reuse `agent-publish-version-name-input`, `agent-publish-category-select-
+  combobox` (+ dynamic `select-option-{category}`), `agent-publish-agree-
+  checkbox` (role-based `checkbox[name="I agree with the Publishing Terms."]`
+  resolves it — has the `agent-publish-agree-checkbox` testid per
+  `PreparationStep.jsx` source, MCP's role locator just doesn't surface it
+  in generated code), `agent-publish-continue-button`, `agent-publish-
+  confirm-button` ("Publish" on the Validation step).
+- **Validation endpoint**: `POST .../publish_skill_validate/prompt_lib/
+  {project}/{skillId}/{versionId}` — `422` when `status: "FAIL"`, `200`
+  when `status: "WARN"` or `"PASS"`. Response body:
+  `{status, critical_issues[], warnings[], recommendations[], counts,
+  summary, ai_validation_available, validation_token}`. Each issue entry
+  carries `"source": "deterministic"` (rule-based, reproducible) or
+  `"source": "ai"` (LLM-generated wording — same underlying detection is
+  reliable across runs but exact phrasing may vary; assert on `field` +
+  membership in `critical_issues`/`warnings`, not exact wording, for
+  `source: "ai"` entries).
+- **Deterministic CRITICAL gates confirmed** (any one of these alone ⇒
+  `status: "FAIL"`, Publish button disabled — `canPublish = status !==
+  'FAIL'` in `PublishWizardModal.jsx`):
+  - `icon` — "No custom icon set" — **confirmed CRITICAL, not WARN**,
+    contradicting ELITEA-2598's premise (filed as clarification #1463).
+  - `tags` — "No tags defined" (skill has zero tags).
+  - `description` — "Description is too short (min 50 chars)".
+  - `instructions` — "Instructions are too short (min 100 chars)".
+  (Live thresholds: description 50 chars, instructions 100 chars — NOT the
+  "100 characters" the ELITEA-2595/2596/2598 case text uses for both
+  fields.)
+- **AI-sourced CRITICAL gates confirmed** (also block, `source: "ai"`):
+  placeholder-text markers (`[replace this]`, `TODO:`) in description OR
+  instructions; hardcoded secrets/API-keys/passwords in instructions.
+- **WARN-level (does NOT block)**: generic/placeholder-like name (e.g.
+  literal `"skill"`) — `source: "ai"`; "description lacks action verbs" —
+  `source: "deterministic"`.
+- **Happy-path prerequisite gap vs ELITEA-2595's Test Data**: description/
+  instructions ≥ the thresholds above is NOT sufficient — the skill also
+  needs a custom icon AND ≥1 tag, or Validation returns FAIL (confirmed:
+  same 100+-char content, no icon/no tag ⇒ 2 critical issues; add 1 tag ⇒
+  1 critical issue (icon only, still FAIL); add icon too ⇒ `WARN`, Publish
+  enabled). Icon upload reuses `SkillFormPage.upload_skill_icon_edit_mode()`
+  (ELITEA-2604) — pick any existing gallery entry (project-scoped
+  "Uploaded" tab) to skip a fresh file upload.
+- **Known defect #614 (agent Publish, `ELITEA-1892`) REPRODUCES for skills
+  too**: after a successful `publish_skill` (200), the VERSION dropdown
+  does not auto-select the newly published version — it stays showing
+  `base` until the dropdown is opened and the new version name is picked
+  explicitly (confirmed live: skill 1560, dropdown showed `base` active
+  post-publish, `v1.0 - <date>` present but not selected). Automation must
+  re-select by name after Publish, exactly as `AgentDetailPage.
+  select_version_by_name()` already does — do not assert on auto-navigation.
+- **Catalog verification**: published skill appears under `/elitea-catalog
+  ?tab=skills`, grouped by its selected Category (`catalog-skills-tab`
+  testid switches the tab; confirmed skill card renders with its custom
+  icon and under the "Quality Assurance" category group after publishing
+  with that category).
+- **Known defect #611 (agent Publish, Stepper icon console warnings)
+  likely reproduces too** (same `PublishWizardModal.jsx` Stepper) — not
+  independently re-verified against the console this run; treat as the
+  same signature if seen (`SvgCheckedIcon` + "non-boolean attribute"/"does
+  not recognize the" text), per `test_agent_publish_unpublish_version.py`'s
+  existing filter.
