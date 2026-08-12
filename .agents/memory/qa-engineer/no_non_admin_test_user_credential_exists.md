@@ -62,7 +62,10 @@ switch to.** Before spending exploration time hunting for a role-switch mechanis
 Worked examples: `test-specs/agents/l2_build-with-ai-button-visible-for-admin-and-editor-roles_ELITEA-1903.md`
 (`ready-for-automation`, admin half only) and
 `test-specs/agents/l2_build-with-ai-button-not-visible-for-viewer-role_ELITEA-1904.md`
-(`blocked` outright, no admin-side half — same underlying gap).
+(`blocked` outright, no admin-side half — same underlying gap). Third worked example,
+same gap, different entity: `test-specs/skills/l2_edit-with-ai-skill-permissions_ELITEA-2613.md`
+(`ready-for-automation`, Admin CTA-visibility half + a bonus fully-provable character-limit
+half; Editor/Viewer halves blocked, commented onto tracking issue #1314 as a third case).
 
 ## See also
 

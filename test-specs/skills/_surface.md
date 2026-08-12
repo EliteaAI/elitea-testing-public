@@ -1486,3 +1486,23 @@ on an agent that has 3 Skills attached.
   `200 OK` either way.
   Full details:
   `test-specs/skills/l2_edit-with-ai-skill-happy-path_ELITEA-2611.md`.
+- **Role-gated visibility (ELITEA-2613) — `edit-skill-with-ai-button` confirmed live for the
+  admin-equivalent `${TEST_USER}`.** Clicking the button (`getByTestId('edit-skill-with-ai-button')`)
+  opens `ai-edit-skill-modal` with heading "Edit with AI"; 0 console errors on close. Editor/Viewer
+  halves are BLOCKED — same missing `EDITOR_TEST_USER_*`/`VIEWER_TEST_USER_*` fixture gap already
+  tracked by `EliteaAI/elitea-testing-public#1314` for the Agent-entity sibling (ELITEA-1903/1904).
+  The button's render gate is presumed (not live-verified for Skill specifically) to be the same
+  `GET /api/v2/auth/permissions/prompt_lib/{project_id}`-driven `checkPermission(...)` mechanism
+  ELITEA-1903 confirmed for Agent's `generate-agent-open-button` — same `entities/edit-entity-with-ai/`
+  shell backs both, so no divergence is expected, but flag if a future run finds otherwise.
+- **Character limit is 5,000, not 2,500 (ELITEA-2613 finding — case-text drift, clarification filed:
+  [elitea-testing-public#1480](https://github.com/EliteaAI/elitea-testing-public/issues/1480)).**
+  `MAX_INSTRUCTIONS_LENGTH = 5000` (`EliteaUI/src/common/constants.js:68`), applied identically at the
+  wizard's editable Instructions field (`AIEditSkillModal.jsx:215` → `InstructionsStep`'s
+  `TextDiffHighlight`, silent JS-level slice, `TextDiffHighlight.jsx:64,74-79`) and the Summary step's
+  merged Instructions input (`SummaryStep.jsx:99,107`, native HTML `maxLength` attribute, existing
+  testid `ai-edit-skill-summary-instructions-input` — **no new testid needed** to assert this). Same
+  silent-truncation shape as the already-documented Name-field `maxlength=64` pattern above — no
+  validation-error/blocked-Save path exists for over-limit Instructions text either.
+  Full details:
+  `test-specs/skills/l2_edit-with-ai-skill-permissions_ELITEA-2613.md`.
