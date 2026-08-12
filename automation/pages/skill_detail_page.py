@@ -141,6 +141,28 @@ class SkillDetailPage(SkillFormPage):
         description="Export the current (base) version via the overflow menu"
     )
 
+    # Overflow menu — "Share" items (ELITEA-2439). SkillControls.jsx wires
+    # the same useCopyLinkMenu() hook the Agent flow uses (ELITEA-1898,
+    # AgentDetailPage.share_version_menuitem/share_agent_menuitem) — two
+    # visually-identical "Share" menu items, one per DotMenu section.
+    # share_version_menuitem copies a URL carrying the CURRENT version's id
+    # as a distinct trailing path segment (useProjectEntityLink({versionId})
+    # in SkillControls.jsx); share_skill_menuitem is the negative-control
+    # target — it omits the version id (no versionId override passed to the
+    # hook). Confirmed live via a11y snapshot of the open menu (AFS Concrete
+    # Handles) — both pre-existing testids, no add-data-testid round trip.
+    share_version_menuitem = LocatorDescriptor(
+        testid="share-version-menuitem",
+        description="VERSION-group 'Share' item — copies a version-specific link",
+    )
+    # Negative-control target for the version-id contrast assertion — do not
+    # click this expecting a version-specific URL, it deliberately omits the
+    # version id (AFS Axis 2).
+    share_skill_menuitem = LocatorDescriptor(
+        testid="share-skill-menuitem",
+        description="SKILL-group 'Share' item — copies a generic, version-less link",
+    )
+
     # ------------------------------------------------------------------
     # Version management (Save As Version / VERSION selector) — testids
     # added in the ELITEA-1738 rework (see EliteaUI `automation/testids`:
@@ -717,6 +739,55 @@ class SkillDetailPage(SkillFormPage):
             # No explicit version segment yet — Version ID equals Skill ID.
             return digit_parts[0]
         raise RuntimeError(f"Cannot determine version ID from URL: {url}")
+
+    def wait_for_version_selector_and_url_id(
+        self, version_name: str, version_id: str, timeout: int = 10000
+    ) -> None:
+        """Wait until the VERSION selector trigger AND the URL's trailing
+        version-id path segment both agree with the given ``(version_name,
+        version_id)`` pair (ELITEA-2439).
+
+        Mirrors ``AgentDetailPage.wait_for_version_trigger_and_id()`` — the
+        two-way convergence check for a caller that just navigated to a
+        version-specific copied link in a fresh tab and only needs the
+        CLIENT-SIDE render state to catch up post-navigation. Skills have no
+        ``copy-version-id``-style testid'd readout (the "Copy version ID"
+        footer button carries no ``data-testid`` — AFS Concrete Handles), so
+        this polls the URL's own trailing digit segment instead of a second
+        testid'd element — the URL segment IS the authoritative version id
+        for a non-``base`` version (``get_version_id()`` reads the same
+        segment once settled).
+
+        LOCATOR: polls ``skill-version-select`` via ``document.querySelector``
+        inside the predicate — ``wait_for_function`` executes in-page JS,
+        which cannot reference a Playwright ``Locator`` directly, so the
+        testid (also the ``version_selector`` ``LocatorDescriptor`` field
+        above) is inlined as a literal ``[data-testid="…"]`` string here
+        rather than duplicated as a second selector elsewhere.
+
+        Args:
+            version_name: Expected VERSION-selector trigger text, e.g.
+                ``"v1-copy-link-test"``.
+            version_id: Expected version id, as it appears as the URL's
+                trailing digit segment (i.e. :meth:`get_version_id`'s value).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.page.wait_for_function(
+            """([name, expectedId]) => {
+                const trigger = document.querySelector(
+                    '[data-testid="skill-version-select"]'
+                );
+                if (!trigger || trigger.innerText.trim() !== name) return false;
+                const parts = window.location.pathname.split('/').filter(Boolean);
+                return parts[parts.length - 1] === expectedId;
+            }""",
+            arg=[version_name, version_id],
+            timeout=timeout,
+        )
+        logger.info(
+            "VERSION selector/URL id converged on name=%r id=%r",
+            version_name, version_id,
+        )
 
     @action("Save current edits as a new version")
     def save_as_version(self, version_name: str, timeout: int = 10000):
