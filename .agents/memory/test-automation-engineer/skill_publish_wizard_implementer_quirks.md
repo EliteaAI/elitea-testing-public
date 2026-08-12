@@ -79,3 +79,44 @@ waiting for the element, same class of silent failure as the missing
 category-heading testid above — always re-verify an AFS's literal testid
 string against source when something that specific reads unusually, don't
 trust-and-transcribe). Amended in the AFS with the correction + why.
+
+## Fix round (PR #1464 review): page-wide checks don't prove "under THIS category"
+
+Reviewer's blocking finding: `get_skill_card(skill_name)` + the
+`CATEGORY_NAME in visible_headings` check are two UNRELATED page-wide
+assertions — a card with the right name existing anywhere, and a heading
+with the right text existing anywhere. Neither proves the card is a
+descendant of that category's section, so a skill published under the
+WRONG category would still pass. `SkillCategorySection.jsx`'s outer `Box`
+had no testid at all (only its inner heading `<Typography>` did — see the
+section above). Added `catalog-category-section-{slug}` via
+`add-data-testid` (`EliteaAI/EliteaUI@c80de351`) and a `category` kwarg on
+`AgentHubPage.get_skill_card()` that scopes the card locator to
+`.locator(CATEGORY_SECTION.format(slug)).locator(SKILL_CARD_PREFIX)` —
+same slugify convention as `CATEGORY_HEADING`. Same fix would apply to
+`AgentCategorySection.jsx`/`get_agent_card()` if a future case needs an
+agent-under-category check; not added yet (no test on this branch
+exercises it — "referenced = called on the executed path").
+
+## `wait_for_any_skill_card()` races the category-specific heading (Trending resolves first)
+
+Discovered live while re-verifying the fix above: `wait_for_any_skill_card()`
+followed immediately by `get_visible_category_heading_texts()` intermittently
+under-read the heading list (`['Trending']` only, target category's section
+not yet mounted) — NOT the reviewer's scoping gap, a separate pre-existing
+race. `useSkillHubData.hooks.js` fires three INDEPENDENT fetches on Skills-tab
+mount: `fetchAllAndCategorize` (the bulk `ALL_SKILLS_LIMIT=1000` fetch that
+buckets everything into non-Trending sections), `fetchTrendingSkills` (its
+own much smaller page-sized request), `fetchMyLikedSkills`. Trending's
+smaller request resolves first, satisfies "any card visible", and the read
+happens before the bulk-categorize fetch (and therefore the target
+category's own section) has landed. This breaks the assumption
+`wait_for_any_agent_card()`'s docstring documents for the AGENTS tab (one
+bulk fetch, React 18 batches the per-category dispatches into one commit —
+"any card visible" really does mean every category landed) — that
+assumption does NOT hold for Skills, which has three separate fetches, not
+one. Fix: added `AgentHubPage.wait_for_category_heading(category_label,
+timeout)` — waits on `CATEGORY_HEADING.format(slug)` directly (Playwright
+auto-retry, no sleep) — call it before reading
+`get_visible_category_heading_texts()` whenever asserting a SPECIFIC
+category's presence on the Skills tab.
