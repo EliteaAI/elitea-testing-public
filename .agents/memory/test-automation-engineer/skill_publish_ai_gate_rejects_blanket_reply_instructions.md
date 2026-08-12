@@ -86,3 +86,19 @@ imperative/coercive phrasing ("MUST", "CRITICAL", "Do NOT ... just ...")
 reads as prompt-injection to this gate, regardless of what the instructed
 behavior actually is. Fixtures that need a deterministic marker AND must
 survive Publish should be phrased as permissive stylistic preferences.
+
+## The ≥100-char length gate applies to the AGENT's OWN instructions too, independently of any attached skill (ELITEA-2600, confirmed live)
+
+`publish_validate` for an AGENT with attached Skills inspects BOTH (a) each
+attached skill's own instructions content AND (b) the agent's own
+`instructions` field — as two INDEPENDENT length checks, not one shared
+budget. Seeding all attached skills at ≥100 chars is not sufficient by
+itself: an 88-char AGENT instructions string (e.g. a short "you can use your
+attached skills" filler) still trips `Critical Issues (1): instructions:
+Instructions are too short (min 100 chars). Fix: Expand instructions
+(currently 88 chars)` on its own, with `validate_status == 422`, even though
+every attached skill already clears the gate. Symptom is identical in shape
+to a skill-content failure (same `field: "instructions"` critical-issue
+envelope) — read the `field`/message text, don't assume "skills are long
+enough" rules it out. Fix: write the agent's own instructions fixture at
+≥100 chars too, same as any skill fixture.
