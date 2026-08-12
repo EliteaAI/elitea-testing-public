@@ -1,2 +1,0 @@
-WARNING  elitea.pages.skill_detail:skill_detail_page.py:287 Test response did not stabilize within timeout
-WARNING  elitea.pages.skill_detail:skill_detail_page.py:287 Test response did not stabilize within timeout
