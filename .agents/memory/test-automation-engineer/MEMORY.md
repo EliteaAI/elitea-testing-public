@@ -46,3 +46,4 @@
 - [Positive-existence wait can't assert negative transition](positive_existence_wait_cant_assert_negative_transition.md) — `not is_X()` right after a click races; use `expect().to_have_attribute()` instead
 - [Assert at the AFS step, not deferred](assert_at_the_afs_step_not_deferred.md) — verify step N's result inside step N's own allure.step, not step N+1 (rejected 2×)
 - [Dead-code guard needs class scoping](dead_code_locator_guard_needs_class_scoping.md) — bare class-name substring still false-passes; require real import/instantiation
+- [Dirty trunk from an interrupted prior unit](dirty_trunk_from_interrupted_prior_unit_quarantine_dont_absorb.md) — quarantine onto its OWN branch first; never absorb or clean
