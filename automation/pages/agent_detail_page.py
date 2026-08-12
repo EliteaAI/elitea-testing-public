@@ -539,6 +539,19 @@ class AgentDetailPage(AgentFormPage):
                      "(disabled while the AI publish_validate gate reports "
                      "any Critical issue; canPublish = status !== 'FAIL')",
     )
+    publish_error_alert = LocatorDescriptor(
+        testid="publish-wizard-error-alert",
+        description="Publish wizard — inline error Alert (Validation step), "
+                     "renders a rejected publish's error message (agent "
+                     "entity: validation_failed — 'modified since "
+                     "validation'). Pre-existing testid, added by "
+                     "ELITEA-2597's implementer on the shared "
+                     "PublishWizardModal.jsx component "
+                     "(EliteaAI/EliteaUI@2dafb537, automation/testids); "
+                     "confirmed live (ELITEA-2601) to render unmodified for "
+                     "the Agent flow — no new testid needed, exposed here "
+                     "only because AgentDetailPage never wired it before.",
+    )
     publish_terms_content = LocatorDescriptor(
         testid="agent-publish-terms-content",
         description=(
@@ -645,6 +658,32 @@ class AgentDetailPage(AgentFormPage):
         super(AgentDetailPage, self).navigate(f"/agents/all/{agent_id}?viewMode=owner")
         self.wait_for_page_load()
         logger.info("Navigated to agent %d and page loaded", agent_id)
+
+    @action("Navigate to agent's Configuration tab (second-tab-safe)")
+    def navigate_to_configuration_tab(self, agent_id: int):
+        """Navigate directly to the agent's Configuration/Skills panel.
+
+        ELITEA-2601 gotcha, confirmed live: opening a SECOND browser tab on
+        a bare ``/agents/all/{id}`` URL (even with ``?viewMode=owner``)
+        lands on the Chat tab, not the Configuration/Skills panel — the
+        ``destTab=configuration`` query param is REQUIRED to land there
+        directly. Added as a sibling of :meth:`navigate` (not a change to
+        it) because that method's existing behaviour has real callers
+        across the suite that already reach Configuration reliably in a
+        SINGLE-tab flow (the default-active-tab difference only manifests
+        for a genuinely fresh second tab/page).
+
+        Args:
+            agent_id: The numeric agent ID.
+        """
+        super(AgentDetailPage, self).navigate(
+            f"/agents/all/{agent_id}?destTab=configuration&viewMode=owner"
+        )
+        self.wait_for_page_load()
+        logger.info(
+            "Navigated to agent %d Configuration tab (second-tab-safe) and page loaded",
+            agent_id,
+        )
 
     # ------------------------------------------------------------------
     # Wait helpers
@@ -3859,6 +3898,118 @@ class AgentDetailPage(AgentFormPage):
         self.wait_for_network(timeout=timeout)
         logger.info("Publish confirmed — status=%d", status)
         return status
+
+    @action("Continue from Publish wizard Preparation step, capturing the raw response")
+    def click_publish_continue_and_capture_response(self, timeout: int = 15000):
+        """Click "Continue" and wait for the ``publish_validate`` response,
+        returning the raw Playwright ``Response`` (not just the status).
+
+        Additive sibling of :meth:`click_publish_continue` — that method's
+        ``int``-only return is an established contract with real callers
+        (``test_agent_publish_unpublish_version.py``,
+        ``test_agent_version_selector_order.py``); this method exists
+        because callers that need the response BODY (``critical_issues[]``/
+        ``warnings[]``/``recommendations[]`` — each entry carrying
+        ``field``/``context``/``issue``/``fix``, per
+        ``ValidationResult.jsx``'s ``buildPlainText()``) cannot get it from
+        an ``int``. Mirrors ``SkillDetailPage.click_publish_continue()``'s
+        own ``Response``-returning shape (ELITEA-2597), added here for the
+        AGENT entity (ELITEA-2601 — per-skill validation-issue attribution
+        assertions need the ``context: "skill: <name>"`` field, which only
+        the response body carries).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the
+            ``publish_validate`` call.
+        """
+        logger.info("Clicking Publish wizard Continue (capturing response)")
+        with self.page.expect_response(
+            lambda r: "publish_validate" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as validate_info:
+            self.publish_continue_button.click()
+        response = validate_info.value
+        self.publish_confirm_button.wait_for(state="visible", timeout=timeout)
+        logger.info("publish_validate responded status=%d", response.status)
+        return response
+
+    def is_publish_confirm_enabled(self) -> bool:
+        """Return whether the Validation step's "Publish" button is enabled.
+
+        Mirrors ``SkillDetailPage.is_publish_confirm_enabled()`` — added
+        here for the AGENT entity (ELITEA-2601), which previously only had
+        ``is_publish_continue_enabled()`` for the Preparation step.
+        """
+        return self.publish_confirm_button.is_enabled()
+
+    @action("Confirm Publish, capturing the raw response")
+    def confirm_publish_and_capture_response(self, timeout: int = 15000):
+        """Click the Validation step's "Publish" button and wait for the
+        ``publish`` request to resolve, returning the raw Playwright
+        ``Response`` (not just the status).
+
+        Additive sibling of :meth:`confirm_publish` — same reconciliation
+        rationale as :meth:`click_publish_continue_and_capture_response`
+        above: ``confirm_publish()`` is an established ``int``-returning
+        contract with real callers, so a ``Response``-returning override
+        would silently shadow it. Callers that need the response BODY's
+        ``error``/``msg`` fields (e.g. distinguishing the AGENT entity's
+        ``validation_failed`` "modified since validation" rejection,
+        ELITEA-2601) use this method instead. Mirrors
+        ``SkillDetailPage.confirm_publish_and_capture_response()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the ``publish`` call.
+        """
+        logger.info("Confirming Publish (capturing response)")
+        with self.page.expect_response(
+            lambda r: "/publish/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as publish_info:
+            self.publish_confirm_button.click()
+        response = publish_info.value
+        logger.info("Publish confirmed — status=%d", response.status)
+        return response
+
+    def get_publish_error_message(self, timeout: int = 5000) -> str:
+        """Return the Publish wizard's inline error Alert text.
+
+        LOCATOR: ``publish-wizard-error-alert`` (pre-existing, shared with
+        the Skill flow — see the ``publish_error_alert`` field docstring).
+        Renders the SAME ``msg`` text the ``publish`` response body
+        carries, inline in the Validation step, once a rejected publish
+        attempt (e.g. a stale ``validation_failed`` token) lands.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.publish_error_alert.wait_for(state="visible", timeout=timeout)
+        return (self.publish_error_alert.text_content() or "").strip()
+
+    @action("Close Publish wizard via Escape")
+    def close_publish_wizard(self, timeout: int = 5000):
+        """Close the Publish wizard dialog by pressing Escape.
+
+        Mirrors ``SkillDetailPage.close_publish_wizard()`` — added here for
+        the AGENT entity (ELITEA-2601). Escape calls the SAME ``onClose``
+        handler as the (untestid'd) "Cancel" button, and both re-opening
+        and closing reset the shared wizard's state, so re-opening after
+        this always starts a fresh Preparation step (confirmed live,
+        ELITEA-2601, matching the Skill flow's already-documented shape).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog to hide.
+        """
+        logger.info("Closing Publish wizard via Escape")
+        self.page.keyboard.press("Escape")
+        self.publish_confirm_button.wait_for(state="hidden", timeout=timeout)
+        logger.info("Publish wizard closed")
 
     @action("Select a version by name from the VERSION dropdown")
     def select_version_by_name(

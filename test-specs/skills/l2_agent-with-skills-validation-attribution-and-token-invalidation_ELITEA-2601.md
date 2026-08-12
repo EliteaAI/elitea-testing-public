@@ -74,10 +74,22 @@
   asserted cleanly — this AFS's own live run did not re-attempt it with a fresh valid
   skill (turn-budget cutoff), so **the implementer's Execute phase must confirm step
   17–18 live** before asserting it in code (see § Blocked Steps).
-- Agent name: e.g. `validation-test-agent-2601`. Description/Instructions: any
-  non-empty, substantive text (Warning-level gates only, not Critical — same as
-  ELITEA-2600's AFS). At least 1 Tag (e.g. `automation`) — **Critical** gate (same
-  ELITEA-1892/2600 finding: `tags: No tags defined` blocks Publish).
+- Agent name: e.g. `validation-test-agent-2601`. Description: any non-empty,
+  substantive text (Warning-level gate only, not Critical). **Instructions:
+  CORRECTION (implementer, confirmed live this dispatch — this AFS's original
+  claim that Description/Instructions are "Warning-level gates only, not
+  Critical" is WRONG for Instructions specifically):** the agent's OWN
+  `instructions` field is independently subject to the SAME ≥100-char
+  "too short" Critical rule a skill's content is (memory:
+  `skill_publish_ai_gate_rejects_blanket_reply_instructions.md` § "The
+  ≥100-char length gate applies to the AGENT's OWN instructions too" —
+  ELITEA-2600 already confirmed this finding; this AFS repeated the stale
+  claim). An 88-char Instructions string tripped a THIRD, agent-level
+  Critical issue (`context: None`) alongside the 2 skill-attributed ones this
+  case's Part A targets, muddying the per-skill-attribution count. Seed
+  Instructions at ≥100 chars, same threshold as any skill fixture. At least 1
+  Tag (e.g. `automation`) — **Critical** gate (same ELITEA-1892/2600 finding:
+  `tags: No tags defined` blocks Publish).
 - Publish wizard Version name: any string matching `VERSION_NAME_REGEX`
   (`^[a-zA-Z0-9._-]{1,50}$`), unique per publish attempt in the same session (this run
   used `v1-elitea-2601` / `v2-elitea-2601` / `v3-elitea-2601` across three wizard

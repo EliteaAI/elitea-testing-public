@@ -1188,3 +1188,30 @@ on an agent that has 3 Skills attached.
   implementer touching this flow: seed a dedicated, content-VALID third skill for the
   attach/detach probe to isolate this cleanly.
   Full details: `test-specs/skills/l2_agent-with-skills-validation-attribution-and-token-invalidation_ELITEA-2601.md`.
+
+**Resolved during ELITEA-2601 implementation (test-automation-engineer):**
+- **The removal direction IS confirmed** — seeding a THIRD, dedicated, content-valid
+  `extra-skill` for the attach/detach probe (as suggested above) removed the confound:
+  attaching it (2nd tab) → `400 validation_failed` in the 1st tab (addition direction,
+  as already documented); restart validation → `Critical: 0` again (extra-skill
+  content-valid) → REMOVE it (2nd tab) → attempt Publish (1st tab) → the SAME
+  `400 {"error": "validation_failed", "msg": "...modified since validation..."}`. Both
+  directions of the mechanism are now live-confirmed, not just inferred.
+- **Gotcha, also affects this flow (already documented for ELITEA-2600 in the section
+  above):** the AGENT's own `instructions` field is independently subject to the same
+  ≥100-char "too short" Critical rule a skill's content is — an agent instructions
+  fixture under 100 chars adds a 3rd, agent-level `critical_issues[]` entry
+  (`context: None`) alongside the 2 skill-attributed ones this case's Part A targets,
+  breaking a `counts.critical == 2` assertion. Seed the agent's own instructions at
+  ≥100 chars too. (This AFS's own Test Data section originally claimed
+  Description/Instructions are "Warning-level gates only, not Critical" — that claim
+  is WRONG for Instructions and has been corrected in the AFS file itself.)
+- **Menu-item attach-by-name gotcha (new, not previously documented on this surface):**
+  `Popper.select_menuitem_by_testid()` resolves via `.filter(has_text=name).first` — a
+  SUBSTRING match. Seeding a "valid-skill-<x>" and an "invalid-skill-<x>" in the SAME
+  test means attaching "valid-skill-<x>" ambiguously matches BOTH menu items (the
+  second contains the first as a literal substring) and silently attaches the WRONG
+  one — no error, just a downstream assertion failure. Pick skill-fixture names with no
+  substring containment between any pair (e.g. "valid-skill"/"broken-skill", not
+  "valid-skill"/"invalid-skill"). Full detail:
+  `.agents/memory/test-automation-engineer/popper_select_menuitem_substring_collision_attaches_wrong_item.md`.
