@@ -35,3 +35,22 @@ or, if the TMS repo is checked out locally, just `ls`/`find` the directory
 and diff the slug against what's actually there. Do this whenever the PR is
 new (not carrying forward a previously-verified link) — it costs one API call
 and would have caught this on the first pass.
+
+## Recurrence (ELITEA-2609 review, PR #1475) — same FILE, one commit later
+
+`test_skill_agent_interaction.py`'s ELITEA-2607 sibling test had exactly this
+bug (`allure.issue` filename with a wrong `-functionality` suffix) and it was
+caught + fixed in that same PR's round-1 review (fix commit `c83ca52a`,
+same branch lineage this PR built on). The very next test added to the SAME
+file (ELITEA-2609, one PR later) reintroduced the identical class of defect:
+linked `skills/ELITEA-2609_skill-explicit-autonomous-invocation-coexistence.md`,
+real file is
+`skills/ELITEA-2609_skill-explicit-and-autonomous-coexistence.md` (confirmed
+via local `onetest-ai-tm-Elitea` clone `ls`). Fixing the bug once in a file
+does not inoculate the next test written into that file — check the link on
+every `@allure.issue` addition, even in a file that just got this exact fix.
+Classified **blocking** here (CHANGES_REQUESTED), consistent with how the
+2607 sibling treated it one round earlier in the same file — supersedes the
+"not blocking, cosmetic" call in `allure_issue_tms_link_path_drift.md` (a
+different PR/file); this project's own review history on this exact file
+already set the precedent as blocking.

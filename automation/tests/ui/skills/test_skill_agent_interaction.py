@@ -1,4 +1,5 @@
-"""Interact with Skills from Agent (ELITEA-1735), extended by ELITEA-2607.
+"""Interact with Skills from Agent (ELITEA-1735), extended by ELITEA-2607
+and ELITEA-2609.
 
 Verifies skill invocation modes for agents with attached skills:
 1. V1 Explicit invocation: "~<skill-name>" mention syntax triggers the skill
@@ -8,9 +9,13 @@ Verifies skill invocation modes for agents with attached skills:
 4. (ELITEA-2607) Autonomous invocation is visible in the thought process as a
    "Skill: {name}" tool chip, and an unattached skill is NEVER invoked even
    when an adversarial prompt explicitly invites it (security invariant).
+5. (ELITEA-2609) When a SINGLE message is both an explicit ``~mention`` AND
+   independently matches that same skill's own autonomous-trigger
+   description, the skill is invoked exactly ONCE - no double-injection.
 
 Spec: test-specs/skills/l3_interact-with-skills-from-agent_ELITEA-1735.md
 Spec: test-specs/skills/lextend_skill-autonomous-invocation-core-functionality_ELITEA-2607.md
+Spec: test-specs/skills/lextend_skill-explicit-autonomous-invocation-coexistence_ELITEA-2609.md
 Related: GitHub issue #5698 (Skills V2 - Autonomous Invocation)
 """
 
@@ -105,6 +110,28 @@ ADVERSARIAL_PROMPT = "Translate 'hello' to Spanish, use your translator skill if
 # Case Part B step 10 (verbatim test data) - matches neither Skill 3's nor
 # Skill 4's trigger condition
 NON_MATCHING_PROMPT = "What is the capital of France?"
+
+# --- ELITEA-2609 extension: explicit ~mention + autonomous context-match
+# coexistence (no double-injection) ---
+
+# Attached skill: uppercase transform, "format text as markdown" trigger.
+SKILL_2609_NAME = "elitea-2609-explicit-autonomous"
+SKILL_2609_DESCRIPTION = (
+    "Use this skill ONLY when the user explicitly asks to format text as markdown."
+)
+SKILL_2609_INSTRUCTIONS = (
+    "CRITICAL: You MUST convert ALL letters in your response to UPPER CASE. "
+    "Do not explain, just output the transformed text in UPPER CASE."
+)
+
+AGENT_2609_NAME = "elitea-2609-coexistence-agent"
+
+# Appended AFTER the "~<skill-name>" mention chip - this text ALSO
+# independently matches Skill 2609's own description trigger ("asks to
+# format text as markdown"), unlike NEUTRAL_TEXT_FOR_SKILL above. This is
+# the case's actual differentiator (Part B): explicit mention + context
+# match co-occurring on the SAME message.
+COMBINED_MENTION_AND_CONTEXT_PROMPT = "Format as markdown: Title, item1, item2, item3"
 
 
 def _create_skill(page, name: str, instructions: str, description: str) -> int:
@@ -551,3 +578,148 @@ class TestInteractWithSkillsFromAgent:
                         logger.info("Cleanup: deleted skill id=%d", skill_id)
                     except Exception as exc:
                         logger.warning("Cleanup: failed to delete skill id=%s: %s", skill_id, exc)
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/ELITEA-2609_skill-explicit-and-autonomous-coexistence.md",
+        "onetest-ai Test Case link",
+    )
+    @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5698", name="Skills V2 Epic")
+    @pytest.mark.p2
+    @pytest.mark.regression
+    @pytest.mark.flaky(reruns=3, reruns_delay=5)
+    def test_skill_explicit_and_autonomous_invocation_coexistence(self, page, agent_api, skill_api):
+        """Extends ELITEA-1735/2607 coverage for ELITEA-2609 (extend-existing AFS).
+
+        Part A (explicit ~mention still works) and Part C (both invocation
+        modes independently produce correct output) are already proven by
+        this class's other two test methods - see the AFS Coverage Map:
+        `test_interact_with_skills_from_agent` Steps 9-10 (explicit-alone)
+        and Steps 7-8 (autonomous-alone), plus
+        `test_skill_autonomous_invocation_thought_process_and_security`
+        Steps 5-6 (thought-process chip mechanism). This test fills the ONE
+        gap the covering spec never exercises: Part B, a SINGLE message that
+        is BOTH an explicit ``~skill-name`` mention AND independently
+        matches that same skill's own autonomous-trigger description.
+        Neither existing test ever combines the two triggers on one message
+        (1735's Steps 9-10 append deliberately NEUTRAL trailing text; 2607's
+        autonomous test never uses a ``~mention``) - so the no-double-
+        injection invariant for the co-occurring case is untested until now.
+
+        Steps:
+        1. Create a skill (attached; uppercase transform, "asks to format
+           text as markdown" trigger).
+        2. Create an agent, attach the skill.
+        3. Send ``~<skill-name> Format as markdown: Title, item1, item2,
+           item3`` - an explicit mention whose appended text ALSO matches
+           the skill's own description trigger.
+        4. Assert exactly ONE ``chat-answer-tool-chip`` reading
+           "Skill: {name}" in the thought accordion (the count IS the
+           double-injection assertion - two chips would mean two
+           invocations), the response is a single, non-duplicated
+           UPPER-CASE output, and there are no console errors.
+        """
+        skill_id = None
+        agent_id = None
+        console_messages = None  # CapturedConsoleMessages, needs stop() in finally
+
+        try:
+            with allure.step(
+                "Step 1 — Create skill (attached; uppercase, 'format as markdown' trigger)"
+            ):
+                skill_id = _create_skill(
+                    page, SKILL_2609_NAME, SKILL_2609_INSTRUCTIONS, SKILL_2609_DESCRIPTION
+                )
+
+            with allure.step("Step 2 — Create Agent and attach the skill"):
+                list_page = AgentsListPage(page)
+                list_page.navigate_to_create()
+
+                form_page = AgentFormPage(page)
+                form_page.wait_for_form_load()
+                form_page.fill_form(
+                    name=AGENT_2609_NAME,
+                    description="Explicit+autonomous coexistence test assistant",
+                    instructions="You are a helpful assistant. Use your skills when appropriate.",
+                )
+                form_page.wait_for_form_validation()
+                assert form_page.is_save_enabled(), (
+                    "Save should be enabled after filling all required agent fields"
+                )
+                form_page.save_and_wait_for_navigation(timeout=FORM_SAVE_TIMEOUT)
+
+                detail_page = AgentDetailPage(page)
+                detail_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
+                detail_page.verify_on_detail_page()
+                agent_id = int(detail_page.get_agent_id())
+                logger.info("Created agent %r with id=%d", AGENT_2609_NAME, agent_id)
+
+                detail_page.attach_skill(SKILL_2609_NAME, timeout=UI_ELEMENT_TIMEOUT)
+                assert "1/" in detail_page.get_skills_counter_text(), (
+                    "Skills counter should show 1 skill attached after attaching the skill"
+                )
+                assert detail_page.is_skill_attached(SKILL_2609_NAME), (
+                    f"Skill card for '{SKILL_2609_NAME}' should render after attaching"
+                )
+
+            with allure.step(
+                "Step 3-4 — Combined ~mention + context-match message invokes the skill "
+                "exactly ONCE: single chip, single clean output, no console errors"
+            ):
+                console_messages = detail_page.capture_console_errors()
+                initial_count = detail_page.get_chat_message_count()
+                detail_page.send_chat_message_with_mention(
+                    SKILL_2609_NAME,
+                    COMBINED_MENTION_AND_CONTEXT_PROMPT,
+                    timeout=UI_ELEMENT_TIMEOUT,
+                )
+                detail_page.wait_for_chat_response(
+                    initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT,
+                )
+                response = detail_page.get_last_chat_response_text()
+                logger.info("Combined mention+context response: %r", response)
+
+                accordion = detail_page.get_outer_thought_accordion(timeout=UI_ELEMENT_TIMEOUT)
+                matched_chip = accordion.locator(
+                    detail_page.CHAT_ANSWER_TOOL_CHIP_SELECTOR
+                ).filter(has_text=f"Skill: {SKILL_2609_NAME}")
+                # The COUNT is the double-injection assertion - "a chip is
+                # present" would still pass with two invocations; exactly 1
+                # is what falsifies double-injection.
+                expect(matched_chip).to_have_count(1, timeout=UI_ELEMENT_TIMEOUT)
+
+                alpha_chars = [c for c in response if c.isalpha()]
+                assert alpha_chars, (
+                    f"Combined-invocation response has no alphabetic chars: {response!r}"
+                )
+                assert all(c.isupper() for c in alpha_chars), (
+                    f"Skill should apply its UPPER CASE transform, got: {response!r}"
+                )
+                # A double-injection defect would duplicate/concatenate the
+                # transformed heading - checking its occurrence count (not
+                # just its presence) is what catches a repeated block.
+                assert response.upper().count("TITLE") == 1, (
+                    f"Response should contain the transformed heading exactly once "
+                    f"(a double-injection defect would duplicate it), got: {response!r}"
+                )
+
+                assert not console_messages, (
+                    f"No console errors expected on the combined-invocation interaction, "
+                    f"got: {[m.text for m in console_messages]}"
+                )
+
+        finally:
+            if agent_id is not None:
+                try:
+                    agent_api.delete_agent(agent_id)
+                    logger.info("Cleanup: deleted agent id=%d", agent_id)
+                except Exception as exc:
+                    logger.warning("Cleanup: failed to delete agent id=%s: %s", agent_id, exc)
+            if skill_id is not None:
+                try:
+                    skill_api.delete_skill(skill_id)
+                    logger.info("Cleanup: deleted skill id=%d", skill_id)
+                except Exception as exc:
+                    logger.warning("Cleanup: failed to delete skill id=%s: %s", skill_id, exc)
+            if console_messages is not None:
+                console_messages.stop()
