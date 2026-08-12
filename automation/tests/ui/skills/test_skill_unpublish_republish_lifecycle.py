@@ -355,9 +355,17 @@ class TestSkillUnpublishRepublishLifecycle:
                 "Step 7 — Click Unpublish to confirm; verify 200 + "
                 "{status: 'deleted'}"
             ):
-                unpublish_status = detail_page.confirm_unpublish(timeout=NAVIGATION_TIMEOUT)
-                assert unpublish_status == 200, (
-                    f"Expected 200 from unpublish_skill, got {unpublish_status}"
+                unpublish_body = detail_page.confirm_unpublish_and_capture_response(
+                    timeout=NAVIGATION_TIMEOUT
+                )
+                assert unpublish_body["http_status"] == 200, (
+                    f"Expected 200 from unpublish_skill, got {unpublish_body['http_status']}"
+                )
+                assert unpublish_body.get("msg") == "Successfully unpublished", (
+                    f"Expected msg 'Successfully unpublished', got: {unpublish_body!r}"
+                )
+                assert unpublish_body.get("status") == "deleted", (
+                    f"Expected status 'deleted', got: {unpublish_body!r}"
                 )
 
             with allure.step(

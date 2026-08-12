@@ -1316,6 +1316,45 @@ class SkillDetailPage(SkillFormPage):
         logger.info("Unpublish confirmed — status=%d", status)
         return status
 
+    @action("Confirm Unpublish and capture the response body")
+    def confirm_unpublish_and_capture_response(self, timeout: int = 15000) -> dict:
+        """Click the Unpublish confirm dialog's "Unpublish" button and return
+        the ``unpublish_skill`` response BODY (ELITEA-2599).
+
+        Waits for ``POST .../unpublish_skill/prompt_lib/{project}/{skillId}/
+        {versionId}`` to resolve and for the dialog to close. The AFS requires
+        asserting the response body's ``{msg: "Successfully unpublished",
+        status: "deleted"}`` shape, not just the HTTP status — so this
+        returns the parsed JSON body (status code included as ``http_status``)
+        rather than the bare ``int`` :meth:`confirm_unpublish` returns.
+
+        NAMING — deliberately a sibling method, not a signature change to
+        ``confirm_unpublish()``: same "click-and-capture-body" precedent as
+        :meth:`confirm_publish_and_capture_response` alongside
+        ``confirm_publish()`` above — ``confirm_unpublish()`` mirrors
+        ``AgentDetailPage.confirm_unpublish() -> int`` on purpose (see that
+        method's docstring) and changing its return type in place would be
+        the same silent-shadowing hazard documented on the publish sibling.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The ``unpublish_skill`` response JSON body, plus ``http_status``.
+        """
+        logger.info("Confirming Unpublish (capturing response body)")
+        with self.page.expect_response(
+            lambda r: "/unpublish_skill/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as unpublish_info:
+            self.unpublish_confirm_button.click()
+        response = unpublish_info.value
+        body = response.json()
+        body["http_status"] = response.status
+        Dialog.wait_for_hidden(self.page, timeout=timeout)
+        logger.info("Unpublish confirmed — status=%d, body=%r", response.status, body)
+        return body
+
     # ------------------------------------------------------------------
     # Sidebar project switcher (ELITEA-2602)
     # ------------------------------------------------------------------
