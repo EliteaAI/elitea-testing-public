@@ -857,3 +857,40 @@ extension of `AgentDetailPage`'s):
   - Note: `EliteAImage` (`src/components/EliteAImage.jsx`) DOES accept a
     `data-testid` prop already — it's the three call sites above that never pass
     one, not a limitation of the shared image component itself.
+
+## Custom icon persists across "Save As Version" (ELITEA-2606) — confirmed live
+
+- **The "create version" endpoint copies `meta.icon_meta` forward into the
+  new version at creation time — server-side, not a client-state
+  carryover.** Confirmed via the `POST /api/v2/elitea_core/skill/
+  prompt_lib/{project}/{skillId}` response body itself (fired by
+  `SkillDetailPage.save_as_version()`): the new version's `meta.icon_meta`
+  is present in that SAME response, `url` byte-identical to the base
+  version's icon, before any subsequent GET/reload. Verified further by a
+  full hard reload of the new version's URL (`/skills/all/{skillId}/
+  {newVersionId}`) — `skill-form-icon-img`'s `src` unchanged, ruling out
+  "looked persisted only because the client never re-fetched" as a false
+  positive.
+- **The base version's icon is unaffected** by creating a new version —
+  switching back to `base` after creating `v2` shows the identical icon
+  `src`, confirmed live (not merely assumed from "nothing touched it").
+- **Same `meta.icon_meta` shape and "preserved by reference" guarantee as
+  Fork** (ELITEA-2602/ELITEA-2603, above) — but a DIFFERENT endpoint. Fork's
+  copy happens via `skill_export_fork`; Save-As-Version's copy happens via
+  the plain `POST skill/prompt_lib/{project}/{skillId}` "create version"
+  call. Corroborating precedent, not the same code path — don't assume a
+  fix/regression in one automatically implies the same for the other.
+  Full detail:
+  `test-specs/skills/l3_skill-custom-icon-persistence-on-save-as-version_ELITEA-2606.md`.
+- **No testid gaps** — every element this flow touches (`skill-form-icon-
+  img`, `skill-save-as-version-button`, `skill-create-version-dialog`/
+  `-name-input-field`/`-save-button`, `skill-version-select`(-combobox),
+  `version-option-{name}`, `toast-message`) is pre-existing, reused from
+  ELITEA-1738/ELITEA-2437/ELITEA-2604 rework.
+- **`SkillAPI.get_skill(skill_id)` cannot target a specific version's icon**
+  — it always hits the bare `/skill/prompt_lib/{project}/{skillId}`
+  endpoint (no `versionId` segment). An API-level per-version assertion
+  needs a small additive extension (optional `version_id` param appending
+  `/{version_id}` to the URL) — not yet added as of this run; the DOM-level
+  `skill-form-icon-img` src read is sufficient and was this run's primary
+  evidence.

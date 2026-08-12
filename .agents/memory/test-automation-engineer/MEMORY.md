@@ -47,3 +47,4 @@
 - [Assert at the AFS step, not deferred](assert_at_the_afs_step_not_deferred.md) — verify step N's result inside step N's own allure.step, not step N+1 (rejected 2×)
 - [Dead-code guard needs class scoping](dead_code_locator_guard_needs_class_scoping.md) — bare class-name substring still false-passes; require real import/instantiation
 - ["Pre-existing" testid, 0-element timeout](icon_picker_close_button_testid_prop_mismatch.md) — suspect a wrapper prop-name mismatch, not timing
+- [Dirty trunk from an interrupted prior unit](dirty_trunk_from_interrupted_prior_unit_quarantine_dont_absorb.md) — quarantine onto its OWN branch first; never absorb or clean
