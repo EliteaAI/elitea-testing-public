@@ -27,6 +27,7 @@
   `.agents/memory/test-automation-lead/known_noisy_resource_montserrat_font_404.md`).
   8/8 automated, 0 blocked at close. TMS back-written (8 cases, Form C + index.json
   surgical update). · wave-02 (8) pending · wave-03 (8) pending · wave-04 (7) pending
+  · **wave-02 (8 cases) RUNNING — runId `wf_71994834-461`** · wave-03 (8) pending · wave-04 (7) pending
   · wave-05 (9, build_with_ai) pending
 
 ## Source
