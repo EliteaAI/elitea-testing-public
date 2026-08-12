@@ -64,3 +64,15 @@ the general l-number heuristic (which a third `l2` sibling, ELITEA-1874/1875
 embedded-chat, contradicts by using `p1`). When AFS priority text and
 filename number disagree, check 2-3 siblings in the same file before
 picking — don't trust either signal alone.
+
+## Tags field does NOT exist on the CREATE form (ELITEA-2600, confirmed live)
+
+`agent-tags-input` only renders on the agent DETAIL/edit page
+(`ApplicationEditForm.jsx`) — calling `AgentFormPage.add_tag()` right after
+`fill_form()` on `/agents/create` (before Save) times out (5s,
+`Locator.wait_for: waiting for get_by_test_id("agent-tags-input")`). Correct
+sequence for a UI-driven agent-with-a-tag flow: `fill_form()` → `save_and_
+wait_for_navigation()` → land on `AgentDetailPage` → `add_tag()` →
+`click_save()` (a PUT, not the create POST). Same two-step shape the API-side
+precondition workaround (`create_agent_full()` payload tags) exists to avoid
+for tests that don't care about exercising the UI tag-add flow itself.

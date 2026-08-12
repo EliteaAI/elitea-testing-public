@@ -313,3 +313,31 @@ None.
   typing `~` (no debounce needed) and is keyed by the SAME popper-item pattern
   used elsewhere in the suite — confirmed items rendered for all 3 attached
   skills with their full descriptions as secondary text.
+
+## Implementer amendments (ELITEA-2600 implementation, test-automation-engineer)
+
+- **Step 9 technique substitution (Phase 2 — same observable, more reliable
+  mechanism, NOT a scope change).** The AFS's live exploration used the
+  Catalog search box + "No skills found" text. The implementation instead
+  reuses the SAME proven, already-merged idiom the sibling ELITEA-2599 case
+  established for "skill absent from Catalog": `AgentHubPage.click_skills_tab()`
+  + `get_skill_card_count_by_name() == 0` for each of the 3 skill names, on a
+  freshly-`navigate()`d Catalog page (not a reuse of step 8's already-searched
+  page — the shared `catalog-search-input` persists its value across the
+  Agents/Skills tab switch, so a stale AGENT_NAME query would zero out the
+  Skills tab's results for the wrong reason). `AgentHubPage.search()` is
+  hard-wired to await the AGENTS-tab `/public_applications/prompt_lib/`
+  response (confirmed via EliteaUI source: the Skills tab's own search fires
+  `/public_skills/{mode}/` instead) — reusing it unmodified on the Skills tab
+  would hang on the wrong network wait. Both mechanisms prove the identical
+  fact the case needs (not independently listed); the card-count check is
+  simply the more direct, already-proven one.
+- **New testid added:** `agent-publish-terms-content` on the Publish wizard's
+  Preparation-step Publishing Terms disclosure box (`PublishingTerms.jsx`,
+  `EliteaAI/EliteaUI@59155a8a` on `automation/testids`) — needed to assert
+  step 5's disclosure-text checkpoint (Axis 2), which had no handle in the
+  original Concrete Handles table. Added via `add-data-testid`, following the
+  existing (pre-2600) `agent-publish-*` naming already used unconditionally
+  by this shared component's sibling fields at its one call site
+  (`PreparationStep.jsx`), even though the component itself is
+  `entityLabel`-shared with the skill-publish wizard.
