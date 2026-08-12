@@ -1,1 +1,0 @@
-WARNING  elitea.automation.fixtures.data:data_fixtures.py:73 Failed to delete conversation 359: 502 Server Error: Bad Gateway for url: https://dev.elitea.ai/api/v2/elitea_core/conversation/prompt_lib/581/359 — headers: {'Date': 'Tue, 11 Aug 2026 11:26:31 GMT', 'Content-Length': '11'} — body: Bad Gateway

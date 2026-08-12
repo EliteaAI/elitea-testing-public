@@ -1,1 +1,0 @@
-WARNING  elitea.pages.agent_detail:agent_detail_page.py:1316 Skills counter did not change after attaching 'elitea-1735-skill-uppercase' (still '0/5 skills added.')
