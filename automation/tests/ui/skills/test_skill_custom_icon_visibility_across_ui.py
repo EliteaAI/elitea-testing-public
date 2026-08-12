@@ -204,6 +204,14 @@ class TestSkillCustomIconVisibilityAcrossUI:
                 agent_form_page.save_and_wait_for_navigation(timeout=FORM_SAVE_TIMEOUT)
 
                 agent_detail_page = AgentDetailPage(page)
+                # Root-cause fix (ELITEA-2605 flakiness): verify_on_detail_page()
+                # reads page.url synchronously with no wait of its own, racing the
+                # SPA's client-side route push after save. The working sibling
+                # test_create_agent_via_ui (test_agent_management.py) always calls
+                # wait_for_page_load() first, which waits for the INFORMATION
+                # section + populated Name field — by which point the URL has
+                # settled too. This test skipped that call; add it to match.
+                agent_detail_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
                 agent_detail_page.verify_on_detail_page()
                 agent_id = int(agent_detail_page.get_agent_id())
                 logger.info("Created agent %r id=%d", agent_name, agent_id)
