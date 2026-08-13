@@ -52,6 +52,22 @@ GenerateEntityModal.jsx mechanism (`handleBack()` resets `step`/`draftData`
 but never calls `setDescription('')`), verified independently here for the
 Skill entity's own DOM/testids.
 
+Covers ELITEA-1997: clicking "Cancel" (`cancel_button`) on the PROMPT
+INPUT step — before Generate is ever clicked — closes the modal (dialog
+removed from the DOM), leaves the New Skill creation form untouched
+(empty Name/Description), and fires neither the generate-draft nor the
+create-skill request. `cancel_button` was previously only asserted
+`.is_visible()` (ELITEA-1988); this is the first test to `.click()` it.
+
+Covers ELITEA-1998: clicking the modal's Close (X) icon
+(`close_button`) on the REVIEW step (after a draft has been generated)
+closes the modal and creates no Skill — the generated draft's name never
+appears in the Skills list. Case-text drift: the review step has no
+"Cancel" button (only "Back to prompt" and "Create Skill"); the case's
+literal Step 2 ("Click 'Cancel'") is asserted against the live, correct
+control (`close_button`) instead, per the reverse-masking guard — see
+[EliteaAI/elitea-testing-public#1486](https://github.com/EliteaAI/elitea-testing-public/issues/1486).
+
 Spec: test-specs/skills/l2_build-with-ai-generation-failure-retry_ELITEA-2001.md
 Spec: test-specs/skills/l2_generated-skill-draft-fields-are-editable-before-creation_ELITEA-1990.md
 Spec: test-specs/skills/lextend_skill-draft-generated-from-natural-language-description_ELITEA-1989.md
@@ -60,6 +76,8 @@ Spec: test-specs/skills/lextend_create-skill-from-draft-saves-and-redirects-to-s
 Spec: test-specs/skills/l2_build-with-ai-name-field-validation_ELITEA-1993.md
 Spec: test-specs/skills/l2_generated-skill-name-adheres-to-naming-rules_ELITEA-1992.md
 Spec: test-specs/skills/l2_build-with-ai-back-to-prompt-returns-to-input-step-preserves-text_ELITEA-1996.md
+Spec: test-specs/skills/l2_build-with-ai-cancel-from-prompt-step-closes-modal-without-creating-a-skill_ELITEA-1997.md
+Spec: test-specs/skills/l2_build-with-ai-cancel-from-review-step-does-not-create-a-skill_ELITEA-1998.md
 Covers: GenerateSkillModal (GenerateEntityModal.jsx via GenerateSkillModal.jsx)
 
 Shares the modal-shell behavior with the Agent flow
@@ -83,10 +101,10 @@ import re
 
 import allure
 import pytest
-
-from pages.skills_list_page import SkillsListPage
-from pages.skill_detail_page import SkillDetailPage
 from pages.generate_skill_modal_page import GenerateSkillModalPage
+from pages.skill_detail_page import SkillDetailPage
+from pages.skill_form_page import SkillFormPage
+from pages.skills_list_page import SkillsListPage
 
 pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.new]
 
@@ -1170,6 +1188,255 @@ class TestSkillBuildWithAIBackToPromptFromReviewStep:
                 )
                 assert not console_capture, (
                     f"Expected zero console errors across the whole flow, got: {list(console_capture)}"
+                )
+        finally:
+            modal.clear_generate_mock()
+            console_capture.stop()
+            draft_requests.stop()
+            create_requests.stop()
+
+
+# ---------------------------------------------------------------------------
+# ELITEA-1997 — clicking "Cancel" on the PROMPT INPUT step (before Generate
+# is ever clicked) closes the modal without creating a Skill. `cancel_button`
+# was previously only asserted `.is_visible()` (ELITEA-1988's
+# TestSkillBuildWithAIModalElements); this is the first test in the suite to
+# `.click()` it. All handles (`cancel_button`, `name_input_field`,
+# `description_input_field`, `entity_card_name`) are pre-existing
+# LocatorDescriptor fields — no new testids or locators added by this test.
+# ---------------------------------------------------------------------------
+
+# ELITEA-1997 — verbatim per the AFS's Test Data table. Never submitted to
+# Generate, so its only role is to exercise the prompt textarea before
+# Cancel discards it.
+CANCEL_FROM_PROMPT_PROMPT_TEXT = (
+    "A skill that converts markdown tables into CSV for ELITEA-1997 "
+    "cancel-from-prompt verification."
+)
+
+
+class TestSkillBuildWithAICancelFromPromptStep:
+    """Build with AI (P2): clicking "Cancel" (``cancel_button``) on the
+    PROMPT INPUT step — before Generate is ever clicked — closes the modal
+    (dialog removed from the DOM, not merely hidden), leaves the New Skill
+    creation form in its original empty/untouched state, and fires neither
+    the generate-draft nor the create-skill request (ELITEA-1997).
+
+    Since Cancel is clicked before Generate, no draft is ever requested —
+    the network-absence check on both routes is the deterministic proof
+    that no Skill was created; the Skills-list read is a redundant,
+    case-literal echo of an unchanged set (AFS Step 6)."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/build_with_ai/ELITEA-1997_build-with-ai-cancel-closes-the-modal-without-creating-a-skill.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_cancel_from_prompt_step_closes_modal_without_creating_skill(self, page):
+        """Cancel on the prompt-input step closes the modal, leaves the New
+        Skill form empty, and creates no Skill."""
+        list_page = SkillsListPage(page)
+        modal = GenerateSkillModalPage(page)
+        form_page = SkillFormPage(page)
+
+        # Side-channel captures spanning the whole open -> type -> cancel
+        # sequence (AFS Expected Results / Axis 2) — started before Step 1
+        # so nothing fired during modal-open itself is missed.
+        console_capture = modal.capture_console_errors()
+        draft_requests = modal.capture_requests_matching(
+            "/elitea_core/generate_skill_draft/", method="POST"
+        )
+        create_requests = modal.capture_requests_matching(
+            "/elitea_core/skills/prompt_lib/", method="POST"
+        )
+
+        try:
+            with allure.step("Step 1 — Open modal, enter description without generating"):
+                list_page.navigate()
+                names_before = list_page.get_skill_card_names()
+
+                list_page.navigate_to_create()
+
+                assert form_page.name_input_field.input_value() == "", (
+                    "New Skill form's Name field should be empty before opening the modal"
+                )
+                assert form_page.description_input_field.input_value() == "", (
+                    "New Skill form's Description field should be empty before opening the modal"
+                )
+
+                modal.open_modal()
+                modal.fill_prompt(CANCEL_FROM_PROMPT_PROMPT_TEXT)
+
+                assert modal.get_prompt_value() == CANCEL_FROM_PROMPT_PROMPT_TEXT, (
+                    "Prompt textarea should contain exactly the entered text"
+                )
+                assert modal.is_generate_enabled(), (
+                    "Generate Draft button should become enabled once the prompt is non-empty"
+                )
+
+            with allure.step("Step 2 — Click 'Cancel' without generating"):
+                modal.cancel_button.click()
+
+            with allure.step("Step 3 — Verify the modal closes"):
+                modal.modal.wait_for(state="hidden", timeout=NAVIGATION_TIMEOUT)
+
+            with allure.step("Step 4 — Verify the New Skill form is still shown with empty fields"):
+                assert form_page.name_input_field.input_value() == "", (
+                    "New Skill form's Name field should remain empty after cancelling Build with AI"
+                )
+                assert form_page.description_input_field.input_value() == "", (
+                    "New Skill form's Description field should remain empty after cancelling Build with AI"
+                )
+
+            with allure.step("Step 5 — Verify no Skill was created"):
+                assert not draft_requests, (
+                    f"Cancel must never fire the generate-draft call, got: {list(draft_requests)}"
+                )
+                assert not create_requests, (
+                    f"Cancel must never fire the CREATE skill call, got: {list(create_requests)}"
+                )
+                assert not console_capture, (
+                    f"Expected zero console errors across the whole flow, got: {list(console_capture)}"
+                )
+
+            with allure.step("Step 6 — Navigate to the Skills list and verify it is unchanged"):
+                list_page.navigate()
+                names_after = list_page.get_skill_card_names()
+                assert names_after == names_before, (
+                    "Skills list should be unchanged after cancelling from the prompt step, "
+                    f"before={names_before} after={names_after}"
+                )
+        finally:
+            console_capture.stop()
+            draft_requests.stop()
+            create_requests.stop()
+
+
+# ---------------------------------------------------------------------------
+# ELITEA-1998 — clicking the modal's Close (X) icon on the REVIEW step (after
+# a draft has been generated) closes the modal without creating a Skill.
+# Case-text drift: the review step has no "Cancel" button — only
+# "Back to prompt" (`back_button`, ELITEA-1996's separate case) and
+# "Create Skill" (`approve_button`) — so the case's literal "Click 'Cancel'"
+# step is asserted against the live, correct control (`close_button`)
+# instead, per the reverse-masking guard. Filed as case-text drift:
+# https://github.com/EliteaAI/elitea-testing-public/issues/1486 (sibling of
+# #1318, the Agent-entity analog ELITEA-1918). `close_button` was previously
+# `.click()`ed only as unasserted test cleanup
+# (TestSkillBuildWithAIGeneratedNameNamingRules, ELITEA-1992's test); this is
+# the first test to assert what clicking it from the review step actually
+# does. All handles are pre-existing LocatorDescriptor fields — no new
+# testids or locators added by this test.
+# ---------------------------------------------------------------------------
+
+# ELITEA-1998 — verbatim per the AFS's Test Data section (the case's own
+# precondition already assumes a draft exists; this text is only used to
+# reach the review step).
+CANCEL_FROM_REVIEW_PROMPT_TEXT = (
+    "A skill that summarizes customer support tickets into a one-paragraph "
+    "digest for ELITEA-1998 cancel-from-review verification."
+)
+
+# Mocked generate_skill_draft response for ELITEA-1998 — minimal, valid
+# draft shape mirroring BACK_TO_PROMPT_DRAFT_PAYLOAD above. This case's Pass
+# criteria don't depend on the draft's specific content, only on the close
+# behavior and on the generated name's absence from the Skills list
+# afterward, so a deterministic mocked name is used rather than real,
+# non-deterministic AI output.
+CANCEL_FROM_REVIEW_DRAFT_PAYLOAD = {
+    "name": "elitea-1998-cancel-from-review-draft",
+    "description": "A draft used to test cancel-from-review-step behavior.",
+    "instructions": "You are a test skill for ELITEA-1998.",
+}
+
+
+class TestSkillBuildWithAICancelFromReviewStep:
+    """Build with AI (P2): clicking the modal's Close (X) icon
+    (``close_button``) on the REVIEW step (after a draft has been
+    generated) closes the modal (dialog removed from the DOM, not merely
+    hidden) and creates no Skill — the create-skill call never fires, and
+    the generated draft's name never appears in the Skills list
+    (ELITEA-1998).
+
+    The review step has no "Cancel" button at all — only "Back to prompt"
+    (returns to the input step, modal stays open — ELITEA-1996's separate
+    case) and "Create Skill" (the approval path). The modal's X icon is the
+    only control that closes the modal from the review step without
+    creating a Skill, and shares the same ``handleClose()`` semantics as
+    the input-step Cancel button ELITEA-1997 covers."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/build_with_ai/ELITEA-1998_build-with-ai-cancel-from-review-step-does-not-create-a-skill.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_cancel_from_review_step_does_not_create_skill(self, page):
+        """Closing the modal via the X icon from the review step closes the
+        modal and creates no Skill."""
+        list_page = SkillsListPage(page)
+        modal = GenerateSkillModalPage(page)
+
+        # Side-channel captures spanning the whole
+        # open -> type -> generate -> close sequence (AFS Expected Results /
+        # Axis 2) — started before Step 1 so nothing fired during
+        # modal-open itself is missed.
+        console_capture = modal.capture_console_errors()
+        draft_requests = modal.capture_requests_matching(
+            "/elitea_core/generate_skill_draft/", method="POST"
+        )
+        create_requests = modal.capture_requests_matching(
+            "/elitea_core/skills/prompt_lib/", method="POST"
+        )
+
+        modal.mock_generate_success(CANCEL_FROM_REVIEW_DRAFT_PAYLOAD)
+
+        try:
+            with allure.step("Step 1 — Generate a draft and reach the review form"):
+                list_page.navigate_to_create()
+                modal.open_modal()
+                modal.fill_prompt(CANCEL_FROM_REVIEW_PROMPT_TEXT)
+
+                with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+                    modal.generate_button.click()
+                assert response_info.value.status == 200, (
+                    "Mocked generate-draft response should resolve 200 to reach the review step"
+                )
+                modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+
+                assert modal.get_review_name() == CANCEL_FROM_REVIEW_DRAFT_PAYLOAD["name"], (
+                    "Review form should display the generated draft's name before Close discards it"
+                )
+                assert len(draft_requests) == 1, (
+                    "Exactly one generate-draft call should have fired to reach the review step "
+                    f"(this case's own precondition), got: {list(draft_requests)}"
+                )
+
+            with allure.step(
+                "Step 2 — Click the modal's Close (X) icon "
+                "(no 'Cancel' button exists on this step)"
+            ):
+                modal.close_button.click()
+
+            with allure.step("Step 3 — Verify the modal closes"):
+                modal.modal.wait_for(state="hidden", timeout=NAVIGATION_TIMEOUT)
+
+            with allure.step("Step 4 — Verify no Skill was created"):
+                assert not create_requests, (
+                    f"Close must never fire the CREATE skill call, got: {list(create_requests)}"
+                )
+                assert not console_capture, (
+                    f"Expected zero console errors across the whole flow, got: {list(console_capture)}"
+                )
+
+                list_page.navigate()
+                names_after = list_page.get_skill_card_names()
+                assert CANCEL_FROM_REVIEW_DRAFT_PAYLOAD["name"] not in names_after, (
+                    "Skills list should not contain the cancelled draft's generated name "
+                    f"{CANCEL_FROM_REVIEW_DRAFT_PAYLOAD['name']!r}, got: {names_after}"
                 )
         finally:
             modal.clear_generate_mock()
