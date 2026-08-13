@@ -173,6 +173,15 @@ within one skill, not per-*skill* list pinning.
   generated values), ELITEA-1989 (loading text + no extra sections),
   ELITEA-1988 (modal open + static elements), ELITEA-1993 (Name-field
   validation on invalid manual edits, pending implementation).
+- **RBAC gating (ELITEA-1986/1987, confirmed live):** `generate-skill-open-button` is gated by
+  `PERMISSIONS.applications.update` — `GenerateSkillButton.jsx` passes it into the shared
+  `GenerateEntityButton.jsx`, the SAME gate/permission as the Agents "Build with AI" button
+  (`GenerateAgentButton.jsx`). Confirmed live this run: button renders with text "Build with AI"
+  for `${TEST_USER}` (admin-equivalent) on project `399`. Editor/viewer-role halves are **not**
+  live-verifiable — no `EDITOR_TEST_USER_*`/`VIEWER_TEST_USER_*` credential exists in
+  `.env.test`/`profile.md`, tracked in `EliteaAI/elitea-testing-public#1314` (opened for the Agents
+  analog ELITEA-1903/1904; ELITEA-1986/1987 hit the identical gap on this second entity type — do
+  not re-file, comment on #1314 instead).
 - Skill cleanup: `SkillAPI.delete_skill(skill_id)` (cookie-auth,
   `automation/api/client.py:1270`) in a `try/finally`; get `skill_id` from
   the post-create redirect URL regex `/skills/all/(\d+)$`. Never use a raw
