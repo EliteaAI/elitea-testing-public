@@ -79,6 +79,8 @@ Spec: test-specs/skills/l2_build-with-ai-back-to-prompt-returns-to-input-step-pr
 Spec: test-specs/skills/l2_build-with-ai-cancel-from-prompt-step-closes-modal-without-creating-a-skill_ELITEA-1997.md
 Spec: test-specs/skills/l2_build-with-ai-cancel-from-review-step-does-not-create-a-skill_ELITEA-1998.md
 Spec: test-specs/skills/l2_build-with-ai-creation-failure-stays-on-review-step-for-correction_ELITEA-2000.md
+Spec: test-specs/skills/l2_build-with-ai-description-instructions-character-limits_ELITEA-1994.md
+    (family — also ELITEA-1995)
 Covers: GenerateSkillModal (GenerateEntityModal.jsx via GenerateSkillModal.jsx)
 
 Covers ELITEA-2000: a CREATE-time failure (mocked 500 on the base-create
@@ -93,6 +95,21 @@ the real backend. Skill-entity sibling of ELITEA-1916
 GenerateEntityModal.jsx mechanism (`handleApprove`'s catch block never
 calls `handleClose()`), verified independently here for the Skill entity's
 own DOM/testids and simpler (no suggested-resources) create contract.
+
+Covers ELITEA-1994 / ELITEA-1995 (family AFS, one parameterized spec): the
+review-form Description/Instructions fields each enforce their character
+limit (2304 for Description, 5000 for Instructions — corrected per Known
+Defect #2, the case's stated 2500 for Instructions is stale) via the
+field's native HTML `maxlength` (`GenerateSkillReviewForm.jsx`'s
+`slotProps.htmlInput.maxLength`, sourced from `MAX_DESCRIPTION_LENGTH`/
+`MAX_INSTRUCTIONS_LENGTH` in `EliteaUI/src/common/constants.js`): an
+over-limit paste is truncated to exactly the limit before React validation
+ever sees a longer value, the truncated value is valid (no error, "Create
+Skill" stays enabled), and no Skill is ever created. Per Known Defect #1,
+the cases' literal Steps 2-4 ("over-limit -> validation error -> disabled
+button") describe a state unreachable via manual editing for both fields —
+the same class of finding ELITEA-1993 already established for the Name
+field.
 
 Shares the modal-shell behavior with the Agent flow
 (tests/ui/agents/test_agent_build_with_ai.py) via
@@ -1659,3 +1676,167 @@ class TestSkillBuildWithAICreationFailureRecovery:
         finally:
             if created_skill_id is not None:
                 skill_api.delete_skill(created_skill_id)
+
+
+# ---------------------------------------------------------------------------
+# ELITEA-1994 / ELITEA-1995 — review-form Description/Instructions
+# character-limit enforcement (family AFS — one parameterized spec, mirrors
+# the ELITEA-1811/ELITEA-1814 bucket-name-validation family pattern in
+# tests/ui/artifacts/test_artifacts_bucket_name_validation_invalid_formats.py)
+# ---------------------------------------------------------------------------
+
+CHAR_LIMIT_PROMPT_TEXT = (
+    "A skill that reviews pull request diffs and flags missing test "
+    "coverage for ELITEA-1994/1995 char-limit analysis."
+)
+
+# Mirrors GENERATED_DRAFT_PAYLOAD (ELITEA-1990) in shape — a distinct dict
+# instance so this family's mock never shares object identity with sibling
+# tests' mocks, even though route mocks are scoped per-page and don't
+# actually collide.
+CHAR_LIMIT_DRAFT_PAYLOAD = {
+    "name": "pr-test-coverage-review",
+    "description": "Reviews pull request diffs and flags missing test coverage.",
+    "instructions": "You are a PR reviewer. Inspect the diff and flag any "
+                     "changed code paths that lack corresponding test coverage.",
+}
+
+# One row per source case — see module docstring / AFS parameter table.
+#   field:  which review-form field the row targets ("description" or
+#           "instructions") — used to resolve modal.set_review_<field>() /
+#           modal.get_review_<field>()
+#   limit:  the row's LIVE-CONFIRMED character limit (AFS Test Data). For
+#           ELITEA-1995 this is 5000, NOT the case's stated 2500 — see the
+#           AFS's Known Defect #2 (case-text drift, filed as
+#           elitea-testing-public#1489)
+#   filler: single repeated character used to build the over-limit
+#           synthetic value (any over-limit value works identically since
+#           truncation is length-based, not content-based)
+CHAR_LIMIT_CASES = [
+    pytest.param("ELITEA-1994", "description", 2304, "y", id="ELITEA-1994-description"),
+    pytest.param("ELITEA-1995", "instructions", 5000, "z", id="ELITEA-1995-instructions"),
+]
+
+
+@allure.epic("Skills")
+@allure.feature("Build with AI — Review Form Character Limits")
+class TestSkillBuildWithAIReviewFormCharacterLimits:
+    """Build with AI (P2): the review-form Description/Instructions fields
+    each enforce their character limit via the field's native HTML
+    ``maxlength`` — pasting an over-limit string truncates it to exactly the
+    row's limit before any React validation ever runs, the truncated value
+    is valid (no validation error, "Create Skill" stays enabled), and no
+    Skill is ever created.
+
+    Per the AFS's Known Defect #1: the cases' literal Steps 2-4 ("over-limit
+    string entered -> validation error shown -> 'Create Skill' disabled")
+    describe a state that is unreachable via manual editing for BOTH
+    fields — the same class of finding ELITEA-1993 already established for
+    the Name field. Corrected here to assert the truncation-to-exact-limit
+    behavior the live product actually exhibits.
+    """
+
+    @pytest.mark.parametrize("case_id, field, limit, filler", CHAR_LIMIT_CASES)
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/skills/build_with_ai/"
+        "ELITEA-1994_build-with-ai-description-character-limit-is-enforced.md",
+        "onetest-ai Test Case link (ELITEA-1994)",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/skills/build_with_ai/"
+        "ELITEA-1995_build-with-ai-instructions-character-limit-is-enforced.md",
+        "onetest-ai Test Case link (ELITEA-1995)",
+    )
+    @allure.title("Build with AI — {field} field character limit is enforced ({case_id})")
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_review_form_field_character_limit_is_enforced(
+        self, page, case_id, field, limit, filler,
+    ):
+        """Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1994 or ELITEA-1995) so one row's
+        regression never masks its healthy sibling."""
+        list_page = SkillsListPage(page)
+        modal = GenerateSkillModalPage(page)
+
+        set_field = getattr(modal, f"set_review_{field}")
+        get_field = getattr(modal, f"get_review_{field}")
+
+        # Side-channel captures spanning the whole flow (AFS Step 5 /
+        # Expected Results) — started before Step 1 so nothing fired
+        # during modal-open itself is missed.
+        console_capture = modal.capture_console_errors()
+        create_requests = modal.capture_requests_matching(
+            "/elitea_core/skills/prompt_lib/", method="POST"
+        )
+
+        try:
+            with allure.step(
+                f"[{case_id}] Step 1 — Generate a skill draft, enter the review form"
+            ):
+                list_page.navigate_to_create()
+                modal.open_modal()
+                modal.fill_prompt(CHAR_LIMIT_PROMPT_TEXT)
+
+                modal.mock_generate_success(CHAR_LIMIT_DRAFT_PAYLOAD)
+                response = modal.click_generate_and_wait_for_response(
+                    timeout=GENERATE_RESPONSE_TIMEOUT
+                )
+                assert response.status == 200, (
+                    f"[{case_id}] Expected the mocked generate-draft request to "
+                    f"resolve 200, got {response.status}"
+                )
+                modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+
+                assert modal.approve_button.is_enabled(), (
+                    f"[{case_id}] Create Skill should start enabled — the "
+                    "unmodified generated draft is itself valid"
+                )
+
+            over_limit_value = filler * (limit + 100)
+
+            with allure.step(
+                f"[{case_id}] Step 2 — Overwrite the {field} field with a "
+                f"{len(over_limit_value)}-char string (limit is {limit})"
+            ):
+                set_field(over_limit_value)
+
+                truncated_value = get_field()
+                assert len(truncated_value) == limit, (
+                    f"[{case_id}] Native maxlength should cap the {field} field "
+                    f"at exactly {limit} characters, got length "
+                    f"{len(truncated_value)}"
+                )
+
+            with allure.step(
+                f"[{case_id}] Step 3 — Verify the truncated (valid) {field} "
+                f"value shows no validation error and 'Create Skill' remains "
+                f"enabled"
+            ):
+                assert modal.approve_button.is_enabled(), (
+                    f"[{case_id}] Create Skill should remain enabled — the "
+                    f"truncated {limit}-char {field} value is valid"
+                )
+
+            with allure.step(
+                f"[{case_id}] Step 4 — Close the modal without creating a "
+                f"Skill; verify no create-skill request and zero console "
+                f"errors fired across the flow"
+            ):
+                modal.close_button.click()
+
+                assert not create_requests, (
+                    f"[{case_id}] No create-skill request should ever have "
+                    f"fired, got: {list(create_requests)}"
+                )
+                assert not console_capture, (
+                    f"[{case_id}] Expected zero console errors, got: "
+                    f"{list(console_capture)}"
+                )
+        finally:
+            modal.clear_generate_mock()
+            console_capture.stop()
+            create_requests.stop()
