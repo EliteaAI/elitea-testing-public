@@ -42,6 +42,16 @@ is the one test in the file that deliberately does NOT mock
 `generate_skill_draft`, so it verifies the platform's actual AI/backend
 naming behavior rather than an analyst-chosen fixture string.
 
+Covers ELITEA-1996: clicking "Back to prompt" (`back_button`) on the
+REVIEW step returns the modal to the INPUT step — review-form fields and
+the review-step action row removed from the DOM, not merely hidden —
+while preserving the exact previously-typed prompt text and firing no new
+network request. Skills-entity sibling of ELITEA-1919
+(tests/ui/agents/test_agent_build_with_ai.py); same shared
+GenerateEntityModal.jsx mechanism (`handleBack()` resets `step`/`draftData`
+but never calls `setDescription('')`), verified independently here for the
+Skill entity's own DOM/testids.
+
 Spec: test-specs/skills/l2_build-with-ai-generation-failure-retry_ELITEA-2001.md
 Spec: test-specs/skills/l2_generated-skill-draft-fields-are-editable-before-creation_ELITEA-1990.md
 Spec: test-specs/skills/lextend_skill-draft-generated-from-natural-language-description_ELITEA-1989.md
@@ -49,6 +59,7 @@ Spec: test-specs/skills/lextend_clicking-build-with-ai-opens-the-generation-moda
 Spec: test-specs/skills/lextend_create-skill-from-draft-saves-and-redirects-to-skill-details_ELITEA-1991.md
 Spec: test-specs/skills/l2_build-with-ai-name-field-validation_ELITEA-1993.md
 Spec: test-specs/skills/l2_generated-skill-name-adheres-to-naming-rules_ELITEA-1992.md
+Spec: test-specs/skills/l2_build-with-ai-back-to-prompt-returns-to-input-step-preserves-text_ELITEA-1996.md
 Covers: GenerateSkillModal (GenerateEntityModal.jsx via GenerateSkillModal.jsx)
 
 Shares the modal-shell behavior with the Agent flow
@@ -1011,3 +1022,157 @@ class TestSkillBuildWithAIGeneratedNameNamingRules:
         # Close the modal without creating a Skill — this case never clicks
         # "Create Skill" (AFS Cleanup: no skill is created/persisted).
         modal.close_button.click()
+
+
+# ---------------------------------------------------------------------------
+# ELITEA-1996 — "Back to prompt" from the review step returns to the input
+# step and preserves the prompt text. Skills-entity sibling of ELITEA-1919
+# (tests/ui/agents/test_agent_build_with_ai.py) — same shared
+# GenerateEntityModal.jsx mechanism, verified independently for the Skill
+# entity's own DOM/testids. All handles (`back_button`, `approve_button`,
+# `review_name_input`) are pre-existing `GenerateSkillModalPage` fields;
+# `back_button` was never referenced by any test in this file before this
+# case. No new testids or locators added by this test.
+# ---------------------------------------------------------------------------
+
+# ELITEA-1996 — verbatim prompt per the AFS's Test Data table. This case's
+# Step 4 assertion depends on reading this EXACT text back after "Back to
+# prompt" is clicked, so it is a dedicated constant this test owns the
+# identity of.
+BACK_TO_PROMPT_PROMPT_TEXT = (
+    "A skill that translates English feedback into Spanish for ELITEA-1996 "
+    "back-to-prompt verification."
+)
+
+# Mocked generate_skill_draft response for ELITEA-1996 — minimal, valid
+# draft shape mirroring RETRY_DRAFT_PAYLOAD/GENERATED_DRAFT_PAYLOAD above.
+# This case's Pass criteria never assert on the draft's specific field
+# values, only on its absence from the DOM after "Back to prompt" is
+# clicked.
+BACK_TO_PROMPT_DRAFT_PAYLOAD = {
+    "name": "elitea-1996-back-to-prompt-draft",
+    "description": "A draft used to test back-to-prompt state-preservation behavior.",
+    "instructions": "You are a test skill for ELITEA-1996.",
+}
+
+
+class TestSkillBuildWithAIBackToPromptFromReviewStep:
+    """Build with AI (P2): clicking "Back to prompt" (``back_button``) on
+    the REVIEW step (after a draft has been generated) returns the modal
+    to the INPUT step — review-form fields and the review-step action row
+    removed from the DOM, not merely hidden — while preserving the exact
+    previously-typed prompt text and firing no new network request
+    (ELITEA-1996).
+
+    ``handleBack()`` (``GenerateEntityModal.jsx``) resets ``step`` back to
+    ``STEPS.INPUT`` and discards ``draftData``, but never calls
+    ``setDescription('')`` — the prompt text state deliberately survives.
+    Same shared component and mechanism as the Agent entity's ELITEA-1919
+    (see the ELITEA-1996 AFS Triangulation section).
+
+    ``back_button`` was previously never referenced anywhere in the skills
+    test suite — this is the first test to exercise what that control
+    actually does for the Skill entity."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/build_with_ai/ELITEA-1996_build-with-ai-back-to-prompt-returns-to-input-step-without-losing-the-prompt.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_back_to_prompt_returns_to_input_step_and_preserves_prompt_text(self, page):
+        """Clicking "Back to prompt" from the review step returns the modal
+        to the input step, preserves the exact prompt text, shows no
+        leaked draft data, and fires no new network request."""
+        list_page = SkillsListPage(page)
+        modal = GenerateSkillModalPage(page)
+
+        # Side-channel captures spanning the whole
+        # open -> type -> generate -> back sequence (AFS Expected Results /
+        # Axis 2) — started before Step 1 so nothing fired during
+        # modal-open itself is missed.
+        console_capture = modal.capture_console_errors()
+        draft_requests = modal.capture_requests_matching(
+            "/elitea_core/generate_skill_draft/", method="POST"
+        )
+        create_requests = modal.capture_requests_matching(
+            "/elitea_core/skills/prompt_lib/", method="POST"
+        )
+
+        modal.mock_generate_success(BACK_TO_PROMPT_DRAFT_PAYLOAD)
+
+        try:
+            with allure.step("Step 1 — Generate a draft and reach the review form"):
+                list_page.navigate_to_create()
+                modal.open_modal()
+                modal.fill_prompt(BACK_TO_PROMPT_PROMPT_TEXT)
+
+                assert modal.get_prompt_value() == BACK_TO_PROMPT_PROMPT_TEXT, (
+                    "Prompt textarea should contain exactly the entered text"
+                )
+
+                with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+                    modal.generate_button.click()
+                assert response_info.value.status == 200, (
+                    "Mocked generate-draft response should resolve 200 to reach the review step"
+                )
+                modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+
+                assert modal.get_review_name() == BACK_TO_PROMPT_DRAFT_PAYLOAD["name"], (
+                    "Review form should display the generated draft's name before Back discards it"
+                )
+                assert len(draft_requests) == 1, (
+                    f"Exactly one generate-draft call should have fired to reach the review step, "
+                    f"got: {list(draft_requests)}"
+                )
+
+            with allure.step("Step 2 — Click 'Back to prompt'"):
+                modal.back_button.click()
+
+            with allure.step("Step 3 — Verify the modal returns to the prompt input step"):
+                modal.wait_for_input_step(timeout=NAVIGATION_TIMEOUT)
+                assert modal.back_button.count() == 0, (
+                    "'Back to prompt' button should be fully removed from the DOM after Back, "
+                    "not merely hidden — the review-step action row is gone entirely"
+                )
+                assert modal.approve_button.count() == 0, (
+                    "'Create Skill' button should be fully removed from the DOM after Back"
+                )
+
+            with allure.step("Step 4 — Verify the previously entered prompt text is preserved"):
+                assert modal.get_prompt_value() == BACK_TO_PROMPT_PROMPT_TEXT, (
+                    "Prompt textarea should show the exact original text after Back — no "
+                    "truncation, no whitespace drift, no residual draft text appended"
+                )
+
+            with allure.step("Step 5 — Verify no draft data leaks into the prompt step UI"):
+                assert modal.review_name_input.count() == 0, (
+                    "Review-form Name field should be fully removed from the DOM after Back — "
+                    "no leaked draft data reachable via direct DOM query"
+                )
+                assert modal.review_description_input.count() == 0, (
+                    "Review-form Description field should be fully removed from the DOM after Back"
+                )
+                assert modal.review_instructions_input.count() == 0, (
+                    "Review-form Instructions field should be fully removed from the DOM after Back"
+                )
+
+            with allure.step(
+                "Step 6 — Verify no new network requests and zero console errors"
+            ):
+                assert len(draft_requests) == 1, (
+                    "Back click itself must not fire a new generate-draft call — still exactly "
+                    f"the one from Step 1, got: {list(draft_requests)}"
+                )
+                assert not create_requests, (
+                    f"Back click must never fire the CREATE skill call, got: {list(create_requests)}"
+                )
+                assert not console_capture, (
+                    f"Expected zero console errors across the whole flow, got: {list(console_capture)}"
+                )
+        finally:
+            modal.clear_generate_mock()
+            console_capture.stop()
+            draft_requests.stop()
+            create_requests.stop()
