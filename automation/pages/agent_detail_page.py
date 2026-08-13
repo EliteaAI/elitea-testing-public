@@ -90,8 +90,13 @@ class AgentDetailPage(AgentFormPage):
     # testid also starts with the `version-option-` prefix but lives on a
     # nested non-option child <svg>, not the option MenuItem itself. Purely
     # testid-keyed (no role/CSS-structure dependency).
+    # VERSION_OPTION_ANY: matches version dropdown option items. Excludes:
+    # - version-option-pin-icon (nested pin icon inside option)
+    # - version-option-set-default-* items (action menu items for "Set as default")
     VERSION_OPTION_ANY = (
-        '[data-testid^="version-option-"]:not([data-testid="version-option-pin-icon"])'
+        '[data-testid^="version-option-"]'
+        ':not([data-testid="version-option-pin-icon"])'
+        ':not([data-testid^="version-option-set-default-"])'
     )
 
     # --- Variables section (ELITEA-1884 testid-only rework — added via
