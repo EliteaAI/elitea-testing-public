@@ -42,3 +42,4 @@
 - [Catalog "under Category" scoping](catalog_category_grouping_cannot_be_scoped_no_container_testid.md) — RESOLVED PR #1464; container-testid pattern for reuse
 - [Subagent skill isolation confound](subagent_skill_isolation_confound.md) — assert nested-accordion chip, not whole-message text; master's own skill can fire independently
 - [Edit-with-AI wizard testid gaps](edit_with_ai_wizard_testid_gaps.md) — Refine Prompt/Save-as-Version still unwired; Cancel absent in wizard phase
+- [Native maxlength probe w/o context blowup](native_maxlength_probe_without_context_blowup.md) — execCommand('insertText') in browser_evaluate, never a literal huge string

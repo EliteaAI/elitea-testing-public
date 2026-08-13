@@ -160,6 +160,30 @@ within one skill, not per-*skill* list pinning.
   error / `{len}/64`-counter helper text; only the Name field's helper text
   has a testid so far (Description/Instructions helper text untouched — no
   case has asserted them yet).
+- **Description/Instructions character limits (ELITEA-1994/1995, confirmed
+  live) — SAME native-`maxlength`-truncation shape as the Name field's
+  64-char gap (ELITEA-1993 Known Defect #2), on BOTH fields.**
+  `GenerateSkillReviewForm.jsx` wires `slotProps.htmlInput.maxLength` to
+  `MAX_DESCRIPTION_LENGTH`/`MAX_INSTRUCTIONS_LENGTH`
+  (`EliteaUI/src/common/constants.js:67-68`) on the Description/Instructions
+  `<textarea>`s. Live-confirmed via `document.execCommand('insertText', ...)`
+  on the focused field (reproduces real paste/type, same mechanism `.fill()`
+  respects): an over-limit paste truncates to **exactly** the limit before
+  `validateSkillDraft()` ever sees an over-length value — the "paste
+  over-limit → validation error + disabled Create Skill" state described by
+  both cases is unreachable via manual editing; the field always lands
+  valid at the limit instead. `MAX_DESCRIPTION_LENGTH = 2304` (matches
+  ELITEA-1994's case text exactly). `MAX_INSTRUCTIONS_LENGTH = 5000` — **NOT
+  2,500 as ELITEA-1995's case text states** — same drift already documented
+  for the sibling Edit-with-AI flow (ELITEA-2613, issue #1480); filed as a
+  sibling clarification for this flow:
+  [#1489](https://github.com/EliteaAI/elitea-testing-public/issues/1489).
+  No new testid needed for either field — `review_description_input`/
+  `review_instructions_input` (`.input_value()` length) +
+  `approve_button.is_enabled()` fully prove the observable; Description/
+  Instructions helper-text testids remain a gap for whichever future case
+  actually needs to read that string. Full details:
+  `test-specs/skills/l2_build-with-ai-description-instructions-character-limits_ELITEA-1994.md`.
 - Page object: `automation/pages/generate_skill_modal_page.py`
   (`GenerateSkillModalPage`, extends `GenerateEntityModalPageBase`).
   `set_review_name()`/`set_review_description()`/`set_review_instructions()`
