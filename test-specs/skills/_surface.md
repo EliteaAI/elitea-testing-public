@@ -209,6 +209,22 @@ Existing `open_actions_menu()` (JS-click bypass, waits on
 pin-toggle flow — no new "open menu" method needed. Test:
 `automation/tests/ui/skills/test_skill_pin_unpin.py`.
 
+**Generated-name naming-rule compliance (ELITEA-1992, confirmed live).**
+Every sibling Build-with-AI test in `test_skill_build_with_ai.py` mocks
+`generate_skill_draft` with an analyst-chosen, already-compliant `name` —
+none of them prove the **real** AI/backend output is well-formed. Live,
+unmocked generation this run (`POST generate_skill_draft/prompt_lib/399`
+→ `200`) returned `name: "english-to-spanish-feedback"` — confirmed
+byte-identical between the raw API response body and the review form's
+`generate-skill-review-name-input.input_value()` (no client-side
+sanitization step exists between the two; compliance is enforced upstream
+of `validateSkillDraft()`, not merely by it). Matches the source regex
+already documented above (`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`, ≤64 chars via
+native `maxlength`). **A test for this case must NOT mock the draft
+response** — mocking a pre-chosen compliant name would make the assertion
+tautological instead of proving anything about actual AI output.
+Full details: `test-specs/skills/l2_generated-skill-name-adheres-to-naming-rules_ELITEA-1992.md`.
+
 ## Import — invalid-file validation error (ELITEA-2438) — `useSkillImport.hooks.js`
 
 Distinct from the valid-import round trip (ELITEA-1737/1738, above the
