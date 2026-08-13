@@ -1,7 +1,7 @@
 # Campaign: skills-remaining
 
 ## State
-- Stage: **waves**
+- Stage: **CLOSED — 40/40 cases reached a terminal outcome across 5 waves (39 automated, 1 blocked)**
 - Conductor: none — plain sequential `batch-build` waves (foundation is null and already evidenced:
   `automation/pages/` has 4 skill page objects — `skill_form_page.py`, `skills_list_page.py`,
   `skill_detail_page.py`, `generate_skill_modal_page.py` — and `automation/tests/ui/skills/` has 18
@@ -67,7 +67,32 @@
   tip (11 node-ids, ~13-18min/run incl. live LLM calls) — 2 attempts each hit one transient
   console-404 (known noisy-resource pattern), 3rd attempt clean. Blast radius: both touched
   page objects purely additive. 7/7 automated, 0 blocked at close. TMS back-written.
-  · **wave-05 (9 cases, build_with_ai) RUNNING — runId `wf_c52e4e4f-cf5`** (FINAL WAVE)
+  · **wave-05 (9 cases, build_with_ai) LANDED (FINAL WAVE)** — elitea-testing-public#1491, merged.
+  First pass: 6/9 merged (real), ELITEA-1987 genuinely blocked (no VIEWER_TEST_USER credential —
+  whole case premise is the button's absence for an uncreatable role, no partial coverage possible;
+  consolidated onto tracking issue #1314, not filed again), 1994+1995 analyst died mid-run (harness
+  64000-output-token limit) — resumed via same runId per doctrine; the resume's own dedup correctly
+  recognized 1996/1997/1998/2000 as already-merged and skipped re-work. Workflow's internal gate went
+  RED on 1 run (console-404 on a spec that had passed clean in the other run — non-reproducing within
+  its own 2 runs). Lead's fresh 3/3 gate (14 node-ids, ~186s/run) confirmed clean — the 7th and final
+  occurrence of this session's known noisy-resource pattern. Blast radius: touched page object purely
+  additive. 8/9 automated, 1/9 blocked. TMS back-written (8 cases; ELITEA-1987 stays draft/manual).
+
+- **CAMPAIGN TOTALS (FINAL): 40/40 terminal — 39 automated + 1 blocked (ELITEA-1987, tracked via #1314,
+  not silently dropped). 5 waves, 6 trunk→base PRs merged (#1449, #1450, #1462, #1472, #1482, #1491).
+  New tracker items filed along the way: #1451 (clarification), #1459 (bug — icon-picker gallery),
+  #1463 (clarification), #1465 (minor), #1470 (minor, sanctioned-RED source), #1473 (bug, out-of-scope
+  pipeline-schedule testid regression found via a routine sync's testid-loss guard), #1478, #1489.
+  3 sanctioned-RED-by-design signatures confirmed deterministic against pre-existing open defects (#570,
+  #611, #1470). One genuinely new product bug found+fixed by the lead directly in shared test
+  infrastructure (the `update_text_field()` MUI auto-blur race, wave-03) plus one more (nested
+  sub-agent-accordion wrapper-chip assertion bug, wave-04) — both root-caused against EliteaUI source,
+  not guessed. The known Montserrat-CDN noisy-resource console-404 recurred 7 times across the whole
+  campaign, always as a single non-reproducing run — never blocked a final gate. One guardrail
+  violation self-caught and logged (wave-03, a merge-conflict resolution on a forbidden page-object
+  path — content verified correct, process violation stands, not repeated in wave-04/05's connected-repo
+  sync conflicts which were correctly dispatched). Real wall clock ~31h across 2 sessions (no
+  interactive checkpoints — factory/unattended mode throughout).**
 
 ## Source
 
