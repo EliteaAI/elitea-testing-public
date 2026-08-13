@@ -172,7 +172,22 @@ within one skill, not per-*skill* list pinning.
   editable, create with edits), ELITEA-1991 (create with no edits, keeps
   generated values), ELITEA-1989 (loading text + no extra sections),
   ELITEA-1988 (modal open + static elements), ELITEA-1993 (Name-field
-  validation on invalid manual edits, pending implementation).
+  validation on invalid manual edits, pending implementation), ELITEA-1996
+  (Back to prompt returns to input step, preserves prompt text, no
+  draft-data leak — pending implementation; `back_button` was previously
+  never referenced anywhere in this test file).
+- **`back_button` (`generate-skill-back-button`) — ELITEA-1996 confirmed live.**
+  Wired to `handleBack()` in the SAME shared `GenerateEntityModal.jsx` the
+  Agent modal uses (entity-agnostic component, no skill-vs-agent branching):
+  resets `step` to INPUT and clears `draftData`, but never clears
+  `description` — the prompt text survives the Back click verbatim, and
+  none of the review-form field testids remain in the DOM afterward. Zero
+  new network requests (`generate_skill_draft`/`skills/prompt_lib` both
+  unchanged) and zero console errors across the round trip. Identical
+  mechanism to ELITEA-1919 (Agent entity) — see
+  `test-specs/agents/l2_build-with-ai-back-to-prompt-returns-to-input-step-preserves-text_ELITEA-1919.md`
+  for the shared source-level triangulation. Full AFS:
+  `test-specs/skills/l2_build-with-ai-back-to-prompt-returns-to-input-step-preserves-text_ELITEA-1996.md`.
 - **RBAC gating (ELITEA-1986/1987, confirmed live):** `generate-skill-open-button` is gated by
   `PERMISSIONS.applications.update` — `GenerateSkillButton.jsx` passes it into the shared
   `GenerateEntityButton.jsx`, the SAME gate/permission as the Agents "Build with AI" button
