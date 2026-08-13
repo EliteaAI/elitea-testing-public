@@ -191,10 +191,20 @@ None — all four cases executed end-to-end live.
 - Framework: Playwright + pytest (per `.agents/testing.md`).
 - Extend the existing `automation/pages/help_center_page.py` — reuse
   `open_resource_link_in_new_tab(slug)` unchanged (additive, no signature change) and the
-  existing `TOUR_LINK` class constant. No new page-object methods strictly required; the
-  family test reads `HelpCenterPage.TOUR_LINK.format(slug)` directly for the pre-click href
-  check and the "links displayed" check, per the same pattern the ELITEA-2227 implementer
-  already established for dynamic testids.
+  existing `TOUR_LINK` class constant.
+  **Amended during implementation (fix round 1, ELITEA-2220 family):** the claim below this
+  line originally read "the family test reads `HelpCenterPage.TOUR_LINK.format(slug)` directly
+  ... per the same pattern the ELITEA-2227 implementer already established" — that precedent
+  does not exist. ELITEA-2227's own spec (`test_help_center_sidebar_tour.py`) never constructs
+  a `TOUR_LINK`-based locator directly; it exclusively calls the page-object method
+  `open_resource_link_in_new_tab()`. Per `.claude/rules/ui-tests.md` / `.claude/rules/page-objects.md`
+  (locators live only as page-object class fields, never constructed in spec files), the
+  correct — and now actual — implementation adds `HelpCenterPage.resource_link(slug) -> Locator`
+  (same style as `ai_providers_page.py`'s `card_for_model()` / `agent_form_page.py`'s
+  `get_tag_chip()`: a method wrapping a dynamic-testid class constant) and the spec calls
+  `help_center.resource_link(slug)` for both the "links displayed" loop and the pre-click href
+  check. `open_resource_link_in_new_tab()` now calls `self.resource_link(slug)` internally
+  instead of duplicating the locator construction.
 - **Family spec**: ONE parameterized test function
   (`test_resource_card_link_redirects_to_external_page`), one `pytest.param` row per TMS case,
   `id=` tagged with the case id. New pytest marker: none needed — reuse `help_center` +

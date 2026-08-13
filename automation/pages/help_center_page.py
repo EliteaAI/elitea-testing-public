@@ -9,7 +9,7 @@ URL: /help-center
 
 import logging
 
-from playwright.sync_api import Page
+from playwright.sync_api import Locator, Page
 from utils.actions import action
 
 from .base_page import BasePage
@@ -39,6 +39,18 @@ class HelpCenterPage(BasePage):
         super().navigate("/help-center")
         self.page_header.wait_for(state="visible", timeout=15000)
 
+    def resource_link(self, slug: str) -> Locator:
+        """Return the Locator for a resource card link by its kebab-case slug.
+
+        Args:
+            slug: kebab-case slug of the link's title, e.g.
+                ``"getting-started"``.
+
+        Returns:
+            Locator built from the ``TOUR_LINK`` dynamic-testid template.
+        """
+        return self.page.locator(self.TOUR_LINK.format(slug))
+
     @action("Open a resource link in a new tab")
     def open_resource_link_in_new_tab(self, slug: str, timeout: int = 10000) -> Page:
         """Click a resource link (``target="_blank"``) and return the new tab.
@@ -51,7 +63,7 @@ class HelpCenterPage(BasePage):
         Returns:
             The new ``Page`` object for the opened tab.
         """
-        link = self.page.locator(self.TOUR_LINK.format(slug))
+        link = self.resource_link(slug)
         link.wait_for(state="visible", timeout=timeout)
 
         with self.page.context.expect_page() as new_page_info:

@@ -126,11 +126,11 @@ class TestHelpCenterResourceLinks:
             f'Step 2/3 — [{case_id}] Locate the "{card_title}" card and verify its links are displayed'
         ):
             for slug in card_link_slugs:
-                link = page.locator(HelpCenterPage.TOUR_LINK.format(slug))
+                link = help_center.resource_link(slug)
                 expect(link).to_be_visible()
 
         with allure.step(f'Step 4 — [{case_id}] Verify "{click_slug}" href, then click it'):
-            click_link = page.locator(HelpCenterPage.TOUR_LINK.format(click_slug))
+            click_link = help_center.resource_link(click_slug)
             expect(click_link).to_have_attribute("href", expected_href)
             new_page = help_center.open_resource_link_in_new_tab(click_slug)
 
@@ -198,11 +198,11 @@ class TestHelpCenterResourceLinks:
 
         with allure.step('Step 2/3 — Locate the "Video Library" card and verify its links are displayed'):
             for slug in video_library_slugs:
-                link = page.locator(HelpCenterPage.TOUR_LINK.format(slug))
+                link = help_center.resource_link(slug)
                 expect(link).to_be_visible()
 
         with allure.step('Step 4 — Verify "More..." href, then click it'):
-            more_link = page.locator(HelpCenterPage.TOUR_LINK.format("video-library-more"))
+            more_link = help_center.resource_link("video-library-more")
             expect(more_link).to_have_attribute("href", expected_href)
             new_page = help_center.open_resource_link_in_new_tab("video-library-more")
 
