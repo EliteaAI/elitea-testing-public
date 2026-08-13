@@ -1,0 +1,511 @@
+{
+  "batch": "skills-remaining-w4",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-skills-remaining-w4",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      621.43,
+      612.29,
+      698.19
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2607",
+      "outcome": "blocked",
+      "note": "build failed: agent({schema}): subagent completed without calling StructuredOutput (after in-conversation nudge)",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Confirmed live (source-grounded + live probe): skill invocation (whether via explicit ~mention or autonomous context-match) surfaces in the chat 'Thought for N secs' accordion as a chat-answer-tool-chip reading exactly 'Skill: {skill-name}' -- ActionView.jsx's toolkit_name==='skills' special case. Existing page-object handles (AgentDetailPage.CHAT_ANSWER_THOUGHT_ACCORDION_SELECTOR / CHAT_ANSWER_TO… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_detail_page.py:189-191"
+        },
+        {
+          "kind": "note",
+          "note": "Unattached skills are correctly NEVER invoked -- verified live under an adversarial prompt explicitly naming/inviting the unattached skill. No product defect. Recorded the canary-marker testing technique (use a marker string, not a plausible real transform like an actual translation, since a correct real transform is indistinguishable from the base LLM answering with zero skill involvement) in qa-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/skill_autonomous_invocation_thought_chip_and_canary_marker.md"
+        },
+        {
+          "kind": "note",
+          "note": "The ELITEA-1735 AFS (2026-07-14 pass) logged agent-add-skill-button as a testid gap requiring add-data-testid. Confirmed live this run that it now has a testid on main (data-testid=\"agent-add-skill-button\") -- the UI team added it since that earlier pass. Corrected the stale gap note in test-specs/skills/_surface.md so no future analyst/implementer re-files it as a gap or re-adds it.",
+          "ref": "test-specs/skills/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS's coverage-map + provenance work was thorough and accurate this round: all handle claims (on-main, no gap) held on live re-verification, so implementation was a clean AFS-to-code translation with zero drift, zero new testids, zero page-object changes.",
+          "ref": "test-specs/skills/lextend_skill-autonomous-invocation-core-functionality_ELITEA-2607.md"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — file:line automation/tests/ui/skills/test_skill_agent_interaction.py:350. The new test's `@allure.issue(...)` link builds a URL to `https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-2607_skill-autonomous-invocation-core-functionality.md`. The actual case file (confirmed via `git -C ../onetest-ai-tm-Elitea ls-files | grep -i 2607… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_agent_interaction.py:350"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — TMS case Part B step 12 (\"Check thought process\" / expected \"No skill invocation shown for this message\") has no real assertion anywhere in the covering spec or the new extension. The covering spec's non-matching-prompt step (`test_skill_agent_interaction.py:196-215`, `test_interact_with_skills_from_agent`) only asserts response TEXT (no uppercase/underscore transform) — it never opens… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/lextend_skill-autonomous-invocation-core-functionality_ELITEA-2607.md"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer's two round-1 findings were both real gaps (verified absent from commit 018b254e before fixing) — no false-positive review to report.",
+          "ref": "PR #1474"
+        },
+        {
+          "kind": "note",
+          "note": "Fix 1 verified: @allure.issue() link now reads '.../skills/ELITEA-2607_skill-autonomous-invocation-core.md', byte-exact match to the real TMS file confirmed via `git -C ../onetest-ai-tm-Elitea ls-files | grep -i 2607` — no more 404. Also matches the sibling ELITEA-1735 test's own @allure.issue() pattern in the same file (same URL shape, same link name 'onetest-ai Test Case link').",
+          "ref": "automation/tests/ui/skills/test_skill_agent_interaction.py:123"
+        },
+        {
+          "kind": "note",
+          "note": "Fix 2 verified: new Step 7 sends the case's verbatim NON_MATCHING_PROMPT ('What is the capital of France?'), asserts the response is NOT uppercase-transformed AND expect(accordion.locator(CHAT_ANSWER_TOOL_CHIP_SELECTOR).filter(has_text=f\"Skill: {SKILL_3_NAME}\")).to_have_count(0) — a real, specific absence assertion closing case Part B step 12, which the AFS's own Coverage Map had only hedged ('min… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_agent_interaction.py:258-283"
+        },
+        {
+          "kind": "note",
+          "note": "Re-ran the mechanical locator grep on the full diff myself: 3 `.locator(` hits now (was 2 before this round — Step 7 added a third), all three reference the same pre-existing CHAT_ANSWER_TOOL_CHIP_SELECTOR class constant (agent_detail_page.py:191, `[data-testid=\"chat-answer-tool-chip\"]`) — compliant, no raw handles introduced. Command: `git diff origin/tests/batch-skills-remaining-w4...origin/test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Re-verified additive-only claim against origin/automation/base (not just the prior round's tip, to guard against a narrow-diff false-clean): `git diff origin/automation/base...origin/tests/ELITEA-2607-skill-autonomous-invocation -- automation/tests/ui/skills/test_skill_agent_interaction.py | grep -E '^-[^-]'` returned only the module docstring's first line — no existing test body line removed or a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map triangulation re-run against the case snapshot (.agents/automation/skills-remaining-w4/cases/ELITEA-2607.md) and the AFS (test-specs/skills/lextend_skill-autonomous-invocation-core-functionality_ELITEA-2607.md): all Part A/B/C rows now have a real disposition backed by an actual assertion at the claimed step — no remaining hedge, no orphan case element."
+        }
+      ],
+      "afs": "test-specs/skills/lextend_skill-autonomous-invocation-core-functionality_ELITEA-2607.md",
+      "branch": "tests/ELITEA-2607-skill-autonomous-invocation",
+      "pr": 1474
+    },
+    {
+      "id": "ELITEA-2608",
+      "outcome": "blocked",
+      "note": "Interrupted-session status (harness structured-output enforcement fired mid Phase-4 Execute), NOT an AFS/product blocker. New file automation/tests/ui/skills/test_subagent_skills_isolation.py is written, ruff-clean, uncommitted, on branch tests/batch-skills-remaining-w4. Live pytest run (background PID 26134, log /tmp/e2608_run1.log) was still executing (creating 2 skills + 3 agents, two live LLM … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2608's Test Data literally specifies skill descriptions with no scoping condition ('Format all output in UPPERCASE'), which reads as an unconditional/always-fire trigger to the LLM. When the MASTER agent has such a skill attached, it can autonomously invoke its OWN skill on its own top-level turn -- entirely independent of, and unrelated to, whether/how it delegates to a subagent -- produci… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_subagent-skills-isolation_ELITEA-2608.md"
+        },
+        {
+          "kind": "note",
+          "note": "The AFS's Part B whole-message-text assertion (steps 13-14) is marked contingent -- the narrowed master-skill description was designed during analysis but not independently re-verified live this pass (turn budget). Flagged explicitly in the AFS's Automation Hints as the implementer's first job: re-run live with the narrowed description before finalizing the whole-message assertion; if the master's… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_subagent-skills-isolation_ELITEA-2608.md"
+        },
+        {
+          "kind": "note",
+          "note": "Implementation complete but live pytest verification was still running when this session was force-terminated by structured-output enforcement before a result was observed."
+        }
+      ],
+      "afs": "test-specs/skills/l3_subagent-skills-isolation_ELITEA-2608.md"
+    },
+    {
+      "id": "ELITEA-2609",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2609 classified extend-existing targeting automation/tests/ui/skills/test_skill_agent_interaction.py (TestInteractWithSkillsFromAgent). Gap: a message that is BOTH explicit ~mention AND autonomous-context-matching on the SAME send — confirmed live to invoke the skill exactly once, no double-injection, no defect. Implementer should add the assertion as a third test method or extend the ELITE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/lextend_skill-explicit-autonomous-invocation-coexistence_ELITEA-2609.md"
+        },
+        {
+          "kind": "note",
+          "note": "Assertion-shape gotcha worth carrying into review: for any 'invoked exactly once' / no-double-injection claim on the chat-answer-tool-chip surface, the reviewer should check the implementer asserted chip .count()==1 (or to_have_count(1)), not just chip presence/visibility — a presence-only assertion would silently pass even with 2 invocations."
+        },
+        {
+          "kind": "note",
+          "note": "No product defect found — the coexistence and no-double-injection invariants both hold on live product. Matches the AFS's own 'Known Defects Found During Exploration: None' section.",
+          "ref": "test-specs/skills/lextend_skill-explicit-autonomous-invocation-coexistence_ELITEA-2609.md"
+        },
+        {
+          "kind": "note",
+          "note": "Self-caught (not reviewer-caught) priority-marker mismatch before handoff: AFS 'l3 (medium)' maps to @pytest.mark.p2 per pytest.ini's scale, not p3 — first draft had p3, corrected before running the full spec. Recorded in daily log as confirmation the existing preflight-check memory entry works when actually applied.",
+          "ref": ".agents/memory/test-automation-engineer/afs_priority_vs_pytest_mark_preflight_check.md"
+        },
+        {
+          "kind": "defect",
+          "note": "Blocking — automation/tests/ui/skills/test_skill_agent_interaction.py:583-584 (@allure.issue on the new test_skill_explicit_and_autonomous_invocation_coexistence): links to 'skills/ELITEA-2609_skill-explicit-autonomous-invocation-coexistence.md'. The real file in EliteaAI/onetest-ai-tm-Elitea is 'skills/ELITEA-2609_skill-explicit-and-autonomous-coexistence.md' (confirmed via local clone ls) — dead… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_agent_interaction.py:584"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case ↔ AFS ↔ diff — clean on every axis I could verify. Mechanical locator grep on the full diff: `git diff origin/tests/batch-skills-remaining-w4...origin/tests/ELITEA-2609-... -- automation/ | grep -nE '...'` → exactly 1 hit, line 161: `accordion.locator(detail_page.CHAT_ANSWER_TOOL_CHIP_SELECTOR)` — compliant (chains a pre-existing UPPER_CASE testid class constant off a page-object… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Non-blocking observation on the Coverage Map's Axis-1 row for Part A steps 1-6 ('explicit ~mention still works, invocation visible in thought process'): the AFS disposes this as already-proven by combining 1735's Steps 9-10 (explicit-alone, RESPONSE-TEXT only, no chip assertion) with 2607's Steps 5-6 (thought-process chip, but for AUTONOMOUS invocation, not explicit). No existing test in the cover… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/lextend_skill-explicit-autonomous-invocation-coexistence_ELITEA-2609.md"
+        },
+        {
+          "kind": "defect",
+          "note": "allure.issue TMS-case link 404'd due to a hand-typed filename typo (missing 'and-'); fixed to skills/ELITEA-2609_skill-explicit-and-autonomous-coexistence.md, verified via gh api contents lookup.",
+          "ref": "PR #1475 / test_skill_agent_interaction.py:582"
+        },
+        {
+          "kind": "note",
+          "note": "This is the second occurrence of the same allure.issue-filename-typo finding class in this batch (ELITEA-2607 hit it earlier the same session). Added a standing ast-based regression guard (test_skill_agent_interaction_allure_issue_links.py) rather than just re-fixing the string, to catch any future drift on this spec's TMS links before it reaches review."
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED: @allure.issue TMS-case link at automation/tests/ui/skills/test_skill_agent_interaction.py:582-585 now points at the real file `skills/ELITEA-2609_skill-explicit-and-autonomous-coexistence.md` — confirmed present via `ls ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/skills/`. The other two allure.issue links in the same file (ELITEA-1735 at :176-179, EL… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_agent_interaction.py:584"
+        },
+        {
+          "kind": "note",
+          "note": "New standing regression guard `automation/tests/unit/test_skill_agent_interaction_allure_issue_links.py` is sound: uses `ast.parse` to correctly fold adjacent string-literal concatenation in the decorator call (the actual URL-splitting shape used in this file), extracts all 3 @allure.issue TMS URLs via a regex anchored on the onetest-ai-tm-Elitea blob path, and asserts each resolves to a real file… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/unit/test_skill_agent_interaction_allure_issue_links.py"
+        },
+        {
+          "kind": "note",
+          "note": "Re-verified (not just re-trusted) the full standing checklist on this re-review: mechanical locator-policy grep on the full diff yields exactly 1 hit (`accordion.locator(CHAT_ANSWER_TOOL_CHIP_SELECTOR)`), compliant — chains off a pre-existing UPPER_CASE `[data-testid=` class constant, matching the identical pattern already used in the neighboring merged test. Coverage-Map `already-covered` disposi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_agent_interaction.py"
+        }
+      ],
+      "afs": "test-specs/skills/lextend_skill-explicit-autonomous-invocation-coexistence_ELITEA-2609.md",
+      "branch": "tests/ELITEA-2609-skill-explicit-autonomous-invocation-coexistence",
+      "pr": 1475,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          621.43,
+          612.29,
+          698.19
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2610",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Implementer capability gap: AgentDetailPage has no method to click a specific skill-version option on an agent-attached skill's version selector — only open_skill_version_selector/get_versions_menu_item_names/close_versions_menu exist. The testid (skill-version-option-{version_name}) and even the Python-side template constant (SKILL_VERSION_OPTION_SELECTOR) already exist at agent_detail_page.py:25… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_detail_page.py:259"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer capability gap: no TOP-LEVEL (non-nested) reader for chat-answer-tool-chip texts on the last chat message exists — get_nested_agent_tool_chip_texts() only reads chips scoped inside a nested sub-agent accordion (ELITEA-2608 use case). This case needs an equivalent scoped to the last top-level message, e.g. get_last_message_tool_chip_texts().",
+          "ref": "automation/pages/agent_detail_page.py:3571"
+        },
+        {
+          "kind": "note",
+          "note": "Reconfirmed (not new): agent-name-input silently truncates at 32 chars via native HTML maxlength (already tracked/documented by ELITEA-1900, 2026-08-07). Test data for ELITEA-2610's agent name must fit or accept the truncated form; not a defect."
+        },
+        {
+          "kind": "note",
+          "note": "Deterministic-assertion design choice: used '[BASE-STYLE]:'/'[CASUAL-STYLE]:'/'[TECH-STYLE]:' marker-tag skill instructions instead of the case's literal subjective tone prose (formal/casual-with-emojis/technical), because 'is this response casual' is not a reliably scriptable assertion. Mirrors the ELITEA-2440 precedent ('Always say BASE'/'Always say V1'). Flagged explicitly in the AFS so the imp… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Autonomous skill invocation is not guaranteed by attachment alone: the skill's own description and the agent's own instructions must both nudge the model toward using it, or the model may just answer directly with no tool invocation at all. Captured in memory (.agents/memory/test-automation-engineer/autonomous_skill_invocation_nudge.md, indexed) since this will recur on any future agent+skill auto… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2610"
+        },
+        {
+          "kind": "note",
+          "note": "AgentDetailPage.get_last_chat_response_text() extracts flattened text via text_content() — markdown syntax like fenced code-block backticks does not survive (renders to <pre><code>). Any future case asserting 'response contains a code example' should use a literal marker tag in the skill instructions rather than checking for literal backticks."
+        },
+        {
+          "kind": "defect",
+          "note": "Important — Correctness/reliability: `TS = int(time.time())` is concatenated into `SKILL_NAME`/`AGENT_NAME` and only THEN sliced `[:32]` (32-char field cap, ELITEA-1900). Computed on a real epoch (10 digits): `AGENT_NAME[:32]` = `elitea-2610-version-behavior-age` — the entire timestamp is truncated away, so EVERY run of this test creates an agent with the byte-for-byte identical name, forever. `SK… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_agent_version_selection_behavior.py:49-51"
+        },
+        {
+          "kind": "note",
+          "note": "Nit, non-blocking: the AFS Coverage Map's 'Asserted where' cell for Part C (steps 18-21) lists 'formal register' among what's asserted, but the implementation only asserts the `[BASE-STYLE]:` marker prefix + emoji absence — it does not (and, per the AFS's own Test Data rationale, deliberately should not) assert anything about the response's literal register/wording, since subjective tone isn't rel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_skill-version-selection-behavior_ELITEA-2610.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff (automation/): 3 hits, all `.locator(self.<UPPER_CASE_CONSTANT>...)` where the constant is a class-level `[data-testid=\"...\"]` string/template (`SKILL_VERSION_OPTION_SELECTOR`, `SKILL_VERSION_TRIGGER_SELECTOR`, `CHAT_ANSWER_TOOL_CHIP_SELECTOR`, all defined pre-existing at class level, lines 191/257/259). 0 non-compliant. No raw locators in the spec file. `s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_detail_page.py:2599-2647"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case ↔ AFS ↔ implementation for all 21 case steps (3 parts) via the Coverage Map: every step has a row + disposition, every asserted row has a matching real assertion in the test (marker-tag prefix, emoji presence/absence, negative cross-version checks, autonomous-invocation tool-chip text, zero-console-errors side-channel). Dedup/reuse claim against the three closest neighbours (ELIT… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_skill-version-selection-behavior_ELITEA-2610.md"
+        },
+        {
+          "kind": "note",
+          "note": "Third occurrence this batch (after ELITEA-2607 and ELITEA-2609's stale @allure.issue-filename fixes) of pairing a reviewer's mechanical/structural finding with a small tests/unit/ regression guard rather than just the one-line fix. Logged as a durable pattern in .agents/memory/test-automation-engineer/fix_round_findings_earn_a_regression_guard_not_just_a_line_fix.md."
+        },
+        {
+          "kind": "note",
+          "note": "Fix confirmed by direct code read (not just diff shape): SKILL_NAME/AGENT_NAME are now built from short bases (`el-2610-resp-style-` = 19 chars, `el-2610-ver-behavior-` = 21 chars) + `_SUFFIX = uuid.uuid4().hex[:6]`, giving 25/27-char final names — both under the 32-char product cap by construction, so no post-hoc `[:32]` slice is applied anywhere in the file. Matches the established `_SUFFIX = uu… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_agent_version_selection_behavior.py:57-65"
+        },
+        {
+          "kind": "note",
+          "note": "New regression-guard unit test correctly reproduces the exact defect shape (fixed prefix + concatenated value, sliced to 32 chars) and asserts current names are not that string, that the suffix survives intact in both names, and that two fresh module imports yield distinct names — a real regression guard, not a line-fix-only test.",
+          "ref": "automation/tests/unit/test_skill_version_selection_behavior_name_uniqueness.py:1-108"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical testid grep on the full round-2 diff: 3 hits (`page.locator`/`.locator(` lines), all referencing pre-existing class-level `[data-testid=` template constants (SKILL_VERSION_OPTION_SELECTOR, SKILL_VERSION_TRIGGER_SELECTOR, CHAT_ANSWER_TOOL_CHIP_SELECTOR) — no new non-testid handles introduced.",
+          "ref": "automation/pages/agent_detail_page.py"
+        }
+      ],
+      "afs": "test-specs/skills/l3_skill-version-selection-behavior_ELITEA-2610.md",
+      "branch": "tests/ELITEA-2610-skill-version-selection-behavior",
+      "pr": 1476,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          621.43,
+          612.29,
+          698.19
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2611",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "entities/edit-entity-with-ai (the shared Edit-with-AI wizard shell used by Skill, Agent, and Project-Context edit flows) has ZERO data-testid coverage past the prompt phase -- no testid on the step indicator, the 3 per-field 'Apply changes' checkboxes, the 5 wizard-footer buttons (Refine Prompt/Previous/Next/Save/Save as Version), or the Summary step's 3 merged-value inputs. Full component+prop+te… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_edit-with-ai-skill-happy-path_ELITEA-2611.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case steps 17-18 describe the Summary step as an itemized list of 'which changes will be applied.' The live implementation instead renders one merged, directly-editable form per field (value = current-or-suggested per that field's checkbox state) -- same underlying guarantee (only checked suggestions carry through), different presentation. Not filed as a tracker clarification (too minor / not wort… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_edit-with-ai-skill-happy-path_ELITEA-2611.md"
+        },
+        {
+          "kind": "note",
+          "note": "Wizard phase of EditEntityModal.jsx (shared by Skill/Agent/Project-Context Edit-with-AI) had zero data-testid wiring before this case — 9 new testids added via add-data-testid, prop-threaded through the shared component (EliteaAI/EliteaUI@cddfd6d4). refinePromptButtonTestId/saveAsVersionButtonTestId channels exist but are left unwired (no value passed) since this test never exercises Refine Prompt… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "CodeMirror-backed instructions editor (skill-instructions-editor-content) silently truncates long multi-paragraph content under BOTH text_content() and inner_text() — viewport-based line virtualization, distinct from the already-documented per-line-newline-dropping gotcha. For AI-generated instructions text, verify persistence via SkillAPI.get_skill() instead of the DOM. Documented in skill_instru… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "3x undeclared page.wait_for_timeout() sleeps in automation/pages/ai_edit_skill_modal_page.py (lines 283, 293, 298: uncheck_description_checkbox 150ms, click_next/click_previous 200ms each). None is tied to a filed defect, justified with a 'no DOM/network signal available' rationale, or declared in a comment — fails the project's own established 3-point sanctioned-exception test (.agents/memory/qa-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/ai_edit_skill_modal_page.py:283"
+        },
+        {
+          "kind": "defect",
+          "note": "AFS Coverage Map rows 10/11 (test-specs/skills/l2_edit-with-ai-skill-happy-path_ELITEA-2611.md) claim the General step's CURRENT(read-only)/SUGGESTED(editable) column display is 'asserted' at step 6, but no locator or assertion for either column exists anywhere in the diff (ai_edit_skill_modal_page.py has no locator for them; the test only checks step-indicator text, checkbox-checked state, and a … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_edit-with-ai-skill-happy-path_ELITEA-2611.md:133"
+        },
+        {
+          "kind": "note",
+          "note": "Nit: NAVIGATION_TIMEOUT and LOADING_STATE_TIMEOUT module constants (test_skill_edit_with_ai_happy_path.py lines 44/46) are declared but never used anywhere in the test — dead code, non-blocking.",
+          "ref": "automation/tests/ui/skills/test_skill_edit_with_ai_happy_path.py:44"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checked clean: mechanical testid-locator grep on the pytest diff = 0 hits (compliant, testid-only). EliteaUI testid commits (EliteaAI/EliteaUI@cddfd6d4, @cfc0cd43) verified: pure prop-threading, zero new hooks/DOM nodes (all three role-overrides.md zero-functional-impact greps against the case's own two commits returned 0/0/clean), and the #511 no-orphan-testid rule is correctly re… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Coverage Map dispositions can drift from the AFS's own Concrete Handles table — a row can say 'asserted' with no corresponding testid ever listed. Recommend the analyst-side checklist (test-case-analysis) add an explicit cross-check step: for every Coverage Map row marked asserted, confirm a real handle exists in the Concrete Handles table, not just that a step number is cited. Logged as memor… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2611"
+        },
+        {
+          "kind": "note",
+          "note": "Blocker 1 (undeclared page.wait_for_timeout() sleeps ×3) is FIXED: click_next(), click_previous(), and uncheck_description_checkbox() in automation/pages/ai_edit_skill_modal_page.py now use expect(self.step_indicator).not_to_have_text(...) / expect(self.general_description_checkbox).not_to_have_class(re.compile('Mui-checked')) real condition-waits instead. Verified: `git diff e0fab0fc^...tests/261… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/ai_edit_skill_modal_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Blocker 2 (Coverage Map rows 10/11 asserted with no locator) is FIXED: new testids ai-edit-skill-general-description-current/-suggested were added to EliteaUI (EliteaAI/EliteaUI@3e1e5c73, threaded TextDiffHighlight.jsx → GeneralStep.jsx → AIEditSkillModal.jsx, confirmed present on origin/automation/testids via git grep) and the page object gained get_general_description_current_text()/is_general_d… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/ai_edit_skill_modal_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "The EliteaUI JSX change for the two new testids (EliteaAI/EliteaUI@3e1e5c73) is additive-only — a testId prop threaded through 3 files plus a data-testid attribute; no new hooks, DOM nodes, or state. Zero-functional-impact check clean.",
+          "ref": "test-specs/skills/l2_edit-with-ai-skill-happy-path_ELITEA-2611.md"
+        },
+        {
+          "kind": "note",
+          "note": "Cross-checked SummaryStep.jsx's mergedName/mergedDescription/mergedInstructions merge formula against the test's Step 9 assertions in EliteaUI source — exact match (checked field pulls draftData, unchecked pulls currentData). No drift between AFS/implementation and the live merge logic.",
+          "ref": "automation/tests/ui/skills/test_skill_edit_with_ai_happy_path.py"
+        }
+      ],
+      "afs": "test-specs/skills/l2_edit-with-ai-skill-happy-path_ELITEA-2611.md",
+      "branch": "tests/2611-edit-with-ai-skill-happy-path",
+      "pr": 1477,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          621.43,
+          612.29,
+          698.19
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2612",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed https://github.com/EliteaAI/elitea-testing-public/issues/1478 (labels: question, case-text-drift) — ELITEA-2612 Part D (steps 21-26) describes an explicit 'Prompt is required' validation error message for empty/whitespace-only prompts. Live product (EditEntityModal.jsx) is disable-only: disabled={!description.trim()} on the Generate Draft button, with NO validation message ever rendered for … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1478"
+        },
+        {
+          "kind": "note",
+          "note": "New testid needed for the implementer: ai-edit-skill-wizard-refine-prompt-button on EliteaUI's AIEditSkillModal.jsx (wire the existing refinePromptButtonTestId prop channel on EditEntityModal — currently left unset there per canon #511 since no prior case exercised 'Refine Prompt'). Naming matches the sibling ai-edit-skill-wizard-{previous,next,save}-button set already landed for ELITEA-2611. Full… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_edit-with-ai-navigation-error-handling_ELITEA-2612.md"
+        },
+        {
+          "kind": "note",
+          "note": "Corrected a stale claim in test-specs/skills/_surface.md and in qa-engineer memory: the ELITEA-2611-era note that 'the entire wizard phase has zero testid coverage' is now only partially true — step indicator, the 3 Apply-changes checkboxes, Previous/Next/Save, and the 3 Summary-step inputs are wired and on main (EliteaAI/EliteaUI@cddfd6d4 + @3e1e5c73). Only Refine Prompt and Save-as-Version remai… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/edit_with_ai_wizard_testid_gaps.md"
+        },
+        {
+          "kind": "note",
+          "note": "Wizard-phase gotcha for the implementer: once generation succeeds and the modal enters the wizard phase, the 'Cancel' button (ai-edit-skill-cancel-button) no longer exists in the DOM at all — EditEntityModal.jsx's renderActions() returns null outside PHASES.PROMPT. The only dismissal control from that point is the modal-level Close (X), ai-edit-skill-close-button. A test written to look for a wiza… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS clarification elitea-testing-public#1478 (case text says explicit 'Prompt is required' error message; live product is disable-only with no message) was already filed by the analyst — implementation asserts the live-contract behavior (error_alert count == 0), not the stale case text, per the reverse-masking guard. No new action needed.",
+          "ref": "elitea-testing-public#1478"
+        },
+        {
+          "kind": "note",
+          "note": "New testid ai-edit-skill-wizard-refine-prompt-button wired at AIEditSkillModal.jsx (pure ladder-rung-1 call-site wiring of an already-existing EditEntityModal prop channel, zero new DOM/hooks), committed+pushed to EliteaAI/EliteaUI@cbf9dd27 on automation/testids — awaiting human cherry-pick to main.",
+          "ref": "EliteaAI/EliteaUI@cbf9dd27"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING (see blocking[]): @allure.issue decorator links a TMS filename that 404s (wrong slug 'edit-with-ai-navigation-error-handling' vs real 'edit-with-ai-skill-navigation-and-errors'). Third occurrence of this exact defect class in the same batch (skills-remaining-w4) — worth the lead considering a mechanical CI/pre-commit check (gh api probe on every new @allure.issue line in a diff) rather th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_edit_with_ai_navigation_error_handling.py"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checked out clean. Mechanical non-testid-handle grep on the full unit diff (git diff origin/tests/batch-skills-remaining-w4...origin/tests/ELITEA-2612-edit-with-ai-navigation-error-handling): 0 hits — `git diff origin/tests/batch-skills-remaining-w4...origin/tests/ELITEA-2612-edit-with-ai-navigation-error-handling | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_place… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case snapshot (.agents/automation/skills-remaining-w4/cases/ELITEA-2612.md) ↔ AFS (test-specs/skills/l3_edit-with-ai-navigation-error-handling_ELITEA-2612.md) ↔ diff — all 26 original case steps map to a Coverage Map row with a real assertion at the claimed step in the test code (verified individually, not just row existence). Case step 12/23 are correctly folded into steps 11/21's as… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "A stray pre-existing docstring in automation/api/client.py (SkillAPI.create_skill, untouched by this diff) claims skill names are capped at 32 characters, but the live EliteaUI validation schema (src/[fsd]/features/skill/lib/validation/skillValidationSchema.validation.js) caps at 64 — confirmed by reading the source. This PR's ~40-char generated skill name (`nav-error-test-skill-{time.time_ns()}`)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Implementer's own daily-log entry for this case (.agents/memory/test-automation-engineer/daily/2026-08-12.md, 22:55 entry) reports a green 1/1 local run (84.50s) satisfying the implementer's own gate; the orchestrator's independent N×3 hardening gate still applies before merge per .agents/testing.md § Merge gate."
+        },
+        {
+          "kind": "note",
+          "note": "Same defect class as ELITEA-2609 (recurrence #1, PR #1475) and now ELITEA-2612 — third occurrence of a hand-derived/assumed TMS case filename in @allure.issue 404'ing. Root cause each time: assuming the TMS case slug matches either the case title or (this time) the AFS filename, when it's independently named. Proposed durable fix for a future dispatch: one parametrized repo-wide unit test walking … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1479"
+        },
+        {
+          "kind": "note",
+          "note": "Fix commit 43b8cfc2 corrects the @allure.issue TMS link from `skills/ELITEA-2612_edit-with-ai-navigation-error-handling.md` (404) to `skills/ELITEA-2612_edit-with-ai-skill-navigation-and-errors.md` (200) — verified live via `gh api repos/EliteaAI/onetest-ai-tm-Elitea/contents/tests/automated-full-regression-ui/skills/ELITEA-2612_edit-with-ai-skill-navigation-and-errors.md` returning the filename, … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_edit_with_ai_navigation_error_handling.py:78"
+        },
+        {
+          "kind": "note",
+          "note": "This is the third occurrence of the allure.issue TMS-slug-drift defect class in this batch (ELITEA-2607, ELITEA-2609, ELITEA-2612) — none of the three had matching AFS-filename/TMS-filename slugs. The implementer's own memory entry proposes a repo-wide guard (one parametrized unit test walking every spec's @allure.issue decorators) instead of the current per-file bespoke guard (`test_skill_agent_i… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/unit/test_skill_agent_interaction_allure_issue_links.py:1"
+        },
+        {
+          "kind": "note",
+          "note": "Full re-triangulation of case snapshot ↔ AFS ↔ diff confirms all 26 Coverage Map rows map to real per-step assertions in the test (verified by reading the full test body, not just spot checks). Case-text drift for Part D's missing 'Prompt is required' message is correctly filed as clarification elitea-testing-public#1478 (confirmed open, correctly scoped to ELITEA-2612) rather than masked or asser… [clipped; full text in the unit's receipt under .atoms/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l3_edit-with-ai-navigation-error-handling_ELITEA-2612.md",
+      "branch": "tests/ELITEA-2612-edit-with-ai-navigation-error-handling",
+      "pr": 1479,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          621.43,
+          612.29,
+          698.19
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2613",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Filed clarification issue #1480 (case-text-drift + question labels): ELITEA-2613 states the Edit-with-AI Instructions character limit is 2,500 with an error/block on overflow. Live product + source (EliteaUI src/common/constants.js:68, MAX_INSTRUCTIONS_LENGTH) show the actual limit is 5,000, enforced by silent native maxlength truncation -- no error message, no blocked Save. Recommend updating the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1480"
+        },
+        {
+          "kind": "note",
+          "note": "Commented on the existing tracking issue #1314 (missing EDITOR_TEST_USER_*/VIEWER_TEST_USER_* credential fixture) to add ELITEA-2613 as a third case blocked by the exact same gap that already blocks ELITEA-1903/1904. No new issue filed -- this is the same root cause, not a duplicate. Once that fixture lands, Parts B/C of ELITEA-2613's AFS are a straightforward extension of the same test module Par… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1314"
+        },
+        {
+          "kind": "note",
+          "note": "Part D (character limit) turned out to need zero new testid work: the wizard's Summary-step merged Instructions input (ai-edit-skill-summary-instructions-input, existing page-object field) already carries the native HTML maxLength=5000 attribute, so the truncation assertion can be made directly against an already-wired handle -- no add-data-testid round trip needed for the implementer on this part… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Live-product finding (not a defect): the Edit-with-AI wizard's step-indicator numeral is positional, not fixed per step. skillAIEditionSteps.helpers.js's computeVisibleSteps() skips the General step when the AI draft's Name/Description are unchanged, so Summary can render as \"2. Summary\" or \"3. Summary\" depending on what the LLM call actually changed. AFS step 18 amended in-PR to reflect this (num… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_edit-with-ai-skill-permissions_ELITEA-2613.md"
+        },
+        {
+          "kind": "note",
+          "note": "An untracked file automation/tests/ui/skills/test_subagent_skills_isolation.py (ELITEA-2608, unrelated case) was already sitting in the working tree when this dispatch started. Left untouched per instructions (stage only own paths) — belongs to a different, apparently unmerged/uncommitted unit; the orchestrator may want to check whether that work was lost or is still in progress elsewhere."
+        },
+        {
+          "kind": "note",
+          "note": "Part B (Editor role) and Part C (Viewer role) of ELITEA-2613 remain unautomated — no EDITOR_TEST_USER_*/VIEWER_TEST_USER_* credential fixture exists. Same gap already tracked at EliteaAI/elitea-testing-public#1314 (ELITEA-1903/1904); the AFS names ELITEA-2613 as a third blocked case against that same tracking issue.",
+          "ref": "test-specs/skills/l2_edit-with-ai-skill-permissions_ELITEA-2613.md"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation TMS case ↔ AFS ↔ diff: clean. Part A (case steps 1-6) and Part D (case steps 16-22) are each individually asserted at the AFS step and mapped 1:1 to a real `expect`/`assert` in test_skill_edit_with_ai_role_visibility.py — no step performed as a bare action with an unasserted expected result. Coverage Map rows for the blocked Part B/C (steps 7-15) correctly disposed as `blocked`, tied… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift (2,500 vs actual 5,000-char limit; error-message vs silent-truncation framing) correctly classified as CLARIFICATION under the reverse-masking guard, not a defect — filed as elitea-testing-public#1480 with `question`+`case-text-drift` labels, body correctly cites 'Found while working #1399' and quotes source (`MAX_INSTRUCTIONS_LENGTH`, `SummaryStep.jsx:99,107`, `constants.js:68`). … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the diff (`git diff origin/tests/batch-skills-remaining-w4...origin/tests/2613-... -- automation/` piped through the reviewer's standard get_by_role|get_by_label|...|.locator( pattern) returned 0 hits — no non-testid handle was added. The PR touches only the test spec file; every LocatorDescriptor/method it calls (open_button, modal, step_indicator, next_button, summary_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS amendment (step 18's step-indicator numeral is positional, not fixed) is a well-grounded declared improvisation: cites the exact source (`skillAIEditionSteps.helpers.js`'s `computeVisibleSteps()`, `EditEntityStepIndicator.jsx:15`), landed in the same commit as the code that motivated it, and the implementation's numeral-agnostic 'Summary' substring match + bounded click-Next loop is the correc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "`skill_api` fixture (create/get/delete) and the `version_details.instructions` response-field shape used in the Part D persistence assertion are both pre-existing, already used identically by unrelated pipeline/skill tests (test_pipeline_code_node_*.py, test_skill_fork_end_to_end.py) — not an invented shape."
+        },
+        {
+          "kind": "note",
+          "note": "Minor nit, non-blocking: AFS step 16 says 'Verify: same as step 1' (dashboard/side-bar visible), but the implemented test's Step 16 instead asserts `detail_page.information_section.is_visible()` after navigating straight to the skill detail page — a reasonable equivalent (proves the authenticated session still renders app content) but not a literal same-as-step-1 assertion. Does not weaken coverag… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_edit_with_ai_role_visibility.py:227"
+        }
+      ],
+      "afs": "test-specs/skills/l2_edit-with-ai-skill-permissions_ELITEA-2613.md",
+      "branch": "tests/2613-edit-with-ai-skill-permissions",
+      "pr": 1481,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          621.43,
+          612.29,
+          698.19
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "blocked": 2,
+    "automated": 5
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}
