@@ -78,7 +78,21 @@ Spec: test-specs/skills/l2_generated-skill-name-adheres-to-naming-rules_ELITEA-1
 Spec: test-specs/skills/l2_build-with-ai-back-to-prompt-returns-to-input-step-preserves-text_ELITEA-1996.md
 Spec: test-specs/skills/l2_build-with-ai-cancel-from-prompt-step-closes-modal-without-creating-a-skill_ELITEA-1997.md
 Spec: test-specs/skills/l2_build-with-ai-cancel-from-review-step-does-not-create-a-skill_ELITEA-1998.md
+Spec: test-specs/skills/l2_build-with-ai-creation-failure-stays-on-review-step-for-correction_ELITEA-2000.md
 Covers: GenerateSkillModal (GenerateEntityModal.jsx via GenerateSkillModal.jsx)
+
+Covers ELITEA-2000: a CREATE-time failure (mocked 500 on the base-create
+POST, not the generate-draft call) surfaces an app-wide toast (not an
+inline form message — see the ELITEA-2000 AFS Known Defects #1, the same
+entity-agnostic UX inconsistency ELITEA-1916 already documented for the
+Agent entity), leaves the modal open on the review step with all draft
+data preserved, and a retry (the same "Create Skill" button, no separate
+retry affordance) succeeds once the mock is cleared and the request reaches
+the real backend. Skill-entity sibling of ELITEA-1916
+(tests/ui/agents/test_agent_build_with_ai.py); same shared
+GenerateEntityModal.jsx mechanism (`handleApprove`'s catch block never
+calls `handleClose()`), verified independently here for the Skill entity's
+own DOM/testids and simpler (no suggested-resources) create contract.
 
 Shares the modal-shell behavior with the Agent flow
 (tests/ui/agents/test_agent_build_with_ai.py) via
@@ -116,6 +130,13 @@ GENERATE_RESPONSE_TIMEOUT = 15000
 LOADING_STATE_TIMEOUT = 3000
 REVIEW_FORM_TIMEOUT = 15000
 CREATE_RESPONSE_TIMEOUT = 15000
+
+# ELITEA-2000 — the failure toast is transient (MUI Snackbar
+# autoHideDuration, same mechanism ELITEA-1916's AFS documents for the
+# Agent entity), so this must be short enough that the assertion genuinely
+# catches it immediately after the mocked response resolves, not a
+# tolerant fallback timeout.
+TOAST_VISIBLE_TIMEOUT = 5000
 
 PROMPT_TEXT = (
     "Create a skill that summarizes long customer support transcripts into "
@@ -1443,3 +1464,198 @@ class TestSkillBuildWithAICancelFromReviewStep:
             console_capture.stop()
             draft_requests.stop()
             create_requests.stop()
+
+
+# ---------------------------------------------------------------------------
+# ELITEA-2000 — Build with AI: Skill CREATE-time failure stays on review
+# step for correction
+# ---------------------------------------------------------------------------
+
+CREATE_FAILURE_PROMPT_TEXT = "Create a simple test skill for ELITEA-2000 creation-failure recovery."
+
+# Mocked generate_skill_draft response for ELITEA-2000 — matches the AFS's
+# Test Data payload exactly. Unlike the Agent draft, the Skill draft has no
+# welcome_message/conversation_starters/suggested_* fields at all
+# (GenerateSkillReviewForm renders only Name/Description/Instructions).
+CREATE_FAILURE_DRAFT_PAYLOAD = {
+    "name": "elitea-2000-draft-skill-2",
+    "description": "A draft used to test create-failure recovery (attempt 2).",
+    "instructions": "You are a test skill for ELITEA-2000 attempt 2.",
+}
+
+# Simulated creation-failure response body for ELITEA-2000 — same message-
+# carrying-verbatim technique ELITEA-1916 uses, chosen because it
+# live-proves the backend's `error` field reaches the user (via
+# buildErrorMessage(err) -> err?.data?.error), not just a generic fallback.
+SIMULATED_CREATE_ERROR_MESSAGE = "Simulated creation failure for ELITEA-2000"
+
+
+class TestSkillBuildWithAICreationFailureRecovery:
+    """Build with AI (P2): a CREATE-time failure surfaces an app-wide toast,
+    leaves the modal open on the review step with all data preserved, and a
+    retry (the same "Create Skill" button, no separate retry affordance)
+    succeeds once the mock is cleared and the request reaches the real
+    backend (ELITEA-2000). Distinct from
+    TestSkillBuildWithAIGenerationFailureRetry.
+    test_generation_failure_shows_error_and_allows_retry (ELITEA-2001),
+    which mocks the generate-DRAFT call and never clicks Approve at all —
+    this is the first test in this file to exercise the base-skill CREATE
+    call failing. Skill-entity sibling of ELITEA-1916
+    (tests/ui/agents/test_agent_build_with_ai.py)."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "skills/build_with_ai/ELITEA-2000_build-with-ai-creation-failure-stays-on-review-step-for-correction.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    @pytest.mark.regression
+    def test_creation_failure_stays_on_review_step_and_retry_succeeds(self, page, skill_api):
+        """A mocked 500 on the base-create POST surfaces an app-wide error
+        toast (not an inline form message — see the ELITEA-2000 AFS Known
+        Defects #1), leaves the review form open with every field intact,
+        re-enables "Create Skill", and a second, real (unmocked) click
+        succeeds and creates the skill."""
+        list_page = SkillsListPage(page)
+        modal = GenerateSkillModalPage(page)
+        draft = CREATE_FAILURE_DRAFT_PAYLOAD
+
+        created_skill_id = None
+        try:
+            # ------------------------------------------------------------------
+            # Step 1 (case) — Generate a draft; reach the review form
+            # ------------------------------------------------------------------
+            with allure.step("Step 1 — Generate a draft and reach the review form"):
+                list_page.navigate_to_create()
+                modal.open_modal()
+                modal.fill_prompt(CREATE_FAILURE_PROMPT_TEXT)
+                modal.mock_generate_success(draft)
+
+                with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+                    modal.generate_button.click()
+
+                response = response_info.value
+                assert response.status == 200, (
+                    f"Expected the mocked generate-draft request to succeed, got {response.status}"
+                )
+                modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+
+            # ------------------------------------------------------------------
+            # Steps 1-2 (case) — Click "Create Skill"; the mocked creation
+            # API call fails
+            # ------------------------------------------------------------------
+            with allure.step('Step 2 — Click "Create Skill"; simulate a creation API failure'):
+                modal.mock_create_failure(SIMULATED_CREATE_ERROR_MESSAGE, status=500)
+
+                with modal.expect_create_response(timeout=CREATE_RESPONSE_TIMEOUT) as create_info:
+                    modal.approve_button.click()
+
+                    # Transient "Creating..." / isApproving in-flight state —
+                    # proves mock_create_failure()'s delay_ms window is
+                    # genuinely observable, not just a param that happens to
+                    # exist (GenerateEntityModal.jsx; mirrors ELITEA-1916's
+                    # AFS Coverage Map row 1). Asserted here, before the
+                    # `with` block exits and awaits the mocked (delayed)
+                    # response.
+                    assert modal.approve_button.text_content() == "Creating...", (
+                        'Approve button should read "Creating..." while the mocked create '
+                        "request is in flight"
+                    )
+                    assert not modal.approve_button.is_enabled(), (
+                        "Approve button should be disabled while the mocked create request is in flight"
+                    )
+
+                create_response = create_info.value
+                assert create_response.status == 500, (
+                    f"Expected the mocked create-skill request to resolve 500, got {create_response.status}"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 3 (case) — A clear, actionable error message is shown.
+            # Per the AFS Known Defects #1: the live mechanism is an
+            # app-wide TOAST (Toast.jsx), not an inline/embedded form
+            # message — asserted here against the LIVE contract per the
+            # reverse-masking guard (case-text drift is a documented
+            # clarification, not a product defect).
+            # ------------------------------------------------------------------
+            with allure.step("Step 3 — Verify a clear error toast is displayed"):
+                modal.toast_alert.wait_for(state="visible", timeout=TOAST_VISIBLE_TIMEOUT)
+
+                assert modal.toast_alert.get_attribute("data-severity") == "error", (
+                    "Toast alert should carry data-severity=\"error\" for a creation failure"
+                )
+                assert (modal.toast_message.text_content() or "").strip() == SIMULATED_CREATE_ERROR_MESSAGE, (
+                    "Toast message should surface the backend's error message verbatim, "
+                    f"got: {modal.toast_message.text_content()!r}"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 4 (case) — User remains on the review/edit step; no
+            # unwanted navigation occurs
+            # ------------------------------------------------------------------
+            with allure.step("Step 4 — Verify the modal stays open on the review step"):
+                assert modal.modal.is_visible(), (
+                    "Build with AI modal should still be present after a creation failure"
+                )
+                assert modal.back_button.is_visible() and modal.approve_button.is_visible(), (
+                    "Modal should still show the review step's action buttons after a creation failure "
+                    "(not reverted to the input/prompt step)"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 5 (case) — All previously entered/generated data is
+            # preserved on the form
+            # ------------------------------------------------------------------
+            with allure.step("Step 5 — Verify all draft data is still present"):
+                assert modal.get_review_name() == draft["name"], (
+                    "Review-form Name should still read the generated draft's value after a creation failure"
+                )
+                assert modal.get_review_description() == draft["description"], (
+                    "Review-form Description should still read the generated draft's value after a "
+                    "creation failure"
+                )
+                assert modal.get_review_instructions() == draft["instructions"], (
+                    "Review-form Instructions should still read the generated draft's value after a "
+                    "creation failure"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 6 (case) — Correct the issue (clear the mock), click
+            # "Create Skill" again — the SAME button, no separate retry
+            # control; the skill is created successfully against the real
+            # (unmocked) backend
+            # ------------------------------------------------------------------
+            detail_page = SkillDetailPage(page)
+            with allure.step('Step 6 — Retry "Create Skill"; verify it succeeds'):
+                assert modal.approve_button.is_enabled(), (
+                    '"Create Skill" button should be re-enabled after a failed creation attempt'
+                )
+
+                modal.clear_create_mock()
+                create_response = modal.click_approve_and_wait_for_creation(timeout=CREATE_RESPONSE_TIMEOUT)
+
+                assert create_response.status == 201, (
+                    f"Expected the retried (real) create-skill request to succeed, "
+                    f"got {create_response.status}"
+                )
+                created_skill_id = create_response.json()["id"]
+
+                page.wait_for_url(f"**/skills/all/{created_skill_id}**", timeout=NAVIGATION_TIMEOUT)
+                detail_page.wait_for_page_load()
+
+                assert f"/skills/all/{created_skill_id}" in page.url, (
+                    f"Expected to land on the created skill's detail page, got {page.url}"
+                )
+                assert detail_page.get_name() == draft["name"], (
+                    "Detail page Name field should carry over the generated draft's name verbatim, "
+                    f"expected {draft['name']!r}, got {detail_page.get_name()!r}"
+                )
+                assert detail_page.get_description() == draft["description"], (
+                    "Detail page Description field should carry over the generated draft's value verbatim"
+                )
+                assert detail_page.get_instructions() == draft["instructions"], (
+                    "Detail page Instructions field should carry over the generated draft's value verbatim"
+                )
+        finally:
+            if created_skill_id is not None:
+                skill_api.delete_skill(created_skill_id)
