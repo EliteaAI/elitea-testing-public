@@ -132,3 +132,37 @@ everything below composes with the tour-link inventory above under the SAME
   source. Assertions against `docs.elitea.ai` / `videoportal.epam.com` use
   ordinary Playwright role/title locators (e.g.
   `new_page.get_by_role("navigation", name="Pages")` on the docs site).
+
+## Resolved/added during ELITEA-2225 implementation (2026-08-14)
+
+- **New surface within the already-mapped page**: `ResourceVersionInfo.jsx`
+  (top-right of the Help Center header) — the version label + info-icon
+  tooltip + copy-to-clipboard, previously only named in this digest's
+  Feature location list, never explored. Data source:
+  `useGetResourcesConfigQuery` (version/date) + `useGetSystemInfoQuery`
+  (the 6 component versions: elitea_core, admin, notifications,
+  configurations, sdk_plugin, indexer_worker) — both resolved by the time the
+  header renders, no loading-state race observed live.
+- **4 new testids added**, all direct attributes on existing JSX nodes (zero
+  new DOM, confirmed via the Step 5.5 greps): `help-center-version-label`,
+  `help-center-version-info-icon`, `help-center-version-info-tooltip`,
+  `help-center-version-info-copy-button`. `EliteaAI/EliteaUI@bc82bc32` on
+  `automation/testids`; NOT yet on `main` (human cherry-pick pending).
+- **Interaction mode is HOVER, not click** — the case text says "Click the
+  'i' icon" but the live `<Tooltip>` (MUI default trigger) opens on hover;
+  no separate click handler exists. Not a defect (a click also works, since
+  hover fires first) — automated as `hover()` per the interaction-discovery
+  ladder; see the AFS Axis 2 note for the full reasoning. **Reusable finding
+  for any future Help Center tooltip work**: don't assume click-to-open on
+  MUI `Tooltip` instances here.
+- **Reused the app-wide `toast-alert`/`toast-message` testids** (pre-existing,
+  `src/components/Toast.jsx`) rather than adding new ones — same
+  per-page-object-field declaration precedent as `AgentDetailPage`/`ChatPage`.
+  Toast text confirmed live: "The version information has been copied to the
+  clipboard."
+- **Clipboard read-back works out of the box**: `conftest.py`'s `context`
+  fixture already grants `clipboard-read`/`clipboard-write` globally — no
+  per-test permission setup needed. Copied text format confirmed from source:
+  `Version: X.Y.Z (DD-Mon-YYYY)\n<component>: <version>\n...` (one line per
+  plugin, `—` em-dash fallback for a missing version — not hit live,
+  all 6 components had real version strings).
