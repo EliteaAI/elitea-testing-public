@@ -188,6 +188,35 @@ within one skill, not per-*skill* list pinning.
   `test-specs/agents/l2_build-with-ai-back-to-prompt-returns-to-input-step-preserves-text_ELITEA-1919.md`
   for the shared source-level triangulation. Full AFS:
   `test-specs/skills/l2_build-with-ai-back-to-prompt-returns-to-input-step-preserves-text_ELITEA-1996.md`.
+- **`cancel_button` (input step) and `close_button` (review step) — ELITEA-1997/1998
+  confirmed live.** Same `GenerateEntityModal.jsx` shell/mechanics as the Agent
+  entity's ELITEA-1917/1918 pair — see `test-specs/agents/l2_build-with-ai-cancel-*`
+  for the source-level `renderActions()` proof; not re-traced here since the
+  component is identical, only entity-specific testids differ.
+  - **Input step**: clicking `generate-skill-cancel-button` (previously only
+    `.is_visible()`-checked by ELITEA-1988) closes the modal, leaves
+    `skill-name-input-field`/`skill-description-input-field` empty, fires
+    **zero** `generate_skill_draft`/`skills/prompt_lib` requests. No
+    confirmation interstitial.
+  - **Review step has NO "Cancel" button** — only "Back to prompt"
+    (`generate-skill-back-button`) and "Create Skill"
+    (`generate-skill-approve-button`); confirmed live via accessibility
+    snapshot of the open dialog. The modal's Close (X) icon
+    (`generate-skill-close-button`) is the only control that discards a
+    generated draft without creating a skill — previously `.click()`ed only
+    as unasserted cleanup (the naming-rules test, ELITEA-1992's test class).
+    **Case-text drift filed**: [#1486](https://github.com/EliteaAI/elitea-testing-public/issues/1486)
+    (sibling of the Agent-entity #1318) — the TMS case ELITEA-1998 says
+    "Click Cancel" for this step; no such button exists.
+  - Confirmed live this run with a real, unmocked draft (`name:
+    "support-ticket-digest"`): closing via the X icon fires zero
+    `skills/prompt_lib` CREATE POSTs, and the draft's name never appears in
+    the Skills list afterward.
+  - Zero console errors across both flows this run (unlike the Agent
+    entity's documented `disableUnderline` baseline-noise warning — no
+    equivalent fired for the Skill review form this run).
+  Full details: `test-specs/skills/l2_build-with-ai-cancel-from-prompt-step-closes-modal-without-creating-a-skill_ELITEA-1997.md`,
+  `test-specs/skills/l2_build-with-ai-cancel-from-review-step-does-not-create-a-skill_ELITEA-1998.md`.
 - **RBAC gating (ELITEA-1986/1987, confirmed live):** `generate-skill-open-button` is gated by
   `PERMISSIONS.applications.update` — `GenerateSkillButton.jsx` passes it into the shared
   `GenerateEntityButton.jsx`, the SAME gate/permission as the Agents "Build with AI" button
