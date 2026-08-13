@@ -1,0 +1,511 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Thu Aug 13 08:35:09 UTC 2026","Thu Aug 13 08:35:24 UTC 2026","14616","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAICancelFromReviewStep","","","test_cancel_from_review_step_closes_modal_without_creating_agent","Closing the review step via the X icon closes the modal, leaves
+        the New Agent form empty/untouched, and never fires the base-agent
+        create call — even though a full draft was generated first."
+"passed","Thu Aug 13 08:54:07 UTC 2026","Thu Aug 13 08:54:38 UTC 2026","30916","tests.ui.agents","test_agent_with_github_toolkit","TestChatWithAgentToolkit","","","test_agent_chat_with_github_toolkit","Add toolkit to agent, chat via /chat, verify toolkit execution."
+"passed","Thu Aug 13 08:41:45 UTC 2026","Thu Aug 13 08:41:53 UTC 2026","7982","tests.ui.agents","test_agent_hub_like_agent_from_modal","TestAgentHubLikeAgentFromModal","","","test_agent_hub_like_agent_from_modal","Like an agent from the expanded detail modal: toggle state, increment
+        count, and verify persistence across modal close/reopen and in the
+        card list."
+"passed","Thu Aug 13 08:34:22 UTC 2026","Thu Aug 13 08:34:28 UTC 2026","6488","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAIDraftFieldPopulation","","","test_draft_fields_prepopulated_and_editable","Submitting a natural-language description populates all 5 review-
+        form fields (Name, Description, Instructions, Welcome Message, and
+        the Chat-starter inputs) with the generated draft's values, and every
+        one of those fields remains editable before ""Create Agent"" is
+        clicked."
+"passed","Thu Aug 13 08:45:40 UTC 2026","Thu Aug 13 08:45:57 UTC 2026","17058","tests.ui.agents","test_agent_management","TestCreateAgent","","","test_create_agent_required_fields_validation","Save button should be disabled when required fields are empty.
+
+        Also covers ELITEA-1871: Instructions filled alone, and Description filled
+        alone, must each leave Save disabled — only Name AND Description together
+        enable it.
+        "
+"passed","Thu Aug 13 08:50:20 UTC 2026","Thu Aug 13 08:50:45 UTC 2026","25638","tests.ui.agents","test_agent_run_history_select_past_run","TestAgentRunHistorySelectPastRun","","","test_select_past_run_loads_chat_messages","Clicking an older Run History entry loads its own messages into
+        the chat panel, distinct from the run that was active before the
+        panel was opened. Also verifies (ELITEA-1876) that every listed row
+        — not just the one clicked — displays its Date, Version, and
+        Duration columns."
+"passed","Thu Aug 13 08:42:45 UTC 2026","Thu Aug 13 08:42:51 UTC 2026","5821","tests.ui.agents","test_agent_hub_page_loads_private_project","TestAgentHubPageLoadsPrivateProject","","","test_agent_hub_page_loads_private_project","Agent Hub (Catalog) page loads without error for a Private-project
+        user: heading, search bar, full category filter rail, and agent
+        cards are all visible, with zero console errors."
+"skipped","Thu Aug 13 08:42:51 UTC 2026","Thu Aug 13 08:42:51 UTC 2026","0","tests.ui.agents","test_agent_hub_page_loads_team_project","TestAgentHubPageLoadsTeamProject","","","test_agent_hub_page_loads_team_project","Agent Hub (Catalog) page loads without error for a Team-project
+        user: heading, search bar, full category filter rail, and agent
+        cards are all visible, with zero console errors."
+"passed","Thu Aug 13 08:46:50 UTC 2026","Thu Aug 13 08:46:59 UTC 2026","9681","tests.ui.agents","test_agent_management","TestAgentList","","","test_agent_search_no_results","Searching for a non-existent agent should show no results."
+"passed","Thu Aug 13 08:45:15 UTC 2026","Thu Aug 13 08:45:33 UTC 2026","18306","tests.ui.agents","test_agent_management","TestCreateAgent","","","test_create_agent_via_ui","Create an agent through the UI form and verify it appears in the list."
+"passed","Thu Aug 13 08:37:01 UTC 2026","Thu Aug 13 08:37:09 UTC 2026","8538","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_visible_and_updates","Character counter appears when typing and updates in real-time.
+        TC-1685
+        Acceptance Criteria #1 (extended to Conversation Starters).
+
+        Note: Counter only appears after typing, not initially.
+        "
+"passed","Thu Aug 13 08:39:51 UTC 2026","Thu Aug 13 08:40:07 UTC 2026","16043","tests.ui.agents","test_agent_embedded_chat_shift_enter","TestAgentEmbeddedChatShiftEnter","","","test_shift_enter_new_line_enter_sends","Shift+Enter inserts a newline without sending; Enter submits the
+        accumulated multi-line message and triggers a response."
+"passed","Thu Aug 13 08:56:39 UTC 2026","Thu Aug 13 08:56:54 UTC 2026","15045","tests.ui.agents","test_import_agent_valid_md_file","TestImportAgentValidMdFile","","","test_import_agent_valid_md_file","Import a hand-authored (not app-exported) ``.md`` file and verify
+        the resulting Agent's Name/Description/Instructions/Model all match
+        the source file verbatim.
+
+        Steps (AFS
+        test-specs/agents/l2_import-valid-agent-md-file-correct-config_ELITEA-1901.md):
+        1. Navigate to the Agents dashboard; verify header, Import button,
+           and existing agent cards render.
+        2. Click the Import button and select the hand-authored ``.md``
+           fixture; verify the ""Import parameters"" preview dialog opens.
+        3. Verify the dialog shows an entity card for the agent (name
+           matches the fixture verbatim).
+        4. Confirm the dialog's Import button; verify the ""Import Complete""
+           success dialog lists the new agent, backed by a
+           ``201 Created`` on the import_wizard endpoint.
+        5. Click ""Got it""; verify auto-navigation to the new Agent's detail
+           page, then re-open the Agents dashboard and verify a card with
+           the correct name.
+        6. Open the imported agent; verify Name, Description, Instructions,
+           and Model all match the source file verbatim.
+        "
+"passed","Thu Aug 13 08:48:11 UTC 2026","Thu Aug 13 08:48:22 UTC 2026","11746","tests.ui.agents","test_agent_management","TestAgentActions","","","test_delete_agent_via_api","Create an agent, delete via API, and verify it's gone from the UI."
+"passed","Thu Aug 13 08:46:04 UTC 2026","Thu Aug 13 08:46:10 UTC 2026","5904","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_agent_instructions_field","Instructions field should be visible and editable."
+"broken","Thu Aug 13 08:56:11 UTC 2026","Thu Aug 13 08:56:37 UTC 2026","26084","tests.ui.agents","test_fork_agent_to_different_project","TestForkAgentToDifferentProject","","","test_fork_agent_to_different_project","Fork an Agent's version into a different project and verify the
+        forked agent's configuration matches the source, then clean up.
+
+        Steps (AFS
+        test-specs/agents/l2_fork-agent-version-to-different-project_ELITEA-1893.md):
+        1. Create the source Agent via UI (precondition — a single-version
+           agent with a version to fork); confirm its VERSION selector
+           shows ""base"".
+        2. Open the agent-actions overflow menu; verify the VERSION group
+           shows ""Fork"".
+        3. Click ""Fork""; verify the Fork wizard dialog opens.
+        4. Select a target project DIFFERENT from the source (400, ""UI
+           Testing""); verify the Fork button becomes enabled.
+        5. Verify the entity-preview card shows the Main entity only (no
+           ""Nested entities"" section, since the source has no attached
+           toolkits/skills/sub-agents).
+        6. Click ""Fork""; verify the fork POST returns 201 Created and the
+           dialog re-renders as ""Fork Complete"".
+        7. Click ""Got it""; verify navigation into the target project, onto
+           the new forked Agent.
+        8. Verify the forked agent's Name/Description/Instructions/Step
+           Limit match the source exactly.
+        9. Clean up: delete the forked agent via the UI; verify the DELETE
+           call returns 204 No Content.
+        "
+"passed","Thu Aug 13 08:34:40 UTC 2026","Thu Aug 13 08:34:47 UTC 2026","7201","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAIReviewNameValidation","","","test_review_name_validation_enforces_32_character_maximum","Typing more than 32 characters into the review-form Name field is
+        accepted into the DOM (no native truncation, unlike the regular
+        Create Agent form's Name field — ELITEA-1900), and triggers
+        `aria-invalid=""true""` + a visible ""Name must be 32 characters or
+        less"" error + a disabled ""Create Agent"" button. Trimming back to
+        exactly 32 characters clears the error and re-enables the button."
+"passed","Thu Aug 13 08:33:54 UTC 2026","Thu Aug 13 08:34:21 UTC 2026","26918","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAISelectedResourcesAttached","","","test_zero_selection_across_categories_attaches_nothing","Generating a draft with suggested resources rendered across
+        multiple categories simultaneously (Toolkit, MCP, Pipeline, Agent)
+        and clicking ""Create Agent"" with literally zero boxes checked
+        creates the agent via the base-create POST alone — no toolkit/
+        agent-relation/pipeline-relation/mcp-relation call ever fires, for
+        any category — and the created agent's Tools section and Skills
+        counter both confirm zero attachments across every category
+        (ELITEA-1908). Distinct from this class's per-item selective
+        coverage (ELITEA-1909/1911, which always select at least one item)
+        and from ELITEA-1914's ungated no-resources-rendered-at-all path —
+        this is the first test to assert a COMBINED all-category zero with
+        resources genuinely on offer."
+"passed","Thu Aug 13 08:35:38 UTC 2026","Thu Aug 13 08:35:48 UTC 2026","10036","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_visible_and_updates_realtime","Character counter appears when typing and updates in real-time.
+        TC-1688, TC-1685
+        Acceptance Criteria #1: Real-time character counter visible.
+        "
+"passed","Thu Aug 13 08:50:59 UTC 2026","Thu Aug 13 08:51:29 UTC 2026","29493","tests.ui.agents","test_agent_save_as_version_preserves_skills","TestAgentSaveAsVersionPreservesSkills","","","test_agent_save_as_version_preserves_skills","Create a Skill + Agent (both via UI), attach the Skill, Save As
+        Version, and verify the Skill is still attached under the new
+        version — confirmed both via the UI and a fresh API response."
+"passed","Thu Aug 13 08:44:18 UTC 2026","Thu Aug 13 08:44:29 UTC 2026","11641","tests.ui.agents","test_agent_llm_selector_model_settings_persist","TestAgentLlmSelectorModelSettingsPersist","","","test_llm_selector_change_model_settings_dialog_persist","Changing the model via the selector, opening the Settings dialog,
+        Save, and a real reload all behave correctly, and the selected model
+        persists across the reload."
+"passed","Thu Aug 13 08:49:17 UTC 2026","Thu Aug 13 08:49:26 UTC 2026","9472","tests.ui.agents","test_agent_name_character_limit","","","","test_agent_name_truncated_at_32_characters","Name field truncates input to 32 chars, no error at the limit, Save
+    enables once Description is also filled (ELITEA-1900).
+
+    Read-only: no agent is created, edited, or deleted.
+    "
+"passed","Thu Aug 13 08:46:11 UTC 2026","Thu Aug 13 08:46:17 UTC 2026","6461","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_agent_information_section","Information section should display Agent ID and Version ID."
+"passed","Thu Aug 13 08:37:10 UTC 2026","Thu Aug 13 08:37:18 UTC 2026","7636","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2.
+        "
+"broken","Thu Aug 13 08:41:10 UTC 2026","Thu Aug 13 08:41:31 UTC 2026","20639","tests.ui.agents","test_agent_hub_copy_link_from_modal","TestAgentHubCopyLinkFromModal","","","test_copy_link_from_modal_navigates_to_agent","Copy a link from the agent detail modal's Share action, navigate to it
+        in a new page context, and verify the modal auto-opens showing the same
+        agent's details (name, description, starters, welcome message)."
+"passed","Thu Aug 13 08:48:23 UTC 2026","Thu Aug 13 08:48:38 UTC 2026","14615","tests.ui.agents","test_agent_management","TestAgentActions","","","test_delete_agent_via_ui_menu","Create an agent, delete via the UI three-dot menu, and verify removal."
+"passed","Thu Aug 13 08:32:56 UTC 2026","Thu Aug 13 08:33:27 UTC 2026","30453","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAISelectedResourcesAttached","","","test_selected_suggested_skill_attached_and_non_selected_absent","Selecting one suggested Skill (leaving a second suggested Skill
+        unchecked) and clicking ""Create Agent"" attaches exactly the selected
+        Skill to the created agent's SKILLS section; the deliberately-
+        unselected Skill is absent. Extends this class's Toolkit/nested-Agent
+        coverage (ELITEA-1909) to the Skill suggested-resource type
+        (ELITEA-1911) — a genuinely distinct network contract
+        (GET+PATCH .../skill/prompt_lib/...) and a distinct accordion
+        (agent-skills-section, not agent-toolkits-section)."
+"passed","Thu Aug 13 08:47:07 UTC 2026","Thu Aug 13 08:47:19 UTC 2026","11914","tests.ui.agents","test_agent_management","TestAgentActions","","","test_edit_agent_name","Edit an agent's name and verify the change persists."
+"passed","Thu Aug 13 08:46:25 UTC 2026","Thu Aug 13 08:46:36 UTC 2026","10735","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_internal_tools_enum_usage","Verify internal tools can be toggled using the enum-based API.
+    
+        Note: This is a smoke test for the toggle_tool() API accepting enum values.
+        Full state verification (checking if checkbox actually changed) is not
+        performed due to MUI DOM complexity making is_tool_enabled() unreliable.
+        See test_internal_tools_enable_disable (skipped) for details.
+        "
+"passed","Thu Aug 13 08:43:24 UTC 2026","Thu Aug 13 08:43:37 UTC 2026","13252","tests.ui.agents","test_agent_icon_management","TestAgentIconManagement","","","test_agent_icon_change_persists_on_list_card","Selecting a new icon in the picker updates the header immediately
+        and the identical icon persists on the agent's dashboard card."
+"passed","Thu Aug 13 08:31:40 UTC 2026","Thu Aug 13 08:31:58 UTC 2026","17979","tests.ui.agents","test_agent_add_variables_persist_after_reload","TestAgentAddVariablesPersistAfterReload","","","test_add_two_variables_and_verify_they_persist_after_reload","Adding two {{variable}} references to Instructions, entering their
+        values, and saving persists both name+value pairs after a
+        full-navigation reload — asserted via both the DOM and the Save PUT
+        response body."
+"passed","Thu Aug 13 08:46:18 UTC 2026","Thu Aug 13 08:46:24 UTC 2026","6644","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_agent_toolkits_section_visible","Toolkits section should be visible with tool switches."
+"broken","Thu Aug 13 08:59:07 UTC 2026","Thu Aug 13 08:59:28 UTC 2026","20438","tests.ui.agents","test_nested_agent_with_mcp_tool_output","TestNestedAgentWithMcpToolOutput","","","test_nested_agent_with_mcp_tool_output","Parent agent invokes a nested sub-agent, relays its MCP tool output.
+
+        Steps (AFS test-specs/agents/l3_nested-agent-with-mcp-tool-output_ELITEA-1951.md):
+        1. Create the parent agent via the Agents ""Create"" form.
+        2. Click ""+ Agent"" in the Tools section (opens a popper — live-accurate
+           equivalent of the case's ""Agent tab"").
+        3. Attach the sub-agent (which has the MCP configured) via the popper.
+        4. Verify the sub-agent card shows a version selector with ""base"".
+        5. Verify the attach auto-saved (agent-level Save stays disabled).
+        6. Send the deterministic message via the embedded chat; verify the
+           parent invokes the sub-agent (nested accordion appears/expands).
+        7. Verify the parent's response includes the real MCP tool output
+           relayed from the nested sub-agent.
+
+        Args:
+            page: Playwright page fixture.
+            agent_api: Session-scoped AgentAPI client (parent-agent cleanup only —
+                the sub-agent is a persistent fixture, never deleted here).
+        "
+"passed","Thu Aug 13 08:46:43 UTC 2026","Thu Aug 13 08:46:49 UTC 2026","6816","tests.ui.agents","test_agent_management","TestAgentList","","","test_agent_search","Search for an agent by name on the dashboard."
+"passed","Thu Aug 13 08:46:36 UTC 2026","Thu Aug 13 08:46:42 UTC 2026","5832","tests.ui.agents","test_agent_management","TestAgentList","","","test_agents_dashboard_loads","Agents dashboard loads with functional header and search."
+"passed","Thu Aug 13 08:35:50 UTC 2026","Thu Aug 13 08:35:56 UTC 2026","6344","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2: Counter turns red when 0 characters remain.
+        "
+"passed","Thu Aug 13 08:32:08 UTC 2026","Thu Aug 13 08:32:14 UTC 2026","6492","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAIGenerationFailureRetry","","","test_generation_failure_shows_error_and_allows_retry","Generation failure surfaces an error, preserves the prompt, and a
+        retry (via the same Generate button) succeeds once the service
+        recovers."
+"passed","Thu Aug 13 08:34:28 UTC 2026","Thu Aug 13 08:34:40 UTC 2026","11498","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAIDraftFieldPopulation","","","test_edited_fields_persist_after_approve","ELITEA-1912: extends this class's ELITEA-1906 coverage (draft
+        fields are pre-populated and editable) into the one half it never
+        exercises — clicking ""Create Agent"" after editing all 5 fields, then
+        verifying the CREATED agent reflects the EDITED values, not the
+        original generated draft's values. Reuses the same generate+edit
+        setup ELITEA-1906's own test already proves (identical testids,
+        identical edit mechanism), then continues into the genuinely new
+        approve + created-agent-read sequence this suite has never covered."
+"passed","Thu Aug 13 08:37:18 UTC 2026","Thu Aug 13 08:37:51 UTC 2026","32569","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+        "
+"passed","Thu Aug 13 08:48:50 UTC 2026","Thu Aug 13 08:49:01 UTC 2026","10654","tests.ui.agents","test_agent_management","TestAgentActions","","","test_remove_tag_from_agent_persists_after_reload","Remove one of two saved tags, save, reload, and verify the
+        removed tag is gone while the remaining tag stays intact
+        (ELITEA-1879).
+
+        Uses a dedicated, disposable agent via ``AgentAPI.create_agent_full()``,
+        pre-seeded with 2 tags already saved via the creation payload's
+        ``version_details.tags`` (matching the case's own precondition — ""an
+        agent with at least one saved tag exists""). Seeding 2 tags (rather
+        than 1) lets the test prove BOTH halves of the case's Expected
+        Result: the removed tag is gone AND the remaining tag is intact —
+        a 1-tag seed could only prove removal.
+
+        Chip delete-icon testid (``agent-tags-chip-delete-{name}``) was
+        added for this case via ``add-data-testid`` alongside ELITEA-1878's
+        ``agent-tags-input``/``agent-tags-chip-{name}`` — this is the first
+        case exercising tag removal, so `chipDeleteTestId` is wired only on
+        the Agent branch (canon #511 scope discipline).
+        "
+"passed","Thu Aug 13 08:35:24 UTC 2026","Thu Aug 13 08:35:30 UTC 2026","5723","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAIBackToPromptFromReviewStep","","","test_back_to_prompt_returns_to_input_step_and_preserves_prompt_text","Clicking ""Back to prompt"" from the review step returns the modal
+        to the input step, preserves the exact prompt text, shows no
+        leaked draft data, and fires no new network request."
+"passed","Thu Aug 13 08:42:24 UTC 2026","Thu Aug 13 08:42:38 UTC 2026","14249","tests.ui.agents","test_agent_hub_my_liked_reload_cross_tab_sync","TestAgentHubMyLikedReloadCrossTabSync","","","test_agent_hub_my_liked_reload_reflects_cross_tab_like","A like made in Tab B is absent from Tab A's ""My Liked"" list until
+        Tab A performs a full page reload, after which it appears with the
+        matching like count; unliking (cleanup) restores the baseline."
+"passed","Thu Aug 13 08:43:37 UTC 2026","Thu Aug 13 08:44:17 UTC 2026","39877","tests.ui.agents","test_agent_llm_selector_anthropic_models","TestAgentLlmSelectorAnthropicModels","","","test_llm_selector_anthropic_models_are_available_and_functional","All three Anthropic models are listed in the LLM selector, each
+        can be selected + saved (201 on the Save PUT), and each produces a
+        ""CONFIRMED"" response in the embedded chat, correctly attributed to
+        the selected model."
+"passed","Thu Aug 13 08:42:03 UTC 2026","Thu Aug 13 08:42:24 UTC 2026","20990","tests.ui.agents","test_agent_hub_my_liked_filter_shows_only_liked_agents","TestAgentHubMyLikedFilterShowsOnlyLikedAgents","","","test_agent_hub_my_liked_filter_shows_only_liked_agents","Like an agent, activate the ""My Liked"" filter, verify the agent
+        appears in the filtered list, then unlike the agent and verify it
+        is removed from the filtered list immediately (optimistic update)."
+"passed","Thu Aug 13 08:41:33 UTC 2026","Thu Aug 13 08:41:39 UTC 2026","5624","tests.ui.agents","test_agent_hub_filter_multiple_categories","TestAgentHubFilterMultipleCategories","","","test_agent_hub_filter_by_multiple_categories","Clicking multiple category filter-rail chips accumulates filters:
+        both chips remain selected and agents from both categories display
+        simultaneously in separate labeled sections."
+"passed","Thu Aug 13 08:48:38 UTC 2026","Thu Aug 13 08:48:50 UTC 2026","11886","tests.ui.agents","test_agent_management","TestAgentActions","","","test_add_multiple_tags_persist_after_reload","Add two tags to an agent, save, reload, and verify both persist
+        (ELITEA-1878).
+
+        Uses a dedicated, disposable agent created via
+        ``AgentAPI.create_agent_full()`` (not the shared ``agent_id``
+        fixture) — same #524 workaround as ``test_edit_agent_instructions``.
+        The payload's seeded ``tags: []`` (``_build_dedicated_agent_payload``)
+        gives the test a known, empty starting Tags field, matching the
+        case's own precondition.
+
+        Tags input/chip testids (``agent-tags-input`` /
+        ``agent-tags-chip-{name}``) were added for this case via
+        ``add-data-testid`` — ``ApplicationEditForm.jsx``'s ``TagEditor`` call
+        site previously left them ``undefined`` on the Agent branch (only the
+        Pipeline branch exercised Tags before this case, canon #511 scope
+        discipline). Chip testids are dynamic (parameterized by tag name) so
+        each committed chip is independently addressable.
+        "
+"passed","Thu Aug 13 08:54:39 UTC 2026","Thu Aug 13 08:55:05 UTC 2026","25355","tests.ui.agents","test_build_with_ai_skill_from_agent","TestBuildWithAISkillFromAgent","","","test_build_with_ai_skill_auto_attaches_and_redirects_to_agent","Creating a Skill via Build with AI from an Agent's SKILLS section
+        redirects back to the Agent editor (never the Skill details page),
+        auto-attaches the new Skill once the async attach chain completes,
+        and the attachment persists after Save + reload.
+
+        Steps (AFS
+        test-specs/agents/l2_build-with-ai-skill-from-agent-auto-attaches-and-redirects_ELITEA-1999.md):
+        1. Open the fixture Agent for editing; in the SKILLS section click
+           ""+ Skill"" -> ""Create new""; verify navigation to
+           /skills/create?source_application_id=...&return_url=....
+        2. Click ""Build with AI""; fill the prompt; click Generate; verify
+           the generate-draft POST resolves 200 and the review form shows
+           the generated Name/Description/Instructions.
+        3. Click ""Create Skill""; verify the creation POST resolves 201 and
+           the URL transitions to /agents/all/{agent_id}?..., NOT to a
+           Skill-details URL.
+        4. Verify the user lands on the Agent editor, not the Skill details
+           page.
+        5. Verify the new Skill is automatically attached (async — poll,
+           do not assert immediately, see SKILL_ATTACH_TIMEOUT).
+        6. Save the Agent and reload it; verify the attached Skill is still
+           present and correctly linked.
+        "
+"failed","Thu Aug 13 08:56:54 UTC 2026","Thu Aug 13 08:57:34 UTC 2026","40372","tests.ui.agents","test_import_agent_zip_nested_agent_dependencies","TestImportAgentZipNestedAgentDependencies","","","test_import_agent_zip_nested_agent_dependencies","Export a main Agent with a nested Agent dependency attached
+        (produces a .zip), import it back, and verify both entities are
+        recreated with new IDs and correctly linked.
+
+        Steps (AFS test-specs/agents/l3_import-agent-zip-nested-dependencies_ELITEA-1902.md):
+        1. (Precondition setup) Create a nested Agent, then a main Agent
+           with the nested Agent attached via the ""+ Agent"" picker.
+        2. Export the main Agent via the actions overflow menu; verify a
+           `.zip` file is downloaded.
+        3. Unzip and inspect the archive's contents; verify it contains one
+           `.agent.md` per entity (main + nested), and the main entity's
+           frontmatter references the nested Agent.
+        4. Navigate to Agents list; import the `.zip`; verify the ""Import
+           parameters"" preview dialog opens.
+        5. Verify the import wizard lists entity cards for the main agent
+           AND the nested dependency.
+        6. Confirm the dialog's Import button; verify the ""Import
+           Complete"" success dialog.
+        7. Verify the success dialog lists both new entities (""2 agents"").
+        8. Click ""Got it""; verify the main agent and nested agent are both
+           created with new, distinct IDs and correctly linked (Tools
+           section shows the nested agent attached).
+        "
+"failed","Thu Aug 13 08:32:21 UTC 2026","Thu Aug 13 08:32:26 UTC 2026","5707","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAISuggestedResources","","","test_suggested_skills_section_capped_at_5_skills","Suggested Skills section renders for a mocked 7-item
+        `suggested_skills` payload; sampled cards show correct name and
+        description and are unselected by default. The card-count cap
+        (""never more than 5"", the case's stated Pass criterion) is asserted
+        via `expect.soft()` — it is a live-verified, deterministic product
+        defect (all 7 items render, not capped at 5), filed as
+        EliteaAI/elitea-testing-public#1317. See AFS:
+        test-specs/agents/lextend_build-with-ai-suggested-skills-section-shown-with-up-to-5-skills_ELITEA-1910.md
+        "
+"failed","Thu Aug 13 08:32:28 UTC 2026","Thu Aug 13 08:32:55 UTC 2026","27018","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAISelectedResourcesAttached","","","test_selected_suggested_resources_attached_and_non_selected_absent","Selecting one suggested Toolkit and one suggested Agent (leaving a
+        second suggested Agent unchecked) and clicking ""Create Agent""
+        attaches exactly the selected resources to the created agent's Tools
+        section; the deliberately-unselected Agent is absent."
+"passed","Thu Aug 13 08:44:30 UTC 2026","Thu Aug 13 08:45:15 UTC 2026","44966","tests.ui.agents","test_agent_llm_selector_openai_models","TestAgentLlmSelectorOpenaiModels","","","test_llm_selector_openai_models_are_available_and_functional","The 4 present OpenAI models are listed in the LLM selector, each
+        can be selected + saved (201 on the Save PUT), and each produces a
+        ""CONFIRMED"" response in the embedded chat, correctly attributed to
+        the selected model. GPT-4.1 (case-named, absent from the live
+        catalog) is deliberately not exercised — see module docstring."
+"passed","Thu Aug 13 08:41:39 UTC 2026","Thu Aug 13 08:41:45 UTC 2026","5697","tests.ui.agents","test_agent_hub_filter_single_category","TestAgentHubFilterSingleCategory","","","test_agent_hub_filter_by_single_category","Clicking a single category filter-rail chip selects that chip and
+        filters the Agent Hub content to that category's agents only."
+"passed","Thu Aug 13 08:42:51 UTC 2026","Thu Aug 13 08:42:59 UTC 2026","7923","tests.ui.agents","test_agent_hub_search_bar_filters_in_real_time","TestAgentHubSearchBarFiltersInRealTime","","","test_agent_hub_search_bar_filters_in_real_time","Typing a partial term into the Catalog search bar filters the
+        agent list in real time via a single debounced request; clearing
+        the typed text restores the exact original unfiltered set."
+"passed","Thu Aug 13 08:35:57 UTC 2026","Thu Aug 13 08:36:29 UTC 2026","32711","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+
+        Acceptance Criteria #1 & #3: Counter visible in Full Screen mode,
+        warning displays at limit.
+        "
+"passed","Thu Aug 13 08:47:20 UTC 2026","Thu Aug 13 08:47:32 UTC 2026","12156","tests.ui.agents","test_agent_management","TestAgentActions","","","test_edit_agent_description","Edit an agent's description and verify the change persists."
+"passed","Thu Aug 13 08:33:27 UTC 2026","Thu Aug 13 08:33:54 UTC 2026","26640","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAISelectedResourcesAttached","","","test_approve_with_no_resources_creates_agent_and_appears_in_list","Approving a plain draft — no suggested resources rendered at all —
+        creates the agent via the base-create POST only (no toolkit/agent/
+        skill relation calls), auto-navigates to the created agent's detail
+        page with the draft's content carried over and the Skills counter
+        reading zero, and the new agent is visible back on the Agents list.
+        Extends this class's create+navigate coverage (ELITEA-1909/1911) to
+        the ungated, no-resource-selection path (ELITEA-1914) — a distinct
+        network contract that click_approve_and_wait_for_creation()/
+        click_approve_and_wait_for_skill_creation() would hang on, since
+        neither association call ever fires for a plain draft (see
+        GenerateAgentModalPage.click_approve_and_wait_for_agent_created())."
+"passed","Thu Aug 13 08:50:46 UTC 2026","Thu Aug 13 08:50:59 UTC 2026","13413","tests.ui.agents","test_agent_save_as_version","TestAgentSaveAsVersion","","","test_save_as_version_creates_named_version_visible_in_dropdown","Editing Instructions and clicking Save As Version creates a named
+        version that appears (and is active) in the VERSION dropdown; switching
+        back to 'base' reverts the Instructions field to its original content
+        (ELITEA-1890, Step 8)."
+"passed","Thu Aug 13 08:47:59 UTC 2026","Thu Aug 13 08:48:10 UTC 2026","10817","tests.ui.agents","test_agent_management","TestAgentActions","","","test_welcome_message_shown_as_agent_bubble_before_first_message","Configured welcome message persists and renders as an agent
+        bubble in the embedded chat panel before any user message is sent
+        (ELITEA-1885).
+
+        Uses a dedicated, disposable agent created via
+        ``AgentAPI.create_agent_full()`` (not the shared ``agent_id``
+        fixture) — same #524 workaround as ``test_edit_agent_instructions``
+        above.
+
+        Asserts the POST-SAVE / POST-RELOAD persisted state as the pass
+        criterion, not the live keystroke-preview render: the welcome
+        message also renders in the chat panel on every keystroke before
+        Save, but that is not itself the case's pass criterion (see AFS
+        Metadata note). A full-navigation reload after Save both
+        re-verifies persistence and gives a pristine ""before any user
+        message"" state, uncontaminated by Step 2's live-preview render.
+        "
+"passed","Thu Aug 13 08:47:32 UTC 2026","Thu Aug 13 08:47:45 UTC 2026","13256","tests.ui.agents","test_agent_management","TestAgentActions","","","test_edit_agent_instructions","Edit an agent's Instructions field and verify the change persists
+        after a full-navigation page reload (ELITEA-1872).
+
+        Uses a dedicated, disposable agent created via
+        ``AgentAPI.create_agent_full()`` (not the shared ``agent_id``
+        fixture) because the fixture's plain ``create_agent()`` call
+        currently 400s against the DEV backend
+        (https://github.com/EliteaAI/elitea-testing-public/issues/524) —
+        same workaround as ``test_agent_remove_variable.py`` (ELITEA-1884).
+
+        Known defect #538 (isolated, non-blocking): typing into the
+        Instructions field triggers a React ""Maximum update depth exceeded""
+        console warning (confirmed live: fires on the typing step only, not
+        on navigate or save; does not block the Save request or persistence).
+        The console side-channel check is deferred to the end of the test
+        (after the case's own persistence assertions have run and proven the
+        feature under test has no defect) so this pre-existing, isolated
+        warning doesn't mask the Steps 1-5 verification — same scoping
+        precedent as ``test_credential_required_fields_validation.py``.
+        "
+"passed","Thu Aug 13 08:49:27 UTC 2026","Thu Aug 13 08:49:51 UTC 2026","24024","tests.ui.agents","test_agent_publish_unpublish_version","TestAgentPublishUnpublishVersion","","","test_publish_draft_version_then_unpublish_reverts_to_draft","Publishing a Draft version clones it into a Published version and
+        makes Unpublish available; clicking Unpublish reverts that version's
+        status back to Draft."
+"passed","Thu Aug 13 08:53:50 UTC 2026","Thu Aug 13 08:54:05 UTC 2026","15446","tests.ui.agents","test_agent_with_github_toolkit","TestRemoveToolkitFromAgent","","","test_remove_toolkit_from_agent","Add a toolkit, then remove it, and verify it's gone."
+"passed","Thu Aug 13 08:47:46 UTC 2026","Thu Aug 13 08:47:59 UTC 2026","13346","tests.ui.agents","test_agent_management","TestAgentActions","","","test_discard_changes_reverts_all_unsaved_edits","Editing Name, Description, and Instructions without saving, then
+        clicking Discard and confirming the Warning dialog, reverts all three
+        fields to their previously saved values (ELITEA-1873).
+
+        Uses a dedicated, disposable agent created via
+        ``AgentAPI.create_agent_full()`` (not the shared ``agent_id`` fixture)
+        for the same reason as ``test_edit_agent_instructions`` — the
+        fixture's plain ``create_agent()`` call currently 400s against the
+        DEV backend (https://github.com/EliteaAI/elitea-testing-public/issues/524).
+
+        The Discard confirmation modal and its confirm button previously
+        carried no testid at all (``ApplicationTabBar.jsx`` never threaded
+        ``DiscardButton``'s ``modalDataTestId``/``confirmButtonDataTestId``
+        props, even though ``BaseModal`` already supported them — same
+        threading-gap shape ELITEA-1971 fixed for the credential Discard
+        flow). Added via ``add-data-testid`` for this case:
+        ``discard-confirm-modal`` / ``discard-confirm-button`` (generic
+        names — the tab bar is shared between the Agent and Pipeline detail
+        pages, so a feature-scoped name would misrepresent the shared
+        component, matching the pre-existing generic ``discard-button``).
+        "
+"passed","Thu Aug 13 08:38:56 UTC 2026","Thu Aug 13 08:39:03 UTC 2026","7262","tests.ui.agents","test_agent_create_button_navigation","","","","test_create_button_navigates_to_create_agent_page","Sidebar create-agent button navigates to an empty Create Agent form
+    with Save disabled by default (ELITEA-1870).
+
+    Read-only: no agent is created, edited, or deleted.
+    "
+"passed","Thu Aug 13 08:57:37 UTC 2026","Thu Aug 13 08:58:12 UTC 2026","34593","tests.ui.agents","test_mcp_attach_via_tools_section","TestMcpAttachViaToolsSection","","","test_mcp_attach_via_tools_section","Attach a Remote MCP to an agent, verify persistence across reload,
+        then remove it and verify removal persists too.
+
+        Steps (AFS test-specs/agents/l3_mcp-attach-via-tools-section_ELITEA-1950.md):
+        1. Navigate to the agent detail page.
+        2. Verify the Tools section is expanded.
+        3. Verify the Toolkit/MCP add buttons are visible (live-accurate
+           equivalent of the case's ""tool type tabs"" — see module docstring).
+        4. Click ""+ MCP""; the shared popper opens with search + menu items.
+        5. Select the target MCP by name.
+        6. Verify the MCP appears as a card in the Tools section.
+        7. Verify the attach auto-saves (PATCH .../tool/prompt_lib/... -> 201;
+           no separate agent-level Save step exists for this flow).
+        8. Reload; verify the MCP is still attached.
+        9. Remove the MCP; confirm the ""Remove MCP?"" dialog; verify it's gone,
+           including after a fresh reload.
+
+        Args:
+            page: Playwright page fixture.
+            agent_id: Fresh agent created by fixture (auto-cleanup).
+            mcp_toolkit_with_tools: Fresh MCP toolkit created by fixture (auto-cleanup).
+        "
+"passed","Thu Aug 13 08:42:39 UTC 2026","Thu Aug 13 08:42:45 UTC 2026","5917","tests.ui.agents","test_agent_hub_open_agent_detail_modal","TestAgentHubOpenAgentDetailModal","","","test_agent_hub_open_agent_detail_modal","Clicking a Catalog agent card opens the preview modal as an overlay,
+        displaying icon, name, owner, liked status, overflow menu, close
+        button, description, CHAT STARTERS section, Welcome Message section,
+        and the Start Chat button — read-only, zero console errors, zero
+        4xx/5xx."
+"failed","Thu Aug 13 08:52:48 UTC 2026","Thu Aug 13 08:53:21 UTC 2026","33435","tests.ui.agents","test_agent_version_selector_order","TestAgentVersionSelectorOrder","","","test_version_selector_lists_versions_in_correct_order","The VERSION dropdown lists all versions with name+date metadata,
+        Draft versions above an unpinned base, base last when unpinned, and
+        the pinned/default version at the top with a pin icon — with no
+        independent Published-before-Draft tier (CLARIFICATION #1091)."
+"broken","Thu Aug 13 08:52:24 UTC 2026","Thu Aug 13 08:52:46 UTC 2026","21340","tests.ui.agents","test_agent_self_attachment_blocked","TestAgentSelfAttachmentBlocked","","","test_agent_self_attachment_blocked","Current agent never appears in its own ""+ Agent"" picker results.
+
+        Steps (AFS test-specs/agents/l2_agent-cannot-be-added-to-own-toolkit-
+        picker_ELITEA-1887.md):
+        1. Navigate to the agent detail page.
+        2. Open the ""+ Agent"" picker (live-accurate equivalent of the case's
+           ""+ Toolkit"" — see module docstring); verify the current agent is
+           absent from the initial, unfiltered list.
+        3. Search the picker for the current agent's own exact name; verify
+           the debounced search request fires and returns 200.
+        4. Verify the current agent is still absent from the rendered menu
+           items (DOM-level, not network-response-level — see module
+           docstring).
+        "
+"passed","Thu Aug 13 08:49:51 UTC 2026","Thu Aug 13 08:50:19 UTC 2026","28237","tests.ui.agents","test_agent_remove_variable","TestAgentRemoveVariable","","","test_remove_variable_and_verify_removal_persists","Removing a {{variable}} reference from Instructions removes its
+        Variables row immediately (client-side, before Save), and the
+        removal persists after Save + a full-navigation reload, while other
+        variables remain intact."
+"passed","Thu Aug 13 08:38:36 UTC 2026","Thu Aug 13 08:38:55 UTC 2026","19113","tests.ui.agents","test_agent_copy_version_link","TestAgentCopyVersionLink","","","test_copy_version_link_produces_version_specific_url","The VERSION-group ""Share"" action copies a URL containing the
+        version id as a distinct path segment (contrasted against the
+        AGENT-group ""Share"" action, which omits it); navigating to that URL
+        — even via a fresh tab, through the project-switch redirect hop —
+        opens the correct agent at the correct named version."
+"passed","Thu Aug 13 08:32:15 UTC 2026","Thu Aug 13 08:32:21 UTC 2026","5946","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAISuggestedResources","","","test_generated_draft_includes_suggested_resources_section","Submitting a description implying resource use surfaces a
+        Suggested Resources section in the review form: relevant
+        Toolkit/Agent/Pipeline/MCP suggestions are shown (each with a name,
+        and a description when the underlying resource has one), categories
+        with no suggestions render no section at all, and no suggestion is
+        pre-selected."
+"passed","Thu Aug 13 08:34:55 UTC 2026","Thu Aug 13 08:35:09 UTC 2026","13490","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAICancelFromPromptStep","","","test_cancel_from_prompt_step_closes_modal_without_creating_agent","Cancel on the prompt step closes the modal, leaves the New Agent
+        form empty/untouched, and fires neither the generate-draft nor the
+        create-agent network call."
+"passed","Thu Aug 13 08:53:23 UTC 2026","Thu Aug 13 08:53:48 UTC 2026","25451","tests.ui.agents","test_agent_with_github_toolkit","TestAddToolkitToAgent","","","test_add_toolkit_to_agent","Add a GitHub toolkit to an existing agent via the UI, then chat."
+"passed","Thu Aug 13 08:45:57 UTC 2026","Thu Aug 13 08:46:04 UTC 2026","6584","tests.ui.agents","test_agent_management","TestAgentConfiguration","","","test_agent_detail_page_loads","Navigate to an agent's detail page and verify form fields are populated."
+"passed","Thu Aug 13 08:36:30 UTC 2026","Thu Aug 13 08:37:00 UTC 2026","30546","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning message.
+        TC-1686
+
+        Tests both collapsed mode and fullscreen mode.
+        "
+"passed","Thu Aug 13 08:45:34 UTC 2026","Thu Aug 13 08:45:39 UTC 2026","5767","tests.ui.agents","test_agent_management","TestCreateAgent","","","test_create_agent_via_api_visible_in_ui","Create an agent via API fixture and verify it shows in the UI list."
+"passed","Thu Aug 13 08:49:01 UTC 2026","Thu Aug 13 08:49:17 UTC 2026","15143","tests.ui.agents","test_agent_management","TestAgentExecution","","","test_agent_executes_with_name_description_instructions_only","A toolkit-free agent (Name+Description+Instructions only) executes
+        via the embedded chat and responds without hanging."
+"passed","Thu Aug 13 08:34:48 UTC 2026","Thu Aug 13 08:34:55 UTC 2026","7517","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAICreationFailureRecovery","","","test_creation_failure_stays_on_review_step_and_retry_succeeds","A mocked 500 on the base-create POST surfaces an app-wide error
+        toast (not an inline form alert — see the ELITEA-1916 AFS Known
+        Defects #1), leaves the review form open with every field/starter
+        intact, re-enables ""Create Agent"", and a second, real (unmocked)
+        click succeeds and creates the agent."
+"passed","Thu Aug 13 08:37:51 UTC 2026","Thu Aug 13 08:38:27 UTC 2026","35379","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning.
+        TC-1686
+        "
+"passed","Thu Aug 13 08:41:54 UTC 2026","Thu Aug 13 08:42:02 UTC 2026","8772","tests.ui.agents","test_agent_hub_like_agent_list_view","TestAgentHubLikeAgentListView","","","test_agent_hub_like_agent_from_list_view","Liking an unliked agent card increments its count, fills the heart
+        icon, and persists across a full page refresh; unliking (cleanup)
+        restores the original baseline."
+"passed","Thu Aug 13 08:40:08 UTC 2026","Thu Aug 13 08:40:14 UTC 2026","6173","tests.ui.agents","test_agent_hub_close_agent_detail_modal","TestAgentHubCloseAgentDetailModal","","","test_agent_hub_close_agent_detail_modal","Clicking the X button in the agent detail modal closes the modal,
+        and the user remains on the Catalog list view — read-only, zero
+        console errors, zero 4xx/5xx."
+"passed","Thu Aug 13 08:31:59 UTC 2026","Thu Aug 13 08:32:07 UTC 2026","8611","tests.ui.agents","test_agent_back_navigation","","","","test_back_button_from_agent_detail_returns_to_intact_agents_list","Back button on agent detail page returns to Agents dashboard with
+    the list intact (ELITEA-1869).
+
+    Uses agent_id fixture to ensure at least one agent exists.
+    "
+"passed","Thu Aug 13 08:39:38 UTC 2026","Thu Aug 13 08:39:51 UTC 2026","13301","tests.ui.agents","test_agent_embedded_chat_send_message","TestAgentEmbeddedChatSendMessage","","","test_send_message_via_enter_and_verify_non_empty_response","Typing ""PING"" and pressing Enter yields a non-empty response
+        containing ""PONG"", and clears the chat input."
+"passed","Thu Aug 13 08:35:30 UTC 2026","Thu Aug 13 08:35:37 UTC 2026","7226","tests.ui.agents","test_agent_build_with_ai_role_visibility","TestAgentBuildWithAIButtonRoleVisibility","","","test_build_with_ai_button_visible_for_admin_role","Magic Wand (""Build with AI"") button is visible, correctly
+        labelled, and functional (opens the generation modal) for the
+        admin-equivalent TEST_USER on the New Agent creation page."
+"passed","Thu Aug 13 08:38:27 UTC 2026","Thu Aug 13 08:38:36 UTC 2026","8634","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_multiple_conversation_starters_have_counters","Each conversation starter field has its own counter.
+        TC-1684
+        "
+"passed","Thu Aug 13 08:39:03 UTC 2026","Thu Aug 13 08:39:37 UTC 2026","34046","tests.ui.agents","test_agent_embedded_chat_conversation_starter_chips","TestConversationStarterChipsVisibleAndClickable","","","test_conversation_starter_chips_visible_and_clickable","Both configured starters render as chips in the embedded chat
+        before any message, clicking one pre-fills the input (no auto-send,
+        chip row disappears immediately), and explicitly sending it produces
+        a real agent response."
+"passed","Thu Aug 13 08:47:00 UTC 2026","Thu Aug 13 08:47:07 UTC 2026","6845","tests.ui.agents","test_agent_management","TestAgentList","","","test_view_toggle_table_and_card","Dashboard should support switching between table and card views."
+"failed","Thu Aug 13 08:42:59 UTC 2026","Thu Aug 13 08:43:23 UTC 2026","23909","tests.ui.agents","test_agent_hub_unlike_agent_list_view","TestAgentHubUnlikeAgentListView","","","test_agent_hub_unlike_agent_from_list_view","Unliking a liked agent card decrements its count, unfills the
+        heart icon, and persists across a full page refresh."
