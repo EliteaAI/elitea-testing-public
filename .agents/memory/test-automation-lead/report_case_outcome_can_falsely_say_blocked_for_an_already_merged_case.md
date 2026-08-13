@@ -1,6 +1,6 @@
 ---
 name: Report can falsely mark an already-merged case "blocked" — verify against git before accepting
-description: batch-build's final report.json case outcome for one unit said "blocked" (subagent never called StructuredOutput) while git proved the case's PR was genuinely merged and its test passes — a distinct failure mode from the known gate-stall/merged-ungated patterns
+description: batch-build's final report.json case outcome for one unit said "blocked" (subagent never called StructuredOutput) while git proved the case's PR was genuinely merged and its test passes — a distinct failure mode from the known gate-stall/merged-ungated patterns. CONFIRMED RECURRING (2 campaigns, same exact note text) — always cross-check git before trusting a "blocked" outcome, no exceptions.
 type: feedback
 ---
 
@@ -59,6 +59,22 @@ later audit and TMS back-write derives from. This is the same "write it back int
 the report" principle the playbook already states for `merged-ungated` recoveries,
 extended to a case where the report's claim is actively FALSE rather than merely
 incomplete.
+
+## Seen 2× (different campaigns, identical note text)
+
+- 2026-08-09, `pipelines-remaining-w3`, ELITEA-2027 — original occurrence, above.
+- 2026-08-12, `skills-remaining-w4`, ELITEA-2607 — IDENTICAL note text
+  (`"build failed: agent({schema}): subagent completed without calling StructuredOutput
+  (after in-conversation nudge)"`) for a case whose `git log origin/tests/batch-skills-remaining-w4`
+  showed a real `merge ELITEA-2607 into ...` commit, whose PR #1474 was `gh pr view`-confirmed
+  MERGED with a real timestamp, and whose findings array contained rich, multi-round
+  fix/review detail (2 CHANGES_REQUESTED→APPROVED cycles) — impossible to have if the
+  build had actually failed to call StructuredOutput. Same root-cause signature both
+  times strongly suggests a specific harness interaction (a stale/duplicate re-analysis
+  dispatch racing the real completion) rather than two unrelated flukes — **treat
+  `"blocked"` + this exact `StructuredOutput` note text as a near-certain false report,
+  not just a "verify to be safe" case.** Still verify — don't skip the check — but expect
+  to find the case actually succeeded.
 
 ## Companion finding, same session: commit the wave's report.json/report.md
 

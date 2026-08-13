@@ -37,3 +37,4 @@
 - [Montserrat font 404 is known-noisy](known_noisy_resource_montserrat_font_404.md) — app-wide CDN flake; caught 4× only by lead's own gate; filter idiom exists
 - [Cherry-pick clean units off a broken trunk](cherry_pick_clean_units_off_broken_trunk.md) — one bad unit doesn't sink the whole batch; land the rest alone
 - [2 Workflow hard-fails on one batch = switch to direct dispatch](workflow_combined_route_unreliable_switch_to_direct_dispatch.md) — combined-route + retry clusters unreliable
+- ["blocked"+StructuredOutput note = near-certain false report](report_case_outcome_can_falsely_say_blocked_for_an_already_merged_case.md) — verify git, expect it actually merged (2×)
