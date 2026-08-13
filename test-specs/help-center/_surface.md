@@ -77,3 +77,58 @@ not just "overlay closed"). Full reasoning: ELITEA-2227 AFS § Automation Hints.
   (seen in passing during this session: its `keepExploring` includes
   `{label: 'Sidebar Interactive Tour', tourId: 'sidebar'}`, so the two tours
   cross-link each other's completion screens).
+
+## Resolved/added during ELITEA-2220/2221/2222/2223/2224 implementation (2026-08-14)
+
+These 5 cases cover the OTHER resource-card links (Documentation, Release Notes,
+Video Library, Tutorials) — not the Interactive Tours card, which ELITEA-2227
+already covers. `src/[fsd]/pages/resources/index.jsx` renders link testids the
+SAME way for every card (`RESOURCE_CARD_CONFIGS.map` → `links.map`), so
+everything below composes with the tour-link inventory above under the SAME
+`help-center-tour-link-{slug}` naming.
+
+- **Fixed a real testid collision**: the Video Library card's and the
+  Tutorials card's "More..." links both slugify to `help-center-tour-link-more`
+  (bare-title slugify has no card-awareness) — `page.locator(...)` matched 2
+  elements page-wide. Fixed on `automation/testids` by adding a
+  `testidCategory` field to each `RESOURCE_CARD_CONFIGS` entry and prefixing
+  ONLY the generic "More..." title's slug with it:
+  `help-center-tour-link-video-library-more` /
+  `help-center-tour-link-tutorials-more`. Every other card's link testids
+  (including ELITEA-2227's `sidebar-interactive-tour` / `chat-interactive-tour`)
+  are byte-identical — verify via
+  `document.querySelectorAll('[data-testid^="help-center-tour-link-"]')` and
+  check for duplicate values before trusting a bare-title-slug testid on this
+  page. If a future card is added with another generic CTA title, check for
+  this collision class again.
+- **Full live-confirmed link inventory** (all resolve to real `href`s, backend
+  CMS-driven via `useGetResourcesConfigQuery`, confirmed 2026-08-14):
+  - Documentation: `getting-started` → `docs.elitea.ai/getting-started/chat-quick-start`;
+    `how-to-guides` → `.../how-tos/chat-conversations/how-to-use-chat-functionality`;
+    `integrations` → `.../integrations/mcp/create-and-use-server-stdio`;
+    `migration-update` → `.../support/faqs`. All load correctly.
+  - Release Notes: `release-2-0-2-latest` → `.../release-notes/rn-2-0-2` —
+    **404, known defect `EliteaAI/elitea-testing-public#1492`** (docs site's
+    actual latest is `rn-2-0-5`; the resources CMS "latest" config is stale).
+    `release-2-0-1` / `release-2-0-0` / `release-2-0-0b2` all load correctly
+    (archived releases unaffected).
+  - Video Library: 4 named video links → `videoportal.epam.com/video/dYo2peva#t=<offset>`
+    (not explored further — out of scope for this session's cases);
+    `video-library-more` → `videoportal.epam.com/channel/DdYPoMVa2X/videos` —
+    **requires EPAM corporate SSO** (`access.epam.com`), no credentials exist
+    anywhere in this project. Any future case touching Video Library's channel
+    content is blocked the same way ELITEA-2223 was — don't re-discover this,
+    treat it as a standing environment limitation.
+  - Tutorials: `course-ai-based-elitea-platform` → `learn.epam.com/catalog/...`
+    (not explored — EPAM internal LMS, likely the same SSO wall if content
+    verification is ever needed); `how-to-create-an-agent` →
+    `docs.elitea.ai/archive/create-agent`, loads correctly;
+    `how-to-create-a-pipeline` → `docs.elitea.ai/how-tos/pipelines/overview`
+    (not explored further); `tutorials-more` → `docs.elitea.ai/` (the general
+    docs homepage, NOT a dedicated tutorials-list page — case-text drift,
+    filed as a CLARIFICATION reasoning in the AFS, not a bug).
+- **Third-party destination pages are NOT subject to the testid-only locator
+  policy** — that policy governs only our own `EliteaUI`/`elitea_assistant`
+  source. Assertions against `docs.elitea.ai` / `videoportal.epam.com` use
+  ordinary Playwright role/title locators (e.g.
+  `new_page.get_by_role("navigation", name="Pages")` on the docs site).
