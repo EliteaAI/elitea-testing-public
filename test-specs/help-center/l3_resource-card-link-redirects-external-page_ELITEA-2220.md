@@ -198,7 +198,7 @@ None — all four cases executed end-to-end live.
 - **Family spec**: ONE parameterized test function
   (`test_resource_card_link_redirects_to_external_page`), one `pytest.param` row per TMS case,
   `id=` tagged with the case id. New pytest marker: none needed — reuse `help_center` +
-  priority `p3` (medium) + `regression`.
+  priority `p2` (medium) + `regression`.
 - **Why a link-testid check, not a card-title testid, for "Locate the X card"**: `ResourceCard`
   has no testid on its title/subtitle Typography today (confirmed — only the individual link
   `<Link>` elements carry testids). Case step 2's expected result is the generic
