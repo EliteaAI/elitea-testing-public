@@ -212,6 +212,36 @@ within one skill, not per-*skill* list pinning.
     "support-ticket-digest"`): closing via the X icon fires zero
     `skills/prompt_lib` CREATE POSTs, and the draft's name never appears in
     the Skills list afterward.
+- **Create-time (CREATE, not generate-draft) failure — ELITEA-2000 confirmed
+  live.** Clicking `generate-skill-approve-button` ("Create Skill") when the
+  `POST /elitea_core/skills/prompt_lib/{projectId}` mutation itself fails
+  (as opposed to the generate-draft call) surfaces via an app-wide **TOAST**
+  (`toast-alert`/`toast-message`, `data-severity="error"`, exact backend
+  `error` text), NOT the inline `generate-skill-error-alert` the
+  generate-draft failure path uses. The modal stays open on the review step
+  with all draft fields (Name/Description/Instructions) untouched, and the
+  Approve button re-enables immediately (`isApproving`/`isDraftValid` both
+  reset false) — a same-button retry with no mock installed reaches the
+  real backend and creates the Skill normally. Root mechanism: the catch
+  block lives in the SHARED `GenerateEntityModal.jsx` (`handleApprove`,
+  entity-agnostic), not in `GenerateSkillModal.jsx` itself — confirmed
+  identical to ELITEA-1916's already-documented Agent-entity finding (same
+  component, same code path). `GenerateSkillModalPage` does **not yet**
+  declare `toast_alert`/`toast_message`/`TOAST_ALERT_SEVERITY` as
+  `LocatorDescriptor` fields (copy verbatim from
+  `GenerateAgentModalPage`'s ELITEA-1916 addition,
+  `generate_agent_modal_page.py:111-122`) — this is the first Skill
+  Build-with-AI case to need them. **Gotcha for exploration-only tooling:**
+  a naive `browser_evaluate` `window.fetch` monkey-patch with a
+  call-counting guard unexpectedly let the FIRST create call through to the
+  real backend on this run's first attempt (root cause not fully isolated,
+  property of the ad hoc patch technique only); a version that always mocks
+  every matching POST (no counter) and explicitly clears itself before the
+  retry worked correctly. **Automated tests must use native
+  `page.route()`/`page.unroute()`** (as `mock_generate_failure`/
+  `mock_generate_success` already do) — that mechanism does not share this
+  fragility. Full details:
+  `test-specs/skills/l2_build-with-ai-creation-failure-stays-on-review-step-for-correction_ELITEA-2000.md`.
   - Zero console errors across both flows this run (unlike the Agent
     entity's documented `disableUnderline` baseline-noise warning — no
     equivalent fired for the Skill review form this run).
