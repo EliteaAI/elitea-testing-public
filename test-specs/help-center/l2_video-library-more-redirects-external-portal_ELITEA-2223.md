@@ -129,7 +129,7 @@ for an unauthenticated automation browser context, not a product defect — not 
 - Reuses `automation/pages/help_center_page.py` — `open_resource_link_in_new_tab()` and
   `TOUR_LINK`, no page-object changes needed beyond the shared testid fix (see sibling family
   AFS's § Known Defects for the collision fix, shared by this case).
-- New pytest marker: none — `help_center` + priority `p2` (high) + `regression`.
+- New pytest marker: none — `help_center` + priority `p1` (high) + `regression`.
 - Separate test function/spec from the family AFS's four cases (materially different step
   count and a partial-block disposition) — same file is acceptable
   (`test_help_center_resource_links.py`) since it shares the page object and testid fix, but

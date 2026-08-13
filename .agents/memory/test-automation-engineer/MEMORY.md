@@ -58,3 +58,4 @@
 - [Skill icon-upload-before-tag-save race](skill_publish_wizard_implementer_quirks.md) — icon PUT can revert an unsaved tag; save tag FIRST, then upload icon
 - [Edit-with-AI wizard step numbering is positional](edit_with_ai_wizard_step_numbering_is_positional.md) — General/Instructions can be skipped; never hardcode "3. Summary"
 - [Nested agent accordion always has wrapper chip](nested_agent_accordion_always_has_wrapper_chip.md) — never assert to_have_count(0) on it; filter to "Skill: " prefix instead
+- [Testid-only policy scope = our own app](testid_only_policy_scope_is_our_own_app_source.md) — third-party redirect destinations use ordinary role locators; declare it
