@@ -160,6 +160,30 @@ within one skill, not per-*skill* list pinning.
   error / `{len}/64`-counter helper text; only the Name field's helper text
   has a testid so far (Description/Instructions helper text untouched — no
   case has asserted them yet).
+- **Description/Instructions character limits (ELITEA-1994/1995, confirmed
+  live) — SAME native-`maxlength`-truncation shape as the Name field's
+  64-char gap (ELITEA-1993 Known Defect #2), on BOTH fields.**
+  `GenerateSkillReviewForm.jsx` wires `slotProps.htmlInput.maxLength` to
+  `MAX_DESCRIPTION_LENGTH`/`MAX_INSTRUCTIONS_LENGTH`
+  (`EliteaUI/src/common/constants.js:67-68`) on the Description/Instructions
+  `<textarea>`s. Live-confirmed via `document.execCommand('insertText', ...)`
+  on the focused field (reproduces real paste/type, same mechanism `.fill()`
+  respects): an over-limit paste truncates to **exactly** the limit before
+  `validateSkillDraft()` ever sees an over-length value — the "paste
+  over-limit → validation error + disabled Create Skill" state described by
+  both cases is unreachable via manual editing; the field always lands
+  valid at the limit instead. `MAX_DESCRIPTION_LENGTH = 2304` (matches
+  ELITEA-1994's case text exactly). `MAX_INSTRUCTIONS_LENGTH = 5000` — **NOT
+  2,500 as ELITEA-1995's case text states** — same drift already documented
+  for the sibling Edit-with-AI flow (ELITEA-2613, issue #1480); filed as a
+  sibling clarification for this flow:
+  [#1489](https://github.com/EliteaAI/elitea-testing-public/issues/1489).
+  No new testid needed for either field — `review_description_input`/
+  `review_instructions_input` (`.input_value()` length) +
+  `approve_button.is_enabled()` fully prove the observable; Description/
+  Instructions helper-text testids remain a gap for whichever future case
+  actually needs to read that string. Full details:
+  `test-specs/skills/l2_build-with-ai-description-instructions-character-limits_ELITEA-1994.md`.
 - Page object: `automation/pages/generate_skill_modal_page.py`
   (`GenerateSkillModalPage`, extends `GenerateEntityModalPageBase`).
   `set_review_name()`/`set_review_description()`/`set_review_instructions()`
@@ -172,7 +196,90 @@ within one skill, not per-*skill* list pinning.
   editable, create with edits), ELITEA-1991 (create with no edits, keeps
   generated values), ELITEA-1989 (loading text + no extra sections),
   ELITEA-1988 (modal open + static elements), ELITEA-1993 (Name-field
-  validation on invalid manual edits, pending implementation).
+  validation on invalid manual edits, pending implementation), ELITEA-1996
+  (Back to prompt returns to input step, preserves prompt text, no
+  draft-data leak — pending implementation; `back_button` was previously
+  never referenced anywhere in this test file).
+- **`back_button` (`generate-skill-back-button`) — ELITEA-1996 confirmed live.**
+  Wired to `handleBack()` in the SAME shared `GenerateEntityModal.jsx` the
+  Agent modal uses (entity-agnostic component, no skill-vs-agent branching):
+  resets `step` to INPUT and clears `draftData`, but never clears
+  `description` — the prompt text survives the Back click verbatim, and
+  none of the review-form field testids remain in the DOM afterward. Zero
+  new network requests (`generate_skill_draft`/`skills/prompt_lib` both
+  unchanged) and zero console errors across the round trip. Identical
+  mechanism to ELITEA-1919 (Agent entity) — see
+  `test-specs/agents/l2_build-with-ai-back-to-prompt-returns-to-input-step-preserves-text_ELITEA-1919.md`
+  for the shared source-level triangulation. Full AFS:
+  `test-specs/skills/l2_build-with-ai-back-to-prompt-returns-to-input-step-preserves-text_ELITEA-1996.md`.
+- **`cancel_button` (input step) and `close_button` (review step) — ELITEA-1997/1998
+  confirmed live.** Same `GenerateEntityModal.jsx` shell/mechanics as the Agent
+  entity's ELITEA-1917/1918 pair — see `test-specs/agents/l2_build-with-ai-cancel-*`
+  for the source-level `renderActions()` proof; not re-traced here since the
+  component is identical, only entity-specific testids differ.
+  - **Input step**: clicking `generate-skill-cancel-button` (previously only
+    `.is_visible()`-checked by ELITEA-1988) closes the modal, leaves
+    `skill-name-input-field`/`skill-description-input-field` empty, fires
+    **zero** `generate_skill_draft`/`skills/prompt_lib` requests. No
+    confirmation interstitial.
+  - **Review step has NO "Cancel" button** — only "Back to prompt"
+    (`generate-skill-back-button`) and "Create Skill"
+    (`generate-skill-approve-button`); confirmed live via accessibility
+    snapshot of the open dialog. The modal's Close (X) icon
+    (`generate-skill-close-button`) is the only control that discards a
+    generated draft without creating a skill — previously `.click()`ed only
+    as unasserted cleanup (the naming-rules test, ELITEA-1992's test class).
+    **Case-text drift filed**: [#1486](https://github.com/EliteaAI/elitea-testing-public/issues/1486)
+    (sibling of the Agent-entity #1318) — the TMS case ELITEA-1998 says
+    "Click Cancel" for this step; no such button exists.
+  - Confirmed live this run with a real, unmocked draft (`name:
+    "support-ticket-digest"`): closing via the X icon fires zero
+    `skills/prompt_lib` CREATE POSTs, and the draft's name never appears in
+    the Skills list afterward.
+- **Create-time (CREATE, not generate-draft) failure — ELITEA-2000 confirmed
+  live.** Clicking `generate-skill-approve-button` ("Create Skill") when the
+  `POST /elitea_core/skills/prompt_lib/{projectId}` mutation itself fails
+  (as opposed to the generate-draft call) surfaces via an app-wide **TOAST**
+  (`toast-alert`/`toast-message`, `data-severity="error"`, exact backend
+  `error` text), NOT the inline `generate-skill-error-alert` the
+  generate-draft failure path uses. The modal stays open on the review step
+  with all draft fields (Name/Description/Instructions) untouched, and the
+  Approve button re-enables immediately (`isApproving`/`isDraftValid` both
+  reset false) — a same-button retry with no mock installed reaches the
+  real backend and creates the Skill normally. Root mechanism: the catch
+  block lives in the SHARED `GenerateEntityModal.jsx` (`handleApprove`,
+  entity-agnostic), not in `GenerateSkillModal.jsx` itself — confirmed
+  identical to ELITEA-1916's already-documented Agent-entity finding (same
+  component, same code path). `GenerateSkillModalPage` does **not yet**
+  declare `toast_alert`/`toast_message`/`TOAST_ALERT_SEVERITY` as
+  `LocatorDescriptor` fields (copy verbatim from
+  `GenerateAgentModalPage`'s ELITEA-1916 addition,
+  `generate_agent_modal_page.py:111-122`) — this is the first Skill
+  Build-with-AI case to need them. **Gotcha for exploration-only tooling:**
+  a naive `browser_evaluate` `window.fetch` monkey-patch with a
+  call-counting guard unexpectedly let the FIRST create call through to the
+  real backend on this run's first attempt (root cause not fully isolated,
+  property of the ad hoc patch technique only); a version that always mocks
+  every matching POST (no counter) and explicitly clears itself before the
+  retry worked correctly. **Automated tests must use native
+  `page.route()`/`page.unroute()`** (as `mock_generate_failure`/
+  `mock_generate_success` already do) — that mechanism does not share this
+  fragility. Full details:
+  `test-specs/skills/l2_build-with-ai-creation-failure-stays-on-review-step-for-correction_ELITEA-2000.md`.
+  - Zero console errors across both flows this run (unlike the Agent
+    entity's documented `disableUnderline` baseline-noise warning — no
+    equivalent fired for the Skill review form this run).
+  Full details: `test-specs/skills/l2_build-with-ai-cancel-from-prompt-step-closes-modal-without-creating-a-skill_ELITEA-1997.md`,
+  `test-specs/skills/l2_build-with-ai-cancel-from-review-step-does-not-create-a-skill_ELITEA-1998.md`.
+- **RBAC gating (ELITEA-1986/1987, confirmed live):** `generate-skill-open-button` is gated by
+  `PERMISSIONS.applications.update` — `GenerateSkillButton.jsx` passes it into the shared
+  `GenerateEntityButton.jsx`, the SAME gate/permission as the Agents "Build with AI" button
+  (`GenerateAgentButton.jsx`). Confirmed live this run: button renders with text "Build with AI"
+  for `${TEST_USER}` (admin-equivalent) on project `399`. Editor/viewer-role halves are **not**
+  live-verifiable — no `EDITOR_TEST_USER_*`/`VIEWER_TEST_USER_*` credential exists in
+  `.env.test`/`profile.md`, tracked in `EliteaAI/elitea-testing-public#1314` (opened for the Agents
+  analog ELITEA-1903/1904; ELITEA-1986/1987 hit the identical gap on this second entity type — do
+  not re-file, comment on #1314 instead).
 - Skill cleanup: `SkillAPI.delete_skill(skill_id)` (cookie-auth,
   `automation/api/client.py:1270`) in a `try/finally`; get `skill_id` from
   the post-create redirect URL regex `/skills/all/(\d+)$`. Never use a raw
@@ -199,6 +306,22 @@ Existing `open_actions_menu()` (JS-click bypass, waits on
 `skill-delete-menu-item`) is reused to open the overflow menu for the
 pin-toggle flow — no new "open menu" method needed. Test:
 `automation/tests/ui/skills/test_skill_pin_unpin.py`.
+
+**Generated-name naming-rule compliance (ELITEA-1992, confirmed live).**
+Every sibling Build-with-AI test in `test_skill_build_with_ai.py` mocks
+`generate_skill_draft` with an analyst-chosen, already-compliant `name` —
+none of them prove the **real** AI/backend output is well-formed. Live,
+unmocked generation this run (`POST generate_skill_draft/prompt_lib/399`
+→ `200`) returned `name: "english-to-spanish-feedback"` — confirmed
+byte-identical between the raw API response body and the review form's
+`generate-skill-review-name-input.input_value()` (no client-side
+sanitization step exists between the two; compliance is enforced upstream
+of `validateSkillDraft()`, not merely by it). Matches the source regex
+already documented above (`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`, ≤64 chars via
+native `maxlength`). **A test for this case must NOT mock the draft
+response** — mocking a pre-chosen compliant name would make the assertion
+tautological instead of proving anything about actual AI output.
+Full details: `test-specs/skills/l2_generated-skill-name-adheres-to-naming-rules_ELITEA-1992.md`.
 
 ## Import — invalid-file validation error (ELITEA-2438) — `useSkillImport.hooks.js`
 

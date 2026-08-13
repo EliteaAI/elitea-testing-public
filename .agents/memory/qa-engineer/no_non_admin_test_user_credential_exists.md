@@ -66,6 +66,13 @@ Worked examples: `test-specs/agents/l2_build-with-ai-button-visible-for-admin-an
 same gap, different entity: `test-specs/skills/l2_edit-with-ai-skill-permissions_ELITEA-2613.md`
 (`ready-for-automation`, Admin CTA-visibility half + a bonus fully-provable character-limit
 half; Editor/Viewer halves blocked, commented onto tracking issue #1314 as a third case).
+Fourth/fifth worked example, same gap, Skills' own "Build with AI" open button (the direct
+Skills-side twin of ELITEA-1903/1904, same `PERMISSIONS.applications.update` gate via
+`GenerateSkillButton.jsx` → shared `GenerateEntityButton.jsx`):
+`test-specs/skills/l2_build-with-ai-button-visible-for-admin-and-editor-roles_ELITEA-1986.md`
+(`ready-for-automation`, admin half only) and
+`test-specs/skills/l2_build-with-ai-button-not-visible-for-viewer-role_ELITEA-1987.md`
+(`blocked` outright) — commented onto #1314 rather than re-filed.
 
 ## See also
 
