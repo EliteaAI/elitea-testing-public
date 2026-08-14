@@ -47,7 +47,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | Wave | Theme | Case IDs | N | Status |
 |---|---|---|---:|---|
 | 01 | Conversation entry / navigation into existing conversations | 2091,2093,2096,2097,2098 | 5 | **LANDED** — PR #1512, 3 automated / 2 blocked (question #1511) |
-| 02 | Conversation rename — basic flow + length boundaries | 2099,2100,2101,2102,2103,2104 | 6 | pending |
+| 02 | Conversation rename — basic flow + length boundaries | 2099,2100,2101,2102,2103,2104 | 6 | **IN PROGRESS** |
 | 03 | Conversation rename — check-icon states + edge chars | 2105,2106,2107,2108,2109,2110,2111,2112,2113 | 9 | pending |
 | 04 | Conversation deletion + chat search (left-panel micro-UI) | 2115,2116,2117,2456,2163,2164,2165,2463 | 8 | pending |
 | 05 | Folder creation | 2118,2119,2120,2133,2134,2457 | 6 | pending |
@@ -81,4 +81,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-(none — wave-01 closed; wave-02 not yet dispatched)
+- **wave-02** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w02`,
+  base=`origin/automation/base`, clusters `[2101,2102]` (49-char / 50-char boundary
+  pair) + `[2103,2104]` (type-limit / paste-limit pair), 2099+2100 solo units.
+  Task ID `wv0qxps8t`, Run ID `wf_672f5977-34e`.
