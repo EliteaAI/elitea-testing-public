@@ -1212,6 +1212,18 @@ class ChatPage(BasePage):
         ),
     )
 
+    # Confirm-button validation tooltip content — ADDED ELITEA-2110 (mirrors
+    # FOLDER_NAME_CONFIRM_TOOLTIP_CONTENT/ELITEA-2458 exactly: the MUI Tooltip
+    # wrapping conversation_name_confirm_button had no testid on its popper
+    # content before this). Only mounts once the confirm button is
+    # hovered/focused AND the name is currently invalid
+    # (ConversationItem.jsx's title prop is '' when valid, so MUI renders no
+    # popper at all in that state) — read via
+    # get_conversation_name_confirm_tooltip_text().
+    CONVERSATION_NAME_CONFIRM_TOOLTIP_CONTENT = (
+        '[data-testid="chat-conversation-name-confirm-tooltip-content"]'
+    )
+
     # Folder item row (whole accordion) — dynamic per folder id. Carries
     # data-expanded="true"/"false" on the SAME element (testid = stable
     # identity, state via data-* attribute — PR #581 ruling), scoping BOTH
@@ -6498,6 +6510,31 @@ class ChatPage(BasePage):
 
         self.folder_name_confirm_button.hover()
         tooltip = self.page.locator(self.FOLDER_NAME_CONFIRM_TOOLTIP_CONTENT)
+        try:
+            tooltip.wait_for(state="visible", timeout=timeout)
+            return tooltip.text_content() or ""
+        except PlaywrightTimeoutError:
+            return ""
+
+    def get_conversation_name_confirm_tooltip_text(self, timeout: int = 3000) -> str:
+        """Hover the confirm button and read its validation-tooltip text.
+
+        Same idiom as ``get_folder_name_confirm_tooltip_text()`` — MUI's
+        ``Tooltip`` content only mounts on hover/focus, so hover first.
+        Returns ``""`` (never ``None``) when no tooltip appears within
+        *timeout*, which is the EXPECTED outcome for every valid-name state
+        (``ConversationItem.jsx``'s ``title={isConversationNameValid ? '' :
+        ConversationNameWarningMessage}`` — MUI renders no popper at all for
+        an empty title), not a failure. Reading the ambient accessible-name
+        (e.g. via a ``browser_snapshot``) is NOT equivalent — MUI surfaces a
+        non-empty ``title`` in the accessibility tree even before any real
+        hover mounts the popper, so only this testid-locator-after-hover
+        read is evidence the popper actually rendered.
+        """
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+        self.conversation_name_confirm_button.hover()
+        tooltip = self.page.locator(self.CONVERSATION_NAME_CONFIRM_TOOLTIP_CONTENT)
         try:
             tooltip.wait_for(state="visible", timeout=timeout)
             return tooltip.text_content() or ""
