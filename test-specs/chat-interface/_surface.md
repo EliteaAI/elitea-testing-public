@@ -2,9 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2458, 2026-08-07
+a time; last confirmed by: qa-engineer analyst, ELITEA-2091, 2026-08-14
 (supersedes nothing below — new section, other sections unchanged; previous
-confirmer: ELITEA-2086/2087/2088, 2026-08-03).
+confirmer: ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
 
 ## Folder rename editor — checkmark enable/disable logic + a11y-snapshot gotcha (ELITEA-2458)
 - **Full validation logic, read from `FolderItem.jsx` source** (grounds every
@@ -971,3 +971,167 @@ plus-menu's full top-level item list was also live-confirmed this session (non-T
 project): exactly 6 items in DOM order — Attach Files, Modules, Agents, Pipelines,
 Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
 `invite_users_menuitem` docstring).
+
+## New-conversation-from-Team-project + drag-drop + LLM switch (ELITEA-2091)
+- **Team project's plus-menu, full item set, live-confirmed**: Attach Files
+  (with "N left" counter, live text child of `chat-attach-menuitem-button`,
+  no separate testid), Modules, Agents, Pipelines, Toolkits, MCPs, **Invite
+  Users** — the last one renders ONLY for a Team/non-Private project
+  (`!isPrivateProject` guard), absent entirely (not disabled) on the default
+  Private project. Confirmed by diffing the identical popper on both
+  projects in the same session.
+- **Multi-file attach-via-picker counter arithmetic, live-confirmed**:
+  selecting 3 files in ONE `file_chooser.set_files([...])` call moves the
+  "Attach Files (N left)" text from `"10 left"` → `"7 left"` in a single
+  step (not 3 separate decrements) — matches `AttachmentButton.jsx`'s
+  `remainingAttachments` computation, consistent with the existing
+  ELITEA-2197 10-file-limit spec's confirmed mechanism.
+- **Model dropdown option testid is keyed by the model's INTERNAL id, not
+  its display name** — confirmed live: clicking the menu item labelled
+  "Anthropic Claude 4.5 Sonnet" resolved
+  (`page.getByTestId(...)`) to
+  `model-selector-option-eu.anthropic.claude-sonnet-4-5-20250929-v1:0`.
+  `LLMModelsMenu.jsx`: `data-testid={`model-selector-option-${item.name}`}`,
+  `item.name` is the raw model id. Never hardcode a display-name-based
+  testid guess for this menu.
+- **Selected-model state is a genuine same-element conditional render, not
+  a testid ternary** (`LLMModelsMenu.jsx`): the `MenuItem`'s OWN testid
+  (`model-selector-option-{name}`) never changes; `selected={item.id ===
+  selectedModel?.id}` sets MUI's `Mui-selected` class, and a `CheckedIcon`
+  renders as a conditional CHILD only for the selected item (no testid on
+  the icon itself). Compliant assertion shape: testid-identity + read the
+  `class` attribute for `Mui-selected` (or check the child-icon count
+  scoped under that one testid'd parent) — no new testid needed.
+- **End-to-end flow (Team project +Chat → attach 3 files via picker →
+  switch LLM → send with attachments → auto-name) fully reproduced live,
+  zero defects.** URL sequence: blank composer → `/chat/{id}?name=New+Chat`
+  immediately on send → resolves to `/chat/{id}?name=<generated title>`
+  within ~15s. Sidebar: conversation renders under
+  `chat-conversation-group-header-today` as a `"Naming"` button (nested
+  `role="progressbar"`) immediately, then flips to the real title with no
+  further placeholder — `ChatPage.wait_for_naming_label_to_resolve()`
+  (pre-existing) already implements the correct wait, reuse verbatim. Same
+  mechanism ELITEA-2095 (`test_open_conversation_today_section.py`) already
+  proved in this exact project — ELITEA-2091 layers attachments+LLM-change
+  on top, doesn't re-derive naming.
+- **Drag-and-drop composer drop-zone has NO testid** — confirmed via source
+  read (`EliteaUI/src/ComponentsLib/Chat/UserInput.jsx`): the outer `Box`
+  wrapping `onDragOver`/`onDragLeave`/`onDrop` (`sx={styles.container}`,
+  wired via the real `useFileDragAndDrop` hook — genuinely functional, not
+  a stub) carries no `data-testid` at all. `needs-adding`
+  (`chat-composer-dropzone` or similar) before this step has a stable
+  handle. NOT click-verified live this session (time budget) — only
+  source-confirmed as a real, working feature.
+- **Provenance, freshly verified this session** (`git fetch origin` first):
+  every testid this case's flow touches — `project-selector-trigger`,
+  `select-option-471`, `sidebar-create-button`, `plus-menu-button`,
+  `chat-attach-menuitem-button`, `invite-users-menuitem`,
+  `model-selector-option-`, `chat-conversation-group-header-`,
+  `chat-attachment-chip-` — is **on `main` already** (all `YES`/`YES`).
+  This case needs ZERO new testids except the drag-drop drop-zone above.
+
+**Resolved/added during ELITEA-2091 implementation:**
+- **`chat-composer-dropzone` added** on `UserInput.jsx`'s outer drop-zone
+  `Box` (`automation/testids` commit `dd417746`). The synthetic-`DataTransfer`
+  drag-and-drop technique (dispatch `dragenter`→`dragover`→`drop`
+  `DragEvent`s carrying a real in-page-constructed `File`) is
+  **live-confirmed working** against this testid — chip renders, counter
+  decrements, message-thread attachment list all correct end-to-end.
+- **FileList.jsx's visible/overflow split is live, not just a docstring
+  claim** — with the plus-menu popper open (narrowing the composer) even
+  3–4 attachments can overflow into the "+N" bucket depending on viewport.
+  Any assertion on attached-file count/names MUST use
+  `get_total_attached_file_count()`/`get_all_attached_file_names()`
+  (visible+overflow), never the visible-only
+  `get_attachment_chip_count()`/`get_visible_attachment_names()` — a
+  visible-only assertion silently stays flat across a real successful
+  attach when the new item lands in overflow instead of a visible chip.
+- **`get_overflow_attachment_names()`'s internal `Escape` key press closes
+  the WHOLE plus-menu popper, not just the overflow sub-menu** — the same
+  ELITEA-2203 "Escape closes more than intended" quirk
+  `ChatPage.close_plus_menu_popper()`'s docstring already warns about,
+  triggered here as a side effect of a read-only helper. Any caller that
+  needs to read the "Attach Files (N left)" counter text AFTER calling
+  `get_all_attached_file_names()`/`get_overflow_attachment_names()` must
+  read the counter FIRST — the popper may already be gone afterward if an
+  overflow bucket existed.
+- **The composer's model-selector-name text updates one React render tick
+  after the option-click closes the dropdown** — a one-shot
+  `text_content()` read immediately after `select_llm_model_by_suffix()`
+  can race and read the STALE (previous) model name. Use
+  `ChatPage.wait_for_selected_model_name_change(previous_name)`
+  (`expect(...).not_to_have_text(...)`, auto-retries) instead of a bare read.
+- **Reopening the model-selector dropdown via the OUTER `model_selector`
+  (`model-selector-button`) field is intermittently unreliable** — clicking
+  the `ButtonGroup` container's bounding-box center doesn't always land on
+  the actual interactive child. `ChatPage.open_model_selector()` (new,
+  clicks `model_selector_name` directly — the real `Button.BaseBtn` with
+  the `onClick` handler) is the reliable open/reopen entry point; prefer it
+  over the pre-existing `click_model_selector()` for any NEW test that
+  reopens the dropdown mid-flow.
+- **Gotcha for implementers doing concurrent live exploration:** the
+  localhost dev-token identity (`auth_state`/`VITE_DEV_TOKEN`) is a SHARED
+  backend user across every browser session hitting this DEV backend — a
+  live MCP/browser-verify session run WHILE a pytest run is also driving
+  the app (same user identity) can cross-contaminate "current/last
+  conversation" state between the two, producing a pytest failure whose
+  message-thread content belongs to the OTHER (MCP) session's conversation.
+  Not a product defect — confirmed by re-running the exact same pytest
+  invocation in isolation (no concurrent MCP session): clean green, no
+  code change needed. Don't drive live exploration and a pytest run
+  concurrently against the same dev-token identity.
+
+## Date-group bucketing (Today/This Week/Older) is SERVER-computed, not client (ELITEA-2096/2097, blocked)
+- **Cannot be reproduced via client-side clock mocking.** Confirmed via
+  source read: `conversationList.api.js`'s `foldersList`/`conversationsList`
+  queries both send `grouped: true` as a query param to the server (lines
+  47-91) — the server buckets by real `created_at`, the client never runs
+  its own `isToday`/`isThisWeek` date math. `page.clock` (or any client-time
+  trick) has zero effect on which bucket a conversation renders in.
+- **The API cannot backdate a conversation.** `ConversationUpdate`'s
+  OpenAPI schema (`GET /shared/openapi/?plugins=elitea_core&all=true` on
+  `dev.elitea.ai`) has no timestamp field at all — only `name`,
+  `is_private`, `folder_id`, `attachment_participant_id`, `instructions`,
+  `is_hidden`, `meta`. Same for `ConversationCreate` (no `created_at`
+  override). There is currently no honest way to seed a This-Week/Older
+  conversation in a live test run.
+- **The environment currently has zero non-today conversations** in
+  either accessible project (Private/399, Elitea Testing Team/471) —
+  every existing chat AFS in this feature area (ELITEA-2091/2095, this
+  session's ELITEA-2098) deletes its own seeded conversations in
+  `finally`, so nothing survives to age into a later bucket.
+  `DEFAULT_EXPANDED_GROUP = 'today'` (`conversationList.constants.js:9`)
+  — This Week/Older ARE collapsed by default, matching both case texts.
+  ELITEA-2096/ELITEA-2097 are `blocked` for this reason — see
+  `test-specs/chat-interface/l3_open-existing-conversation-this-week-older-sections_ELITEA-2096.md`.
+  A future analyst re-probing this: check first whether the ongoing
+  127-case chat-remaining campaign has organically left any conversation
+  aged past today (nothing was DESIGNED to survive, but a crashed/aborted
+  run's seed might have).
+
+## Folder seeding via API + delete-endpoint gotcha (ELITEA-2098, confirmed live)
+- **Folder create**: `POST /elitea_core/folder/prompt_lib/{project_id}`
+  `{"name": "..."}` → 201, `{id, name, owner_id, position, meta}`. Despite
+  `FolderCreate`'s OpenAPI schema listing `owner_id` as required, the
+  server fills it from auth — same pattern as `ConversationCreate`'s
+  `author_id`.
+- **Move a conversation into a folder**: `PUT /elitea_core/conversation/
+  prompt_lib/{project_id}/{conversation_id}` `{"folder_id": N}` → 200,
+  instant, no propagation delay. No `automation/api/client.py` helper
+  exists for either call yet (`ConversationAPI` has no folder methods) —
+  implementer may want to add one rather than hand-rolling `requests`
+  calls.
+- **Conversation DELETE needs the SINGULAR endpoint** — confirmed live
+  this session: `DELETE /elitea_core/conversations/prompt_lib/{pid}/{id}`
+  (plural) returns **404**; `DELETE /elitea_core/conversation/prompt_lib/
+  {pid}/{id}` (singular) returns 204. `ConversationAPI.delete_conversation()`'s
+  own docstring already documents this correctly — but
+  `automation/CLAUDE.md`'s "API Quirks" table claims the OPPOSITE
+  ("Exception: Conversation delete uses plural path"), which is stale/wrong.
+  Flagged as a doc-accuracy note for the lead, not a test defect (nothing
+  in the test suite itself relies on the wrong claim).
+- **`is_conversation_active()` / `data-active` correctly moves between
+  rows on same-folder navigation** — live-confirmed: clicking a second
+  conversation inside the same expanded folder flips `data-active` from
+  the first item to the second in the same accessibility-snapshot read,
+  no reload/flicker needed.

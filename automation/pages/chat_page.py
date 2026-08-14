@@ -4,9 +4,13 @@ Provides locators and methods for interacting with chat conversations,
 message input, participants, and chat settings.
 """
 
+import base64
 import logging
+import mimetypes
 import re
 import time
+from pathlib import Path
+
 from playwright.sync_api import Page, expect
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor
@@ -135,6 +139,18 @@ class ChatPage(BasePage):
         fallback=lambda page: page.locator('[class*="model"], button:has-text("GPT"), button:has-text("Claude")'),
         description="Model selector dropdown button"
     )
+
+    # ``model-selector-name`` / ``model-selector-option-{model.name}`` — same
+    # shared LLMModelSelector.jsx/LLMModelsMenu.jsx family already used by
+    # AgentDetailPage/PipelineDetailPage/SkillDetailPage/ToolkitTestSettingsPage
+    # (ELITEA-2091 addition to ChatPage; the composer's own instance of this
+    # shared component was previously only exposed via the outer
+    # ``model_selector`` field). Options are keyed by the model's stable
+    # internal ``name`` (NOT its display text) — confirmed live and via
+    # source (LLMModelsMenu.jsx: ``data-testid={`model-selector-option-${item.name}`}``).
+    model_selector_name = LocatorDescriptor(testid="model-selector-name")
+    MODEL_SELECTOR_OPTION = '[data-testid="model-selector-option-{}"]'
+    MODEL_SELECTOR_OPTION_ANY_SELECTOR = '[data-testid^="model-selector-option-"]'
 
     # ------------------------------------------------------------------
     # Chat actions
@@ -271,6 +287,12 @@ class ChatPage(BasePage):
     # Prefix match for "how many visible chips are rendered" — same
     # shared-suffix counting precedent as PLUS_MENU_ITEM_SUFFIX below.
     CHAT_ATTACHMENT_CHIP_PREFIX = '[data-testid^="chat-attachment-chip-"]'
+
+    # Composer drag-and-drop drop-zone (UserInput.jsx's outer Box, wraps
+    # onDragOver/onDragLeave/onDrop). ELITEA-2091 add-data-testid addition —
+    # previously carried no testid at all (AFS § Concrete Handles,
+    # EliteaAI/EliteaUI@dd417746 on automation/testids).
+    composer_dropzone = LocatorDescriptor(testid="chat-composer-dropzone")
 
     chat_attachment_overflow_button = LocatorDescriptor(
         testid="chat-attachment-overflow-button",
@@ -1875,7 +1897,24 @@ class ChatPage(BasePage):
         """Click the model selector to open model menu."""
         logger.info("Opening model selector")
         self.model_selector.first.click()
-        
+
+    def open_model_selector(self, timeout: int = 5000):
+        """Open the model-selector dropdown and wait for its options to render.
+
+        Clicks ``model_selector_name`` — the actual interactive
+        ``Button.BaseBtn`` carrying the ``onClick`` handler
+        (``LLMModelSelector.jsx``) — rather than the outer
+        ``model_selector``/``model-selector-button`` ``ButtonGroup`` field.
+        More reliable on a REOPEN after the trigger's rendered width has
+        changed (confirmed live during ELITEA-2091 implementation: a
+        reopen via the outer field intermittently missed the click).
+        """
+        self.model_selector_name.wait_for(state="visible", timeout=timeout)
+        self.model_selector_name.click()
+        self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
     def get_selected_model(self) -> str:
         """Get the currently selected model name.
         
@@ -1885,7 +1924,94 @@ class ChatPage(BasePage):
         model_text = self.model_selector.first.text_content()
         logger.info(f"Selected model: {model_text}")
         return model_text
-        
+
+    def get_model_option_suffixes(self, timeout: int = 5000) -> list:
+        """Return the ``model.name`` testid-suffix of every option in the
+        OPEN model-selector dropdown, in render order.
+
+        Call after :meth:`click_model_selector`. Used to pick "any option
+        other than the currently-selected one" without hardcoding a display
+        name (AFS § Test Data — case-text/environment drift risk).
+        """
+        options = self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR)
+        options.first.wait_for(state="visible", timeout=timeout)
+        suffixes = []
+        for i in range(options.count()):
+            testid = options.nth(i).get_attribute("data-testid") or ""
+            suffixes.append(testid.removeprefix("model-selector-option-"))
+        return suffixes
+
+    def get_selected_model_option_suffix(self, timeout: int = 5000) -> str:
+        """Return the ``model.name`` testid-suffix of the option currently
+        carrying ``Mui-selected`` in the OPEN model-selector dropdown.
+
+        Call after :meth:`click_model_selector`. Reading the ``Mui-selected``
+        class off an already-testid'd option is the same compliant idiom as
+        ``PipelineDetailPage.is_state_type_option_selected()`` — testid is
+        stable identity, state is read separately.
+        """
+        options = self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR)
+        options.first.wait_for(state="visible", timeout=timeout)
+        for i in range(options.count()):
+            option = options.nth(i)
+            if "Mui-selected" in (option.get_attribute("class") or ""):
+                testid = option.get_attribute("data-testid") or ""
+                return testid.removeprefix("model-selector-option-")
+        return ""
+
+    def is_model_option_selected(self, model_name: str, timeout: int = 5000) -> bool:
+        """Return whether the option keyed by *model_name* (testid suffix)
+        carries ``Mui-selected`` in the OPEN model-selector dropdown.
+
+        Source-confirmed (``LLMModelsMenu.jsx``): the same boolean condition
+        (``item.id === selectedModel?.id``) that sets ``Mui-selected`` also
+        gates the ``CheckedIcon`` checkmark's render — the checkmark has no
+        separate testid (AFS § Test Steps, step 7), so this is the
+        testid-only-compliant proof of "selected LLM shown with a checkmark".
+        """
+        option = self.page.locator(self.MODEL_SELECTOR_OPTION.format(model_name))
+        option.wait_for(state="visible", timeout=timeout)
+        return "Mui-selected" in (option.get_attribute("class") or "")
+
+    @action("Select LLM model")
+    def select_llm_model_by_suffix(self, model_name: str, timeout: int = 5000):
+        """Select a model from the OPEN model-selector dropdown by its
+        stable API ``name`` (dynamic testid suffix).
+
+        Call after :meth:`click_model_selector`. Mirrors
+        ``SkillDetailPage.select_llm_model()`` — same shared widget.
+        """
+        logger.info("Selecting LLM model (testid suffix): %s", model_name)
+        option = self.page.locator(self.MODEL_SELECTOR_OPTION.format(model_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+
+    def wait_for_selected_model_name_change(self, previous_name: str, timeout: int = 5000):
+        """Wait until the composer's ``model-selector-name`` trigger no
+        longer shows *previous_name*.
+
+        Call right after :meth:`select_llm_model_by_suffix` — clicking an
+        option closes the dropdown (``LLMModelsMenu.jsx``'s
+        ``handleMenuItemClick`` calls ``onSelectModel`` then ``onClose``)
+        and the composer trigger's text updates via a React state update
+        that lands one render tick later; a one-shot ``text_content()``
+        read immediately after the click can race ahead of it (confirmed
+        live during ELITEA-2091 implementation).
+        """
+        expect(self.model_selector_name).not_to_have_text(previous_name, timeout=timeout)
+
+    def close_model_selector(self, timeout: int = 5000):
+        """Close the open model-selector dropdown via Escape, without
+        selecting anything.
+
+        Mirrors ``AgentDetailPage.close_model_selector()``'s Escape-key
+        pattern — same shared widget.
+        """
+        self.page.keyboard.press("Escape")
+        self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).first.wait_for(
+            state="hidden", timeout=timeout
+        )
+
     def open_sidebar(self):
         """Open the sidebar drawer to show full text labels.
 
@@ -2002,6 +2128,79 @@ class ChatPage(BasePage):
         file_chooser = fc_info.value
         file_chooser.set_files(file_paths)
         return file_chooser
+
+    @action("Drag and drop file onto composer")
+    def drag_and_drop_file(self, file_path: str, timeout: int = 10000):
+        """Drag-and-drop a real file onto the composer's drop-zone.
+
+        Playwright cannot drive a native OS-level file drag (Finder/
+        Explorer) — there is no browser API surface for it. The standard,
+        non-substituting technique (AFS § Automation Hints) constructs a
+        synthetic ``DataTransfer`` holding a REAL ``File`` object built
+        in-page from the real file's own bytes (base64-encoded, decoded
+        back into a ``Uint8Array`` inside the page), and dispatches
+        ``dragenter`` -> ``dragover`` -> ``drop`` ``DragEvent``s at the
+        composer drop-zone (``chat-composer-dropzone``). This substitutes
+        only the INPUT MECHANISM (mouse+OS drag, which Playwright cannot
+        produce) — the real ``onDrop`` handler
+        (``useFileDragAndDrop``/``AttachmentButton.handleFileChange``), the
+        real upload/attach pipeline, and the real chip render are all
+        exercised exactly as they are for the picker path
+        (:meth:`attach_files_via_menu`). No response is mocked and no app
+        state is injected beyond constructing the synthetic input event
+        itself.
+
+        Args:
+            file_path: Absolute or relative path to a real file on disk.
+            timeout: Maximum wait for the drop-zone to be ready (ms).
+        """
+        path = Path(file_path)
+        file_bytes = path.read_bytes()
+        file_b64 = base64.b64encode(file_bytes).decode("ascii")
+        mime_type = mimetypes.guess_type(path.name)[0] or "text/plain"
+
+        logger.info("Drag-and-dropping file onto composer: %s", path.name)
+        self.composer_dropzone.wait_for(state="visible", timeout=timeout)
+        # Total (visible chips + overflow), not visible-only — the popper
+        # open at drop-time narrows the composer, and FileList.jsx's
+        # visible/overflow split is container-width-dependent (same
+        # reasoning as get_total_attached_file_count()'s own docstring;
+        # confirmed live this session: a visible-chip-only read can stay
+        # flat while the file lands in the "+N" overflow instead).
+        count_before = self.get_total_attached_file_count()
+
+        self.composer_dropzone.evaluate(
+            """(el, args) => {
+                const [b64, name, mime] = args;
+                const binary = atob(b64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                const file = new File([bytes], name, { type: mime });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                const dispatch = (type) => el.dispatchEvent(new DragEvent(type, {
+                    bubbles: true,
+                    cancelable: true,
+                    dataTransfer,
+                }));
+                dispatch('dragenter');
+                dispatch('dragover');
+                dispatch('drop');
+            }""",
+            [file_b64, path.name, mime_type],
+        )
+
+        deadline = time.monotonic() + timeout / 1000.0
+        while time.monotonic() < deadline:
+            if self.get_total_attached_file_count() != count_before:
+                return
+            time.sleep(0.3)
+        logger.warning(
+            "Drag-and-drop: attached file count did not change from %s within %s ms",
+            count_before, timeout,
+        )
 
     def wait_for_toast(self, timeout: int = 10000):
         """Wait for the app-wide toast message to become visible."""
@@ -2561,6 +2760,24 @@ class ChatPage(BasePage):
                 "older".
         """
         return self.page.locator(self.CONVERSATION_GROUP_HEADER.format(group))
+
+    def get_conversation_item_in_group(self, conversation_id: str | int, group: str = "today"):
+        """Return the Locator for a conversation item scoped inside a
+        specific date-group (ELITEA-2091 addition).
+
+        Same ``CONVERSATION_ITEM``/``CONVERSATION_GROUP_HEADER`` scoping as
+        :meth:`is_conversation_in_group`/:meth:`click_conversation_in_group`,
+        returned as a raw Locator for callers that need to read its own
+        text/state directly (e.g. the "Naming" placeholder -> real-title
+        transition), not just a boolean/click.
+
+        Args:
+            conversation_id: Numeric conversation id.
+            group: Date-group key — "today" (default), "this_week", or
+                "older".
+        """
+        group_container = self.page.locator(self.CONVERSATION_GROUP_HEADER.format(group))
+        return group_container.locator(self.CONVERSATION_ITEM.format(conversation_id))
 
     def is_conversation_in_group(
         self, conversation_id: str | int, group: str = "today", timeout: int = 5000,
@@ -3349,6 +3566,40 @@ class ChatPage(BasePage):
         item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
         item.wait_for(state="visible", timeout=timeout)
         return item.get_attribute("data-active") == "true"
+
+    def wait_for_conversation_active(
+        self, conversation_id: str | int, active: bool = True, timeout: int = 5000,
+    ):
+        """Poll until *conversation_id*'s sidebar item's ``data-active``
+        attribute equals *active* ("true"/"false").
+
+        ELITEA-2098 addition — ``is_conversation_active()`` above reads the
+        attribute ONCE (its own ``item.wait_for()`` only waits for
+        VISIBILITY, which is already true for an item merely switching
+        active state, so it never gets a chance to retry). Live-confirmed
+        race: clicking a second conversation right after the first one's own
+        URL/participants checks leaves too little elapsed time for the
+        sidebar's ``data-active`` flip to land before an immediate
+        ``is_conversation_active()`` read, causing a flaky false "not
+        active". Same class of bug (and same fix shape) as
+        ``positive_existence_wait_cant_assert_negative_transition.md``
+        (Agent Hub's ``is_agent_liked``/``wait_for_liked_state`` —
+        ELITEA-2355): a presence-based boolean check is a ONE-DIRECTIONAL
+        wait, so it must be paired with Playwright's native auto-retrying
+        ``expect(...).to_have_attribute(...)``, which retries on the VALUE
+        itself and therefore works for both directions (becoming active,
+        AND becoming inactive when a sibling conversation takes over).
+
+        Args:
+            conversation_id: Numeric conversation id.
+            active: True to wait for ``data-active="true"``, False for
+                ``data-active="false"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        expect(item).to_have_attribute(
+            "data-active", "true" if active else "false", timeout=timeout,
+        )
 
     def wait_for_conversation_url_change(self, exclude_id: str | int, timeout: int = 10000):
         """Wait until the URL points at ``/chat/{some_id}`` where ``some_id != exclude_id``.
@@ -5874,6 +6125,39 @@ class ChatPage(BasePage):
             return True
         except Exception:
             return False
+
+    @action("Select conversation in folder")
+    def click_conversation_in_folder(
+        self, folder_id: str | int, conversation_id: str | int, timeout: int = 5000,
+    ):
+        """Click the conversation item scoped within folder *folder_id*
+        (ELITEA-2098 addition — mirrors :meth:`click_conversation_in_group`'s
+        date-group scoping, applied to a folder container instead).
+
+        Deliberately NOT ``force=True`` (unlike the date-group sibling) —
+        live-confirmed via Playwright MCP: a folder's MUI Collapse expand
+        transition is still animating for a short window right after
+        ``expand_folder()`` flips ``data-expanded="true"`` (the attribute
+        flips synchronously, the CSS height transition does not). A forced
+        click skips Playwright's "stable" actionability check and can land
+        mid-animation at a position the item hasn't settled into yet,
+        silently missing the click (no navigation, no error — the caller's
+        subsequent ``wait_for_conversation_url()`` times out with no
+        indication why). A plain ``click()`` waits for the item to stop
+        moving first, which reproduced correctly every time in manual
+        verification.
+
+        Args:
+            folder_id: Numeric folder id.
+            conversation_id: Numeric conversation id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking conversation %s in folder %s", conversation_id, folder_id)
+        folder_container = self.get_folder_item(folder_id)
+        item = folder_container.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+        self.wait_for_network(timeout=timeout)
 
     def get_folder_empty_state_text(self, folder_id: str | int) -> str:
         """Return the empty-state text scoped inside *folder_id*'s row.

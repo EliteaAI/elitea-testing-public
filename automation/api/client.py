@@ -341,6 +341,68 @@ class ConversationAPI:
         _raise_for_status(resp)
         return resp.json()
 
+    def create_folder(self, name: str) -> dict:
+        """Create a chat folder and return its JSON representation.
+
+        ELITEA-2098 addition: no ``FolderAPI`` client exists yet — folder
+        endpoints share the conversations project scope, so they live here
+        alongside ``rename_conversation``/``delete_conversation`` per the
+        "extend, don't duplicate" abstraction-layer rule.
+
+        Args:
+            name: Folder display name.
+
+        Returns:
+            Folder JSON (``id``, ``name``, ``owner_id``, ``position``, ``meta``).
+            The server fills ``owner_id`` from the auth session — the
+            ``FolderCreate`` OpenAPI schema lists it as required, but it is
+            NOT sent in the request body (same pattern already relied on for
+            ``author_id`` on conversation create).
+        """
+        url = f"{self.base_url}/elitea_core/folder/prompt_lib/{self.project_id}"
+        logger.debug("CREATE folder %s name=%s", url, name)
+        resp = self._session.post(
+            url, json={"name": name}, headers={"Content-Type": "application/json"},
+        )
+        _raise_for_status(resp)
+        return resp.json()
+
+    def delete_folder(self, folder_id: int) -> None:
+        """Delete a folder. Returns ``None`` on success (HTTP 204).
+
+        Args:
+            folder_id: Numeric folder ID.
+        """
+        url = f"{self.base_url}/elitea_core/folder/prompt_lib/{self.project_id}/{folder_id}"
+        logger.debug("DELETE folder %s", url)
+        resp = self._session.delete(url)
+        _raise_for_status(resp)
+
+    def move_conversation_to_folder(self, conversation_id: int, folder_id: int) -> dict:
+        """Move a conversation into *folder_id* via PUT ``folder_id`` on the
+        singular ``/conversation/`` endpoint (same endpoint as
+        :meth:`rename_conversation`, different field).
+
+        Args:
+            conversation_id: Numeric conversation ID.
+            folder_id: Numeric folder ID to move the conversation into.
+
+        Returns:
+            Updated conversation JSON.
+        """
+        url = (
+            f"{self.base_url}/elitea_core/conversation/prompt_lib"
+            f"/{self.project_id}/{conversation_id}"
+        )
+        logger.debug("MOVE conversation %s -> folder %s", url, folder_id)
+        resp = self._session.put(
+            url,
+            json={"folder_id": folder_id},
+            headers={"Content-Type": "application/json"},
+        )
+        _raise_for_status(resp)
+        return resp.json()
+
 
 class AgentAPI:
     """Manage agents (applications) via the Elitea API.
