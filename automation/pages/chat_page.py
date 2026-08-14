@@ -1165,6 +1165,53 @@ class ChatPage(BasePage):
         description="X (cancel) icon next to the folder-name editor input.",
     )
 
+    # ------------------------------------------------------------------
+    # Conversation rename inline editor (ELITEA-2099) — mirrors the
+    # folder-name editor above (same ``chat-*-name-{input,confirm-button,
+    # cancel-button}`` shape, ``ConversationItem.jsx`` vs ``FolderItem.jsx``).
+    # Testids ADDED on ``automation/testids``
+    # (EliteaAI/EliteaUI@ff56e29d — "add data-testid for conversation rename
+    # input/confirm/cancel (ELITEA-2099)"). Only one conversation can be in
+    # edit mode at a time, so — same as folder_name_input — no per-id
+    # scoping is needed.
+    # ------------------------------------------------------------------
+
+    conversation_name_input = LocatorDescriptor(
+        testid="chat-conversation-name-input",
+        description=(
+            "Inline conversation-name editor input (ConversationItem.jsx's "
+            "Input.StyledInputEnhancer, inputProps channel) — pre-fills "
+            "with the conversation's current name when the Rename menu "
+            "item is clicked."
+        ),
+    )
+
+    conversation_name_confirm_button = LocatorDescriptor(
+        testid="chat-conversation-name-confirm-button",
+        description=(
+            "Checkmark (save) icon next to the conversation-name editor "
+            "input. Carries data-disabled=\"true\"/\"false\" reflecting "
+            "isSaveEnabled (name changed AND passes ConversationNameRegExp) "
+            "— testid identity is unchanged, only a sibling state "
+            "attribute, per the testid=identity/state=data-* policy. Read "
+            "via is_conversation_name_confirm_enabled(). A11y-snapshot "
+            "gotcha (same as chat-folder-name-confirm-button): in the "
+            "disabled/cursor:default state this element may be pruned from "
+            "a browser_snapshot's accessibility tree — assert via the "
+            "testid locator directly (is_visible()/get_attribute), never "
+            "via a snapshot accessible-name read."
+        ),
+    )
+
+    conversation_name_cancel_button = LocatorDescriptor(
+        testid="chat-conversation-name-cancel-button",
+        description=(
+            "X (cancel) icon next to the conversation-name editor input. "
+            "Always cursor:pointer (unlike confirm) — not affected by the "
+            "snapshot-pruning gotcha."
+        ),
+    )
+
     # Folder item row (whole accordion) — dynamic per folder id. Carries
     # data-expanded="true"/"false" on the SAME element (testid = stable
     # identity, state via data-* attribute — PR #581 ruling), scoping BOTH
@@ -3531,6 +3578,75 @@ class ChatPage(BasePage):
         self.folder_name_input.clear()
         self.page.wait_for_timeout(100)  # Wait for clear to complete
         self.folder_name_input.press_sequentially(name, delay=30)
+
+    @action("Set conversation name in inline editor")
+    def set_conversation_name(self, name: str):
+        """Replace the inline conversation-name editor's value via keyboard events.
+
+        Same click() + clear() + press_sequentially() idiom as
+        ``set_folder_name()`` (ELITEA-2099 mirrors ELITEA-2458's editor
+        shape) — a bare ``Control+a`` without a following ``clear()`` risks
+        losing the race against React's own re-render of the pre-filled
+        value (documented on ``set_folder_name()``). Assumes the editor is
+        already open and ``conversation_name_input`` is visible/focused
+        (e.g. right after ``click_conversation_menu_item("rename")``).
+
+        Args:
+            name: New conversation name to type.
+        """
+        logger.info("Setting conversation name to %r", name)
+        self.conversation_name_input.click()
+        self.page.wait_for_timeout(100)  # Wait for focus
+        self.conversation_name_input.clear()
+        self.page.wait_for_timeout(100)  # Wait for clear to complete
+        self.conversation_name_input.press_sequentially(name, delay=30)
+
+    @action("Clear conversation name in inline editor")
+    def clear_conversation_name(self) -> None:
+        """Clear the inline conversation-name editor's value.
+
+        Isolated from ``set_conversation_name()``/``paste_conversation_name()``
+        so a caller can assert the empty intermediate state as its own step
+        (AFS ELITEA-2104 step 2 — "Clear the input" is its own verified case
+        step, distinct from the paste that follows it). Assumes the editor
+        is already open and ``conversation_name_input`` is visible/focused
+        (e.g. right after ``click_conversation_menu_item("rename")``).
+        """
+        logger.info("Clearing conversation name")
+        self.conversation_name_input.click()
+        self.page.wait_for_timeout(100)  # Wait for focus
+        self.conversation_name_input.clear()
+
+    @action("Paste conversation name in inline editor via real clipboard paste")
+    def paste_conversation_name(self, text: str) -> None:
+        """Paste *text* into the inline conversation-name editor via a REAL clipboard paste.
+
+        Mirrors ``ProjectContextPage.set_editor_content_via_paste()``
+        (``automation/pages/project_context_page.py:90-124``) — the
+        project's established honest-paste idiom: stages *text* on the real
+        OS/browser clipboard via ``navigator.clipboard.writeText()``, then
+        dispatches a genuine ``Control+V``/``Meta+V`` keypress. This is NOT
+        a DOM injection — the paste itself is a real browser paste event
+        routed through ``ConversationItem.jsx``'s own
+        ``onChange={onChangeConversationName}`` handler (no separate
+        ``onPaste`` handler exists, source-confirmed in AFS ELITEA-2104),
+        identical to a user's ``Ctrl+V``. ``clipboard-read``/
+        ``clipboard-write`` permissions are already granted suite-wide
+        (``conftest.py``). Assumes the editor is already open, focused, and
+        (per the case's own step ordering) already cleared via
+        ``clear_conversation_name()``.
+
+        Args:
+            text: Clipboard content to paste.
+        """
+        logger.info("Pasting conversation name (%d chars)", len(text))
+        self.page.evaluate("(text) => navigator.clipboard.writeText(text)", text)
+        paste_shortcut = (
+            "Meta+V"
+            if self.page.evaluate("() => navigator.platform.includes('Mac')")
+            else "Control+V"
+        )
+        self.page.keyboard.press(paste_shortcut)
 
     def is_conversation_pinned(self, conversation_id: str | int, timeout: int = 5000) -> bool:
         """Return True if *conversation_id*'s sidebar item carries ``data-pinned="true"``.
@@ -6355,6 +6471,17 @@ class ChatPage(BasePage):
         ``True`` = clickable/active (``data-disabled == "false"``).
         """
         value = self.folder_name_confirm_button.get_attribute("data-disabled")
+        return value == "false"
+
+    def is_conversation_name_confirm_enabled(self) -> bool:
+        """Return True if ``conversation_name_confirm_button`` is currently clickable.
+
+        Same ``data-disabled`` idiom as ``is_folder_name_confirm_enabled()``
+        (ELITEA-2099 mirrors the ELITEA-2458 folder-rename pattern on
+        ``ConversationItem.jsx``'s ``isSaveEnabled``). Polarity-neutral
+        name: ``True`` = clickable/active (``data-disabled == "false"``).
+        """
+        value = self.conversation_name_confirm_button.get_attribute("data-disabled")
         return value == "false"
 
     def get_folder_name_confirm_tooltip_text(self, timeout: int = 3000) -> str:

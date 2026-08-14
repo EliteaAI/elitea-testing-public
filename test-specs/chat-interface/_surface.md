@@ -2,9 +2,118 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2091, 2026-08-14
+a time; last confirmed by: qa-engineer analyst, ELITEA-2103/2104, 2026-08-14
 (supersedes nothing below — new section, other sections unchanged; previous
-confirmer: ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+confirmer: ELITEA-2101/2102, 2026-08-14; ELITEA-2100, 2026-08-14; ELITEA-2099,
+2026-08-14; ELITEA-2091, 2026-08-14; ELITEA-2458, 2026-08-07;
+ELITEA-2086/2087/2088, 2026-08-03).
+
+## Conversation-rename overflow — truncation itself, TYPE + PASTE both confirmed identical (ELITEA-2103/2104)
+- Closes the gap ELITEA-2101/2102's AFS flagged ("51+/overflow/paste-truncation …
+  that's ELITEA-2103/2104's territory"). Both live-confirmed this session against
+  the shared "Review attached documents" conversation (id 420), each restored
+  immediately after:
+  - **Type 51 chars** (`press_sequentially`, real per-keystroke events): input ends
+    at exactly 50 chars (`"A"*50`), 51st keystroke silently dropped. Confirm button
+    `data-disabled="false"`. Save → `PUT .../conversation/prompt_lib/471/420` → `200`.
+  - **Paste 60 chars** (real `navigator.clipboard.writeText()` + `Control+V`/`Meta+V`
+    keypress — NOT a DOM-injected value): input ends at exactly 50 chars, same
+    left-slice result. Same confirm-enabled + `PUT` 200 behavior.
+  - **Why both land identically**: `ConversationItem.jsx` wires only
+    `onChange={onChangeConversationName}` on the input — no separate `onPaste`
+    handler exists (grep-confirmed) — so a paste's resulting native `input`/`change`
+    event is caught by the exact same `slice(0, MAX_CONVERSATION_LENGTH)` logic as
+    typing.
+  - No error toast on either the truncation itself or the subsequent save; only
+    console noise across both runs was the pre-existing `secrets/secrets/default`
+    403 (3 occurrences total this session — 1 per save + 1 ambient).
+  - No case-text drift, no defect — both ELITEA-2103 and ELITEA-2104 automate
+    exactly as written. Family-AFS call: kept SEPARATE (not merged with each other
+    or with 2101/2102) — type vs paste is a genuine interaction-technique
+    difference (`test-case-analysis` § Execute: "differ in steps → separate AFS"),
+    even though the underlying assertion/mechanism is identical.
+  - Paste idiom precedent: `automation/pages/project_context_page.py`'s
+    `set_editor_content_via_paste()` — reuse that pattern (real clipboard write +
+    real keyboard paste shortcut) for any future paste-testing on this surface;
+    never inject the pasted value via `fill()`/`page.evaluate()` directly into an
+    input's DOM value — that would substitute the test for the browser's own paste
+    event and stop proving the product's truncation handler at all.
+
+## Conversation-rename length boundary — MAX_CONVERSATION_LENGTH source-confirmed (ELITEA-2101/2102)
+- **`MAX_CONVERSATION_LENGTH = 50`** (`EliteaUI/src/common/constants.js:74`).
+  `ConversationItem.jsx`'s `onChangeConversationName` does
+  `event.target.value.slice(0, MAX_CONVERSATION_LENGTH)` on every change — so 49-char
+  and 50-char names are NEVER truncated (slice only bites the 51st+ char); 50 is the
+  boundary where truncation would first start to matter, not a rejection point.
+  Live-confirmed both: typed 49 A's → input length 49, confirm enabled, `PUT` 200;
+  typed 50 A's → input length 50 (no truncation), confirm enabled, `PUT` 200. No
+  case-text drift, no defect — both cases automate exactly as written.
+- `FolderItem.jsx` uses the SAME `MAX_CONVERSATION_LENGTH`/`ConversationNameRegExp`
+  pair (see the folder-rename section below) — the two components share the
+  length-cap and regex-validity mechanism, only the entity differs.
+- 51+/overflow/paste-truncation behavior is NOT covered by this pass — that's
+  ELITEA-2103/2104's territory (already flagged as the next sibling pair in
+  ELITEA-2099's Automation Hints).
+
+## Manual `ConversationAPI()` script vs the `conversation_api` fixture — project-id mismatch trap (ELITEA-2100)
+- A standalone `ConversationAPI(browser_cookies=[])` (no fixture chain, default
+  `settings.elitea_project_id`) resolved to project **399** during ad-hoc
+  exploration, while the live browser session (`auth_state`/`VITE_DEV_TOKEN`) is on
+  project **471** ("Elitea Testing Team") — a conversation created that way opened
+  as "Conversation not found" at `/chat/{id}`. The pytest `conversation_api`
+  fixture (session-scoped, browser-cookie-derived) does NOT have this problem —
+  ELITEA-2099's test passes using it. Only a risk for **manual exploration
+  scripts** run outside the fixture chain (as this analyst pass did, once, then
+  switched to reusing a shared live conversation instead) — never copy a bare
+  `ConversationAPI(browser_cookies=[])` instantiation into test setup; always go
+  through the `conversation_api` fixture.
+
+## Conversation rename editor — CANCEL path live-confirmed (ELITEA-2100)
+- Clicking `chat-conversation-name-cancel-button` after typing a new name: input
+  closes (`chat-conversation-name-input` → count 0), sidebar reverts to the
+  ORIGINAL name, and — live-confirmed via `browser_network_requests` — **no**
+  `PUT .../conversation/prompt_lib/{project_id}/{id}` fires at all (typing alone
+  also fires nothing; only cancel-click was tested, no request appeared either
+  before or after). Persists correctly across navigate-away/back too (re-verified
+  by leaving `/chat` and returning). Symmetric with ELITEA-2099's save-path
+  (`PUT` fires + resolves 200 on checkmark-click) — together the pair proves the
+  editor's two exit paths are mutually exclusive at the network layer, not just
+  the DOM layer.
+
+## Conversation rename editor — checkmark/cancel testids ADDED + same a11y-snapshot gotcha as folders (ELITEA-2099)
+- **`ConversationItem.jsx`'s rename editor had NO testids before this pass** — added
+  this session, mirroring `FolderItem.jsx`'s existing `chat-folder-name-*` shapes
+  exactly (same `Input.StyledInputEnhancer` component, same `inputProps` channel):
+  `chat-conversation-name-input`, `chat-conversation-name-confirm-button` (carries
+  `data-disabled="true"/"false"` off `isSaveEnabled` — testid=identity/state=data-*),
+  `chat-conversation-name-cancel-button`. Committed `EliteaAI/EliteaUI@ff56e29d` on
+  `automation/testids`. `isSaveEnabled = ConversationNameRegExp.test(name) &&
+  (isNew || name !== originalName)` — same "valid AND changed" gate as folders.
+- **Same a11y-snapshot pruning gotcha as the folder confirm button (ELITEA-2458)
+  reconfirmed live for the conversation editor**: in the disabled/unchanged state
+  (`cursor:default`) `chat-conversation-name-confirm-button` may not appear as a
+  distinct node in a Playwright `browser_snapshot`'s accessibility tree — assert via
+  the testid locator directly (`page.locator('[data-testid="..."]')`), never via a
+  snapshot accessible-name read. The cancel button (always `cursor:pointer`) is
+  unaffected.
+- **The input pre-fills with the CURRENT name** (`value={conversationName}` synced
+  from the `name` prop via a `useEffect`) — confirmed live: opening rename on
+  "Review attached documents" showed that exact text in the input before any typing.
+- **Clicking the confirm button, when the conversation being renamed is NOT already
+  the active/open one, also navigates into and selects it** — confirmed live: URL
+  went from `/chat` to `/chat/{id}?name=...` on save. Side effect of
+  `onSave`→`onEdit`'s existing select-conversation behavior, not a defect; account
+  for the navigation in any URL assertion made right after a checkmark click.
+- **Context-menu item is labelled "Rename", not "Edit"** — the TMS case ELITEA-2099's
+  own "Edit option" title/step text is stale vs the live product (same drift already
+  documented for ELITEA-2114/#695 on the identical `ConversationItem.jsx`
+  `menuItems` array); filed as sibling clarification **#1513**. Live-verified full
+  menu-item set for project 471 (non-personal/non-public): **Rename, Move to,
+  Playback, Duplicate, Make public, Share, Pin on top, Delete** (8 items) — the
+  case's literal "Delete, Edit, Move to, Export, Playback, Pin on top" list is wrong
+  on every count (wrong label, one item that doesn't exist, three omitted). Item
+  count/set is project-dependent (#695 saw only 5 in the personal project) — don't
+  assert a fixed count without pinning the project.
 
 ## Folder rename editor — checkmark enable/disable logic + a11y-snapshot gotcha (ELITEA-2458)
 - **Full validation logic, read from `FolderItem.jsx` source** (grounds every
