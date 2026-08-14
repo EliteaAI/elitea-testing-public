@@ -2,10 +2,26 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2100, 2026-08-14
+a time; last confirmed by: qa-engineer analyst, ELITEA-2101/2102, 2026-08-14
 (supersedes nothing below — new section, other sections unchanged; previous
-confirmer: ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14; ELITEA-2458,
-2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+confirmer: ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091,
+2026-08-14; ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## Conversation-rename length boundary — MAX_CONVERSATION_LENGTH source-confirmed (ELITEA-2101/2102)
+- **`MAX_CONVERSATION_LENGTH = 50`** (`EliteaUI/src/common/constants.js:74`).
+  `ConversationItem.jsx`'s `onChangeConversationName` does
+  `event.target.value.slice(0, MAX_CONVERSATION_LENGTH)` on every change — so 49-char
+  and 50-char names are NEVER truncated (slice only bites the 51st+ char); 50 is the
+  boundary where truncation would first start to matter, not a rejection point.
+  Live-confirmed both: typed 49 A's → input length 49, confirm enabled, `PUT` 200;
+  typed 50 A's → input length 50 (no truncation), confirm enabled, `PUT` 200. No
+  case-text drift, no defect — both cases automate exactly as written.
+- `FolderItem.jsx` uses the SAME `MAX_CONVERSATION_LENGTH`/`ConversationNameRegExp`
+  pair (see the folder-rename section below) — the two components share the
+  length-cap and regex-validity mechanism, only the entity differs.
+- 51+/overflow/paste-truncation behavior is NOT covered by this pass — that's
+  ELITEA-2103/2104's territory (already flagged as the next sibling pair in
+  ELITEA-2099's Automation Hints).
 
 ## Manual `ConversationAPI()` script vs the `conversation_api` fixture — project-id mismatch trap (ELITEA-2100)
 - A standalone `ConversationAPI(browser_cookies=[])` (no fixture chain, default
