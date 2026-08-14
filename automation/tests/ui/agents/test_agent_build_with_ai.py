@@ -430,26 +430,6 @@ CANCEL_FROM_REVIEW_PROMPT_TEXT = (
     "A customer support agent that answers billing questions and escalates refund requests."
 )
 
-# Mocked generate_application_draft response for ELITEA-1918 — deterministic
-# stand-in for the real (unmocked) draft the AFS's analyst run observed live
-# ("Billing Support Agent"). Mocking (same technique as ELITEA-1906/1910/1916)
-# avoids real-AI latency/non-determinism; this case's Pass criteria don't
-# depend on the draft's specific content, only on what happens when the
-# modal's Close (X) icon is clicked from the review step afterward (AFS
-# Automation Hints).
-CANCEL_FROM_REVIEW_DRAFT_PAYLOAD = {
-    "name": "ELITEA-1918 Cancel From Review Draft",
-    "description": "A draft used to test cancel-from-review-step modal close behavior.",
-    "instructions": "You are a test agent for ELITEA-1918.",
-    "welcome_message": "Hi, testing cancel from the review step.",
-    "conversation_starters": ["Starter one", "Starter two"],
-    "suggested_toolkits": [],
-    "suggested_mcp": [],
-    "suggested_pipelines": [],
-    "suggested_agents": [],
-    "suggested_skills": [],
-}
-
 # ELITEA-1919 — verbatim prompt per the AFS's Test Data table. This case's
 # Step 4 assertion depends on reading this EXACT text back after "Back to
 # prompt" is clicked, so it is a dedicated constant this test owns the
@@ -458,23 +438,6 @@ CANCEL_FROM_REVIEW_DRAFT_PAYLOAD = {
 BACK_TO_PROMPT_PROMPT_TEXT = (
     "An agent that helps summarize customer support tickets for ELITEA-1919 back-to-prompt verification."
 )
-
-# Mocked generate_application_draft response for ELITEA-1919 — same
-# minimal-shape technique CANCEL_FROM_REVIEW_DRAFT_PAYLOAD uses. This
-# case's Pass criteria never assert on the draft's specific field values,
-# only on its absence from the DOM after "Back to prompt" is clicked.
-BACK_TO_PROMPT_DRAFT_PAYLOAD = {
-    "name": "ELITEA-1919 Back To Prompt Draft",
-    "description": "A draft used to test back-to-prompt state-preservation behavior.",
-    "instructions": "You are a test agent for ELITEA-1919.",
-    "welcome_message": "Hi, testing back to prompt.",
-    "conversation_starters": ["Starter one", "Starter two"],
-    "suggested_toolkits": [],
-    "suggested_mcp": [],
-    "suggested_pipelines": [],
-    "suggested_agents": [],
-    "suggested_skills": [],
-}
 
 
 class TestAgentBuildWithAIGenerationFailureRetry:
@@ -1746,7 +1709,6 @@ class TestAgentBuildWithAIDraftFieldPopulation:
         approve + created-agent-read sequence this suite has never covered."""
         list_page = AgentsListPage(page)
         modal = GenerateAgentModalPage(page)
-        draft = FIELD_POPULATION_DRAFT_PAYLOAD
 
         created_agent_id = None
         try:
@@ -1758,15 +1720,12 @@ class TestAgentBuildWithAIDraftFieldPopulation:
                 list_page.navigate_to_create()
                 modal.open_modal()
                 modal.fill_prompt(FIELD_POPULATION_PROMPT_TEXT)
-                modal.mock_generate_success(draft)
 
-                with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
-                    modal.generate_button.click()
-
-                response = response_info.value
+                response = modal.click_generate_and_wait_for_response(timeout=LIVE_GENERATE_RESPONSE_TIMEOUT)
                 assert response.status == 200, (
-                    f"Expected the mocked generate-draft request to succeed, got {response.status}"
+                    f"Expected the generate-draft request to succeed, got {response.status}"
                 )
+                draft = response.json()
                 modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
 
             # ------------------------------------------------------------------
@@ -2353,8 +2312,6 @@ class TestAgentBuildWithAICancelFromReviewStep:
             "/elitea_core/applications/prompt_lib/", method="POST"
         )
 
-        modal.mock_generate_success(CANCEL_FROM_REVIEW_DRAFT_PAYLOAD)
-
         try:
             with allure.step("Step 1 — Generate a draft and reach the review form"):
                 list_page.navigate_to_create()
@@ -2373,15 +2330,16 @@ class TestAgentBuildWithAICancelFromReviewStep:
                     "Prompt textarea should contain exactly the entered text"
                 )
 
-                with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
-                    modal.generate_button.click()
-                assert response_info.value.status == 200, (
-                    "Mocked generate-draft response should resolve 200 to reach the review step"
+                response = modal.click_generate_and_wait_for_response(timeout=LIVE_GENERATE_RESPONSE_TIMEOUT)
+                assert response.status == 200, (
+                    f"Expected the generate-draft request to succeed, got {response.status}"
                 )
+                body = response.json()
                 modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
 
-                assert modal.get_review_name() == CANCEL_FROM_REVIEW_DRAFT_PAYLOAD["name"], (
-                    "Review form should display the generated draft's name before it is discarded"
+                assert modal.get_review_name() == body["name"], (
+                    "Review form should display the real generated draft's name (the response is the "
+                    "oracle — see .agents/testing.md § Fidelity policy) before it is discarded"
                 )
 
             with allure.step(
@@ -2423,7 +2381,7 @@ class TestAgentBuildWithAICancelFromReviewStep:
                     "Agents list should be unchanged after closing the review step via X, "
                     f"before={agent_names_before!r}, after={agent_names_after!r}"
                 )
-                assert CANCEL_FROM_REVIEW_DRAFT_PAYLOAD["name"] not in agent_names_after, (
+                assert body["name"] not in agent_names_after, (
                     "Generated draft's name should never appear in the Agents list after closing "
                     "the review step without creating"
                 )
@@ -2436,7 +2394,6 @@ class TestAgentBuildWithAICancelFromReviewStep:
                 ]
                 assert not unexpected_errors, f"Unexpected console errors: {unexpected_errors!r}"
         finally:
-            modal.clear_generate_mock()
             console_capture.stop()
             create_requests.stop()
 
@@ -2487,8 +2444,6 @@ class TestAgentBuildWithAIBackToPromptFromReviewStep:
             "/elitea_core/applications/prompt_lib/", method="POST"
         )
 
-        modal.mock_generate_success(BACK_TO_PROMPT_DRAFT_PAYLOAD)
-
         try:
             with allure.step("Step 1 — Generate a draft and reach the review form"):
                 list_page.navigate_to_create()
@@ -2499,15 +2454,16 @@ class TestAgentBuildWithAIBackToPromptFromReviewStep:
                     "Prompt textarea should contain exactly the entered text"
                 )
 
-                with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
-                    modal.generate_button.click()
-                assert response_info.value.status == 200, (
-                    "Mocked generate-draft response should resolve 200 to reach the review step"
+                response = modal.click_generate_and_wait_for_response(timeout=LIVE_GENERATE_RESPONSE_TIMEOUT)
+                assert response.status == 200, (
+                    f"Expected the generate-draft request to succeed, got {response.status}"
                 )
+                body = response.json()
                 modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
 
-                assert modal.get_review_name() == BACK_TO_PROMPT_DRAFT_PAYLOAD["name"], (
-                    "Review form should display the generated draft's name before Back discards it"
+                assert modal.get_review_name() == body["name"], (
+                    "Review form should display the real generated draft's name (the response is the "
+                    "oracle — see .agents/testing.md § Fidelity policy) before Back discards it"
                 )
                 assert len(draft_requests) == 1, (
                     f"Exactly one generate-draft call should have fired to reach the review step, "
@@ -2554,7 +2510,6 @@ class TestAgentBuildWithAIBackToPromptFromReviewStep:
                 ]
                 assert not unexpected_errors, f"Unexpected console errors: {unexpected_errors!r}"
         finally:
-            modal.clear_generate_mock()
             console_capture.stop()
             draft_requests.stop()
             create_requests.stop()
