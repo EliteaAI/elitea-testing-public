@@ -103,7 +103,7 @@ note on step 3's "full history" wording for the implementer).
 |---|---|---|---|---|
 | 1 Locate folder | folder shown with icon | step 1 | `step 1`: folder row visible, collapsed | asserted |
 | 2 Click folder to expand | conversations listed | step 2 | `step 2`: `is_folder_expanded` + both `is_conversation_in_folder` | asserted |
-| 3 Click conversation inside folder | content displayed with history | step 3 | `step 3`: URL + title | asserted (message-history assertion left to implementer per note above) |
+| 3 Click conversation inside folder | content displayed with history | step 3 | `step 3`: URL + title + message-count/body assertion against the 2 messages seeded via the UI's own +Chat flow | asserted |
 | 4 Input active | input active | step 4 | `step 4`: `is_visible`+`is_editable` | asserted |
 | 5 Model/agent name shown | name visible | step 5 | `step 5`: `get_selected_model()` non-empty | asserted |
 | 6 PARTICIPANTS correct | correct participant shown | step 6 | ELITEA-2095's proven mechanism, not re-run live this session | asserted *(reuse of a proven mechanism, not independently re-verified this session — flagged, not a gap)* |
@@ -180,16 +180,71 @@ None.
 
 ## Blocked Steps
 
-None — case fully executable. One implementer-facing note (not a
-blocker): step 3's "full message history" wording — the seeded
-conversations in this session had zero messages (folder-assignment is the
-thing under test, not message content). If the implementer's spec wants a
-non-trivial history assertion for step 3, seed messages via the UI's own
-`+Chat` flow before moving the conversation into the folder (per the
-ELITEA-2095-documented workaround for defect #691 — never via
-`ConversationAPI.create_conversation()` + first UI message on a
-zero-message conversation, which silently creates a NEW conversation
-instead).
+None — case fully executable.
+
+**Resolved during implementation (fix round 1, PR #1510):** step 3's "full
+message history" wording had no assertion in the first implementation pass
+— an informal drop, not a routed decision, and flagged in review. Fixed:
+`conv_a` is now seeded via the UI's own `+Chat` flow with one real exchange
+(1 user + 1 AI message) before being moved into the folder — same
+workaround as ELITEA-2095 for defect #691 (`ConversationAPI.
+create_conversation()` + first UI message on a zero-message conversation
+silently creates a NEW conversation instead). Step 3 now asserts the
+reopened conversation shows exactly those 2 messages, in order, non-empty.
+`conv_b` (used only for step 8's highlight-move check) stays API-seeded
+with zero messages — its history is not part of any asserted expected
+result.
+
+### Implementer amendment (`docs(afs): amend selectors per implementer exploration`)
+
+Two exploration findings, both technique-only — no change to what the case
+asserts:
+
+1. **Project switched from Private (399) to Team (471) for the WHOLE test.**
+   Live run against Private showed step 6 (PARTICIPANTS panel) fails hard:
+   `ExpandedParticipantsList.jsx`'s `!isPrivateProject` guard (confirmed
+   against `../EliteaUI/src` on `main`) unconditionally omits the whole
+   Users/owner badge on the account's own Private project — there is no
+   avatar to read at all (product design, not a defect). This is the exact
+   constraint ELITEA-2095's own test already documents and works around by
+   using project 471. Folder/conversation mechanics are project-agnostic, so
+   the whole flow — not just step 6 — runs against 471 for consistency (one
+   `ConversationAPI(project_id="471")` instance, one project switch in setup).
+2. **`click_conversation_in_folder()` must NOT use `force=True`.** Live-
+   confirmed via Playwright MCP against a real seeded folder: a `force=True`
+   click immediately after `expand_folder()` intermittently misses — MUI's
+   Collapse expand transition is still animating when `data-expanded="true"`
+   flips (the attribute flips synchronously; the CSS height animation does
+   not), and `force=True` skips Playwright's "stable" actionability check
+   that would otherwise wait out the animation. A plain `click()` (no force)
+   reproduced correctly on every manual attempt. Unlike the pre-existing
+   `click_conversation_in_group()` (date groups have no comparable expand
+   animation, so `force=True` is safe there), this is a genuinely new
+   interaction shape, not a deviation from precedent.
+3. **`is_conversation_active()` reads `data-active` once — added
+   `wait_for_conversation_active(id, active: bool, timeout)` (poll)
+   alongside it.** Live-confirmed: clicking a second conversation right
+   after the first one's own URL/participants checks (which give it plenty
+   of settle time) leaves too little elapsed time for the SECOND click's
+   `data-active` flip to land before an immediate read, producing a flaky
+   false "not active" on step 8. Same known bug class + fix shape as
+   `.agents/memory/test-automation-engineer/positive_existence_wait_cant_assert_negative_transition.md`
+   (ELITEA-2355, Agent Hub `is_agent_liked`/`wait_for_liked_state`) —
+   matched its established bidirectional `expect(...).to_have_attribute(...)`
+   shape rather than a one-directional locator wait, so it works for both
+   directions. Purely additive — `is_conversation_active()` itself is
+   unchanged, its other callers (`test_conversation_deletion_flow.py`) are
+   unaffected.
+4. **Step 6's `participants_users_avatar.count() == 1` must run AFTER
+   `get_participants_user_avatar_text()`, not before.** `.count()` is a
+   synchronous snapshot with no retry; the USERS avatar renders
+   asynchronously after `expand_participants_panel()` (a separate participants
+   fetch), and `get_participants_user_avatar_text()` already contains the
+   correct `.wait_for(state="visible")`. Reading `.count()` first raced the
+   panel intermittently — live-confirmed flaky `0 == 1` on one of four runs.
+   Reordering (wait first, then count) is copy-adjacent-but-safer than
+   ELITEA-2095's own Step 10, which reads `.count()` first and has not (yet)
+   shown the race — same underlying hazard either way.
 
 ## Automation Hints
 

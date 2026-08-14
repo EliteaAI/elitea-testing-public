@@ -3567,6 +3567,40 @@ class ChatPage(BasePage):
         item.wait_for(state="visible", timeout=timeout)
         return item.get_attribute("data-active") == "true"
 
+    def wait_for_conversation_active(
+        self, conversation_id: str | int, active: bool = True, timeout: int = 5000,
+    ):
+        """Poll until *conversation_id*'s sidebar item's ``data-active``
+        attribute equals *active* ("true"/"false").
+
+        ELITEA-2098 addition — ``is_conversation_active()`` above reads the
+        attribute ONCE (its own ``item.wait_for()`` only waits for
+        VISIBILITY, which is already true for an item merely switching
+        active state, so it never gets a chance to retry). Live-confirmed
+        race: clicking a second conversation right after the first one's own
+        URL/participants checks leaves too little elapsed time for the
+        sidebar's ``data-active`` flip to land before an immediate
+        ``is_conversation_active()`` read, causing a flaky false "not
+        active". Same class of bug (and same fix shape) as
+        ``positive_existence_wait_cant_assert_negative_transition.md``
+        (Agent Hub's ``is_agent_liked``/``wait_for_liked_state`` —
+        ELITEA-2355): a presence-based boolean check is a ONE-DIRECTIONAL
+        wait, so it must be paired with Playwright's native auto-retrying
+        ``expect(...).to_have_attribute(...)``, which retries on the VALUE
+        itself and therefore works for both directions (becoming active,
+        AND becoming inactive when a sibling conversation takes over).
+
+        Args:
+            conversation_id: Numeric conversation id.
+            active: True to wait for ``data-active="true"``, False for
+                ``data-active="false"``.
+            timeout: Maximum wait time in milliseconds.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        expect(item).to_have_attribute(
+            "data-active", "true" if active else "false", timeout=timeout,
+        )
+
     def wait_for_conversation_url_change(self, exclude_id: str | int, timeout: int = 10000):
         """Wait until the URL points at ``/chat/{some_id}`` where ``some_id != exclude_id``.
 
@@ -6091,6 +6125,39 @@ class ChatPage(BasePage):
             return True
         except Exception:
             return False
+
+    @action("Select conversation in folder")
+    def click_conversation_in_folder(
+        self, folder_id: str | int, conversation_id: str | int, timeout: int = 5000,
+    ):
+        """Click the conversation item scoped within folder *folder_id*
+        (ELITEA-2098 addition — mirrors :meth:`click_conversation_in_group`'s
+        date-group scoping, applied to a folder container instead).
+
+        Deliberately NOT ``force=True`` (unlike the date-group sibling) —
+        live-confirmed via Playwright MCP: a folder's MUI Collapse expand
+        transition is still animating for a short window right after
+        ``expand_folder()`` flips ``data-expanded="true"`` (the attribute
+        flips synchronously, the CSS height transition does not). A forced
+        click skips Playwright's "stable" actionability check and can land
+        mid-animation at a position the item hasn't settled into yet,
+        silently missing the click (no navigation, no error — the caller's
+        subsequent ``wait_for_conversation_url()`` times out with no
+        indication why). A plain ``click()`` waits for the item to stop
+        moving first, which reproduced correctly every time in manual
+        verification.
+
+        Args:
+            folder_id: Numeric folder id.
+            conversation_id: Numeric conversation id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking conversation %s in folder %s", conversation_id, folder_id)
+        folder_container = self.get_folder_item(folder_id)
+        item = folder_container.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        item.wait_for(state="visible", timeout=timeout)
+        item.click()
+        self.wait_for_network(timeout=timeout)
 
     def get_folder_empty_state_text(self, folder_id: str | int) -> str:
         """Return the empty-state text scoped inside *folder_id*'s row.
