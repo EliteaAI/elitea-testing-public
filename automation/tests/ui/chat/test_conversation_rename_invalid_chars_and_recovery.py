@@ -1,5 +1,6 @@
-"""UI Test for ELITEA-2110/2112/2113 — Chat: Conversation Rename — Invalid
-Characters / Leading Space / Recovery After Invalid Input.
+"""UI Test for ELITEA-2110/2112/2113/2111 — Chat: Conversation Rename — Invalid
+Characters / Leading Space / Recovery After Invalid Input / Tooltip Validation
+Message Content.
 
 Family AFS covering three TMS cases that all drive the SAME
 ``isSaveEnabled``/``ConversationNameRegExp`` gate on the SAME inline rename
@@ -17,6 +18,15 @@ of the length branch:
 - ELITEA-2113: type invalid characters (checkmark inactive) -> clear and
   type a fully valid name ("Chat 01 (test).") -> checkmark activates -> click
   saves successfully with no error shown.
+- ELITEA-2111 (extend-existing, added this session): "$ % @"-flavoured invalid
+  characters -> hovering the inactive checkmark shows the EXACT
+  ConversationNameWarningMessage tooltip text -> recovering to a valid name
+  makes the tooltip disappear and the checkmark activate. Steps 1-4 are a new
+  parametrize row on the Shape-A test (own literal invalid-char data, same
+  method body as ELITEA-2110/2112); step 5 is a coverage-tag-only addition on
+  the ELITEA-2113 test, whose existing Step 3 already asserts exactly that
+  outcome. AFS:
+  test-specs/chat-interface/lextend_conversation-rename-tooltip-validation-message-content_ELITEA-2111.md
 
 Source-confirmed (``EliteaUI/src/[fsd]/features/chat/conversation-list/ui/
 conversations/ConversationItem.jsx`` + ``src/common/constants.js``):
@@ -27,14 +37,16 @@ string shown for ANY regex-failure reason — charset, first-char, or length).
 
 Spec:
 test-specs/chat-interface/l3_conversation-rename-invalid-chars-leading-space-and-recovery_ELITEA-2110_2112_2113.md
+test-specs/chat-interface/lextend_conversation-rename-tooltip-validation-message-content_ELITEA-2111.md
 
-New testid added this session: ``chat-conversation-name-confirm-tooltip-content``
+New testid added originally (ELITEA-2110/2112/2113 session): ``chat-conversation-name-confirm-tooltip-content``
 (``EliteaAI/EliteaUI@888dac13`` on ``automation/testids``) — mirrors the
 pre-existing ``chat-folder-name-confirm-tooltip-content`` (ELITEA-2458) exactly;
 the conversation-rename confirm button's validation tooltip had no testid on
-its popper content before this.
+its popper content before this. No new testid needed for ELITEA-2111 — reuses
+the same handle.
 
-No blocking product defects found -- all three cases pass end-to-end against
+No blocking product defects found -- all four cases pass end-to-end against
 the live product exactly as their own case text expects; no case-text drift.
 """
 
@@ -85,8 +97,9 @@ def _is_known_secrets_403(msg) -> bool:
 
 
 class TestConversationRenameInvalidCharsAndRecovery:
-    """ELITEA-2110/2112/2113: Chat – Conversation Rename – Invalid Characters
-    / Leading Space / Recovery After Invalid Input (l3, medium, all three)."""
+    """ELITEA-2110/2112/2113/2111: Chat – Conversation Rename – Invalid
+    Characters / Leading Space / Recovery After Invalid Input / Tooltip
+    Validation Message Content (l3, medium, all four)."""
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2110_chat-conversation-rename-check-icon-inactive-when-name-contains-special-characters.md",
@@ -96,12 +109,17 @@ class TestConversationRenameInvalidCharsAndRecovery:
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2112_chat-conversation-rename-first-character-cannot-be-a-space.md",
         "onetest-ai Test Case link — ELITEA-2112",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2111_chat-conversation-rename-tooltip-validation-message-content.md",
+        "onetest-ai Test Case link — ELITEA-2111",
+    )
     @pytest.mark.p2
     @pytest.mark.parametrize(
         "case_id, invalid_name",
         [
             pytest.param("ELITEA-2110", "HI Chat$$%", id="ELITEA-2110-special-characters"),
             pytest.param("ELITEA-2112", " ab", id="ELITEA-2112-leading-space"),
+            pytest.param("ELITEA-2111", "Ch$t %@name", id="ELITEA-2111-dollar-percent-at-characters"),
         ],
     )
     def test_rename_checkmark_inactive_for_invalid_input_shows_tooltip(
@@ -254,11 +272,24 @@ class TestConversationRenameInvalidCharsAndRecovery:
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2113_chat-conversation-rename-valid-characters-are-accepted-and-saved-after-invalid-value.md",
         "onetest-ai Test Case link — ELITEA-2113",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2111_chat-conversation-rename-tooltip-validation-message-content.md",
+        "onetest-ai Test Case link — ELITEA-2111 (step 5: tooltip disappears + checkmark"
+        " activates on recovery — coverage-tag only, same assertion below)",
+    )
     @pytest.mark.p2
     def test_rename_recovers_and_saves_after_invalid_value_replaced(self, page, conversation_api):
         """ELITEA-2113: checkmark inactive for invalid chars -> replacing
         with a fully valid name activates the checkmark -> click saves
         successfully with no error shown.
+
+        Also covers ELITEA-2111 step 5 ("Remove the invalid characters and
+        replace with a valid name of at least 3 characters" -> "Tooltip
+        disappears; checkmark becomes active") verbatim via Step 3 below —
+        coverage-tag only, no new assertion code (data-value-agnostic: the
+        check is against the CURRENT state after replacement, not tied to
+        which invalid string preceded it). See AFS
+        test-specs/chat-interface/lextend_conversation-rename-tooltip-validation-message-content_ELITEA-2111.md.
 
         Steps (AFS
         test-specs/chat-interface/l3_conversation-rename-invalid-chars-leading-space-and-recovery_ELITEA-2110_2112_2113.md,
