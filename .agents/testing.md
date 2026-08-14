@@ -446,3 +446,13 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   escalate to a fix-only implementer dispatch only once a pattern is established.
 - API-test conventions are thinner than UI (`.claude/rules/api-tests.md` exists —
   follow it; flag gaps to the lead).
+- Known-noise entry (2026-08-15, chat-remaining wave-02, PR #1518): the workflow's
+  internal gate hit one non-reproducing console-error failure —
+  `test_rename_conversation_paste_beyond_max_length_truncates` (ELITEA-2104) saw a
+  `500 Internal Server Error` on an unrelated resource (not the rename PUT itself,
+  which asserted 200 separately and passed) on 1 of 2 internal-gate runs. Investigated
+  before accepting: the single test ran clean standalone 4×, then the lead's own
+  independent full 6-node-id gate ran clean 3× — 7 consecutive clean runs after the
+  one occurrence. Classified as transient environmental noise, same class as the
+  Montserrat-font-404 and ArtifactsPage entries above — record further occurrences
+  here if this specific 500 repeats on this spec.
