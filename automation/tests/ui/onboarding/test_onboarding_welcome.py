@@ -27,7 +27,13 @@ import allure
 import pytest
 from pages.onboarding_page import OnboardingPage
 
-pytestmark = [pytest.mark.p2, pytest.mark.onboarding, pytest.mark.regression, pytest.mark.ui]
+pytestmark = [
+    pytest.mark.p2,
+    pytest.mark.onboarding,
+    pytest.mark.regression,
+    pytest.mark.ui,
+    pytest.mark.new,
+]
 
 # Expected text constants (source: Welcome.jsx — &apos; renders as U+0027,
 # — is U+2014 em dash in source, JSX whitespace between lines collapses to space)
