@@ -8,14 +8,29 @@ SAME folder moves the interaction window and the highlight to the new one.
 
 Spec: test-specs/chat-interface/l3_open-existing-conversation-from-folder_ELITEA-2098.md
 
-Setup seeds a folder + two conversations entirely via the API (folder
-create, 2 conversation creates, 2 "move into folder" PUTs) — transit setup,
-not the observable under test; the case's own observable (folder expand ->
-conversation open -> highlight moves) is produced entirely by the real UI
-against these real, server-persisted conversations. No new page-object
-locators were needed — every handle (``FOLDER_ITEM``, scoped
-``CONVERSATION_ITEM``, ``message_input``, ``model_selector``,
+Setup seeds a folder + two conversations, then moves both into the folder
+via the API ("move into folder" PUTs) — transit setup, not the observable
+under test; the case's own observable (folder expand -> conversation open
+-> highlight moves) is produced entirely by the real UI against these
+real, server-persisted conversations. No new page-object locators were
+needed — every handle (``FOLDER_ITEM``, scoped ``CONVERSATION_ITEM``,
+``message_input``, ``model_selector``,
 ``chat-participants-panel-toggle-button``) was already on ``main``.
+
+Fix round 1 (this PR): case step 3's expected result ("Conversation
+content is displayed with full message history") had no assertion —
+the AFS's own § Blocked Steps implementer note flagged this as an open
+choice, but shipping without an assertion or a routed decision is a
+silent scope drop, not a resolution. Fixed by seeding conv_a's message
+history via the UI's own "+Chat" flow (same idiom, same worked
+precedent, and the same defect it dodges — EliteaAI/elitea-testing-public#691,
+"sending the first UI message to a conversation that exists server-side
+with ZERO messages silently creates a brand-new conversation" — as
+``test_open_conversation_today_section.py``/ELITEA-2095, which the AFS's
+own note pointed at) instead of the plain API create used for conv_b,
+then moving the seeded conversation into the folder via the same PUT.
+Step 3 now asserts the reopened conversation shows exactly the 2 seeded
+messages (1 user + 1 AI), in order, non-empty.
 
 AFS amendment (implementer exploration, this PR): the AFS specced project
 399 (Private) throughout, including case step 6 (PARTICIPANTS panel). Live
@@ -46,6 +61,7 @@ exactly.
 """
 
 import logging
+import re
 import time
 
 import allure
@@ -63,6 +79,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.regression, pytest.m
 # ---------------------------------------------------------------------------
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
+AI_RESPONSE_TIMEOUT = 30_000
 # Short, deliberate timeout for "should NOT be there" negative checks — long
 # enough to catch a genuine render, short enough not to pad a passing run.
 NEGATIVE_CHECK_TIMEOUT = 1_500
@@ -71,6 +88,13 @@ NEGATIVE_CHECK_TIMEOUT = 1_500
 # PARTICIPANTS panel shows a USERS section for the account's own identity
 # (see module docstring's AFS amendment note; same project ELITEA-2095 uses).
 TEAM_PROJECT_ID = "471"
+
+# The single real exchange seeded into conv_a via the UI's own "+Chat" flow
+# (see Setup and the module docstring's fix-round-1 note) so case step 3's
+# "full message history" wording has real content to assert against on
+# reopen. One exchange (2 messages) is enough — unlike ELITEA-2095's step 6
+# scroll assertion, this case doesn't need an overflowing viewport.
+FIRST_MESSAGE = "Give me a short 3-item numbered list of fun facts about narwhals."
 
 
 def _is_known_project_471_secrets_403(msg) -> bool:
@@ -103,7 +127,9 @@ class TestOpenExistingConversationFromFolder:
         1. Locate the seeded folder — collapsed, folder icon visible, no
            conversation items rendered beneath it.
         2. Expand the folder; both seeded conversations render inside.
-        3. Click the first conversation; URL + tab title update.
+        3. Click the first conversation; URL + tab title update, full
+           message history (the 2 messages seeded via the UI's own
+           "+Chat" flow) is displayed.
         4. Message input is active/editable.
         5. Model name is shown.
         6. PARTICIPANTS panel shows the correct (single) participant.
@@ -118,6 +144,7 @@ class TestOpenExistingConversationFromFolder:
         folder_id = None
         conv_a_id = None
         conv_b_id = None
+        other_conv_id = None
 
         console_messages = []
         page_errors: list[str] = []
@@ -136,8 +163,10 @@ class TestOpenExistingConversationFromFolder:
             with allure.step(
                 "Setup — switch to the Team project (471, see module "
                 "docstring's AFS amendment); seed a folder with two "
-                "conversations via API (folder create, 2 conversation "
-                "creates, 2 move-into-folder PUTs)"
+                "conversations (conv_a via the UI's own '+Chat' flow with "
+                "a real message exchange, conv_b via API), a throwaway "
+                "'other' conversation for the navigate-away step, and move "
+                "conv_a + conv_b into the folder via API PUTs"
             ):
                 chat.navigate_to_chat()
                 chat.wait_for_page_load()
@@ -154,10 +183,75 @@ class TestOpenExistingConversationFromFolder:
                 folder_id = folder.get("id")
                 assert folder_id is not None, f"Folder create response should include an id: {folder!r}"
 
-                conv_a = team_conversation_api.create_conversation(f"autotest_2098_conv_a_{ts}")
-                conv_a_id = conv_a["id"]
                 conv_b = team_conversation_api.create_conversation(f"autotest_2098_conv_b_{ts}")
                 conv_b_id = conv_b["id"]
+
+                # Throwaway conversation used ONLY as a navigate-away target
+                # (see the "Navigate away" note below) — it is never moved
+                # into the folder, so clicking it can never re-trigger the
+                # folder's containsActiveConversation auto-expand the way
+                # clicking conv_b would (conv_b IS moved into the folder).
+                # Live-confirmed in ELITEA-2095 (test_open_conversation_
+                # today_section.py) that an API-created, zero-message
+                # conversation renders in the sidebar and is clickable
+                # without an intervening reload. Cleaned up in `finally`.
+                other_conversation = team_conversation_api.create_conversation(
+                    f"autotest_2098_other_{ts}"
+                )
+                other_conv_id = other_conversation["id"]
+
+                # conv_a needs real message history for Step 3's "full
+                # message history" assertion. Seeded via the UI's own
+                # "+Chat" flow, NOT ConversationAPI.create_conversation() —
+                # same worked precedent and same reason as
+                # test_open_conversation_today_section.py (ELITEA-2095):
+                # sending the first UI message to a conversation that
+                # exists server-side with ZERO messages silently creates a
+                # BRAND-NEW conversation instead of using the existing one
+                # (EliteaAI/elitea-testing-public#691).
+                chat.click_create_conversation(timeout=NAVIGATION_TIMEOUT)
+                assert chat.is_input_empty(), (
+                    "Message input should be empty right after starting a "
+                    "fresh conversation via +Chat"
+                )
+                initial_count = chat.get_message_count()
+                chat.send_message(FIRST_MESSAGE, use_enter=True)
+                chat.wait_for_input_ready(timeout=NAVIGATION_TIMEOUT)
+                chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
+                chat.wait_for_message_content_stable(timeout=AI_RESPONSE_TIMEOUT)
+                chat.wait_for_generation_complete(timeout=AI_RESPONSE_TIMEOUT)
+
+                match = re.search(r"/chat/(\d+)", page.url)
+                assert match, (
+                    f"Conversation id should appear in the URL after the "
+                    f"first send, got: {page.url}"
+                )
+                conv_a_id = int(match.group(1))
+
+                seeded_count = chat.get_message_count()
+                assert seeded_count == 2, (
+                    "Expected 2 seeded messages (1 user + 1 AI) in conv_a "
+                    f"before moving it into the folder, got {seeded_count}"
+                )
+
+                # Navigate away from conv_a BEFORE moving it into the
+                # folder — live-confirmed this session: reloading while
+                # conv_a is still the active/open conversation makes the
+                # product auto-expand the folder that now contains it
+                # (FolderItem.jsx's `defaultExpanded={containsActiveConversation}`
+                # — sensible product behavior, "you're looking at a
+                # conversation, its folder shows it", but it breaks case
+                # Step 1's own precondition of a COLLAPSED folder on a fresh
+                # page load). Clicks the THROWAWAY other_conversation
+                # specifically (not "first other", which could land back on
+                # conv_b — conv_b is ALSO about to move into the folder, so
+                # that would just reproduce the same auto-expand).
+                chat.click_conversation_item(other_conv_id, timeout=UI_ELEMENT_TIMEOUT)
+                chat.wait_for_conversation_url(str(other_conv_id), timeout=NAVIGATION_TIMEOUT)
+                assert f"/chat/{conv_a_id}" not in page.url, (
+                    "Should have genuinely navigated away from conv_a before "
+                    f"moving it into the folder, but URL still shows it: {page.url}"
+                )
 
                 team_conversation_api.move_conversation_to_folder(conv_a_id, folder_id)
                 team_conversation_api.move_conversation_to_folder(conv_b_id, folder_id)
@@ -203,7 +297,7 @@ class TestOpenExistingConversationFromFolder:
 
             with allure.step(
                 "Step 3 — Click the first conversation inside the folder; "
-                "URL and browser tab title update"
+                "URL, browser tab title, and full message history update"
             ):
                 chat.click_conversation_in_folder(folder_id, conv_a_id, timeout=UI_ELEMENT_TIMEOUT)
                 chat.wait_for_conversation_url(str(conv_a_id), timeout=NAVIGATION_TIMEOUT)
@@ -219,6 +313,28 @@ class TestOpenExistingConversationFromFolder:
                     f"Browser tab title should show conv_a's name {conv_a_name!r}, "
                     f"got: {page.title()!r}"
                 )
+
+                # Case step 3's expected result: "Conversation content is
+                # displayed with full message history" — conv_a was seeded
+                # with one real exchange via the UI's own "+Chat" flow (see
+                # Setup), so reopening it from the folder must show that
+                # same content, not a blank thread. Same shape as
+                # ELITEA-2095's Step 5 (test_open_conversation_today_
+                # section.py), scaled down to the single seeded exchange.
+                chat.wait_for_message_count(2, timeout=UI_ELEMENT_TIMEOUT)
+                message_count = chat.get_message_count()
+                assert message_count == 2, (
+                    "Expected the 2 seeded messages (1 user + 1 AI) to be "
+                    f"shown when reopening conv_a from the folder, got {message_count}"
+                )
+                bodies = [
+                    ChatPage._extract_message_body(chat.messages_container.nth(i))
+                    for i in range(2)
+                ]
+                assert FIRST_MESSAGE in bodies[0], (
+                    f"Message 0 should be the seeded user message, got: {bodies[0]!r}"
+                )
+                assert bodies[1].strip(), "Message 1 (AI response to the seeded message) should be non-empty"
 
             with allure.step("Step 4 — Verify the message input at the bottom is active"):
                 assert chat.message_input.is_visible(), "Message input should be visible"
@@ -299,6 +415,12 @@ class TestOpenExistingConversationFromFolder:
                     logger.info("Cleaned up conv_b %s", conv_b_id)
                 except Exception as exc:
                     logger.warning("Failed to delete conv_b %s: %s", conv_b_id, exc)
+            if other_conv_id:
+                try:
+                    team_conversation_api.delete_conversation(other_conv_id)
+                    logger.info("Cleaned up other_conversation %s", other_conv_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete other_conversation %s: %s", other_conv_id, exc)
             if folder_id:
                 try:
                     team_conversation_api.delete_folder(folder_id)

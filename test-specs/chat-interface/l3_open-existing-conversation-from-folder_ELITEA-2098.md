@@ -103,7 +103,7 @@ note on step 3's "full history" wording for the implementer).
 |---|---|---|---|---|
 | 1 Locate folder | folder shown with icon | step 1 | `step 1`: folder row visible, collapsed | asserted |
 | 2 Click folder to expand | conversations listed | step 2 | `step 2`: `is_folder_expanded` + both `is_conversation_in_folder` | asserted |
-| 3 Click conversation inside folder | content displayed with history | step 3 | `step 3`: URL + title | asserted (message-history assertion left to implementer per note above) |
+| 3 Click conversation inside folder | content displayed with history | step 3 | `step 3`: URL + title + message-count/body assertion against the 2 messages seeded via the UI's own +Chat flow | asserted |
 | 4 Input active | input active | step 4 | `step 4`: `is_visible`+`is_editable` | asserted |
 | 5 Model/agent name shown | name visible | step 5 | `step 5`: `get_selected_model()` non-empty | asserted |
 | 6 PARTICIPANTS correct | correct participant shown | step 6 | ELITEA-2095's proven mechanism, not re-run live this session | asserted *(reuse of a proven mechanism, not independently re-verified this session — flagged, not a gap)* |
@@ -180,16 +180,20 @@ None.
 
 ## Blocked Steps
 
-None — case fully executable. One implementer-facing note (not a
-blocker): step 3's "full message history" wording — the seeded
-conversations in this session had zero messages (folder-assignment is the
-thing under test, not message content). If the implementer's spec wants a
-non-trivial history assertion for step 3, seed messages via the UI's own
-`+Chat` flow before moving the conversation into the folder (per the
-ELITEA-2095-documented workaround for defect #691 — never via
-`ConversationAPI.create_conversation()` + first UI message on a
-zero-message conversation, which silently creates a NEW conversation
-instead).
+None — case fully executable.
+
+**Resolved during implementation (fix round 1, PR #1510):** step 3's "full
+message history" wording had no assertion in the first implementation pass
+— an informal drop, not a routed decision, and flagged in review. Fixed:
+`conv_a` is now seeded via the UI's own `+Chat` flow with one real exchange
+(1 user + 1 AI message) before being moved into the folder — same
+workaround as ELITEA-2095 for defect #691 (`ConversationAPI.
+create_conversation()` + first UI message on a zero-message conversation
+silently creates a NEW conversation instead). Step 3 now asserts the
+reopened conversation shows exactly those 2 messages, in order, non-empty.
+`conv_b` (used only for step 8's highlight-move check) stays API-seeded
+with zero messages — its history is not part of any asserted expected
+result.
 
 ### Implementer amendment (`docs(afs): amend selectors per implementer exploration`)
 
