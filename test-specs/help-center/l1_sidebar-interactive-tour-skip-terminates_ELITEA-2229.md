@@ -53,13 +53,22 @@
    `Dialog.wait_for_hidden(page)`).
 6. Verify no tour overlay or highlighted elements remain on screen: the
    spotlight (`interactive-tour-spotlight`) has zero matching elements.
-7. Verify the application is fully functional after skipping: click a real
-   sidebar navigation item (e.g. "Chats") and confirm it navigates
-   successfully (confirmed live: clicking "Chats" after Skip navigates the
-   tab to `/chat` cleanly, proving no overlay intercepts pointer events and
-   the underlying app is genuinely interactive — the same actionability-proof
-   pattern the covering spec uses for its own "Done!" case, applied here to
-   the Skip path).
+7. Verify the application is fully functional after skipping: click a
+   testid-backed sidebar control (confirmed live via a raw role-based click
+   during exploration that a real nav item, e.g. "Chats", also navigates
+   correctly — but per the testid-only locator policy the AUTOMATED assertion
+   reuses the covering spec's own already-established handle,
+   `ChatPage.sidebar_toggle`, exactly as its Step 13 does for the identical
+   "prove no overlay intercepts pointer events" check) and confirm the click
+   succeeds without a timeout.
+   **Amended during implementation** (Phase 2 amend-in-PR rule): the initial
+   exploration used a raw `get_by_role("button", name="Chats")` click to
+   confirm live behavior quickly — that handle is NOT carried into the
+   automated test (no testid exists on sidebar nav items per
+   `test-specs/help-center/_surface.md`'s Testid inventory section); the
+   automated assertion below uses `sidebar_toggle` instead, which is
+   testid-backed and proves the identical thing (pointer events reach the
+   underlying page, i.e. no overlay is blocking).
 
 ## Expected Results
 - Clicking "Skip" at any point mid-tour (tested at step 3/17) immediately
@@ -110,10 +119,16 @@ Reused from the covering spec's infrastructure, plus one new action method:
   spec for its own modal-close assertion)
 - `InteractiveTourCard.spotlight` (`interactive-tour-spotlight`, already a
   `LocatorDescriptor` field) — assert `.count() == 0` after Skip.
-- `ChatPage` sidebar button, or a direct `page.get_by_role("button", name="Chats")`
-  click — confirmed live this navigates cleanly to `/chat` after Skip (unlike
-  the tour-launch tab's `/app/chat` 404, in-app sidebar navigation uses the
-  correct router path, not the CMS-served href).
+- `ChatPage.sidebar_toggle` (`sidebar-toggle` testid) — reused verbatim from
+  the covering spec's own Step 13 interactivity proof (a real click through
+  Playwright's actionability engine fails if any overlay still intercepts
+  pointer events). Exploration also confirmed live, via a raw role-based
+  click (NOT carried into the automated test — see the amendment note on
+  case step 7), that clicking "Chats" after Skip navigates cleanly to
+  `/chat` (unlike the tour-launch tab's `/app/chat` 404 — in-app sidebar
+  navigation uses the correct router path, not the CMS-served href); that
+  observation is recorded here for the next case that needs it, but the
+  testid-only `sidebar_toggle` click is what this test actually asserts.
 
 ## Network Behavior
 - None — Skip is pure client-side state (confirmed live: no XHR/fetch fired
