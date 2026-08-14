@@ -95,9 +95,23 @@ stays disabled below 3 and activates exactly at 3 — the opposite edge of the s
      /conversation/prompt_lib/{project_id}/{conv_target_id}` request fires (captured
      via `capture_requests_matching`, confirmed empty after `chat.wait_for_network()`
      settles); (b) the inline input remains OPEN (`chat-conversation-name-input`
-     still visible, same value as before the click); (c) the sidebar item
-     (`chat-conversation-item-{conv_target_id}`) still shows the ORIGINAL name
-     `at_rename_checkmark_orig`, never the edited-but-unsaved value.
+     still visible, same value as before the click); (c) the conversation's
+     PERSISTED name (read via `conversation_api.get_conversation(id)["name"]`, the
+     real backend record — not a substitution) is still the ORIGINAL name
+     `at_rename_checkmark_orig`, never the edited-but-unsaved value. **Implementer
+     amendment (this session):** `chat-conversation-item-{id}` is NOT a valid handle
+     for this check — source-confirmed `ConversationItem.jsx` renders the
+     `data-testid="chat-conversation-item-{id}"` node ONLY in the `!isEditing`
+     branch; while the inline editor is open (which it stays, per this step's own
+     "input remains open" expectation) that testid does not exist in the DOM at
+     all, so asserting against it times out with "element(s) not found" rather than
+     a text mismatch. The API-level persisted-name read is the honest equivalent
+     observable available while the editor stays open, and is what the case's
+     "conversation name remains unchanged" (2105) / "name unchanged" (2106) really
+     needs proven — not a substitution, since it reads the real system's stored
+     record, live-verified to correctly reject the fix on first run (4/4 Shape-A
+     rows failed with the old `chat-conversation-item-{id}` assertion, confirming
+     it as a real handle-availability bug in the AFS, not the product).
 
 ### Shared shape B — ELITEA-2109 (2→3-char activation + successful save)
 
@@ -143,21 +157,21 @@ stays disabled below 3 and activates exactly at 3 — the opposite edge of the s
 | ELITEA-2105 step 1 Navigate/hover/3-dot/Edit → editable, pre-filled | name editable, current name shown | Shape A step 1 | `chat-conversation-name-input` visible + value | asserted |
 | ELITEA-2105 step 2 No changes made | name unchanged in field | Shape A step 2 | input value == original | asserted |
 | ELITEA-2105 step 3 Checkmark disabled | inactive | Shape A step 3 | `data-disabled == "true"` | asserted |
-| ELITEA-2105 step 4 Click checkmark → no effect | input stays open, not saved | Shape A step 4 | no PUT + input still open + sidebar unchanged | asserted |
-| ELITEA-2105 step 5 Name remains unchanged in left panel | name unchanged | Shape A step 4 | sidebar item text == original | asserted |
+| ELITEA-2105 step 4 Click checkmark → no effect | input stays open, not saved | Shape A step 4 | no PUT + input still open + persisted name unchanged (API) | asserted |
+| ELITEA-2105 step 5 Name remains unchanged in left panel | name unchanged | Shape A step 4 | `conversation_api.get_conversation(id)["name"]` == original | asserted |
 | ELITEA-2106 step 1 Navigate/hover/3-dot/Edit → editable | editable | Shape A step 1 | same as above | asserted |
 | ELITEA-2106 step 2 Clear field → empty | field empty | Shape A step 2 | input value == "" | asserted |
 | ELITEA-2106 step 3 Checkmark disabled | inactive | Shape A step 3 | `data-disabled == "true"` | asserted |
 | ELITEA-2106 step 4 Click checkmark → no effect | save not triggered | Shape A step 4 | no PUT fired | asserted |
-| ELITEA-2106 step 5 Field stays open, name unchanged | field open, unchanged | Shape A step 4 | input still visible + sidebar unchanged | asserted |
+| ELITEA-2106 step 5 Field stays open, name unchanged | field open, unchanged | Shape A step 4 | input still visible + persisted name unchanged (API) | asserted |
 | ELITEA-2107 step 1 Navigate/hover/3-dot/Edit → editable | editable | Shape A step 1 | same as above | asserted |
 | ELITEA-2107 step 2 Type "A" | 1 char in field | Shape A step 2 | input value == "A" | asserted |
 | ELITEA-2107 step 3 Checkmark disabled | inactive | Shape A step 3 | `data-disabled == "true"` | asserted |
-| ELITEA-2107 step 4 Click checkmark → no effect | save not triggered | Shape A step 4 | no PUT fired + sidebar unchanged | asserted |
+| ELITEA-2107 step 4 Click checkmark → no effect | save not triggered | Shape A step 4 | no PUT fired + persisted name unchanged (API) | asserted |
 | ELITEA-2108 step 1 Navigate/hover/3-dot/Edit → editable | editable | Shape A step 1 | same as above | asserted |
 | ELITEA-2108 step 2 Type "AB" | 2 chars in field | Shape A step 2 | input value == "AB" | asserted |
 | ELITEA-2108 step 3 Checkmark disabled | inactive | Shape A step 3 | `data-disabled == "true"` | asserted |
-| ELITEA-2108 step 4 Click checkmark → no effect | save not triggered | Shape A step 4 | no PUT fired + sidebar unchanged | asserted |
+| ELITEA-2108 step 4 Click checkmark → no effect | save not triggered | Shape A step 4 | no PUT fired + persisted name unchanged (API) | asserted |
 | ELITEA-2109 step 1 Navigate/hover/3-dot/Edit → editable | editable | Shape B step 1 | same as above | asserted |
 | ELITEA-2109 step 2 Type "AB" → checkmark inactive | inactive | Shape B step 2 | input == "AB" + `data-disabled == "true"` | asserted |
 | ELITEA-2109 step 3 Type "C" → checkmark becomes active | active | Shape B step 3 | input == "ABC" + `data-disabled == "false"` | asserted |
