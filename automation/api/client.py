@@ -1272,9 +1272,107 @@ class ArtifactAPI:
         _raise_for_status(resp)
         return resp.content
 
+    def upload_file(
+        self,
+        bucket_name: str,
+        filename: str,
+        content: bytes,
+    ) -> dict:
+        """Upload a file to a bucket.
+
+        Args:
+            bucket_name: Name of the bucket.
+            filename: Name for the uploaded file.
+            content: File content as bytes.
+
+        Returns:
+            Dict with upload result.
+
+        Raises:
+            requests.HTTPError: If the upload fails.
+        """
+        url = f"{self.base_url}/artifacts/artifacts/default/{self.project_id}/{bucket_name}"
+        files = {"file": (filename, content)}
+        logger.debug("UPLOAD file %s filename=%s", url, filename)
+        resp = self._session.post(url, files=files)
+        _raise_for_status(resp)
+        return resp.json()
+
+    def bucket_exists(self, bucket_name: str) -> bool:
+        """Check if a bucket exists.
+
+        Args:
+            bucket_name: Name of the bucket to check.
+
+        Returns:
+            True if the bucket exists, False otherwise.
+        """
+        try:
+            self.list_bucket_files(bucket_name)
+            return True
+        except Exception:
+            return False
+
     def close(self):
         """Close the underlying HTTP session."""
         self._session.close()
+
+    # -------------------------------------------------------------------------
+    # Permission enforcement test helpers (return response, don't raise)
+    # -------------------------------------------------------------------------
+
+    def get_file_raw(self, bucket_name: str, file_key: str) -> "requests.Response":
+        """GET a file without raising on error status — for permission testing.
+
+        Args:
+            bucket_name: Name of the bucket.
+            file_key: Full key of the file.
+
+        Returns:
+            Raw requests.Response object (check .status_code).
+        """
+        url = (
+            f"{self.base_url}/artifacts/artifact/default"
+            f"/{self.project_id}/{bucket_name}/{file_key}"
+        )
+        logger.debug("GET file (raw) %s", url)
+        return self._session.get(url)
+
+    def upload_file_raw(
+        self,
+        bucket_name: str,
+        filename: str,
+        content: bytes,
+    ) -> "requests.Response":
+        """POST (upload) a file without raising on error — for permission testing.
+
+        Args:
+            bucket_name: Name of the bucket.
+            filename: Name for the uploaded file.
+            content: File content as bytes.
+
+        Returns:
+            Raw requests.Response object (check .status_code).
+        """
+        url = f"{self.base_url}/artifacts/artifacts/default/{self.project_id}/{bucket_name}"
+        files = {"file": (filename, content)}
+        logger.debug("POST file (raw) %s filename=%s", url, filename)
+        return self._session.post(url, files=files)
+
+    def delete_file_raw(self, bucket_name: str, filename: str) -> "requests.Response":
+        """DELETE a file without raising on error — for permission testing.
+
+        Args:
+            bucket_name: Name of the bucket.
+            filename: Name of the file to delete.
+
+        Returns:
+            Raw requests.Response object (check .status_code).
+        """
+        url = f"{self.base_url}/artifacts/artifact/default/{self.project_id}/{bucket_name}"
+        params = {"filename": filename}
+        logger.debug("DELETE file (raw) %s filename=%s", url, filename)
+        return self._session.delete(url, params=params)
 
 
 class SkillAPI:

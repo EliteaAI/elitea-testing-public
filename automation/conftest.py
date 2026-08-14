@@ -23,13 +23,18 @@ from fixtures.session_fixtures import (
     test_run_id,
     browser,
     auth_state,
+    auth_state_user_b,
 )
 from fixtures.api_fixtures import (
     api,
     _browser_cookies,
+    _browser_cookies_user_b,
     conversation_api,
     agent_api,
     artifact_api,
+    artifact_api_user_b,
+    artifact_api_team_project,
+    artifact_api_user_b_team_project,
     credential_api,
     skill_api,
     toolkit_api,
