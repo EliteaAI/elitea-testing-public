@@ -2370,7 +2370,6 @@ class ArtifactsPage(BasePage):
             return False
 
     # ------------------------------------------------------------------
-<<<<<<< HEAD
     # Bucket permissions management
     # ------------------------------------------------------------------
 
@@ -2614,7 +2613,8 @@ class ArtifactsPage(BasePage):
             close_btn.click()
         modal.wait_for(state="hidden", timeout=timeout)
         logger.info("Manage Permissions modal closed")
-=======
+
+    # ------------------------------------------------------------------
     # Main-panel breadcrumb header helpers (ELITEA-1824)
     # ------------------------------------------------------------------
 
@@ -3210,4 +3210,3 @@ class ArtifactsPage(BasePage):
         self.page.keyboard.press("End")
         self.page.keyboard.type(append_text)
         logger.info("Appended %r to the CodeMirror line containing %r", append_text, match_text)
->>>>>>> origin/main
