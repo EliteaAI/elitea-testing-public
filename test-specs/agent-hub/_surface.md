@@ -393,6 +393,47 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
 - #1016 — Catalog category "Show more" permanently locks to collapse after
   first click. Only relevant to cases that interact with "Show more".
 
+## Clicking a starter tile INSIDE the modal — direct navigate + pre-populate, no "Start Chat" needed (ELITEA-2093)
+- **Resolved/added during ELITEA-2093 implementation:** `AgentModal.jsx`'s
+  `onSelectStarter` handler (bound to each `AgentConversationStarterItem`'s
+  `onClick`, confirmed via source) fires `onStartConversation(starter)()`
+  (dispatches `setSelectedAgentInfo({agent, starter})`, then
+  `navigate({pathname: Chat, search: 'create=1'})`) AND `onClose()`
+  synchronously off a SINGLE click on a starter item — materially different
+  from the `catalog-agent-modal-start-chat-button` flow (ELITEA-2368/2369):
+  no separate "Start Chat" click, no #1043-style race window to guard with
+  `page.wait_for_timeout(1000)`. Confirmed live: clicking a starter item
+  closed the modal and navigated to `/chat` with the composer already
+  pre-populated, off one click, for "Assistant for ELITEA Documentation"
+  (application id 16, category "Elitea", 3 configured starters: "Help me
+  configure Jira toolkit?", "Tell me about Elitea", "Can I use Azure dev
+  ops repo through Elitea").
+- **Why this click is naturally safe from the #1043 class of race**: unlike
+  the "Start Chat" button (always rendered, clickable before `agentDetails`
+  commits), the starter items themselves only render once
+  `agentDetails?.version_details?.conversation_starters` has data — so any
+  caller that already waited for a starter item to be visible (to read/count
+  them, per this case's own earlier step) is by construction past the same
+  async gap #1043 has to work around separately. New page-object method
+  `AgentHubPage.click_modal_starter_item(match_text)` added this dispatch
+  (filters `MODAL_STARTER_ITEM` by `has_text`, same idiom as
+  `ChatPage.click_chat_starter_tile()`) — zero new testid, reuses the
+  pre-existing `catalog-agent-modal-starter-item`.
+- **Conversation is NOT created by the starter click** — only by the
+  subsequent Send. The click only performs a client-side navigation with
+  `?create=1`; `POST /api/v2/elitea_core/conversations/prompt_lib/{project_id}`
+  fires on Send, same as the ELITEA-2368/2369 siblings' "Start Chat" flow.
+- **Auto-naming resolved near-instantly, no observable "Naming" placeholder
+  window** in this live run (message "Tell me about Elitea" → sidebar title
+  "Tell about Elitea", a word dropped, not a defect — case text only
+  requires "resolves to an auto-generated title"). `ChatPage.wait_for_naming_label_to_resolve()`
+  is no-op-safe for this (its `naming_label.count() > 0` guard skips the wait
+  entirely when the placeholder never rendered) — always call it before
+  reading the sidebar title regardless of whether the placeholder was
+  observed, per the existing `test_conversation_management.py` Step-6
+  precedent (assert title is non-empty and doesn't contain "Naming", never
+  assert the placeholder WAS visible first).
+
 ## Sibling family (not yet analysed as of this entry)
 ELITEA-2351 ("Team project" variant of this exact case — differs from
 ELITEA-2350 only in which project is active, a DATA difference per the
