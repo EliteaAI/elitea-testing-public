@@ -166,3 +166,51 @@ everything below composes with the tour-link inventory above under the SAME
   `Version: X.Y.Z (DD-Mon-YYYY)\n<component>: <version>\n...` (one line per
   plugin, `—` em-dash fallback for a missing version — not hit live,
   all 6 components had real version strings).
+
+## Resolved/added during ELITEA-2226/2228/2229/2230 implementation (2026-08-14)
+
+Four cases targeting the SAME already-merged covering spec
+(`automation/tests/ui/help_center/test_help_center_sidebar_tour.py`,
+`TestHelpCenterSidebarTour`, from ELITEA-2227) — all `extend-existing`, all
+confirmed live with **zero defects and zero drift** from the covering AFS's
+documented behavior. Zero new testids needed — every handle already exists
+from ELITEA-2227's implementation. Each case adds ONE new test method to the
+existing class (additive-only):
+
+- **ELITEA-2226** (tour starts on link click, initial-state proof): confirmed
+  live the exact step-1 description text (`textContent` concatenates the two
+  `<p>` tags with NO space —
+  `"...server status.Green mark points..."` / `"\nRed mark points..."`) and
+  that Skip/Back(disabled)/Next are all visible together at step 1 — the
+  covering spec only asserts this trio together at step 17, not step 1.
+- **ELITEA-2228** (restart after completion): confirmed live the tour has
+  literally no "seen" memory — completing fully (Finish→Done) and re-clicking
+  the same Help Center link opens a genuinely fresh instance at 1/17 with Back
+  disabled, identical to a first-ever launch. This empirically confirms
+  ELITEA-2227's own AFS precondition note ("tour always replays from step 1
+  ... regardless of whether it was seen before") for the specific
+  after-completion case, which that AFS had only reasoned about, not executed.
+- **ELITEA-2229** (Skip terminates tour, priority high/l1): confirmed live
+  Skip closes the dialog AND spotlight immediately with NO completion modal
+  (unlike Finish), and the app is fully interactive afterward — proved by
+  clicking a real sidebar item ("Chats") and observing a clean navigation to
+  `/chat` (not `/app/chat` — that 404 quirk is specific to the CMS-served
+  Help Center link's href, NOT to normal in-app sidebar navigation, which
+  correctly uses `APP_PREFIX=""` on localhost). Required ONE new action
+  method, `InteractiveTourCard.click_skip()` (the `skip_button` locator
+  already existed) — pure addition, no existing method touched.
+- **ELITEA-2230** (Back returns to step 1): confirmed live Back's `disabled`
+  state is driven by the CURRENT step index, not a one-time "was step 1"
+  flag — navigating 1→2→(Back)→1 correctly re-disables Back and restores the
+  exact step-1 title/description/counter. The covering spec's own Back
+  exercise (its Step 7) only goes 3→2, never all the way back to the
+  boundary — this was a genuine untested edge (now confirmed correct, not a
+  defect).
+- **Priority/marker mismatch note (ELITEA-2229 only)**: the covering spec's
+  file-level `pytestmark` is `p2`; ELITEA-2229's own case priority is `high`
+  (l1). pytest marker-stacking has no clean "override, don't add" mechanism
+  for a single method inside a shared-`pytestmark` file, so the AFS declares
+  keeping the file's `p2` for this test rather than producing a test that
+  carries both `p1` and `p2` — see that AFS's Automation Hints for the full
+  reasoning. Future tour-case implementers hitting the same tension should
+  reuse this reasoning rather than re-litigating it.
