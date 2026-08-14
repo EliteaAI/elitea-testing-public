@@ -49,7 +49,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 01 | Conversation entry / navigation into existing conversations | 2091,2093,2096,2097,2098 | 5 | **LANDED** — PR #1512, 3 automated / 2 blocked (question #1511) |
 | 02 | Conversation rename — basic flow + length boundaries | 2099,2100,2101,2102,2103,2104 | 6 | **LANDED** — PR #1518, 6/6 automated |
 | 03 | Conversation rename — check-icon states + edge chars | 2105,2106,2107,2108,2109,2110,2111,2112,2113 | 9 | **LANDED** — PR #1522, 9/9 automated |
-| 04 | Conversation deletion + chat search (left-panel micro-UI) | 2115,2116,2117,2456,2163,2164,2165,2463 | 8 | pending |
+| 04 | Conversation deletion + chat search (left-panel micro-UI) | 2115,2116,2117,2456,2163,2164,2165,2463 | 8 | **IN PROGRESS** |
 | 05 | Folder creation | 2118,2119,2120,2133,2134,2457 | 6 | pending |
 | 06 | Folder rename | 2121,2122,2123,2124,2125,2126,2127,2128,2129,2130,2131 | 11 | pending |
 | 07 | Move/drag conversation between folders + list scrolling | 2136,2138,2139,2140,2141,2142,2143,2144,2145,2146,2147,2148 | 12 | pending |
@@ -109,4 +109,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-(none — wave-03 closed; wave-04 not yet dispatched)
+- **wave-04** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w04`,
+  base=`origin/automation/base`, clusters `[2115,2116,2117,2456]` (deletion family) +
+  `[2163,2164,2165,2463]` (search family). Case snapshots pre-written this time. Task
+  ID `wygrlo6mz`, Run ID `wf_f9727c64-c02`.
