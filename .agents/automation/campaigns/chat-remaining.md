@@ -46,7 +46,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 | Wave | Theme | Case IDs | N | Status |
 |---|---|---|---:|---|
-| 01 | Conversation entry / navigation into existing conversations | 2091,2093,2096,2097,2098 | 5 | **IN PROGRESS** |
+| 01 | Conversation entry / navigation into existing conversations | 2091,2093,2096,2097,2098 | 5 | **LANDED** — PR #1512, 3 automated / 2 blocked (question #1511) |
 | 02 | Conversation rename — basic flow + length boundaries | 2099,2100,2101,2102,2103,2104 | 6 | pending |
 | 03 | Conversation rename — check-icon states + edge chars | 2105,2106,2107,2108,2109,2110,2111,2112,2113 | 9 | pending |
 | 04 | Conversation deletion + chat search (left-panel micro-UI) | 2115,2116,2117,2456,2163,2164,2165,2463 | 8 | pending |
@@ -67,12 +67,18 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 ## Waves landed
 
-(none yet — updated as each wave closes)
+- **wave-01 LANDED** — elitea-testing-public#1512, merged (`406883d1`). 3/5 automated
+  (ELITEA-2091 #1508, ELITEA-2093 #1509, ELITEA-2098 #1510); 2 blocked (ELITEA-2096/2097
+  — genuine test-data-age gap, no honest seed path per `.agents/testing.md` § Fidelity
+  policy, routed to question elitea-testing-public#1511 for a human decision, NOT
+  parking the campaign). Lead's own gate: 3/3 green (165s/138s/258s; run 3's one
+  transient rerun on ELITEA-2093 matched the project's standing pytest.ini
+  `--only-rerun` transient-infra allowlist — not a new flake). TMS back-written (3
+  cases, Form C verified against junit.xml + surgical index.json by-path edit, NOT
+  `build_index` — see `build_index_regression_must_be_reverted_not_carried.md`). New
+  testid: `chat-composer-dropzone` (EliteaAI/EliteaUI@dd417746 on `automation/testids`,
+  confirmed NOT yet on `main` via fresh fetch — awaiting human cherry-pick).
 
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-01** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w01`,
-  base=`origin/automation/base`, cluster `[2096,2097,2098]` (open-existing-conversation
-  location variants — one live session, 3 distinct rows), 2091+2093 solo units.
-  Task ID `wua0aya8c`, Run ID `wf_8995986f-87e`. Transcript dir:
-  `.../8efc46b8.../subagents/workflows/wf_8995986f-87e`.
+(none — wave-01 closed; wave-02 not yet dispatched)
