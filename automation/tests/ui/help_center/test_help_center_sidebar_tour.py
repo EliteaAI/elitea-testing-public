@@ -221,13 +221,19 @@ class TestHelpCenterSidebarTourExtras:
             'Step 4 — Verify the first step is anchored to the ELITEA Logo with the exact description text'
         ):
             expect(tour.title).to_have_text(TOUR_STEP_TITLES[0])
-            expected_description = (
+            # Substring match, not full-string equality — per this AFS's own
+            # Concrete Handles guidance (the DOM concatenates <p> boundaries
+            # with no separator, so a brittle full-string equal would break on
+            # incidental whitespace/markdown-render changes even though the
+            # content is correct).
+            expect(tour.description).to_contain_text(
                 "The ELITEA Logo in the sidebar shows the server status."
-                "Green mark points that server is working.\n"
-                "Red mark points that server is updating."
             )
-            assert tour.get_description_text() == expected_description, (
-                f"Step 1 description mismatch: {tour.get_description_text()!r}"
+            expect(tour.description).to_contain_text(
+                "Green mark points that server is working."
+            )
+            expect(tour.description).to_contain_text(
+                "Red mark points that server is updating."
             )
 
         with allure.step('Step 5 — Verify the step counter shows "1 / 17"'):

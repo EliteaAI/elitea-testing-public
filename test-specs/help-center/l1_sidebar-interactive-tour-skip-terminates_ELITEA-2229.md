@@ -22,7 +22,13 @@
   step) — this is new, non-overlapping coverage on the same shared
   infrastructure (`HelpCenterPage`, `InteractiveTourCard`).
 - **Insertion point**: a new `test_sidebar_interactive_tour_skip_terminates`
-  method appended to `TestHelpCenterSidebarTour` in the same file (additive).
+  method, in the same file, in a new sibling class `TestHelpCenterSidebarTourExtras`
+  (additive — no existing test body touched). Amended post-implementation (fix
+  round 1): the original plan was to append this method directly into
+  `TestHelpCenterSidebarTour`; the shipped diff instead groups all four
+  ELITEA-2226/2228/2229/2230 extension methods together under one new class in
+  the same module, to keep the covering test's class scoped to its own AFS
+  (ELITEA-2227) while still being 100%-additive at the file level.
   Requires ONE new `InteractiveTourCard.click_skip()` action method (the
   `skip_button` `LocatorDescriptor` already exists — only the click action
   method is missing) — a pure addition alongside `click_next`/`click_back`/

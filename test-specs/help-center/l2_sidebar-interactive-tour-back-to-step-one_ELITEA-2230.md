@@ -24,7 +24,13 @@
   specifically that missing "Back to the very first step" observable,
   confirmed live to behave correctly but not yet asserted by any merged test.
 - **Insertion point**: a new `test_sidebar_interactive_tour_back_returns_to_step_one`
-  method appended to `TestHelpCenterSidebarTour` in the same file (additive).
+  method, in the same file, in a new sibling class `TestHelpCenterSidebarTourExtras`
+  (additive — no existing test body touched). Amended post-implementation (fix
+  round 1): the original plan was to append this method directly into
+  `TestHelpCenterSidebarTour`; the shipped diff instead groups all four
+  ELITEA-2226/2228/2229/2230 extension methods together under one new class in
+  the same module, to keep the covering test's class scoped to its own AFS
+  (ELITEA-2227) while still being 100%-additive at the file level.
 
 ## Preconditions
 - User is authenticated (`auth_state` fixture).

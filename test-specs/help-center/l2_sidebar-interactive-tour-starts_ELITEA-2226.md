@@ -25,9 +25,15 @@
   back(inactive), next") is a distinct, closable observable the covering spec
   does not fully assert at the initial state.
 - **Insertion point**: a new `test_sidebar_interactive_tour_starts_on_link_click`
-  method appended to `TestHelpCenterSidebarTour` in the same file (additive —
-  the existing `test_sidebar_interactive_tour_completes_via_next` body is
-  untouched).
+  method, in the same file, in a new sibling class `TestHelpCenterSidebarTourExtras`
+  (additive — `TestHelpCenterSidebarTour.test_sidebar_interactive_tour_completes_via_next`
+  is untouched). Amended post-implementation (fix round 1): the original plan was
+  to append this method directly into `TestHelpCenterSidebarTour`; the shipped
+  diff instead groups all four ELITEA-2226/2228/2229/2230 extension methods
+  together under one new class in the same module, to keep the covering test's
+  class scoped to its own AFS (ELITEA-2227) while still being 100%-additive at
+  the file level. The additive-only contract (no existing test body touched) is
+  unaffected by this organizational choice.
 
 ## Preconditions
 - User is authenticated (`auth_state` fixture).
