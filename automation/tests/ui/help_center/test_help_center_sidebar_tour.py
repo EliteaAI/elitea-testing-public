@@ -283,6 +283,7 @@ class TestHelpCenterSidebarTourExtras:
             expect(restarted_tour.title).to_have_text(TOUR_STEP_TITLES[0])
             assert restarted_tour.is_back_disabled(), "Back should be disabled again on a fresh restart"
 
+    @pytest.mark.p1
     def test_sidebar_interactive_tour_skip_terminates(self, page):
         """ELITEA-2229: clicking "Skip" mid-tour removes the overlay
         immediately (no completion modal) and leaves the app fully

@@ -144,19 +144,22 @@ None — full flow executed and confirmed live.
 
 ## Automation Hints
 - Framework: Playwright + pytest.
-- File-level `pytestmark` (`ui`, `help_center`, `p2`, `regression`) applies to
-  every test in the module including this one; per pytest's marker-stacking
-  rules a method-level `@pytest.mark.p1` decorator on this specific test
-  ADDS `p1` alongside the inherited `p2` rather than replacing it (both
-  markers end up on the test item) — that is not the desired shape for a
-  clean priority signal. Since this case's priority is genuinely `high` (l1)
-  while the rest of the file is `p2`, and pytest has no clean per-test marker
-  *removal*, prefer keeping this test under the file's `p2` (documented as a
-  known minor mismatch in the test's docstring, citing ELITEA-2229's case
-  priority) rather than producing a test carrying both `p1` and `p2`
-  simultaneously — a case where the AFS's coverage-tagging convention has no
-  clean answer for a mixed-priority file; declared per
-  `.agents/role-overrides.md` § Declared-improvisation protocol.
+- **AFS Priority vs pytest marker preflight (per
+  `.agents/memory/test-automation-engineer/afs_priority_vs_pytest_mark_preflight_check.md`,
+  8 prior recurrences of this exact class — do not re-litigate).** File-level
+  `pytestmark` (`ui`, `help_center`, `p2`, `regression`) is correct for the
+  covering `p2`/medium ELITEA-2227 test, but this case's own priority is
+  `high` (l1) → `p1`, per `pytest.ini`'s documented scale. The established,
+  repeatedly-confirmed fix for exactly this shape (module-level `pytestmark`
+  correct for the covering test, a NEW sibling test in the same file needing
+  a different priority) is a **per-function `@pytest.mark.p1` decorator on
+  the new test only** — the module-level list and the original test stay
+  untouched. Both `p1` and `p2` DO end up attached to this one test item
+  (pytest marker-stacking adds rather than replaces), but that is the
+  accepted, intentional shape in this suite: `pytest -m p1` correctly
+  includes it, `pytest -m p2` also includes it (an acceptable superset, not
+  a defect) — 8 documented recurrences all resolve this exact tension the
+  same way, not by omitting the per-function marker.
 - No sleep needed — `Dialog.wait_for_hidden()` and the spotlight
   `.count() == 0` check are both condition-based; the final navigation click
   is itself the interactivity proof (Playwright's actionability engine fails
