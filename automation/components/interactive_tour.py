@@ -116,6 +116,10 @@ class InteractiveTourCard(BasePage):
     def click_back(self) -> None:
         self.back_button.click()
 
+    @action("Click Skip in the tour dialog")
+    def click_skip(self) -> None:
+        self.skip_button.click()
+
     @action("Click Finish in the tour dialog")
     def click_finish(self) -> None:
         # Same testid as Next — its label flips to "Finish" on the last step.

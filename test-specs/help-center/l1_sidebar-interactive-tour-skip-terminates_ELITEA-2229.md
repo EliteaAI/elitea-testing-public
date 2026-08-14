@@ -2,7 +2,7 @@
 
 ## Metadata
 - **TMS ID**: ELITEA-2229
-- **Linked Story**: EliteaAI/elitea-testing-public#734
+- **Linked Story**: none found — no `[Automate][ELITEA-<id>]` tracker card exists for this case ID (verified via real-time gh issue list, limit 1000, at implementation time); the sibling case ELITEA-2227 has one (#734, CLOSED, case-specific — not a shared story for this cluster)
 - **Priority**: l1 (case priority: high)
 - **Environment Explored**: local (`http://localhost:5173`, `automation/testids` build)
 - **User set**: `${TEST_USER}` — via the `auth_state` fixture
@@ -22,7 +22,13 @@
   step) — this is new, non-overlapping coverage on the same shared
   infrastructure (`HelpCenterPage`, `InteractiveTourCard`).
 - **Insertion point**: a new `test_sidebar_interactive_tour_skip_terminates`
-  method appended to `TestHelpCenterSidebarTour` in the same file (additive).
+  method, in the same file, in a new sibling class `TestHelpCenterSidebarTourExtras`
+  (additive — no existing test body touched). Amended post-implementation (fix
+  round 1): the original plan was to append this method directly into
+  `TestHelpCenterSidebarTour`; the shipped diff instead groups all four
+  ELITEA-2226/2228/2229/2230 extension methods together under one new class in
+  the same module, to keep the covering test's class scoped to its own AFS
+  (ELITEA-2227) while still being 100%-additive at the file level.
   Requires ONE new `InteractiveTourCard.click_skip()` action method (the
   `skip_button` `LocatorDescriptor` already exists — only the click action
   method is missing) — a pure addition alongside `click_next`/`click_back`/
@@ -53,13 +59,22 @@
    `Dialog.wait_for_hidden(page)`).
 6. Verify no tour overlay or highlighted elements remain on screen: the
    spotlight (`interactive-tour-spotlight`) has zero matching elements.
-7. Verify the application is fully functional after skipping: click a real
-   sidebar navigation item (e.g. "Chats") and confirm it navigates
-   successfully (confirmed live: clicking "Chats" after Skip navigates the
-   tab to `/chat` cleanly, proving no overlay intercepts pointer events and
-   the underlying app is genuinely interactive — the same actionability-proof
-   pattern the covering spec uses for its own "Done!" case, applied here to
-   the Skip path).
+7. Verify the application is fully functional after skipping: click a
+   testid-backed sidebar control (confirmed live via a raw role-based click
+   during exploration that a real nav item, e.g. "Chats", also navigates
+   correctly — but per the testid-only locator policy the AUTOMATED assertion
+   reuses the covering spec's own already-established handle,
+   `ChatPage.sidebar_toggle`, exactly as its Step 13 does for the identical
+   "prove no overlay intercepts pointer events" check) and confirm the click
+   succeeds without a timeout.
+   **Amended during implementation** (Phase 2 amend-in-PR rule): the initial
+   exploration used a raw `get_by_role("button", name="Chats")` click to
+   confirm live behavior quickly — that handle is NOT carried into the
+   automated test (no testid exists on sidebar nav items per
+   `test-specs/help-center/_surface.md`'s Testid inventory section); the
+   automated assertion below uses `sidebar_toggle` instead, which is
+   testid-backed and proves the identical thing (pointer events reach the
+   underlying page, i.e. no overlay is blocking).
 
 ## Expected Results
 - Clicking "Skip" at any point mid-tour (tested at step 3/17) immediately
@@ -110,10 +125,16 @@ Reused from the covering spec's infrastructure, plus one new action method:
   spec for its own modal-close assertion)
 - `InteractiveTourCard.spotlight` (`interactive-tour-spotlight`, already a
   `LocatorDescriptor` field) — assert `.count() == 0` after Skip.
-- `ChatPage` sidebar button, or a direct `page.get_by_role("button", name="Chats")`
-  click — confirmed live this navigates cleanly to `/chat` after Skip (unlike
-  the tour-launch tab's `/app/chat` 404, in-app sidebar navigation uses the
-  correct router path, not the CMS-served href).
+- `ChatPage.sidebar_toggle` (`sidebar-toggle` testid) — reused verbatim from
+  the covering spec's own Step 13 interactivity proof (a real click through
+  Playwright's actionability engine fails if any overlay still intercepts
+  pointer events). Exploration also confirmed live, via a raw role-based
+  click (NOT carried into the automated test — see the amendment note on
+  case step 7), that clicking "Chats" after Skip navigates cleanly to
+  `/chat` (unlike the tour-launch tab's `/app/chat` 404 — in-app sidebar
+  navigation uses the correct router path, not the CMS-served href); that
+  observation is recorded here for the next case that needs it, but the
+  testid-only `sidebar_toggle` click is what this test actually asserts.
 
 ## Network Behavior
 - None — Skip is pure client-side state (confirmed live: no XHR/fetch fired
@@ -129,19 +150,22 @@ None — full flow executed and confirmed live.
 
 ## Automation Hints
 - Framework: Playwright + pytest.
-- File-level `pytestmark` (`ui`, `help_center`, `p2`, `regression`) applies to
-  every test in the module including this one; per pytest's marker-stacking
-  rules a method-level `@pytest.mark.p1` decorator on this specific test
-  ADDS `p1` alongside the inherited `p2` rather than replacing it (both
-  markers end up on the test item) — that is not the desired shape for a
-  clean priority signal. Since this case's priority is genuinely `high` (l1)
-  while the rest of the file is `p2`, and pytest has no clean per-test marker
-  *removal*, prefer keeping this test under the file's `p2` (documented as a
-  known minor mismatch in the test's docstring, citing ELITEA-2229's case
-  priority) rather than producing a test carrying both `p1` and `p2`
-  simultaneously — a case where the AFS's coverage-tagging convention has no
-  clean answer for a mixed-priority file; declared per
-  `.agents/role-overrides.md` § Declared-improvisation protocol.
+- **AFS Priority vs pytest marker preflight (per
+  `.agents/memory/test-automation-engineer/afs_priority_vs_pytest_mark_preflight_check.md`,
+  8 prior recurrences of this exact class — do not re-litigate).** File-level
+  `pytestmark` (`ui`, `help_center`, `p2`, `regression`) is correct for the
+  covering `p2`/medium ELITEA-2227 test, but this case's own priority is
+  `high` (l1) → `p1`, per `pytest.ini`'s documented scale. The established,
+  repeatedly-confirmed fix for exactly this shape (module-level `pytestmark`
+  correct for the covering test, a NEW sibling test in the same file needing
+  a different priority) is a **per-function `@pytest.mark.p1` decorator on
+  the new test only** — the module-level list and the original test stay
+  untouched. Both `p1` and `p2` DO end up attached to this one test item
+  (pytest marker-stacking adds rather than replaces), but that is the
+  accepted, intentional shape in this suite: `pytest -m p1` correctly
+  includes it, `pytest -m p2` also includes it (an acceptable superset, not
+  a defect) — 8 documented recurrences all resolve this exact tension the
+  same way, not by omitting the per-function marker.
 - No sleep needed — `Dialog.wait_for_hidden()` and the spotlight
   `.count() == 0` check are both condition-based; the final navigation click
   is itself the interactivity proof (Playwright's actionability engine fails

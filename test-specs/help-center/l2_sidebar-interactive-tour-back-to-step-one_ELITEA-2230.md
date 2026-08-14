@@ -2,7 +2,7 @@
 
 ## Metadata
 - **TMS ID**: ELITEA-2230
-- **Linked Story**: EliteaAI/elitea-testing-public#734
+- **Linked Story**: none found — no `[Automate][ELITEA-<id>]` tracker card exists for this case ID (verified via real-time gh issue list, limit 1000, at implementation time); the sibling case ELITEA-2227 has one (#734, CLOSED, case-specific — not a shared story for this cluster)
 - **Priority**: l2 (case priority: medium)
 - **Environment Explored**: local (`http://localhost:5173`, `automation/testids` build)
 - **User set**: `${TEST_USER}` — via the `auth_state` fixture
@@ -24,7 +24,13 @@
   specifically that missing "Back to the very first step" observable,
   confirmed live to behave correctly but not yet asserted by any merged test.
 - **Insertion point**: a new `test_sidebar_interactive_tour_back_returns_to_step_one`
-  method appended to `TestHelpCenterSidebarTour` in the same file (additive).
+  method, in the same file, in a new sibling class `TestHelpCenterSidebarTourExtras`
+  (additive — no existing test body touched). Amended post-implementation (fix
+  round 1): the original plan was to append this method directly into
+  `TestHelpCenterSidebarTour`; the shipped diff instead groups all four
+  ELITEA-2226/2228/2229/2230 extension methods together under one new class in
+  the same module, to keep the covering test's class scoped to its own AFS
+  (ELITEA-2227) while still being 100%-additive at the file level.
 
 ## Preconditions
 - User is authenticated (`auth_state` fixture).
