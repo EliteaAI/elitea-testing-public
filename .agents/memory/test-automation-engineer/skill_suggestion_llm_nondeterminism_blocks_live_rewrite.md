@@ -1,6 +1,6 @@
 ---
 name: Skill-suggestion LLM nondeterminism blocks live rewrite
-description: Build-with-AI's suggested_skills array is empty on ~1/6 live calls for the same prompt/project — don't build a deterministic test on its presence
+description: Build-with-AI's suggested_* arrays can go empty across repeat live calls for the same prompt/project — don't build a deterministic test on their presence
 type: feedback
 ---
 
@@ -58,3 +58,20 @@ own instruction: stop, don't average it away, don't retry-until-non-empty
 inside the test (that's fabricating a workaround). Report the split
 (non-empty/empty counts) so the human deciding has real data, not "it didn't
 work once."
+
+## Second confirmation (ELITEA-1908, same batch)
+
+`test_zero_selection_across_categories_attaches_nothing` attempted the same
+live rewrite for `SUGGESTED_RESOURCES_PROMPT_TEXT` ("An agent that queries
+GitHub and runs Jira updates") — this time ALL FOUR non-Skill categories
+(toolkit/mcp/pipeline/agent) at once, dynamically derived from whichever the
+response populated (not requiring all 4, just ≥1). 3/3 consecutive live
+calls against project 399 (the actual `.env.test` `ELITEA_PROJECT_ID` — note
+this differs from the AFS's own exploration project, 400, which the analyst
+had already found returns zero for this prompt) returned every `suggested_*`
+array empty. Also note: the ELITEA-1907 AFS's original live finding (one MCP
+suggestion, "Remote Github"/id 3) for this SAME prompt in project 399 did
+NOT reproduce here — suggestion-engine output for a fixed prompt+project pair
+is not stable over time, not just across categories. Confirms this is a
+project-wide/prompt-wide suggestion-engine variance, not a Skill-category
+quirk — generalize the "5-6 tries first" rule to every `suggested_*` field.
