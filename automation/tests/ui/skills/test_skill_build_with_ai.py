@@ -8,10 +8,16 @@ Covers ELITEA-1990: the generated draft's review-form fields (Name,
 Description, Instructions) are editable before creation, and the skill is
 created with the edited values (not the originally-generated ones).
 
-Covers ELITEA-1989 (extend-existing gap fill): the loading state shown
-during generation displays the exact text "Generating skill draft...", and
-the resulting review form shows only Name/Description/Instructions — no
-tools/agents/pipelines/toolkits/MCPs/resources section is rendered.
+Covers ELITEA-1989 (live-generate rework, 2026-08-14 — see
+`.agents/testing.md` § Fidelity policy): the loading state shown during a
+REAL, UNMOCKED generate-draft call displays the exact text "Generating
+skill draft...", the resulting review form is byte-identical to the real
+response body (the response is the oracle, not a test-authored payload),
+and the review form shows only Name/Description/Instructions — no
+tools/agents/pipelines/toolkits/MCPs/resources section is rendered. No
+longer a mock-based extend-existing gap fill — the generation-from-
+description subject is fully re-asserted live, same unmocked pattern as
+ELITEA-1992.
 
 Covers ELITEA-1988 (extend-existing gap fill): standalone, first-class
 visibility assertions that clicking "Build with AI" opens the modal, and
@@ -339,11 +345,13 @@ class TestSkillBuildWithAIReviewFormEditableFields:
     created skill reflects the edited values, not the originally-generated
     ones.
 
-    Also covers ELITEA-1989 (extend-existing gap fill, see
+    Also covers ELITEA-1989 (live-generate rework, see
     ``test_loading_state_shows_exact_text_and_review_form_has_no_extra_sections``
-    below): the loading state's exact text during generation, and the
-    absence of any tools/agents/pipelines/toolkits/MCPs/resources section on
-    the review form.
+    below): the loading state's exact text during a REAL, UNMOCKED
+    generate-draft call, the review form matching the real response
+    byte-for-byte, and the absence of any
+    tools/agents/pipelines/toolkits/MCPs/resources section on the review
+    form.
 
     Also covers ELITEA-1991 (extend-existing gap fill, see
     ``test_create_skill_from_unmodified_draft_persists_generated_values``
@@ -670,7 +678,9 @@ class TestSkillBuildWithAIReviewFormEditableFields:
     def test_loading_state_shows_exact_text_and_review_form_has_no_extra_sections(self, page):
         """During generation, the loading indicator displays the exact text
         "Generating skill draft...", and once the review form is shown it
-        contains only the Name/Description/Instructions fields — no
+        reflects the REAL generate-draft response (no mock installed — the
+        response is the oracle) and contains only the
+        Name/Description/Instructions fields — no
         tools/agents/pipelines/toolkits/MCPs/resources section renders."""
         list_page = SkillsListPage(page)
         modal = GenerateSkillModalPage(page)
@@ -693,16 +703,17 @@ class TestSkillBuildWithAIReviewFormEditableFields:
             )
 
         # ------------------------------------------------------------
-        # Step 2 — Click Generate; verify the loading state shows the
-        # exact text "Generating skill draft..." while generation is in
-        # flight (mocked, with the shared base's artificial delay_ms so
-        # the transient state is reliably observable — same pattern as
-        # ELITEA-2001's retry step).
+        # Step 2 — Click Generate against the REAL backend (no route mock
+        # installed — same pattern as ELITEA-1992's
+        # test_generated_skill_name_adheres_to_naming_rules); verify the
+        # loading state shows the exact text "Generating skill draft..."
+        # while generation is in flight. A live request cannot resolve
+        # faster than wait_for_loading_visible() reaches it, so the
+        # transient state is reliably observable without any artificial
+        # delay.
         # ------------------------------------------------------------
         with allure.step('Step 2 — Verify loading state text during generation'):
-            modal.mock_generate_success(GENERATED_DRAFT_PAYLOAD)
-
-            with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+            with modal.expect_generate_response(timeout=UNMOCKED_GENERATE_RESPONSE_TIMEOUT) as response_info:
                 modal.generate_button.click()
                 modal.wait_for_loading_visible(timeout=LOADING_STATE_TIMEOUT)
 
@@ -713,16 +724,46 @@ class TestSkillBuildWithAIReviewFormEditableFields:
 
             response = response_info.value
             assert response.status == 200, (
-                f"Expected the mocked generate-draft request to resolve 200, got {response.status}"
+                f"Expected the real generate-draft request to resolve 200, got {response.status}"
             )
-            modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+            modal.wait_for_review_form(timeout=UNMOCKED_GENERATE_RESPONSE_TIMEOUT)
 
         # ------------------------------------------------------------
-        # Step 3 — Verify the review form shows only the three known
+        # Step 3 — Verify the review form reflects the real generate-draft
+        # response, not a test-authored payload. The response is the
+        # oracle (`.agents/testing.md` § "How to test a NONDETERMINISTIC
+        # producer"): assert the platform actually produced non-empty
+        # values, and that the UI carried them through faithfully.
+        # ------------------------------------------------------------
+        with allure.step("Step 3 — Verify the review form reflects the real generate-draft response"):
+            body = response.json()
+
+            assert body["name"], "Response body should include a non-empty name"
+            assert body["description"], "Response body should include a non-empty description"
+            assert body["instructions"], "Response body should include non-empty instructions"
+
+            assert modal.get_review_name() == body["name"], (
+                "Review form's displayed Name should be byte-identical to the "
+                f"generate-draft response's name, got form={modal.get_review_name()!r} "
+                f"api={body['name']!r}"
+            )
+            assert modal.get_review_description() == body["description"], (
+                "Review form's displayed Description should be byte-identical to "
+                f"the generate-draft response's description, got "
+                f"form={modal.get_review_description()!r} api={body['description']!r}"
+            )
+            assert modal.get_review_instructions() == body["instructions"], (
+                "Review form's displayed Instructions should be byte-identical to "
+                f"the generate-draft response's instructions, got "
+                f"form={modal.get_review_instructions()!r} api={body['instructions']!r}"
+            )
+
+        # ------------------------------------------------------------
+        # Step 4 — Verify the review form shows only the three known
         # fields, and no tools/agents/pipelines/toolkits/MCPs/resources
         # section is present anywhere in the dialog.
         # ------------------------------------------------------------
-        with allure.step("Step 3 — Verify no extra sections render on the review form"):
+        with allure.step("Step 4 — Verify no extra sections render on the review form"):
             forbidden_terms_pattern = re.compile(
                 r"\b(tools?|agents?|pipelines?|toolkits?|mcps?|resources?)\b",
                 re.IGNORECASE,
