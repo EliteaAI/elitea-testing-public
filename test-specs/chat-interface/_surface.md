@@ -2,9 +2,45 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2091, 2026-08-14
+a time; last confirmed by: qa-engineer analyst, ELITEA-2099, 2026-08-14
 (supersedes nothing below — new section, other sections unchanged; previous
-confirmer: ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+confirmer: ELITEA-2091, 2026-08-14; ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088,
+2026-08-03).
+
+## Conversation rename editor — checkmark/cancel testids ADDED + same a11y-snapshot gotcha as folders (ELITEA-2099)
+- **`ConversationItem.jsx`'s rename editor had NO testids before this pass** — added
+  this session, mirroring `FolderItem.jsx`'s existing `chat-folder-name-*` shapes
+  exactly (same `Input.StyledInputEnhancer` component, same `inputProps` channel):
+  `chat-conversation-name-input`, `chat-conversation-name-confirm-button` (carries
+  `data-disabled="true"/"false"` off `isSaveEnabled` — testid=identity/state=data-*),
+  `chat-conversation-name-cancel-button`. Committed `EliteaAI/EliteaUI@ff56e29d` on
+  `automation/testids`. `isSaveEnabled = ConversationNameRegExp.test(name) &&
+  (isNew || name !== originalName)` — same "valid AND changed" gate as folders.
+- **Same a11y-snapshot pruning gotcha as the folder confirm button (ELITEA-2458)
+  reconfirmed live for the conversation editor**: in the disabled/unchanged state
+  (`cursor:default`) `chat-conversation-name-confirm-button` may not appear as a
+  distinct node in a Playwright `browser_snapshot`'s accessibility tree — assert via
+  the testid locator directly (`page.locator('[data-testid="..."]')`), never via a
+  snapshot accessible-name read. The cancel button (always `cursor:pointer`) is
+  unaffected.
+- **The input pre-fills with the CURRENT name** (`value={conversationName}` synced
+  from the `name` prop via a `useEffect`) — confirmed live: opening rename on
+  "Review attached documents" showed that exact text in the input before any typing.
+- **Clicking the confirm button, when the conversation being renamed is NOT already
+  the active/open one, also navigates into and selects it** — confirmed live: URL
+  went from `/chat` to `/chat/{id}?name=...` on save. Side effect of
+  `onSave`→`onEdit`'s existing select-conversation behavior, not a defect; account
+  for the navigation in any URL assertion made right after a checkmark click.
+- **Context-menu item is labelled "Rename", not "Edit"** — the TMS case ELITEA-2099's
+  own "Edit option" title/step text is stale vs the live product (same drift already
+  documented for ELITEA-2114/#695 on the identical `ConversationItem.jsx`
+  `menuItems` array); filed as sibling clarification **#1513**. Live-verified full
+  menu-item set for project 471 (non-personal/non-public): **Rename, Move to,
+  Playback, Duplicate, Make public, Share, Pin on top, Delete** (8 items) — the
+  case's literal "Delete, Edit, Move to, Export, Playback, Pin on top" list is wrong
+  on every count (wrong label, one item that doesn't exist, three omitted). Item
+  count/set is project-dependent (#695 saw only 5 in the personal project) — don't
+  assert a fixed count without pinning the project.
 
 ## Folder rename editor — checkmark enable/disable logic + a11y-snapshot gotcha (ELITEA-2458)
 - **Full validation logic, read from `FolderItem.jsx` source** (grounds every
