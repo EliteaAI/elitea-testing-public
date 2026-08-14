@@ -47,7 +47,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | Wave | Theme | Case IDs | N | Status |
 |---|---|---|---:|---|
 | 01 | Conversation entry / navigation into existing conversations | 2091,2093,2096,2097,2098 | 5 | **LANDED** — PR #1512, 3 automated / 2 blocked (question #1511) |
-| 02 | Conversation rename — basic flow + length boundaries | 2099,2100,2101,2102,2103,2104 | 6 | **IN PROGRESS** |
+| 02 | Conversation rename — basic flow + length boundaries | 2099,2100,2101,2102,2103,2104 | 6 | **LANDED** — PR #1518, 6/6 automated |
 | 03 | Conversation rename — check-icon states + edge chars | 2105,2106,2107,2108,2109,2110,2111,2112,2113 | 9 | pending |
 | 04 | Conversation deletion + chat search (left-panel micro-UI) | 2115,2116,2117,2456,2163,2164,2165,2463 | 8 | pending |
 | 05 | Folder creation | 2118,2119,2120,2133,2134,2457 | 6 | pending |
@@ -79,9 +79,20 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   testid: `chat-composer-dropzone` (EliteaAI/EliteaUI@dd417746 on `automation/testids`,
   confirmed NOT yet on `main` via fresh fetch — awaiting human cherry-pick).
 
+- **wave-02 LANDED** — elitea-testing-public#1518, merged (`485231ea`). 6/6 automated
+  (ELITEA-2099 #1514, ELITEA-2100 #1515, ELITEA-2101/2102 #1516, ELITEA-2103/2104
+  #1517). Internal gate went red 1/2 on ELITEA-2104 (non-reproducing console 500 on
+  an unrelated resource, not the rename PUT) — investigated: 4 standalone clean runs
+  + lead's own 3/3 clean full-set gate = 7 consecutive clean after 1 occurrence,
+  classified transient noise, recorded in `.agents/testing.md` § Unconfirmed (not a
+  defect ticket — nothing reproduced to file). Case-text drift on ELITEA-2099 already
+  covered by question elitea-testing-public#1513 (sibling of #695). TMS back-written
+  (6 cases; parametrized 2101/2102 ids quoted to dodge the known bracket-stripping
+  YAML bug). New testids: `chat-conversation-name-input`,
+  `chat-conversation-name-confirm-button` (+`data-disabled`),
+  `chat-conversation-name-cancel-button` — EliteaAI/EliteaUI@ff56e29d on
+  `automation/testids`, confirmed NOT yet on `main`.
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-02** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w02`,
-  base=`origin/automation/base`, clusters `[2101,2102]` (49-char / 50-char boundary
-  pair) + `[2103,2104]` (type-limit / paste-limit pair), 2099+2100 solo units.
-  Task ID `wv0qxps8t`, Run ID `wf_672f5977-34e`.
+(none — wave-02 closed; wave-03 not yet dispatched)
