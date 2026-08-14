@@ -327,6 +327,44 @@ exactly what could not be produced → lead → a `question` card for a human. A
 that cannot be automated faithfully is a decision about scope or about the case
 text — never an implementation detail the analyst or implementer settles alone.
 
+### How to test a NONDETERMINISTIC producer without substituting it
+
+The usual argument for a fabricated response is *"the producer is nondeterministic
+(an LLM, a ranking service, a clock), so I cannot know the values to assert."* That is
+a false dilemma — it skips the third option:
+
+> **Capture the real response and assert the UI against it. The response is the
+> oracle, not a payload you wrote.**
+
+The assertion is then fully deterministic (always satisfiable) while every value still
+comes from the product. The helpers already exist:
+
+```python
+# pages/generate_entity_modal_page_base.py — live, not mocked
+response = modal.click_generate_and_wait_for_response(timeout=LIVE_GENERATE_RESPONSE_TIMEOUT)
+assert response.status == 200
+body = response.json()
+assert body["name"]                                  # the producer produced something
+assert modal.get_review_name() == body["name"]       # the UI carried it through faithfully
+```
+
+Worked precedent in-repo: ELITEA-1909/1911 in `tests/ui/agents/test_agent_build_with_ai.py`
+already run this way, in the same file as the mocked ones.
+
+The three moves this unlocks:
+
+| Instead of | Assert |
+|---|---|
+| `field == HAND_WRITTEN_PAYLOAD["field"]` (a tautology) | `field == response_body["field"]` — a real check that the UI neither dropped nor mangled the data |
+| a fabricated boundary the product never emits | the **invariant**: `rendered_count == len(body["items"])` **and** `rendered_count <= LIMIT` — this catches a real violation in the wild, which a mocked boundary never can |
+| exact strings you chose | shape and constraints: non-empty, within limits, correct types, correct correlation |
+
+**Cost, stated honestly:** a live call costs seconds (10–30 s here) where a mock costs
+milliseconds, and that is real pressure against the N×-green gate below. Accept it —
+wait on the network event, never on a sleep, and flake risk stays low. If a producer
+is so slow or unstable that the honest test is unusable, that is a finding to route
+(`blocked` → lead), not a licence to fabricate.
+
 **Why this is load-bearing.** A substituted test is *more* deterministic than an
 honest one, so it clears the N×-green merge gate more easily (§ Merge gate) —
 selection pressure runs **toward** substitution unless a rule pushes back. And on
