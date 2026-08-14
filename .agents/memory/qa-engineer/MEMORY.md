@@ -43,3 +43,4 @@
 - [Subagent skill isolation confound](subagent_skill_isolation_confound.md) — assert nested-accordion chip, not whole-message text; master's own skill can fire independently
 - [Edit-with-AI wizard testid gaps](edit_with_ai_wizard_testid_gaps.md) — Refine Prompt/Save-as-Version still unwired; Cancel absent in wizard phase
 - [Native maxlength probe w/o context blowup](native_maxlength_probe_without_context_blowup.md) — execCommand('insertText') in browser_evaluate, never a literal huge string
+- [Reviewer diff base = PR's own base](reviewer_diff_base_is_the_prs_own_base_not_automation_base.md) — `gh pr view --json baseRefName`; batch trunk ≠ automation/base
