@@ -237,6 +237,11 @@ class TestConversationRenameCheckmarkActiveState:
                     f"{persisted['name']!r}"
                 )
 
+                assert not console_messages, (
+                    f"[{case_id}] Unexpected console errors during the "
+                    f"no-op checkmark click: {[m.text for m in console_messages]!r}"
+                )
+
         finally:
             page.remove_listener("console", _on_console)
             if conv_target_id:
