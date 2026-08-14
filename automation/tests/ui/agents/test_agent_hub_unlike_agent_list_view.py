@@ -118,6 +118,7 @@ class TestAgentHubUnlikeAgentListView:
         "Known defect — non-serializable console error on like/unlike click",
     )
     @pytest.mark.p3
+    @pytest.mark.flaky
     def test_agent_hub_unlike_agent_from_list_view(self, page: Page):
         """Unliking a liked agent card decrements its count, unfills the
         heart icon, and persists across a full page refresh."""

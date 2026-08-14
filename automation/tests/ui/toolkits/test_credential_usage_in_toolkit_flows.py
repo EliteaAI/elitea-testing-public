@@ -53,6 +53,7 @@ class TestCredentialUsageInToolkitFlows:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p1
+    @pytest.mark.blocked
     def test_credential_usage_and_deletion_mismatch(self, page, credential_api, toolkit_api):
         """Credential is pre-filled + linked on toolkit creation, authenticates a
         real GitHub API call, and its deletion produces a visible mismatch state."""

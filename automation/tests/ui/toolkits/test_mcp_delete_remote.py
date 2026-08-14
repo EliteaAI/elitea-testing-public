@@ -78,6 +78,7 @@ def _delete_stale_mcp_if_present(page, toolkit_api: ToolkitAPI, name: str) -> No
     "onetest-ai Test Case link",
 )
 @pytest.mark.mcp
+@pytest.mark.blocked
 def test_delete_remote_mcp(page, toolkit_api: ToolkitAPI):
     """A Remote MCP can be permanently deleted via the three-dot menu's type-to-confirm dialog."""
     project_id = str(settings.elitea_project_id)

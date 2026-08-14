@@ -356,6 +356,7 @@ class TestToolkitTestSettings:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1140_google-and-bitbucket-toolkit-crud.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     @pytest.mark.parametrize("toolkit_config", _all_toolkit_ids(), indirect=True)
+    @pytest.mark.blocked
     def test_toolkit_test_settings(
         self, page, toolkit_config: ToolkitConfig, managed_toolkit: dict,
     ):

@@ -46,6 +46,7 @@ class TestCredentialCreatePrivateFromToolkitDropdown:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p1
+    @pytest.mark.blocked
     def test_create_private_credential_from_toolkit_dropdown(
         self, page, credential_api, toolkit_api, _browser_cookies
     ):

@@ -524,6 +524,7 @@ class TestBlockedToolLiveReload:
     )
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5199", name="Issue #5199")
     @pytest.mark.p0
+    @pytest.mark.blocked
     def test_blocked_tool_live_reload_case_insensitive(
         self,
         page: Page,

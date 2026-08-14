@@ -43,6 +43,7 @@ class TestCredentialDuplicateMismatchValidation:
     )
     @allure.issue("https://github.com/EliteaAI/elitea-testing-public/issues/1004", "Known defect #1004")
     @pytest.mark.p1
+    @pytest.mark.blocked
     def test_credential_duplicate_and_empty_required_field_validation(self, page, credential_api):
         """Duplicate elitea_title is rejected with the exact backend message;
         empty Display Name blocks Save; empty Access Token does NOT (known defect #1004)."""

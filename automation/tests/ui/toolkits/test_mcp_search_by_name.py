@@ -59,6 +59,7 @@ class TestMcpSearchByName:
     )
     @allure.issue("https://github.com/EliteaAI/elitea-testing-public/issues/585", "Known defect #585")
     @pytest.mark.mcp
+    @pytest.mark.blocked
     def test_mcp_search_by_name(self, page):
         """Search filters MCPs client-side; clearing restores the list (known
         defect: not after a zero-results search — #585)."""

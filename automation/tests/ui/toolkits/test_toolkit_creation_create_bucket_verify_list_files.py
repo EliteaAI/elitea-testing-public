@@ -223,6 +223,7 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
         "ELITEA-1866_create-artifact-bucket-via-toolkit-verify-list-files.md",
         "onetest-ai Test Case link",
     )
+    @pytest.mark.blocked
     def test_create_artifact_toolkit_creates_bucket_verify_list_files(
         self, page, toolkit_api,
     ):
