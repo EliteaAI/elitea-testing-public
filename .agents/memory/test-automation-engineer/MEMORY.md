@@ -9,6 +9,7 @@
 > preventive entries. No entry file was deleted — everything stays greppable.
 > `(N×)` = how many separate sessions hit it.
 - [Autonomous skill invocation needs a nudge](autonomous_skill_invocation_nudge.md) — attach alone won't do it
+- [chat-remaining-w03 case snapshots never existed](chat_remaining_w03_case_snapshots_never_existed.md) — read the TMS file directly, not a novel-ground signal
 
 - [Project briefing](project_briefing.md) — your slot, the six-phase loop, the ≤2-rerun budget, the Run Report
 - [Verify feature branch first](verify_feature_branch_before_first_commit.md) — `git branch --show-current` before any commit; dispatch starts you ON the trunk (5×)
