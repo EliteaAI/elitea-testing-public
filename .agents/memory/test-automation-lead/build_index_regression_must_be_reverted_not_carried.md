@@ -1,8 +1,50 @@
 ---
 name: build_index regression must be reverted, not carried
-description: a fresh build_index-generated index.json diff can silently drop still-existing cases; verify every "-" removal resolves to a real file before ever committing it, and revert rather than carry an unverified rebuild
+description: NEVER call build_index for a routine back-write — duplicate TMS ids make it last-write-wins destructive; always surgical-edit index.json by path
 type: feedback
 ---
+
+## Recurrence #2 (issue #1395, help-center-remaining batch, 2026-08-14) — confirmed the destructive mechanism
+
+Called `mcp__onetest-tms__build_index` after a routine 10-case back-write
+(the yaml's "index.json is NOT auto-rebuilt... rebuild it (build_index MCP
+verb...)" caveat reads as a routine step when it's in front of you without
+this entry's caveat also in view). The diff looked plausible (206 lines,
+92+/114-) so it nearly shipped. Comparing before/after by **`path`** (not
+`id` — a naive `{c['id']: c for c in cases}` dict comprehension SILENTLY
+COLLAPSES collisions and hides the damage) found the rebuild had:
+- **Regressed 20 unrelated `skills` cases** (ELITEA-2595 through 2614) from
+  `automated`/`ready` with a full `automation_test_id` back to
+  `manual`/`[]` — each of these ids ALSO collides with an unrelated case in
+  a different module (`onetest_case_id_can_collide_across_modules.md`:
+  confirmed systemic, 150+ colliding ids), and the indexer's last-write-wins
+  behavior over duplicate ids picked the WRONG file's data for all 20.
+- **Silently stripped the closing `]` off two parametrized
+  `automation_test_id` strings** (ELITEA-1994/1995,
+  `...[ELITEA-1994-description` with no closing bracket) — a distinct
+  `_index.py` parsing bug, not a collision artifact.
+
+Fix: `git checkout <pre-rebuild-sha> -- index.json`, then re-applied ONLY
+the intended 10-case update by loading the JSON, matching each entry by its
+**unique `path` field**, mutating `status`/`execution_type`/
+`automation_test_id` in place, and re-dumping (`indent=2,
+ensure_ascii=False`, trailing newline). Diff shrank to exactly the 10
+touched cases, 0 collateral changes.
+
+## Rule going forward — supersedes "just audit the diff"
+
+**Never call `build_index` for a routine back-write, full stop — this TMS's
+id collisions make it actively destructive, not just noisy.** The tool
+sounds authoritative ("Rebuild index.json from tests/ front-matter") and its
+own diff can look plausible at a glance; only a **by-`path`** before/after
+comparison (never by `id` — see above) reveals the damage, and that check is
+easy to skip when the diff "looks like" routine maintenance. The safe
+default for a routine back-write is always the surgical edit —
+`tms_backwrite_discipline.md` rule 4 — load the JSON, find each entry by its
+exact `path`, mutate the 3 fields, re-dump. Reserve an actual `build_index`
+call for a genuinely NEW case that has never been indexed at all, and even
+then audit the full diff (both this entry's `git diff | grep '^-'` check
+AND a by-`path` comparison) before committing.
 
 ## What happened (ELITEA-1907, issue #85, 2026-07-16)
 
