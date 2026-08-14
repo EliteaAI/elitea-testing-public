@@ -2,10 +2,35 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2099, 2026-08-14
+a time; last confirmed by: qa-engineer analyst, ELITEA-2100, 2026-08-14
 (supersedes nothing below — new section, other sections unchanged; previous
-confirmer: ELITEA-2091, 2026-08-14; ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088,
-2026-08-03).
+confirmer: ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14; ELITEA-2458,
+2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## Manual `ConversationAPI()` script vs the `conversation_api` fixture — project-id mismatch trap (ELITEA-2100)
+- A standalone `ConversationAPI(browser_cookies=[])` (no fixture chain, default
+  `settings.elitea_project_id`) resolved to project **399** during ad-hoc
+  exploration, while the live browser session (`auth_state`/`VITE_DEV_TOKEN`) is on
+  project **471** ("Elitea Testing Team") — a conversation created that way opened
+  as "Conversation not found" at `/chat/{id}`. The pytest `conversation_api`
+  fixture (session-scoped, browser-cookie-derived) does NOT have this problem —
+  ELITEA-2099's test passes using it. Only a risk for **manual exploration
+  scripts** run outside the fixture chain (as this analyst pass did, once, then
+  switched to reusing a shared live conversation instead) — never copy a bare
+  `ConversationAPI(browser_cookies=[])` instantiation into test setup; always go
+  through the `conversation_api` fixture.
+
+## Conversation rename editor — CANCEL path live-confirmed (ELITEA-2100)
+- Clicking `chat-conversation-name-cancel-button` after typing a new name: input
+  closes (`chat-conversation-name-input` → count 0), sidebar reverts to the
+  ORIGINAL name, and — live-confirmed via `browser_network_requests` — **no**
+  `PUT .../conversation/prompt_lib/{project_id}/{id}` fires at all (typing alone
+  also fires nothing; only cancel-click was tested, no request appeared either
+  before or after). Persists correctly across navigate-away/back too (re-verified
+  by leaving `/chat` and returning). Symmetric with ELITEA-2099's save-path
+  (`PUT` fires + resolves 200 on checkmark-click) — together the pair proves the
+  editor's two exit paths are mutually exclusive at the network layer, not just
+  the DOM layer.
 
 ## Conversation rename editor — checkmark/cancel testids ADDED + same a11y-snapshot gotcha as folders (ELITEA-2099)
 - **`ConversationItem.jsx`'s rename editor had NO testids before this pass** — added
