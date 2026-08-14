@@ -64,15 +64,21 @@ is the one test in the file that deliberately does NOT mock
 `generate_skill_draft`, so it verifies the platform's actual AI/backend
 naming behavior rather than an analyst-chosen fixture string.
 
-Covers ELITEA-1996: clicking "Back to prompt" (`back_button`) on the
-REVIEW step returns the modal to the INPUT step — review-form fields and
-the review-step action row removed from the DOM, not merely hidden —
-while preserving the exact previously-typed prompt text and firing no new
-network request. Skills-entity sibling of ELITEA-1919
-(tests/ui/agents/test_agent_build_with_ai.py); same shared
+Covers ELITEA-1996 (live-generate rework, 2026-08-14 — see
+`.agents/testing.md` § Fidelity policy): clicking "Back to prompt"
+(`back_button`) on the REVIEW step returns the modal to the INPUT step —
+review-form fields and the review-step action row removed from the DOM,
+not merely hidden — while preserving the exact previously-typed prompt
+text and firing no new network request. Skills-entity sibling of
+ELITEA-1919 (tests/ui/agents/test_agent_build_with_ai.py); same shared
 GenerateEntityModal.jsx mechanism (`handleBack()` resets `step`/`draftData`
 but never calls `setDescription('')`), verified independently here for the
-Skill entity's own DOM/testids.
+Skill entity's own DOM/testids. The generate-draft call is now REAL and
+UNMOCKED; Step 1's pre-check (review form shows the generated name before
+Back discards it) reads its expected value from the live response body
+(the response is the oracle) instead of a test-authored payload — the
+case's own Pass criteria never depend on the draft's specific field
+values, only on its absence from the DOM after Back.
 
 Covers ELITEA-1997: clicking "Cancel" (`cancel_button`) on the PROMPT
 INPUT step — before Generate is ever clicked — closes the modal (dialog
@@ -81,14 +87,21 @@ removed from the DOM), leaves the New Skill creation form untouched
 create-skill request. `cancel_button` was previously only asserted
 `.is_visible()` (ELITEA-1988); this is the first test to `.click()` it.
 
-Covers ELITEA-1998: clicking the modal's Close (X) icon
-(`close_button`) on the REVIEW step (after a draft has been generated)
-closes the modal and creates no Skill — the generated draft's name never
-appears in the Skills list. Case-text drift: the review step has no
-"Cancel" button (only "Back to prompt" and "Create Skill"); the case's
-literal Step 2 ("Click 'Cancel'") is asserted against the live, correct
-control (`close_button`) instead, per the reverse-masking guard — see
+Covers ELITEA-1998 (live-generate rework, 2026-08-14 — see
+`.agents/testing.md` § Fidelity policy): clicking the modal's Close (X)
+icon (`close_button`) on the REVIEW step (after a draft has been
+generated) closes the modal and creates no Skill — the generated draft's
+name never appears in the Skills list. Case-text drift: the review step
+has no "Cancel" button (only "Back to prompt" and "Create Skill"); the
+case's literal Step 2 ("Click 'Cancel'") is asserted against the live,
+correct control (`close_button`) instead, per the reverse-masking guard —
+see
 [EliteaAI/elitea-testing-public#1486](https://github.com/EliteaAI/elitea-testing-public/issues/1486).
+The generate-draft call is now REAL and UNMOCKED; both the Step 1
+pre-check (review form shows the generated name before Close discards it)
+and the Step 4 negative check (the generated name never reaches the
+Skills list) read the expected name from the live response body (the
+response is the oracle) instead of a test-authored payload.
 
 Spec: test-specs/skills/l2_build-with-ai-generation-failure-retry_ELITEA-2001.md
 Spec: test-specs/skills/l2_generated-skill-draft-fields-are-editable-before-creation_ELITEA-1990.md
@@ -118,20 +131,25 @@ GenerateEntityModal.jsx mechanism (`handleApprove`'s catch block never
 calls `handleClose()`), verified independently here for the Skill entity's
 own DOM/testids and simpler (no suggested-resources) create contract.
 
-Covers ELITEA-1994 / ELITEA-1995 (family AFS, one parameterized spec): the
-review-form Description/Instructions fields each enforce their character
-limit (2304 for Description, 5000 for Instructions — corrected per Known
-Defect #2, the case's stated 2500 for Instructions is stale) via the
-field's native HTML `maxlength` (`GenerateSkillReviewForm.jsx`'s
-`slotProps.htmlInput.maxLength`, sourced from `MAX_DESCRIPTION_LENGTH`/
-`MAX_INSTRUCTIONS_LENGTH` in `EliteaUI/src/common/constants.js`): an
-over-limit paste is truncated to exactly the limit before React validation
-ever sees a longer value, the truncated value is valid (no error, "Create
-Skill" stays enabled), and no Skill is ever created. Per Known Defect #1,
-the cases' literal Steps 2-4 ("over-limit -> validation error -> disabled
-button") describe a state unreachable via manual editing for both fields —
-the same class of finding ELITEA-1993 already established for the Name
-field.
+Covers ELITEA-1994 / ELITEA-1995 (family AFS, one parameterized spec;
+live-generate rework, 2026-08-14 — see `.agents/testing.md` § Fidelity
+policy): the review-form Description/Instructions fields each enforce
+their character limit (2304 for Description, 5000 for Instructions —
+corrected per Known Defect #2, the case's stated 2500 for Instructions is
+stale) via the field's native HTML `maxlength`
+(`GenerateSkillReviewForm.jsx`'s `slotProps.htmlInput.maxLength`, sourced
+from `MAX_DESCRIPTION_LENGTH`/`MAX_INSTRUCTIONS_LENGTH` in
+`EliteaUI/src/common/constants.js`): an over-limit paste is truncated to
+exactly the limit before React validation ever sees a longer value, the
+truncated value is valid (no error, "Create Skill" stays enabled), and no
+Skill is ever created. Per Known Defect #1, the cases' literal Steps 2-4
+("over-limit -> validation error -> disabled button") describe a state
+unreachable via manual editing for both fields — the same class of finding
+ELITEA-1993 already established for the Name field. The generate-draft
+call reaching the review step is now REAL and UNMOCKED — no field-value
+assertion against the generated draft exists anywhere in this test, only
+`response.status == 200` and the truncation/enablement behavior under
+test, so dropping the mock changes nothing about what is asserted.
 
 Shares the modal-shell behavior with the Agent flow
 (tests/ui/agents/test_agent_build_with_ai.py) via
@@ -1178,17 +1196,6 @@ BACK_TO_PROMPT_PROMPT_TEXT = (
     "back-to-prompt verification."
 )
 
-# Mocked generate_skill_draft response for ELITEA-1996 — minimal, valid
-# draft shape mirroring RETRY_DRAFT_PAYLOAD above.
-# This case's Pass criteria never assert on the draft's specific field
-# values, only on its absence from the DOM after "Back to prompt" is
-# clicked.
-BACK_TO_PROMPT_DRAFT_PAYLOAD = {
-    "name": "elitea-1996-back-to-prompt-draft",
-    "description": "A draft used to test back-to-prompt state-preservation behavior.",
-    "instructions": "You are a test skill for ELITEA-1996.",
-}
-
 
 class TestSkillBuildWithAIBackToPromptFromReviewStep:
     """Build with AI (P2): clicking "Back to prompt" (``back_button``) on
@@ -1234,8 +1241,6 @@ class TestSkillBuildWithAIBackToPromptFromReviewStep:
             "/elitea_core/skills/prompt_lib/", method="POST"
         )
 
-        modal.mock_generate_success(BACK_TO_PROMPT_DRAFT_PAYLOAD)
-
         try:
             with allure.step("Step 1 — Generate a draft and reach the review form"):
                 list_page.navigate_to_create()
@@ -1246,14 +1251,17 @@ class TestSkillBuildWithAIBackToPromptFromReviewStep:
                     "Prompt textarea should contain exactly the entered text"
                 )
 
-                with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+                with modal.expect_generate_response(
+                    timeout=UNMOCKED_GENERATE_RESPONSE_TIMEOUT
+                ) as response_info:
                     modal.generate_button.click()
                 assert response_info.value.status == 200, (
-                    "Mocked generate-draft response should resolve 200 to reach the review step"
+                    "Expected the real generate-draft request to resolve 200 to reach the review step"
                 )
-                modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+                modal.wait_for_review_form(timeout=UNMOCKED_GENERATE_RESPONSE_TIMEOUT)
 
-                assert modal.get_review_name() == BACK_TO_PROMPT_DRAFT_PAYLOAD["name"], (
+                body = response_info.value.json()
+                assert modal.get_review_name() == body["name"], (
                     "Review form should display the generated draft's name before Back discards it"
                 )
                 assert len(draft_requests) == 1, (
@@ -1306,7 +1314,6 @@ class TestSkillBuildWithAIBackToPromptFromReviewStep:
                     f"Expected zero console errors across the whole flow, got: {list(console_capture)}"
                 )
         finally:
-            modal.clear_generate_mock()
             console_capture.stop()
             draft_requests.stop()
             create_requests.stop()
@@ -1455,18 +1462,6 @@ CANCEL_FROM_REVIEW_PROMPT_TEXT = (
     "digest for ELITEA-1998 cancel-from-review verification."
 )
 
-# Mocked generate_skill_draft response for ELITEA-1998 — minimal, valid
-# draft shape mirroring BACK_TO_PROMPT_DRAFT_PAYLOAD above. This case's Pass
-# criteria don't depend on the draft's specific content, only on the close
-# behavior and on the generated name's absence from the Skills list
-# afterward, so a deterministic mocked name is used rather than real,
-# non-deterministic AI output.
-CANCEL_FROM_REVIEW_DRAFT_PAYLOAD = {
-    "name": "elitea-1998-cancel-from-review-draft",
-    "description": "A draft used to test cancel-from-review-step behavior.",
-    "instructions": "You are a test skill for ELITEA-1998.",
-}
-
 
 class TestSkillBuildWithAICancelFromReviewStep:
     """Build with AI (P2): clicking the modal's Close (X) icon
@@ -1508,22 +1503,23 @@ class TestSkillBuildWithAICancelFromReviewStep:
             "/elitea_core/skills/prompt_lib/", method="POST"
         )
 
-        modal.mock_generate_success(CANCEL_FROM_REVIEW_DRAFT_PAYLOAD)
-
         try:
             with allure.step("Step 1 — Generate a draft and reach the review form"):
                 list_page.navigate_to_create()
                 modal.open_modal()
                 modal.fill_prompt(CANCEL_FROM_REVIEW_PROMPT_TEXT)
 
-                with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
+                with modal.expect_generate_response(
+                    timeout=UNMOCKED_GENERATE_RESPONSE_TIMEOUT
+                ) as response_info:
                     modal.generate_button.click()
                 assert response_info.value.status == 200, (
-                    "Mocked generate-draft response should resolve 200 to reach the review step"
+                    "Expected the real generate-draft request to resolve 200 to reach the review step"
                 )
-                modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+                modal.wait_for_review_form(timeout=UNMOCKED_GENERATE_RESPONSE_TIMEOUT)
 
-                assert modal.get_review_name() == CANCEL_FROM_REVIEW_DRAFT_PAYLOAD["name"], (
+                body = response_info.value.json()
+                assert modal.get_review_name() == body["name"], (
                     "Review form should display the generated draft's name before Close discards it"
                 )
                 assert len(draft_requests) == 1, (
@@ -1550,12 +1546,11 @@ class TestSkillBuildWithAICancelFromReviewStep:
 
                 list_page.navigate()
                 names_after = list_page.get_skill_card_names()
-                assert CANCEL_FROM_REVIEW_DRAFT_PAYLOAD["name"] not in names_after, (
+                assert body["name"] not in names_after, (
                     "Skills list should not contain the cancelled draft's generated name "
-                    f"{CANCEL_FROM_REVIEW_DRAFT_PAYLOAD['name']!r}, got: {names_after}"
+                    f"{body['name']!r}, got: {names_after}"
                 )
         finally:
-            modal.clear_generate_mock()
             console_capture.stop()
             draft_requests.stop()
             create_requests.stop()
@@ -1768,19 +1763,6 @@ CHAR_LIMIT_PROMPT_TEXT = (
     "coverage for ELITEA-1994/1995 char-limit analysis."
 )
 
-# Minimal, valid draft payload for this family's transit-only mock (reaches
-# the review step; ELITEA-1990/1991/1993's siblings above no longer mock —
-# see their live-generate rework) — a distinct dict instance so this
-# family's mock never shares object identity with other mocks in this
-# file, even though route mocks are scoped per-page and don't actually
-# collide.
-CHAR_LIMIT_DRAFT_PAYLOAD = {
-    "name": "pr-test-coverage-review",
-    "description": "Reviews pull request diffs and flags missing test coverage.",
-    "instructions": "You are a PR reviewer. Inspect the diff and flag any "
-                     "changed code paths that lack corresponding test coverage.",
-}
-
 # One row per source case — see module docstring / AFS parameter table.
 #   field:  which review-form field the row targets ("description" or
 #           "instructions") — used to resolve modal.set_review_<field>() /
@@ -1861,15 +1843,14 @@ class TestSkillBuildWithAIReviewFormCharacterLimits:
                 modal.open_modal()
                 modal.fill_prompt(CHAR_LIMIT_PROMPT_TEXT)
 
-                modal.mock_generate_success(CHAR_LIMIT_DRAFT_PAYLOAD)
                 response = modal.click_generate_and_wait_for_response(
-                    timeout=GENERATE_RESPONSE_TIMEOUT
+                    timeout=UNMOCKED_GENERATE_RESPONSE_TIMEOUT
                 )
                 assert response.status == 200, (
-                    f"[{case_id}] Expected the mocked generate-draft request to "
+                    f"[{case_id}] Expected the real generate-draft request to "
                     f"resolve 200, got {response.status}"
                 )
-                modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
+                modal.wait_for_review_form(timeout=UNMOCKED_GENERATE_RESPONSE_TIMEOUT)
 
                 assert modal.approve_button.is_enabled(), (
                     f"[{case_id}] Create Skill should start enabled — the "
@@ -1917,6 +1898,5 @@ class TestSkillBuildWithAIReviewFormCharacterLimits:
                     f"{list(console_capture)}"
                 )
         finally:
-            modal.clear_generate_mock()
             console_capture.stop()
             create_requests.stop()
