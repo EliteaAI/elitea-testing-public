@@ -45,7 +45,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new]
 # ---------------------------------------------------------------------------
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
-VALIDATE_TIMEOUT = 30_000  # publish_validate is AI-backed — variable latency
+VALIDATE_TIMEOUT = 60_000  # publish_validate is AI-backed — variable latency; doubled from 30s
 PUBLISH_TIMEOUT = 15_000
 
 CATEGORY_NAME = "Quality Assurance"

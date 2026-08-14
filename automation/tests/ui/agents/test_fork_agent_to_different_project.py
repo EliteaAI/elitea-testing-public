@@ -40,6 +40,7 @@ import allure
 import pytest
 
 from api import AgentAPI
+from config import settings
 from pages.agent_detail_page import AgentDetailPage
 from pages.agent_form_page import AgentFormPage
 from pages.agents_list_page import AgentsListPage
@@ -53,13 +54,12 @@ FORK_TIMEOUT = 15_000
 
 logger = logging.getLogger("elitea.tests.agents")
 
-# Source project is the suite default (ELITEA_PROJECT_ID=399, "Private").
-# Target project MUST be "UI Testing" (400) — confirmed by the AFS to carry
-# full CRUD (including delete) for the localhost dev-token identity;
-# "Elitea Testing Team" (471) has fork permission but lacks delete
-# permission for this identity, which would break UI-driven cleanup in
-# Step 9 (AFS § Test Data — Important environment caveat).
-TARGET_PROJECT_ID = 400
+# Source project is the suite default (ELITEA_PROJECT_ID, e.g. 399 "Private").
+# Target project is configured via `users_team_project_id` (default "400" for
+# "UI Testing") — must have full CRUD (including delete) for the dev-token
+# identity. The setting is env-configurable for environments where project IDs
+# differ.
+TARGET_PROJECT_ID = int(settings.users_team_project_id)
 
 
 class TestForkAgentToDifferentProject:
