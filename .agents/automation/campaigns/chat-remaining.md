@@ -48,7 +48,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 |---|---|---|---:|---|
 | 01 | Conversation entry / navigation into existing conversations | 2091,2093,2096,2097,2098 | 5 | **LANDED** — PR #1512, 3 automated / 2 blocked (question #1511) |
 | 02 | Conversation rename — basic flow + length boundaries | 2099,2100,2101,2102,2103,2104 | 6 | **LANDED** — PR #1518, 6/6 automated |
-| 03 | Conversation rename — check-icon states + edge chars | 2105,2106,2107,2108,2109,2110,2111,2112,2113 | 9 | **IN PROGRESS** |
+| 03 | Conversation rename — check-icon states + edge chars | 2105,2106,2107,2108,2109,2110,2111,2112,2113 | 9 | **LANDED** — PR #1522, 9/9 automated |
 | 04 | Conversation deletion + chat search (left-panel micro-UI) | 2115,2116,2117,2456,2163,2164,2165,2463 | 8 | pending |
 | 05 | Folder creation | 2118,2119,2120,2133,2134,2457 | 6 | pending |
 | 06 | Folder rename | 2121,2122,2123,2124,2125,2126,2127,2128,2129,2130,2131 | 11 | pending |
@@ -93,10 +93,20 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   `chat-conversation-name-cancel-button` — EliteaAI/EliteaUI@ff56e29d on
   `automation/testids`, confirmed NOT yet on `main`.
 
+- **wave-03 LANDED** — elitea-testing-public#1522, merged (`ec634072`). 9/9 automated:
+  ELITEA-2105-2109 cluster (#1519, 1 fix round — dead console-error instrumentation,
+  fixed + re-reviewed APPROVED), ELITEA-2110/2112/2113 cluster (#1520), ELITEA-2111
+  `extend-existing` onto #1520's spec as a 3rd parametrize row (#1521). Lead's own
+  gate: 3/3 clean, 9/9 node-ids every run (230s/215s/200s). TMS back-written (9 cases,
+  parametrized ids quoted). New testid: `chat-conversation-name-confirm-tooltip-content`
+  — EliteaAI/EliteaUI@888dac13 on `automation/testids`, confirmed NOT yet on `main`.
+  **Process fix applied:** the `.agents/automation/chat-remaining-w0N/cases/` intake
+  snapshot dir was never written for w01-w03 (lead's own gap, not a workflow bug —
+  went straight from the card's table to clustering); zero drift found each time the
+  analyst fell back to a live TMS fetch, but fixed properly starting wave-04 (case
+  bodies copied from the TMS sibling clone into `.../chat-remaining-w04/cases/` before
+  dispatch).
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-03** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w03`,
-  base=`origin/automation/base`, clusters `[2105,2106,2107,2108,2109]` (check-icon
-  active/inactive by input-length family) + `[2110,2112,2113]` (special-char reject /
-  leading-space reject / valid-after-invalid-corrected family), 2111 (tooltip content)
-  solo. Task ID `wq1ov8z5d`, Run ID `wf_7273e73d-a18`.
+(none — wave-03 closed; wave-04 not yet dispatched)
