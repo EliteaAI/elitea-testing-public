@@ -2,11 +2,54 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2103/2104, 2026-08-14
-(supersedes nothing below — new section, other sections unchanged; previous
-confirmer: ELITEA-2101/2102, 2026-08-14; ELITEA-2100, 2026-08-14; ELITEA-2099,
-2026-08-14; ELITEA-2091, 2026-08-14; ELITEA-2458, 2026-08-07;
-ELITEA-2086/2087/2088, 2026-08-03).
+a time; last confirmed by: qa-engineer analyst, ELITEA-2105/2106/2107/2108/2109,
+2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
+ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## Conversation-rename checkmark active/inactive threshold — CLOSES ELITEA-2099's
+## own forecast, source-only confirmation (ELITEA-2105/2106/2107/2108/2109)
+- Closes the gap ELITEA-2099's § Automation Hints explicitly forecast ("directly
+  relevant to the sibling conversation-rename boundary cases … empty/short/
+  special-char checkmark-inactive states"). All five cases confirmed via a fresh
+  full-file read of `ConversationItem.jsx` this session (not re-driven live — the
+  mechanism is identical to the already-live-verified `isSaveEnabled`/
+  `ConversationNameRegExp` pair documented in the ELITEA-2099/2101/2102 sections
+  above, so a source read is a stronger/faster confirmation than repeating a
+  manual click-through against the shared DEV project).
+- `ConversationNameRegExp = /^[a-zA-Z0-9_[\].()][a-zA-Z0-9_[\].() -]{2,63}$/` — 1
+  mandatory first char + `{2,63}` more = **3–64 chars total, floor AND ceiling on
+  the SAME regex** already documented for the folder/conversation length-boundary
+  work above. 1 and 2-char inputs both fail the floor; 3 chars is the exact
+  activation point (`isConversationNameValid` flips true) — this is why
+  ELITEA-2109's title ("Becomes Active at 3 Characters") is a literal, precise
+  description of the `{2,63}` quantifier, not an approximation to verify loosely.
+  Empty string also fails (same regex, no bypass for `''`).
+- `isSaveEnabled = isConversationNameValid && (isNew || conversationName !==
+  name)` — for an EXISTING conversation (`isNew` false in this family's own
+  setup) collapses to `isValid && changed`. ELITEA-2105's "no changes made" row
+  is the ONLY one of the five that fails the `changed` half specifically (start
+  from a name that is itself REGEX-VALID, e.g. 25 chars of allowed characters,
+  so the disabled state is provably about "unchanged", not "invalid") —
+  ELITEA-2106/2107/2108 fail the `isValid` half instead.
+- **The confirm `Box`'s `onClick={isSaveEnabled ? (isNew ? onCreate : onSave) :
+  null}` — when disabled, `onClick` is literally `null`.** A disabled-state click
+  is therefore a genuine, un-intercepted browser no-op (no `force=True` needed,
+  no suppressed handler to route around) — the honest assertion for "click has no
+  effect" is that NO `PUT .../conversation/prompt_lib/...` request fires at all,
+  the editor stays open, and the sidebar item keeps showing the conversation's
+  ORIGINAL persisted name. Same idiom as ELITEA-2100's cancel-flow "no PUT fires"
+  check: capture requests via `capture_requests_matching` BEFORE the click, then
+  call `chat.wait_for_network()` (framework-native `networkidle`, not a raw sleep)
+  to give any would-be async call a chance to register before reading the
+  captured list.
+- No new testids needed — `chat-conversation-name-input` /
+  `chat-conversation-name-confirm-button` (with its `data-disabled` state
+  attribute) / `chat-conversation-name-cancel-button`, all from
+  `EliteaAI/EliteaUI@ff56e29d` (ELITEA-2099), cover this family completely.
+- No case-text drift, no defect — all five cases automate exactly as written
+  against the source-confirmed mechanism.
 
 ## Conversation-rename overflow — truncation itself, TYPE + PASTE both confirmed identical (ELITEA-2103/2104)
 - Closes the gap ELITEA-2101/2102's AFS flagged ("51+/overflow/paste-truncation …
