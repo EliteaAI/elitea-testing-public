@@ -49,15 +49,10 @@ class TestAgentHubCopyLinkFromModal:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2
-    def test_copy_link_from_modal_navigates_to_agent(self, page: Page, browser):
+    def test_copy_link_from_modal_navigates_to_agent(self, page: Page):
         """Copy a link from the agent detail modal's Share action, navigate to it
         in a new page context, and verify the modal auto-opens showing the same
         agent's details (name, description, starters, welcome message)."""
-
-        # Use an agent that has recognizable details (Entertainer Agent was used
-        # in analysis, but any agent with populated fields works since the test
-        # asserts non-empty content, not specific values).
-        catalog_agent_name = "Entertainer Agent"
 
         agent_hub = AgentHubPage(page)
 
@@ -65,8 +60,13 @@ class TestAgentHubCopyLinkFromModal:
             agent_hub.navigate()
             assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
 
-        with allure.step(f"Step 2 — Click the '{catalog_agent_name}' agent card to open modal"):
-            agent_hub.open_agent_by_name(catalog_agent_name, timeout=NAVIGATION_TIMEOUT)
+        with allure.step("Step 2 — Click the first available agent card to open modal"):
+            # Use the first available agent in the catalog instead of hardcoding a name
+            # (any agent with populated fields works since the test asserts non-empty
+            # content, not specific values).
+            agent_hub.wait_for_any_agent_card(timeout=NAVIGATION_TIMEOUT)
+            first_card = page.locator(agent_hub.AGENT_CARD_PREFIX).first
+            first_card.click()
             expect(agent_hub.modal_dialog).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step("Step 3 — Capture modal content (name, description) before navigating"):
@@ -117,8 +117,10 @@ class TestAgentHubCopyLinkFromModal:
             assert "agentId=" in copied_url, f"URL should contain agentId= parameter, got: {copied_url}"
 
         with allure.step("Step 6 — Navigate to the copied URL in a new page context"):
-            # Create a new page in the same browser context (reuses auth/cookies).
-            new_page = browser.new_page()
+            # Create a new page in the SAME browser context to reuse auth/cookies.
+            # browser.new_page() creates a new context without auth; must use
+            # page.context.new_page() to share the authenticated session.
+            new_page = page.context.new_page()
             try:
                 # The URL has a /{projectId}/ prefix that triggers a hard reload
                 # (ProtectedRoutes.jsx), so wait for network settle + modal render.
