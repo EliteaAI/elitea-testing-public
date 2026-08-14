@@ -3,18 +3,24 @@
 > ⚠️ **UNDER REVIEW — 2026-08-14 fidelity audit. Do NOT reuse this AFS as a pattern.**
 >
 > This spec directs the implementer to **substitute the system under test** (mocking
-> the `generate_application_draft` response) for a TMS case whose text never asks for
-> simulation. Classification: **TERMINAL** — name validation is asserted against a fabricated generated name.
+> the generate-draft response) for a TMS case whose text never asks for simulation.
+> Classification: **MIXED** — steps 2-3 (validation on manual input) are a real observable; step 1's `get_review_name() == draft["name"]` is a tautology. Re-classified 2026-08-14 — the first banner said TERMINAL, which over-stated it.
 >
-> Its justifications ("the same sanctioned-mocking technique this file already uses",
-> "not a good use of fixture-creation effort") are **not valid authorities**: nothing
-> sanctions response mocking, and cost is never a reason to substitute. See
-> `.agents/testing.md` § Fidelity policy and `.agents/role-overrides.md` § Every role —
-> precedent is not authority.
+> **Rework by class:** `TERMINAL` → rewrite against the live flow (the test currently
+> proves nothing about the case's subject). `MIXED` → drop the tautological assertions
+> and prefer a live draft; the rest of the coverage is sound. `TRANSIT` → cheapest —
+> swap the mock for a live generate, or keep it and declare it per
+> `.agents/testing.md` § Fidelity policy.
 >
-> **`extend-existing` must not inherit this design.** Rework is tracked on
-> [#1298](https://github.com/EliteaAI/elitea-testing-public/issues/1298); the full chain
-> is in `sdlc-skills/bundles/test-automation/incidents/2026-08-14-response-mocking-drift.md`.
+> Justifications of the form "the same sanctioned-mocking technique this file already
+> uses" or "not a good use of fixture-creation effort" are **not valid authorities**:
+> nothing sanctions response mocking, and cost is never a reason to substitute. See
+> `.agents/role-overrides.md` § Every role — precedent is not authority.
+>
+> **`extend-existing` must not inherit this design.** Rework tracked on
+> [#1298](https://github.com/EliteaAI/elitea-testing-public/issues/1298) (agents) and
+> [#1399](https://github.com/EliteaAI/elitea-testing-public/issues/1399) (skills); full
+> chain in `sdlc-skills/bundles/test-automation/incidents/2026-08-14-response-mocking-drift.md`.
 
 ## Metadata
 - **TMS ID**: ELITEA-1913

@@ -1,5 +1,27 @@
 # Test Case: Build with AI (Skills) — "Back to prompt" returns to input step without losing the prompt
 
+> ⚠️ **UNDER REVIEW — 2026-08-14 fidelity audit. Do NOT reuse this AFS as a pattern.**
+>
+> This spec directs the implementer to **substitute the system under test** (mocking
+> the generate-draft response) for a TMS case whose text never asks for simulation.
+> Classification: **TRANSIT** — the mock only reaches the review step; the back-to-prompt observable is real (mirror of agents ELITEA-1919).
+>
+> **Rework by class:** `TERMINAL` → rewrite against the live flow (the test currently
+> proves nothing about the case's subject). `MIXED` → drop the tautological assertions
+> and prefer a live draft; the rest of the coverage is sound. `TRANSIT` → cheapest —
+> swap the mock for a live generate, or keep it and declare it per
+> `.agents/testing.md` § Fidelity policy.
+>
+> Justifications of the form "the same sanctioned-mocking technique this file already
+> uses" or "not a good use of fixture-creation effort" are **not valid authorities**:
+> nothing sanctions response mocking, and cost is never a reason to substitute. See
+> `.agents/role-overrides.md` § Every role — precedent is not authority.
+>
+> **`extend-existing` must not inherit this design.** Rework tracked on
+> [#1298](https://github.com/EliteaAI/elitea-testing-public/issues/1298) (agents) and
+> [#1399](https://github.com/EliteaAI/elitea-testing-public/issues/1399) (skills); full
+> chain in `sdlc-skills/bundles/test-automation/incidents/2026-08-14-response-mocking-drift.md`.
+
 ## Metadata
 - **TMS ID**: ELITEA-1996
 - **Source case**: `onetest-ai-tm-Elitea/tests/automated-full-regression-ui/skills/build_with_ai/ELITEA-1996_build-with-ai-back-to-prompt-returns-to-input-step-without-losing-the-prompt.md`
