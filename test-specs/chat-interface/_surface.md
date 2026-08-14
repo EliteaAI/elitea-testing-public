@@ -1029,3 +1029,54 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
   `model-selector-option-`, `chat-conversation-group-header-`,
   `chat-attachment-chip-` — is **on `main` already** (all `YES`/`YES`).
   This case needs ZERO new testids except the drag-drop drop-zone above.
+
+**Resolved/added during ELITEA-2091 implementation:**
+- **`chat-composer-dropzone` added** on `UserInput.jsx`'s outer drop-zone
+  `Box` (`automation/testids` commit `dd417746`). The synthetic-`DataTransfer`
+  drag-and-drop technique (dispatch `dragenter`→`dragover`→`drop`
+  `DragEvent`s carrying a real in-page-constructed `File`) is
+  **live-confirmed working** against this testid — chip renders, counter
+  decrements, message-thread attachment list all correct end-to-end.
+- **FileList.jsx's visible/overflow split is live, not just a docstring
+  claim** — with the plus-menu popper open (narrowing the composer) even
+  3–4 attachments can overflow into the "+N" bucket depending on viewport.
+  Any assertion on attached-file count/names MUST use
+  `get_total_attached_file_count()`/`get_all_attached_file_names()`
+  (visible+overflow), never the visible-only
+  `get_attachment_chip_count()`/`get_visible_attachment_names()` — a
+  visible-only assertion silently stays flat across a real successful
+  attach when the new item lands in overflow instead of a visible chip.
+- **`get_overflow_attachment_names()`'s internal `Escape` key press closes
+  the WHOLE plus-menu popper, not just the overflow sub-menu** — the same
+  ELITEA-2203 "Escape closes more than intended" quirk
+  `ChatPage.close_plus_menu_popper()`'s docstring already warns about,
+  triggered here as a side effect of a read-only helper. Any caller that
+  needs to read the "Attach Files (N left)" counter text AFTER calling
+  `get_all_attached_file_names()`/`get_overflow_attachment_names()` must
+  read the counter FIRST — the popper may already be gone afterward if an
+  overflow bucket existed.
+- **The composer's model-selector-name text updates one React render tick
+  after the option-click closes the dropdown** — a one-shot
+  `text_content()` read immediately after `select_llm_model_by_suffix()`
+  can race and read the STALE (previous) model name. Use
+  `ChatPage.wait_for_selected_model_name_change(previous_name)`
+  (`expect(...).not_to_have_text(...)`, auto-retries) instead of a bare read.
+- **Reopening the model-selector dropdown via the OUTER `model_selector`
+  (`model-selector-button`) field is intermittently unreliable** — clicking
+  the `ButtonGroup` container's bounding-box center doesn't always land on
+  the actual interactive child. `ChatPage.open_model_selector()` (new,
+  clicks `model_selector_name` directly — the real `Button.BaseBtn` with
+  the `onClick` handler) is the reliable open/reopen entry point; prefer it
+  over the pre-existing `click_model_selector()` for any NEW test that
+  reopens the dropdown mid-flow.
+- **Gotcha for implementers doing concurrent live exploration:** the
+  localhost dev-token identity (`auth_state`/`VITE_DEV_TOKEN`) is a SHARED
+  backend user across every browser session hitting this DEV backend — a
+  live MCP/browser-verify session run WHILE a pytest run is also driving
+  the app (same user identity) can cross-contaminate "current/last
+  conversation" state between the two, producing a pytest failure whose
+  message-thread content belongs to the OTHER (MCP) session's conversation.
+  Not a product defect — confirmed by re-running the exact same pytest
+  invocation in isolation (no concurrent MCP session): clean green, no
+  code change needed. Don't drive live exploration and a pytest run
+  concurrently against the same dev-token identity.
