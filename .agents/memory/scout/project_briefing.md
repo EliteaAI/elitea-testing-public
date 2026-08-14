@@ -72,6 +72,15 @@ type: project
   scope; ALL tracker/board writes use `env -u GITHUB_TOKEN gh …` so they run as
   the operator's OWN keyring account (portable — whoever runs the agents, on any
   machine). Dedup via list API, never `--search` (index lag → dup #17/#18).
+- **Docs land DIRECTLY on `automation/base` — no branch, no PR (operator ruling
+  2026-08-14).** `docs(...)` commits touching `.agents/**`, `test-specs/**` and
+  `CLAUDE.md` are committed and pushed straight to `automation/base`; the
+  branch-and-PR flow is for `test(...)` code only. Confirmed against 20+ commits of
+  history (every `docs(automation)` / `docs(memory)` commit is first-parent on base;
+  only `test(...)` carries a PR number). **The scout AGENT.md default "if asked to
+  commit and push, do so on a branch" is overridden here** — creating a branch for a
+  canon/memory change is ceremony the operator does not want, and it delays the
+  change reaching new sessions.
 - **Open gaps:** no flaky-test list yet.
 
 ## My Role Focus
